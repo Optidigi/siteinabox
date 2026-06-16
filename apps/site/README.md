@@ -1,4 +1,4 @@
-# site-siteinabox
+# SIAB Platform Site
 
 Static landing page for **Site in a Box** (siteinabox.nl), built with Astro 5 +
 Tailwind 4 from the monorepo `packages/site-template` baseline.

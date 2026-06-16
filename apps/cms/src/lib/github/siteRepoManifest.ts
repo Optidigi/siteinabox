@@ -5,7 +5,12 @@ export const SITE_MANIFEST_PATHS = [
   "siteManifest.example.json",
 ] as const
 
-type ParsedRepo = { owner: string; repo: string }
+type ParsedRepo = {
+  owner: string
+  repo: string
+  ref?: string
+  pathPrefix?: string
+}
 
 export type SiteRepoManifestResult =
   | { ok: true; repo: string; path: string; manifest: RtManifest }
@@ -26,20 +31,54 @@ export const parseGitHubRepo = (raw: string): ParsedRepo | null => {
   try {
     const url = new URL(trimmed)
     if (url.hostname !== "github.com") return null
-    const [owner, repo] = url.pathname.replace(/^\/|\/$/g, "").split("/")
-    const normalizedRepo = repo?.replace(/\.git$/, "")
-    return toParsedRepo(owner, normalizedRepo)
+    const [owner, repoPart, marker, ref, ...rest] = url.pathname.replace(/^\/|\/$/g, "").split("/")
+    const repo = repoPart?.replace(/\.git$/, "")
+    if (marker === "tree" || marker === "blob") {
+      return toParsedRepo(owner, repo, {
+        ref,
+        pathPrefix: normalizeManifestPath(rest.join("/"), marker === "blob"),
+      })
+    }
+    const pathPrefix = normalizeManifestPath([marker, ref, ...rest].filter(Boolean).join("/"))
+    return toParsedRepo(owner, repo, { pathPrefix })
   } catch {
-    const [owner, repo] = trimmed.replace(/\.git$/, "").split("/")
-    return toParsedRepo(owner, repo)
+    const [repoRef, pathPrefixRaw] = trimmed.replace(/\.git$/, "").split(":", 2)
+    if (!repoRef) return null
+    const [owner, repo] = repoRef.split("/")
+    return toParsedRepo(owner, repo, { pathPrefix: normalizeManifestPath(pathPrefixRaw) })
   }
+}
+
+const normalizeManifestPath = (path?: string, pointsAtFile = false) => {
+  const normalized = path?.replace(/^\/|\/$/g, "")
+  if (!normalized) return undefined
+  if (pointsAtFile || SITE_MANIFEST_PATHS.some((candidate) => normalized.endsWith(`/${candidate}`) || normalized === candidate)) {
+    return normalized.split("/").slice(0, -1).join("/") || undefined
+  }
+  return normalized
+}
+
+const joinManifestPath = (repo: ParsedRepo, path: string) =>
+  [repo.pathPrefix, path].filter(Boolean).join("/")
+
+const withRef = (url: string, ref?: string) => {
+  if (!ref) return url
+  const parsed = new URL(url)
+  parsed.searchParams.set("ref", ref)
+  return parsed.toString()
 }
 
 const isValidRepo = (owner?: string, repo?: string) =>
   Boolean(owner && repo && REPO_PART_RE.test(owner) && REPO_PART_RE.test(repo))
 
-const toParsedRepo = (owner?: string, repo?: string): ParsedRepo | null =>
-  isValidRepo(owner, repo) && owner && repo ? { owner, repo } : null
+const toParsedRepo = (
+  owner?: string,
+  repo?: string,
+  opts: { ref?: string; pathPrefix?: string } = {},
+): ParsedRepo | null =>
+  isValidRepo(owner, repo) && owner && repo
+    ? { owner, repo, ...opts }
+    : null
 
 const encodePath = (path: string) =>
   path.split("/").map((part) => encodeURIComponent(part)).join("/")
@@ -61,7 +100,10 @@ const fetchRepoFile = async (
   if (token) headers.authorization = `Bearer ${token}`
 
   const res = await fetch(
-    `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/${encodePath(path)}`,
+    withRef(
+      `https://api.github.com/repos/${repo.owner}/${repo.repo}/contents/${encodePath(path)}`,
+      repo.ref,
+    ),
     { headers, cache: "no-store" },
   )
   if (res.status === 404) return { found: false }
@@ -80,11 +122,12 @@ export const fetchSiteManifestFromRepo = async (
 ): Promise<SiteRepoManifestResult> => {
   const repo = parseGitHubRepo(siteRepo)
   if (!repo) {
-    return { ok: false, error: "Site repo must be a GitHub repo like owner/repo or https://github.com/owner/repo" }
+    return { ok: false, error: "Site source must be a GitHub repo like owner/repo, owner/repo:path, or https://github.com/owner/repo/tree/main/path" }
   }
 
   for (const path of SITE_MANIFEST_PATHS) {
-    const file = await fetchRepoFile(repo, path, opts.token)
+    const manifestPath = joinManifestPath(repo, path)
+    const file = await fetchRepoFile(repo, manifestPath, opts.token)
     if (!file.found) {
       if ("error" in file) return { ok: false, error: file.error }
       continue
@@ -101,14 +144,14 @@ export const fetchSiteManifestFromRepo = async (
     if (!manifest.success) {
       return {
         ok: false,
-        error: `${path} does not match the manifest schema: ${manifest.error.issues[0]?.message ?? "invalid manifest"}`,
+        error: `${manifestPath} does not match the manifest schema: ${manifest.error.issues[0]?.message ?? "invalid manifest"}`,
       }
     }
 
     return {
       ok: true,
       repo: `${repo.owner}/${repo.repo}`,
-      path,
+      path: manifestPath,
       manifest: manifest.data,
     }
   }

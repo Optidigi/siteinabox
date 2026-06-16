@@ -9,8 +9,7 @@
 # ghcr.io/optidigi/siab-platform-site-ami-care:latest on every push to main.
 #
 # Deploy steps on the VPS:
-#   cd /srv/prod/orchestrators/siab-payload-orchestrator
-#   scripts/sync-cms-artifacts.sh \
+#   packages/tools/siab-orchestrator/scripts/sync-cms-artifacts.sh \
 #     --image ghcr.io/optidigi/siab-platform-site-ami-care:latest \
 #     --tenant-dir /srv/data/saas/siab-payload/tenants/7
 #   cd /srv/saas/infra/stacks/siab-platform/tenants/ami-care

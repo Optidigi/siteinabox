@@ -76,7 +76,7 @@ export const Tenants: CollectionConfig = {
         { label: "Suspended", value: "suspended" },
         { label: "Archived", value: "archived" }
       ] },
-    { name: "siteRepo", type: "text", admin: { description: "GitHub repo, e.g. optidigi/site-clientasite" } },
+    { name: "siteRepo", type: "text", admin: { description: "GitHub source for siteManifest.json, e.g. Optidigi/siab-platform:sites/clientasite" } },
     { name: "notes", type: "textarea" },
     { name: "siteManifest", type: "json", required: false,
       admin: {

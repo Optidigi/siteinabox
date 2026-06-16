@@ -239,7 +239,7 @@ in `conversionGoals.contactClicks`.
 
 ## Generated-Site Runtime
 
-`siab-site-template` should ship a small first-party analytics runtime loaded
+`packages/site-template` should ship a small first-party analytics runtime loaded
 from `BaseLayout.astro`. It is generic and not theme-specific.
 
 Runtime responsibilities:
@@ -403,18 +403,18 @@ still the right source of truth.
 projection, CMS/server event capture, `site_form_accepted` capture, the
 server-only PostHog query layer, `/analytics`, and dashboard highlights.
 
-`siab-site-template` ships the first-party generated-site analytics runtime,
+`packages/site-template` ships the first-party generated-site analytics runtime,
 reads projected `site.analytics`, `page.analytics`, and `block.analytics`, emits
 the approved public-site V1 events after consent, exposes
 `window.SIABAnalytics.grantConsent()` / `revokeConsent()`, and tests emitted
 metadata plus no pre-consent transmission.
 
-`siab-site-orchestrator` ensures new generated sites inherit the analytics
+`packages/tools/siab-orchestrator` ensures new generated sites inherit the analytics
 runtime from the template, ensures generated site metadata/manifest output
 includes analytics support, and adds reviewer gates that verify analytics
 runtime/metadata exists or is intentionally disabled.
 
-`siab-payload-orchestrator` seeds the operator-managed analytics config into
+`packages/tools/siab-orchestrator` seeds the operator-managed analytics config into
 Payload, ensures `/add-cms` generated tenants get the analytics contract, and
 adds runbook checks for PostHog environment/configuration plus generated-site
 analytics metadata.
@@ -430,7 +430,7 @@ sequence, preserve the approved contracts and adjust pragmatically.
 
 1. `siab-payload` contract docs, projection metadata, and server query helper
    skeleton.
-2. `siab-site-template` generated-site runtime.
+2. `packages/site-template` generated-site runtime.
 3. Orchestrator generation/reviewer/seeder updates.
 4. Existing tenant backport.
 5. CMS `/analytics` page and dashboard highlights.

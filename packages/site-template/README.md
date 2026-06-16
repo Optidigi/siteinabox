@@ -2,9 +2,9 @@
 
 Astro 5 + Tailwind 4 boilerplate consumed by
 `packages/tools/siab-orchestrator`'s `/new-site` workflow. Per engagement, the
-orchestrator copies this template into
-`packages/tools/siab-orchestrator/site-<slug>/`, integrates a theme from
-`packages/site-themes/`, fills content via subagents, and pushes.
+orchestrator copies this template into `sites/<slug>/`, integrates a theme from
+`packages/site-themes/`, fills content via subagents, and publishes a
+monorepo-owned tenant image.
 
 ## What's in the box
 
@@ -17,7 +17,8 @@ orchestrator copies this template into
   POST form when `PUBLIC_WEB3FORMS_KEY` is set
 - **Dockerfile**: multi-stage `node:lts-alpine` → `nginx:alpine`, ~30MB final image
 - **nginx.conf**: gzip, asset/HTML cache strategy, security headers (CSP, X-Frame-Options, etc.)
-- **GHA `publish.yml`**: push to `main` → `ghcr.io/<owner>/<repo>:latest` + `:sha-<short>`
+- **Root tenant image workflow**: push to `main` →
+  `ghcr.io/optidigi/siab-platform-site-<slug>:latest` + `:sha-<short>`
 
 ## Local development
 
@@ -35,8 +36,7 @@ See `.env.example`. `SITE_URL` is the only one the build needs;
 
 ## Don't edit this template directly during a site engagement
 
-The orchestrator copies the template into
-`packages/tools/siab-orchestrator/site-<slug>/` and works there.
+The orchestrator copies the template into `sites/<slug>/` and works there.
 Edits to this template apply to *all future* sites. Land them in a PR and pull
 into `packages/site-template/` on disk before starting the next engagement.
 
@@ -95,7 +95,7 @@ Start from `siteManifest.example.json` (this template's all-7-blocks default). S
 ### Integration touchpoints
 
 - **`packages/tools/siab-orchestrator/workflows/cms/agents/payload-seeder.md` § "Seed Tenant.siteManifest"** — Phase 4 reads `${SITE_REPO}/siteManifest.json` (or falls back to `siteManifest.example.json`) and PATCHes it onto `Tenant.siteManifest`.
-- **`packages/tools/siab-orchestrator/workflows/sitegen/agents/reviewer.md` § Phase 7 gate** — requires `siteManifest.json` at the site repo root before sign-off.
+- **`packages/tools/siab-orchestrator/workflows/sitegen/agents/reviewer.md` § Phase 7 gate** — requires `siteManifest.json` at the site package root before sign-off.
 - **`apps/cms/src/lib/richText/manifest.ts`** — Zod schema; canonical validation source.
 - **`apps/cms/src/hooks/enforceTenantBlockMenu.ts`** — save-time gate.
 - **`apps/cms/src/components/editor/BlockPresetsContext.tsx`** — UI-side filter for the "Add block" menu.

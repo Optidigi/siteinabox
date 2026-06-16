@@ -1,6 +1,8 @@
 # siab-site-themes
 
-Curated building blocks for the sitegen workflow. Used by `optidigi/siab-site-orchestrator` to source theme components when generating sites.
+Curated building blocks for the sitegen workflow. Used by
+`packages/tools/siab-orchestrator` to source theme components when generating
+sites under `sites/<slug>`.
 
 ## Layout
 

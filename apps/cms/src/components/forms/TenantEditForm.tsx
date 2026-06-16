@@ -296,7 +296,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
                   </FormItem>
                 )} />
                 <FormField name="siteRepo" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>{t("siteRepo")}</FormLabel><FormControl><Input placeholder="optidigi/site-clientasite" {...field} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>{t("siteRepo")}</FormLabel><FormControl><Input placeholder="Optidigi/siab-platform:sites/clientasite" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField name="notes" control={form.control} render={({ field }) => (
                   <FormItem><FormLabel>{t("notes")}</FormLabel><FormControl><Textarea rows={3} {...field} /></FormControl><FormMessage /></FormItem>

@@ -26,9 +26,20 @@ describe("siteRepo manifest fetch", () => {
 
   it("parses owner/repo and GitHub URL repo formats", () => {
     expect(parseGitHubRepo("optidigi/site-client")).toEqual({ owner: "optidigi", repo: "site-client" })
+    expect(parseGitHubRepo("Optidigi/siab-platform:sites/ami-care")).toEqual({
+      owner: "Optidigi",
+      repo: "siab-platform",
+      pathPrefix: "sites/ami-care",
+    })
     expect(parseGitHubRepo("https://github.com/optidigi/site-client.git")).toEqual({
       owner: "optidigi",
       repo: "site-client",
+    })
+    expect(parseGitHubRepo("https://github.com/Optidigi/siab-platform/tree/main/sites/ami-care")).toEqual({
+      owner: "Optidigi",
+      repo: "siab-platform",
+      ref: "main",
+      pathPrefix: "sites/ami-care",
     })
     expect(parseGitHubRepo("git@github.com:optidigi/site-client.git")).toEqual({
       owner: "optidigi",
@@ -55,6 +66,24 @@ describe("siteRepo manifest fetch", () => {
         headers: expect.objectContaining({ authorization: "Bearer ghs_test" }),
         cache: "no-store",
       }),
+    )
+  })
+
+  it("fetches a monorepo site package manifest by path and ref", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(githubFile(manifest))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const result = await fetchSiteManifestFromRepo("https://github.com/Optidigi/siab-platform/tree/main/sites/ami-care")
+
+    expect(result).toEqual({
+      ok: true,
+      repo: "Optidigi/siab-platform",
+      path: "sites/ami-care/siteManifest.json",
+      manifest,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.github.com/repos/Optidigi/siab-platform/contents/sites/ami-care/siteManifest.json?ref=main",
+      expect.objectContaining({ cache: "no-store" }),
     )
   })
 

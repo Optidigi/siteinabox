@@ -1,4 +1,4 @@
-# Example compose for site-amicare-zorg in CMS-backed mode.
+# Example compose for sites/ami-care in CMS-backed mode.
 # Copy values into your VPS docker-compose file (or use this standalone if running this site alone).
 #
 # Replace <vps-data-path> with the absolute host path where Payload writes this tenant's data,

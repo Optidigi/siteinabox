@@ -1,4 +1,4 @@
-# site-amicare-zorg
+# Ami-care Tenant Site
 
 One-pager for Amicare-Zorg. Static site, deployed to https://ami-care.nl
 via Coolify (Docker, Traefik) on the Optidigi VPS.
@@ -20,11 +20,11 @@ Push to `main`. The root GitHub Actions workflow
 the Docker image and pushes it to
 `ghcr.io/optidigi/siab-platform-site-ami-care:latest`.
 
-On the VPS (`/srv/saas/infra/stacks/siab-platform/tenants/ami-care/`):
+On the VPS (`/srv/saas/infra/stacks/siab-platform/tenants/ami-care/`), from a
+checkout that contains the monorepo orchestrator tools:
 
 ```bash
-cd /srv/prod/orchestrators/siab-payload-orchestrator
-scripts/sync-cms-artifacts.sh \
+packages/tools/siab-orchestrator/scripts/sync-cms-artifacts.sh \
   --image ghcr.io/optidigi/siab-platform-site-ami-care:latest \
   --tenant-dir /srv/data/saas/siab-payload/tenants/7
 
@@ -50,8 +50,8 @@ For the siab-payload canvas editor, this site exposes a bundled stylesheet:
 - **Production**: `pnpm build` runs `astro build && node scripts/build-cms-css.mjs`,
   producing `dist/cms/cms-editor.css` that the CMS reads from
   `<DATA_DIR>/tenants/<id>/cms-editor.css`. Run
-  `siab-payload-orchestrator/scripts/sync-cms-artifacts.sh` after each image
-  build and before restarting the site container.
+  `packages/tools/siab-orchestrator/scripts/sync-cms-artifacts.sh` after each
+  image build and before restarting the site container.
 
 - **Local dev**: run `pnpm dev:cms-css` alongside `pnpm dev` to watch
   `src/styles/{global,rich-text}.css` and concatenate them into
@@ -60,7 +60,8 @@ For the siab-payload canvas editor, this site exposes a bundled stylesheet:
 
 ## CMS-backed mode
 
-This repo is shaped for the `optidigi/siab-payload-orchestrator` `/add-cms` workflow.
+This package is shaped for the monorepo
+`packages/tools/siab-orchestrator` `/add-cms` workflow.
 Editorial content (page copy, brand info) lives in `src/content/` pre-conversion, and in
 the Payload tenant volume (`/data/`) post-conversion.
 
@@ -74,7 +75,7 @@ After `/add-cms` completes Phase 4 (and optionally before Phase 5/6 — order do
 matter), the operator runs:
 
 ```bash
-cd ./site-amicare-zorg
+cd sites/ami-care
 bash scripts/restructure-cms.sh <TENANT_ID>
 ```
 
@@ -102,7 +103,8 @@ This site reads editorial content from a per-tenant Payload CMS data directory m
 
 - Mount the per-tenant data dir at `/data:ro`. See `docker-compose.cms.yml.example`.
 - Do not mount `/data` read-write for CSS sync. CMS canvas artifacts are copied
-  from the image by `siab-payload-orchestrator/scripts/sync-cms-artifacts.sh`.
+  from the image by
+  `packages/tools/siab-orchestrator/scripts/sync-cms-artifacts.sh`.
 
 **Editor:**
 
