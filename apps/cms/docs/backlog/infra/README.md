@@ -1217,6 +1217,30 @@ OBS-119 is closed for monorepo/deploy consolidation. Building the real intake
 product and deploying an intake image remain future feature work; this item only
 reserved `apps/intake` and the matching server stack namespace.
 
+#### Follow-up cleanup — 2026-06-16
+Post-consolidation cleanup removed the migration backup/archive artifacts from
+the live VPS stack tree:
+
+- Removed `/srv/saas/infra/stacks/siab-platform/_archive/`.
+- Removed copied `*.bak*` compose files under
+  `/srv/saas/infra/stacks/siab-platform/`.
+- Removed unused local Docker images for the old platform app package names:
+  `ghcr.io/optidigi/siab-payload:*` and
+  `ghcr.io/optidigi/site-siteinabox:latest`.
+
+Verification after cleanup:
+
+- Active compose files still point at
+  `ghcr.io/optidigi/siab-platform-cms:latest`,
+  `ghcr.io/optidigi/siab-platform-site:latest`,
+  `ghcr.io/optidigi/site-amicare-zorg:latest`, and
+  `ghcr.io/optidigi/site-amblast:latest`.
+- No backup/archive files remain under the SIAB platform stack tree.
+- External smoke checks returned HTTP 200 for
+  `https://admin.siteinabox.nl/api/health`,
+  `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
+  `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
+
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
    site-template, generated site source, shared packages, orchestration tools,
