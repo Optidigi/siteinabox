@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `siab-site-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-109). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-122 — next OBS = OBS-123).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-109). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-123 — next OBS = OBS-124).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -3610,7 +3610,7 @@ Depends on OBS-20 — the "click a nav link → go to nav page" handoff has nowh
 
 ## Multi-repo Items
 
-### OBS-122 — CMS-ify `sites/amblast` generated site snapshot
+### OBS-123 — CMS-ify `sites/amblast` generated site snapshot
 
 **Status:** Active · **Layer:** multi-repo (`apps/cms` + `packages/site-template` + `sites/amblast` + orchestrator)
 **Discovered in:** Session 2026-06-16, post-SIAB package split follow-up
@@ -5133,7 +5133,7 @@ The FE-39 mobile redesign spec assumed a working "Duplicate page" action; it doe
 3. Wire the action into `PageForm` (desktop danger zone / future "more actions" menu) and any future mobile "Duplicate page" row.
 4. Test: unit test for the action (forbidden if no caller; correct tenant scope; id-strip), Playwright smoke (duplicate from mobile row → redirect to new page edit URL).
 
-### FE-38 — Mobile section cards should signal completeness state
+### Legacy note — FE-38 Mobile section cards completeness state
 *(Superseded — reopened above. Original implementation rolled back in FE-39 round-2 batch 1.)*
 
 ### FE-32 — Mobile path bypasses selection-remap wrappers

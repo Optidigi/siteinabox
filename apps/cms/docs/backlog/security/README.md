@@ -4,7 +4,7 @@ Canonical source of truth for security findings, vulnerability observations, and
 
 ## How this file is used
 
-- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-115 across all backlog files — next security item is OBS-116).
+- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-123 across all backlog files — next OBS = OBS-124).
 - **Status tiers:** Active (real, deferred), Latent (not exploitable today — trigger documented), Audit-deferred (explicitly punted per audit text), Closed (resolved).
 - **When a trigger condition fires**, promote the item immediately to a fix batch. Do not defer further.
 - **When a PR touches a Payload auth feature** (`useAPIKey`, `verify`, `loginWithUsername`, etc.), check the Doctrine section below and audit auto-injected fields the same day.
