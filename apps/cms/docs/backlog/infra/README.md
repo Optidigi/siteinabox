@@ -1123,6 +1123,22 @@ Additional validation:
 - `pnpm install --lockfile-only --ignore-scripts` passed at the root for six
   workspace projects, with the same local Node 24 versus CMS Node 26 warning.
 
+#### Update — 2026-06-16 (new monorepo-owned image names)
+Follow-up deploy validation showed that the monorepo workflows can build the
+CMS and public-site Docker images, but GHCR rejects pushes to the existing
+package names with `permission_denied: write_package` because those packages
+were created under the previous source repositories. The operator chose to use
+new package names instead of changing existing package-level permissions.
+
+Updated monorepo image contract:
+
+- CMS: `ghcr.io/optidigi/siab-platform-cms:latest`
+- Public site: `ghcr.io/optidigi/siab-platform-site:latest`
+
+The VPS should be updated to pull these new image names. Existing VPS stack
+paths, container names, domains, database volumes, and tenant data paths remain
+unchanged.
+
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
    site-template, generated site source, shared packages, orchestration tools,

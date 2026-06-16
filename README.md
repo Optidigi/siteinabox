@@ -26,10 +26,10 @@ sites/
 
 ## Deployment Contract
 
-The first monorepo migration preserves production behavior:
+The monorepo publishes new platform-owned images:
 
-- `apps/cms` still publishes `ghcr.io/optidigi/siab-payload:latest`.
-- `apps/site` still publishes `ghcr.io/optidigi/site-siteinabox:latest`.
+- `apps/cms` publishes `ghcr.io/optidigi/siab-platform-cms:latest`.
+- `apps/site` publishes `ghcr.io/optidigi/siab-platform-site:latest`.
 - Generated/client sites are intended to move under `sites/`, while their
   existing production image names and VPS stack entries remain stable until
   each site is migrated deliberately.

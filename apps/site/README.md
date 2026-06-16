@@ -4,7 +4,7 @@ Static landing page for **Site in a Box** (siteinabox.nl), built with Astro 5 +
 Tailwind 4 from the monorepo `packages/site-template` baseline.
 
 Pushes to `main` build and publish an OCI image to
-`ghcr.io/optidigi/site-siteinabox` via the monorepo workflow in
+`ghcr.io/optidigi/siab-platform-site` via the monorepo workflow in
 `.github/workflows/build-site-image.yml`. The VPS pulls the image via
 `docker compose pull && docker compose up -d`.
 

@@ -4,7 +4,7 @@
 # Reverse proxying handled by the shared Traefik edge on the external proxy network.
 services:
   siab-payload:
-    image: ghcr.io/optidigi/siab-payload:latest
+    image: ghcr.io/optidigi/siab-platform-cms:latest
     container_name: siab-payload
     restart: unless-stopped
     environment:

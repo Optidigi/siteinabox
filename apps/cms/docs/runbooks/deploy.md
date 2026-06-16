@@ -19,7 +19,7 @@ Before running anything in this document, the following must be true:
 - A DNS A record `admin.<your-domain>` (e.g. `admin.siteinabox.nl`) pointing at
   the VPS public IP. SSL issuance (Let's Encrypt via Traefik) needs this
   resolving before Step 6.
-- A GHCR account with read access to `ghcr.io/optidigi/siab-payload` (a
+- A GHCR account with read access to `ghcr.io/optidigi/siab-platform-cms` (a
   Personal Access Token with `read:packages` is sufficient). Only required if
   the package is private.
 - A non-root deploy user on the host (referred to as `serveradmin` below) with
@@ -40,7 +40,7 @@ Two containers, one Compose project, two networks:
    │ siab-payload        │◀──▶│ siab-payload-postgres │
    │ image: ghcr.io/     │    │ image: postgres:18    │
    │   optidigi/         │    │   -alpine             │
-   │   siab-payload      │    │                       │
+   │   siab-platform-cms │    │                       │
    │ networks:           │    │ networks: internal    │
    │   proxy, internal   │    │                       │
    └─────────────────────┘    └───────────────────────┘
@@ -116,7 +116,7 @@ unquoted, or strip quotes when reading (the helper in Step 5 does both).
 ## Step 3 — Login to GHCR (if image is private) and pull
 
 ```bash
-# Skip if ghcr.io/optidigi/siab-payload is public.
+# Skip if ghcr.io/optidigi/siab-platform-cms is public.
 echo "<github-pat>" | docker login ghcr.io -u <github-user> --password-stdin
 
 docker compose -f /srv/saas/infra/stacks/siab-payload/compose.yml pull
