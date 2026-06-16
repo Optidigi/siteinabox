@@ -1,0 +1,30 @@
+---
+import { site } from '../../content/site';
+
+const baseUrl = `https://${site.primaryDomain}`;
+const sameAs = Object.values(site.socials).filter(Boolean);
+
+const data: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: site.brand,
+  url: baseUrl,
+  description: site.description,
+  logo: `${baseUrl}/logo.png`,
+};
+if (sameAs.length) data.sameAs = sameAs;
+if (site.nap) {
+  data.contactPoint = [
+    {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      telephone: site.nap.phone,
+      email: site.nap.email,
+      areaServed: site.serviceArea ?? site.nap.country,
+      availableLanguage: ['nl', 'en'],
+    },
+  ];
+}
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(data)} />

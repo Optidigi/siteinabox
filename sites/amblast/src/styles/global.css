@@ -1,0 +1,6 @@
+/* Tiny reset to flatten browser defaults the curated CSS doesn't override.
+   The visual layer lives in amb-base.css. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+img, svg, video { max-width: 100%; height: auto; display: block; }

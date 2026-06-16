@@ -1,13 +1,16 @@
 # Generated Sites
 
-Generated/client site repositories are intended to move here.
+Generated/client site repositories live here.
 
-Current production sites such as `site-amblast` and `site-amicare-zorg` keep
-their existing image names and VPS stack entries until each site is migrated
-deliberately. Moving source into this directory must not imply a same-step
-production deploy, data-path change, or image-name change.
+Current production tenant site images remain unchanged:
 
-Expected shape:
+- `sites/ami-care` deploys as `ghcr.io/optidigi/site-amicare-zorg:latest`.
+- `sites/amblast` deploys as `ghcr.io/optidigi/site-amblast:latest`.
+
+VPS stack files now live under `/srv/saas/infra/stacks/siab-platform/tenants/`.
+Tenant data paths remain unchanged under `/srv/data/saas/siab-payload/`.
+
+Current shape:
 
 ```txt
 sites/

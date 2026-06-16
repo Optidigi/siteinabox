@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "inlineMarks": {
+    "bold": true,
+    "italic": true,
+    "underline": true,
+    "code": true,
+    "strikethrough": false
+  },
+  "blockTypes": {
+    "paragraph": true,
+    "heading": { "levels": [2, 3] },
+    "bulletList": true,
+    "orderedList": true,
+    "blockquote": true,
+    "divider": true
+  },
+  "blocks": [
+    { "slug": "hero", "label": "Hero", "defaultAnchor": "top" },
+    { "slug": "featureList", "label": "Werkwijze", "defaultAnchor": "werkwijze" },
+    { "slug": "richText", "label": "Over mij", "defaultAnchor": "over" },
+    {
+      "slug": "cta",
+      "label": "CTA",
+      "defaultAnchor": "wat-telt",
+      "fields": [
+        { "name": "eyebrow", "label": "Eyebrow", "kind": "richtext", "variant": "inline", "role": "script" },
+        { "name": "headline", "label": "Headline", "kind": "richtext", "variant": "inline", "role": "heading" },
+        { "name": "description", "label": "Description", "kind": "richtext", "variant": "block", "role": "text" },
+        { "name": "primary", "label": "Primary link", "kind": "cta" },
+        { "name": "secondary", "label": "Secondary link", "kind": "cta" },
+        { "name": "backgroundImage", "label": "Background image", "kind": "image" }
+      ]
+    }
+  ],
+  "typeStyles": [],
+  "colorTokens": [
+    { "id": "accent", "label": "Accent", "cssVar": "--color-accent" }
+  ],
+  "fontFamilies": [
+    { "id": "title", "label": "Title font", "cssVar": "--font-title" },
+    { "id": "heading", "label": "Heading font", "cssVar": "--font-heading" },
+    { "id": "text", "label": "Text font", "cssVar": "--font-text" },
+    { "id": "script", "label": "Script font", "cssVar": "--font-script" }
+  ],
+  "themedNodes": [
+    {
+      "id": "eyebrow",
+      "label": "Eyebrow",
+      "fields": [
+        { "name": "text", "type": "text", "required": true }
+      ]
+    }
+  ],
+  "footer": {
+    "columnCounts": [1, 2, 3],
+    "defaultColumnCount": 3,
+    "items": [
+      { "type": "brand", "label": "Brand" },
+      { "type": "business", "label": "Bedrijfsgegevens" },
+      { "type": "contact", "label": "Contact" },
+      { "type": "navigation", "label": "Navigatie" },
+      { "type": "links", "label": "Links" },
+      { "type": "text", "label": "Tekst" }
+    ]
+  },
+  "settings": {
+    "general": {
+      "description": true,
+      "language": true,
+      "contactEmail": true
+    },
+    "identity": {
+      "branding": {
+        "logo": true,
+        "favicon": true
+      }
+    },
+    "details": {
+      "contact": {
+        "phone": true,
+        "address": true,
+        "social": true
+      },
+      "business": {
+        "legalName": true,
+        "kvkNumber": true,
+        "establishmentNumber": true,
+        "streetAddress": true,
+        "city": true,
+        "region": true,
+        "postalCode": true,
+        "country": true
+      },
+      "serviceArea": true,
+      "hours": true
+    },
+    "operations": {
+      "maintenance": true
+    }
+  },
+  "analytics": {
+    "enabled": true,
+    "provider": "posthog",
+    "consentMode": "required",
+    "dashboardVisible": true,
+    "conversionGoals": {
+      "acceptedForms": true,
+      "contactClicks": []
+    }
+  },
+  "cssEntry": "cms-editor.css",
+  "defaultMode": "canvas"
+}

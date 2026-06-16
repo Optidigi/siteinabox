@@ -1,0 +1,49 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import '../styles/amb-base.css';
+import { site } from '../content/site';
+---
+
+<BaseLayout
+  title="Pagina niet gevonden"
+  description="De pagina die u zocht bestaat niet."
+  noindex={true}
+>
+  <div class="amb amb-404">
+    <section class="amb-section amb-section-top amb-section-boxed amb-section-h-default">
+      <div class="amb-container">
+        <div class="amb-col amb-col-100 amb-top-column">
+          <div class="amb-widget-wrap amb-el-populated" style="padding: 96px 16px; text-align: center;">
+            <div style="font-family: 'Roboto Slab', Georgia, serif; font-size: clamp(96px, 18vw, 176px); line-height: 1; font-weight: 700; color: #FFD500;">404</div>
+            <h1 class="amb-heading" style="font-size: clamp(20px, 3vw, 28px); margin: 24px 0 16px; color: #333;">
+              Sorry, de pagina die u zocht is niet gevonden.
+            </h1>
+            <p style="color: #6b6b6b; margin-bottom: 32px;">
+              Wilt u terug naar <a href="/" style="color: #4ca5ed;">de homepage</a> of een van onze andere pagina's bekijken?
+            </p>
+            <ul style="list-style: none; padding: 0; margin: 0; display: inline-flex; flex-wrap: wrap; gap: 12px; justify-content: center;">
+              {site.nav.map((item) => (
+                <li>
+                  <a
+                    href={item.href}
+                    style="display: inline-block; border: 1px solid #dedede; padding: 8px 16px; color: #333; text-decoration: none; font-size: 14px;"
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+              <li>
+                <a
+                  href="/contact"
+                  style="display: inline-block; border: 1px solid #dedede; padding: 8px 16px; color: #333; text-decoration: none; font-size: 14px;"
+                >
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</BaseLayout>

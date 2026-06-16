@@ -1,0 +1,25 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout
+  title="Pagina niet gevonden — Amicare-Zorg"
+  description="Deze pagina bestaat niet."
+  noindex={true}
+>
+  <main class="min-h-screen flex items-center justify-center px-6">
+    <div class="max-w-prose mx-auto text-center space-y-8">
+      <p class="text-[11px] tracking-[0.18em] uppercase text-ink-muted">404</p>
+
+      <h1 class="font-serif text-[40px] @min-[48rem]/site-frame:text-[56px] leading-[1.1] tracking-[-0.01em]">
+        Deze pagina <span class="italic text-accent">bestaat niet</span>.
+      </h1>
+
+      <p class="text-ink-muted">
+        <a href="/" class="underline decoration-1 underline-offset-[6px] hover:decoration-accent transition-colors">
+          Terug naar de homepage
+        </a>
+      </p>
+    </div>
+  </main>
+</BaseLayout>

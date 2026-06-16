@@ -1,0 +1,22 @@
+# Example compose for site-amicare-zorg in CMS-backed mode.
+# Copy values into your VPS docker-compose file (or use this standalone if running this site alone).
+#
+# Replace <vps-data-path> with the absolute host path where Payload writes this tenant's data,
+# e.g. /srv/data/saas/siab-payload/tenants/7.
+
+services:
+  site:
+    image: ghcr.io/optidigi/site-amicare-zorg:latest
+    restart: unless-stopped
+    ports:
+      - "4321:4321"
+    volumes:
+      - <vps-data-path>:/data:ro
+    environment:
+      CMS_DATA_DIR: /data
+      SITE_URL: https://ami-care.nl
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4321/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3

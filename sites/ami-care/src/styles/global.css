@@ -1,0 +1,103 @@
+@import '@fontsource-variable/fraunces/index.css';
+@import '@fontsource-variable/inter/index.css';
+@import '@fontsource-variable/caveat/index.css';
+
+@import 'tailwindcss';
+@import './rich-text.css';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  --color-bg: #FBF7F0;
+  --color-ink: #1F1A14;
+  --color-ink-muted: #5A4F44;
+  --color-accent: #A04E32;
+  --color-rule: rgba(31, 26, 20, 0.12);
+  --color-card: #FFFFFF;
+  --color-secondary: #EFE9DD;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --font-script: 'Caveat Variable', cursive;
+
+  /* Role-token aliases — match siab-payload's ThemeBar role tokens.
+   * Empty ThemeBar fonts → these defaults; preset selection overrides
+   * via the cms-editor.css bundle (canvas only — OBS-45 tracks the
+   * deferred live-site override path). */
+  --font-title: var(--font-serif);
+  --font-heading: var(--font-serif);
+  --font-text: var(--font-sans);
+
+  --max-width-prose: 58ch;
+  --max-width-page: 1080px;
+
+  /* Radius scale — defaults overridden at runtime by `tenant-theme.css`
+   * (`projectTenantTheme()` in siab-payload writes `:root { --radius-md/sm/lg }`
+   * loaded AFTER the compiled CSS in `BaseLayout.astro`). Tailwind v4
+   * generates `rounded-sm/md/lg` from these tokens so the existing utility
+   * classes track the tenant's ThemeBar pick. Mirrors the canvas pattern
+   * in `siab-payload/src/styles/globals.css`. `rounded-full`, `rounded-2xl`,
+   * `rounded-[3rem]` etc. keep their literal Tailwind defaults — used for
+   * blobs, avatars, pill buttons, and intentional-large stylistic radii. */
+  --radius-md: 0.5rem;
+  --radius-sm: calc(var(--radius-md) - 0.25rem);
+  --radius-lg: calc(var(--radius-md) + 0.5rem);
+}
+
+@layer utilities {
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+
+  .animate-fade-up { animation: fade-up 0.6s ease-out both; }
+  .animate-fade    { animation: fade 0.6s ease-out both; }
+  .animate-float   { animation: float 4s ease-in-out infinite; }
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html {
+    background-color: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .site-frame-root {
+    font-size: 17px;
+  }
+
+  @container site-frame (width >= 48rem) {
+    .site-frame-root { font-size: 18px; }
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
+  ::selection {
+    background: rgba(160, 78, 50, 0.18);
+  }
+
+  a {
+    color: inherit;
+  }
+}

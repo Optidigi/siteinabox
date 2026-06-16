@@ -1,0 +1,52 @@
+---
+import type { SiteSettings } from '../../lib/types';
+
+interface Props {
+  site: SiteSettings;
+}
+
+const { site } = Astro.props;
+
+// Map Payload-projected weekday names (lowercase full names) to schema.org's
+// schema-friendly Day enum (Monday/Tuesday/…).
+const dayMap: Record<string, string> = {
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+};
+
+const data = site.nap
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'LocalBusiness',
+      name: site.siteName,
+      legalName: site.nap.legalName ?? undefined,
+      url: site.siteUrl,
+      telephone: site.contact?.phone ?? undefined,
+      email: site.contactEmail ?? undefined,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: site.nap.streetAddress ?? undefined,
+        postalCode: site.nap.postalCode ?? undefined,
+        addressLocality: site.nap.city ?? undefined,
+        addressRegion: site.nap.region ?? undefined,
+        addressCountry: site.nap.country ?? undefined,
+      },
+      areaServed: (site.serviceArea ?? []).map((s) => s.name),
+      openingHoursSpecification: (site.hours ?? [])
+        .filter((h) => !h.closed && h.open && h.close)
+        .map((h) => ({
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: dayMap[h.day] ?? h.day,
+          opens: h.open,
+          closes: h.close,
+        })),
+    }
+  : null;
+---
+
+{data && <script type="application/ld+json" set:html={JSON.stringify(data)} />}

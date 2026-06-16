@@ -1,0 +1,55 @@
+---
+import PreviewLayout from "../layouts/PreviewLayout.astro"
+import PreviewIsland from "../components/preview/PreviewIsland.tsx"
+import { verifyPreviewToken } from "../lib/preview/verify"
+
+// IMPORTANT: use `process.env`, NOT `import.meta.env`. Vite/Astro statically
+// replaces `import.meta.env.X` references at BUILD time with the build env's
+// value; for non-PUBLIC vars that aren't declared in an env schema, that
+// becomes `undefined`. The compiler then dead-code-eliminates the call site
+// (we observed `verifyPreviewToken()` with no args and the function body
+// reduced to `return null;` in the built chunk). `process.env.X` is read at
+// request time from the running container's env and is safe here because
+// this route runs server-only.
+const token = Astro.url.searchParams.get("t")
+const secret = process.env.PREVIEW_HMAC_SECRET
+const claims = verifyPreviewToken(token, secret)
+
+if (!claims) {
+  return new Response("Unauthorized", { status: 401 })
+}
+
+const superAdminOrigin = process.env.PUBLIC_ADMIN_ORIGIN ?? "https://admin.siteinabox.nl"
+// Use forwarded-host headers — Astro.url.hostname reports the internal bind
+// host (e.g. "localhost") behind a reverse proxy. Traefik forwards the original
+// Host header; prefer X-Forwarded-Host, fall back to Host, then url.hostname.
+const rawHost =
+  Astro.request.headers.get("x-forwarded-host") ??
+  Astro.request.headers.get("host") ??
+  Astro.url.hostname
+const publicHost = (rawHost || "").split(":")[0] || "localhost"
+const tenantAdminOrigin = `https://admin.${publicHost}`
+// EITHER admin origin may be the iframe parent: super-admin
+// (admin.siteinabox.nl) or the tenant admin (admin.<own-host>). siab-payload
+// routes both to the same Next.js admin app via Traefik, and the admin UI's
+// host-to-tenant logic auto-context-switches when accessed via the tenant
+// admin. PreviewIsland filters incoming postMessages against this list and
+// uses '*' for outbound messages (the messages aren't sensitive — preview
+// handshake + heartbeat + click-block only).
+const allowedOrigins = Array.from(new Set([superAdminOrigin, tenantAdminOrigin]))
+// CMS-origin used by the resolver for prefixing Payload media URLs in the
+// admin-side preview path. The CMS is always the super-admin's Payload.
+const cmsOrigin = superAdminOrigin
+---
+
+<PreviewLayout>
+  {/*
+    `client:only="preact"` skips SSR for the PreviewIsland. PreviewIsland
+    intentionally returns `null` until the admin posts a draft message, but
+    Astro's SSR refuses to render a component that returns `null|undefined`
+    (logs "Unable to render PreviewIsland! 2. Does not conditionally return
+    null or undefined when rendered on the server"). client:only outputs an
+    empty placeholder during SSR and hydrates the island on the client.
+  */}
+  <PreviewIsland client:only="preact" allowedOrigins={allowedOrigins} cmsOrigin={cmsOrigin} />
+</PreviewLayout>

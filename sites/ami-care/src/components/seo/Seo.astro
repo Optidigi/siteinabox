@@ -1,0 +1,57 @@
+---
+import { SEO } from 'astro-seo';
+import { getSite } from '../../lib/cms';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;          // relative path or absolute URL
+  noindex?: boolean;
+  canonical?: string;
+}
+
+const { title, description, ogImage, noindex = false, canonical } = Astro.props;
+const site = await getSite();
+const brand = site?.siteName ?? 'Amicare-Zorg';
+const language = site?.language ?? 'nl';
+
+const ogImageUrl = new URL(ogImage ?? '/og-default.png', Astro.site).toString();
+// Astro.url is built from the incoming request and (without proxy-aware
+// config) can see the reverse proxy's internal host as `localhost`,
+// emitting canonical/og:url pointing at http://localhost/. Astro.site
+// is the configured canonical origin (https://ami-care.nl in astro.config),
+// so combine the request path with the configured origin for a
+// proxy-resistant canonical URL.
+const canonicalUrl =
+  canonical ??
+  (Astro.site
+    ? new URL(Astro.url.pathname + Astro.url.search, Astro.site).toString()
+    : Astro.url.toString());
+const fullTitle = title === brand ? title : `${title} | ${brand}`;
+---
+
+<SEO
+  title={fullTitle}
+  description={description}
+  canonical={canonicalUrl}
+  noindex={noindex}
+  openGraph={{
+    basic: {
+      title: fullTitle,
+      type: 'website',
+      image: ogImageUrl,
+      url: canonicalUrl,
+    },
+    optional: {
+      siteName: brand,
+      description,
+      locale: language,
+    },
+  }}
+  twitter={{
+    card: 'summary_large_image',
+    title: fullTitle,
+    description,
+    image: ogImageUrl,
+  }}
+/>

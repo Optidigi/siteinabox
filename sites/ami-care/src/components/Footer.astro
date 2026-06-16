@@ -1,0 +1,188 @@
+---
+interface Props {
+  brand?: string;
+  logoUrl?: string | null;
+  email?: string;
+  tagline?: string;
+  copyright?: string | null;
+  columns?: FooterColumn[] | null;
+  navLinks?: FooterLink[] | null;
+  tradeName?: string | null;
+  kvkNumber?: string | null;
+  establishmentNumber?: string | null;
+}
+
+type FooterLink = { label?: string | null; href?: string | null };
+type FooterItem = {
+  type?: 'brand' | 'text' | 'links' | 'contact' | 'business' | 'navigation' | null;
+  label?: string | null;
+  text?: string | null;
+  links?: FooterLink[] | null;
+};
+type FooterColumn = { items?: FooterItem[] | null };
+
+const DEFAULT_BRAND = 'AMICARE-ZORG';
+const DEFAULT_EMAIL = 'info@ami-care.nl';
+const DEFAULT_TAGLINE = 'Jeugdzorg met hart en toewijding.';
+const DEFAULT_TRADE_NAME = 'AMICARE ZORG';
+const DEFAULT_KVK_NUMBER = '99968347';
+const DEFAULT_ESTABLISHMENT_NUMBER = '000065004922';
+
+const {
+  brand,
+  logoUrl,
+  email,
+  tagline,
+  copyright,
+  columns,
+  navLinks,
+  tradeName,
+  kvkNumber,
+  establishmentNumber,
+} = Astro.props;
+
+const year = new Date().getFullYear();
+const footerBrand = brand?.trim() || DEFAULT_BRAND;
+const footerLogoUrl = logoUrl?.trim() || null;
+const footerEmail = email?.trim() || DEFAULT_EMAIL;
+const footerTagline = tagline?.trim() || DEFAULT_TAGLINE;
+const footerTradeName = tradeName?.trim() || DEFAULT_TRADE_NAME;
+const footerKvkNumber = kvkNumber?.trim() || DEFAULT_KVK_NUMBER;
+const footerEstablishmentNumber =
+  establishmentNumber?.trim() || DEFAULT_ESTABLISHMENT_NUMBER;
+const copyrightText = copyright?.trim() || `© ${year} ${footerBrand}`;
+const footerColumns = Array.isArray(columns) ? columns.filter((column) => Array.isArray(column?.items)) : [];
+const footerNavLinks = Array.isArray(navLinks) ? navLinks.filter((link) => link.label?.trim() && link.href?.trim()) : [];
+
+const itemLabel = (item: FooterItem, fallback: string) => item.label?.trim() || fallback;
+---
+<footer
+  class="relative border-t border-rule bg-gradient-to-br from-secondary/20 via-bg to-accent/5 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
+>
+  {footerColumns.length > 0 ? (
+    <div class={`mx-auto grid max-w-7xl grid-cols-1 gap-12 @min-[48rem]/site-frame:gap-8 @min-[64rem]/site-frame:gap-12 ${footerColumns.length === 1 ? '@min-[48rem]/site-frame:grid-cols-1' : footerColumns.length === 2 ? '@min-[48rem]/site-frame:grid-cols-2' : footerColumns.length === 4 ? '@min-[48rem]/site-frame:grid-cols-4' : footerColumns.length === 5 ? '@min-[48rem]/site-frame:grid-cols-5' : footerColumns.length === 6 ? '@min-[48rem]/site-frame:grid-cols-6' : '@min-[48rem]/site-frame:grid-cols-3'}`}>
+      {footerColumns.map((column) => (
+        <div class="space-y-6">
+          {(column.items ?? []).map((item) => (
+            <>
+              {item.type === 'brand' && (
+                <div class="space-y-3">
+                  <div class="flex items-center gap-2.5">
+                    {footerLogoUrl ? (
+                      <img src={footerLogoUrl} alt="" class="h-8 w-auto max-w-44 object-contain" />
+                    ) : (
+                      <span aria-hidden="true" class="inline-block w-2 h-2 rounded-full bg-accent"></span>
+                    )}
+                    <span class="font-sans font-medium tracking-[0.18em] uppercase text-[14px] text-ink">{footerBrand}</span>
+                  </div>
+                  {(item.text?.trim() || footerTagline) && (
+                    <p class="font-serif italic text-[14px] leading-[1.5] text-ink-muted max-w-[28ch]">
+                      {item.text?.trim() || footerTagline}
+                    </p>
+                  )}
+                </div>
+              )}
+              {item.type === 'business' && (
+                <div class="space-y-3">
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">Bedrijfsgegevens</p>
+                  <div class="space-y-1.5 text-[13px] leading-[1.6] text-ink-muted">
+                    <p>Handelsnaam: <span class="text-ink">{footerTradeName}</span></p>
+                    <p>KVK <span class="text-ink">{footerKvkNumber}</span></p>
+                    <p>Vestigingsnr. <span class="text-ink">{footerEstablishmentNumber}</span></p>
+                  </div>
+                </div>
+              )}
+              {item.type === 'contact' && (
+                <div class="space-y-3">
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">Contact</p>
+                  <div class="space-y-1.5 text-[13px] leading-[1.6] text-ink-muted">
+                    <p class="pt-1.5">
+                      <a href={`mailto:${footerEmail}`} class="text-ink hover:text-accent transition-colors">{footerEmail}</a>
+                    </p>
+                  </div>
+                </div>
+              )}
+              {item.type === 'text' && item.text?.trim() && (
+                <div class="space-y-3">
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">{itemLabel(item, 'Info')}</p>
+                  <p class="text-[13px] leading-[1.6] text-ink-muted max-w-[28ch]">{item.text.trim()}</p>
+                </div>
+              )}
+              {item.type === 'links' && (item.links ?? []).some((link) => link.label?.trim() && link.href?.trim()) && (
+                <div class="space-y-3">
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">{itemLabel(item, 'Links')}</p>
+                  <ul class="space-y-1.5 text-[13px] leading-[1.6] text-ink-muted">
+                    {(item.links ?? []).filter((link) => link.label?.trim() && link.href?.trim()).map((link) => (
+                      <li><a href={link.href} class="text-ink hover:text-accent transition-colors">{link.label}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {item.type === 'navigation' && footerNavLinks.length > 0 && (
+                <div class="space-y-3">
+                  <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">{itemLabel(item, 'Navigatie')}</p>
+                  <ul class="space-y-1.5 text-[13px] leading-[1.6] text-ink-muted">
+                    {footerNavLinks.map((link) => (
+                      <li><a href={link.href} class="text-ink hover:text-accent transition-colors">{link.label}</a></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          ))}
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div class="mx-auto grid max-w-7xl grid-cols-1 gap-12 @min-[48rem]/site-frame:grid-cols-3 @min-[48rem]/site-frame:gap-8 @min-[64rem]/site-frame:gap-12">
+      <div class="space-y-3">
+        <div class="flex items-center gap-2.5">
+          {footerLogoUrl ? (
+            <img src={footerLogoUrl} alt="" class="h-8 w-auto max-w-44 object-contain" />
+          ) : (
+            <span aria-hidden="true" class="inline-block w-2 h-2 rounded-full bg-accent"></span>
+          )}
+          <span class="font-sans font-medium tracking-[0.18em] uppercase text-[14px] text-ink">
+            {footerBrand}
+          </span>
+        </div>
+        <p class="font-serif italic text-[14px] leading-[1.5] text-ink-muted max-w-[28ch]">
+          {footerTagline}
+        </p>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">
+          Bedrijfsgegevens
+        </p>
+        <div class="space-y-1.5 text-[13px] leading-[1.6] text-ink-muted">
+          <p>Handelsnaam: <span class="text-ink">{footerTradeName}</span></p>
+          <p>KVK <span class="text-ink">{footerKvkNumber}</span></p>
+          <p>Vestigingsnr. <span class="text-ink">{footerEstablishmentNumber}</span></p>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <p class="text-[11px] tracking-[0.18em] uppercase text-accent font-medium">
+          Contact
+        </p>
+        <div class="space-y-1.5 text-[13px] leading-[1.6] text-ink-muted">
+          <p class="pt-1.5">
+            <a
+              href={`mailto:${footerEmail}`}
+              class="text-ink hover:text-accent transition-colors"
+            >
+              {footerEmail}
+            </a>
+          </p>
+        </div>
+      </div>
+    </div>
+  )}
+
+  <div class="border-t border-rule my-8 max-w-7xl mx-auto"></div>
+
+  <p class="mx-auto max-w-7xl text-center @min-[48rem]/site-frame:text-left text-[12px] tracking-[0.04em] text-ink-muted/70">
+    {copyrightText}
+  </p>
+</footer>

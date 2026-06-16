@@ -1,0 +1,10 @@
+/* TEAM */
+Brand: Amicare-Zorg
+Site:  https://ami-care.nl
+
+/* SITE */
+Last updated: 2026-05-12
+Language: nl-NL
+Standards: HTML5, CSS3 (Tailwind v4), Astro 6 SSR
+Components: Preact (cms blocks), React (interactive shell), framer-motion
+Software: Astro, Payload CMS

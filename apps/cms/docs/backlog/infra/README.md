@@ -659,7 +659,7 @@ from the VPS. Traefik is the only edge process on ports `80/443`.
 
 ### OBS-119 — Consolidate SIAB repos into a platform monorepo and preserve the current prod deployment model
 
-**Status:** Active · **Layer:** infra / multi-repo platform architecture
+**Status:** Closed 2026-06-16 · **Layer:** infra / multi-repo platform architecture
 **Discovered in:** Session 2026-06-15 (SIAB platform monorepo planning)
 
 #### Purpose
@@ -1162,6 +1162,60 @@ Production VPS rollout completed over `ssh prod`:
 
 The stack paths, service/container names, Postgres volume, Traefik labels, and
 tenant data path were not moved.
+
+#### Update — 2026-06-16 (generated sites imported and VPS stack namespace finalized)
+Final consolidation pass completed the repo and server shape:
+
+- Imported generated/client site source into the monorepo:
+  `site-amicare-zorg -> sites/ami-care` and
+  `site-amblast -> sites/amblast`.
+- Preserved generated-site production image names:
+  `ghcr.io/optidigi/site-amicare-zorg:latest` and
+  `ghcr.io/optidigi/site-amblast:latest`.
+- Added root helper scripts for tenant site checks:
+  `tenant:amicare:build`, `tenant:amicare:responsive`, and
+  `tenant:amblast:build`.
+- Reorganized the live VPS stack files under the platform namespace:
+
+```txt
+/srv/saas/infra/stacks/siab-platform/
+  cms/                         # siab-payload compose + .env
+  apps/
+    site/                      # public siteinabox.nl compose
+    intake/                    # reserved; no intake service/image deployed yet
+  tenants/
+    amblast/                   # generated/client site compose
+    ami-care/                  # generated CMS-backed tenant site compose
+```
+
+- Added explicit Compose project names in the moved stack files so the existing
+  Docker project labels, container names, and `siab-payload_postgres-data`
+  volume remain stable after running from the new directories.
+- Archived the old stack directories under
+  `/srv/saas/infra/stacks/siab-platform/_archive/obs119-20260616T170505Z`.
+- Kept tenant data paths unchanged, especially
+  `/srv/data/saas/siab-payload/tenants/7`.
+- Updated copied VPS compose comments to refer to Traefik and the new stack
+  paths instead of NPM/legacy paths.
+
+Validation:
+
+- `docker compose config --services` passed from all four new stack paths.
+- `docker compose pull && docker compose up -d` passed from all four new stack
+  paths.
+- Running containers still use the intended projects/images:
+  `siab-payload` on `ghcr.io/optidigi/siab-platform-cms:latest`,
+  `siteinabox` on `ghcr.io/optidigi/siab-platform-site:latest`,
+  `ami-care` on `ghcr.io/optidigi/site-amicare-zorg:latest`, and
+  `amblast` on `ghcr.io/optidigi/site-amblast:latest`.
+- External smoke checks returned HTTP 200 for
+  `https://admin.siteinabox.nl/api/health`,
+  `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
+  `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
+
+OBS-119 is closed for monorepo/deploy consolidation. Building the real intake
+product and deploying an intake image remain future feature work; this item only
+reserved `apps/intake` and the matching server stack namespace.
 
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,

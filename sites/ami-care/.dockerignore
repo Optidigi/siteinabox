@@ -1,0 +1,34 @@
+# Dependencies (rebuilt in container)
+node_modules
+.pnpm-store
+
+# Build outputs (rebuilt in container)
+dist
+.astro
+
+# VCS
+.git
+.gitignore
+.github
+
+# Editor / OS
+.vscode
+.idea
+.DS_Store
+*.log
+
+# Project meta (not needed in image)
+docs
+.superpowers
+README.md
+LICENSE
+
+# Compose / orchestration (not needed inside image)
+compose.yml
+docker-compose.yml
+docker-compose.*.yml
+
+# Tooling artefacts
+.playwright-mcp
+*.local
+*.local.*

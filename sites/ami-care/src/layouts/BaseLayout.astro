@@ -1,0 +1,120 @@
+---
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import '../styles/global.css';
+import Seo from '../components/seo/Seo.astro';
+import JsonLdOrganization from '../components/seo/JsonLdOrganization.astro';
+import JsonLdLocalBusiness from '../components/seo/JsonLdLocalBusiness.astro';
+import Nav from '../components/Nav.tsx';
+import Footer from '../components/Footer.astro';
+import CookieConsent from '../components/CookieConsent.astro';
+import { getSite } from '../lib/cms';
+import type { MediaRef } from '../lib/types';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+  analytics?: Record<string, unknown> | null;
+}
+
+const { title, description, ogImage, noindex, analytics } = Astro.props;
+const site = await getSite();
+
+const mediaUrl = (ref: MediaRef | undefined): string | null => {
+  if (!ref || typeof ref !== 'object') return null;
+  if (ref.filename) return `/media/${ref.filename}`;
+  return ref.url ?? null;
+};
+
+const brandLogoUrl = mediaUrl(site?.branding?.logo ?? undefined);
+const headerLogoUrl = mediaUrl(site?.chrome?.header?.logo ?? undefined) ?? brandLogoUrl;
+const footerLogoUrl = mediaUrl(site?.chrome?.footer?.logo ?? undefined) ?? brandLogoUrl;
+const faviconUrl = mediaUrl(site?.branding?.favicon ?? undefined);
+const footerTagline =
+  site?.chrome?.footer?.tagline?.trim() ||
+  'Jeugdzorg met hart en toewijding.';
+const footerCopyright = site?.chrome?.footer?.copyright ?? null;
+const footerColumns = site?.chrome?.footer?.columns ?? null;
+const maintenanceMessage =
+  site?.maintenance?.message?.trim() || 'Deze website is tijdelijk in onderhoud.';
+type MaintenanceBannerModule = {
+  default: (props: { message: string }) => unknown;
+};
+const maintenanceBannerModules = import.meta.glob<MaintenanceBannerModule>(
+  '../components/MaintenanceBanner.astro',
+);
+const loadMaintenanceBanner = maintenanceBannerModules['../components/MaintenanceBanner.astro'];
+const MaintenanceBanner =
+  site?.maintenance?.enabled && loadMaintenanceBanner
+    ? (await loadMaintenanceBanner()).default
+    : null;
+
+const _cmsDataDir = process.env.CMS_DATA_DIR;
+let tenantTheme = "";
+if (_cmsDataDir) {
+  try {
+    tenantTheme = await fs.readFile(path.resolve(_cmsDataDir, "tenant-theme.css"), "utf-8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") console.error("[tenant-theme]", e);
+  }
+}
+const analyticsConfig =
+  site?.analytics || analytics
+    ? { ...(site?.analytics ?? {}), ...(analytics ?? {}) }
+    : null;
+const analyticsJson = analyticsConfig
+  ? JSON.stringify(analyticsConfig).replace(/</g, "\\u003c")
+  : null;
+---
+
+<!doctype html>
+<html lang={site?.language ?? 'nl'}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href={faviconUrl ?? '/favicon.svg'} />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="generator" content={Astro.generator} />
+    <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} />
+    {site && <JsonLdOrganization site={site} />}
+    {site?.nap && <JsonLdLocalBusiness site={site} />}
+    {tenantTheme && <style data-tenant-theme set:html={tenantTheme} />}
+    {analyticsJson && <script is:inline id="siab-analytics-config" type="application/json" set:html={analyticsJson} />}
+    {analyticsJson && (
+      <script>
+        import '../lib/analytics/runtime.ts';
+      </script>
+    )}
+  </head>
+  <body class="bg-bg text-ink [container-name:site-frame] [container-type:inline-size]">
+    <div class="site-frame-root">
+      <Nav
+        client:load
+        brand={site?.siteName ?? 'Amicare-Zorg'}
+        logoUrl={headerLogoUrl}
+        links={site?.navHeader ?? null}
+      />
+      {MaintenanceBanner && <MaintenanceBanner message={maintenanceMessage} />}
+      <main>
+        <slot />
+      </main>
+      <Footer
+        brand={site?.siteName ?? 'AMICARE-ZORG'}
+        logoUrl={footerLogoUrl}
+        email={site?.contactEmail ?? 'info@ami-care.nl'}
+        tagline={footerTagline}
+        copyright={footerCopyright}
+        columns={footerColumns}
+        navLinks={site?.navFooter ?? []}
+        tradeName={site?.nap?.legalName}
+        kvkNumber={site?.nap?.kvkNumber}
+        establishmentNumber={site?.nap?.establishmentNumber}
+      />
+    </div>
+    {analyticsJson && <CookieConsent />}
+  </body>
+</html>

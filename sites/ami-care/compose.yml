@@ -1,0 +1,52 @@
+# Production compose for ami-care.nl on the optidigi VPS.
+#
+# Topology: this container joins an external docker network shared with
+# the Traefik edge. Traefik routes https://ami-care.nl to ami-care:4321
+# over that network, so no host port publishing is needed.
+#
+# The image is built and published by .github/workflows/build.yml to
+# ghcr.io/optidigi/site-amicare-zorg:latest on every push to main.
+#
+# Deploy steps on the VPS:
+#   cd /srv/prod/orchestrators/siab-payload-orchestrator
+#   scripts/sync-cms-artifacts.sh \
+#     --image ghcr.io/optidigi/site-amicare-zorg:latest \
+#     --tenant-dir /srv/data/saas/siab-payload/tenants/7
+#   cd /srv/prod/infra/stacks/ami-care
+#   docker compose pull
+#   docker compose up -d
+
+services:
+  web:
+    image: ghcr.io/optidigi/site-amicare-zorg:latest
+    container_name: ami-care
+    restart: unless-stopped
+    networks:
+      - proxy
+    # No host ports published — Traefik reaches us over the proxy network.
+    # If you need direct host access for debugging, uncomment:
+    # ports:
+    #   - "127.0.0.1:8088:4321"
+    volumes:
+      - /srv/data/saas/siab-payload/tenants/7:/data:ro
+    environment:
+      CMS_DATA_DIR: /data
+      SITE_URL: https://ami-care.nl
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.amicare.rule=Host(`ami-care.nl`)
+      - traefik.http.routers.amicare.entrypoints=websecure
+      - traefik.http.routers.amicare.tls.certresolver=letsencrypt
+      - traefik.http.routers.amicare.service=amicare
+      - traefik.http.services.amicare.loadbalancer.server.port=4321
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4321/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:-proxy}

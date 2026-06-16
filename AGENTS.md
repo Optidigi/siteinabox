@@ -12,11 +12,14 @@ Current moved surfaces:
 
 - `apps/cms` - Payload CMS app, formerly `siab-payload`.
 - `apps/site` - public Site in a Box site, formerly `site-siteinabox`.
+- `apps/intake` - reserved future intake app package; no production service is
+  deployed yet.
 - `packages/site-template` - generated-site baseline, formerly
   `siab-site-template`.
 - `packages/site-themes` - generated-site themes, formerly `siab-site-themes`.
 - `packages/tools/siab-orchestrator` - combined orchestrator shell with
   separate `/new-site` and `/add-cms <slug>` workflows.
+- `sites/ami-care` and `sites/amblast` - generated/client site source.
 
 ## Workflow Routing
 
@@ -33,10 +36,15 @@ preflight/confirmation gate says to do so.
 
 ## Deploy Invariants
 
-- Keep existing GHCR image names stable unless the operator explicitly approves
-  a deploy contract change:
-  - `ghcr.io/optidigi/siab-payload`
-  - `ghcr.io/optidigi/site-siteinabox`
+- Platform-owned app images are:
+  - `ghcr.io/optidigi/siab-platform-cms`
+  - `ghcr.io/optidigi/siab-platform-site`
+- Tenant/generated site images remain stable unless the operator explicitly
+  approves a deploy contract change:
+  - `ghcr.io/optidigi/site-amicare-zorg`
+  - `ghcr.io/optidigi/site-amblast`
+- VPS stack files are organized under
+  `/srv/saas/infra/stacks/siab-platform/`.
 - Keep Payload tenant data paths stable:
   `/srv/data/saas/siab-payload/tenants/<tenantId>`.
 - Traefik is the production edge proxy. Public routing belongs in compose

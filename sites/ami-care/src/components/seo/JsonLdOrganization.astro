@@ -1,0 +1,24 @@
+---
+import type { SiteSettings } from '../../lib/types';
+
+interface Props {
+  site: SiteSettings;
+}
+
+const { site } = Astro.props;
+
+const sameAs = (site.contact?.social ?? [])
+  .map((s) => s.url)
+  .filter((url): url is string => typeof url === 'string' && url.length > 0);
+
+const data = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: site.siteName,
+  url: site.siteUrl,
+  description: site.description ?? undefined,
+  sameAs,
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(data)} />

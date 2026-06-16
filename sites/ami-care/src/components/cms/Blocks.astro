@@ -1,0 +1,142 @@
+---
+import Hero from "./Hero.tsx"
+import FeatureList from "./FeatureList.tsx"
+import Testimonials from "./Testimonials.tsx"
+import FAQ from "./FAQ.tsx"
+import CTA from "./CTA.tsx"
+import RichText from "./RichText.tsx"
+import ContactSection from "./ContactSection.tsx"
+import { BlockErrorBoundary } from "./BlockErrorBoundary.tsx"
+import type { Block, MediaRef } from "../../lib/types"
+
+interface Props {
+  blocks?: Block[] | null
+  // resolveMedia takes a populated MediaRef (or bare id) and returns a URL
+  // string. Production: when projectPageToDisk runs at depth>=1, upload
+  // fields are populated Media objects — the default resolver just reads
+  // the `.url` field. Preview-mode can override to rewrite URLs to the
+  // CMS origin. Default = production resolver.
+  resolveMedia?: (ref: MediaRef | undefined) => string | null
+  // hydrate=true wraps each block in `<Component client:load>` so the
+  // /__preview route can swap props via React reconciliation. Default
+  // false = pure SSR with 0 KB JS on tenant pages.
+  hydrate?: boolean
+}
+
+const { blocks, resolveMedia, hydrate = false } = Astro.props
+const list = blocks ?? []
+// Default resolver: prefer the populated `.filename` and serve it from this
+// site's local /media/<filename> route (backed by `src/pages/media/[...path].ts`,
+// which reads from $CMS_DATA_DIR/media/). Falls back to `.url` (Payload's
+// /api/media/file/X path) only if filename is missing — that fallback path
+// 404s on the tenant frontend, so it's primarily a debug breadcrumb.
+const resolve =
+  resolveMedia ??
+  ((ref: MediaRef | undefined) => {
+    if (ref == null) return null
+    if (typeof ref === "object") {
+      if (ref.filename) return `/media/${ref.filename}`
+      if ("url" in ref && ref.url) return ref.url
+    }
+    return null
+  })
+---
+
+{
+  list.map((block) => {
+    if (block.blockType === "hero") {
+      const props = {
+        eyebrow: block.eyebrow,
+        headline: block.headline,
+        subheadline: block.subheadline,
+        cta: block.cta,
+        imageUrl: resolve(block.image),
+        imageAlt: (typeof block.image === "object" && block.image !== null) ? (block.image.alt ?? null) : null,
+        pills: block.pills,
+        anchor: block.anchor,
+        analytics: block.analytics,
+      }
+      return (
+        <BlockErrorBoundary blockType="hero" client:load={hydrate}>
+          <Hero {...props} client:load={hydrate} />
+        </BlockErrorBoundary>
+      )
+    }
+    if (block.blockType === "featureList") {
+      return (
+        <BlockErrorBoundary blockType="featureList" client:load={hydrate}>
+          <FeatureList
+            title={block.title}
+            intro={block.intro}
+            features={block.features}
+            anchor={block.anchor}
+            analytics={block.analytics}
+            client:load={hydrate}
+          />
+        </BlockErrorBoundary>
+      )
+    }
+    if (block.blockType === "testimonials") {
+      const items = (block.items ?? []).map((item) => ({
+        quote: item.quote,
+        author: item.author,
+        role: item.role,
+        avatarUrl: resolve(item.avatar),
+      }))
+      return (
+        <BlockErrorBoundary blockType="testimonials" client:load={hydrate}>
+          <Testimonials title={block.title} items={items} anchor={block.anchor} analytics={block.analytics} client:load={hydrate} />
+        </BlockErrorBoundary>
+      )
+    }
+    if (block.blockType === "faq") {
+      return (
+        <BlockErrorBoundary blockType="faq" client:load={hydrate}>
+          <FAQ title={block.title} items={block.items} anchor={block.anchor} analytics={block.analytics} client:load={hydrate} />
+        </BlockErrorBoundary>
+      )
+    }
+    if (block.blockType === "cta") {
+      return (
+        <BlockErrorBoundary blockType="cta" client:load={hydrate}>
+          <CTA
+            eyebrow={block.eyebrow}
+            headline={block.headline}
+            description={block.description}
+            primary={block.primary}
+            secondary={block.secondary}
+            backgroundImage={block.backgroundImage}
+            anchor={block.anchor}
+            analytics={block.analytics}
+            client:load={hydrate}
+          />
+        </BlockErrorBoundary>
+      )
+    }
+    if (block.blockType === "richText") {
+      return (
+        <BlockErrorBoundary blockType="richText" client:load={hydrate}>
+          <RichText body={block.body} anchor={block.anchor} analytics={block.analytics} client:load={hydrate} />
+        </BlockErrorBoundary>
+      )
+    }
+    if (block.blockType === "contactSection") {
+      return (
+        <BlockErrorBoundary blockType="contactSection" client:load={hydrate}>
+          <ContactSection
+            title={block.title}
+            description={block.description}
+            formName={block.formName}
+            submitLabel={block.submitLabel}
+            fields={block.fields}
+            anchor={block.anchor}
+            analytics={block.analytics}
+            client:load={hydrate}
+          />
+        </BlockErrorBoundary>
+      )
+    }
+    console.warn(`[cms/Blocks] unknown blockType: ${(block as any).blockType}`)
+    return null
+  })
+}

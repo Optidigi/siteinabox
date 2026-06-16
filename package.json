@@ -12,6 +12,9 @@
     "intake:test": "npm --prefix apps/intake run test",
     "site:build": "pnpm --dir apps/site --ignore-workspace build",
     "site:test": "pnpm --dir apps/site --ignore-workspace test",
+    "tenant:amicare:build": "pnpm --dir sites/ami-care --ignore-workspace build",
+    "tenant:amicare:responsive": "pnpm --dir sites/ami-care --ignore-workspace check:responsive",
+    "tenant:amblast:build": "pnpm --dir sites/amblast --ignore-workspace build",
     "template:build": "pnpm --dir packages/site-template --ignore-workspace build",
     "template:test": "pnpm --dir packages/site-template --ignore-workspace test",
     "orchestrator:test": "npm --prefix packages/tools/siab-orchestrator/scripts test"

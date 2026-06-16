@@ -1,0 +1,107 @@
+/* Rich text v2 — CSS contract.
+ *
+ * Most rendered output reuses existing block-component styles (prose-*,
+ * [&_em]:, etc.) because RtNodeRenderer emits real HTML elements (<p>,
+ * <em>, <strong>, <h2>, etc.) plus `rt-*` class names. The rules here
+ * cover the cases where the v1 design used DOM-injection trickery that
+ * can't be replicated through Tailwind utilities alone.
+ */
+
+/* Inline text colors — declared in the tenant siteManifest's `colorTokens`
+ * (see siab-payload's RtManifest contract). The CMS toolbar's colour chip
+ * writes `<span class="rt-color-{id}">` around the selected text; these
+ * rules resolve each id to the matching tenant token. */
+.rt-color-accent { color: var(--color-accent); }
+.rt-color-ink    { color: var(--color-ink); }
+.rt-color-muted  { color: var(--color-ink-muted); }
+
+/* Inline font families — declared in the tenant siteManifest's `fontFamilies`.
+ * Additional tenant-specific `rt-font-{id}` classes can be added by generated
+ * site CSS; these role defaults match the CMS fallback manifest. */
+.rt-font-title   { font-family: var(--font-title); }
+.rt-font-heading { font-family: var(--font-heading); }
+.rt-font-text    { font-family: var(--font-text); }
+.rt-font-script  { font-family: var(--font-script); }
+
+/* Inline text styles — declared in the tenant siteManifest's `typeStyles`.
+ * The CMS toolbar's style chip writes `<span class="rt-type-{id}">` around
+ * the selected text. The `highlight` style produces an accent-tinted curved
+ * underline that swooshes under the selection — best for one or two key
+ * words in a heading, not whole paragraphs. */
+.rt-type-highlight {
+  position: relative;
+}
+
+.rt-type-highlight::after {
+  content: '';
+  position: absolute;
+  bottom: -0.25rem;
+  left: 0;
+  z-index: -10;
+  width: 100%;
+  height: 0.75rem;
+  background-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'><path d='M0 5 Q 50 10 100 5' stroke='black' stroke-width='8' fill='none' stroke-linecap='round'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 10' preserveAspectRatio='none'><path d='M0 5 Q 50 10 100 5' stroke='black' stroke-width='8' fill='none' stroke-linecap='round'/></svg>");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+/* Eyebrow themed node — the renderer emits a block-level wrapper containing
+ * an inline-block rotated span. The wrapper centers itself + any immediately-
+ * following heading sibling, replicating the v1 hand-typed `<div text-center>`
+ * group that wrapped the eyebrow + h2 pair on ami-care.nl's "Over mij" section.
+ */
+.rt-themed-eyebrow {
+  display: block;
+  text-align: center;
+}
+
+/* When an eyebrow is followed by a heading, treat the pair as one section
+ * header: tighten the heading's top margin to mt-3 (matching the v1 hand-
+ * typed HTML) and center-align it. Body paragraphs after the heading retain
+ * their natural prose left-alignment + spacing.
+ *
+ * The !important is needed because Tailwind's @plugin '@tailwindcss/typography'
+ * generates prose-h2 margins with higher specificity than a plain selector.
+ *
+ * Width: the live v1 HTML wrapped eyebrow + h2 in an inner `<div max-w-3xl
+ * mx-auto>` inside a `<section px-6>`. The mapper discarded both wrappers,
+ * so the h2 spanned the full prose width and wrapped one word later than
+ * live. Restore the "centered narrower header" feel with max-width + auto
+ * margins.
+ */
+.rt-themed-eyebrow + .rt-h-2,
+.rt-themed-eyebrow + .rt-h-3,
+.rt-themed-eyebrow + .rt-h-4 {
+  margin-top: 0.75rem !important;
+  text-align: center;
+  /* Replicates the live `<section px-6>` inner padding around the centered
+   * heading: gives the h2 exactly 100% - 3rem (≈ 48px less) of the .prose
+   * width, matching the live wrap point ("Het vak waar mijn / hart ligt.")
+   * instead of letting "hart" creep onto the first line. Scales with the
+   * container so larger viewports stay proportionally inset. */
+  max-width: calc(100% - 3rem);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Also inset the eyebrow itself so its rotation visually sits in the
+ * same centered "card" as the heading. */
+.cms-block--richtext .rt-themed-eyebrow {
+  max-width: calc(100% - 3rem);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* When the rich text block starts with an eyebrow, give it the same vertical
+ * breathing room the live `<section py-20>` provided (since the mapper drops
+ * that wrapper). Bottom spacing mirrors the eyebrow's top space. */
+.cms-block--richtext .prose > .rt-themed-eyebrow:first-child {
+  margin-top: 4rem;
+}
+.cms-block--richtext .prose > .rt-p:last-child {
+  margin-bottom: 4rem;
+}

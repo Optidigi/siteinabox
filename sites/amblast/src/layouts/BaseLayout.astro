@@ -1,0 +1,78 @@
+---
+import '../styles/global.css';
+import Seo from '../components/seo/Seo.astro';
+import JsonLdOrganization from '../components/seo/JsonLdOrganization.astro';
+import JsonLdLocalBusiness from '../components/seo/JsonLdLocalBusiness.astro';
+import Header from '../components/layout/Header.astro';
+import Footer from '../components/layout/Footer.astro';
+import { site } from '../content/site';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+  /** WordPress body classes per amb-page-flag (e.g. 'amb-home amb-singular amb-template-h-f amb-theme amb-kit amb-page-home') */
+  bodyClass?: string;
+  /** Preload a hero / LCP image so it paints faster */
+  preloadImage?: string;
+}
+
+const { title, description, ogImage, noindex, bodyClass = '', preloadImage } = Astro.props;
+---
+
+<!doctype html>
+<html lang={site.language}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#4ca5ed" />
+    {preloadImage && (
+      <>
+        {/* Mobile (≤768px) loads the smaller crop; desktop loads native. AVIF only —
+            non-AVIF browsers fall back via the CSS image-set() WebP/JPG branches. */}
+        <link
+          rel="preload"
+          as="image"
+          href={preloadImage.replace(/\.jpe?g$/i, '-768.avif')}
+          type="image/avif"
+          media="(max-width: 768px)"
+          fetchpriority="high"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href={preloadImage.replace(/\.jpe?g$/i, '.avif')}
+          type="image/avif"
+          media="(min-width: 769px)"
+          fetchpriority="high"
+        />
+      </>
+    )}
+    {/* Match live amblast.nl: live's Elementor google-fonts CSS uses http:// inside an
+        https:// page, so every Barlow/Roboto @font-face is blocked as mixed content
+        and `Barlow, sans-serif` collapses to plain `sans-serif` (Arial/Helvetica/etc).
+        Visual parity with live requires us to NOT load those font files either. */}
+    <meta name="generator" content={Astro.generator} />
+    <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} />
+    <JsonLdOrganization />
+    <JsonLdLocalBusiness />
+  </head>
+  <body class={bodyClass}>
+    <div id="amb-page-flag" class="hfeed site">
+      <Header />
+      <main id="content">
+        <slot />
+      </main>
+      <Footer />
+    </div>
+    <script>
+      import '../scripts/site.client.ts';
+    </script>
+  </body>
+</html>

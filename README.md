@@ -21,7 +21,8 @@ packages/
       runbooks/
 
 sites/
-  # intended home for generated/client sites once migrated
+  ami-care/         # generated CMS-backed tenant site, formerly site-amicare-zorg
+  amblast/          # generated/client site, formerly site-amblast
 ```
 
 ## Deployment Contract
@@ -30,11 +31,15 @@ The monorepo publishes new platform-owned images:
 
 - `apps/cms` publishes `ghcr.io/optidigi/siab-platform-cms:latest`.
 - `apps/site` publishes `ghcr.io/optidigi/siab-platform-site:latest`.
-- Generated/client sites are intended to move under `sites/`, while their
-  existing production image names and VPS stack entries remain stable until
-  each site is migrated deliberately.
-- Existing VPS stack paths and tenant data paths are not moved in this step.
+- Generated/client site source lives under `sites/`. Current tenant site
+  deployments keep their existing image names:
+  `ghcr.io/optidigi/site-amicare-zorg:latest` and
+  `ghcr.io/optidigi/site-amblast:latest`.
+- VPS stack files live under `/srv/saas/infra/stacks/siab-platform/`, while
+  tenant data paths stay unchanged under `/srv/data/saas/siab-payload/`.
 - Traefik remains the edge proxy; routing stays compose-label based.
+- `apps/intake` is present as a reserved app package. No intake service/image is
+  deployed yet.
 
 ## Useful Checks
 
@@ -42,6 +47,8 @@ The monorepo publishes new platform-owned images:
 pnpm cms:typecheck
 pnpm cms:test
 pnpm site:build
+pnpm tenant:amicare:build
+pnpm tenant:amblast:build
 pnpm template:build
 pnpm orchestrator:test
 ```

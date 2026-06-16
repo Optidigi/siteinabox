@@ -1,0 +1,34 @@
+---
+// PreviewLayout.astro — used ONLY by /preview (Payload reaches us via
+// /__preview which middleware rewrites internally).
+//
+// Why a separate layout (not BaseLayout): real-tenant BaseLayout includes
+// Nav + Footer chrome; reusing it would render full chrome around the
+// empty island for ~300-500ms while it waits for the first postMessage —
+// visible "site frame with no content" flash. PreviewLayout is slot-only
+// so the operator sees only the in-progress block content.
+//
+// Why we import global.css explicitly: PreviewIsland is `client:only`, so
+// the cms block renderers it imports are NOT in the SSR module graph.
+// Astro can't reach them at build time to pull their CSS into the
+// PreviewLayout bundle. Without this explicit import the preview iframe
+// renders unstyled (browser-default fonts, no Tailwind classes, no
+// @theme tokens) — confirmed empirically. The template's comment about
+// "tenant CSS bundle is loaded automatically" only holds when blocks are
+// SSR'd; with client:only it doesn't.
+import "../styles/global.css";
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview</title>
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="bg-bg text-ink">
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

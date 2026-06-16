@@ -1,0 +1,75 @@
+---
+const here = (Astro.url.pathname || '/').replace(/\/+$/, '') || '/';
+function isCurrent(href) {
+  const target = href.replace(/\/+$/, '') || '/';
+  return here === target;
+}
+const baseLi = 'menu-item menu-item-type-post_type menu-item-object-page parent nav-item amb-creative-menu';
+const activeLi = ' current-menu-item current_page_item';
+const liHome = baseLi + ' menu-item-home page_item page-item-845' + (isCurrent('/') ? activeLi : '');
+const liOver = baseLi + (isCurrent('/over-ons') ? activeLi : '');
+const liDien = baseLi + (isCurrent('/diensten') ? activeLi : '');
+const liPort = baseLi + (isCurrent('/portfolio') ? activeLi : '');
+---
+<header id="masthead" itemscope="itemscope" itemtype="https://schema.org/WPHeader">
+			<p class="main-title bhf-hidden" itemprop="headline"><a href="https://amblast.nl" title="Amblast | Facility Services" rel="amb-home">Amblast | Facility Services</a></p>
+					<div data-amb-type="amb-post-type" data-amb-id="20" class="amb amb-20">
+						<section class="amb-section amb-section-top amb-el amb-el-675e123 amb-section-full amb-section-h-default amb-section-h-default" data-id="675e123" data-amb-el-type="section">
+						<div class="amb-container amb-col-gap-no">
+					<div class="amb-col amb-col-100 amb-top-column amb-el amb-el-e5a46c6" data-id="e5a46c6" data-amb-el-type="column">
+			<div class="amb-widget-wrap amb-el-populated">
+						<section class="amb-section amb-section-inner amb-el amb-el-cab3bc9 amb-section-boxed amb-section-h-default amb-section-h-default" data-id="cab3bc9" data-amb-el-type="section">
+						<div class="amb-container amb-col-gap-default">
+					<div class="amb-col amb-col-50 amb-inner-column amb-el amb-el-82e75ae" data-id="82e75ae" data-amb-el-type="column">
+			<div class="amb-widget-wrap amb-el-populated">
+						<div class="amb-el amb-el-275c7c4 amb-widget amb-widget-image" data-id="275c7c4" data-amb-el-type="widget" data-widget_type="image.default">
+				<div class="amb-widget-body">
+																<a href="/" aria-label="Amblast home">
+							<img width="714" height="179" src="/uploads/logo/cropped-AMBlast_logo.png" class="attachment-medium_large size-medium_large amb-img-968 " alt=""    decoding="async" srcset="/uploads/logo/cropped-AMBlast_logo.png 714w, /uploads/logo/cropped-AMBlast_logo-300x75.png 300w"    />								</a>
+															</div>
+				</div>
+					</div>
+		</div>
+				<div class="amb-col amb-col-50 amb-inner-column amb-el amb-el-3b727e2" data-id="3b727e2" data-amb-el-type="column">
+			<div class="amb-widget-wrap amb-el-populated">
+						<div class="amb-el amb-el-9030b2d amb-widget__width-auto amb-widget-tablet__width-initial amb-widget-mobile__width-initial amb-nav-menu__align-left amb-hfe-submenu-icon-arrow amb-hfe-submenu-animation-none amb-hfe-link-redirect-child amb-nav-bp-tablet amb-widget amb-widget-navigation-menu" data-id="9030b2d" data-amb-el-type="widget" data-settings="&#123;&quot;dropdown_border_radius&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;top&quot;:&quot;0&quot;,&quot;right&quot;:&quot;0&quot;,&quot;bottom&quot;:&quot;5&quot;,&quot;left&quot;:&quot;5&quot;,&quot;isLinked&quot;:false&#125;,&quot;width_dropdown_item&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:170,&quot;sizes&quot;:[]&#125;,&quot;padding_horizontal_dropdown_item&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:20,&quot;sizes&quot;:[]&#125;,&quot;distance_from_menu_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:23,&quot;sizes&quot;:[]&#125;,&quot;toggle_size_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:28,&quot;sizes&quot;:[]&#125;,&quot;padding_horizontal_menu_item&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:15,&quot;sizes&quot;:[]&#125;,&quot;padding_horizontal_menu_item_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_horizontal_menu_item_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_vertical_menu_item&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:15,&quot;sizes&quot;:[]&#125;,&quot;padding_vertical_menu_item_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_vertical_menu_item_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;menu_space_between&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;menu_space_between_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;menu_space_between_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;menu_row_space&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;menu_row_space_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;menu_row_space_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;dropdown_border_radius_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;top&quot;:&quot;&quot;,&quot;right&quot;:&quot;&quot;,&quot;bottom&quot;:&quot;&quot;,&quot;left&quot;:&quot;&quot;,&quot;isLinked&quot;:true&#125;,&quot;dropdown_border_radius_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;top&quot;:&quot;&quot;,&quot;right&quot;:&quot;&quot;,&quot;bottom&quot;:&quot;&quot;,&quot;left&quot;:&quot;&quot;,&quot;isLinked&quot;:true&#125;,&quot;width_dropdown_item_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;width_dropdown_item_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_horizontal_dropdown_item_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_horizontal_dropdown_item_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_vertical_dropdown_item&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:15,&quot;sizes&quot;:[]&#125;,&quot;padding_vertical_dropdown_item_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;padding_vertical_dropdown_item_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;distance_from_menu&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;distance_from_menu_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_size&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_size_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_border_width&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_border_width_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_border_width_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_border_radius&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_border_radius_tablet&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;,&quot;toggle_border_radius_mobile&quot;:&#123;&quot;unit&quot;:&quot;px&quot;,&quot;size&quot;:&quot;&quot;,&quot;sizes&quot;:[]&#125;&#125;" data-widget_type="navigation-menu.default">
+				<div class="amb-widget-body">
+								<div class="amb-nav-menu amb-layout-horizontal amb-nav-layout horizontal amb-pointer-none" data-layout="horizontal">
+				<div role="button" class="amb-nav-toggle amb-clickable">
+					<span class="screen-reader-text">Menu</span>
+					<div class="amb-nav-icon">
+						<i aria-hidden="true"  class="fas fa-bars"></i>					</div>
+				</div>
+				<nav class="amb-nav-horizontal amb-nav-submenu-arrow" data-toggle-icon="&lt;i aria-hidden=&quot;true&quot; tabindex=&quot;0&quot; class=&quot;fas fa-bars&quot;&gt;&lt;/i&gt;" data-close-icon="&lt;i aria-hidden=&quot;true&quot; tabindex=&quot;0&quot; class=&quot;fas fa-times&quot;&gt;&lt;/i&gt;" data-full-width="yes">
+					<ul id="menu-1-9030b2d" class="amb-nav-menu"><li id="menu-item-852" class={liHome}><a href="/" class="amb-menu-item" aria-current={isCurrent('/') ? 'amb-page-flag' : undefined}>Home</a></li>
+<li id="menu-item-904" class={liOver}><a href="/over-ons/" class="amb-menu-item" aria-current={isCurrent('/over-ons') ? 'amb-page-flag' : undefined}>Over ons</a></li>
+<li id="menu-item-905" class={liDien}><a href="/diensten/" class="amb-menu-item" aria-current={isCurrent('/diensten') ? 'amb-page-flag' : undefined}>Onze diensten</a></li>
+<li id="menu-item-906" class={liPort}><a href="/portfolio" class="amb-menu-item" aria-current={isCurrent('/portfolio') ? 'amb-page-flag' : undefined}>Portfolio</a></li>
+</ul>
+				</nav>
+			</div>
+							</div>
+				</div>
+				<div class="amb-el amb-el-0690f19 amb-widget__width-auto amb-align-center amb-widget amb-widget-button" data-id="0690f19" data-amb-el-type="widget" data-widget_type="button.default">
+				<div class="amb-widget-body">
+									<div class="amb-button-wrap">
+					<a class="amb-button amb-button-link amb-size-sm" href="/contact">
+						<span class="amb-button-inner">
+						<span class="amb-button-icon">
+				<i aria-hidden="true" class="far fa-envelope"></i>			</span>
+									<span class="amb-button-text">Contact</span>
+					</span>
+					</a>
+				</div>
+								</div>
+				</div>
+					</div>
+		</div>
+					</div>
+		</section>
+					</div>
+		</div>
+					</div>
+		</section>
+				</div>
+				</header>

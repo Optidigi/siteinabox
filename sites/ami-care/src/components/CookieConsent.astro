@@ -1,0 +1,102 @@
+<div
+  id="cookie-consent-banner"
+  class="fixed inset-x-4 bottom-4 z-[80] hidden max-w-xl rounded-lg border border-rule bg-card p-4 shadow-2xl @min-[48rem]/site-frame:left-6 @min-[48rem]/site-frame:right-auto @min-[48rem]/site-frame:p-5"
+  role="dialog"
+  aria-live="polite"
+  aria-label="Cookie voorkeuren"
+>
+  <div class="space-y-4">
+    <div class="space-y-2">
+      <p class="font-serif text-[22px] leading-tight text-ink">Cookies</p>
+      <p class="text-[14px] leading-[1.55] text-ink-muted">
+        We gebruiken noodzakelijke cookies voor de website. Met uw toestemming meten we anoniem hoe de website wordt gebruikt.
+      </p>
+    </div>
+    <div class="flex flex-col gap-2 @min-[30rem]/site-frame:flex-row">
+      <button
+        type="button"
+        class="rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium text-bg transition-colors hover:bg-accent/90"
+        data-cookie-consent-accept
+      >
+        Accepteren
+      </button>
+      <button
+        type="button"
+        class="rounded-md border border-rule bg-bg px-4 py-2.5 text-[14px] font-medium text-ink transition-colors hover:bg-secondary/40"
+        data-cookie-consent-decline
+      >
+        Weigeren
+      </button>
+    </div>
+  </div>
+</div>
+
+<button
+  id="cookie-consent-preferences"
+  type="button"
+  class="fixed bottom-4 right-4 z-[70] hidden rounded-md border border-rule bg-card px-3 py-2 text-[12px] font-medium text-ink-muted shadow-lg transition-colors hover:text-ink"
+>
+  Cookies
+</button>
+
+<script is:inline>
+  (() => {
+    const preferenceKey = "siab_cookie_consent_v1";
+    const banner = document.getElementById("cookie-consent-banner");
+    const preferences = document.getElementById("cookie-consent-preferences");
+    if (!banner || !preferences) return;
+
+    const readPreference = () => {
+      try {
+        return window.localStorage.getItem(preferenceKey);
+      } catch {
+        return null;
+      }
+    };
+
+    const writePreference = (value) => {
+      try {
+        window.localStorage.setItem(preferenceKey, value);
+      } catch {
+        // If storage is blocked, keep the choice for the current page only.
+      }
+    };
+
+    const showBanner = () => {
+      banner.classList.remove("hidden");
+      preferences.classList.add("hidden");
+    };
+
+    const hideBanner = () => {
+      banner.classList.add("hidden");
+      preferences.classList.remove("hidden");
+    };
+
+    const applyPreference = (value) => {
+      if (value === "accepted") {
+        window.SIABAnalytics?.grantConsent();
+        hideBanner();
+        return;
+      }
+      if (value === "declined") {
+        window.SIABAnalytics?.revokeConsent();
+        hideBanner();
+        return;
+      }
+      showBanner();
+    };
+
+    banner.querySelector("[data-cookie-consent-accept]")?.addEventListener("click", () => {
+      writePreference("accepted");
+      applyPreference("accepted");
+    });
+
+    banner.querySelector("[data-cookie-consent-decline]")?.addEventListener("click", () => {
+      writePreference("declined");
+      applyPreference("declined");
+    });
+
+    preferences.addEventListener("click", showBanner);
+    applyPreference(readPreference());
+  })();
+</script>

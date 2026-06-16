@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Blocks from '../components/cms/Blocks.astro';
+import { getPage } from '../lib/cms';
+
+const page = await getPage('index');
+
+// siab-payload's pageToJson projects SEO fields nested under `seo: {...}`.
+// Read from there with sensible fallbacks.
+const seoTitle = page?.seo?.title ?? page?.title ?? 'Amicare-Zorg';
+const seoDescription =
+  page?.seo?.description ??
+  'Amicare-Zorg — werken in de jeugdzorg met hart en toewijding.';
+const seoOgImage =
+  (page?.seo?.ogImage && typeof page.seo.ogImage === 'object' && 'url' in page.seo.ogImage
+    ? page.seo.ogImage.url
+    : null) ??
+  (typeof page?.seo?.ogImage === 'string' ? page.seo.ogImage : null) ??
+  undefined;
+---
+
+<BaseLayout
+  title={seoTitle}
+  description={seoDescription}
+  ogImage={seoOgImage}
+  analytics={page?.analytics}
+>
+  <Blocks blocks={page?.blocks} />
+</BaseLayout>
