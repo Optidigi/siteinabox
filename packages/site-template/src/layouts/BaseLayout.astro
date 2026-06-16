@@ -1,0 +1,79 @@
+---
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
+import '../styles/global.css';
+import Seo from '../components/seo/Seo.astro';
+import JsonLdOrganization from '../components/seo/JsonLdOrganization.astro';
+import JsonLdLocalBusiness from '../components/seo/JsonLdLocalBusiness.astro';
+import CookieConsent from '../components/CookieConsent.astro';
+import { site } from '../content/site';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+  analytics?: Record<string, unknown> | null;
+}
+
+const { title, description, ogImage, noindex, analytics } = Astro.props;
+type MaintenanceBannerModule = {
+  default: (props: { message: string }) => unknown;
+};
+const maintenanceBannerModules = import.meta.glob<MaintenanceBannerModule>(
+  '../components/MaintenanceBanner.astro',
+);
+const loadMaintenanceBanner = maintenanceBannerModules['../components/MaintenanceBanner.astro'];
+const maintenanceMessage =
+  site.maintenance?.message?.trim() || 'Deze website is tijdelijk in onderhoud.';
+const MaintenanceBanner =
+  site.maintenance?.enabled && loadMaintenanceBanner
+    ? (await loadMaintenanceBanner()).default
+    : null;
+const cmsDataDir = process.env.CMS_DATA_DIR;
+let tenantTheme = "";
+if (cmsDataDir) {
+  try {
+    tenantTheme = await fs.readFile(path.resolve(cmsDataDir, "tenant-theme.css"), "utf-8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") console.error("[tenant-theme]", e);
+  }
+}
+const siteAnalytics = (site as any).analytics ?? null;
+const analyticsConfig =
+  siteAnalytics || analytics
+    ? { ...(siteAnalytics ?? {}), ...(analytics ?? {}) }
+    : null;
+const analyticsJson = analyticsConfig
+  ? JSON.stringify(analyticsConfig).replace(/</g, "\\u003c")
+  : null;
+---
+
+<!doctype html>
+<html lang={site.language}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="generator" content={Astro.generator} />
+    <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} />
+    <JsonLdOrganization />
+    <JsonLdLocalBusiness />
+    {tenantTheme && <style data-tenant-theme set:html={tenantTheme} />}
+    {analyticsJson && <script is:inline id="siab-analytics-config" type="application/json" set:html={analyticsJson} />}
+    {analyticsJson && (
+      <script>
+        import '../lib/analytics/runtime.ts';
+      </script>
+    )}
+  </head>
+  <body class="bg-white text-slate-900 antialiased [container-name:site-frame] [container-type:inline-size]">
+    <div class="site-frame-root">
+      {MaintenanceBanner && <MaintenanceBanner message={maintenanceMessage} />}
+      <slot />
+    </div>
+    {analyticsJson && <CookieConsent />}
+  </body>
+</html>

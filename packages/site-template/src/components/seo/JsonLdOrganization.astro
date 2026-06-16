@@ -1,0 +1,23 @@
+---
+import { site as staticSite } from '../../content/site';
+import type { SiteSettings } from '../../lib/types';
+
+interface Props {
+  site?: SiteSettings | null;
+}
+
+const { site = null } = Astro.props;
+
+const data = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: site?.siteName ?? staticSite.brand,
+  url: site?.siteUrl ?? `https://${staticSite.primaryDomain}`,
+  description: site?.description ?? staticSite.description,
+  sameAs: site
+    ? (site.contact?.social ?? []).map((s) => s.url).filter(Boolean)
+    : Object.values(staticSite.socials).filter(Boolean),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(data)} />

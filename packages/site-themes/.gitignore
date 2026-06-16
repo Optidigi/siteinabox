@@ -1,0 +1,6 @@
+# Theme work in progress
+node_modules/
+.DS_Store
+*.swp
+
+# If a theme has its own build artifacts, theme authors should add per-theme .gitignore

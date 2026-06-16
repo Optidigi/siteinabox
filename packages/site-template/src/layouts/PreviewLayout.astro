@@ -1,0 +1,28 @@
+---
+// PreviewLayout.astro — used ONLY by /__preview.
+//
+// Why a separate layout (not BaseLayout): real-tenant BaseLayout
+// includes themed Header/Footer/analytics. Reusing it would render
+// full chrome around the empty island for ~300-500ms while it waits
+// for the first postMessage — visible "site frame with no content"
+// flash. PreviewLayout is slot-only so the operator sees only the
+// in-progress block content, with the tenant's CSS bundle loaded
+// (theme tokens + Tailwind classes still apply).
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preview</title>
+    <meta name="robots" content="noindex, nofollow" />
+    {/* Tenant CSS bundle is loaded automatically by Astro's component
+        graph when blocks reference it. We don't import any header/footer
+        components here. */}
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

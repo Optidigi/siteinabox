@@ -1,0 +1,29 @@
+/* Baseline rt-* class contract styles. Theme tokens via var() — themes
+   override values during /new-site Phase 3 integration. */
+
+/* Block-level rt-* nodes */
+.rt-p          { margin: 0 0 1em; }
+.rt-h          { font-family: var(--font-heading, inherit); }
+.rt-h-2        { font-size: 1.5rem; }
+.rt-h-3        { font-size: 1.25rem; }
+.rt-h-4        { font-size: 1rem; }
+.rt-ul,
+.rt-ol         { padding-left: 1.5em; margin: 0 0 1em; }
+.rt-li         { margin: 0 0 0.25em; }
+.rt-quote      { border-left: 3px solid currentColor; padding-left: 1em; font-style: italic; opacity: 0.85; }
+.rt-hr         { border: 0; border-top: 1px solid currentColor; opacity: 0.2; margin: 1.5em 0; }
+
+/* Inline rt-* nodes */
+.rt-link       { text-decoration: underline; }
+.rt-b          { font-weight: bold; }
+.rt-i          { font-style: italic; }
+.rt-u          { text-decoration: underline; }
+.rt-s          { text-decoration: line-through; }
+.rt-code       { font-family: ui-monospace, monospace; padding: 0 0.25em; border-radius: var(--radius-sm, 0.125rem); background: rgb(0 0 0 / 0.05); }
+.rt-font-title   { font-family: var(--font-title); }
+.rt-font-heading { font-family: var(--font-heading); }
+.rt-font-text    { font-family: var(--font-text); }
+.rt-font-script  { font-family: var(--font-script); }
+
+/* rt-type-<style> / rt-color-<id> / custom rt-font-<id> / rt-themed-<id> are tenant-owned. */
+/* Themes layer their own decoration via tenant-theme.css. */

@@ -1,0 +1,23 @@
+---
+import PreviewLayout from "../layouts/PreviewLayout.astro"
+import PreviewIsland from "../components/preview/PreviewIsland.tsx"
+import { verifyPreviewToken } from "../lib/preview/verify"
+
+// Read at request time. import.meta.env values come from .env / runtime env.
+const token = Astro.url.searchParams.get("t")
+const secret = import.meta.env.PREVIEW_HMAC_SECRET
+const claims = verifyPreviewToken(token, secret)
+
+if (!claims) {
+  return new Response("Unauthorized", { status: 401 })
+}
+
+const allowedOrigin = import.meta.env.PUBLIC_ADMIN_ORIGIN ?? "https://admin.siteinabox.nl"
+// CMS and admin share the same origin in our deployment model. If they
+// ever split, set PUBLIC_CMS_ORIGIN separately.
+const cmsOrigin = allowedOrigin
+---
+
+<PreviewLayout>
+  <PreviewIsland client:load allowedOrigin={allowedOrigin} cmsOrigin={cmsOrigin} />
+</PreviewLayout>

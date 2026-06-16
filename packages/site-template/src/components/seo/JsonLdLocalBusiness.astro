@@ -1,0 +1,81 @@
+---
+import { site as staticSite } from '../../content/site';
+import type { SiteSettings } from '../../lib/types';
+
+interface Props {
+  site?: SiteSettings | null;
+}
+
+const { site = null } = Astro.props;
+
+const dayMap: Record<string, string> = {
+  Mo: 'Monday', Tu: 'Tuesday', We: 'Wednesday', Th: 'Thursday',
+  Fr: 'Friday', Sa: 'Saturday', Su: 'Sunday',
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+};
+
+const staticData = staticSite.nap
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'LocalBusiness',
+      name: staticSite.nap.displayName,
+      legalName: staticSite.nap.legalName,
+      url: `https://${staticSite.primaryDomain}`,
+      telephone: staticSite.nap.phone,
+      email: staticSite.nap.email,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: staticSite.nap.street,
+        postalCode: staticSite.nap.postalCode,
+        addressLocality: staticSite.nap.city,
+        addressCountry: staticSite.nap.country,
+      },
+      areaServed: staticSite.serviceArea,
+      openingHoursSpecification: staticSite.hours?.map((h) => ({
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: dayMap[h.dayOfWeek],
+        opens: h.opens,
+        closes: h.closes,
+      })),
+    }
+  : null;
+
+const cmsData = site?.nap
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'LocalBusiness',
+      name: site.siteName,
+      legalName: site.nap.legalName ?? undefined,
+      url: site.siteUrl,
+      telephone: site.contact?.phone ?? undefined,
+      email: site.contactEmail ?? undefined,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: site.nap.streetAddress ?? undefined,
+        postalCode: site.nap.postalCode ?? undefined,
+        addressLocality: site.nap.city ?? undefined,
+        addressRegion: site.nap.region ?? undefined,
+        addressCountry: site.nap.country ?? undefined,
+      },
+      areaServed: (site.serviceArea ?? []).map((s) => s.name),
+      openingHoursSpecification: (site.hours ?? [])
+        .filter((h) => !h.closed && h.open && h.close)
+        .map((h) => ({
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek: dayMap[h.day] ?? h.day,
+          opens: h.open,
+          closes: h.close,
+        })),
+    }
+  : null;
+
+const data = cmsData ?? staticData;
+---
+
+{data && <script type="application/ld+json" set:html={JSON.stringify(data)} />}

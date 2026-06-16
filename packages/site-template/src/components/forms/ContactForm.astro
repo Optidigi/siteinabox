@@ -1,0 +1,55 @@
+---
+import { site } from '../../content/site';
+
+interface Props {
+  heading?: string;
+  submitLabel?: string;
+}
+
+const { heading = 'Contact us', submitLabel = 'Send' } = Astro.props;
+
+const web3FormsKey = import.meta.env.PUBLIC_WEB3FORMS_KEY;
+const fallbackEmail = import.meta.env.PUBLIC_CONTACT_EMAIL ?? site.nap?.email;
+
+const useWeb3Forms = Boolean(web3FormsKey);
+---
+
+<section class="mx-auto max-w-xl">
+  <h2 class="text-2xl font-semibold mb-6">{heading}</h2>
+
+  {useWeb3Forms ? (
+    <form action="https://api.web3forms.com/submit" method="POST" class="space-y-4">
+      <input type="hidden" name="access_key" value={web3FormsKey} />
+      <input type="hidden" name="from_name" value={site.brand} />
+      <input type="hidden" name="subject" value={`New message via ${site.primaryDomain}`} />
+
+      <label class="block">
+        <span class="block text-sm font-medium">Name</span>
+        <input required name="name" type="text" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" />
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium">Email</span>
+        <input required name="email" type="email" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" />
+      </label>
+
+      <label class="block">
+        <span class="block text-sm font-medium">Message</span>
+        <textarea required name="message" rows="5" class="mt-1 w-full rounded border border-slate-300 px-3 py-2"></textarea>
+      </label>
+
+      <input type="checkbox" name="botcheck" class="hidden" tabindex="-1" autocomplete="off" />
+
+      <button type="submit" class="rounded bg-brand px-5 py-2 text-brand-fg font-medium hover:opacity-90">
+        {submitLabel}
+      </button>
+    </form>
+  ) : fallbackEmail ? (
+    <p>
+      Email us directly:
+      <a href={`mailto:${fallbackEmail}`} class="text-brand underline">{fallbackEmail}</a>
+    </p>
+  ) : (
+    <p class="text-sm text-slate-500">Contact form not configured.</p>
+  )}
+</section>

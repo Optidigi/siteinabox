@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@import './rich-text.css';
+@plugin '@tailwindcss/typography';
+
+@theme {
+  /* Existing brand/accent tokens */
+  --color-brand: #0ea5e9;
+  --color-brand-fg: #ffffff;
+  --color-accent: #f59e0b;
+  --color-accent-fg: #000000;
+
+  /* Role tokens (NEW) — placeholder fallbacks; themes override during Phase 3 integration */
+  --font-title:   ui-serif, Georgia, serif;
+  --font-heading: ui-serif, Georgia, serif;
+  --font-text:    ui-sans-serif, system-ui, sans-serif;
+  --font-script:  ui-cursive, cursive;
+  --font-serif:   ui-serif, Georgia, serif;
+  --font-sans:    ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-text);
+  text-rendering: optimizeLegibility;
+}

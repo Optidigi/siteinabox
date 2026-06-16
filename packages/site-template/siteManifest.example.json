@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "inlineMarks": {
+    "bold": true,
+    "italic": true,
+    "underline": true,
+    "code": true,
+    "strikethrough": false
+  },
+  "blockTypes": {
+    "paragraph": true,
+    "heading": { "levels": [2, 3] },
+    "bulletList": true,
+    "orderedList": true,
+    "blockquote": true,
+    "divider": true
+  },
+  "blocks": [
+    { "slug": "hero" },
+    { "slug": "featureList" },
+    { "slug": "richText" },
+    { "slug": "cta" },
+    { "slug": "contactSection" },
+    { "slug": "faq" },
+    { "slug": "testimonials" }
+  ],
+  "typeStyles": [],
+  "colorTokens": [],
+  "fontFamilies": [
+    { "id": "title", "label": "Title font", "cssVar": "--font-title" },
+    { "id": "heading", "label": "Heading font", "cssVar": "--font-heading" },
+    { "id": "text", "label": "Text font", "cssVar": "--font-text" }
+  ],
+  "themedNodes": [],
+  "footer": {
+    "columnCounts": [1, 2, 3],
+    "defaultColumnCount": 3,
+    "items": [
+      { "type": "brand", "label": "Brand" },
+      { "type": "navigation", "label": "Navigation" },
+      { "type": "links", "label": "Links" },
+      { "type": "contact", "label": "Contact" },
+      { "type": "business", "label": "Business details" },
+      { "type": "text", "label": "Text" }
+    ]
+  },
+  "analytics": {
+    "enabled": true,
+    "dashboardVisible": true,
+    "consentMode": "required",
+    "conversionGoals": {
+      "acceptedForms": true,
+      "contactClicks": []
+    }
+  },
+  "cssEntry": "cms-editor.css",
+  "defaultMode": "canvas"
+}

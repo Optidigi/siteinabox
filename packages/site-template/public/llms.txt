@@ -1,0 +1,4 @@
+# Site description for AI crawlers
+# Replace this content during Phase 5 of the /new-site runbook.
+
+This is a placeholder. Per-site llms.txt is generated based on the intake brief.
