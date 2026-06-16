@@ -5,12 +5,12 @@ import { $createParagraphNode, $getSelection, $isParagraphNode, $isRangeSelectio
 import { $patchStyleText } from "@lexical/selection"
 import { $createHeadingNode, $isHeadingNode } from "@lexical/rich-text"
 import { Wand2 } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
 import type { RtManifest, RtTypeStyle } from "@/lib/richText/manifest"
 import { $createStyledHeadingNode, StyledHeadingNode } from "@/lib/richText/lexical/StyledHeadingNode"
 import { $createStyledParagraphNode, StyledParagraphNode } from "@/lib/richText/lexical/StyledParagraphNode"
 import { useActiveTextStyle } from "@/components/editor/richText/toolbar/use-active-text-style"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 export interface StyleChipProps {

@@ -5,7 +5,7 @@ import { FORMAT_TEXT_COMMAND } from "lexical"
 import { Bold, Italic, Underline, Code, Strikethrough } from "lucide-react"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { useActiveTextStyle } from "@/components/editor/richText/toolbar/use-active-text-style"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 type Mark = "bold" | "italic" | "underline" | "code" | "strikethrough"
 

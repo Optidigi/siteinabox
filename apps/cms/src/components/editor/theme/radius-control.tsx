@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
+import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
 import { Square, Squircle, Circle } from "lucide-react"
 import type { ThemeTokens } from "@/lib/theme/schema"
 

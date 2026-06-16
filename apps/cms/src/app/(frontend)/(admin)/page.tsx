@@ -8,7 +8,7 @@ import { StatCards } from "@/components/dashboard/StatCards"
 import { CmsUsageCharts } from "@/components/dashboard/CmsUsageCharts"
 import { EditsChart } from "@/components/dashboard/EditsChart"
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Globe, FileCheck2, Activity, Inbox, ShieldAlert, Eye, Target, Percent, Gauge } from "lucide-react"
 
 const pct = (value: number) => `${Math.round(value * 1000) / 10}%`

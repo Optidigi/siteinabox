@@ -2,10 +2,10 @@
 import * as React from "react"
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext"
 import { TOGGLE_LINK_COMMAND } from "@lexical/link"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@siteinabox/ui/components/dialog"
+import { Input } from "@siteinabox/ui/components/input"
+import { Button } from "@siteinabox/ui/components/button"
+import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { useTranslations } from "next-intl"
 
 const isSafeHref = (raw: string): boolean => {

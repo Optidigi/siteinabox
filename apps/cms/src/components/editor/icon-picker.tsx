@@ -1,9 +1,9 @@
 "use client"
 import * as React from "react"
 import * as LucideIcons from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
+import { Input } from "@siteinabox/ui/components/input"
+import { Button } from "@siteinabox/ui/components/button"
 import { X } from "lucide-react"
 import { useTranslations } from "next-intl"
 

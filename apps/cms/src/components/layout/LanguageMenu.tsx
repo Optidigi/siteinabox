@@ -10,7 +10,7 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@siteinabox/ui/components/dropdown-menu"
 import { localeLabels, locales, type Locale } from "@/i18n/config"
 import { setUserLanguage } from "@/lib/actions/setUserLanguage"
 import { useStatusFeedback } from "@/components/status-feedback"

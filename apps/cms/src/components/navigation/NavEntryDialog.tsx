@@ -7,18 +7,18 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from "@siteinabox/ui/components/dialog"
 import {
   Select,
   SelectTrigger,
   SelectValue,
   SelectContent,
   SelectItem,
-} from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
+} from "@siteinabox/ui/components/select"
+import { Input } from "@siteinabox/ui/components/input"
+import { Label } from "@siteinabox/ui/components/label"
+import { Switch } from "@siteinabox/ui/components/switch"
+import { Button } from "@siteinabox/ui/components/button"
 import { emptyEntry, type NavEntry, type NavEntryType, type NavPageOption } from "./navTypes"
 import { useTranslations } from "next-intl"
 

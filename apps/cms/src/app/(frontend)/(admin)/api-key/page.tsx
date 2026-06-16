@@ -1,7 +1,7 @@
 import { requireAuth } from "@/lib/authGate"
 import { ApiKeyManager } from "@/components/forms/ApiKeyManager"
 import { PageHeader } from "@/components/page-header"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { getAdminTranslations } from "@/i18n/admin"
 
 // AMD-3 — UI half of the honest-rejection fix. The server hook in

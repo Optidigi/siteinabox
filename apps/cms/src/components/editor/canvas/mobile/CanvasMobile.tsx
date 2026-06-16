@@ -12,7 +12,7 @@ import type { CanvasModeProps } from "@/components/editor/canvas/CanvasMode"
 import { toCssVars } from "@/lib/theme/toCssVars"
 import { useMobileSubview } from "@/lib/editor/useMobileSubview"
 import { MobileBackPill } from "@/components/common/mobile-back-pill"
-import { useCspNonce } from "@/components/csp-nonce"
+import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 
 export const CanvasMobile: React.FC<CanvasModeProps> = (props) => {
   return (

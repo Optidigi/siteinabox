@@ -1,9 +1,9 @@
 "use client"
 import { useTranslations } from "next-intl"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { ClientOnlyChartContainer as ChartContainer } from "@/components/analytics/ClientOnlyChartContainer"
-import { type ChartConfig, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { type ChartConfig, ChartTooltip, ChartTooltipContent } from "@siteinabox/ui/components/chart"
 
 export function EditsChart({ data }: { data: { date: string; count: number }[] }) {
   const t = useTranslations("dashboard")

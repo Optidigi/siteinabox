@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@siteinabox/ui/components/dialog"
 import { useTranslations } from "next-intl"
 import type { MediaPageRef } from "@/lib/queries/mediaUsageWalker"
 

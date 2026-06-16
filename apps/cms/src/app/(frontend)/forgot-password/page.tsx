@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { ForgotPasswordForm } from "@/components/forms/ForgotPasswordForm"
 import { getTranslations } from "next-intl/server"
 

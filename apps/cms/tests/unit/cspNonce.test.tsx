@@ -2,7 +2,7 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { CspNonceProvider, useCspNonce } from "@/components/csp-nonce"
+import { CspNonceProvider, useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 
 function NonceProbe() {
   return <output data-testid="nonce">{useCspNonce() ?? ""}</output>

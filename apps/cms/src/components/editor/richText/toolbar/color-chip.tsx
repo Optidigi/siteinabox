@@ -4,12 +4,12 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $getSelection, $isRangeSelection } from "lexical"
 import { $patchStyleText } from "@lexical/selection"
 import { Palette } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { useAnchorRtCanvas } from "@/components/editor/hooks/use-rt-canvas-anchor"
 import { useActiveTextStyle } from "@/components/editor/richText/toolbar/use-active-text-style"
-import { formatCssColorValue, useCspStyleRule } from "@/components/csp-style"
-import { cn } from "@/lib/utils"
+import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 export interface ColorChipProps {

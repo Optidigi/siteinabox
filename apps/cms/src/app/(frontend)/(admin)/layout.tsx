@@ -1,4 +1,4 @@
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset } from "@siteinabox/ui/components/sidebar"
 import { CmsPostHogTracker, type CmsPostHogConfig } from "@/components/analytics/CmsPostHogTracker"
 import { AppSidebar } from "@/components/layout/AppSidebar"
 import { SiteHeader } from "@/components/layout/SiteHeader"

@@ -4,17 +4,17 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
+} from "@siteinabox/ui/components/dropdown-menu"
 import { MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { parsePayloadError } from "@/lib/api"

@@ -69,15 +69,18 @@ configured.
 
 ## UI Source Boundary
 
-- `src/components/ui/` contains local shadcn-style primitives and UI building
-  blocks. They may be edited in this repo.
+- `packages/ui` owns shared shadcn-style primitives, token CSS, `cn`,
+  CSP-style helpers, and low-level UI hooks.
+- `src/components/ui/`, `src/lib/utils.ts`, `src/components/csp-*.tsx`, and
+  `src/hooks/use-mobile.ts` are compatibility re-export shims for the CMS app.
+  Edit the source files in `packages/ui`, not the shims.
 - Application composites live outside `src/components/ui/`, usually under
   `src/components/`, `src/components/forms/`, `src/components/editor/`, or
   route-local app code.
 - Prefer upstream shadcn patterns for primitives, and compose local primitives
   before introducing one-off styling.
-- `components.json` points shadcn at `src/styles/shadcn.css`. That file is the
-  shadcn/Tailwind entry and may be overwritten deliberately by shadcn tooling.
+- `src/styles/shadcn.css` imports `@siteinabox/ui/styles/shadcn.css`; the
+  package CSS is the shadcn/Tailwind token source of truth.
 - `src/styles/globals.css` is only the stable import shell, and
   `src/styles/siab.css` is protected app/editor/canvas CSS. Do not point
   shadcn tooling at either file.

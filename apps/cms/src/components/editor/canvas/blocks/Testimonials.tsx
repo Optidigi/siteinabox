@@ -3,7 +3,7 @@ import * as React from "react"
 import { ClickToEditField } from "../inline/ClickToEditField"
 import { InlineImage } from "../inline/InlineImage"
 import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
-import { isCoarsePointer } from "@/lib/utils"
+import { isCoarsePointer } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 /**

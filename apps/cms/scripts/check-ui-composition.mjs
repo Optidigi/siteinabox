@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 
 import { readdir, readFile } from "node:fs/promises"
-import { join, relative } from "node:path"
+import { join, relative, resolve } from "node:path"
 
 const ROOT = process.cwd()
 const SRC = join(ROOT, "src")
+const PLATFORM_ROOT = resolve(ROOT, "../..")
+const UI_PACKAGE_SRC = join(PLATFORM_ROOT, "packages/ui/src")
 
 const IGNORE_MARKER = "lint:ui-composition:ignore"
 
@@ -54,6 +56,10 @@ const ALLOWED_NATIVE_BUTTON_FILES = new Set([
   "src/components/theme-toggle.tsx",
 ])
 
+function displayPath(file) {
+  return file.startsWith(ROOT) ? relative(ROOT, file) : relative(PLATFORM_ROOT, file)
+}
+
 async function walk(dir) {
   const out = []
   let entries
@@ -85,13 +91,18 @@ const files = []
 for (const dir of SCAN_DIRS) {
   files.push(...(await walk(join(SRC, dir))))
 }
+files.push(...(await walk(join(UI_PACKAGE_SRC, "components"))))
+files.push(...(await walk(join(UI_PACKAGE_SRC, "lib"))))
+files.push(...(await walk(join(UI_PACKAGE_SRC, "hooks"))))
 
 const violations = []
 for (const file of files) {
-  const rel = relative(ROOT, file)
+  const rel = displayPath(file)
   const source = await readFile(file, "utf8")
   const lines = source.split(/\r?\n/)
-  const isUiPrimitive = rel.startsWith("src/components/ui/")
+  const isUiPrimitive =
+    rel.startsWith("src/components/ui/") ||
+    rel.startsWith("packages/ui/src/components/")
 
   lines.forEach((line, index) => {
     if (ignored(lines, index)) return
@@ -102,7 +113,7 @@ for (const file of files) {
         rule: "R1",
         file: rel,
         line: lineNo,
-        message: "Direct Radix imports belong in src/components/ui primitives. Compose the local primitive instead.",
+        message: "Direct Radix imports belong in packages/ui primitives. Compose the shared primitive instead.",
       })
     }
 
@@ -120,7 +131,7 @@ for (const file of files) {
         rule: "R3",
         file: rel,
         line: lineNo,
-        message: "Native <button> in a new file. Prefer @/components/ui/button unless a reviewed DOM/canvas exception is needed.",
+        message: "Native <button> in a new file. Prefer @siteinabox/ui/components/button unless a reviewed DOM/canvas exception is needed.",
       })
     }
   })

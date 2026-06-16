@@ -1,7 +1,7 @@
 import * as React from "react"
 
-import { cn } from "@/lib/utils"
-import { Card, CardContent } from "@/components/ui/card"
+import { cn } from "@siteinabox/ui/lib/utils"
+import { Card, CardContent } from "@siteinabox/ui/components/card"
 
 type Props = React.ComponentProps<"div"> & {
   /**

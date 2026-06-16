@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@siteinabox/ui/components/card"
+import { Button } from "@siteinabox/ui/components/button"
 import { Check, Copy } from "lucide-react"
 
 export type OnboardingStep = {

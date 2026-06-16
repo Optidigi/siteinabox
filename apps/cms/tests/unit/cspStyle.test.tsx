@@ -2,8 +2,8 @@
 import * as React from "react"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
-import { CspNonceProvider } from "@/components/csp-nonce"
-import { formatCssColorValue, formatCssPx, formatCssUrl, formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
+import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"
+import { formatCssColorValue, formatCssPx, formatCssUrl, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 
 function StyleProbe({ declarations }: { declarations?: string | null }) {
   const { className, styleElement } = useCspStyleRule("probe", declarations)

@@ -3,7 +3,7 @@ import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Search, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import { Input } from "@siteinabox/ui/components/input"
 
 /**
  * URL-driven search box for the admin list pages. Writes a debounced

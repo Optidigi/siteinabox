@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import type { LucideIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+import { Button } from "@siteinabox/ui/components/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 /**
  * Shared segmented-pill control matching the ModeToggle (Canvas / Sidebar)

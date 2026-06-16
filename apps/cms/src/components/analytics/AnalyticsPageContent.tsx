@@ -34,7 +34,7 @@ import {
   WebVitalsTable,
 } from "@/components/analytics/AnalyticsTables"
 import { TrafficChart } from "@/components/analytics/TrafficChart"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import type { SiteAnalyticsView } from "@/lib/analytics/views"
 import type {
   AutocaptureFrictionMetric,

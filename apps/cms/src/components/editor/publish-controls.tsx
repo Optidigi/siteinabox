@@ -1,10 +1,10 @@
 "use client"
 import { useId } from "react"
 import type { Control } from "react-hook-form"
-import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@siteinabox/ui/components/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { SaveButton } from "@/components/save-ui/save-button"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 type Props = {

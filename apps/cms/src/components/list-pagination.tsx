@@ -4,14 +4,14 @@ import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@siteinabox/ui/lib/utils"
+import { buttonVariants } from "@siteinabox/ui/components/button"
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-} from "@/components/ui/pagination"
+} from "@siteinabox/ui/components/pagination"
 
 // Compact page window: first + last always shown, current ±1, ellipsis
 // for the gaps. total 12 / current 6 -> 1 … 5 6 7 … 12

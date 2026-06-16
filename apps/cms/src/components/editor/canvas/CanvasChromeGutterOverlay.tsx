@@ -3,13 +3,13 @@ import * as React from "react"
 import { createPortal } from "react-dom"
 import { GripVertical, MoreVertical } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { formatCssPx, useCspStyleRule } from "@/components/csp-style"
+import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@siteinabox/ui/components/dropdown-menu"
 
 type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
 

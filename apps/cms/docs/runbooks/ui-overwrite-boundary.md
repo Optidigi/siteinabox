@@ -1,12 +1,18 @@
 # UI overwrite boundary
 
-This repo uses upstream shadcn as the primitive source, but it does not treat
-every local primitive as blindly overwriteable.
+This repo uses upstream shadcn as the primitive baseline, but it does not treat
+every local primitive as blindly overwriteable. Shared primitive source now
+lives in `packages/ui`; the CMS app keeps compatibility re-export shims.
 
 ## Paths
 
-- `src/components/ui/` is upstream-name-only. It may contain shadcn primitive
-  filenames such as `button.tsx`, `dialog.tsx`, `input.tsx`, and `sidebar.tsx`.
+- `packages/ui/src/components/` owns shadcn primitive source.
+- `packages/ui/src/styles/shadcn.css` owns the shared token/base CSS.
+- `packages/ui/src/lib/` owns `cn` and CSP-safe runtime style helpers used by
+  primitives and CMS chrome.
+- `src/components/ui/` is upstream-name-only compatibility shims. It may contain
+  shadcn primitive filenames such as `button.tsx`, `dialog.tsx`, `input.tsx`,
+  and `sidebar.tsx`, but those files should re-export from `@siteinabox/ui`.
 - App/editor composites live outside `src/components/ui/`:
   - `src/components/editor/`
   - `src/components/editor/canvas/`
@@ -14,19 +20,20 @@ every local primitive as blindly overwriteable.
   - `src/components/editor/theme/`
   - `src/components/save-ui/`
   - `src/components/common/`
-- `src/styles/shadcn.css` is the shadcn/Tailwind CSS target.
+- `src/styles/shadcn.css` imports `@siteinabox/ui/styles/shadcn.css`.
 - `src/styles/siab.css` is protected SIAB app/editor/canvas CSS.
 
-`pnpm lint:ui-boundary` enforces the path split. `pnpm lint:ui-composition`
+`pnpm lint:ui-boundary` enforces the app path split. `pnpm lint:ui-composition`
 adds drift checks for composition style: direct Radix imports stay inside
-`src/components/ui`, inline style objects are blocked, and new files with
+reviewed primitives, inline style objects are blocked, and new files with
 native `<button>` elements fail unless they are deliberately added to the
 reviewed exception list in `scripts/check-ui-composition.mjs`.
 
 ## Primitive overwrite policy
 
 Use `pnpm dlx shadcn@latest add @shadcn/<item> --diff` before accepting an
-overwrite. Do not bulk-overwrite primitives.
+overwrite. Apply accepted primitive changes in `packages/ui/src/components/`
+and keep the CMS shim intact. Do not bulk-overwrite primitives.
 
 Last reviewed against `@shadcn` on 2026-06-15:
 

@@ -2,10 +2,10 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import { Image as ImageIcon, ImagePlus, Pencil, Trash2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { formatCssPx, formatCssUrl, useCspStyleRule } from "@/components/csp-style"
+import { Button } from "@siteinabox/ui/components/button"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@siteinabox/ui/components/sheet"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
+import { formatCssPx, formatCssUrl, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { MediaGrid } from "@/components/media/MediaGrid"
 import { MediaUploader } from "@/components/media/MediaUploader"
 import type { Media } from "@/payload-types"
@@ -16,7 +16,7 @@ import { elementPathEq } from "../elementPath"
 import type { ElementPath } from "../elementPath"
 import { isReadOnlyView } from "../canvasView"
 import { useTranslations } from "next-intl"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 export interface InlineImageProps {
   value: any

@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@siteinabox/ui/components/skeleton"
 
 /**
  * Admin root loading skeleton — generic header + card + rows shape that

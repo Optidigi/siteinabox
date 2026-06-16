@@ -6,7 +6,7 @@ import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
 const read = (path: string) => readFileSync(path, "utf8")
 const legacyImport = 'from "' + "so" + 'nner"'
 const legacyCall = "to" + "ast."
-const legacyUiPath = "@/components/ui/" + "so" + "nner"
+const legacyUiPath = "@siteinabox/ui/components/" + "so" + "nner"
 const legacyHost = "<To" + "aster"
 
 describe("FE-80 save status UI", () => {

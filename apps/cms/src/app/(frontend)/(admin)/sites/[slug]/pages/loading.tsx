@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@siteinabox/ui/components/skeleton"
 
 /**
  * Pages listing loading skeleton — header (title + new-page button) +

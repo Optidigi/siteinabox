@@ -17,7 +17,7 @@ import {
   TenantPerformanceTable,
   TenantWebVitalsTable,
 } from "@/components/analytics/AdminAnalyticsTables"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { resolveLocale } from "@/i18n/config"
 import { parseAdminAnalyticsView, parseSiteAnalyticsView } from "@/lib/analytics/views"
 import {

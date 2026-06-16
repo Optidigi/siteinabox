@@ -19,14 +19,14 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronRight, GripVertical, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import { BlockTypePicker } from "@/components/editor/canvas/chrome/block-type-picker"
 import { useBlockPresets } from "@/components/editor/canvas/BlockPresetsContext"
 import { blockBySlug } from "@/blocks/registry"
 import type { CanvasBlocksApi } from "@/components/editor/canvas/useCanvasBlocks"
 import type { RtManifest } from "@/lib/richText/manifest"
-import { formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
-import { cn } from "@/lib/utils"
+import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 export interface MobileSectionListProps {

@@ -2,7 +2,7 @@
 import * as React from "react"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import type { RtManifest } from "@/lib/richText/manifest"
-import { formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
+import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 
 type Fonts = NonNullable<ThemeTokens["fonts"]>
 

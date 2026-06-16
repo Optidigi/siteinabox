@@ -11,12 +11,12 @@ import {
   type ReactNode,
 } from "react"
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import {
   StatusBadge,
   type StatusBadgeTone,
 } from "@/components/save-ui/status-badge"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 type FeedbackKind = "loading" | "success" | "error" | "info"
 

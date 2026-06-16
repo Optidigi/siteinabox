@@ -3,7 +3,7 @@ import * as React from "react"
 import { Link as LinkIcon } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { useActiveTextStyle } from "@/components/editor/richText/toolbar/use-active-text-style"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 const ACTIVE_CHIP_CLASS = "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
 

@@ -22,17 +22,17 @@ import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { CanvasMobile } from "@/components/editor/canvas/mobile/CanvasMobile"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { useCspNonce } from "@/components/csp-nonce"
-import { formatCssPx, formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
+import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
+import { formatCssPx, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@siteinabox/ui/components/dialog"
 import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChromeGutterOverlay"
 import { CanvasChromeVisibilityProvider } from "@/components/editor/canvas/CanvasChromeVisibilityContext"
 import { useBlockPresets } from "@/components/editor/canvas/BlockPresetsContext"
@@ -45,7 +45,7 @@ import {
   remapSelectionAfterInsert,
   remapSelectionAfterReorder,
 } from "@/components/editor/canvas/elementPath"
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -56,7 +56,7 @@ import type { MobileSectionEditSlotContext } from "@/components/editor/canvas/mo
 import type { MobileInspectorBarSlotContext } from "@/components/editor/canvas/mobile/mobile-inspector-bar"
 import type { MobilePageSettingsSlotContext } from "@/components/editor/canvas/mobile/mobile-page-settings"
 import type { MobileSeoSettingsSlotContext } from "@/components/editor/canvas/mobile/mobile-seo-settings"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 import { useStatusFeedback } from "@/components/status-feedback"
 

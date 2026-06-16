@@ -7,8 +7,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+} from "@siteinabox/ui/components/dialog"
+import { Button } from "@siteinabox/ui/components/button"
 
 /**
  * Plain confirmation dialog for low-stakes destructive actions

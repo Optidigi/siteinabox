@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import { Upload } from "lucide-react"
 import { parsePayloadError } from "@/lib/api"
 import { useTranslations } from "next-intl"

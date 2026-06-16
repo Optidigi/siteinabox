@@ -1,11 +1,11 @@
 "use client"
 import * as React from "react"
 import { useEffect, useMemo, useState } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@siteinabox/ui/components/dialog"
+import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 export type BlockTypeDef = {

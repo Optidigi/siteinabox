@@ -1,5 +1,5 @@
-import { SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@siteinabox/ui/components/sidebar"
+import { Separator } from "@siteinabox/ui/components/separator"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { UserMenu } from "./UserMenu"
 import type { User } from "@/payload-types"

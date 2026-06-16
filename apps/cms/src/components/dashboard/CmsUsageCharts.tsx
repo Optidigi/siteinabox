@@ -1,10 +1,10 @@
 "use client"
 
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, XAxis, YAxis } from "recharts"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { ClientOnlyChartContainer as ChartContainer } from "@/components/analytics/ClientOnlyChartContainer"
-import { ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table"
+import { ChartTooltip, ChartTooltipContent, type ChartConfig } from "@siteinabox/ui/components/chart"
+import { Table, TableBody, TableCell, TableRow } from "@siteinabox/ui/components/table"
 import type { CmsUsageOverview } from "@/lib/analytics/queries"
 
 type Labels = {

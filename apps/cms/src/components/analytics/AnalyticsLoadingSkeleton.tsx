@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@siteinabox/ui/components/skeleton"
 
 export function AnalyticsLoadingSkeleton() {
   return (

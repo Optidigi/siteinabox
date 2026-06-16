@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+} from "@siteinabox/ui/components/dialog"
+import { Button } from "@siteinabox/ui/components/button"
 import { Plus } from "lucide-react"
 import { TenantForm } from "./TenantForm"
 import { useTranslations } from "next-intl"

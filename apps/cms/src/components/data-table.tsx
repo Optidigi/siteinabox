@@ -6,13 +6,13 @@ import {
 import { useState } from "react"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@siteinabox/ui/components/table"
+import { Card } from "@siteinabox/ui/components/card"
+import { Input } from "@siteinabox/ui/components/input"
+import { Button } from "@siteinabox/ui/components/button"
 import { ChevronLeft, ChevronRight, FileQuestion, Search, X } from "lucide-react"
 import { EmptyState } from "@/components/empty-state"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 type Props<T> = {
   columns: ColumnDef<T, any>[]

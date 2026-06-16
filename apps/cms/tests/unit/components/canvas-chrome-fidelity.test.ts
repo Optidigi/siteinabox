@@ -9,7 +9,7 @@ describe("canvas chrome fidelity", () => {
     const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
 
     expect(pageForm).toContain('import { CanvasMode } from "@/components/editor/canvas/CanvasMode"')
-    expect(pageForm).not.toContain('import { CanvasMode } from "@/components/ui/canvas-mode"')
+    expect(pageForm).not.toContain('import { CanvasMode } from "@siteinabox/ui/components/canvas-mode"')
     expect(canvasMode).toContain('import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"')
     expect(canvasMode).toContain('import { CanvasMobile } from "@/components/editor/canvas/mobile/CanvasMobile"')
   })

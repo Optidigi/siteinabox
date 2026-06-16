@@ -16,7 +16,7 @@ describe("mobile inspector snap contract", () => {
   it("ships vaul snap mechanics through nonce-bearing css for production CSP", () => {
     const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
 
-    expect(inspectorBar).toContain('import { useCspNonce } from "@/components/csp-nonce"')
+    expect(inspectorBar).toContain('import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"')
     expect(inspectorBar).toContain("const VAUL_BOTTOM_SNAP_CSS = `")
     expect(inspectorBar).toContain('[data-vaul-drawer][data-vaul-snap-points="true"][data-vaul-drawer-direction="bottom"]')
     expect(inspectorBar).toContain('[data-vaul-drawer][data-vaul-delayed-snap-points="true"][data-vaul-drawer-direction="bottom"]')

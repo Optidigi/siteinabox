@@ -1,8 +1,8 @@
 "use client"
 import * as React from "react"
 import { Loader2 } from "lucide-react"
-import { formatRuntimeCssValue, useCspStyleRule } from "@/components/csp-style"
-import { cn } from "@/lib/utils"
+import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 export type MobileFloatingPillVariant = "default" | "warning" | "destructive" | "loading" | "success"
 export type MobileFloatingPillPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"

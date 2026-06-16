@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { ResetPasswordForm } from "@/components/forms/ResetPasswordForm"
 import { getTranslations } from "next-intl/server"
 

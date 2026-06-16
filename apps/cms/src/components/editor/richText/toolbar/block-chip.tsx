@@ -9,7 +9,7 @@ import { $createHeadingNode, $createQuoteNode } from "@lexical/rich-text"
 import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND, $isListNode, ListNode, REMOVE_LIST_COMMAND } from "@lexical/list"
 import { $getNearestNodeOfType } from "@lexical/utils"
 import { Pilcrow, Heading2, Heading3, Heading4, Quote, List, ListOrdered, ChevronDown } from "lucide-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { useTranslations } from "next-intl"
 

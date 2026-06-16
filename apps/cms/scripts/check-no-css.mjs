@@ -9,16 +9,23 @@
 //   R3: No arbitrary color Tailwind values in className attributes
 
 import { readdir, readFile } from "node:fs/promises"
-import { join, relative } from "node:path"
+import { join, relative, resolve } from "node:path"
 
 const ROOT = process.cwd()
 const SRC = join(ROOT, "src")
+const PLATFORM_ROOT = resolve(ROOT, "../..")
+const UI_PACKAGE_SRC = join(PLATFORM_ROOT, "packages/ui/src")
 
 const ALLOWED_CSS_FILES = new Set([
   "src/styles/globals.css",
   "src/styles/shadcn.css",
   "src/styles/siab.css",
+  "packages/ui/src/styles/shadcn.css",
 ])
+
+function displayPath(file) {
+  return file.startsWith(ROOT) ? relative(ROOT, file) : relative(PLATFORM_ROOT, file)
+}
 
 // R2/R3 scope: check these top-level src/ subdirs for color literals.
 const R2_DIRS = ["components", "app", "hooks"]
@@ -57,9 +64,12 @@ async function walk(dir, exts = null) {
 }
 
 async function ruleR1() {
-  const cssFiles = await walk(SRC, [".css"])
+  const cssFiles = [
+    ...(await walk(SRC, [".css"])),
+    ...(await walk(UI_PACKAGE_SRC, [".css"])),
+  ]
   const violations = cssFiles
-    .map((p) => relative(ROOT, p))
+    .map((p) => displayPath(p))
     .filter((p) => !ALLOWED_CSS_FILES.has(p))
   return violations.map((p) => ({ rule: "R1", file: p, line: 0, snippet: ".css file" }))
 }
@@ -89,9 +99,12 @@ async function ruleR2() {
   for (const sub of R2_DIRS) {
     files.push(...(await walk(join(SRC, sub), [".tsx", ".ts"])))
   }
+  files.push(...(await walk(join(UI_PACKAGE_SRC, "components"), [".tsx", ".ts"])))
+  files.push(...(await walk(join(UI_PACKAGE_SRC, "lib"), [".tsx", ".ts"])))
+  files.push(...(await walk(join(UI_PACKAGE_SRC, "hooks"), [".tsx", ".ts"])))
   const violations = []
   for (const file of files) {
-    const rel = relative(ROOT, file)
+    const rel = displayPath(file)
     if (isExcluded(rel)) continue
     const hits = [
       ...(await findLines(file, HEX_RE)),
@@ -109,9 +122,12 @@ async function ruleR3() {
   for (const sub of R2_DIRS) {
     files.push(...(await walk(join(SRC, sub), [".tsx", ".ts"])))
   }
+  files.push(...(await walk(join(UI_PACKAGE_SRC, "components"), [".tsx", ".ts"])))
+  files.push(...(await walk(join(UI_PACKAGE_SRC, "lib"), [".tsx", ".ts"])))
+  files.push(...(await walk(join(UI_PACKAGE_SRC, "hooks"), [".tsx", ".ts"])))
   const violations = []
   for (const file of files) {
-    const rel = relative(ROOT, file)
+    const rel = displayPath(file)
     if (isExcluded(rel)) continue
     const hits = await findLines(file, ARBITRARY_COLOR_TAILWIND_RE)
     for (const h of hits) {

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import { Compass } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 

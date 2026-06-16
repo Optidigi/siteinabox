@@ -1,0 +1,26 @@
+{
+  "name": "@siteinabox/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./rich-text": {
+      "types": "./src/rich-text.ts",
+      "default": "./src/rich-text.ts"
+    },
+    "./site": {
+      "types": "./src/site.ts",
+      "default": "./src/site.ts"
+    }
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

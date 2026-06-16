@@ -1,9 +1,9 @@
 "use client"
 import * as React from "react"
 import { ModeToggle, type EditorMode } from "@/components/editor/mode/mode-toggle"
-import { useSidebar } from "@/components/ui/sidebar"
-import { useCspStyleRule } from "@/components/csp-style"
-import { cn } from "@/lib/utils"
+import { useSidebar } from "@siteinabox/ui/components/sidebar"
+import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 /**
  * Shared floating-pill surface treatment used by ModeBar (bottom-centre)

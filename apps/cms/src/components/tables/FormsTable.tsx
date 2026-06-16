@@ -2,7 +2,7 @@
 import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
 import { relativeTime } from "@/lib/relativeTime"
 import { FormSubmissionSheet } from "@/components/forms/FormSubmissionSheet"

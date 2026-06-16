@@ -2,7 +2,7 @@
 import * as React from "react"
 import { useFormContext } from "react-hook-form"
 import { Drawer as Vaul } from "vaul"
-import { useCspNonce } from "@/components/csp-nonce"
+import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { useMobileEditor, type MobileSnap } from "@/components/editor/canvas/mobile/MobileEditorContext"
 import { useInspectorKeyboardLock } from "@/components/editor/canvas/mobile/useInspectorKeyboardLock"
 import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/canvas/blockElements"

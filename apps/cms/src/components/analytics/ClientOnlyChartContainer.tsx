@@ -2,8 +2,8 @@
 
 import type { ComponentProps } from "react"
 import { useEffect, useState } from "react"
-import { ChartContainer } from "@/components/ui/chart"
-import { cn } from "@/lib/utils"
+import { ChartContainer } from "@siteinabox/ui/components/chart"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 type ChartContainerProps = ComponentProps<typeof ChartContainer>
 

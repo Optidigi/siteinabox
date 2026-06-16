@@ -10,3 +10,7 @@ App-local docs stay with the app that owns them:
 - `packages/tools/siab-orchestrator/runbooks/` for operator runbooks tied to
   `/new-site` or `/add-cms`.
 
+Monorepo-level policies:
+
+- `generated-site-snapshot-policy.md` defines how `packages/site-template`
+  relates to generated tenant snapshots under `sites/*`.

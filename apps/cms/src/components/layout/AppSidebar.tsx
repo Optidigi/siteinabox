@@ -8,7 +8,7 @@ import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
   useSidebar
-} from "@/components/ui/sidebar"
+} from "@siteinabox/ui/components/sidebar"
 
 type Mode = "super-admin" | "tenant"
 type Role = "super-admin" | "owner" | "editor" | "viewer"

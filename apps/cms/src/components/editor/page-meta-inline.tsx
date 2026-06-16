@@ -1,9 +1,9 @@
 "use client"
 import { useRef } from "react"
 import type { Control, UseFormSetValue, UseFormGetValues } from "react-hook-form"
-import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+import { FormField, FormItem, FormControl, FormMessage } from "@siteinabox/ui/components/form"
+import { Input } from "@siteinabox/ui/components/input"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { slugify } from "@/lib/slugify"
 import { useTranslations } from "next-intl"
 

@@ -7,10 +7,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@siteinabox/ui/components/dialog"
+import { Button } from "@siteinabox/ui/components/button"
+import { Input } from "@siteinabox/ui/components/input"
+import { Label } from "@siteinabox/ui/components/label"
 import { useTranslations } from "next-intl"
 
 /**

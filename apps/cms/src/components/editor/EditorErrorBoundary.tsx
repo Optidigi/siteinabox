@@ -1,6 +1,6 @@
 "use client"
 import * as React from "react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 
 interface Props {
   children: React.ReactNode

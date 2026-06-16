@@ -1,9 +1,9 @@
 "use client"
 import * as React from "react"
 import { useFormContext } from "react-hook-form"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@siteinabox/ui/components/input"
+import { Label } from "@siteinabox/ui/components/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { useTranslations } from "next-intl"
 
 export interface MobilePageSettingsProps {

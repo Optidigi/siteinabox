@@ -5,7 +5,7 @@ import {
   Popover,
   PopoverAnchor,
   PopoverContent,
-} from "@/components/ui/popover"
+} from "@siteinabox/ui/components/popover"
 import { Palette, Type, SquareRoundCorner } from "lucide-react"
 import { PalettePicker, type PalettePreset } from "@/components/editor/theme/palette-picker"
 import { FontPicker, type FontPreset } from "@/components/editor/theme/font-picker"
@@ -14,7 +14,7 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { SegmentedPill } from "@/components/common/segmented-pill"
 import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 type Segment = "palette" | "fonts" | "shape"

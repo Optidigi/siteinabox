@@ -6,8 +6,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+} from "@siteinabox/ui/components/dropdown-menu"
+import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { MobileInspectorBar, type MobileInspectorBarProps } from "@/components/editor/canvas/mobile/mobile-inspector-bar"

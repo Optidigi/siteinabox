@@ -11,8 +11,8 @@ import { LinkChip } from "@/components/editor/richText/toolbar/link-chip"
 import { useIsMobile } from "@/lib/hooks/useIsMobile"
 import { useVisualViewportOffset } from "@/lib/hooks/useVisualViewportOffset"
 import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
-import { formatCssPx, useCspStyleRule } from "@/components/csp-style"
-import { cn } from "@/lib/utils"
+import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 const TOOLBAR_HEIGHT_APPROX = 44
 const TOOLBAR_GAP = 8

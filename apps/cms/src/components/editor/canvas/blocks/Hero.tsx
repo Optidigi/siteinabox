@@ -7,7 +7,7 @@ import { InlineImage } from "../inline/InlineImage"
 import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { isReadOnlyView } from "../canvasView"
-import { cn, isCoarsePointer } from "@/lib/utils"
+import { cn, isCoarsePointer } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 /**

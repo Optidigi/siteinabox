@@ -1,12 +1,12 @@
 "use client"
 import * as React from "react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
 import { Plus, Sun, Moon } from "lucide-react"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useAnchorRtCanvas } from "@/components/editor/hooks/use-rt-canvas-anchor"
-import { Switch } from "@/components/ui/switch"
-import { formatCssColorValue, useCspStyleRule } from "@/components/csp-style"
-import { cn } from "@/lib/utils"
+import { Switch } from "@siteinabox/ui/components/switch"
+import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 type Palette = NonNullable<ThemeTokens["palette"]>

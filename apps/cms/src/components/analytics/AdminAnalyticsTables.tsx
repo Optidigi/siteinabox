@@ -1,7 +1,7 @@
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@siteinabox/ui/components/table"
 import type { CmsActionMetric, CmsDeviceMetric, CmsRouteMetric, EventVolumeMetric, TenantPerformanceMetric, TenantWebVitalsMetric } from "@/lib/analytics/queries"
 
 const pct = (value: number) => `${Math.round(value * 1000) / 10}%`

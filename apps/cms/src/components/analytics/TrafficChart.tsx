@@ -4,10 +4,10 @@ import { useMemo, useState } from "react"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { AreaChartIcon, BarChart3, LineChartIcon, Settings2 } from "lucide-react"
 import { useTranslations } from "next-intl"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { ClientOnlyChartContainer as ChartContainer } from "@/components/analytics/ClientOnlyChartContainer"
-import { ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart"
-import { Button } from "@/components/ui/button"
+import { ChartTooltip, ChartTooltipContent, type ChartConfig } from "@siteinabox/ui/components/chart"
+import { Button } from "@siteinabox/ui/components/button"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -17,7 +17,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@siteinabox/ui/components/dropdown-menu"
 import type { TrafficSeriesPoint } from "@/lib/analytics/queries"
 
 type TrafficMetric = "pageviews" | "visitors"

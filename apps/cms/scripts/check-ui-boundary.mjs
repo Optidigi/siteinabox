@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
 import { readdir, readFile } from "node:fs/promises"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 
 const ROOT = process.cwd()
+const PLATFORM_ROOT = resolve(ROOT, "../..")
 
 const SHADCN_CSS = "src/styles/shadcn.css"
+const PACKAGE_SHADCN_CSS = "packages/ui/src/styles/shadcn.css"
 const PROTECTED_CSS = new Set(["src/styles/globals.css", "src/styles/siab.css"])
 
 const UPSTREAM_UI_FILES = new Set([
@@ -57,6 +59,12 @@ if (globals !== expectedGlobals) {
   failures.push("src/styles/globals.css must remain the stable shadcn/SIAB import shell")
 }
 
+const shadcn = await readFile(join(ROOT, "src/styles/shadcn.css"), "utf8")
+const expectedShadcn = '@import "@siteinabox/ui/styles/shadcn.css";\n'
+if (shadcn !== expectedShadcn) {
+  failures.push("src/styles/shadcn.css must remain a compatibility import for @siteinabox/ui/styles/shadcn.css")
+}
+
 const uiDir = join(ROOT, "src/components/ui")
 const entries = await readdir(uiDir, { withFileTypes: true })
 const unknownUiFiles = entries
@@ -75,6 +83,37 @@ if (unknownUiFiles.length > 0) {
   )
 }
 
+for (const name of UPSTREAM_UI_FILES) {
+  const source = await readFile(join(uiDir, name), "utf8")
+  const exportPath = `@siteinabox/ui/components/${name.replace(/\.tsx$/, "")}`
+  if (source.trim() !== `export * from "${exportPath}"`) {
+    failures.push(`src/components/ui/${name} must remain a re-export shim for ${exportPath}`)
+  }
+}
+
+const packageUiDir = join(PLATFORM_ROOT, "packages/ui/src/components")
+const packageEntries = await readdir(packageUiDir, { withFileTypes: true })
+const unknownPackageUiFiles = packageEntries
+  .filter((entry) => entry.isFile())
+  .map((entry) => entry.name)
+  .filter((name) => !UPSTREAM_UI_FILES.has(name))
+  .sort()
+
+if (unknownPackageUiFiles.length > 0) {
+  failures.push(
+    [
+      "packages/ui/src/components is reserved for upstream-name primitive filenames.",
+      "Move generic composites to a non-primitive package path:",
+      ...unknownPackageUiFiles.map((name) => `  - ${name}`),
+    ].join("\n"),
+  )
+}
+
+const packageShadcn = await readFile(join(PLATFORM_ROOT, PACKAGE_SHADCN_CSS), "utf8")
+if (!packageShadcn.includes('@source "../components";')) {
+  failures.push(`${PACKAGE_SHADCN_CSS} must include @source "../components" so Tailwind scans package primitives`)
+}
+
 if (failures.length > 0) {
   console.error(`✗ lint:ui-boundary failed — ${failures.length} violation(s)\n`)
   console.error(failures.join("\n\n"))
@@ -82,5 +121,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  "✓ lint:ui-boundary passed — shadcn CSS target is isolated and src/components/ui is upstream-name-only",
+  "✓ lint:ui-boundary passed — shadcn CSS target is isolated, CMS shims are re-exports, and packages/ui primitives are upstream-name-only",
 )

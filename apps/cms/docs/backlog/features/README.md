@@ -3928,7 +3928,7 @@ supported mechanisms for now.
 
 ### OBS-118 — Move shared frontend into monorepo packages after SIAB monorepo migration
 
-**Status:** Active · **Layer:** multi-repo / frontend architecture
+**Status:** Closed 2026-06-16 · **Layer:** multi-repo / frontend architecture
 **Discovered in:** Session 2026-06-15, private SIAB registry deprecation decision
 
 #### Description
@@ -3980,6 +3980,40 @@ now requires `src/components/ui` to be upstream-name-only. Primitive overwrite
 policy is documented in `docs/runbooks/ui-overwrite-boundary.md`; several
 upstream-name primitives intentionally remain local forks and must be reviewed
 one at a time with `shadcn add --diff`.
+
+2026-06-16 verification: the SIAB platform monorepo exists, but this item was
+not complete. The workspace had no shared frontend/contract packages yet:
+`packages/` only contained `site-template`, `site-themes`, and tooling, while
+the generated-site projection/RtRoot contract was still duplicated between
+`packages/site-template/src/lib/types.ts`, `sites/ami-care/src/lib/types.ts`,
+and `sites/ami-care/src/lib/richText.ts`.
+
+First extraction slice added `packages/contracts` as
+`@siteinabox/contracts`, containing the shared RtRoot/rich-text node contract
+and public site projection types for page blocks, media references, analytics
+metadata, footer composition, navigation, and site settings. `site-template`
+now depends on the workspace package, and `ami-care` uses the same package via
+a local file dependency while preserving its existing `src/lib/types.ts` and
+`src/lib/richText.ts` import paths as compatibility re-exports. OBS-118 remained
+active until the remaining shared frontend boundaries were audited and the
+shared UI extraction was completed.
+
+Second extraction slice added `packages/ui` as `@siteinabox/ui`. Shared
+shadcn-style primitives, the shadcn/Tailwind token CSS, `cn`, CSP-safe style
+helpers, and the mobile breakpoint hook now live in that package. The CMS keeps
+`src/components/ui/*`, `src/lib/utils.ts`, `src/components/csp-*.tsx`, and
+`src/hooks/use-mobile.ts` as compatibility re-export shims, so existing app
+imports keep working while the package is the source of truth. CMS-specific
+layouts, route components, editor/canvas workflows, forms, analytics, and other
+composites remain in `apps/cms`, which is the intended ownership boundary.
+
+#### Resolution — 2026-06-16
+Closed by the SIAB monorepo extraction. Shared data contracts now live in
+`packages/contracts`, and shared primitives/tokens/low-level UI helpers now live
+in `packages/ui`. CMS-specific layouts, editor/canvas workflows, forms,
+analytics, and other composites stay in `apps/cms`. Site generation/rendering
+behavior stays in `packages/site-template`, which is the canonical source of
+truth for generated sites; tenant sites remain snapshots of that template.
 
 ---
 

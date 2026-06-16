@@ -8,8 +8,11 @@
     "cms:typecheck": "pnpm --dir apps/cms --ignore-workspace typecheck",
     "cms:test": "pnpm --dir apps/cms --ignore-workspace test",
     "cms:build": "pnpm --dir apps/cms --ignore-workspace build",
+    "contracts:typecheck": "pnpm --dir packages/contracts typecheck",
+    "frontend:verify": "pnpm packages:typecheck && pnpm --dir apps/cms lint:ui-boundary && pnpm --dir apps/cms lint:ui-composition && pnpm --dir apps/cms lint:no-css",
     "intake:build": "npm --prefix apps/intake run build",
     "intake:test": "npm --prefix apps/intake run test",
+    "packages:typecheck": "pnpm contracts:typecheck && pnpm ui:typecheck",
     "site:build": "pnpm --dir apps/site --ignore-workspace build",
     "site:test": "pnpm --dir apps/site --ignore-workspace test",
     "tenant:amicare:build": "pnpm --dir sites/ami-care --ignore-workspace build",
@@ -17,6 +20,7 @@
     "tenant:amblast:build": "pnpm --dir sites/amblast --ignore-workspace build",
     "template:build": "pnpm --dir packages/site-template --ignore-workspace build",
     "template:test": "pnpm --dir packages/site-template --ignore-workspace test",
+    "ui:typecheck": "pnpm --dir packages/ui typecheck",
     "orchestrator:test": "npm --prefix packages/tools/siab-orchestrator/scripts test"
   }
 }

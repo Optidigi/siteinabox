@@ -1,10 +1,10 @@
 "use client"
 import { useEffect, useState, type ReactNode } from "react"
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { useSidebar } from "@/components/ui/sidebar"
-import { useCspStyleRule } from "@/components/csp-style"
+import { Button } from "@siteinabox/ui/components/button"
+import { cn } from "@siteinabox/ui/lib/utils"
+import { useSidebar } from "@siteinabox/ui/components/sidebar"
+import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { useTranslations } from "next-intl"
 import {
   StatusBadge,

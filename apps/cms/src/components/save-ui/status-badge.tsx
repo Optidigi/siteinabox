@@ -1,5 +1,5 @@
 import type { HTMLAttributes } from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 export type StatusBadgeTone = "success" | "destructive" | "neutral"
 

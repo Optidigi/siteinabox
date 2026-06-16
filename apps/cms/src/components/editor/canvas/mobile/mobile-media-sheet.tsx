@@ -1,8 +1,8 @@
 "use client"
 import * as React from "react"
 import { X } from "lucide-react"
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
-import { Button } from "@/components/ui/button"
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@siteinabox/ui/components/sheet"
+import { Button } from "@siteinabox/ui/components/button"
 import {
   useMobileMediaSheet,
   type MediaItem,

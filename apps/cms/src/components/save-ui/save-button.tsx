@@ -1,7 +1,7 @@
 "use client"
-import { Button } from "@/components/ui/button"
+import { Button } from "@siteinabox/ui/components/button"
 import { Save, AlertCircle, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 export type SaveButtonProps = {

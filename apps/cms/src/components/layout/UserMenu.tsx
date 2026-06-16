@@ -1,11 +1,11 @@
 "use client"
 import { useTranslations } from "next-intl"
 import { useTransition } from "react"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@siteinabox/ui/components/avatar"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu"
+} from "@siteinabox/ui/components/dropdown-menu"
 import { LogOut, Key, User } from "lucide-react"
 import { ThemeSwitcher } from "@/components/theme-toggle"
 import { LanguageMenu } from "@/components/layout/LanguageMenu"

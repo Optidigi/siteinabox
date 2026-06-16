@@ -1,8 +1,8 @@
 "use client"
 import * as React from "react"
 import { useForm, FormProvider } from "react-hook-form"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@siteinabox/ui/components/dialog"
+import { Button } from "@siteinabox/ui/components/button"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import type { RtManifest } from "@/lib/richText/manifest"
 

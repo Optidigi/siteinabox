@@ -14,7 +14,8 @@ const nextConfig = {
   // sibling lockfile and emit "We detected multiple lockfiles" in dev /
   // a giant unrelated trace at build time.
   outputFileTracingRoot: __dirname,
-  reactCompiler: false
+  reactCompiler: false,
+  transpilePackages: ["@siteinabox/ui", "@siteinabox/contracts"]
 }
 
 export default withPayload(withNextIntl(nextConfig))
