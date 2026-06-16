@@ -32,9 +32,9 @@ The monorepo publishes new platform-owned images:
 - `apps/cms` publishes `ghcr.io/optidigi/siab-platform-cms:latest`.
 - `apps/site` publishes `ghcr.io/optidigi/siab-platform-site:latest`.
 - Generated/client site source lives under `sites/`. Current tenant site
-  deployments keep their existing image names:
-  `ghcr.io/optidigi/site-amicare-zorg:latest` and
-  `ghcr.io/optidigi/site-amblast:latest`.
+  deployments publish monorepo-owned images:
+  `ghcr.io/optidigi/siab-platform-site-ami-care:latest` and
+  `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
 - VPS stack files live under `/srv/saas/infra/stacks/siab-platform/`, while
   tenant data paths stay unchanged under `/srv/data/saas/siab-payload/`.
 - Traefik remains the edge proxy; routing stays compose-label based.

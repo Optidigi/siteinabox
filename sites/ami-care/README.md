@@ -15,19 +15,20 @@ pnpm og           # regenerate public/og.png
 
 ## Deploy
 
-Push to `main`. GitHub Actions (`.github/workflows/build.yml`) builds
+Push to `main`. The root GitHub Actions workflow
+`.github/workflows/build-tenant-amicare-image.yml` builds
 the Docker image and pushes it to
-`ghcr.io/optidigi/site-amicare-zorg:latest`.
+`ghcr.io/optidigi/siab-platform-site-ami-care:latest`.
 
-On the VPS (`/srv/prod/infra/stacks/ami-care/`):
+On the VPS (`/srv/saas/infra/stacks/siab-platform/tenants/ami-care/`):
 
 ```bash
 cd /srv/prod/orchestrators/siab-payload-orchestrator
 scripts/sync-cms-artifacts.sh \
-  --image ghcr.io/optidigi/site-amicare-zorg:latest \
+  --image ghcr.io/optidigi/siab-platform-site-ami-care:latest \
   --tenant-dir /srv/data/saas/siab-payload/tenants/7
 
-cd /srv/prod/infra/stacks/ami-care
+cd /srv/saas/infra/stacks/siab-platform/tenants/ami-care
 docker compose pull
 docker compose up -d
 ```

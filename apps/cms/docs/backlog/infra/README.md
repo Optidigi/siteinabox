@@ -1241,6 +1241,26 @@ Verification after cleanup:
   `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
   `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
 
+#### Follow-up finalization — 2026-06-16
+The VPS stack namespace was tightened so all deployable SIAB apps live under
+`/srv/saas/infra/stacks/siab-platform/apps/`:
+
+- Moved CMS stack files from
+  `/srv/saas/infra/stacks/siab-platform/cms` to
+  `/srv/saas/infra/stacks/siab-platform/apps/cms`.
+- Kept the existing Compose project name `siab-payload`, container names,
+  Traefik labels, Postgres volume `siab-payload_postgres-data`, and tenant data
+  paths unchanged.
+- Added monorepo-owned tenant site image workflows:
+  `ghcr.io/optidigi/siab-platform-site-ami-care:latest` and
+  `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
+- Removed the imported per-site `.github/workflows/` files because GitHub only
+  runs workflows from the repository root.
+
+After the tenant image workflows publish successfully and the VPS tenant stacks
+are switched to those two image names, the old tenant site repositories are no
+longer needed for builds or deployment.
+
 #### Acceptance criteria
 1. The monorepo is the source of truth for CMS, public site, intake,
    site-template, generated site source, shared packages, orchestration tools,

@@ -2,10 +2,10 @@
 
 Generated/client site repositories live here.
 
-Current production tenant site images remain unchanged:
+Current production tenant site images are monorepo-owned:
 
-- `sites/ami-care` deploys as `ghcr.io/optidigi/site-amicare-zorg:latest`.
-- `sites/amblast` deploys as `ghcr.io/optidigi/site-amblast:latest`.
+- `sites/ami-care` deploys as `ghcr.io/optidigi/siab-platform-site-ami-care:latest`.
+- `sites/amblast` deploys as `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
 
 VPS stack files now live under `/srv/saas/infra/stacks/siab-platform/tenants/`.
 Tenant data paths remain unchanged under `/srv/data/saas/siab-payload/`.

@@ -41,8 +41,8 @@ preflight/confirmation gate says to do so.
   - `ghcr.io/optidigi/siab-platform-site`
 - Tenant/generated site images remain stable unless the operator explicitly
   approves a deploy contract change:
-  - `ghcr.io/optidigi/site-amicare-zorg`
-  - `ghcr.io/optidigi/site-amblast`
+  - `ghcr.io/optidigi/siab-platform-site-ami-care`
+  - `ghcr.io/optidigi/siab-platform-site-amblast`
 - VPS stack files are organized under
   `/srv/saas/infra/stacks/siab-platform/`.
 - Keep Payload tenant data paths stable:

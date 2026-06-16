@@ -25,8 +25,8 @@ Copy `.env.example` → `.env` and fill the values that apply.
 ## Deploy
 
 `Dockerfile` builds the static output and serves it via nginx. The
-`.github/workflows/publish.yml` pipeline pushes
-`ghcr.io/optidigi/site-amblast:latest` (and `sha-<short>`) on every push to
+root `.github/workflows/build-tenant-amblast-image.yml` pipeline pushes
+`ghcr.io/optidigi/siab-platform-site-amblast:latest` (and `sha-<short>`) on every push to
 `main`. `nginx.conf` configures gzip, cache headers, security headers, and
 301 redirects from the legacy WordPress slugs.
 

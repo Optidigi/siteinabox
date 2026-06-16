@@ -6,7 +6,7 @@
 
 services:
   site:
-    image: ghcr.io/optidigi/site-amicare-zorg:latest
+    image: ghcr.io/optidigi/siab-platform-site-ami-care:latest
     restart: unless-stopped
     ports:
       - "4321:4321"
