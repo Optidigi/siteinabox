@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `siab-site-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-109). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-121 — next OBS = OBS-122).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-109). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-122 — next OBS = OBS-123).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -3609,6 +3609,47 @@ Depends on OBS-20 — the "click a nav link → go to nav page" handoff has nowh
 ---
 
 ## Multi-repo Items
+
+### OBS-122 — CMS-ify `sites/amblast` generated site snapshot
+
+**Status:** Active · **Layer:** multi-repo (`apps/cms` + `packages/site-template` + `sites/amblast` + orchestrator)
+**Discovered in:** Session 2026-06-16, post-SIAB package split follow-up
+
+#### Description
+`sites/amblast` is a generated site snapshot, but it has not been CMS-ified
+yet. It currently builds as a static generated site and does not consume the
+shared CMS/generated-site contracts in `@siteinabox/contracts`.
+
+Do not opportunistically migrate `amblast` to CMS contracts just because
+`ami-care` and `packages/site-template` now share them. The right moment is the
+explicit CMS-ification workflow, where template drift, tenant-specific content,
+manifest shape, renderers, CMS CSS, analytics, image/deploy contract, and
+Payload seeding can be reviewed as one tenant conversion.
+
+#### Suggested fix shape
+1. Run the `/add-cms amblast` workflow preflight and confirm the current
+   tenant/deploy contract before touching the snapshot.
+2. Compare `sites/amblast` against `packages/site-template` and decide which
+   template changes should be adopted versus which tenant-specific code should
+   remain frozen.
+3. Add the generated-site CMS contract surface only when needed:
+   `@siteinabox/contracts`, local compatibility re-exports if useful, RtRoot
+   renderers, `siteManifest.json`, CMS CSS output, analytics/runtime hooks, and
+   Payload seeding inputs.
+4. Keep tenant-specific content, theme, route shape, public image name, and
+   deploy contract stable unless the operator explicitly approves a deploy
+   contract change.
+5. Validate with the template checks, `sites/amblast` build/check commands,
+   CMS projection/seed smoke coverage, and the responsive canvas contract before
+   sign-off.
+
+#### Current state — 2026-06-16
+`sites/amblast` was deliberately left untouched during OBS-118 package
+extraction. It has no RtRoot/site projection type surface today, so adding
+`@siteinabox/contracts` now would be premature and would risk creating a
+half-CMS snapshot outside the real conversion workflow.
+
+---
 
 ### OBS-88 — Manifest-driven footer composition with columns and footer sub-blocks
 
