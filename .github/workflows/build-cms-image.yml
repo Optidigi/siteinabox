@@ -46,7 +46,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/optidigi/siab-platform-cms
+          images: ghcr.io/optidigi/siteinabox-cms
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
@@ -60,14 +60,14 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: |
-            type=registry,ref=ghcr.io/optidigi/siab-platform-cms:buildcache
+            type=registry,ref=ghcr.io/optidigi/siteinabox-cms:buildcache
             type=gha
-          cache-to: type=registry,ref=ghcr.io/optidigi/siab-platform-cms:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
+          cache-to: type=registry,ref=ghcr.io/optidigi/siteinabox-cms:buildcache,mode=max,image-manifest=true,oci-mediatypes=true
           platforms: linux/amd64
 
       - name: Smoke-start pushed image
         env:
-          IMAGE_REF: ghcr.io/optidigi/siab-platform-cms:sha-${{ github.sha }}
+          IMAGE_REF: ghcr.io/optidigi/siteinabox-cms:sha-${{ github.sha }}
           DATABASE_URI: postgres://payload:payload@host.docker.internal:5432/payload
           PAYLOAD_SECRET: ci-smoke-start-secret-ci-smoke-start-secret
           DATA_DIR: /tmp/siab-data

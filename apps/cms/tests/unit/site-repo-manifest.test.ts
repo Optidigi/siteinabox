@@ -26,18 +26,18 @@ describe("siteRepo manifest fetch", () => {
 
   it("parses owner/repo and GitHub URL repo formats", () => {
     expect(parseGitHubRepo("optidigi/site-client")).toEqual({ owner: "optidigi", repo: "site-client" })
-    expect(parseGitHubRepo("Optidigi/siab-platform:sites/ami-care")).toEqual({
+    expect(parseGitHubRepo("Optidigi/siteinabox:sites/ami-care")).toEqual({
       owner: "Optidigi",
-      repo: "siab-platform",
+      repo: "siteinabox",
       pathPrefix: "sites/ami-care",
     })
     expect(parseGitHubRepo("https://github.com/optidigi/site-client.git")).toEqual({
       owner: "optidigi",
       repo: "site-client",
     })
-    expect(parseGitHubRepo("https://github.com/Optidigi/siab-platform/tree/main/sites/ami-care")).toEqual({
+    expect(parseGitHubRepo("https://github.com/Optidigi/siteinabox/tree/main/sites/ami-care")).toEqual({
       owner: "Optidigi",
-      repo: "siab-platform",
+      repo: "siteinabox",
       ref: "main",
       pathPrefix: "sites/ami-care",
     })
@@ -73,16 +73,16 @@ describe("siteRepo manifest fetch", () => {
     const fetchMock = vi.fn().mockResolvedValue(githubFile(manifest))
     vi.stubGlobal("fetch", fetchMock)
 
-    const result = await fetchSiteManifestFromRepo("https://github.com/Optidigi/siab-platform/tree/main/sites/ami-care")
+    const result = await fetchSiteManifestFromRepo("https://github.com/Optidigi/siteinabox/tree/main/sites/ami-care")
 
     expect(result).toEqual({
       ok: true,
-      repo: "Optidigi/siab-platform",
+      repo: "Optidigi/siteinabox",
       path: "sites/ami-care/siteManifest.json",
       manifest,
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.github.com/repos/Optidigi/siab-platform/contents/sites/ami-care/siteManifest.json?ref=main",
+      "https://api.github.com/repos/Optidigi/siteinabox/contents/sites/ami-care/siteManifest.json?ref=main",
       expect.objectContaining({ cache: "no-store" }),
     )
   })

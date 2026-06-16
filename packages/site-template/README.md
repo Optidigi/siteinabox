@@ -18,7 +18,7 @@ monorepo-owned tenant image.
 - **Dockerfile**: multi-stage `node:lts-alpine` → `nginx:alpine`, ~30MB final image
 - **nginx.conf**: gzip, asset/HTML cache strategy, security headers (CSP, X-Frame-Options, etc.)
 - **Root tenant image workflow**: push to `main` →
-  `ghcr.io/optidigi/siab-platform-site-<slug>:latest` + `:sha-<short>`
+  `ghcr.io/optidigi/siteinabox-site-<slug>:latest` + `:sha-<short>`
 
 ## Local development
 

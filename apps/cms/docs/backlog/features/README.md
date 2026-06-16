@@ -697,8 +697,8 @@ The sync is review-first: it marks the form dirty and does not PATCH the tenant 
 
 2026-06-16 monorepo follow-up: the source parser now supports both legacy
 repo-root sources (`owner/repo`) and monorepo site package sources such as
-`Optidigi/siab-platform:sites/<slug>` or
-`https://github.com/Optidigi/siab-platform/tree/main/sites/<slug>`. The sync
+`Optidigi/siteinabox:sites/<slug>` or
+`https://github.com/Optidigi/siteinabox/tree/main/sites/<slug>`. The sync
 still fetches `siteManifest.json` first and falls back to
 `siteManifest.example.json`, but now under the configured package path.
 

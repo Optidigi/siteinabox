@@ -1075,7 +1075,7 @@ Create `docker-compose.cms.yml.example` at the site package root:
 
 services:
   site:
-    image: ghcr.io/optidigi/siab-platform-site-<slug>:latest
+    image: ghcr.io/optidigi/siteinabox-site-<slug>:latest
     restart: unless-stopped
     ports:
       - "4321:4321"

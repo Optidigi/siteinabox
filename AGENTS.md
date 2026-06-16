@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Repository operating rules for Codex and other coding agents in `siab-platform`.
+Repository operating rules for Codex and other coding agents in `siteinabox`.
 
 ## What This Repo Is
 
-`siab-platform` is the SIAB monorepo shell. It keeps deployable apps isolated
+`siteinabox` is the SIAB monorepo shell. It keeps deployable apps isolated
 while collecting shared generated-site contracts, themes, and orchestration
 tools in one workspace.
 
@@ -39,14 +39,14 @@ preflight/confirmation gate says to do so.
 ## Deploy Invariants
 
 - Platform-owned app images are:
-  - `ghcr.io/optidigi/siab-platform-cms`
-  - `ghcr.io/optidigi/siab-platform-site`
+  - `ghcr.io/optidigi/siteinabox-cms`
+  - `ghcr.io/optidigi/siteinabox-site`
 - Tenant/generated site images remain stable unless the operator explicitly
   approves a deploy contract change:
-  - `ghcr.io/optidigi/siab-platform-site-ami-care`
-  - `ghcr.io/optidigi/siab-platform-site-amblast`
+  - `ghcr.io/optidigi/siteinabox-site-ami-care`
+  - `ghcr.io/optidigi/siteinabox-site-amblast`
 - VPS stack files are organized under
-  `/srv/saas/infra/stacks/siab-platform/`.
+  `/srv/saas/infra/stacks/siteinabox/`.
 - Keep Payload tenant data paths stable:
   `/srv/data/saas/siab-payload/tenants/<tenantId>`.
 - Traefik is the production edge proxy. Public routing belongs in compose

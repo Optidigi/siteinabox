@@ -52,7 +52,7 @@ this orchestrator works against the monorepo site package
                 │
                 │ operator approves sign-off gate
                 ▼
-        git push origin main → root GHA workflow → ghcr.io/optidigi/siab-platform-site-<slug>:latest
+        git push origin main → root GHA workflow → ghcr.io/optidigi/siteinabox-site-<slug>:latest
                 │
                 │ operator updates VPS compose to add the volume mount,
                 │ env vars, network, and Traefik labels, then
@@ -97,7 +97,7 @@ See full contracts in `workflows/cms/agents/*.md`.
 
 - Org: `optidigi`. The generated site already exists under `sites/<slug>` in
   this monorepo from the prior `/new-site` run.
-- Image registry: `ghcr.io/optidigi/siab-platform-site-<slug>` — same tenant
+- Image registry: `ghcr.io/optidigi/siteinabox-site-<slug>` — same tenant
   package as before. The new image (with SSR runtime) replaces `:latest` after
   sign-off push triggers GHA.
 - Payload instance: at the URL in `.env`'s `PAYLOAD_API_URL` (operator-configured, typically `https://admin.<your-domain>`, e.g. `https://admin.siteinabox.nl`).

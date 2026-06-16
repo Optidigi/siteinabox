@@ -21,12 +21,12 @@ change the orchestration contract.
 
 - Generated site source lives in the monorepo under `sites/<slug>`.
 - Tenant site images are monorepo-owned and named
-  `ghcr.io/optidigi/siab-platform-site-<slug>:latest`.
-- The platform CMS image is `ghcr.io/optidigi/siab-platform-cms:latest`.
+  `ghcr.io/optidigi/siteinabox-site-<slug>:latest`.
+- The platform CMS image is `ghcr.io/optidigi/siteinabox-cms:latest`.
 - The public Site in a Box app image is
-  `ghcr.io/optidigi/siab-platform-site:latest`.
+  `ghcr.io/optidigi/siteinabox-site:latest`.
 - Production stack files live under
-  `/srv/saas/infra/stacks/siab-platform/`.
+  `/srv/saas/infra/stacks/siteinabox/`.
 - Tenant Payload data remains under
   `/srv/data/saas/siab-payload/tenants/<tenantId>`.
 

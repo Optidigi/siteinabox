@@ -663,7 +663,7 @@ from the VPS. Traefik is the only edge process on ports `80/443`.
 **Discovered in:** Session 2026-06-15 (SIAB platform monorepo planning)
 
 #### Purpose
-Consolidate the SIAB codebases into a single `siab-platform` monorepo without
+Consolidate the SIAB codebases into a single `siteinabox` monorepo without
 turning `siab-payload` into the owner of every surface. The monorepo should make
 ownership explicit, keep deployable apps isolated, and prepare the current
 AI/runbook orchestrators to become a programmatic platform service later.
@@ -672,7 +672,7 @@ AI/runbook orchestrators to become a programmatic platform service later.
 The target platform layout is:
 
 ```txt
-siab-platform/
+siteinabox/
   apps/
     cms/              # current siab-payload
     site/             # current site-siteinabox public marketing/funnel entry
@@ -931,7 +931,7 @@ Fresh end-shape confirmation before moving files:
 Expected repository end shape for the first monorepo migration:
 
 ```txt
-siab-platform/
+siteinabox/
   AGENTS.md                    # root router for /new-site, /add-cms, app work
   README.md
   package.json                 # workspace root; keep package-manager explicit
@@ -1004,7 +1004,7 @@ Expected VPS/deploy end shape after the first migration:
 Preferred production stack namespace once the monorepo deploy shape is stable:
 
 ```txt
-/srv/saas/infra/stacks/siab-platform/
+/srv/saas/infra/stacks/siteinabox/
   cms/                         # siab-payload compose; data path unchanged
   apps/
     site/                      # public siteinabox.nl app stack
@@ -1026,11 +1026,11 @@ Future deploy changes, after the first migration is stable:
   stack, likely on `start.siteinabox.nl` unless fresh route research chooses
   another host.
 - Keep infra stack definitions out of this monorepo for now. The current
-  server/ops infra source remains external to `siab-platform`; revisit only if
+  server/ops infra source remains external to `siteinabox`; revisit only if
   the platform repo becomes the deliberate deploy-stack source of truth.
 
 #### TL;DR implementation plan
-1. Create the `siab-platform` monorepo shell and workspace tooling without
+1. Create the `siteinabox` monorepo shell and workspace tooling without
    changing production behavior.
 2. Move code with minimal path churn:
    `siab-payload -> apps/cms`, `site-siteinabox -> apps/site`,
@@ -1047,7 +1047,7 @@ Future deploy changes, after the first migration is stable:
    template, generated sites, and tools share schema language.
 7. Extract `site-runtime`, `site-blocks`, and `site-themes` only after contracts
    are stable and duplication is proven.
-8. Keep deploy-stack source-of-truth outside `siab-platform` for now; if this
+8. Keep deploy-stack source-of-truth outside `siteinabox` for now; if this
    changes later, preserve the current one-container-per-app/site deployment
    model and stable tenant data paths.
 9. Later, replace the AI/runbook orchestrator packages with a programmatic
@@ -1055,8 +1055,8 @@ Future deploy changes, after the first migration is stable:
    monitoring registration, and deploy/redeploy flows.
 
 #### Update — 2026-06-16 (monorepo implementation checkpoint)
-Created the first local `siab-platform` monorepo shell at
-`/home/shimmy/Desktop/env/siab/siab-platform`:
+Created the first local `siteinabox` monorepo shell at
+`/home/shimmy/Desktop/env/siab/siteinabox`:
 
 - Imported `siab-payload` into `apps/cms`, `site-siteinabox` into `apps/site`,
   `siab-site-template` into `packages/site-template`, and `siab-site-themes`
@@ -1132,8 +1132,8 @@ new package names instead of changing existing package-level permissions.
 
 Updated monorepo image contract:
 
-- CMS: `ghcr.io/optidigi/siab-platform-cms:latest`
-- Public site: `ghcr.io/optidigi/siab-platform-site:latest`
+- CMS: `ghcr.io/optidigi/siteinabox-cms:latest`
+- Public site: `ghcr.io/optidigi/siteinabox-site:latest`
 
 The VPS should be updated to pull these new image names. Existing VPS stack
 paths, container names, domains, database volumes, and tenant data paths remain
@@ -1147,9 +1147,9 @@ Production VPS rollout completed over `ssh prod`:
   and
   `/srv/prod/infra/stacks/siteinabox/docker-compose.yml.bak-platform-image-20260616T165108Z`.
 - Updated CMS compose to pull
-  `ghcr.io/optidigi/siab-platform-cms:latest`.
+  `ghcr.io/optidigi/siteinabox-cms:latest`.
 - Updated public Site in a Box compose to pull
-  `ghcr.io/optidigi/siab-platform-site:latest`.
+  `ghcr.io/optidigi/siteinabox-site:latest`.
 - Pulled and recreated the `siab-payload` service. The container is healthy,
   its startup log reports no pending migrations, and
   `/api/health` inside the container returns `{"status":"ok","db":"connected","dataDir":"writable"}`.
@@ -1178,7 +1178,7 @@ Final consolidation pass completed the repo and server shape:
 - Reorganized the live VPS stack files under the platform namespace:
 
 ```txt
-/srv/saas/infra/stacks/siab-platform/
+/srv/saas/infra/stacks/siteinabox/
   cms/                         # siab-payload compose + .env
   apps/
     site/                      # public siteinabox.nl compose
@@ -1192,7 +1192,7 @@ Final consolidation pass completed the repo and server shape:
   Docker project labels, container names, and `siab-payload_postgres-data`
   volume remain stable after running from the new directories.
 - Archived the old stack directories under
-  `/srv/saas/infra/stacks/siab-platform/_archive/obs119-20260616T170505Z`.
+  `/srv/saas/infra/stacks/siteinabox/_archive/obs119-20260616T170505Z`.
 - Kept tenant data paths unchanged, especially
   `/srv/data/saas/siab-payload/tenants/7`.
 - Updated copied VPS compose comments to refer to Traefik and the new stack
@@ -1204,8 +1204,8 @@ Validation:
 - `docker compose pull && docker compose up -d` passed from all four new stack
   paths.
 - Running containers still use the intended projects/images:
-  `siab-payload` on `ghcr.io/optidigi/siab-platform-cms:latest`,
-  `siteinabox` on `ghcr.io/optidigi/siab-platform-site:latest`,
+  `siab-payload` on `ghcr.io/optidigi/siteinabox-cms:latest`,
+  `siteinabox` on `ghcr.io/optidigi/siteinabox-site:latest`,
   `ami-care` on `ghcr.io/optidigi/site-amicare-zorg:latest`, and
   `amblast` on `ghcr.io/optidigi/site-amblast:latest`.
 - External smoke checks returned HTTP 200 for
@@ -1221,9 +1221,9 @@ reserved `apps/intake` and the matching server stack namespace.
 Post-consolidation cleanup removed the migration backup/archive artifacts from
 the live VPS stack tree:
 
-- Removed `/srv/saas/infra/stacks/siab-platform/_archive/`.
+- Removed `/srv/saas/infra/stacks/siteinabox/_archive/`.
 - Removed copied `*.bak*` compose files under
-  `/srv/saas/infra/stacks/siab-platform/`.
+  `/srv/saas/infra/stacks/siteinabox/`.
 - Removed unused local Docker images for the old platform app package names:
   `ghcr.io/optidigi/siab-payload:*` and
   `ghcr.io/optidigi/site-siteinabox:latest`.
@@ -1231,8 +1231,8 @@ the live VPS stack tree:
 Verification after cleanup:
 
 - Active compose files still point at
-  `ghcr.io/optidigi/siab-platform-cms:latest`,
-  `ghcr.io/optidigi/siab-platform-site:latest`,
+  `ghcr.io/optidigi/siteinabox-cms:latest`,
+  `ghcr.io/optidigi/siteinabox-site:latest`,
   `ghcr.io/optidigi/site-amicare-zorg:latest`, and
   `ghcr.io/optidigi/site-amblast:latest`.
 - No backup/archive files remain under the SIAB platform stack tree.
@@ -1243,28 +1243,28 @@ Verification after cleanup:
 
 #### Follow-up finalization — 2026-06-16
 The VPS stack namespace was tightened so all deployable SIAB apps live under
-`/srv/saas/infra/stacks/siab-platform/apps/`:
+`/srv/saas/infra/stacks/siteinabox/apps/`:
 
 - Moved CMS stack files from
-  `/srv/saas/infra/stacks/siab-platform/cms` to
-  `/srv/saas/infra/stacks/siab-platform/apps/cms`.
+  `/srv/saas/infra/stacks/siteinabox/cms` to
+  `/srv/saas/infra/stacks/siteinabox/apps/cms`.
 - Kept the existing Compose project name `siab-payload`, container names,
   Traefik labels, Postgres volume `siab-payload_postgres-data`, and tenant data
   paths unchanged.
 - Added monorepo-owned tenant site image workflows:
-  `ghcr.io/optidigi/siab-platform-site-ami-care:latest` and
-  `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
+  `ghcr.io/optidigi/siteinabox-site-ami-care:latest` and
+  `ghcr.io/optidigi/siteinabox-site-amblast:latest`.
 - Removed the imported per-site `.github/workflows/` files because GitHub only
   runs workflows from the repository root.
 - Published and smoke-started both tenant images from the monorepo, switched
   the VPS tenant stacks to those image names, pulled/recreated the tenant
   containers, and removed the old local tenant images from the VPS.
-- Pulled/recreated the CMS stack from `ghcr.io/optidigi/siab-platform-cms:latest`.
+- Pulled/recreated the CMS stack from `ghcr.io/optidigi/siteinabox-cms:latest`.
 - Confirmed live containers are healthy and now point at:
-  `ghcr.io/optidigi/siab-platform-cms:latest`,
-  `ghcr.io/optidigi/siab-platform-site:latest`,
-  `ghcr.io/optidigi/siab-platform-site-ami-care:latest`, and
-  `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
+  `ghcr.io/optidigi/siteinabox-cms:latest`,
+  `ghcr.io/optidigi/siteinabox-site:latest`,
+  `ghcr.io/optidigi/siteinabox-site-ami-care:latest`, and
+  `ghcr.io/optidigi/siteinabox-site-amblast:latest`.
 - External smoke checks returned HTTP 200 for
   `https://admin.siteinabox.nl/api/health`,
   `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,

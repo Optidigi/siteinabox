@@ -18,17 +18,17 @@ pnpm og           # regenerate public/og.png
 Push to `main`. The root GitHub Actions workflow
 `.github/workflows/build-tenant-amicare-image.yml` builds
 the Docker image and pushes it to
-`ghcr.io/optidigi/siab-platform-site-ami-care:latest`.
+`ghcr.io/optidigi/siteinabox-site-ami-care:latest`.
 
-On the VPS (`/srv/saas/infra/stacks/siab-platform/tenants/ami-care/`), from a
+On the VPS (`/srv/saas/infra/stacks/siteinabox/tenants/ami-care/`), from a
 checkout that contains the monorepo orchestrator tools:
 
 ```bash
 packages/tools/siab-orchestrator/scripts/sync-cms-artifacts.sh \
-  --image ghcr.io/optidigi/siab-platform-site-ami-care:latest \
+  --image ghcr.io/optidigi/siteinabox-site-ami-care:latest \
   --tenant-dir /srv/data/saas/siab-payload/tenants/7
 
-cd /srv/saas/infra/stacks/siab-platform/tenants/ami-care
+cd /srv/saas/infra/stacks/siteinabox/tenants/ami-care
 docker compose pull
 docker compose up -d
 ```

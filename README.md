@@ -1,4 +1,4 @@
-# siab-platform
+# siteinabox
 
 Monorepo shell for the SIAB platform.
 
@@ -29,13 +29,13 @@ sites/
 
 The monorepo publishes new platform-owned images:
 
-- `apps/cms` publishes `ghcr.io/optidigi/siab-platform-cms:latest`.
-- `apps/site` publishes `ghcr.io/optidigi/siab-platform-site:latest`.
+- `apps/cms` publishes `ghcr.io/optidigi/siteinabox-cms:latest`.
+- `apps/site` publishes `ghcr.io/optidigi/siteinabox-site:latest`.
 - Generated/client site source lives under `sites/`. Current tenant site
   deployments publish monorepo-owned images:
-  `ghcr.io/optidigi/siab-platform-site-ami-care:latest` and
-  `ghcr.io/optidigi/siab-platform-site-amblast:latest`.
-- VPS stack files live under `/srv/saas/infra/stacks/siab-platform/`, while
+  `ghcr.io/optidigi/siteinabox-site-ami-care:latest` and
+  `ghcr.io/optidigi/siteinabox-site-amblast:latest`.
+- VPS stack files live under `/srv/saas/infra/stacks/siteinabox/`, while
   tenant data paths stay unchanged under `/srv/data/saas/siab-payload/`.
 - Traefik remains the edge proxy; routing stays compose-label based.
 - `apps/intake` is present as a reserved app package. No intake service/image is

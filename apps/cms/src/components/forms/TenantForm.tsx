@@ -119,7 +119,7 @@ export function TenantForm() {
           </FormItem>
         )} />
         <FormField name="siteRepo" control={form.control} render={({ field }) => (
-          <FormItem><FormLabel>{t("siteRepoOptional")}</FormLabel><FormControl><Input placeholder="Optidigi/siab-platform:sites/clientasite" {...field} /></FormControl><FormMessage /></FormItem>
+          <FormItem><FormLabel>{t("siteRepoOptional")}</FormLabel><FormControl><Input placeholder="Optidigi/siteinabox:sites/clientasite" {...field} /></FormControl><FormMessage /></FormItem>
         )} />
         <Button type="submit" disabled={pending}>{pending ? t("creating") : t("create")}</Button>
       </form>

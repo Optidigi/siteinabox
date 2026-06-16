@@ -9,7 +9,7 @@ You are a focused subagent within the sitegen-cms workflow. You seed a Payload v
 ## Inputs (provided in your dispatch prompt)
 
 - **Absolute path to** the site package (e.g.
-  `/home/shimmy/Desktop/env/siab/siab-platform/sites/ami-care`). Bind as
+  `/home/shimmy/Desktop/env/siab/siteinabox/sites/ami-care`). Bind as
   `${SITE_REPO}` in your shell — the siteManifest seeding step (below) reads
   `${SITE_REPO}/siteManifest.json`.
 - **Tenant ID** (from Phase 3).

@@ -19,7 +19,7 @@ Before running anything in this document, the following must be true:
 - A DNS A record `admin.<your-domain>` (e.g. `admin.siteinabox.nl`) pointing at
   the VPS public IP. SSL issuance (Let's Encrypt via Traefik) needs this
   resolving before Step 6.
-- A GHCR account with read access to `ghcr.io/optidigi/siab-platform-cms` (a
+- A GHCR account with read access to `ghcr.io/optidigi/siteinabox-cms` (a
   Personal Access Token with `read:packages` is sufficient). Only required if
   the package is private.
 - A non-root deploy user on the host (referred to as `serveradmin` below) with
@@ -40,13 +40,13 @@ Two containers, one Compose project, two networks:
    │ siab-payload        │◀──▶│ siab-payload-postgres │
    │ image: ghcr.io/     │    │ image: postgres:18    │
    │   optidigi/         │    │   -alpine             │
-   │   siab-platform-cms │    │                       │
+   │   siteinabox-cms │    │                       │
    │ networks:           │    │ networks: internal    │
    │   proxy, internal   │    │                       │
    └─────────────────────┘    └───────────────────────┘
 ```
 
-- Compose stack lives at `/srv/saas/infra/stacks/siab-platform/apps/cms/`.
+- Compose stack lives at `/srv/saas/infra/stacks/siteinabox/apps/cms/`.
 - Per-tenant data is bind-mounted to `/srv/data/saas/siab-payload/` on the
   host and surfaces inside the app container at `/data-out`.
 - The Postgres volume is a named Docker volume (`postgres-data`).
@@ -56,8 +56,8 @@ Two containers, one Compose project, two networks:
 ## Step 1 — VPS directories (requires root)
 
 ```bash
-sudo mkdir -p /srv/saas/infra/stacks/siab-platform/apps/cms /srv/data/saas/siab-payload
-sudo chown -R serveradmin:serveradmin /srv/saas/infra/stacks/siab-platform/apps/cms /srv/data/saas/siab-payload
+sudo mkdir -p /srv/saas/infra/stacks/siteinabox/apps/cms /srv/data/saas/siab-payload
+sudo chown -R serveradmin:serveradmin /srv/saas/infra/stacks/siteinabox/apps/cms /srv/data/saas/siab-payload
 ```
 
 The data dir must end up writable by UID 1000 inside the container — see
@@ -69,10 +69,10 @@ Copy the repo's `docker-compose.yml` to the stack dir as `compose.yml`:
 
 ```bash
 # From a workstation with the repo cloned, or via curl from a tagged release:
-scp docker-compose.yml serveradmin@<vps>:/srv/saas/infra/stacks/siab-platform/apps/cms/compose.yml
+scp docker-compose.yml serveradmin@<vps>:/srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml
 ```
 
-Then write `/srv/saas/infra/stacks/siab-platform/apps/cms/.env` with the following
+Then write `/srv/saas/infra/stacks/siteinabox/apps/cms/.env` with the following
 template. Replace placeholder values; generate the secrets with `openssl`.
 
 ```
@@ -104,7 +104,7 @@ preview or non-tenant admin hosts.
 Lock the file down:
 
 ```bash
-chmod 600 /srv/saas/infra/stacks/siab-platform/apps/cms/.env
+chmod 600 /srv/saas/infra/stacks/siteinabox/apps/cms/.env
 ```
 
 **DO NOT wrap values in quotes.** Compose's dotenv parser strips them, but raw
@@ -116,16 +116,16 @@ unquoted, or strip quotes when reading (the helper in Step 5 does both).
 ## Step 3 — Login to GHCR (if image is private) and pull
 
 ```bash
-# Skip if ghcr.io/optidigi/siab-platform-cms is public.
+# Skip if ghcr.io/optidigi/siteinabox-cms is public.
 echo "<github-pat>" | docker login ghcr.io -u <github-user> --password-stdin
 
-docker compose -f /srv/saas/infra/stacks/siab-platform/apps/cms/compose.yml pull
+docker compose -f /srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml pull
 ```
 
 ## Step 4 — Bring up the stack
 
 ```bash
-cd /srv/saas/infra/stacks/siab-platform/apps/cms
+cd /srv/saas/infra/stacks/siteinabox/apps/cms
 docker compose up -d
 docker compose ps
 ```
@@ -380,7 +380,7 @@ Postgres URI silently fails to authenticate.
 
 ```bash
 read_env() {
-  grep "^$1=" /srv/saas/infra/stacks/siab-platform/apps/cms/.env \
+  grep "^$1=" /srv/saas/infra/stacks/siteinabox/apps/cms/.env \
     | cut -d= -f2- \
     | sed -e "s/^['\"]//;s/['\"]\$//"
 }
@@ -409,7 +409,7 @@ runs an in-process cron worker.
 Tail the Payload container logs and grep for `purge-stale-form-submissions`:
 
 ```sh
-docker compose -f /srv/saas/infra/stacks/siab-platform/apps/cms/compose.yml logs -f siab-payload | grep purge-stale-form-submissions
+docker compose -f /srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml logs -f siab-payload | grep purge-stale-form-submissions
 ```
 
 Expected line on each daily run:

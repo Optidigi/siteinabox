@@ -3,7 +3,7 @@
 # Payload tenant data directory.
 #
 # Intended deployment order:
-#   1. GitHub Actions publishes ghcr.io/optidigi/siab-platform-site-<slug>:latest.
+#   1. GitHub Actions publishes ghcr.io/optidigi/siteinabox-site-<slug>:latest.
 #   2. Run this script on the Docker host that can write the tenant data dir.
 #   3. Start/restart the site container with the tenant data dir mounted :ro.
 
@@ -20,7 +20,7 @@ usage: scripts/sync-cms-artifacts.sh --image <image> --tenant-dir <path> [--engi
 
 Examples:
   scripts/sync-cms-artifacts.sh \
-    --image ghcr.io/optidigi/siab-platform-site-ami-care:latest \
+    --image ghcr.io/optidigi/siteinabox-site-ami-care:latest \
     --tenant-dir /srv/data/saas/siab-payload/tenants/7
 
   CONTAINER_ENGINE=podman scripts/sync-cms-artifacts.sh --image ... --tenant-dir ...

@@ -1,10 +1,10 @@
 # Production compose for siab-payload.
-# Deploy path on VPS: /srv/saas/infra/stacks/siab-platform/apps/cms/compose.yml
+# Deploy path on VPS: /srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml
 # Pulls image from ghcr.io. Postgres lives alongside on the internal network.
 # Reverse proxying handled by the shared Traefik edge on the external proxy network.
 services:
   siab-payload:
-    image: ghcr.io/optidigi/siab-platform-cms:latest
+    image: ghcr.io/optidigi/siteinabox-cms:latest
     container_name: siab-payload
     restart: unless-stopped
     environment:

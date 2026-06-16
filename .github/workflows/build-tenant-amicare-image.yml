@@ -14,7 +14,7 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: optidigi/siab-platform-site-ami-care
+  IMAGE_NAME: optidigi/siteinabox-site-ami-care
 
 jobs:
   build-and-push:

@@ -15,7 +15,7 @@ container:
 
 ```bash
 scripts/sync-cms-artifacts.sh \
-  --image ghcr.io/optidigi/siab-platform-site-<slug>:latest \
+  --image ghcr.io/optidigi/siteinabox-site-<slug>:latest \
   --tenant-dir /srv/data/saas/siab-payload/tenants/<tenantId>
 ```
 

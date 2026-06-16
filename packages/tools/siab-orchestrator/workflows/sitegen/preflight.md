@@ -23,7 +23,7 @@ to ~5-page sites. Speed matters — quote → live should be hours not weeks.
 
 Each engagement produces one generated site under `sites/<slug>` in the
 monorepo, plus a monorepo-owned tenant Docker image named
-`ghcr.io/optidigi/siab-platform-site-<slug>:latest`. The user runs the
+`ghcr.io/optidigi/siteinabox-site-<slug>:latest`. The user runs the
 operational side (VPS compose, Traefik route labels, DNS, TLS); your scope ends
 at "image published to ghcr.io and user confirmed deploy".
 
@@ -38,7 +38,7 @@ packages/site-themes (theme used)   ─┘          │
                               GitHub Actions tenant image workflow
                                                  │
                                                  ↓
-                              ghcr.io/optidigi/siab-platform-site-<slug>:latest
+                              ghcr.io/optidigi/siteinabox-site-<slug>:latest
                                                  │
                                                  ↓  (out of your scope)
                               VPS docker compose pull & up
@@ -90,7 +90,7 @@ See full contracts in `workflows/sitegen/agents/*.md`.
 ## Repo locations & permissions
 
 - Org: `optidigi`. Source lives in the private/public state of the monorepo.
-- Image registry: `ghcr.io/optidigi/siab-platform-site-<slug>` with tags
+- Image registry: `ghcr.io/optidigi/siteinabox-site-<slug>` with tags
   `:latest` and `:sha-<short>`. Auth on push is via `GITHUB_TOKEN` from GHA —
   no secrets to manage.
 - VPS-side `docker compose pull && up -d` is server-side. Don't SSH; you can

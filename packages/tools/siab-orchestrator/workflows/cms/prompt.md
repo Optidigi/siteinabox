@@ -328,7 +328,7 @@ separate proxy host.
 
   services:
     site-<slug>:
-      image: ghcr.io/optidigi/siab-platform-site-<slug>:latest
+      image: ghcr.io/optidigi/siteinabox-site-<slug>:latest
       restart: unless-stopped
       networks:
         - proxy
@@ -357,7 +357,7 @@ site container is restarted:
 
 ```bash
 scripts/sync-cms-artifacts.sh \
-  --image ghcr.io/optidigi/siab-platform-site-<slug>:latest \
+  --image ghcr.io/optidigi/siteinabox-site-<slug>:latest \
   --tenant-dir <vps-data-path-from-intake>
 ```
 
@@ -406,7 +406,7 @@ If GHA fails: tail logs, diagnose. Code issue → fix and push again. Infra issu
 Confirm the new image landed:
 
 ```bash
-gh api "/orgs/optidigi/packages/container/siab-platform-site-<slug>/versions" | jq -r '.[0:3] | .[] | "\(.created_at) \(.metadata.container.tags[]?)"'
+gh api "/orgs/optidigi/packages/container/siteinabox-site-<slug>/versions" | jq -r '.[0:3] | .[] | "\(.created_at) \(.metadata.container.tags[]?)"'
 ```
 
 Expected: a recent `latest` tag (and a `sha-<short>` tag matching the new HEAD commit).
@@ -450,7 +450,7 @@ When the round-trip works, confirm to the operator:
 Done.
 
 CMS-ified site: sites/<slug>
-Image:          ghcr.io/optidigi/siab-platform-site-<slug>:latest (new SSR runtime)
+Image:          ghcr.io/optidigi/siteinabox-site-<slug>:latest (new SSR runtime)
 Tenant:         <tenantId> on ${PAYLOAD_API_URL}
 Editor:         admin@optidigi.nl (update to client email when ready to hand off)
 Source:         sites/<slug> in the monorepo

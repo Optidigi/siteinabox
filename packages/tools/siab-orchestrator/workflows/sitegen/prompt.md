@@ -15,7 +15,7 @@ or "skip" per field. After all sections, summarize back what you captured.
 
 ### Identity
 - Site **slug** (used for `sites/<slug>` and image package
-  `siab-platform-site-<slug>`; lowercase, hyphenless preferred — `amicare`,
+  `siteinabox-site-<slug>`; lowercase, hyphenless preferred — `amicare`,
   not `ami-care`)
 - **Primary domain** (e.g. `amicare.nl`)
 - Other domains / **aliases** (for canonical / redirect notes)
@@ -270,7 +270,7 @@ From the monorepo root:
 # Ensure a root tenant image workflow exists before committing. Use the existing
 # tenant workflows as the template, with:
 # - context: sites/<slug>
-# - image: ghcr.io/optidigi/siab-platform-site-<slug>
+# - image: ghcr.io/optidigi/siteinabox-site-<slug>
 # - SITE_URL set to the primary domain
 test -f ".github/workflows/build-tenant-<slug>-image.yml" || {
   echo "FATAL: add .github/workflows/build-tenant-<slug>-image.yml before publishing"
@@ -293,18 +293,18 @@ gh run watch "$RUN_ID" --exit-status
 ```
 
 After the workflow finishes:
-- Confirm the image landed: `gh api /orgs/optidigi/packages/container/siab-platform-site-<slug>/versions | head -50`
+- Confirm the image landed: `gh api /orgs/optidigi/packages/container/siteinabox-site-<slug>/versions | head -50`
   (or check https://github.com/orgs/optidigi/packages).
 - Tell the user the image path:
-  `ghcr.io/optidigi/siab-platform-site-<slug>:latest`.
+  `ghcr.io/optidigi/siteinabox-site-<slug>:latest`.
 - **GATE:** wait for the user to confirm the VPS pulled the image and the
   primary domain serves the site.
 
 If the user reports a problem deploying, you can help diagnose by running the
 published image locally:
 ```bash
-docker pull ghcr.io/optidigi/siab-platform-site-<slug>:latest
-docker run --rm -p 8080:80 ghcr.io/optidigi/siab-platform-site-<slug>:latest
+docker pull ghcr.io/optidigi/siteinabox-site-<slug>:latest
+docker run --rm -p 8080:80 ghcr.io/optidigi/siteinabox-site-<slug>:latest
 # then curl localhost:8080
 ```
 
@@ -313,7 +313,7 @@ docker run --rm -p 8080:80 ghcr.io/optidigi/siab-platform-site-<slug>:latest
 ## Phase 10 — Cleanup
 
 Confirm to the user the site is shipped, the image is at
-`ghcr.io/optidigi/siab-platform-site-<slug>:latest`, the source is at
+`ghcr.io/optidigi/siteinabox-site-<slug>:latest`, the source is at
 `sites/<slug>` in this monorepo, and your local working dir is clean.
 
 Done.
