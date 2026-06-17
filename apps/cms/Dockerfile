@@ -15,6 +15,7 @@ COPY packages/ui /repo/packages/ui
 RUN pnpm install --frozen-lockfile --offline --store-dir=/pnpm/store
 COPY apps/cms .
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV CI=true
 # PAYLOAD_SECRET / DATABASE_URI must be set at runtime, not build time.
 # But payload.config.ts throws if they're missing — provide build-time
 # placeholders so `next build` (which evaluates the config) can complete.
