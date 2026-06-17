@@ -1393,6 +1393,15 @@ discussion.
 - The bind-mounted tenant data path remains `/srv/data/saas/siab-payload` per
   deploy invariant and generated-site mount contract.
 
+#### Production note 2026-06-17
+Deployed commits `da648a7` and `41715a4` to production after CI and the CMS
+image smoke-start passed. `41715a4` sets `CI=true` in the Docker builder stage
+so Payload generation cannot trigger an interactive pnpm module purge prompt in
+GitHub Actions. Production now runs healthy `siteinabox-cms` and
+`siteinabox-cms-postgres` containers against the preserved
+`siab-payload_postgres-data` volume; the empty legacy `siab-payload_internal`
+network was removed.
+
 ### OBS-100 — Integrate Cloudflare mailer as the production email transport
 
 **Status:** Active · **Layer:** infra / email delivery
