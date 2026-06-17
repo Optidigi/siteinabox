@@ -1,11 +1,13 @@
-# Production compose for siab-payload.
+# Production compose for the SiteInABox CMS.
 # Deploy path on VPS: /srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml
 # Pulls image from ghcr.io. Postgres lives alongside on the internal network.
 # Reverse proxying handled by the shared Traefik edge on the external proxy network.
+name: siteinabox-cms
+
 services:
-  siab-payload:
+  siteinabox-cms:
     image: ghcr.io/optidigi/siteinabox-cms:latest
-    container_name: siab-payload
+    container_name: siteinabox-cms
     restart: unless-stopped
     environment:
       DATABASE_URI: postgres://payload:${POSTGRES_PASSWORD}@postgres:5432/payload
@@ -51,12 +53,12 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - traefik.http.routers.siabpayload.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
-      - traefik.http.routers.siabpayload.entrypoints=websecure
-      - traefik.http.routers.siabpayload.tls.certresolver=letsencrypt
-      - traefik.http.routers.siabpayload.middlewares=hsts@docker
-      - traefik.http.routers.siabpayload.service=siabpayload
-      - traefik.http.services.siabpayload.loadbalancer.server.port=3000
+      - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
+      - traefik.http.routers.siteinabox-cms.entrypoints=websecure
+      - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
+      - traefik.http.routers.siteinabox-cms.service=siteinabox-cms
+      - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
     depends_on:
       postgres: { condition: service_healthy }
     healthcheck:
@@ -72,7 +74,7 @@ services:
 
   postgres:
     image: postgres:18-alpine
-    container_name: siab-payload-postgres
+    container_name: siteinabox-cms-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: payload
@@ -95,7 +97,10 @@ services:
 
 volumes:
   postgres-data:
+    # Preserve the pre-monorepo production DB volume while moving container and
+    # Compose names to the siteinabox-* convention.
+    name: siab-payload_postgres-data
 
 networks:
   proxy:    { external: true }   # shared Traefik edge network
-  internal:                       # private — siab-payload <-> postgres only
+  internal:                       # private — CMS <-> postgres only

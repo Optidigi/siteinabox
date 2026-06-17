@@ -10,9 +10,9 @@
  * via payload.update — which triggers the page's afterChange hook,
  * which re-projects the page JSON to disk in NEW format.
  *
- * Intended invocation (inside the prod siab-payload container):
+ * Intended invocation (inside the prod siteinabox-cms container):
  *
- *   docker exec siab-payload node \
+ *   docker exec siteinabox-cms node \
  *     /app/dist-runtime/repopulate-richtext-from-snapshot.bundled.mjs \
  *     --tenant amicare-zorg \
  *     --snapshot /data-out/_repopulate/7/pages/index.json \

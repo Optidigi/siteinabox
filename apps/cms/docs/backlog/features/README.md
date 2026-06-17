@@ -2045,6 +2045,12 @@ privacy data export should stay outside Better Auth Infra unless Better Auth
 later documents custom templates / attachment support that satisfies the
 export requirement.
 
+Follow-up 2026-06-17: Better Auth Infrastructure dashboard/audit is connected
+in production and the team will assume paid dashboard email templates can be
+localized/customized until paid-plan setup proves otherwise. Implementation
+should still validate the paid dashboard's actual template/localization controls
+before removing the Resend fallback for Dutch/customer-facing copy.
+
 Cloudflare research on 2026-06-12 found that the correct product is
 Cloudflare Email Service / Email Sending, not plain Email Routing. Email
 Routing is available on Workers Free and Workers Paid, but sending to
@@ -2059,14 +2065,19 @@ Next/Payload app.
 
 Before implementation/testing:
 
-- Enable/configure Better Auth Infrastructure for SIAB production.
+- Better Auth Infrastructure dashboard/audit is enabled and connected for SIAB
+  production.
 - `@better-auth/infra` is already installed and `BETTER_AUTH_API_KEY` /
   `BETTER_AUTH_API_URL` / `BETTER_AUTH_KV_URL` are wired for the free
   dashboard/audit `dash()` bridge. Transactional email still requires the paid
   Better Auth Infrastructure plan and sender setup before this OBS can move
   forward.
-- Confirm the sender domain / displayed sender can be configured as
+- On the paid plan, confirm the sender domain / displayed sender can be configured as
   `noreply@siteinabox.nl` for Better Auth Infra mail.
+- On the paid plan, validate the dashboard's email template customization /
+  localization controls. Product assumption is that SIAB can localize/customize
+  auth mail content there, but public docs and package types only confirm
+  template IDs, variables, and optional subject override.
 - Confirm the exact template coverage for SIAB auth/user lifecycle mail:
   magic link, reset password, invite/set-password, future email verification,
   and future MFA/OTP messages.

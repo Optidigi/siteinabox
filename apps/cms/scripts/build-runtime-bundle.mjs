@@ -93,7 +93,7 @@ await build({
 
 // One-off repopulation tool (rt-v2 post-migration recovery). See script
 // header for invocation. Bundled here so it ships in the Docker image's
-// /app/dist-runtime/ and can be invoked via `docker exec siab-payload node
+// /app/dist-runtime/ and can be invoked via `docker exec siteinabox-cms node
 // /app/dist-runtime/repopulate-richtext-from-snapshot.bundled.mjs ...`.
 await build({
   ...sharedBuildOpts,

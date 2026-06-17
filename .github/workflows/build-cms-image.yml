@@ -84,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          container_name="siab-payload-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          container_name="siteinabox-cms-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           cleanup() {
             docker logs "$container_name" > smoke-container.log 2>&1 || true
             docker rm -f "$container_name" >/dev/null 2>&1 || true

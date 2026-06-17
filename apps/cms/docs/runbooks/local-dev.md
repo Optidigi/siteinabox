@@ -29,27 +29,27 @@ docker compose -f docker-compose.local.yml ps   # status should be "healthy"
 
 **This machine (Podman, no compose plugin):**
 
-The named container `siab-payload-postgres-dev` already exists (created 2026-05). Just start it:
+Use the named container `siteinabox-cms-postgres-dev` for local development. If this machine still has the pre-rename `siab-payload-postgres-dev` container, rename it once with `podman rename siab-payload-postgres-dev siteinabox-cms-postgres-dev`, then start it:
 ```bash
-podman start siab-payload-postgres-dev
-podman exec siab-payload-postgres-dev pg_isready -U payload -d payload  # should say "accepting connections"
+podman start siteinabox-cms-postgres-dev
+podman exec siteinabox-cms-postgres-dev pg_isready -U payload -d payload  # should say "accepting connections"
 ```
 
 If you ever need to recreate it from scratch (e.g. after `podman rm`):
 ```bash
 podman run -d \
-  --name siab-payload-postgres-dev \
+  --name siteinabox-cms-postgres-dev \
   -e POSTGRES_DB=payload \
   -e POSTGRES_USER=payload \
   -e POSTGRES_PASSWORD=change-me \
   -p 5432:5432 \
-  -v siab-payload-postgres-dev:/var/lib/postgresql \
+  -v siteinabox-cms-postgres-dev:/var/lib/postgresql \
   postgres:18-alpine
 ```
 
 > **Password note:** The `.env` `DATABASE_URI` must use the password the volume was initialised with (`change-me`). If they diverge you'll get `password authentication failed` — fix by updating `DATABASE_URI` in `.env` to match.
 
-The container is `siab-payload-postgres-dev`, data lives in the named volume `siab-payload-postgres-dev`, and the host port defaults to `5432`.
+The container is `siteinabox-cms-postgres-dev`, data lives in the named volume `siteinabox-cms-postgres-dev`, and the host port defaults to `5432`.
 
 ## Step 3: Local `.env`
 
@@ -133,8 +133,8 @@ fails). Use direct Podman commands:
 
 ```bash
 # Start the existing local DB container.
-podman start siab-payload-postgres-dev
-podman exec siab-payload-postgres-dev pg_isready -U payload -d payload
+podman start siteinabox-cms-postgres-dev
+podman exec siteinabox-cms-postgres-dev pg_isready -U payload -d payload
 
 # In one terminal, run the CMS on the Playwright-configured port.
 pnpm exec next dev -p 3001
@@ -158,15 +158,15 @@ with a Postgres connection error.
   ```
 - **Reset the local DB with direct Podman (lose all data):**
   ```bash
-  podman stop siab-payload-postgres-dev
-  podman rm siab-payload-postgres-dev
-  podman volume rm siab-payload-postgres-dev
+  podman stop siteinabox-cms-postgres-dev
+  podman rm siteinabox-cms-postgres-dev
+  podman volume rm siteinabox-cms-postgres-dev
   # Recreate with the podman run command in Step 2.
   ```
-- **Tail logs:** `pnpm dev` already streams to stdout. For DB logs: `docker logs -f siab-payload-postgres-dev` or `podman logs -f siab-payload-postgres-dev`.
+- **Tail logs:** `pnpm dev` already streams to stdout. For DB logs: `docker logs -f siteinabox-cms-postgres-dev` or `podman logs -f siteinabox-cms-postgres-dev`.
 - **Regenerate Payload types after collection edits:** `pnpm payload generate:types`
 - **Generate a new migration after collection edits:** `pnpm payload migrate:create my-change-name`
-- **Stop everything:** `Ctrl+C` the dev server, then `docker compose -f docker-compose.local.yml stop` or `podman stop siab-payload-postgres-dev`.
+- **Stop everything:** `Ctrl+C` the dev server, then `docker compose -f docker-compose.local.yml stop` or `podman stop siteinabox-cms-postgres-dev`.
 
 ## Platform notes
 

@@ -42,6 +42,13 @@ SIAB project in the Better Auth dashboard. `BETTER_AUTH_API_URL` and
 default hosted endpoints. SIAB does not currently enable Better Auth
 Infrastructure transactional email, SMS, or Sentinel.
 
+Once the paid Better Auth Infrastructure plan is active, magic-link mail should
+move from the current app mailer to Better Auth Infra's native `magic-link`
+template. Treat Dutch/custom email copy as a paid-dashboard template setup item:
+the product assumption is that templates can be localized/customized there, but
+implementation should validate the dashboard controls before removing the
+current fallback mailer.
+
 Email magic links also require the normal app email transport:
 
 ```bash

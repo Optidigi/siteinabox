@@ -1,4 +1,4 @@
-# Production Deploy Runbook — `siab-payload`
+# Production Deploy Runbook — `siteinabox-cms`
 
 ## Overview
 
@@ -36,20 +36,22 @@ Two containers, one Compose project, two networks:
                 └─────────────────────┬───────────────┘
                                       │ HTTP :3000
                                       ▼
-   ┌─────────────────────┐    ┌───────────────────────┐
-   │ siab-payload        │◀──▶│ siab-payload-postgres │
-   │ image: ghcr.io/     │    │ image: postgres:18    │
-   │   optidigi/         │    │   -alpine             │
-   │   siteinabox-cms │    │                       │
-   │ networks:           │    │ networks: internal    │
-   │   proxy, internal   │    │                       │
-   └─────────────────────┘    └───────────────────────┘
+   ┌──────────────────────┐    ┌────────────────────────┐
+   │ siteinabox-cms       │◀──▶│ siteinabox-cms-postgres│
+   │ image: ghcr.io/      │    │ image: postgres:18     │
+   │   optidigi/          │    │   -alpine              │
+   │   siteinabox-cms     │    │                        │
+   │ networks:            │    │ networks: internal     │
+   │   proxy, internal    │    │                        │
+   └──────────────────────┘    └────────────────────────┘
 ```
 
 - Compose stack lives at `/srv/saas/infra/stacks/siteinabox/apps/cms/`.
 - Per-tenant data is bind-mounted to `/srv/data/saas/siab-payload/` on the
   host and surfaces inside the app container at `/data-out`.
-- The Postgres volume is a named Docker volume (`postgres-data`).
+- The Postgres volume is pinned to the legacy Docker volume name
+  `siab-payload_postgres-data` so container/project renames never create an
+  empty database.
 - Source of truth for compose values: the repo's `docker-compose.yml`, copied
   to the VPS as `compose.yml`.
 
@@ -143,6 +145,22 @@ The Postgres container should become healthy within ~10s. The app container
 will start but will fail health checks until Step 5 has run on a fresh DB
 (see Gotcha 1).
 
+Existing deployments from before 2026-06-17 may still have containers named
+`siab-payload` and `siab-payload-postgres`. To migrate those names without
+touching the DB volume:
+
+```bash
+cd /srv/saas/infra/stacks/siteinabox/apps/cms
+docker compose pull
+docker stop siab-payload siab-payload-postgres
+docker rm siab-payload siab-payload-postgres
+docker compose up -d
+docker compose ps
+```
+
+The compose file deliberately reuses `siab-payload_postgres-data`, so removing
+the old containers does not remove the database.
+
 ## Step 5 — Apply database migrations
 
 Migrations apply automatically on container start. The image's entrypoint
@@ -156,12 +174,12 @@ otherwise.
 What this means in practice:
 
 - **Fresh DB:** the first `docker compose up -d` creates the schema. Watch
-  `docker logs siab-payload` to see `[migrate-on-boot] N migration(s) applied`.
+  `docker logs siteinabox-cms` to see `[migrate-on-boot] N migration(s) applied`.
 - **Existing DB:** subsequent boots log `[migrate-on-boot] no pending
   migrations` (sub-second) and proceed to `node server.js`.
 - **Migration failure:** the script exits non-zero, the container restarts
   per `restart: unless-stopped`, and the loop is visible in
-  `docker compose ps`. Inspect `docker logs siab-payload` for the SQL error.
+  `docker compose ps`. Inspect `docker logs siteinabox-cms` for the SQL error.
 
 Future schema changes flow:
 
@@ -175,18 +193,18 @@ Future schema changes flow:
 ## Step 6 — Traefik route labels
 
 The compose file is the canonical route declaration. Confirm the
-`siab-payload` service has Traefik labels for each tenant admin hostname:
+`siteinabox-cms` service has Traefik labels for each tenant admin hostname:
 
 ```yaml
 labels:
   - traefik.enable=true
   - traefik.docker.network=proxy
-  - traefik.http.routers.siabpayload.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
-  - traefik.http.routers.siabpayload.entrypoints=websecure
-  - traefik.http.routers.siabpayload.tls.certresolver=letsencrypt
-  - traefik.http.routers.siabpayload.middlewares=hsts@docker
-  - traefik.http.routers.siabpayload.service=siabpayload
-  - traefik.http.services.siabpayload.loadbalancer.server.port=3000
+  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
+  - traefik.http.routers.siteinabox-cms.entrypoints=websecure
+  - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
+  - traefik.http.routers.siteinabox-cms.service=siteinabox-cms
+  - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
 ```
 
 DNS for `admin.<your-domain>` must already resolve to the VPS or Let's Encrypt
@@ -284,9 +302,9 @@ PAYLOAD_API_TOKEN=<key>
 runs `migrate-on-boot.mjs` before `node server.js`, but if Postgres wasn't
 healthy yet (or migrate hit a SQL error) the schema isn't there.
 
-**Fix:** Inspect `docker logs siab-payload` for the `[migrate-on-boot]`
+**Fix:** Inspect `docker logs siteinabox-cms` for the `[migrate-on-boot]`
 lines. If the issue was transient (Postgres slow to come up), `docker
-compose restart siab-payload` re-runs migrate. If the SQL itself is the
+compose restart siteinabox-cms` re-runs migrate. If the SQL itself is the
 problem, fix the offending migration file, rebuild and redeploy.
 
 ### Issue: `/api/health` returns `dataDir: unwritable`
@@ -301,7 +319,7 @@ sudo chown -R 1000:1000 /srv/data/saas/siab-payload
 ```
 
 …or pin the container's UID to whatever owns the host dir by adding to
-`docker-compose.yml` under the `siab-payload` service:
+`docker-compose.yml` under the `siteinabox-cms` service:
 
 ```yaml
     user: "<uid>:<gid>"
@@ -418,7 +436,7 @@ runs an in-process cron worker.
 Tail the Payload container logs and grep for `purge-stale-form-submissions`:
 
 ```sh
-docker compose -f /srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml logs -f siab-payload | grep purge-stale-form-submissions
+docker compose -f /srv/saas/infra/stacks/siteinabox/apps/cms/compose.yml logs -f siteinabox-cms | grep purge-stale-form-submissions
 ```
 
 Expected line on each daily run:

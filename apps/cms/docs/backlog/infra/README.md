@@ -1315,16 +1315,17 @@ Production was updated to match:
 6. A fresh implementation-time research note confirms the then-current repo and
    VPS shape before any migration work begins.
 
-### OBS-116 — Activate production Better Auth credentials and email transport
+### OBS-116 — Activate production Better Auth provider credentials and email transport
 
 **Status:** Active · **Layer:** infra / auth operations
 **Discovered in:** Session 2026-06-11 (OBS-101 deployment follow-up)
 
 #### Description
 OBS-101 shipped the Better Auth/Payload bridge, passwordless login UI, Better
-Auth tables, dynamic tenant-host validation, and production deploy. The code is
-live, but provider and email-link flows remain intentionally inactive until the
-production credentials and mail transport are configured.
+Auth tables, dynamic tenant-host validation, and production deploy. The core
+code is live. Better Auth Infrastructure `dash()` is now connected in
+production, but Google/Microsoft/Apple provider credentials and the paid-plan
+email migration remain intentionally pending.
 
 #### Required setup
 - Register Google, Microsoft, and Apple apps for every admin host that should
@@ -1337,10 +1338,10 @@ production credentials and mail transport are configured.
 - Set a dedicated `BETTER_AUTH_SECRET` in production. `PAYLOAD_SECRET` fallback
   works for bootstrapping, but the long-term production shape should keep Better
   Auth's signing/encryption secret separate.
-- Optional 2026-06-17 update: `@better-auth/infra` is wired behind
-  `BETTER_AUTH_API_KEY` for the free dashboard/audit `dash()` bridge. Connect
-  the existing SIAB project in the Better Auth Infrastructure dashboard and
-  store the key in user/ops secret management, not repo config. Leave
+- Completed 2026-06-17: `@better-auth/infra` is wired behind
+  `BETTER_AUTH_API_KEY` for the dashboard/audit `dash()` bridge. Production is
+  connected to the existing SIAB project in the Better Auth Infrastructure
+  dashboard; the key lives in VPS `.env`, not repo config. Leave
   `BETTER_AUTH_API_URL` and `BETTER_AUTH_KV_URL` blank unless the dashboard
   provides overrides.
 - Configure production email delivery for magic links through the selected
@@ -1364,6 +1365,33 @@ production credentials and mail transport are configured.
    `/api/health` remains healthy after env changes.
 6. If `BETTER_AUTH_API_KEY` is configured, Better Auth Infrastructure dashboard
    audit/activity events appear for test sign-ins.
+
+#### Production note 2026-06-17
+Deployed commits `f87c3b4` and `021bf61` installed `@better-auth/infra`, wired
+`dash()`, passed CI and image smoke-start, and were deployed to the CMS. The
+Better Auth dashboard connection succeeded. OAuth provider env vars remain
+blank, so social provider buttons stay hidden until apps/secrets are configured.
+
+### OBS-121 — Rename CMS production containers to siteinabox convention
+
+**Status:** Closed 2026-06-17 · **Layer:** infra / deploy naming
+**Discovered in:** Session 2026-06-17 (post Better Auth Infra deploy cleanup)
+
+#### Description
+The repo/app/image naming had moved to `apps/cms` and
+`ghcr.io/optidigi/siteinabox-cms`, but the live production containers still used
+legacy `siab-payload` and `siab-payload-postgres` names. This conflicted with
+the siteinabox deploy naming convention and confused Better Auth / deploy
+discussion.
+
+#### Resolution
+- Production compose now uses project/service/container names
+  `siteinabox-cms` and `siteinabox-cms-postgres`.
+- Traefik router/service labels now use `siteinabox-cms`.
+- The Postgres Docker volume remains pinned to
+  `siab-payload_postgres-data` to preserve the existing production database.
+- The bind-mounted tenant data path remains `/srv/data/saas/siab-payload` per
+  deploy invariant and generated-site mount contract.
 
 ### OBS-100 — Integrate Cloudflare mailer as the production email transport
 

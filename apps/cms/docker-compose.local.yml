@@ -1,4 +1,4 @@
-# Local-dev Postgres for siab-payload.
+# Local-dev Postgres for the SiteInABox CMS.
 # Run on the developer machine (any platform with a Docker engine):
 #   docker compose -f docker-compose.local.yml up -d
 # DATABASE_URI in .env.example targets localhost:5432 so this works out of the box.
@@ -10,7 +10,7 @@
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: siab-payload-postgres-dev
+    container_name: siteinabox-cms-postgres-dev
     restart: unless-stopped
     ports:
       # Host port is configurable so devs with a system Postgres on 5432 can override.
@@ -21,7 +21,7 @@ services:
       POSTGRES_USER: payload
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
     volumes:
-      - siab-payload-postgres-dev:/var/lib/postgresql
+      - siteinabox-cms-postgres-dev:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payload -d payload"]
       interval: 5s
@@ -35,4 +35,4 @@ services:
         max-file: "3"
 
 volumes:
-  siab-payload-postgres-dev:
+  siteinabox-cms-postgres-dev:

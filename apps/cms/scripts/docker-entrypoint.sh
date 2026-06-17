@@ -5,7 +5,7 @@
 #
 # Migration failure exits non-zero — Docker will restart the container per
 # the compose `restart: unless-stopped` policy, surfacing the loop in
-# `docker logs siab-payload` and `docker compose ps`.
+# `docker logs siteinabox-cms` and `docker compose ps`.
 set -e
 
 echo "[entrypoint] running migrate-on-boot..."
