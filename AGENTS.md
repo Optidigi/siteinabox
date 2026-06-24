@@ -87,6 +87,19 @@ Authenticated MCP credentials belong in user-scope config. Local services such
 as Postgres or Docker must still be running on the workstation for those MCP
 servers to be useful.
 
+For shadcn discovery work, prefer these shadcn MCP operations when available:
+
+- `list_items_in_registries`
+- `search_items_in_registries`
+- `view_items_in_registries`
+- `get_item_examples_from_registries`
+- `get_add_command_for_items`
+- `get_project_registries`
+- `get_audit_checklist`
+
+Use `context7` for current library documentation when docs are needed. Use
+`sequential-thinking` when a task needs explicit multi-step reasoning support.
+
 ## Deploy Invariants
 
 - Platform-owned app images are:
