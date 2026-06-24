@@ -1,6 +1,11 @@
 ---
-description: Add Payload CMS to an existing site repo from the monorepo orchestrator
+description: Legacy: add Payload CMS to an existing generated site repo
 argument-hint: <slug>
 ---
 
-Use `packages/tools/siab-orchestrator/commands/add-cms.md`.
+Legacy workflow only. Do not use this command for Builder architecture work or
+new self-serve sites.
+
+Use `packages/tools/siab-orchestrator/commands/add-cms.md` only for existing
+transition/legacy generated-site work after the operator explicitly asks for
+the legacy workflow.

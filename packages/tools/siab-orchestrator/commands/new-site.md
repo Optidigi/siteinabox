@@ -1,7 +1,13 @@
 # New Site
 
+Legacy workflow notice: this command creates a generated source snapshot under
+`sites/<slug>`. It is retained for existing transition work and historical
+reference. It is not the future product path for new self-serve Builder sites.
+
 Trigger this contract when the user asks for `/new-site` or otherwise asks to
-start a new `sitegen` engagement.
+start a new legacy `sitegen` engagement. If the user is asking about the new
+Builder architecture, route them to `apps/builder` and
+`docs/decisions/builder-platform.md` instead.
 
 Run this from the monorepo root or from `packages/tools/siab-orchestrator`;
 resolve paths relative to the monorepo root.

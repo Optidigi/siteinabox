@@ -1,3 +1,5 @@
 # MCP mirror for Codex.
 # Keep this file in sync with ../.mcp.json.
 # This repository currently requires no project-local MCP servers.
+# MCPs referenced by app-local docs are expected from user/global config unless
+# repo-local server entries are added here and in ../.mcp.json.

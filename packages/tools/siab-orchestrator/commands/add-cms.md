@@ -1,7 +1,14 @@
 # Add CMS
 
+Legacy workflow notice: this command converts an existing generated source
+snapshot under `sites/<slug>`. It is retained for existing transition work and
+historical reference. It is not the future product path for new self-serve
+Builder sites.
+
 Trigger this contract when the user asks for `/add-cms <slug>` or otherwise
-asks to add Payload CMS to an existing generated site under `sites/<slug>`.
+asks to add Payload CMS to an existing legacy generated site under
+`sites/<slug>`. If the user is asking about the new Builder architecture, route
+them to `apps/builder` and `docs/decisions/builder-platform.md` instead.
 
 The site slug is required. If the user did not provide it, stop and ask for the
 slug before reading the workflow preflight.

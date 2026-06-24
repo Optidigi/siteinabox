@@ -2,9 +2,9 @@
 
 Operating rules for the SIAB orchestrator package.
 
-This package is one tool shell, not one blended workflow. Keep the site
-generation and CMS conversion flows separate unless the user explicitly asks to
-change the orchestration contract.
+This package is one legacy/transition tool shell, not the future Builder product
+architecture. Keep the site generation and CMS conversion flows separate unless
+the user explicitly asks to change the orchestration contract.
 
 ## Package Shape
 
@@ -18,6 +18,10 @@ change the orchestration contract.
   those shims in sync with the canonical `commands/` and `workflows/` files.
 
 ## Monorepo Contract
+
+These contracts describe existing generated-site tenants and transition
+workflows. New self-serve Builder sites must not be created by copying
+`packages/site-template` into `sites/<slug>`.
 
 - Generated site source lives in the monorepo under `sites/<slug>`.
 - Tenant site images are monorepo-owned and named

@@ -1,2 +1,4 @@
 # Project MCP mirror.
 # No project-local MCP servers are required at the monorepo root yet.
+# App-level docs may mention useful MCPs, but root sessions should treat those
+# as user/global config expectations unless this file and .mcp.json define them.

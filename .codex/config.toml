@@ -1,3 +1,5 @@
 # Codex project config for siteinabox.
 # Keep MCP server lists in sync with ../.mcp.json.
 # ../.mcp.json currently declares no project-local MCP servers.
+# Do not add placeholder MCP entries. Add only working project-local servers
+# with no secrets or user-specific paths.

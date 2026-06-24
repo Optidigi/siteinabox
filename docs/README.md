@@ -6,11 +6,14 @@ orchestrator workflows, and infra.
 App-local docs stay with the app that owns them:
 
 - `apps/cms/docs/` for Payload/CMS internals and backlog history.
-- `packages/site-template/docs/` for generated-site template contracts.
+- `apps/builder/` for future Builder app docs once implementation starts.
+- `packages/site-template/docs/` for legacy generated-site template contracts.
 - `packages/tools/siab-orchestrator/runbooks/` for operator runbooks tied to
-  `/new-site` or `/add-cms`.
+  legacy `/new-site` or `/add-cms`.
 
 Monorepo-level policies:
 
+- `decisions/builder-platform.md` defines the future Builder/CMS/runtime
+  architecture direction.
 - `generated-site-snapshot-policy.md` defines how `packages/site-template`
-  relates to generated tenant snapshots under `sites/*`.
+  relates to legacy generated tenant snapshots under `sites/*`.

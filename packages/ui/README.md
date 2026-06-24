@@ -7,15 +7,19 @@ Shared UI primitives and low-level UI utilities for SIAB apps.
 - This package owns shadcn-style primitives, token CSS, `cn`, CSP style helpers,
   and low-level reusable hooks.
 - App-specific composites and layouts stay in the app that owns the workflow.
-  CMS forms, editor canvas UI, navigation managers, dashboards, and site
-  rendering behavior belong in `apps/cms` when they only fit that app/workflow.
+  CMS forms, editor canvas UI, navigation managers, dashboards, Builder intake,
+  approval, and payment handoff surfaces belong in the owning app when they only
+  fit that app/workflow.
 - Reusable composites can live in this package when they are modular,
   dependency-light, and useful to more than one app or workflow. Keep their
   data/domain behavior injectable through props, slots, or adapters instead of
   importing CMS internals.
-- Site generation and rendering logic stays in `packages/site-template`.
-  Tenant sites are generated snapshots of that template, not the canonical UI
-  source.
+- New Builder and CMS work must import shared primitives/components from this
+  package, not from another app.
+- Legacy generated-site rendering logic currently lives in
+  `packages/site-template` and `sites/*`. Future shared preview/live/editor
+  rendering should move through `packages/site-runtime` when that package is
+  implemented.
 
 ## Imports
 

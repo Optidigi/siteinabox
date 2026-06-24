@@ -756,8 +756,9 @@ Required confirmation pass:
    `siab-payload-orchestrator`.
 2. Inspect current production paths under `/srv`, especially infra stacks,
    compose files, app containers, images, volumes, networks, and routing config.
-3. Confirm the current edge router and route model before choosing
-   `siteinabox.nl/start`, `start.siteinabox.nl`, or another intake route.
+3. Confirm the current edge router and route model before choosing the Builder
+   route. This historical note predates the Builder decision; the current
+   preview model is `https://preview.siteinabox.nl/<slug>/`.
 4. Confirm current tenant artifact directories and CMS-backed site mounts before
    migrating generated-site/runtime contracts.
 5. Update this backlog item with the new research snapshot before moving files.
@@ -979,7 +980,8 @@ First migration scope should be deliberately narrower than the final platform:
 6. Move generated/client site source under `sites/` deliberately, while keeping
    their existing image names and VPS stack entries stable until each migration
    is validated.
-7. Add `apps/intake` after the moved repo builds and command smoke tests pass.
+7. Add the future Builder placeholder after the moved repo builds and command
+   smoke tests pass. This was later named `apps/builder`.
 
 Expected VPS/deploy end shape after the first migration:
 
@@ -1008,7 +1010,7 @@ Preferred production stack namespace once the monorepo deploy shape is stable:
   cms/                         # siab-payload compose; data path unchanged
   apps/
     site/                      # public siteinabox.nl app stack
-    intake/                    # future intake app stack
+    builder/                   # future Builder app stack
   tenants/
     amblast/                   # generated/client site stack
     ami-care/                  # generated/client CMS-backed site stack
@@ -1022,9 +1024,8 @@ stack namespace cleanup.
 
 Future deploy changes, after the first migration is stable:
 
-- Add `apps/intake` as a separate deployable image and separate Traefik-routed
-  stack, likely on `start.siteinabox.nl` unless fresh route research chooses
-  another host.
+- Add `apps/builder` as a separate deployable image and separate
+  Traefik-routed stack when the Builder product is implemented.
 - Keep infra stack definitions out of this monorepo for now. The current
   server/ops infra source remains external to `siteinabox`; revisit only if
   the platform repo becomes the deliberate deploy-stack source of truth.
@@ -1040,10 +1041,9 @@ Future deploy changes, after the first migration is stable:
 3. Keep existing GHCR image names stable at first so production deploy contracts
    do not change during the repo migration.
 4. Add monorepo-aware CI that builds/tests only affected apps and packages.
-5. Add `apps/intake` as a new deployable app and route it separately first
-   (likely `start.siteinabox.nl` unless fresh prod research shows path routing
-   is safer at implementation time).
-6. Extract `packages/site-contracts` before runtime/UI packages so CMS, intake,
+5. Add `apps/builder` as a new deployable app and route it separately when the
+   Builder product is implemented.
+6. Extract shared contracts before runtime/UI packages so CMS, Builder,
    template, generated sites, and tools share schema language.
 7. Extract `site-runtime`, `site-blocks`, and `site-themes` only after contracts
    are stable and duplication is proven.
@@ -1098,9 +1098,8 @@ Follow-up implementation completed the remaining non-deploying scaffold work:
 
 - Added monorepo-level `docs/` and `sites/` README files to document ownership
   boundaries without moving live stacks.
-- Added reserved `apps/intake` package and README. It is intentionally a
-  non-deploying placeholder for now; root scripts expose `intake:build` and
-  `intake:test` as no-op checks until the real intake app is implemented.
+- Added reserved app placeholder and README. It was originally named with the
+  old intake terminology; the canonical app name is now `apps/builder`.
 - Aligned root package scripts with the validated transitional commands. The
   CMS, public site, and site-template scripts use `--ignore-workspace` so they
   keep working with the imported app-local lockfiles during the migration.
@@ -1118,8 +1117,7 @@ Additional validation:
 
 - `npm ci && npm test` in `packages/tools/siab-orchestrator/scripts` passed:
   20/20.
-- `npm --prefix apps/intake run build` and
-  `npm --prefix apps/intake run test` passed as explicit no-op checks.
+- The placeholder app build/test scripts passed as explicit no-op checks.
 - `pnpm install --lockfile-only --ignore-scripts` passed at the root for six
   workspace projects, with the same local Node 24 versus CMS Node 26 warning.
 
@@ -1213,9 +1211,10 @@ Validation:
   `https://admin.ami-care.nl/api/health`, `https://siteinabox.nl/`,
   `https://ami-care.nl/healthz`, and `https://amblast.siteinabox.nl/`.
 
-OBS-119 is closed for monorepo/deploy consolidation. Building the real intake
-product and deploying an intake image remain future feature work; this item only
-reserved `apps/intake` and the matching server stack namespace.
+OBS-119 is closed for monorepo/deploy consolidation. Building the real Builder
+product and deploying a Builder image remain future feature work; this item only
+reserved the app placeholder and matching server stack namespace. The canonical
+placeholder is now `apps/builder`.
 
 #### Follow-up cleanup — 2026-06-16
 Post-consolidation cleanup removed the migration backup/archive artifacts from

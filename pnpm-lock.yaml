@@ -13,6 +13,8 @@ importers:
 
   .: {}
 
+  apps/builder: {}
+
   apps/cms:
     dependencies:
       '@better-auth/infra':
@@ -223,8 +225,6 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.9(@types/node@25.9.1)(@vitest/ui@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(sass@1.77.4)(tsx@4.22.4)(yaml@2.9.0))
-
-  apps/intake: {}
 
   apps/site:
     dependencies:

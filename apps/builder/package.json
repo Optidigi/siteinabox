@@ -1,0 +1,10 @@
+{
+  "name": "@siab/builder",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo \"apps/builder is reserved; no build yet\"",
+    "test": "echo \"apps/builder is reserved; no tests yet\""
+  }
+}

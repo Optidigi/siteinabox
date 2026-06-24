@@ -7,11 +7,11 @@ generated sites.
 
 - Put cross-package data shapes here when more than one app/package must agree
   on the same payload.
-- Keep runtime rendering behavior out of this package. Site rendering belongs in
-  `packages/site-template`; CMS editing and orchestration behavior belongs in
-  the owning app/package.
-- Prefer additive changes and explicit optional fields for generated-site
-  compatibility.
+- Keep runtime rendering behavior out of this package. Legacy site rendering
+  currently lives in `packages/site-template` and `sites/*`; future shared
+  preview/live/editor rendering belongs in `packages/site-runtime`.
+- Prefer additive changes and explicit optional fields for compatibility across
+  CMS, Builder, runtime, and legacy generated-site consumers.
 
 ## Current Contracts
 
