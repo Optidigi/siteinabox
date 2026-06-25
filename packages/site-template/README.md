@@ -1,6 +1,6 @@
 # SIAB Site Template
 
-Astro 5 + Tailwind 4 transition renderer/reference package for current tenant
+Astro 5 + Tailwind 4 renderer/reference package for current tenant
 snapshots. This package remains for existing tenant maintenance only; it is not
 the future product architecture for new self-serve sites.
 

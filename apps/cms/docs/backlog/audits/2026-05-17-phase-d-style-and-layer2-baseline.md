@@ -117,7 +117,7 @@ Layout (4): `AppSidebar`, `SiteHeader`, `UserMenu`, `TenantPill` — role-aware 
 
 Editor ecosystem (~24): `PageForm` context, `FieldRenderer`, `LexicalField`, `BlockPresetsContext`, `useNavigationGuard`, `useCanvasBlocks`, `elementPath`, `canvasView`, `CanvasSelectionContext`, `MobileEditorContext`, rich-text Lexical plugins (`PastePlugin`, `RtClassSyncPlugin`, `InlineConstraintPlugin`), canvas block renderers (Hero, CTA, FAQ, FeatureList, ContactSection, RichText, Testimonials — 7 files), inline primitives (RtSlot, InlineImage, InlineCtaButton, InlineIcon, ClickToEditField, RtStaticView — 6 files), and `blockElements`.
 
-**Open question for D5b (separate evaluation, not pre-decided here):** The 7 canvas block renderers + 6 inline primitives encode site-specific block schemas via the rich-text manifest contract. Per the FE-46 zero-CSS vision they're "frontend that should ship from the registry." Per the actual data flow they're tightly coupled to per-tenant block schemas. Decide later whether they promote to registry (with the schema also coming from the registry) or stay in siab-payload as the app's binding layer between Payload schema + registry primitives. **This is multi-repo work** (likely intersects with `sitegen-template` and the existing OBS-38 multi-repo program). Probably out of scope until B.3 publish + D1-D4 ship.
+**Open question for D5b (separate evaluation, not pre-decided here):** The 7 canvas block renderers + 6 inline primitives encode site-specific block schemas via the rich-text manifest contract. Per the FE-46 zero-CSS vision they're "frontend that should ship from the registry." Per the actual data flow they're tightly coupled to per-tenant block schemas. Decide later whether they promote to shared UI/source (with the schema also coming from the same contract) or stay in the CMS as the app's binding layer between Payload schema + shared primitives. **This is multi-package work** and should be revisited only after the platform architecture reset has an approved direction.
 
 ### DELETE / NEEDS_REVIEW — 0
 
@@ -137,7 +137,7 @@ All 68 Layer 2 files have active consumers. No dead code.
 - D7 — lint gate: forbid inline `style` props with token values, forbid standalone `.css` in `src/` outside `globals.css`, forbid arbitrary Tailwind values in `className`. ESLint custom rules or stylelint config.
 
 **Out of scope until separately decided:**
-- D5b — canvas block renderers + inline primitives migration (multi-repo, ties to sitegen-template + OBS-38)
+- D5b — canvas block renderers + inline primitives migration (multi-package, depends on the approved platform architecture)
 
 ## Recommended order
 

@@ -12,11 +12,11 @@ apps/
 packages/
   contracts/        # shared data contracts
   ui/               # shared UI primitives/components
-  site-template/    # transition renderer/reference for current tenant snapshots
+  site-template/    # renderer/reference for current tenant snapshots
 
 sites/
-  ami-care/         # generated CMS-backed tenant site, formerly site-amicare-zorg
-  amblast/          # generated/client site, formerly site-amblast
+  ami-care/         # CMS-backed tenant snapshot, formerly site-amicare-zorg
+  amblast/          # tenant snapshot, formerly site-amblast
 ```
 
 ## Architecture Direction
@@ -28,7 +28,7 @@ The next SIAB product architecture is under reconsideration. Current invariants:
 - `packages/ui` owns shared UI primitives and reusable components.
 - `packages/contracts` owns shared data contracts.
 
-Do not restore command-driven generated-site workflows or create new per-client
+Do not restore command-driven site generation workflows or create new per-client
 source folders while the platform architecture is being reworked. New generation
 work should wait for an approved architecture decision and should produce
 validated structured data rather than arbitrary source code.
@@ -56,3 +56,13 @@ pnpm tenant:amicare:build
 pnpm tenant:amblast:build
 pnpm template:build
 ```
+
+## Tooling State
+
+- Work normally starts from this monorepo root.
+- MCP definitions are mirrored at the root and under `apps/cms`; see
+  `AGENTS.md` for the canonical server list.
+- Repo-local command prompt directories have been removed. `.codex/` is config
+  only.
+- There are no repo-local skills. Global/user skills may exist outside this
+  repository and are not part of the SIAB platform contract.

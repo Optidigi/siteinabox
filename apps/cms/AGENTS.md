@@ -1,11 +1,13 @@
 # AGENTS.md
 
-Repository operating rules for Codex and other coding agents. This root file is
-the single source of agent behavior for this repo.
+CMS app operating rules for Codex and other coding agents. The monorepo root
+`AGENTS.md` is the first stop when working from `siab-platform`; this file adds
+CMS-specific rules for `apps/cms`.
 
 Do not duplicate behavioral instructions into `.codex/` or `.agents/`. Those
-directories are for runner-specific config and discovery files only. If behavior
-changes, update this file.
+directories are for runner-specific config and discovery files only. If
+monorepo behavior changes, update root `AGENTS.md`; if CMS behavior changes,
+update this file.
 
 ## What This Repo Is
 

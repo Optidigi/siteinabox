@@ -27,7 +27,7 @@ Analytics is a normal platform capability and should be enabled by default when
 the required PostHog configuration exists. Public website visitor tracking only
 becomes active after visitor consent.
 
-Before consent, generated sites may keep memory-only, anonymous in-page
+Before consent, tenant public sites may keep memory-only, anonymous in-page
 observations if needed for local behavior, but they must not transmit events to
 PostHog, write cookies, write localStorage/sessionStorage, identify a visitor,
 or create a cross-page/session profile.
@@ -40,7 +40,7 @@ exception and GDPR anonymisation threshold.
 
 ## Public-Site Events
 
-Approved V1 generated-site events:
+Approved V1 tenant-site events:
 
 - `$pageview`
 - `$pageleave`
@@ -182,7 +182,7 @@ Rules:
 Analytics metadata is projection-owned. Generated sites should not invent
 tenant/page/section metadata at runtime. Payload projection emits stable
 analytics metadata into generated `site.json` and page JSON, and the
-generated-site runtime mostly reads and forwards that data.
+tenant-site runtime mostly reads and forwards that data.
 
 Source model:
 
@@ -191,7 +191,7 @@ Source model:
 - `page_id`, `page_slug`, and `page_path` come from each projected page.
 - `theme_id` and `manifest_version` come from the tenant manifest/theme
   pipeline.
-- `site_build_id` is injected by the site template/orchestrator build or deploy
+- `site_build_id` is injected by the tenant site build or deploy
   path, preferably commit SHA or image revision.
 - `section_type`, `section_position`, and `section_anchor` come from page block
   projection.
@@ -403,7 +403,7 @@ still the right source of truth.
 projection, CMS/server event capture, `site_form_accepted` capture, the
 server-only PostHog query layer, `/analytics`, and dashboard highlights.
 
-`packages/site-template` ships the first-party generated-site analytics runtime,
+`packages/site-template` ships the first-party tenant-site analytics runtime,
 reads projected `site.analytics`, `page.analytics`, and `block.analytics`, emits
 the approved public-site V1 events after consent, exposes
 `window.SIABAnalytics.grantConsent()` / `revokeConsent()`, and tests emitted
@@ -427,9 +427,9 @@ sequence, preserve the approved contracts and adjust pragmatically.
 
 1. `siab-payload` contract docs, projection metadata, and server query helper
    skeleton.
-2. `packages/site-template` generated-site runtime.
-3. Orchestrator generation/reviewer/seeder updates.
-4. Existing tenant backport.
+2. `packages/site-template` tenant-site runtime.
+3. Existing tenant backport.
+4. Future generation contract once the platform architecture is approved.
 5. CMS `/analytics` page and dashboard highlights.
 6. Production smoke for consent, event capture, accepted form conversion, and
    tenant-filtered queries.
@@ -458,7 +458,7 @@ Approved closure criteria:
   redirect away from analytics.
 - Dashboard shows the approved analytics highlights and keeps local activity
   fallback where appropriate.
-- The new generated-site flow inherits analytics runtime/configuration.
+- Future approved site generation inherits analytics runtime/configuration.
 - At least one existing tenant rollout, initially Amicare, is verified.
 - Tests cover redaction/allowlisting, missing-config fallback, tenant query
   access, metadata projection, no pre-consent transmission, and accepted-form

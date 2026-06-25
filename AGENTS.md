@@ -2,28 +2,32 @@
 
 Repository operating rules for Codex and other coding agents in `siteinabox`.
 
+This file is the canonical monorepo entrypoint. Normal agent work starts from
+the repository root (`/home/shimmy/Desktop/env/siteinabox/siab-platform`).
+App-local `AGENTS.md` files add rules only for work inside that app.
+
 ## What This Repo Is
 
 `siteinabox` is the SIAB monorepo shell. It keeps deployable apps isolated
-while collecting shared contracts, UI, current tenant snapshots, and future
-runtime tooling in one workspace.
+while collecting shared contracts, shared UI, and current tenant snapshots in
+one workspace.
 
-Current and planned surfaces:
+Current surfaces:
 
 - `apps/cms` - Payload CMS app, formerly `siab-payload`.
 - `apps/site` - public Site in a Box site, formerly `site-siteinabox`.
 - `packages/ui` - shared UI primitives/components.
 - `packages/contracts` - shared data contracts.
-- `packages/site-template` and `sites/*` - transition generated-site paths,
-  retained for existing tenants and reference.
+- `packages/site-template` and `sites/*` - current tenant snapshot paths,
+  retained for existing tenant maintenance and reference.
 
 ## Workflow Routing
 
 - For CMS app work, read `apps/cms/AGENTS.md` and follow its rules.
 - For public site work, work in `apps/site`.
-- For generated-site template maintenance on existing tenants only, work in
+- For tenant snapshot/template maintenance on existing tenants only, work in
   `packages/site-template`.
-- Do not restore command-driven generated-site workflows. New removed product app
+- Do not restore command-driven site generation workflows. New product
   architecture work is paused until the platform architecture is reconsidered
   and approved.
 
@@ -49,8 +53,12 @@ Current and planned surfaces:
 ## MCP Status
 
 The monorepo root declares project-local MCP servers in `.mcp.json`,
-`.mcp.toml`, `.codex/config.toml`, and `.codex/mcp.toml`. Keep all four files
-in sync.
+`.mcp.toml`, `.codex/config.toml`, and `.codex/mcp.toml`. `apps/cms` also keeps
+matching app-local MCP mirrors for tools started from that directory:
+`apps/cms/.mcp.json`, `apps/cms/.mcp.toml`,
+`apps/cms/.codex/config.toml`, and `apps/cms/.codex/mcp.toml`.
+
+Keep all eight files' server lists in sync.
 
 Configured root servers:
 
@@ -81,6 +89,19 @@ For shadcn discovery work, prefer these shadcn MCP operations when available:
 Use `context7` for current library documentation when docs are needed. Use
 `sequential-thinking` when a task needs explicit multi-step reasoning support.
 
+## Agent Tooling State
+
+- `.codex/` exists only for Codex MCP configuration. It must not contain command
+  prompt files or behavioral instructions.
+- Repo-local command prompt directories and repo-local `skills/` directories are
+  not part of the current repo contract.
+- User/global Codex skills may exist outside this repo. Do not treat external
+  site-generation skills or prompt workflows as current SIAB architecture unless
+  the operator explicitly asks for them.
+- `apps/cms/components.json` is the only shadcn `components.json` in this repo.
+  It points shadcn at CMS-local compatibility shims; shared primitive source
+  still lives in `packages/ui`.
+
 ## Deploy Invariants
 
 - Platform-owned app images are:
@@ -88,7 +109,7 @@ Use `context7` for current library documentation when docs are needed. Use
   - `ghcr.io/optidigi/siteinabox-site`
 - Future app images must be added only when those apps are implemented and
   their deploy contracts are approved.
-- Tenant/generated site images remain stable unless the operator explicitly
+- Tenant snapshot images remain stable unless the operator explicitly
   approves a deploy contract change:
   - `ghcr.io/optidigi/siteinabox-site-ami-care`
   - `ghcr.io/optidigi/siteinabox-site-amblast`
@@ -104,7 +125,7 @@ Use `context7` for current library documentation when docs are needed. Use
 
 - If TypeScript or JavaScript changes under `apps/cms`, run
   `pnpm --dir apps/cms typecheck`.
-- If generated-site app/template code changes, run the relevant build/check
+- If tenant snapshot/template code changes, run the relevant build/check
   command for that package.
 
 Respect existing dirty work in imported app/package directories. Do not revert

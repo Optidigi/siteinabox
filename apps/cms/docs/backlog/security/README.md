@@ -67,7 +67,7 @@ app-owned desktop canvas style tags for scoped tenant CSS (`data-rt-tenant-css`)
 and live theme overrides (`data-rt-theme-overrides`) now render with that nonce.
 
 This is intentionally additive and does not alter tenant `siteManifest.cssEntry`,
-the `loadTenantCss` scoping/rewrite pipeline, generated site CSS imports, or
+the `loadTenantCss` scoping/rewrite pipeline, tenant site CSS imports, or
 public-site cloning/projection behavior. OBS-33 remains active because React
 `style=""` attributes still exist in app-owned surfaces and registry-owned
 `src/components/ui/*` primitives; CSP nonces do not authorize those attributes.
@@ -173,7 +173,7 @@ Audit finding #5's third sub-fix (bot protection on the public form widget) was
 explicitly deferred until the v1 contact form landed. That trigger has now
 fired: `site-amicare-zorg` renders a public contact form posting to
 `/api/forms`, and the CMS canvas `ContactSection` emits the same endpoint.
-`siab-site-template` also emits contact form markup for generated sites. The
+`siab-site-template` also emits contact form markup for tenant snapshots. The
 Forms collection has anonymous create access with middleware rate limiting and a
 32 KB payload cap, but no hCaptcha / Turnstile token validation exists yet.
 

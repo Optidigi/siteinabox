@@ -1,7 +1,7 @@
 # @siteinabox/contracts
 
 Shared TypeScript contracts for data exchanged between SIAB apps, packages, and
-generated sites.
+tenant site snapshots.
 
 ## Ownership
 
@@ -11,13 +11,13 @@ generated sites.
   lives in `packages/site-template` and `sites/*` while the future platform
   architecture is reconsidered.
 - Prefer additive changes and explicit optional fields for compatibility across
-  CMS and current generated-site consumers.
+  CMS and current tenant snapshot consumers.
 
 ## Current Contracts
 
-- `rich-text`: structured rich text nodes used by CMS content and generated
-  sites.
-- `site`: generated-site page blocks, projections, media refs, navigation, and
+- `rich-text`: structured rich text nodes used by CMS content and tenant site
+  snapshots.
+- `site`: tenant site page blocks, projections, media refs, navigation, and
   site settings.
 
 ## Checks

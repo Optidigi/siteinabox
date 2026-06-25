@@ -1,6 +1,6 @@
-# Generated Sites
+# Tenant Site Snapshots
 
-Generated/client site repositories live here.
+Current tenant site snapshots live here.
 
 Current production tenant site images are monorepo-owned:
 
@@ -18,13 +18,13 @@ sites/
   ami-care/
 ```
 
-Existing generated sites may continue to consume shared transition contracts
+Existing tenant snapshots may continue to consume shared contracts
 from `packages/site-template`. Do not use this generated-source model for new
 self-serve sites while the platform architecture is being reconsidered.
 
 ## Image Build Convention
 
-Generated sites that consume shared packages must build from the monorepo root
+Tenant sites that consume shared packages must build from the monorepo root
 Docker context. Tenant image workflows should use:
 
 ```yaml

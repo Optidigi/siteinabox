@@ -1,6 +1,6 @@
 # Canvas architecture
 
-Reference for how the page editor's canvas + sidebar surfaces are wired. The high-level "what to follow" rules live in `CLAUDE.md`; this file is the deep dive on internals — read when working in `src/components/editor/canvas/`, `src/components/editor/sidebar-drill-down.tsx`, or the mobile editor.
+Reference for how the page editor's canvas + sidebar surfaces are wired. The high-level "what to follow" rules live in `AGENTS.md`; this file is the deep dive on internals — read when working in `src/components/editor/canvas/`, `src/components/editor/sidebar-drill-down.tsx`, or the mobile editor.
 
 ## Mode model
 

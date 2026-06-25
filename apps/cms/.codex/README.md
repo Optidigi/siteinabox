@@ -2,8 +2,9 @@
 
 Codex-specific project config lives here.
 
-Behavioral instructions live only in the repository root `AGENTS.md`. Keep this
-directory for Codex config and MCP mirrors so the root policy does not drift.
+Behavioral instructions live in the repository root `AGENTS.md` and
+`apps/cms/AGENTS.md`. Keep this directory for Codex config and MCP mirrors so
+policy does not drift into runner config.
 
 Files:
 

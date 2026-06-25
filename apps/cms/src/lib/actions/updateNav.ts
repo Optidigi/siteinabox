@@ -9,7 +9,7 @@ import config from "@/payload.config"
 // Unlike setTenantTheme (which works around a too-strict `Tenants` gate),
 // `SiteSettings.access.update` is already `canUpdateSettings` (owner +
 // super-admin) and the multi-tenant plugin scopes the update to the
-// caller's own tenant. So this action takes the CLAUDE.md-preferred path:
+// caller's own tenant. So this action takes the AGENTS.md-preferred path:
 // `overrideAccess: false, user: caller` — Payload's collection access +
 // field-level `validate` functions are the authorization + integrity gate.
 // An editor/viewer (or a wrong-tenant owner) is rejected by Payload itself.

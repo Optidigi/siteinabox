@@ -1,11 +1,11 @@
 # PostHog Analytics Operations
 
-SIAB uses PostHog as the canonical analytics backend for generated public
+SIAB uses PostHog as the canonical analytics backend for tenant public
 sites and CMS/product usage analytics.
 
 ## Consent Boundary
 
-Generated public sites initialize `posthog-js` only after analytics consent is
+Tenant public sites initialize `posthog-js` only after analytics consent is
 granted. Native PostHog events such as `$pageview`, `$pageleave`,
 `$autocapture`, `$rageclick`, `$dead_click`, and `$web_vitals` are therefore
 also consent-gated.
@@ -33,7 +33,7 @@ PostHog's web analytics installation health checks map to SIAB as follows:
   `CLS`, `FCP`, `INP`, and `LCP`. The PostHog project/environment must also
   have Web Vitals and performance capture enabled server-side.
 - Authorized URLs: this is the PostHog project/environment `app_urls` setting.
-  It should be automated from generated-site provisioning.
+  Keep it in sync through approved tenant provisioning/deploy automation.
 - Reverse proxy: this is an infra/DNS concern. Keep it out of per-site runtime
   code until SIAB chooses a central or wildcard ingest proxy strategy.
 
@@ -93,7 +93,7 @@ events were present for `ami-care.nl`. CMS-native `$pageview`, `$pageleave`,
 categorized with `analytics_surface: cms` and can be separated from public site
 events, which use `analytics_surface: site`. Historic `site_page_viewed` and
 `site_page_left` rows remain in PostHog data from earlier runtimes and browser
-cache windows; the current generated-site and Amicare source no longer emit
+cache windows; the current tenant-site and Amicare source no longer emit
 those event names.
 
 Live browser smoke on 2026-06-08 found that consent-and-idle SDK initialization
@@ -107,7 +107,7 @@ initial `$pageview` without emitting a separate `$opt_in` event.
 
 PostHog marks reverse proxy as an installation-health warning because direct
 PostHog ingest can be blocked by privacy tooling. For SIAB, do not configure a
-manual proxy per generated site. Prefer one of these later strategies:
+manual proxy per tenant site. Prefer one of these later strategies:
 
 - a central neutral SIAB ingest hostname used by all sites;
 - a wildcard tenant ingest hostname under a SIAB-controlled domain;

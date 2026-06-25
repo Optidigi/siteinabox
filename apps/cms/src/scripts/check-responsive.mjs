@@ -208,7 +208,7 @@ function scanOrchestrator(rootDir) {
 
   if (!joined.includes("check:responsive") && !joined.includes("siab-check-responsive")) {
     fail(
-      join(rootDir, "CLAUDE.md"),
+      join(rootDir, "AGENTS.md"),
       1,
       "Responsive canvas contract is not referenced.",
       "Orchestrator agents should invoke the shared responsive checker instead of relying on prompt text.",
