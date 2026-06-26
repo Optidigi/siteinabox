@@ -465,7 +465,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "MediaHeroBlockRenderer",
-      output: "Deferred Phase 3 shared renderer for image-backed heroes with overlay, priority media, and shape divider tokens.",
+      output: "Shared renderer for image-backed heroes with overlay, priority media, and shape divider tokens.",
     },
     themeBehavior: ["font-title", "font-text", "accent", "ink", "bg", "overlay", "shape-divider"],
     fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
@@ -577,7 +577,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "InfoCardListBlockRenderer",
-      output: "Deferred Phase 3 shared renderer for icon/image information cards.",
+      output: "Shared renderer for icon/image information cards.",
     },
     themeBehavior: ["font-heading", "font-text", "accent", "card", "rule", "motion-token"],
     fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
@@ -633,7 +633,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "ServiceCarouselBlockRenderer",
-      output: "Deferred Phase 3 shared renderer for service cards in carousel or grid mode.",
+      output: "Shared renderer for service cards in carousel or grid mode.",
     },
     themeBehavior: ["font-heading", "font-text", "accent", "card", "rule", "carousel-controls"],
     fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
@@ -681,7 +681,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "BeforeAfterGalleryBlockRenderer",
-      output: "Deferred Phase 3 shared renderer for accessible before/after comparisons.",
+      output: "Shared renderer for accessible before/after comparisons.",
     },
     themeBehavior: ["font-heading", "font-text", "accent", "rule", "comparison-handle"],
     fixtureCoverage: ["Phase 5 Amblast portfolio published snapshot data migration"],
@@ -739,7 +739,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "ContactDetailsBlockRenderer",
-      output: "Deferred Phase 3 shared renderer for structured contact/legal details.",
+      output: "Shared renderer for structured contact/legal details.",
     },
     themeBehavior: ["font-heading", "font-text", "accent", "card", "rule"],
     fixtureCoverage: ["Phase 5 Amblast contact published snapshot data migration"],
