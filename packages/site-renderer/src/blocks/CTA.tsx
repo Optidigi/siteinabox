@@ -4,10 +4,17 @@ import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, resolveBlockVariant, runtimeVariantDataAttribute } from "./variants"
 
-function variantFor(href: string | null | undefined): "contact" | "quote" {
+function fallbackPresentationVariantFor(href: string | null | undefined): "contact" | "quote" {
   if (href?.startsWith("mailto:") || href?.startsWith("tel:")) return "contact"
   return "quote"
+}
+
+function presentationVariantFor(block: CTABlock, href: string | null | undefined): "contact" | "quote" {
+  const variant = resolveBlockVariant(block).variant
+  if (variant === "quote" || variant === "tailblocksCtaA") return "quote"
+  return fallbackPresentationVariantFor(href)
 }
 
 export function CTABlockRenderer({ block, options }: { block: CTABlock; options: BlockRenderOptions }) {
@@ -15,15 +22,15 @@ export function CTABlockRenderer({ block, options }: { block: CTABlock; options:
   const primaryHref = block.primary?.href?.trim()
   const secondaryLabel = block.secondary?.label?.trim()
   const secondaryHref = block.secondary?.href?.trim()
-  const variant = variantFor(primaryHref)
+  const variant = presentationVariantFor(block, primaryHref)
   const background = resolveMedia(block.backgroundImage ?? null, options.mediaResolver)
-  const sourceVariant = block.analytics?.sectionVariant === "tailblocks-cta-a" ? "cms-block--source-tailblocks-cta-a" : ""
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
       className={`cms-block cms-block--cta cms-block--cta-${variant} ${sourceVariant}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "cta", options.index)}
     >

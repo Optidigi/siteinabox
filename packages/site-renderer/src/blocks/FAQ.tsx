@@ -3,16 +3,17 @@ import type { FAQBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function FAQBlockRenderer({ block, options }: { block: FAQBlock; options: BlockRenderOptions }) {
   if (!block.items || block.items.length === 0) return null
-  const sourceVariant = block.analytics?.sectionVariant === "mamba-faq-1" ? "cms-block--source-mamba-faq-1" : ""
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
       className={`cms-block cms-block--faq ${sourceVariant}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "faq", options.index)}
     >

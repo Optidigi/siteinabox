@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "tsx src/blocks/variants.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "exports": {
@@ -36,6 +37,7 @@
   "devDependencies": {
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "tsx": "^4.22.4",
     "typescript": "6.0.3"
   }
 }

@@ -4,6 +4,7 @@ import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function ServiceCarouselBlockRenderer({
   block,
@@ -19,12 +20,13 @@ export function ServiceCarouselBlockRenderer({
   const slidesTablet = carousel?.slidesPerViewTablet ?? 2
   const slidesMobile = carousel?.slidesPerViewMobile ?? 1
   const spacing = carousel?.spaceBetween ?? 24
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--serviceCarousel cms-block--serviceCarousel-${layout}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      className={`cms-block cms-block--serviceCarousel cms-block--serviceCarousel-${layout} ${sourceVariant}`.trim()}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       data-autoplay={carousel?.autoplay ? "true" : undefined}
       data-autoplay-delay={carousel?.autoplayDelayMs ?? undefined}

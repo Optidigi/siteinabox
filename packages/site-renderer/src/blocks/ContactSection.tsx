@@ -3,25 +3,19 @@ import type { ContactSectionBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
-
-const sourceVariantClassNames: Record<string, string> = {
-  "hyperui-newsletter-centered": "cms-block--source-hyperui-newsletter-centered",
-  "preline-centered-newsletter": "cms-block--source-preline-centered-newsletter",
-  "tailwind-plus-newsletter-details": "cms-block--source-tailwind-plus-newsletter-details",
-}
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function ContactSectionBlockRenderer({ block, options }: { block: ContactSectionBlock; options: BlockRenderOptions }) {
   const provider = block.provider
   const formAction = provider?.action ?? provider?.fallbackHref ?? options.formAction ?? "/api/forms"
   const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
-  const sectionVariant = block.analytics?.sectionVariant
-  const sourceVariant = sectionVariant ? sourceVariantClassNames[sectionVariant] ?? "" : ""
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
       className={`cms-block cms-block--contact ${sourceVariant}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "contactSection", options.index)}
     >

@@ -4,21 +4,19 @@ import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function HeroBlockRenderer({ block, options }: { block: HeroBlock; options: BlockRenderOptions }) {
   const image = resolveMedia(block.image ?? null, options.mediaResolver)
   const ctaLabel = block.cta?.label?.trim()
   const ctaHref = block.cta?.href?.trim()
-  const sourceVariant =
-    block.analytics?.sectionVariant === "tailwind-plus-simple-centered"
-      ? "cms-block--source-tailwind-plus-simple-centered"
-      : ""
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
       className={`cms-block cms-block--hero ${sourceVariant}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "hero", options.index)}
     >

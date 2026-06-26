@@ -4,6 +4,7 @@ import { sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function BeforeAfterGalleryBlockRenderer({
   block,
@@ -13,12 +14,13 @@ export function BeforeAfterGalleryBlockRenderer({
   options: BlockRenderOptions
 }) {
   if (!block.pairs.length) return null
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
-      className="cms-block cms-block--beforeAfterGallery"
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      className={`cms-block cms-block--beforeAfterGallery ${sourceVariant}`.trim()}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "beforeAfterGallery", options.index)}
     >

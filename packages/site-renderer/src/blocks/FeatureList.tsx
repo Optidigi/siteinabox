@@ -4,19 +4,17 @@ import { sectionAnalyticsAttrs } from "../analytics"
 import { RichTextRenderer } from "../rich-text"
 import { resolveIcon } from "./icons"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function FeatureListBlockRenderer({ block, options }: { block: FeatureListBlock; options: BlockRenderOptions }) {
   if (!block.features || block.features.length === 0) return null
-  const sourceVariant =
-    block.analytics?.sectionVariant === "tailwind-plus-centered-2x2"
-      ? "cms-block--source-tailwind-plus-centered-2x2"
-      : ""
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
       className={`cms-block cms-block--featurelist ${sourceVariant}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "featureList", options.index)}
     >

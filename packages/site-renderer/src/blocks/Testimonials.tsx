@@ -3,17 +3,17 @@ import type { TestimonialsBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function TestimonialsBlockRenderer({ block, options }: { block: TestimonialsBlock; options: BlockRenderOptions }) {
   if (!block.items || block.items.length === 0) return null
-  const sourceVariant =
-    block.analytics?.sectionVariant === "mamba-testimonial-1" ? "cms-block--source-mamba-testimonial-1" : ""
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
       className={`cms-block cms-block--testimonials ${sourceVariant}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "testimonials", options.index)}
     >

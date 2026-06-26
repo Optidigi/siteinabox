@@ -4,6 +4,7 @@ import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../analytics"
 import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 const minHeightClassNames: Record<NonNullable<MediaHeroBlock["minHeight"]>, string> = {
   compact: "cms-block--mediaHero-compact",
@@ -19,12 +20,13 @@ export function MediaHeroBlockRenderer({ block, options }: { block: MediaHeroBlo
   const minHeight = block.minHeight ? minHeightClassNames[block.minHeight] : minHeightClassNames.standard
   const align = block.contentAlign ?? "left"
   const width = block.contentWidth ?? "narrow"
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--mediaHero ${minHeight} cms-block--mediaHero-align-${align} cms-block--mediaHero-width-${width}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      className={`cms-block cms-block--mediaHero ${minHeight} cms-block--mediaHero-align-${align} cms-block--mediaHero-width-${width} ${sourceVariant}`.trim()}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       data-shape-top={block.shapeDividers?.top || undefined}
       data-shape-bottom={block.shapeDividers?.bottom || undefined}

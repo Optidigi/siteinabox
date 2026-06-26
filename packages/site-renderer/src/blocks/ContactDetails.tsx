@@ -5,16 +5,18 @@ import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import { resolveIcon } from "./icons"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function ContactDetailsBlockRenderer({ block, options }: { block: ContactDetailsBlock; options: BlockRenderOptions }) {
   if (!block.items.length && !block.legal) return null
   const layout = block.layout ?? "cards"
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--contactDetails cms-block--contactDetails-${layout}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      className={`cms-block cms-block--contactDetails cms-block--contactDetails-${layout} ${sourceVariant}`.trim()}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "contactDetails", options.index)}
     >

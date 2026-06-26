@@ -5,17 +5,19 @@ import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import { resolveIcon } from "./icons"
 import type { BlockRenderOptions } from "./types"
+import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function InfoCardListBlockRenderer({ block, options }: { block: InfoCardListBlock; options: BlockRenderOptions }) {
   if (!block.items.length) return null
   const layout = block.layout ?? "grid"
   const iconPosition = block.iconPosition ?? "top"
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
     <section
       id={block.anchor || undefined}
-      className={`cms-block cms-block--infoCardList cms-block--infoCardList-${layout} cms-block--infoCardList-icon-${iconPosition}`.trim()}
-      data-source-variant={block.analytics?.sectionVariant || undefined}
+      className={`cms-block cms-block--infoCardList cms-block--infoCardList-${layout} cms-block--infoCardList-icon-${iconPosition} ${sourceVariant}`.trim()}
+      data-source-variant={runtimeVariantDataAttribute(block)}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "infoCardList", options.index)}
     >
