@@ -1,5 +1,6 @@
 export * from "./analytics"
 export * from "./blocks"
+export * from "./chrome"
 export * from "./media"
 export * from "./rich-text"
 export * from "./seo"

@@ -469,7 +469,12 @@ export const ContactSectionBlockSchema: z.ZodType<ContactSectionBlock> = strictO
 
 const BlockSchemaBase = z.union([
   HeroBlockSchema,
+  MediaHeroBlockSchema,
   FeatureListBlockSchema,
+  InfoCardListBlockSchema,
+  ServiceCarouselBlockSchema,
+  BeforeAfterGalleryBlockSchema,
+  ContactDetailsBlockSchema,
   TestimonialsBlockSchema,
   FAQBlockSchema,
   CTABlockSchema,

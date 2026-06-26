@@ -3,6 +3,7 @@ import type { Page, SiteSettings } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { BlockRenderer, type BlockRegistry } from "./blocks"
+import { SiteFooter, SiteHeader } from "./chrome"
 import type { MediaResolver } from "./media"
 import { ThemeStyle, themeMode } from "./theme"
 
@@ -35,8 +36,6 @@ export function SitePageRenderer({
   header,
   footer,
 }: SitePageRendererProps) {
-  void settings
-
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} />}
@@ -46,7 +45,7 @@ export function SitePageRenderer({
         data-page-slug={page.slug}
       >
         <div className="site-frame-root">
-          {header}
+          {header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
           {page.blocks.map((block, index) => (
             <BlockRenderer
               key={`${block.blockType}-${index}`}
@@ -56,7 +55,7 @@ export function SitePageRenderer({
               options={{ mediaResolver, formAction }}
             />
           ))}
-          {footer}
+          {footer ?? <SiteFooter settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
         </div>
       </div>
     </div>

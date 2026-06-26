@@ -1,5 +1,5 @@
 import type * as React from "react"
-import type { Block, SiteBlockSlug } from "@siteinabox/contracts"
+import type { Block, SiteGenerationBlockSlug } from "@siteinabox/contracts"
 import type { MediaResolver } from "../media"
 
 export type BlockRenderOptions = {
@@ -13,4 +13,4 @@ export type BlockRendererComponent<TBlock extends Block = Block> = (props: {
   options: BlockRenderOptions
 }) => React.ReactNode
 
-export type BlockRegistry = Partial<Record<SiteBlockSlug, BlockRendererComponent<any>>>
+export type BlockRegistry = Partial<Record<SiteGenerationBlockSlug, BlockRendererComponent<any>>>

@@ -275,7 +275,12 @@ export type ContactSectionBlock = {
 
 export type Block =
   | HeroBlock
+  | MediaHeroBlock
   | FeatureListBlock
+  | InfoCardListBlock
+  | ServiceCarouselBlock
+  | BeforeAfterGalleryBlock
+  | ContactDetailsBlock
   | TestimonialsBlock
   | FAQBlock
   | CTABlock

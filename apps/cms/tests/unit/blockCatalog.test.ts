@@ -53,7 +53,7 @@ describe("renderer block catalog", () => {
     }
   })
 
-  it("separates parity generation contracts from currently supported renderer blocks", () => {
+  it("separates parity renderer contracts from canonical self-serve blocks", () => {
     expect(SITE_GENERATION_BLOCK_CATALOG.map((entry) => entry.slug)).toEqual(
       expect.arrayContaining([...SITE_GENERATION_BLOCK_SLUGS]),
     )
@@ -67,7 +67,7 @@ describe("renderer block catalog", () => {
       expect(entry.slug).toBe(slug)
       expect(entry.renderer.component).toMatch(/Renderer$/)
       expect(entry.variants.length).toBeGreaterThan(0)
-      expect(entry.variants.every((variant) => variant.rendererSupportStatus === "deferred")).toBe(true)
+      expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
       expect(entry.variants.every((variant) => variant.provenance.sourceName === "SIAB legacy tenant snapshot")).toBe(true)
       expect(entry.variants.every((variant) => variant.provenance.visualExactnessStatus === "needs-browser-comparison")).toBe(true)
     }
@@ -78,7 +78,7 @@ describe("renderer block catalog", () => {
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => parityVariantIds.has(variant.variantId))).toBe(false)
   })
 
-  it("accepts structured parity blocks only as generated snapshot data until renderer support lands", () => {
+  it("accepts structured parity blocks as generated snapshot and shared renderer page data", () => {
     const parityBlock: GeneratedBlockSpec = {
       blockType: "beforeAfterGallery",
       analytics: { sectionVariant: "amblast-portfolio-comparisons" },
@@ -99,7 +99,7 @@ describe("renderer block catalog", () => {
     }
 
     expect(GeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(true)
-    expect(BlockSchema.safeParse(parityBlock).success).toBe(false)
+    expect(BlockSchema.safeParse(parityBlock).success).toBe(true)
     expect(
       GeneratedBlockSpecSchema.safeParse({
         ...parityBlock,

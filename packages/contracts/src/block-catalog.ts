@@ -475,7 +475,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         label: "Amblast shaped overlay",
         intent: "Image-backed hero with overlay and top/bottom shape divider ids.",
         dataSignal: "analytics.sectionVariant",
-        rendererSupportStatus: "deferred",
+        rendererSupportStatus: "supported",
         sectionVariant: "amblast-shaped-overlay",
         rendererClassName: "cms-block--source-amblast-shaped-overlay",
         provenance: legacyTenantProvenance(
@@ -587,7 +587,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         label: "Amblast image boxes",
         intent: "Icon/text boxes for hours, phone/email, location, and contact facts.",
         dataSignal: "analytics.sectionVariant",
-        rendererSupportStatus: "deferred",
+        rendererSupportStatus: "supported",
         sectionVariant: "amblast-image-boxes",
         rendererClassName: "cms-block--source-amblast-image-boxes",
         provenance: legacyTenantProvenance(
@@ -643,7 +643,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         label: "Amblast Swiper services",
         intent: "Service-card carousel with icon media, paragraphs, CTA, autoplay, and pagination settings.",
         dataSignal: "analytics.sectionVariant",
-        rendererSupportStatus: "deferred",
+        rendererSupportStatus: "supported",
         sectionVariant: "amblast-swiper-services",
         rendererClassName: "cms-block--source-amblast-swiper-services",
         provenance: legacyTenantProvenance(
@@ -691,7 +691,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         label: "Amblast portfolio comparisons",
         intent: "Portfolio image comparisons with labels, 50 percent initial ratio, and horizontal handle.",
         dataSignal: "analytics.sectionVariant",
-        rendererSupportStatus: "deferred",
+        rendererSupportStatus: "supported",
         sectionVariant: "amblast-portfolio-comparisons",
         rendererClassName: "cms-block--source-amblast-portfolio-comparisons",
         provenance: legacyTenantProvenance(
@@ -749,7 +749,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         label: "Amblast contact cards",
         intent: "Contact cards and legal details alongside form sections.",
         dataSignal: "analytics.sectionVariant",
-        rendererSupportStatus: "deferred",
+        rendererSupportStatus: "supported",
         sectionVariant: "amblast-contact-cards",
         rendererClassName: "cms-block--source-amblast-contact-cards",
         provenance: legacyTenantProvenance(
