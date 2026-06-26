@@ -10,10 +10,11 @@ import type {
 } from "@siteinabox/contracts/generation"
 import {
   contractValidationReport,
+  isSupportedBlockVariant,
   isSupportedBlockSectionVariant,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
-import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
+import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import type { Payload } from "payload"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -56,7 +57,7 @@ const DRAFT_IMPORT_CONTEXT = {
 const TENANT_SLUG_REGEX = /^[a-z0-9-]+$/
 const DOMAIN_REGEX =
   /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
-const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_BLOCK_SLUGS)
+const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
 const sortValue = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(sortValue)
@@ -191,6 +192,14 @@ export const validateSiteGenerationSpecForCms = (spec: SiteGenerationSpec): Vali
           ["pages", index, "blocks", blockIndex, "analytics", "sectionVariant"],
         ))
       }
+      const variant = (block as Record<string, unknown>).variant
+      if (typeof variant === "string" && variant && !isSupportedBlockVariant(blockType, variant)) {
+        issues.push(issue(
+          "unsupported_block_variant",
+          `Generated block variant "${variant}" is not approved for block type "${blockType}".`,
+          ["pages", index, "blocks", blockIndex, "variant"],
+        ))
+      }
     })
   })
   if (pagesArray && !pagesArray.some((page) => page?.slug === "index")) {
@@ -323,7 +332,7 @@ const normalizeMediaRef = (value: unknown): unknown => {
 const normalizeBlock = (block: Record<string, unknown>): Record<string, unknown> => {
   const { id: _id, source: _source, ...rest } = block
   const normalized: Record<string, unknown> = { ...rest }
-  for (const key of ["image", "avatar", "backgroundImage"]) {
+  for (const key of ["image", "avatar", "backgroundImage", "foregroundImage", "before", "after"]) {
     if (key in normalized) normalized[key] = normalizeMediaRef(normalized[key])
   }
   if (Array.isArray(normalized.items)) {
@@ -331,9 +340,21 @@ const normalizeBlock = (block: Record<string, unknown>): Record<string, unknown>
       item && typeof item === "object"
         ? {
             ...(item as Record<string, unknown>),
+            image: normalizeMediaRef((item as Record<string, unknown>).image),
             avatar: normalizeMediaRef((item as Record<string, unknown>).avatar),
           }
         : item,
+    )
+  }
+  if (Array.isArray(normalized.pairs)) {
+    normalized.pairs = normalized.pairs.map((pair) =>
+      pair && typeof pair === "object"
+        ? {
+            ...(pair as Record<string, unknown>),
+            before: normalizeMediaRef((pair as Record<string, unknown>).before),
+            after: normalizeMediaRef((pair as Record<string, unknown>).after),
+          }
+        : pair,
     )
   }
   return normalized

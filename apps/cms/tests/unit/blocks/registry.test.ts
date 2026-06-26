@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
+import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { BLOCKS, resolveAllowedBlocks } from "@/blocks/registry"
 
 describe("resolveAllowedBlocks", () => {
+  it("registers every approved generation block slug", () => {
+    expect(BLOCKS.map((block) => block.slug)).toEqual([...SITE_GENERATION_BLOCK_SLUGS])
+  })
+
   it("returns the full registry when declared is undefined", () => {
     const result = resolveAllowedBlocks(BLOCKS, undefined)
     expect(result).toHaveLength(BLOCKS.length)

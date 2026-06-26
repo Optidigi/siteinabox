@@ -1,6 +1,7 @@
 import { MousePointerClick } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
 
 export const CTA: BlockWithMeta = {
   slug: "cta",
@@ -42,11 +43,7 @@ export const CTA: BlockWithMeta = {
         description: "Optional decorative background image for quote-style CTA sections.",
       },
     },
-    { name: "anchor", type: "text", required: false,
-      admin: {
-        description: "Optional in-page anchor id (e.g. 'contact'). Renders as <section id>.",
-      }
-    },
+    ...blockBaseFields("contact"),
   ],
   summary: (v) => {
     const text = firstRichText(v.headline)

@@ -1,6 +1,7 @@
 import { Sparkles } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
 
 export const Hero: BlockWithMeta = {
   slug: "hero",
@@ -38,11 +39,7 @@ export const Hero: BlockWithMeta = {
       { name: "href", type: "text", validate: validateSafeHref }
     ]},
     { name: "image", type: "upload", relationTo: "media" },
-    { name: "anchor", type: "text", required: false,
-      admin: {
-        description: "Optional in-page anchor id (e.g. 'services'). Renders as <section id>.",
-      }
-    },
+    ...blockBaseFields("services"),
   ],
   summary: (v) => {
     const text = firstRichText(v.headline)

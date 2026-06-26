@@ -29,6 +29,7 @@ const ARRAY_ROW_KEYS = new Set([
   "items",         // Testimonials.items, FAQ.items
   "features",      // FeatureList.features
   "fields",        // ContactSection.fields
+  "pairs",         // BeforeAfterGallery.pairs
   "social",        // SiteSettings.contact.social — future-proofs pages
                    // should they ever embed it
   "pills"          // Hero.pills
@@ -104,13 +105,24 @@ const contentSignature = (block: Json): string =>
 const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
   const sectionType = typeof block.blockType === "string" ? block.blockType : "unknown"
   const anchor = typeof block.anchor === "string" && block.anchor.trim() ? block.anchor.trim() : null
+  const stored = block.analytics && typeof block.analytics === "object" && !Array.isArray(block.analytics)
+    ? block.analytics
+    : {}
+  const storedSectionVariant = typeof stored.sectionVariant === "string" && stored.sectionVariant
+    ? stored.sectionVariant
+    : null
   return {
+    ...stored,
     sectionId: anchor ?? `${pageSlug}:${index}:${sectionType}`,
     sectionType,
     sectionPosition: index,
     sectionAnchor: anchor,
-    sectionVariant: typeof block.variant === "string" ? block.variant : null,
-    blockPresetId: typeof block.blockPresetId === "string" ? block.blockPresetId : null,
+    sectionVariant: storedSectionVariant,
+    blockPresetId: typeof block.blockPresetId === "string"
+      ? block.blockPresetId
+      : typeof stored.blockPresetId === "string"
+        ? stored.blockPresetId
+        : null,
     contentSignature: contentSignature(block),
   }
 }

@@ -1,12 +1,6 @@
 import type { CollectionConfig } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
-import { Hero } from "@/blocks/Hero"
-import { FeatureList } from "@/blocks/FeatureList"
-import { Testimonials } from "@/blocks/Testimonials"
-import { FAQ } from "@/blocks/FAQ"
-import { CTA } from "@/blocks/CTA"
-import { RichText } from "@/blocks/RichText"
-import { ContactSection } from "@/blocks/ContactSection"
+import { BLOCKS } from "@/blocks/registry"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
 import { deletePageFile } from "@/hooks/deleteFileFromDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -39,8 +33,7 @@ export const Pages: CollectionConfig = {
         { label: "Draft", value: "draft" },
         { label: "Published", value: "published" }
       ]},
-    { name: "blocks", type: "blocks",
-      blocks: [Hero, FeatureList, Testimonials, FAQ, CTA, RichText, ContactSection] },
+    { name: "blocks", type: "blocks", blocks: [...BLOCKS] },
     { name: "seo", type: "group", fields: [
       { name: "title", type: "text" },
       { name: "description", type: "textarea" },

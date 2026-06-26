@@ -1,5 +1,6 @@
 import { Quote } from "lucide-react"
 import { truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
 
 export const Testimonials: BlockWithMeta = {
   slug: "testimonials",
@@ -14,11 +15,7 @@ export const Testimonials: BlockWithMeta = {
       { name: "role", type: "text" },
       { name: "avatar", type: "upload", relationTo: "media" }
     ]},
-    { name: "anchor", type: "text", required: false,
-      admin: {
-        description: "Optional in-page anchor id (e.g. 'reviews'). Renders as <section id>.",
-      }
-    },
+    ...blockBaseFields("reviews"),
   ],
   summary: (v) => {
     const title = typeof v.title === "string" ? v.title.trim() : ""

@@ -1,5 +1,6 @@
 import { ListChecks } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
 
 export const FeatureList: BlockWithMeta = {
   slug: "featureList",
@@ -34,11 +35,7 @@ export const FeatureList: BlockWithMeta = {
       },
       { name: "icon", type: "text", admin: { description: "kebab-case lucide-preact icon name (e.g. \"map-pin\", \"check-circle\"). See the allowlist in the deployed Astro template's src/components/cms/icons.ts for what's available." } }
     ]},
-    { name: "anchor", type: "text", required: false,
-      admin: {
-        description: "Optional in-page anchor id (e.g. 'services'). Renders as <section id>.",
-      }
-    },
+    ...blockBaseFields("services"),
   ],
   summary: (v) => {
     const text = firstRichText(v.title)

@@ -1,5 +1,6 @@
 import { HelpCircle } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
 
 export const FAQ: BlockWithMeta = {
   slug: "faq",
@@ -27,11 +28,7 @@ export const FAQ: BlockWithMeta = {
         } as any
       }
     ]},
-    { name: "anchor", type: "text", required: false,
-      admin: {
-        description: "Optional in-page anchor id (e.g. 'faq'). Renders as <section id>.",
-      }
-    },
+    ...blockBaseFields("faq"),
   ],
   summary: (v) => {
     const titleText = firstRichText(v.title)

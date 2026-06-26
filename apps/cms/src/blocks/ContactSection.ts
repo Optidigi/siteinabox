@@ -1,5 +1,6 @@
 import { Mail } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
+import { blockBaseFields } from "./baseFields"
 
 export const ContactSection: BlockWithMeta = {
   slug: "contactSection",
@@ -35,11 +36,7 @@ export const ContactSection: BlockWithMeta = {
         ]},
       { name: "required", type: "checkbox", defaultValue: false }
     ]},
-    { name: "anchor", type: "text", required: false,
-      admin: {
-        description: "Optional in-page anchor id (e.g. 'contact'). Renders as <section id>.",
-      }
-    },
+    ...blockBaseFields("contact"),
   ],
   summary: (v) => {
     const text = firstRichText(v.title)
