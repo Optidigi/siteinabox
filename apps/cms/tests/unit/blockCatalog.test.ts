@@ -9,11 +9,27 @@ import {
   SITE_BLOCK_CATALOG,
   SITE_BLOCK_CATALOG_BY_SLUG,
   SITE_BLOCK_REFERENCE_SOURCES,
+  SITE_GENERATION_BLOCK_CATALOG,
+  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
+import { BlockSchema, GeneratedBlockSpecSchema } from "@siteinabox/contracts/generation"
+import type { GeneratedBlockSpec } from "@siteinabox/contracts/generation"
 import { tenantSiteGenerationSpecs } from "@siteinabox/contracts/fixtures/tenants"
-import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
+import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS, SITE_PARITY_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { v1FixturePage } from "@siteinabox/site-renderer"
+
+const inlineRoot = (text: string) => ({
+  t: "root" as const,
+  variant: "inline" as const,
+  children: [{ t: "text" as const, v: text }],
+})
+
+const blockRoot = (text: string) => ({
+  t: "root" as const,
+  variant: "block" as const,
+  children: [{ t: "paragraph" as const, children: [{ t: "text" as const, v: text }] }],
+})
 
 describe("renderer block catalog", () => {
   it("catalogs every currently supported renderer block", () => {
@@ -35,6 +51,67 @@ describe("renderer block catalog", () => {
       expect(entry.variants.every((variant) => variant.provenance)).toBe(true)
       expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
     }
+  })
+
+  it("separates parity generation contracts from currently supported renderer blocks", () => {
+    expect(SITE_GENERATION_BLOCK_CATALOG.map((entry) => entry.slug)).toEqual(
+      expect.arrayContaining([...SITE_GENERATION_BLOCK_SLUGS]),
+    )
+    expect(SITE_GENERATION_BLOCK_CATALOG).toHaveLength(SITE_GENERATION_BLOCK_SLUGS.length)
+    expect(SITE_BLOCK_CATALOG.map((entry) => entry.slug)).not.toEqual(
+      expect.arrayContaining([...SITE_PARITY_BLOCK_SLUGS]),
+    )
+
+    for (const slug of SITE_PARITY_BLOCK_SLUGS) {
+      const entry = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[slug]
+      expect(entry.slug).toBe(slug)
+      expect(entry.renderer.component).toMatch(/Renderer$/)
+      expect(entry.variants.length).toBeGreaterThan(0)
+      expect(entry.variants.every((variant) => variant.rendererSupportStatus === "deferred")).toBe(true)
+      expect(entry.variants.every((variant) => variant.provenance.sourceName === "SIAB legacy tenant snapshot")).toBe(true)
+      expect(entry.variants.every((variant) => variant.provenance.visualExactnessStatus === "needs-browser-comparison")).toBe(true)
+    }
+
+    const parityVariantIds = new Set(
+      SITE_PARITY_BLOCK_SLUGS.flatMap((slug) => SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[slug].variants.map((variant) => variant.id)),
+    )
+    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => parityVariantIds.has(variant.variantId))).toBe(false)
+  })
+
+  it("accepts structured parity blocks only as generated snapshot data until renderer support lands", () => {
+    const parityBlock: GeneratedBlockSpec = {
+      blockType: "beforeAfterGallery",
+      analytics: { sectionVariant: "amblast-portfolio-comparisons" },
+      anchor: "portfolio",
+      title: inlineRoot("Voor en na"),
+      intro: blockRoot("Portfolio vergelijking."),
+      pairs: [
+        {
+          before: { url: "/uploads/portfolio/before.jpg" },
+          after: { url: "/uploads/portfolio/after.jpg" },
+          beforeLabel: "Voor",
+          afterLabel: "Na",
+          caption: blockRoot("Olievlek verwijderd."),
+          initialRatio: 0.5,
+          orientation: "horizontal",
+        },
+      ],
+    }
+
+    expect(GeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(true)
+    expect(BlockSchema.safeParse(parityBlock).success).toBe(false)
+    expect(
+      GeneratedBlockSpecSchema.safeParse({
+        ...parityBlock,
+        rawHtml: "<section>not allowed</section>",
+      }).success,
+    ).toBe(false)
+    expect(
+      GeneratedBlockSpecSchema.safeParse({
+        ...parityBlock,
+        analytics: { sectionVariant: "tailblocks-cta-a" },
+      }).success,
+    ).toBe(false)
   })
 
   it("records vetted source status and keeps unavailable sources blocked", () => {

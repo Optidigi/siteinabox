@@ -1,5 +1,6 @@
 import type { SiteBlockEditorField } from "./generation"
-import type { SiteBlockSlug } from "./site"
+import { SITE_BLOCK_SLUGS } from "./site"
+import type { SiteBlockSlug, SiteGenerationBlockSlug } from "./site"
 
 export type BlockReferenceAvailability = "free" | "paid" | "unavailable" | "mixed"
 
@@ -66,7 +67,7 @@ export type BlockVariantProvenance = {
 }
 
 export type SiteBlockCatalogEntry = {
-  slug: SiteBlockSlug
+  slug: SiteGenerationBlockSlug
   label: string
   status: "approved"
   contractType: string
@@ -160,6 +161,14 @@ const blockReferenceSources = {
     availability: "unavailable",
     notes: "Not approved for SIAB self-serve generated-site catalogs.",
   },
+  legacyTenantSnapshots: {
+    name: "SIAB legacy tenant snapshots",
+    url: "https://github.com/optidigi/siteinabox",
+    licenseStatus: "Operator-owned local tenant snapshot source retained for Amicare/Amblast migration parity.",
+    availability: "free",
+    notes:
+      "Use as a local visual/functionality parity reference only. Do not create new tenant source folders or tenant-specific renderer branches.",
+  },
 } as const satisfies Record<string, BlockReferenceSource>
 
 export const SITE_BLOCK_REFERENCE_SOURCES = blockReferenceSources
@@ -180,6 +189,30 @@ const siabOwnedProvenance = (upstreamBlockName: string): BlockVariantProvenance 
   visualExactnessStatus: "reviewed-exact-source",
   visualSourceNotes: "SIAB-owned canonical renderer style; no external visual source comparison required.",
   notes: "Generic canonical renderer style, not copied from an external block.",
+})
+
+const legacyTenantProvenance = (
+  upstreamBlockName: string,
+  sourcePath: string,
+  notes: string,
+): BlockVariantProvenance => ({
+  sourceName: "SIAB legacy tenant snapshot",
+  url: "https://github.com/optidigi/siteinabox",
+  licenseStatus: "Operator-owned local tenant snapshot source for Amicare/Amblast parity.",
+  licenseCompatibility: "compatible",
+  approvalStatus: "approved",
+  sourceAvailability: "free-public",
+  upstreamBlockName,
+  sourceAccessType: "local-source",
+  sourceAccess: "Local repository legacy/current tenant snapshot.",
+  implementation: "adapted-exact-style",
+  sourcePath,
+  retrieval: `Inspect ${sourcePath} in this repository and map visible behavior to structured contract fields.`,
+  verifiedAt: "2026-06-26",
+  visualExactnessStatus: "needs-browser-comparison",
+  visualSourceNotes:
+    "Phase 2 records the local parity source and required data shape. Phase 3/6 must perform browser comparison after shared renderer implementation.",
+  notes,
 })
 
 const tailwindPlusFreeProvenance = (
@@ -350,7 +383,7 @@ export const APPROVED_V1_MARKETING_CAPABILITY_COVERAGE = [
   notes: string
 }[]
 
-export const SITE_BLOCK_CATALOG = [
+const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
   {
     slug: "hero",
     label: "Hero",
@@ -405,6 +438,56 @@ export const SITE_BLOCK_CATALOG = [
     referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.tailblocks, blockReferenceSources.mambaUi],
   },
   {
+    slug: "mediaHero",
+    label: "Media hero",
+    status: "approved",
+    contractType: "MediaHeroBlock",
+    runtimeValidationTarget: "SITE_GENERATION_BLOCK_SLUGS + MediaHeroBlockSchema + PublishedSiteSnapshotSchema.",
+    cmsEditableFields: [
+      richtext("eyebrow", "Eyebrow", "inline", "script"),
+      richtext("headline", "Headline", "inline", "title"),
+      richtext("subheadline", "Subheadline", "block", "text"),
+      cta("cta", "Primary action"),
+      cta("secondary", "Secondary action"),
+      image("backgroundImage", "Background image"),
+      image("foregroundImage", "Foreground image"),
+      {
+        name: "contentAlign",
+        label: "Content alignment",
+        kind: "select",
+        options: [
+          { label: "Left", value: "left" },
+          { label: "Center", value: "center" },
+          { label: "Right", value: "right" },
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "MediaHeroBlockRenderer",
+      output: "Deferred Phase 3 shared renderer for image-backed heroes with overlay, priority media, and shape divider tokens.",
+    },
+    themeBehavior: ["font-title", "font-text", "accent", "ink", "bg", "overlay", "shape-divider"],
+    fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
+    variants: [
+      {
+        id: "mediaHero:amblastShapedOverlay",
+        label: "Amblast shaped overlay",
+        intent: "Image-backed hero with overlay and top/bottom shape divider ids.",
+        dataSignal: "analytics.sectionVariant",
+        rendererSupportStatus: "deferred",
+        sectionVariant: "amblast-shaped-overlay",
+        rendererClassName: "cms-block--source-amblast-shaped-overlay",
+        provenance: legacyTenantProvenance(
+          "Amblast shaped page hero",
+          "sites/amblast/src/pages/index.astro",
+          "Represents the Amblast hero sections without preserving Elementor markup or generated source.",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.legacyTenantSnapshots],
+  },
+  {
     slug: "featureList",
     label: "Feature list",
     status: "approved",
@@ -457,6 +540,226 @@ export const SITE_BLOCK_CATALOG = [
       },
     ],
     referenceSources: [blockReferenceSources.tailwindPlusMarketing, blockReferenceSources.tailblocks, blockReferenceSources.hyperUi],
+  },
+  {
+    slug: "infoCardList",
+    label: "Info card list",
+    status: "approved",
+    contractType: "InfoCardListBlock",
+    runtimeValidationTarget: "SITE_GENERATION_BLOCK_SLUGS + InfoCardListBlockSchema + PublishedSiteSnapshotSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "layout",
+        label: "Layout",
+        kind: "select",
+        options: [
+          { label: "Row", value: "row" },
+          { label: "Grid", value: "grid" },
+          { label: "Stack", value: "stack" },
+        ],
+      },
+      {
+        name: "items",
+        label: "Cards",
+        kind: "array",
+        itemLabel: "Card",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          { name: "icon", label: "Icon", kind: "icon" },
+          image("image", "Image icon"),
+          cta("link", "Link"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "InfoCardListBlockRenderer",
+      output: "Deferred Phase 3 shared renderer for icon/image information cards.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "rule", "motion-token"],
+    fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
+    variants: [
+      {
+        id: "infoCardList:amblastImageBoxes",
+        label: "Amblast image boxes",
+        intent: "Icon/text boxes for hours, phone/email, location, and contact facts.",
+        dataSignal: "analytics.sectionVariant",
+        rendererSupportStatus: "deferred",
+        sectionVariant: "amblast-image-boxes",
+        rendererClassName: "cms-block--source-amblast-image-boxes",
+        provenance: legacyTenantProvenance(
+          "Amblast Elementor image boxes",
+          "sites/amblast/src/pages/index.astro",
+          "Covers image-box and info-box patterns backed by uploaded icon media.",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.legacyTenantSnapshots],
+  },
+  {
+    slug: "serviceCarousel",
+    label: "Service carousel",
+    status: "approved",
+    contractType: "ServiceCarouselBlock",
+    runtimeValidationTarget: "SITE_GENERATION_BLOCK_SLUGS + ServiceCarouselBlockSchema + PublishedSiteSnapshotSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "layout",
+        label: "Layout",
+        kind: "select",
+        options: [
+          { label: "Carousel", value: "carousel" },
+          { label: "Grid", value: "grid" },
+        ],
+      },
+      {
+        name: "items",
+        label: "Services",
+        kind: "array",
+        itemLabel: "Service",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          image("image", "Icon or image"),
+          cta("cta", "Action"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "ServiceCarouselBlockRenderer",
+      output: "Deferred Phase 3 shared renderer for service cards in carousel or grid mode.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "rule", "carousel-controls"],
+    fixtureCoverage: ["Phase 5 Amblast published snapshot data migration"],
+    variants: [
+      {
+        id: "serviceCarousel:amblastSwiperServices",
+        label: "Amblast Swiper services",
+        intent: "Service-card carousel with icon media, paragraphs, CTA, autoplay, and pagination settings.",
+        dataSignal: "analytics.sectionVariant",
+        rendererSupportStatus: "deferred",
+        sectionVariant: "amblast-swiper-services",
+        rendererClassName: "cms-block--source-amblast-swiper-services",
+        provenance: legacyTenantProvenance(
+          "Amblast service carousel",
+          "sites/amblast/src/pages/index.astro",
+          "Maps the Swiper settings from data-slider-settings into typed carousel options.",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.legacyTenantSnapshots],
+  },
+  {
+    slug: "beforeAfterGallery",
+    label: "Before/after gallery",
+    status: "approved",
+    contractType: "BeforeAfterGalleryBlock",
+    runtimeValidationTarget: "SITE_GENERATION_BLOCK_SLUGS + BeforeAfterGalleryBlockSchema + PublishedSiteSnapshotSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "pairs",
+        label: "Pairs",
+        kind: "array",
+        itemLabel: "Comparison",
+        itemFields: [
+          image("before", "Before image"),
+          image("after", "After image"),
+          text("beforeLabel", "Before label"),
+          text("afterLabel", "After label"),
+          richtext("caption", "Caption", "block", "text"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "BeforeAfterGalleryBlockRenderer",
+      output: "Deferred Phase 3 shared renderer for accessible before/after comparisons.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "rule", "comparison-handle"],
+    fixtureCoverage: ["Phase 5 Amblast portfolio published snapshot data migration"],
+    variants: [
+      {
+        id: "beforeAfterGallery:amblastPortfolio",
+        label: "Amblast portfolio comparisons",
+        intent: "Portfolio image comparisons with labels, 50 percent initial ratio, and horizontal handle.",
+        dataSignal: "analytics.sectionVariant",
+        rendererSupportStatus: "deferred",
+        sectionVariant: "amblast-portfolio-comparisons",
+        rendererClassName: "cms-block--source-amblast-portfolio-comparisons",
+        provenance: legacyTenantProvenance(
+          "Amblast image comparison",
+          "sites/amblast/src/pages/portfolio.astro",
+          "Represents before/after pairs structurally; Phase 3 must implement pointer and keyboard interaction generically.",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.legacyTenantSnapshots],
+  },
+  {
+    slug: "contactDetails",
+    label: "Contact details",
+    status: "approved",
+    contractType: "ContactDetailsBlock",
+    runtimeValidationTarget: "SITE_GENERATION_BLOCK_SLUGS + ContactDetailsBlockSchema + PublishedSiteSnapshotSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "layout",
+        label: "Layout",
+        kind: "select",
+        options: [
+          { label: "Cards", value: "cards" },
+          { label: "Split", value: "split" },
+          { label: "List", value: "list" },
+        ],
+      },
+      {
+        name: "items",
+        label: "Details",
+        kind: "array",
+        itemLabel: "Detail",
+        itemFields: [
+          text("label", "Label"),
+          richtext("value", "Value", "block", "text"),
+          text("href", "Href"),
+          { name: "icon", label: "Icon", kind: "icon" },
+          image("image", "Image icon"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "ContactDetailsBlockRenderer",
+      output: "Deferred Phase 3 shared renderer for structured contact/legal details.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "rule"],
+    fixtureCoverage: ["Phase 5 Amblast contact published snapshot data migration"],
+    variants: [
+      {
+        id: "contactDetails:amblastContactCards",
+        label: "Amblast contact cards",
+        intent: "Contact cards and legal details alongside form sections.",
+        dataSignal: "analytics.sectionVariant",
+        rendererSupportStatus: "deferred",
+        sectionVariant: "amblast-contact-cards",
+        rendererClassName: "cms-block--source-amblast-contact-cards",
+        provenance: legacyTenantProvenance(
+          "Amblast contact and footer details",
+          "sites/amblast/src/pages/contact.astro",
+          "Keeps address, phone, email, hours, and legal identifiers structured so Phase 5 can resolve the address conflict explicitly.",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.legacyTenantSnapshots],
   },
   {
     slug: "richText",
@@ -556,6 +859,7 @@ export const SITE_BLOCK_CATALOG = [
         itemFields: [
           text("name", "Name"),
           text("label", "Label"),
+          text("placeholder", "Placeholder"),
           {
             name: "type",
             label: "Type",
@@ -568,8 +872,12 @@ export const SITE_BLOCK_CATALOG = [
             ],
           },
           { name: "required", label: "Required", kind: "checkbox" },
+          text("maxLength", "Max length"),
         ],
       },
+      text("provider.provider", "Form provider"),
+      text("provider.action", "Form action"),
+      text("provider.fallbackHref", "Fallback href"),
     ],
     renderer: {
       package: "@siteinabox/site-renderer",
@@ -734,11 +1042,21 @@ export const SITE_BLOCK_CATALOG = [
   },
 ] as const satisfies readonly SiteBlockCatalogEntry[]
 
+export const SITE_GENERATION_BLOCK_CATALOG = SITE_GENERATION_BLOCK_CATALOG_ENTRIES
+
+export const SITE_BLOCK_CATALOG = SITE_GENERATION_BLOCK_CATALOG_ENTRIES.filter((entry) =>
+  SITE_BLOCK_SLUGS.includes(entry.slug as SiteBlockSlug),
+)
+
 export type SiteBlockCatalog = typeof SITE_BLOCK_CATALOG
 
 export const SITE_BLOCK_CATALOG_BY_SLUG = Object.fromEntries(
   SITE_BLOCK_CATALOG.map((entry) => [entry.slug, entry]),
 ) as Record<SiteBlockSlug, SiteBlockCatalog[number]>
+
+export const SITE_GENERATION_BLOCK_CATALOG_BY_SLUG = Object.fromEntries(
+  SITE_GENERATION_BLOCK_CATALOG.map((entry) => [entry.slug, entry]),
+) as Record<SiteGenerationBlockSlug, (typeof SITE_GENERATION_BLOCK_CATALOG)[number]>
 
 export const SITE_BLOCK_MANIFEST_FROM_CATALOG = SITE_BLOCK_CATALOG.map((entry) => ({
   slug: entry.slug,

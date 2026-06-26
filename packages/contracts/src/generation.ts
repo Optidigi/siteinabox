@@ -1,14 +1,19 @@
 import type {
   ContactSectionBlock,
+  ContactDetailsBlock,
   CTABlock,
+  BeforeAfterGalleryBlock,
   FAQBlock,
   FeatureListBlock,
   HeroBlock,
+  InfoCardListBlock,
   MediaRef,
+  MediaHeroBlock,
   Page,
   RichTextBlock,
-  SiteBlockSlug,
+  SiteGenerationBlockSlug,
   SiteSettings,
+  ServiceCarouselBlock,
   TestimonialsBlock,
 } from "./site"
 
@@ -102,7 +107,7 @@ export type SiteBlockEditorField = {
 }
 
 export type SiteBlockManifestItem = {
-  slug: SiteBlockSlug
+  slug: SiteGenerationBlockSlug
   label?: string
   defaultAnchor?: string
   fields?: SiteBlockEditorField[]
@@ -114,7 +119,12 @@ export type GeneratedBlockMetadata = {
 }
 
 export type GeneratedHeroBlockSpec = HeroBlock & GeneratedBlockMetadata
+export type GeneratedMediaHeroBlockSpec = MediaHeroBlock & GeneratedBlockMetadata
 export type GeneratedFeatureListBlockSpec = FeatureListBlock & GeneratedBlockMetadata
+export type GeneratedInfoCardListBlockSpec = InfoCardListBlock & GeneratedBlockMetadata
+export type GeneratedServiceCarouselBlockSpec = ServiceCarouselBlock & GeneratedBlockMetadata
+export type GeneratedBeforeAfterGalleryBlockSpec = BeforeAfterGalleryBlock & GeneratedBlockMetadata
+export type GeneratedContactDetailsBlockSpec = ContactDetailsBlock & GeneratedBlockMetadata
 export type GeneratedTestimonialsBlockSpec = TestimonialsBlock & GeneratedBlockMetadata
 export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
 export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
@@ -123,7 +133,12 @@ export type GeneratedContactSectionBlockSpec = ContactSectionBlock & GeneratedBl
 
 export type GeneratedBlockSpec =
   | GeneratedHeroBlockSpec
+  | GeneratedMediaHeroBlockSpec
   | GeneratedFeatureListBlockSpec
+  | GeneratedInfoCardListBlockSpec
+  | GeneratedServiceCarouselBlockSpec
+  | GeneratedBeforeAfterGalleryBlockSpec
+  | GeneratedContactDetailsBlockSpec
   | GeneratedTestimonialsBlockSpec
   | GeneratedFAQBlockSpec
   | GeneratedCTABlockSpec
