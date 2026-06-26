@@ -244,7 +244,7 @@ describe("audit-p2 #10 — re-arm guards", () => {
   it("R2 — Forms.access.create is still the layer-2 bogus-auth gate (P1 #5 sub-fix 1)", () => {
     const create = Forms.access?.create
     expect(typeof create).toBe("function")
-    // user present → permitted (orchestrator path)
+    // user present -> permitted (API-key client path)
     expect((create as any)({ req: { user: { role: "super-admin" } } })).toBe(true)
     // user null + no auth signal → permitted (legitimate anon submit)
     expect((create as any)({ req: { user: null, headers: new Headers() } })).toBe(true)

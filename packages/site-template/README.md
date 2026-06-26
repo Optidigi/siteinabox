@@ -4,6 +4,10 @@ Astro 5 + Tailwind 4 renderer/reference package for current tenant
 snapshots. This package remains for existing tenant maintenance only; it is not
 the future product architecture for new self-serve sites.
 
+New generated sites must become validated CMS tenant/site/page/theme/SEO data
+served by the future generic renderer. Do not copy this package or create new
+per-client source folders, workflows, or Docker images for generated sites.
+
 ## What's in the box
 
 - **Astro 5.x**, `output: static`, with `@astrojs/sitemap` + `astro-seo`
@@ -15,7 +19,7 @@ the future product architecture for new self-serve sites.
   POST form when `PUBLIC_WEB3FORMS_KEY` is set
 - **Dockerfile**: multi-stage `node:lts-alpine` → `nginx:alpine`, ~30MB final image
 - **nginx.conf**: gzip, asset/HTML cache strategy, security headers (CSP, X-Frame-Options, etc.)
-- **Root tenant image workflow**: push to `main` →
+- **Legacy/current tenant image workflow**: push to `main` →
   `ghcr.io/optidigi/siteinabox-site-<slug>:latest` + `:sha-<short>`
 
 ## Local development
@@ -35,8 +39,8 @@ See `.env.example`. `SITE_URL` is the only one the build needs;
 ## Maintenance Scope
 
 Edits to this template should support current tenant snapshots or migration
-toward the next approved architecture. New product architecture work should wait
-for that decision instead of extending this template.
+toward the data-driven architecture. Do not extend this template as the
+mechanism for new generated sites.
 
 ## Rich-text rendering contract
 

@@ -15,10 +15,25 @@
       "types": "./src/rich-text.ts",
       "default": "./src/rich-text.ts"
     },
+    "./generation": {
+      "types": "./src/generation.ts",
+      "default": "./src/generation.ts"
+    },
+    "./block-catalog": {
+      "types": "./src/block-catalog.ts",
+      "default": "./src/block-catalog.ts"
+    },
+    "./fixtures/tenants": {
+      "types": "./src/fixtures/tenants.ts",
+      "default": "./src/fixtures/tenants.ts"
+    },
     "./site": {
       "types": "./src/site.ts",
       "default": "./src/site.ts"
     }
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "typescript": "6.0.3"

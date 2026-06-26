@@ -1,0 +1,354 @@
+---
+import '../styles/global.css';
+// Theme stylesheets — Astro/Vite bundles, minifies, content-hashes, and emits
+// in import order so the cascade matches the legacy <link> chain exactly.
+import '../styles/theme/bootstrap.min.css';
+import '../styles/theme/style.css';
+import '../styles/theme/responsive.css';
+import '../styles/theme/siab-overrides.css';
+
+// Vendor JS — Astro/Vite content-hashes and copies these to the dist; we load
+// them as classic (non-module) scripts so jQuery sets up its window globals
+// and Slick (a jQuery plugin) can extend them. `?url` gives us the final
+// hashed URL to put in <script src>.
+import jqueryUrl from '../scripts/jquery.min.js?url';
+import slickUrl from '../scripts/slick.min.js?url';
+
+// Lottie player: lottie-web's SVG-only "light" build. SVG renders crisply
+// at any zoom/scale (no canvas bitmap fuzziness) and the _light variant
+// drops Canvas + HTML renderers + the expression engine, cutting the
+// payload roughly in half vs the full build. Loaded via a client-side
+// <script> tag below — the package references browser globals at module
+// load, which break during Astro's SSR/static build.
+
+import Seo from '../components/seo/Seo.astro';
+import JsonLdOrganization from '../components/seo/JsonLdOrganization.astro';
+import JsonLdLocalBusiness from '../components/seo/JsonLdLocalBusiness.astro';
+import { site } from '../content/site';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;
+  noindex?: boolean;
+}
+
+const { title, description, ogImage, noindex } = Astro.props;
+---
+
+<!doctype html>
+<html lang={site.language}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- No-flash theme init. Runs before CSS parses so data-theme is set at
+         first paint. Source of truth for the theme: ALWAYS writes a resolved
+         data-theme="light"|"dark" to <html> — explicit choices from
+         localStorage, otherwise prefers-color-scheme. This lets every dark
+         CSS rule use a single [data-theme="dark"] selector with no
+         @media (prefers-color-scheme: dark) mirror. -->
+    <script is:inline>
+      (function () {
+        var resolved;
+        try {
+          var saved = localStorage.getItem('siab-theme');
+          if (saved === 'light' || saved === 'dark') {
+            resolved = saved;
+          }
+        } catch (e) { /* private mode etc — silent */ }
+        if (!resolved) {
+          resolved = (window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches)
+            ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', resolved);
+      })();
+    </script>
+
+    <!-- Paired theme-color metas drive Android URL bar + iOS PWA chrome
+         from prefers-color-scheme. Lags manual override by one navigation;
+         acceptable tradeoff vs the JS upkeep of syncing it live. -->
+    <meta name="theme-color" content="#fef3f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#3a1a30" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="generator" content={Astro.generator} />
+    <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} />
+    <JsonLdOrganization />
+    <JsonLdLocalBusiness />
+
+    <!-- Theme CSS is bundled via Vite imports in the frontmatter above; Astro
+         emits hashed <link> tags automatically. -->
+
+    <!-- Preload hero rocket Lottie JSON so it starts downloading in parallel with
+         HTML parsing instead of waiting for the dotlottie-wc bundle to fetch it.
+         The player picks it up from cache when it boots. Shaves ~200-500ms off
+         LCP without changing visuals. -->
+    <link rel="preload" href="/theme/lottie/rocket-siab.json" as="fetch" crossorigin />
+
+    <!-- Trimmed Google Fonts: only the families actually rendered by .font-test-familjen. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700;900&family=Familjen+Grotesk:wght@400;500;600;700&display=swap"
+    />
+
+  </head>
+  <body class="font-test-familjen">
+    <div class="main-page-wrapper">
+      <slot />
+    </div>
+
+    <!-- Sticky header (.theme-main-menu.sticky-menu → .fixed past 180px scroll).
+         Inlined so the scroll listener is wired up before the user can possibly
+         scroll past the threshold — defers theme.js late-binding leaves a window
+         where the .fixed class is applied late, making the background-fade
+         transition start mid-scroll instead of at the trigger point. -->
+    <script is:inline>
+      (function () {
+        var menu = document.querySelector('.sticky-menu');
+        if (!menu) return;
+        var onScroll = function () {
+          if (window.scrollY >= 180) menu.classList.add('fixed');
+          else menu.classList.remove('fixed');
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+      })();
+    </script>
+
+    <!-- Vanilla replacements for Bootstrap Collapse + Tab — replicates the
+         exact Bootstrap-bundle data-api ordering and timing so visuals match
+         the original. Mobile nav + FAQ accordion use the collapse pattern;
+         pricing M/J use the tab pattern. -->
+    <script is:inline>
+      (function () {
+        // ---- Collapse (mobile nav + FAQ accordion) ----
+        // Bootstrap's pattern: set start-state inline + add .collapsing in
+        // the same tick, then set the end-state inline. Browser computes
+        // height transition between the two paints. No rAF gap needed.
+
+        function onTransitionEnd(el, cb) {
+          var done = function (e) {
+            if (e && e.target !== el) return;       // ignore bubbled children
+            el.removeEventListener('transitionend', done);
+            clearTimeout(fallback);
+            cb();
+          };
+          var fallback = setTimeout(done, 400);     // matches CSS .35s + slack
+          el.addEventListener('transitionend', done);
+        }
+
+        // The mobile navbar's siab-overrides CSS uses `transform: translate(-100%)`
+        // for a slide-in/out animation — not Bootstrap's default height pattern.
+        // Detect that case and just toggle `.show`; CSS handles the rest.
+        // FAQ accordion (`.accordion-collapse`) keeps the height-collapse pattern.
+        function isTransformAnimated(el) {
+          return el.classList.contains('navbar-collapse');
+        }
+
+        function expand(el) {
+          if (isTransformAnimated(el)) {
+            el.classList.add('show');               // CSS handles the slide-in
+            return;
+          }
+          el.style.height = '0px';                  // start-state inline
+          el.classList.remove('collapse');
+          el.classList.add('collapsing');
+          // Double-rAF to make sure the browser paints with height:0 before
+          // we change to scrollHeight — otherwise the two style writes get
+          // coalesced into a single computed style and no transition runs.
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              onTransitionEnd(el, function () {
+                el.classList.remove('collapsing');
+                el.classList.add('collapse', 'show');
+                el.style.height = '';
+              });
+              el.style.height = el.scrollHeight + 'px';
+            });
+          });
+        }
+
+        function collapseEl(el) {
+          if (isTransformAnimated(el)) {
+            el.classList.remove('show');            // CSS handles the slide-out
+            return;
+          }
+          el.style.height = el.getBoundingClientRect().height + 'px';  // lock current
+          requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+              el.classList.remove('collapse', 'show');
+              el.classList.add('collapsing');
+              onTransitionEnd(el, function () {
+                el.classList.remove('collapsing');
+                el.classList.add('collapse');
+                el.style.height = '';
+              });
+              el.style.height = '0px';
+            });
+          });
+        }
+
+        function findOpenSiblings(el) {
+          var pSel = el.getAttribute('data-bs-parent');
+          if (!pSel) return [];
+          var parent = document.querySelector(pSel);
+          if (!parent) return [];
+          return Array.prototype.slice.call(
+            parent.querySelectorAll('.accordion-collapse.show')
+          ).filter(function (o) { return o !== el; });
+        }
+
+        function buttonsFor(el) {
+          return document.querySelectorAll(
+            '[data-bs-toggle="collapse"][data-bs-target="#' + el.id + '"], ' +
+            '[data-bs-toggle="collapse"][href="#' + el.id + '"]'
+          );
+        }
+
+        function syncButtonState(el, open) {
+          buttonsFor(el).forEach(function (btn) {
+            btn.setAttribute('aria-expanded', String(open));
+            btn.classList.toggle('collapsed', !open);
+          });
+        }
+
+        // ---- Tab (pricing M/J) — bit-exact replication of Bootstrap Tab:
+        //   t=0:    `.active` swapped instantly (outgoing→display:none, incoming→display:block opacity:0)
+        //   t=0-150ms: blank gap (Bootstrap's _queueCallback waits 1× transition duration)
+        //   t=150ms: `.show` removed from outgoing (no-op visually since hidden) and added to incoming
+        //   t=150-300ms: incoming opacity transitions 0→1
+        function showTab(btn) {
+          var sel = btn.getAttribute('data-bs-target') || btn.getAttribute('href');
+          var pane = sel && document.querySelector(sel);
+          if (!pane) return;
+
+          // Nav-link state — synchronous, like Bootstrap
+          var tablist = btn.closest('[role="tablist"]') || btn.closest('.nav-tabs') || btn.closest('.nav');
+          if (tablist) {
+            tablist.querySelectorAll('[data-bs-toggle="tab"], .nav-link').forEach(function (t) {
+              t.classList.remove('active');
+              t.setAttribute('aria-selected', 'false');
+            });
+          }
+          btn.classList.add('active');
+          btn.setAttribute('aria-selected', 'true');
+
+          var paneParent = pane.closest('.tab-content') || pane.parentElement;
+          if (!paneParent) return;
+          var current = paneParent.querySelector('.tab-pane.show.active');
+          if (current === pane) return;
+
+          // Phase 1 — INSTANT swap of `.active`:
+          //   outgoing loses .active → display:none (still has .show, but invisible)
+          //   incoming gains .active → display:block (opacity:0 since no .show yet)
+          if (current) current.classList.remove('active');
+          pane.classList.add('active');
+
+          // Phase 2 — after the fade duration (Bootstrap waits the transition out,
+          // even though nothing visible happens during this window), swap `.show`.
+          setTimeout(function () {
+            if (current) current.classList.remove('show');   // no-op visually
+            pane.classList.add('show');                       // opacity 0→1 over 150ms
+          }, 150);
+        }
+
+        document.addEventListener('click', function (e) {
+          var collapseBtn = e.target.closest('[data-bs-toggle="collapse"]');
+          if (collapseBtn) {
+            e.preventDefault();
+            var sel = collapseBtn.getAttribute('data-bs-target') || collapseBtn.getAttribute('href');
+            var el = sel && document.querySelector(sel);
+            if (!el) return;
+            if (el.classList.contains('show')) {
+              collapseEl(el);
+              syncButtonState(el, false);
+            } else {
+              findOpenSiblings(el).forEach(function (other) {
+                collapseEl(other);
+                syncButtonState(other, false);
+              });
+              expand(el);
+              syncButtonState(el, true);
+            }
+            return;
+          }
+          var tabBtn = e.target.closest('[data-bs-toggle="tab"]');
+          if (tabBtn) {
+            e.preventDefault();
+            showTab(tabBtn);
+          }
+        });
+      })();
+    </script>
+
+    <!-- Vendor JS — jQuery for Slick, Slick for the testimonial carousel.
+         Bootstrap-bundle was dropped: collapse + tab are handled in the inline
+         script above, tooltips are pure CSS (siab-overrides.css).
+         WOW + theme.js were dropped earlier this commit. -->
+    <script is:inline defer src={jqueryUrl}></script>
+    <script is:inline defer src={slickUrl}></script>
+
+    <!-- Hero Lottie via lottie-web's SVG-only light build. No is:inline → Vite
+         bundles as a client module so browser globals don't run during SSR.
+         SVG renderer = crisp at any DPI/scale (unlike canvas-based players). -->
+    <script>
+      import lottie from 'lottie-web/build/player/lottie_light.min.js';
+
+      const container = document.getElementById('hero-rocket');
+      if (container) {
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        lottie.loadAnimation({
+          container,
+          renderer: 'svg',
+          loop: !reduce,
+          autoplay: !reduce,
+          path: '/theme/lottie/rocket-siab.json',
+        });
+      }
+    </script>
+
+    <!-- Slick init + slick aria-hidden-focus fix -->
+    <script is:inline>
+      window.addEventListener('load', function () {
+        if (window.jQuery && window.jQuery.fn.slick) {
+          window.jQuery('.feedback-slider-six').slick({
+            dots: false,
+            arrows: true,
+            prevArrow: window.jQuery('.prev_b'),
+            nextArrow: window.jQuery('.next_b'),
+            lazyLoad: 'ondemand',
+            centerPadding: '0px',
+            slidesToShow: 3,
+            slidesToScroll: 1,
+            centerMode: true,
+            autoplay: true,
+            autoplaySpeed: 10000,
+            responsive: [
+              { breakpoint: 768, settings: { slidesToShow: 2 } },
+              { breakpoint: 576, settings: { slidesToShow: 1 } },
+            ],
+          });
+        }
+        var stripSlickTabindex = function () {
+          document.querySelectorAll('[data-slick-index][aria-hidden="true"]').forEach(function (el) {
+            el.setAttribute('tabindex', '-1');
+            el.querySelectorAll('[tabindex]').forEach(function (child) {
+              child.setAttribute('tabindex', '-1');
+            });
+          });
+        };
+        stripSlickTabindex();
+        if (window.jQuery) {
+          window.jQuery('.feedback-slider-six').on('afterChange setPosition', stripSlickTabindex);
+        }
+      });
+    </script>
+  </body>
+</html>

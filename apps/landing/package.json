@@ -1,0 +1,41 @@
+{
+  "name": "siteinabox-landing",
+  "type": "module",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "pnpm@10.33.4",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@astrojs/preact": "^5.1.2",
+    "@astrojs/sitemap": "^3.7.2",
+    "@siteinabox/contracts": "file:../../packages/contracts",
+    "astro": "^6.2.1",
+    "astro-seo": "^1.1.0",
+    "lottie-web": "^5.13.0",
+    "lucide-preact": "^1.14.0",
+    "preact": "^10.29.1"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/vite": "^4.2.4",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^6.0.3",
+    "vite": "^7.3.5",
+    "vitest": "^4.1.5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

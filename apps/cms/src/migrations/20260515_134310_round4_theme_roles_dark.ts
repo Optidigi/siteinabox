@@ -1,12 +1,18 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
+import { sql } from '@payloadcms/db-postgres'
 
-export async function up({ payload, req }: MigrateUpArgs): Promise<void> {
-  const { docs: tenants } = await payload.find({
-    collection: "tenants",
-    limit: 0,
-    overrideAccess: true,
-    req,
-  })
+export async function up({ db }: MigrateUpArgs): Promise<void> {
+  const result = await db.execute(sql`
+    SELECT id, theme
+    FROM tenants
+    WHERE theme IS NOT NULL
+  `)
+  const tenants: Array<{ id: number | string; theme?: Record<string, unknown> | null }> =
+    Array.isArray((result as any)?.rows)
+      ? (result as any).rows
+      : Array.isArray(result as any)
+        ? (result as any)
+        : []
 
   for (const tenant of tenants) {
     const theme = (tenant as { theme?: Record<string, unknown> }).theme
@@ -38,13 +44,11 @@ export async function up({ payload, req }: MigrateUpArgs): Promise<void> {
     }
 
     if (dirty) {
-      await payload.update({
-        collection: "tenants",
-        id: tenant.id,
-        data: { theme: next } as never,
-        overrideAccess: true,
-        req,
-      })
+      await db.execute(sql`
+        UPDATE tenants
+        SET theme = ${JSON.stringify(next)}::jsonb
+        WHERE id = ${tenant.id}
+      `)
     }
   }
 }

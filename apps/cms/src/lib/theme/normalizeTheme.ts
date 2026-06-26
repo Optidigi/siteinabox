@@ -22,6 +22,8 @@ export const normalizeThemeForSave = (theme: ThemeTokens | null | undefined): Th
   if (darkPalette) normalized.darkPalette = darkPalette
   if (fonts) normalized.fonts = fonts
   if (hasValue(theme.radius)) normalized.radius = theme.radius
+  if (theme.density) normalized.density = theme.density
+  if (hasValue(theme.stylePreset)) normalized.stylePreset = theme.stylePreset
   if (theme.borderStyle) normalized.borderStyle = theme.borderStyle
 
   const hasConcreteTokens = Object.keys(normalized).length > 0

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS, STYLE_PRESETS } from "@/lib/theme/presets"
 
 describe("PALETTE_PRESETS (round 4)", () => {
   it("each preset has both a light and a dark palette", () => {
@@ -87,5 +87,18 @@ describe("RADIUS_PRESETS", () => {
 
   it("carries registry icon ids for the data-driven RadiusControl", () => {
     expect(RADIUS_PRESETS.map((p) => p.icon)).toEqual(["square", "squircle", "circle"])
+  })
+})
+
+describe("shape token presets", () => {
+  it("exposes the contract density choices", () => {
+    expect(DENSITY_PRESETS.map((preset) => preset.id)).toEqual(["compact", "comfortable", "spacious"])
+  })
+
+  it("exposes renderer-backed style preset tokens", () => {
+    expect(STYLE_PRESETS.map((preset) => preset.id)).toEqual(["warm-care", "industrial-cleaning"])
+    for (const preset of STYLE_PRESETS) {
+      expect(preset.id).toMatch(/^[a-z0-9-]+$/)
+    }
   })
 })

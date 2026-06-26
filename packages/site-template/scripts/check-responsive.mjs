@@ -30,7 +30,6 @@ function inferMode(dir) {
   try {
     const pkg = JSON.parse(readFileSync(pkgPath, "utf8"))
     if (pkg.name === "siab-payload") return "payload"
-    if (String(pkg.name ?? "").includes("orchestrator")) return "orchestrator"
   } catch {}
   return "site"
 }
@@ -182,26 +181,8 @@ function scanPayload(rootDir) {
   }
 }
 
-function scanOrchestrator(rootDir) {
-  const joined = walk(rootDir)
-    .filter((file) => [".md", ".json"].includes(extname(file)))
-    .map((file) => readFileSync(file, "utf8"))
-    .join("\n")
-
-  if (!joined.includes("check:responsive") && !joined.includes("siab-check-responsive")) {
-    fail(
-      join(rootDir, "AGENTS.md"),
-      1,
-      "Responsive canvas contract is not referenced.",
-      "Orchestrator agents should invoke the shared responsive checker instead of relying on prompt text.",
-    )
-  }
-}
-
 if (mode === "payload") {
   scanPayload(root)
-} else if (mode === "orchestrator") {
-  scanOrchestrator(root)
 } else if (mode === "site") {
   for (const file of walk(root)) {
     scanSiteFile(file, readFileSync(file, "utf8"))

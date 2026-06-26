@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { signPreviewToken } from "@/lib/preview/sign"
+import { signPreviewToken, verifyPreviewToken } from "@/lib/preview/sign"
 
 const SECRET = "test-secret-32-bytes-deadbeefcafe1234567890"
 
@@ -41,5 +41,20 @@ describe("signPreviewToken", () => {
     const a = signPreviewToken({ tenantId: 1, pageId: 42 }, SECRET, 1_700_000_000)
     const b = signPreviewToken({ tenantId: 1, pageId: 42 }, `${SECRET}\n`, 1_700_000_000)
     expect(a.token).toBe(b.token)
+  })
+
+  it("verifies a signed token and returns claims", () => {
+    const { token } = signPreviewToken({ tenantId: 1, pageId: 42 }, SECRET, 1_700_000_000)
+    expect(verifyPreviewToken(token, SECRET, 1_700_000_100)).toMatchObject({
+      tenantId: 1,
+      pageId: 42,
+      exp: 1_700_001_800,
+    })
+  })
+
+  it("rejects expired and tampered tokens", () => {
+    const { token } = signPreviewToken({ tenantId: 1, pageId: 42 }, SECRET, 1_700_000_000)
+    expect(() => verifyPreviewToken(token, SECRET, 1_700_001_801)).toThrow(/expired/i)
+    expect(() => verifyPreviewToken(`${token.slice(0, -1)}x`, SECRET, 1_700_000_100)).toThrow(/signature/i)
   })
 })

@@ -132,10 +132,9 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // Anonymous detection (per dispatch Constraint 1, approach (b)): a caller
 // is "anonymous" iff BOTH the `Authorization` header is absent AND no
 // `payload-token` cookie is present. Authed callers (super-admin via
-// orchestrator apiKey, or any logged-in user via session cookie) bypass
-// the limiter — preserves the orchestrator-friendliness invariant from
-// AMD-1 (orchestrator bursts /api/users/forgot-password during tenant
-// provisioning Phase 8). The residual gap (authed editor floods forgot-
+// API-key client, or any logged-in user via session cookie) bypass the
+// limiter; authenticated tenant provisioning can still issue bursts of
+// /api/users/forgot-password. The residual gap (authed editor floods forgot-
 // password with arbitrary emails) is recorded as out-of-batch observation
 // in the batch report; closing it is a future-audit item.
 //
@@ -185,6 +184,7 @@ export const __resetRateLimitersForTests = (): void => {
 
 const RATE_LIMITED_PATHS = new Set<string>([
   "/api/forms",
+  "/api/intake",
   "/api/users/forgot-password",
 ])
 
@@ -333,12 +333,14 @@ export const config = {
     // strategies, but obviously malformed `users API-Key` credentials are
     // rejected here before they can trigger HMAC + DB lookup work.
     "/api/:path*",
-    // audit-p1 #5 (T4): opt the two anti-flood public surfaces back IN to
+    // audit-p1 #5 (T4): opt the anti-flood public surfaces back IN to
     // middleware so the rate-limit gate runs on them. Trailing-slash variants
     // are explicit so the matcher itself doesn't depend on Next.js' implicit
     // trailing-slash handling (which differs between dev / prod / nginx).
     "/api/forms",
     "/api/forms/",
+    "/api/intake",
+    "/api/intake/",
     "/api/users/forgot-password",
     "/api/users/forgot-password/",
   ]

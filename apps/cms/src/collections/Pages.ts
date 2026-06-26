@@ -33,7 +33,7 @@ export const Pages: CollectionConfig = {
   fields: [
     { name: "title", type: "text", required: true },
     { name: "slug", type: "text", required: true, validate: validatePageSlug,
-      admin: { description: "URL slug. Unique per tenant. 'home' for the root page." } },
+      admin: { description: "URL slug. Unique per tenant. 'index' for the root page." } },
     { name: "status", type: "select", required: true, defaultValue: "draft",
       options: [
         { label: "Draft", value: "draft" },

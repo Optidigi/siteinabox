@@ -1,9 +1,28 @@
 import type { RtRoot } from "./rich-text"
 
+export const SITE_BLOCK_SLUGS = [
+  "hero",
+  "featureList",
+  "testimonials",
+  "faq",
+  "cta",
+  "richText",
+  "contactSection",
+] as const
+
+export type SiteBlockSlug = (typeof SITE_BLOCK_SLUGS)[number]
+
 export type MediaRef =
   | number
   | string
-  | { id: number | string; url?: string | null; filename?: string | null; alt?: string | null }
+  | {
+      id?: number | string
+      url?: string | null
+      filename?: string | null
+      alt?: string | null
+      width?: number | null
+      height?: number | null
+    }
   | null
 
 export type RtField = RtRoot | null

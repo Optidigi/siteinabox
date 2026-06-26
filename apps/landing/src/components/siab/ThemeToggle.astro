@@ -1,0 +1,149 @@
+---
+// Light/Dark theme toggle. The no-flash inline script in BaseLayout resolves
+// prefers-color-scheme at first paint and writes data-theme to <html>, so the
+// site follows the OS preference for users who haven't made an explicit choice
+// (localStorage absent). Clicking the button writes an explicit Light or Dark
+// to localStorage; from that point on the user's choice wins. The matchMedia
+// listener below keeps OS-follow live for users who haven't clicked yet.
+// View Transitions API gives a smooth crossfade when supported, gated by
+// prefers-reduced-motion.
+---
+
+<button
+  type="button"
+  class="siab-theme-toggle"
+  data-siab-theme-toggle
+  aria-label="Wissel thema"
+  title="Wissel thema"
+>
+  <svg class="siab-theme-toggle__icon siab-theme-toggle__icon--light" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+  </svg>
+  <svg class="siab-theme-toggle__icon siab-theme-toggle__icon--dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+  </svg>
+  <span class="visually-hidden" data-siab-theme-label aria-live="polite">Thema</span>
+</button>
+
+<style>
+  /* Ghost icon-only utility button — sits among nav links and Inloggen as "quiet
+     chrome", lets the yellow CTA monopolize loud visual weight. Pattern mirrors
+     shadcn/Linear/Vercel navbars; in our brutalist context the yellow hover fill
+     keeps the brand language without competing with the CTA at rest. */
+  .siab-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    color: var(--siab-text);
+    cursor: pointer;
+    transition: background .12s, color .12s;
+  }
+  /* WCAG 2.5.5: touch pointers get a 44x44 hit area while the visual stays 40x40. */
+  @media (pointer: coarse) {
+    .siab-theme-toggle {
+      width: 44px;
+      height: 44px;
+    }
+  }
+  .siab-theme-toggle:hover {
+    background: var(--siab-accent-yellow);
+    color: #000;
+  }
+  .siab-theme-toggle:focus-visible {
+    outline: 3px solid var(--siab-focus-ring);
+    outline-offset: 3px;
+  }
+
+  /* Icon visibility driven by data-theme-state on the button itself, set by JS. */
+  .siab-theme-toggle__icon { display: none; }
+  .siab-theme-toggle[data-theme-state="light"] .siab-theme-toggle__icon--light { display: block; }
+  .siab-theme-toggle[data-theme-state="dark"]  .siab-theme-toggle__icon--dark  { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .siab-theme-toggle { transition: none; }
+  }
+
+  /* Forced-colors: hover bg + focus outline use system Highlight color. Icon
+     stroke uses currentColor which the OS maps to ButtonText. */
+  @media (forced-colors: active) {
+    .siab-theme-toggle:hover { background: Highlight; color: HighlightText; }
+    .siab-theme-toggle:focus-visible { outline-color: Highlight; }
+  }
+</style>
+
+<script>
+  type Theme = 'light' | 'dark';
+
+  function rendered(): Theme {
+    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  }
+
+  function isFollowingOS(): boolean {
+    try { return localStorage.getItem('siab-theme') === null; } catch { return true; }
+  }
+
+  function applyChoice(theme: Theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    try { localStorage.setItem('siab-theme', theme); } catch {}
+  }
+
+  function syncButton(btn: HTMLButtonElement) {
+    const r = rendered();
+    btn.setAttribute('data-theme-state', r);
+    const label = btn.querySelector<HTMLElement>('[data-siab-theme-label]');
+    const currentName = r === 'light' ? 'Licht' : 'Donker';
+    const nextName = r === 'light' ? 'donker' : 'licht';
+    if (label) label.textContent = currentName;
+    // State-aware label + title — surfaces the next action without needing visible text.
+    // aria-label drives screen readers; title drives desktop hover tooltip.
+    btn.setAttribute('aria-label', `Thema: ${currentName.toLowerCase()} (klik voor ${nextName})`);
+    btn.setAttribute('title', `${currentName} (klik voor ${nextName})`);
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('[data-siab-theme-toggle]').forEach((btn) => {
+    syncButton(btn);
+
+    btn.addEventListener('click', () => {
+      const upcoming: Theme = rendered() === 'dark' ? 'light' : 'dark';
+      const apply = () => { applyChoice(upcoming); syncButton(btn); };
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // Progressive enhancement: View Transitions API for a smooth crossfade.
+      // Plain apply when unsupported or when reduced-motion is requested.
+      const vt = (document as Document & { startViewTransition?: (cb: () => void) => unknown }).startViewTransition;
+      if (!reduceMotion && typeof vt === 'function') {
+        vt.call(document, apply);
+      } else {
+        apply();
+      }
+    });
+
+    // Cross-tab sync: if another tab toggles, mirror the change here.
+    window.addEventListener('storage', (e) => {
+      if (e.key !== 'siab-theme') return;
+      if (e.newValue === 'light' || e.newValue === 'dark') {
+        document.documentElement.setAttribute('data-theme', e.newValue);
+      } else {
+        // localStorage was cleared elsewhere — fall back to OS preference live.
+        document.documentElement.setAttribute('data-theme',
+          window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      }
+      syncButton(btn);
+    });
+  });
+
+  // While the user has made no explicit choice, follow the OS preference live.
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!isFollowingOS()) return;
+    document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+    document.querySelectorAll<HTMLButtonElement>('[data-siab-theme-toggle]').forEach(syncButton);
+  });
+</script>
+</content>
+</invoke>

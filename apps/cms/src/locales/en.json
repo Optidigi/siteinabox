@@ -84,7 +84,8 @@
     "analytics": "Analytics",
     "settings": "Settings",
     "team": "Team",
-    "onboarding": "Onboarding"
+    "onboarding": "Onboarding",
+    "operations": "Operations"
   },
   "account": {
     "menuLabel": "Account menu - signed in as {name}",

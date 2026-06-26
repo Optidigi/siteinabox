@@ -1,0 +1,165 @@
+---
+const faqs: Array<{ q: string; a: string }> = [
+  {
+    q: 'Hoe weten jullie wat er op mijn website moet komen?',
+    a: 'Via een korte vragenlijst van ongeveer 15 minuten. Je vertelt ons wat voor bedrijf je hebt, wie je klanten zijn, en welke stijl je aanspreekt. Je levert wat foto’s aan en eventueel je logo. Wij maken op basis daarvan de eerste versie van je website, inclusief teksten. In de feedbackronde stuur jij alles helemaal naar jouw smaak bij.',
+  },
+  {
+    q: 'Wat zit er bij €19 per maand, en wanneer is €29 logischer?',
+    a: 'Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups, en e-mail forwarding. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet.',
+  },
+  {
+    q: 'Wat betekent “alleen betalen als je tevreden bent” precies?',
+    a: 'Wij bouwen je website eerst. Je krijgt ’m te zien op een testadres (bijvoorbeeld jouwbedrijf.siteinabox.nl). Pas wanneer jij actief akkoord geeft, een klik op de bevestigingslink of een mailtje van jouw kant, sturen we de factuur en gaan we live. Geef je geen akkoord, dan betaal je niets.',
+  },
+  {
+    q: 'Wat als de eerste versie niet helemaal goed is?',
+    a: 'Geen probleem, daar is de feedbackronde voor. Bekijk de eerste versie rustig, noteer alles wat je anders wilt en stuur al je opmerkingen in één keer door. Wij verwerken alles. Komen we er samen niet uit? Dan stoppen we daar, zonder factuur.',
+  },
+  {
+    q: 'Past mijn bedrijf op één pagina?',
+    a: 'Voor de meeste net-gestarte bedrijven: ja. Een one-pager werkt goed als je een dienst aanbiedt waar potentiële klanten vooral willen weten wie je bent, wat je doet, voor wie, en hoe ze je kunnen bereiken. Heb je iets uitgebreiders nodig zoals een webshop of online cursus? Dan bouwen we op maat.',
+  },
+  {
+    q: 'Kan ik per maand opzeggen?',
+    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover. Bij jaarbetaling betaal je het eerste jaar in één keer vooruit, zonder opstartkosten. Na dat jaar wordt het maandelijks en kun je elk moment opzeggen.',
+  },
+  {
+    q: 'Wie is eigenaar van mijn domein en website?',
+    a: 'Je domein is van jou. Je content is van jou. Je domeinnaam staat vanaf dag één op jouw naam. Je teksten, foto’s en bedrijfsinformatie kun je op elk moment exporteren en meenemen. De website zelf bouwen en hosten wij in ons eigen systeem.',
+  },
+  {
+    q: 'Kan ik zelf dingen aanpassen na lancering?',
+    a: 'Het meeste doe je zelf in de beheeromgeving: openingstijden, prijzen, foto’s, teksten, nieuwe diensten. Geen technische kennis nodig. Voor grotere aanpassingen (een extra sectie, een layout-wijziging) hebben we één wijziging per kwartaal voor je inbegrepen.',
+  },
+];
+
+const faqJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: faqs.map((f) => ({
+    '@type': 'Question',
+    name: f.q,
+    acceptedAnswer: { '@type': 'Answer', text: f.a },
+  })),
+};
+---
+
+<section id="faq" class="faq-section-three position-relative mt-180 lg-mt-80 mb-180 lg-mb-80" aria-labelledby="faq-heading">
+  <div class="container lg">
+    <div class="row">
+      <div class="col-lg-5">
+        <div class="title-eleven">
+          <h2 id="faq-heading">Veelgestelde vragen</h2>
+        </div>
+      </div>
+      <div class="col-lg-7">
+        <div class="accordion accordion-style-two style-two p0 ms-xxl-4 md-mt-40" id="accordionFaq">
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqOne" aria-expanded="false" aria-controls="faqOne">
+                Hoe weten jullie wat er op mijn website moet komen?
+              </button>
+            </h2>
+            <div id="faqOne" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Via een korte vragenlijst van ongeveer 15 minuten. Je vertelt ons wat voor bedrijf je hebt, wie je klanten zijn, en welke stijl je aanspreekt. Je levert wat foto's aan en eventueel je logo. Wij maken op basis daarvan de eerste versie van je website, inclusief teksten. In de feedbackronde stuur jij alles helemaal naar jouw smaak bij.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqTwo" aria-expanded="false" aria-controls="faqTwo">
+                Wat zit er bij €19 per maand, en wanneer is €29 logischer?
+              </button>
+            </h2>
+            <div id="faqTwo" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, automatische back-ups, en e-mail forwarding (info@jouwbedrijf.nl wordt doorgestuurd naar je eigen Gmail of Outlook).</p>
+                <p class="fs-22 mt-3">Klanten zien dan je eigen Gmail-adres in je antwoord, niet info@jouwbedrijf.nl. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet. Geen verborgen kosten op beide pakketten.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqThree" aria-expanded="false" aria-controls="faqThree">
+                Wat betekent "alleen betalen als je tevreden bent" precies?
+              </button>
+            </h2>
+            <div id="faqThree" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Wij bouwen je website eerst. Je krijgt 'm te zien op een testadres (bijvoorbeeld jouwbedrijf.siteinabox.nl). Pas wanneer jij actief akkoord geeft, een klik op de bevestigingslink of een mailtje van jouw kant, sturen we de factuur en gaan we live. Geef je geen akkoord, dan betaal je niets. Jij bepaalt of het goed is, niet wij.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqFour" aria-expanded="false" aria-controls="faqFour">
+                Wat als de eerste versie niet helemaal goed is?
+              </button>
+            </h2>
+            <div id="faqFour" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Geen probleem, daar is de feedbackronde voor. Bekijk de eerste versie rustig (op je telefoon én computer), noteer alles wat je anders wilt: een andere foto, ander stuk tekst, een knop op een andere plek, een toon die niet bij je past. Stuur al je opmerkingen in één keer door, wij verwerken alles. Daarna is de website klaar voor publicatie. Komen we er samen niet uit? Dan stoppen we daar, zonder factuur.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqFive" aria-expanded="false" aria-controls="faqFive">
+                Past mijn bedrijf op één pagina?
+              </button>
+            </h2>
+            <div id="faqFive" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Voor de meeste net-gestarte bedrijven: ja. Een one-pager werkt goed als je een dienst aanbiedt waar potentiële klanten vooral willen weten wie je bent, wat je doet, voor wie, en hoe ze je kunnen bereiken. Denk aan ZZP-dienstverleners, lokale bedrijven, coaches, vakmensen en freelancers.</p>
+                <p class="fs-22 mt-3">Heb je iets uitgebreiders nodig, zoals een webshop, online cursus met betalingen, of een site met veel verschillende dienstpakketten? Dan past het standaard pakket niet, maar bouwen we ook op maat. Stuur ons een berichtje met wat je voor ogen hebt, dan kijken we wat past en wat een passende prijs zou zijn.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqSix" aria-expanded="false" aria-controls="faqSix">
+                Kan ik per maand opzeggen?
+              </button>
+            </h2>
+            <div id="faqSix" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Dat hangt af van hoe je begint. Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover.</p>
+                <p class="fs-22 mt-3">Bij jaarbetaling betaal je het eerste jaar in één keer vooruit, zonder opstartkosten. Na dat jaar wordt het maandelijks en kun je elk moment opzeggen, met één maand opzegtermijn.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqSeven" aria-expanded="false" aria-controls="faqSeven">
+                Wie is eigenaar van mijn domein en website?
+              </button>
+            </h2>
+            <div id="faqSeven" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Je domein is van jou. Je content is van jou. Je domeinnaam (bijvoorbeeld jouwbedrijf.nl) staat vanaf dag één op jouw naam, die houd je altijd. Je teksten, foto's en bedrijfsinformatie kun je op elk moment exporteren en meenemen.</p>
+                <p class="fs-22 mt-3">De website zelf bouwen en hosten wij in ons eigen systeem, dat is hoe we de prijs zo scherp kunnen houden. Wil je later overstappen naar een andere partij? Geen probleem: je neemt je domein en content mee, en die partij bouwt op die fundering een nieuwe site.</p>
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faqEight" aria-expanded="false" aria-controls="faqEight">
+                Kan ik zelf dingen aanpassen na lancering?
+              </button>
+            </h2>
+            <div id="faqEight" class="accordion-collapse collapse" data-bs-parent="#accordionFaq">
+              <div class="accordion-body">
+                <p class="fs-22">Het meeste doe je zelf in de beheeromgeving: openingstijden, prijzen, foto's, teksten, nieuwe diensten. Geen technische kennis nodig, gewoon klikken en typen, onbeperkt en gratis.</p>
+                <p class="fs-22 mt-3">Voor grotere aanpassingen (een extra sectie, een layout-wijziging) hebben we één wijziging per kwartaal voor je inbegrepen. Heb je meer nodig? Dat kan altijd, tegen een meerprijs die we vooraf met je afstemmen.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script is:inline type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />

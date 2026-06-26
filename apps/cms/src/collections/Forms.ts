@@ -33,8 +33,8 @@ export const Forms: CollectionConfig = {
     // Public form posts: any unauthenticated visitor can submit. Three layers
     // compose to close the audit-p1 #5 (T4) anonymous-abuse vector:
     //   (a) Middleware rate-limit (src/proxy.ts) — 10 POSTs / 60s / IP
-    //       on requests with NO auth signals (the orchestrator-friendliness
-    //       pose: a real apiKey-authed orchestrator must not be limited).
+    //       on requests with NO auth signals. Real API-key clients must not
+    //       be limited by the anonymous public-form bucket.
     //   (b) THIS gate — reject when `req.user` is null AND the request
     //       presented an Authorization header or payload-token cookie.
     //       That combination means the caller TRIED to authenticate but

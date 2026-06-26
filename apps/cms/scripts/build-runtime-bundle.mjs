@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Build the runtime migration bundle at `dist-runtime/migrate-on-boot.bundled.mjs`.
+ * Build runtime helper bundles under `dist-runtime/`.
  *
  * Why this exists: the production Docker image is built from Next.js's
  * `.next/standalone` output. Next's tracer inlines Payload's runtime code
@@ -27,8 +27,8 @@
  *   an unresolvable bare specifier without this hint.
  * - Node builtins: esbuild handles automatically with `platform: "node"`.
  *
- * Output: a single `.mjs` (~4MB at last measure) the Dockerfile copies into
- * `/app/dist-runtime/` and `docker-entrypoint.sh` runs before `node server.js`.
+ * Output: self-contained `.mjs` files the Dockerfile copies into
+ * `/app/dist-runtime/` for boot-time and operator-run production tasks.
  */
 import { build } from "esbuild"
 import { mkdir, writeFile } from "node:fs/promises"
@@ -101,6 +101,16 @@ await build({
   outfile: path.join(outDir, "repopulate-richtext-from-snapshot.bundled.mjs"),
 })
 
+// Operator-run renderer staging bootstrap. This ships in the CMS runtime image
+// so production seeding uses the same reviewed image artifact as the app,
+// without depending on TS source files, pnpm, or dev dependencies in the
+// container.
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/seed-renderer-staging-tenants.ts")],
+  outfile: path.join(outDir, "seed-renderer-staging-tenants.bundled.mjs"),
+})
+
 // Mark the directory as ESM so any `.js` peers parse as module syntax.
 // Belt-and-braces: the bundled output is `.mjs`, but a sibling package.json
 // keeps behaviour explicit and protects against future renames.
@@ -111,5 +121,5 @@ await writeFile(
 
 // eslint-disable-next-line no-console
 console.log(
-  `[build-runtime-bundle] wrote migrate-on-boot.bundled.mjs to ${outDir}`
+  `[build-runtime-bundle] wrote runtime bundles to ${outDir}`
 )

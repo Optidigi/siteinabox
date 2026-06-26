@@ -19,7 +19,7 @@ import {
 //   • Anonymous detection (per dispatch Constraint 1, approach (b)): a
 //     caller is "anonymous" iff BOTH `Authorization` header is absent
 //     AND the `payload-token` cookie is absent. Authed super-admin
-//     callers (the orchestrator's apiKey-authed requests) bypass.
+//     callers (API-key client requests) bypass.
 //   • Path scope (per dispatch Constraint 2): `/api/forms` and
 //     `/api/users/forgot-password` ONLY. POST method only. The audit's
 //     `/api/users` bootstrap path is INTENTIONALLY out of scope (T2 is
@@ -156,9 +156,8 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
   it("Case 4 / R4: super-admin authed (Authorization: users API-Key …) is exempt — 100 POSTs to /api/users/forgot-password all permitted", async () => {
     // Authorization header alone is sufficient to flip out of the
     // anonymous-only branch (per dispatch Constraint 1 approach (b)).
-    // This is the orchestrator-friendliness invariant: AMD-1's owner-invite
-    // tenant-provisioning calls /api/users/forgot-password from a single IP
-    // in burst; rate-limiting them would regress the orchestrator UX.
+    // This is the machine-client invariant: owner-invite tenant provisioning
+    // can call /api/users/forgot-password from a single IP in a burst.
     for (let i = 1; i <= 100; i++) {
       const res = await middleware(
         reqAt({
@@ -473,7 +472,7 @@ describe("audit-p1 #5 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 #1-#3 / P1 #
 // review.md) confirmed that the middleware's `isAnonymousCaller` is presence-
 // only — an attacker presenting `Authorization: x` or `Cookie: payload-token=
 // garbage` bypasses the limiter. Closure shape (without breaking the AMD-1
-// orchestrator-friendliness invariant): at the Payload collection level,
+// machine-client invariant): at the Payload collection level,
 // where Payload's auth strategies have populated `req.user` (or set null on
 // failure), reject any caller whose request PRESENTS auth signals BUT whose
 // auth FAILED. Real anonymous (no signals) and real authed (req.user set)
@@ -609,7 +608,7 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Users.hooks.beforeOperation forgot-p
     expect(threw).toBe(false)
   })
 
-  it("L-Users-2: forgotPassword + authed super-admin (apiKey-validated, req.user set) → does NOT throw (orchestrator-friendliness invariant)", async () => {
+  it("L-Users-2: forgotPassword + authed super-admin (apiKey-validated, req.user set) -> does NOT throw (machine-client invariant)", async () => {
     let threw = false
     try {
       await callForgotHook(reqShape({ user: { id: "sa1", role: "super-admin" }, authorization: "users API-Key real" }))
@@ -687,7 +686,7 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
     expect(err.data?.retryAfterSeconds).toBeGreaterThan(0)
   })
 
-  it("keeps different target emails isolated so orchestrator invite bursts can continue", async () => {
+  it("keeps different target emails isolated so API-key invite bursts can continue", async () => {
     await callTargetLimiter("a@example.com", { id: "sa1", role: "super-admin" })
     await callTargetLimiter("a@example.com", { id: "sa1", role: "super-admin" })
     await callTargetLimiter("a@example.com", { id: "sa1", role: "super-admin" })

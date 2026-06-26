@@ -1,0 +1,591 @@
+/* ============================================================
+   COLOR TOKENS — light / dark / system theme switcher
+   Single source of truth: the no-flash inline script in BaseLayout
+   always resolves the theme and writes data-theme="light"|"dark" to
+   <html> (System mode resolves via prefers-color-scheme at load +
+   a matchMedia listener). So every rule below needs only a single
+   [data-theme="dark"] selector — no prefers-color-scheme mirror.
+   Modern path uses light-dark() driven by color-scheme; browsers
+   without light-dark() fall back to the @supports-not block.
+   ============================================================ */
+
+:root            { color-scheme: light dark; }   /* default: follow OS */
+[data-theme="light"] { color-scheme: light; }
+[data-theme="dark"]  { color-scheme: dark; }
+
+/* --- Modern path: light-dark() with color-scheme as the driver --- */
+@supports (color: light-dark(red, red)) {
+  :root {
+    /* Dark bg lifted to ~L 16-25% range (ekmas/neobrutalism-components pattern):
+       enough luminance headroom for solid #000 borders and shadows to register as
+       depth, while staying recognizably plum. Previous #250e1e/#4b2e42 crushed too
+       dark for canonical brutalism. */
+    --siab-bg-page:        light-dark(#fef3f4, #3a1a30);
+    --siab-bg-surface:     light-dark(#ffffff, #5a3a50);
+    --siab-bg-purple:      #481938; /* brand color — same in both modes per reference */
+    --siab-bg-purple-soft: light-dark(rgba(255,255,255,0.13), rgba(255,255,255,0.06));
+
+    --siab-text:           light-dark(#000000, #ffffff);
+    --siab-text-muted:     light-dark(#5a504b, rgba(255,255,255,0.7));
+    --siab-text-on-purple: #ffffff;
+    --siab-text-on-purple-muted: rgba(255,255,255,0.7);
+
+    /* Canonical brutalism (ekmas/neobrutalism-components, ~7k stars): borders stay
+       solid #000 in BOTH themes. Works in dark because the page bg is lifted off
+       near-black (above). */
+    --siab-border:         #000000;
+    --siab-border-soft:    light-dark(rgba(0,0,0,0.6), #000000);
+    /* With page bg lifted to ~L 16% (above), solid #000 shadow now has ~16 L-points
+       of headroom — enough to read as depth. Canonical ekmas pattern. */
+    --siab-shadow-color:   #000000;
+    --siab-shadow-soft:    light-dark(rgba(0,0,0,0.2), #000000);
+    /* Focus-ring color — WCAG 2.4.11 / 2.4.13 require ≥3:1 contrast.
+       Light: black on white = 21:1 (unchanged). Dark: brand yellow on
+       lifted plum #3a1a30 = 12.07:1 (was 1.37:1 black-on-plum — failed). */
+    --siab-focus-ring: light-dark(#000000, #f5e900);
+
+    --siab-accent-yellow:        #f5e900;
+    --siab-accent-yellow-strong: #ffd80b;
+
+    --siab-form-err:    light-dark(#c8102e, #ff5b6f);
+    --siab-form-err-bg: light-dark(#fef2f4, rgba(200,16,46,0.15));
+
+    /* ============================================================
+       Component tokens — values that differ between modes. Each pairs
+       the LIGHT bundled-theme literal with the DARK value so a single
+       always-on component rule consumes one token instead of needing
+       a separate [data-theme="dark"] override.
+       ============================================================ */
+    --siab-body-bg:                  light-dark(#ffffff, #3a1a30);
+    --siab-body-fg:                  light-dark(#000000, rgba(255,255,255,0.7));
+    --siab-text-dark-util:           light-dark(#212529, #ffffff);
+    --siab-border-dark-util:         light-dark(#212529, #000000);
+    --siab-loginbtn-fg:              light-dark(#5a504b, #ffffff);
+    --siab-scrollbar-track:          light-dark(#ffffff, #2a0e22);
+    --siab-scrollbar-thumb:          light-dark(#000000, rgba(255,255,255,0.3));
+    --siab-link-hover-fg:            light-dark(#1a1a1a, #ffffff);
+    --siab-info-trigger-hover-fg:    light-dark(#1d1d1f, #ffffff);
+    --siab-pricing-microcopy-fg:     light-dark(#595959, rgba(255,255,255,0.55));
+    --siab-pricing-save-bg:          light-dark(#eaf5fc, #5e224a);
+    --siab-pricing-save-fg:          light-dark(#000000, #ffffff);
+    --siab-footer-card-shadow-color: light-dark(rgba(255,255,255,0.2), #5a2b46);
+    --siab-feedback-border:          light-dark(#ffffff, rgba(255,255,255,0.08));
+    --siab-feedback-center-bg:       light-dark(transparent, rgba(255,255,255,0.08));
+    --siab-footer-bg:                light-dark(#000000, #190713);
+    --siab-pr-column-bg:             light-dark(#ffffff, transparent);
+    --siab-accordion-body-p-fg:      light-dark(rgba(0,0,0,0.75), rgba(255,255,255,0.7));
+  }
+}
+
+/* --- Fallback for browsers without light-dark() (~13% as of 2026-05) --- */
+@supports not (color: light-dark(red, red)) {
+  :root {
+    --siab-bg-page:        #fef3f4;
+    --siab-bg-surface:     #ffffff;
+    --siab-bg-purple:      #481938;
+    --siab-bg-purple-soft: rgba(255,255,255,0.13);
+    --siab-text:           #000000;
+    --siab-text-muted:     #5a504b;
+    --siab-text-on-purple: #ffffff;
+    --siab-text-on-purple-muted: rgba(255,255,255,0.7);
+    --siab-border:         #000000;
+    --siab-focus-ring:     #000000;
+    --siab-shadow-color:   #000000;
+    --siab-accent-yellow:        #f5e900;
+    --siab-accent-yellow-strong: #ffd80b;
+    --siab-form-err:    #c8102e;
+    --siab-form-err-bg: #fef2f4;
+    --siab-body-bg:                  #ffffff;
+    --siab-body-fg:                  #000000;
+    --siab-text-dark-util:           #212529;
+    --siab-border-dark-util:         #212529;
+    --siab-loginbtn-fg:              #5a504b;
+    --siab-scrollbar-track:          #ffffff;
+    --siab-scrollbar-thumb:          #000000;
+    --siab-link-hover-fg:            #1a1a1a;
+    --siab-info-trigger-hover-fg:    #1d1d1f;
+    --siab-pricing-microcopy-fg:     #595959;
+    --siab-pricing-save-bg:          #eaf5fc;
+    --siab-pricing-save-fg:          #000000;
+    --siab-footer-card-shadow-color: rgba(255,255,255,0.2);
+    --siab-feedback-border:          #ffffff;
+    --siab-feedback-center-bg:       transparent;
+    --siab-footer-bg:                #000000;
+    --siab-pr-column-bg:             #ffffff;
+    --siab-accordion-body-p-fg:      rgba(0,0,0,0.75);
+  }
+  [data-theme="dark"] {
+    --siab-bg-page:        #3a1a30;
+    --siab-bg-surface:     #5a3a50;
+    --siab-bg-purple:      #481938;
+    --siab-bg-purple-soft: rgba(255,255,255,0.06);
+    --siab-text:           #ffffff;
+    --siab-text-muted:     rgba(255,255,255,0.7);
+    --siab-border:         #000000;
+    --siab-focus-ring:     #f5e900;
+    --siab-border-soft:    #000000;
+    --siab-shadow-color:   #000000;
+    --siab-shadow-soft:    #000000;
+    --siab-form-err:       #ff5b6f;
+    --siab-form-err-bg:    rgba(200,16,46,0.15);
+    --siab-body-bg:                  #3a1a30;
+    --siab-body-fg:                  rgba(255,255,255,0.7);
+    --siab-text-dark-util:           #ffffff;
+    --siab-border-dark-util:         #000000;
+    --siab-loginbtn-fg:              #ffffff;
+    --siab-scrollbar-track:          #2a0e22;
+    --siab-scrollbar-thumb:          rgba(255,255,255,0.3);
+    --siab-link-hover-fg:            #ffffff;
+    --siab-info-trigger-hover-fg:    #ffffff;
+    --siab-pricing-microcopy-fg:     rgba(255,255,255,0.55);
+    --siab-pricing-save-bg:          #5e224a;
+    --siab-pricing-save-fg:          #ffffff;
+    --siab-footer-card-shadow-color: #5a2b46;
+    --siab-feedback-border:          rgba(255,255,255,0.08);
+    --siab-feedback-center-bg:       rgba(255,255,255,0.08);
+    --siab-footer-bg:                #190713;
+    --siab-pr-column-bg:             transparent;
+    --siab-accordion-body-p-fg:      rgba(255,255,255,0.7);
+  }
+}
+
+.font-test-familjen{font-family:Chivo,system-ui,-apple-system,sans-serif}.font-test-familjen h1,.font-test-familjen h2,.font-test-familjen h3,.font-test-familjen h4,.font-test-familjen h5,.font-test-familjen h6{letter-spacing:-.01em;font-family:Familjen Grotesk,sans-serif}.font-test-familjen .hero-banner-nine .hero-heading{text-wrap:balance;font-weight:500}.font-test-familjen .btn-eighteen,.font-test-familjen .btn-eleven{font-family:Chivo,sans-serif;font-weight:700}.font-test-familjen .btn-eighteen{border:2px solid var(--siab-border);border-radius:0;transition:transform .12s,box-shadow .12s;box-shadow:5px 5px var(--siab-shadow-color)}.font-test-familjen .btn-eighteen:hover{color:var(--siab-text);background:#f5e900;transform:translate(2px,2px);box-shadow:3px 3px var(--siab-shadow-color)}.font-test-familjen .btn-eighteen:active{transform:translate(5px,5px);box-shadow:0 0 var(--siab-shadow-color)}.font-test-familjen .pricing-section-six .pr-column{background:var(--siab-pr-column-bg);border:2px solid var(--siab-border);border-radius:0;box-shadow:6px 6px var(--siab-shadow-color)}.font-test-familjen .pricing-section-six .pr-column.pr-column-recommended{background:var(--siab-bg-surface);border-width:2px;position:relative;box-shadow:10px 10px var(--siab-shadow-color)}.font-test-familjen .pricing-section-six .pr-column.pr-column-recommended:after{content:"POPULAIR";color:var(--siab-text);letter-spacing:.06em;z-index:2;background:#ffd80b;border:2px solid var(--siab-border);padding:6px 14px;font-family:Familjen Grotesk,sans-serif;font-size:13px;font-weight:700;position:absolute;top:-16px;right:24px;box-shadow:3px 3px var(--siab-shadow-color)}.font-test-familjen .pricing-section-six .pr-column .btn-eleven{border:2px solid var(--siab-border);border-radius:0;transition:transform .12s,box-shadow .12s;box-shadow:4px 4px var(--siab-shadow-color)}.font-test-familjen .pricing-section-six .pr-column .btn-eleven:hover{transform:translate(2px,2px);box-shadow:2px 2px var(--siab-shadow-color)}.font-test-familjen .pricing-section-six .pr-column .btn-eleven:active{transform:translate(4px,4px);box-shadow:0 0 var(--siab-shadow-color)}.font-test-familjen .pricing-nav-four .nav-tabs{background:0 0;border:2px solid var(--siab-border);border-radius:0;gap:0;padding:0;display:inline-flex}.font-test-familjen .pricing-nav-four .nav-link{color:var(--siab-text);white-space:nowrap;text-align:center;z-index:1;background:var(--siab-bg-surface);border:0;border-right:2px solid var(--siab-border);border-radius:0;min-width:160px;min-height:44px;padding:12px 32px;font-size:16px;font-weight:600;line-height:1.2;transition:transform .12s,box-shadow .12s,background .12s,color .12s;position:relative;transform:translateY(-3px);box-shadow:0 3px var(--siab-shadow-color)}.font-test-familjen .pricing-nav-four .nav-link:last-child{border-right:0}.font-test-familjen .pricing-nav-four .nav-link.active{color:#fff;background:#000;transform:translate(0);box-shadow:inset 0 3px #00000073}.font-test-familjen .pricing-nav-four .nav-link:not(.active):hover{transform:translateY(-1px);box-shadow:0 1px var(--siab-shadow-color)}.font-test-familjen .faq-section-three .accordion-style-two{background:var(--siab-bg-page);border:2px solid var(--siab-border);border-radius:0;padding:0;box-shadow:6px 6px var(--siab-shadow-color)}.font-test-familjen .faq-section-three .accordion-style-two .accordion-item{background:var(--siab-bg-surface);border:none;border-bottom:2px solid var(--siab-border);border-radius:0;margin:0}.font-test-familjen .faq-section-three .accordion-style-two .accordion-item:last-child{border-bottom:none}.font-test-familjen .faq-section-three .accordion-button{letter-spacing:-.01em;color:var(--siab-text);box-shadow:none;background:var(--siab-bg-surface);border:none;border-radius:0;padding:20px 24px;font-family:Familjen Grotesk,sans-serif;font-size:19px;font-weight:800;line-height:1.35}.font-test-familjen .faq-section-three .accordion-button:not(.collapsed){color:var(--siab-text);box-shadow:none;background:#ffd80b;padding:20px 24px;font-size:19px;font-weight:800}.font-test-familjen .faq-section-three .accordion-button:not(.collapsed):after{filter:brightness(0)}.font-test-familjen .faq-section-three .accordion-button:after{justify-content:center;align-self:center;align-items:center;line-height:1;display:flex}.font-test-familjen .faq-section-three .accordion-body{background:var(--siab-bg-surface);border-top:2px solid var(--siab-border);padding:14px 24px 22px}.font-test-familjen .faq-section-three .accordion-body p,.font-test-familjen .faq-section-three .accordion-body .fs-22{color:var(--siab-accordion-body-p-fg);letter-spacing:0;margin-bottom:0;font-family:Chivo,sans-serif;font-weight:400;font-size:16px!important;line-height:1.65!important}@media (width<=575px){.font-test-familjen .faq-section-three .accordion-button,.font-test-familjen .faq-section-three .accordion-button:not(.collapsed){padding:16px 20px;font-size:17px}.font-test-familjen .faq-section-three .accordion-body{padding:12px 20px 18px}.font-test-familjen .faq-section-three .accordion-body p,.font-test-familjen .faq-section-three .accordion-body .fs-22{font-size:16px!important;line-height:1.6!important}}.font-test-familjen .block-feature-twentyFour .card-style-eleven{background:var(--siab-bg-surface);border:2px solid var(--siab-border);border-radius:0;box-shadow:5px 5px var(--siab-shadow-color)}.font-test-familjen .block-feature-twentyFour .card-style-eleven .card-icon-circle{border:2px solid var(--siab-border)}.font-test-familjen .card-style-twelve{box-shadow:none;background:0 0;border:0;border-radius:0}.font-test-familjen .feedback-section-nine .feedback-block{border:2px solid var(--siab-feedback-border);border-radius:0}.font-test-familjen .feedback-section-nine .slider-arrows li{border-radius:0}.font-test-familjen .feedback-section-nine .slider-arrows li:hover{color:var(--siab-text);background:#ffd80b;border-color:#ffd80b}.font-test-familjen .block-feature-twentySix .block-one,.font-test-familjen .block-feature-twentySix .block-two,.font-test-familjen .block-feature-twentySix .block-three,.font-test-familjen .block-feature-twentySix .block-four{border:2px solid var(--siab-border);border-radius:0;transition:transform .12s,box-shadow .12s;box-shadow:4px 4px var(--siab-shadow-color)}.font-test-familjen .block-feature-twentySix .block-one:hover,.font-test-familjen .block-feature-twentySix .block-three:hover,.font-test-familjen .block-feature-twentySix .block-four:hover{transform:translate(1px,1px);box-shadow:3px 3px var(--siab-shadow-color)}.font-test-familjen .block-feature-twentySix .block-two:hover{transform:translate(1px,1px);box-shadow:3px 3px var(--siab-shadow-color)6}.font-test-familjen .block-feature-twentySix .block-one{padding-top:76px;justify-content:flex-start!important}@media (width<=991px){.font-test-familjen .block-feature-twentySix .block-one{padding-top:20px}}@media (prefers-reduced-motion:reduce){.font-test-familjen .block-feature-twentySix .block-one,.font-test-familjen .block-feature-twentySix .block-two,.font-test-familjen .block-feature-twentySix .block-three,.font-test-familjen .block-feature-twentySix .block-four{transition:none}}.font-test-familjen .block-feature-twentyFour form,.font-test-familjen .block-feature-twentyFour form input,.font-test-familjen .block-feature-twentyFour form button{border-radius:0}.font-test-familjen .block-feature-twentyFour form{border:2px solid var(--siab-border)}.font-test-familjen :is(a,button,input,.accordion-button,.nav-link):focus-visible{outline-offset:3px;box-shadow:none;outline:3px solid var(--siab-focus-ring)}.font-test-familjen .btn-eighteen:focus-visible,.font-test-familjen .pricing-section-six .pr-column .btn-eleven:focus-visible{outline-offset:4px;outline:3px solid var(--siab-focus-ring)}@media (prefers-reduced-motion:reduce){.font-test-familjen .btn-eighteen,.font-test-familjen .btn-eighteen:hover,.font-test-familjen .btn-eighteen:active,.font-test-familjen .pricing-section-six .pr-column .btn-eleven,.font-test-familjen .pricing-section-six .pr-column .btn-eleven:hover,.font-test-familjen .pricing-section-six .pr-column .btn-eleven:active,.font-test-familjen .pricing-nav-four .nav-link,.font-test-familjen .pricing-nav-four .nav-link.active,.font-test-familjen .pricing-nav-four .nav-link:not(.active):hover{transition:box-shadow .12s,background .12s,color .12s;transform:none!important}}.font-test-familjen .footer-three.dark-version .address-wrapper .block{color:inherit;background:#ffffff12;border:2px solid #fff9;border-radius:0;text-decoration:none;transition:transform .12s,box-shadow .12s,background .12s;box-shadow:4px 4px var(--siab-footer-card-shadow-color)}.font-test-familjen .footer-three.dark-version .address-wrapper .block:hover{color:inherit;background:#ffffff1f;transform:translate(2px,2px);box-shadow:2px 2px var(--siab-footer-card-shadow-color)}.font-test-familjen .footer-three.dark-version .address-wrapper .block .icon{background:rgba(255,255,255,0.12);border:none;border-radius:50%;flex:0 0 56px;width:56px;height:56px}.font-test-familjen .footer-three.dark-version .address-wrapper .block .icon svg{width:28px;height:28px}.font-test-familjen .footer-three.dark-version .address-wrapper .siab-contact--email .icon{color:#06b4ff}.font-test-familjen .footer-three.dark-version .address-wrapper .siab-contact--wa .icon{color:#00c592}.font-test-familjen .footer-three.dark-version .address-wrapper .siab-contact--form .icon{color:#f96a00}.font-test-familjen .footer-three.dark-version .social-icon{gap:18px;margin-bottom:0;padding-left:0}.font-test-familjen .footer-three.dark-version .social-icon li{margin:0}.font-test-familjen .footer-three.dark-version .social-icon li a{color:#fff;background:0 0;border:none;justify-content:center;align-items:center;padding:4px;transition:color .12s,opacity .12s;display:inline-flex}.font-test-familjen .footer-three.dark-version .social-icon li a:hover{color:#ffd80b}.font-test-familjen .footer-three.dark-version .social-icon li a svg{width:22px;height:22px}.font-test-familjen .footer-three.dark-version .position-relative>.row{row-gap:40px}.font-test-familjen .footer-three.dark-version .copyright-text{opacity:.7;border-top:none;margin-top:40px;padding-top:0}.font-test-familjen .footer-three.dark-version .footer-nav .fs-6{text-transform:uppercase;letter-spacing:.06em;opacity:.7;font-size:13px;font-weight:700}.font-test-familjen .footer-three.dark-version .footer-nav-link li a:hover{color:#ffd80b}.font-test-familjen .footer-three.dark-version .logo img{width:auto;height:clamp(44px,3vw,56px);max-height:none}.font-test-familjen .footer-three.dark-version .address-wrapper h2{font-family:Familjen Grotesk,sans-serif}.font-test-familjen .footer-three.dark-version .siab-copyright-row{flex-wrap:wrap;justify-content:center;align-items:baseline;gap:0 10px;width:100%;font-size:.8125rem;line-height:1.8;display:flex}.font-test-familjen .footer-three.dark-version .siab-copyright-row abbr{cursor:help;text-decoration:none}.font-test-familjen .footer-three.dark-version{--footer-primary:#fff;--footer-secondary:#ffffffc7;--footer-muted:#ffffff8c;--footer-divider:#ffffff1a}.font-test-familjen .footer-three.dark-version .address-wrapper h2,.font-test-familjen .footer-three.dark-version .block .title{color:var(--footer-primary)}.font-test-familjen .footer-three.dark-version .block .fs-20,.font-test-familjen .footer-three.dark-version .footer-nav .fs-6,.font-test-familjen .footer-three.dark-version .col-lg-3 .fs-6,.font-test-familjen .footer-three.dark-version .footer-nav-link li a,.font-test-familjen .footer-three.dark-version .social-icon li a{color:var(--footer-secondary)}.font-test-familjen .footer-three.dark-version .footer-nav .fs-6{opacity:1}.font-test-familjen .footer-three.dark-version .copyright-text,.font-test-familjen .footer-three.dark-version .siab-cr-copy,.font-test-familjen .footer-three.dark-version .siab-cr-meta,.font-test-familjen .footer-three.dark-version .siab-legal-meta__sep{color:var(--footer-muted)}.font-test-familjen .footer-three.dark-version .siab-cr-meta,.font-test-familjen .footer-three.dark-version .siab-cr-copy{font-size:.8125rem}.font-test-familjen .footer-three.dark-version .copyright-text{opacity:1}.font-test-familjen .footer-three.dark-version .siab-copyright-row{border-top:1px solid #ffffff24;width:100%;padding-top:32px;position:static;bottom:auto;left:auto;margin-top:64px!important}@media (width<=991px){.font-test-familjen .footer-three.dark-version .siab-copyright-row{padding-top:24px;margin-top:40px!important}}.font-test-familjen .hero-banner-nine .illustration{margin:0;display:block}.font-test-familjen .hero-banner-nine .illustration .lottie-rocket{width:100%;height:auto;display:block}@media (width>=992px){.font-test-familjen .hero-banner-nine{overflow:visible}.font-test-familjen .hero-banner-nine .row{align-items:stretch}.font-test-familjen .hero-banner-nine .col-12.col-lg-6{padding-right:0;position:relative;overflow:visible}.font-test-familjen .hero-banner-nine .illustration{aspect-ratio:auto;justify-content:flex-start;align-items:center;width:calc(100% + max(0px,50vw - 775px - clamp(12px,1.7vw,24px)));max-width:none;display:flex;position:absolute;top:0;bottom:0;left:0;overflow:hidden;transform:none}.font-test-familjen .hero-banner-nine .illustration .lottie-rocket{aspect-ratio:4/3;transform-origin:0;flex-shrink:0;width:auto;max-width:100%;height:auto;max-height:100%;display:block;transform:scale(1.18)}}@media (width<=991px){.font-test-familjen .hero-banner-nine{padding-bottom:80px!important}.font-test-familjen .hero-banner-nine .row{align-items:center}.font-test-familjen .hero-banner-nine .illustration{width:100%;max-width:100%;height:auto}}@media (width<=767px){.font-test-familjen .hero-banner-nine{padding-top:80px!important;padding-bottom:60px!important}.font-test-familjen .hero-banner-nine .fs-24{color:var(--siab-text-muted)!important}.font-test-familjen .hero-banner-nine .illustration{max-height:320px;overflow:hidden}.font-test-familjen .hero-banner-nine .illustration .lottie-rocket{max-height:320px}}.font-test-familjen .siab-cta-group{align-items:center;padding-bottom:0;gap:24px!important}.font-test-familjen .siab-see-how{box-sizing:border-box;letter-spacing:.01em;white-space:nowrap;color:var(--siab-text-muted);text-underline-offset:5px;min-height:60px;box-shadow:none;background:0 0;border:none;border-radius:0;justify-content:center;align-items:center;padding:0;font-family:Chivo,sans-serif;font-size:18px;font-weight:700;line-height:1.2;text-decoration:underline 2px dashed var(--siab-text-muted);transition:color .15s,text-decoration-color .15s;display:inline-flex}.font-test-familjen .siab-see-how:hover{color:var(--siab-link-hover-fg);text-decoration:underline 2px dashed var(--siab-link-hover-fg)}.font-test-familjen .siab-see-how:active{color:var(--siab-text);text-decoration-color:var(--siab-text)}.font-test-familjen .siab-see-how:focus-visible{outline-offset:4px;outline:3px solid var(--siab-focus-ring)}@media (prefers-reduced-motion:reduce){.font-test-familjen .siab-see-how{transition:none}}@media (width<=767px){.font-test-familjen .siab-cta-group{flex-wrap:wrap;flex-direction:row!important;align-items:center!important;gap:16px!important}.font-test-familjen .siab-cta-group .btn-eighteen{text-align:center;width:auto;min-width:220px}.font-test-familjen .siab-cta-group .siab-see-how{justify-content:flex-start}}@media (width<=768px){.font-test-familjen .hero-banner-nine .fs-24{hyphens:none;font-size:18px;line-height:1.5}}@media (width<=575px){.font-test-familjen .hero-banner-nine .fs-24{font-size:17px;line-height:1.55}}.font-test-familjen .theme-main-menu .navbar-toggler{background:#000;border:2px solid var(--siab-border);border-radius:0;justify-content:center;align-items:center;width:44px;height:40px;padding:0;display:flex;position:relative}.font-test-familjen .theme-main-menu .navbar-toggler span,.font-test-familjen .theme-main-menu .navbar-toggler span:before,.font-test-familjen .theme-main-menu .navbar-toggler span:after{background:var(--siab-bg-surface);border-radius:0;width:22px;height:2px;transition:transform .2s,opacity .2s,background .2s,top .2s;display:block;position:absolute;left:50%;transform:translate(-50%)}.font-test-familjen .theme-main-menu .navbar-toggler span{text-indent:0;margin-top:-1px;top:50%;overflow:visible}.font-test-familjen .theme-main-menu .navbar-toggler span:before{content:"";top:-7px}.font-test-familjen .theme-main-menu .navbar-toggler span:after{content:"";top:7px}.font-test-familjen .theme-main-menu .navbar-toggler[aria-expanded=true] span{opacity:1;background:0 0}.font-test-familjen .theme-main-menu .navbar-toggler[aria-expanded=true] span:before{top:0;transform:translate(-50%)rotate(45deg)}.font-test-familjen .theme-main-menu .navbar-toggler[aria-expanded=true] span:after{top:0;transform:translate(-50%)rotate(-45deg)}@media (prefers-reduced-motion:reduce){.font-test-familjen .theme-main-menu .navbar-toggler span,.font-test-familjen .theme-main-menu .navbar-toggler span:before,.font-test-familjen .theme-main-menu .navbar-toggler span:after{transition:none}}.font-test-familjen .theme-main-menu .nav-item .nav-link{color:var(--siab-text);letter-spacing:.01em;border-bottom:2px solid var(--siab-border)0;padding-bottom:2px;font-size:clamp(15px,1.1vw,18px);font-weight:600;transition:border-color .12s}.font-test-familjen .theme-main-menu .nav-item .nav-link:hover{color:var(--siab-text);border-bottom-color:#ffd80b}.font-test-familjen .theme-main-menu.fixed{box-shadow:none;border-bottom:2px solid var(--siab-border)}.font-test-familjen .theme-main-menu .siab-logo img,.font-test-familjen .theme-main-menu .logo img{width:auto;height:clamp(44px,3vw,72px);max-height:none;display:block}.font-test-familjen .theme-main-menu .btn-eighteen{height:auto;padding:clamp(10px,.7vw,13px) clamp(20px,1.4vw,26px);font-size:clamp(15px,1vw,17px);line-height:1.2}.font-test-familjen .theme-main-menu .login-btn-one{letter-spacing:.01em;white-space:nowrap;color:var(--siab-loginbtn-fg);text-underline-offset:5px;min-height:calc(1.2*clamp(15px,1vw,17px) + 2*clamp(10px,.7vw,13px) + 4px);box-shadow:none;background:0 0;border:none;border-radius:0;align-items:center;padding:0 2px;font-family:Chivo,sans-serif;font-size:clamp(15px,1vw,17px);font-weight:600;line-height:1.2;text-decoration:underline 2px dashed var(--siab-text-muted);transition:color .15s,text-decoration-color .15s;display:inline-flex}.font-test-familjen .theme-main-menu .login-btn-one:hover{color:var(--siab-link-hover-fg);text-decoration:underline 2px dashed var(--siab-link-hover-fg)}.font-test-familjen .theme-main-menu .login-btn-one:active{color:var(--siab-text);text-decoration-color:var(--siab-text)}.font-test-familjen .theme-main-menu .login-btn-one:focus-visible{outline-offset:4px;outline:3px solid var(--siab-focus-ring)}@media (prefers-reduced-motion:reduce){.font-test-familjen .theme-main-menu .login-btn-one{transition:none}}.font-test-familjen .theme-main-menu .right-widget ul li+li{margin-left:clamp(16px,1.6vw,28px)!important}.font-test-familjen .theme-main-menu .inner-content{padding:clamp(12px,.8vw,20px) max(0px,clamp(12px,1.7vw,24px) + -100vw + 100%) clamp(12px,.8vw,20px) clamp(12px,1.7vw,24px)}@media (width>=992px){.font-test-familjen .theme-main-menu .top-header>.d-flex{grid-template-columns:1fr auto 1fr;grid-template-areas:"logo nav right";align-items:center;gap:0;display:grid!important}.font-test-familjen .theme-main-menu .top-header>.d-flex>.siab-logo{grid-area:logo;justify-self:start;margin-right:0!important}.font-test-familjen .theme-main-menu .top-header>.d-flex>.right-widget{grid-area:right;justify-self:end;order:unset!important;margin-left:0!important}.font-test-familjen .theme-main-menu .top-header>.d-flex>nav.navbar{grid-area:nav;justify-content:center;order:unset!important;margin-left:0!important;display:flex!important}.font-test-familjen .theme-main-menu .top-header>.d-flex>nav.navbar .navbar-collapse{flex-grow:0}}@media (width<=1199px){.font-test-familjen .pricing-nav-four .nav-link{min-width:130px;padding:12px 18px;font-size:15px}}@media (width<=991px){.font-test-familjen .faq-section-three .col-lg-5 .title-eleven{margin-bottom:32px}}@media (width<=575px){.font-test-familjen .pricing-section-six .pr-column.pr-column-recommended{margin-top:32px}.font-test-familjen .block-feature-twentyFive .card-style-twelve{padding-left:16px;padding-right:16px}}.siab-info-trigger{color:#aaa;cursor:help;vertical-align:middle;background:0 0;border:0;justify-content:center;align-items:center;margin:0 0 0 6px;padding:2px;line-height:1;transition:color .2s;display:inline-flex;position:relative}.siab-info-trigger:before{content:"";position:absolute;inset:-14px}.siab-info-trigger:hover{color:var(--siab-info-trigger-hover-fg)}.siab-info-trigger:focus-visible{color:var(--siab-info-trigger-hover-fg);outline:3px solid var(--siab-focus-ring);outline-offset:2px;border-radius:2px}.siab-info-trigger svg{width:14px;height:14px;display:block}.tooltip.bs-tooltip-auto .tooltip-inner,.tooltip .tooltip-inner{color:#fff;text-align:left;background:#1d1d1f;border-radius:8px;max-width:240px;padding:8px 12px;font-size:13px;line-height:1.45}.tooltip .tooltip-arrow:before{border-top-color:#1d1d1f}.tooltip.bs-tooltip-bottom .tooltip-arrow:before{border-bottom-color:#1d1d1f}.tooltip.bs-tooltip-start .tooltip-arrow:before{border-left-color:#1d1d1f}.tooltip.bs-tooltip-end .tooltip-arrow:before{border-right-color:#1d1d1f}.font-test-familjen .feedback-slider-six .logo{filter:brightness(0)invert();opacity:.7;object-fit:contain;width:auto;max-width:160px;height:44px;max-height:44px;transition:filter .3s,opacity .3s;display:block}.font-test-familjen .feedback-slider-six .logo:hover{filter:none;opacity:1}@media (prefers-reduced-motion:reduce){.font-test-familjen .feedback-slider-six .logo{transition:none}}.siab-heading{text-align:center;letter-spacing:-.015em;color:#fff;margin-top:88px;margin-bottom:24px;font-family:Familjen Grotesk,sans-serif;font-size:clamp(26px,3.8vw,44px);font-weight:500;line-height:1.15}@media (width<=767px){.siab-heading{margin-top:56px;margin-bottom:16px}}.siab-marquee{--siab-gap:80px;--siab-duration:60s;background:#ffffff21;border:2px solid var(--siab-border);border-radius:0;height:94px;margin:8px 0 25px;position:relative;overflow:hidden}.siab-marquee__viewport{align-items:center;gap:var(--siab-gap);height:100%;padding:0 32px;display:flex;-webkit-mask-image:linear-gradient(90deg,#0000 0,#000 80px calc(100% - 80px),#0000 100%);mask-image:linear-gradient(90deg,#0000 0,#000 80px calc(100% - 80px),#0000 100%)}.siab-marquee__track{gap:var(--siab-gap);white-space:nowrap;animation:siab-marquee-scroll var(--siab-duration) linear infinite;flex-shrink:0;margin:0;padding:0;list-style:none;display:flex}.siab-marquee__track li{color:#fff;letter-spacing:-.005em;flex-shrink:0;font-family:Chivo,sans-serif;font-size:20px;font-weight:500}.siab-marquee:hover .siab-marquee__track{animation-play-state:paused}@keyframes siab-marquee-scroll{0%{transform:translate(0)}to{transform:translateX(calc(-100% - var(--siab-gap)))}}@media (prefers-reduced-motion:reduce){.siab-marquee__track{animation:none}}@media (width<=767px){.siab-marquee{--siab-gap:48px;--siab-duration:42s;height:72px;margin:24px 0 16px}.siab-marquee__viewport{padding:0 16px}.siab-marquee__track li{font-size:17px}}.siab-perks{flex-wrap:wrap;justify-content:center;gap:14px 40px;margin:24px 0 0;padding:0;list-style:none;display:flex}.siab-perks li{color:#ffffffeb;align-items:center;gap:10px;font-family:Chivo,sans-serif;font-size:16px;font-weight:500;line-height:1.4;display:inline-flex}.siab-perks svg{color:#f5e900;flex-shrink:0}@media (width<=767px){.siab-perks{flex-direction:column;align-items:center;gap:12px;margin-top:20px}.siab-perks li{font-size:15px}}.card-style-eleven h3.card-style-eleven-heading{margin:29px 0 8px;font-size:28px;font-weight:500}.card-style-twelve h3.card-style-twelve-heading{margin:25px 0;font-size:24px;font-weight:500}.pricing-section-six .pr-column h3.pricing-section-heading{border-bottom:2px solid var(--siab-border);margin:65px 0 45px;padding-bottom:25px;font-size:24px;font-weight:500}.visually-hidden{clip:rect(0, 0, 0, 0);white-space:nowrap;border:0;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;position:absolute!important}.pricing-section-six .fs-14.opacity-75,.pricing-section-six .pr-column .info2.fs-14.opacity-75{opacity:1!important;color:var(--siab-pricing-microcopy-fg)!important}.feedback-section-nine .slider-arrows li{justify-content:center;align-items:center;display:inline-flex}.feedback-section-nine .slider-arrows li svg{display:block}.block-feature-twentyFive .border-top.border-bottom{border-left-style:none!important;border-right-style:none!important}.navbar-collapse,.navbar-collapse.collapse,.accordion-collapse,.accordion-collapse.collapse{visibility:visible!important}.siab-info-trigger{position:relative}.siab-info-trigger::before,.siab-info-trigger::after{position:absolute;left:50%;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s ease-out,visibility .15s ease-out;z-index:1080}.siab-info-trigger::after{content:attr(data-tooltip);bottom:calc(100% + 10px);transform:translateX(-50%);background:#1d1d1f;color:#fff;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.45;font-family:'Chivo',sans-serif;font-weight:400;max-width:240px;width:max-content;white-space:normal;text-align:left;letter-spacing:normal}.siab-info-trigger::before{content:'';bottom:calc(100% + 4px);transform:translateX(-50%);border:6px solid transparent;border-top-color:#1d1d1f;width:0;height:0;padding:0}.siab-info-trigger:hover::before,.siab-info-trigger:hover::after,.siab-info-trigger:focus-visible::before,.siab-info-trigger:focus-visible::after{opacity:1;visibility:visible}@media (prefers-reduced-motion:reduce){.siab-info-trigger::before,.siab-info-trigger::after{transition:none}}
+/* Promise-cards strip — same purple as block-feature-twentyFour for a seamless join; cards still bleed up into the hero's cream area via margin-top:-100px.
+   display:flow-root establishes a BFC so the cards' negative margin stays contained (otherwise it collapses upward and shifts the strip itself). */
+.hero-cards-strip{display:flow-root;background:var(--siab-bg-purple);position:relative;z-index:2;padding-bottom:clamp(40px,5vh,72px)}
+.hero-cards-strip .card-style-eleven{margin-top:-100px}
+.font-test-familjen .hero-cards-strip .card-style-eleven{background:var(--siab-bg-surface);border:2px solid var(--siab-border);border-radius:0;box-shadow:5px 5px var(--siab-shadow-color)}
+.font-test-familjen .hero-cards-strip .card-style-eleven .card-icon-circle{border:2px solid var(--siab-border)}
+/* Audience reassurance section — BFC contains the h3's margin-top so it can't escape and create a body-color gap above the section. Explicit padding-top provides the section's breathing room instead. */
+.font-test-familjen .block-feature-twentyFour{display:flow-root;padding-top:clamp(40px,5vh,72px)}
+.font-test-familjen .block-feature-twentyFour .siab-heading{margin-top:0}
+/* Above-the-fold sizing.
+   Mobile portrait: hero alone fills viewport; first card's bleed reset so nothing peeks (other cards keep their natural mobile spacing via md-mt-30).
+   Desktop landscape: a two-row grid (hero / cards) pins to 100svh — the hero grows into surplus height but never shrinks below its content + header clearance; short viewports just scroll. Heading "Voor elke starter…" lives outside the wrapper so it is guaranteed below the fold. */
+@media (max-width:767px){
+  /* +100px absorbs the cards' -100px bleed (.hero-cards-strip .card-style-eleven) so the first card's top lands at the viewport bottom rather than peeking in. Change both together if the bleed amount changes. */
+  .font-test-familjen .hero-banner-nine{min-height:calc(100svh + 100px);display:flex;align-items:center}
+  /* Hide the forced <br /> on mobile so the H1 wraps as one continuous string; balance then distributes line widths evenly. "Zonder gedoe." will naturally end up on its own last line in most cases. */
+  .font-test-familjen .hero-banner-nine .hero-heading br{display:none}
+  .font-test-familjen .hero-banner-nine .hero-heading{text-wrap:balance}
+  /* Sub-line: pretty avoids a single-word last line like "bent." dangling alone. */
+  .font-test-familjen .hero-banner-nine .fs-24{text-wrap:pretty}
+  /* Tighten the seam between the cards strip and the audience-reassurance section on mobile (symmetric on both sides of the boundary). */
+  .hero-cards-strip{padding-bottom:28px}
+  .font-test-familjen .block-feature-twentyFour{padding-top:28px}
+}
+/* Mobile nav links: the desktop hover-underline declarations (padding-bottom:2px + transparent border-bottom) leak in and break the theme's symmetric 15px vertical padding, pushing the label off-center between the dashed dividers. Restore symmetry below the desktop breakpoint. */
+@media (max-width:991px){
+  .font-test-familjen .theme-main-menu .nav-item .nav-link{padding-bottom:15px;border-bottom:0}
+}
+/* Overlay-nav clearance — single source of truth. The .theme-main-menu header
+   is position:absolute over the hero. Its height = the logo clamp + the
+   .inner-content vertical padding clamp (both straight from the bundle) + ~14px
+   of baseline chrome. Tracks the real header across the width range — measured
+   82px @992, 80px @1440, 125px @2560. Drives the hero's top-padding AND a
+   global scroll-padding, so hash-jumped sections and keyboard-focused elements
+   (WCAG 2.4.11 Focus Not Obscured) never land behind the header. */
+:root{--siab-header-h:calc(clamp(44px,3vw,72px) + clamp(24px,1.6vw,40px) + 14px)}
+html{scroll-padding-top:calc(var(--siab-header-h) + 16px)}
+
+@media (min-width:992px) and (orientation:landscape){
+  /* Two-row grid: row 1 (1fr) is the hero. A 1fr track's automatic minimum is
+     its content's size, so the hero can GROW into surplus viewport height but
+     never SHRINK below its own content + padding. Row 2 (auto) is the promise-
+     cards strip at natural height. When hero + cards exceed the viewport the
+     page just scrolls — the hero never crushes and the nav never overlaps the
+     H1 (padding-top always clears the header). No gap on the grid: the cards'
+     -100px bleed must still overlap the hero's bottom seamlessly. */
+  .siab-above-fold{min-height:100svh;display:grid;grid-template-rows:1fr auto}
+  .font-test-familjen .siab-above-fold .hero-banner-nine{
+    display:flex;flex-direction:column;justify-content:center;
+    padding-top:calc(var(--siab-header-h) + 28px)!important;
+    padding-bottom:clamp(160px,14svh,240px)!important
+  }
+}
+
+/* ============================================================
+   THEME OVERRIDES — anchor bundled-theme backgrounds to tokens,
+   flip Bootstrap utility colors in dark mode, lock text-on-yellow
+   to black across modes, View Transitions animation.
+   ============================================================ */
+
+/* Body: in light, WHITE (matches reference — only the hero has the cream-pink;
+   pricing/FAQ/trust-trio/etc. show through to white body). In dark, dark plum
+   so the same sections show through to the dark page color. */
+/* Body — bg + fg both flow through light-dark() color tokens.
+   Light: #fff / #000. Dark: lifted plum #3a1a30 / muted-white. */
+body{background:var(--siab-body-bg);color:var(--siab-body-fg)}
+
+/* Re-anchor bundled-theme background literals (style.css hard-codes #fef3f4 / #481938) */
+.font-test-familjen .hero-banner-nine{background:var(--siab-bg-page)}
+.font-test-familjen .feedback-section-nine{background:var(--siab-bg-purple)}
+.font-test-familjen .block-feature-twentyFour{background:var(--siab-bg-purple);display:flow-root;padding-top:clamp(40px,5vh,72px)}
+
+
+/* Bootstrap utility flippers — always-on via light-dark() color tokens.
+   Light values (#212529) match Bootstrap's own .text-dark/.border-dark
+   literal so light mode is unchanged; dark resolves to #fff / #000. */
+.font-test-familjen .text-dark{color:var(--siab-text-dark-util)!important}
+.font-test-familjen .border-dark{border-color:var(--siab-border-dark-util)!important}
+
+/* Lock text-on-yellow to black in both modes (yellow CTAs stay yellow).
+   Note: the .btn-eleven .icon flips to BLACK bg on hover with a YELLOW chevron
+   (per the bundled Piku rule) — do NOT include the chevron here or it goes
+   black-on-black and becomes invisible. */
+.font-test-familjen .btn-eighteen,
+.font-test-familjen .btn-eighteen:hover,
+.font-test-familjen .pricing-section-six .pr-column .btn-eleven:hover{color:#000}
+
+/* View Transitions crossfade between themes */
+::view-transition-old(root),
+::view-transition-new(root){animation-duration:250ms;animation-timing-function:ease}
+@media (prefers-reduced-motion: reduce){
+  ::view-transition-old(root),
+  ::view-transition-new(root){animation:none}
+}
+
+/* ============================================================
+   DARK-MODE COMPONENT OVERRIDES (where a token swap isn't enough)
+   ============================================================ */
+
+/* Card / pricing / FAQ surfaces in dark — final brutalist treatment lives in
+   the round-6/8 blocks below (solid-black offset shadow on plum surfaces). */
+
+/* btn-eighteen (yellow CTA) in dark — final solid #000 shadow lives in the round-7
+   block below (keeps the same brutalist depth signal as light mode). */
+
+/* ============================================================
+   FORCED-COLORS (Windows High Contrast) — WCAG 2.4.11
+   box-shadow is suppressed by the OS; rely on border + system colors
+   so focus rings and depth cues survive.
+   ============================================================ */
+@media (forced-colors: active){
+  .font-test-familjen :is(
+    .hero-cards-strip .card-style-eleven,
+    .block-feature-twentyFour .card-style-eleven,
+    .pricing-section-six .pr-column,
+    .faq-section-three .accordion-style-two,
+    .btn-eighteen,
+    .pricing-section-six .pr-column .btn-eleven,
+    .siab-theme-toggle
+  ){box-shadow:none;border:2px solid ButtonText;forced-color-adjust:none}
+  .font-test-familjen :is(a,button,input,textarea,select,.accordion-button,.nav-link):focus-visible,
+  .siab-theme-toggle:focus-visible,
+  .siab-info-row:focus-visible,
+  .siab-info-social:focus-visible,
+  .siab-info-trigger:focus-visible{outline:3px solid Highlight;outline-offset:3px}
+}
+
+/* ============================================================
+   PREFERS-CONTRAST: MORE — boost border thickness for users who
+   opted into the OS "more contrast" preference (separate from dark mode).
+   ============================================================ */
+@media (prefers-contrast: more){
+  .font-test-familjen :is(
+    .hero-cards-strip .card-style-eleven,
+    .block-feature-twentyFour .card-style-eleven,
+    .pricing-section-six .pr-column,
+    .faq-section-three .accordion-style-two,
+    .btn-eighteen,
+    .siab-theme-toggle
+  ){border-width:3px}
+}
+
+/* ============================================================
+   DARK-MODE COMPONENT OVERRIDES — single [data-theme="dark"] path.
+   Rules here change something a light-dark() token can't express
+   (image/logo swaps, filter inverts, structural/layout property
+   changes, multi-value border/shadow changes, or full inversions
+   entangled with non-color props). Pure color pairs live in the
+   token block above instead.
+   ============================================================ */
+
+/* --- Headings: theme bundle sets h1-h6 {color:#000}. Override only in dark
+   so light-mode headings on purple/dark sections (testimonial, footer)
+   keep their #fff from the bundled section-specific rules. --- */
+[data-theme="dark"] .font-test-familjen :is(h1,h2,h3,h4,h5,h6){color:var(--siab-text)}
+
+
+/* Bento grid block colors — final uniform-dark treatment lives in the round-8
+   block below (all four blocks become translucent-white-on-plum with consistent
+   --siab-border-soft + solid-black --siab-shadow-soft offset shadows). */
+/* block-one heading + block-four heading are color:#000 from theme. Force light in dark. */
+[data-theme="dark"] .font-test-familjen :is(.block-feature-twentySix .block-one h3,.block-feature-twentySix .block-four h3){color:var(--siab-text)}
+
+/* --- FAQ accordion in dark: theme bundle hard-codes white containers + black
+   text + black +/- icons. Mirror light's mechanic — container = page bg, items =
+   surface bg — so dark just swaps the surface colors, not the structure. --- */
+/* FAQ accordion item dividers:
+   - LIGHT: soften to 1px low-opacity so the accordion reads as cleaner list
+     internals rather than every Q&A being its own brutalist slab.
+   - DARK: full brutalist 2px solid black (var(--siab-border)) to match the
+     other dark-mode cards — bundled value, no override needed beyond bg. */
+.font-test-familjen .faq-section-three .accordion-style-two .accordion-item{
+  border-bottom:1px solid rgba(0,0,0,0.12)
+}
+[data-theme="dark"] .font-test-familjen .faq-section-three .accordion-style-two .accordion-item{
+  border-bottom:2px solid var(--siab-border)
+}
+[data-theme="dark"] .font-test-familjen .faq-section-three .accordion-button:not(.collapsed){
+  background:#ffd80b;
+  color:#000
+}
+/* +/- icon visibility in dark: theme bundle renders it as a background-image
+   which ignores text color. Collapsed state sits on the dark plum surface and
+   needs inverting to white; open state stays on yellow with the bundle's
+   filter:brightness(0) (= black-on-yellow) which is already correct. */
+[data-theme="dark"] .font-test-familjen .faq-section-three .accordion-button:after{
+  filter:invert(1)
+}
+[data-theme="dark"] .font-test-familjen .faq-section-three .accordion-body{
+  border-top-color:rgba(255,255,255,0.1)
+}
+
+/* --- Trust-trio block-feature-twentyFive border-dark + h3 + p colors in dark --- */
+[data-theme="dark"] .font-test-familjen :is(.block-feature-twentyFive .card-style-twelve h3,.block-feature-twentyFive .card-style-twelve p){color:var(--siab-text)}
+
+/* card-style-eleven icon circle border: final styling lives in the block below
+   (2px border-soft, matching light's 2px solid mechanic). */
+
+/* ============================================================
+   DARK-MODE FIXES (round 3) — based on deep diff vs reference Dark index-9.
+   Covers POPULAIR badge, pricing button, hardcoded-charcoal hovers, info-trigger,
+   testimonial soft borders, light-bg block-three text exceptions, and SVG icon
+   inversion for monochrome icons that read as black on dark.
+   ============================================================ */
+
+/* POPULAIR badge — text must stay #000 on the yellow #ffd80b badge in BOTH
+   themes (the bundled :after rule sets color:var(--siab-text), which is white
+   in dark). Single unconditional rule — no theme scoping needed since the
+   badge is yellow in light and dark alike. */
+.font-test-familjen .pricing-section-six .pr-column.pr-column-recommended:after{color:#000}
+
+/* btn-eleven dark — final styling lives in the round-8 block below
+   (transparent bg + white text + soft-white border, mirrors light's hover mechanic
+   which only shrinks shadow + translates, no bg flip). */
+
+/* Pricing tab .nav-link.active — final tactile inset shadow lives in round-8 block */
+
+.font-test-familjen .pricing-section-six .pr-column .save-line{background:var(--siab-pricing-save-bg);color:var(--siab-pricing-save-fg)}
+
+/* Testimonial cards — reference uses very-soft 8% white border (not opaque
+   white) and highlights the centered slide with an 8% white background. */
+.font-test-familjen .feedback-section-nine .slick-center .feedback-block{background:var(--siab-feedback-center-bg)}
+
+
+/* Removed previous filter:invert hack for icons — replaced with proper
+   SVG file swaps below (the reference ships dedicated dark-variant files). */
+
+/* ============================================================
+   DARK-MODE FIXES (round 4) — EXACT reference values where they differ.
+   Every selector below maps directly to the reference Piku Dark style.css.
+   ============================================================ */
+
+
+/* Sticky header .fixed — match reference values exactly (was #2a0e22 / softer shadow) */
+[data-theme="dark"] .font-test-familjen .theme-main-menu.fixed{background:#2a0e22;box-shadow:0 13px 35px rgba(42,33,114,0.1);border-bottom:1px solid rgba(255,255,255,0.05)}
+
+/* btn-eleven base (used outside pricing too): in dark reference adds border 2px solid #fff.
+   Our btn-eleven only appears in pricing context, so we scope to that. */
+/* (handled by pricing .btn-eleven block below) */
+
+/* Pricing tabs container — final treatment lives in the round-8 block below
+   (uses --siab-border-soft + tactile raised/lowered shadows). */
+
+
+/* Pricing text colors: #fff in dark. Reference rules at lines 6298, 6309, 6343, 6349. */
+[data-theme="dark"] .font-test-familjen .pricing-section-six .pr-column :is(.price,.price sub,.plane-name,.plan-tagline,.info2,.package-feature li,h6,.pricing-section-heading,.plus-header){color:#fff}
+
+/* btn-eleven final styling lives in the round-8 block below (no border-color or
+   bg flips on hover — matches light's mechanic of shadow-shrink-only). */
+
+/* .card-style-eleven (promise cards) — final treatment lives in the round-6 block below
+   (uses --siab-border-soft + --siab-shadow-soft for the brutalist depth on plum). */
+
+/* REMOVED the wrong icon-content swaps (icon_46/47/48 + 50/51/52 — those are the
+   reference theme's payment/finance icons, not relevant to our SMB site). Our
+   tabler-* icons are used as-is in both modes; their colored stroke + the colored
+   :before/:after pseudo-elements provide the dark-mode visual identity.
+
+   KEPT: dark color-flip variants of icon_49 / icon_53 / icon_55. Those are the same
+   shape as the light version — only the stroke/fill color differs (black→white).
+   They appear on dark surfaces in dark mode where the light black version would
+   be invisible. Pure visual-contrast fix, not a content swap. */
+[data-theme="dark"] .font-test-familjen img[src$="icon_49.svg"]{content:url(/theme/images/icon/icon_49-dark.svg)}
+[data-theme="dark"] .font-test-familjen img[src$="icon_53.svg"]{content:url(/theme/images/icon/icon_53-dark.svg)}
+[data-theme="dark"] .font-test-familjen img[src$="icon_55.svg"]{content:url(/theme/images/icon/icon_55-dark.svg)}
+
+/* Footer dark-version bg: token resolves to #190713 in dark, #000 in light (matches bundle). */
+.font-test-familjen .footer-three.dark-version{background:var(--siab-footer-bg)}
+
+
+/* ============================================================
+   DARK-MODE FIXES (round 5) — design + UX consultation findings:
+   subtle borders + soft shadows for "brutalist on dark" (the pattern the
+   reference's own footer uses in light mode), focus-ring color shift to
+   yellow, mobile nav drawer + scrollbar + select chevron dark variants.
+   ============================================================ */
+
+/* Yellow CTA + POPULAIR badge shadow finalized in the round-7 block below
+   (solid #000 to match light-mode brutalism). */
+
+
+/* Card-style-eleven has no :hover state in light mode — don't invent one for dark.
+   Bento blocks DO have hover in light; their dark hover lives in the round-8 block. */
+
+/* Form select chevron — hardcoded black SVG data-URI in ContactForm.astro.
+   Swap to a white-stroked version in dark mode. */
+html[data-theme="dark"] .font-test-familjen .siab-field select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M1 1l5 5 5-5'/></svg>")}
+
+/* Mobile nav drawer in dark — theme bundle hard-codes background:#fff at <=991px.
+   Full-screen white flashbang on mobile when toggled. */
+@media (max-width:991px){
+  [data-theme="dark"] .font-test-familjen .navbar-collapse{background-color:#2a0e22;border-right:1px solid rgba(255,255,255,0.08)}
+}
+
+/* Native scrollbar (webkit) — token resolves to #2a0e22/rgba(255,255,255,0.3) in dark,
+   #fff/#000 in light (matches bundle). */
+::-webkit-scrollbar-track{background:var(--siab-scrollbar-track)}
+::-webkit-scrollbar-thumb{background:var(--siab-scrollbar-thumb)}
+
+/* Token hygiene — align footer-nav-link hover to the yellow accent token */
+[data-theme="dark"] .font-test-familjen .footer-three.dark-version .footer-nav-link a:hover,
+[data-theme="dark"] .font-test-familjen .footer-three.dark-version .social-icon li a:hover{color:var(--siab-accent-yellow)}
+
+/* ThemeToggle: aria-live announcement for screen readers */
+/* (label updates handled via JS in component; aria-live="polite" added to the span). */
+
+/* ============================================================
+   DARK-MODE FIXES (round 6) — CORRECTIONS based on user feedback.
+   - Don't swap content icons (icons are content-relevant, reference's are
+     payment/finance-themed which is wrong for our SMB site)
+   - Brutalist depth restored via the user's existing footer pattern:
+     semi-transparent white borders + semi-transparent white shadows
+   - Yellow CTA + POPULAIR badge keep BLACK border + BLACK shadow in dark
+     (yellow is its own "light surface" — brand depth signal stays black)
+   - Trust trio :after black depth circle dropped in dark (invisible anyway)
+   - Pricing nav active button: yellow bg + black text
+   - Pricing checkmarks: filter invert so visible on dark
+   ============================================================ */
+
+/* --- REVERT promise card icon swaps. Keep original tabler-* icons (content-relevant).
+   Make them WHITE in dark via filter:invert (the tabler SVGs are monochrome black). --- */
+[data-theme="dark"] .font-test-familjen .card-style-eleven .card-icon-circle img[src*="tabler-tools"],
+[data-theme="dark"] .font-test-familjen .card-style-eleven .card-icon-circle img[src*="tabler-adjustments-horizontal"],
+[data-theme="dark"] .font-test-familjen .card-style-eleven .card-icon-circle img[src*="tabler-shield-check"]{content:normal;filter:invert(1)}
+
+/* --- Trust trio in dark: mirrors reference Dark icon_50/51/52 structure exactly.
+   In the reference's dark SVG, the foreground circle becomes "dark-plum fill with
+   channel-colored 2px border" (instead of the light-mode's solid black fill). The
+   colored offset :before peek + brand-color icon are unchanged. We replicate this
+   in CSS using the existing :before/:after pseudo-elements + per-channel modifier
+   classes — no SVG swap, no filter hacks. Icon keeps its hardcoded brand-color
+   stroke from the SVG file. --- */
+[data-theme="dark"] .font-test-familjen .card-style-twelve .card-icon-circle-twelve:after{
+  background:var(--siab-bg-page);
+  box-sizing:border-box
+}
+[data-theme="dark"] .font-test-familjen .card-style-twelve .card-icon-circle-twelve.card-icon-yellow:after{border:2px solid #f5e900}
+[data-theme="dark"] .font-test-familjen .card-style-twelve .card-icon-circle-twelve.card-icon-green:after{border:2px solid #00c592}
+[data-theme="dark"] .font-test-familjen .card-style-twelve .card-icon-circle-twelve.card-icon-orange:after{border:2px solid #f96a00}
+
+/* --- Pricing checkmark (tabler-check.svg via :before content url): invert to white in dark --- */
+[data-theme="dark"] .font-test-familjen .pricing-section-six .pr-column .package-feature li:before{filter:invert(1)}
+[data-theme="dark"] .font-test-familjen .pricing-section-six .pr-column .package-feature li.optional:before{filter:invert(1)}
+
+/* --- Pricing tabs: final active-state styling lives in the round-7/8 blocks below
+   (yellow bg + tactile inset shadow for press-down feel). --- */
+
+
+
+/* ============================================================
+   DARK-MODE FIXES (round 7) — custom brutalist components.
+   From frontend-design + ui-ux-pro-max + SVG-design consultations.
+   ============================================================ */
+
+/* Pricing toggle + bento grid finalized in the round-8 block below
+   (token-based shadows, raised/lowered tactile mechanic preserved). */
+/* Bento block per-block treatment moved to the round-8 uniform-dark block below
+   (user requested "all bento will be dark" — same surface, border-soft, shadow-soft
+   for every block instead of the earlier per-block variation). */
+
+/* (Trust trio dark treatment moved earlier — uses :after colored border + dark plum
+   fill, keeping the original brand-color stroke SVGs. No file swap, no filter.) */
+
+/* ============================================================
+   DARK-MODE FINAL — single coherent brutalist system.
+   Principle: "shadow must be darker than the surface" — on dark plum that
+   means HARD BLACK shadows (not white-on-dark which reads as glow). The
+   --siab-shadow-soft token at the top is now rgba(0,0,0,0.65) so every
+   existing rule using that token automatically gets the correct shadow.
+   This block applies the final values to components not fully covered
+   by token substitution: all bento blocks (uniform dark surface per user
+   request), pricing toggle (raised/lowered tactile), .btn-eleven, and
+   block-three text (now on dark, so removing the black-text protection).
+   ============================================================ */
+
+/* All 4 bento blocks become uniform translucent-dark surfaces in dark mode
+   (per user — "all bento will be dark"). block-two's dark green and
+   block-three's light blue are overridden to match. */
+[data-theme="dark"] .font-test-familjen .block-feature-twentySix :is(.block-one,.block-two,.block-three,.block-four){
+  background:rgba(255,255,255,0.07);
+  border:2px solid var(--siab-border-soft);
+  box-shadow:4px 4px var(--siab-shadow-soft)
+}
+[data-theme="dark"] .font-test-familjen .block-feature-twentySix :is(.block-one,.block-two,.block-three,.block-four):hover{
+  transform:translate(1px,1px);
+  box-shadow:3px 3px var(--siab-shadow-soft)
+}
+
+/* block-three text now needs to follow the dark text flippers (its bg flipped
+   from light-blue to dark). Cancel the earlier black-text protection. */
+[data-theme="dark"] .font-test-familjen .block-feature-twentySix .block-three :is(h3,blockquote,.text-dark,.color-dark){color:var(--siab-text)!important}
+
+/* Pricing toggle — raised/lowered tactile per the brutalist mechanic (Section 3
+   of the design proposal). Inactive = plum surface raised, active = yellow at-rest. */
+[data-theme="dark"] .font-test-familjen .pricing-nav-four .nav-link{background:#5a3a50;color:#fff;border-right:2px solid var(--siab-border-soft);transform:translateY(-3px);box-shadow:0 3px var(--siab-shadow-soft)}
+[data-theme="dark"] .font-test-familjen .pricing-nav-four .nav-link:not(.active):hover{transform:translateY(-1px);box-shadow:0 1px var(--siab-shadow-soft)}
+[data-theme="dark"] .font-test-familjen .pricing-nav-four .nav-link.active{background:#f5e900;color:#000;transform:translateY(0);box-shadow:inset 0 3px #00000073}
+
+/* Pricing CTA (.btn-eleven) — transparent shell + soft-white border + black
+   shadow. Hover snaps to yellow with press-down translate. */
+/* btn-eleven in dark mirrors light's mechanic exactly: hover only shrinks the
+   shadow + translates, bg stays the same (no yellow flip — light doesn't do that). */
+[data-theme="dark"] .font-test-familjen .pricing-section-six .pr-column .btn-eleven{background:rgba(255,255,255,0.08);color:#fff;border:2px solid var(--siab-border-soft);box-shadow:4px 4px var(--siab-shadow-soft)}
+[data-theme="dark"] .font-test-familjen .pricing-section-six .pr-column .btn-eleven:hover{transform:translate(2px,2px);box-shadow:2px 2px var(--siab-shadow-soft)}
+[data-theme="dark"] .font-test-familjen .pricing-section-six .pr-column .btn-eleven:active{transform:translate(4px,4px);box-shadow:0 0 var(--siab-shadow-soft)}
+
+/* Hero promise cards (.card-style-eleven in both .hero-cards-strip and
+   .block-feature-twentyFour) get the same press-down hover as the bento blocks:
+   translate(1px,1px) with the shadow shrinking by 1px. Applies in both themes
+   via the shadow-color token. */
+.font-test-familjen .hero-cards-strip .card-style-eleven,
+.font-test-familjen .block-feature-twentyFour .card-style-eleven{
+  transition:transform .12s,box-shadow .12s
+}
+.font-test-familjen .hero-cards-strip .card-style-eleven:hover,
+.font-test-familjen .block-feature-twentyFour .card-style-eleven:hover{
+  transform:translate(1px,1px);
+  box-shadow:4px 4px var(--siab-shadow-color)
+}
+@media (prefers-reduced-motion: reduce){
+  .font-test-familjen .hero-cards-strip .card-style-eleven,
+  .font-test-familjen .block-feature-twentyFour .card-style-eleven{transition:none}
+  .font-test-familjen .hero-cards-strip .card-style-eleven:hover,
+  .font-test-familjen .block-feature-twentyFour .card-style-eleven:hover{transform:none}
+}
+
+/* FAQ container shadow harmonized to 5px 5px (matches hero/promise card-style-eleven).
+   Bundled was 6px 6px — overriding here so all primary cards have the same offset. */
+.font-test-familjen .faq-section-three .accordion-style-two{
+  box-shadow:5px 5px var(--siab-shadow-color)
+}
+
+/* Header logo swap in dark mode: img element's src is bound at HTML time, but
+   CSS `content: url()` lets us swap the rendered bitmap per theme. The footer
+   markup already points to siab_logo_dark.svg directly (it's always-dark). */
+[data-theme="dark"] .font-test-familjen .theme-main-menu .siab-logo img,
+[data-theme="dark"] .font-test-familjen .theme-main-menu .logo img{
+  content:url(/theme/images/logo/siab_logo_dark.svg)
+}

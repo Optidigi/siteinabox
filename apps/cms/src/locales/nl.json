@@ -84,7 +84,8 @@
     "analytics": "Analytics",
     "settings": "Instellingen",
     "team": "Team",
-    "onboarding": "Inrichting"
+    "onboarding": "Inrichting",
+    "operations": "Operaties"
   },
   "account": {
     "menuLabel": "Accountmenu - ingelogd als {name}",

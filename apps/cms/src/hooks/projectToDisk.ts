@@ -18,6 +18,8 @@ import {
 const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 
 const tenantIdOf = (doc: any): string | undefined => relationshipId(doc.tenant) ?? undefined
+const shouldSkipProjection = (req: { context?: Record<string, unknown> } | undefined): boolean =>
+  req?.context?.skipProjection === true
 
 // OBS-20 — nav `page`/`section` entries resolve their href + label from the
 // tenant's published pages, so site.json projection needs that set. Fetch
@@ -141,6 +143,7 @@ const removeProjectedPage = async (tenantId: string, slug: string) => {
 }
 
 export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (shouldSkipProjection(req)) return doc
   const tenantId = tenantIdOf(doc)
   if (!tenantId) return doc
   const tenantDir = path.join(dataDir(), "tenants", tenantId)
@@ -194,6 +197,7 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
 }
 
 export const projectSettingsToDisk: CollectionAfterChangeHook = async ({ doc, req }) => {
+  if (shouldSkipProjection(req)) return doc
   const tenantId = tenantIdOf(doc)
   if (!tenantId) return doc
   await writeSiteJson(req.payload, tenantId, doc)
@@ -202,6 +206,7 @@ export const projectSettingsToDisk: CollectionAfterChangeHook = async ({ doc, re
 }
 
 export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
+  if (shouldSkipProjection(req)) return doc
   const tenantId = tenantIdOf(doc)
   if (!tenantId || doc.filename == null) return doc
   if (!isSafeMediaFilename(doc.filename)) {

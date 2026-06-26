@@ -1,5 +1,5 @@
 import { postgresAdapter } from "@payloadcms/db-postgres"
-import { resendAdapter } from "@payloadcms/email-resend"
+import { nodemailerAdapter } from "@payloadcms/email-nodemailer"
 import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant"
 import { lexicalEditor } from "@payloadcms/richtext-lexical"
 import path from "path"
@@ -8,11 +8,16 @@ import { fileURLToPath } from "url"
 
 import { BlockPresets } from "@/collections/BlockPresets"
 import { Forms } from "@/collections/Forms"
+import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
 import { Media } from "@/collections/Media"
 import { Pages } from "@/collections/Pages"
+import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
+import { PreviewAccessGrants } from "@/collections/PreviewAccessGrants"
 import { SiteSettings } from "@/collections/SiteSettings"
+import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
+import { getCloudflareEmailSmtpToken } from "@/lib/email/sendEmail"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import type { Config } from "@/payload-types"
 
@@ -29,9 +34,25 @@ const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
   throw new Error("DATABASE_URI is required (set in .env or environment)")
 }
+const cloudflareEmailSmtpToken = getCloudflareEmailSmtpToken()
+const emailAdapter = cloudflareEmailSmtpToken
+  ? nodemailerAdapter({
+      defaultFromAddress: process.env.EMAIL_FROM || "noreply@siteinabox.nl",
+      defaultFromName: "SiteInABox",
+      transportOptions: {
+        host: "smtp.mx.cloudflare.net",
+        port: 465,
+        secure: true,
+        auth: {
+          user: "api_token",
+          pass: cloudflareEmailSmtpToken,
+        },
+      },
+    })
+  : undefined
 
-// TODO(phase-1.3): add `cors` + `csrf` allowlists when the orchestrator API
-// becomes a non-same-origin caller, or confirm same-origin and document.
+// TODO(phase-1.3): add `cors` + `csrf` allowlists if API-key clients become
+// non-same-origin callers, or confirm same-origin and document.
 
 export default buildConfig({
   secret: PAYLOAD_SECRET,
@@ -66,12 +87,8 @@ export default buildConfig({
       : {})
   }),
   editor: lexicalEditor(),
-  email: resendAdapter({
-    defaultFromAddress: process.env.EMAIL_FROM || "noreply@siteinabox.nl",
-    defaultFromName: "SiteInABox",
-    apiKey: process.env.RESEND_API_KEY || ""
-  }),
-  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets],
+  ...(emailAdapter ? { email: emailAdapter } : {}),
+  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets, IntakeSubmissions, SiteGenerationRuns, PublishedSiteSnapshots, PreviewAccessGrants],
   // Audit-p2 #10 (T11) — Forms GDPR retention. The purge task auto-schedules
   // a daily job at 02:00 UTC; `autoRun` registers an in-process cron worker
   // that picks up scheduled jobs every minute (default cron: '* * * * *').

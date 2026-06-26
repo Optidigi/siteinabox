@@ -114,30 +114,38 @@ jobs:
 
   site:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/site
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 26
-      - run: pnpm install --frozen-lockfile --ignore-workspace
-      - run: pnpm --ignore-workspace build
-      - run: pnpm --ignore-workspace test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm site:build
+      - run: pnpm site:test
+      - run: pnpm intake:build
+      - run: pnpm intake:test
 
-  orchestrator:
+  renderer:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/tools/siab-orchestrator/scripts
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 26
-          cache: npm
-          cache-dependency-path: packages/tools/siab-orchestrator/scripts/package-lock.json
-      - run: npm ci
-      - run: npm test
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm renderer:typecheck
+      - run: pnpm renderer:build
+
+  tenant-snapshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tenant:amicare:build
+      - run: pnpm tenant:amblast:build

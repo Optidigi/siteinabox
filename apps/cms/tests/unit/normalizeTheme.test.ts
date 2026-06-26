@@ -30,4 +30,11 @@ describe("normalizeThemeForSave", () => {
       fonts: { title: "Inter" },
     })
   })
+
+  it("keeps density and style preset tokens", () => {
+    expect(normalizeThemeForSave({ density: "spacious", stylePreset: "bold" })).toEqual({
+      density: "spacious",
+      stylePreset: "bold",
+    })
+  })
 })

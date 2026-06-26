@@ -66,6 +66,12 @@ describe("toCssVars", () => {
     expect(css).toContain("--border-style:dashed")
   })
 
+  it("maps density and style preset", () => {
+    const css = toCssVars({ density: "spacious", stylePreset: "bold" })
+    expect(css).toContain("--site-density:spacious")
+    expect(css).toContain("--site-style-preset:bold")
+  })
+
   it("does NOT emit unset properties", () => {
     const css = toCssVars({ palette: { accent: "#f00" } })
     expect(css).not.toContain("--font-title")

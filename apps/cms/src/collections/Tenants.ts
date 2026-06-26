@@ -76,6 +76,23 @@ export const Tenants: CollectionConfig = {
         { label: "Suspended", value: "suspended" },
         { label: "Archived", value: "archived" }
       ] },
+    { name: "activeSnapshot", type: "relationship", relationTo: "published-site-snapshots",
+      admin: { readOnly: true, description: "Published snapshot currently served by the generic renderer." } },
+    { name: "activatedAt", type: "date",
+      admin: { readOnly: true, description: "Time this tenant was last activated for live rendering." } },
+    { name: "domainVerification", type: "group",
+      admin: { description: "Manual v1 domain verification status. DNS pointing remains outside automation." },
+      fields: [
+        { name: "status", type: "select", defaultValue: "not_checked",
+          options: [
+            { label: "Not checked", value: "not_checked" },
+            { label: "Verified", value: "verified" },
+            { label: "Failed", value: "failed" }
+          ] },
+        { name: "checkedAt", type: "date" },
+        { name: "checkedBy", type: "relationship", relationTo: "users" },
+        { name: "notes", type: "textarea" }
+      ] },
     { name: "siteRepo", type: "text", admin: { description: "GitHub source for siteManifest.json, e.g. Optidigi/siteinabox:sites/clientasite" } },
     { name: "notes", type: "textarea" },
     { name: "siteManifest", type: "json", required: false,

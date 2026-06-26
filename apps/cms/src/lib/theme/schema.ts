@@ -21,6 +21,8 @@ const cssColor = z.string().regex(CSS_COLOR_REGEX, {
     "Must be a valid CSS color — hex (#fff, #ff0000), function (rgb(), hsl(), oklch()), or named keyword",
 })
 
+const STYLE_PRESET_REGEX = /^[a-z0-9-]+$/
+
 export const themeSchema = z
   .object({
     palette: z
@@ -50,6 +52,8 @@ export const themeSchema = z
       .strict()
       .optional(),
     radius: z.string().optional(),
+    density: z.enum(["compact", "comfortable", "spacious"]).optional(),
+    stylePreset: z.string().regex(STYLE_PRESET_REGEX).optional(),
     borderStyle: z.enum(["solid", "dashed", "none"]).optional(),
     mode: z.enum(["light", "dark"]).optional(),
   })

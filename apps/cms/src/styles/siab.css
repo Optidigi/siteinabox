@@ -309,6 +309,16 @@ body { font-family: var(--font-sans); }
     outline-offset: 2px;
     min-height: 44px;
 }
+
+/* Client preview uses the same renderer surface, but it is not an editor.
+   Suppress canvas-only hover/selection affordances there. */
+.rt-canvas.preview-customizer-canvas .cms-block:hover,
+.rt-canvas.preview-customizer-canvas .rt-slot:hover,
+.rt-canvas.preview-customizer-canvas .rt-click-edit:hover,
+.rt-canvas.preview-customizer-canvas [data-rt-selected="true"],
+.rt-canvas.preview-customizer-canvas [data-active="true"] {
+    outline: none !important;
+}
 .rt-content .rt-font-title, .rt-content-bare .rt-font-title {
     font-family: var(--font-title);
 }

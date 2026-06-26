@@ -15,4 +15,4 @@ echo "[entrypoint] running migrate-on-boot..."
 node /app/dist-runtime/migrate-on-boot.bundled.mjs
 
 echo "[entrypoint] starting next server..."
-exec node /app/server.js
+exec node /app/apps/cms/server.js

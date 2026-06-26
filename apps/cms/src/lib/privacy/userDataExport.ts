@@ -1,4 +1,4 @@
-import { sendEmail } from "@/lib/email/resend"
+import { sendEmail } from "@/lib/email/sendEmail"
 
 const tenantIdOf = (value: unknown): number | string | null => {
   if (value == null) return null

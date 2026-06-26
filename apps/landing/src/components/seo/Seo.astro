@@ -1,0 +1,44 @@
+---
+import { SEO } from 'astro-seo';
+import { site } from '../../content/site';
+
+interface Props {
+  title: string;
+  description: string;
+  ogImage?: string;          // relative path or absolute URL
+  noindex?: boolean;
+  canonical?: string;
+}
+
+const { title, description, ogImage, noindex = false, canonical } = Astro.props;
+
+const ogImageUrl = new URL(ogImage ?? '/og-default.png', Astro.site).toString();
+const canonicalUrl = canonical ?? Astro.url.toString();
+const fullTitle = title === site.brand ? title : `${title} | ${site.brand}`;
+---
+
+<SEO
+  title={fullTitle}
+  description={description}
+  canonical={canonicalUrl}
+  noindex={noindex}
+  openGraph={{
+    basic: {
+      title: fullTitle,
+      type: 'website',
+      image: ogImageUrl,
+      url: canonicalUrl,
+    },
+    optional: {
+      siteName: site.brand,
+      description,
+      locale: site.language,
+    },
+  }}
+  twitter={{
+    card: 'summary_large_image',
+    title: fullTitle,
+    description,
+    image: ogImageUrl,
+  }}
+/>

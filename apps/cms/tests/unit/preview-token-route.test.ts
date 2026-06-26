@@ -35,7 +35,9 @@ describe("preview token route", () => {
     mocks.payload.auth.mockResolvedValue({
       user: { id: 1, role: "owner", tenants: [{ tenant: 7 }] },
     })
-    mocks.payload.findByID.mockResolvedValue({ id: 42, tenant: 8 })
+    mocks.payload.findByID
+      .mockResolvedValueOnce({ id: 7, status: "provisioning" })
+      .mockResolvedValueOnce({ id: 42, tenant: 8 })
 
     const res = await POST(req({ tenantId: 7, pageId: 42 }))
 
@@ -52,7 +54,9 @@ describe("preview token route", () => {
     mocks.payload.auth.mockResolvedValue({
       user: { id: 1, role: "owner", tenants: [{ tenant: 7 }] },
     })
-    mocks.payload.findByID.mockResolvedValue({ id: 42, tenant: { id: "7" } })
+    mocks.payload.findByID
+      .mockResolvedValueOnce({ id: 7, status: "provisioning" })
+      .mockResolvedValueOnce({ id: 42, tenant: { id: "7" } })
 
     const res = await POST(req({ tenantId: 7, pageId: 42 }))
     const body = await res.json()
@@ -66,10 +70,23 @@ describe("preview token route", () => {
     mocks.payload.auth.mockResolvedValue({
       user: { id: 1, role: "owner", tenants: [{ tenant: 7 }] },
     })
+    mocks.payload.findByID.mockResolvedValueOnce({ id: 7, status: "provisioning" })
 
     const res = await POST(req({ tenantId: 7, pageId: "draft-abc" }))
 
     expect(res.status).toBe(200)
-    expect(mocks.payload.findByID).not.toHaveBeenCalled()
+    expect(mocks.payload.findByID).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(["suspended", "archived"])("rejects %s tenants before signing a preview token", async (status) => {
+    mocks.payload.auth.mockResolvedValue({
+      user: { id: 1, role: "owner", tenants: [{ tenant: 7 }] },
+    })
+    mocks.payload.findByID.mockResolvedValueOnce({ id: 7, status })
+
+    const res = await POST(req({ tenantId: 7, pageId: 42 }))
+
+    expect(res.status).toBe(404)
+    expect(mocks.payload.findByID).toHaveBeenCalledTimes(1)
   })
 })

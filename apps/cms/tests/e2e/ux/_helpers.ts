@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test"
 import { readE2ESeed } from "../_seed"
 
 /**
- * UX test helpers — separate from `tests/e2e/_setup.ts` because the orchestrator
+ * UX test helpers — separate from `tests/e2e/_setup.ts` because the runner
  * API-key seeding path that file uses doesn't exist in the workspace bootstrap.
  *
  * Auth strategy: each UX spec logs in once at the top via the real /login form

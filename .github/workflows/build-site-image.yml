@@ -4,7 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - "apps/site/**"
+      - "apps/landing/**"
+      - "packages/contracts/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
       - ".github/workflows/build-site-image.yml"
   workflow_dispatch: {}
 
@@ -46,7 +50,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: apps/site
+          context: .
+          file: apps/landing/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

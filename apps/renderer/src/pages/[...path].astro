@@ -1,0 +1,77 @@
+---
+import { renderToStaticMarkup } from "react-dom/server"
+import { SitePageRenderer, buildPageSeoMetadata } from "@siteinabox/site-renderer"
+import "@siteinabox/site-renderer/styles.css"
+import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
+
+const pathname = `/${Astro.params.path ?? ""}`
+const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
+const resolved = await resolvePublishedPage(pathname, host)
+
+if (!resolved) {
+  Astro.response.status = 404
+}
+
+const seo = resolved
+  ? buildPageSeoMetadata({
+      page: resolved.page,
+      settings: resolved.snapshot.settings,
+    })
+  : null
+const rendererHtml = resolved
+  ? renderToStaticMarkup(
+      SitePageRenderer({
+        page: resolved.page,
+        settings: resolved.snapshot.settings,
+        theme: resolved.snapshot.theme,
+      }),
+    )
+  : ""
+---
+
+<!doctype html>
+{
+  resolved && seo ? (
+    <html lang={resolved.snapshot.settings.language} data-renderer-schema={resolved.snapshot.schemaVersion}>
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="generator" content={Astro.generator} />
+        <title>{seo.title}</title>
+        {seo.description && <meta name="description" content={seo.description} />}
+        {seo.canonical && <link rel="canonical" href={seo.canonical} />}
+        <meta property="og:site_name" content={resolved.snapshot.settings.siteName} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={seo.openGraph?.title ?? seo.title} />
+        {seo.openGraph?.description && <meta property="og:description" content={seo.openGraph.description} />}
+        {seo.openGraph?.url && <meta property="og:url" content={seo.openGraph.url} />}
+        {seo.openGraph?.images?.map((image) => (
+          <>
+            <meta property="og:image" content={image.url} />
+            {image.alt && <meta property="og:image:alt" content={image.alt} />}
+          </>
+        ))}
+        <meta name="twitter:card" content={seo.openGraph?.images?.length ? "summary_large_image" : "summary"} />
+      </head>
+      <body data-tenant-slug={resolved.snapshot.tenantSlug}>
+        <div set:html={rendererHtml} />
+      </body>
+    </html>
+  ) : (
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <title>Page not found</title>
+      </head>
+      <body>
+        <main class="renderer-not-found">
+          <p>404</p>
+          <h1>Page not found</h1>
+          <a href="/">Return home</a>
+        </main>
+      </body>
+    </html>
+  )
+}

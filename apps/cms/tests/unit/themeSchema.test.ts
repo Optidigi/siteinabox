@@ -49,6 +49,13 @@ describe("themeSchema", () => {
     }
   })
 
+  it("accepts constrained density and style preset tokens", () => {
+    expect(themeSchema.safeParse({ density: "compact", stylePreset: "editorial" }).success).toBe(true)
+    expect(themeSchema.safeParse({ density: "busy" }).success).toBe(false)
+    expect(themeSchema.safeParse({ stylePreset: "bad;}" }).success).toBe(false)
+    expect(themeSchema.safeParse({ stylePreset: "Warm Care" }).success).toBe(false)
+  })
+
   it("rejects a bad hex-like color string", () => {
     const result = themeSchema.safeParse({ palette: { accent: "not-a-color" } })
     expect(result.success).toBe(false)

@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { buildUserDataExport, emailUserDataExport } from "@/lib/privacy/userDataExport"
-import { sendEmail } from "@/lib/email/resend"
+import { sendEmail } from "@/lib/email/sendEmail"
 
-vi.mock("@/lib/email/resend", () => ({
+vi.mock("@/lib/email/sendEmail", () => ({
   sendEmail: vi.fn(),
 }))
 

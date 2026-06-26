@@ -15,14 +15,6 @@ playwright-report/
 .data-out/
 .data-test-*/
 
-# Per-engagement working copies used by orchestrator workflows
-site-*/
-!packages/site-template/
-!packages/site-template/**
-!packages/site-themes/
-!packages/site-themes/**
-packages/tools/siab-orchestrator/site-*/
-
 # Local editor/system files
 .DS_Store
 *.tsbuildinfo

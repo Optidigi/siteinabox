@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "apps/cms/**"
+      - "packages/contracts/**"
+      - "packages/site-renderer/**"
       - "packages/ui/**"
       - "package.json"
       - "pnpm-lock.yaml"

@@ -67,7 +67,7 @@ Values to set:
 - `DATABASE_URI=postgres://payload:change-me@localhost:5432/payload` — matches the compose defaults; already set in `.env.example`
 - `DATA_DIR=./.data-out` — gitignored; Payload writes per-tenant JSON snapshots here
 - `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl` — Phase 7's `hostToTenant` falls back to treating `localhost` as super-admin in dev
-- `RESEND_API_KEY=` — leave empty in dev. Forgot-password no-ops; Payload still returns 200.
+- `CLOUDFLARE_EMAIL_SMTP_TOKEN=` — leave empty in dev unless testing live email. Mail sends throw before opening SMTP when unset.
 - `EMAIL_FROM=noreply@siteinabox.nl`
 
 ## Step 4: First-boot schema push

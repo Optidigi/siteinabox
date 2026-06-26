@@ -16,6 +16,16 @@ const STATUS: Record<string, BadgeVariant> = {
   new: "secondary",
   contacted: "secondary",
   provisioning: "secondary",
+  submitted: "secondary",
+  normalized: "secondary",
+  queued: "secondary",
+  generating: "warning",
+  generated: "secondary",
+  validating: "warning",
+  applying: "warning",
+  draft_ready: "warning",
+  preview_ready: "success",
+  failed: "destructive",
   archived: "outline",
 }
 

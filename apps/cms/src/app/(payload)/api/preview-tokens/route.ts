@@ -3,6 +3,7 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import { signPreviewToken } from "@/lib/preview/sign"
 import { relationshipId, relationshipIdSet, sameRelationshipId } from "@/lib/relationshipId"
+import { legacyPreviewTokensEnabled } from "@/lib/preview/legacyPreview"
 
 /**
  * POST /api/preview-tokens
@@ -16,6 +17,10 @@ import { relationshipId, relationshipIdSet, sameRelationshipId } from "@/lib/rel
  * Returns: { token: string, exp: number }
  */
 export async function POST(req: NextRequest) {
+  if (!legacyPreviewTokensEnabled()) {
+    return NextResponse.json({ message: "Legacy preview tokens are disabled" }, { status: 404 })
+  }
+
   const payload = await getPayload({ config })
 
   // Authenticate via Payload's session/cookie helper.
@@ -55,6 +60,21 @@ export async function POST(req: NextRequest) {
     if (requestedTenantId == null || !userTenantIds.has(requestedTenantId)) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 })
     }
+  }
+
+  let tenant: { status?: string } | null = null
+  try {
+    tenant = await payload.findByID({
+      collection: "tenants",
+      id: tenantId,
+      depth: 0,
+      overrideAccess: true,
+    }) as { status?: string }
+  } catch {
+    tenant = null
+  }
+  if (!tenant || tenant.status === "archived" || tenant.status === "suspended") {
+    return NextResponse.json({ message: "Preview tenant is not available" }, { status: 404 })
   }
 
   if (!isDraftPreviewPageId(pageId)) {

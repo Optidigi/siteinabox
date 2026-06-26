@@ -1,6 +1,6 @@
 import type { PalettePreset } from "@/components/editor/theme/palette-picker"
 import type { FontPreset } from "@/components/editor/theme/font-picker"
-import type { RadiusLevel } from "@/components/editor/theme/radius-control"
+import type { DensityLevel, RadiusLevel, StylePresetLevel } from "@/components/editor/theme/radius-control"
 
 // ---------------------------------------------------------------------------
 // Palette presets
@@ -106,4 +106,15 @@ export const RADIUS_PRESETS: RadiusLevel[] = [
   { id: "sharp", label: "Sharp", value: "0", icon: "square" },
   { id: "soft", label: "Soft", value: "0.5rem", icon: "squircle" },
   { id: "round", label: "Round", value: "1.5rem", icon: "circle" },
+]
+
+export const DENSITY_PRESETS: DensityLevel[] = [
+  { id: "compact", label: "Compact" },
+  { id: "comfortable", label: "Comfortable" },
+  { id: "spacious", label: "Spacious" },
+]
+
+export const STYLE_PRESETS: StylePresetLevel[] = [
+  { id: "warm-care", label: "Warm Care" },
+  { id: "industrial-cleaning", label: "Industrial" },
 ]

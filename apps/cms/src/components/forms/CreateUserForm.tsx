@@ -65,7 +65,7 @@ export function CreateUserForm() {
   const onSubmit = async (v: FormValues) => {
     setPending(true)
     // Step 1: create the user. Payload silently ignores `apiKey` on create
-    // (verified during prod orchestrator-user setup), so we set it via PATCH
+    // (verified during production API-key user setup), so we set it via PATCH
     // immediately afterward when needed.
     const createBody: any = {
       email: v.email, name: v.name, password: v.password, role: v.role

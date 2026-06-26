@@ -11,8 +11,11 @@ import { projectTenantTheme } from "@/lib/projection/projectTenantTheme"
 // layout ever changes to mount each bucket on a different volume, the
 // archive/restore hooks will need a copy-and-delete fallback.
 const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
+const shouldSkipProjection = (req: { context?: Record<string, unknown> } | undefined): boolean =>
+  req?.context?.skipProjection === true
 
 export const createTenantDir: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
+  if (shouldSkipProjection(req)) return doc
   if (operation !== "create") return doc
   const id = String(doc.id)
   const dir = path.join(dataDir(), "tenants", id)
@@ -33,6 +36,7 @@ export const createTenantDir: CollectionAfterChangeHook = async ({ doc, operatio
 }
 
 export const archiveTenantDir: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (shouldSkipProjection(req)) return doc
   const wasArchived = previousDoc?.status === "archived"
   const isArchived = doc.status === "archived"
   if (!isArchived || wasArchived) return doc
@@ -57,6 +61,7 @@ export const archiveTenantDir: CollectionAfterChangeHook = async ({ doc, previou
  * has no projection target — pages re-published after un-archive would 404.
  */
 export const restoreTenantDir: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (shouldSkipProjection(req)) return doc
   const wasArchived = previousDoc?.status === "archived"
   const isArchived = doc.status === "archived"
   if (!wasArchived || isArchived) return doc
@@ -109,7 +114,8 @@ export const removeTenantDir: CollectionAfterDeleteHook = async ({ doc, req }) =
  * tenant-scoped admin operations would silently return empty until they pick
  * a different tenant. Clearing the cookie on delete restores the expected UX.
  */
-export const projectThemeOnChange: CollectionAfterChangeHook = async ({ doc, previousDoc, operation }) => {
+export const projectThemeOnChange: CollectionAfterChangeHook = async ({ doc, previousDoc, operation, req }) => {
+  if (shouldSkipProjection(req)) return doc
   if (operation === "update" && JSON.stringify(doc.theme) === JSON.stringify(previousDoc?.theme)) {
     return doc
   }

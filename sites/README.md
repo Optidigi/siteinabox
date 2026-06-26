@@ -1,8 +1,9 @@
-# Tenant Site Snapshots
+# Legacy Tenant Site Snapshots
 
-Current tenant site snapshots live here.
+Legacy/current tenant site snapshots live here. This directory is not a target
+for new generated sites.
 
-Current production tenant site images are monorepo-owned:
+Current production tenant snapshot images are monorepo-owned:
 
 - `sites/ami-care` deploys as `ghcr.io/optidigi/siteinabox-site-ami-care:latest`.
 - `sites/amblast` deploys as `ghcr.io/optidigi/siteinabox-site-amblast:latest`.
@@ -19,13 +20,19 @@ sites/
 ```
 
 Existing tenant snapshots may continue to consume shared contracts
-from `packages/site-template`. Do not use this generated-source model for new
-self-serve sites while the platform architecture is being reconsidered.
+from `packages/site-template`.
+
+Do not create new folders under `sites/*` for generated sites. Future
+generation must create validated CMS tenant, site, page, theme, SEO, and
+publishing data. That data will be previewed through CMS rendering surfaces and,
+once implemented, served publicly by the generic `apps/renderer` runtime using
+shared logic from `packages/site-renderer`.
 
 ## Image Build Convention
 
-Tenant sites that consume shared packages must build from the monorepo root
-Docker context. Tenant image workflows should use:
+The existing tenant snapshot workflows are legacy/current deploy contracts.
+Tenant snapshots that consume shared packages must build from the monorepo root
+Docker context:
 
 ```yaml
 with:
@@ -36,5 +43,6 @@ with:
 ```
 
 This lets Docker see both `sites/<slug>` and shared packages such as
-`packages/contracts`. Keep tenant-specific image names stable unless the
-operator explicitly approves a deploy contract change.
+`packages/contracts`. Keep existing tenant-specific image names stable unless
+the operator explicitly approves a deploy contract change. Do not add new
+tenant-specific image workflows for future generated sites.

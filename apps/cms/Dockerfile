@@ -2,18 +2,27 @@
 
 # 1. Build
 FROM node:26-alpine AS builder
-WORKDIR /repo/apps/cms
+WORKDIR /repo
 RUN apk add --no-cache libc6-compat
 RUN npm install -g pnpm@11.5.0
-# Keep dependency-fetch inputs separate from package.json so script/metadata
-# edits do not force a full package-store refetch.
-COPY apps/cms/pnpm-lock.yaml apps/cms/pnpm-workspace.yaml ./
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/cms/package.json apps/cms/package.json
+COPY packages/contracts/package.json /repo/packages/contracts/package.json
+COPY packages/site-renderer/package.json /repo/packages/site-renderer/package.json
 COPY packages/ui/package.json /repo/packages/ui/package.json
 RUN pnpm fetch --frozen-lockfile --store-dir=/pnpm/store
-COPY apps/cms/package.json ./
+
+COPY apps/cms apps/cms
+COPY packages/contracts /repo/packages/contracts
+COPY packages/site-renderer /repo/packages/site-renderer
 COPY packages/ui /repo/packages/ui
-RUN pnpm install --frozen-lockfile --offline --store-dir=/pnpm/store
-COPY apps/cms .
+RUN pnpm install --frozen-lockfile --offline \
+  --filter siab-payload... \
+  --filter @siteinabox/site-renderer... \
+  --filter @siteinabox/ui... \
+  --filter @siteinabox/contracts... \
+  --store-dir=/pnpm/store
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV CI=true
 # PAYLOAD_SECRET / DATABASE_URI must be set at runtime, not build time.
@@ -27,10 +36,10 @@ ENV DATABASE_URI=postgres://placeholder@placeholder/placeholder
 # Locally they exist from prior dev runs; in CI we must produce both before
 # `next build`. Neither command queries the DB — they walk the config —
 # so the placeholder DATABASE_URI suffices.
-RUN pnpm payload generate:types \
- && pnpm payload generate:importmap \
- && pnpm build \
- && node scripts/build-runtime-bundle.mjs
+RUN pnpm --filter siab-payload payload generate:types \
+ && pnpm --filter siab-payload payload generate:importmap \
+ && pnpm --filter siab-payload build \
+ && node apps/cms/scripts/build-runtime-bundle.mjs
 
 # 2. Runtime
 FROM node:26-alpine AS runner
@@ -46,8 +55,8 @@ RUN apk add --no-cache wget
 # node:26-alpine ships with a `node` user at UID 1000; reuse it (matches the
 # host's serveradmin UID 1000 so the bind-mounted /data-out is writable).
 COPY --from=builder --chown=node:node /repo/apps/cms/.next/standalone ./
-COPY --from=builder --chown=node:node /repo/apps/cms/.next/static ./.next/static
-COPY --from=builder --chown=node:node /repo/apps/cms/public ./public
+COPY --from=builder --chown=node:node /repo/apps/cms/.next/static ./apps/cms/.next/static
+COPY --from=builder --chown=node:node /repo/apps/cms/public ./apps/cms/public
 # Migrate-on-boot bundle: a single self-contained `.mjs` produced by esbuild
 # with payload + db-postgres + drizzle + pg + the config + every migration's
 # up/down all INLINED. The runner stage is Next's `.next/standalone` output,

@@ -1,0 +1,120 @@
+---
+import { site } from '../../content/site';
+const year = new Date().getFullYear();
+---
+
+<footer class="footer-three dark-version siab-footer" aria-label="Sitevoettekst">
+  <div class="container lg">
+    <div class="address-wrapper">
+      <h2>Hulp nodig?</h2>
+
+      <div class="row gx-xxl-5">
+        <!-- 1. Email -->
+        <div class="col-lg-4 d-flex">
+          <a href="mailto:info@siteinabox.nl" class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--email">
+            <div class="icon d-flex align-items-center justify-content-center rounded-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m3 7 9 6 9-6"/></svg>
+            </div>
+            <div class="text">
+              <div class="title">Stuur een mail</div>
+              <span class="fs-20">info@siteinabox.nl</span>
+            </div>
+          </a>
+        </div>
+        <!-- 2. WhatsApp (number wired up when WhatsApp Business is set up) -->
+        <div class="col-lg-4 d-flex">
+          <a href="https://wa.me/" class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--wa">
+            <div class="icon d-flex align-items-center justify-content-center rounded-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9z"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
+            </div>
+            <div class="text">
+              <div class="title">Chat via WhatsApp</div>
+              <span class="fs-20">Direct contact</span>
+            </div>
+          </a>
+        </div>
+        <!-- 3. Dedicated generation intake -->
+        <div class="col-lg-4 d-flex">
+          <a href="/intake" class="block d-flex w-100 align-items-center mt-25 siab-contact siab-contact--form">
+            <div class="icon d-flex align-items-center justify-content-center rounded-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20l1.3-3.9a9 9 0 1 1 3.4 2.9z"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/></svg>
+            </div>
+            <div class="text">
+              <div class="title">Start je website</div>
+              <span class="fs-20">Intakeformulier</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+    <!-- /.address-wrapper -->
+    <div class="position-relative">
+      <div class="row justify-content-between">
+        <div class="col-lg-3 order-lg-0">
+          <div class="logo mt-15">
+            <a href="/" aria-label="Site in a Box — naar homepage">
+              <img src="/theme/images/logo/siab_logo_dark.svg" alt="Site in a Box" />
+            </a>
+          </div>
+          <div class="fs-6 text-white mt-40 mb-15">Connect met ons</div>
+          <ul class="style-none d-flex align-items-center social-icon">
+            {site.socials.instagram && (
+              <li>
+                <a href={site.socials.instagram} aria-label="Site in a Box op Instagram" rel="noopener" target="_blank">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="12" cy="12" r="3"/><line x1="16.5" y1="7.5" x2="16.501" y2="7.5"/></svg>
+                </a>
+              </li>
+            )}
+            <li>
+              <a href="mailto:info@siteinabox.nl" aria-label="E-mail">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m3 7 9 6 9-6"/></svg>
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div class="col-lg-3 col-md-4 order-lg-1">
+          <div class="footer-nav">
+            <div class="fs-6 text-white mb-15">Navigatie</div>
+            <ul class="footer-nav-link style-none">
+              {/* Root-absolute: these sections live on the homepage. #faq stays page-local — FaqSection renders on every page. */}
+              <li><a href="/#zo-werkt-het">Hoe het werkt</a></li>
+              <li><a href="/#prijzen">Prijzen</a></li>
+              <li><a href="/intake">Intake</a></li>
+              <li><a href="#faq">Veelgestelde vragen</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-lg-3 col-md-4 order-lg-2">
+          <div class="footer-nav">
+            <div class="fs-6 text-white mb-15">Contact</div>
+            <ul class="footer-nav-link style-none">
+              <li><a href="/contact">Contactformulier</a></li>
+              <li><a href="mailto:info@siteinabox.nl">info@siteinabox.nl</a></li>
+              <li><a href="https://wa.me/">WhatsApp</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="col-lg-2 col-md-4 order-lg-3">
+          <div class="footer-nav">
+            <div class="fs-6 text-white mb-15">Juridisch</div>
+            <ul class="footer-nav-link style-none">
+              <li><a href="/algemene-voorwaarden">Algemene voorwaarden</a></li>
+              <li><a href="/privacy-policy">Privacy</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Wettelijk verplicht: Art. 3:15d BW + Art. 28 Handelsregisterwet 2007 -->
+      <p class="copyright-text siab-copyright-row text-center m0" aria-label="Bedrijfsgegevens en auteursrecht">
+        <span class="siab-cr-copy"><span class="text-white fw-500">&copy;{year}.</span> Site in a Box VOF. Alle rechten voorbehouden.</span>
+        <span class="siab-legal-meta__sep" aria-hidden="true">&middot;</span>
+        <span class="siab-cr-meta"><abbr title="Kamer van Koophandel">KvK</abbr>: 99460165</span>
+        <span class="siab-legal-meta__sep" aria-hidden="true">&middot;</span>
+        <span class="siab-cr-meta"><abbr title="BTW-identificatienummer">BTW-id</abbr>: NL869001073B01</span>
+        <span class="siab-legal-meta__sep" aria-hidden="true">&middot;</span>
+        <span class="siab-cr-meta">Roermond</span>
+      </p>
+    </div>
+  </div>
+  <img src="/theme/images/shape/shape_82.svg" alt="" class="shapes shape_01" />
+</footer>

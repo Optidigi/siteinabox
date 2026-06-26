@@ -4,9 +4,9 @@
 // `src/proxy.ts`. The middleware's anonymous-detector treats EITHER
 // a non-empty `Authorization` header OR a non-empty `payload-token` cookie
 // value as "this caller is authed" → bypass the limiter. That's the
-// orchestrator-friendliness pose required by the AMD-1 invariant (the
-// Optidigi orchestrator authenticates via `Authorization: users API-Key …`
-// and bursts /api/users/forgot-password during tenant provisioning Phase 8).
+// machine-client bypass required by tenant provisioning flows that
+// authenticate via `Authorization: users API-Key ...` and may burst
+// /api/users/forgot-password.
 //
 // The middleware bypass is presence-only — it does NOT cryptographically
 // validate the credential. An attacker presenting a bogus header (e.g.

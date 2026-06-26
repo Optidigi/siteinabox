@@ -29,6 +29,8 @@ import type { ThemeTokens } from "./schema"
  *   fonts.heading      → --font-heading
  *   fonts.text         → --font-text
  *   radius             → --radius-md (canonical); derives --radius-sm and --radius-lg
+ *   density            → --site-density
+ *   stylePreset        → --site-style-preset
  *   borderStyle        → --border-style
  */
 
@@ -148,6 +150,8 @@ export function toCssVars(
       set(baseParts, prop, value)
     }
   }
+  set(baseParts, "--site-density", theme.density)
+  set(baseParts, "--site-style-preset", theme.stylePreset)
   set(baseParts, "--border-style", theme.borderStyle)
 
   // Site (`:root`) scope: bump specificity by emitting `html:root` instead

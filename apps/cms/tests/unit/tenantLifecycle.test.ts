@@ -19,6 +19,7 @@ import { promises as fs } from "node:fs"
 import path from "node:path"
 import {
   archiveTenantDir,
+  createTenantDir,
   removeTenantDir,
   restoreTenantDir
 } from "@/hooks/tenantLifecycle"
@@ -57,6 +58,21 @@ describe("removeTenantDir (afterDelete)", () => {
       removeTenantDir({ doc: { id: 7 }, id: 7, req, collection: {} as any, context: {} as any })
     ).resolves.toBeDefined()
     expect(req.payload.logger.warn).toHaveBeenCalled()
+  })
+})
+
+describe("createTenantDir (afterChange create)", () => {
+  it("does not create tenant data dirs when skipProjection context is set", async () => {
+    const req = fakeReq()
+    await createTenantDir({
+      doc: { id: 42 },
+      req: { ...req, context: { skipProjection: true } },
+      collection: {} as any,
+      context: {} as any,
+      operation: "create",
+    } as any)
+
+    expect(fs.mkdir).not.toHaveBeenCalled()
   })
 })
 

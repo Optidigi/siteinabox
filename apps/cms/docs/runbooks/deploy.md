@@ -77,10 +77,16 @@ scp docker-compose.yml serveradmin@<vps>:/srv/saas/infra/stacks/siteinabox/apps/
 Then write `/srv/saas/infra/stacks/siteinabox/apps/cms/.env` with the following
 template. Replace placeholder values; generate the secrets with `openssl`.
 
+This file is production secret state. Agents must not edit the current
+production `.env`; the operator sets or rotates these values directly on the
+VPS or in the approved secret store and explicitly approves any deploy that
+consumes them.
+
 ```
 POSTGRES_PASSWORD=<openssl rand -hex 24>
 PAYLOAD_SECRET=<openssl rand -hex 32>
 BETTER_AUTH_SECRET=<openssl rand -hex 32>
+BETTER_AUTH_PREVIEW_SECRET=<openssl rand -hex 32>
 BETTER_AUTH_ALLOWED_HOSTS=
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
@@ -95,9 +101,23 @@ APPLE_CLIENT_SECRET=
 DATA_HOST_PATH=/srv/data/saas/siab-payload
 SUPER_ADMIN_DOMAIN=siteinabox.nl
 VPS_IP=<your-vps-ip>
-RESEND_API_KEY=
+CLOUDFLARE_EMAIL_SMTP_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
+MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
+MOLLIE_SITE_PAYMENT_AMOUNT=19.95
+MOLLIE_SITE_PAYMENT_CURRENCY=EUR
+MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
+MOLLIE_WEBHOOK_SIGNING_SECRET=
 HOSTNAME=0.0.0.0
+SITE_URL=https://admin.siteinabox.nl
+SIAB_RENDERER_API_TOKEN=<openssl rand -hex 32>
+POSTHOG_ANALYTICS_DISABLED=
+POSTHOG_HOST=https://eu.posthog.com
+POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl
+POSTHOG_PROJECT_TOKEN=
+POSTHOG_PROJECT_ID=
+POSTHOG_PERSONAL_API_KEY=
+POSTHOG_ENVIRONMENT=production
 ```
 
 Leave provider credentials blank until the Google, Microsoft, and Apple apps are
@@ -111,12 +131,45 @@ the Better Auth Infrastructure dashboard. Leave `BETTER_AUTH_API_URL` and
 overrides. This deploy path enables only the dashboard/audit `dash()` bridge;
 Better Auth Infrastructure transactional email, SMS, and Sentinel remain
 disabled until the paid plan and production setup are ready.
+`BETTER_AUTH_API_KEY` is optional Better Auth Infrastructure integration; it is
+not a replacement for `BETTER_AUTH_SECRET`.
 
 Lock the file down:
 
 ```bash
 chmod 600 /srv/saas/infra/stacks/siteinabox/apps/cms/.env
 ```
+
+`SIAB_RENDERER_API_TOKEN` is the shared bearer token for the generic renderer's
+snapshot lookup. Use the same value in the renderer stack. In production, the
+CMS snapshot endpoint rejects requests when this token is missing or incorrect.
+`SITE_URL` should match the public CMS/admin origin where runtime metadata or
+absolute URLs need the CMS origin.
+Mollie checkout uses the hosted Payments API and the webhook route
+`/api/payments/mollie/webhook`. Keep `MOLLIE_API_KEY` and any optional webhook
+signing secret in deployment secrets only; `.env.example` intentionally contains
+no real values. The payment gate is satisfied by Mollie `paid` webhooks or a
+super-admin manual waiver, and payment completion never publishes or activates
+a site by itself.
+`RESEND_API_KEY` is obsolete after the Cloudflare SMTP mail-path change and
+should not be carried forward into the production `.env`.
+
+Current Phase 3 env readiness status:
+
+| Area | Required action |
+| --- | --- |
+| Postgres | Keep existing production `POSTGRES_PASSWORD` and derived `DATABASE_URI`; do not recreate the DB. |
+| Payload | Keep existing `PAYLOAD_SECRET`. |
+| Data path | Keep `DATA_HOST_PATH=/srv/data/saas/siab-payload`. |
+| Super admin | Keep `SUPER_ADMIN_DOMAIN=siteinabox.nl`. |
+| VPS IP | Keep the current `VPS_IP` value for onboarding/DNS guidance. |
+| PostHog | Keep existing `POSTHOG_*` values; fill missing project token/id/API key only when analytics/admin sync needs them. |
+| Better Auth | Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_PREVIEW_SECRET`; `BETTER_AUTH_API_KEY` remains optional Infrastructure dashboard/audit integration. |
+| CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
+| Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
+| Email | Set `CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM`; remove obsolete `RESEND_API_KEY`. |
+| Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and optional webhook signing secret. |
+| Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN`, `ENABLE_GRAPHQL_PLAYGROUND`, and `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE` unset unless there is a temporary operator-approved reason. |
 
 **DO NOT wrap values in quotes.** Compose's dotenv parser strips them, but raw
 shell tools like `cut` don't, so any helper script that reads `.env`
@@ -166,17 +219,34 @@ the old containers does not remove the database.
 Migrations apply automatically on container start. The image's entrypoint
 (`scripts/docker-entrypoint.sh`) runs
 `node /app/dist-runtime/migrate-on-boot.bundled.mjs` before handing off to
-`node server.js`; the bundled migrate runner calls `payload.db.migrate()`
+the Next standalone server; the bundled migrate runner calls `payload.db.migrate()`
 against the running Postgres with the committed migrations inlined, which is a
 no-op when no new migration files are present and applies them in order
 otherwise.
+
+For an existing production CMS, take an operator-approved Postgres backup and
+record the current CMS image ID before pulling or restarting the new image.
+Do not hand-edit migration state or run ad hoc SQL. The expected production
+sequence is:
+
+1. Operator verifies the redacted `.env` key inventory and fills required
+   values.
+2. Operator creates a timestamped Postgres backup.
+3. Operator records the current `siteinabox-cms` image ID/tag for rollback.
+4. Operator pulls the reviewed CMS image and starts the stack.
+5. `migrate-on-boot` applies pending committed migrations.
+6. Operator reviews logs and health before proceeding to renderer or smoke
+   phases.
+
+Final production smoke/review remains blocked until the operator has set the
+required production env values and explicitly approved the production deploy.
 
 What this means in practice:
 
 - **Fresh DB:** the first `docker compose up -d` creates the schema. Watch
   `docker logs siteinabox-cms` to see `[migrate-on-boot] N migration(s) applied`.
 - **Existing DB:** subsequent boots log `[migrate-on-boot] no pending
-  migrations` (sub-second) and proceed to `node server.js`.
+  migrations` (sub-second) and proceed to the Next standalone server.
 - **Migration failure:** the script exits non-zero, the container restarts
   per `restart: unless-stopped`, and the loop is visible in
   `docker compose ps`. Inspect `docker logs siteinabox-cms` for the SQL error.
@@ -193,13 +263,14 @@ Future schema changes flow:
 ## Step 6 — Traefik route labels
 
 The compose file is the canonical route declaration. Confirm the
-`siteinabox-cms` service has Traefik labels for each tenant admin hostname:
+`siteinabox-cms` service has Traefik labels for each admin and preview
+hostname:
 
 ```yaml
 labels:
   - traefik.enable=true
   - traefik.docker.network=proxy
-  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
+  - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`) || Host(`preview.siteinabox.nl`)
   - traefik.http.routers.siteinabox-cms.entrypoints=websecure
   - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
   - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
@@ -294,7 +365,7 @@ repo or to project-local MCP/config files.
 ### Issue: `relation "users" does not exist` at boot
 
 **Cause:** Migrations failed to apply at container start. The entrypoint
-runs `migrate-on-boot.mjs` before `node server.js`, but if Postgres wasn't
+runs `migrate-on-boot.mjs` before the Next standalone server, but if Postgres wasn't
 healthy yet (or migrate hit a SQL error) the schema isn't there.
 
 **Fix:** Inspect `docker logs siteinabox-cms` for the `[migrate-on-boot]`
@@ -382,7 +453,7 @@ specific keys. Pass props explicitly:
 produced inside the Docker image — it holds the esbuild-bundled
 `migrate-on-boot.bundled.mjs` (~5.8 MB, self-contained `.mjs` produced from
 `scripts/migrate-on-boot-entry.ts` by `scripts/build-runtime-bundle.mjs`).
-The entrypoint runs that bundle before `node server.js` so migrations apply
+The entrypoint runs that bundle before the Next standalone server so migrations apply
 on container boot.
 
 **Fix:** No action. `dist-runtime/` is gitignored and dockerignored — it's
@@ -407,6 +478,79 @@ read_env() {
     | sed -e "s/^['\"]//;s/['\"]\$//"
 }
 ```
+
+## Generic Renderer Deployment Contract
+
+The generic public renderer is a platform-owned app. It serves published CMS
+snapshots by request host; do not create tenant-specific source folders,
+workflows, or images for new generated sites.
+
+Renderer image and stack template:
+
+- Image: `ghcr.io/optidigi/siteinabox-renderer:latest`
+- Repo compose template: `apps/renderer/compose.yml`
+- VPS compose target:
+  `/srv/saas/infra/stacks/siteinabox/apps/renderer/compose.yml`
+
+Required renderer environment:
+
+```
+NODE_ENV=production
+HOST=0.0.0.0
+PORT=4321
+SIAB_CMS_URL=https://admin.siteinabox.nl
+SIAB_RENDERER_API_TOKEN=<same value as CMS>
+SITE_URL=https://<renderer-host-or-default-public-origin>
+SIAB_RENDERER_FIXTURE_MODE=
+```
+
+- `SIAB_CMS_URL` must be the reachable CMS origin. The renderer calls
+  `/api/renderer/snapshot?host=<public-host>`.
+- `SIAB_RENDERER_API_TOKEN` must match the CMS value.
+- `SIAB_RENDERER_FIXTURE_MODE=1` is local-development only and is ignored when
+  `NODE_ENV=production`.
+- `SITE_URL` is Astro's canonical site origin for renderer metadata/build
+  configuration.
+- `HOST` and `PORT` must stay aligned with the Astro standalone start command
+  and Docker healthcheck: `node ./dist/server/entry.mjs` on port `4321`.
+
+Phase 2 staging routes only these hosts to the renderer:
+
+- `amicare.optidigi.nl`
+- `amblast.optidigi.nl`
+
+Keep `ami-care.nl` and existing legacy Amblast production routing on their
+legacy tenant containers until a later cutover is explicitly approved.
+
+Traefik must route tenant primary domains and aliases to the renderer service
+and preserve the original public hostname via `Host`; forwarding
+`X-Forwarded-Host` as well keeps direct CMS endpoint diagnostics equivalent to
+renderer calls. The CMS resolver treats `site-settings.aliases` as additional
+hosts for the same tenant snapshot. There is no canonical-domain redirect in
+the current renderer contract.
+
+Traefik preserves `Host` by default. The Phase 2 compose template does not add
+an explicit `X-Forwarded-Host` middleware; smoke testing must verify the CMS
+snapshot endpoint sees `amicare.optidigi.nl` and `amblast.optidigi.nl` during
+renderer requests.
+
+## Manual Domain Verification Workflow
+
+DNS/domain pointing remains manual outside automation.
+
+1. Add or confirm the tenant primary domain on the tenant record and aliases in
+   the tenant's site settings.
+2. Have the customer/operator point DNS to the production edge.
+3. Confirm Traefik has router host rules for the primary domain and aliases and
+   forwards traffic to the generic renderer service on the shared `proxy`
+   network.
+4. In the CMS generation-run detail page, use the snapshot lifecycle domain
+   verification checklist to mark the tenant `verified` or `failed` with notes.
+   The action records `domainVerification.status`, `checkedAt`, `checkedBy`,
+   and `notes` on the existing tenant fields.
+5. Publish and activate snapshots only after the domain is verified. Manual
+   activation bypasses approval/payment only; it still requires a verified
+   domain and a tenant that is not suspended or archived.
 
 ## Form-submission retention (GDPR)
 
@@ -452,7 +596,7 @@ runtime script before relying on a manual command.
 
 `jobs.autoRun` registers a node-cron worker inside the Payload process.
 That requires a long-lived process — i.e. our VPS deployment with
-`node server.js` is fine, but **a serverless deployment (Vercel,
+the containerized Next standalone server is fine, but **a serverless deployment (Vercel,
 Cloudflare Workers, Lambda) would silently drop the schedule**. If we
 ever migrate, replace the autoRun with an external scheduler (k8s
 CronJob, GitHub Actions cron, or system cron on the host) that POSTs
@@ -491,7 +635,7 @@ no longer serves HTML at all.
 
 ## Future improvements (out of scope for this runbook)
 
-- **Secrets manager.** Move `RESEND_API_KEY` (and eventually
+- **Secrets manager.** Move `CLOUDFLARE_EMAIL_SMTP_TOKEN` (and eventually
   `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`) out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.
 - **CORS / CSRF allowlist.** Once approved automation calls Payload

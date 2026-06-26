@@ -11,6 +11,7 @@ Set these in each environment that should expose provider buttons:
 
 ```bash
 BETTER_AUTH_SECRET=
+BETTER_AUTH_PREVIEW_SECRET=
 BETTER_AUTH_ALLOWED_HOSTS=
 BETTER_AUTH_API_KEY=
 BETTER_AUTH_API_URL=
@@ -28,9 +29,12 @@ APPLE_CLIENT_SECRET=
 ```
 
 `BETTER_AUTH_SECRET` may fall back to `PAYLOAD_SECRET`, but a separate
-high-entropy secret is preferred. Normal tenant admin hosts are accepted
-dynamically from Payload `tenants.domain`; use `BETTER_AUTH_ALLOWED_HOSTS` only
-for non-tenant or preview admin hosts that must accept provider callbacks.
+high-entropy secret is preferred. `BETTER_AUTH_PREVIEW_SECRET` is optional and
+scopes the separate customer-preview Better Auth instance; when omitted it falls
+back to `BETTER_AUTH_SECRET` or `PAYLOAD_SECRET`. Normal tenant admin hosts are
+accepted dynamically from Payload `tenants.domain`; use
+`BETTER_AUTH_ALLOWED_HOSTS` only for additional CMS auth hosts that must accept
+provider callbacks.
 Better Auth is configured with its dynamic `baseURL` option for `admin.*`
 hosts so provider redirects are built from the incoming admin host; SIAB's
 Payload-backed host gate still runs before Better Auth handles the request.
@@ -52,14 +56,17 @@ current fallback mailer.
 Email magic links also require the normal app email transport:
 
 ```bash
-RESEND_API_KEY=
+CLOUDFLARE_EMAIL_SMTP_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
 ```
 
-Magic-link signup remains closed. A link is only sent when the submitted email
-matches exactly one existing eligible Payload `users` record; Better Auth user
-creation on link verification is additionally guarded by the same Payload-user
-resolver.
+CMS magic-link signup remains closed. A CMS login link is only sent when the
+submitted email matches exactly one existing eligible Payload `users` record.
+Customer preview magic links are separate: they use `/api/preview-auth/*`,
+isolated `preview_auth_*` tables, and the `siab-preview-auth` cookie prefix. A
+link is sent only when the email has an active `preview-access-grants` row for
+the requested client slug, and the session is authorized server-side against
+that grant before preview data loads or mutates.
 
 ## Provider Redirect URLs
 
@@ -78,6 +85,19 @@ the Payload bridge:
 https://<admin-host>/api/auth/magic-link/verify
 https://<admin-host>/api/siab-auth/complete
 ```
+
+Customer preview magic links verify on the preview host through the isolated
+preview auth route and redirect to the
+slug-scoped preview route:
+
+```text
+https://preview.siteinabox.nl/api/preview-auth/magic-link/verify
+https://preview.siteinabox.nl/<clientSlug>
+```
+
+The old `/preview/[token]` HMAC route is internal compatibility only. Production
+serves it only when `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`; normal customer
+review must use the Better Auth preview host flow above.
 
 Example for Amicare:
 

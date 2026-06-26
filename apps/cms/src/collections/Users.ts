@@ -139,8 +139,8 @@ const rejectNonSuperAdminApiKeyWrites: CollectionBeforeOperationHook = ({ args, 
 
 // Audit-p1 #5 sub-fix 1 layer-2 (T4) — bogus-auth rejection on the public
 // forgot-password endpoint. The middleware rate-limit at src/proxy.ts
-// bypasses on syntactic auth-signal presence (orchestrator-friendliness for
-// AMD-1's apiKey-authed Phase 8 calls). An attacker presenting a bogus
+// bypasses on syntactic auth-signal presence for API-key clients. An attacker
+// presenting a bogus
 // header would otherwise bypass middleware AND reach the unauthenticated
 // forgot-password handler, triggering email floods on attacker-supplied
 // addresses. This hook detects: forgotPassword + req.user==null + auth

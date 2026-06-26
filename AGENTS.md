@@ -15,40 +15,58 @@ one workspace.
 Current surfaces:
 
 - `apps/cms` - Payload CMS app, formerly `siab-payload`.
-- `apps/site` - public Site in a Box site, formerly `site-siteinabox`.
+- `apps/landing` - public Site in a Box marketing site.
+- `apps/intake` - public intake app boundary for `www.siteinabox.nl/intake`.
+- `apps/renderer` - generic public runtime for generated sites.
 - `packages/ui` - shared UI primitives/components.
 - `packages/contracts` - shared data contracts.
+- `packages/site-renderer` - shared rendering core for CMS preview/canvas and
+  the public renderer.
 - `packages/site-template` and `sites/*` - current tenant snapshot paths,
   retained for existing tenant maintenance and reference.
 
 ## Workflow Routing
 
 - For CMS app work, read `apps/cms/AGENTS.md` and follow its rules.
-- For public site work, work in `apps/site`.
+- For public marketing site work, work in `apps/landing`.
+- For public intake product work, work in `apps/intake`.
 - For tenant snapshot/template maintenance on existing tenants only, work in
   `packages/site-template`.
-- Do not restore command-driven site generation workflows. New product
-  architecture work is paused until the platform architecture is reconsidered
-  and approved.
+- For public generated-site runtime work, use `apps/renderer`.
+- For shared rendering logic, use `packages/site-renderer`.
+- Do not restore command-driven site generation workflows.
 
 ## Architecture Rules
 
-- `apps/site` is the public marketing site.
+- `apps/landing` is the public marketing site.
+- `apps/intake` owns the public intake surface at `/intake`.
 - `apps/cms` remains the Payload admin/editor and tenant/content authority.
+- `apps/renderer` is the generic public runtime. It resolves tenants by request
+  host, loads published tenant snapshots, and serves sites without
+  tenant-specific source branches.
+- `packages/site-renderer` owns shared rendering logic used by both CMS
+  preview/customizer surfaces and `apps/renderer`.
 - Do not generate per-client source code for new sites. New self-serve sites
-  should become tenant data plus metadata consumed by the approved platform
-  architecture.
+  must become validated tenant, site, page, theme, SEO, and publishing data
+  consumed by the approved platform architecture.
 - AI must output validated structured data that matches contracts, not
   arbitrary React components, source files, or executable code.
+- New generated sites must not create folders under `sites/*`, tenant-specific
+  GitHub workflows, or tenant-specific Docker images.
+- `sites/*` contains legacy/current tenant snapshots only. Existing
+  `sites/ami-care` and `sites/amblast` may be maintained until migrated or
+  archived; do not use them as the model for new generated sites.
 - Shared UI must come from `packages/ui`. Do not import app components from
   one app into another app.
 - Shared data shapes belong in `packages/contracts`.
-- DNS/domain pointing stays manual outside automation. A submitted domain is
-  normalized into domain data and used to derive slug, preview path, live
-  hostname, and deployment metadata.
-- Payment work must stay payment-provider neutral until the provider is chosen.
-  Refer to a future payment provider adapter; do not bake in Stripe or Mollie
-  directly in architecture docs.
+- DNS/domain pointing stays manual or stubbed for the current production-readiness
+  pass. Later intake/domain work is expected to use OpenProvider for domain
+  purchase and Cloudflare for DNS/proxy automation once that phase is approved.
+  A submitted domain is normalized into domain data and used to derive slug,
+  preview path, live hostname, and deployment metadata.
+- Mollie is the selected payment service provider. Payment work should use a
+  clear Mollie adapter boundary, keep payment state explicit in CMS, and must not
+  commit API keys, webhook secrets, or other secret values.
 
 ## MCP Status
 
@@ -107,7 +125,8 @@ Use `context7` for current library documentation when docs are needed. Use
 - Platform-owned app images are:
   - `ghcr.io/optidigi/siteinabox-cms`
   - `ghcr.io/optidigi/siteinabox-site`
-- Future app images must be added only when those apps are implemented and
+  - `ghcr.io/optidigi/siteinabox-renderer`
+- Additional app images must be added only when those apps are implemented and
   their deploy contracts are approved.
 - Tenant snapshot images remain stable unless the operator explicitly
   approves a deploy contract change:

@@ -22,7 +22,7 @@ async function loadEnv() {
   // Override DATABASE_URI to point at the test database. Same Postgres instance,
   // different DB name. PAYLOAD_SECRET stays the same so existing API keys still
   // hash to the right index — but the test DB starts empty, so this only matters
-  // if any test fixture uses the orchestrator API key.
+  // if any test fixture uses a pre-seeded API key.
   if (process.env.DATABASE_URI && !process.env.DATABASE_URI_OVERRIDDEN) {
     const original = process.env.DATABASE_URI
     process.env.DATABASE_URI = original.replace(/\/[^/?]+(\?|$)/, "/payload_test$1")

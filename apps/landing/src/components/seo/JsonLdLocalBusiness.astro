@@ -1,0 +1,40 @@
+---
+import { site } from '../../content/site';
+
+if (!site.nap) {
+  // No NAP supplied → render nothing.
+}
+
+const dayMap: Record<string, string> = {
+  Mo: 'Monday', Tu: 'Tuesday', We: 'Wednesday', Th: 'Thursday',
+  Fr: 'Friday', Sa: 'Saturday', Su: 'Sunday',
+};
+
+const data = site.nap
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'LocalBusiness',
+      name: site.nap.displayName,
+      legalName: site.nap.legalName,
+      url: `https://${site.primaryDomain}`,
+      telephone: site.nap.phone,
+      email: site.nap.email,
+      address: {
+        '@type': 'PostalAddress',
+        streetAddress: site.nap.street,
+        postalCode: site.nap.postalCode,
+        addressLocality: site.nap.city,
+        addressCountry: site.nap.country,
+      },
+      areaServed: site.serviceArea,
+      openingHoursSpecification: site.hours?.map((h) => ({
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: dayMap[h.dayOfWeek],
+        opens: h.opens,
+        closes: h.closes,
+      })),
+    }
+  : null;
+---
+
+{data && <script type="application/ld+json" set:html={JSON.stringify(data)} />}

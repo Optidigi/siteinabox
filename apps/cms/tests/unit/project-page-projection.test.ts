@@ -67,4 +67,30 @@ describe("projectPageToDisk", () => {
       { type: "page", key: "new-home", updatedAt: "2026-06-05T12:00:00.000Z" },
     ])
   })
+
+  it("does not project draft-import pages when skipProjection context is set", async () => {
+    const payload = {
+      find: vi.fn(),
+      findByID: vi.fn(),
+      logger: { info: vi.fn() },
+    }
+
+    await projectPageToDisk({
+      doc: {
+        id: 11,
+        tenant: 7,
+        title: "Imported",
+        slug: "index",
+        status: "published",
+        blocks: [],
+        updatedAt: "2026-06-05T12:00:00.000Z",
+      },
+      previousDoc: null,
+      req: { payload, context: { skipProjection: true } },
+    } as any)
+
+    await expect(fs.access(path.join(tenantDir(7), "pages", "index.json"))).rejects.toThrow()
+    expect(payload.find).not.toHaveBeenCalled()
+    expect(payload.findByID).not.toHaveBeenCalled()
+  })
 })

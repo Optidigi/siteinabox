@@ -6,7 +6,7 @@ import { getBetterAuthInfraPlugins } from "@/lib/betterAuthInfra"
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
-import { sendEmail } from "@/lib/email/resend"
+import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 
 const DATABASE_URI = process.env.DATABASE_URI

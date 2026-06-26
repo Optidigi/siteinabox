@@ -1,0 +1,41 @@
+# Production compose for the generic SiteInABox renderer.
+# Deploy path on VPS: /srv/saas/infra/stacks/siteinabox/apps/renderer/compose.yml
+name: siteinabox-renderer
+
+services:
+  siteinabox-renderer:
+    image: ghcr.io/optidigi/siteinabox-renderer:latest
+    container_name: siteinabox-renderer
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "4321"
+      SIAB_CMS_URL: ${SIAB_CMS_URL}
+      SIAB_RENDERER_API_TOKEN: ${SIAB_RENDERER_API_TOKEN}
+      SITE_URL: ${SITE_URL}
+      SIAB_RENDERER_FIXTURE_MODE: ${SIAB_RENDERER_FIXTURE_MODE:-}
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.siteinabox-renderer.rule=Host(`amicare.optidigi.nl`) || Host(`amblast.optidigi.nl`)
+      - traefik.http.routers.siteinabox-renderer.entrypoints=websecure
+      - traefik.http.routers.siteinabox-renderer.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-renderer.middlewares=hsts@docker
+      - traefik.http.routers.siteinabox-renderer.service=siteinabox-renderer
+      - traefik.http.services.siteinabox-renderer.loadbalancer.server.port=4321
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4321/healthz"]
+      interval: 30s
+      start_period: 20s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  proxy: { external: true }

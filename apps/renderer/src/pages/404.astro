@@ -1,0 +1,22 @@
+---
+import "@siteinabox/site-renderer/styles.css"
+
+Astro.response.status = 404
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Page not found</title>
+  </head>
+  <body>
+    <main class="renderer-not-found">
+      <p>404</p>
+      <h1>Page not found</h1>
+      <a href="/">Return home</a>
+    </main>
+  </body>
+</html>

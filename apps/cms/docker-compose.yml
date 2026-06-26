@@ -13,6 +13,7 @@ services:
       DATABASE_URI: postgres://payload:${POSTGRES_PASSWORD}@postgres:5432/payload
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
+      BETTER_AUTH_PREVIEW_SECRET: ${BETTER_AUTH_PREVIEW_SECRET:-}
       BETTER_AUTH_ALLOWED_HOSTS: ${BETTER_AUTH_ALLOWED_HOSTS:-}
       BETTER_AUTH_API_KEY: ${BETTER_AUTH_API_KEY:-}
       BETTER_AUTH_API_URL: ${BETTER_AUTH_API_URL:-}
@@ -24,12 +25,23 @@ services:
       MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-common}
       APPLE_CLIENT_ID: ${APPLE_CLIENT_ID:-}
       APPLE_CLIENT_SECRET: ${APPLE_CLIENT_SECRET:-}
-      PREVIEW_HMAC_SECRET: ${PREVIEW_HMAC_SECRET}
+      PREVIEW_HMAC_SECRET: ${PREVIEW_HMAC_SECRET:-}
       DATA_DIR: /data-out
       NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: ${SUPER_ADMIN_DOMAIN:-siteinabox.nl}
       NEXT_PUBLIC_VPS_IP: ${VPS_IP}
-      RESEND_API_KEY: ${RESEND_API_KEY}
+      SITE_URL: ${SITE_URL:-https://admin.siteinabox.nl}
+      SIAB_RENDERER_API_TOKEN: ${SIAB_RENDERER_API_TOKEN:-}
+      CLOUDFLARE_EMAIL_SMTP_TOKEN: ${CLOUDFLARE_EMAIL_SMTP_TOKEN:-}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@siteinabox.nl}
+      MOLLIE_API_KEY: ${MOLLIE_API_KEY:-}
+      MOLLIE_SITE_PAYMENT_AMOUNT: ${MOLLIE_SITE_PAYMENT_AMOUNT:-}
+      MOLLIE_SITE_PAYMENT_CURRENCY: ${MOLLIE_SITE_PAYMENT_CURRENCY:-EUR}
+      MOLLIE_WEBHOOK_BASE_URL: ${MOLLIE_WEBHOOK_BASE_URL:-}
+      MOLLIE_WEBHOOK_SIGNING_SECRET: ${MOLLIE_WEBHOOK_SIGNING_SECRET:-}
+      SITE_GENERATION_PROVIDER: ${SITE_GENERATION_PROVIDER:-mock}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      SITE_GENERATION_OPENAI_MODEL: ${SITE_GENERATION_OPENAI_MODEL:-gpt-5.5}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
       POSTHOG_HOST: ${POSTHOG_HOST:-}
       POSTHOG_PUBLIC_HOST: ${POSTHOG_PUBLIC_HOST:-}
       POSTHOG_PROJECT_TOKEN: ${POSTHOG_PROJECT_TOKEN:-}
@@ -37,6 +49,9 @@ services:
       POSTHOG_PERSONAL_API_KEY: ${POSTHOG_PERSONAL_API_KEY:-}
       POSTHOG_ENVIRONMENT: ${POSTHOG_ENVIRONMENT:-production}
       POSTHOG_ANALYTICS_DISABLED: ${POSTHOG_ANALYTICS_DISABLED:-}
+      BOOTSTRAP_TOKEN: ${BOOTSTRAP_TOKEN:-}
+      ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE: ${ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE:-}
+      ENABLE_GRAPHQL_PLAYGROUND: ${ENABLE_GRAPHQL_PLAYGROUND:-}
       NODE_ENV: production
       PORT: "3000"
       # Default already baked into the image (Dockerfile ENV); kept here so
@@ -53,7 +68,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`)
+      - traefik.http.routers.siteinabox-cms.rule=Host(`admin.siteinabox.nl`) || Host(`admin.ami-care.nl`) || Host(`preview.siteinabox.nl`)
       - traefik.http.routers.siteinabox-cms.entrypoints=websecure
       - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
       - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker

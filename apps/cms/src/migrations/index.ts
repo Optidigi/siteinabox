@@ -27,6 +27,11 @@ import * as migration_20260527_194417_add_footer_composition_columns from './202
 import * as migration_20260602_111601_add_cta_background_image from './20260602_111601_add_cta_background_image';
 import * as migration_20260602_121112_make_cta_primary_optional from './20260602_121112_make_cta_primary_optional';
 import * as migration_20260611_010713_add_better_auth_tables from './20260611_010713_add_better_auth_tables';
+import * as migration_20260625_163925_add_intake_generation_runs from './20260625_163925_add_intake_generation_runs';
+import * as migration_20260625_190000_add_ai_generation_run_metadata from './20260625_190000_add_ai_generation_run_metadata';
+import * as migration_20260625_210000_add_preview_approval_state from './20260625_210000_add_preview_approval_state';
+import * as migration_20260625_230000_add_published_site_snapshots from './20260625_230000_add_published_site_snapshots';
+import * as migration_20260626_120000_add_preview_access_grants from './20260626_120000_add_preview_access_grants';
 
 export const migrations = [
   {
@@ -167,11 +172,36 @@ export const migrations = [
   {
     up: migration_20260602_121112_make_cta_primary_optional.up,
     down: migration_20260602_121112_make_cta_primary_optional.down,
-    name: '20260602_121112_make_cta_primary_optional'
+    name: '20260602_121112_make_cta_primary_optional',
   },
   {
     up: migration_20260611_010713_add_better_auth_tables.up,
     down: migration_20260611_010713_add_better_auth_tables.down,
-    name: '20260611_010713_add_better_auth_tables'
+    name: '20260611_010713_add_better_auth_tables',
+  },
+  {
+    up: migration_20260625_163925_add_intake_generation_runs.up,
+    down: migration_20260625_163925_add_intake_generation_runs.down,
+    name: '20260625_163925_add_intake_generation_runs'
+  },
+  {
+    up: migration_20260625_190000_add_ai_generation_run_metadata.up,
+    down: migration_20260625_190000_add_ai_generation_run_metadata.down,
+    name: '20260625_190000_add_ai_generation_run_metadata'
+  },
+  {
+    up: migration_20260625_210000_add_preview_approval_state.up,
+    down: migration_20260625_210000_add_preview_approval_state.down,
+    name: '20260625_210000_add_preview_approval_state'
+  },
+  {
+    up: migration_20260625_230000_add_published_site_snapshots.up,
+    down: migration_20260625_230000_add_published_site_snapshots.down,
+    name: '20260625_230000_add_published_site_snapshots'
+  },
+  {
+    up: migration_20260626_120000_add_preview_access_grants.up,
+    down: migration_20260626_120000_add_preview_access_grants.down,
+    name: '20260626_120000_add_preview_access_grants'
   },
 ];

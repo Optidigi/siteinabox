@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Production: compiles src/styles/global.css → dist/cms/cms-editor.css.
 // Also copies the @fontsource woff2 files into dist/cms/files/ so the
-// orchestrator can ship them alongside the CSS to the CMS data dir.
-// The orchestrator copies this into <DATA_DIR>/tenants/<id>/cms-editor.css
-// (and the matching files/ subdir) during deploy; the CMS canvas loads it.
+// tenant deploy/runtime path can ship them alongside the CSS to the CMS data
+// dir at <DATA_DIR>/tenants/<id>/cms-editor.css (and the matching files/
+// subdir); the CMS canvas loads it.
 import { spawnSync } from "node:child_process"
 import { mkdirSync, copyFileSync, readdirSync, existsSync } from "node:fs"
 import { join, resolve } from "node:path"

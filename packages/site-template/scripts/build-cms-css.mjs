@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Production: compile src/styles/global.css to dist/cms/cms-editor.css.
-// The payload orchestrator syncs this directory into the tenant data dir so
-// the CMS canvas can load tenant CSS and font files.
+// The tenant deploy/runtime path can sync this directory into the tenant data
+// dir so the CMS canvas can load tenant CSS and font files.
 
 import { spawnSync } from "node:child_process"
 import { mkdirSync, copyFileSync, readdirSync, existsSync } from "node:fs"

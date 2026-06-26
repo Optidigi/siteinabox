@@ -26,7 +26,7 @@ export const __resetForgotPasswordLimiterForTests = () => {
  * Middleware limits anonymous callers by IP. This hook covers the residual
  * authenticated-abuse shape: a valid user repeatedly calling forgot-password
  * for the same victim email. Target-email keying also protects the mailbox
- * from distributed callers and keeps legitimate orchestrator bursts to
+ * from distributed callers and keeps legitimate API-key client bursts to
  * different invitees working.
  */
 export const rateLimitForgotPasswordByTargetEmail: CollectionBeforeOperationHook = async ({
