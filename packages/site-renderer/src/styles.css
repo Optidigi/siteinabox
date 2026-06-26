@@ -1151,6 +1151,16 @@ svg {
   background: var(--color-secondary);
 }
 
+.cms-block__servicePagination button {
+  width: 0.75rem;
+  height: 0.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-secondary);
+  cursor: pointer;
+}
+
 .cms-block__servicePagination .is-active {
   background: var(--color-accent);
 }
@@ -1170,6 +1180,17 @@ svg {
   border-radius: var(--radius-lg);
   background: var(--color-secondary);
   aspect-ratio: 4 / 3;
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.cms-block__comparison-vertical .cms-block__comparisonFrame {
+  cursor: ns-resize;
+}
+
+.cms-block__comparisonFrame:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
 }
 
 .cms-block__comparisonImage,
@@ -1221,6 +1242,15 @@ svg {
   width: 3px;
   background: #ffffff;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 12%);
+}
+
+.cms-block__comparison-vertical .cms-block__comparisonHandle {
+  top: var(--comparison-ratio);
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: auto;
+  height: 3px;
 }
 
 .cms-block__comparisonHandle::after {

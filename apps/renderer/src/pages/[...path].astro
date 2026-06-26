@@ -55,6 +55,9 @@ const rendererHtml = resolved
       </head>
       <body data-tenant-slug={resolved.snapshot.tenantSlug}>
         <div set:html={rendererHtml} />
+        <script>
+          import "../client/site-behavior"
+        </script>
       </body>
     </html>
   ) : (
