@@ -94,8 +94,14 @@ jobs:
             docker logs siteinabox-renderer-smoke
             exit 1
           fi
-          curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/over-ons | grep -q 'class="amb-'
-          curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/_astro/amb-base.DVDYrGRd.css >/dev/null
-          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/portfolio-1)" = "301"
-          curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/ | grep -q 'Amicare-Zorg'
-          curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/robots.txt | grep -q 'Sitemap: https://ami-care.nl/sitemap-index.xml'
+          amblast_home="$(curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/)"
+          grep -q 'wp-theme-cleanco' <<<"$amblast_home"
+          grep -q 'wpcf7-form' <<<"$amblast_home"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/portfolio-1)" = "200"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/contact-pagina)" = "200"
+          amblast_robots="$(curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/robots.txt)"
+          grep -q 'Crawl-delay: 10' <<<"$amblast_robots"
+          amicare_home="$(curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/)"
+          grep -q 'Voor jongeren en gezinnen' <<<"$amicare_home"
+          amicare_robots="$(curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/robots.txt)"
+          grep -q 'Sitemap: https://ami-care.nl/sitemap-index.xml' <<<"$amicare_robots"

@@ -155,6 +155,14 @@ export async function createAmicareLegacyResponse(pathname: string) {
     return filePath ? responseForFile(filePath) : null
   }
 
+  if (cleanPath.startsWith("/api/tenant-media/7/")) {
+    const filePath = await resolveFile(
+      firstExistingDir(candidateMediaDirs()),
+      safeRelativePath(cleanPath, "/api/tenant-media/7/"),
+    )
+    return filePath ? responseForFile(filePath) : null
+  }
+
   const filePath = await resolveFile(firstExistingDir(candidateClientDirs()), safeRelativePath(cleanPath))
   return filePath ? responseForFile(filePath) : null
 }

@@ -23,7 +23,14 @@ test("serves the captured legacy homepage document", async () => {
 
   assert.equal(response?.status, 200)
   assert.equal(response?.headers.get("content-type"), "text/html; charset=utf-8")
-  assert.match(await response.text(), /<body class="bg-bg text-ink \[container-name:site-frame\] \[container-type:inline-size\]">/)
+  const html = await response.text()
+  assert.match(html, /<title>Ami Care \| Amicare-Zorg<\/title>/)
+  assert.match(html, /Voor jongeren en gezinnen/)
+  assert.match(html, /href="mailto:info@ami-care\.nl"/)
+  assert.match(html, /<style data-tenant-theme>/)
+  assert.doesNotMatch(html, /Ervaringen/)
+  assert.doesNotMatch(html, /Veelgestelde vragen/)
+  assert.doesNotMatch(html, /<form/)
 })
 
 test("serves the legacy robots response", async () => {
@@ -52,6 +59,10 @@ test("serves legacy client and media assets and rejects traversal", async () => 
   assert.equal(mediaResponse?.headers.get("content-type"), "image/jpeg")
   assert.equal(await mediaResponse?.text(), "jpg")
 
+  const tenantMediaResponse = await createAmicareLegacyResponse("/api/tenant-media/7/bedroom.jpg")
+  assert.equal(tenantMediaResponse?.headers.get("content-type"), "image/jpeg")
+  assert.equal(await tenantMediaResponse?.text(), "jpg")
+
   assert.equal(await createAmicareLegacyResponse("/../package.json"), null)
   assert.equal(await createAmicareLegacyResponse("/%E0%A4%A"), null)
 })
@@ -61,5 +72,10 @@ test("returns the captured Amicare 404 document", async () => {
 
   assert.equal(response.status, 404)
   assert.equal(response.headers.get("content-type"), "text/html; charset=utf-8")
-  assert.match(await response.text(), /Pagina niet gevonden/)
+  const html = await response.text()
+  assert.match(html, /Pagina niet gevonden/)
+  assert.match(html, /<style data-tenant-theme>/)
+  assert.doesNotMatch(html, /Ervaringen/)
+  assert.doesNotMatch(html, /Veelgestelde vragen/)
+  assert.doesNotMatch(html, /<form/)
 })

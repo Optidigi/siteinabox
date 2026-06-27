@@ -2,17 +2,28 @@ import { existsSync } from "node:fs"
 import { readFile, stat } from "node:fs/promises"
 import { extname, join, normalize, resolve, sep } from "node:path"
 
+import { getCapturedAmblastHtml } from "./captured-html.js"
+
 const DEFAULT_HOSTS = ["amblast.optidigi.nl"]
+const AMBLAST_ORIGIN = "https://amblast.nl"
+const AMBLAST_ROBOTS_TXT = "User-agent: *\nCrawl-delay: 10\n"
+const FONT_AWESOME_WEBFONT_PREFIX = "/wp-content/plugins/elementor/assets/lib/font-awesome/webfonts/"
+const FONT_AWESOME_WEBFONTS = new Set(["fa-brands-400.woff2", "fa-regular-400.woff2", "fa-solid-900.woff2"])
+const AMBLAST_FONT_AWESOME_STYLE = `<style data-siab-amblast-fontawesome>
+@font-face{font-family:"Font Awesome 5 Brands";font-style:normal;font-weight:400;font-display:block;src:url("${FONT_AWESOME_WEBFONT_PREFIX}fa-brands-400.woff2") format("woff2")}
+@font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:400;font-display:block;src:url("${FONT_AWESOME_WEBFONT_PREFIX}fa-regular-400.woff2") format("woff2")}
+@font-face{font-family:"Font Awesome 5 Free";font-style:normal;font-weight:900;font-display:block;src:url("${FONT_AWESOME_WEBFONT_PREFIX}fa-solid-900.woff2") format("woff2")}
+</style>`
 const PAGE_PATHS = new Map([
-  ["/", "index.html"],
-  ["/over-ons", "over-ons/index.html"],
-  ["/diensten", "diensten/index.html"],
-  ["/portfolio", "portfolio/index.html"],
-  ["/contact", "contact/index.html"],
+  ["/", "/"],
+  ["/over-ons", "/over-ons"],
+  ["/diensten", "/diensten"],
+  ["/portfolio", "/portfolio-1"],
+  ["/portfolio-1", "/portfolio-1"],
+  ["/contact", "/contact-pagina"],
+  ["/contact-pagina", "/contact-pagina"],
 ])
 const REDIRECT_PATHS = new Map([
-  ["/portfolio-1", "/portfolio"],
-  ["/contact-pagina", "/contact"],
   ["/our-team", "/over-ons"],
 ])
 
@@ -74,9 +85,6 @@ function normalizePagePath(pathname) {
 }
 
 function legacyRelativePath(pathname) {
-  const pagePath = PAGE_PATHS.get(normalizePagePath(pathname))
-  if (pagePath) return pagePath
-
   const decodedPathname = safeDecodeURIComponent(pathname)
   if (!decodedPathname) return null
   const assetPath = normalize(decodedPathname.replace(/^\/+/, ""))
@@ -129,7 +137,77 @@ async function createResponseForFile(filePath, status = 200) {
   return new Response(body, { headers, status })
 }
 
+function createCapturedHtmlResponse(html, status = 200) {
+  return new Response(injectAmblastFontAwesomeStyle(html), {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "permissions-policy": "geolocation=(), microphone=(), camera=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "SAMEORIGIN",
+      "x-siab-legacy-tenant": "amblast",
+      "content-security-policy":
+        "default-src 'self' https:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; connect-src 'self' https:",
+    },
+    status,
+  })
+}
+
+function injectAmblastFontAwesomeStyle(html) {
+  if (html.includes("data-siab-amblast-fontawesome")) return html
+  return html.replace("</head>", `${AMBLAST_FONT_AWESOME_STYLE}</head>`)
+}
+
+function createTextResponse(body) {
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "permissions-policy": "geolocation=(), microphone=(), camera=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "SAMEORIGIN",
+      "x-siab-legacy-tenant": "amblast",
+    },
+  })
+}
+
+function capturedPagePath(pathname) {
+  const cleanPath = normalizePagePath(pathname)
+  if (!cleanPath) return null
+  return PAGE_PATHS.get(cleanPath) ?? null
+}
+
+async function createFontAwesomeWebfontResponse(pathname) {
+  if (!pathname.startsWith(FONT_AWESOME_WEBFONT_PREFIX)) return null
+
+  const filename = pathname.slice(FONT_AWESOME_WEBFONT_PREFIX.length)
+  if (!FONT_AWESOME_WEBFONTS.has(filename)) return null
+
+  const upstreamResponse = await fetch(`${AMBLAST_ORIGIN}${pathname}`)
+  if (!upstreamResponse.ok) return null
+
+  return new Response(await upstreamResponse.arrayBuffer(), {
+    status: 200,
+    headers: {
+      "cache-control": "public, max-age=31536000, immutable",
+      "content-type": "font/woff2",
+      "permissions-policy": "geolocation=(), microphone=(), camera=()",
+      "referrer-policy": "strict-origin-when-cross-origin",
+      "x-content-type-options": "nosniff",
+      "x-frame-options": "SAMEORIGIN",
+      "x-siab-legacy-tenant": "amblast",
+    },
+  })
+}
+
 export async function createAmblastLegacyResponse(pathname) {
+  const cleanPath = normalizePagePath(pathname)
+  const fontResponse = await createFontAwesomeWebfontResponse(cleanPath)
+  if (fontResponse) return fontResponse
+
+  if (cleanPath === "/robots.txt") return createTextResponse(AMBLAST_ROBOTS_TXT)
+
   const redirectLocation = legacyRedirectLocation(pathname)
   if (redirectLocation) {
     return new Response(null, {
@@ -141,6 +219,9 @@ export async function createAmblastLegacyResponse(pathname) {
     })
   }
 
+  const capturedHtml = getCapturedAmblastHtml(capturedPagePath(pathname))
+  if (capturedHtml) return createCapturedHtmlResponse(capturedHtml)
+
   const filePath = await resolveAmblastLegacyFile(pathname)
   if (!filePath) return null
 
@@ -148,6 +229,9 @@ export async function createAmblastLegacyResponse(pathname) {
 }
 
 export async function createAmblastLegacyNotFoundResponse() {
+  const capturedHtml = getCapturedAmblastHtml("404")
+  if (capturedHtml) return createCapturedHtmlResponse(capturedHtml, 404)
+
   const distDir = resolveAmblastDistDir()
   if (!distDir) {
     return new Response("Not found", {

@@ -18,30 +18,103 @@ test("matches only configured Amblast legacy hosts", () => {
   assert.equal(isAmblastLegacyHost("example.test"), false)
 })
 
-test("serves exact legacy page files and rejects traversal", async () => {
+test("serves captured live WordPress pages for current Amblast routes", async () => {
+  const routes = [
+    ["/", "Home - Amblast | Facility Services", 'action="https://amblast.nl/#wpcf7-f1454-p845-o1"'],
+    ["/over-ons/", "Over ons - Amblast | Facility Services", 'action="https://amblast.nl/over-ons/#wpcf7-f1454-p880-o1"'],
+    ["/diensten", "Diensten - Amblast | Facility Services", 'action="https://amblast.nl/diensten/#wpcf7-f1454-p883-o1"'],
+    ["/portfolio-1/", "Portfolio - Amblast | Facility Services", 'action="https://amblast.nl/portfolio-1/#wpcf7-f1454-p886-o1"'],
+    ["/contact-pagina", "Contact - Amblast | Facility Services", 'action="https://amblast.nl/contact-pagina/#wpcf7-f7-p901-o1"'],
+  ]
+
+  for (const [route, title, expectedAction] of routes) {
+    const response = await createAmblastLegacyResponse(route)
+    assert.equal(response?.status, 200)
+    assert.equal(response?.headers.get("content-type"), "text/html; charset=utf-8")
+
+    const html = await response?.text()
+    assert.match(html, new RegExp(`<title>${title}</title>`))
+    assert.match(html, /wp-theme-cleanco/)
+    assert.match(html, /elementor/)
+    assert.match(html, /https:\/\/amblast\.nl\/wp-content\//)
+    assert.match(html, /https:\/\/amblast\.nl\/wp-json\//)
+    assert.match(html, /data-siab-amblast-fontawesome/)
+    assert.match(
+      html,
+      /\/wp-content\/plugins\/elementor\/assets\/lib\/font-awesome\/webfonts\/fa-regular-400\.woff2/,
+    )
+    assert.match(html, new RegExp(expectedAction.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")))
+  }
+})
+
+test("keeps legacy aliases served instead of redirecting away", async () => {
+  const aliases = [
+    ["/portfolio", "Portfolio - Amblast | Facility Services"],
+    ["/portfolio-1", "Portfolio - Amblast | Facility Services"],
+    ["/contact", "Contact - Amblast | Facility Services"],
+    ["/contact-pagina", "Contact - Amblast | Facility Services"],
+  ]
+
+  for (const [source, title] of aliases) {
+    const response = await createAmblastLegacyResponse(source)
+    assert.equal(response?.status, 200)
+    assert.equal(response?.headers.get("location"), null)
+    assert.match(await response?.text(), new RegExp(`<title>${title}</title>`))
+  }
+})
+
+test("serves the live Amblast robots response", async () => {
+  const response = await createAmblastLegacyResponse("/robots.txt")
+
+  assert.equal(response?.status, 200)
+  assert.equal(response?.headers.get("content-type"), "text/plain; charset=utf-8")
+  assert.equal(await response?.text(), "User-agent: *\nCrawl-delay: 10\n")
+})
+
+test("proxies Font Awesome webfonts through the legacy host so icons render", async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url) => {
+    assert.equal(
+      url,
+      "https://amblast.nl/wp-content/plugins/elementor/assets/lib/font-awesome/webfonts/fa-regular-400.woff2",
+    )
+    return new Response(Uint8Array.from([1, 2, 3]), { status: 200 })
+  }
+
+  try {
+    const response = await createAmblastLegacyResponse(
+      "/wp-content/plugins/elementor/assets/lib/font-awesome/webfonts/fa-regular-400.woff2",
+    )
+
+    assert.equal(response?.status, 200)
+    assert.equal(response?.headers.get("content-type"), "font/woff2")
+    assert.equal(response?.headers.get("cache-control"), "public, max-age=31536000, immutable")
+    assert.deepEqual([...new Uint8Array(await response?.arrayBuffer())], [1, 2, 3])
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("serves legacy static asset files and rejects traversal", async () => {
   const distDir = await mkdtemp(join(tmpdir(), "amblast-legacy-"))
   process.env.AMBLAST_LEGACY_DIST_DIR = distDir
 
-  await mkdir(join(distDir, "over-ons"), { recursive: true })
-  await writeFile(join(distDir, "over-ons/index.html"), "<!DOCTYPE html><html><body class=\"amb-page\"></body></html>")
+  await mkdir(join(distDir, "_astro"), { recursive: true })
+  await writeFile(join(distDir, "_astro/app.js"), "console.log('asset')")
 
-  const file = await resolveAmblastLegacyFile("/over-ons/")
-  assert.equal(file, join(distDir, "over-ons/index.html"))
+  const file = await resolveAmblastLegacyFile("/_astro/app.js")
+  assert.equal(file, join(distDir, "_astro/app.js"))
 
-  const response = await createAmblastLegacyResponse("/over-ons")
-  assert.equal(response?.headers.get("content-type"), "text/html; charset=utf-8")
-  assert.equal(await response?.text(), "<!DOCTYPE html><html><body class=\"amb-page\"></body></html>")
+  const response = await createAmblastLegacyResponse("/_astro/app.js")
+  assert.equal(response?.headers.get("content-type"), "text/javascript; charset=utf-8")
+  assert.equal(await response?.text(), "console.log('asset')")
 
   assert.equal(await resolveAmblastLegacyFile("/../package.json"), null)
   assert.equal(await resolveAmblastLegacyFile("/%E0%A4%A"), null)
 })
 
-test("preserves legacy WordPress redirects", async () => {
+test("preserves remaining legacy WordPress redirects", async () => {
   const redirects = [
-    ["/portfolio-1", "/portfolio"],
-    ["/portfolio-1/", "/portfolio"],
-    ["/contact-pagina", "/contact"],
-    ["/contact-pagina/", "/contact"],
     ["/our-team", "/over-ons"],
     ["/our-team/", "/over-ons"],
   ]
@@ -53,14 +126,13 @@ test("preserves legacy WordPress redirects", async () => {
   }
 })
 
-test("returns a legacy 404 without falling through to the generic renderer", async () => {
-  const distDir = await mkdtemp(join(tmpdir(), "amblast-legacy-"))
-  process.env.AMBLAST_LEGACY_DIST_DIR = distDir
-
-  await writeFile(join(distDir, "404.html"), "<!DOCTYPE html><html><body class=\"amb-404\"></body></html>")
-
+test("returns the captured WordPress 404 without falling through to the generic renderer", async () => {
   const response = await createAmblastLegacyNotFoundResponse()
   assert.equal(response.status, 404)
   assert.equal(response.headers.get("content-type"), "text/html; charset=utf-8")
-  assert.equal(await response.text(), "<!DOCTYPE html><html><body class=\"amb-404\"></body></html>")
+
+  const html = await response.text()
+  assert.match(html, /<title>Pagina niet gevonden - Amblast \| Facility Services<\/title>/)
+  assert.match(html, /error404/)
+  assert.match(html, /https:\/\/amblast\.nl\/wp-content\//)
 })
