@@ -8,6 +8,13 @@ import { RichTextCanvas as RichTextLazy } from "@/components/editor/canvas/block
 import { ContactSectionCanvas } from "@/components/editor/canvas/blocks/ContactSection"
 import { FAQCanvas } from "@/components/editor/canvas/blocks/FAQ"
 import { TestimonialsCanvas } from "@/components/editor/canvas/blocks/Testimonials"
+import {
+  BeforeAfterGalleryCanvas,
+  ContactDetailsCanvas,
+  InfoCardListCanvas,
+  MediaHeroCanvas,
+  ServiceCarouselCanvas,
+} from "@/components/editor/canvas/blocks/GenerationBlocks"
 
 export interface CanvasBlockRendererProps {
   block: any
@@ -40,6 +47,11 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     case "contactSection": return <ContactSectionCanvas {...augmented} />
     case "faq":            return <FAQCanvas {...augmented} />
     case "testimonials":   return <TestimonialsCanvas {...augmented} />
+    case "mediaHero":      return <MediaHeroCanvas {...augmented} />
+    case "infoCardList":   return <InfoCardListCanvas {...augmented} />
+    case "serviceCarousel": return <ServiceCarouselCanvas {...augmented} />
+    case "beforeAfterGallery": return <BeforeAfterGalleryCanvas {...augmented} />
+    case "contactDetails": return <ContactDetailsCanvas {...augmented} />
     default:
       return (
         <section className="cms-block cms-block--unknown rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2">

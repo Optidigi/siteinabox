@@ -32,6 +32,7 @@ import * as migration_20260625_190000_add_ai_generation_run_metadata from './202
 import * as migration_20260625_210000_add_preview_approval_state from './20260625_210000_add_preview_approval_state';
 import * as migration_20260625_230000_add_published_site_snapshots from './20260625_230000_add_published_site_snapshots';
 import * as migration_20260626_120000_add_preview_access_grants from './20260626_120000_add_preview_access_grants';
+import * as migration_20260627_120000_add_concrete_block_model_schema from './20260627_120000_add_concrete_block_model_schema';
 
 export const migrations = [
   {
@@ -203,5 +204,10 @@ export const migrations = [
     up: migration_20260626_120000_add_preview_access_grants.up,
     down: migration_20260626_120000_add_preview_access_grants.down,
     name: '20260626_120000_add_preview_access_grants'
+  },
+  {
+    up: migration_20260627_120000_add_concrete_block_model_schema.up,
+    down: migration_20260627_120000_add_concrete_block_model_schema.down,
+    name: '20260627_120000_add_concrete_block_model_schema'
   },
 ];
