@@ -28,6 +28,7 @@ type StagingFixture = {
   label: string
   slug: string
   domain: string
+  sourceMediaBaseUrl: string
   sourceSpec: SiteGenerationSpec
   publishedSnapshot: PublishedSiteSnapshot
 }
@@ -49,6 +50,7 @@ const STAGING_FIXTURES: Record<TenantKey, StagingFixture> = {
     label: "Amicare renderer staging",
     slug: "amicare-renderer",
     domain: "amicare.optidigi.nl",
+    sourceMediaBaseUrl: "https://ami-care.nl",
     sourceSpec: amicareSiteGenerationSpec,
     publishedSnapshot: amicarePublishedSiteSnapshot,
   },
@@ -57,6 +59,7 @@ const STAGING_FIXTURES: Record<TenantKey, StagingFixture> = {
     label: "Amblast renderer staging",
     slug: "amblast-renderer",
     domain: "amblast.optidigi.nl",
+    sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
     sourceSpec: amblastSiteGenerationSpec,
     publishedSnapshot: amblastPublishedSiteSnapshot,
   },
@@ -204,6 +207,24 @@ const stableStringify = (value: unknown): string => {
 const stableHash = (value: unknown): string =>
   createHash("sha256").update(stableStringify(value)).digest("hex")
 
+function absolutizeRootRelativeUrl(value: string, baseUrl: string): string {
+  if (!value.startsWith("/") || value.startsWith("//")) return value
+  return new URL(value, baseUrl).toString()
+}
+
+function absolutizeGeneratedMediaUrls(value: unknown, baseUrl: string): unknown {
+  if (Array.isArray(value)) return value.map((item) => absolutizeGeneratedMediaUrls(item, baseUrl))
+  if (!value || typeof value !== "object") return value
+
+  const record = value as Record<string, unknown>
+  return Object.fromEntries(
+    Object.entries(record).map(([key, entry]) => {
+      if (key === "url" && typeof entry === "string") return [key, absolutizeRootRelativeUrl(entry, baseUrl)]
+      return [key, absolutizeGeneratedMediaUrls(entry, baseUrl)]
+    }),
+  )
+}
+
 const nextPublishedSnapshotVersion = async (
   payload: Payload,
   tenantId: string | number,
@@ -236,7 +257,7 @@ const requireSuccessfulApplyResult = (
 const cloneForStaging = (fixture: StagingFixture): SiteGenerationSpec => {
   const source = structuredClone(fixture.sourceSpec)
   const siteUrl = `https://${fixture.domain}`
-  return {
+  const spec = {
     ...source,
     intake: {
       ...source.intake,
@@ -266,6 +287,7 @@ const cloneForStaging = (fixture: StagingFixture): SiteGenerationSpec => {
       version: "phase-4",
     },
   }
+  return absolutizeGeneratedMediaUrls(spec, fixture.sourceMediaBaseUrl) as SiteGenerationSpec
 }
 
 const findOne = async <T>(
@@ -472,7 +494,7 @@ const createStagingPublishedSnapshot = async (
     tenantSlug: fixture.slug,
     domain: fixture.domain,
     siteUrl: `https://${fixture.domain}`,
-    mediaBaseUrl: fixture.publishedSnapshot.siteUrl,
+    mediaBaseUrl: fixture.sourceMediaBaseUrl,
     aliases: [],
     manifestVersion: version,
     publishedAt: now,

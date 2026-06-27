@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import { applySiteGenerationSpec, siteGenerationSpecHash, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 import { pageToJson } from "@/lib/projection/pageToJson"
@@ -264,6 +264,54 @@ describe("applySiteGenerationSpec", () => {
     expect(store.pages[0]!.blocks[0].image).toBe(heroMedia.id)
     expect(store["site-settings"][0]!.branding.logo).toBe(logoMedia.id)
     expect(store["site-settings"][0]!.branding.favicon).toBeUndefined()
+  })
+
+  it("downloads generated media and retries upload when Payload requires a file", async () => {
+    const { payload, store, calls } = createPayloadStub()
+    const originalCreate = payload.create
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      }),
+    )
+    ;(payload as any).create = async (args: any) => {
+      if (args.collection === "media" && !args.filePath) {
+        const error = new Error("No files were uploaded.") as Error & { status?: number }
+        error.name = "MissingFile"
+        error.status = 400
+        throw error
+      }
+      return originalCreate(args)
+    }
+
+    try {
+      const spec = fixtureSpec()
+      const result = await applySiteGenerationSpec(payload, {
+        ...spec,
+        pages: [
+          {
+            ...spec.pages[0]!,
+            blocks: [
+              {
+                ...spec.pages[0]!.blocks[0]!,
+                image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
+              } as any,
+            ],
+          },
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      expect(fetchMock).toHaveBeenCalledWith("https://assets.example/hero.jpg")
+      expect(store.media).toHaveLength(1)
+      expect(store.pages[0]!.blocks[0].image).toBe(store.media[0]!.id)
+      const mediaCreate = calls.create.find((call) => call.collection === "media")
+      expect(mediaCreate?.filePath).toContain("hero.jpg")
+      expect(mediaCreate?.overwriteExistingFiles).toBe(true)
+    } finally {
+      fetchMock.mockRestore()
+    }
   })
 
   it("updates existing records on repeat apply instead of creating duplicates", async () => {

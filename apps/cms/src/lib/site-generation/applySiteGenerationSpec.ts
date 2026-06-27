@@ -1,4 +1,7 @@
 import { createHash } from "node:crypto"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import path from "node:path"
 import type {
   CmsApplyResult,
   GeneratedPageSpec,
@@ -399,6 +402,47 @@ const mimeTypeForFilename = (filename: string): string | undefined => {
   return undefined
 }
 
+const absoluteMediaUrl = (ref: GeneratedMediaObject): string | undefined => {
+  if (typeof ref.url !== "string" || ref.url.length === 0) return undefined
+  if (!/^https?:\/\//i.test(ref.url)) return undefined
+  return ref.url
+}
+
+const isMissingUploadFileError = (error: unknown): boolean => {
+  const value = error as { name?: unknown; message?: unknown; status?: unknown } | null
+  return (
+    value?.name === "MissingFile" ||
+    value?.message === "No files were uploaded." ||
+    (value?.status === 400 && typeof value?.message === "string" && value.message.includes("No files were uploaded"))
+  )
+}
+
+const withDownloadedMediaFile = async <T>(
+  ref: GeneratedMediaObject,
+  filename: string,
+  action: (filePath: string) => Promise<T>,
+): Promise<T> => {
+  const url = absoluteMediaUrl(ref)
+  if (!url) {
+    throw new Error(`Generated media ref "${filename}" must include an absolute URL before CMS import can upload it.`)
+  }
+
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to download generated media "${filename}" from ${url}: ${response.status} ${response.statusText}`)
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), "siab-generated-media-"))
+  const filePath = path.join(tempDir, filename)
+  try {
+    const data = Buffer.from(await response.arrayBuffer())
+    await writeFile(filePath, data)
+    return await action(filePath)
+  } finally {
+    await rm(tempDir, { recursive: true, force: true })
+  }
+}
+
 const upsertGeneratedMediaRefs = async (
   payload: Payload,
   tenantId: string | number,
@@ -435,13 +479,26 @@ const upsertGeneratedMediaRefs = async (
       } as any)
       ids.set(filename, (updated as any).id)
     } else {
-      const created = await payload.create({
+      const createArgs = {
         collection: "media",
         data,
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
-      } as any)
+      } as const
+      let created: unknown
+      try {
+        created = await payload.create(createArgs as any)
+      } catch (error) {
+        if (!isMissingUploadFileError(error)) throw error
+        created = await withDownloadedMediaFile(ref, filename, (filePath) =>
+          payload.create({
+            ...createArgs,
+            filePath,
+            overwriteExistingFiles: true,
+          } as any),
+        )
+      }
       ids.set(filename, (created as any).id)
     }
   }

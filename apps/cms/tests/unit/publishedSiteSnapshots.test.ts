@@ -252,7 +252,7 @@ describe("published site snapshots", () => {
       tenantSlug: "amblast-renderer",
       domain: "amblast.optidigi.nl",
       siteUrl: "https://amblast.optidigi.nl",
-      mediaBaseUrl: amblastPublishedSiteSnapshot.siteUrl,
+      mediaBaseUrl: "https://amblast.siteinabox.nl",
       aliases: [],
       manifestVersion: 7,
       publishedAt: "2026-06-26T12:00:00.000Z",
@@ -265,12 +265,12 @@ describe("published site snapshots", () => {
     expect(snapshot.settings.siteUrl).toBe("https://amblast.optidigi.nl")
     expect(snapshot.settings.aliases).toEqual([])
     expect(snapshot.settings.seoJsonLd?.organization?.url).toBe("https://amblast.optidigi.nl")
-    expect(snapshot.settings.branding?.logo).toMatchObject({ url: "https://amblast.optidigi.nl/uploads/logo/cropped-AMBlast_logo.png" })
+    expect(snapshot.settings.branding?.logo).toMatchObject({ url: "https://amblast.siteinabox.nl/uploads/logo/cropped-AMBlast_logo.png" })
     expect(snapshot.manifest).toMatchObject({ tenantId: "42", version: 7 })
     expect(snapshot.publishedAt).toBe("2026-06-26T12:00:00.000Z")
     expect(snapshot.blocks?.map((block) => block.slug)).toEqual(expect.arrayContaining(["mediaHero", "beforeAfterGallery", "contactDetails"]))
     expect(snapshot.pages.flatMap((page) => page.blocks).map((block) => block.blockType)).toEqual(expect.arrayContaining(["mediaHero", "beforeAfterGallery"]))
-    expect(JSON.stringify(snapshot.pages)).toContain("https://amblast.optidigi.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(JSON.stringify(snapshot.pages)).toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
     expect(JSON.stringify(snapshot.pages)).toContain("\"href\":\"/contact\"")
     expect(JSON.stringify(snapshot.media)).toContain("IMG_20210402_151225-scaled.jpg")
 
@@ -285,9 +285,9 @@ describe("published site snapshots", () => {
       theme: snapshot.theme,
     }))
     expect(homeHtml).toContain("data-siab-service-carousel")
-    expect(homeHtml).toContain("https://amblast.optidigi.nl/uploads/logo/cropped-AMBlast_logo.png")
+    expect(homeHtml).toContain("https://amblast.siteinabox.nl/uploads/logo/cropped-AMBlast_logo.png")
     expect(portfolioHtml).toContain("data-siab-before-after-pair")
-    expect(portfolioHtml).toContain("https://amblast.optidigi.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(portfolioHtml).toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
   })
 
   it("retargets Amicare CMS media refs to the legacy media route for renderer staging", async () => {
@@ -298,13 +298,13 @@ describe("published site snapshots", () => {
       tenantSlug: "amicare-renderer",
       domain: "amicare.optidigi.nl",
       siteUrl: "https://amicare.optidigi.nl",
-      mediaBaseUrl: amicarePublishedSiteSnapshot.siteUrl,
+      mediaBaseUrl: "https://ami-care.nl",
       aliases: [],
       manifestVersion: 3,
       publishedAt: "2026-06-26T12:00:00.000Z",
     })
 
-    expect(JSON.stringify(snapshot.pages)).toContain("https://amicare.optidigi.nl/media/bedroom.jpg")
+    expect(JSON.stringify(snapshot.pages)).toContain("https://ami-care.nl/media/bedroom.jpg")
     expect(JSON.stringify(snapshot.pages)).not.toContain("https://ami-care.nl/assets/bedroom.jpg")
   })
 
