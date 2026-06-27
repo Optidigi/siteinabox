@@ -70,7 +70,7 @@ describe("renderer seed profiles", () => {
     expect(amblast.settings.siteUrl).toBe("https://amblast.nl")
   })
 
-  it("builds production retarget options with official snapshot domains and transitional media bases", () => {
+  it("builds production retarget options with official snapshot domains and live media bases", () => {
     const amicareOptions = buildRetargetOptionsForRendererSeedFixture(
       RENDERER_SEED_FIXTURES.production.amicare,
       41,
@@ -94,7 +94,7 @@ describe("renderer seed profiles", () => {
       tenantSlug: "amblast",
       domain: "amblast.nl",
       siteUrl: "https://amblast.nl",
-      mediaBaseUrl: "https://amblast.siteinabox.nl",
+      mediaBaseUrl: "https://amblast.nl",
     })
 
     const amicareSnapshot = retargetPublishedSiteSnapshot(amicarePublishedSiteSnapshot, amicareOptions)
@@ -108,8 +108,8 @@ describe("renderer seed profiles", () => {
     expect(amblastSnapshot.tenantSlug).toBe("amblast")
     expect(amblastSnapshot.domain).toBe("amblast.nl")
     expect(amblastSnapshot.siteUrl).toBe("https://amblast.nl")
-    expect(JSON.stringify(amblastSnapshot.pages)).toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
-    expect(JSON.stringify(amblastSnapshot.pages)).not.toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(JSON.stringify(amblastSnapshot.pages)).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(JSON.stringify(amblastSnapshot.pages)).not.toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
   })
 
   it("injects public PostHog analytics into official production snapshots from seed environment", () => {
