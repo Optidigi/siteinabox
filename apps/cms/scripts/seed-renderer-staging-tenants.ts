@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import Module from "node:module"
+import { pathToFileURL } from "node:url"
 import type { Payload } from "payload"
 import {
   amblastPublishedSiteSnapshot,
@@ -11,9 +12,11 @@ import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/cont
 import { SiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
 
 type TenantKey = "amicare" | "amblast"
+export type RendererSeedProfile = "staging" | "production"
 
-type CliOptions = {
+export type CliOptions = {
   execute: boolean
+  profile: RendererSeedProfile
   tenants: TenantKey[]
   approve: boolean
   verifyDomain: boolean
@@ -23,12 +26,16 @@ type CliOptions = {
   activate: boolean
 }
 
-type StagingFixture = {
+export type RendererSeedFixture = {
   key: TenantKey
+  profile: RendererSeedProfile
+  profileLabel: string
   label: string
   slug: string
   domain: string
+  siteUrl: string
   sourceMediaBaseUrl: string
+  mediaBaseNote: string
   sourceSpec: SiteGenerationSpec
   publishedSnapshot: PublishedSiteSnapshot
 }
@@ -44,30 +51,76 @@ type ApplySuccessResult = Extract<ApplySiteGenerationSpecResult, { ok: boolean }
   settingsId: string | number
 }
 
-const STAGING_FIXTURES: Record<TenantKey, StagingFixture> = {
-  amicare: {
-    key: "amicare",
-    label: "Amicare renderer staging",
-    slug: "amicare-renderer",
-    domain: "amicare.optidigi.nl",
-    sourceMediaBaseUrl: "https://ami-care.nl",
-    sourceSpec: amicareSiteGenerationSpec,
-    publishedSnapshot: amicarePublishedSiteSnapshot,
+const GENERATED_AT = "2026-06-26T00:00:00.000Z"
+
+const fixture = (
+  input: Omit<RendererSeedFixture, "siteUrl" | "sourceSpec" | "publishedSnapshot"> & {
+    sourceSpec: SiteGenerationSpec
+    publishedSnapshot: PublishedSiteSnapshot
+    siteUrl?: string
   },
-  amblast: {
-    key: "amblast",
-    label: "Amblast renderer staging",
-    slug: "amblast-renderer",
-    domain: "amblast.optidigi.nl",
-    sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
-    sourceSpec: amblastSiteGenerationSpec,
-    publishedSnapshot: amblastPublishedSiteSnapshot,
+): RendererSeedFixture => ({
+  ...input,
+  siteUrl: input.siteUrl ?? `https://${input.domain}`,
+})
+
+export const RENDERER_SEED_FIXTURES: Record<RendererSeedProfile, Record<TenantKey, RendererSeedFixture>> = {
+  staging: {
+    amicare: fixture({
+      key: "amicare",
+      profile: "staging",
+      profileLabel: "staging",
+      label: "Amicare renderer staging",
+      slug: "amicare-renderer",
+      domain: "amicare.optidigi.nl",
+      sourceMediaBaseUrl: "https://ami-care.nl",
+      mediaBaseNote: "Loads legacy Amicare media from ami-care.nl while the staging renderer host stays on optidigi.nl.",
+      sourceSpec: amicareSiteGenerationSpec,
+      publishedSnapshot: amicarePublishedSiteSnapshot,
+    }),
+    amblast: fixture({
+      key: "amblast",
+      profile: "staging",
+      profileLabel: "staging",
+      label: "Amblast renderer staging",
+      slug: "amblast-renderer",
+      domain: "amblast.optidigi.nl",
+      sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
+      mediaBaseNote: "Loads legacy Amblast media from amblast.siteinabox.nl while the staging renderer host stays on optidigi.nl.",
+      sourceSpec: amblastSiteGenerationSpec,
+      publishedSnapshot: amblastPublishedSiteSnapshot,
+    }),
+  },
+  production: {
+    amicare: fixture({
+      key: "amicare",
+      profile: "production",
+      profileLabel: "production live cutover",
+      label: "Amicare renderer production live cutover",
+      slug: "ami-care",
+      domain: "ami-care.nl",
+      sourceMediaBaseUrl: "https://ami-care.nl",
+      mediaBaseNote: "Uses the current Amicare legacy media origin because no separate durable media host exists yet; validate media after routing before final cutover.",
+      sourceSpec: amicareSiteGenerationSpec,
+      publishedSnapshot: amicarePublishedSiteSnapshot,
+    }),
+    amblast: fixture({
+      key: "amblast",
+      profile: "production",
+      profileLabel: "production live cutover",
+      label: "Amblast renderer production live cutover",
+      slug: "amblast",
+      domain: "amblast.nl",
+      sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
+      mediaBaseNote: "Keeps Amblast media on the current legacy host amblast.siteinabox.nl so asset URLs do not depend on amblast.nl during DNS/proxy cutover.",
+      sourceSpec: amblastSiteGenerationSpec,
+      publishedSnapshot: amblastPublishedSiteSnapshot,
+    }),
   },
 }
 
-const OPERATOR_ACTOR = "renderer-staging-bootstrap"
-const PROMPT_VERSION = "renderer-staging-bootstrap-v1"
-const STAGING_GENERATED_AT = "2026-06-26T00:00:00.000Z"
+const operatorActor = (profile: RendererSeedProfile) => `renderer-${profile}-bootstrap`
+const promptVersion = (profile: RendererSeedProfile) => `renderer-${profile}-bootstrap-v1`
 
 type SiteGenerationHelpers = {
   applySiteGenerationSpec: ApplySiteGenerationSpecFn
@@ -124,25 +177,27 @@ const loadExecuteHelpers = async (): Promise<ExecuteHelpers> => {
 
 const usage = () => `
 Usage:
-  pnpm tsx scripts/seed-renderer-staging-tenants.ts [dry-run|--execute] [--tenant=amicare|amblast]
+  pnpm tsx scripts/seed-renderer-staging-tenants.ts [dry-run|--execute] [--profile=staging|production] [--tenant=amicare|amblast]
 
 Dry-run is the default. Mutating options require --execute.
 
 Options:
   dry-run, --dry-run Dry-run explicitly. This is also the default.
   --execute          Apply CMS mutations.
+  --profile=<name>   Use staging or production profile. Defaults to staging.
   --tenant=<name>    Seed only amicare or amblast. Defaults to both.
-  --approve          Mark the staging generation run approved.
-  --verify-domain    Mark the staging tenant domainVerification.status verified.
+  --approve          Mark the profile generation run approved.
+  --verify-domain    Mark the profile tenant domainVerification.status verified.
   --waive-payment    Record an operator payment waiver on the run.
   --promote-pages    Promote approved run pages to published.
   --publish          Publish an immutable renderer snapshot.
   --activate         Publish and activate with manualActivation=true. Requires --publish.
 `
 
-const parseArgs = (argv: string[]): CliOptions => {
+export const parseArgs = (argv: string[]): CliOptions => {
   const options: CliOptions = {
     execute: false,
+    profile: "staging",
     tenants: ["amicare", "amblast"],
     approve: false,
     verifyDomain: false,
@@ -166,6 +221,13 @@ const parseArgs = (argv: string[]): CliOptions => {
     else if (arg === "--promote-pages") options.promotePages = true
     else if (arg === "--publish") options.publish = true
     else if (arg === "--activate") options.activate = true
+    else if (arg.startsWith("--profile=")) {
+      const profile = arg.slice("--profile=".length)
+      if (profile !== "staging" && profile !== "production") {
+        throw new Error(`Unsupported --profile value "${profile}". Use staging or production.`)
+      }
+      options.profile = profile
+    }
     else if (arg.startsWith("--tenant=")) {
       const tenant = arg.slice("--tenant=".length)
       if (tenant !== "amicare" && tenant !== "amblast") {
@@ -243,30 +305,29 @@ const nextPublishedSnapshotVersion = async (
 
 const requireSuccessfulApplyResult = (
   result: ApplySiteGenerationSpecResult,
-  fixtureKey: TenantKey,
+  fixture: RendererSeedFixture,
 ): ApplySuccessResult => {
   if (!result.ok) {
-    throw new Error(`${fixtureKey} importer rejected the staging spec: ${JSON.stringify(result.validation.issues, null, 2)}`)
+    throw new Error(`${fixture.key} importer rejected the ${fixture.profile} spec: ${JSON.stringify(result.validation.issues, null, 2)}`)
   }
   if (result.tenantId == null || !Array.isArray(result.pageIds) || result.settingsId == null) {
-    throw new Error(`${fixtureKey} importer succeeded without tenant, page, or settings ids.`)
+    throw new Error(`${fixture.key} importer succeeded without tenant, page, or settings ids.`)
   }
   return result as ApplySuccessResult
 }
 
-const cloneForStaging = (fixture: StagingFixture): SiteGenerationSpec => {
+export const cloneForRendererSeedProfile = (fixture: RendererSeedFixture): SiteGenerationSpec => {
   const source = structuredClone(fixture.sourceSpec)
-  const siteUrl = `https://${fixture.domain}`
   const spec = {
     ...source,
     intake: {
       ...source.intake,
       tenantSlug: fixture.slug,
       primaryDomain: fixture.domain,
-      siteUrl,
+      siteUrl: fixture.siteUrl,
       goals: [
         ...(source.intake.goals ?? []),
-        "Renderer-hosted staging bootstrap without tenant source generation",
+        `Renderer-hosted ${fixture.profileLabel} bootstrap without tenant source generation`,
       ],
     },
     tenant: {
@@ -277,18 +338,21 @@ const cloneForStaging = (fixture: StagingFixture): SiteGenerationSpec => {
     },
     settings: {
       ...source.settings,
-      siteUrl,
+      siteUrl: fixture.siteUrl,
       aliases: [],
     },
-    generatedAt: STAGING_GENERATED_AT,
+    generatedAt: GENERATED_AT,
     generator: {
       ...source.generator,
-      name: "renderer-staging-bootstrap",
-      version: "phase-4",
+      name: operatorActor(fixture.profile),
+      version: fixture.profile === "production" ? "live-cutover-v1" : "phase-4",
     },
   }
   return absolutizeGeneratedMediaUrls(spec, fixture.sourceMediaBaseUrl) as SiteGenerationSpec
 }
+
+export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" | "tenants">): RendererSeedFixture[] =>
+  options.tenants.map((tenant) => RENDERER_SEED_FIXTURES[options.profile][tenant])
 
 const findOne = async <T>(
   payload: Payload,
@@ -309,11 +373,11 @@ const transition = (status: string, message: string, at: string) => ({ status, m
 
 const upsertIntakeSubmission = async (
   payload: Payload,
-  fixture: StagingFixture,
+  fixture: RendererSeedFixture,
   spec: SiteGenerationSpec,
   now: string,
 ) => {
-  const idempotencyKey = `renderer-staging:${fixture.key}:intake:v1`
+  const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:intake:v1`
   const normalizedHash = stableHash(spec.intake)
   const data = {
     businessName: spec.intake.businessName,
@@ -323,16 +387,18 @@ const upsertIntakeSubmission = async (
     status: "preview_ready",
     idempotencyKey,
     raw: {
-      source: "renderer-staging-bootstrap",
+      source: operatorActor(fixture.profile),
+      profile: fixture.profile,
       fixture: fixture.key,
       domain: fixture.domain,
       slug: fixture.slug,
+      mediaBaseUrl: fixture.sourceMediaBaseUrl,
     },
     normalized: spec.intake,
     normalizedHash,
     statusTransitions: [
-      transition("submitted", "Renderer staging seed submitted by operator script.", now),
-      transition("preview_ready", "Renderer staging seed applied to draft CMS data.", now),
+      transition("submitted", `Renderer ${fixture.profileLabel} seed submitted by operator script.`, now),
+      transition("preview_ready", `Renderer ${fixture.profileLabel} seed applied to draft CMS data.`, now),
     ],
     error: null,
   }
@@ -358,14 +424,14 @@ const upsertIntakeSubmission = async (
 
 const upsertGenerationRun = async (
   payload: Payload,
-  fixture: StagingFixture,
+  fixture: RendererSeedFixture,
   intakeId: string | number,
   spec: SiteGenerationSpec,
   applyResult: ApplySuccessResult,
   specHash: string,
   now: string,
 ) => {
-  const idempotencyKey = `renderer-staging:${fixture.key}:run:v1`
+  const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:run:v1`
   const normalizedIntakeHash = stableHash(spec.intake)
   const runData: Record<string, unknown> = {
     intakeSubmission: intakeId,
@@ -375,12 +441,16 @@ const upsertGenerationRun = async (
     normalizedIntakeHash,
     provider: "fixture",
     model: `fixture:${fixture.key}`,
-    promptVersion: PROMPT_VERSION,
+    promptVersion: promptVersion(fixture.profile),
     generationInputHash: normalizedIntakeHash,
     generationInput: {
+      profile: fixture.profile,
       fixture: fixture.key,
-      stagingDomain: fixture.domain,
-      stagingSlug: fixture.slug,
+      domain: fixture.domain,
+      slug: fixture.slug,
+      siteUrl: fixture.siteUrl,
+      mediaBaseUrl: fixture.sourceMediaBaseUrl,
+      mediaBaseNote: fixture.mediaBaseNote,
     },
     generationOutputHash: specHash,
     rawOutput: null,
@@ -395,7 +465,7 @@ const upsertGenerationRun = async (
     pages: applyResult.pageIds ?? [],
     settings: applyResult.settingsId,
     statusTransitions: [
-      transition("queued", "Renderer staging seed queued by operator script.", now),
+      transition("queued", `Renderer ${fixture.profileLabel} seed queued by operator script.`, now),
       transition("applying", "Validated SiteGenerationSpec applied through CMS importer.", now),
       transition("preview_ready", "Draft pages/settings are ready for preview and optional publish.", now),
     ],
@@ -442,7 +512,12 @@ const linkIntake = async (
   })
 }
 
-const markApproved = async (payload: Payload, runId: string | number, now: string) => {
+const markApproved = async (
+  payload: Payload,
+  fixture: RendererSeedFixture,
+  runId: string | number,
+  now: string,
+) => {
   await payload.update({
     collection: "site-generation-runs",
     id: runId as any,
@@ -450,7 +525,7 @@ const markApproved = async (payload: Payload, runId: string | number, now: strin
       clientApproval: {
         status: "approved",
         approvedAt: now,
-        source: "renderer-staging-bootstrap",
+        source: operatorActor(fixture.profile),
       },
     } as any,
     depth: 0,
@@ -460,8 +535,8 @@ const markApproved = async (payload: Payload, runId: string | number, now: strin
 
 const verifyDomain = async (
   payload: Payload,
+  fixture: RendererSeedFixture,
   tenantId: string | number,
-  domain: string,
   now: string,
 ) => {
   await payload.update({
@@ -471,7 +546,7 @@ const verifyDomain = async (
       domainVerification: {
         status: "verified",
         checkedAt: now,
-        notes: `Manually verified for renderer staging host ${domain}. DNS/proxy routing remains operator-owned.`,
+        notes: `Manually verified for ${fixture.profileLabel} host ${fixture.domain}. DNS/proxy routing remains operator-owned.`,
       },
     } as any,
     depth: 0,
@@ -479,9 +554,119 @@ const verifyDomain = async (
   })
 }
 
+export const buildRetargetOptionsForRendererSeedFixture = (
+  fixture: RendererSeedFixture,
+  tenantId: string | number,
+  version: number,
+  now: string,
+) => ({
+  tenantId,
+  tenantSlug: fixture.slug,
+  domain: fixture.domain,
+  siteUrl: fixture.siteUrl,
+  mediaBaseUrl: fixture.sourceMediaBaseUrl,
+  aliases: [],
+  manifestVersion: version,
+  publishedAt: now,
+})
+
+const trimEnvUrl = (value: string | undefined, fallback: string) =>
+  (value?.trim() || fallback).replace(/\/+$/, "")
+
+const publicPostHogAnalyticsConfig = (
+  fixture: RendererSeedFixture,
+  tenantId: string | number,
+  version: number,
+) => {
+  const projectToken = process.env.POSTHOG_PROJECT_TOKEN || process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+  if (!projectToken) return null
+
+  return {
+    enabled: true,
+    provider: "posthog" as const,
+    consentMode: "required" as const,
+    posthogHost: trimEnvUrl(process.env.POSTHOG_PUBLIC_HOST, "https://r.siteinabox.nl"),
+    posthogUiHost: trimEnvUrl(process.env.POSTHOG_HOST, "https://eu.posthog.com"),
+    posthogProjectToken: projectToken,
+    conversionGoals: {
+      acceptedForms: true as const,
+      contactClicks: fixture.key === "amblast" ? ["phone", "email"] : [],
+    },
+    dashboardVisible: true,
+    schemaVersion: 1,
+    tenantId: String(tenantId),
+    tenantSlug: fixture.slug,
+    siteId: String(tenantId),
+    siteDomain: fixture.domain,
+    themeId: null,
+    siteBuildId: process.env.SIAB_SITE_BUILD_ID || null,
+    manifestVersion: version,
+  }
+}
+
+const analyticsConsentSettings = () => ({
+  enabled: true,
+  provider: "posthog" as const,
+  consentStorageKey: "siab_cookie_consent_v1",
+  consentVersion: "2026-06",
+  captureSections: true,
+  captureActions: true,
+  captureForms: true,
+})
+
+const pagePathForSlug = (slug: string | null | undefined) =>
+  !slug || slug === "home" || slug === "index" ? "/" : `/${slug}`
+
+export const injectRendererSeedAnalytics = (
+  snapshot: PublishedSiteSnapshot,
+  fixture: RendererSeedFixture,
+  tenantId: string | number,
+  version: number,
+): PublishedSiteSnapshot => {
+  const analytics = publicPostHogAnalyticsConfig(fixture, tenantId, version)
+  if (!analytics) return snapshot
+
+  return {
+    ...snapshot,
+    settings: {
+      ...snapshot.settings,
+      analytics: {
+        ...(snapshot.settings.analytics ?? {}),
+        ...analytics,
+      },
+      analyticsConsent: snapshot.settings.analyticsConsent ?? analyticsConsentSettings(),
+    },
+    pages: snapshot.pages.map((page) => {
+      const pageSlug = page.slug
+      const pagePath = pagePathForSlug(pageSlug)
+      const existingAnalytics =
+        page.analytics && typeof page.analytics === "object" && !Array.isArray(page.analytics)
+          ? page.analytics as Record<string, unknown>
+          : {}
+      return {
+        ...page,
+        analytics: {
+          ...existingAnalytics,
+          schemaVersion: 1,
+          tenantId: String(tenantId),
+          tenantSlug: fixture.slug,
+          siteId: String(tenantId),
+          siteDomain: fixture.domain,
+          pageId: existingAnalytics.pageId ?? null,
+          pageSlug,
+          pagePath,
+          themeId: existingAnalytics.themeId ?? null,
+          siteBuildId: process.env.SIAB_SITE_BUILD_ID || existingAnalytics.siteBuildId || null,
+          manifestVersion: version,
+        },
+      }
+    }),
+  }
+}
+
 const createStagingPublishedSnapshot = async (
   payload: Payload,
-  fixture: StagingFixture,
+  fixture: RendererSeedFixture,
   tenantId: string | number,
   generationRunId: string | number,
   helpers: ExecuteHelpers,
@@ -489,32 +674,27 @@ const createStagingPublishedSnapshot = async (
   now: string,
 ) => {
   const version = await nextPublishedSnapshotVersion(payload, tenantId)
-  const snapshot = helpers.retargetPublishedSiteSnapshot(fixture.publishedSnapshot, {
-    tenantId,
-    tenantSlug: fixture.slug,
-    domain: fixture.domain,
-    siteUrl: `https://${fixture.domain}`,
-    mediaBaseUrl: fixture.sourceMediaBaseUrl,
-    aliases: [],
-    manifestVersion: version,
-    publishedAt: now,
-  })
-  const hash = stableHash(snapshot)
+  const snapshot = helpers.retargetPublishedSiteSnapshot(
+    fixture.publishedSnapshot,
+    buildRetargetOptionsForRendererSeedFixture(fixture, tenantId, version, now),
+  )
+  const snapshotWithAnalytics = injectRendererSeedAnalytics(snapshot, fixture, tenantId, version)
+  const hash = stableHash(snapshotWithAnalytics)
   const snapshotDoc = await payload.create({
     collection: "published-site-snapshots" as any,
     data: {
       tenant: tenantId,
       sourceGenerationRun: generationRunId,
-      snapshotKey: `${snapshot.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
+      snapshotKey: `${snapshotWithAnalytics.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
       version,
       status: "drafted",
-      domain: snapshot.domain,
+      domain: snapshotWithAnalytics.domain,
       snapshotHash: hash,
-      snapshot,
-      publishedAt: snapshot.publishedAt,
+      snapshot: snapshotWithAnalytics,
+      publishedAt: snapshotWithAnalytics.publishedAt,
       activationReason: options.activate
-        ? `Renderer staging activation for ${fixture.domain}`
-        : `Renderer staging parity snapshot for ${fixture.domain}`,
+        ? `Renderer ${fixture.profileLabel} activation for ${fixture.domain}`
+        : `Renderer ${fixture.profileLabel} parity snapshot for ${fixture.domain}`,
     },
     depth: 0,
     overrideAccess: true,
@@ -524,34 +704,37 @@ const createStagingPublishedSnapshot = async (
   const activated = await helpers.activatePublishedSnapshot(payload, {
     snapshotId: snapshotDoc.id,
     manualActivation: true,
-    activationReason: `Renderer staging activation for ${fixture.domain}`,
+    activationReason: `Renderer ${fixture.profileLabel} activation for ${fixture.domain}`,
   })
   return { snapshot: activated, activated: true }
 }
 
 const runFixture = async (
   payload: Payload,
-  fixture: StagingFixture,
+  fixture: RendererSeedFixture,
   options: CliOptions,
   helpers: SiteGenerationHelpers | ExecuteHelpers,
 ) => {
-  const spec = cloneForStaging(fixture)
+  const spec = cloneForRendererSeedProfile(fixture)
   const parsed = SiteGenerationSpecSchema.safeParse(spec)
   if (!parsed.success) {
-    throw new Error(`${fixture.key} staging spec failed validation: ${formatContractValidationIssues(parsed.error)}`)
+    throw new Error(`${fixture.key} ${fixture.profile} spec failed validation: ${formatContractValidationIssues(parsed.error)}`)
   }
   const specHash = helpers.siteGenerationSpecHash(parsed.data)
 
   console.log("")
   console.log(`[plan] ${fixture.label}`)
+  console.log(`  profile: ${fixture.profile}`)
   console.log(`  slug: ${fixture.slug}`)
   console.log(`  domain: ${fixture.domain}`)
   console.log(`  siteUrl: ${spec.settings.siteUrl}`)
+  console.log(`  mediaBaseUrl: ${fixture.sourceMediaBaseUrl}`)
+  console.log(`  mediaNote: ${fixture.mediaBaseNote}`)
   console.log(`  pages: ${spec.pages.map((page) => page.slug).join(", ")}`)
   console.log(`  specHash: ${specHash}`)
   console.log(`  actions: import draft CMS data, upsert intake, upsert generation run`)
   if (options.approve) console.log("           mark run approved")
-  if (options.verifyDomain) console.log("           mark staging domain verified")
+  if (options.verifyDomain) console.log(`           mark ${fixture.profile} domain verified`)
   if (options.waivePayment) console.log("           waive payment gate")
   if (options.promotePages) console.log("           promote run pages")
   if (options.publish) console.log("           publish retargeted migrated parity snapshot fixture")
@@ -563,25 +746,25 @@ const runFixture = async (
   const now = new Date().toISOString()
   const intake = await upsertIntakeSubmission(payload, fixture, parsed.data, now)
   const applyResult = await helpers.applySiteGenerationSpec(payload, parsed.data)
-  const successfulApplyResult = requireSuccessfulApplyResult(applyResult, fixture.key)
+  const successfulApplyResult = requireSuccessfulApplyResult(applyResult, fixture)
   const run = await upsertGenerationRun(payload, fixture, intake.doc.id, parsed.data, successfulApplyResult, specHash, now)
   await linkIntake(payload, intake.doc.id, run.doc.id, successfulApplyResult.tenantId)
 
-  if (options.approve) await markApproved(payload, run.doc.id, now)
+  if (options.approve) await markApproved(payload, fixture, run.doc.id, now)
   if (options.verifyDomain) {
-    await verifyDomain(payload, successfulApplyResult.tenantId, fixture.domain, now)
+    await verifyDomain(payload, fixture, successfulApplyResult.tenantId, now)
   }
   if (options.waivePayment) {
     await executeHelpers.recordGenerationRunPaymentState(payload, run.doc.id, {
       status: "waived",
-      actor: OPERATOR_ACTOR,
+      actor: operatorActor(fixture.profile),
       provider: "manual",
-      note: "Renderer staging bootstrap waiver.",
+      note: `Renderer ${fixture.profileLabel} bootstrap waiver.`,
       now,
     })
   }
   if (options.promotePages) {
-    await executeHelpers.promoteGenerationRunPages(payload, run.doc.id, { promotedBy: OPERATOR_ACTOR })
+    await executeHelpers.promoteGenerationRunPages(payload, run.doc.id, { promotedBy: operatorActor(fixture.profile) })
   }
   if (options.publish) {
     const result = await createStagingPublishedSnapshot(
@@ -603,11 +786,12 @@ const runFixture = async (
 const main = async () => {
   const options = parseArgs(process.argv.slice(2))
   console.log(options.execute ? "[mode] execute" : "[mode] dry-run")
+  console.log(`[profile] ${options.profile}`)
   if (!options.execute) {
     console.log("[mode] no CMS mutations will be performed; pass --execute to apply.")
   }
 
-  const fixtures = options.tenants.map((tenant) => STAGING_FIXTURES[tenant])
+  const fixtures = selectRendererSeedFixtures(options)
   if (!options.execute) {
     const helpers = await loadSiteGenerationHelpers()
     for (const fixture of fixtures) await runFixture({} as Payload, fixture, options, helpers)
@@ -629,11 +813,13 @@ const main = async () => {
   }
 }
 
-main()
-  .then(() => {
-    process.exit(0)
-  })
-  .catch((error) => {
-    console.error(error)
-    process.exit(1)
-  })
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main()
+    .then(() => {
+      process.exit(0)
+    })
+    .catch((error) => {
+      console.error(error)
+      process.exit(1)
+    })
+}

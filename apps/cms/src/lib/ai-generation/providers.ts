@@ -553,7 +553,7 @@ const extractOpenAIOutputText = (response: any): string => {
 }
 
 export const createMockSiteGenerationProvider = (
-  fixture: MockGenerationFixture = "amblast",
+  fixture: MockGenerationFixture = "generic",
 ): SiteGenerationProvider => ({
   name: "mock",
   model: `fixture:${fixture}`,

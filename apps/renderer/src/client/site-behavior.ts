@@ -1,3 +1,5 @@
+import "./analytics-runtime"
+
 const carouselSelector = "[data-siab-service-carousel='true']"
 const beforeAfterSelector = "[data-siab-before-after-pair='true']"
 
@@ -196,7 +198,13 @@ function initRendererBehavior() {
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initRendererBehavior, { once: true })
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+      initRendererBehavior()
+    },
+    { once: true },
+  )
 } else {
   initRendererBehavior()
 }

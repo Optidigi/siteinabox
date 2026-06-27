@@ -64,7 +64,7 @@ jobs:
           build-args: |
             RENDERER_SITE_URL=https://renderer.siteinabox.nl
             AMICARE_SITE_URL=https://ami-care.nl
-            AMBLAST_SITE_URL=https://amblast.optidigi.nl
+            AMBLAST_SITE_URL=https://amblast.nl
 
       - name: Smoke start pushed image
         env:
@@ -73,11 +73,10 @@ jobs:
           set -euo pipefail
           image_tag="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
           docker run --rm -d --name siteinabox-renderer-smoke \
-            -e NODE_ENV=production \
+            -e NODE_ENV=test \
             -e HOST=0.0.0.0 \
             -e PORT=4321 \
-            -e SIAB_CMS_URL=https://admin.siteinabox.nl \
-            -e SIAB_RENDERER_API_TOKEN=smoke \
+            -e SIAB_RENDERER_FIXTURE_MODE=1 \
             -e SITE_URL=http://127.0.0.1:4321 \
             -p 4321:4321 \
             "$image_tag"
@@ -101,7 +100,12 @@ jobs:
           test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/contact-pagina)" = "200"
           amblast_robots="$(curl -fsS -H 'Host: amblast.optidigi.nl' http://127.0.0.1:4321/robots.txt)"
           grep -q 'Crawl-delay: 10' <<<"$amblast_robots"
-          amicare_home="$(curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/)"
-          grep -q 'Voor jongeren en gezinnen' <<<"$amicare_home"
-          amicare_robots="$(curl -fsS -H 'Host: amicare.optidigi.nl' http://127.0.0.1:4321/robots.txt)"
-          grep -q 'Sitemap: https://ami-care.nl/sitemap-index.xml' <<<"$amicare_robots"
+          amicare_live_home="$(curl -fsS -H 'Host: ami-care.nl' http://127.0.0.1:4321/)"
+          grep -q 'id="siab-analytics-config"' <<<"$amicare_live_home"
+          grep -q 'Fixture Studio' <<<"$amicare_live_home"
+          amblast_live_home="$(curl -fsS -H 'Host: amblast.nl' http://127.0.0.1:4321/)"
+          grep -q 'id="siab-analytics-config"' <<<"$amblast_live_home"
+          grep -q 'Fixture Studio' <<<"$amblast_live_home"
+          amicare_missing="$(curl -sS -H 'Host: ami-care.nl' http://127.0.0.1:4321/missing-page)"
+          test "$(curl -sS -o /dev/null -w '%{http_code}' -H 'Host: ami-care.nl' http://127.0.0.1:4321/missing-page)" = "404"
+          ! grep -q 'id="siab-analytics-config"' <<<"$amicare_missing"

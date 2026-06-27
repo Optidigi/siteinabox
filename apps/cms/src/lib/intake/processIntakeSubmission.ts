@@ -151,7 +151,7 @@ export async function processIntakeSubmission(
     maxGenerationAttempts?: number
   } = {},
 ): Promise<IntakeProcessingResult> {
-  const mockFixture = options.mockFixture ?? "amblast"
+  const mockFixture = options.mockFixture ?? "generic"
   const provider = options.provider ?? resolveSiteGenerationProvider({
     ...options.providerConfig,
     mockFixture,
@@ -270,7 +270,7 @@ export async function processIntakeSubmission(
 
     run = await setRunStatus(payload, run, "validating")
     intake = await setIntakeStatus(payload, intake, "validating")
-    const validation = validateSiteGenerationSpecForCms(spec as any)
+    const validation = validateSiteGenerationSpecForCms(spec as any, { variantScope: "self-serve" })
     if (!validation.valid) {
       const failure = { message: "Generated SiteGenerationSpec failed validation", validation }
       run = await setRunStatus(payload, run, "failed", { validation, errors: failure })

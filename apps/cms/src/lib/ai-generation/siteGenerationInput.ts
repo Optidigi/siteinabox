@@ -46,6 +46,7 @@ export const buildSiteGenerationModelInput = (intake: NormalizedIntake): SiteGen
     "Use only supportedBlocks as page blockType values and blocks[].slug values.",
     "Set analytics.sectionVariant only to null or to an approvedSectionVariants entry for that exact blockType.",
     "Set settings.chrome.header.variant, settings.chrome.footer.variant, and settings.chrome.banner.variant only to null or to approvedChromeVariants values for the matching area.",
+    "Never use tenant-exclusive Amicare or Amblast legacy renderer variants, chrome variants, classes, content fixtures, domains, or section variants for self-serve generated sites.",
     "Do not emit raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, or file paths.",
     "Use page slug index for the root/home page and link it as /.",
     "Include at least one page and at least one block on every page.",

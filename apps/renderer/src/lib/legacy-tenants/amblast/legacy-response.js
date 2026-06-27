@@ -5,7 +5,6 @@ import { extname, join, normalize, resolve, sep } from "node:path"
 import { getCapturedAmblastHtml } from "./captured-html.js"
 
 const DEFAULT_HOSTS = ["amblast.optidigi.nl"]
-const AMBLAST_ORIGIN = "https://amblast.nl"
 const AMBLAST_ROBOTS_TXT = "User-agent: *\nCrawl-delay: 10\n"
 const FONT_AWESOME_WEBFONT_PREFIX = "/wp-content/plugins/elementor/assets/lib/font-awesome/webfonts/"
 const FONT_AWESOME_WEBFONTS = new Set(["fa-brands-400.woff2", "fa-regular-400.woff2", "fa-solid-900.woff2"])
@@ -184,7 +183,13 @@ async function createFontAwesomeWebfontResponse(pathname) {
   const filename = pathname.slice(FONT_AWESOME_WEBFONT_PREFIX.length)
   if (!FONT_AWESOME_WEBFONTS.has(filename)) return null
 
-  const upstreamResponse = await fetch(`${AMBLAST_ORIGIN}${pathname}`)
+  const localFile = await resolveAmblastLegacyFile(`/webfonts/${filename}`)
+  if (localFile) return createResponseForFile(localFile)
+
+  const origin = process.env.AMBLAST_LEGACY_ORIGIN?.replace(/\/+$/, "")
+  if (!origin) return null
+
+  const upstreamResponse = await fetch(`${origin}${pathname}`)
   if (!upstreamResponse.ok) return null
 
   return new Response(await upstreamResponse.arrayBuffer(), {

@@ -19,7 +19,9 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=proxy
-      - traefik.http.routers.siteinabox-renderer.rule=Host(`amicare.optidigi.nl`) || Host(`amblast.optidigi.nl`)
+      # Official apex hosts only for this cutover. Add www aliases after DNS/cert
+      # ownership is confirmed, otherwise Traefik may request unusable certs.
+      - traefik.http.routers.siteinabox-renderer.rule=Host(`ami-care.nl`) || Host(`amblast.nl`)
       - traefik.http.routers.siteinabox-renderer.entrypoints=websecure
       - traefik.http.routers.siteinabox-renderer.tls.certresolver=letsencrypt
       - traefik.http.routers.siteinabox-renderer.middlewares=hsts@docker

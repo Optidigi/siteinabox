@@ -677,6 +677,19 @@ describe("applySiteGenerationSpec", () => {
   it("validates, applies, and projects a parity block with runtime variant intact", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
+    spec.intake = {
+      ...spec.intake,
+      businessName: "Amblast",
+      tenantSlug: "amblast",
+      primaryDomain: "amblast.test",
+      siteUrl: "https://amblast.test",
+    }
+    spec.tenant = {
+      ...spec.tenant,
+      name: "Amblast",
+      slug: "amblast",
+      domain: "amblast.test",
+    }
     spec.pages[0]!.blocks = [
       {
         blockType: "mediaHero",
@@ -720,6 +733,31 @@ describe("applySiteGenerationSpec", () => {
         blockPresetId: "preset-media-hero",
       },
     })
+  })
+
+  it("rejects tenant-exclusive legacy variants for self-serve generated tenants", () => {
+    const spec = fixtureSpec()
+    spec.settings = {
+      ...spec.settings,
+      chrome: {
+        header: { variant: "amicareZen" },
+        footer: { variant: "amblastIndustrial" },
+        banner: { variant: "default", visible: false, message: "Preview ready" },
+      },
+    } as any
+    spec.pages[0]!.blocks[0] = {
+      ...spec.pages[0]!.blocks[0]!,
+      variant: "amicareZenHero",
+      analytics: { sectionVariant: "amicare-zen-hero" },
+    } as any
+
+    const report = validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" })
+
+    expect(report.valid).toBe(false)
+    expect(report.issues.map((entry) => entry.code)).toEqual(expect.arrayContaining([
+      "tenant_exclusive_block_variant",
+      "tenant_exclusive_chrome_variant",
+    ]))
   })
 
   it("rejects raw HTML, arbitrary class names, and generated source payload fields", async () => {

@@ -738,29 +738,6 @@ function AmicareBlock({
   }
 }
 
-function analyticsJson(page: Page, settings: SiteSettings): string | null {
-  const merged = settings.analytics || page.analytics
-    ? { ...(settings.analytics ?? {}), ...(page.analytics ?? {}) }
-    : null
-  return merged ? JSON.stringify(merged).replace(/</g, "\\u003c") : null
-}
-
-function AmicareAnalytics({ json, nonce }: { json: string | null; nonce?: string }) {
-  if (!json) return null
-  const script = `(() => {
-  window.SIABAnalytics = window.SIABAnalytics || {
-    grantConsent() { document.documentElement.dataset.siabAnalyticsConsent = "accepted"; },
-    revokeConsent() { document.documentElement.dataset.siabAnalyticsConsent = "declined"; }
-  };
-})();`
-  return (
-    <>
-      <script id="siab-analytics-config" type="application/json" nonce={nonce} dangerouslySetInnerHTML={{ __html: json }} />
-      <script nonce={nonce} dangerouslySetInnerHTML={{ __html: script }} />
-    </>
-  )
-}
-
 function AmicareCookieConsent({ enabled, nonce }: { enabled: boolean; nonce?: string }) {
   if (!enabled) return null
   const script = `(() => {
@@ -889,8 +866,6 @@ export function AmicarePageRenderer({
   nonce,
   includeThemeStyle = true,
 }: AmicarePageRendererProps) {
-  const analytics = analyticsJson(page, settings)
-
   return (
     <div
       className={cn("site-renderer site-renderer--legacy site-renderer--legacy-amicare", className)}
@@ -898,7 +873,6 @@ export function AmicarePageRenderer({
       data-legacy-tenant="amicare"
     >
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} />}
-      <AmicareAnalytics json={analytics} nonce={nonce} />
       <div
         className={cn("rt-canvas w-full [container-name:site-frame] [container-type:inline-size]", canvasClassName)}
         data-rt-mode={themeMode(theme)}
@@ -920,10 +894,9 @@ export function AmicarePageRenderer({
           </main>
           <AmicareFooter settings={settings} mediaResolver={mediaResolver} />
         </div>
-        <AmicareCookieConsent enabled={Boolean(analytics)} nonce={nonce} />
+        <AmicareCookieConsent enabled={Boolean(settings.analytics || page.analytics)} nonce={nonce} />
         <AmicareNavBehavior nonce={nonce} />
       </div>
     </div>
   )
 }
-

@@ -15,6 +15,7 @@ test("matches only configured Amblast legacy hosts", () => {
   delete process.env.AMBLAST_LEGACY_HOSTS
 
   assert.equal(isAmblastLegacyHost("amblast.optidigi.nl"), true)
+  assert.equal(isAmblastLegacyHost("amblast.nl"), false)
   assert.equal(isAmblastLegacyHost("example.test"), false)
 })
 
@@ -71,14 +72,18 @@ test("serves the live Amblast robots response", async () => {
   assert.equal(await response?.text(), "User-agent: *\nCrawl-delay: 10\n")
 })
 
-test("proxies Font Awesome webfonts through the legacy host so icons render", async () => {
+test("maps Elementor Font Awesome webfont URLs to bundled local files", async () => {
+  const previousDistDir = process.env.AMBLAST_LEGACY_DIST_DIR
+  const previousOrigin = process.env.AMBLAST_LEGACY_ORIGIN
+  const distDir = await mkdtemp(join(tmpdir(), "amblast-legacy-fonts-"))
+  process.env.AMBLAST_LEGACY_DIST_DIR = distDir
+  delete process.env.AMBLAST_LEGACY_ORIGIN
+  await mkdir(join(distDir, "webfonts"), { recursive: true })
+  await writeFile(join(distDir, "webfonts", "fa-regular-400.woff2"), Uint8Array.from([1, 2, 3]))
+
   const originalFetch = globalThis.fetch
-  globalThis.fetch = async (url) => {
-    assert.equal(
-      url,
-      "https://amblast.nl/wp-content/plugins/elementor/assets/lib/font-awesome/webfonts/fa-regular-400.woff2",
-    )
-    return new Response(Uint8Array.from([1, 2, 3]), { status: 200 })
+  globalThis.fetch = async () => {
+    throw new Error("Font Awesome webfont should be served locally during live cutover")
   }
 
   try {
@@ -92,6 +97,10 @@ test("proxies Font Awesome webfonts through the legacy host so icons render", as
     assert.deepEqual([...new Uint8Array(await response?.arrayBuffer())], [1, 2, 3])
   } finally {
     globalThis.fetch = originalFetch
+    if (previousDistDir == null) delete process.env.AMBLAST_LEGACY_DIST_DIR
+    else process.env.AMBLAST_LEGACY_DIST_DIR = previousDistDir
+    if (previousOrigin == null) delete process.env.AMBLAST_LEGACY_ORIGIN
+    else process.env.AMBLAST_LEGACY_ORIGIN = previousOrigin
   }
 })
 

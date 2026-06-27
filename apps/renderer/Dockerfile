@@ -27,7 +27,7 @@ RUN pnpm --dir sites/amblast --ignore-workspace install --frozen-lockfile --offl
 RUN pnpm --dir sites/ami-care --ignore-workspace install --frozen-lockfile --offline --store-dir=/pnpm/store
 
 ARG RENDERER_SITE_URL=https://renderer.siteinabox.nl
-ARG AMBLAST_SITE_URL=https://amblast.optidigi.nl
+ARG AMBLAST_SITE_URL=https://amblast.nl
 ARG AMICARE_SITE_URL=https://ami-care.nl
 ENV SITE_URL=${RENDERER_SITE_URL}
 ENV NODE_ENV=production

@@ -17,6 +17,7 @@ import {
   isSupportedBlockSectionVariant,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
+import { SITE_CHROME_CATALOG, SITE_GENERATION_BLOCK_CATALOG_BY_SLUG } from "@siteinabox/contracts/block-catalog"
 import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import type { MediaRef } from "@siteinabox/contracts/site"
 import type { Payload } from "payload"
@@ -64,6 +65,10 @@ const DOMAIN_REGEX =
   /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
+export type SiteGenerationValidationOptions = {
+  variantScope?: "tenant-aware" | "self-serve"
+}
+
 const sortValue = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(sortValue)
   if (!value || typeof value !== "object") return value
@@ -89,8 +94,50 @@ const issue = (
   ...(path ? { path } : {}),
 })
 
-export const validateSiteGenerationSpecForCms = (spec: SiteGenerationSpec): ValidationReport => {
+const variantAllowedForTenant = (
+  scope: { kind: "global" } | { kind: "tenant-exclusive"; tenantSlugs: string[] },
+  tenantSlug: string | null,
+  validationScope: SiteGenerationValidationOptions["variantScope"],
+): boolean => {
+  if (scope.kind === "global") return true
+  if (validationScope === "self-serve") return false
+  return tenantSlug ? scope.tenantSlugs.includes(tenantSlug) : false
+}
+
+const blockVariantScopeIssue = (
+  blockType: string,
+  field: "variant" | "sectionVariant",
+  value: string,
+  tenantSlug: string | null,
+  validationScope: SiteGenerationValidationOptions["variantScope"],
+): string | null => {
+  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as any)) return null
+  const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
+  const variant = catalog?.variants.find((entry) =>
+    field === "variant" ? entry.variant === value : (entry as { sectionVariant?: string }).sectionVariant === value,
+  )
+  if (!variant || variantAllowedForTenant(variant.scope, tenantSlug, validationScope)) return null
+  return `Generated block ${field} "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
+}
+
+const chromeVariantScopeIssue = (
+  area: "header" | "footer" | "banner",
+  value: unknown,
+  tenantSlug: string | null,
+  validationScope: SiteGenerationValidationOptions["variantScope"],
+): string | null => {
+  if (typeof value !== "string" || !value) return null
+  const variant = SITE_CHROME_CATALOG.find((entry) => entry.area === area && entry.variant === value)
+  if (!variant || variantAllowedForTenant(variant.scope, tenantSlug, validationScope)) return null
+  return `Generated ${area} chrome variant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
+}
+
+export const validateSiteGenerationSpecForCms = (
+  spec: SiteGenerationSpec,
+  options: SiteGenerationValidationOptions = {},
+): ValidationReport => {
   const issues: ValidationIssue[] = []
+  const validationScope = options.variantScope ?? "tenant-aware"
   const candidate = spec as unknown
 
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -113,6 +160,7 @@ export const validateSiteGenerationSpecForCms = (spec: SiteGenerationSpec): Vali
   const blocks = value.blocks as SiteGenerationSpec["blocks"] | undefined
   const pagesArray = Array.isArray(pages) ? pages : undefined
   const blocksArray = Array.isArray(blocks) ? blocks : undefined
+  const tenantSlug = typeof tenant?.slug === "string" && tenant.slug ? tenant.slug : null
 
   if (value.schemaVersion !== 1) {
     issues.push(issue("unsupported_schema_version", "Only SiteGenerationSpec schemaVersion 1 is supported.", ["schemaVersion"]))
@@ -197,6 +245,16 @@ export const validateSiteGenerationSpecForCms = (spec: SiteGenerationSpec): Vali
           ["pages", index, "blocks", blockIndex, "analytics", "sectionVariant"],
         ))
       }
+      if (typeof sectionVariant === "string" && sectionVariant) {
+        const message = blockVariantScopeIssue(blockType, "sectionVariant", sectionVariant, tenantSlug, validationScope)
+        if (message) {
+          issues.push(issue(
+            "tenant_exclusive_block_variant",
+            message,
+            ["pages", index, "blocks", blockIndex, "analytics", "sectionVariant"],
+          ))
+        }
+      }
       const variant = (block as Record<string, unknown>).variant
       if (typeof variant === "string" && variant && !isSupportedBlockVariant(blockType, variant)) {
         issues.push(issue(
@@ -205,10 +263,36 @@ export const validateSiteGenerationSpecForCms = (spec: SiteGenerationSpec): Vali
           ["pages", index, "blocks", blockIndex, "variant"],
         ))
       }
+      if (typeof variant === "string" && variant) {
+        const message = blockVariantScopeIssue(blockType, "variant", variant, tenantSlug, validationScope)
+        if (message) {
+          issues.push(issue(
+            "tenant_exclusive_block_variant",
+            message,
+            ["pages", index, "blocks", blockIndex, "variant"],
+          ))
+        }
+      }
     })
   })
   if (pagesArray && !pagesArray.some((page) => page?.slug === "index")) {
     issues.push(issue("missing_root_page", "Generated specs must include an index page for the root route.", ["pages"]))
+  }
+
+  const chrome = settings && typeof settings === "object" && !Array.isArray(settings)
+    ? (settings as Record<string, unknown>).chrome
+    : null
+  if (chrome && typeof chrome === "object" && !Array.isArray(chrome)) {
+    for (const area of ["header", "footer", "banner"] as const) {
+      const areaSettings = (chrome as Record<string, unknown>)[area]
+      const variant = areaSettings && typeof areaSettings === "object" && !Array.isArray(areaSettings)
+        ? (areaSettings as Record<string, unknown>).variant
+        : null
+      const message = chromeVariantScopeIssue(area, variant, tenantSlug, validationScope)
+      if (message) {
+        issues.push(issue("tenant_exclusive_chrome_variant", message, ["settings", "chrome", area, "variant"]))
+      }
+    }
   }
 
   blocksArray?.forEach((block, index) => {

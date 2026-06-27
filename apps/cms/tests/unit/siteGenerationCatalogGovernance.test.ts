@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest"
-import { SITE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
+import {
+  SITE_CHROME_CATALOG,
+  SITE_GENERATION_BLOCK_CATALOG,
+  SITE_SOURCE_BACKED_BLOCK_VARIANTS,
+} from "@siteinabox/contracts/block-catalog"
 import { GeneratedSiteSettingsSchema, SiteGenerationSpecSchema } from "@siteinabox/contracts/generation"
 import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { buildSiteGenerationModelInput } from "@/lib/ai-generation/siteGenerationInput"
 import { SITE_GENERATION_SYSTEM_PROMPT } from "@/lib/ai-generation/prompts/siteGenerationPrompt"
 import { siteGenerationJsonSchema } from "@/lib/ai-generation/providers"
+import { validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 
 const normalizedIntake = {
   businessName: "Catalog Governance",
@@ -31,6 +36,7 @@ describe("site generation catalog governance", () => {
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("source code")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("file paths")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("unsupported block slugs")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare or Amblast legacy tenant blocks")
   })
 
   it("passes only approved source-backed variants to the model input", () => {
@@ -48,6 +54,8 @@ describe("site generation catalog governance", () => {
     expect(input.requirements.join("\n")).toContain("settings.chrome")
     expect(input.requirements.join("\n")).toContain("raw HTML")
     expect(input.requirements.join("\n")).toContain("className/classes")
+    expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive Amicare or Amblast")
+    expect(input.approvedSectionVariants.some((variant) => /amicare|amblast/i.test(`${variant.variantId} ${variant.sectionVariant}`))).toBe(false)
     expect(input.approvedChromeVariants).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ area: "header", variant: "default" }),
@@ -64,6 +72,71 @@ describe("site generation catalog governance", () => {
     expect(input.approvedChromeVariants).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ variant: "amblastIndustrial" })]),
     )
+  })
+
+  it("keeps tenant-exclusive legacy variants out of self-serve generated site validation", () => {
+    const tenantExclusiveBlockVariants = SITE_GENERATION_BLOCK_CATALOG
+      .flatMap((entry) => entry.variants.map((variant) => ({ ...variant, blockType: entry.slug })))
+      .filter((variant) => variant.scope.kind === "tenant-exclusive")
+    const tenantExclusiveChromeVariants = SITE_CHROME_CATALOG
+      .filter((variant) => variant.scope.kind === "tenant-exclusive")
+
+    expect(tenantExclusiveBlockVariants.length).toBeGreaterThan(0)
+    expect(tenantExclusiveChromeVariants.length).toBeGreaterThan(0)
+
+    const spec = {
+      schemaVersion: 1,
+      intake: normalizedIntake,
+      tenant: { name: "Catalog Governance", slug: "catalog-governance", domain: "catalog-governance.test", status: "provisioning" },
+      theme: {
+        colors: { accent: "#2563eb", bg: "#ffffff", ink: "#111827", muted: "#6b7280", card: "#f8fafc" },
+        fonts: { heading: "Inter", text: "Inter" },
+        radius: "8px",
+        mode: "light",
+      },
+      settings: {
+        siteName: "Catalog Governance",
+        siteUrl: "https://catalog-governance.test",
+        description: "Generated draft.",
+        language: "en",
+        contactEmail: "hello@example.com",
+        navHeader: [{ label: "Home", href: "/" }],
+        navFooter: [{ label: "Contact", href: "mailto:hello@example.com" }],
+        chrome: {
+          header: { variant: "amicareZen" },
+          footer: { variant: "amblastIndustrial" },
+          banner: { variant: "default", visible: false, message: "Preview ready" },
+        },
+      },
+      pages: [{
+        slug: "index",
+        title: "Home",
+        status: "draft",
+        seo: { title: "Home", description: "Generated home." },
+        blocks: [{
+          blockType: "hero",
+          variant: "amicareZenHero",
+          analytics: { sectionVariant: "amicare-zen-hero" },
+          headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Home" }] },
+          subheadline: null,
+          pills: [],
+          cta: null,
+          image: null,
+        }],
+      }],
+      blocks: [{ slug: "hero", label: "Hero" }],
+      assets: [],
+      generatedAt: "2026-06-27T00:00:00.000Z",
+      generator: { name: "test", version: "1.0.0", model: "test" },
+    }
+
+    const report = validateSiteGenerationSpecForCms(spec as any, { variantScope: "self-serve" })
+
+    expect(report.valid).toBe(false)
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      "tenant_exclusive_block_variant",
+      "tenant_exclusive_chrome_variant",
+    ]))
   })
 
   it("constrains OpenAI block schemas to the full approved catalog and variants per block type", () => {

@@ -12,16 +12,18 @@
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
-    "test": "node --test src/lib/legacy-tenants/amblast/legacy-response.test.mjs src/lib/legacy-tenants/amicare/legacy-response.test.mjs"
+    "test": "node --test src/lib/analytics-config.test.mjs src/lib/legacy-tenants/amblast/legacy-response.test.mjs src/lib/legacy-tenants/amicare/legacy-response.test.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.0",
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",
     "astro": "^6.2.1",
+    "posthog-js": "^1.386.8",
     "preline": "^4.2.0",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "web-vitals": "^5.3.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
