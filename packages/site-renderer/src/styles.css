@@ -2257,6 +2257,34 @@ svg {
   line-height: 1.8;
 }
 
+.cms-block--source-amblast-shaped-overlay.cms-block--mediaHero-viewport {
+  background-color: #d2edfd;
+}
+
+.cms-block--source-amblast-shaped-overlay.cms-block--mediaHero-viewport .cms-block__mediaHero-bg {
+  object-position: left center;
+}
+
+.cms-block--source-amblast-shaped-overlay.cms-block--mediaHero-viewport .cms-block__mediaHero-scrim {
+  background: var(--media-hero-overlay);
+  opacity: var(--media-hero-overlay-opacity);
+}
+
+.cms-block--source-amblast-shaped-overlay.cms-block--mediaHero-viewport .cms-block__mediaHero-content {
+  color: #333333;
+}
+
+.cms-block--source-amblast-shaped-overlay.cms-block--mediaHero-viewport .cms-block__title {
+  color: #333333;
+  font-family: Barlow, Arial, sans-serif !important;
+  text-shadow: none;
+}
+
+.cms-block--source-amblast-shaped-overlay.cms-block--mediaHero-viewport .cms-block__subheadline {
+  color: #333333;
+  font-family: Barlow, Arial, sans-serif !important;
+}
+
 .cms-block--source-amblast-shaped-overlay .cms-block__primary,
 .cms-block--source-amblast-shaped-overlay .cms-block__secondary {
   display: inline-flex;
