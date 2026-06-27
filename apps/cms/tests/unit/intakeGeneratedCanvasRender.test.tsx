@@ -28,12 +28,14 @@ const createPayloadStub = () => {
     | "tenants"
     | "pages"
     | "site-settings"
+    | "media"
   const store: Record<CollectionSlug, any[]> = {
     "intake-submissions": [],
     "site-generation-runs": [],
     tenants: [],
     pages: [],
     "site-settings": [],
+    media: [],
   }
   const payload = {
     find: async (args: any) => {
