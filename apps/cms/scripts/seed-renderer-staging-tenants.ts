@@ -35,6 +35,7 @@ export type RendererSeedFixture = {
   domain: string
   siteUrl: string
   sourceMediaBaseUrl: string
+  importMediaBaseUrl?: string
   mediaBaseNote: string
   sourceSpec: SiteGenerationSpec
   publishedSnapshot: PublishedSiteSnapshot
@@ -112,7 +113,8 @@ export const RENDERER_SEED_FIXTURES: Record<RendererSeedProfile, Record<TenantKe
       slug: "amblast",
       domain: "amblast.nl",
       sourceMediaBaseUrl: "https://amblast.nl",
-      mediaBaseNote: "Uses the official Amblast renderer host for legacy upload paths so the old standalone host can be removed after cutover.",
+      importMediaBaseUrl: "https://amblast.siteinabox.nl",
+      mediaBaseNote: "Publishes Amblast media URLs on the official renderer host while importing media from the old static asset host before DNS/proxy cutover.",
       sourceSpec: amblastSiteGenerationSpec,
       publishedSnapshot: amblastPublishedSiteSnapshot,
     }),
@@ -316,7 +318,12 @@ const requireSuccessfulApplyResult = (
   return result as ApplySuccessResult
 }
 
-export const cloneForRendererSeedProfile = (fixture: RendererSeedFixture): SiteGenerationSpec => {
+const importMediaBaseUrl = (fixture: RendererSeedFixture) => fixture.importMediaBaseUrl ?? fixture.sourceMediaBaseUrl
+
+export const cloneForRendererSeedProfile = (
+  fixture: RendererSeedFixture,
+  options: { mediaBaseUrl?: string } = {},
+): SiteGenerationSpec => {
   const source = structuredClone(fixture.sourceSpec)
   const spec = {
     ...source,
@@ -348,7 +355,7 @@ export const cloneForRendererSeedProfile = (fixture: RendererSeedFixture): SiteG
       version: fixture.profile === "production" ? "live-cutover-v1" : "phase-4",
     },
   }
-  return absolutizeGeneratedMediaUrls(spec, fixture.sourceMediaBaseUrl) as SiteGenerationSpec
+  return absolutizeGeneratedMediaUrls(spec, options.mediaBaseUrl ?? fixture.sourceMediaBaseUrl) as SiteGenerationSpec
 }
 
 export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" | "tenants">): RendererSeedFixture[] =>
@@ -393,6 +400,7 @@ const upsertIntakeSubmission = async (
       domain: fixture.domain,
       slug: fixture.slug,
       mediaBaseUrl: fixture.sourceMediaBaseUrl,
+      importMediaBaseUrl: importMediaBaseUrl(fixture),
     },
     normalized: spec.intake,
     normalizedHash,
@@ -450,6 +458,7 @@ const upsertGenerationRun = async (
       slug: fixture.slug,
       siteUrl: fixture.siteUrl,
       mediaBaseUrl: fixture.sourceMediaBaseUrl,
+      importMediaBaseUrl: importMediaBaseUrl(fixture),
       mediaBaseNote: fixture.mediaBaseNote,
     },
     generationOutputHash: specHash,
@@ -729,6 +738,9 @@ const runFixture = async (
   console.log(`  domain: ${fixture.domain}`)
   console.log(`  siteUrl: ${spec.settings.siteUrl}`)
   console.log(`  mediaBaseUrl: ${fixture.sourceMediaBaseUrl}`)
+  if (importMediaBaseUrl(fixture) !== fixture.sourceMediaBaseUrl) {
+    console.log(`  importMediaBaseUrl: ${importMediaBaseUrl(fixture)}`)
+  }
   console.log(`  mediaNote: ${fixture.mediaBaseNote}`)
   console.log(`  pages: ${spec.pages.map((page) => page.slug).join(", ")}`)
   console.log(`  specHash: ${specHash}`)
@@ -745,7 +757,14 @@ const runFixture = async (
 
   const now = new Date().toISOString()
   const intake = await upsertIntakeSubmission(payload, fixture, parsed.data, now)
-  const applyResult = await helpers.applySiteGenerationSpec(payload, parsed.data)
+  const importSpec = importMediaBaseUrl(fixture) === fixture.sourceMediaBaseUrl
+    ? parsed.data
+    : cloneForRendererSeedProfile(fixture, { mediaBaseUrl: importMediaBaseUrl(fixture) })
+  const importParsed = SiteGenerationSpecSchema.safeParse(importSpec)
+  if (!importParsed.success) {
+    throw new Error(`${fixture.key} ${fixture.profile} import spec failed validation: ${formatContractValidationIssues(importParsed.error)}`)
+  }
+  const applyResult = await helpers.applySiteGenerationSpec(payload, importParsed.data)
   const successfulApplyResult = requireSuccessfulApplyResult(applyResult, fixture)
   const run = await upsertGenerationRun(payload, fixture, intake.doc.id, parsed.data, successfulApplyResult, specHash, now)
   await linkIntake(payload, intake.doc.id, run.doc.id, successfulApplyResult.tenantId)

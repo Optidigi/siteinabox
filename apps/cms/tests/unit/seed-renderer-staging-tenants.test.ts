@@ -45,6 +45,7 @@ describe("renderer seed profiles", () => {
       siteUrl: "https://amblast.optidigi.nl",
       sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
     })
+    expect(amblast?.importMediaBaseUrl).toBeUndefined()
   })
 
   it("retargets production specs to official CMS tenants and domains", () => {
@@ -68,6 +69,14 @@ describe("renderer seed profiles", () => {
     expect(amblast.tenant.slug).toBe("amblast")
     expect(amblast.tenant.domain).toBe("amblast.nl")
     expect(amblast.settings.siteUrl).toBe("https://amblast.nl")
+    expect(JSON.stringify(amblast.pages)).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+
+    const amblastImportSpec = cloneForRendererSeedProfile(RENDERER_SEED_FIXTURES.production.amblast, {
+      mediaBaseUrl: RENDERER_SEED_FIXTURES.production.amblast.importMediaBaseUrl!,
+    })
+    expect(amblastImportSpec.settings.siteUrl).toBe("https://amblast.nl")
+    expect(JSON.stringify(amblastImportSpec.pages)).toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+    expect(JSON.stringify(amblastImportSpec.pages)).not.toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
   })
 
   it("builds production retarget options with official snapshot domains and live media bases", () => {
