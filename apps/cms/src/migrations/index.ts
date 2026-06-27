@@ -34,6 +34,7 @@ import * as migration_20260625_230000_add_published_site_snapshots from './20260
 import * as migration_20260626_120000_add_preview_access_grants from './20260626_120000_add_preview_access_grants';
 import * as migration_20260627_120000_add_concrete_block_model_schema from './20260627_120000_add_concrete_block_model_schema';
 import * as migration_20260627_130000_add_marketing_catalog_cms_schema from './20260627_130000_add_marketing_catalog_cms_schema';
+import * as migration_20260627_140000_add_tenant_chrome_variant_enum_values from './20260627_140000_add_tenant_chrome_variant_enum_values';
 
 export const migrations = [
   {
@@ -215,5 +216,10 @@ export const migrations = [
     up: migration_20260627_130000_add_marketing_catalog_cms_schema.up,
     down: migration_20260627_130000_add_marketing_catalog_cms_schema.down,
     name: '20260627_130000_add_marketing_catalog_cms_schema'
+  },
+  {
+    up: migration_20260627_140000_add_tenant_chrome_variant_enum_values.up,
+    down: migration_20260627_140000_add_tenant_chrome_variant_enum_values.down,
+    name: '20260627_140000_add_tenant_chrome_variant_enum_values'
   },
 ];
