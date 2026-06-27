@@ -1101,8 +1101,8 @@ const amblastRendererPages: GeneratedPageSpec[] = [
         layout: "split",
         items: [
           { kind: "address", label: "Adres", value: blockText("Heinsbergerweg 172\n6045 CK Roermond"), icon: "map-pin" },
-          { kind: "email", label: "Email", value: inlineText("info@amblast.nl"), href: "mailto:info@amblast.nl", icon: "mail" },
-          { kind: "phone", label: "Telefoon", value: inlineText("+31 6 19 96 36 51"), href: "tel:+31619963651", icon: "phone" },
+          { kind: "email", label: "Email", value: blockText("info@amblast.nl"), href: "mailto:info@amblast.nl", icon: "mail" },
+          { kind: "phone", label: "Telefoon", value: blockText("+31 6 19 96 36 51"), href: "tel:+31619963651", icon: "phone" },
         ],
         legal: {
           kvkNumber: "72128690",
