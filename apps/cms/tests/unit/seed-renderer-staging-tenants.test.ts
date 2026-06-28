@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest"
 import { amblastPublishedSiteSnapshot, amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
+import { SiteGenerationSpecSchema } from "@siteinabox/contracts/generation"
 import { retargetPublishedSiteSnapshot } from "@/lib/publish/retargetSnapshot"
+import { validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 import {
   RENDERER_SEED_FIXTURES,
   buildRetargetOptionsForRendererSeedFixture,
   cloneForRendererSeedProfile,
   injectRendererSeedAnalytics,
+  parseRendererSeedSpecForCms,
   parseArgs,
   selectRendererSeedFixtures,
 } from "../../scripts/seed-renderer-staging-tenants"
@@ -77,6 +80,20 @@ describe("renderer seed profiles", () => {
     expect(amblastImportSpec.settings.siteUrl).toBe("https://amblast.nl")
     expect(JSON.stringify(amblastImportSpec.pages)).toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
     expect(JSON.stringify(amblastImportSpec.pages)).not.toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
+  })
+
+  it("validates production seed specs through the official tenant CMS path", () => {
+    for (const fixture of selectRendererSeedFixtures({ profile: "production", tenants: ["amicare", "amblast"] })) {
+      const spec = cloneForRendererSeedProfile(fixture)
+
+      expect(SiteGenerationSpecSchema.safeParse(spec).success, `${fixture.key} generic schema should stay strict`).toBe(false)
+      expect(() => parseRendererSeedSpecForCms(fixture, spec, { validateSiteGenerationSpecForCms })).not.toThrow()
+
+      const importSpec = cloneForRendererSeedProfile(fixture, {
+        mediaBaseUrl: fixture.importMediaBaseUrl ?? fixture.sourceMediaBaseUrl,
+      })
+      expect(() => parseRendererSeedSpecForCms(fixture, importSpec, { validateSiteGenerationSpecForCms }, "import spec")).not.toThrow()
+    }
   })
 
   it("builds production retarget options with official snapshot domains and live media bases", () => {

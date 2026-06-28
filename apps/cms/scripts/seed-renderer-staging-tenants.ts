@@ -9,7 +9,7 @@ import {
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
 import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/contracts/generation"
-import { SiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
+import { OfficialTenantSiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
 
 type TenantKey = "amicare" | "amblast"
 export type RendererSeedProfile = "staging" | "production"
@@ -127,6 +127,7 @@ const promptVersion = (profile: RendererSeedProfile) => `renderer-${profile}-boo
 type SiteGenerationHelpers = {
   applySiteGenerationSpec: ApplySiteGenerationSpecFn
   siteGenerationSpecHash: SiteGenerationSpecHashFn
+  validateSiteGenerationSpecForCms: typeof import("@/lib/site-generation/applySiteGenerationSpec")["validateSiteGenerationSpecForCms"]
 }
 
 type ExecuteHelpers = SiteGenerationHelpers & {
@@ -156,6 +157,7 @@ const loadSiteGenerationHelpers = async (): Promise<SiteGenerationHelpers> => {
   return {
     applySiteGenerationSpec: siteGeneration.applySiteGenerationSpec,
     siteGenerationSpecHash: siteGeneration.siteGenerationSpecHash,
+    validateSiteGenerationSpecForCms: siteGeneration.validateSiteGenerationSpecForCms,
   }
 }
 
@@ -360,6 +362,25 @@ export const cloneForRendererSeedProfile = (
 
 export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" | "tenants">): RendererSeedFixture[] =>
   options.tenants.map((tenant) => RENDERER_SEED_FIXTURES[options.profile][tenant])
+
+export const parseRendererSeedSpecForCms = (
+  fixture: RendererSeedFixture,
+  spec: SiteGenerationSpec,
+  helpers: Pick<SiteGenerationHelpers, "validateSiteGenerationSpecForCms">,
+  label = "spec",
+): SiteGenerationSpec => {
+  const validation = helpers.validateSiteGenerationSpecForCms(spec)
+  if (!validation.valid) {
+    throw new Error(`${fixture.key} ${fixture.profile} ${label} failed CMS validation: ${JSON.stringify(validation.issues, null, 2)}`)
+  }
+
+  const parsed = OfficialTenantSiteGenerationSpecSchema.safeParse(spec)
+  if (!parsed.success) {
+    throw new Error(`${fixture.key} ${fixture.profile} ${label} failed official tenant contract validation: ${formatContractValidationIssues(parsed.error)}`)
+  }
+
+  return parsed.data
+}
 
 const findOne = async <T>(
   payload: Payload,
@@ -725,11 +746,8 @@ const runFixture = async (
   helpers: SiteGenerationHelpers | ExecuteHelpers,
 ) => {
   const spec = cloneForRendererSeedProfile(fixture)
-  const parsed = SiteGenerationSpecSchema.safeParse(spec)
-  if (!parsed.success) {
-    throw new Error(`${fixture.key} ${fixture.profile} spec failed validation: ${formatContractValidationIssues(parsed.error)}`)
-  }
-  const specHash = helpers.siteGenerationSpecHash(parsed.data)
+  const parsedSpec = parseRendererSeedSpecForCms(fixture, spec, helpers)
+  const specHash = helpers.siteGenerationSpecHash(parsedSpec)
 
   console.log("")
   console.log(`[plan] ${fixture.label}`)
@@ -756,17 +774,14 @@ const runFixture = async (
   const executeHelpers = helpers as ExecuteHelpers
 
   const now = new Date().toISOString()
-  const intake = await upsertIntakeSubmission(payload, fixture, parsed.data, now)
+  const intake = await upsertIntakeSubmission(payload, fixture, parsedSpec, now)
   const importSpec = importMediaBaseUrl(fixture) === fixture.sourceMediaBaseUrl
-    ? parsed.data
+    ? parsedSpec
     : cloneForRendererSeedProfile(fixture, { mediaBaseUrl: importMediaBaseUrl(fixture) })
-  const importParsed = SiteGenerationSpecSchema.safeParse(importSpec)
-  if (!importParsed.success) {
-    throw new Error(`${fixture.key} ${fixture.profile} import spec failed validation: ${formatContractValidationIssues(importParsed.error)}`)
-  }
-  const applyResult = await helpers.applySiteGenerationSpec(payload, importParsed.data)
+  const importParsedSpec = parseRendererSeedSpecForCms(fixture, importSpec, helpers, "import spec")
+  const applyResult = await helpers.applySiteGenerationSpec(payload, importParsedSpec)
   const successfulApplyResult = requireSuccessfulApplyResult(applyResult, fixture)
-  const run = await upsertGenerationRun(payload, fixture, intake.doc.id, parsed.data, successfulApplyResult, specHash, now)
+  const run = await upsertGenerationRun(payload, fixture, intake.doc.id, parsedSpec, successfulApplyResult, specHash, now)
   await linkIntake(payload, intake.doc.id, run.doc.id, successfulApplyResult.tenantId)
 
   if (options.approve) await markApproved(payload, fixture, run.doc.id, now)
