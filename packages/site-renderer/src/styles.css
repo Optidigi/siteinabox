@@ -251,6 +251,7 @@ svg {
   font-style: italic;
 }
 
+@layer components {
 .site-frame-root {
   overflow: hidden;
 }
@@ -3670,4 +3671,5 @@ svg {
   .cms-block--source-preline-centered-newsletter {
     padding: 4rem 0;
   }
+}
 }
