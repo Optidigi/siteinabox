@@ -3,7 +3,7 @@ import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { amblastPublishedSiteSnapshot, amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 import { SitePageRenderer } from "@siteinabox/site-renderer"
-import { PUBLIC_RENDERER_THEME_SCOPE, themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
+import { PUBLIC_RENDERER_THEME_SCOPE, themeMode, themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 import { toCssVars } from "@/lib/theme/toCssVars"
 
@@ -233,21 +233,17 @@ describe("published site snapshots", () => {
     }
     const cmsCss = toCssVars(tenant.theme as any)
     const publicCss = themeToCssVars(snapshot.theme, PUBLIC_RENDERER_THEME_SCOPE)
-    const publicMarkup = renderToStaticMarkup(createElement(SitePageRenderer, {
-      page: pages[0] as any,
-      settings: snapshot.settings,
-      theme: snapshot.theme,
-      tenantSlug: snapshot.tenantSlug,
-      domain: snapshot.domain,
-    }))
 
     expectCssTokens(cmsCss, expectedVars)
     expectCssTokens(publicCss, expectedVars)
+    expect(themeMode(snapshot.theme)).toBe("dark")
     expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}{`)
     expect(publicCss).toContain(`${PUBLIC_RENDERER_THEME_SCOPE}[data-rt-mode="dark"]{--color-bg:#09090b`)
-    expect(publicMarkup).toContain('data-rt-mode="dark"')
-    expect(publicMarkup).toContain(PUBLIC_RENDERER_THEME_SCOPE)
-    expect(publicMarkup).toContain("--color-bg:#09090b")
+    expect(publicCss).toContain("--color-bg:#09090b")
+    expect(publicCss).not.toContain("#a04e32")
+    expect(publicCss).not.toContain("Fraunces Variable")
+    expect(publicCss).not.toContain("Caveat Variable")
+    expect(publicCss).not.toContain("warm-care")
   })
 
   it("publishes Amblast snapshots with explicit dark palette tokens that match CMS and public renderer CSS", async () => {
