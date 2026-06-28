@@ -57,6 +57,59 @@ const stableStringify = (value: unknown): string => {
 const snapshotHash = (snapshot: PublishedSiteSnapshot): string =>
   crypto.createHash("sha256").update(stableStringify(snapshot)).digest("hex")
 
+const AMICARE_RENDERER_COLORS = {
+  accent: "#a04e32",
+  bg: "#fbf7f0",
+  ink: "#1f1a14",
+  muted: "#5a4f44",
+  card: "#ffffff",
+  secondary: "#efe9dd",
+  rule: "rgba(31, 26, 20, 0.12)",
+} as const
+
+const isAmicareTenant = (tenant: Pick<Tenant, "slug" | "domain">) => {
+  const slug = (tenant.slug ?? "").trim().toLowerCase().replace(/_/g, "-")
+  const host = normalizeRequestHost(tenant.domain)
+  return (
+    ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"].includes(slug) ||
+    ["ami-care.nl", "amicare.nl", "amicare.optidigi.nl"].includes(host)
+  )
+}
+
+const snapshotThemeForTenant = (
+  tenant: Pick<Tenant, "slug" | "domain" | "theme">,
+  settings: SiteSettings,
+): ThemeTokenSpec | null => {
+  const theme = normalizeThemeForSave((tenant.theme as any) ?? null)
+  const rendererTheme = cmsThemeToRendererTheme(theme) as ThemeTokenSpec | null
+
+  if (!isAmicareTenant(tenant)) return rendererTheme
+
+  const primaryColor = typeof settings.branding?.primaryColor === "string" && settings.branding.primaryColor.trim()
+    ? settings.branding.primaryColor.trim()
+    : null
+  return {
+    ...(rendererTheme ?? {}),
+    colors: {
+      ...AMICARE_RENDERER_COLORS,
+      ...(rendererTheme?.colors ?? {}),
+      ...(primaryColor && !rendererTheme?.colors?.accent ? { accent: primaryColor } : {}),
+    },
+    fonts: {
+      text: "Inter Variable, system-ui, sans-serif",
+      title: "Fraunces Variable, Georgia, serif",
+      heading: "Fraunces Variable, Georgia, serif",
+      script: "Caveat Variable, cursive",
+      ...(rendererTheme?.fonts ?? {}),
+    },
+    radius: rendererTheme?.radius ?? "0.5rem",
+    density: rendererTheme?.density ?? "comfortable",
+    borderStyle: rendererTheme?.borderStyle ?? "solid",
+    stylePreset: rendererTheme?.stylePreset ?? "warm-care",
+    mode: rendererTheme?.mode ?? "light",
+  }
+}
+
 const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | "siteManifest">) => {
   const manifest = tenant.siteManifest as Record<string, any> | null | undefined
   return {
@@ -235,8 +288,7 @@ export async function buildPublishedSiteSnapshot(
     ...projectedSettings,
     language: projectedSettings.language ?? settingsDoc?.language ?? "en",
   }
-  const theme = normalizeThemeForSave((tenant.theme as any) ?? null)
-  const rendererTheme = cmsThemeToRendererTheme(theme) as ThemeTokenSpec | null
+  const rendererTheme = snapshotThemeForTenant(tenant, settings)
   const now = new Date().toISOString()
 
   const snapshot = {

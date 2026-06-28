@@ -159,6 +159,42 @@ describe("published site snapshots", () => {
     expect(first.pages[0]?.status).toBe("published")
   })
 
+  it("publishes Amicare snapshots with exact legacy color tokens even when tenant palette is missing", async () => {
+    const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
+    const { payload, tenant, generationRuns, siteSettings } = createPayloadStub()
+    tenant.slug = "ami-care"
+    tenant.domain = "ami-care.nl"
+    tenant.theme = {
+      fonts: {
+        text: "Inter Variable, system-ui, sans-serif",
+        title: "Fraunces Variable, Georgia, serif",
+        heading: "Fraunces Variable, Georgia, serif",
+      },
+      radius: "1.5rem",
+      density: "comfortable",
+      borderStyle: "solid",
+      stylePreset: "warm-care",
+      mode: "light",
+    } as any
+    ;(siteSettings as any).branding = { primaryColor: "#a04e32" }
+
+    const snapshot = await buildPublishedSiteSnapshot(payload, 1, generationRuns[0]!)
+
+    expect(snapshot.theme?.colors).toMatchObject({
+      accent: "#a04e32",
+      bg: "#fbf7f0",
+      ink: "#1f1a14",
+      muted: "#5a4f44",
+      card: "#ffffff",
+      secondary: "#efe9dd",
+      rule: "rgba(31, 26, 20, 0.12)",
+    })
+    expect(snapshot.theme?.fonts).toMatchObject({
+      script: "Caveat Variable, cursive",
+    })
+    expect(snapshot.theme?.radius).toBe("1.5rem")
+  })
+
   it("publishes editable chrome variant settings and renderer analytics metadata", async () => {
     const { buildPublishedSiteSnapshot } = await import("@/lib/publish/siteSnapshots")
     const { payload, tenant, generationRuns, siteSettings } = createPayloadStub()
