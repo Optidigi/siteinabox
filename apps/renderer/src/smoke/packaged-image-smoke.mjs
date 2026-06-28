@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process"
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
+import { chmod, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { promisify } from "node:util"
@@ -25,6 +25,7 @@ async function docker(args, options = {}) {
 }
 
 try {
+  await chmod(dataDir, 0o755)
   await mkdir(join(dataDir, "tenants", "tenant-ami-care", "media"), { recursive: true })
   await writeFile(join(dataDir, "tenants", "tenant-ami-care", "media", "bedroom.jpg"), "stub media")
 
