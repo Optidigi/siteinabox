@@ -112,7 +112,8 @@ describe("renderer seed profiles", () => {
     expect(amicareSnapshot.tenantSlug).toBe("ami-care")
     expect(amicareSnapshot.domain).toBe("ami-care.nl")
     expect(amicareSnapshot.siteUrl).toBe("https://ami-care.nl")
-    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/bedroom.jpg")
+    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/toys.jpg")
+    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/api/tenant-media/7/bedroom.jpg")
 
     expect(amblastSnapshot.tenantSlug).toBe("amblast")
     expect(amblastSnapshot.domain).toBe("amblast.nl")

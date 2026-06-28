@@ -307,7 +307,8 @@ describe("published site snapshots", () => {
       publishedAt: "2026-06-26T12:00:00.000Z",
     })
 
-    expect(JSON.stringify(snapshot.pages)).toContain("https://ami-care.nl/media/bedroom.jpg")
+    expect(JSON.stringify(snapshot.pages)).toContain("https://ami-care.nl/media/toys.jpg")
+    expect(JSON.stringify(snapshot.pages)).toContain("https://ami-care.nl/api/tenant-media/7/bedroom.jpg")
     expect(JSON.stringify(snapshot.pages)).not.toContain("https://ami-care.nl/assets/bedroom.jpg")
   })
 
