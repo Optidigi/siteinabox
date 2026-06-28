@@ -1,7 +1,6 @@
 "use client"
 import * as React from "react"
 import { useId } from "react"
-import { useFormContext } from "react-hook-form"
 import { createPortal } from "react-dom"
 import {
   DndContext,
@@ -60,9 +59,6 @@ import type { MobileSeoSettingsSlotContext } from "@/components/editor/canvas/mo
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 import { useStatusFeedback } from "@/components/status-feedback"
-import { SitePageRenderer, resolveLegacyTenant } from "@siteinabox/site-renderer"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
-import type { SiteSettings } from "@siteinabox/contracts"
 
 export interface CanvasModeProps {
   manifest: RtManifest
@@ -76,9 +72,6 @@ export interface CanvasModeProps {
   deleteBlock: (i: number) => void
   duplicateBlock: (i: number) => void
   pageTitle: string
-  tenantSlug?: string | null
-  domain?: string | null
-  rendererSettings?: SiteSettings | null
   onDeletePage: () => void
   headerChrome?: React.ReactNode
   footerChrome?: React.ReactNode
@@ -583,9 +576,6 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
   deleteBlock,
   duplicateBlock,
   pageTitle,
-  tenantSlug,
-  domain,
-  rendererSettings,
   onDeletePage,
   headerChrome,
   footerChrome,
@@ -608,9 +598,6 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
           dangerZone={dangerZone}
           seoCard={seoCard}
           theme={theme}
-          tenantSlug={tenantSlug}
-          domain={domain}
-          rendererSettings={rendererSettings}
           reorderBlocks={reorderBlocks}
           deleteBlock={deleteBlock}
           duplicateBlock={duplicateBlock}
@@ -637,9 +624,6 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
       deleteBlock={deleteBlock}
       duplicateBlock={duplicateBlock}
       pageTitle={pageTitle}
-      tenantSlug={tenantSlug}
-      domain={domain}
-      rendererSettings={rendererSettings}
       onDeletePage={onDeletePage}
       headerChrome={headerChrome}
       footerChrome={footerChrome}
@@ -654,10 +638,6 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   view,
   theme,
   readOnly = false,
-  pageTitle,
-  tenantSlug,
-  domain,
-  rendererSettings,
   headerChrome,
   footerChrome,
   onOpenBlockInspector,
@@ -674,7 +654,6 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
     duplicateBlock,
     reorderBlocks,
   } = useCanvasBlocks(manifest)
-  const form = useFormContext()
   const { select, selected } = useCanvasSelection()
 
   React.useEffect(() => {
@@ -695,7 +674,6 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   }
 
   const effectiveReadOnly = readOnly || isReadOnlyView(view)
-  const legacyTenant = resolveLegacyTenant({ tenantSlug, domain, settings: rendererSettings ?? undefined })
 
   const onCanvasContextMenu = (event: React.MouseEvent) => {
     if (effectiveReadOnly) {
@@ -799,78 +777,51 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
               }
             }}
           >
-            {legacyTenant && rendererSettings ? (
-              <ExactLegacyCanvas
-                blocks={blocks}
-                page={{
-                  id: String(form.watch("id") ?? ""),
-                  title: form.watch("title") ?? pageTitle,
-                  slug: form.watch("slug") ?? "index",
-                  status: form.watch("status") ?? "draft",
-                  seo: form.watch("seo") ?? {},
-                  blocks,
-                  updatedAt: new Date().toISOString(),
-                }}
-                settings={rendererSettings}
-                theme={theme}
-                tenantSlug={tenantSlug}
-                domain={domain}
-                activeIndex={activeIndex}
-                onSelectBlock={(index) => {
-                  setActiveIndex(index)
-                  select({ blockIndex: index, field: "" })
-                }}
-                onOpenBlockInspector={onOpenBlockInspector}
+            {headerChrome}
+            {!effectiveReadOnly && (
+              <CanvasGapOverlay
+                onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
               />
-            ) : (
-              <>
-                {headerChrome}
-                {!effectiveReadOnly && (
-                  <CanvasGapOverlay
-                    onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
-                  />
-                )}
-                {blocks.length === 0 && (
-                  <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-                    <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
-                  </div>
-                )}
-                <DndContext
-                  id={dndId}
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={onDragEnd}
-                >
-                  <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                    {blocks.map((block, i) => (
-                      <React.Fragment key={i}>
-                        <SortableBlockItem
-                          id={String(i)}
-                          block={block}
-                          index={i}
-                          isActive={activeIndex === i}
-                          manifest={manifest}
-                          onActivate={() => {
-                            setActiveIndex(i)
-                            select(null)
-                          }}
-                          onUpdate={updateBlock(i)}
-                          onDelete={() => requestDeleteBlock(i)}
-                          onDuplicate={() => duplicateBlockWithRemap(i)}
-                          readOnly={effectiveReadOnly}
-                        />
-                        {!effectiveReadOnly && (
-                          <CanvasGapOverlay
-                            onInsert={(slug, seed) => insertBlockAtWithRemap(i + 1, slug, seed)}
-                          />
-                        )}
-                      </React.Fragment>
-                    ))}
-                  </SortableContext>
-                </DndContext>
-                {footerChrome}
-              </>
             )}
+            {blocks.length === 0 && (
+              <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
+              </div>
+            )}
+            <DndContext
+              id={dndId}
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={onDragEnd}
+            >
+              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                {blocks.map((block, i) => (
+                  <React.Fragment key={i}>
+                    <SortableBlockItem
+                      id={String(i)}
+                      block={block}
+                      index={i}
+                      isActive={activeIndex === i}
+                      manifest={manifest}
+                      onActivate={() => {
+                        setActiveIndex(i)
+                        select(null)
+                      }}
+                      onUpdate={updateBlock(i)}
+                      onDelete={() => requestDeleteBlock(i)}
+                      onDuplicate={() => duplicateBlockWithRemap(i)}
+                      readOnly={effectiveReadOnly}
+                    />
+                    {!effectiveReadOnly && (
+                      <CanvasGapOverlay
+                        onInsert={(slug, seed) => insertBlockAtWithRemap(i + 1, slug, seed)}
+                      />
+                    )}
+                  </React.Fragment>
+                ))}
+              </SortableContext>
+            </DndContext>
+            {footerChrome}
           </div>
         </div>
       </div>
@@ -902,65 +853,6 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
             }}
           />
         </>
-      )}
-    </div>
-  )
-}
-
-const ExactLegacyCanvas: React.FC<{
-  blocks: any[]
-  page: any
-  settings: SiteSettings
-  theme?: ThemeTokens | null
-  tenantSlug?: string | null
-  domain?: string | null
-  activeIndex: number | null
-  onSelectBlock: (index: number) => void
-  onOpenBlockInspector?: (index: number) => void
-}> = ({
-  blocks,
-  page,
-  settings,
-  theme,
-  tenantSlug,
-  domain,
-  activeIndex,
-  onSelectBlock,
-  onOpenBlockInspector,
-}) => {
-  const rendererTheme = React.useMemo(() => cmsThemeToRendererTheme(theme), [theme])
-  return (
-    <div
-      className="[&_.site-renderer]:min-h-0 [&_a[href]]:pointer-events-none"
-      onClickCapture={(event) => {
-        const target = event.target as HTMLElement | null
-        const blockNode = target?.closest<HTMLElement>("[data-block-index]")
-        const index = Number(blockNode?.dataset.blockIndex)
-        if (!Number.isInteger(index)) return
-        onSelectBlock(index)
-      }}
-      onDoubleClickCapture={(event) => {
-        const target = event.target as HTMLElement | null
-        const blockNode = target?.closest<HTMLElement>("[data-block-index]")
-        const index = Number(blockNode?.dataset.blockIndex)
-        if (!Number.isInteger(index)) return
-        onOpenBlockInspector?.(index)
-      }}
-    >
-      <SitePageRenderer
-        page={{ ...page, blocks }}
-        settings={settings}
-        theme={rendererTheme}
-        tenantSlug={tenantSlug}
-        domain={domain}
-        includeThemeStyle={false}
-        formAction="#"
-        canvasClassName="min-h-full"
-      />
-      {activeIndex !== null && (
-        <div className="pointer-events-none sticky bottom-4 z-30 mx-auto mt-4 w-fit rounded-full border border-border bg-popover px-3 py-1 text-xs text-popover-foreground shadow-sm">
-          Section {activeIndex + 1} selected
-        </div>
       )}
     </div>
   )

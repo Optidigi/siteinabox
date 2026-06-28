@@ -14,7 +14,6 @@
 //   const nonce = (await headers()).get("x-csp-nonce") ?? undefined
 //   <Script id="..." nonce={nonce}>...</Script>
 import "@/styles/globals.css"
-import "@siteinabox/site-renderer/styles.css"
 import type { Metadata } from "next"
 import { Inter, JetBrains_Mono } from "next/font/google"
 import { cookies, headers } from "next/headers"

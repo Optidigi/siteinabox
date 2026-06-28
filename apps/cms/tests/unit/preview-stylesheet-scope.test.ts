@@ -38,15 +38,13 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(read(previewLayout as string)).toContain(previewImport)
   })
 
-  it("keeps shared renderer CSS safe for the CMS frontend shell", () => {
+  it("keeps shared renderer CSS out of the CMS frontend shell", () => {
     const frontendLayout = read("apps/cms/src/app/(frontend)/layout.tsx")
     const rendererCss = read("packages/site-renderer/src/styles.css")
 
-    expect(frontendLayout).toContain('import "@siteinabox/site-renderer/styles.css"')
-    expect(rendererCss).not.toMatch(/^:root\s*\{/m)
-    expect(rendererCss).not.toMatch(/^body\s*\{/m)
-    expect(rendererCss).not.toMatch(/^\*\s*\{/m)
-    expect(rendererCss).toContain(".site-renderer {")
-    expect(rendererCss).toContain(".site-renderer * {")
+    expect(frontendLayout).not.toContain('import "@siteinabox/site-renderer/styles.css"')
+    expect(rendererCss).toMatch(/^:root\s*\{/m)
+    expect(rendererCss).toMatch(/^body\s*\{/m)
+    expect(rendererCss).toMatch(/^\*\s*\{/m)
   })
 })

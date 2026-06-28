@@ -59,13 +59,13 @@ describe("sidebar inspector composition", () => {
     expect(pageForm).toContain("renderPageSettings={renderSidebarPageSettings}")
   })
 
-  it("composes mobile page settings with Header/Footer navigation between slug and status", () => {
+  it("composes mobile page settings with Header/Footer navigation after slug without status controls", () => {
     const pageForm = read("src/components/forms/PageForm.tsx")
+    const pageSettings = read("src/components/editor/canvas/mobile/mobile-page-settings.tsx")
 
     const titleIndex = pageForm.indexOf("{ctx.titleField}")
     const slugIndex = pageForm.indexOf("{ctx.slugField}")
     const navIndex = pageForm.indexOf("{mobileNavigationSection}")
-    const statusIndex = pageForm.indexOf("{ctx.statusField}")
 
     expect(pageForm).toContain("const mobileNavigationSection = canManageNav")
     expect(pageForm).toContain('id="mobile-nav-header-toggle"')
@@ -73,7 +73,9 @@ describe("sidebar inspector composition", () => {
     expect(titleIndex).toBeGreaterThan(-1)
     expect(slugIndex).toBeGreaterThan(titleIndex)
     expect(navIndex).toBeGreaterThan(slugIndex)
-    expect(statusIndex).toBeGreaterThan(navIndex)
+    expect(pageForm).not.toContain("{ctx.statusField}")
+    expect(pageSettings).not.toContain("statusField")
+    expect(pageSettings).not.toContain('name="status"')
   })
 
   it("keeps the registry block list exposed through a host-composable slot", () => {

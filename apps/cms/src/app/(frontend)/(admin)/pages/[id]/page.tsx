@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
-import { getPageById, listPages } from "@/lib/queries/pages"
+import { getPageById } from "@/lib/queries/pages"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { pageNavMembership } from "@/lib/nav/membership"
 import { PageForm } from "@/components/forms/PageForm"
@@ -9,8 +9,7 @@ import { captureCmsUsageEvent } from "@/lib/analytics/cms"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { loadTenantCss } from "@/lib/editor/loadTenantCss"
 import { sameRelationshipId } from "@/lib/relationshipId"
-import { settingsToJson } from "@/lib/projection/settingsToJson"
-import { resolveSettingsContract } from "@/lib/settingsContract"
+import { isOfficialTenant } from "@/lib/officialTenants"
 
 export default async function EditTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { ctx, user } = await requireAuth()
@@ -18,12 +17,11 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   const readOnly = user.role === "viewer"
   const { id } = await params
   const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${ctx.tenant.domain}`
-  const [page, manifest, tenantCss, settings, pages] = await Promise.all([
+  const [page, manifest, tenantCss, settings] = await Promise.all([
     getPageById(Number(id)).catch(() => null),
     loadTenantManifest(ctx.tenant.id),
     loadTenantCss(ctx.tenant.id),
     getOrCreateSiteSettings(ctx.tenant.id),
-    listPages(ctx.tenant.id),
   ])
   if (!page) notFound()
   if (!sameRelationshipId(page.tenant, ctx.tenant.id)) notFound()
@@ -31,13 +29,6 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   // class (owner/super-admin); editors edit page content but not nav.
   const canManageNav = user.role === "owner" || user.role === "super-admin"
   const { inHeader, inFooter } = pageNavMembership(settings as any, Number(page.id))
-  const navPages = pages.map((entry: any) => ({ id: entry.id, slug: entry.slug, title: entry.title }))
-  const rendererSettings = settingsToJson(
-    settings,
-    navPages,
-    { tenantId: ctx.tenant.id, tenantSlug: ctx.tenant.slug, siteDomain: ctx.tenant.domain },
-    { settingsContract: resolveSettingsContract((ctx.tenant.siteManifest as any) ?? null) },
-  )
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open" })
   return (
     <div className="flex flex-col gap-4">
@@ -45,7 +36,6 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
       <PageForm
         initial={page as any}
         tenantId={ctx.tenant.id}
-        tenantSlug={ctx.tenant.slug}
         baseHref="/pages"
         tenantOrigin={tenantOrigin}
         manifest={manifest}
@@ -53,9 +43,9 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
         userEditorMode={user.editorMode ?? null}
         theme={ctx.tenant.theme as any}
         siteSettings={settings}
-        rendererSettings={rendererSettings as any}
         canManageNav={canManageNav}
         canEditSettings={canManageNav}
+        autoPublishLive={isOfficialTenant(ctx.tenant)}
         inHeaderNav={inHeader}
         inFooterNav={inFooter}
         readOnly={readOnly}

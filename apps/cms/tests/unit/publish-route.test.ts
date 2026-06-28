@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   payload: {
     auth: vi.fn(),
+    findByID: vi.fn(),
   },
   publishSiteSnapshot: vi.fn(),
   activatePublishedSnapshot: vi.fn(),
@@ -34,6 +35,7 @@ const req = (body: unknown) =>
 describe("publish route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.payload.findByID.mockResolvedValue({ id: 7, slug: "ami-care", domain: "ami-care.nl" })
     mocks.publishSiteSnapshot.mockResolvedValue({
       activated: false,
       snapshot: { id: 10, status: "drafted", version: 1, domain: "example.test" },
@@ -68,6 +70,82 @@ describe("publish route", () => {
     const res = await POST(req({ tenantId: 1 }))
 
     expect(res.status).toBe(403)
+    expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
+  })
+
+  it("allows tenant editors to publish current CMS pages for their own tenant", async () => {
+    mocks.payload.auth.mockResolvedValue({
+      user: { id: 2, role: "editor", tenants: [{ tenant: 7 }] },
+    })
+    mocks.publishSiteSnapshot.mockResolvedValue({
+      activated: true,
+      snapshot: { id: 12, status: "active", version: 3, domain: "example.test" },
+    })
+
+    const res = await POST(req({
+      tenantId: 7,
+      includeAllPublishedPages: true,
+      activate: true,
+      manualActivation: true,
+      reason: "auto-publish current CMS state",
+    }))
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, activated: true, snapshotId: 12, status: "active" })
+    expect(mocks.publishSiteSnapshot).toHaveBeenCalledWith(mocks.payload, expect.objectContaining({
+      tenantId: 7,
+      generationRunId: null,
+      includeAllPublishedPages: true,
+      activate: true,
+      manualActivation: true,
+      publishedBy: 2,
+    }))
+    expect(mocks.payload.findByID).toHaveBeenCalledWith({
+      collection: "tenants",
+      id: 7,
+      depth: 0,
+      overrideAccess: true,
+    })
+  })
+
+  it("rejects tenant users publishing non-official tenants directly", async () => {
+    mocks.payload.auth.mockResolvedValue({
+      user: { id: 2, role: "editor", tenants: [{ tenant: 7 }] },
+    })
+    mocks.payload.findByID.mockResolvedValue({ id: 7, slug: "customer-preview", domain: "customer.example" })
+
+    const res = await POST(req({
+      tenantId: 7,
+      includeAllPublishedPages: true,
+      activate: true,
+      manualActivation: true,
+    }))
+
+    expect(res.status).toBe(403)
+    expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
+  })
+
+  it("rejects tenant users publishing another tenant or non-current-state snapshots", async () => {
+    mocks.payload.auth.mockResolvedValue({
+      user: { id: 2, role: "editor", tenants: [{ tenant: 7 }] },
+    })
+
+    expect((await POST(req({
+      tenantId: 8,
+      includeAllPublishedPages: true,
+      activate: true,
+    }))).status).toBe(403)
+    expect((await POST(req({
+      tenantId: 7,
+      generationRunId: 50,
+      activate: true,
+    }))).status).toBe(403)
+    expect((await POST(req({
+      tenantId: 7,
+      generationRunId: 50,
+      includeAllPublishedPages: true,
+      activate: true,
+    }))).status).toBe(403)
     expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
   })
 

@@ -14,7 +14,7 @@ import { Textarea } from "@siteinabox/ui/components/textarea"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { RtManifestProvider, useRtManifest } from "@/components/editor/RtManifestContext"
 import { SaveStatusBar, type SaveStatus } from "@/components/save-ui/save-status-bar"
-import { PublishControls } from "@/components/editor/publish-controls"
+import { SaveButton } from "@/components/save-ui/save-button"
 import { PageMetaInline } from "@/components/editor/page-meta-inline"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/save-ui/unsaved-changes-dialog"
@@ -25,7 +25,6 @@ import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, SlidersHorizontal } from "lucide-react"
 import type { Page } from "@/payload-types"
-import type { SiteSettings } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS, STYLE_PRESETS } from "@/lib/theme/presets"
@@ -779,7 +778,7 @@ function SiteChromeQuickMenu({
   )
 }
 
-export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, rendererSettings, canManageNav, canEditSettings, canPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; rendererSettings?: SiteSettings | null; canManageNav?: boolean; canEditSettings?: boolean; canPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, canManageNav, canEditSettings, autoPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; canManageNav?: boolean; canEditSettings?: boolean; autoPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -794,7 +793,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
     { name: "ogImage", type: "upload", relationTo: "media", label: t("openGraphImage") }
   ]
   const [pending, setPending] = useState(false)
-  const [publishLivePending, setPublishLivePending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [showSaved, setShowSaved] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -802,7 +800,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
   const [draftChecked, setDraftChecked] = useState(false)
   const draftCandidateRef = useRef<PageEditorDraft | null>(null)
   const draftWriteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const publishLiveAfterSaveRef = useRef(false)
 
   // OBS-21 / FE-85 — page-flag nav membership. The two toggles are a view over
   // the tenant's SiteSettings nav lists, but changes are local until the page
@@ -988,9 +985,9 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: initial
-      ? { title: initial.title, slug: initial.slug ?? "", status: (initial.status as "draft" | "published") ?? "draft",
+      ? { title: initial.title, slug: initial.slug ?? "", status: "published",
           blocks: (initial.blocks as any) ?? [], seo: (initial.seo as any) ?? {} }
-      : { title: "", slug: "", status: "draft", blocks: [], seo: {} }
+      : { title: "", slug: "", status: "published", blocks: [], seo: {} }
   })
 
   const pageDraftKey = useMemo(
@@ -1167,11 +1164,9 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
 
   const onSubmit = async (values: Values) => {
     if (readOnly) return
-    const publishLiveAfterSave = publishLiveAfterSaveRef.current
-    publishLiveAfterSaveRef.current = false
+    const savedValues: Values = { ...values, status: "published" }
     const saveStartedAt = performance.now()
     setPending(true)
-    if (publishLiveAfterSave) setPublishLivePending(true)
     setSubmitError(null)
     setShowSaved(false)
     // Persist tenant theme alongside the page save when the user has
@@ -1234,14 +1229,17 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
     // Normalize upload relationships to bare ids so Payload validation
     // never receives populated Media objects from depth-loaded edit pages.
     const body = JSON.stringify({
-      ...values,
+      ...savedValues,
       tenant: tenantId,
-      blocks: normalizePageBlockUploadIds(values.blocks),
-      seo: values.seo
-        ? { ...values.seo, ogImage: normalizeUploadId(values.seo.ogImage) }
-        : values.seo,
+      blocks: normalizePageBlockUploadIds(savedValues.blocks),
+      seo: savedValues.seo
+        ? { ...savedValues.seo, ogImage: normalizeUploadId(savedValues.seo.ogImage) }
+        : savedValues.seo,
     })
-    const pageWasDirty = !initial || form.formState.isDirty
+    const pageWasDirty =
+      !initial ||
+      form.formState.isDirty ||
+      initial.status !== "published"
     let createdPageId: string | number | null = null
     if (pageWasDirty) {
       let res: Response
@@ -1307,7 +1305,7 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
     }
     try {
       await Promise.all([themePromise, saveNavMembership(), saveChrome()])
-      if (publishLiveAfterSave) {
+      if (autoPublishLive) {
         const publishRes = await fetch("/api/publish", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -1316,7 +1314,7 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
             includeAllPublishedPages: true,
             activate: true,
             manualActivation: true,
-            reason: `publish current CMS state after page ${initial?.id ?? createdPageId ?? "new"} edit`,
+            reason: `auto-publish current CMS state after page ${initial?.id ?? createdPageId ?? "new"} save`,
           }),
         })
         if (!publishRes.ok) {
@@ -1326,7 +1324,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
       }
     } catch (err) {
       setPending(false)
-      setPublishLivePending(false)
       const msg = err instanceof Error ? err.message : t("saveFailed")
       setSubmitError(msg)
       captureCmsBrowserEvent({
@@ -1343,7 +1340,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
       return
     }
     setPending(false)
-    setPublishLivePending(false)
     setSubmitError(null)
     // FN-2026-0012 — the prior shape passed `{ keepValues: true }`, which
     // keeps the *current* DOM input values but does NOT advance RHF's dirty
@@ -1356,7 +1352,7 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
     // keepValues uses the just-submitted `values` as both the input snapshot
     // AND the new clean baseline — `isDirty` flips to false synchronously
     // and the beforeunload listener detaches on the same frame.
-    form.reset(values)
+    form.reset(savedValues)
     // `form.reset` notifies RHF watchers. Do not let that normal save-cycle
     // reset recreate a local recovery draft after the successful save deletes
     // the stale one below. Draft recovery is only for unsaved refresh/crash
@@ -1402,12 +1398,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
   const retry = () => form.handleSubmit(onSubmit, onInvalid)()
   const triggerSave = useCallback(() => {
     if (readOnly) return
-    form.handleSubmit(onSubmit, onInvalid)()
-  }, [form, onSubmit, onInvalid, readOnly])
-
-  const publishLive = useCallback(() => {
-    if (readOnly) return
-    publishLiveAfterSaveRef.current = true
     form.handleSubmit(onSubmit, onInvalid)()
   }, [form, onSubmit, onInvalid, readOnly])
 
@@ -1875,7 +1865,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
             {ctx.titleField}
             {ctx.slugField}
             {mobileNavigationSection}
-            {ctx.statusField}
           </>
         }
       />
@@ -1894,9 +1883,9 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
     [],
   )
 
-  // View-live + copy-URL affordances — shown in the canvas-mode header
-  // when the page is published and has a slug.
-  const liveLinks = form.watch("status") === "published" && form.watch("slug") ? (
+  // View-live + copy-URL affordances. Page editor saves publish page rows
+  // internally; the status field is no longer an editor-facing control.
+  const liveLinks = form.watch("slug") ? (
     <>
       <Button variant="ghost" size="icon" type="button" asChild title={t("liveLink")}>
         <a href={`${tenantOrigin}/${form.watch("slug")}`} target="_blank" rel="noopener noreferrer" aria-label={t("liveLink")}>
@@ -1942,18 +1931,7 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
               {liveLinks}
               {!readOnly && (
                 <div className="ml-auto flex items-end gap-2">
-                  {initial && canPublishLive && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={pending || publishLivePending}
-                      onClick={publishLive}
-                    >
-                      {publishLivePending ? "Publishing..." : "Publish live"}
-                    </Button>
-                  )}
-                  <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} dirtyCount={dirtyCount} variant="bare" />
+                  <SaveButton pending={pending} isDirty={isDirty} errorCount={errorCount} dirtyCount={dirtyCount} />
                 </div>
               )}
             </header>
@@ -2001,9 +1979,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
                     deleteBlock={deleteBlock}
                     duplicateBlock={duplicateBlock}
                     pageTitle={pageTitle}
-                    tenantSlug={tenantSlug}
-                    domain={tenantOrigin}
-                    rendererSettings={rendererSettings}
                     onDeletePage={onDeletePage}
                     onOpenBlockInspector={openBlockInSidebar}
                     renderMobileList={renderMobileList}
@@ -2050,9 +2025,6 @@ export function PageForm({ initial, tenantId, tenantSlug, baseHref, tenantOrigin
                       deleteBlock={deleteBlock}
                       duplicateBlock={duplicateBlock}
                       pageTitle={pageTitle}
-                      tenantSlug={tenantSlug}
-                      domain={tenantOrigin}
-                      rendererSettings={rendererSettings}
                       onDeletePage={onDeletePage}
                       onOpenBlockInspector={openBlockInSidebar}
                       renderMobileList={renderMobileList}

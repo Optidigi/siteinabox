@@ -2,12 +2,41 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { activatePublishedSnapshot, publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
+import { isOfficialTenant } from "@/lib/officialTenants"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
 const asId = (value: unknown): string | number | null =>
   typeof value === "string" || typeof value === "number" ? value : null
+
+const userTenantId = (user: any): string | null => {
+  const tenant = user?.tenants?.[0]?.tenant
+  if (tenant == null) return null
+  return String(typeof tenant === "object" ? tenant.id : tenant)
+}
+
+const canPublishForTenant = async (
+  payload: Awaited<ReturnType<typeof getPayload>>,
+  user: any,
+  tenantId: string | number | null,
+  body: Record<string, unknown>,
+) => {
+  if (user?.role === "super-admin") return true
+  if (tenantId == null) return false
+  if (body.action === "rollback") return false
+  if (body.includeAllPublishedPages !== true || body.activate !== true) return false
+  if (asId(body.generationRunId) != null) return false
+  if (user?.role !== "owner" && user?.role !== "editor") return false
+  if (userTenantId(user) !== String(tenantId)) return false
+  const tenant = await payload.findByID({
+    collection: "tenants",
+    id: tenantId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return isOfficialTenant(tenant)
+}
 
 export async function POST(req: NextRequest) {
   const payload = await getPayload({ config })
@@ -16,9 +45,6 @@ export async function POST(req: NextRequest) {
     auth = await payload.auth({ headers: req.headers })
   } catch {
     auth = null
-  }
-  if (auth?.user?.role !== "super-admin") {
-    return NextResponse.json({ message: "Forbidden" }, { status: 403 })
   }
 
   let body: unknown
@@ -30,6 +56,11 @@ export async function POST(req: NextRequest) {
   if (!isRecord(body)) {
     return NextResponse.json({ message: "JSON object body required" }, { status: 400 })
   }
+  const tenantId = asId(body.tenantId)
+  const user = auth?.user
+  if (!user || !(await canPublishForTenant(payload, user, tenantId, body))) {
+    return NextResponse.json({ message: "Forbidden" }, { status: 403 })
+  }
 
   try {
     if (body.action === "rollback") {
@@ -38,14 +69,13 @@ export async function POST(req: NextRequest) {
       const snapshot = await activatePublishedSnapshot(payload, {
         snapshotId,
         manualActivation: body.manualActivation === true,
-        activatedBy: auth.user.id,
+        activatedBy: user.id,
         activationReason: typeof body.reason === "string" ? body.reason : "manual rollback",
         rollback: true,
       })
       return NextResponse.json({ ok: true, activated: true, snapshotId: snapshot.id })
     }
 
-    const tenantId = asId(body.tenantId)
     if (tenantId == null) return NextResponse.json({ message: "tenantId is required" }, { status: 400 })
 
     const result = await publishSiteSnapshot(payload, {
@@ -54,7 +84,7 @@ export async function POST(req: NextRequest) {
       includeAllPublishedPages: body.includeAllPublishedPages === true,
       activate: body.activate === true,
       manualActivation: body.manualActivation === true,
-      publishedBy: auth.user.id,
+      publishedBy: user.id,
       activationReason: typeof body.reason === "string" ? body.reason : null,
     })
 

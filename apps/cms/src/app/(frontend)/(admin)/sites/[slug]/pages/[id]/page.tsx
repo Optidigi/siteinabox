@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { getTenantBySlug } from "@/lib/queries/tenants"
-import { getPageById, listPages } from "@/lib/queries/pages"
+import { getPageById } from "@/lib/queries/pages"
 import { requireSuperAdminSelectedSite } from "@/lib/routePolicy"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"
@@ -13,8 +13,7 @@ import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { pageNavMembership } from "@/lib/nav/membership"
 import { sameRelationshipId } from "@/lib/relationshipId"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { settingsToJson } from "@/lib/projection/settingsToJson"
-import { resolveSettingsContract } from "@/lib/settingsContract"
+import { isOfficialTenant } from "@/lib/officialTenants"
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string; id: string }> }
@@ -36,25 +35,17 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   // pattern already used in this file's `generateMetadata` (UX-2026-0001
   // batch-1).
   const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
-  const [page, manifest, tenantCss, settings, pages] = await Promise.all([
+  const [page, manifest, tenantCss, settings] = await Promise.all([
     getPageById(Number(id)).catch(() => null),
     loadTenantManifest(tenant.id),
     loadTenantCss(tenant.id),
     getOrCreateSiteSettings(tenant.id),
-    listPages(tenant.id),
   ])
   if (!page) notFound()
   if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
   // OBS-21 — nav membership for the page-editor toggles. This route is
   // super-admin-only (requireRole above), so nav management is always allowed.
   const { inHeader, inFooter } = pageNavMembership(settings as any, Number(page.id))
-  const navPages = pages.map((entry: any) => ({ id: entry.id, slug: entry.slug, title: entry.title }))
-  const rendererSettings = settingsToJson(
-    settings,
-    navPages,
-    { tenantId: tenant.id, tenantSlug: tenant.slug, siteDomain: tenant.domain },
-    { settingsContract: resolveSettingsContract((tenant.siteManifest as any) ?? null) },
-  )
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open" })
   return (
     <div className="flex flex-col gap-4">
@@ -65,7 +56,6 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
       <PageForm
         initial={page as any}
         tenantId={tenant.id}
-        tenantSlug={tenant.slug}
         baseHref={`/sites/${slug}/pages`}
         // FN-2026-0047 — preview iframe origin. Production: https://<domain>.
         // Dev (no /etc/hosts entry, no local reverse proxy): operator can set
@@ -79,10 +69,9 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
         userEditorMode={user.editorMode ?? null}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
-        rendererSettings={rendererSettings as any}
         canManageNav
         canEditSettings
-        canPublishLive
+        autoPublishLive={isOfficialTenant(tenant)}
         inHeaderNav={inHeader}
         inFooterNav={inFooter}
       />

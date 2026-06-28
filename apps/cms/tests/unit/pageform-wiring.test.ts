@@ -25,24 +25,38 @@ describe("PageForm wiring boundaries", () => {
     )
   })
 
-  it("routes official legacy tenant canvas rendering through the shared renderer", () => {
+  it("keeps the CMS canvas on the editor renderer path", () => {
     const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
 
-    expect(canvasMode).toContain('from "@siteinabox/site-renderer"')
-    expect(canvasMode).toContain("resolveLegacyTenant")
-    expect(canvasMode).toContain("<SitePageRenderer")
-    expect(pageForm).toContain("rendererSettings")
-    expect(pageForm).toContain("tenantSlug")
+    expect(canvasMode).not.toContain('from "@siteinabox/site-renderer"')
+    expect(canvasMode).not.toContain("ExactLegacyCanvas")
+    expect(canvasMode).not.toContain("<SitePageRenderer")
+    expect(pageForm).not.toContain("rendererSettings")
+    expect(pageForm).not.toContain("tenantSlug")
   })
 
-  it("keeps live publishing separate from page save and publishes current CMS pages", () => {
+  it("publishes official tenant saves without a separate live-publish button", () => {
     const pageForm = read("src/components/forms/PageForm.tsx")
+    const publishControls = read("src/components/editor/publish-controls.tsx")
+    const mobilePageSettings = read("src/components/editor/canvas/mobile/mobile-page-settings.tsx")
+    const officialTenants = read("src/lib/officialTenants.ts")
+    const tenantRoute = read("src/app/(frontend)/(admin)/pages/[id]/page.tsx")
+    const selectedSiteRoute = read("src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/page.tsx")
 
-    expect(pageForm).toContain("Publish live")
-    expect(pageForm).toContain("canPublishLive")
+    expect(pageForm).not.toContain("Publish live")
+    expect(pageForm).not.toContain("canPublishLive")
+    expect(pageForm).toContain("autoPublishLive")
+    expect(pageForm).toContain('const savedValues: Values = { ...values, status: "published" }')
     expect(pageForm).toContain('fetch("/api/publish"')
     expect(pageForm).toContain("includeAllPublishedPages: true")
+    expect(pageForm).toContain("activate: true")
     expect(pageForm).toContain("manualActivation: true")
+    expect(pageForm).toContain('status: "published"')
+    expect(officialTenants).toContain("export function isOfficialTenant")
+    expect(tenantRoute).toContain("autoPublishLive={isOfficialTenant(ctx.tenant)}")
+    expect(selectedSiteRoute).toContain("autoPublishLive={isOfficialTenant(tenant)}")
+    expect(publishControls).not.toContain("SelectItem")
+    expect(mobilePageSettings).not.toContain("statusField")
   })
 })
