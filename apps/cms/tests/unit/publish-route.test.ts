@@ -75,7 +75,7 @@ describe("publish route", () => {
 
   it("allows tenant editors to publish current CMS pages for their own tenant", async () => {
     mocks.payload.auth.mockResolvedValue({
-      user: { id: 2, role: "editor", tenants: [{ tenant: 7 }] },
+      user: { id: 2, role: "editor", tenants: [{ tenant: 99 }, { tenant: { id: 7 } }] },
     })
     mocks.publishSiteSnapshot.mockResolvedValue({
       activated: true,

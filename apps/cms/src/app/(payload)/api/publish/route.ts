@@ -3,6 +3,7 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import { activatePublishedSnapshot, publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
 import { isOfficialTenant } from "@/lib/officialTenants"
+import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
@@ -10,10 +11,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const asId = (value: unknown): string | number | null =>
   typeof value === "string" || typeof value === "number" ? value : null
 
-const userTenantId = (user: any): string | null => {
-  const tenant = user?.tenants?.[0]?.tenant
-  if (tenant == null) return null
-  return String(typeof tenant === "object" ? tenant.id : tenant)
+const userTenantIds = (user: any): Set<string> => {
+  return relationshipIdSet(
+    (user?.tenants ?? []).map((membership: { tenant?: RelationshipIdRef }) =>
+      membership.tenant,
+    ),
+  )
 }
 
 const canPublishForTenant = async (
@@ -28,7 +31,8 @@ const canPublishForTenant = async (
   if (body.includeAllPublishedPages !== true || body.activate !== true) return false
   if (asId(body.generationRunId) != null) return false
   if (user?.role !== "owner" && user?.role !== "editor") return false
-  if (userTenantId(user) !== String(tenantId)) return false
+  const targetTenantId = relationshipId(tenantId)
+  if (targetTenantId == null || !userTenantIds(user).has(targetTenantId)) return false
   const tenant = await payload.findByID({
     collection: "tenants",
     id: tenantId,

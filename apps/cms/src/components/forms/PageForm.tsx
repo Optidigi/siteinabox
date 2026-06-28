@@ -73,7 +73,6 @@ import {
 import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
 import { setUserEditorMode } from "@/lib/actions/setUserEditorMode"
 import { ThemeBar } from "@/components/editor/theme/theme-bar"
-import { setTenantTheme } from "@/lib/actions/setTenantTheme"
 import { togglePageInNav } from "@/lib/actions/togglePageInNav"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { countLeafDirty } from "@/lib/countLeafDirty"
@@ -173,6 +172,23 @@ const createSchema = (t: (key: string) => string) => z.object({
   }).nullish()
 })
 type Values = z.infer<ReturnType<typeof createSchema>>
+
+const saveTenantTheme = async (
+  tenantId: number | string,
+  theme: ThemeTokens,
+): Promise<ThemeTokens> => {
+  const res = await fetch("/api/tenant-theme", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ tenantId, theme }),
+  })
+  if (!res.ok) {
+    const detail = await parsePayloadError(res)
+    throw new Error(detail.message)
+  }
+  const json = await res.json()
+  return (json.theme ?? theme) as ThemeTokens
+}
 
 function FooterCompositionEditor({
   draft,
@@ -1169,27 +1185,22 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin, manifest, 
     setPending(true)
     setSubmitError(null)
     setShowSaved(false)
-    // Persist tenant theme alongside the page save when the user has
-    // edited it via ThemeBar. Runs in parallel with the page write but
-    // its failure is reported independently — the page save is what
-    // owns the form's lifecycle, so a theme-only failure surfaces a
-    // status badge rather than rolling the whole save back.
+    // Persist tenant theme before live auto-publish. Theme changes are
+    // part of the published snapshot, so a failed theme write must block
+    // publishing instead of activating the previous design tokens.
     const themeWasDirty = themeDirty
     const themeSnapshot = themeState
     const normalizedThemeSnapshot = normalizeThemeForSave(themeSnapshot)
     const themePromise = themeWasDirty
-      ? setTenantTheme(tenantId, normalizedThemeSnapshot ?? {}).then(
-          () => {
-            setThemeState(normalizedThemeSnapshot)
-            setThemeBaseline(normalizedThemeSnapshot)
-            const previous = pageEditorStyleCache.get(tenantStyleCacheKey)
-            pageEditorStyleCache.set(tenantStyleCacheKey, {
-              tenantCss: previous?.tenantCss ?? stableTenantCss,
-              theme: normalizedThemeSnapshot,
-            })
-          },
-          () => { status.error(t("themeSaveFailed")) },
-        )
+      ? saveTenantTheme(tenantId, normalizedThemeSnapshot ?? {}).then((savedTheme) => {
+          setThemeState(savedTheme)
+          setThemeBaseline(savedTheme)
+          const previous = pageEditorStyleCache.get(tenantStyleCacheKey)
+          pageEditorStyleCache.set(tenantStyleCacheKey, {
+            tenantCss: previous?.tenantCss ?? stableTenantCss,
+            theme: savedTheme,
+          })
+        })
       : Promise.resolve()
     const navWasDirty = navDirty
     const navSnapshot = { inHeader, inFooter }
