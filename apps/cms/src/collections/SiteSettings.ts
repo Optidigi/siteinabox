@@ -78,6 +78,14 @@ export const filterChromeVariantOptions = (
 ) => {
   const tenantSlugs = collectTenantSlugs(data && typeof data === "object" ? (data as Record<string, unknown>).tenant : null)
   collectTenantSlugs(req && typeof req === "object" ? (req as any).user?.tenants : null, tenantSlugs)
+  // Payload can invoke select `filterOptions` during internal create/update
+  // validation without the root tenant document in `data`. Option filtering is
+  // only an admin UX affordance; canonical enforcement lives in
+  // `enforceTenantExclusiveChromeVariants` below. Without concrete tenant
+  // context, keep the static options intact so internal official-tenant imports
+  // are not rejected before the tenant-aware hook runs.
+  if (tenantSlugs.size === 0) return options
+
   return options.filter((option) => {
     const exclusive = tenantExclusiveChromeVariants.find((entry) =>
       entry.area === area && entry.variant === option.value)

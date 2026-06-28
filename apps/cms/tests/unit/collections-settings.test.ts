@@ -155,8 +155,19 @@ describe("SiteSettings collection config", () => {
       .toEqual(["default", "hyperUiSimple"])
     expect(filterChromeVariantOptions("footer", footerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
       .toEqual(["default", "hyperUiSimple"])
+  })
+
+  it("does not let admin option filtering reject internal writes without tenant context", () => {
+    const chrome = findField("chrome")
+    const header = chrome.fields.find((x: any) => x.name === "header")
+    const footer = chrome.fields.find((x: any) => x.name === "footer")
+    const headerVariant = header.fields.find((x: any) => x.name === "variant")
+    const footerVariant = footer.fields.find((x: any) => x.name === "variant")
+
     expect(filterChromeVariantOptions("header", headerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple"])
+      .toEqual(["default", "hyperUiSimple", "amicareZen", "amblastIndustrial"])
+    expect(filterChromeVariantOptions("footer", footerVariant.options, {}).map((x) => x.value))
+      .toEqual(["default", "hyperUiSimple", "amicareZen", "amblastIndustrial"])
   })
 
   it("keeps official legacy tenant chrome variants available in admin options", () => {
