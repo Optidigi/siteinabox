@@ -5,6 +5,7 @@ name: siteinabox-renderer
 services:
   siteinabox-renderer:
     image: ghcr.io/optidigi/siteinabox-renderer:latest
+    pull_policy: always
     container_name: siteinabox-renderer
     restart: unless-stopped
     environment:

@@ -7,6 +7,7 @@ name: siteinabox-cms
 services:
   siteinabox-cms:
     image: ghcr.io/optidigi/siteinabox-cms:latest
+    pull_policy: always
     container_name: siteinabox-cms
     restart: unless-stopped
     environment:
