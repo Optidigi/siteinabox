@@ -8,10 +8,6 @@
   min-width: 0;
 }
 
-.site-renderer[data-siab-site-renderer] .rt-canvas :is([data-site-chrome], [data-amicare-nav], .site-frame-root > nav, .site-frame-root > footer) {
-  z-index: 0;
-}
-
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] {
   --color-card: #ffffff;
   --color-secondary: #efe9dd;

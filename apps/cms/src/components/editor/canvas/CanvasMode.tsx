@@ -158,14 +158,14 @@ const CanvasGapOverlay: React.FC<{
           {overlayPosition.styleElement}
           <div
             data-siab-canvas-chrome="insert-gap"
-            className={`${overlayPosition.className} fixed z-[15] flex h-8 items-center justify-center group/gap`}
+            className={`${overlayPosition.className} pointer-events-none fixed z-[15] flex h-8 items-center justify-center group/gap`}
           >
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
             <button
               type="button"
               aria-label={t("insertBlockHere")}
               onClick={() => setOpen(true)}
-              className="relative z-10 inline-flex size-6 items-center justify-center rounded-full border border-border bg-popover text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover/gap:opacity-100 hover:bg-accent hover:text-accent-foreground focus:opacity-100"
+              className="pointer-events-auto relative z-10 inline-flex size-6 items-center justify-center rounded-full border border-border bg-popover text-popover-foreground opacity-0 shadow-sm transition-opacity group-hover/gap:opacity-100 hover:bg-accent hover:text-accent-foreground focus:opacity-100"
             >
               <Plus className="size-3.5" />
             </button>

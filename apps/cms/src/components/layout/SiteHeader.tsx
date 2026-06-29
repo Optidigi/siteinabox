@@ -6,7 +6,7 @@ import type { User } from "@/payload-types"
 
 export function SiteHeader({ user }: { user: Pick<User, "email" | "name" | "role"> }) {
   return (
-    <header className="sticky top-0 z-30 flex h-14 md:h-12 items-center gap-2 border-b bg-background px-4">
+    <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 flex h-14 md:h-12 items-center gap-2 border-b bg-background px-4">
       <SidebarTrigger />
       <Separator orientation="vertical" className="mx-2 h-4" />
       <div className="flex-1" />

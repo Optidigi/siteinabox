@@ -1960,7 +1960,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
 
           {/* Shared sticky header — sits below SiteHeader, above ThemeBar, in both view modes */}
           {isDesktop && (
-            <header className="sticky top-12 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
+            <header data-siab-cms-sticky-chrome className="sticky top-12 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
               {readOnly ? (
                 <h1 className="min-w-0 truncate text-sm font-medium text-foreground">
                   {pageTitle}
@@ -1979,7 +1979,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
 
           {/* Sticky-but-transparent ThemeBar — pill's own glass styling makes it look floating */}
           {isDesktop && !readOnly && (
-            <div className="sticky top-[6.5rem] z-20 flex justify-center pointer-events-none">
+            <div data-siab-cms-sticky-chrome className="sticky top-[6.5rem] z-20 flex justify-center pointer-events-none">
               <div className="pointer-events-auto">
                 <ThemeBar
                   theme={themeState}

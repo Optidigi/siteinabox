@@ -81,6 +81,9 @@ const pickChromeTarget = (targets: HTMLElement[], current: HTMLElement | null) =
   return targets.find(isVisibleChromeTarget) ?? targets[0] ?? null
 }
 
+const sameChromeTargets = (current: HTMLElement[], next: HTMLElement[]) =>
+  current.length === next.length && current.every((target, index) => target === next[index])
+
 const inlineRootFromText = (value: string): RtRoot => ({
   t: "root",
   variant: "inline",
@@ -656,9 +659,11 @@ function ChromeActionsMenu({
     const findTargets = () => {
       const nextTargets = Array.from(document.querySelectorAll<HTMLElement>(overlayTargetSelector))
       const nextAnchor = pickChromeTarget(nextTargets, overlayAnchorRef.current)
-      overlayAnchorRef.current = nextAnchor
-      setOverlayAnchor(nextAnchor)
-      setOverlayTargets(nextTargets)
+      if (overlayAnchorRef.current !== nextAnchor) {
+        overlayAnchorRef.current = nextAnchor
+        setOverlayAnchor(nextAnchor)
+      }
+      setOverlayTargets((current) => sameChromeTargets(current, nextTargets) ? current : nextTargets)
     }
     findTargets()
     const observer = new MutationObserver(findTargets)

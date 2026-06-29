@@ -38,11 +38,20 @@ function useFixedAnchorRect(
         resizeObserver.observe(node)
       }
       const next = node.getBoundingClientRect()
-      setRect({
-        left: next.left,
-        right: next.right,
-        top: next.top,
-        width: next.width,
+      setRect((current) => {
+        const measured = {
+          left: next.left,
+          right: next.right,
+          top: next.top,
+          width: next.width,
+        }
+        return current &&
+          current.left === measured.left &&
+          current.right === measured.right &&
+          current.top === measured.top &&
+          current.width === measured.width
+          ? current
+          : measured
       })
     }
     const schedule = () => {
@@ -68,7 +77,7 @@ function useFixedAnchorRect(
 function cmsChromeBottomAt(x: number) {
   if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
   let bottom = CHROME_VIEWPORT_GAP
-  document.body.querySelectorAll<HTMLElement>("*").forEach((element) => {
+  document.body.querySelectorAll<HTMLElement>("[data-siab-cms-sticky-chrome]").forEach((element) => {
     if (element.closest(".rt-canvas, [data-siab-canvas-chrome]")) return
     const style = window.getComputedStyle(element)
     if (style.position !== "fixed" && style.position !== "sticky") return
@@ -193,13 +202,6 @@ export const CanvasChromeGutterOverlay: React.FC<{
             data-site-chrome-menu-trigger
             aria-label={optionsLabel}
             className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            onPointerDown={(event) => {
-              if (event.button !== 0) return
-              event.preventDefault()
-              event.stopPropagation()
-              const rect = event.currentTarget.getBoundingClientRect()
-              onOptionsClick?.({ x: rect.right, y: rect.bottom + 4 })
-            }}
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()
