@@ -31,6 +31,7 @@ export interface CanvasBlockRendererProps {
   manifest: RtManifest
   onActivate: () => void
   onUpdate: (next: any) => void
+  legacyTenant?: "amicare" | "amblast" | null
 }
 
 /** Per-block-type dispatcher for canvas mode. Each block renderer is in

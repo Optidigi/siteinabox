@@ -13,6 +13,7 @@ import { toCssVars } from "@/lib/theme/toCssVars"
 import { useMobileSubview } from "@/lib/editor/useMobileSubview"
 import { MobileBackPill } from "@/components/common/mobile-back-pill"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
+import { resolveLegacyTenant } from "@siteinabox/site-renderer"
 
 export const CanvasMobile: React.FC<CanvasModeProps> = (props) => {
   return (
@@ -28,6 +29,9 @@ const CanvasMobileInner: React.FC<CanvasModeProps> = ({
   dangerZone: _dangerZone,
   seoCard: _seoCard,
   theme,
+  rendererSettings,
+  tenantSlug,
+  tenantDomain,
   reorderBlocks,
   deleteBlock,
   duplicateBlock,
@@ -44,6 +48,9 @@ const CanvasMobileInner: React.FC<CanvasModeProps> = ({
   const api = { blocks, activeIndex, setActiveIndex, updateBlock, insertBlockAt, reorderBlocks, deleteBlock, duplicateBlock }
   const { view, goto } = useMobileSubview()
   const cspNonce = useCspNonce()
+  const legacyTenant = rendererSettings
+    ? resolveLegacyTenant({ tenantSlug, domain: tenantDomain, settings: rendererSettings })
+    : null
 
   // Bridge MobileEditorContext.selected → CanvasSelectionContext.select.
   // Inline primitives call `select(path)`; we route it into setSelected so the
@@ -97,6 +104,7 @@ const CanvasMobileInner: React.FC<CanvasModeProps> = ({
             index={view.index}
             manifest={manifest}
             theme={theme}
+            legacyTenant={legacyTenant}
             onBack={() => { clearSelection(); goto({ kind: "overview" }) }}
             onPrev={view.index > 0 ? () => { clearSelection(); goto({ kind: "section", index: view.index - 1 }, { replace: true }) } : undefined}
             onNext={view.index < blocks.length - 1 ? () => { clearSelection(); goto({ kind: "section", index: view.index + 1 }, { replace: true }) } : undefined}

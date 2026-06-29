@@ -88,23 +88,14 @@ test.describe("canvas mode", () => {
     // 7. Type into the Hero headline RtSlot and save
     //
     // The Hero headline is a Lexical ContentEditable inside the hero block.
-    // In canvas mode with chrome="bare" the editable is rendered as-is inside
-    // the h1 element. We target the first [contenteditable] inside the hero
-    // block. If the Lexical field isn't editable (e.g. mounted differently),
-    // we skip this assertion rather than fail the whole spec.
+    // The contenteditable is mounted only after clicking the static RtSlot;
+    // absence here means canvas direct-editing regressed.
     // -----------------------------------------------------------------------
     const heroSection = page.locator(".cms-block--hero").first()
+    await heroSection.locator("h1.rt-slot").first().click()
     const headline = heroSection.locator("[contenteditable='true']").first()
-    const isEditable = await headline.count()
+    await expect(headline).toBeVisible({ timeout: 10_000 })
 
-    if (isEditable === 0) {
-      test.info().annotations.push({
-        type: "note",
-        description:
-          "No contenteditable found inside .cms-block--hero — skipping headline edit round-trip. " +
-          "Canvas may require Lexical to hydrate before the ContentEditable appears.",
-      })
-    } else {
       // Click to focus, clear existing content, type new headline text
       const uniqueText = `Canvas E2E Headline ${Date.now()}`
       await headline.click()
@@ -137,6 +128,5 @@ test.describe("canvas mode", () => {
       await expect(
         page.locator(".cms-block--hero").getByText(uniqueText)
       ).toBeVisible({ timeout: 10_000 })
-    }
   })
 })

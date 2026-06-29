@@ -685,6 +685,9 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
           dangerZone={dangerZone}
           seoCard={seoCard}
           theme={theme}
+          rendererSettings={rendererSettings}
+          tenantSlug={tenantSlug}
+          tenantDomain={tenantDomain}
           reorderBlocks={reorderBlocks}
           deleteBlock={deleteBlock}
           duplicateBlock={duplicateBlock}
@@ -898,7 +901,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                   canvasAttributes={{ "data-rt-view": view } as React.HTMLAttributes<HTMLDivElement>}
                   canvasClassName="[&_a[href]:not(.rt-click-edit)]:pointer-events-none"
                   formAction="#"
-                  renderBlocks={({ defaultRenderBlocks }) => (
+                  renderBlocks={() => (
                     <>
                       {!effectiveReadOnly && (
                         <CanvasGapOverlay
@@ -924,7 +927,18 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                             onDuplicate={() => duplicateBlockWithRemap(index)}
                             readOnly={effectiveReadOnly}
                           >
-                            {defaultRenderBlocks[index]}
+                            <CanvasBlockRenderer
+                              block={block}
+                              index={index}
+                              isActive={activeIndex === index}
+                              manifest={manifest}
+                              onActivate={() => {
+                                setActiveIndex(index)
+                                select(null)
+                              }}
+                              onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
+                              legacyTenant={legacyTenant}
+                            />
                           </SortableRenderedBlockItem>
                           {!effectiveReadOnly && (
                             <CanvasGapOverlay

@@ -21,12 +21,13 @@ import { MapPin } from "lucide-react"
 
 const AMICARE_PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
-export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant }) => {
   const t = useTranslations("editor")
   const set = <K extends string>(field: K) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
   const { view, select } = useCanvasSelection()
   const tapToSelect = isReadOnlyView(view)
+  const isAmicareLegacy = legacyTenant === "amicare"
   const showAmicareBadges = block.variant === "amicareZenHero" || block.analytics?.sectionVariant === "amicare-zen-hero"
   const [autoOpenPillIndex, setAutoOpenPillIndex] = React.useState<number | null>(null)
   // Only one pill editor is ever open at a time, so a single ref suffices.
@@ -41,8 +42,20 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
       data-active={isActive || undefined}
       onClick={onActivate}
     >
-      <div aria-hidden="true" className="pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full bg-accent/15 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full bg-accent/10 blur-3xl" />
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full blur-3xl",
+          isAmicareLegacy ? "amicare-hero-glow amicare-hero-glow--start" : "bg-accent/15",
+        )}
+      />
+      <div
+        aria-hidden="true"
+        className={cn(
+          "pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full blur-3xl",
+          isAmicareLegacy ? "amicare-hero-glow amicare-hero-glow--end" : "bg-accent/10",
+        )}
+      />
 
       <div className="relative z-10 w-full space-y-7 @min-[48rem]/site-frame:w-1/2">
         <RtSlot
@@ -213,7 +226,10 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
         <InlineCtaButton
           value={block.cta}
           onChange={set("cta")}
-          className="inline-block rounded-md bg-accent px-6 py-3 text-[14px] font-medium text-bg shadow-sm transition-colors hover:bg-accent/90 animate-fade-up [animation-delay:400ms]"
+          className={cn(
+            "inline-block rounded-md bg-accent px-6 py-3 text-[14px] font-medium shadow-sm transition-colors hover:bg-accent/90 animate-fade-up [animation-delay:400ms]",
+            isAmicareLegacy ? "amicare-button-primary [font-family:var(--font-text)]" : "text-bg",
+          )}
           emptyLabel={t("addCtaButton")}
           elementPath={{ blockIndex: idx, field: "cta" }}
         />

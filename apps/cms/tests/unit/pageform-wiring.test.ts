@@ -33,8 +33,10 @@ describe("PageForm wiring boundaries", () => {
     expect(canvasMode).toContain('from "@siteinabox/site-renderer"')
     expect(canvasMode).toContain("<SitePageRenderer")
     expect(canvasMode).toContain('legacyTenant === "amicare"')
-    expect(canvasMode).toContain("renderBlocks={({ defaultRenderBlocks }) =>")
-    expect(canvasMode).toContain("{defaultRenderBlocks[index]}")
+    expect(canvasMode).toContain("renderBlocks={() =>")
+    expect(canvasMode).toContain("<CanvasBlockRenderer")
+    expect(canvasMode).toContain("onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}")
+    expect(canvasMode).not.toContain("{defaultRenderBlocks[index]}")
     expect(canvasMode).toContain("createRendererMediaResolver")
     expect(canvasMode).toContain("mediaResolver={mediaResolver}")
     expect(pageForm).toContain("rendererSettingsFromChromeDraft")
@@ -42,6 +44,21 @@ describe("PageForm wiring boundaries", () => {
     expect(pageForm).toContain("tenantId={tenantId}")
     expect(pageForm).toContain("rendererNavPages")
     expect(pageForm).toContain("tenantSlug={tenantSlug}")
+  })
+
+  it("keeps Amicare-only rich text canvas treatment scoped to Amicare renderers", () => {
+    const richTextCanvas = read("src/components/editor/canvas/blocks/RichText.tsx")
+    const mobileSectionEdit = read("src/components/editor/canvas/mobile/mobile-section-edit.tsx")
+    const canvasMobile = read("src/components/editor/canvas/mobile/CanvasMobile.tsx")
+
+    expect(richTextCanvas).toContain('legacyTenant === "amicare" ? splitAmicareIntro(block.body) : null')
+    expect(richTextCanvas).toContain('className="amicare-richtext-body prose mx-auto mt-10')
+    expect(richTextCanvas).not.toContain("splitBody.body.children.length > 0")
+    expect(canvasMobile).toContain("resolveLegacyTenant")
+    expect(mobileSectionEdit).toContain('data-siab-site-renderer={legacyTenant === "amicare" ? "true" : undefined}')
+    expect(mobileSectionEdit).toContain('data-legacy-tenant={legacyTenant === "amicare" ? "amicare" : undefined}')
+    expect(mobileSectionEdit).toContain('className="rt-canvas w-full"')
+    expect(mobileSectionEdit).toContain("legacyTenant={legacyTenant}")
   })
 
   it("publishes official tenant saves without a separate live-publish button", () => {

@@ -47,7 +47,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
   return (
     <section
       id={block.anchor || "features"}
-      className="cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[816px]/site-frame:px-12 @min-[816px]/site-frame:py-24 @min-[1088px]/site-frame:px-24"
+      className="cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}
       onClick={onActivate}
@@ -70,7 +70,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
             manifest={manifest}
             value={block.title}
             onChange={set("title")}
-            className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[816px]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent [font-family:var(--font-heading)]"
+            className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent [font-family:var(--font-heading)]"
             placeholder={t("sectionTitlePlaceholder")}
             elementPath={{ blockIndex: idx, field: "title" }}
           />

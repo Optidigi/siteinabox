@@ -25,6 +25,7 @@ export interface MobileSectionEditProps {
   index: number
   manifest: RtManifest
   theme?: ThemeTokens | null
+  legacyTenant?: "amicare" | "amblast" | null
   onBack: () => void
   onPrev?: () => void
   onNext?: () => void
@@ -67,6 +68,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
   index,
   manifest,
   theme,
+  legacyTenant,
   onBack,
   onPrev,
   onNext,
@@ -172,16 +174,23 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
           if ((e.target as HTMLElement | null)?.closest("a[href]")) e.preventDefault()
         }}
       >
-        <div className="rt-canvas w-full" data-rt-view="mobile" data-rt-mode={theme?.mode ?? "light"}>
-          <div className="site-frame-root">
-            <CanvasBlockRenderer
-              block={block}
-              index={index}
-              isActive
-              manifest={manifest}
-              onActivate={() => {}}
-              onUpdate={updateBlock(index)}
-            />
+        <div
+          className={legacyTenant === "amicare" ? "site-renderer site-renderer--legacy site-renderer--legacy-amicare" : undefined}
+          data-siab-site-renderer={legacyTenant === "amicare" ? "true" : undefined}
+          data-legacy-tenant={legacyTenant === "amicare" ? "amicare" : undefined}
+        >
+          <div className="rt-canvas w-full" data-rt-view="mobile" data-rt-mode={theme?.mode ?? "light"}>
+            <div className="site-frame-root">
+              <CanvasBlockRenderer
+                block={block}
+                index={index}
+                isActive
+                manifest={manifest}
+                onActivate={() => {}}
+                onUpdate={updateBlock(index)}
+                legacyTenant={legacyTenant}
+              />
+            </div>
           </div>
         </div>
       </div>

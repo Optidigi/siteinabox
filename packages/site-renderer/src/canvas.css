@@ -22,6 +22,10 @@
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas {
   font-size: 17px;
   line-height: 1.6;
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   --color-bg-soft: color-mix(in oklab, var(--color-bg, Canvas) 70%, var(--color-accent, currentColor) 30%);
   --color-accent-soft: color-mix(in oklab, var(--color-accent, currentColor) 12%, transparent);
   --color-card-soft: color-mix(in oklab, var(--color-card, Canvas) 80%, transparent);
@@ -47,10 +51,74 @@
   background-color: var(--color-bg, transparent);
 }
 
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] ::selection {
+  background: color-mix(in srgb, var(--color-accent, currentColor) 18%, transparent);
+}
+
+@keyframes amicare-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes amicare-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes amicare-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .animate-fade-up {
+  animation: amicare-fade-up 0.6s ease-out both;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .animate-fade {
+  animation: amicare-fade 0.6s ease-out both;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .animate-float {
+  animation: amicare-float 4s ease-in-out infinite;
+}
+
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose {
   max-width: 65ch;
   color: color-mix(in oklab, var(--color-ink, currentColor) 90%, transparent);
   font-family: var(--font-text, inherit);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow {
+  display: block;
+  max-width: calc(100% - 3rem);
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-2,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-3,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-4 {
+  max-width: calc(100% - 3rem);
+  margin-top: 0.75rem;
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
 }
 
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose h2 {
@@ -69,6 +137,76 @@
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose em,
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose a {
   color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h {
+  color: var(--color-ink, currentColor);
+  font-family: var(--font-heading, inherit);
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-2 {
+  font-size: clamp(2.125rem, 1.76rem + 1.6vw, 2.75rem);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-3,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-4 {
+  font-size: clamp(1.5rem, 1.32rem + 0.8vw, 2rem);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-p {
+  color: color-mix(in srgb, var(--color-ink, currentColor) 90%, transparent);
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-i,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-link {
+  color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 6px;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-quote {
+  padding-left: 1.5rem;
+  border-left: 2px solid var(--color-accent, currentColor);
+  color: var(--color-ink, currentColor);
+  font-family: var(--font-heading, inherit);
+  font-size: clamp(1.1875rem, 1.05rem + 0.6vw, 1.375rem);
+  font-style: italic;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-color-accent {
+  color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-color-ink {
+  color: var(--color-ink, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-color-muted {
+  color: var(--color-ink-muted, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-title {
+  font-family: var(--font-title, inherit);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-heading {
+  font-family: var(--font-heading, inherit);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-text {
+  font-family: var(--font-text, inherit);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-script {
+  font-family: var(--font-script, inherit);
 }
 
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta-contact {

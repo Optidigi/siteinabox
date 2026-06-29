@@ -95,8 +95,11 @@ describe("CMS preview renderer stylesheet scope", () => {
       .map((line) => line.trim())
       .filter((line) => line.endsWith("{"))
       .filter((line) => !line.startsWith("@"))
+      .filter((line) => !["from {", "to {", "0% {", "50% {", "100% {"].includes(line))
 
     expect(ruleOpeners.length).toBeGreaterThan(0)
     expect(ruleOpeners.every((line) => line.includes(canvasScope))).toBe(true)
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] .animate-fade-up")
+    expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] .cms-block--richtext .rt-themed-eyebrow")
   })
 })
