@@ -31,7 +31,7 @@ An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/component
 
 ## Block renderers
 
-Block renderers live in `src/components/editor/canvas/blocks/` — one file per block type (`Hero.tsx`, `FeatureList.tsx`, `CTA.tsx`, `RichText.tsx`, `ContactSection.tsx`, `FAQ.tsx`, `Testimonials.tsx`). Each renderer emits a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the corresponding `packages/site-renderer` and `packages/site-template/src/components/cms/*.tsx` component so tenant CSS styles the canvas identically to the live site. Full class contract: `docs/runbooks/rt-dom-contract.md § Canvas block DOM contract`. **When you add or change a block's rendered-site component, update its canvas renderer in lockstep.**
+Block renderers live in `src/components/editor/canvas/blocks/` — one file per block type (`Hero.tsx`, `FeatureList.tsx`, `CTA.tsx`, `RichText.tsx`, `ContactSection.tsx`, `FAQ.tsx`, `Testimonials.tsx`). Each renderer emits a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the corresponding `packages/site-renderer` component so tenant CSS styles the canvas identically to the live site. Full class contract: `docs/runbooks/rt-dom-contract.md § Canvas block DOM contract`. **When you add or change a block's rendered-site component, update its canvas renderer in lockstep.**
 
 ## Inline-edit primitives
 

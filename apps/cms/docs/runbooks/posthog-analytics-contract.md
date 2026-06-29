@@ -239,8 +239,8 @@ in `conversionGoals.contactClicks`.
 
 ## Generated-Site Runtime
 
-`packages/site-template` should ship a small first-party analytics runtime loaded
-from `BaseLayout.astro`. It is generic and not theme-specific.
+`packages/site-renderer` / `apps/renderer` should ship a small first-party
+analytics runtime. It is generic and not theme-specific.
 
 Runtime responsibilities:
 
@@ -403,9 +403,9 @@ still the right source of truth.
 projection, CMS/server event capture, `site_form_accepted` capture, the
 server-only PostHog query layer, `/analytics`, and dashboard highlights.
 
-`packages/site-template` ships the first-party tenant-site analytics runtime,
-reads projected `site.analytics`, `page.analytics`, and `block.analytics`, emits
-the approved public-site V1 events after consent, exposes
+`packages/site-renderer` / `apps/renderer` ships the first-party tenant-site
+analytics runtime, reads projected `site.analytics`, `page.analytics`, and
+`block.analytics`, emits the approved public-site V1 events after consent, exposes
 `window.SIABAnalytics.grantConsent()` / `revokeConsent()`, and tests emitted
 metadata plus no pre-consent transmission.
 
@@ -427,7 +427,7 @@ sequence, preserve the approved contracts and adjust pragmatically.
 
 1. `siab-payload` contract docs, projection metadata, and server query helper
    skeleton.
-2. `packages/site-template` tenant-site runtime.
+2. `packages/site-renderer` / `apps/renderer` tenant-site runtime.
 3. Existing tenant backport.
 4. Future generation contract once the platform architecture is approved.
 5. CMS `/analytics` page and dashboard highlights.

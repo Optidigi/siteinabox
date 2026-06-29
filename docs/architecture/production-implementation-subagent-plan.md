@@ -302,9 +302,9 @@ breaking their current live snapshot paths.
 
 ### Research
 
-- Inventory current `removed legacy Amicare app source`, `removed legacy Amblast app source`,
-  `packages/site-template`, tenant fixtures, published snapshot fixtures, and
-  renderer output.
+- Inventory current removed legacy Amicare/Amblast app source references,
+  `packages/site-renderer` legacy tenant fixtures, published snapshot fixtures,
+  and renderer output.
 - Compare current legacy pages, navigation, SEO, media, forms, theme, and
   interaction behavior against renderer-compatible data.
 - Identify parity gaps and decide which gaps are required before cutover.

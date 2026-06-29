@@ -46,15 +46,15 @@ draft tenant/site/page/theme/SEO records and later published as a snapshot.
   resolve tenants by host, load published snapshots, and serve live sites
   without tenant-specific logic.
 - `packages/contracts` owns shared data contracts and validation shapes.
-- `packages/site-renderer` is reserved for shared rendering logic used by CMS
+- `packages/site-renderer` owns shared rendering logic used by CMS
   preview/customizer surfaces and `apps/renderer`.
 - `packages/ui` owns shared UI primitives and app-neutral components.
-- `packages/site-template` and `sites/*` remain legacy/current snapshot paths
-  for existing tenant maintenance and reference only.
 
 ## Legacy Snapshots
 
-The old Amicare and Amblast tenant app sources have been removed. Renderer/CMS snapshot data is canonical; do not restore tenant-specific source folders, workflows, or images.
+The old Amicare and Amblast tenant app sources have been removed. Renderer/CMS
+snapshot data is canonical; do not restore tenant-specific source folders,
+workflows, or images.
 
 Do not use those snapshots as a pattern for new generated sites.
 

@@ -1,8 +1,8 @@
 # SIAB Platform Landing
 
 Static marketing site for **Site in a Box** (siteinabox.nl), built with Astro 5 +
-Tailwind 4 from the monorepo `packages/site-template` baseline. Intake product
-work belongs in `apps/intake`; landing CTAs link to `/intake`.
+Tailwind 4. Intake product work belongs in `apps/intake`; landing CTAs link to
+`/intake`.
 
 Pushes to `main` build and publish an OCI image to
 `ghcr.io/optidigi/siteinabox-site` via the compatibility monorepo workflow in

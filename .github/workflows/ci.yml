@@ -90,22 +90,6 @@ jobs:
       - name: Run vitest (unit + integration)
         run: pnpm --dir apps/cms test
 
-  site-template:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/site-template
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 26
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --ignore-workspace astro check
-      - run: pnpm --ignore-workspace test
-      - run: pnpm --ignore-workspace build
-
   site:
     runs-on: ubuntu-latest
     steps:

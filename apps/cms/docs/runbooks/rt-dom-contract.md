@@ -24,11 +24,13 @@ This file specifies the DOM shape both the CMS editor (Lexical) and the downstre
 
 Each tenant's site CSS styles these class names. The CMS does not own the visual presentation — only the class contract.
 
-A fixture corpus of RtNode trees lives at `docs/runbooks/rt-fixtures.json`. The Astro template's CI should run its renderer against each fixture and assert the emitted DOM matches this contract.
+A fixture corpus of RtNode trees lives at `docs/runbooks/rt-fixtures.json`. The
+shared renderer's CI should run its renderer against each fixture and assert the
+emitted DOM matches this contract.
 
 ## Canvas block DOM contract
 
-Canvas block renderers (`src/components/editor/canvas/blocks/*.tsx`) emit a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the rendered-site components in `packages/site-renderer` and the reusable baseline in `packages/site-template/src/components/cms/*.tsx`. Tenant CSS targets these class names — they are the stable contract between the canvas editor and the live site. When a rendered-site component's DOM changes, its canvas renderer must be updated in lockstep.
+Canvas block renderers (`src/components/editor/canvas/blocks/*.tsx`) emit a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the rendered-site components in `packages/site-renderer`. Tenant CSS targets these class names — they are the stable contract between the canvas editor and the live site. When a rendered-site component's DOM changes, its canvas renderer must be updated in lockstep.
 
 | Block | Outer section classes | Key inner structural classes |
 |---|---|---|
@@ -44,11 +46,11 @@ Canvas block renderers (`src/components/editor/canvas/blocks/*.tsx`) emit a `<se
 Notes:
 - The CTA block dispatches on `primary.href` at render time: `mailto:`/`tel:` prefixes produce the contact variant; anything else produces the quote variant. Both share the `cms-block--cta` base class; the variant class (`cms-block--cta-contact` / `cms-block--cta-quote`) lets tenant CSS target each flavour separately.
 - The `data-block-index` and `data-active` attributes are canvas-only affordances — they are not emitted by the rendered-site components and tenant CSS must not rely on them.
-- Canonical reference implementations: `packages/site-renderer` and `packages/site-template/src/components/cms/*.tsx`. The canvas renderers mirror them.
+- Canonical reference implementations live in `packages/site-renderer`. The canvas renderers mirror them.
 
 ## § Theme tokens consumed by block renderers
 
-The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site renderers (in `packages/site-renderer` and `packages/site-template`) MUST consume these CSS custom properties so the ThemeBar's settings flow to both surfaces in lockstep.
+The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site renderers in `packages/site-renderer` MUST consume these CSS custom properties so the ThemeBar's settings flow to both surfaces in lockstep.
 
 ### Font role tokens
 
