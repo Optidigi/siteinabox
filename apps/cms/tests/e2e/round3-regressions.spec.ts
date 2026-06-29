@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test"
+import { test, expect, type Locator, type Page } from "@playwright/test"
 import { loginLocal, AMI_PAGE, LOCAL_BASE } from "./_local"
 
 type EditorMode = "canvas" | "sidebar"
@@ -24,6 +24,29 @@ async function ensureEditorMode(page: Page, mode: EditorMode) {
     mode,
     { timeout: 20_000, polling: 200 },
   )
+}
+
+async function dispatchContextMenu(locator: Locator) {
+  await locator.evaluate((node) => {
+    const rect = node.getBoundingClientRect()
+    node.dispatchEvent(new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+    }))
+  })
+}
+
+async function dispatchEscape(page: Page) {
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Escape",
+    }))
+  })
 }
 
 test.describe("Round 3 — root-cause regressions", () => {
@@ -145,7 +168,17 @@ test.describe("Round 3 — root-cause regressions", () => {
     expect(gutterPlacement.parentTag).toBe("BODY")
     expect(gutterPlacement.insideCanvas).toBe(false)
 
-    await chromeGutter.locator("[data-site-chrome-menu-trigger]").click()
+    await chromeGutter.locator("[data-site-chrome-menu-trigger]").dispatchEvent("click")
+    await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
+    await dispatchEscape(page)
+
+    await dispatchContextMenu(nav)
+    await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
+    await dispatchEscape(page)
+
+    const footer = page.locator(".rt-canvas .site-frame-root > footer").first()
+    await expect(footer).toBeVisible({ timeout: 10_000 })
+    await dispatchContextMenu(footer)
     await expect(page.getByRole("button", { name: /open inspector/i })).toBeVisible({ timeout: 5_000 })
 
     expect(pageErrors).toEqual([])

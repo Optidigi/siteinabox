@@ -12,21 +12,31 @@ import {
 } from "@siteinabox/ui/components/dropdown-menu"
 
 type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
+const CHROME_VIEWPORT_GAP = 8
 
 function useFixedAnchorRect(
   ref: React.RefObject<HTMLElement | null>,
   enabled = true,
+  measureKey?: unknown,
 ): AnchorRect | null {
   const [rect, setRect] = React.useState<AnchorRect | null>(null)
 
   React.useLayoutEffect(() => {
     if (!enabled) return
-    const node = ref.current
-    if (!node) return
 
     let frame: number | null = null
+    let resizeObserver: ResizeObserver | null = null
+    let observedNode: HTMLElement | null = null
     const measure = () => {
       frame = null
+      const node = ref.current
+      if (!node) return
+      if (node !== observedNode) {
+        resizeObserver?.disconnect()
+        observedNode = node
+        resizeObserver = new ResizeObserver(schedule)
+        resizeObserver.observe(node)
+      }
       const next = node.getBoundingClientRect()
       setRect({
         left: next.left,
@@ -41,20 +51,35 @@ function useFixedAnchorRect(
     }
 
     measure()
-    const resizeObserver = new ResizeObserver(schedule)
-    resizeObserver.observe(node)
     window.addEventListener("resize", schedule)
     window.addEventListener("scroll", schedule, true)
 
     return () => {
       if (frame != null) window.cancelAnimationFrame(frame)
-      resizeObserver.disconnect()
+      resizeObserver?.disconnect()
       window.removeEventListener("resize", schedule)
       window.removeEventListener("scroll", schedule, true)
     }
-  }, [enabled, ref])
+  }, [enabled, ref, measureKey])
 
   return rect
+}
+
+function cmsChromeBottomAt(x: number) {
+  if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
+  let bottom = CHROME_VIEWPORT_GAP
+  document.body.querySelectorAll<HTMLElement>("*").forEach((element) => {
+    if (element.closest(".rt-canvas, [data-siab-canvas-chrome]")) return
+    const style = window.getComputedStyle(element)
+    if (style.position !== "fixed" && style.position !== "sticky") return
+    const zIndex = Number.parseInt(style.zIndex, 10)
+    if (!Number.isFinite(zIndex) || zIndex < 15) return
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    if (rect.top > window.innerHeight / 2 || rect.right < x || rect.left > x) return
+    bottom = Math.max(bottom, rect.bottom + CHROME_VIEWPORT_GAP)
+  })
+  return bottom
 }
 
 export const CanvasChromeGutterOverlay: React.FC<{
@@ -68,6 +93,8 @@ export const CanvasChromeGutterOverlay: React.FC<{
   onOptionsClick?: (point: { x: number; y: number }) => void
   optionsLabel: string
   dataChrome?: string
+  premeasure?: boolean
+  measureKey?: unknown
 }> = ({
   anchorRef,
   visible,
@@ -79,17 +106,23 @@ export const CanvasChromeGutterOverlay: React.FC<{
   onOptionsClick,
   optionsLabel,
   dataChrome = "block-gutter",
+  premeasure = false,
+  measureKey,
 }) => {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
-  const rect = useFixedAnchorRect(anchorRef, visible)
   const [menuOpen, setMenuOpen] = React.useState(false)
   const show = visible || menuOpen
+  const rect = useFixedAnchorRect(anchorRef, premeasure || show, measureKey)
   const hasDropdownActions = !!onDuplicate || !!onDelete
+  const left = rect ? Math.max(CHROME_VIEWPORT_GAP, rect.right - 72) : 0
+  const top = rect
+    ? Math.max(CHROME_VIEWPORT_GAP, rect.top + CHROME_VIEWPORT_GAP, cmsChromeBottomAt(left + 28))
+    : 0
   const position = useCspStyleRule(
     "canvas-gutter-overlay",
     show && rect
-      ? `left:${formatCssPx(Math.max(8, rect.right - 72))};top:${formatCssPx(Math.max(8, rect.top + 8))};`
+      ? `left:${formatCssPx(left)};top:${formatCssPx(top)};`
       : null,
   )
 
@@ -160,6 +193,13 @@ export const CanvasChromeGutterOverlay: React.FC<{
             data-site-chrome-menu-trigger
             aria-label={optionsLabel}
             className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              event.preventDefault()
+              event.stopPropagation()
+              const rect = event.currentTarget.getBoundingClientRect()
+              onOptionsClick?.({ x: rect.right, y: rect.bottom + 4 })
+            }}
             onClick={(event) => {
               event.preventDefault()
               event.stopPropagation()

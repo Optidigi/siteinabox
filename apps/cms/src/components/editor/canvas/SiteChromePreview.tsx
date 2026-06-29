@@ -70,6 +70,17 @@ const siteChromeTargetSelector = (zone: SiteChromeZone) =>
     ? '.rt-canvas [data-site-chrome="header"], .rt-canvas [data-amicare-nav], .rt-canvas .site-frame-root > nav'
     : '.rt-canvas [data-site-chrome="footer"], .rt-canvas .site-frame-root > footer'
 
+const isVisibleChromeTarget = (node: HTMLElement | null) => {
+  if (!node) return false
+  const rect = node.getBoundingClientRect()
+  return rect.width > 0 && rect.height > 0
+}
+
+const pickChromeTarget = (targets: HTMLElement[], current: HTMLElement | null) => {
+  if (current && targets.includes(current) && isVisibleChromeTarget(current)) return current
+  return targets.find(isVisibleChromeTarget) ?? targets[0] ?? null
+}
+
 const inlineRootFromText = (value: string): RtRoot => ({
   t: "root",
   variant: "inline",
@@ -623,7 +634,9 @@ function ChromeActionsMenu({
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const overlayAnchorRef = useRef<HTMLElement | null>(null)
+  const gutterHideTimerRef = useRef<number | null>(null)
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLElement | null>(null)
+  const [overlayTargets, setOverlayTargets] = useState<HTMLElement[]>([])
   const [gutterVisible, setGutterVisible] = useState(false)
   const open = point != null
   const useOverlayTarget = showOptionsButton && !!overlayTargetSelector
@@ -640,13 +653,15 @@ function ChromeActionsMenu({
 
   useLayoutEffect(() => {
     if (!useOverlayTarget || !overlayTargetSelector) return
-    const findTarget = () => {
-      const next = document.querySelector<HTMLElement>(overlayTargetSelector)
-      overlayAnchorRef.current = next
-      setOverlayAnchor(next)
+    const findTargets = () => {
+      const nextTargets = Array.from(document.querySelectorAll<HTMLElement>(overlayTargetSelector))
+      const nextAnchor = pickChromeTarget(nextTargets, overlayAnchorRef.current)
+      overlayAnchorRef.current = nextAnchor
+      setOverlayAnchor(nextAnchor)
+      setOverlayTargets(nextTargets)
     }
-    findTarget()
-    const observer = new MutationObserver(findTarget)
+    findTargets()
+    const observer = new MutationObserver(findTargets)
     observer.observe(document.body, { childList: true, subtree: true })
     return () => observer.disconnect()
   }, [overlayTargetSelector, useOverlayTarget])
@@ -668,47 +683,86 @@ function ChromeActionsMenu({
     setPoint(nextPoint)
   }
 
-  useEffect(() => {
-    if (!useOverlayTarget || !overlayAnchor) return
-    const onMouseEnter = () => setGutterVisible(true)
-    const onMouseLeave = () => setGutterVisible(false)
-    const onFocusIn = () => setGutterVisible(true)
-    const onFocusOut = (event: FocusEvent) => {
-      if (!overlayAnchor.contains(event.relatedTarget as Node | null)) {
-        setGutterVisible(false)
-      }
-    }
-    const onClick = (event: MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
-      if (onSelect) {
-        onSelect()
-        return
-      }
-      setPoint({ x: event.clientX, y: event.clientY })
-    }
-    const onContextMenu = (event: MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
-      if (isReadOnly) return
-      openAt({ x: event.clientX, y: event.clientY })
-    }
+  const clearGutterHideTimer = () => {
+    if (gutterHideTimerRef.current == null) return
+    window.clearTimeout(gutterHideTimerRef.current)
+    gutterHideTimerRef.current = null
+  }
 
-    overlayAnchor.addEventListener("mouseenter", onMouseEnter)
-    overlayAnchor.addEventListener("mouseleave", onMouseLeave)
-    overlayAnchor.addEventListener("focusin", onFocusIn)
-    overlayAnchor.addEventListener("focusout", onFocusOut)
-    overlayAnchor.addEventListener("click", onClick)
-    overlayAnchor.addEventListener("contextmenu", onContextMenu)
-    return () => {
-      overlayAnchor.removeEventListener("mouseenter", onMouseEnter)
-      overlayAnchor.removeEventListener("mouseleave", onMouseLeave)
-      overlayAnchor.removeEventListener("focusin", onFocusIn)
-      overlayAnchor.removeEventListener("focusout", onFocusOut)
-      overlayAnchor.removeEventListener("click", onClick)
-      overlayAnchor.removeEventListener("contextmenu", onContextMenu)
+  const setGutterVisibleSafely = (next: boolean) => {
+    if (next) {
+      clearGutterHideTimer()
+      setGutterVisible(true)
+      return
     }
-  }, [isReadOnly, onSelect, overlayAnchor, useOverlayTarget])
+    clearGutterHideTimer()
+    gutterHideTimerRef.current = window.setTimeout(() => {
+      gutterHideTimerRef.current = null
+      setGutterVisible(false)
+    }, 250)
+  }
+
+  useEffect(() => clearGutterHideTimer, [])
+
+  useEffect(() => {
+    if (!useOverlayTarget || overlayTargets.length === 0) return
+    const setActiveTarget = (target: HTMLElement) => {
+      overlayAnchorRef.current = target
+      setOverlayAnchor(target)
+    }
+    const listeners = overlayTargets.map((target) => {
+      const onMouseEnter = () => {
+        setActiveTarget(target)
+        setGutterVisibleSafely(true)
+      }
+      const onMouseLeave = () => setGutterVisibleSafely(false)
+      const onFocusIn = () => {
+        setActiveTarget(target)
+        setGutterVisibleSafely(true)
+      }
+      const onFocusOut = (event: FocusEvent) => {
+        if (!target.contains(event.relatedTarget as Node | null)) {
+          setGutterVisibleSafely(false)
+        }
+      }
+      const onClick = (event: MouseEvent) => {
+        setActiveTarget(target)
+        event.preventDefault()
+        event.stopPropagation()
+        if (onSelect) {
+          onSelect()
+          return
+        }
+        setPoint({ x: event.clientX, y: event.clientY })
+      }
+      const onContextMenu = (event: MouseEvent) => {
+        setActiveTarget(target)
+        event.preventDefault()
+        event.stopPropagation()
+        if (isReadOnly) return
+        openAt({ x: event.clientX, y: event.clientY })
+      }
+
+      target.addEventListener("mouseenter", onMouseEnter)
+      target.addEventListener("mouseleave", onMouseLeave)
+      target.addEventListener("focusin", onFocusIn)
+      target.addEventListener("focusout", onFocusOut)
+      target.addEventListener("click", onClick)
+      target.addEventListener("contextmenu", onContextMenu)
+      return { target, onMouseEnter, onMouseLeave, onFocusIn, onFocusOut, onClick, onContextMenu }
+    })
+
+    return () => {
+      listeners.forEach(({ target, onMouseEnter, onMouseLeave, onFocusIn, onFocusOut, onClick, onContextMenu }) => {
+        target.removeEventListener("mouseenter", onMouseEnter)
+        target.removeEventListener("mouseleave", onMouseLeave)
+        target.removeEventListener("focusin", onFocusIn)
+        target.removeEventListener("focusout", onFocusOut)
+        target.removeEventListener("click", onClick)
+        target.removeEventListener("contextmenu", onContextMenu)
+      })
+    }
+  }, [isReadOnly, onSelect, overlayTargets, useOverlayTarget])
 
   const menu = open && typeof document !== "undefined" ? createPortal(
     <div
@@ -780,12 +834,12 @@ function ChromeActionsMenu({
           )}
           data-active={selected || undefined}
           data-site-chrome-wrapper={showOptionsButton ? "true" : undefined}
-          onMouseEnter={() => setGutterVisible(true)}
-          onMouseLeave={() => setGutterVisible(false)}
-          onFocusCapture={() => setGutterVisible(true)}
+          onMouseEnter={() => setGutterVisibleSafely(true)}
+          onMouseLeave={() => setGutterVisibleSafely(false)}
+          onFocusCapture={() => setGutterVisibleSafely(true)}
           onBlurCapture={(event) => {
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-              setGutterVisible(false)
+              setGutterVisibleSafely(false)
             }
           }}
           onClick={(event) => {
@@ -811,9 +865,11 @@ function ChromeActionsMenu({
         <CanvasChromeGutterOverlay
           anchorRef={activeAnchorRef}
           visible={gutterVisible || selected}
-          setVisible={setGutterVisible}
+          setVisible={setGutterVisibleSafely}
           optionsLabel={t("siteChromeActions", { zone: label })}
           dataChrome="site-chrome-gutter"
+          premeasure
+          measureKey={overlayAnchor}
           onOptionsClick={openAt}
         />
       )}
