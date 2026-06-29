@@ -509,6 +509,36 @@ function FooterLinkList({ title, links }: { title: string; links: Array<{ label:
   )
 }
 
+export function SiteChromeActionFrame({
+  zone,
+  navigationHref,
+  onNavigate,
+  selected,
+  onSelect,
+  children,
+}: {
+  zone: SiteChromeZone
+  navigationHref?: string | null
+  onNavigate?: (href: string) => void
+  selected?: SiteChromeSelection | null
+  onSelect?: (selection: SiteChromeSelection, point?: SiteChromeSelectPoint) => void
+  children: ReactNode
+}) {
+  const label = chromeLabel(zone)
+  return (
+    <ChromeActionsMenu
+      label={label}
+      zone={zone}
+      selected={selected?.zone === zone}
+      navigationHref={navigationHref}
+      onNavigate={onNavigate}
+      onSelect={onSelect ? (point) => onSelect({ zone }, point) : undefined}
+      showOptionsButton
+      trigger={children}
+    />
+  )
+}
+
 export function SiteChromeRow({
   zone,
   navigationHref,

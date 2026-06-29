@@ -845,6 +845,24 @@ async function runLegacyRendererDispatchTests() {
   assertOrdered(blockListSlotMarkup, "data-amicare-nav", "data-cms-editable-block-list", "Amicare renderBlocks slot renders after nav")
   assertOrdered(blockListSlotMarkup, "data-cms-editable-block-list", "cms-block--hero", "Amicare renderBlocks slot wraps block output")
 
+  const chromeSlotMarkup = renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: amicarePage,
+      settings: amicarePublishedSiteSnapshot.settings,
+      theme: amicarePublishedSiteSnapshot.theme,
+      tenantSlug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      renderHeader: ({ defaultChrome }) => React.createElement("div", { "data-cms-editable-chrome": "header" }, defaultChrome),
+      renderFooter: ({ defaultChrome }) => React.createElement("div", { "data-cms-editable-chrome": "footer" }, defaultChrome),
+    }),
+  )
+  assertIncludes(chromeSlotMarkup, 'data-cms-editable-chrome="header"', "Amicare renderHeader can wrap shared nav chrome")
+  assertIncludes(chromeSlotMarkup, 'data-cms-editable-chrome="footer"', "Amicare renderFooter can wrap shared footer chrome")
+  assertIncludes(chromeSlotMarkup, "data-amicare-nav", "Amicare renderHeader preserves exact shared nav")
+  assertIncludes(chromeSlotMarkup, "@min-[48rem]/site-frame:grid-cols-4", "Amicare renderFooter preserves exact shared footer grid")
+  assertOrdered(chromeSlotMarkup, 'data-cms-editable-chrome="header"', "data-amicare-nav", "Amicare header slot wraps nav")
+  assertIncludes(chromeSlotMarkup, "<footer", "Amicare renderFooter preserves shared footer markup")
+
   const darkAmicareMarkup = renderToStaticMarkup(
     React.createElement(SitePageRenderer, {
       page: amicarePage,

@@ -91,7 +91,7 @@ import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValu
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import type { NavPage } from "@/lib/projection/resolveNav"
-import { SiteChromePreview, SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
+import { SiteChromeActionFrame, SiteChromePreview, SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
 import { MediaPicker } from "@/components/media/MediaPicker"
 import {
   createFooterItem,
@@ -1693,6 +1693,34 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     />
   ) : null
 
+  const renderHeaderChrome = chromeSettingsState
+    ? (defaultChrome: React.ReactNode) => (
+        <SiteChromeActionFrame
+          zone="header"
+          navigationHref={navigationHrefFor("header")}
+          onNavigate={navigateFromChrome}
+          selected={selectedChrome}
+          onSelect={selectChrome}
+        >
+          {defaultChrome}
+        </SiteChromeActionFrame>
+      )
+    : undefined
+
+  const renderFooterChrome = chromeSettingsState
+    ? (defaultChrome: React.ReactNode) => (
+        <SiteChromeActionFrame
+          zone="footer"
+          navigationHref={navigationHrefFor("footer")}
+          onNavigate={navigateFromChrome}
+          selected={selectedChrome}
+          onSelect={selectChrome}
+        >
+          {defaultChrome}
+        </SiteChromeActionFrame>
+      )
+    : undefined
+
   const renderSidebarList = useCallback(
     (ctx: SidebarListSlotContext) => (
       <SidebarListLayout
@@ -1989,6 +2017,8 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                     readOnly={readOnly}
                     headerChrome={headerChrome}
                     footerChrome={footerChrome}
+                    renderHeaderChrome={renderHeaderChrome}
+                    renderFooterChrome={renderFooterChrome}
                     seoCard={pageSettings}
                     dangerZone={dangerZone}
                     reorderBlocks={reorderBlocks}
@@ -2039,6 +2069,8 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                         readOnly={readOnly}
                         headerChrome={headerChrome}
                         footerChrome={footerChrome}
+                        renderHeaderChrome={renderHeaderChrome}
+                        renderFooterChrome={renderFooterChrome}
                       seoCard={pageSettings}
                       dangerZone={dangerZone}
                       reorderBlocks={reorderBlocks}

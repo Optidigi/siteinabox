@@ -34,6 +34,8 @@ describe("PageForm wiring boundaries", () => {
     expect(canvasMode).toContain("<SitePageRenderer")
     expect(canvasMode).toContain('legacyTenant === "amicare"')
     expect(canvasMode).toContain("renderBlocks={() =>")
+    expect(canvasMode).toContain("renderHeader={renderHeaderChrome")
+    expect(canvasMode).toContain("renderFooter={renderFooterChrome")
     expect(canvasMode).toContain("<CanvasBlockRenderer")
     expect(canvasMode).toContain("onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}")
     expect(canvasMode).not.toContain("{defaultRenderBlocks[index]}")
@@ -44,6 +46,9 @@ describe("PageForm wiring boundaries", () => {
     expect(pageForm).toContain("tenantId={tenantId}")
     expect(pageForm).toContain("rendererNavPages")
     expect(pageForm).toContain("tenantSlug={tenantSlug}")
+    expect(pageForm).toContain("SiteChromeActionFrame")
+    expect(pageForm).toContain("renderHeaderChrome={renderHeaderChrome}")
+    expect(pageForm).toContain("renderFooterChrome={renderFooterChrome}")
   })
 
   it("keeps Amicare-only rich text canvas treatment scoped to Amicare renderers", () => {

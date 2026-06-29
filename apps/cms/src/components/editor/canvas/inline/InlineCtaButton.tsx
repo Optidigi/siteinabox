@@ -64,7 +64,7 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
     return hasValue ? (
       <button
         type="button"
-        className={["rt-click-edit cursor-pointer rounded-[var(--radius-md)] [font-family:var(--font-text)]", className].filter(Boolean).join(" ")}
+        className={[className, "rt-click-edit cursor-pointer"].filter(Boolean).join(" ")}
         onClick={handleClick}
         data-rt-selected={isSelected ? "true" : undefined}
         data-rt-href={value!.href!}
@@ -74,7 +74,7 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
     ) : (
       <button
         type="button"
-        className={["rt-click-edit opacity-70 cursor-pointer rounded-[var(--radius-md)] [font-family:var(--font-text)]", className].filter(Boolean).join(" ")}
+        className={[className, "rt-click-edit opacity-70 cursor-pointer"].filter(Boolean).join(" ")}
         onClick={handleClick}
         data-rt-selected={isSelected ? "true" : undefined}
       >
@@ -91,7 +91,7 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
         {hasValue ? (
           <a
             href={value!.href!}
-            className={["rt-click-edit rounded-[var(--radius-md)] [font-family:var(--font-text)]", className].filter(Boolean).join(" ")}
+            className={[className, "rt-click-edit"].filter(Boolean).join(" ")}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true) }}
           >
             {value!.label}
@@ -99,7 +99,7 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
         ) : (
           <button
             type="button"
-            className={["rt-click-edit opacity-70 hover:opacity-100 rounded-[var(--radius-md)] [font-family:var(--font-text)]", className].filter(Boolean).join(" ")}
+            className={[className, "rt-click-edit opacity-70 hover:opacity-100"].filter(Boolean).join(" ")}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           >
             <Plus className="inline size-3.5 mr-1" />

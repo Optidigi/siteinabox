@@ -81,6 +81,8 @@ export interface CanvasModeProps {
   onDeletePage: () => void
   headerChrome?: React.ReactNode
   footerChrome?: React.ReactNode
+  renderHeaderChrome?: (defaultChrome: React.ReactNode) => React.ReactNode
+  renderFooterChrome?: (defaultChrome: React.ReactNode) => React.ReactNode
   onOpenBlockInspector?: (index: number) => void
   renderMobileList?: (context: MobileSectionListSlotContext) => React.ReactNode
   renderMobileSectionEdit?: (context: MobileSectionEditSlotContext) => React.ReactNode
@@ -669,6 +671,8 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
   onDeletePage,
   headerChrome,
   footerChrome,
+  renderHeaderChrome,
+  renderFooterChrome,
   onOpenBlockInspector,
   renderMobileList,
   renderMobileSectionEdit,
@@ -725,6 +729,8 @@ export const CanvasMode: React.FC<CanvasModeProps> = ({
       onDeletePage={onDeletePage}
       headerChrome={headerChrome}
       footerChrome={footerChrome}
+      renderHeaderChrome={renderHeaderChrome}
+      renderFooterChrome={renderFooterChrome}
       onOpenBlockInspector={onOpenBlockInspector}
     />
   )
@@ -743,6 +749,8 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   pageTitle,
   headerChrome,
   footerChrome,
+  renderHeaderChrome,
+  renderFooterChrome,
   onOpenBlockInspector,
 }) => {
   const t = useTranslations("editor")
@@ -902,6 +910,12 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                   nonce={cspNonce}
                   includeThemeStyle
                   includeBehaviorScripts={false}
+                  renderHeader={renderHeaderChrome
+                    ? ({ defaultChrome }) => renderHeaderChrome(defaultChrome)
+                    : undefined}
+                  renderFooter={renderFooterChrome
+                    ? ({ defaultChrome }) => renderFooterChrome(defaultChrome)
+                    : undefined}
                   canvasAttributes={{ "data-rt-view": view } as React.HTMLAttributes<HTMLDivElement>}
                   canvasClassName="[&_a[href]:not(.rt-click-edit)]:pointer-events-none"
                   formAction="#"

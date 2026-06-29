@@ -44,6 +44,8 @@ export type AmicarePageRendererProps = {
   includeBehaviorScripts?: boolean
   renderBlock?: AmicareRenderBlock
   renderBlocks?: AmicareRenderBlocks
+  renderHeader?: AmicareRenderChrome
+  renderFooter?: AmicareRenderChrome
 }
 
 export type AmicareRenderBlock = (args: {
@@ -55,6 +57,10 @@ export type AmicareRenderBlock = (args: {
 export type AmicareRenderBlocks = (args: {
   blocks: Page["blocks"]
   defaultRenderBlocks: React.ReactNode[]
+}) => React.ReactNode
+
+export type AmicareRenderChrome = (args: {
+  defaultChrome: React.ReactNode
 }) => React.ReactNode
 
 const DEFAULT_NAV_LINKS = [
@@ -945,6 +951,8 @@ export function AmicarePageRenderer({
   includeBehaviorScripts = true,
   renderBlock,
   renderBlocks,
+  renderHeader,
+  renderFooter,
 }: AmicarePageRendererProps) {
   const defaultRenderBlocks = page.blocks.map((block, index) => {
     const defaultRender = (
@@ -962,6 +970,8 @@ export function AmicarePageRenderer({
       </React.Fragment>
     )
   })
+  const defaultHeader = <AmicareNav settings={settings} mediaResolver={mediaResolver} />
+  const defaultFooter = <AmicareFooter settings={settings} mediaResolver={mediaResolver} />
 
   return (
     <div
@@ -977,12 +987,12 @@ export function AmicarePageRenderer({
         data-page-slug={page.slug}
       >
         <div className="site-frame-root">
-          <AmicareNav settings={settings} mediaResolver={mediaResolver} />
+          {renderHeader ? renderHeader({ defaultChrome: defaultHeader }) : defaultHeader}
           <AmicareMaintenanceBanner settings={settings} />
           <main>
             {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
           </main>
-          <AmicareFooter settings={settings} mediaResolver={mediaResolver} />
+          {renderFooter ? renderFooter({ defaultChrome: defaultFooter }) : defaultFooter}
         </div>
         {includeBehaviorScripts && (
           <>

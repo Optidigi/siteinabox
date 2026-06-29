@@ -55,6 +55,8 @@ describe("SiteChromePreview chrome actions", () => {
     const file = source()
     const pageForm = pageFormSource()
 
+    expect(file).toContain("export function SiteChromeActionFrame")
+    expect(file).toContain("trigger={children}")
     expect(file).toContain("export type SiteChromeSelection")
     expect(file).toContain("export type SiteChromeSelectPoint")
     expect(file).toContain("onSelect?: (selection: SiteChromeSelection, point?: SiteChromeSelectPoint) => void")

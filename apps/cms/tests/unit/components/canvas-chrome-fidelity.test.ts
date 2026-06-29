@@ -101,4 +101,16 @@ describe("canvas chrome fidelity", () => {
     expect(richText).not.toContain("@min-[816px]/site-frame")
     expect(richText).not.toContain("@min-[1088px]/site-frame")
   })
+
+  it("keeps CTA edit affordance classes layout-neutral", () => {
+    const inlineCta = read("src/components/editor/canvas/inline/InlineCtaButton.tsx")
+    const canvasCss = read("../../packages/site-renderer/src/canvas.css")
+
+    expect(inlineCta).toContain('[className, "rt-click-edit"].filter(Boolean).join(" ")')
+    expect(inlineCta).not.toContain('"rt-click-edit rounded-[var(--radius-md)] [font-family:var(--font-text)]"')
+    expect(inlineCta).not.toContain('"rt-click-edit cursor-pointer rounded-[var(--radius-md)] [font-family:var(--font-text)]"')
+    expect(canvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas .amicare-button-primary.rt-click-edit')
+    expect(canvasCss).toContain("width: auto;")
+    expect(canvasCss).not.toContain("display: flex;\n  flex-direction: column;\n  gap: 1.75rem;")
+  })
 })
