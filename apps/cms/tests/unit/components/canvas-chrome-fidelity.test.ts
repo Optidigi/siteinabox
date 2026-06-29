@@ -110,18 +110,18 @@ describe("canvas chrome fidelity", () => {
     expect(inlineImage).toContain("onMouseLeave={() => canvasChrome.setVisible(false)}")
   })
 
-  it("keeps one block gutter active with a short transfer grace", () => {
+  it("keeps one block gutter active and clears it on section leave", () => {
     const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
     const gutterOverlay = read("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx")
 
-    expect(canvasMode).toContain("const blockGutterHideTimerRef = React.useRef<number | null>(null)")
     expect(canvasMode).toContain("const [activeBlockGutterIndex, setActiveBlockGutterIndex] = React.useState<number | null>(null)")
     expect(canvasMode).toContain("const setBlockGutterVisible = React.useCallback((index: number, next: boolean) => {")
     expect(canvasMode).toContain("setActiveBlockGutterIndex(index)")
     expect(canvasMode).toContain("setActiveBlockGutterIndex((current) => current === index ? null : current)")
-    expect(canvasMode).toContain("}, 450)")
     expect(canvasMode).toContain("gutterVisible={activeBlockGutterIndex === index}")
     expect(canvasMode).toContain("gutterVisible={activeBlockGutterIndex === i}")
+    expect(canvasMode).not.toContain("blockGutterHideTimerRef")
+    expect(canvasMode).not.toContain("window.setTimeout")
     expect(canvasMode).not.toContain("const [gutterVisible, setGutterVisible] = React.useState(false)")
     expect(gutterOverlay).toContain("type AnchorRect = Pick<DOMRect, \"bottom\" | \"left\" | \"right\" | \"top\" | \"width\">")
     expect(gutterOverlay).toContain('const hiddenAfterAnchorScrolledAway = rect ? dataChrome !== "site-chrome-gutter" && rect.bottom < cmsChromeBottom : false')

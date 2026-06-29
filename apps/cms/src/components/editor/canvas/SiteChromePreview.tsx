@@ -648,7 +648,6 @@ function ChromeActionsMenu({
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null)
   const anchorRef = useRef<HTMLDivElement | null>(null)
   const overlayAnchorRef = useRef<HTMLElement | null>(null)
-  const gutterHideTimerRef = useRef<number | null>(null)
   const [overlayAnchor, setOverlayAnchor] = useState<HTMLElement | null>(null)
   const [overlayTargets, setOverlayTargets] = useState<HTMLElement[]>([])
   const [gutterVisible, setGutterVisible] = useState(false)
@@ -699,27 +698,9 @@ function ChromeActionsMenu({
     setPoint(nextPoint)
   }, [onSelect])
 
-  const clearGutterHideTimer = useCallback(() => {
-    if (gutterHideTimerRef.current == null) return
-    window.clearTimeout(gutterHideTimerRef.current)
-    gutterHideTimerRef.current = null
-  }, [])
-
   const setGutterVisibleSafely = useCallback((next: boolean) => {
-    if (next) {
-      clearGutterHideTimer()
-      setGutterVisible(true)
-      return
-    }
-    if (gutterHideTimerRef.current != null) return
-    const hideDelayMs = useOverlayTarget ? 800 : 250
-    gutterHideTimerRef.current = window.setTimeout(() => {
-      gutterHideTimerRef.current = null
-      setGutterVisible(false)
-    }, hideDelayMs)
-  }, [clearGutterHideTimer, useOverlayTarget])
-
-  useEffect(() => clearGutterHideTimer, [clearGutterHideTimer])
+    setGutterVisible(next)
+  }, [])
 
   const setActiveOverlayTarget = useCallback((target: HTMLElement) => {
     overlayAnchorRef.current = target
@@ -758,18 +739,6 @@ function ChromeActionsMenu({
     const targetFromEvent = (eventTarget: EventTarget | null) => eventTarget instanceof HTMLElement
       ? eventTarget.closest<HTMLElement>(overlayTargetSelector)
       : null
-    const syncHoveredTarget = () => {
-      const hoveredTarget = Array
-        .from(document.querySelectorAll<HTMLElement>(overlayTargetSelector))
-        .find((target) => target.matches(":hover"))
-      if (hoveredTarget) {
-        setActiveOverlayTarget(hoveredTarget)
-        setGutterVisibleSafely(true)
-        return
-      }
-      if (document.querySelector('[data-siab-canvas-chrome="site-chrome-gutter"]:hover')) return
-      setGutterVisibleSafely(false)
-    }
 
     const onDocumentPointerOver = (event: PointerEvent) => {
       const target = targetFromEvent(event.target)
@@ -778,36 +747,7 @@ function ChromeActionsMenu({
       setGutterVisibleSafely(true)
     }
 
-    const onDocumentPointerMove = (event: PointerEvent) => {
-      const target = targetFromEvent(event.target)
-      if (!target) return
-      setActiveOverlayTarget(target)
-      setGutterVisibleSafely(true)
-    }
-
     const onDocumentPointerOut = (event: PointerEvent) => {
-      const target = targetFromEvent(event.target)
-      if (!target) return
-      const relatedTarget = event.relatedTarget
-      if (relatedTarget instanceof Node && target.contains(relatedTarget)) return
-      setGutterVisibleSafely(false)
-    }
-
-    const onDocumentMouseOver = (event: MouseEvent) => {
-      const target = targetFromEvent(event.target)
-      if (!target) return
-      setActiveOverlayTarget(target)
-      setGutterVisibleSafely(true)
-    }
-
-    const onDocumentMouseMove = (event: MouseEvent) => {
-      const target = targetFromEvent(event.target)
-      if (!target) return
-      setActiveOverlayTarget(target)
-      setGutterVisibleSafely(true)
-    }
-
-    const onDocumentMouseOut = (event: MouseEvent) => {
       const target = targetFromEvent(event.target)
       if (!target) return
       const relatedTarget = event.relatedTarget
@@ -826,21 +766,11 @@ function ChromeActionsMenu({
     }
 
     document.addEventListener("pointerover", onDocumentPointerOver, true)
-    document.addEventListener("pointermove", onDocumentPointerMove, true)
     document.addEventListener("pointerout", onDocumentPointerOut, true)
-    document.addEventListener("mouseover", onDocumentMouseOver, true)
-    document.addEventListener("mousemove", onDocumentMouseMove, true)
-    document.addEventListener("mouseout", onDocumentMouseOut, true)
     document.addEventListener("contextmenu", onDocumentContextMenu, true)
-    const hoverSyncInterval = window.setInterval(syncHoveredTarget, 120)
     return () => {
-      window.clearInterval(hoverSyncInterval)
       document.removeEventListener("pointerover", onDocumentPointerOver, true)
-      document.removeEventListener("pointermove", onDocumentPointerMove, true)
       document.removeEventListener("pointerout", onDocumentPointerOut, true)
-      document.removeEventListener("mouseover", onDocumentMouseOver, true)
-      document.removeEventListener("mousemove", onDocumentMouseMove, true)
-      document.removeEventListener("mouseout", onDocumentMouseOut, true)
       document.removeEventListener("contextmenu", onDocumentContextMenu, true)
     }
   }, [isReadOnly, openAt, overlayTargetSelector, setActiveOverlayTarget, setGutterVisibleSafely, useOverlayTarget])

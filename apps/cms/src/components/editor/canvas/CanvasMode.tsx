@@ -805,32 +805,18 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   }, [selected?.blockIndex, selected?.field, setActiveIndex])
 
   const paneRef = React.useRef<HTMLDivElement>(null)
-  const blockGutterHideTimerRef = React.useRef<number | null>(null)
   const [activeBlockGutterIndex, setActiveBlockGutterIndex] = React.useState<number | null>(null)
   const [blockContextMenu, setBlockContextMenu] = React.useState<{ index: number; point: { x: number; y: number } } | null>(null)
   const [deleteTargetIndex, setDeleteTargetIndex] = React.useState<number | null>(null)
   useScrollToSelection(paneRef, selected)
 
-  const clearBlockGutterHideTimer = React.useCallback(() => {
-    if (blockGutterHideTimerRef.current == null) return
-    window.clearTimeout(blockGutterHideTimerRef.current)
-    blockGutterHideTimerRef.current = null
-  }, [])
-
   const setBlockGutterVisible = React.useCallback((index: number, next: boolean) => {
     if (next) {
-      clearBlockGutterHideTimer()
       setActiveBlockGutterIndex(index)
       return
     }
-    clearBlockGutterHideTimer()
-    blockGutterHideTimerRef.current = window.setTimeout(() => {
-      blockGutterHideTimerRef.current = null
-      setActiveBlockGutterIndex((current) => current === index ? null : current)
-    }, 450)
-  }, [clearBlockGutterHideTimer])
-
-  React.useEffect(() => clearBlockGutterHideTimer, [clearBlockGutterHideTimer])
+    setActiveBlockGutterIndex((current) => current === index ? null : current)
+  }, [])
 
   const onCanvasClick = (event: React.MouseEvent) => {
     setBlockContextMenu(null)
