@@ -35,7 +35,7 @@ images.
 | Preview customizer/approval | `preview-customizer.test.ts`, `preview-customizer-source.test.ts` | Customer preview acceptance browser smoke | Preview renders the shared renderer directly; no iframe boundary. |
 | Payment checkout/webhook | `molliePayments.test.ts`, `generationRunPayment.test.ts`, `generationRunPaymentAction.test.ts` | Mollie test checkout and webhook delivery from Mollie dashboard/tunnel | PSP is Mollie. Payment state alone never publishes or activates a site. |
 | Manual domain verification | `domainVerificationAction.test.ts` | DNS and Traefik host-rule checks | OpenProvider/Cloudflare automation is deferred. |
-| Publish/activate/rollback | `publishedSiteSnapshots.test.ts`, `publish-route.test.ts`, `publishOperations.test.ts` | Operator smoke for publish, activate, rollback in staging | Live activation requires approved preview plus completed/waived payment, unless explicit super-admin manual activation is used; tenant/domain gates still apply. |
+| Publish/activate/rollback | `publish-current-state.test.ts`, `publish-route.test.ts`, `publishOperations.test.ts` | Operator smoke for publish, activate, rollback in staging | Live activation requires approved preview plus completed/waived payment, unless explicit super-admin manual activation is used; tenant/domain gates still apply. |
 | Renderer snapshot lookup | `renderer-snapshot-route.test.ts`, `renderer-snapshot-loader.test.ts` | Bearer token parity, `Host`/`X-Forwarded-Host` preservation, unknown host 404 | Live renderer serves only active published snapshots and inactive/unknown hosts return 404. |
 | Landing/intake/legacy builds | Package build/test commands | Public route and asset smoke after deploy | Compatibility `site:*` scripts map to landing. |
 
@@ -149,7 +149,7 @@ pnpm --dir apps/cms --ignore-workspace test tests/unit/intakeGenerationRun.test.
 pnpm --dir apps/cms --ignore-workspace test tests/unit/publicIntakeValidation.test.ts
 pnpm --dir apps/cms --ignore-workspace test tests/unit/preview-access.test.ts tests/unit/preview-route.test.tsx tests/unit/request-preview-magic-link.test.ts
 pnpm --dir apps/cms --ignore-workspace test tests/unit/molliePayments.test.ts tests/unit/generationRunPayment.test.ts tests/unit/generationRunPaymentAction.test.ts
-pnpm --dir apps/cms --ignore-workspace test tests/unit/publishedSiteSnapshots.test.ts tests/unit/publish-route.test.ts tests/unit/publishOperations.test.ts
+pnpm --dir apps/cms --ignore-workspace test tests/unit/publish-current-state.test.ts tests/unit/publish-route.test.ts tests/unit/publishOperations.test.ts
 pnpm --dir apps/cms --ignore-workspace test tests/unit/renderer-snapshot-route.test.ts tests/unit/renderer-snapshot-loader.test.ts
 ```
 

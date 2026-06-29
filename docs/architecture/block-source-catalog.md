@@ -1,8 +1,31 @@
 # Block Source Catalog
 
-Phase 2 provenance record for generated-site source-backed renderer variants.
-Generated sites consume structured tenant/page/block data only; this catalog does
-not allow generated tenant source files.
+Provenance record and source-of-truth map for generated-site source-backed
+renderer variants. Generated sites consume structured tenant/page/block data
+only; this catalog does not allow generated tenant source files.
+
+## Canonical Generated Block Path
+
+The block pipeline is intentionally split by responsibility:
+
+- `packages/contracts/src/site.ts` is the canonical list of generated page block
+  slugs and TypeScript data shapes.
+- `packages/contracts/src/generation.ts` is the AI/site-generation input
+  contract.
+- `packages/contracts/src/runtime.ts` is the runtime validation contract.
+- `packages/contracts/src/block-catalog.ts` is the canonical catalog for
+  approved variants, provenance, source families, and CMS editable-field
+  mappings.
+- `packages/contracts/block-sources/` is archived upstream UI source material.
+- `apps/cms/src/blocks/registry.ts` maps the canonical block slugs to Payload
+  CMS schemas.
+- `packages/site-renderer/src/blocks/index.tsx` maps the same slugs to the
+  public/preview React renderers.
+- `apps/cms/src/components/editor/canvas/CanvasBlockRenderer.tsx` maps the same
+  data to editable canvas renderers and editing affordances.
+
+New AI-generation blocks are available only after the contract, catalog entry,
+CMS schema, renderer, editable canvas behavior, and tests are all in place.
 
 ## Source Archive vs Renderer Catalog
 

@@ -19,8 +19,8 @@ packages/
 
 ## Architecture Direction
 
-SIAB is moving toward data-driven site generation. Generation creates validated
-CMS tenant data, not source code.
+SIAB uses data-driven site generation. Generation creates validated CMS tenant
+data, not source code.
 
 Current invariants:
 
@@ -36,6 +36,18 @@ Current invariants:
   preview/customizer surfaces and by `apps/renderer`.
 - Tenant-specific app source folders under `sites/*` have been removed.
   Renderer/CMS snapshot data is now canonical.
+- `packages/contracts/src/site.ts` owns the canonical generated-site block slug
+  contract. `packages/contracts/src/block-catalog.ts` owns approved block
+  provenance, variants, and editable-field metadata. CMS block schemas live in
+  `apps/cms/src/blocks/`, and live/preview rendering lives in
+  `packages/site-renderer/src/blocks/`.
+- Cloudflare Email Service over Nodemailer is the canonical mail path for SIAB
+  platform mail, tenant-site mail, Payload email, and Better Auth magic-link
+  mail. Do not add a second transactional mail provider without an approved
+  architecture decision.
+- Generated-site analytics are PostHog-first by default through the shared
+  projection and renderer contracts. Public capture remains consent-gated and
+  only becomes active when the deployment has the required PostHog token/env.
 
 New generated sites must create validated tenant, site, page, theme, SEO, and
 publishing data. They must not create per-client folders under `sites/*`,
@@ -43,7 +55,7 @@ tenant-specific source files, tenant-specific GitHub workflows, tenant-specific
 Docker images, or arbitrary executable code.
 
 See [Data-Driven Site Generation](docs/architecture/data-driven-site-generation.md)
-for the Phase 0 guardrails.
+for the current generation contract.
 
 ## Deployment Contract
 

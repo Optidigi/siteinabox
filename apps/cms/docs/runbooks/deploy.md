@@ -145,6 +145,10 @@ snapshot lookup. Use the same value in the renderer stack. In production, the
 CMS snapshot endpoint rejects requests when this token is missing or incorrect.
 `SITE_URL` should match the public CMS/admin origin where runtime metadata or
 absolute URLs need the CMS origin.
+Cloudflare Email Service over Nodemailer is the canonical mail path for all
+SIAB mail. The same `CLOUDFLARE_EMAIL_SMTP_TOKEN` / `EMAIL_FROM` configuration
+is used for Payload email, platform/admin messages, tenant-site messages, and
+Better Auth magic-link delivery for both CMS and customer preview auth.
 Mollie checkout uses the hosted Payments API and the webhook route
 `/api/payments/mollie/webhook`. Keep `MOLLIE_API_KEY` and any optional webhook
 signing secret in deployment secrets only; `.env.example` intentionally contains

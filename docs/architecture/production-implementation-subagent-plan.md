@@ -59,8 +59,9 @@ tenant-specific images.
 - Until domain automation is implemented, production readiness work should keep
   a manual or stubbed domain-ready gate so publish/activation can be tested
   without pretending OpenProvider or Cloudflare automation exists.
-- Amicare must be migrated toward the new data-driven renderer
-  runtime. Existing legacy sites stay available until cutover is proven.
+- Amicare must stay on the data-driven renderer runtime. Its legacy parity
+  behavior belongs in scoped renderer/CMS snapshot data and
+  `packages/site-renderer`, not restored tenant app source.
 - Generated-site styling must come only from approved catalog/library sources:
   shadcn-owned primitives, Tailwind Plus free/public blocks, Tailblocks, Mamba
   UI, HyperUI, Preline free, and later SIAB-owned custom blocks that have been
@@ -302,7 +303,7 @@ breaking their current live snapshot paths.
 
 ### Research
 
-- Inventory current removed legacy Amicare app source references,
+- Inventory current Amicare CMS/snapshot data,
   `packages/site-renderer` legacy tenant fixtures, published snapshot fixtures,
   and renderer output.
 - Compare current legacy pages, navigation, SEO, media, forms, theme, and
@@ -318,19 +319,15 @@ breaking their current live snapshot paths.
 - Add migration scripts or fixtures that create data, not tenant source files.
 - Add renderer parity fixtures/tests for root pages, key subpages, SEO,
   navigation, theme, and media behavior.
-- Keep legacy `sites/*` builds intact until renderer cutover is explicitly
-  approved.
 - Do not use legacy tenant source structure as the model for new generated
   sites.
 
 ### Review/Test
 
-- Build current legacy sites to confirm no regression.
 - Build and test renderer output for migrated tenant data.
 - Compare key pages manually at desktop and mobile widths.
-- Confirm DNS/host routing can choose legacy or renderer during cutover.
-- Run tenant builds, renderer build/typecheck, fixture tests, and migration
-  tests.
+- Confirm DNS/host routing points tenant domains to the generic renderer.
+- Run renderer build/typecheck, fixture tests, and migration tests.
 
 ## Phase 5: Block Catalog Governance Agent
 

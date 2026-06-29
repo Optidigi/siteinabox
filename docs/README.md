@@ -12,10 +12,14 @@ Monorepo-level policies:
 
 - Future platform architecture decisions should be added under `decisions/`
   once approved.
-- Current implementation planning lives under `architecture/`, including
-  `architecture/production-implementation-subagent-plan.md` for the next
-  subagent-based production pass.
-- Staging and CI verification for the current production-readiness pass lives in
-  `architecture/phase-6-staging-ci-readiness.md`.
+- Current platform architecture lives under `architecture/`, especially
+  `architecture/data-driven-site-generation.md` and
+  `architecture/block-source-catalog.md`.
+- Historical phase and subagent plans under `architecture/` are retained as
+  implementation history. They must not override current root `AGENTS.md`,
+  this README, or the current architecture docs.
+- Staging and CI verification notes live in
+  `architecture/phase-6-staging-ci-readiness.md` and
+  `architecture/phase-10-e2e-readiness-report.md`.
 - Root `AGENTS.md` is the canonical monorepo operating policy, including MCP and
   agent-tooling state.
