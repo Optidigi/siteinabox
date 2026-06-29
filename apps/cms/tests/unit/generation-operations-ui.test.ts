@@ -79,7 +79,7 @@ describe("generation operations UI helpers", () => {
       },
     }
 
-    await listGenerationOperations({ page: 3, pageSize: 20, filter: "needs-review", q: "amblast" }, client)
+    await listGenerationOperations({ page: 3, pageSize: 20, filter: "needs-review", q: "" }, client)
 
     expect(calls).toHaveLength(2)
     expect(calls[0]).toMatchObject({
@@ -98,8 +98,8 @@ describe("generation operations UI helpers", () => {
       depth: 2,
       sort: "-updatedAt",
     })
-    expect(calls[0].where).toEqual(generationRunWhere("needs-review", "amblast"))
-    expect(calls[1].where).toEqual(intakeSubmissionWhere("needs-review", "amblast"))
+    expect(calls[0].where).toEqual(generationRunWhere("needs-review", ""))
+    expect(calls[1].where).toEqual(intakeSubmissionWhere("needs-review", ""))
   })
 
   it("redacts secret-looking and raw provider fields in JSON summaries", () => {

@@ -1,6 +1,6 @@
 import type { SiteSettings } from "@siteinabox/contracts"
 
-export type LegacyTenantId = "amicare" | "amblast"
+export type LegacyTenantId = "amicare"
 
 export type LegacyTenantContext = {
   tenantSlug?: string | null
@@ -43,15 +43,6 @@ export function resolveLegacyTenant({
     host === "ami-care.nl"
   ) {
     return "amicare"
-  }
-
-  if (
-    slug === "amblast" ||
-    slug === "tenant-amblast" ||
-    host === "amblast.optidigi.nl" ||
-    host === "amblast.nl"
-  ) {
-    return "amblast"
   }
 
   return null

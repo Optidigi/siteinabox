@@ -8,15 +8,11 @@ const OFFICIAL_SLUGS = new Set([
   "amicare",
   "amicare-zorg",
   "tenant-amicare",
-  "amblast",
-  "tenant-amblast",
 ])
 const OFFICIAL_DOMAINS = new Set([
   "ami-care.nl",
   "amicare.nl",
   "amicare.optidigi.nl",
-  "amblast.nl",
-  "amblast.optidigi.nl",
 ])
 
 const normalizeSlug = (value: string | null | undefined) =>

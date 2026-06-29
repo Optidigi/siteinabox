@@ -18,17 +18,13 @@ COPY packages/ui packages/ui
 RUN pnpm install --frozen-lockfile --filter @siteinabox/renderer... --store-dir=/pnpm/store
 
 ARG RENDERER_SITE_URL=https://renderer.siteinabox.nl
-ARG AMBLAST_SITE_URL=https://amblast.nl
 ARG AMICARE_SITE_URL=https://ami-care.nl
 ENV SITE_URL=${RENDERER_SITE_URL}
 ENV NODE_ENV=production
-RUN test "${AMBLAST_SITE_URL}" = "https://amblast.nl" \
-  && test "${AMICARE_SITE_URL}" = "https://ami-care.nl" \
+RUN test "${AMICARE_SITE_URL}" = "https://ami-care.nl" \
   && SITE_URL=${RENDERER_SITE_URL} pnpm --filter @siteinabox/renderer build \
   && pnpm --filter @siteinabox/renderer deploy --prod --legacy /app \
   && cp -R apps/renderer/dist /app/dist \
-  && mkdir -p /app/legacy-tenants/amblast \
-  && cp -R apps/renderer/src/lib/legacy-tenants/_assets/amblast/. /app/legacy-tenants/amblast/ \
   && mkdir -p /app/legacy-tenants/amicare/client /app/legacy-tenants/amicare/media \
   && cp -R apps/renderer/src/lib/legacy-tenants/_assets/amicare/client/. /app/legacy-tenants/amicare/client/ \
   && cp -R apps/renderer/src/lib/legacy-tenants/_assets/amicare/media/. /app/legacy-tenants/amicare/media/

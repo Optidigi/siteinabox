@@ -4,11 +4,9 @@ import { SITE_GENERATION_BLOCK_SLUGS } from "./site"
 import type {
   AnalyticsBlockMetadata,
   Block,
-  BeforeAfterGalleryBlock,
   BlogCardsBlock,
   ComparisonBlock,
   ContactSectionBlock,
-  ContactDetailsBlock,
   CTABlock,
   FAQBlock,
   FeatureListBlock,
@@ -16,18 +14,15 @@ import type {
   FooterCompositionColumn,
   GalleryBlock,
   HeroBlock,
-  InfoCardListBlock,
   LinkRef,
   LogoCloudBlock,
   MediaRef,
-  MediaHeroBlock,
   Page,
   PricingBlock,
   ProcessStepsBlock,
   RichTextBlock,
   SiteSettings,
   SiteGenerationBlockSlug,
-  ServiceCarouselBlock,
   StatsBlock,
   TeamBlock,
   TestimonialsBlock,
@@ -72,7 +67,7 @@ const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|(oklch|color|rgb[a]?|hsl[a]?)\(.*\)|[a-zA-Z]+)$/
 const CSS_LENGTH_REGEX = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%)|var\(--[A-Za-z0-9_-]+\))$/
 const SITE_SHARED_CHROME_VARIANTS = ["default", "hyperUiSimple"] as const
-const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "amicareZen", "amblastIndustrial"] as const
+const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "amicareZen"] as const
 type RuntimeVariantScope = "generic" | "officialTenant"
 
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
@@ -365,30 +360,6 @@ export const HeroBlockSchema: z.ZodType<HeroBlock> = strictObject({
   image: MediaRefSchema.optional(),
 })
 
-export const MediaHeroBlockSchema: z.ZodType<MediaHeroBlock> = strictObject({
-  blockType: z.literal("mediaHero"),
-  ...baseBlockShape,
-  eyebrow: RtFieldSchema.optional(),
-  headline: RtRootSchema,
-  subheadline: RtFieldSchema.optional(),
-  cta: LinkRefSchema.nullable().optional(),
-  secondary: LinkRefSchema.nullable().optional(),
-  backgroundImage: MediaRefSchema,
-  foregroundImage: MediaRefSchema.optional(),
-  overlay: strictObject({
-    color: nullableString,
-    opacity: z.number().min(0).max(1).nullable().optional(),
-  }).nullable().optional(),
-  minHeight: z.enum(["compact", "standard", "tall", "viewport"]).nullable().optional(),
-  contentAlign: z.enum(["left", "center", "right"]).nullable().optional(),
-  contentWidth: z.enum(["narrow", "wide"]).nullable().optional(),
-  shapeDividers: strictObject({
-    top: z.enum(["mountains", "wave-brush", "none"]).nullable().optional(),
-    bottom: z.enum(["mountains", "wave-brush", "none"]).nullable().optional(),
-  }).nullable().optional(),
-  priority: z.boolean().nullable().optional(),
-})
-
 export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject({
   blockType: z.literal("featureList"),
   ...baseBlockShape,
@@ -401,94 +372,6 @@ export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject(
       icon: nullableString,
     }))
     .min(1),
-})
-
-export const InfoCardListBlockSchema: z.ZodType<InfoCardListBlock> = strictObject({
-  blockType: z.literal("infoCardList"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  layout: z.enum(["row", "grid", "stack"]).nullable().optional(),
-  iconPosition: z.enum(["top", "left"]).nullable().optional(),
-  items: z
-    .array(strictObject({
-      title: RtRootSchema,
-      description: RtFieldSchema.optional(),
-      icon: nullableString,
-      image: MediaRefSchema.optional(),
-      link: LinkRefSchema.nullable().optional(),
-      animation: z.enum(["fadeInUp", "fadeInDown", "float", "grow", "none"]).nullable().optional(),
-    }))
-    .min(1),
-})
-
-export const ServiceCarouselBlockSchema: z.ZodType<ServiceCarouselBlock> = strictObject({
-  blockType: z.literal("serviceCarousel"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  layout: z.enum(["carousel", "grid"]).nullable().optional(),
-  items: z
-    .array(strictObject({
-      title: RtRootSchema,
-      description: RtFieldSchema.optional(),
-      image: MediaRefSchema.optional(),
-      cta: LinkRefSchema.nullable().optional(),
-    }))
-    .min(1),
-  carousel: strictObject({
-    slidesPerView: z.number().min(1).max(6).nullable().optional(),
-    slidesPerViewTablet: z.number().min(1).max(6).nullable().optional(),
-    slidesPerViewMobile: z.number().min(1).max(6).nullable().optional(),
-    spaceBetween: z.number().min(0).max(128).nullable().optional(),
-    autoplay: z.boolean().nullable().optional(),
-    autoplayDelayMs: z.number().int().min(500).max(30000).nullable().optional(),
-    loop: z.boolean().nullable().optional(),
-    pagination: z.enum(["bullets", "fraction", "none"]).nullable().optional(),
-    pauseOnInteraction: z.boolean().nullable().optional(),
-  }).nullable().optional(),
-})
-
-export const BeforeAfterGalleryBlockSchema: z.ZodType<BeforeAfterGalleryBlock> = strictObject({
-  blockType: z.literal("beforeAfterGallery"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  pairs: z
-    .array(strictObject({
-      before: MediaRefSchema,
-      after: MediaRefSchema,
-      beforeLabel: nullableString,
-      afterLabel: nullableString,
-      caption: RtFieldSchema.optional(),
-      initialRatio: z.number().min(0).max(1).nullable().optional(),
-      orientation: z.enum(["horizontal", "vertical"]).nullable().optional(),
-    }))
-    .min(1),
-})
-
-export const ContactDetailsBlockSchema: z.ZodType<ContactDetailsBlock> = strictObject({
-  blockType: z.literal("contactDetails"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  layout: z.enum(["cards", "split", "list"]).nullable().optional(),
-  items: z
-    .array(strictObject({
-      kind: z.enum(["phone", "email", "address", "hours", "legal", "custom"]).nullable().optional(),
-      label: z.string().min(1),
-      value: RtRootSchema,
-      href: nullableString,
-      icon: nullableString,
-      image: MediaRefSchema.optional(),
-    }))
-    .min(1),
-  legal: strictObject({
-    kvkNumber: nullableString,
-    btwId: nullableString,
-    iban: nullableString,
-    bic: nullableString,
-  }).nullable().optional(),
 })
 
 export const TestimonialsBlockSchema: z.ZodType<TestimonialsBlock> = strictObject({
@@ -691,12 +574,7 @@ export const ComparisonBlockSchema: z.ZodType<ComparisonBlock> = strictObject({
 
 const BlockSchemaBase = z.union([
   HeroBlockSchema,
-  MediaHeroBlockSchema,
   FeatureListBlockSchema,
-  InfoCardListBlockSchema,
-  ServiceCarouselBlockSchema,
-  BeforeAfterGalleryBlockSchema,
-  ContactDetailsBlockSchema,
   TestimonialsBlockSchema,
   FAQBlockSchema,
   CTABlockSchema,
@@ -714,12 +592,7 @@ const BlockSchemaBase = z.union([
 
 const GeneratedBlockSchemaBase = z.union([
   HeroBlockSchema,
-  MediaHeroBlockSchema,
   FeatureListBlockSchema,
-  InfoCardListBlockSchema,
-  ServiceCarouselBlockSchema,
-  BeforeAfterGalleryBlockSchema,
-  ContactDetailsBlockSchema,
   TestimonialsBlockSchema,
   FAQBlockSchema,
   CTABlockSchema,
@@ -1272,8 +1145,6 @@ export const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS = [
   "ami-care",
   "amicare",
   "amicare-renderer",
-  "amblast",
-  "amblast-renderer",
 ] as const
 
 const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUG_SET = new Set<string>(OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS)

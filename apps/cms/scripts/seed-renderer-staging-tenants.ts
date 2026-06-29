@@ -3,15 +3,13 @@ import Module from "node:module"
 import { pathToFileURL } from "node:url"
 import type { Payload } from "payload"
 import {
-  amblastPublishedSiteSnapshot,
-  amblastSiteGenerationSpec,
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
 import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import { OfficialTenantSiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
 
-type TenantKey = "amicare" | "amblast"
+type TenantKey = "amicare"
 export type RendererSeedProfile = "staging" | "production"
 
 export type CliOptions = {
@@ -79,18 +77,6 @@ export const RENDERER_SEED_FIXTURES: Record<RendererSeedProfile, Record<TenantKe
       sourceSpec: amicareSiteGenerationSpec,
       publishedSnapshot: amicarePublishedSiteSnapshot,
     }),
-    amblast: fixture({
-      key: "amblast",
-      profile: "staging",
-      profileLabel: "staging",
-      label: "Amblast renderer staging",
-      slug: "amblast-renderer",
-      domain: "amblast.optidigi.nl",
-      sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
-      mediaBaseNote: "Loads legacy Amblast media from amblast.siteinabox.nl while the staging renderer host stays on optidigi.nl.",
-      sourceSpec: amblastSiteGenerationSpec,
-      publishedSnapshot: amblastPublishedSiteSnapshot,
-    }),
   },
   production: {
     amicare: fixture({
@@ -104,19 +90,6 @@ export const RENDERER_SEED_FIXTURES: Record<RendererSeedProfile, Record<TenantKe
       mediaBaseNote: "Uses the current Amicare legacy media origin because no separate durable media host exists yet; validate media after routing before final cutover.",
       sourceSpec: amicareSiteGenerationSpec,
       publishedSnapshot: amicarePublishedSiteSnapshot,
-    }),
-    amblast: fixture({
-      key: "amblast",
-      profile: "production",
-      profileLabel: "production live cutover",
-      label: "Amblast renderer production live cutover",
-      slug: "amblast",
-      domain: "amblast.nl",
-      sourceMediaBaseUrl: "https://amblast.nl",
-      importMediaBaseUrl: "https://amblast.siteinabox.nl",
-      mediaBaseNote: "Publishes Amblast media URLs on the official renderer host while importing media from the old static asset host before DNS/proxy cutover.",
-      sourceSpec: amblastSiteGenerationSpec,
-      publishedSnapshot: amblastPublishedSiteSnapshot,
     }),
   },
 }
@@ -181,7 +154,7 @@ const loadExecuteHelpers = async (): Promise<ExecuteHelpers> => {
 
 const usage = () => `
 Usage:
-  pnpm tsx scripts/seed-renderer-staging-tenants.ts [dry-run|--execute] [--profile=staging|production] [--tenant=amicare|amblast]
+  pnpm tsx scripts/seed-renderer-staging-tenants.ts [dry-run|--execute] [--profile=staging|production] [--tenant=amicare]
 
 Dry-run is the default. Mutating options require --execute.
 
@@ -189,7 +162,7 @@ Options:
   dry-run, --dry-run Dry-run explicitly. This is also the default.
   --execute          Apply CMS mutations.
   --profile=<name>   Use staging or production profile. Defaults to staging.
-  --tenant=<name>    Seed only amicare or amblast. Defaults to both.
+  --tenant=<name>    Seed only amicare. Defaults to amicare.
   --approve          Mark the profile generation run approved.
   --verify-domain    Mark the profile tenant domainVerification.status verified.
   --waive-payment    Record an operator payment waiver on the run.
@@ -202,7 +175,7 @@ export const parseArgs = (argv: string[]): CliOptions => {
   const options: CliOptions = {
     execute: false,
     profile: "staging",
-    tenants: ["amicare", "amblast"],
+    tenants: ["amicare"],
     approve: false,
     verifyDomain: false,
     waivePayment: false,
@@ -234,8 +207,8 @@ export const parseArgs = (argv: string[]): CliOptions => {
     }
     else if (arg.startsWith("--tenant=")) {
       const tenant = arg.slice("--tenant=".length)
-      if (tenant !== "amicare" && tenant !== "amblast") {
-        throw new Error(`Unsupported --tenant value "${tenant}". Use amicare or amblast.`)
+      if (tenant !== "amicare") {
+        throw new Error(`Unsupported --tenant value "${tenant}". Use amicare.`)
       }
       options.tenants = [tenant]
     } else {
@@ -620,7 +593,7 @@ const publicPostHogAnalyticsConfig = (
     posthogProjectToken: projectToken,
     conversionGoals: {
       acceptedForms: true as const,
-      contactClicks: fixture.key === "amblast" ? ["phone", "email"] : [],
+      contactClicks: [],
     },
     dashboardVisible: true,
     schemaVersion: 1,

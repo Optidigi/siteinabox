@@ -26,7 +26,7 @@ export interface MobileSectionEditProps {
   manifest: RtManifest
   theme?: ThemeTokens | null
   tenantId?: number | string | null
-  legacyTenant?: "amicare" | "amblast" | null
+  legacyTenant?: "amicare" | null
   onBack: () => void
   onPrev?: () => void
   onNext?: () => void

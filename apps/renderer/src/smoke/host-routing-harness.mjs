@@ -5,7 +5,6 @@ import { createServer as createNetServer } from "node:net"
 
 import { getRendererDeployTargetByHost } from "@siteinabox/contracts/deploy-targets"
 import {
-  amblastPublishedSiteSnapshot,
   amicarePublishedSiteSnapshot,
 } from "@siteinabox/contracts/fixtures/tenants"
 
@@ -30,7 +29,6 @@ export async function startStubCms({ listenHost = "127.0.0.1", publicHost = list
   const port = await getOpenPort()
   const snapshotsByHost = new Map([
     ["ami-care.nl", publishedSnapshotForHost("ami-care.nl")],
-    ["amblast.nl", publishedSnapshotForHost("amblast.nl")],
   ])
   const server = createHttpServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`)
@@ -60,7 +58,7 @@ function publishedSnapshotForHost(host) {
   const target = getRendererDeployTargetByHost(host)
   assert.ok(target, `missing renderer deploy target for ${host}`)
   const tenantId = `tenant-${target.id}`
-  const source = target.id === "ami-care" ? amicarePublishedSiteSnapshot : amblastPublishedSiteSnapshot
+  const source = amicarePublishedSiteSnapshot
   const snapshot = structuredClone(source)
   const retargeted = rewriteSnapshotStrings(snapshot, [
     [source.siteUrl, target.productionOrigin],
@@ -81,7 +79,7 @@ function publishedSnapshotForHost(host) {
     settings: {
       ...retargeted.settings,
       siteUrl: target.productionOrigin,
-      siteName: target.id === "ami-care" ? "Amicare-Zorg" : "Amblast",
+      siteName: "Amicare-Zorg",
       analytics: {
         ...retargeted.settings.analytics,
         provider: "posthog",
@@ -131,7 +129,6 @@ export async function fetchWithHost(baseUrl, host, pathname) {
 export async function assertStubCmsSnapshots(cms) {
   const expected = [
     ["ami-care.nl", "ami-care", "#a04e32", "warm-care"],
-    ["amblast.nl", "amblast", "#ffd500", "industrial-cleaning"],
   ]
 
   for (const [host, tenantSlug, accent, stylePreset] of expected) {
@@ -195,31 +192,12 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.equal(amicareMedia.headers.get("content-type"), "image/jpeg")
   assert.equal(await amicareMedia.text(), "stub media")
 
-  const crossTenantMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-amblast/bedroom.jpg")
-  assert.equal(crossTenantMedia.status, 404)
-
   const traversalMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/%2E%2E/bedroom.jpg")
   assert.equal(traversalMedia.status, 404)
-
-  const amblastHome = await fetchWithHost(baseUrl, "amblast.nl", "/")
-  const amblastHtml = await amblastHome.text()
-  await assertStatus(amblastHome, 200, "amblast.nl homepage status", amblastHtml, failureContext)
-  assert.match(amblastHtml, /data-legacy-tenant="amblast"/)
-  assert.match(amblastHtml, /amb-/)
-  assert.match(amblastHtml, /data-siab-theme-overrides/)
-  assert.match(amblastHtml, /\.site-renderer\[data-siab-site-renderer\] \.rt-canvas/)
-  assert.match(amblastHtml, /--color-accent:#ffd500/)
-  assert.match(amblastHtml, /--font-title:Barlow, Arial, sans-serif/)
-  assert.match(amblastHtml, /--site-style-preset:industrial-cleaning/)
-  assert.match(amblastHtml, /id="siab-analytics-config"/)
 
   const amicareRobots = await fetchWithHost(baseUrl, "ami-care.nl", "/robots.txt")
   assert.equal(amicareRobots.status, 200)
   assert.match(await amicareRobots.text(), /Sitemap: https:\/\/ami-care\.nl\/sitemap-index\.xml/)
-
-  const amblastRobots = await fetchWithHost(baseUrl, "amblast.nl", "/robots.txt")
-  assert.equal(amblastRobots.status, 200)
-  assert.match(await amblastRobots.text(), /Crawl-delay: 10/)
 
   const validNotFoundChecks = [
     ["unknown.example", "/"],

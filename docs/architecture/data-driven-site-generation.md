@@ -52,7 +52,7 @@ draft tenant/site/page/theme/SEO records and later published as a snapshot.
 
 ## Legacy Snapshots
 
-The old Amicare and Amblast tenant app sources have been removed. Renderer/CMS
+The old Amicare tenant app sources have been removed. Renderer/CMS
 snapshot data is canonical; do not restore tenant-specific source folders,
 workflows, or images.
 

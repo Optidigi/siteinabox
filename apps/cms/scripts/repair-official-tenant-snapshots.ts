@@ -5,7 +5,7 @@ import type { Payload } from "payload"
 import { isOfficialTenant } from "@/lib/officialTenants"
 import { relationshipId } from "@/lib/relationshipId"
 
-type TenantKey = "amicare" | "amblast"
+type TenantKey = "amicare"
 
 type CliOptions = {
   apply: boolean
@@ -34,20 +34,12 @@ const TARGETS: Record<TenantKey, OfficialTarget> = {
     slugs: ["ami-care", "amicare", "amicare-zorg", "tenant-amicare"],
     domains: ["ami-care.nl", "amicare.nl"],
   },
-  amblast: {
-    key: "amblast",
-    label: "Amblast",
-    canonicalId: 2,
-    slugs: ["amblast", "tenant-amblast"],
-    domains: ["amblast.nl"],
-  },
 }
 
 const usage = () => `
 Usage from apps/cms:
   pnpm exec tsx scripts/repair-official-tenant-snapshots.ts
   pnpm exec tsx scripts/repair-official-tenant-snapshots.ts --tenant=ami-care
-  pnpm exec tsx scripts/repair-official-tenant-snapshots.ts --tenant=amblast
   pnpm exec tsx scripts/repair-official-tenant-snapshots.ts --apply
 
 Dry-run is the default. --apply publishes and activates from current CMS tenant,
@@ -57,7 +49,7 @@ page, and site-settings rows through publishSiteSnapshot.
 export function parseArgs(argv = process.argv.slice(2)): CliOptions {
   const options: CliOptions = {
     apply: false,
-    tenants: ["amicare", "amblast"],
+    tenants: ["amicare"],
   }
 
   for (const arg of argv) {
@@ -73,8 +65,7 @@ export function parseArgs(argv = process.argv.slice(2)): CliOptions {
     } else if (arg.startsWith("--tenant=")) {
       const raw = arg.slice("--tenant=".length).trim().toLowerCase()
       if (raw === "ami-care" || raw === "amicare") options.tenants = ["amicare"]
-      else if (raw === "amblast") options.tenants = ["amblast"]
-      else throw new Error(`Unsupported --tenant value "${raw}". Use ami-care or amblast.`)
+      else throw new Error(`Unsupported --tenant value "${raw}". Use ami-care.`)
     } else {
       throw new Error(`Unknown argument "${arg}".\n${usage().trim()}`)
     }

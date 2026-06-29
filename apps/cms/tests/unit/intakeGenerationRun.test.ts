@@ -92,7 +92,7 @@ describe("processIntakeSubmission", () => {
     expect(store["site-generation-runs"][0]?.generationInputHash).toMatch(/^[a-f0-9]{64}$/)
     expect(store["site-generation-runs"][0]?.generationOutputHash).toMatch(/^[a-f0-9]{64}$/)
     expect(store["site-generation-runs"][0]?.parsedOutput?.schemaVersion).toBe(1)
-    expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/amicare|ami-care|amblast/)
+    expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/amicare|ami-care/)
     expect(store["site-generation-runs"][0]?.normalizedIntake?.requestedPages[0]?.slug).toBe("index")
     expect(store["site-generation-runs"][0]?.statusTransitions.map((entry: any) => entry.status)).toContain("applying")
   })
@@ -161,7 +161,7 @@ describe("processIntakeSubmission", () => {
           ...spec.settings,
           chrome: {
             header: { variant: "amicareZen" },
-            footer: { variant: "amblastIndustrial" },
+            footer: { variant: "amicareZen" },
             banner: { variant: "default", visible: false, message: "Preview ready" },
           },
         } as any

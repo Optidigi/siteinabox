@@ -517,10 +517,8 @@ SIAB_RENDERER_FIXTURE_MODE=
 Phase 2 staging routes only these hosts to the renderer:
 
 - `amicare.optidigi.nl`
-- `amblast.optidigi.nl`
 
-Keep `ami-care.nl` and existing legacy Amblast production routing on their
-legacy tenant containers until a later cutover is explicitly approved.
+Keep `ami-care.nl` on its current route until a later cutover is explicitly approved.
 
 Traefik must route tenant primary domains and aliases to the renderer service
 and preserve the original public hostname via `Host`; forwarding
@@ -531,8 +529,7 @@ the current renderer contract.
 
 Traefik preserves `Host` by default. The Phase 2 compose template does not add
 an explicit `X-Forwarded-Host` middleware; smoke testing must verify the CMS
-snapshot endpoint sees `amicare.optidigi.nl` and `amblast.optidigi.nl` during
-renderer requests.
+snapshot endpoint sees `amicare.optidigi.nl` during renderer requests.
 
 ## Manual Domain Verification Workflow
 

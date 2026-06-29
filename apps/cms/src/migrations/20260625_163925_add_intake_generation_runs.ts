@@ -50,7 +50,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
 	"idempotency_key" varchar NOT NULL,
 	"normalized_intake" jsonb NOT NULL,
 	"normalized_intake_hash" varchar NOT NULL,
-	"mock_fixture" varchar DEFAULT 'amblast' NOT NULL,
+	"mock_fixture" varchar DEFAULT 'generic' NOT NULL,
 	"spec_hash" varchar,
 	"spec" jsonb,
 	"validation" jsonb,

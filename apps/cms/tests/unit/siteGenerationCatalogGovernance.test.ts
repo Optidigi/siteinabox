@@ -36,7 +36,7 @@ describe("site generation catalog governance", () => {
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("source code")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("file paths")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("unsupported block slugs")
-    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare or Amblast legacy tenant blocks")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare legacy tenant blocks")
   })
 
   it("passes only approved source-backed variants to the model input", () => {
@@ -55,11 +55,11 @@ describe("site generation catalog governance", () => {
     expect(input.requirements.join("\n")).toContain("settings.chrome")
     expect(input.requirements.join("\n")).toContain("raw HTML")
     expect(input.requirements.join("\n")).toContain("className/classes")
-    expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive Amicare or Amblast")
-    expect(input.approvedSectionVariants.some((variant) => /amicare|amblast/i.test(`${variant.variantId} ${variant.sectionVariant}`))).toBe(false)
+    expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive Amicare")
+    expect(input.approvedSectionVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.sectionVariant}`))).toBe(false)
     expect(serializedInput).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
-    expect(serializedInput).not.toMatch(/amblastShapedHero|amblastImageBoxes|amblastSwiperServices|amblastPortfolio|amblastContactCards/)
-    expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare|amblast)|site-(?:header|footer)--source-(?:amicare|amblast)/)
+    expect(serializedInput).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
+    expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
     expect(input.approvedChromeVariants).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ area: "header", variant: "default" }),
@@ -74,7 +74,7 @@ describe("site generation catalog governance", () => {
       expect.arrayContaining([expect.objectContaining({ variant: "amicareZen" })]),
     )
     expect(input.approvedChromeVariants).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ variant: "amblastIndustrial" })]),
+      expect.arrayContaining([expect.objectContaining({ variant: "amicareZen" })]),
     )
   })
 
@@ -108,7 +108,7 @@ describe("site generation catalog governance", () => {
         navFooter: [{ label: "Contact", href: "mailto:hello@example.com" }],
         chrome: {
           header: { variant: "amicareZen" },
-          footer: { variant: "amblastIndustrial" },
+          footer: { variant: "amicareZen" },
           banner: { variant: "default", visible: false, message: "Preview ready" },
         },
       },
@@ -180,8 +180,8 @@ describe("site generation catalog governance", () => {
     expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual(["default", "hyperUiSimple", null])
     expect(settings.properties.chrome.additionalProperties).toBe(false)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
-    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amblastShapedHero|amblastImageBoxes|amblastSwiperServices|amblastPortfolio|amblastContactCards/)
-    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZen|amblastIndustrial|cms-block--source-(?:amicare|amblast)|site-(?:header|footer)--source-(?:amicare|amblast)/)
+    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
+    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenIndustrial|cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
 
     const generatedSettings = {
       siteName: "Catalog Governance",

@@ -40,7 +40,6 @@ const sharedChromeVariantOptions = [
 const headerFooterChromeVariantOptions = [
   ...sharedChromeVariantOptions,
   { label: "Amicare zen", value: "amicareZen" },
-  { label: "Amblast industrial", value: "amblastIndustrial" },
 ]
 
 const tenantExclusiveChromeVariants = SITE_CHROME_CATALOG

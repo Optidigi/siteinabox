@@ -4127,7 +4127,7 @@
           "type": "varchar",
           "primaryKey": false,
           "notNull": true,
-          "default": "'amblast'"
+          "default": "'generic'"
         },
         "spec_hash": {
           "name": "spec_hash",

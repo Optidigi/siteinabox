@@ -59,7 +59,7 @@ tenant-specific images.
 - Until domain automation is implemented, production readiness work should keep
   a manual or stubbed domain-ready gate so publish/activation can be tested
   without pretending OpenProvider or Cloudflare automation exists.
-- Amicare and Amblast must be migrated toward the new data-driven renderer
+- Amicare must be migrated toward the new data-driven renderer
   runtime. Existing legacy sites stay available until cutover is proven.
 - Generated-site styling must come only from approved catalog/library sources:
   shadcn-owned primitives, Tailwind Plus free/public blocks, Tailblocks, Mamba
@@ -297,12 +297,12 @@ current production-readiness pass.
 
 ## Phase 4: Legacy Tenant Runtime Migration Agent
 
-Goal: migrate Amicare and Amblast toward the generic renderer runtime without
+Goal: migrate Amicare toward the generic renderer runtime without
 breaking their current live snapshot paths.
 
 ### Research
 
-- Inventory current removed legacy Amicare/Amblast app source references,
+- Inventory current removed legacy Amicare app source references,
   `packages/site-renderer` legacy tenant fixtures, published snapshot fixtures,
   and renderer output.
 - Compare current legacy pages, navigation, SEO, media, forms, theme, and
@@ -313,7 +313,7 @@ breaking their current live snapshot paths.
 
 ### Implement
 
-- Convert Amicare and Amblast content into renderer-compatible CMS/snapshot data
+- Convert Amicare content into renderer-compatible CMS/snapshot data
   where gaps are understood and approved.
 - Add migration scripts or fixtures that create data, not tenant source files.
 - Add renderer parity fixtures/tests for root pages, key subpages, SEO,

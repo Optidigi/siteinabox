@@ -14,20 +14,16 @@ import {
   SITE_BLOCK_REFERENCE_SOURCES,
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG,
-  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
   SITE_SOURCE_BACKED_CHROME_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
 import {
-  BlockSchema,
   GeneratedBlockSpecSchema,
   GeneratedSiteSettingsSchema,
-  OfficialTenantBlockSchema,
-  OfficialTenantGeneratedBlockSpecSchema,
 } from "@siteinabox/contracts/generation"
 import type { GeneratedBlockSpec } from "@siteinabox/contracts/generation"
 import { tenantSiteGenerationSpecs } from "@siteinabox/contracts/fixtures/tenants"
-import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS, SITE_PARITY_BLOCK_SLUGS } from "@siteinabox/contracts/site"
+import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { v1FixturePage } from "@siteinabox/site-renderer"
 import { v1FixtureSettings } from "@siteinabox/site-renderer"
 
@@ -88,87 +84,6 @@ describe("renderer block catalog", () => {
       expect(entry.variants.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
       expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
     }
-  })
-
-  it("separates parity renderer contracts from canonical self-serve blocks", () => {
-    expect(SITE_GENERATION_BLOCK_CATALOG.map((entry) => entry.slug)).toEqual(
-      expect.arrayContaining([...SITE_GENERATION_BLOCK_SLUGS]),
-    )
-    expect(SITE_GENERATION_BLOCK_CATALOG).toHaveLength(SITE_GENERATION_BLOCK_SLUGS.length)
-    expect(SITE_BLOCK_CATALOG.map((entry) => entry.slug)).not.toEqual(
-      expect.arrayContaining([...SITE_PARITY_BLOCK_SLUGS]),
-    )
-
-    for (const slug of SITE_PARITY_BLOCK_SLUGS) {
-      const entry = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[slug]
-      expect(entry.slug).toBe(slug)
-      expect(entry.renderer.component).toMatch(/Renderer$/)
-      expect(entry.variants.length).toBeGreaterThan(0)
-      expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
-      expect(entry.variants.every((variant) => variant.provenance.sourceName === "SIAB legacy tenant snapshot")).toBe(true)
-      expect(entry.variants.every((variant) => variant.provenance.visualExactnessStatus === "needs-browser-comparison")).toBe(true)
-      expect(entry.variants.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
-    }
-
-    const parityVariantIds = new Set<string>(
-      SITE_PARITY_BLOCK_SLUGS.flatMap((slug) => SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[slug].variants.map((variant) => variant.id)),
-    )
-    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => parityVariantIds.has(variant.variantId))).toBe(false)
-  })
-
-  it("keeps structured parity blocks on the official tenant schema path", () => {
-    const parityBlock: GeneratedBlockSpec = {
-      blockType: "beforeAfterGallery",
-      variant: "amblastPortfolio",
-      tokens: { density: "compact" },
-      metadata: { sourceBlockId: "amblast-portfolio" },
-      analytics: { sectionVariant: "amblast-portfolio-comparisons" },
-      anchor: "portfolio",
-      title: inlineRoot("Voor en na"),
-      intro: blockRoot("Portfolio vergelijking."),
-      pairs: [
-        {
-          before: { url: "/uploads/portfolio/before.jpg" },
-          after: { url: "/uploads/portfolio/after.jpg" },
-          beforeLabel: "Voor",
-          afterLabel: "Na",
-          caption: blockRoot("Olievlek verwijderd."),
-          initialRatio: 0.5,
-          orientation: "horizontal",
-        },
-      ],
-    }
-
-    expect(GeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(false)
-    expect(BlockSchema.safeParse(parityBlock).success).toBe(false)
-    expect(OfficialTenantGeneratedBlockSpecSchema.safeParse(parityBlock).success).toBe(true)
-    expect(OfficialTenantBlockSchema.safeParse(parityBlock).success).toBe(true)
-    expect(
-      GeneratedBlockSpecSchema.safeParse({
-        ...parityBlock,
-        rawHtml: "<section>not allowed</section>",
-      }).success,
-    ).toBe(false)
-    expect(
-      GeneratedBlockSpecSchema.safeParse({
-        ...parityBlock,
-        variant: "tailblocksCtaA",
-      }).success,
-    ).toBe(false)
-    expect(
-      GeneratedBlockSpecSchema.safeParse({
-        ...parityBlock,
-        variant: undefined,
-        analytics: { sectionVariant: "amblast-portfolio-comparisons" },
-      }).success,
-    ).toBe(false)
-    expect(
-      OfficialTenantGeneratedBlockSpecSchema.safeParse({
-        ...parityBlock,
-        variant: undefined,
-        analytics: { sectionVariant: "amblast-portfolio-comparisons" },
-      }).success,
-    ).toBe(true)
   })
 
   it("accepts new structured marketing contracts and rejects unsupported variants or raw code", () => {

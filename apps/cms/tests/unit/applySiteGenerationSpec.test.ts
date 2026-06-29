@@ -674,88 +674,13 @@ describe("applySiteGenerationSpec", () => {
     ])
   })
 
-  it("validates, applies, and projects a parity block with runtime variant intact", async () => {
-    const { payload, store } = createPayloadStub()
-    const spec = fixtureSpec()
-    spec.intake = {
-      ...spec.intake,
-      businessName: "Amblast",
-      tenantSlug: "amblast",
-      primaryDomain: "amblast.test",
-      siteUrl: "https://amblast.test",
-    }
-    spec.tenant = {
-      ...spec.tenant,
-      name: "Amblast",
-      slug: "amblast",
-      domain: "amblast.test",
-    }
-    spec.settings = {
-      ...spec.settings,
-      siteName: "Amblast",
-      siteUrl: "https://amblast.test",
-      chrome: {
-        header: { variant: "amblastIndustrial", cta: { label: "Contact", href: "/contact" } },
-        footer: { variant: "amblastIndustrial", tagline: "Industrial cleaning", legalLinks: [{ label: "Privacy", href: "/privacy" }] },
-        banner: { variant: "default", visible: false, message: "Preview ready" },
-      },
-    } as any
-    spec.pages[0]!.blocks = [
-      {
-        blockType: "mediaHero",
-        variant: "amblastShapedHero",
-        tokens: { spacing: "compact" },
-        metadata: { source: "amblast-staging" },
-        analytics: { sectionVariant: "amblast-shaped-overlay", blockPresetId: "preset-media-hero" },
-        anchor: "top",
-        headline: rtInline("Industrial cleaning"),
-        subheadline: rtBlock("Renderer parity hero."),
-        backgroundImage: 123,
-        overlay: { color: "#111111", opacity: 0.5 },
-        minHeight: "tall",
-        contentAlign: "left",
-        contentWidth: "wide",
-      } as any,
-    ]
-    spec.blocks = [{ slug: "mediaHero", label: "Media hero" }]
-
-    const report = validateSiteGenerationSpecForCms(spec)
-    expect(report.valid).toBe(true)
-
-    const result = await applySiteGenerationSpec(payload, spec)
-    expect(result.ok).toBe(true)
-    expect(store["site-settings"][0]!.chrome).toMatchObject({
-      header: { variant: "amblastIndustrial", cta: { label: "Contact", href: "/contact" } },
-      footer: { variant: "amblastIndustrial", tagline: "Industrial cleaning" },
-    })
-    expect(store.pages[0]!.blocks[0]).toMatchObject({
-      blockType: "mediaHero",
-      variant: "amblastShapedHero",
-      tokens: { spacing: "compact" },
-      metadata: { source: "amblast-staging" },
-      backgroundImage: 123,
-    })
-
-    const projected = pageToJson(store.pages[0]!)
-    expect(projected.blocks[0]).toMatchObject({
-      blockType: "mediaHero",
-      variant: "amblastShapedHero",
-      tokens: { spacing: "compact" },
-      metadata: { source: "amblast-staging" },
-      analytics: {
-        sectionVariant: "amblast-shaped-overlay",
-        blockPresetId: "preset-media-hero",
-      },
-    })
-  })
-
   it("rejects tenant-exclusive legacy variants for self-serve generated tenants", () => {
     const spec = fixtureSpec()
     spec.settings = {
       ...spec.settings,
       chrome: {
         header: { variant: "amicareZen" },
-        footer: { variant: "amblastIndustrial" },
+        footer: { variant: "amicareZen" },
         banner: { variant: "default", visible: false, message: "Preview ready" },
       },
     } as any

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { amblastPublishedSiteSnapshot, amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
+import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 import { SiteGenerationSpecSchema } from "@siteinabox/contracts/generation"
 import { retargetPublishedSiteSnapshot } from "@/lib/publish/retargetSnapshot"
 import { validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
@@ -8,30 +8,31 @@ import {
   buildRetargetOptionsForRendererSeedFixture,
   cloneForRendererSeedProfile,
   injectRendererSeedAnalytics,
-  parseRendererSeedSpecForCms,
   parseArgs,
+  parseRendererSeedSpecForCms,
   selectRendererSeedFixtures,
 } from "../../scripts/seed-renderer-staging-tenants"
 
 describe("renderer seed profiles", () => {
-  it("keeps staging as the backwards-compatible default CLI profile", () => {
+  it("defaults to the Amicare staging profile and rejects unsupported tenant seeding", () => {
     expect(parseArgs([])).toMatchObject({
       execute: false,
       profile: "staging",
-      tenants: ["amicare", "amblast"],
+      tenants: ["amicare"],
     })
 
-    expect(parseArgs(["--profile=production", "--tenant=amblast", "--execute"])).toMatchObject({
+    expect(parseArgs(["--profile=production", "--tenant=amicare", "--execute"])).toMatchObject({
       execute: true,
       profile: "production",
-      tenants: ["amblast"],
+      tenants: ["amicare"],
     })
+    expect(() => parseArgs(["--tenant=customer"])).toThrow(/Unsupported --tenant/)
   })
 
-  it("keeps staging fixtures unchanged when staging is selected", () => {
-    const [amicare, amblast] = selectRendererSeedFixtures({
+  it("keeps the Amicare staging fixture unchanged when staging is selected", () => {
+    const [amicare] = selectRendererSeedFixtures({
       profile: "staging",
-      tenants: ["amicare", "amblast"],
+      tenants: ["amicare"],
     })
 
     expect(amicare).toMatchObject({
@@ -41,19 +42,10 @@ describe("renderer seed profiles", () => {
       siteUrl: "https://amicare.optidigi.nl",
       sourceMediaBaseUrl: "https://ami-care.nl",
     })
-    expect(amblast).toMatchObject({
-      profile: "staging",
-      slug: "amblast-renderer",
-      domain: "amblast.optidigi.nl",
-      siteUrl: "https://amblast.optidigi.nl",
-      sourceMediaBaseUrl: "https://amblast.siteinabox.nl",
-    })
-    expect(amblast?.importMediaBaseUrl).toBeUndefined()
   })
 
-  it("retargets production specs to official CMS tenants and domains", () => {
+  it("retargets production specs to the official Amicare CMS tenant and domain", () => {
     const amicare = cloneForRendererSeedProfile(RENDERER_SEED_FIXTURES.production.amicare)
-    const amblast = cloneForRendererSeedProfile(RENDERER_SEED_FIXTURES.production.amblast)
 
     expect(amicare.intake.tenantSlug).toBe("ami-care")
     expect(amicare.intake.primaryDomain).toBe("ami-care.nl")
@@ -65,48 +57,22 @@ describe("renderer seed profiles", () => {
     expect(amicare.intake.goals).toEqual(expect.arrayContaining([
       expect.stringContaining("production live cutover"),
     ]))
-
-    expect(amblast.intake.tenantSlug).toBe("amblast")
-    expect(amblast.intake.primaryDomain).toBe("amblast.nl")
-    expect(amblast.intake.siteUrl).toBe("https://amblast.nl")
-    expect(amblast.tenant.slug).toBe("amblast")
-    expect(amblast.tenant.domain).toBe("amblast.nl")
-    expect(amblast.settings.siteUrl).toBe("https://amblast.nl")
-    expect(JSON.stringify(amblast.pages)).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
-
-    const amblastImportSpec = cloneForRendererSeedProfile(RENDERER_SEED_FIXTURES.production.amblast, {
-      mediaBaseUrl: RENDERER_SEED_FIXTURES.production.amblast.importMediaBaseUrl!,
-    })
-    expect(amblastImportSpec.settings.siteUrl).toBe("https://amblast.nl")
-    expect(JSON.stringify(amblastImportSpec.pages)).toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
-    expect(JSON.stringify(amblastImportSpec.pages)).not.toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
   })
 
-  it("validates production seed specs through the official tenant CMS path", () => {
-    for (const fixture of selectRendererSeedFixtures({ profile: "production", tenants: ["amicare", "amblast"] })) {
+  it("validates the production Amicare seed spec through the official tenant CMS path", () => {
+    for (const fixture of selectRendererSeedFixtures({ profile: "production", tenants: ["amicare"] })) {
       const spec = cloneForRendererSeedProfile(fixture)
 
       expect(SiteGenerationSpecSchema.safeParse(spec).success, `${fixture.key} generic schema should stay strict`).toBe(false)
       expect(() => parseRendererSeedSpecForCms(fixture, spec, { validateSiteGenerationSpecForCms })).not.toThrow()
-
-      const importSpec = cloneForRendererSeedProfile(fixture, {
-        mediaBaseUrl: fixture.importMediaBaseUrl ?? fixture.sourceMediaBaseUrl,
-      })
-      expect(() => parseRendererSeedSpecForCms(fixture, importSpec, { validateSiteGenerationSpecForCms }, "import spec")).not.toThrow()
     }
   })
 
-  it("builds production retarget options with official snapshot domains and live media bases", () => {
+  it("builds production retarget options with the Amicare official domain and live media base", () => {
     const amicareOptions = buildRetargetOptionsForRendererSeedFixture(
       RENDERER_SEED_FIXTURES.production.amicare,
       41,
       3,
-      "2026-06-28T12:00:00.000Z",
-    )
-    const amblastOptions = buildRetargetOptionsForRendererSeedFixture(
-      RENDERER_SEED_FIXTURES.production.amblast,
-      42,
-      7,
       "2026-06-28T12:00:00.000Z",
     )
 
@@ -116,32 +82,17 @@ describe("renderer seed profiles", () => {
       siteUrl: "https://ami-care.nl",
       mediaBaseUrl: "https://ami-care.nl",
     })
-    expect(amblastOptions).toMatchObject({
-      tenantSlug: "amblast",
-      domain: "amblast.nl",
-      siteUrl: "https://amblast.nl",
-      mediaBaseUrl: "https://amblast.nl",
-    })
 
     const amicareSnapshot = retargetPublishedSiteSnapshot(amicarePublishedSiteSnapshot, amicareOptions)
-    const amblastSnapshot = retargetPublishedSiteSnapshot(amblastPublishedSiteSnapshot, amblastOptions)
 
     expect(amicareSnapshot.tenantSlug).toBe("ami-care")
     expect(amicareSnapshot.domain).toBe("ami-care.nl")
     expect(amicareSnapshot.siteUrl).toBe("https://ami-care.nl")
     expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/toys.jpg")
     expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/api/tenant-media/7/bedroom.jpg")
-
-    expect(amblastSnapshot.tenantSlug).toBe("amblast")
-    expect(amblastSnapshot.domain).toBe("amblast.nl")
-    expect(amblastSnapshot.siteUrl).toBe("https://amblast.nl")
-    expect(JSON.stringify(amblastSnapshot.pages)).toContain("https://amblast.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
-    expect(JSON.stringify(amblastSnapshot.pages)).toContain("Bericht via amblast.nl")
-    expect(JSON.stringify(amblastSnapshot.pages)).not.toContain("amblast.optidigi.nl")
-    expect(JSON.stringify(amblastSnapshot.pages)).not.toContain("https://amblast.siteinabox.nl/uploads/portfolio/IMG_20210402_151225-scaled.jpg")
   })
 
-  it("injects public PostHog analytics into official production snapshots from seed environment", () => {
+  it("injects public PostHog analytics into the Amicare production snapshot from seed environment", () => {
     const previousToken = process.env.POSTHOG_PROJECT_TOKEN
     const previousPublicHost = process.env.POSTHOG_PUBLIC_HOST
     const previousHost = process.env.POSTHOG_HOST
@@ -150,12 +101,12 @@ describe("renderer seed profiles", () => {
     process.env.POSTHOG_HOST = "https://eu.posthog.com/"
 
     try {
-      const fixture = RENDERER_SEED_FIXTURES.production.amblast
+      const fixture = RENDERER_SEED_FIXTURES.production.amicare
       const snapshot = retargetPublishedSiteSnapshot(
-        amblastPublishedSiteSnapshot,
-        buildRetargetOptionsForRendererSeedFixture(fixture, 42, 8, "2026-06-28T12:00:00.000Z"),
+        amicarePublishedSiteSnapshot,
+        buildRetargetOptionsForRendererSeedFixture(fixture, 41, 8, "2026-06-28T12:00:00.000Z"),
       )
-      const withAnalytics = injectRendererSeedAnalytics(snapshot, fixture, 42, 8)
+      const withAnalytics = injectRendererSeedAnalytics(snapshot, fixture, 41, 8)
 
       expect(withAnalytics.settings.analytics).toMatchObject({
         enabled: true,
@@ -163,18 +114,18 @@ describe("renderer seed profiles", () => {
         posthogHost: "https://r.siteinabox.nl",
         posthogUiHost: "https://eu.posthog.com",
         posthogProjectToken: "phc_seed_public",
-        tenantSlug: "amblast",
-        siteDomain: "amblast.nl",
+        tenantSlug: "ami-care",
+        siteDomain: "ami-care.nl",
         manifestVersion: 8,
       })
       expect(withAnalytics.settings.analyticsConsent).toMatchObject({
         enabled: true,
         provider: "posthog",
-        consentStorageKey: "siab_cookie_consent_v1",
+        consentStorageKey: "siab-analytics-consent",
       })
       expect(withAnalytics.pages[0]?.analytics).toMatchObject({
-        tenantSlug: "amblast",
-        siteDomain: "amblast.nl",
+        tenantSlug: "ami-care",
+        siteDomain: "ami-care.nl",
         pageSlug: "index",
         pagePath: "/",
         manifestVersion: 8,

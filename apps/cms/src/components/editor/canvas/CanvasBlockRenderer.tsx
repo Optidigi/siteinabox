@@ -9,17 +9,12 @@ import { ContactSectionCanvas } from "@/components/editor/canvas/blocks/ContactS
 import { FAQCanvas } from "@/components/editor/canvas/blocks/FAQ"
 import { TestimonialsCanvas } from "@/components/editor/canvas/blocks/Testimonials"
 import {
-  BeforeAfterGalleryCanvas,
   BlogCardsCanvas,
   ComparisonCanvas,
-  ContactDetailsCanvas,
   GalleryCanvas,
-  InfoCardListCanvas,
   LogoCloudCanvas,
-  MediaHeroCanvas,
   PricingCanvas,
   ProcessStepsCanvas,
-  ServiceCarouselCanvas,
   StatsCanvas,
   TeamCanvas,
 } from "@/components/editor/canvas/blocks/GenerationBlocks"
@@ -32,7 +27,7 @@ export interface CanvasBlockRendererProps {
   onActivate: () => void
   onUpdate: (next: any) => void
   tenantId?: number | string | null
-  legacyTenant?: "amicare" | "amblast" | null
+  legacyTenant?: "amicare" | null
 }
 
 /** Per-block-type dispatcher for canvas mode. Each block renderer is in
@@ -65,11 +60,6 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     case "blogCards":      return <BlogCardsCanvas {...augmented} />
     case "processSteps":   return <ProcessStepsCanvas {...augmented} />
     case "comparison":     return <ComparisonCanvas {...augmented} />
-    case "mediaHero":      return <MediaHeroCanvas {...augmented} />
-    case "infoCardList":   return <InfoCardListCanvas {...augmented} />
-    case "serviceCarousel": return <ServiceCarouselCanvas {...augmented} />
-    case "beforeAfterGallery": return <BeforeAfterGalleryCanvas {...augmented} />
-    case "contactDetails": return <ContactDetailsCanvas {...augmented} />
     default:
       return (
         <section className="cms-block cms-block--unknown rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2">

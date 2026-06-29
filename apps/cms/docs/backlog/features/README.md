@@ -35,6 +35,12 @@ depended on command-run site generation are no longer current source of truth.
   responsibilities as part of that decision.
 - Keep CMS feature work tracked in focused entries or runbooks that match the
   current codebase, not removed generation workflows.
+- Rework desktop canvas chrome hover behavior with a simpler section-anchored
+  model. Current header/footer badges can still flicker, and block badges can
+  feel like they shift between sections. Defer further tuning until the canvas
+  chrome model is simplified around one rule: hovering a section/header/footer
+  shows only that section's badge, leaving that area hides it, and badge
+  placement remains visually anchored to its owner.
 
 ## Implemented Foundation
 
@@ -96,7 +102,7 @@ tenant; DNS automation is still outside the CMS workflow. Rollback is
 implemented by reactivating an older snapshot.
 
 Follow-up on 2026-06-28 added CMS-side guardrails for tenant-exclusive legacy
-chrome variants. Amicare/Amblast variants remain editable for their official
+chrome variants. Amicare variants remain editable for their official
 legacy tenant slugs, but SiteSettings validation rejects those variants for
 future/generated tenants through server-side collection validation. The
 SiteSettings admin select fields also filter tenant-exclusive choices out for

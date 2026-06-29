@@ -13,10 +13,10 @@ const __dirname = path.dirname(__filename)
 const scriptPath = path.resolve(__dirname, "../../scripts/repair-official-tenant-snapshots.ts")
 
 describe("official tenant snapshot repair script", () => {
-  it("defaults to dry-run for both official tenants", () => {
+  it("defaults to dry-run for the active official tenant", () => {
     expect(parseArgs([])).toEqual({
       apply: false,
-      tenants: ["amicare", "amblast"],
+      tenants: ["amicare"],
     })
   })
 
@@ -26,10 +26,10 @@ describe("official tenant snapshot repair script", () => {
     expect(parseArgs(["--dry-run"])).toMatchObject({ apply: false })
   })
 
-  it("targets only the Amicare and Amblast official tenants", () => {
+  it("targets only the Amicare official tenant", () => {
     expect(parseArgs(["--tenant=ami-care"])).toMatchObject({ tenants: ["amicare"] })
     expect(parseArgs(["--tenant=amicare"])).toMatchObject({ tenants: ["amicare"] })
-    expect(parseArgs(["--tenant=amblast"])).toMatchObject({ tenants: ["amblast"] })
+    expect(() => parseArgs(["--tenant=customer"])).toThrow(/Unsupported --tenant/)
     expect(() => parseArgs(["--tenant=customer"])).toThrow(/Unsupported --tenant/)
   })
 

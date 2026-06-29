@@ -1,22 +1,17 @@
 import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import { BlogCardsBlockRenderer } from "./BlogCards"
-import { BeforeAfterGalleryBlockRenderer } from "./BeforeAfterGallery"
 import { CTABlockRenderer } from "./CTA"
 import { ComparisonBlockRenderer } from "./Comparison"
 import { ContactSectionBlockRenderer } from "./ContactSection"
-import { ContactDetailsBlockRenderer } from "./ContactDetails"
 import { FAQBlockRenderer } from "./FAQ"
 import { FeatureListBlockRenderer } from "./FeatureList"
 import { GalleryBlockRenderer } from "./Gallery"
 import { HeroBlockRenderer } from "./Hero"
-import { InfoCardListBlockRenderer } from "./InfoCardList"
 import { LogoCloudBlockRenderer } from "./LogoCloud"
-import { MediaHeroBlockRenderer } from "./MediaHero"
 import { PricingBlockRenderer } from "./Pricing"
 import { ProcessStepsBlockRenderer } from "./ProcessSteps"
 import { RichTextBlockRenderer } from "./RichText"
-import { ServiceCarouselBlockRenderer } from "./ServiceCarousel"
 import { StatsBlockRenderer } from "./Stats"
 import { TeamBlockRenderer } from "./Team"
 import { TestimonialsBlockRenderer } from "./Testimonials"
@@ -26,12 +21,7 @@ export * from "./types"
 
 export const defaultBlockRegistry: Required<BlockRegistry> = {
   hero: HeroBlockRenderer,
-  mediaHero: MediaHeroBlockRenderer,
   featureList: FeatureListBlockRenderer,
-  infoCardList: InfoCardListBlockRenderer,
-  serviceCarousel: ServiceCarouselBlockRenderer,
-  beforeAfterGallery: BeforeAfterGalleryBlockRenderer,
-  contactDetails: ContactDetailsBlockRenderer,
   testimonials: TestimonialsBlockRenderer,
   faq: FAQBlockRenderer,
   cta: CTABlockRenderer,
@@ -74,22 +64,17 @@ export function BlockRenderer({
 
 export {
   BlogCardsBlockRenderer,
-  BeforeAfterGalleryBlockRenderer,
   CTABlockRenderer,
   ComparisonBlockRenderer,
   ContactSectionBlockRenderer,
-  ContactDetailsBlockRenderer,
   FAQBlockRenderer,
   FeatureListBlockRenderer,
   GalleryBlockRenderer,
   HeroBlockRenderer,
-  InfoCardListBlockRenderer,
   LogoCloudBlockRenderer,
-  MediaHeroBlockRenderer,
   PricingBlockRenderer,
   ProcessStepsBlockRenderer,
   RichTextBlockRenderer,
-  ServiceCarouselBlockRenderer,
   StatsBlockRenderer,
   TeamBlockRenderer,
   TestimonialsBlockRenderer,

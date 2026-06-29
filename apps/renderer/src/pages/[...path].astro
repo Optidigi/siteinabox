@@ -5,7 +5,6 @@ import { SitePageRenderer, buildPageSeoMetadata, createRendererMediaResolver, re
 import "../styles/site.css"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
 import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
-import * as amblastLegacy from "../lib/legacy-tenants/amblast/legacy-response.js"
 import * as amicareLegacy from "../lib/legacy-tenants/amicare/legacy-response"
 
 const pathname = `/${Astro.params.path ?? ""}`
@@ -18,14 +17,7 @@ const liveLegacyAssetResponse = async () => {
   if (liveDeployTarget.id === "ami-care") {
     return amicareLegacy.createAmicareLegacyResponse(pathname)
   }
-  if (liveDeployTarget.id === "amblast") {
-    return amblastLegacy.createAmblastLegacyResponse(pathname)
-  }
   return null
-}
-
-if (!isRendererProductionHost(host) && amblastLegacy.isAmblastLegacyHost(host)) {
-  return await amblastLegacy.createAmblastLegacyResponseOrNotFound(pathname)
 }
 
 if (!isRendererProductionHost(host) && amicareLegacy.isAmicareLegacyHost(host)) {
@@ -81,7 +73,7 @@ const mediaHref = (value: unknown): string | null => {
 const faviconHref =
   resolved
     ? mediaHref(resolved.snapshot.settings.branding?.favicon) ??
-      (legacyTenant === "amicare" ? "/favicon.svg" : legacyTenant === "amblast" ? "/favicon.ico" : null)
+      (legacyTenant === "amicare" ? "/favicon.svg" : null)
     : null
 const appleTouchIconHref = legacyTenant ? "/apple-touch-icon.png" : null
 const manifestHref = legacyTenant ? "/manifest.json" : null

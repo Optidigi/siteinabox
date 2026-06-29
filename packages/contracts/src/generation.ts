@@ -1,25 +1,20 @@
 import type {
   ContactSectionBlock,
-  ContactDetailsBlock,
   CTABlock,
-  BeforeAfterGalleryBlock,
   BlogCardsBlock,
   ComparisonBlock,
   FAQBlock,
   FeatureListBlock,
   GalleryBlock,
   HeroBlock,
-  InfoCardListBlock,
   LogoCloudBlock,
   MediaRef,
-  MediaHeroBlock,
   Page,
   PricingBlock,
   ProcessStepsBlock,
   RichTextBlock,
   SiteGenerationBlockSlug,
   SiteSettings,
-  ServiceCarouselBlock,
   StatsBlock,
   TeamBlock,
   TestimonialsBlock,
@@ -128,12 +123,7 @@ export type GeneratedBlockMetadata = {
 }
 
 export type GeneratedHeroBlockSpec = HeroBlock & GeneratedBlockMetadata
-export type GeneratedMediaHeroBlockSpec = MediaHeroBlock & GeneratedBlockMetadata
 export type GeneratedFeatureListBlockSpec = FeatureListBlock & GeneratedBlockMetadata
-export type GeneratedInfoCardListBlockSpec = InfoCardListBlock & GeneratedBlockMetadata
-export type GeneratedServiceCarouselBlockSpec = ServiceCarouselBlock & GeneratedBlockMetadata
-export type GeneratedBeforeAfterGalleryBlockSpec = BeforeAfterGalleryBlock & GeneratedBlockMetadata
-export type GeneratedContactDetailsBlockSpec = ContactDetailsBlock & GeneratedBlockMetadata
 export type GeneratedTestimonialsBlockSpec = TestimonialsBlock & GeneratedBlockMetadata
 export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
 export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
@@ -150,12 +140,7 @@ export type GeneratedComparisonBlockSpec = ComparisonBlock & GeneratedBlockMetad
 
 export type GeneratedBlockSpec =
   | GeneratedHeroBlockSpec
-  | GeneratedMediaHeroBlockSpec
   | GeneratedFeatureListBlockSpec
-  | GeneratedInfoCardListBlockSpec
-  | GeneratedServiceCarouselBlockSpec
-  | GeneratedBeforeAfterGalleryBlockSpec
-  | GeneratedContactDetailsBlockSpec
   | GeneratedTestimonialsBlockSpec
   | GeneratedFAQBlockSpec
   | GeneratedCTABlockSpec

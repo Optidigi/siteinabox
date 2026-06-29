@@ -84,7 +84,7 @@ runtime kinds:
   and app-local `node_modules/preline/variants.css`.
 
 `@siteinabox/site-renderer/styles.css` remains the base/fallback renderer CSS
-and the parity CSS home for Amicare/Amblast tenant-exclusive variants.
+and the parity CSS home for Amicare tenant-exclusive variants.
 
 ## Chrome Catalog Decision
 

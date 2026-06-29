@@ -1,6 +1,0 @@
-/* TEAM */
-  Site by: optidigi (https://optidigi.nl)
-  Client: Amblast | Facility Services (https://amblast.nl)
-
-/* TECHNOLOGY */
-  Astro, harvested CSS bundle, nginx, Docker, GitHub Actions, vanilla JS

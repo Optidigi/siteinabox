@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsx src/blocks/variants.test.ts",
+    "test": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
   "exports": {

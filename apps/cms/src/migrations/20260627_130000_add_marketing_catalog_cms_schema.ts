@@ -18,11 +18,6 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'blogCards';
     ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'processSteps';
     ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'comparison';
-    ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'mediaHero';
-    ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'infoCardList';
-    ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'serviceCarousel';
-    ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'beforeAfterGallery';
-    ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'contactDetails';
 
     CREATE TABLE IF NOT EXISTS "pages_blocks_pricing" (
       "_order" integer NOT NULL,

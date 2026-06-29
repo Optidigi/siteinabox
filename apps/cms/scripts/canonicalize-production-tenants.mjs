@@ -4,7 +4,6 @@
  *
  * Goal:
  *   tenant 1 = Amicare (ami-care.nl), remapped from tenant 7
- *   tenant 2 = Amblast (amblast.nl), remapped from tenant 10
  *
  * Safety model:
  *   - Dry-run is the default. It never mutates the database or filesystem.
@@ -40,14 +39,6 @@ export const canonicalTenantMappings = Object.freeze([
     name: "Amicare",
     slug: "ami-care",
     domain: "ami-care.nl",
-  },
-  {
-    label: "Amblast",
-    sourceId: 10,
-    targetId: 2,
-    name: "Amblast",
-    slug: "amblast",
-    domain: "amblast.nl",
   },
 ])
 
@@ -102,14 +93,13 @@ export function buildStaticPlan({ retireStagingDuplicates = false, dataDir = def
     "Database plan:",
     "  BEGIN",
     "  acquire transaction advisory lock",
-    "  verify tenant ids 1 and 2 are absent or already canonical",
-    "  verify source tenants 7 and 10 exist unless already canonicalized",
+    "  verify tenant id 1 is absent or already canonical",
+    "  verify source tenant 7 exists unless already canonicalized",
     "  copy tenant 7 to tenant 1 with canonical Amicare name/slug/domain",
-    "  copy tenant 10 to tenant 2 with canonical Amblast name/slug/domain",
     "  remap tenant FKs in Phase 0 tables",
     "  update JSON tenant ids in published_site_snapshots.snapshot",
     "  update JSON tenant ids in site_generation_runs.apply_result",
-    "  delete source tenants 7 and 10 after references are clean",
+    "  delete source tenant 7 after references are clean",
     retireStagingDuplicates
       ? "  delete staging duplicate tenants 8 and 9 after canonical tenants verify cleanly"
       : "  leave staging duplicate tenants 8 and 9 untouched; pass --retire-staging-duplicates to delete them after verification",
@@ -118,7 +108,6 @@ export function buildStaticPlan({ retireStagingDuplicates = false, dataDir = def
     "",
     "Filesystem plan:",
     `  copy ${dataDir}/7 -> ${dataDir}/1 when source exists and target does not`,
-    `  copy ${dataDir}/10 -> ${dataDir}/2 when source exists and target does not`,
     "  never delete old tenant media directories; remove or archive them manually after backup validation",
   ]
   return lines.join("\n")

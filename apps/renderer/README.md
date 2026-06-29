@@ -52,10 +52,9 @@ HOST=0.0.0.0 PORT=4321 node ./dist/server/entry.mjs
 The Docker image exposes `4321`, runs as the non-root `node` user, and exposes
 `GET /healthz` for Docker healthchecks.
 
-The live renderer compose routes the official tenant domains:
+The live renderer compose routes the official tenant domain:
 
 - `ami-care.nl`
-- `amblast.nl`
 
 Before enabling these routes in production, remove or disable any legacy
 Traefik routers for the same hosts. `www` aliases are not part of the current

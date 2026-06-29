@@ -62,7 +62,6 @@ jobs:
           build-args: |
             RENDERER_SITE_URL=https://renderer.siteinabox.nl
             AMICARE_SITE_URL=https://ami-care.nl
-            AMBLAST_SITE_URL=https://amblast.nl
 
       - name: Smoke start pushed image
         env:

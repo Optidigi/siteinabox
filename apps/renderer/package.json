@@ -12,7 +12,7 @@
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
-    "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/lib/legacy-tenants/amblast/legacy-response.test.mjs src/lib/legacy-tenants/amicare/legacy-response.test.mjs src/smoke/host-routing.test.mjs && tsx --test src/lib/media.test.ts",
+    "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/lib/legacy-tenants/amicare/legacy-response.test.mjs src/smoke/host-routing.test.mjs && tsx --test src/lib/media.test.ts",
     "smoke:packaged-image": "node src/smoke/packaged-image-smoke.mjs"
   },
   "dependencies": {

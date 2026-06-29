@@ -93,18 +93,18 @@ const forbiddenRendererDependencyChecks = [
   {
     filePath: rendererDockerfilePath,
     patterns: [
-      /\bCOPY\s+sites\/(?:ami-care|amblast)\b/,
-      /\bpnpm\s+--dir\s+sites\/(?:ami-care|amblast)\b/,
-      /\bsites\/(?:ami-care|amblast)\/dist\b/,
+      /\bCOPY\s+sites\/(?:ami-care)\b/,
+      /\bpnpm\s+--dir\s+sites\/(?:ami-care)\b/,
+      /\bsites\/(?:ami-care)\/dist\b/,
     ],
   },
   {
     filePath: buildRendererWorkflowPath,
-    patterns: [/sites\/(?:ami-care|amblast)\/\*\*/, /\bSIAB_RENDERER_FIXTURE_MODE=1\b/],
+    patterns: [/sites\/(?:ami-care)\/\*\*/, /\bSIAB_RENDERER_FIXTURE_MODE=1\b/],
   },
   {
     filePath: ciWorkflowPath,
-    patterns: [/\bpnpm\s+--dir\s+sites\/(?:ami-care|amblast)\b/],
+    patterns: [/\bpnpm\s+--dir\s+sites\/(?:ami-care)\b/],
   },
 ]
 

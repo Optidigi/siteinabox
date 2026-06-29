@@ -24,19 +24,9 @@ export const SITE_DEFERRED_MARKETING_BLOCK_SLUGS = [
 ] as const
 
 export type SiteDeferredMarketingBlockSlug = (typeof SITE_DEFERRED_MARKETING_BLOCK_SLUGS)[number]
-
-export const SITE_PARITY_BLOCK_SLUGS = [
-  "mediaHero",
-  "infoCardList",
-  "serviceCarousel",
-  "beforeAfterGallery",
-  "contactDetails",
-] as const
-
 export const SITE_GENERATION_BLOCK_SLUGS = [
   ...SITE_BLOCK_SLUGS,
   ...SITE_DEFERRED_MARKETING_BLOCK_SLUGS,
-  ...SITE_PARITY_BLOCK_SLUGS,
 ] as const
 
 export type SiteGenerationBlockSlug = (typeof SITE_GENERATION_BLOCK_SLUGS)[number]
@@ -116,29 +106,6 @@ export type HeroBlock = BlockInstanceBase & {
   image?: MediaRef
 }
 
-export type MediaHeroBlock = BlockInstanceBase & {
-  blockType: "mediaHero"
-  eyebrow?: RtRoot | null
-  headline: RtRoot
-  subheadline?: RtRoot | null
-  cta?: LinkRef | null
-  secondary?: LinkRef | null
-  backgroundImage: MediaRef
-  foregroundImage?: MediaRef
-  overlay?: {
-    color?: string | null
-    opacity?: number | null
-  } | null
-  minHeight?: "compact" | "standard" | "tall" | "viewport" | null
-  contentAlign?: "left" | "center" | "right" | null
-  contentWidth?: "narrow" | "wide" | null
-  shapeDividers?: {
-    top?: "mountains" | "wave-brush" | "none" | null
-    bottom?: "mountains" | "wave-brush" | "none" | null
-  } | null
-  priority?: boolean | null
-}
-
 export type FeatureListBlock = BlockInstanceBase & {
   blockType: "featureList"
   title?: RtRoot | null
@@ -148,82 +115,6 @@ export type FeatureListBlock = BlockInstanceBase & {
     description?: RtRoot | null
     icon?: string | null
   }>
-}
-
-export type InfoCardListBlock = BlockInstanceBase & {
-  blockType: "infoCardList"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  layout?: "row" | "grid" | "stack" | null
-  iconPosition?: "top" | "left" | null
-  items: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    icon?: string | null
-    image?: MediaRef
-    link?: LinkRef | null
-    animation?: "fadeInUp" | "fadeInDown" | "float" | "grow" | "none" | null
-  }>
-}
-
-export type ServiceCarouselBlock = BlockInstanceBase & {
-  blockType: "serviceCarousel"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  layout?: "carousel" | "grid" | null
-  items: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    image?: MediaRef
-    cta?: LinkRef | null
-  }>
-  carousel?: {
-    slidesPerView?: number | null
-    slidesPerViewTablet?: number | null
-    slidesPerViewMobile?: number | null
-    spaceBetween?: number | null
-    autoplay?: boolean | null
-    autoplayDelayMs?: number | null
-    loop?: boolean | null
-    pagination?: "bullets" | "fraction" | "none" | null
-    pauseOnInteraction?: boolean | null
-  } | null
-}
-
-export type BeforeAfterGalleryBlock = BlockInstanceBase & {
-  blockType: "beforeAfterGallery"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  pairs: Array<{
-    before: MediaRef
-    after: MediaRef
-    beforeLabel?: string | null
-    afterLabel?: string | null
-    caption?: RtRoot | null
-    initialRatio?: number | null
-    orientation?: "horizontal" | "vertical" | null
-  }>
-}
-
-export type ContactDetailsBlock = BlockInstanceBase & {
-  blockType: "contactDetails"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  layout?: "cards" | "split" | "list" | null
-  items: Array<{
-    kind?: "phone" | "email" | "address" | "hours" | "legal" | "custom" | null
-    label: string
-    value: RtRoot
-    href?: string | null
-    icon?: string | null
-    image?: MediaRef
-  }>
-  legal?: {
-    kvkNumber?: string | null
-    btwId?: string | null
-    iban?: string | null
-    bic?: string | null
-  } | null
 }
 
 export type TestimonialsBlock = BlockInstanceBase & {
@@ -383,12 +274,7 @@ export type ComparisonBlock = BlockInstanceBase & {
 
 export type Block =
   | HeroBlock
-  | MediaHeroBlock
   | FeatureListBlock
-  | InfoCardListBlock
-  | ServiceCarouselBlock
-  | BeforeAfterGalleryBlock
-  | ContactDetailsBlock
   | TestimonialsBlock
   | FAQBlock
   | CTABlock
@@ -441,7 +327,7 @@ export type NavLink = { label: string; href: string; external?: boolean }
 export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
 
-export type SiteChromeVariant = "default" | "hyperUiSimple" | "amicareZen" | "amblastIndustrial"
+export type SiteChromeVariant = "default" | "hyperUiSimple" | "amicareZen"
 
 export type SiteChromeBanner = {
   variant?: SiteChromeVariant | null

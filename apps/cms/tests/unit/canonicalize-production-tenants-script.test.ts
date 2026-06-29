@@ -40,9 +40,10 @@ describe("canonicalize-production-tenants ops script", () => {
     expect(plan).toContain("pg_dump")
     expect(plan).toContain("copy tenant 7 to tenant 1")
     expect(plan).toContain("remap tenant FKs")
-    expect(plan).toContain("delete source tenants 7 and 10")
+    expect(plan).toContain("delete source tenant 7")
     expect(plan).toContain("reset tenants_id_seq")
     expect(plan).toContain("copy /srv/data/saas/siab-payload/tenants/7 -> /srv/data/saas/siab-payload/tenants/1")
+    expect(plan).not.toContain("tenant 10")
     expect(plan).toContain("never delete old tenant media directories")
   })
 
@@ -73,10 +74,10 @@ describe("canonicalize-production-tenants ops script", () => {
   })
 
   it("retargets generation run apply results with the existing numeric id shape", () => {
-    const query = buildUpdateGenerationRunApplyResultTenantJsonQuery(canonicalTenantMappings[1])
+    const query = buildUpdateGenerationRunApplyResultTenantJsonQuery(canonicalTenantMappings[0])
 
     expect(query.text).toContain("jsonb_set(apply_result, '{tenantId}', to_jsonb($2::int), true)")
-    expect(query.values).toEqual([10, 2])
+    expect(query.values).toEqual([7, 1])
   })
 
   it("does not embed production host mutation commands", () => {

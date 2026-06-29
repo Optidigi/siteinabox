@@ -5,7 +5,6 @@ import { cn } from "@siteinabox/ui/lib/utils"
 import { BlockRenderer, type BlockRegistry } from "./blocks"
 import { SiteBanner, SiteFooter, SiteHeader } from "./chrome"
 import { AmicarePageRenderer, type AmicareRenderBlock, type AmicareRenderChrome } from "./legacy-tenants/amicare/AmicarePage"
-import { AmblastPageRenderer } from "./legacy-tenants/amblast/AmblastPage"
 import { resolveLegacyTenant } from "./legacy-tenants/resolve"
 import type { MediaResolver } from "./media"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
@@ -81,23 +80,6 @@ export function SitePageRenderer({
         renderBlocks={renderBlocks}
         renderHeader={renderHeader}
         renderFooter={renderFooter}
-      />
-    )
-  }
-
-  if (legacyTenant === "amblast") {
-    return (
-      <AmblastPageRenderer
-        page={page}
-        settings={settings}
-        theme={theme}
-        registry={registry}
-        mediaResolver={mediaResolver}
-        formAction={formAction}
-        className={className}
-        canvasClassName={canvasClassName}
-        nonce={nonce}
-        includeThemeStyle={includeThemeStyle}
       />
     )
   }

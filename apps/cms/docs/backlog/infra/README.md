@@ -40,9 +40,9 @@ artifacts, and the provisional product app shell.
   approved infra automation, not as prompt/runbook command flows.
 - Keep local MCP declarations in `.mcp.json`, `.mcp.toml`,
   `.codex/config.toml`, and `.codex/mcp.toml` synchronized.
-- Migrate `amblast.nl` from the current legacy/official tenant path to the
-  generic SIAB renderer/CMS flow in a near-term cleanup slice. Keep
-  `amblast.nl` live until that migration is executed and verified.
+- Treat retired legacy tenants as out of scope for the current SIAB tenant
+  roster. Do not recreate tenant-specific operations until a future migration
+  is explicitly approved.
 
 ## Implemented Foundation
 
@@ -76,6 +76,4 @@ contract is CMS tenant data plus the platform-owned renderer in
 trees must not be restored.
 
 Production cleanup removed stale renderer staging tenants for
-`amicare.optidigi.nl` and `amblast.optidigi.nl`. The production `amblast.nl`
-tenant remains intentionally live until the near-term SIAB migration above is
-completed.
+`amicare.optidigi.nl`.

@@ -1,11 +1,11 @@
-export type RendererDeployTargetId = "ami-care" | "amblast"
+export type RendererDeployTargetId = "ami-care"
 
 export type RendererDeployTarget = {
   readonly id: RendererDeployTargetId
   readonly tenantSlug: string
   readonly productionHost: string
   readonly productionOrigin: `https://${string}`
-  readonly siteUrlBuildArg: "AMICARE_SITE_URL" | "AMBLAST_SITE_URL"
+  readonly siteUrlBuildArg: "AMICARE_SITE_URL"
   readonly legacyAssetPrefixes: readonly string[]
 }
 
@@ -27,14 +27,6 @@ export const RENDERER_DEPLOY_TARGETS = [
       "/robots.txt",
       "/sitemap-index.xml",
     ],
-  },
-  {
-    id: "amblast",
-    tenantSlug: "amblast",
-    productionHost: "amblast.nl",
-    productionOrigin: "https://amblast.nl",
-    siteUrlBuildArg: "AMBLAST_SITE_URL",
-    legacyAssetPrefixes: ["/uploads/", "/wp-content/", "/favicon", "/robots.txt"],
   },
 ] as const satisfies readonly RendererDeployTarget[]
 

@@ -16,7 +16,6 @@ type ChromeVariant = NonNullable<NonNullable<NonNullable<SiteSettings["chrome"]>
 function chromeVariantClassName(area: "header" | "footer" | "banner", variant: ChromeVariant | null | undefined) {
   if (variant === "hyperUiSimple") return `site-${area}--source-hyperui-simple`
   if (variant === "amicareZen" && area !== "banner") return `site-${area}--source-amicare-zen`
-  if (variant === "amblastIndustrial" && area !== "banner") return `site-${area}--source-amblast-industrial`
   return ""
 }
 

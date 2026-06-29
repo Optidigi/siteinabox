@@ -119,10 +119,10 @@ describe("SiteSettings collection config", () => {
     expect(chrome.fields.map((x: any) => x.name)).toEqual(["header", "footer", "banner"])
     expect(header.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "behavior", "activeMode", "mobileMenu", "cta"])
     expect(header.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple", "amicareZen", "amblastIndustrial"])
+    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple", "amicareZen"])
     expect(footer.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "tagline", "copyright", "legalLinks", "columns"])
     expect(footer.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple", "amicareZen", "amblastIndustrial"])
+    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple", "amicareZen"])
     expect(footer.fields.find((x: any) => x.name === "columns")).toMatchObject({ type: "json" })
     expect(banner.fields.map((x: any) => x.name)).toEqual(["variant", "visible", "title", "message", "link", "dismissible"])
     expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple"])
@@ -165,12 +165,12 @@ describe("SiteSettings collection config", () => {
     const footerVariant = footer.fields.find((x: any) => x.name === "variant")
 
     expect(filterChromeVariantOptions("header", headerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen", "amblastIndustrial"])
+      .toEqual(["default", "hyperUiSimple", "amicareZen"])
     expect(filterChromeVariantOptions("footer", footerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen", "amblastIndustrial"])
+      .toEqual(["default", "hyperUiSimple", "amicareZen"])
   })
 
-  it("keeps official legacy tenant chrome variants available in admin options", () => {
+  it("keeps the active official legacy tenant chrome variants available in admin options", () => {
     const chrome = findField("chrome")
     const header = chrome.fields.find((x: any) => x.name === "header")
     const footer = chrome.fields.find((x: any) => x.name === "footer")
@@ -181,15 +181,11 @@ describe("SiteSettings collection config", () => {
       .toEqual(["default", "hyperUiSimple", "amicareZen"])
     expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "amicare" } }).map((x) => x.value))
       .toEqual(["default", "hyperUiSimple", "amicareZen"])
-    expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug: "amblast" } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amblastIndustrial"])
-    expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "amblast" } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amblastIndustrial"])
     expect(filterChromeVariantOptions("header", headerOptions, { tenant: 1 }, { user: { tenants: [{ tenant: { slug: "ami-care" } }] } }).map((x) => x.value))
       .toEqual(["default", "hyperUiSimple", "amicareZen"])
   })
 
-  it("rejects Amicare and Amblast chrome variants for future generated tenants", async () => {
+  it("rejects tenant-exclusive chrome variants for future generated tenants", async () => {
     const req = {
       payload: {
         findByID: async () => ({ id: 1, slug: "future-generated" }),
@@ -202,7 +198,7 @@ describe("SiteSettings collection config", () => {
         tenant: 1,
         chrome: {
           header: { variant: "amicareZen" },
-          footer: { variant: "amblastIndustrial" },
+          footer: { variant: "amicareZen" },
         },
       },
       req,
@@ -210,16 +206,15 @@ describe("SiteSettings collection config", () => {
       data: {
         errors: expect.arrayContaining([
           expect.objectContaining({ path: "chrome.header.variant" }),
-          expect.objectContaining({ path: "chrome.footer.variant" }),
         ]),
       },
     })
   })
 
-  it("allows official legacy tenants to retain their tenant-exclusive chrome variants", async () => {
+  it("allows the active official legacy tenant to retain its tenant-exclusive chrome variants", async () => {
     const req = {
       payload: {
-        findByID: async ({ id }: any) => ({ id, slug: String(id) === "1" ? "ami-care" : "amblast" }),
+        findByID: async () => ({ id: 1, slug: "ami-care" }),
       },
     }
 
@@ -234,17 +229,5 @@ describe("SiteSettings collection config", () => {
       },
       req,
     } as any)).resolves.toMatchObject({ chrome: { header: { variant: "amicareZen" } } })
-
-    await expect(enforceTenantExclusiveChromeVariants({
-      collection: { slug: "site-settings" },
-      data: {
-        tenant: 2,
-        chrome: {
-          header: { variant: "amblastIndustrial" },
-          footer: { variant: "amblastIndustrial" },
-        },
-      },
-      req,
-    } as any)).resolves.toMatchObject({ chrome: { header: { variant: "amblastIndustrial" } } })
   })
 })
