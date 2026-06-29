@@ -574,6 +574,7 @@ function runThemeCssVarTests() {
 
   assertIncludes(amicareCss, `${PUBLIC_RENDERER_THEME_SCOPE}{`, "themeToCssVars supports public renderer scope")
   assertIncludes(amicareCss, "--color-accent:#a04e32", "themeToCssVars emits Amicare accent in public renderer scope")
+  assertIncludes(amicareCss, "--color-on-accent:#ffffff", "themeToCssVars emits Amicare foreground-on-accent in public renderer scope")
   assertIncludes(amicareCss, "--color-bg:#fbf7f0", "themeToCssVars emits Amicare background in public renderer scope")
   assertIncludes(amicareCss, "--color-ink:#1f1a14", "themeToCssVars emits Amicare ink in public renderer scope")
   assertIncludes(amicareCss, "--color-ink-muted:#5a4f44", "themeToCssVars emits Amicare muted ink in public renderer scope")
@@ -608,9 +609,11 @@ function runThemeCssVarTests() {
   )
   assertIncludes(
     darkFallbackCss,
-    `${PUBLIC_RENDERER_THEME_SCOPE}[data-rt-mode="dark"]{--color-bg:#09090b`,
+    `${PUBLIC_RENDERER_THEME_SCOPE}[data-rt-mode="dark"]{`,
     "dark mode without an explicit dark palette emits fallback dark canvas variables",
   )
+  assertIncludes(darkFallbackCss, "--color-on-accent:#ffffff", "dark fallback emits foreground-on-accent")
+  assertIncludes(darkFallbackCss, "--color-bg:#09090b", "dark fallback emits dark background")
   assertIncludes(darkFallbackCss, "--color-ink:#fafafa", "dark fallback emits readable ink")
   assertIncludes(darkFallbackCss, "--color-rule:rgba(255, 255, 255, 0.12)", "dark fallback emits rule color")
 
@@ -717,6 +720,7 @@ async function runLegacyRendererDispatchTests() {
   assertIncludes(amicareMarkup, 'data-rt-mode="light"', "Amicare light theme mode marker")
   assertIncludes(amicareMarkup, `${publicRendererScope}{`, "Amicare theme overrides use public renderer scope")
   assertIncludes(amicareMarkup, "--color-accent:#a04e32", "Amicare emits non-default accent token")
+  assertIncludes(amicareMarkup, "--color-on-accent:#ffffff", "Amicare emits foreground-on-accent token")
   assertIncludes(amicareMarkup, "--color-bg:#fbf7f0", "Amicare emits non-default background token")
   assertIncludes(amicareMarkup, "--font-title:Fraunces Variable, Georgia, serif", "Amicare emits non-default title font token")
   assertIncludes(amicareMarkup, "--font-text:Inter Variable, system-ui, sans-serif", "Amicare emits non-default text font token")
@@ -732,6 +736,10 @@ async function runLegacyRendererDispatchTests() {
   assertIncludes(amicareMarkup, 'loading="eager"', "Amicare eager hero image")
   assertIncludes(amicareMarkup, 'decoding="async"', "Amicare async image decoding")
   assertIncludes(amicareMarkup, 'class="aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3"', "Amicare exact hero media classes")
+  assertIncludes(amicareMarkup, "amicare-button-primary", "Amicare uses explicit foreground-on-accent button class")
+  assertIncludes(amicareMarkup, "amicare-hero-glow amicare-hero-glow--start", "Amicare hero uses scoped glow class")
+  assertIncludes(amicareMarkup, "amicare-quote-overlay", "Amicare quote CTA uses scoped overlay class")
+  assertExcludes(amicareMarkup, "text-bg", "Amicare buttons do not derive contrast from page background")
   assertIncludes(amicareMarkup, 'src="/api/tenant-media/7/bedroom.jpg"', "Amicare exact quote background image")
   assertIncludes(amicareMarkup, 'class="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.12]"', "Amicare exact quote media classes")
   assertIncludes(amicareMarkup, "Voor jongeren en gezinnen", "Amicare exact hero eyebrow")
@@ -747,9 +755,10 @@ async function runLegacyRendererDispatchTests() {
   assertIncludes(amicareMarkup, "Betrokkenheid", "Amicare exact second feature")
   assertIncludes(amicareMarkup, "Continuïteit", "Amicare exact third feature")
   assertIncludes(amicareMarkup, '<p class="text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]">Echt luisteren naar wat een jongere', "Amicare feature description rich text renders inline inside legacy paragraph")
-  assertIncludes(amicareMarkup, "prose-headings:font-serif prose-headings:tracking-[-0.01em]", "Amicare exact rich-text typography classes")
+  assertIncludes(amicareMarkup, "amicare-richtext-intro mx-auto max-w-3xl text-center", "Amicare rich-text intro is separated from body")
+  assertIncludes(amicareMarkup, "amicare-richtext-body prose mx-auto mt-10 max-w-prose space-y-6", "Amicare rich-text body uses separated prose rhythm")
   assertIncludes(amicareMarkup, '<div class="rt-themed rt-themed-eyebrow" data-rt-id="eyebrow">', "Amicare rich-text themed eyebrow marker")
-  assertIncludes(amicareMarkup, '<h2 class="rt-h rt-h-2">Het vak  mijn <em class="rt-i">hart ligt</em>.</h2>', "Amicare exact captured rich-text heading")
+  assertIncludes(amicareMarkup, '<h2 class="rt-h rt-h-2">Het vak waar mijn <em class="rt-i">hart ligt</em>.</h2>', "Amicare exact rich-text heading")
   assertIncludes(amicareMarkup, "Vertrouwen ontstaat in de tijd", "Amicare exact quote CTA")
   assertIncludes(amicareMarkup, '<p class="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]">Daarom werk ik graag in trajecten', "Amicare CTA description rich text renders inline inside legacy paragraph")
   assertIncludes(amicareMarkup, "info@ami-care.nl", "Amicare exact contact email")
@@ -760,7 +769,7 @@ async function runLegacyRendererDispatchTests() {
   assertExcludes(amicareMarkup, '<p class="max-w-md animate-fade-up text-[17px] leading-[1.6] text-ink-muted [animation-delay:150ms] [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]"><p class="rt-p">', "Amicare subheadline does not render nested paragraphs")
   assertExcludes(amicareMarkup, '<p class="text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]"><p class="rt-p">', "Amicare feature descriptions do not render nested paragraphs")
   assertExcludes(amicareMarkup, '<p class="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]"><p class="rt-p">', "Amicare CTA descriptions do not render nested paragraphs")
-  assertExcludes(amicareMarkup, "Het vak waar mijn", "Amicare excludes non-captured rich-text heading")
+  assertExcludes(amicareMarkup, "Het vak  mijn", "Amicare excludes malformed rich-text heading")
   assertExcludes(amicareMarkup, "Ervaringen", "Amicare excludes generated testimonials section")
   assertExcludes(amicareMarkup, "Veelgestelde vragen", "Amicare excludes generated FAQ section")
   assertExcludes(amicareMarkup, "<form", "Amicare excludes generated contact form")
@@ -852,9 +861,13 @@ async function runLegacyRendererDispatchTests() {
   assertIncludes(darkAmicareMarkup, 'data-rt-mode="dark"', "Amicare dark theme mode marker")
   assertIncludes(
     darkAmicareMarkup,
-    `${publicRendererScope}[data-rt-mode="dark"]{--color-bg:#09090b;--color-ink:#fafafa;--color-ink-muted:#a1a1aa;--color-card:#18181b;--color-secondary:#27272a;--color-rule:rgba(255, 255, 255, 0.12)}`,
+    `${publicRendererScope}[data-rt-mode="dark"]{`,
     "Amicare dark mode without darkColors emits CMS canvas fallback tokens",
   )
+  assertIncludes(darkAmicareMarkup, "--color-on-accent:#ffffff", "Amicare dark fallback emits foreground-on-accent token")
+  assertIncludes(darkAmicareMarkup, "--color-bg:#09090b", "Amicare dark fallback emits background token")
+  assertIncludes(darkAmicareMarkup, "--color-ink:#fafafa", "Amicare dark fallback emits ink token")
+  assertIncludes(darkAmicareMarkup, "--color-rule:rgba(255, 255, 255, 0.12)", "Amicare dark fallback emits rule token")
   assertIncludes(darkAmicareMarkup, "--color-accent:#a04e32", "Amicare dark fallback keeps base accent token")
 
   const amicareContactDescriptionPage = {

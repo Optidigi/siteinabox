@@ -1,6 +1,7 @@
 import type { ThemeTokenSpec } from "@siteinabox/contracts"
 
 const DEFAULT_DARK = {
+  onAccent: "#ffffff",
   bg: "#09090b",
   ink: "#fafafa",
   muted: "#a1a1aa",
@@ -34,6 +35,8 @@ function set(parts: string[], prop: string, value: string | undefined | null) {
   if (value != null && value !== "") parts.push(`${prop}:${value}`)
 }
 
+const onAccentColor = (value: string | undefined | null) => value ?? "#ffffff"
+
 export function themeMode(theme: ThemeTokenSpec | null | undefined): "light" | "dark" {
   return theme?.mode === "dark" ? "dark" : "light"
 }
@@ -51,6 +54,9 @@ export function themeToCssVars(
   if (flatten) {
     const dark = theme.darkColors
     if (dark?.accent) set(baseParts, "--color-accent", dark.accent)
+    if (dark?.accent || dark?.onAccent || theme.colors?.onAccent) {
+      set(baseParts, "--color-on-accent", onAccentColor(dark?.onAccent ?? theme.colors?.onAccent ?? DEFAULT_DARK.onAccent))
+    }
     set(baseParts, "--color-bg", dark?.bg ?? DEFAULT_DARK.bg)
     set(baseParts, "--color-ink", dark?.ink ?? DEFAULT_DARK.ink)
     set(baseParts, "--color-ink-muted", dark?.muted ?? DEFAULT_DARK.muted)
@@ -60,6 +66,7 @@ export function themeToCssVars(
   } else {
     const colors = theme.colors
     set(baseParts, "--color-accent", colors?.accent)
+    if (colors?.accent || colors?.onAccent) set(baseParts, "--color-on-accent", onAccentColor(colors?.onAccent))
     set(baseParts, "--color-bg", colors?.bg)
     set(baseParts, "--color-ink", colors?.ink)
     set(baseParts, "--color-ink-muted", colors?.muted)
@@ -70,6 +77,9 @@ export function themeToCssVars(
     const dark = theme.darkColors
     const useDefaultDark = theme.mode === "dark"
     set(darkParts, "--color-accent", dark?.accent)
+    if (dark?.accent || dark?.onAccent || useDefaultDark) {
+      set(darkParts, "--color-on-accent", dark?.onAccent ?? DEFAULT_DARK.onAccent)
+    }
     set(darkParts, "--color-bg", dark?.bg ?? (useDefaultDark ? DEFAULT_DARK.bg : undefined))
     set(darkParts, "--color-ink", dark?.ink ?? (useDefaultDark ? DEFAULT_DARK.ink : undefined))
     set(darkParts, "--color-ink-muted", dark?.muted ?? (useDefaultDark ? DEFAULT_DARK.muted : undefined))

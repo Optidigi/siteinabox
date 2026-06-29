@@ -50,29 +50,42 @@ const inline = (...children: any[]) => ({ t: "root" as const, variant: "inline" 
 const block = (...children: any[]) => ({ t: "root" as const, variant: "block" as const, children })
 const para = (...children: any[]) => ({ t: "paragraph" as const, children })
 const h2 = (...children: any[]) => ({ t: "heading" as const, level: 2 as const, children })
+const desiredDomain = "ami-care.nl"
+const fallbackDomain = "ami-care.local"
 
 const main = async () => {
   const payload = await getPayload({ config })
 
-  // Find or create the tenant
-  const existing = await payload.find({
-    collection: "tenants", where: { slug: { equals: "amicare-zorg" } }, limit: 1, overrideAccess: true,
-  })
+  const [existing, desiredDomainOwner] = await Promise.all([
+    payload.find({
+      collection: "tenants", where: { slug: { equals: "amicare-zorg" } }, limit: 1, overrideAccess: true,
+    }),
+    payload.find({
+      collection: "tenants", where: { domain: { equals: desiredDomain } }, limit: 1, overrideAccess: true,
+    }),
+  ])
 
   let tenantId: number | string
   if (existing.docs[0]) {
-    tenantId = (existing.docs[0] as any).id
+    const existingTenant = existing.docs[0] as any
+    tenantId = existingTenant.id
+    const desiredDomainIsAvailable =
+      !desiredDomainOwner.docs[0] || String((desiredDomainOwner.docs[0] as any).id) === String(tenantId)
     await payload.update({
       collection: "tenants", id: tenantId as any,
-      data: { siteManifest: manifest } as any, overrideAccess: true,
+      data: {
+        domain: desiredDomainIsAvailable ? desiredDomain : existingTenant.domain ?? fallbackDomain,
+        siteManifest: manifest,
+      } as any, overrideAccess: true,
     })
     console.log(`[seed] reused existing tenant id=${tenantId}`)
   } else {
+    const desiredDomainIsAvailable = !desiredDomainOwner.docs[0]
     const t = await payload.create({
       collection: "tenants",
       data: {
         name: "Amicare-Zorg", slug: "amicare-zorg",
-        domain: "ami-care.local",
+        domain: desiredDomainIsAvailable ? desiredDomain : fallbackDomain,
         siteManifest: manifest,
       } as any, overrideAccess: true,
     })
@@ -113,7 +126,7 @@ const main = async () => {
       blockType: "cta",
       headline: inline(txt("Vertrouwen ontstaat in de tijd, niet in één gesprek.")),
       description: block(para(txt("Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen."))),
-      primary: { label: "(unused)", href: "#" },
+      primary: { label: "(unused)", href: "#contact" },
     },
     {
       blockType: "cta",

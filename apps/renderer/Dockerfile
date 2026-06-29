@@ -10,13 +10,12 @@ COPY apps/renderer/package.json apps/renderer/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/site-renderer/package.json packages/site-renderer/package.json
 COPY packages/ui/package.json packages/ui/package.json
-RUN pnpm fetch --frozen-lockfile --store-dir=/pnpm/store
 
 COPY apps/renderer apps/renderer
 COPY packages/contracts packages/contracts
 COPY packages/site-renderer packages/site-renderer
 COPY packages/ui packages/ui
-RUN pnpm install --frozen-lockfile --offline --filter @siteinabox/renderer... --store-dir=/pnpm/store
+RUN pnpm install --frozen-lockfile --filter @siteinabox/renderer... --store-dir=/pnpm/store
 
 ARG RENDERER_SITE_URL=https://renderer.siteinabox.nl
 ARG AMBLAST_SITE_URL=https://amblast.nl

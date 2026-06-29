@@ -48,7 +48,7 @@ try {
     "-e",
     "DATA_DIR=/data-out",
     "-v",
-    `${dataDir}:/data-out:ro`,
+    `${dataDir}:/data-out:ro,z`,
     "-p",
     `${rendererPort}:4321`,
     imageTag,

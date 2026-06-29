@@ -59,8 +59,7 @@ const amicareEditorialBody = (): RtBlockRoot => ({
       t: "heading",
       level: 2,
       children: [
-        { t: "text", v: "Het vak " },
-        { t: "text", v: " mijn " },
+        { t: "text", v: "Het vak waar mijn " },
         { t: "text", v: "hart ligt", marks: ["italic"] },
         { t: "text", v: "." },
       ],

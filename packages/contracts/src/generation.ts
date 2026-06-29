@@ -82,6 +82,7 @@ export type NormalizedIntake = {
 
 export type ThemeColorRole =
   | "accent"
+  | "onAccent"
   | "bg"
   | "ink"
   | "muted"

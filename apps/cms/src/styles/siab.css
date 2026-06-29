@@ -1,6 +1,9 @@
 @import "@fontsource-variable/fraunces/index.css";
 @import "@fontsource-variable/caveat/index.css";
 @import "@fontsource-variable/inter/index.css";
+@import "@siteinabox/site-renderer/canvas.css";
+
+@source "../../../../packages/site-renderer/src";
 
 /* SIAB-owned app/editor CSS. Do not point components.json at this file. */
 

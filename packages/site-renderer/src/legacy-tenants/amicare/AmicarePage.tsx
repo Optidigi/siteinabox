@@ -13,6 +13,8 @@ import type {
   MediaRef,
   Page,
   RichTextBlock,
+  RtBlock,
+  RtRoot,
   SiteSettings,
   TestimonialsBlock,
 } from "@siteinabox/contracts"
@@ -24,6 +26,7 @@ import type { BlockRegistry } from "../../blocks"
 import type { MediaResolver, ResolvedMedia } from "../../media"
 import { resolveMedia } from "../../media"
 import { RichTextRenderer, extractRichText } from "../../rich-text"
+import { isRtRoot } from "@siteinabox/contracts/rich-text"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "../../theme"
 
 export type AmicarePageRendererProps = {
@@ -352,8 +355,8 @@ function AmicareHero({
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "hero", dataBlockIndex)}
     >
-      <div aria-hidden="true" className="pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full bg-accent/15 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full bg-accent/10 blur-3xl" />
+      <div aria-hidden="true" className="amicare-hero-glow amicare-hero-glow--start pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full blur-3xl" />
+      <div aria-hidden="true" className="amicare-hero-glow amicare-hero-glow--end pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full blur-3xl" />
 
       <div className="relative z-10 w-full space-y-7 @min-[48rem]/site-frame:w-1/2">
         {eyebrowText && (
@@ -384,7 +387,7 @@ function AmicareHero({
         {ctaLabel && ctaHref && (
           <a
             href={ctaHref}
-            className="inline-block animate-fade-up rounded-md bg-accent px-6 py-3 text-[14px] font-medium text-bg shadow-sm transition-colors [animation-delay:400ms] [font-family:var(--font-text)] hover:bg-accent/90"
+            className="amicare-button-primary inline-block animate-fade-up rounded-md bg-accent px-6 py-3 text-[14px] font-medium shadow-sm transition-colors [animation-delay:400ms] [font-family:var(--font-text)] hover:bg-accent/90"
             {...actionAnalyticsAttrs("primary", ctaLabel)}
           >
             {ctaLabel}
@@ -477,8 +480,27 @@ function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock
   )
 }
 
+function splitAmicareIntro(value: unknown): { intro: RtRoot; body: RtRoot } | null {
+  if (!isRtRoot(value) || value.variant !== "block") return null
+  const [eyebrow, heading, ...rest] = value.children
+  if (eyebrow?.t !== "themed" || eyebrow.id !== "eyebrow" || heading?.t !== "heading") return null
+  return {
+    intro: {
+      t: "root",
+      variant: "block",
+      children: [eyebrow, heading] as RtBlock[],
+    },
+    body: {
+      t: "root",
+      variant: "block",
+      children: rest as RtBlock[],
+    },
+  }
+}
+
 function AmicareRichText({ block, dataBlockIndex }: { block: RichTextBlock; dataBlockIndex: number }) {
   if (!block.body) return null
+  const splitBody = splitAmicareIntro(block.body)
   return (
     <section
       id={block.anchor || "over"}
@@ -486,12 +508,28 @@ function AmicareRichText({ block, dataBlockIndex }: { block: RichTextBlock; data
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "richText", dataBlockIndex)}
     >
+      {splitBody ? (
+        <>
+          <div className="amicare-richtext-intro mx-auto max-w-3xl text-center">
+            <RichTextRenderer value={splitBody.intro} />
+          </div>
+          {splitBody.body.children.length > 0 && (
+            <div
+              className="amicare-richtext-body prose mx-auto mt-10 max-w-prose space-y-6 text-[17px] leading-[1.6] text-ink/90 @min-[48rem]/site-frame:text-[18px]"
+              style={{ fontFamily: "var(--font-text)" }}
+            >
+              <RichTextRenderer value={splitBody.body} />
+            </div>
+          )}
+        </>
+      ) : (
       <div
         className="prose mx-auto max-w-prose text-[17px] leading-[1.7] text-ink/90 @min-[48rem]/site-frame:text-[18px] prose-headings:font-serif prose-headings:tracking-[-0.01em] prose-headings:text-ink prose-h2:text-[34px] prose-h2:leading-[1.1] @min-[48rem]/site-frame:prose-h2:text-[44px] prose-p:text-ink/90 prose-strong:text-ink prose-strong:font-semibold prose-em:text-accent prose-em:italic prose-a:text-accent prose-a:underline prose-a:decoration-1 prose-a:underline-offset-[6px] hover:prose-a:decoration-accent prose-blockquote:border-l-2 prose-blockquote:border-accent prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:font-serif prose-blockquote:text-[19px] @min-[48rem]/site-frame:prose-blockquote:text-[22px]"
         style={{ fontFamily: "var(--font-text)" }}
       >
         <RichTextRenderer value={block.body} />
       </div>
+      )}
     </section>
   )
 }
@@ -530,9 +568,9 @@ function AmicareCTA({
         <img aria-hidden="true" src={backgroundImageUrl} alt="" loading="lazy" decoding="async" className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.12]" />
       )}
       {(!isContact || backgroundImageUrl) && (
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-bg/70 via-bg/50 to-bg/70" />
+        <div aria-hidden="true" className="amicare-quote-overlay pointer-events-none absolute inset-0 -z-10" />
       )}
-      {!isContact && <div aria-hidden="true" className="pointer-events-none absolute -bottom-[20%] -right-[10%] -z-10 h-[300px] w-[300px] rounded-full bg-accent/10 blur-3xl" />}
+      {!isContact && <div aria-hidden="true" className="amicare-quote-glow pointer-events-none absolute -bottom-[20%] -right-[10%] -z-10 h-[300px] w-[300px] rounded-full blur-3xl" />}
 
       <div className={isContact ? "mx-auto max-w-3xl space-y-8 text-center" : "mx-auto max-w-3xl text-center"}>
         {eyebrowText && <span className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{eyebrowText}</span>}
@@ -734,7 +772,7 @@ function AmicareContactSection({
           ))}
           <button
             type="submit"
-            className="rounded-md bg-accent px-6 py-3 text-[14px] font-medium text-bg transition-colors [font-family:var(--font-text)] hover:bg-accent/90"
+            className="amicare-button-primary rounded-md bg-accent px-6 py-3 text-[14px] font-medium transition-colors [font-family:var(--font-text)] hover:bg-accent/90"
             {...actionAnalyticsAttrs("primary", block.submitLabel ?? "Send")}
           >
             {block.submitLabel ?? "Send"}
@@ -839,7 +877,7 @@ function AmicareCookieConsent({ enabled, nonce }: { enabled: boolean; nonce?: st
             </p>
           </div>
           <div className="flex flex-col gap-2 @min-[30rem]/site-frame:flex-row">
-            <button type="button" className="rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium text-bg transition-colors hover:bg-accent/90" data-cookie-consent-accept>
+            <button type="button" className="amicare-button-primary rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium transition-colors hover:bg-accent/90" data-cookie-consent-accept>
               Accepteren
             </button>
             <button type="button" className="rounded-md border border-rule bg-bg px-4 py-2.5 text-[14px] font-medium text-ink transition-colors hover:bg-secondary/40" data-cookie-consent-decline>

@@ -28,7 +28,8 @@
       "import": "./src/theme/css-vars.ts",
       "default": "./src/theme/css-vars.ts"
     },
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./canvas.css": "./src/canvas.css"
   },
   "dependencies": {
     "@fontsource-variable/caveat": "^5.2.8",

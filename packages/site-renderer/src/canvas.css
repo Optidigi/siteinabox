@@ -1,0 +1,102 @@
+.site-renderer[data-siab-site-renderer] .rt-canvas {
+  font-family: var(--font-text, inherit);
+  color: var(--color-ink, currentColor);
+  background-color: var(--color-bg, transparent);
+}
+
+.site-renderer[data-siab-site-renderer] .site-frame-root {
+  min-width: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] {
+  --color-card: #ffffff;
+  --color-secondary: #efe9dd;
+  --color-rule: rgba(31, 26, 20, 0.12);
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces Variable", Georgia, serif;
+  --font-script: "Caveat Variable", cursive;
+  --radius-sm: calc(var(--radius-md, 0.5rem) - 0.25rem);
+  --radius-lg: calc(var(--radius-md, 0.5rem) + 0.5rem);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas {
+  font-size: 17px;
+  line-height: 1.6;
+  --color-bg-soft: color-mix(in oklab, var(--color-bg, Canvas) 70%, var(--color-accent, currentColor) 30%);
+  --color-accent-soft: color-mix(in oklab, var(--color-accent, currentColor) 12%, transparent);
+  --color-card-soft: color-mix(in oklab, var(--color-card, Canvas) 80%, transparent);
+}
+
+@container site-frame (width >= 48rem) {
+  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root {
+    font-size: 18px;
+  }
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block {
+  color: var(--color-ink, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--featurelist,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--testimonials,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta-quote {
+  background-color: color-mix(in oklab, var(--color-secondary, transparent) 40%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext {
+  background-color: var(--color-bg, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose {
+  max-width: 65ch;
+  color: color-mix(in oklab, var(--color-ink, currentColor) 90%, transparent);
+  font-family: var(--font-text, inherit);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose h2 {
+  color: var(--color-ink, currentColor);
+  font-family: var(--font-heading, inherit);
+  font-size: clamp(2.125rem, 8cqw, 2.75rem);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: 0;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose p {
+  margin-block: 1em;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose em,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose a {
+  color: var(--color-accent, currentColor);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta-contact {
+  background-color: var(--color-bg, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta img[aria-hidden="true"] {
+  opacity: 0.12;
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-button-primary {
+  color: var(--color-on-accent, #ffffff);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-hero-glow--start {
+  background: color-mix(in srgb, var(--color-accent, currentColor) 15%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-hero-glow--end,
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-quote-glow {
+  background: color-mix(in srgb, var(--color-accent, currentColor) 10%, transparent);
+}
+
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-quote-overlay {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-bg, Canvas) 70%, transparent),
+    color-mix(in srgb, var(--color-bg, Canvas) 50%, transparent),
+    color-mix(in srgb, var(--color-bg, Canvas) 70%, transparent)
+  );
+}

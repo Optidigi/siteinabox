@@ -818,6 +818,7 @@ function addForbiddenGeneratedPayloadIssues(
 export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = strictObject({
   colors: strictObject({
     accent: cssColorSchema.optional(),
+    onAccent: cssColorSchema.optional(),
     bg: cssColorSchema.optional(),
     ink: cssColorSchema.optional(),
     muted: cssColorSchema.optional(),
@@ -827,6 +828,7 @@ export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = strictObject({
   }).optional(),
   darkColors: strictObject({
     accent: cssColorSchema.optional(),
+    onAccent: cssColorSchema.optional(),
     bg: cssColorSchema.optional(),
     ink: cssColorSchema.optional(),
     muted: cssColorSchema.optional(),
