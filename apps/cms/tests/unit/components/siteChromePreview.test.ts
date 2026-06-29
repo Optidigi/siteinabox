@@ -151,6 +151,7 @@ describe("SiteChromePreview chrome actions", () => {
     expect(file).toContain("const gutterHideTimerRef = useRef<number | null>(null)")
     expect(file).toContain("const setGutterVisibleSafely = useCallback((next: boolean) => {")
     expect(file).toContain("const hideDelayMs = useOverlayTarget ? 800 : 250")
+    expect(file).toContain("if (gutterHideTimerRef.current != null) return")
     expect(file).toContain("}, hideDelayMs)")
     expect(file).toContain("premeasure")
     expect(file).toContain("measureKey={overlayAnchor}")

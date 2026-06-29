@@ -711,7 +711,7 @@ function ChromeActionsMenu({
       setGutterVisible(true)
       return
     }
-    clearGutterHideTimer()
+    if (gutterHideTimerRef.current != null) return
     const hideDelayMs = useOverlayTarget ? 800 : 250
     gutterHideTimerRef.current = window.setTimeout(() => {
       gutterHideTimerRef.current = null
