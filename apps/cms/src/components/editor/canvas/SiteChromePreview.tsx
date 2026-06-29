@@ -1,6 +1,6 @@
 "use client"
 import Link from "next/link"
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { ChevronRight, GripVertical, Menu, MoreVertical, Navigation, PanelBottom, PanelTop } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -83,6 +83,15 @@ const pickChromeTarget = (targets: HTMLElement[], current: HTMLElement | null) =
 
 const sameChromeTargets = (current: HTMLElement[], next: HTMLElement[]) =>
   current.length === next.length && current.every((target, index) => target === next[index])
+
+type ChromeTriggerProps = {
+  onMouseEnter: () => void
+  onMouseLeave: () => void
+  onFocusCapture: () => void
+  onBlurCapture: (event: ReactFocusEvent<HTMLElement>) => void
+  onClick: (event: ReactMouseEvent<HTMLElement>) => void
+  onContextMenu: (event: ReactMouseEvent<HTMLElement>) => void
+}
 
 const inlineRootFromText = (value: string): RtRoot => ({
   t: "root",
@@ -224,10 +233,11 @@ export function SiteChromePreview({
       onSelect={onSelect ? (point) => onSelect({ zone }, point) : undefined}
       showOptionsButton
       overlayTargetSelector={siteChromeTargetSelector(zone)}
-      trigger={
+      trigger={(chromeTargetProps) =>
         isHeader ? (
           <>
             <nav
+              {...chromeTargetProps}
               aria-label="Hoofdnavigatie"
               className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg/80 px-6 py-5 backdrop-blur-lg @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"
               data-site-chrome={zone}
@@ -273,6 +283,7 @@ export function SiteChromePreview({
           </>
         ) : (
           <footer
+            {...chromeTargetProps}
             className="relative border-t border-rule bg-gradient-to-br from-secondary/20 via-bg to-accent/5 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
             data-site-chrome={zone}
           >
@@ -629,7 +640,7 @@ function ChromeActionsMenu({
   onSelect?: (point?: SiteChromeSelectPoint) => void
   showOptionsButton?: boolean
   overlayTargetSelector?: string
-  trigger: ReactNode
+  trigger: ReactNode | ((props: ChromeTriggerProps) => ReactNode)
 }) {
   const t = useTranslations("editor")
   const { view } = useCanvasSelection()
@@ -688,13 +699,13 @@ function ChromeActionsMenu({
     setPoint(nextPoint)
   }, [onSelect])
 
-  const clearGutterHideTimer = () => {
+  const clearGutterHideTimer = useCallback(() => {
     if (gutterHideTimerRef.current == null) return
     window.clearTimeout(gutterHideTimerRef.current)
     gutterHideTimerRef.current = null
-  }
+  }, [])
 
-  const setGutterVisibleSafely = (next: boolean) => {
+  const setGutterVisibleSafely = useCallback((next: boolean) => {
     if (next) {
       clearGutterHideTimer()
       setGutterVisible(true)
@@ -706,21 +717,106 @@ function ChromeActionsMenu({
       gutterHideTimerRef.current = null
       setGutterVisible(false)
     }, hideDelayMs)
-  }
+  }, [clearGutterHideTimer, useOverlayTarget])
 
-  useEffect(() => clearGutterHideTimer, [])
+  useEffect(() => clearGutterHideTimer, [clearGutterHideTimer])
 
   const setActiveOverlayTarget = useCallback((target: HTMLElement) => {
     overlayAnchorRef.current = target
     setOverlayAnchor(target)
   }, [])
 
+  const triggerTargetProps: ChromeTriggerProps = {
+    onMouseEnter: () => setGutterVisibleSafely(true),
+    onMouseLeave: () => setGutterVisibleSafely(false),
+    onFocusCapture: () => setGutterVisibleSafely(true),
+    onBlurCapture: (event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setGutterVisibleSafely(false)
+      }
+    },
+    onClick: (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (onSelect) {
+        onSelect()
+        return
+      }
+      setPoint({ x: event.clientX, y: event.clientY })
+    },
+    onContextMenu: (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (isReadOnly) return
+      openAt({ x: event.clientX, y: event.clientY })
+    },
+  }
+  const triggerNode = typeof trigger === "function" ? trigger(triggerTargetProps) : trigger
+
   useEffect(() => {
     if (!useOverlayTarget || !overlayTargetSelector) return
+    const targetFromEvent = (eventTarget: EventTarget | null) => eventTarget instanceof HTMLElement
+      ? eventTarget.closest<HTMLElement>(overlayTargetSelector)
+      : null
+    const syncHoveredTarget = () => {
+      const hoveredTarget = Array
+        .from(document.querySelectorAll<HTMLElement>(overlayTargetSelector))
+        .find((target) => target.matches(":hover"))
+      if (hoveredTarget) {
+        setActiveOverlayTarget(hoveredTarget)
+        setGutterVisibleSafely(true)
+        return
+      }
+      if (document.querySelector('[data-siab-canvas-chrome="site-chrome-gutter"]:hover')) return
+      setGutterVisibleSafely(false)
+    }
+
+    const onDocumentPointerOver = (event: PointerEvent) => {
+      const target = targetFromEvent(event.target)
+      if (!target) return
+      setActiveOverlayTarget(target)
+      setGutterVisibleSafely(true)
+    }
+
+    const onDocumentPointerMove = (event: PointerEvent) => {
+      const target = targetFromEvent(event.target)
+      if (!target) return
+      setActiveOverlayTarget(target)
+      setGutterVisibleSafely(true)
+    }
+
+    const onDocumentPointerOut = (event: PointerEvent) => {
+      const target = targetFromEvent(event.target)
+      if (!target) return
+      const relatedTarget = event.relatedTarget
+      if (relatedTarget instanceof Node && target.contains(relatedTarget)) return
+      setGutterVisibleSafely(false)
+    }
+
+    const onDocumentMouseOver = (event: MouseEvent) => {
+      const target = targetFromEvent(event.target)
+      if (!target) return
+      setActiveOverlayTarget(target)
+      setGutterVisibleSafely(true)
+    }
+
+    const onDocumentMouseMove = (event: MouseEvent) => {
+      const target = targetFromEvent(event.target)
+      if (!target) return
+      setActiveOverlayTarget(target)
+      setGutterVisibleSafely(true)
+    }
+
+    const onDocumentMouseOut = (event: MouseEvent) => {
+      const target = targetFromEvent(event.target)
+      if (!target) return
+      const relatedTarget = event.relatedTarget
+      if (relatedTarget instanceof Node && target.contains(relatedTarget)) return
+      setGutterVisibleSafely(false)
+    }
+
     const onDocumentContextMenu = (event: MouseEvent) => {
-      const target = event.target instanceof HTMLElement
-        ? event.target.closest<HTMLElement>(overlayTargetSelector)
-        : null
+      const target = targetFromEvent(event.target)
       if (!target) return
       setActiveOverlayTarget(target)
       event.preventDefault()
@@ -729,9 +825,25 @@ function ChromeActionsMenu({
       openAt({ x: event.clientX, y: event.clientY })
     }
 
+    document.addEventListener("pointerover", onDocumentPointerOver, true)
+    document.addEventListener("pointermove", onDocumentPointerMove, true)
+    document.addEventListener("pointerout", onDocumentPointerOut, true)
+    document.addEventListener("mouseover", onDocumentMouseOver, true)
+    document.addEventListener("mousemove", onDocumentMouseMove, true)
+    document.addEventListener("mouseout", onDocumentMouseOut, true)
     document.addEventListener("contextmenu", onDocumentContextMenu, true)
-    return () => document.removeEventListener("contextmenu", onDocumentContextMenu, true)
-  }, [isReadOnly, openAt, overlayTargetSelector, setActiveOverlayTarget, useOverlayTarget])
+    const hoverSyncInterval = window.setInterval(syncHoveredTarget, 120)
+    return () => {
+      window.clearInterval(hoverSyncInterval)
+      document.removeEventListener("pointerover", onDocumentPointerOver, true)
+      document.removeEventListener("pointermove", onDocumentPointerMove, true)
+      document.removeEventListener("pointerout", onDocumentPointerOut, true)
+      document.removeEventListener("mouseover", onDocumentMouseOver, true)
+      document.removeEventListener("mousemove", onDocumentMouseMove, true)
+      document.removeEventListener("mouseout", onDocumentMouseOut, true)
+      document.removeEventListener("contextmenu", onDocumentContextMenu, true)
+    }
+  }, [isReadOnly, openAt, overlayTargetSelector, setActiveOverlayTarget, setGutterVisibleSafely, useOverlayTarget])
 
   useEffect(() => {
     if (!useOverlayTarget || overlayTargets.length === 0) return
@@ -787,7 +899,7 @@ function ChromeActionsMenu({
         target.removeEventListener("contextmenu", onContextMenu)
       })
     }
-  }, [isReadOnly, onSelect, overlayTargets, setActiveOverlayTarget, useOverlayTarget])
+  }, [isReadOnly, onSelect, openAt, overlayTargets, setActiveOverlayTarget, setGutterVisibleSafely, useOverlayTarget])
 
   const menu = open && typeof document !== "undefined" ? createPortal(
     <div
@@ -849,7 +961,7 @@ function ChromeActionsMenu({
   return (
     <>
       {useOverlayTarget ? (
-        trigger
+        triggerNode
       ) : (
         <div
           ref={anchorRef}
@@ -859,31 +971,9 @@ function ChromeActionsMenu({
           )}
           data-active={selected || undefined}
           data-site-chrome-wrapper={showOptionsButton ? "true" : undefined}
-          onMouseEnter={() => setGutterVisibleSafely(true)}
-          onMouseLeave={() => setGutterVisibleSafely(false)}
-          onFocusCapture={() => setGutterVisibleSafely(true)}
-          onBlurCapture={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-              setGutterVisibleSafely(false)
-            }
-          }}
-          onClick={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            if (onSelect) {
-              onSelect()
-              return
-            }
-            setPoint({ x: event.clientX, y: event.clientY })
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault()
-            event.stopPropagation()
-            if (isReadOnly) return
-            openAt({ x: event.clientX, y: event.clientY })
-          }}
+          {...triggerTargetProps}
         >
-          {trigger}
+          {triggerNode}
         </div>
       )}
       {showOptionsButton && !isReadOnly && (

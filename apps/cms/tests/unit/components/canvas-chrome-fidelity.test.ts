@@ -110,6 +110,23 @@ describe("canvas chrome fidelity", () => {
     expect(inlineImage).toContain("onMouseLeave={() => canvasChrome.setVisible(false)}")
   })
 
+  it("keeps one block gutter active with a short transfer grace", () => {
+    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const gutterOverlay = read("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx")
+
+    expect(canvasMode).toContain("const blockGutterHideTimerRef = React.useRef<number | null>(null)")
+    expect(canvasMode).toContain("const [activeBlockGutterIndex, setActiveBlockGutterIndex] = React.useState<number | null>(null)")
+    expect(canvasMode).toContain("const setBlockGutterVisible = React.useCallback((index: number, next: boolean) => {")
+    expect(canvasMode).toContain("setActiveBlockGutterIndex(index)")
+    expect(canvasMode).toContain("setActiveBlockGutterIndex((current) => current === index ? null : current)")
+    expect(canvasMode).toContain("}, 450)")
+    expect(canvasMode).toContain("gutterVisible={activeBlockGutterIndex === index}")
+    expect(canvasMode).toContain("gutterVisible={activeBlockGutterIndex === i}")
+    expect(canvasMode).not.toContain("const [gutterVisible, setGutterVisible] = React.useState(false)")
+    expect(gutterOverlay).toContain("type AnchorRect = Pick<DOMRect, \"bottom\" | \"left\" | \"right\" | \"top\" | \"width\">")
+    expect(gutterOverlay).toContain('const hiddenAfterAnchorScrolledAway = rect ? dataChrome !== "site-chrome-gutter" && rect.bottom < cmsChromeBottom : false')
+  })
+
   it("keeps Amicare canvas block breakpoints aligned to the live site renderer", () => {
     const hero = read("src/components/editor/canvas/blocks/Hero.tsx")
     const richText = read("src/components/editor/canvas/blocks/RichText.tsx")

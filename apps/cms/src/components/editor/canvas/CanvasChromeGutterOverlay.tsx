@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@siteinabox/ui/components/dropdown-menu"
 
-type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
+type AnchorRect = Pick<DOMRect, "bottom" | "left" | "right" | "top" | "width">
 const CHROME_VIEWPORT_GAP = 8
 
 function useFixedAnchorRect(
@@ -42,10 +42,12 @@ function useFixedAnchorRect(
         const measured = {
           left: next.left,
           right: next.right,
+          bottom: next.bottom,
           top: next.top,
           width: next.width,
         }
         return current &&
+          current.bottom === measured.bottom &&
           current.left === measured.left &&
           current.right === measured.right &&
           current.top === measured.top &&
@@ -129,7 +131,7 @@ export const CanvasChromeGutterOverlay: React.FC<{
   const naturalTop = rect ? Math.max(CHROME_VIEWPORT_GAP, rect.top + CHROME_VIEWPORT_GAP) : 0
   const shouldClampToCmsChrome = dataChrome === "site-chrome-gutter" || (rect ? rect.top >= 0 : false)
   const top = shouldClampToCmsChrome ? Math.max(naturalTop, cmsChromeBottom) : naturalTop
-  const hiddenAfterAnchorScrolledAway = rect ? rect.top < 0 && naturalTop < cmsChromeBottom : false
+  const hiddenAfterAnchorScrolledAway = rect ? dataChrome !== "site-chrome-gutter" && rect.bottom < cmsChromeBottom : false
   const position = useCspStyleRule(
     "canvas-gutter-overlay",
     show && rect && !hiddenAfterAnchorScrolledAway

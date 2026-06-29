@@ -507,6 +507,8 @@ interface SortableBlockItemProps {
   onDelete: () => void
   onDuplicate: () => void
   readOnly?: boolean
+  gutterVisible: boolean
+  setGutterVisible: (next: boolean) => void
 }
 
 const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
@@ -521,6 +523,8 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   onDelete,
   onDuplicate,
   readOnly = false,
+  gutterVisible,
+  setGutterVisible,
 }) => {
   const t = useTranslations("editor")
   const {
@@ -533,7 +537,6 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
     isDragging,
   } = useSortable({ id, disabled: readOnly })
   const anchorRef = React.useRef<HTMLDivElement | null>(null)
-  const [gutterVisible, setGutterVisible] = React.useState(false)
 
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -602,7 +605,20 @@ const SortableRenderedBlockItem: React.FC<{
   onActivate: () => void
   onDelete: () => void
   onDuplicate: () => void
-}> = ({ id, index, isActive, readOnly = false, children, onActivate, onDelete, onDuplicate }) => {
+  gutterVisible: boolean
+  setGutterVisible: (next: boolean) => void
+}> = ({
+  id,
+  index,
+  isActive,
+  readOnly = false,
+  children,
+  onActivate,
+  onDelete,
+  onDuplicate,
+  gutterVisible,
+  setGutterVisible,
+}) => {
   const t = useTranslations("editor")
   const {
     attributes,
@@ -614,7 +630,6 @@ const SortableRenderedBlockItem: React.FC<{
     isDragging,
   } = useSortable({ id, disabled: readOnly })
   const anchorRef = React.useRef<HTMLDivElement | null>(null)
-  const [gutterVisible, setGutterVisible] = React.useState(false)
 
   const setRefs = React.useCallback(
     (node: HTMLDivElement | null) => {
@@ -790,9 +805,32 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   }, [selected?.blockIndex, selected?.field, setActiveIndex])
 
   const paneRef = React.useRef<HTMLDivElement>(null)
+  const blockGutterHideTimerRef = React.useRef<number | null>(null)
+  const [activeBlockGutterIndex, setActiveBlockGutterIndex] = React.useState<number | null>(null)
   const [blockContextMenu, setBlockContextMenu] = React.useState<{ index: number; point: { x: number; y: number } } | null>(null)
   const [deleteTargetIndex, setDeleteTargetIndex] = React.useState<number | null>(null)
   useScrollToSelection(paneRef, selected)
+
+  const clearBlockGutterHideTimer = React.useCallback(() => {
+    if (blockGutterHideTimerRef.current == null) return
+    window.clearTimeout(blockGutterHideTimerRef.current)
+    blockGutterHideTimerRef.current = null
+  }, [])
+
+  const setBlockGutterVisible = React.useCallback((index: number, next: boolean) => {
+    if (next) {
+      clearBlockGutterHideTimer()
+      setActiveBlockGutterIndex(index)
+      return
+    }
+    clearBlockGutterHideTimer()
+    blockGutterHideTimerRef.current = window.setTimeout(() => {
+      blockGutterHideTimerRef.current = null
+      setActiveBlockGutterIndex((current) => current === index ? null : current)
+    }, 450)
+  }, [clearBlockGutterHideTimer])
+
+  React.useEffect(() => clearBlockGutterHideTimer, [clearBlockGutterHideTimer])
 
   const onCanvasClick = (event: React.MouseEvent) => {
     setBlockContextMenu(null)
@@ -968,6 +1006,8 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                             onDelete={() => requestDeleteBlock(index)}
                             onDuplicate={() => duplicateBlockWithRemap(index)}
                             readOnly={effectiveReadOnly}
+                            gutterVisible={activeBlockGutterIndex === index}
+                            setGutterVisible={(next) => setBlockGutterVisible(index, next)}
                           >
                             <CanvasBlockRenderer
                               block={block}
@@ -1056,6 +1096,8 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                         onDelete={() => requestDeleteBlock(i)}
                         onDuplicate={() => duplicateBlockWithRemap(i)}
                         readOnly={effectiveReadOnly}
+                        gutterVisible={activeBlockGutterIndex === i}
+                        setGutterVisible={(next) => setBlockGutterVisible(i, next)}
                       />
                       {!effectiveReadOnly && (
                         <CanvasGapOverlay
