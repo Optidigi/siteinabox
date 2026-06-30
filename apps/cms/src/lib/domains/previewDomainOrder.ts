@@ -21,11 +21,49 @@ export type PreviewDomainOrderResult = {
     | "checkoutDomainCheckFailed"
     | "checkoutDomainTooExpensive"
   domain: string
+  suggestions: string[]
 }
 
 export function selectedDomainForCheckout(run: Pick<SiteGenerationRun, "domainOrder">): string | null {
   const state = normalizeDomainOrderState(run.domainOrder)
   return state.status === "ready_to_register" && state.domain ? state.domain : null
+}
+
+const suggestionSuffixes = ["site", "online", "web", "studio", "hq", "groep"]
+
+const suggestionCandidates = (domain: string): string[] => {
+  const normalized = normalizeDomain(domain)
+  if (!normalized.ok) return []
+  const [name, extension] = [normalized.name, normalized.extension]
+  const compactName = name.replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "")
+  if (!compactName) return []
+
+  const candidates = new Set<string>()
+  if (extension !== "nl") candidates.add(`${compactName}.nl`)
+  for (const suffix of suggestionSuffixes) {
+    candidates.add(`${compactName}${suffix}.nl`)
+    candidates.add(`${compactName}-${suffix}.nl`)
+  }
+  return [...candidates].filter((candidate) => candidate !== normalized.domain).slice(0, 8)
+}
+
+async function suggestAvailableDomains(domain: string, maxProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>): Promise<string[]> {
+  const suggestions: string[] = []
+  for (const candidate of suggestionCandidates(domain)) {
+    try {
+      const availability = await checkOpenProviderDomainAvailability(candidate)
+      const providerPrice = availability.price
+        ? { amount: availability.price.amount, currency: availability.price.currency }
+        : null
+      if (availability.status === "available" && providerPriceWithinCap(providerPrice, maxProviderPrice)) {
+        suggestions.push(candidate)
+      }
+    } catch {
+      // Suggestions are optional; the primary domain check result remains authoritative.
+    }
+    if (suggestions.length >= 3) break
+  }
+  return suggestions
 }
 
 export async function checkAndRecordPreviewDomainOrder(
@@ -76,6 +114,7 @@ export async function checkAndRecordPreviewDomainOrder(
   return {
     run: updated,
     domain: normalized.domain,
+    suggestions: allowedPrice ? [] : await suggestAvailableDomains(normalized.domain, maxProviderPrice),
     messageKey: allowedPrice
       ? "checkoutDomainAvailable"
       : availability.status === "premium"

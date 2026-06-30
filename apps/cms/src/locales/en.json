@@ -986,6 +986,7 @@
     "checkoutDomainPremium": "{domain} is a premium domain and is not included in this fixed package. Choose another domain name.",
     "checkoutDomainTooExpensive": "{domain} is outside the fixed domain package. Choose a regular .nl/.com domain name.",
     "checkoutDomainCheckFailed": "We could not check {domain} right now. Try again later.",
+    "checkoutDomainSuggestionsTitle": "Available alternatives",
     "checkoutRegistrantRequired": "Enter the domain holder details completely.",
     "checkoutRegistrantTitle": "Domain holder",
     "checkoutRegistrantDescription": "We use these details to register the domain name to you or your organization.",
@@ -1003,7 +1004,7 @@
     "checkoutPhoneCountry": "Country",
     "checkoutPhoneArea": "Area code",
     "checkoutPhoneNumber": "Phone number",
-    "checkoutDomainSubmitDescription": "After payment we register this domain name and prepare your website for launch. Your order runs yearly and renews automatically through the same payment mandate.",
+    "checkoutDomainSubmitDescription": "After payment we register this domain name and prepare your website for launch. You pay the first year upfront, then your website continues monthly through the same payment mandate.",
     "checkoutRedirectingToPayment": "Redirecting you to secure payment.",
     "checkoutPaymentStartingTitle": "Starting payment",
     "checkoutSummaryTitle": "Order",
@@ -1015,7 +1016,7 @@
     "checkoutSummaryApproval": "Approval",
     "checkoutSummaryPayment": "Payment",
     "checkoutSummaryTotal": "Total",
-    "checkoutPaymentDescription": "This total includes the website, domain registration, and launch. You pay for the first year and authorize yearly automatic renewal."
+    "checkoutPaymentDescription": "This total includes the website, domain registration, and launch for the first year. After that you authorize monthly automatic renewal."
   },
   "profile": {
     "profile": "Profile",

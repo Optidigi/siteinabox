@@ -986,6 +986,7 @@
     "checkoutDomainPremium": "{domain} is een premiumdomein en valt niet binnen dit vaste pakket. Kies een andere domeinnaam.",
     "checkoutDomainTooExpensive": "{domain} valt niet binnen het vaste domeinpakket. Kies een normale .nl/.com-domeinnaam.",
     "checkoutDomainCheckFailed": "We konden {domain} nu niet controleren. Probeer het later opnieuw.",
+    "checkoutDomainSuggestionsTitle": "Beschikbare alternatieven",
     "checkoutRegistrantRequired": "Vul de gegevens van de domeinhouder volledig in.",
     "checkoutRegistrantTitle": "Domeinhouder",
     "checkoutRegistrantDescription": "Deze gegevens gebruiken we om de domeinnaam op naam van jou of je organisatie te registreren.",
@@ -1003,7 +1004,7 @@
     "checkoutPhoneCountry": "Land",
     "checkoutPhoneArea": "Netnummer",
     "checkoutPhoneNumber": "Telefoonnummer",
-    "checkoutDomainSubmitDescription": "Na betaling registreren we deze domeinnaam en zetten we je website klaar. Je bestelling loopt per jaar en wordt automatisch verlengd via dezelfde betaalmachtiging.",
+    "checkoutDomainSubmitDescription": "Na betaling registreren we deze domeinnaam en zetten we je website klaar. Je betaalt het eerste jaar vooruit en daarna loopt je website maandelijks door via dezelfde betaalmachtiging.",
     "checkoutRedirectingToPayment": "Je wordt doorgestuurd naar de beveiligde betaling.",
     "checkoutPaymentStartingTitle": "Betaling starten",
     "checkoutSummaryTitle": "Bestelling",
@@ -1015,7 +1016,7 @@
     "checkoutSummaryApproval": "Akkoord",
     "checkoutSummaryPayment": "Betaling",
     "checkoutSummaryTotal": "Totaal",
-    "checkoutPaymentDescription": "Dit totaalbedrag is inclusief website, domeinregistratie en livegang. Je betaalt voor het eerste jaar en geeft toestemming voor jaarlijkse automatische verlenging."
+    "checkoutPaymentDescription": "Dit totaalbedrag is inclusief website, domeinregistratie en livegang voor het eerste jaar. Daarna geef je toestemming voor maandelijkse automatische verlenging."
   },
   "profile": {
     "profile": "Profiel",

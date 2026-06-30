@@ -92,6 +92,28 @@ export function mollieAmountFromEnv(env = process.env): MollieAmount {
   return { currency, value }
 }
 
+export function mollieRenewalAmountFromEnv(env = process.env): MollieAmount {
+  const currency = cleanEnv(env.MOLLIE_SITE_RENEWAL_CURRENCY) ?? cleanEnv(env.MOLLIE_SITE_PAYMENT_CURRENCY) ?? "EUR"
+  const explicitValue = cleanEnv(env.MOLLIE_SITE_RENEWAL_AMOUNT)
+  if (explicitValue) {
+    if (!/^\d+\.\d{2}$/.test(explicitValue)) {
+      throw new Error("MOLLIE_SITE_RENEWAL_AMOUNT must use Mollie's decimal format, for example 19.00.")
+    }
+    return { currency, value: explicitValue }
+  }
+
+  const annual = mollieAmountFromEnv(env)
+  const annualCents = Math.round(Number(annual.value) * 100)
+  if (!Number.isFinite(annualCents)) {
+    throw new Error("MOLLIE_SITE_PAYMENT_AMOUNT must use Mollie's decimal format, for example 228.00.")
+  }
+  const monthlyCents = Math.round(annualCents / 12)
+  return {
+    currency,
+    value: `${Math.floor(monthlyCents / 100)}.${String(monthlyCents % 100).padStart(2, "0")}`,
+  }
+}
+
 export function requireMollieApiKey(env = process.env): string {
   const apiKey = cleanEnv(env.MOLLIE_API_KEY)
   if (!apiKey) throw new Error("MOLLIE_API_KEY is required for Mollie payments.")

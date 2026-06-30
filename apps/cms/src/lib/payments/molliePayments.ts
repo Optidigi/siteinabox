@@ -16,6 +16,7 @@ import {
   createMolliePayment,
   createMollieSubscription,
   mollieAmountFromEnv,
+  mollieRenewalAmountFromEnv,
   publicCmsOrigin,
   retrieveMolliePayment,
   type MolliePayment,
@@ -66,7 +67,7 @@ const selectedDomainFromOrder = (value: unknown): string | null => {
 }
 
 const mollieSubscriptionInterval = (env: NodeJS.ProcessEnv = process.env): string =>
-  env.MOLLIE_SITE_SUBSCRIPTION_INTERVAL?.trim() || "12 months"
+  env.MOLLIE_SITE_SUBSCRIPTION_INTERVAL?.trim() || "1 month"
 
 const oneYearFromNowDate = (now = new Date()): string => {
   const date = new Date(now)
@@ -210,7 +211,7 @@ export async function createMollieCheckoutForGenerationRun(
       idempotencyKey,
       mollieCustomerId,
       sequenceType: "first",
-      renewalInterval: "1 year",
+      renewalInterval: "1 month",
     },
   })
   const checkoutUrl = molliePayment._links?.checkout?.href
@@ -231,7 +232,7 @@ export async function createMollieCheckoutForGenerationRun(
     note: "Mollie checkout created. Payment completion is confirmed by webhook.",
     mollieCustomerId,
     mollieSequenceType: "first",
-    renewalInterval: "1 year",
+    renewalInterval: "1 month",
   })
   await payload.update({
     collection: "site-generation-runs",
@@ -318,15 +319,13 @@ export async function applyMollieWebhookPayment(
     overrideAccess: true,
   }) as SiteGenerationRun
   if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
+    const renewalAmount = mollieRenewalAmountFromEnv()
     const subscription = await createMollieSubscription({
       customerId: next.mollieCustomerId,
-      amount: {
-        value: next.amount ?? molliePayment.amount?.value ?? mollieAmountFromEnv().value,
-        currency: next.currency ?? molliePayment.amount?.currency ?? mollieAmountFromEnv().currency,
-      },
+      amount: renewalAmount,
       interval: mollieSubscriptionInterval(),
       startDate: oneYearFromNowDate(),
-      description: `Site in a Box yearly renewal ${next.selectedDomain ?? ""}`.trim(),
+      description: `Site in a Box monthly renewal ${next.selectedDomain ?? ""}`.trim(),
       webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
       idempotencyKey: `siab-run-${run.id}-subscription`,
       metadata: {
@@ -342,7 +341,7 @@ export async function applyMollieWebhookPayment(
       ...next,
       mollieSubscriptionId: subscription.id,
       renewalInterval: mollieSubscriptionInterval(),
-      note: "Mollie payment completed and yearly renewal subscription created.",
+      note: "Mollie payment completed and monthly renewal subscription created.",
       updatedAt: new Date().toISOString(),
     }
     updatedRun = await payload.update({

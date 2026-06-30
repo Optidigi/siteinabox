@@ -15,6 +15,7 @@ export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
   checkoutUrl?: string
+  suggestions?: string[]
 }
 
 type PreviewCheckoutAction = (
@@ -59,6 +60,7 @@ export function PreviewCheckout({
     startPaymentAction,
     initialState,
   )
+  const [domainValue, setDomainValue] = React.useState(currentDomain ?? "")
 
   React.useEffect(() => {
     if (paymentState.ok && paymentState.checkoutUrl) {
@@ -100,7 +102,8 @@ export function PreviewCheckout({
                     type="text"
                     inputMode="url"
                     autoComplete="url"
-                    defaultValue={currentDomain ?? ""}
+                    value={domainValue}
+                    onChange={(event) => setDomainValue(event.target.value)}
                     placeholder={t("checkoutDomainPlaceholder")}
                     required
                   />
@@ -117,7 +120,10 @@ export function PreviewCheckout({
               {checkState.message && (
                 <Alert variant={checkState.ok ? "default" : "destructive"}>
                   <AlertTitle>{checkState.ok ? t("checkoutDomainCheckTitle") : t("accessUnavailable")}</AlertTitle>
-                  <AlertDescription>{checkState.message}</AlertDescription>
+                  <AlertDescription className="grid gap-3">
+                    <span>{checkState.message}</span>
+                    <DomainSuggestions suggestions={checkState.suggestions} onSelect={setDomainValue} />
+                  </AlertDescription>
                 </Alert>
               )}
               <form action={paymentAction} className="grid gap-3 border-t pt-5">
@@ -129,7 +135,8 @@ export function PreviewCheckout({
                     type="text"
                     inputMode="url"
                     autoComplete="url"
-                    defaultValue={currentDomain ?? ""}
+                    value={domainValue}
+                    onChange={(event) => setDomainValue(event.target.value)}
                     placeholder={t("checkoutDomainPlaceholder")}
                     required
                   />
@@ -193,6 +200,23 @@ export function PreviewCheckout({
         </aside>
       </div>
     </main>
+  )
+}
+
+function DomainSuggestions({ suggestions, onSelect }: { suggestions?: string[]; onSelect: (domain: string) => void }) {
+  const t = useTranslations("preview")
+  if (!suggestions?.length) return null
+  return (
+    <div className="grid gap-2">
+      <div className="text-sm font-medium text-foreground">{t("checkoutDomainSuggestionsTitle")}</div>
+      <div className="flex flex-wrap gap-2">
+        {suggestions.map((domain) => (
+          <Button key={domain} type="button" variant="outline" size="sm" onClick={() => onSelect(domain)}>
+            {domain}
+          </Button>
+        ))}
+      </div>
+    </div>
   )
 }
 

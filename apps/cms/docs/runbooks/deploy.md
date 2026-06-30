@@ -104,9 +104,11 @@ VPS_IP=<your-vps-ip>
 CLOUDFLARE_EMAIL_SMTP_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
 MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
-MOLLIE_SITE_PAYMENT_AMOUNT=19.95
+MOLLIE_SITE_PAYMENT_AMOUNT=228.00
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
-MOLLIE_SITE_SUBSCRIPTION_INTERVAL=12 months
+MOLLIE_SITE_RENEWAL_AMOUNT=19.00
+MOLLIE_SITE_RENEWAL_CURRENCY=EUR
+MOLLIE_SITE_SUBSCRIPTION_INTERVAL=1 month
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 MOLLIE_WEBHOOK_SIGNING_SECRET=
 OPENPROVIDER_USERNAME=
@@ -570,8 +572,10 @@ Paid customer checkout now owns the first automated domain path:
    OpenProvider, rejects premium/above-cap domains, and stores the selected
    domain on the generation run's `domainOrder` state.
 3. Mollie checkout is created only after the selected domain is ready to
-   register. The first payment creates a recurring mandate for yearly renewal.
-4. The Mollie `paid` webhook creates the annual renewal subscription, creates a
+   register. The first payment charges the first year upfront and creates a
+   recurring mandate for monthly renewal after that year.
+4. The Mollie `paid` webhook creates the monthly renewal subscription with a
+   one-year delayed start date, creates a
    Cloudflare zone, creates the customer owner/admin contact handle in
    OpenProvider, registers the domain with Cloudflare nameservers and auto-renew
    enabled, creates the renderer DNS records, and marks tenant domain

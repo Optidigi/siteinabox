@@ -12,6 +12,7 @@ export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
   checkoutUrl?: string
+  suggestions?: string[]
 }
 
 const requirePreviewCheckoutContext = async (clientSlug: string) => {
@@ -67,7 +68,11 @@ export async function checkPreviewCheckoutDomainAction(
 
   try {
     const result = await checkAndRecordPreviewDomainOrder(context.payload, context.run, domain, registrant)
-    return { ok: result.messageKey === "checkoutDomainAvailable", message: t(result.messageKey, { domain: result.domain }) }
+    return {
+      ok: result.messageKey === "checkoutDomainAvailable",
+      message: t(result.messageKey, { domain: result.domain }),
+      suggestions: result.suggestions,
+    }
   } catch (error) {
     return {
       ok: false,

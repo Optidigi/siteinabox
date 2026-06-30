@@ -11,7 +11,7 @@ vi.mock("@/payload.config", () => ({
 
 import { getPayload } from "payload"
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
-import { verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
+import { mollieRenewalAmountFromEnv, verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
 import { POST as mollieWebhookPOST } from "@/app/(payload)/api/payments/mollie/webhook/route"
 
 const registrant = {
@@ -85,6 +85,9 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("MOLLIE_API_KEY", "test_xxx")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "499.00")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
+    vi.stubEnv("MOLLIE_SITE_RENEWAL_AMOUNT", "49.00")
+    vi.stubEnv("MOLLIE_SITE_RENEWAL_CURRENCY", "EUR")
+    vi.stubEnv("MOLLIE_SITE_SUBSCRIPTION_INTERVAL", "1 month")
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("MOLLIE_WEBHOOK_BASE_URL", "")
     vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "")
@@ -145,7 +148,7 @@ describe("Mollie payment flow", () => {
         clientSlug: "acme",
         mollieCustomerId: "cst_test_123",
         sequenceType: "first",
-        renewalInterval: "1 year",
+        renewalInterval: "1 month",
       },
     })
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
@@ -160,7 +163,7 @@ describe("Mollie payment flow", () => {
           checkoutUrl: "https://www.mollie.com/checkout/test",
           mollieCustomerId: "cst_test_123",
           mollieSequenceType: "first",
-          renewalInterval: "1 year",
+          renewalInterval: "1 month",
         }),
       },
     }))
@@ -341,6 +344,23 @@ describe("Mollie payment flow", () => {
       domain: "clientsite.nl",
       domainVerification: expect.objectContaining({ status: "verified" }),
     })
+    const subscriptionCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/subscriptions"))
+    expect(subscriptionCall).toBeDefined()
+    expect(JSON.parse(String((subscriptionCall?.[1] as RequestInit).body))).toMatchObject({
+      amount: { currency: "EUR", value: "49.00" },
+      interval: "1 month",
+      description: "Site in a Box monthly renewal clientsite.nl",
+      metadata: expect.objectContaining({ renewalInterval: "1 month" }),
+    })
+  })
+
+  it("derives monthly renewal amount from the annual first-year price when no explicit renewal amount is configured", () => {
+    vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "228.00")
+    vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
+    vi.stubEnv("MOLLIE_SITE_RENEWAL_AMOUNT", "")
+    vi.stubEnv("MOLLIE_SITE_RENEWAL_CURRENCY", "")
+
+    expect(mollieRenewalAmountFromEnv()).toEqual({ currency: "EUR", value: "19.00" })
   })
 
   it("rejects invalid webhook payloads and invalid optional signatures", async () => {
