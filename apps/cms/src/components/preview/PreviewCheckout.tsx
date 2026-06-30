@@ -169,9 +169,11 @@ export function PreviewCheckout({
       : null
   const domainInputState = domainResultKind === "success"
     ? "success"
-    : domainResultKind === "unavailable" || domainResultKind === "error"
-      ? "error"
-      : null
+    : domainResultKind === "unavailable"
+      ? "warning"
+      : domainResultKind === "error"
+        ? "error"
+        : null
 
   const updateDomain = (value: string) => {
     setDomainValue(value)
@@ -201,12 +203,12 @@ export function PreviewCheckout({
   }
 
   return (
-    <main className="min-h-dvh bg-background pb-28 text-foreground md:pb-6">
+    <main className="min-h-dvh bg-background pb-24 text-foreground md:pb-6">
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
-        <div className="mx-auto flex min-h-16 w-full max-w-4xl items-center gap-3 px-3 py-3 md:min-h-20 md:px-4">
+        <div className="mx-auto flex min-h-14 w-full max-w-4xl items-center gap-3 px-3 py-2 md:min-h-16 md:px-4">
           <a href={previewHref} className="flex min-w-0 items-center gap-2">
-            <img src="/logos/logo-light.svg" alt="Site in a Box" className="h-8 w-auto dark:hidden md:h-10" />
-            <img src="/logos/logo-dark.svg" alt="Site in a Box" className="hidden h-8 w-auto dark:block md:h-10" />
+            <img src="/logos/logo-light.svg" alt="Site in a Box" className="h-8 w-auto dark:hidden md:h-9" />
+            <img src="/logos/logo-dark.svg" alt="Site in a Box" className="hidden h-8 w-auto dark:block md:h-9" />
           </a>
           <div className="flex-1" />
           <Button asChild variant="outline" className="shrink-0">
@@ -244,6 +246,7 @@ export function PreviewCheckout({
                       aria-invalid={domainInputState === "error"}
                       className={cn(
                         domainInputState === "success" && "border-primary",
+                        domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                         domainInputState === "error" && "border-destructive",
                       )}
                       required
@@ -294,7 +297,7 @@ export function PreviewCheckout({
                   <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
                   <ReviewRow
                     label={t("checkoutRegistrantTitle")}
-                    value={formatDomainHolderSummary(holder, t)}
+                    value={formatDomainHolderName(holder, t)}
                   />
                 </div>
               </CardContent>
@@ -310,7 +313,7 @@ export function PreviewCheckout({
               <CardContent className="grid gap-5">
                 <div className="grid gap-3 rounded-md border p-4 text-sm">
                   <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
-                  <ReviewRow label={t("checkoutRegistrantTitle")} value={formatDomainHolderSummary(holder, t)} />
+                  <ReviewRow label={t("checkoutRegistrantTitle")} value={formatDomainHolderName(holder, t)} />
                   <ReviewRow label={t("checkoutSummaryTotal")} value={totalPriceLabel} />
                 </div>
                 <form id="checkout-payment-form" action={paymentAction} className="hidden">
@@ -330,7 +333,6 @@ export function PreviewCheckout({
       </div>
       <CheckoutActionBar
         step={step}
-        priceLabel={totalPriceLabel}
         canContinueFromDomain={canContinueFromDomain}
         holderComplete={holderComplete}
         selectedDomain={selectedDomain}
@@ -381,7 +383,6 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
 
 function CheckoutActionBar({
   step,
-  priceLabel,
   canContinueFromDomain,
   holderComplete,
   selectedDomain,
@@ -395,7 +396,6 @@ function CheckoutActionBar({
   t,
 }: {
   step: CheckoutStep
-  priceLabel: string
   canContinueFromDomain: boolean
   holderComplete: boolean
   selectedDomain: string | null
@@ -408,13 +408,6 @@ function CheckoutActionBar({
   onNext: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
-  const priceFooter = (
-    <div className="flex items-center justify-between rounded-md border bg-primary/5 px-3 py-2 text-sm">
-      <span className="font-medium text-muted-foreground">{t("checkoutSummaryTotal")}</span>
-      <span className="text-base font-semibold text-foreground">{priceLabel}</span>
-    </div>
-  )
-
   const secondary = step === "domain"
     ? (
         <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
@@ -434,7 +427,7 @@ function CheckoutActionBar({
   let primary: React.ReactNode
   if (step === "domain" && canContinueFromDomain) {
     primary = (
-      <Button type="button" className="min-w-0 flex-1" onClick={onNext}>
+      <Button type="button" variant="success" className="min-w-0 flex-1 md:flex-none" onClick={onNext}>
         <CheckCircle2 className="size-4" aria-hidden />
         {t("checkoutNext")}
       </Button>
@@ -445,8 +438,10 @@ function CheckoutActionBar({
       <Button
         form="checkout-domain-form"
         type="submit"
-        variant={unavailable ? "destructive" : "default"}
-        className="min-w-0 flex-1"
+        className={cn(
+          "min-w-0 flex-1 md:flex-none",
+          unavailable && "bg-warning text-warning-foreground hover:bg-warning/90 focus-visible:ring-warning/30",
+        )}
         disabled={checkPending || unavailable}
       >
         {checkPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Globe2 className="size-4" aria-hidden />}
@@ -461,7 +456,7 @@ function CheckoutActionBar({
     )
   } else if (step === "details") {
     primary = (
-      <Button type="button" className="min-w-0 flex-1" disabled={!holderComplete || !selectedDomain} onClick={onNext}>
+      <Button type="button" variant="success" className="min-w-0 flex-1 md:flex-none" disabled={!holderComplete || !selectedDomain} onClick={onNext}>
         {t("checkoutNext")}
       </Button>
     )
@@ -471,7 +466,7 @@ function CheckoutActionBar({
       <Button
         form="checkout-payment-form"
         type="submit"
-        className="min-w-0 flex-1"
+        className="min-w-0 flex-1 md:flex-none"
         disabled={paymentPending || !holderComplete || !selectedDomain || complete}
       >
         {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
@@ -481,13 +476,10 @@ function CheckoutActionBar({
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-4xl md:rounded-md md:border md:bg-card md:shadow-none">
-      <div className="grid gap-3">
-        <div className="flex min-w-0 items-center justify-end gap-2">
-          {secondary}
-          {primary}
-        </div>
-        {priceFooter}
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-[54rem] md:rounded-md md:border md:bg-card md:shadow-none">
+      <div className="flex min-w-0 items-center justify-end gap-2">
+        {secondary}
+        {primary}
       </div>
     </div>
   )
@@ -595,11 +587,9 @@ function paymentAlertTitle(state: PreviewCheckoutActionState, t: ReturnType<type
   return t("checkoutPaymentErrorTitle")
 }
 
-function formatDomainHolderSummary(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
+function formatDomainHolderName(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
   const name = [holder.firstName, holder.lastName].filter(Boolean).join(" ").trim()
-  const street = [holder.street, holder.number, holder.suffix].filter(Boolean).join(" ").trim()
-  const city = [holder.zipcode, holder.city].filter(Boolean).join(" ").trim()
-  return [holder.companyName, name, holder.email, street, city, holder.country].filter(Boolean).join(" / ") || t("checkoutDetailsMissing")
+  return name || holder.companyName || t("checkoutDetailsMissing")
 }
 
 function CheckoutHiddenInputs({ domain, holder }: { domain: string; holder: DomainRegistrantDetails }) {
