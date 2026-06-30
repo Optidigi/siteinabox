@@ -5,10 +5,11 @@ import { chromium } from "playwright";
 const port = 4429;
 const origin = `http://127.0.0.1:${port}`;
 const intakeUrl = `${origin}/intake/`;
+const isWindows = process.platform === "win32";
 
 function startDevServer() {
   const server = spawn(
-    process.platform === "win32" ? "pnpm.cmd" : "pnpm",
+    isWindows ? "pnpm.cmd" : "pnpm",
     ["exec", "astro", "dev", "--host", "127.0.0.1", "--port", String(port)],
     {
       cwd: new URL("..", import.meta.url),
@@ -17,6 +18,7 @@ function startDevServer() {
         NO_COLOR: "1",
       },
       stdio: ["ignore", "pipe", "pipe"],
+      detached: !isWindows,
     },
   );
 
@@ -46,6 +48,28 @@ async function waitForServer(getOutput) {
   }
 
   throw new Error(`Intake dev server did not start.\n${getOutput()}`);
+}
+
+async function stopDevServer(server) {
+  if (server.exitCode !== null || server.signalCode !== null) return;
+
+  if (isWindows) {
+    server.kill("SIGTERM");
+  } else {
+    process.kill(-server.pid, "SIGTERM");
+  }
+
+  await Promise.race([
+    new Promise((resolve) => server.once("exit", resolve)),
+    delay(5_000).then(() => {
+      if (server.exitCode !== null || server.signalCode !== null) return;
+      if (isWindows) {
+        server.kill("SIGKILL");
+      } else {
+        process.kill(-server.pid, "SIGKILL");
+      }
+    }),
+  ]);
 }
 
 async function run() {
@@ -90,8 +114,7 @@ async function run() {
     }
   } finally {
     await browser?.close();
-    server.kill("SIGTERM");
-    await new Promise((resolve) => server.once("exit", resolve));
+    await stopDevServer(server);
   }
 }
 
