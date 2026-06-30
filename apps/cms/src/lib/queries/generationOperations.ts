@@ -26,6 +26,7 @@ const failedWhere = { status: { equals: "failed" } }
 const previewReadyWhere = { status: { equals: "preview_ready" } }
 const needsReviewWhere = {
   or: [
+    { status: { equals: "normalized" } },
     { status: { equals: "draft_ready" } },
     { status: { equals: "preview_ready" } },
   ],

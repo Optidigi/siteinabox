@@ -118,6 +118,7 @@ Use `context7` for current library documentation when docs are needed. Use
 
 - Platform-owned app images are:
   - `ghcr.io/optidigi/siteinabox-cms`
+  - `ghcr.io/optidigi/siteinabox-intake`
   - `ghcr.io/optidigi/siteinabox-site`
   - `ghcr.io/optidigi/siteinabox-renderer`
 - Additional app images must be added only when those apps are implemented and

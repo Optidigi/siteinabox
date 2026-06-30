@@ -2,10 +2,8 @@
 
 Public intake app boundary for `www.siteinabox.nl/intake`.
 
-This app currently contains the extracted demo intake scaffold that used to live
-inside the marketing app. The operator-owned full intake app can replace or
-extend this boundary later, but future intake product work should stay here
-rather than in `apps/landing`.
+This app contains the public richer intake wizard. Future intake product work
+should stay here rather than in `apps/landing`.
 
 ## Local development
 
@@ -16,6 +14,6 @@ pnpm build
 pnpm test
 ```
 
-`PUBLIC_INTAKE_API_URL` defaults to `/api/intake`. Production should route that
-path to the CMS intake API unless a later deploy contract chooses another stable
-CMS origin.
+`PUBLIC_INTAKE_SUBMIT_ENDPOINT` defaults to `/api/intake`. KVK lookup endpoints
+default to `/api/intake/kvk/search` and `/api/intake/kvk/profile`; they proxy
+through CMS so no KVK credentials are exposed to the browser.

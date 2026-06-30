@@ -1,106 +1,74 @@
-# Public Intake Integration State
+# Public Intake Integration
 
-Phase 3 notes for the public intake surface at `www.siteinabox.nl/intake`.
+Current architecture notes for the public intake surface at
+`www.siteinabox.nl/intake`.
 
-## Current Wiring
+## Data Flow
 
-- Public route: `apps/intake/src/pages/index.astro`, mounted at
-  `www.siteinabox.nl/intake`.
-- Submit endpoint: `PUBLIC_INTAKE_API_URL`, defaulting to `/api/intake`.
-- Validation: browser-side validation uses
-  `@siteinabox/contracts/generation` `IntakeSubmissionSchema` before POST.
-- CMS validation: `apps/cms/src/lib/intake/publicIntakeValidation.ts` parses the
-  same public intake schema, rejects unknown fields, rejects `mockFixture`, and
-  forces `source: "public-intake"`.
-- CMS processing: `apps/cms/src/lib/intake/processIntakeSubmission.ts`
-  normalizes the intake, computes the idempotency key from normalized intake,
-  creates or reuses `intake-submissions` and `site-generation-runs`, then
-  applies generated CMS draft data.
+1. The browser renders the richer intake wizard from `apps/intake` at `/intake`.
+2. Optional KVK lookup calls CMS-owned endpoints under `/api/intake/kvk/*`.
+3. The browser submits the completed intake payload to CMS `POST /api/intake`.
+4. The CMS stores the raw submission and normalized `CompanyFacts` /
+   `IntakeBrief` data in `intake-submissions`.
+5. A super-admin reviews the staged intake and approves a structured
+   `GenerationInput`.
+6. The approved `GenerationInput` is handed to the generation provider, which
+   must return a validated `SiteGenerationSpec`.
+7. The CMS imports the valid spec as draft Payload tenant, page, settings, and
+   media data.
+8. The existing publish flow freezes approved draft data into a published
+   snapshot.
+9. `apps/renderer` serves the active published snapshot for the request host.
 
-The public form posts only structured intake data. It does not create tenant
-source folders, tenant workflows, tenant images, or generated React/source code.
+The public intake route stores staged data only. It does not create tenants,
+pages, settings, snapshots, tenant source folders, workflows, Docker images, or
+generated React/source code.
 
-## Submitted Payload Shape
+## Public App Boundary
 
-The public form sends an `IntakeSubmission` object:
+- Public route: `apps/intake/src/pages/index.astro`.
+- Submit endpoint: `PUBLIC_INTAKE_SUBMIT_ENDPOINT`, defaulting to `/api/intake`.
+- KVK endpoints: `PUBLIC_KVK_SEARCH_ENDPOINT` and
+  `PUBLIC_KVK_PROFILE_ENDPOINT`, defaulting to `/api/intake/kvk/search` and
+  `/api/intake/kvk/profile`.
+- Browser validation and serialization live in `apps/intake`; CMS validation
+  remains authoritative at the API boundary.
 
-- `businessName`, `domain`, contact fields, language, industry, service area,
-  goals, requested pages, brand signals, and notes.
-- `content.kvk.number` stores a manually entered KvK number for later
-  enrichment.
-- `content.kvk.enrichmentStatus` is currently `manual_not_enriched`.
-- `content.consent.privacy` stores the required privacy-consent acknowledgement.
+Production should normally keep these endpoints same-origin and route
+`/api/intake` and `/api/intake/kvk/*` to the CMS through the edge proxy. If a
+public endpoint points at a different origin, that CMS origin must explicitly
+allow CORS for `https://www.siteinabox.nl`.
 
-Normalization still belongs to the CMS intake service. The public app does not
-submit `NormalizedIntake` directly because `POST /api/intake` is the current
-public contract boundary.
+## KVK Lookup
 
-## KVK Integration
+KVK is factual prefill only. It can help the user select a company name,
+address, website, activities, and KVK number, but it does not decide the site
+brief, generated copy, sections, theme, or publish state.
 
-No KVK lookup/enrichment client, server route, API key environment variable, or
-rate-limit handling exists in this repo as of Phase 3.
+The browser never receives KVK credentials. `KVK_API_KEY` is read only by the
+CMS KVK service in `apps/cms/src/lib/intake/kvk.ts`; public code calls the CMS
+proxy endpoints. Missing keys, KVK failures, not-found results, and ambiguous
+matches must leave manual intake submission possible.
 
-Required future pieces:
+## CMS Review And Generation
 
-- Server-side KVK client. Do not call KVK directly from browser code because the
-  API key must remain secret.
-- Environment variable for the KVK API key in the server-side app that performs
-  enrichment, for example `KVK_API_KEY`.
-- Timeout handling with manual continuation when KVK is unavailable.
-- Rate-limit handling for the documented API limits: up to 300,000 queries per
-  month and no more than 100 queries per second.
-- Not-found and ambiguous-match handling so a user can continue manually.
-- Enriched data mapping into the intake payload's structured `content.kvk`
-  object before CMS submission.
+`POST /api/intake` validates the public payload, rejects unsupported/test-only
+fields, stores the raw body, normalizes it into `CompanyFacts` and
+`IntakeBrief`, and records a stable normalized hash for review.
 
-The Dutch Chamber of Commerce developer portal documents the current API key
-flow, endpoints, query limits, and error codes:
+The admin review step builds or edits a `GenerationInput` from the normalized
+intake. Approval marks that object `admin-approved` and checks that its
+`normalizedIntake` still matches the staged submission hash. Draft generation
+is available only after this review step.
 
-- Documentation: https://developers.kvk.nl/documentation
-- FAQ: https://developers.kvk.nl/faq/apis
+Generation provider output is accepted only as structured
+`SiteGenerationSpec` data matching shared contracts. The CMS validation/import
+path creates or updates Payload draft data; it does not emit client-specific
+source code.
 
-Relevant documented error modes include `400` invalid input, `401` not
-authenticated, `404` not found/unavailable data, and `500` technical errors.
-Those must all fall back to manual entry without blocking intake submission.
+## Publish And Renderer
 
-## Origin, CORS, and CSP
-
-The preferred production deployment is same-origin:
-
-- `https://www.siteinabox.nl/intake` posts to `/api/intake`.
-- The edge proxy routes `/api/intake` to the CMS app.
-- This avoids browser CORS preflight complexity and keeps the static site
-  `connect-src 'self'` path viable.
-
-If `PUBLIC_INTAKE_API_URL` points at another origin such as
-`https://admin.siteinabox.nl/api/intake`, the CMS route must return CORS headers
-for `https://www.siteinabox.nl`, including `OPTIONS` preflight support for
-`Content-Type: application/json`. The static site CSP currently allows
-`connect-src` to `https://admin.siteinabox.nl` as a fallback.
-
-## Spam, Consent, Analytics, and Errors
-
-- Spam: the public route includes a honeypot and the CMS middleware rate-limits
-  anonymous `POST /api/intake` requests.
-- Consent: submission is blocked until privacy consent is checked, and the
-  acknowledgement is sent as structured intake content.
-- Analytics: no public intake analytics event has been added in Phase 3. If
-  analytics are added later, do not send free-text notes or contact fields to
-  client-side analytics.
-- Error display: browser validation errors are shown before POST. CMS/API
-  failures are shown as user-safe messages without exposing stack traces.
-
-## Retry and Failure Behavior
-
-Duplicate/retry behavior is handled by the CMS service idempotency key derived
-from normalized intake. Repeating the same normalized submission should reuse
-the existing intake/run instead of duplicating CMS records.
-
-Existing CMS unit tests cover:
-
-- public validation rejecting unknown fields and `mockFixture`;
-- failed generation avoiding tenant/page/settings mutations;
-- repeated identical intake reusing the generation run.
-
-KVK success, timeout, rate-limit, not-found, and manual fallback paths are not
-testable yet because no KVK integration exists.
+Publish and renderer behavior is unchanged by the richer intake integration.
+Publishing remains a CMS data operation that creates immutable published
+snapshots from approved draft Payload data. The generic renderer resolves the
+request host, loads the active snapshot, and renders it read-only.

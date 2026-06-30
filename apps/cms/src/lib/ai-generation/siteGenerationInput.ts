@@ -1,11 +1,13 @@
-import type { NormalizedIntake } from "@siteinabox/contracts/generation"
+import type { GenerationInput, NormalizedIntake } from "@siteinabox/contracts/generation"
 import { SITE_CHROME_CATALOG, SITE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
+import { buildGenerationInput } from "@/lib/intake/normalizeIntake"
 import { SUPPORTED_SITE_GENERATION_BLOCKS } from "./prompts/siteGenerationPrompt"
 
 export type SiteGenerationModelInput = {
   promptContract: "site-generation-spec"
   schemaVersion: 1
   intake: NormalizedIntake
+  generationInput: GenerationInput
   supportedBlocks: string[]
   approvedSectionVariants: Array<{
     blockType: string
@@ -22,10 +24,14 @@ export type SiteGenerationModelInput = {
   requirements: string[]
 }
 
-export const buildSiteGenerationModelInput = (intake: NormalizedIntake): SiteGenerationModelInput => ({
+export const buildSiteGenerationModelInput = (
+  intake: NormalizedIntake,
+  generationInput: GenerationInput = buildGenerationInput(intake),
+): SiteGenerationModelInput => ({
   promptContract: "site-generation-spec",
   schemaVersion: 1,
   intake,
+  generationInput,
   supportedBlocks: SUPPORTED_SITE_GENERATION_BLOCKS,
   approvedSectionVariants: SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
     blockType: variant.slug,

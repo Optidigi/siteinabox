@@ -1,19 +1,146 @@
-@import 'tailwindcss';
-@plugin '@tailwindcss/typography';
+@import "tailwindcss";
+@import "tw-animate-css";
 
-@theme {
-  --color-brand: #481938;
-  --color-brand-fg: #ffffff;
-  --color-accent: #f5e900;
-  --color-accent-fg: #1a1208;
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.17 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.48 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --radius: 0.5rem;
+  --intake-text: #232323;
+  --intake-muted-text: #6f6f6f;
+  --intake-soft-text: #5f5f5f;
+  --intake-primary: #274a34;
+  --intake-primary-foreground: #ccf88e;
+  --intake-success: #1f8a4c;
+  --intake-success-surface: #e9fcce;
+  --intake-border: #d9d9d6;
+  --intake-border-strong: #b7b7b6;
+  --intake-border-accent: #8ca88f;
+  --intake-panel: #f5f5f3;
+  --intake-subtle: #fafafa;
+  --intake-divider: #eeeeeb;
+  --intake-skeleton: #f2f2ef;
+  --intake-progress: #4a9d44;
+  --intake-error-surface: #fff1f1;
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
-  scroll-behavior: smooth;
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
 }
 
-body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  text-rendering: optimizeLegibility;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-intake-text: var(--intake-text);
+  --color-intake-muted-text: var(--intake-muted-text);
+  --color-intake-soft-text: var(--intake-soft-text);
+  --color-intake-primary: var(--intake-primary);
+  --color-intake-primary-foreground: var(--intake-primary-foreground);
+  --color-intake-success: var(--intake-success);
+  --color-intake-success-surface: var(--intake-success-surface);
+  --color-intake-border: var(--intake-border);
+  --color-intake-border-strong: var(--intake-border-strong);
+  --color-intake-border-accent: var(--intake-border-accent);
+  --color-intake-panel: var(--intake-panel);
+  --color-intake-subtle: var(--intake-subtle);
+  --color-intake-divider: var(--intake-divider);
+  --color-intake-skeleton: var(--intake-skeleton);
+  --color-intake-progress: var(--intake-progress);
+  --color-intake-error-surface: var(--intake-error-surface);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family:
+      "Chivo",
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Familjen Grotesk", sans-serif;
+  }
+}
+
+@theme inline {
+  --animate-loading-dot: loading-dot 900ms ease-in-out infinite;
+}
+
+@keyframes loading-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
 }

@@ -1,6 +1,7 @@
 import {
+  GenerationInputSchema,
   SiteGenerationSpecSchema,
-  type IntakeSubmission,
+  type PublicIntakeSubmission,
 } from "@siteinabox/contracts/generation"
 import type { Payload } from "payload"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
@@ -14,6 +15,7 @@ import {
   resolveSiteGenerationProvider,
   type SiteGenerationProvider,
   type SiteGenerationProviderConfig,
+  type SiteGenerationProviderRequest,
 } from "@/lib/ai-generation/providers"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
 import type { MockGenerationFixture } from "./mockGeneration"
@@ -62,9 +64,20 @@ const retryableProviderError = (err: unknown): boolean => {
   return /429|rate|timeout|temporar|503|502|500/i.test(message)
 }
 
+const submittedBusinessName = (raw: PublicIntakeSubmission): string => {
+  const value = "businessName" in raw ? raw.businessName : raw.company?.companyName
+  return typeof value === "string" && value.trim() ? value.trim() : "Invalid intake"
+}
+
+const submittedContactName = (raw: PublicIntakeSubmission): string | null | undefined =>
+  "contactName" in raw ? raw.contactName : "finalDetails" in raw ? raw.finalDetails.name : undefined
+
+const submittedContactEmail = (raw: PublicIntakeSubmission): string | null | undefined =>
+  "contactEmail" in raw ? raw.contactEmail : "finalDetails" in raw ? raw.finalDetails.email : undefined
+
 const generateWithRetry = async (
   provider: SiteGenerationProvider,
-  request: ReturnType<typeof createSiteGenerationProviderRequest>,
+  request: SiteGenerationProviderRequest,
   maxAttempts: number,
 ) => {
   let lastError: unknown
@@ -141,101 +154,39 @@ const terminalResult = (intake: PayloadDoc, run: PayloadDoc | null, reused: bool
   error: (run?.errors ?? intake.error) as Record<string, unknown> | undefined,
 })
 
-export async function processIntakeSubmission(
+const processStoredIntakeGeneration = async (
   payload: Payload,
-  raw: IntakeSubmission,
-  options: {
+  input: {
+    intake: PayloadDoc
+    normalized: SiteGenerationProviderRequest["normalized"]
+    normalizedHash: string
+    providerRequest: SiteGenerationProviderRequest
+    idempotencyKey: string
+    provider: SiteGenerationProvider
     mockFixture?: MockGenerationFixture
-    provider?: SiteGenerationProvider
-    providerConfig?: SiteGenerationProviderConfig
-    maxGenerationAttempts?: number
-  } = {},
-): Promise<IntakeProcessingResult> {
-  const mockFixture = options.mockFixture ?? "generic"
-  const provider = options.provider ?? resolveSiteGenerationProvider({
-    ...options.providerConfig,
-    mockFixture,
-  })
-  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+    maxGenerationAttempts: number
+  },
+): Promise<IntakeProcessingResult> => {
+  let intake = input.intake
+  const existingRun = await findOne(payload, "site-generation-runs", { idempotencyKey: { equals: input.idempotencyKey } })
+  if (existingRun) return terminalResult(intake, existingRun, true)
 
-  let normalized
-  let normalizedHash
-  let providerRequest: ReturnType<typeof createSiteGenerationProviderRequest> | undefined
-  let idempotencyKey
-  try {
-    normalized = normalizeIntakeSubmission(raw)
-    normalizedHash = hashStableValue(normalized)
-    providerRequest = createSiteGenerationProviderRequest(normalized)
-    idempotencyKey = `${provider.name}:${provider.model}:${provider.promptVersion}:${providerRequest.inputHash}`
-  } catch (err) {
-    const rawHash = hashStableValue(raw)
-    idempotencyKey = `${provider.name}:${provider.model}:${provider.promptVersion}:invalid:${rawHash}`
-    const existing = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
-    if (existing) return terminalResult(existing, null, true)
-    const failure = errorPayload(err)
-    const intake = await payload.create({
-      collection: "intake-submissions",
-      data: {
-        businessName: typeof raw.businessName === "string" && raw.businessName.trim() ? raw.businessName.trim() : "Invalid intake",
-        contactName: raw.contactName,
-        contactEmail: raw.contactEmail,
-        source: raw.source ?? "public-intake",
-        status: "failed",
-        idempotencyKey,
-        raw,
-        error: failure,
-        statusTransitions: [transition("submitted"), transition("failed", "Normalization failed")],
-      },
-      depth: 0,
-      overrideAccess: true,
-    } as any) as PayloadDoc
-    return terminalResult(intake, null, false)
-  }
-
-  if (!providerRequest) {
-    throw new Error("Generation provider request was not created")
-  }
-
-  const existingIntake = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
-  const existingRun = await findOne(payload, "site-generation-runs", { idempotencyKey: { equals: idempotencyKey } })
-  if (existingIntake && existingRun) return terminalResult(existingIntake, existingRun, true)
-
-  let intake = existingIntake ?? await payload.create({
-    collection: "intake-submissions",
-    data: {
-      businessName: normalized.businessName,
-      contactName: normalized.contact?.name,
-      contactEmail: normalized.contact?.email,
-      source: raw.source ?? "public-intake",
-      status: "submitted",
-      idempotencyKey,
-      raw,
-      normalized,
-      normalizedHash,
-      statusTransitions: [transition("submitted")],
-    },
-    depth: 0,
-    overrideAccess: true,
-  } as any) as PayloadDoc
-
-  intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
-
-  let run = existingRun ?? await payload.create({
+  let run = await payload.create({
     collection: "site-generation-runs",
-      data: {
-        intakeSubmission: intake.id,
-        status: "queued",
-        idempotencyKey,
-        normalizedIntake: normalized,
-        normalizedIntakeHash: normalizedHash,
-        provider: provider.name,
-        model: provider.model,
-        promptVersion: provider.promptVersion,
-        generationInputHash: providerRequest.inputHash,
-        generationInput: providerRequest.input,
-        mockFixture,
-        statusTransitions: [transition("queued")],
-      },
+    data: {
+      intakeSubmission: intake.id,
+      status: "queued",
+      idempotencyKey: input.idempotencyKey,
+      normalizedIntake: input.normalized,
+      normalizedIntakeHash: input.normalizedHash,
+      provider: input.provider.name,
+      model: input.provider.model,
+      promptVersion: input.provider.promptVersion,
+      generationInputHash: input.providerRequest.inputHash,
+      generationInput: input.providerRequest.input,
+      mockFixture: input.mockFixture,
+      statusTransitions: [transition("queued")],
+    },
     depth: 0,
     overrideAccess: true,
   } as any) as PayloadDoc
@@ -246,7 +197,7 @@ export async function processIntakeSubmission(
     run = await setRunStatus(payload, run, "generating", { startedAt: now() })
     intake = await setIntakeStatus(payload, intake, "generating")
 
-    const generated = await generateWithRetry(provider, providerRequest, maxGenerationAttempts)
+    const generated = await generateWithRetry(input.provider, input.providerRequest, input.maxGenerationAttempts)
     const providerResult = generated.result
     const spec = providerResult.spec ?? providerResult.parsedOutput
     if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
@@ -306,4 +257,152 @@ export async function processIntakeSubmission(
     intake = await setIntakeStatus(payload, intake, "failed", { error: failure })
     return terminalResult(intake, run, false)
   }
+}
+
+export async function processIntakeSubmission(
+  payload: Payload,
+  raw: PublicIntakeSubmission,
+  options: {
+    mockFixture?: MockGenerationFixture
+    provider?: SiteGenerationProvider
+    providerConfig?: SiteGenerationProviderConfig
+    maxGenerationAttempts?: number
+  } = {},
+): Promise<IntakeProcessingResult> {
+  const mockFixture = options.mockFixture ?? "generic"
+  const provider = options.provider ?? resolveSiteGenerationProvider({
+    ...options.providerConfig,
+    mockFixture,
+  })
+  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+
+  let normalized
+  let normalizedHash
+  let providerRequest: SiteGenerationProviderRequest | undefined
+  let idempotencyKey
+  try {
+    normalized = normalizeIntakeSubmission(raw)
+    normalizedHash = hashStableValue(normalized)
+    providerRequest = createSiteGenerationProviderRequest(normalized)
+    idempotencyKey = `${provider.name}:${provider.model}:${provider.promptVersion}:${providerRequest.inputHash}`
+  } catch (err) {
+    const rawHash = hashStableValue(raw)
+    idempotencyKey = `${provider.name}:${provider.model}:${provider.promptVersion}:invalid:${rawHash}`
+    const existing = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    if (existing) return terminalResult(existing, null, true)
+    const failure = errorPayload(err)
+    const intake = await payload.create({
+      collection: "intake-submissions",
+      data: {
+        businessName: submittedBusinessName(raw),
+        contactName: submittedContactName(raw),
+        contactEmail: submittedContactEmail(raw),
+        source: raw.source ?? "public-intake",
+        status: "failed",
+        idempotencyKey,
+        raw,
+        error: failure,
+        statusTransitions: [transition("submitted"), transition("failed", "Normalization failed")],
+      },
+      depth: 0,
+      overrideAccess: true,
+    } as any) as PayloadDoc
+    return terminalResult(intake, null, false)
+  }
+
+  if (!providerRequest) {
+    throw new Error("Generation provider request was not created")
+  }
+
+  const existingIntake = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+  let intake = existingIntake ?? await payload.create({
+    collection: "intake-submissions",
+    data: {
+      businessName: normalized.businessName,
+      contactName: normalized.contact?.name,
+      contactEmail: normalized.contact?.email,
+      source: raw.source ?? "public-intake",
+      status: "submitted",
+      idempotencyKey,
+      raw,
+      normalized,
+      normalizedHash,
+      statusTransitions: [transition("submitted")],
+    },
+    depth: 0,
+    overrideAccess: true,
+  } as any) as PayloadDoc
+
+  intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
+
+  return processStoredIntakeGeneration(payload, {
+    intake,
+    normalized,
+    normalizedHash,
+    providerRequest,
+    idempotencyKey,
+    provider,
+    mockFixture,
+    maxGenerationAttempts,
+  })
+}
+
+export async function processReviewedIntakeSubmission(
+  payload: Payload,
+  intakeSubmissionId: string | number,
+  options: {
+    mockFixture?: MockGenerationFixture
+    provider?: SiteGenerationProvider
+    providerConfig?: SiteGenerationProviderConfig
+    maxGenerationAttempts?: number
+  } = {},
+): Promise<IntakeProcessingResult> {
+  const mockFixture = options.mockFixture ?? "generic"
+  const provider = options.provider ?? resolveSiteGenerationProvider({
+    ...options.providerConfig,
+    mockFixture,
+  })
+  const maxGenerationAttempts = Math.max(1, options.maxGenerationAttempts ?? (provider.name === "mock" ? 1 : 2))
+
+  const intake = await payload.findByID({
+    collection: "intake-submissions",
+    id: intakeSubmissionId,
+    depth: 0,
+    overrideAccess: true,
+  } as any) as PayloadDoc
+
+  if (!intake.reviewedGenerationInput) {
+    throw new Error("Reviewed GenerationInput is required before draft generation.")
+  }
+  const reviewedGenerationInput = GenerationInputSchema.parse(intake.reviewedGenerationInput)
+  if (reviewedGenerationInput.status !== "admin-approved") {
+    throw new Error("Reviewed GenerationInput must be admin-approved before draft generation.")
+  }
+
+  const normalized = reviewedGenerationInput.normalizedIntake
+  const normalizedHash = hashStableValue(normalized)
+  if (intake.normalizedHash && intake.normalizedHash !== normalizedHash) {
+    throw new Error("Reviewed GenerationInput must match the intake submission normalized hash.")
+  }
+
+  const providerRequest = createSiteGenerationProviderRequest(normalized, reviewedGenerationInput)
+  const idempotencyKey = [
+    "reviewed",
+    intake.id,
+    provider.name,
+    provider.model,
+    provider.promptVersion,
+    providerRequest.inputHash,
+  ].join(":")
+
+  return processStoredIntakeGeneration(payload, {
+    intake,
+    normalized,
+    normalizedHash,
+    providerRequest,
+    idempotencyKey,
+    provider,
+    mockFixture,
+    maxGenerationAttempts,
+  })
 }

@@ -13,7 +13,7 @@ images.
 | Surface | Route | Owner | Verification mode | Notes |
 | --- | --- | --- | --- | --- |
 | Marketing | `/` and static marketing pages | `apps/landing` | Local build/test | Public Site in a Box marketing site. |
-| Intake | `/intake` | `apps/intake` | Local build/test plus staging route check | Public scaffold/operator intake app. Submit URL is `PUBLIC_INTAKE_API_URL`, default `/api/intake`. |
+| Intake | `/intake` | `apps/intake` | Local build/test plus staging route check | Public richer intake app. Submit URL is `PUBLIC_INTAKE_SUBMIT_ENDPOINT`, default `/api/intake`; optional KVK proxy endpoints default to `/api/intake/kvk/*`. |
 | Intake API | `POST /api/intake` | `apps/cms` | CMS unit tests plus staging POST smoke | Accepts public structured intake only. Rejects test fixture controls and unknown fields. |
 | CMS admin | `/admin`, custom frontend admin routes | `apps/cms` | CMS typecheck/test/UI lint plus staging login smoke | Payload remains the content and tenant authority. |
 | Preview auth | `/api/preview-auth/[...all]` | `apps/cms` | CMS unit tests plus staging magic-link flow | Better Auth preview instance for `preview.siteinabox.nl`. |
@@ -72,7 +72,8 @@ Renderer/staging:
 
 Landing/intake/legacy snapshots:
 
-- `PUBLIC_INTAKE_API_URL`: intake submit endpoint; production should route `/api/intake` to CMS.
+- `PUBLIC_INTAKE_SUBMIT_ENDPOINT`: intake submit endpoint; production should route `/api/intake` to CMS.
+- `PUBLIC_KVK_SEARCH_ENDPOINT`, `PUBLIC_KVK_PROFILE_ENDPOINT`: browser-facing CMS proxy endpoints for factual KVK prefill; KVK credentials stay in CMS.
 - `PUBLIC_ADMIN_ORIGIN`, `PREVIEW_HMAC_SECRET`: legacy preview compatibility for static surfaces.
 - `PUBLIC_WEB3FORMS_KEY`, `PUBLIC_CONTACT_EMAIL`: legacy/static contact form config where present.
 - `CMS_DATA_DIR`, `CMS_DATA_DIR_ABS`, `CMS_TENANT_ID`: legacy tenant snapshot local projection helpers.
@@ -95,9 +96,9 @@ payment state, or published snapshots.
 
 ## Deployment Assumptions
 
-- Platform app images remain `ghcr.io/optidigi/siteinabox-cms` and
-  `ghcr.io/optidigi/siteinabox-site` unless an approved deploy contract adds
-  a renderer image.
+- Platform app images are `ghcr.io/optidigi/siteinabox-cms`,
+  `ghcr.io/optidigi/siteinabox-intake`, `ghcr.io/optidigi/siteinabox-site`, and
+  `ghcr.io/optidigi/siteinabox-renderer`.
 - Tenant-specific app images have been removed; generated sites are served by `ghcr.io/optidigi/siteinabox-renderer`.
 - Traefik is the production edge proxy on the shared external `proxy` network.
 - `/intake` is served by the intake app or routed from the public marketing
@@ -116,9 +117,10 @@ payment state, or published snapshots.
 - Manual in staging: email deliverability, Mollie hosted checkout/webhook,
   DNS/Traefik routing, domain verification, bootstrap token removal, rollback
   operator smoke.
-- Deferred: full intake product implementation, KVK enrichment, OpenProvider
-  domain purchase, Cloudflare DNS/proxy automation, canonical renderer redirects,
-  per-tenant generated source/deploy artifacts.
+- Manual in staging: KVK lookup with production/test credentials and manual
+  fallback.
+- Deferred: OpenProvider domain purchase, Cloudflare DNS/proxy automation,
+  canonical renderer redirects, per-tenant generated source/deploy artifacts.
 
 ## Verification Matrix
 
@@ -158,16 +160,18 @@ Staging smoke checks after deploy:
 1. `GET https://admin.siteinabox.nl/api/health` returns healthy.
 2. `GET https://www.siteinabox.nl/intake` renders the intake surface.
 3. Submit a non-production test intake payload through `/api/intake`; confirm one
-   intake submission and one generation run.
-4. Create or confirm a preview access grant; request a magic link at
+   staged intake submission with raw and normalized data, and no generation run.
+4. In CMS, approve the reviewed `GenerationInput`, click "Generate draft", and
+   confirm one generation run plus draft tenant/page/settings records.
+5. Create or confirm a preview access grant; request a magic link at
    `https://preview.siteinabox.nl/{clientSlug}` and confirm session-gated access.
-5. Approve preview, create a Mollie test checkout, complete the payment, and
+6. Approve preview, create a Mollie test checkout, complete the payment, and
    confirm only generation-run payment JSON changes.
-6. Manually verify domain routing in CMS after DNS/Traefik checks.
-7. Publish and activate a snapshot; confirm renderer serves the active snapshot
+7. Manually verify domain routing in CMS after DNS/Traefik checks.
+8. Publish and activate a snapshot; confirm renderer serves the active snapshot
    by primary host and alias.
-8. Change a CMS draft page after activation; confirm live renderer output does
+9. Change a CMS draft page after activation; confirm live renderer output does
    not change until another publish/activation.
-9. Confirm unknown host, inactive tenant, and unknown page path return 404.
+10. Confirm unknown host, inactive tenant, and unknown page path return 404.
 10. Roll back to the prior snapshot and confirm renderer output follows the
     reactivated snapshot.

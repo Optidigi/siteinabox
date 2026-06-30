@@ -47,6 +47,168 @@ export type IntakeSubmission = {
   notes?: string | null
 }
 
+export type IntakeCompanySource = "kvk" | "manual" | null
+export type IntakeContactAction = "message" | "appointment" | "quote" | "phone" | "whatsapp"
+export type IntakeContactPrimaryAction = IntakeContactAction | ""
+export type IntakeContactFormType = "message" | "quote" | "appointment" | "multiple" | "none" | ""
+export type IntakeContactWhatsappMode = "none" | "same" | "other" | ""
+export type IntakeContactLocationOption = "region" | "address" | "none"
+export type IntakeContactAvailabilityMode = "fixed" | "appointment_only" | "none" | ""
+export type IntakeWorkMode = "on_location" | "at_business" | "remote" | "fixed_region" | "nationwide"
+export type IntakeVisualLogoMode = "uploaded" | "textlogo" | ""
+export type IntakeVisualColorSourceType = "logo" | "preset" | "custom" | ""
+export type IntakeVisualPaletteId = "palette_1" | "palette_2" | "palette_3" | ""
+export type IntakeVisualShape = "straight" | "slightly_rounded" | "rounded" | ""
+export type IntakeVisualTypography = "clear" | "soft" | "classic" | "strong" | ""
+
+export type IntakeVisualThemeTokens = {
+  background: string
+  foreground: string
+  card: string
+  cardForeground: string
+  primary: string
+  primaryForeground: string
+  secondary: string
+  secondaryForeground: string
+  muted: string
+  mutedForeground: string
+  accent: string
+  accentForeground: string
+  border: string
+  input: string
+  ring: string
+  destructive: string
+  destructiveForeground: string
+}
+
+export type RawIntakeSubmission = {
+  submittedAt?: string
+  source?: "public-intake" | "cms" | "operator" | "import" | string
+  company: {
+    source: IntakeCompanySource
+    companyName: string
+    kvkNumber: string
+    address: string
+    website: string
+    mainActivity: string
+    secondaryActivities: string[]
+  }
+  content: {
+    intro: string
+    offers: Array<{ value: string }>
+    audience: string
+    situation: string
+    approach: string
+    workModes: IntakeWorkMode[]
+    region: string
+    notes: string
+  }
+  contact: {
+    selectedActions: IntakeContactAction[]
+    formType: IntakeContactFormType
+    formOptions: Array<"message" | "quote" | "appointment">
+    primaryAction: IntakeContactPrimaryAction
+    phoneNumber: string
+    whatsappMode: IntakeContactWhatsappMode
+    whatsappNumber: string
+    locationOptions: IntakeContactLocationOption[]
+    publicRegion: string
+    publicAddress: string
+    availabilityMode: IntakeContactAvailabilityMode
+    openingHours: string
+  }
+  visual: {
+    logo: {
+      mode: IntakeVisualLogoMode
+      file: unknown | null
+      text: string
+    }
+    color: {
+      sourceType: IntakeVisualColorSourceType
+      sourceValue: string
+      selectedPalette: IntakeVisualPaletteId
+      tokens: IntakeVisualThemeTokens
+    }
+    shape: IntakeVisualShape
+    typography: IntakeVisualTypography
+  }
+  finalDetails: {
+    name: string
+    email: string
+    phone: string
+  }
+  domain?: string | null
+  email?: string | null
+  addOns?: string[] | null
+  notes?: string | null
+}
+
+export type PublicIntakeSubmission = IntakeSubmission | RawIntakeSubmission
+
+export type CompanyFacts = {
+  source: IntakeCompanySource
+  companyName: string
+  kvkNumber?: string | null
+  address?: string | null
+  website?: string | null
+  mainActivity?: string | null
+  secondaryActivities: string[]
+}
+
+export type IntakeBrief = {
+  intro?: string | null
+  services: string[]
+  audience?: string | null
+  customerSituation?: string | null
+  approach?: string | null
+  workModes: IntakeWorkMode[]
+  serviceArea: string[]
+  proofTrust: string[]
+  contactPreferences: {
+    selectedActions: IntakeContactAction[]
+    primaryAction?: IntakeContactAction | null
+    formType?: Exclude<IntakeContactFormType, ""> | null
+    formOptions: Array<"message" | "quote" | "appointment">
+    phoneNumber?: string | null
+    whatsappNumber?: string | null
+    locationOptions: IntakeContactLocationOption[]
+    publicRegion?: string | null
+    publicAddress?: string | null
+    availabilityMode?: Exclude<IntakeContactAvailabilityMode, ""> | null
+    openingHours?: string | null
+  }
+  callsToAction: IntakeContactAction[]
+  visualPreferences: {
+    logoMode?: Exclude<IntakeVisualLogoMode, ""> | null
+    logoText?: string | null
+    colorSourceType?: Exclude<IntakeVisualColorSourceType, ""> | null
+    colorSourceValue?: string | null
+    selectedPalette?: Exclude<IntakeVisualPaletteId, ""> | null
+    tokens?: IntakeVisualThemeTokens | null
+    shape?: Exclude<IntakeVisualShape, ""> | null
+    typography?: Exclude<IntakeVisualTypography, ""> | null
+  }
+  tone: string[]
+  notes?: string | null
+  domainInterest?: string | null
+  emailInterest?: string | null
+  addOnInterest: string[]
+}
+
+export type BusinessBrief = IntakeBrief
+
+export type GenerationInput = {
+  schemaVersion: 1
+  status: "draft" | "ai-prepared" | "admin-approved"
+  companyFacts: CompanyFacts
+  brief: IntakeBrief
+  normalizedIntake: NormalizedIntake
+  approvedAt?: string | null
+  approvedBy?: string | null
+  preparedAt?: string | null
+  notes?: string | null
+}
+
 export type NormalizedIntake = {
   businessName: string
   tenantSlug: string
@@ -72,6 +234,8 @@ export type NormalizedIntake = {
     tone?: string[]
     assets?: MediaRef[]
   } | null
+  companyFacts?: CompanyFacts | null
+  intakeBrief?: IntakeBrief | null
   raw?: Record<string, unknown> | null
 }
 

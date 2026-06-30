@@ -1,0 +1,160 @@
+import { describe, expect, it } from "vitest"
+import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
+import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
+
+const matchesWhere = (doc: any, where: any): boolean => {
+  if (!where) return true
+  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
+  return Object.entries(where).every(([field, condition]) => {
+    if (condition && typeof condition === "object" && "equals" in condition) {
+      return String(doc[field]) === String((condition as any).equals)
+    }
+    return doc[field] === condition
+  })
+}
+
+const createPayloadStub = () => {
+  let nextId = 1
+  type CollectionSlug = "intake-submissions" | "site-generation-runs"
+  const store: Record<CollectionSlug, any[]> = {
+    "intake-submissions": [],
+    "site-generation-runs": [],
+  }
+  const payload = {
+    find: async (args: any) => {
+      const docs = store[args.collection as CollectionSlug].filter((doc) => matchesWhere(doc, args.where))
+      return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }
+    },
+    create: async (args: any) => {
+      const doc = { ...args.data, id: nextId++ }
+      store[args.collection as CollectionSlug].push(doc)
+      return doc
+    },
+  }
+  return { payload: payload as any, store }
+}
+
+const rawIntake = (): PublicIntakeSubmission => ({
+  submittedAt: "2026-06-29T10:00:00.000Z",
+  source: "public-intake",
+  company: {
+    source: "kvk",
+    companyName: "Storage Demo",
+    kvkNumber: "12345678",
+    address: "Stationsplein 1, Roermond",
+    website: "https://storage-demo.nl",
+    mainActivity: "Interieuradvies",
+    secondaryActivities: ["Projectbegeleiding"],
+  },
+  content: {
+    intro: "Wij helpen ondernemers met praktische interieurplannen.",
+    offers: [{ value: "Interieuradvies" }],
+    audience: "Lokale ondernemers",
+    situation: "Klanten willen hun ruimte professioneler maken.",
+    approach: "We starten met een intake en concreet plan.",
+    workModes: ["on_location", "fixed_region"],
+    region: "Limburg",
+    notes: "",
+  },
+  contact: {
+    selectedActions: ["message", "quote"],
+    formType: "multiple",
+    formOptions: ["message", "quote"],
+    primaryAction: "quote",
+    phoneNumber: "0612345678",
+    whatsappMode: "same",
+    whatsappNumber: "",
+    locationOptions: ["region"],
+    publicRegion: "Limburg",
+    publicAddress: "",
+    availabilityMode: "appointment_only",
+    openingHours: "",
+  },
+  visual: {
+    logo: { mode: "textlogo", file: null, text: "Storage Demo" },
+    color: {
+      sourceType: "preset",
+      sourceValue: "green",
+      selectedPalette: "palette_1",
+      tokens: {
+        background: "#ffffff",
+        foreground: "#111111",
+        card: "#ffffff",
+        cardForeground: "#111111",
+        primary: "#146c43",
+        primaryForeground: "#ffffff",
+        secondary: "#e7f3ed",
+        secondaryForeground: "#111111",
+        muted: "#f3f4f6",
+        mutedForeground: "#4b5563",
+        accent: "#d1fae5",
+        accentForeground: "#111111",
+        border: "#d1d5db",
+        input: "#d1d5db",
+        ring: "#146c43",
+        destructive: "#dc2626",
+        destructiveForeground: "#ffffff",
+      },
+    },
+    shape: "slightly_rounded",
+    typography: "clear",
+  },
+  finalDetails: {
+    name: "Demo Contact",
+    email: "demo@example.com",
+    phone: "0612345678",
+  },
+  domain: "storage-demo.nl",
+  email: "demo@example.com",
+  addOns: [],
+  notes: null,
+})
+
+describe("storeIntakeSubmission", () => {
+  it("stores raw and normalized public intake without creating a generation run", async () => {
+    const { payload, store } = createPayloadStub()
+
+    const result = await storeIntakeSubmission(payload, rawIntake())
+
+    expect(result.ok).toBe(true)
+    expect(result.status).toBe("normalized")
+    expect(result.intakeSubmissionId).toBe(1)
+    expect(store["intake-submissions"]).toHaveLength(1)
+    expect(store["site-generation-runs"]).toHaveLength(0)
+    expect(store["intake-submissions"][0]).toMatchObject({
+      businessName: "Storage Demo",
+      contactName: "Demo Contact",
+      contactEmail: "demo@example.com",
+      status: "normalized",
+      raw: rawIntake(),
+      normalized: {
+        businessName: "Storage Demo",
+        tenantSlug: "storage-demo",
+        companyFacts: {
+          source: "kvk",
+          companyName: "Storage Demo",
+          kvkNumber: "12345678",
+        },
+      },
+    })
+    expect(store["intake-submissions"][0]?.normalizedHash).toMatch(/^[a-f0-9]{64}$/)
+    expect(store["intake-submissions"][0]?.idempotencyKey).toMatch(/^public-intake:normalized:/)
+    expect(store["intake-submissions"][0]?.statusTransitions.map((entry: any) => entry.status)).toEqual([
+      "submitted",
+      "normalized",
+    ])
+  })
+
+  it("reuses the staged intake record for the same raw and normalized body", async () => {
+    const { payload, store } = createPayloadStub()
+
+    const first = await storeIntakeSubmission(payload, rawIntake())
+    const second = await storeIntakeSubmission(payload, rawIntake())
+
+    expect(first.reused).toBe(false)
+    expect(second.reused).toBe(true)
+    expect(second.intakeSubmissionId).toBe(first.intakeSubmissionId)
+    expect(store["intake-submissions"]).toHaveLength(1)
+    expect(store["site-generation-runs"]).toHaveLength(0)
+  })
+})

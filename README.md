@@ -62,6 +62,7 @@ for the current generation contract.
 The monorepo publishes new platform-owned images:
 
 - `apps/cms` publishes `ghcr.io/optidigi/siteinabox-cms:latest`.
+- `apps/intake` publishes `ghcr.io/optidigi/siteinabox-intake:latest`.
 - `apps/landing` publishes the compatibility image
   `ghcr.io/optidigi/siteinabox-site:latest`.
 - `apps/renderer` publishes `ghcr.io/optidigi/siteinabox-renderer:latest`.

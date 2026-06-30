@@ -32,8 +32,13 @@ import type {
   GeneratedBlockSpec,
   GeneratedPageSpec,
   GeneratedSiteSettings,
+  GenerationInput,
+  CompanyFacts,
   IntakeSubmission,
+  IntakeBrief,
   NormalizedIntake,
+  PublicIntakeSubmission,
+  RawIntakeSubmission,
   PublishedSiteSnapshot,
   SiteBlockEditorField,
   SiteBlockManifestItem,
@@ -908,6 +913,102 @@ const OfficialTenantGeneratedPageSpecSchemaBase = PageSchemaBase.omit({ updatedA
 export const OfficialTenantGeneratedPageSpecSchema: z.ZodType<GeneratedPageSpec> =
   OfficialTenantGeneratedPageSpecSchemaBase
 
+const IntakeCompanySourceSchema = z.enum(["kvk", "manual"]).nullable()
+const IntakeContactActionSchema = z.enum(["message", "appointment", "quote", "phone", "whatsapp"])
+const IntakeContactPrimaryActionSchema = z.union([IntakeContactActionSchema, z.literal("")])
+const IntakeContactFormTypeSchema = z.enum(["message", "quote", "appointment", "multiple", "none", ""])
+const IntakeContactWhatsappModeSchema = z.enum(["none", "same", "other", ""])
+const IntakeContactLocationOptionSchema = z.enum(["region", "address", "none"])
+const IntakeContactAvailabilityModeSchema = z.enum(["fixed", "appointment_only", "none", ""])
+const IntakeWorkModeSchema = z.enum(["on_location", "at_business", "remote", "fixed_region", "nationwide"])
+const IntakeVisualLogoModeSchema = z.enum(["uploaded", "textlogo", ""])
+const IntakeVisualColorSourceTypeSchema = z.enum(["logo", "preset", "custom", ""])
+const IntakeVisualPaletteIdSchema = z.enum(["palette_1", "palette_2", "palette_3", ""])
+const IntakeVisualShapeSchema = z.enum(["straight", "slightly_rounded", "rounded", ""])
+const IntakeVisualTypographySchema = z.enum(["clear", "soft", "classic", "strong", ""])
+
+export const IntakeVisualThemeTokensSchema = strictObject({
+  background: z.string(),
+  foreground: z.string(),
+  card: z.string(),
+  cardForeground: z.string(),
+  primary: z.string(),
+  primaryForeground: z.string(),
+  secondary: z.string(),
+  secondaryForeground: z.string(),
+  muted: z.string(),
+  mutedForeground: z.string(),
+  accent: z.string(),
+  accentForeground: z.string(),
+  border: z.string(),
+  input: z.string(),
+  ring: z.string(),
+  destructive: z.string(),
+  destructiveForeground: z.string(),
+})
+
+export const RawIntakeSubmissionSchema: z.ZodType<RawIntakeSubmission> = strictObject({
+  submittedAt: z.string().optional(),
+  source: z.string().optional(),
+  company: strictObject({
+    source: IntakeCompanySourceSchema,
+    companyName: z.string(),
+    kvkNumber: z.string(),
+    address: z.string(),
+    website: z.string(),
+    mainActivity: z.string(),
+    secondaryActivities: z.array(z.string()),
+  }),
+  content: strictObject({
+    intro: z.string(),
+    offers: z.array(strictObject({ value: z.string() })),
+    audience: z.string(),
+    situation: z.string(),
+    approach: z.string(),
+    workModes: z.array(IntakeWorkModeSchema),
+    region: z.string(),
+    notes: z.string(),
+  }),
+  contact: strictObject({
+    selectedActions: z.array(IntakeContactActionSchema),
+    formType: IntakeContactFormTypeSchema,
+    formOptions: z.array(z.enum(["message", "quote", "appointment"])),
+    primaryAction: IntakeContactPrimaryActionSchema,
+    phoneNumber: z.string(),
+    whatsappMode: IntakeContactWhatsappModeSchema,
+    whatsappNumber: z.string(),
+    locationOptions: z.array(IntakeContactLocationOptionSchema),
+    publicRegion: z.string(),
+    publicAddress: z.string(),
+    availabilityMode: IntakeContactAvailabilityModeSchema,
+    openingHours: z.string(),
+  }),
+  visual: strictObject({
+    logo: strictObject({
+      mode: IntakeVisualLogoModeSchema,
+      file: z.unknown().nullable(),
+      text: z.string(),
+    }),
+    color: strictObject({
+      sourceType: IntakeVisualColorSourceTypeSchema,
+      sourceValue: z.string(),
+      selectedPalette: IntakeVisualPaletteIdSchema,
+      tokens: IntakeVisualThemeTokensSchema,
+    }),
+    shape: IntakeVisualShapeSchema,
+    typography: IntakeVisualTypographySchema,
+  }),
+  finalDetails: strictObject({
+    name: z.string(),
+    email: z.string(),
+    phone: z.string(),
+  }),
+  domain: nullableString,
+  email: nullableString,
+  addOns: z.array(z.string()).nullable().optional(),
+  notes: nullableString,
+})
+
 export const IntakeSubmissionSchema: z.ZodType<IntakeSubmission> = strictObject({
   submittedAt: z.string().optional(),
   source: z.string().optional(),
@@ -935,6 +1036,59 @@ export const IntakeSubmissionSchema: z.ZodType<IntakeSubmission> = strictObject(
   notes: nullableString,
 })
 
+export const PublicIntakeSubmissionSchema: z.ZodType<PublicIntakeSubmission> =
+  z.union([IntakeSubmissionSchema, RawIntakeSubmissionSchema])
+
+export const CompanyFactsSchema: z.ZodType<CompanyFacts> = strictObject({
+  source: IntakeCompanySourceSchema,
+  companyName: z.string().min(1),
+  kvkNumber: nullableString,
+  address: nullableString,
+  website: nullableString,
+  mainActivity: nullableString,
+  secondaryActivities: z.array(z.string()),
+})
+
+export const IntakeBriefSchema: z.ZodType<IntakeBrief> = strictObject({
+  intro: nullableString,
+  services: z.array(z.string()),
+  audience: nullableString,
+  customerSituation: nullableString,
+  approach: nullableString,
+  workModes: z.array(IntakeWorkModeSchema),
+  serviceArea: z.array(z.string()),
+  proofTrust: z.array(z.string()),
+  contactPreferences: strictObject({
+    selectedActions: z.array(IntakeContactActionSchema),
+    primaryAction: IntakeContactActionSchema.nullable().optional(),
+    formType: z.enum(["message", "quote", "appointment", "multiple", "none"]).nullable().optional(),
+    formOptions: z.array(z.enum(["message", "quote", "appointment"])),
+    phoneNumber: nullableString,
+    whatsappNumber: nullableString,
+    locationOptions: z.array(IntakeContactLocationOptionSchema),
+    publicRegion: nullableString,
+    publicAddress: nullableString,
+    availabilityMode: z.enum(["fixed", "appointment_only", "none"]).nullable().optional(),
+    openingHours: nullableString,
+  }),
+  callsToAction: z.array(IntakeContactActionSchema),
+  visualPreferences: strictObject({
+    logoMode: z.enum(["uploaded", "textlogo"]).nullable().optional(),
+    logoText: nullableString,
+    colorSourceType: z.enum(["logo", "preset", "custom"]).nullable().optional(),
+    colorSourceValue: nullableString,
+    selectedPalette: z.enum(["palette_1", "palette_2", "palette_3"]).nullable().optional(),
+    tokens: IntakeVisualThemeTokensSchema.nullable().optional(),
+    shape: z.enum(["straight", "slightly_rounded", "rounded"]).nullable().optional(),
+    typography: z.enum(["clear", "soft", "classic", "strong"]).nullable().optional(),
+  }),
+  tone: z.array(z.string()),
+  notes: nullableString,
+  domainInterest: nullableString,
+  emailInterest: nullableString,
+  addOnInterest: z.array(z.string()),
+})
+
 export const NormalizedIntakeSchema: z.ZodType<NormalizedIntake> = strictObject({
   businessName: z.string().min(1),
   tenantSlug: slugSchema,
@@ -960,8 +1114,24 @@ export const NormalizedIntakeSchema: z.ZodType<NormalizedIntake> = strictObject(
     tone: z.array(z.string()).optional(),
     assets: z.array(MediaRefSchema).optional(),
   }).nullable().optional(),
+  companyFacts: CompanyFactsSchema.nullable().optional(),
+  intakeBrief: IntakeBriefSchema.nullable().optional(),
   raw: jsonRecordSchema.nullable().optional(),
 })
+
+export const GenerationInputSchema: z.ZodType<GenerationInput> = z.lazy(() =>
+  strictObject({
+    schemaVersion: z.literal(1),
+    status: z.enum(["draft", "ai-prepared", "admin-approved"]),
+    companyFacts: CompanyFactsSchema,
+    brief: IntakeBriefSchema,
+    normalizedIntake: NormalizedIntakeSchema,
+    approvedAt: nullableString,
+    approvedBy: nullableString,
+    preparedAt: nullableString,
+    notes: nullableString,
+  }),
+)
 
 export const SiteBlockEditorFieldSchema: z.ZodType<SiteBlockEditorField> = z.lazy(() =>
   strictObject({

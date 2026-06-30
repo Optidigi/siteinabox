@@ -20,6 +20,7 @@ describe("generation operations UI helpers", () => {
     expect(generationRunWhere("preview-ready")).toEqual({ status: { equals: "preview_ready" } })
     expect(generationRunWhere("needs-review")).toEqual({
       or: [
+        { status: { equals: "normalized" } },
         { status: { equals: "draft_ready" } },
         { status: { equals: "preview_ready" } },
       ],
@@ -194,6 +195,19 @@ describe("generation operations route access", () => {
     expect(detail).toContain("DNS remains manual")
     expect(detail).toContain("updateTenantDomainVerificationAction")
     expect(detail).not.toMatch(/cloudflare|route53|dnsimple/i)
+  })
+
+  it("exposes intake GenerationInput review without public auto-generation", () => {
+    const action = read("src/lib/actions/reviewIntakeSubmission.ts")
+    const detail = read("src/app/(frontend)/(admin)/generation-runs/submissions/[id]/page.tsx")
+    const intakeRoute = read("src/app/(payload)/api/intake/route.ts")
+
+    expect(action).toContain('requireRole(["super-admin"])')
+    expect(action).toContain("prepareReviewedGenerationInputUpdate")
+    expect(detail).toContain("Reviewed GenerationInput")
+    expect(detail).toContain("Approve for generation")
+    expect(detail).toContain("defaultReviewedGenerationInput")
+    expect(intakeRoute).not.toContain("processIntakeSubmission(")
   })
 
   it("does not expose a retry mutation in the operations UI", () => {

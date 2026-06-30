@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { parsePublicIntakeSubmission } from "@/lib/intake/publicIntakeValidation"
-import { processIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
+import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
 import config from "@/payload.config"
 
 const MAX_INTAKE_BYTES = 64 * 1024
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const result = await processIntakeSubmission(payload, validated.intake)
+  const result = await storeIntakeSubmission(payload, validated.intake)
 
   return NextResponse.json(
     {
@@ -55,10 +55,6 @@ export async function POST(req: NextRequest) {
       reused: result.reused,
       status: result.status,
       intakeSubmissionId: result.intakeSubmissionId,
-      generationRunId: result.generationRunId,
-      tenantId: result.tenantId,
-      pageIds: result.pageIds,
-      settingsId: result.settingsId,
       error: result.error,
     },
     { status: result.ok ? 202 : 422 },

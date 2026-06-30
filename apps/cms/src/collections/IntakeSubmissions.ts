@@ -29,7 +29,7 @@ export const IntakeSubmissions: CollectionConfig = {
   },
   admin: {
     useAsTitle: "businessName",
-    defaultColumns: ["businessName", "contactEmail", "status", "idempotencyKey", "createdAt"],
+    defaultColumns: ["businessName", "contactEmail", "status", "reviewedAt", "idempotencyKey", "createdAt"],
     description: "Operational intake submissions received from the future public intake form.",
   },
   fields: [
@@ -54,6 +54,20 @@ export const IntakeSubmissions: CollectionConfig = {
     { name: "raw", type: "json", required: true },
     { name: "normalized", type: "json" },
     { name: "normalizedHash", type: "text" },
+    {
+      name: "reviewedGenerationInput",
+      type: "json",
+      admin: {
+        description: "Structured GenerationInput approved by an SIAB manager and ready for the generation handoff.",
+      },
+    },
+    {
+      name: "reviewNotes",
+      type: "textarea",
+      admin: { description: "Internal manager notes captured during intake review." },
+    },
+    { name: "reviewedAt", type: "date", admin: { readOnly: true } },
+    { name: "reviewedBy", type: "relationship", relationTo: "users", admin: { readOnly: true } },
     {
       name: "generationRun",
       type: "relationship",

@@ -1,6 +1,8 @@
 import {
+  GenerationInputSchema,
   NormalizedIntakeSchema,
   SiteGenerationSpecSchema,
+  type GenerationInput,
   type NormalizedIntake,
   type SiteGenerationSpec,
 } from "@siteinabox/contracts/generation"
@@ -846,9 +848,13 @@ export const resolveSiteGenerationProvider = (config: SiteGenerationProviderConf
   return createMockSiteGenerationProvider(config.mockFixture)
 }
 
-export const createSiteGenerationProviderRequest = (normalized: NormalizedIntake): SiteGenerationProviderRequest => {
+export const createSiteGenerationProviderRequest = (
+  normalized: NormalizedIntake,
+  generationInput?: GenerationInput,
+): SiteGenerationProviderRequest => {
   const parsedNormalized = NormalizedIntakeSchema.parse(normalized)
-  const input = buildSiteGenerationModelInput(parsedNormalized)
+  const parsedGenerationInput = generationInput ? GenerationInputSchema.parse(generationInput) : undefined
+  const input = buildSiteGenerationModelInput(parsedNormalized, parsedGenerationInput)
   return {
     normalized: parsedNormalized,
     input,

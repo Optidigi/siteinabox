@@ -1,10 +1,10 @@
 import {
-  IntakeSubmissionSchema,
-  type IntakeSubmission,
+  PublicIntakeSubmissionSchema,
+  type PublicIntakeSubmission,
 } from "@siteinabox/contracts/generation"
 
 export type PublicIntakeValidationResult =
-  | { ok: true; intake: IntakeSubmission }
+  | { ok: true; intake: PublicIntakeSubmission }
   | { ok: false; message: string; issues: Array<{ path: Array<string | number>; message: string }> }
 
 export const parsePublicIntakeSubmission = (body: Record<string, unknown>): PublicIntakeValidationResult => {
@@ -16,7 +16,7 @@ export const parsePublicIntakeSubmission = (body: Record<string, unknown>): Publ
     }
   }
 
-  const parsed = IntakeSubmissionSchema.safeParse(body)
+  const parsed = PublicIntakeSubmissionSchema.safeParse(body)
   if (!parsed.success) {
     return {
       ok: false,
@@ -35,6 +35,6 @@ export const parsePublicIntakeSubmission = (body: Record<string, unknown>): Publ
     intake: {
       ...parsed.data,
       source: "public-intake",
-    },
+    } as PublicIntakeSubmission,
   }
 }

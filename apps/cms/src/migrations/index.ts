@@ -36,6 +36,7 @@ import * as migration_20260627_120000_add_concrete_block_model_schema from './20
 import * as migration_20260627_130000_add_marketing_catalog_cms_schema from './20260627_130000_add_marketing_catalog_cms_schema';
 import * as migration_20260627_140000_add_tenant_chrome_variant_enum_values from './20260627_140000_add_tenant_chrome_variant_enum_values';
 import * as migration_20260628_000000_generic_generation_fixture_defaults from './20260628_000000_generic_generation_fixture_defaults';
+import * as migration_20260630_120000_add_intake_review_fields from './20260630_120000_add_intake_review_fields';
 
 export const migrations = [
   {
@@ -227,5 +228,10 @@ export const migrations = [
     up: migration_20260628_000000_generic_generation_fixture_defaults.up,
     down: migration_20260628_000000_generic_generation_fixture_defaults.down,
     name: '20260628_000000_generic_generation_fixture_defaults'
+  },
+  {
+    up: migration_20260630_120000_add_intake_review_fields.up,
+    down: migration_20260630_120000_add_intake_review_fields.down,
+    name: '20260630_120000_add_intake_review_fields'
   },
 ];

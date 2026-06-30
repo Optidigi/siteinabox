@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest"
 import type { SiteGenerationProvider } from "@/lib/ai-generation/providers"
 import { loadMockSiteGenerationSpec } from "@/lib/intake/mockGeneration"
-import { processIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
+import { buildGenerationInput, hashStableValue, normalizeIntakeSubmission } from "@/lib/intake/normalizeIntake"
+import {
+  processIntakeSubmission,
+  processReviewedIntakeSubmission,
+} from "@/lib/intake/processIntakeSubmission"
 
 const matchesWhere = (doc: any, where: any): boolean => {
   if (!where) return true
@@ -39,6 +43,11 @@ const createPayloadStub = () => {
     create: async (args: any) => {
       const doc = { ...args.data, id: nextId++ }
       store[args.collection as CollectionSlug].push(doc)
+      return doc
+    },
+    findByID: async (args: any) => {
+      const doc = store[args.collection as CollectionSlug].find((entry) => String(entry.id) === String(args.id))
+      if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
       return doc
     },
     update: async (args: any) => {
@@ -274,5 +283,113 @@ describe("processIntakeSubmission", () => {
     expect(store.tenants).toHaveLength(1)
     expect(store["site-settings"]).toHaveLength(1)
     expect(new Set(store.pages.map((page) => page.slug)).size).toBe(store.pages.length)
+  })
+})
+
+describe("processReviewedIntakeSubmission", () => {
+  it("rejects draft generation when the intake has no reviewed GenerationInput", async () => {
+    const { payload } = createPayloadStub()
+    const normalized = normalizeIntakeSubmission(rawIntake())
+    const intake = await payload.create({
+      collection: "intake-submissions",
+      data: {
+        businessName: normalized.businessName,
+        contactName: normalized.contact?.name,
+        contactEmail: normalized.contact?.email,
+        source: "public-intake",
+        status: "normalized",
+        idempotencyKey: "stored-only:no-review",
+        raw: rawIntake(),
+        normalized,
+        normalizedHash: hashStableValue(normalized),
+        statusTransitions: [{ status: "normalized", at: "2026-06-30T08:00:00.000Z" }],
+      },
+    })
+
+    await expect(processReviewedIntakeSubmission(payload, intake.id)).rejects.toThrow(
+      "Reviewed GenerationInput is required before draft generation.",
+    )
+  })
+
+  it("creates a reviewed generation run and applies mocked draft CMS data", async () => {
+    const { payload, store } = createPayloadStub()
+    const normalized = normalizeIntakeSubmission(rawIntake())
+    const reviewedGenerationInput = {
+      ...buildGenerationInput(normalized, "admin-approved"),
+      approvedAt: "2026-06-30T09:00:00.000Z",
+      approvedBy: "7",
+    }
+    const intake = await payload.create({
+      collection: "intake-submissions",
+      data: {
+        businessName: normalized.businessName,
+        contactName: normalized.contact?.name,
+        contactEmail: normalized.contact?.email,
+        source: "public-intake",
+        status: "normalized",
+        idempotencyKey: "stored-only:reviewed-success",
+        raw: rawIntake(),
+        normalized,
+        normalizedHash: hashStableValue(normalized),
+        reviewedGenerationInput,
+        reviewedAt: "2026-06-30T09:00:00.000Z",
+        reviewedBy: 7,
+        statusTransitions: [{ status: "normalized", at: "2026-06-30T08:00:00.000Z" }],
+      },
+    })
+
+    const result = await processReviewedIntakeSubmission(payload, intake.id)
+
+    expect(result.ok).toBe(true)
+    expect(result.status).toBe("preview_ready")
+    expect(store["site-generation-runs"]).toHaveLength(1)
+    expect(store["site-generation-runs"][0]?.intakeSubmission).toBe(intake.id)
+    expect(store["site-generation-runs"][0]?.idempotencyKey).toContain(`reviewed:${intake.id}:mock:fixture:generic`)
+    expect(store["site-generation-runs"][0]?.generationInput?.generationInput).toMatchObject({
+      status: "admin-approved",
+      approvedBy: "7",
+    })
+    expect(store.tenants).toHaveLength(1)
+    expect(store.pages.length).toBeGreaterThan(0)
+    expect(store["intake-submissions"][0]?.generationRun).toBe(store["site-generation-runs"][0]?.id)
+  })
+
+  it("reuses the reviewed generation run for the same approved input", async () => {
+    const { payload, store } = createPayloadStub()
+    const normalized = normalizeIntakeSubmission(rawIntake())
+    const reviewedGenerationInput = {
+      ...buildGenerationInput(normalized, "admin-approved"),
+      approvedAt: "2026-06-30T09:00:00.000Z",
+      approvedBy: "7",
+    }
+    const intake = await payload.create({
+      collection: "intake-submissions",
+      data: {
+        businessName: normalized.businessName,
+        contactName: normalized.contact?.name,
+        contactEmail: normalized.contact?.email,
+        source: "public-intake",
+        status: "normalized",
+        idempotencyKey: "stored-only:reviewed-reuse",
+        raw: rawIntake(),
+        normalized,
+        normalizedHash: hashStableValue(normalized),
+        reviewedGenerationInput,
+        reviewedAt: "2026-06-30T09:00:00.000Z",
+        reviewedBy: 7,
+        statusTransitions: [{ status: "normalized", at: "2026-06-30T08:00:00.000Z" }],
+      },
+    })
+
+    const first = await processReviewedIntakeSubmission(payload, intake.id)
+    const second = await processReviewedIntakeSubmission(payload, intake.id)
+
+    expect(first.ok).toBe(true)
+    expect(second.ok).toBe(true)
+    expect(second.reused).toBe(true)
+    expect(second.generationRunId).toBe(first.generationRunId)
+    expect(store["site-generation-runs"]).toHaveLength(1)
+    expect(store.tenants).toHaveLength(1)
+    expect(store["site-settings"]).toHaveLength(1)
   })
 })

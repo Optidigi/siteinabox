@@ -1,13 +1,20 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
+import { GenerationInputSchema } from "@siteinabox/contracts/generation"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
+import { Textarea } from "@siteinabox/ui/components/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PageHeader } from "@/components/page-header"
+import {
+  approveIntakeGenerationInputAction,
+  generateReviewedIntakeDraftAction,
+} from "@/lib/actions/reviewIntakeSubmission"
 import { statusVariant } from "@/lib/badge-helpers"
 import { requireRole } from "@/lib/authGate"
+import { defaultReviewedGenerationInput } from "@/lib/intake/reviewIntakeSubmission"
 import {
   getIntakeSubmissionForOperations,
   relationId,
@@ -40,6 +47,19 @@ export default async function IntakeSubmissionDetailPage({
   const runId = relationId(submission.generationRun)
   const tenantSlug = relationSlug(submission.tenant)
   const tenantId = relationId(submission.tenant)
+  const reviewedByLabel = relationLabel(submission.reviewedBy, "-")
+  const normalized = submission.normalized && typeof submission.normalized === "object" && !Array.isArray(submission.normalized)
+    ? submission.normalized as Record<string, unknown>
+    : {}
+  let reviewedGenerationInputJson: string | null = null
+  let reviewedInputApproved = false
+  try {
+    const reviewedInput = defaultReviewedGenerationInput(submission)
+    reviewedGenerationInputJson = JSON.stringify(reviewedInput, null, 2)
+    reviewedInputApproved = reviewedInput.status === "admin-approved"
+  } catch {
+    reviewedGenerationInputJson = null
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -132,6 +152,71 @@ export default async function IntakeSubmissionDetailPage({
             <div className="text-muted-foreground">Normalized hash</div>
             <code className="break-all text-xs">{submission.normalizedHash ?? "-"}</code>
           </div>
+          <div>
+            <div className="text-muted-foreground">Reviewed</div>
+            <div className="font-medium">{formatDate(submission.reviewedAt)}</div>
+            <div>{reviewedByLabel}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Company facts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <JsonSummaryBlock value={normalized.companyFacts} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Intake brief</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <JsonSummaryBlock value={normalized.intakeBrief} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Reviewed GenerationInput</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {reviewedGenerationInputJson ? (
+            <form action={approveIntakeGenerationInputAction.bind(null, submission.id)} className="grid gap-3">
+              <Textarea
+                id="reviewedGenerationInput"
+                name="reviewedGenerationInput"
+                rows={18}
+                defaultValue={reviewedGenerationInputJson}
+                className="font-mono text-xs"
+              />
+              <Textarea
+                id="reviewNotes"
+                name="reviewNotes"
+                rows={3}
+                defaultValue={submission.reviewNotes ?? ""}
+                placeholder="Internal review notes"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Saving validates this JSON as GenerationInput, marks it admin-approved, and prepares it for the Phase 6 generation handoff.
+                </p>
+                <Button type="submit">Approve for generation</Button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              GenerationInput review is available after this submission has valid normalized intake data.
+            </p>
+          )}
+          {reviewedInputApproved && GenerationInputSchema.safeParse(submission.reviewedGenerationInput).success && (
+            <form action={generateReviewedIntakeDraftAction.bind(null, submission.id)} className="mt-4 flex justify-end border-t pt-4">
+              <Button type="submit">Generate draft</Button>
+            </form>
+          )}
         </CardContent>
       </Card>
 

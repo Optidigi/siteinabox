@@ -98,9 +98,9 @@ current implementation only; it does not define new product behavior.
 ### `apps/intake`
 
 - `/intake`: public intake scaffold mounted from
-  `apps/intake/src/pages/index.astro`. It validates required contact fields and
-  posts contract-shaped JSON to `PUBLIC_INTAKE_API_URL`, defaulting to
-  `/api/intake`.
+  `apps/intake/src/pages/index.astro`. It serializes the richer intake wizard
+  state and posts contract-shaped JSON to `PUBLIC_INTAKE_SUBMIT_ENDPOINT`,
+  defaulting to `/api/intake`.
 
 ### `apps/cms`
 
