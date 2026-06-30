@@ -307,7 +307,11 @@ export function ContentCanvasStep({
         Terug
       </Button>
 
-      <form id={contentFormId} noValidate>
+      <form
+        id={contentFormId}
+        onSubmit={(event) => event.preventDefault()}
+        noValidate
+      >
         <Accordion
           type="single"
           value={openCard}

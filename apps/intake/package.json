@@ -11,7 +11,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "test": "vitest run"
+    "test": "vitest run && node tests/enter-submit-regression.mjs"
   },
   "dependencies": {
     "@astrojs/preact": "^5.1.2",
@@ -45,6 +45,7 @@
     "@tailwindcss/vite": "^4.2.4",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "playwright": "1.61.0",
     "tailwindcss": "^4.2.4",
     "typescript": "^6.0.3",
     "vite": "^7.3.5",
