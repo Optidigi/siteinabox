@@ -142,41 +142,49 @@ export default async function GenerationRunDetailPage({
   const preparedPageCount = lifecycle.linkedPages.filter((page) => page.status === "published").length
   const pagesNeedPrepared = pageRecords.length > 0 && preparedPageCount < pageRecords.length
   const readyToGoLive = Boolean(tenantId) && lifecycle.publishBlockers.length === 0 && lifecycle.blockers.length === 0
+  const checkoutComplete = isApproved && paymentSatisfied
   const checklist = [
     {
-      label: "Open site",
+      label: "Intake",
+      done: true,
+      next: false,
+      helper: "Request details are linked to this draft site.",
+    },
+    {
+      label: "AI draft",
       done: draftReady,
+      next: nextAction === "Open draft" || nextAction === "Open site",
       helper: draftReady ? "Draft pages are available for review." : "The draft site is still being prepared.",
     },
     {
-      label: "Send preview",
-      done: isApproved || paymentSatisfied || domainVerified || isLive,
+      label: "Preview",
+      done: isApproved || checkoutComplete || domainVerified || isLive,
+      next: nextAction === "Send preview",
       helper: isApproved ? "Client approval is recorded." : "Share the preview and wait for approval.",
+    },
+    {
+      label: "Client checkout",
+      done: checkoutComplete,
+      next: nextAction === "Waiting for checkout",
+      helper: checkoutComplete ? "Approval and payment are complete." : "Collect approval and complete or waive payment.",
     },
     {
       label: "Prepare pages",
       done: !pagesNeedPrepared,
+      next: nextAction === "Prepare pages",
       helper: pagesNeedPrepared ? "Prepare the approved pages for launch." : "Pages are ready for launch.",
     },
     {
-      label: "Payment",
-      done: paymentSatisfied,
-      helper: paymentSatisfied ? "Payment is complete or waived." : "Create a payment link or record a waiver.",
-    },
-    {
-      label: "Domain verified",
+      label: "Domain + launch",
       done: domainVerified || isLive,
+      next: nextAction === "Register domain" || nextAction === "Launch site",
       helper: domainVerified ? "Domain check is marked verified." : "Confirm DNS before going live.",
     },
     {
-      label: "Go live",
+      label: "Handoff/live",
       done: isLive,
-      helper: isLive ? "The site has an active live version." : "Finish this step once all gates are clear.",
-    },
-    {
-      label: "Live",
-      done: isLive,
-      helper: isLive ? "The live site is ready for visitors." : "Not live yet.",
+      next: nextAction === "Send handoff email",
+      helper: isLive ? "The live site is ready for visitors." : "Finish launch before handoff.",
     },
   ]
 
@@ -245,80 +253,64 @@ export default async function GenerationRunDetailPage({
 
       <Card>
         <CardHeader>
-          <CardTitle>Lifecycle checklist</CardTitle>
+          <CardTitle>Client/site summary</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 text-sm md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-md border p-3">
+            <div className="text-muted-foreground">Client</div>
+            <div className="mt-1 font-medium">{defaultPreviewEmail ?? "No email on intake"}</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-muted-foreground">Site</div>
+            <div className="mt-1 font-medium">
+              {tenantSlug ? (
+                <Link href={`/sites/${tenantSlug}`} className="hover:underline">
+                  {relationLabel(run.tenant)}
+                </Link>
+              ) : tenantId ? (
+                relationLabel(run.tenant)
+              ) : (
+                "No tenant linked"
+              )}
+            </div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-muted-foreground">Pages</div>
+            <div className="mt-1 font-medium">{pageRecords.length}</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-muted-foreground">Live URL</div>
+            <div className="mt-1 break-all font-medium">{liveUrl ?? "Not live yet"}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Launch checklist</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {checklist.map((step) => (
             <div key={step.label} className="rounded-md border p-3 text-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="font-medium">{step.label}</div>
-                {checklistBadge(step.done, !step.done && step.label === nextAction)}
+                {checklistBadge(step.done, !step.done && step.next)}
               </div>
               <div className="mt-2 text-muted-foreground">{step.helper}</div>
             </div>
           ))}
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Preview</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 text-sm">
-          <PreviewAccessShare
-            generationRunId={run.id}
-            defaultEmail={defaultPreviewEmail}
-            previewUrl={customerPreviewUrl}
-            disabledReason={previewDisabledReason}
-          />
-          <div>
-            Tenant:{" "}
-            {tenantSlug ? (
-              <Link href={`/sites/${tenantSlug}`} className="font-medium hover:underline">
-                {relationLabel(run.tenant)}
-              </Link>
-            ) : tenantId ? (
-              <span className="font-medium">{relationLabel(run.tenant)}</span>
-            ) : (
-              <span className="text-muted-foreground">-</span>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <div>Pages: {pageRecords.length}</div>
-            <div className="flex flex-wrap gap-2">
-              {pageRecords.map((page) => {
-                const pageId = relationId(page)
-                const label = relationLabel(page, "Page")
-                return pageId && tenantSlug ? (
-                  <Button key={pageId} asChild variant="outline" size="sm">
-                    <Link href={`/sites/${tenantSlug}/pages/${pageId}`}>
-                      <FileText className="mr-1 size-4" aria-hidden />
-                      {label}
-                    </Link>
-                  </Button>
-                ) : (
-                  <Badge key={pageId ?? label} variant="secondary">{label}</Badge>
-                )
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Payment</CardTitle>
-          </CardHeader>
-          <CardContent id="payment" className="grid gap-3 text-sm">
+          <div id="checkout" className="grid gap-3 rounded-md border p-3 text-sm md:col-span-2 xl:col-span-3">
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-3">
               <div>
-                <div className="font-medium">Payment status</div>
+                <div className="font-medium">Client checkout status</div>
                 <div className="text-muted-foreground">
-                  Mollie completion or manual waiver satisfies the payment gate. Payment does not make the site live.
+                  Client approval plus Mollie completion or a manual waiver satisfies checkout. Checkout does not make the site live.
                 </div>
               </div>
-              <Badge variant={paymentSatisfied ? "success" : "secondary"}>{displayStatus(payment.status)}</Badge>
+              <Badge variant={checkoutComplete ? "success" : "secondary"}>
+                {checkoutComplete ? "approved and paid" : isApproved ? displayStatus(payment.status) : "waiting for approval"}
+              </Badge>
             </div>
 
             <form action={createGenerationRunMollieCheckoutAction.bind(null, run.id)} className="grid gap-3 rounded-md border p-3">
@@ -334,7 +326,7 @@ export default async function GenerationRunDetailPage({
               </div>
               <Button type="submit" variant="outline" disabled={!isApproved || paymentSatisfied}>
                 <CreditCard className="mr-1 size-4" aria-hidden />
-                Payment
+                Create checkout link
               </Button>
             </form>
 
@@ -361,14 +353,9 @@ export default async function GenerationRunDetailPage({
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Domain</CardTitle>
-          </CardHeader>
-          <CardContent id="domain" className="grid gap-3 text-sm">
+          <div id="launch-domain" className="grid gap-3 rounded-md border p-3 text-sm md:col-span-2 xl:col-span-3">
             {tenantId && lifecycle.tenant ? (
               <form
                 action={updateTenantDomainVerificationAction.bind(null, run.id, tenantId)}
@@ -376,7 +363,7 @@ export default async function GenerationRunDetailPage({
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <div className="font-medium">Domain verified</div>
+                    <div className="font-medium">Register/check domain</div>
                     <div className="text-muted-foreground">
                       DNS remains manual. Confirm the customer domain and any aliases point at the renderer before marking verified.
                     </div>
@@ -416,22 +403,15 @@ export default async function GenerationRunDetailPage({
                 </div>
                 <Button type="submit" variant="outline">
                   <ShieldCheck className="mr-1 size-4" aria-hidden />
-                  Domain verified
+                  Check domain
                 </Button>
               </form>
             ) : (
               <div className="rounded-md border p-3 text-muted-foreground">Link a tenant before checking the domain.</div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Go live</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-3 text-sm">
-          <div className="grid gap-3">
+          <div className="grid gap-3 md:col-span-2 xl:col-span-3">
             <div className="rounded-md border p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -481,19 +461,19 @@ export default async function GenerationRunDetailPage({
             <div className="rounded-md border p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="font-medium">Payment</div>
+                  <div className="font-medium">Client checkout</div>
                   <div className="text-muted-foreground">
-                    {paymentSatisfied ? "Payment is complete or waived." : "Complete payment before launch."}
+                    {checkoutComplete ? "Approval and payment are complete." : "Complete client checkout before launch."}
                   </div>
                 </div>
-                <Badge variant={paymentSatisfied ? "success" : "secondary"}>{paymentSatisfied ? "Done" : "Waiting"}</Badge>
+                <Badge variant={checkoutComplete ? "success" : "secondary"}>{checkoutComplete ? "Done" : "Waiting"}</Badge>
               </div>
-              {!paymentSatisfied && (
+              {!checkoutComplete && (
                 <div className="mt-3">
                   <Button asChild variant="outline">
-                    <a href="#payment">
+                    <a href="#checkout">
                       <CreditCard className="mr-1 size-4" aria-hidden />
-                      Payment
+                      Open checkout
                     </a>
                   </Button>
                 </div>
@@ -503,7 +483,7 @@ export default async function GenerationRunDetailPage({
             <div className="rounded-md border p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="font-medium">Domain</div>
+                  <div className="font-medium">Register/check domain</div>
                   <div className="text-muted-foreground">
                     {domainVerified ? "The customer domain has been checked." : "Check the customer domain before launch."}
                   </div>
@@ -513,7 +493,7 @@ export default async function GenerationRunDetailPage({
               {!domainVerified && (
                 <div className="mt-3">
                   <Button asChild variant="outline">
-                    <a href="#domain">
+                    <a href="#launch-domain">
                       <ShieldCheck className="mr-1 size-4" aria-hidden />
                       Check domain
                     </a>
@@ -524,17 +504,17 @@ export default async function GenerationRunDetailPage({
           </div>
 
           {!readyToGoLive && !isLive && (
-            <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground">
+            <div className="rounded-md bg-muted/40 p-3 text-xs text-muted-foreground md:col-span-2 xl:col-span-3">
               Finish the waiting checks above before going live. Details are in Advanced.
             </div>
           )}
 
-          <form action={publishGenerationRunSnapshotAction.bind(null, run.id, tenantId ?? "")} className="flex flex-wrap gap-2">
+          <form action={publishGenerationRunSnapshotAction.bind(null, run.id, tenantId ?? "")} className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-3">
             <input type="hidden" name="reason" value="go live from manager dashboard" />
             <input type="hidden" name="activate" value="on" />
             <Button type="submit" disabled={!readyToGoLive || isLive}>
               <UploadCloud className="mr-1 size-4" aria-hidden />
-              Go live
+              Launch site
             </Button>
             {isLive && liveUrl && (
               <Button asChild variant="outline">
@@ -545,6 +525,39 @@ export default async function GenerationRunDetailPage({
               </Button>
             )}
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Preview</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm">
+          <PreviewAccessShare
+            generationRunId={run.id}
+            defaultEmail={defaultPreviewEmail}
+            previewUrl={customerPreviewUrl}
+            disabledReason={previewDisabledReason}
+          />
+          <div className="flex flex-col gap-2">
+            <div>Pages: {pageRecords.length}</div>
+            <div className="flex flex-wrap gap-2">
+              {pageRecords.map((page) => {
+                const pageId = relationId(page)
+                const label = relationLabel(page, "Page")
+                return pageId && tenantSlug ? (
+                  <Button key={pageId} asChild variant="outline" size="sm">
+                    <Link href={`/sites/${tenantSlug}/pages/${pageId}`}>
+                      <FileText className="mr-1 size-4" aria-hidden />
+                      {label}
+                    </Link>
+                  </Button>
+                ) : (
+                  <Badge key={pageId ?? label} variant="secondary">{label}</Badge>
+                )
+              })}
+            </div>
+          </div>
         </CardContent>
       </Card>
 

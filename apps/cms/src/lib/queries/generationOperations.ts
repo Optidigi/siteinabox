@@ -11,17 +11,19 @@ import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 export type GenerationRunFilter =
   | "all"
   | "new-requests"
-  | "draft-sites"
-  | "waiting-on-client"
-  | "ready-to-go-live"
+  | "ready-for-ai"
+  | "drafts-to-preview"
+  | "waiting-for-checkout"
+  | "launch-needed"
   | "live"
   | "needs-attention"
 
 export type OperationsWorkflowState =
   | "New requests"
-  | "Draft sites"
-  | "Waiting on client"
-  | "Ready to go live"
+  | "Ready for AI"
+  | "Drafts to preview"
+  | "Waiting for checkout"
+  | "Launch needed"
   | "Live"
   | "Needs attention"
 
@@ -51,26 +53,29 @@ const newRequestsWhere = {
     { status: { equals: "normalized" } },
   ],
 }
-const draftSitesWhere = {
+const readyForAIWhere = {
   or: [
     { status: { equals: "queued" } },
     { status: { equals: "generating" } },
     { status: { equals: "generated" } },
     { status: { equals: "validating" } },
     { status: { equals: "applying" } },
+  ],
+}
+const draftsToPreviewWhere = {
+  or: [
     { status: { equals: "draft_ready" } },
   ],
 }
-const waitingOnClientWhere = { status: { equals: "preview_ready" } }
-const readyToGoLiveWhere = { status: { equals: "preview_ready" } }
+const previewReadyWhere = { status: { equals: "preview_ready" } }
 
 export function generationRunWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
   const clauses: Record<string, unknown>[] = []
   if (filter === "needs-attention") clauses.push(failedWhere)
   if (filter === "new-requests") clauses.push(newRequestsWhere)
-  if (filter === "draft-sites") clauses.push(draftSitesWhere)
-  if (filter === "waiting-on-client") clauses.push(waitingOnClientWhere)
-  if (filter === "ready-to-go-live" || filter === "live") clauses.push(readyToGoLiveWhere)
+  if (filter === "ready-for-ai") clauses.push({ or: [newRequestsWhere, readyForAIWhere] })
+  if (filter === "drafts-to-preview") clauses.push(draftsToPreviewWhere)
+  if (filter === "waiting-for-checkout" || filter === "launch-needed" || filter === "live") clauses.push(previewReadyWhere)
 
   const query = q?.trim()
   if (query) {
@@ -94,9 +99,9 @@ export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: s
   const clauses: Record<string, unknown>[] = []
   if (filter === "needs-attention") clauses.push(failedWhere)
   if (filter === "new-requests") clauses.push(newRequestsWhere)
-  if (filter === "draft-sites") clauses.push(draftSitesWhere)
-  if (filter === "waiting-on-client") clauses.push(waitingOnClientWhere)
-  if (filter === "ready-to-go-live" || filter === "live") clauses.push(readyToGoLiveWhere)
+  if (filter === "ready-for-ai") clauses.push({ or: [newRequestsWhere, readyForAIWhere] })
+  if (filter === "drafts-to-preview") clauses.push(draftsToPreviewWhere)
+  if (filter === "waiting-for-checkout" || filter === "launch-needed" || filter === "live") clauses.push(previewReadyWhere)
 
   const query = q?.trim()
   if (query) {
@@ -241,13 +246,16 @@ const tenantIsLive = (value: unknown): boolean => {
   return relationId(tenant.activeSnapshot) !== null
 }
 
+const reviewedBriefApproved = (value: unknown): boolean =>
+  jsonStatus(value) === "admin-approved"
+
 export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "status" | "validation" | "applyResult" | "clientApproval" | "payment" | "tenant">): OperationsWorkflowSummary {
   const issueCount = extractIssueCount(run.validation) + extractIssueCount(run.applyResult)
   if (run.status === "failed" || issueCount > 0) {
     return {
       state: "Needs attention",
       label: "Needs attention",
-      primaryAction: "Open site",
+      primaryAction: "Review intake",
       helper: "Review the request before continuing.",
     }
   }
@@ -256,16 +264,16 @@ export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "st
     return {
       state: "Live",
       label: "Live",
-      primaryAction: "Open site",
+      primaryAction: "Send handoff email",
       helper: "The site is active for visitors.",
     }
   }
 
   if (run.status === "draft_ready") {
     return {
-      state: "Draft sites",
-      label: "Draft site",
-      primaryAction: "Open site",
+      state: "Drafts to preview",
+      label: "Open draft",
+      primaryAction: "Open draft",
       helper: "Review the draft before sending a preview.",
     }
   }
@@ -277,48 +285,48 @@ export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "st
 
     if (approved && paid && domainVerified) {
       return {
-        state: "Ready to go live",
-        label: "Domain verified",
-        primaryAction: "Go live",
-        helper: "Approved, payment handled, and domain verified.",
+        state: "Launch needed",
+        label: "Launch site",
+        primaryAction: "Launch site",
+        helper: "Checkout is complete and the domain is ready.",
       }
     }
 
     if (approved && paid) {
       return {
-        state: "Waiting on client",
-        label: "Payment",
-        primaryAction: "Domain verified",
-        helper: "Confirm the domain before going live.",
+        state: "Launch needed",
+        label: "Register domain",
+        primaryAction: "Register domain",
+        helper: "Checkout is complete; prepare the domain and launch.",
       }
     }
 
     if (approved) {
       return {
-        state: "Waiting on client",
-        label: "Approved",
-        primaryAction: "Waive payment",
-        helper: "Payment is the remaining client gate.",
+        state: "Waiting for checkout",
+        label: "Waiting for checkout",
+        primaryAction: "Waiting for checkout",
+        helper: "Client approval and payment are the remaining checkout gate.",
       }
     }
 
     return {
-      state: "Waiting on client",
+      state: "Waiting for checkout",
       label: "Send preview",
       primaryAction: "Send preview",
-      helper: "Share the preview and wait for approval.",
+      helper: "Share the preview and wait for client checkout.",
     }
   }
 
   return {
-    state: "Draft sites",
-    label: "Generate draft",
-    primaryAction: "Open site",
-    helper: "The draft site is being prepared.",
+    state: "Ready for AI",
+    label: "Send to AI",
+    primaryAction: "Open draft",
+    helper: "The AI draft is being prepared.",
   }
 }
 
-export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmission, "status" | "generationRun">): OperationsWorkflowSummary {
+export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmission, "status" | "generationRun" | "reviewedGenerationInput">): OperationsWorkflowSummary {
   if (submission.status === "failed") {
     return {
       state: "Needs attention",
@@ -329,28 +337,37 @@ export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmis
   }
 
   if ((submission.status === "submitted" || submission.status === "normalized") && !relationId(submission.generationRun)) {
+    if (reviewedBriefApproved(submission.reviewedGenerationInput)) {
+      return {
+        state: "Ready for AI",
+        label: "Send to AI",
+        primaryAction: "Send to AI",
+        helper: "The reviewed brief is ready for AI generation.",
+      }
+    }
+
     return {
       state: "New requests",
-      label: "New request",
-      primaryAction: "Approve brief",
-      helper: "Review intake details and approve the brief.",
+      label: "Review intake",
+      primaryAction: "Review intake",
+      helper: "Review intake details and prepare the brief.",
     }
   }
 
   if (submission.status === "preview_ready") {
     return {
-      state: "Waiting on client",
+      state: "Waiting for checkout",
       label: "Send preview",
       primaryAction: "Send preview",
-      helper: "Draft site is ready for client review.",
+      helper: "Draft site is ready for client checkout.",
     }
   }
 
   return {
-    state: "Draft sites",
-    label: "Generate draft",
-    primaryAction: "Generate draft",
-    helper: "The approved brief is being turned into a draft site.",
+    state: "Ready for AI",
+    label: "Send to AI",
+    primaryAction: "Send to AI",
+    helper: "The reviewed brief is being turned into a draft site.",
   }
 }
 
@@ -362,7 +379,7 @@ export function relationId(value: unknown): string | null {
 }
 
 export function relationLabel(value: unknown, fallback = "Record"): string {
-  if (value == null) return "-"
+  if (value == null) return fallback
   if (typeof value === "number" || typeof value === "string") return String(value)
   if (typeof value !== "object") return fallback
   const doc = value as { name?: unknown; title?: unknown; slug?: unknown; domain?: unknown; id?: unknown }

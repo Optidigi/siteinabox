@@ -25,18 +25,32 @@ describe("generation operations UI helpers", () => {
         { status: { equals: "normalized" } },
       ],
     })
-    expect(generationRunWhere("draft-sites")).toEqual({
+    expect(generationRunWhere("ready-for-ai")).toEqual({
       or: [
-        { status: { equals: "queued" } },
-        { status: { equals: "generating" } },
-        { status: { equals: "generated" } },
-        { status: { equals: "validating" } },
-        { status: { equals: "applying" } },
+        {
+          or: [
+            { status: { equals: "submitted" } },
+            { status: { equals: "normalized" } },
+          ],
+        },
+        {
+          or: [
+            { status: { equals: "queued" } },
+            { status: { equals: "generating" } },
+            { status: { equals: "generated" } },
+            { status: { equals: "validating" } },
+            { status: { equals: "applying" } },
+          ],
+        },
+      ],
+    })
+    expect(generationRunWhere("drafts-to-preview")).toEqual({
+      or: [
         { status: { equals: "draft_ready" } },
       ],
     })
-    expect(generationRunWhere("waiting-on-client")).toEqual({ status: { equals: "preview_ready" } })
-    expect(generationRunWhere("ready-to-go-live")).toEqual({ status: { equals: "preview_ready" } })
+    expect(generationRunWhere("waiting-for-checkout")).toEqual({ status: { equals: "preview_ready" } })
+    expect(generationRunWhere("launch-needed")).toEqual({ status: { equals: "preview_ready" } })
     expect(generationRunWhere("live")).toEqual({ status: { equals: "preview_ready" } })
   })
 
@@ -58,7 +72,7 @@ describe("generation operations UI helpers", () => {
   })
 
   it("builds intake filters with business and contact search fields", () => {
-    expect(intakeSubmissionWhere("waiting-on-client", "sam@example.com")).toEqual({
+    expect(intakeSubmissionWhere("waiting-for-checkout", "sam@example.com")).toEqual({
       and: [
         { status: { equals: "preview_ready" } },
         {
@@ -93,7 +107,7 @@ describe("generation operations UI helpers", () => {
       },
     }
 
-    await listGenerationOperations({ page: 3, pageSize: 20, filter: "waiting-on-client", q: "" }, client)
+    await listGenerationOperations({ page: 3, pageSize: 20, filter: "waiting-for-checkout", q: "" }, client)
 
     expect(calls).toHaveLength(2)
     expect(calls[0]).toMatchObject({
@@ -112,8 +126,8 @@ describe("generation operations UI helpers", () => {
       depth: 2,
       sort: "-updatedAt",
     })
-    expect(calls[0].where).toEqual(generationRunWhere("waiting-on-client", ""))
-    expect(calls[1].where).toEqual(intakeSubmissionWhere("waiting-on-client", ""))
+    expect(calls[0].where).toEqual(generationRunWhere("waiting-for-checkout", ""))
+    expect(calls[1].where).toEqual(intakeSubmissionWhere("waiting-for-checkout", ""))
   })
 
   it("redacts secret-looking and raw provider fields in JSON summaries", () => {
@@ -145,23 +159,29 @@ describe("generation operations UI helpers", () => {
     expect(relationId(12)).toBe("12")
     expect(relationId({ id: 9, slug: "demo", name: "Demo" })).toBe("9")
     expect(relationLabel({ id: 9, slug: "demo", name: "Demo" })).toBe("Demo")
+    expect(relationLabel(null, "Draft site")).toBe("Draft site")
     expect(relationSlug({ id: 9, slug: "demo", name: "Demo" })).toBe("demo")
   })
 
   it("maps intake submissions to manager-facing workflow labels", () => {
     expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null } as any)).toMatchObject({
       state: "New requests",
-      label: "New request",
-      primaryAction: "Approve brief",
+      label: "Review intake",
+      primaryAction: "Review intake",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "submitted", generationRun: null } as any)).toMatchObject({
       state: "New requests",
-      label: "New request",
-      primaryAction: "Approve brief",
+      label: "Review intake",
+      primaryAction: "Review intake",
+    })
+    expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null, reviewedGenerationInput: { status: "admin-approved" } } as any)).toMatchObject({
+      state: "Ready for AI",
+      label: "Send to AI",
+      primaryAction: "Send to AI",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "queued", generationRun: null } as any)).toMatchObject({
-      state: "Draft sites",
-      label: "Generate draft",
+      state: "Ready for AI",
+      label: "Send to AI",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "failed", generationRun: null } as any)).toMatchObject({
       state: "Needs attention",
@@ -171,12 +191,12 @@ describe("generation operations UI helpers", () => {
 
   it("maps generation runs to manager-facing workflow labels", () => {
     expect(workflowSummaryForGenerationRun({ status: "draft_ready", tenant: null } as any)).toMatchObject({
-      state: "Draft sites",
-      label: "Draft site",
-      primaryAction: "Open site",
+      state: "Drafts to preview",
+      label: "Open draft",
+      primaryAction: "Open draft",
     })
     expect(workflowSummaryForGenerationRun({ status: "preview_ready", clientApproval: null, payment: null, tenant: null } as any)).toMatchObject({
-      state: "Waiting on client",
+      state: "Waiting for checkout",
       label: "Send preview",
       primaryAction: "Send preview",
     })
@@ -186,9 +206,9 @@ describe("generation operations UI helpers", () => {
       payment: null,
       tenant: null,
     } as any)).toMatchObject({
-      state: "Waiting on client",
-      label: "Approved",
-      primaryAction: "Waive payment",
+      state: "Waiting for checkout",
+      label: "Waiting for checkout",
+      primaryAction: "Waiting for checkout",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
@@ -196,9 +216,9 @@ describe("generation operations UI helpers", () => {
       payment: { status: "completed" },
       tenant: { domainVerification: { status: "not_checked" } },
     } as any)).toMatchObject({
-      state: "Waiting on client",
-      label: "Payment",
-      primaryAction: "Domain verified",
+      state: "Launch needed",
+      label: "Register domain",
+      primaryAction: "Register domain",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
@@ -206,9 +226,9 @@ describe("generation operations UI helpers", () => {
       payment: { status: "completed" },
       tenant: { domainVerification: { status: "verified" } },
     } as any)).toMatchObject({
-      state: "Ready to go live",
-      label: "Domain verified",
-      primaryAction: "Go live",
+      state: "Launch needed",
+      label: "Launch site",
+      primaryAction: "Launch site",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
@@ -216,7 +236,7 @@ describe("generation operations UI helpers", () => {
     } as any)).toMatchObject({
       state: "Live",
       label: "Live",
-      primaryAction: "Open site",
+      primaryAction: "Send handoff email",
     })
   })
 })
@@ -243,7 +263,7 @@ describe("generation operations route access", () => {
     expect(action).not.toMatch(/stripe/i)
     expect(detail).toContain("<CreditCard")
     expect(detail).toContain("<ShieldCheck")
-    expect(detail).toContain("Mollie completion or manual waiver satisfies the payment gate")
+    expect(detail).toContain("Client approval plus Mollie completion or a manual waiver satisfies checkout")
     expect(detail).not.toMatch(/stripe/i)
   })
 
@@ -251,7 +271,7 @@ describe("generation operations route access", () => {
     const action = read("src/lib/actions/publishSnapshots.ts")
     const detail = read("src/app/(frontend)/(admin)/generation-runs/[id]/page.tsx")
     const query = read("src/lib/queries/publishOperations.ts")
-    const goLivePanel = detail.slice(detail.indexOf("<CardTitle>Go live"), detail.indexOf("<CardTitle>Advanced"))
+    const launchPanel = detail.slice(detail.indexOf("<CardTitle>Launch checklist"), detail.indexOf("<CardTitle>Preview"))
     const advancedPanel = detail.slice(detail.indexOf("<CardTitle>Advanced"))
 
     expect(action).toContain('requireRole(["super-admin"])')
@@ -260,21 +280,24 @@ describe("generation operations route access", () => {
     expect(action).toContain("rollback: true")
     expect(detail).toContain("Advanced")
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Snapshot lifecycle"))
-    expect(goLivePanel).toContain("Client approval")
-    expect(goLivePanel).toContain("Prepare pages")
-    expect(goLivePanel).toContain("promoteGenerationRunPagesAction.bind(null, run.id)")
-    expect(goLivePanel).toContain('disabled={!isApproved || pageRecords.length === 0}')
-    expect(goLivePanel).toContain("Payment")
-    expect(goLivePanel).toContain("Check domain")
-    expect(goLivePanel).toContain("Go live")
-    expect(goLivePanel).toContain('name="activate" value="on"')
-    expect(goLivePanel).not.toContain("Publish snapshot")
-    expect(goLivePanel).not.toContain("Publish and activate immediately")
-    expect(goLivePanel).not.toContain("Manual activation override for approval/payment only")
-    expect(goLivePanel).not.toContain("Activate snapshot")
-    expect(goLivePanel).not.toContain("Manual activation")
-    expect(goLivePanel).not.toContain("Rollback snapshot")
-    expect(goLivePanel).not.toContain("Manual rollback")
+    expect(launchPanel).toContain("Client approval")
+    expect(launchPanel).toContain("Prepare pages")
+    expect(launchPanel).toContain("promoteGenerationRunPagesAction.bind(null, run.id)")
+    expect(launchPanel).toContain('disabled={!isApproved || pageRecords.length === 0}')
+    expect(launchPanel).toContain("Client checkout")
+    expect(launchPanel).toContain("Register/check domain")
+    expect(launchPanel).toContain("Check domain")
+    expect(launchPanel).toContain("Launch site")
+    expect(launchPanel).toContain('name="activate" value="on"')
+    expect(launchPanel).not.toContain("<CardTitle>Payment")
+    expect(launchPanel).not.toContain("<CardTitle>Domain")
+    expect(launchPanel).not.toContain("Publish snapshot")
+    expect(launchPanel).not.toContain("Publish and activate immediately")
+    expect(launchPanel).not.toContain("Manual activation override for approval/payment only")
+    expect(launchPanel).not.toContain("Activate snapshot")
+    expect(launchPanel).not.toContain("Manual activation")
+    expect(launchPanel).not.toContain("Rollback snapshot")
+    expect(launchPanel).not.toContain("Manual rollback")
     expect(advancedPanel).toContain("Publish snapshot")
     expect(advancedPanel).toContain("Publish and activate immediately")
     expect(advancedPanel).toContain("Manual activation override for approval/payment only")
@@ -294,7 +317,7 @@ describe("generation operations route access", () => {
     expect(action).toContain("domainVerification")
     expect(action).toContain("checkedAt")
     expect(action).toContain("checkedBy")
-    expect(detail).toContain("Domain verified")
+    expect(detail).toContain("Register/check domain")
     expect(detail).toContain("DNS remains manual")
     expect(detail).toContain("updateTenantDomainVerificationAction")
     expect(detail).not.toMatch(/cloudflare|route53|dnsimple/i)
@@ -362,14 +385,19 @@ describe("generation operations route access", () => {
 
     expect(detail).toContain("Draft site #")
     expect(detail).toContain("Next action")
-    expect(detail).toContain("Lifecycle checklist")
-    expect(detail).toContain("Open site")
+    expect(detail).toContain("Client/site summary")
+    expect(detail).toContain("Launch checklist")
+    expect(detail).toContain("AI draft")
     expect(detail).toContain("Send preview")
-    expect(detail).toContain("Payment")
+    expect(detail).toContain("Client checkout")
+    expect(detail).toContain("Create checkout link")
     expect(detail).toContain("Waive payment")
-    expect(detail).toContain("Domain verified")
-    expect(detail).toContain("Go live")
-    expect(detail).toContain("Live")
+    expect(detail).toContain("Domain + launch")
+    expect(detail).toContain("Register/check domain")
+    expect(detail).toContain("Launch site")
+    expect(detail).toContain("Handoff/live")
+    expect(detail).not.toContain("<CardTitle>Payment")
+    expect(detail).not.toContain("<CardTitle>Domain")
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Provider/model"))
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Input hash"))
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Apply result"))
@@ -377,6 +405,21 @@ describe("generation operations route access", () => {
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Publish snapshot"))
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Manual activation"))
     expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Rollback snapshot"))
+  })
+
+  it("presents the operations overview as one task inbox", () => {
+    const list = read("src/app/(frontend)/(admin)/generation-runs/page.tsx")
+
+    expect(list).toContain("Track intake review, AI drafts, preview checkout, domain launch, and handoff.")
+    expect(list).toContain("Task inbox")
+    expect(list).toContain("Client / site")
+    expect(list).toContain("Next action")
+    expect(list).toContain("Intake")
+    expect(list).toContain("Preview")
+    expect(list).toContain("Launch")
+    expect(list).toContain("Needs attention")
+    expect(list).not.toContain("Site workflow")
+    expect(list).not.toContain("<h2 className=\"text-lg font-semibold\">New requests</h2>")
   })
 
   it("paginates across both runs and intake-only submissions", () => {

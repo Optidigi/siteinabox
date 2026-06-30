@@ -50,7 +50,7 @@ export function GenerationOperationsTable({
             return (
               <TableRow key={run.id}>
                 <TableCell>
-                  <Badge variant={workflow.state === "Needs attention" ? "destructive" : workflow.state === "Live" ? "success" : workflow.state === "Ready to go live" ? "success" : "secondary"}>
+                  <Badge variant={workflow.state === "Needs attention" ? "destructive" : workflow.state === "Live" ? "success" : workflow.state === "Launch needed" ? "success" : "secondary"}>
                     <span className="size-1.5 rounded-full bg-current" aria-hidden />
                     {workflow.state}
                   </Badge>
