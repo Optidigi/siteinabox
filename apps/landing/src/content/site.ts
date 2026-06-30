@@ -54,8 +54,8 @@ export const site: SiteConfig = {
     instagram: 'https://www.instagram.com/siteinabox/',
   },
   links: {
-    intake: '/intake',
-    beheer: '/beheer',
+    intake: '/intake/',
+    beheer: '/beheer/',
     platformAdminLogin: 'https://admin.siteinabox.nl/login',
     whatsapp: 'https://wa.me/31625052591',
     phone: 'tel:+31625052591',
@@ -65,7 +65,7 @@ export const site: SiteConfig = {
     // Root-absolute (/#...) so these section links work from any page, not just the homepage.
     { label: 'Hoe het werkt', href: '/#zo-werkt-het' },
     { label: 'Prijzen', href: '/#prijzen' },
-    { label: 'Intake', href: '/intake' },
+    { label: 'Intake', href: '/intake/' },
     { label: 'Contact', href: '/contact' },
   ],
 };
