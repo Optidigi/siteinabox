@@ -1,7 +1,7 @@
 import Link from "next/link"
 import type { ComponentType } from "react"
 import { Badge } from "@siteinabox/ui/components/badge"
-import { Button, buttonVariants } from "@siteinabox/ui/components/button"
+import { buttonVariants } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { EmptyState } from "@/components/empty-state"
@@ -11,21 +11,62 @@ import { ListPagination } from "@/components/list-pagination"
 import { ListSearch } from "@/components/list-search"
 import { PageHeader } from "@/components/page-header"
 import { requireRole } from "@/lib/authGate"
-import { listGenerationOperations, type GenerationRunFilter } from "@/lib/queries/generationOperations"
-import { AlertCircle, ClipboardList, Eye, Inbox, Search } from "lucide-react"
+import {
+  listGenerationOperations,
+  workflowSummaryForGenerationRun,
+  workflowSummaryForIntakeSubmission,
+  type GenerationRunFilter,
+  type OperationsWorkflowState,
+} from "@/lib/queries/generationOperations"
+import { AlertCircle, CheckCircle2, ClipboardList, Globe2, Inbox, Search, Send, Wand2 } from "lucide-react"
 
 const PAGE_SIZE = 10
 
 const filters: Array<{ value: GenerationRunFilter; label: string; icon: ComponentType<{ className?: string }> }> = [
   { value: "all", label: "All", icon: ClipboardList },
-  { value: "failed", label: "Failed", icon: AlertCircle },
-  { value: "preview-ready", label: "Preview-ready", icon: Eye },
-  { value: "needs-review", label: "Needs review", icon: Inbox },
+  { value: "new-requests", label: "New requests", icon: Inbox },
+  { value: "draft-sites", label: "Draft sites", icon: Wand2 },
+  { value: "waiting-on-client", label: "Waiting on client", icon: Send },
+  { value: "ready-to-go-live", label: "Ready to go live", icon: CheckCircle2 },
+  { value: "live", label: "Live", icon: Globe2 },
+  { value: "needs-attention", label: "Needs attention", icon: AlertCircle },
 ]
 
 const parseFilter = (value: unknown): GenerationRunFilter => {
-  if (value === "failed" || value === "preview-ready" || value === "needs-review") return value
+  if (
+    value === "new-requests"
+    || value === "draft-sites"
+    || value === "waiting-on-client"
+    || value === "ready-to-go-live"
+    || value === "live"
+    || value === "needs-attention"
+  ) return value
   return "all"
+}
+
+const workflowStates: OperationsWorkflowState[] = [
+  "New requests",
+  "Draft sites",
+  "Waiting on client",
+  "Ready to go live",
+  "Live",
+  "Needs attention",
+]
+
+const cardTone = (state: OperationsWorkflowState) => {
+  if (state === "Needs attention") return "destructive"
+  if (state === "Live" || state === "Ready to go live") return "success"
+  return "secondary"
+}
+
+const stateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | null => {
+  if (filter === "new-requests") return "New requests"
+  if (filter === "draft-sites") return "Draft sites"
+  if (filter === "waiting-on-client") return "Waiting on client"
+  if (filter === "ready-to-go-live") return "Ready to go live"
+  if (filter === "live") return "Live"
+  if (filter === "needs-attention") return "Needs attention"
+  return null
 }
 
 export const dynamic = "force-dynamic"
@@ -48,6 +89,22 @@ export default async function GenerationRunsPage({
   const totalPages = Math.max(result.runs.totalPages, result.intakes.totalPages)
   const totalDocs = Math.max(result.runs.totalDocs, result.intakes.totalDocs)
   const currentPage = Math.max(result.runs.page, result.intakes.page)
+  const workflowCounts = new Map<OperationsWorkflowState, number>(workflowStates.map((state) => [state, 0]))
+  for (const submission of result.intakes.docs) {
+    const summary = workflowSummaryForIntakeSubmission(submission)
+    workflowCounts.set(summary.state, (workflowCounts.get(summary.state) ?? 0) + 1)
+  }
+  for (const run of result.runs.docs) {
+    const summary = workflowSummaryForGenerationRun(run)
+    workflowCounts.set(summary.state, (workflowCounts.get(summary.state) ?? 0) + 1)
+  }
+  const selectedState = stateForFilter(filter)
+  const visibleRuns = selectedState
+    ? result.runs.docs.filter((run) => workflowSummaryForGenerationRun(run).state === selectedState)
+    : result.runs.docs
+  const visibleIntakes = selectedState
+    ? result.intakes.docs.filter((submission) => workflowSummaryForIntakeSubmission(submission).state === selectedState)
+    : result.intakes.docs
 
   const hrefForFilter = (next: GenerationRunFilter) => {
     const params = new URLSearchParams()
@@ -60,12 +117,12 @@ export default async function GenerationRunsPage({
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Generation operations"
-        subtitle="Review intake submissions, generation runs, failures, and generated draft records."
+        title="Operations"
+        subtitle="Track new requests, draft sites, client approval, payment, domain verification, and go-live."
       />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <ListSearch placeholder="Search provider, model, business, email, or hash..." />
+        <ListSearch placeholder="Search business, contact, or site..." />
         <div className="flex flex-wrap gap-2">
           {filters.map((item) => {
             const Icon = item.icon
@@ -85,58 +142,59 @@ export default async function GenerationRunsPage({
         </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {workflowStates.map((state) => (
+          <Card key={state}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{state}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center justify-between gap-2">
+              <span className="text-2xl font-semibold">{workflowCounts.get(state) ?? 0}</span>
+              <Badge variant={cardTone(state)}>{state}</Badge>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Runs</CardTitle>
+            <CardTitle className="text-sm font-medium">New request</CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-semibold">{result.runs.totalDocs}</CardContent>
+          <CardContent className="text-sm text-muted-foreground">Review intake, Approve brief, Generate draft.</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Submissions</CardTitle>
+            <CardTitle className="text-sm font-medium">Draft site</CardTitle>
           </CardHeader>
-          <CardContent className="text-2xl font-semibold">{result.intakes.totalDocs}</CardContent>
+          <CardContent className="text-sm text-muted-foreground">Open site, Send preview, Approved, Payment, Waive payment.</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Filter</CardTitle>
+            <CardTitle className="text-sm font-medium">Go live</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Badge variant={filter === "failed" ? "destructive" : filter === "all" ? "secondary" : "warning"}>
-              {filter}
-            </Badge>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Retry</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">Follow-up</CardContent>
+          <CardContent className="text-sm text-muted-foreground">Domain verified, Go live, Live.</CardContent>
         </Card>
       </div>
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Generation runs</h2>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/collections/site-generation-runs">Payload admin</Link>
-          </Button>
+          <h2 className="text-lg font-semibold">Site workflow</h2>
         </div>
         <GenerationOperationsTable
-          runs={result.runs.docs}
+          runs={visibleRuns}
           emptyState={
             q ? (
               <EmptyState
                 icon={<Search className="h-10 w-10 text-muted-foreground" aria-hidden />}
-                title="No matching generation runs"
-                description={`No generation runs match "${q}".`}
+                title="No matching sites"
+                description={`No sites match "${q}".`}
               />
             ) : (
               <EmptyState
                 icon={<ClipboardList className="h-10 w-10 text-muted-foreground" aria-hidden />}
-                title="No generation runs"
-                description="Runs appear here after an intake submission starts generation."
+                title="No draft sites"
+                description="Draft sites appear here after a request is approved."
               />
             )
           }
@@ -145,25 +203,22 @@ export default async function GenerationRunsPage({
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Intake submissions</h2>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/admin/collections/intake-submissions">Payload admin</Link>
-          </Button>
+          <h2 className="text-lg font-semibold">New requests</h2>
         </div>
         <IntakeSubmissionsTable
-          submissions={result.intakes.docs}
+          submissions={visibleIntakes}
           emptyState={
             q ? (
               <EmptyState
                 icon={<Search className="h-10 w-10 text-muted-foreground" aria-hidden />}
-                title="No matching submissions"
-                description={`No intake submissions match "${q}".`}
+                title="No matching requests"
+                description={`No requests match "${q}".`}
               />
             ) : (
               <EmptyState
                 icon={<Inbox className="h-10 w-10 text-muted-foreground" aria-hidden />}
-                title="No intake submissions"
-                description="Submissions appear here after the public intake API receives a request."
+                title="No new requests"
+                description="New requests appear here after a client completes intake."
               />
             )
           }

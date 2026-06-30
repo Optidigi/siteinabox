@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { GenerationInputSchema } from "@siteinabox/contracts/generation"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
@@ -10,6 +9,7 @@ import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PageHeader } from "@/components/page-header"
 import {
   approveIntakeGenerationInputAction,
+  deleteSafeIntakeSubmissionAction,
   generateReviewedIntakeDraftAction,
 } from "@/lib/actions/reviewIntakeSubmission"
 import { statusVariant } from "@/lib/badge-helpers"
@@ -20,8 +20,19 @@ import {
   relationId,
   relationLabel,
   relationSlug,
+  workflowSummaryForIntakeSubmission,
 } from "@/lib/queries/generationOperations"
-import { AlertCircle, ArrowLeft } from "lucide-react"
+import {
+  AlertCircle,
+  ArrowLeft,
+  BookOpenText,
+  Building2,
+  FileCheck,
+  Palette,
+  Sparkles,
+  StickyNote,
+  Trash2,
+} from "lucide-react"
 
 const formatDate = (value?: string | null) => {
   if (!value) return "-"
@@ -31,6 +42,55 @@ const formatDate = (value?: string | null) => {
 
 const workflow = (entries: NonNullable<Awaited<ReturnType<typeof getIntakeSubmissionForOperations>>>["statusTransitions"]) =>
   entries?.length ? entries : []
+
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
+
+const textValue = (value: unknown): string | null => {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed || null
+}
+
+const textList = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((entry) => {
+    const text = textValue(entry)
+    return text ? [text] : []
+  })
+}
+
+const valueLabel = (value: unknown): string => {
+  if (value == null || value === "") return "-"
+  if (Array.isArray(value)) return textList(value).join(", ") || "-"
+  if (typeof value === "object") return JSON.stringify(value)
+  return String(value)
+}
+
+function FieldGrid({ items }: { items: Array<{ label: string; value: unknown }> }) {
+  return (
+    <dl className="grid gap-3 text-sm sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-md border px-3 py-2">
+          <dt className="text-muted-foreground">{item.label}</dt>
+          <dd className="mt-1 font-medium break-words">{valueLabel(item.value)}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
+function BulletList({ values, empty = "-" }: { values: unknown; empty?: string }) {
+  const items = textList(values)
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>
+  return (
+    <ul className="grid gap-2 text-sm">
+      {items.map((item) => (
+        <li key={item} className="rounded-md border px-3 py-2">{item}</li>
+      ))}
+    </ul>
+  )
+}
 
 export const dynamic = "force-dynamic"
 
@@ -48,31 +108,35 @@ export default async function IntakeSubmissionDetailPage({
   const tenantSlug = relationSlug(submission.tenant)
   const tenantId = relationId(submission.tenant)
   const reviewedByLabel = relationLabel(submission.reviewedBy, "-")
-  const normalized = submission.normalized && typeof submission.normalized === "object" && !Array.isArray(submission.normalized)
-    ? submission.normalized as Record<string, unknown>
-    : {}
-  let reviewedGenerationInputJson: string | null = null
+  const normalized = asRecord(submission.normalized)
+  const companyFacts = asRecord(normalized.companyFacts)
+  const intakeBrief = asRecord(normalized.intakeBrief)
+  const contact = asRecord(normalized.contact)
+  const visualPreferences = asRecord(intakeBrief.visualPreferences)
+  const brandSignals = asRecord(normalized.brandSignals)
+  let approvedBriefJson: string | null = null
   let reviewedInputApproved = false
   try {
     const reviewedInput = defaultReviewedGenerationInput(submission)
-    reviewedGenerationInputJson = JSON.stringify(reviewedInput, null, 2)
+    approvedBriefJson = JSON.stringify(reviewedInput, null, 2)
     reviewedInputApproved = reviewedInput.status === "admin-approved"
   } catch {
-    reviewedGenerationInputJson = null
+    approvedBriefJson = null
   }
+  const canDelete = !runId && !tenantId
+  const workflowSummary = workflowSummaryForIntakeSubmission(submission)
 
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title={`Intake submission #${submission.id}`}
+        title={`Review intake: ${submission.businessName}`}
         subtitle={
           <span className="inline-flex flex-wrap items-center gap-2">
-            <Badge variant={statusVariant(submission.status)}>
+            <Badge variant={workflowSummary.state === "Needs attention" ? "destructive" : "secondary"}>
               <span className="size-1.5 rounded-full bg-current" aria-hidden />
-              {submission.status}
+              {workflowSummary.label}
             </Badge>
-            <span>{submission.businessName}</span>
-            <span className="text-muted-foreground">{submission.source}</span>
+            <span>{workflowSummary.helper}</span>
           </span>
         }
         action={
@@ -90,177 +154,253 @@ export default async function IntakeSubmissionDetailPage({
           <AlertCircle className="size-4" aria-hidden />
           <AlertTitle>Intake failed</AlertTitle>
           <AlertDescription>
-            Review the summarized error and normalized/raw payload below. Secret-looking fields are redacted before display.
+            Review the error summary in Advanced before continuing. Secret-looking fields are redacted before display.
           </AlertDescription>
         </Alert>
       )}
 
-      <div className="grid gap-3 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Received</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">{formatDate(submission.createdAt)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Updated</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">{formatDate(submission.updatedAt)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Generation run</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">
-            {runId ? (
-              <Link href={`/generation-runs/${runId}`} className="font-medium hover:underline">
-                #{runId}
-              </Link>
-            ) : "-"}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Tenant</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm">
-            {tenantSlug ? (
-              <Link href={`/sites/${tenantSlug}`} className="font-medium hover:underline">
-                {relationLabel(submission.tenant)}
-              </Link>
-            ) : tenantId ? relationLabel(submission.tenant) : "-"}
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle>Submission metadata</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <FileCheck className="size-5" aria-hidden />
+            Manager actions
+          </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 text-sm md:grid-cols-2">
-          <div>
-            <div className="text-muted-foreground">Contact</div>
-            <div className="font-medium">{submission.contactName ?? "-"}</div>
-            <div>{submission.contactEmail ?? "-"}</div>
-          </div>
-          <div>
-            <div className="text-muted-foreground">Idempotency key</div>
-            <code className="break-all text-xs">{submission.idempotencyKey}</code>
-          </div>
-          <div>
-            <div className="text-muted-foreground">Normalized hash</div>
-            <code className="break-all text-xs">{submission.normalizedHash ?? "-"}</code>
-          </div>
-          <div>
-            <div className="text-muted-foreground">Reviewed</div>
-            <div className="font-medium">{formatDate(submission.reviewedAt)}</div>
-            <div>{reviewedByLabel}</div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Company facts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <JsonSummaryBlock value={normalized.companyFacts} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Intake brief</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <JsonSummaryBlock value={normalized.intakeBrief} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Reviewed GenerationInput</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {reviewedGenerationInputJson ? (
-            <form action={approveIntakeGenerationInputAction.bind(null, submission.id)} className="grid gap-3">
-              <Textarea
-                id="reviewedGenerationInput"
-                name="reviewedGenerationInput"
-                rows={18}
-                defaultValue={reviewedGenerationInputJson}
-                className="font-mono text-xs"
-              />
-              <Textarea
-                id="reviewNotes"
-                name="reviewNotes"
-                rows={3}
-                defaultValue={submission.reviewNotes ?? ""}
-                placeholder="Internal review notes"
-              />
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  Saving validates this JSON as GenerationInput, marks it admin-approved, and prepares it for the Phase 6 generation handoff.
-                </p>
-                <Button type="submit">Approve for generation</Button>
-              </div>
-            </form>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              GenerationInput review is available after this submission has valid normalized intake data.
+        <CardContent className="grid gap-4 lg:grid-cols-3">
+          <form action={approveIntakeGenerationInputAction.bind(null, submission.id)} className="rounded-md border p-4">
+            <div className="mb-3 flex items-center gap-2 font-medium">
+              <FileCheck className="size-4" aria-hidden />
+              Approve brief
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Confirm the request is ready to become a draft site.
             </p>
-          )}
-          {reviewedInputApproved && GenerationInputSchema.safeParse(submission.reviewedGenerationInput).success && (
-            <form action={generateReviewedIntakeDraftAction.bind(null, submission.id)} className="mt-4 flex justify-end border-t pt-4">
-              <Button type="submit">Generate draft</Button>
-            </form>
-          )}
+            <Textarea
+              id="reviewNotes"
+              name="reviewNotes"
+              rows={4}
+              defaultValue={submission.reviewNotes ?? ""}
+              placeholder="Internal notes"
+            />
+            {approvedBriefJson ? (
+              <textarea name="reviewedGenerationInput" defaultValue={approvedBriefJson} hidden readOnly />
+            ) : null}
+            <Button type="submit" className="mt-3 w-full" disabled={!approvedBriefJson}>
+              Approve brief
+            </Button>
+          </form>
+
+          <form action={generateReviewedIntakeDraftAction.bind(null, submission.id)} className="rounded-md border p-4">
+            <div className="mb-3 flex items-center gap-2 font-medium">
+              <Sparkles className="size-4" aria-hidden />
+              Generate draft
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Start the draft-site generation after approval.
+            </p>
+            <Button type="submit" className="w-full" disabled={!reviewedInputApproved}>
+              Generate draft
+            </Button>
+            {!reviewedInputApproved && (
+              <p className="mt-2 text-xs text-muted-foreground">Approve the brief first.</p>
+            )}
+          </form>
+
+          <form action={deleteSafeIntakeSubmissionAction.bind(null, submission.id)} className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+            <div className="mb-3 flex items-center gap-2 font-medium text-destructive">
+              <Trash2 className="size-4" aria-hidden />
+              Delete request if safe
+            </div>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Only unused requests can be removed. Type DELETE to confirm.
+            </p>
+            <input
+              name="confirmDelete"
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              placeholder="DELETE"
+              disabled={!canDelete}
+            />
+            <Button type="submit" variant="destructive" className="mt-3 w-full" disabled={!canDelete}>
+              Delete request
+            </Button>
+            {!canDelete && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Deletion is blocked because a draft site or tenant is already linked.
+              </p>
+            )}
+          </form>
         </CardContent>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Error</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="size-5" aria-hidden />
+              Business facts
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <JsonSummaryBlock value={submission.error} />
+            <FieldGrid
+              items={[
+                { label: "Business", value: companyFacts.companyName ?? normalized.businessName ?? submission.businessName },
+                { label: "Activity", value: companyFacts.mainActivity ?? normalized.industry },
+                { label: "Area", value: intakeBrief.serviceArea ?? normalized.serviceArea },
+                { label: "Website", value: companyFacts.website ?? normalized.primaryDomain },
+                { label: "Contact", value: contact.name ?? submission.contactName },
+                { label: "Email", value: contact.email ?? submission.contactEmail },
+              ]}
+            />
           </CardContent>
         </Card>
+
         <Card>
           <CardHeader>
-            <CardTitle>Normalized intake</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpenText className="size-5" aria-hidden />
+              Website brief
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <JsonSummaryBlock value={submission.normalized} />
+          <CardContent className="grid gap-4">
+            <div>
+              <div className="mb-2 text-sm font-medium">Services and goals</div>
+              <BulletList values={intakeBrief.services ?? normalized.goals} />
+            </div>
+            <div>
+              <div className="mb-2 text-sm font-medium">Calls to action</div>
+              <BulletList values={intakeBrief.callsToAction} />
+            </div>
+            {textValue(intakeBrief.audience) && (
+              <div className="text-sm">
+                <div className="font-medium">Audience</div>
+                <p className="mt-1 text-muted-foreground">{textValue(intakeBrief.audience)}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
-        <Card className="lg:col-span-2">
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle>Raw intake summary</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Palette className="size-5" aria-hidden />
+              Design preferences
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <JsonSummaryBlock value={submission.raw} />
+            <FieldGrid
+              items={[
+                { label: "Logo", value: visualPreferences.logoText ?? visualPreferences.logoMode },
+                { label: "Color source", value: visualPreferences.colorSourceValue ?? visualPreferences.colorSourceType ?? brandSignals.colors },
+                { label: "Palette", value: visualPreferences.selectedPalette },
+                { label: "Shape", value: visualPreferences.shape },
+                { label: "Typography", value: visualPreferences.typography ?? brandSignals.fonts },
+                { label: "Tone", value: intakeBrief.tone ?? brandSignals.tone },
+              ]}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <StickyNote className="size-5" aria-hidden />
+              Notes
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 text-sm">
+            <div>
+              <div className="font-medium">Customer notes</div>
+              <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{textValue(intakeBrief.notes) ?? "-"}</p>
+            </div>
+            <div>
+              <div className="font-medium">Internal notes</div>
+              <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{submission.reviewNotes ?? "-"}</p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Status transitions</CardTitle>
+        <CardHeader className="pb-2">
+          <CardTitle>Advanced</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col gap-2">
-            {workflow(submission.statusTransitions).map((entry, index) => (
-              <div key={entry.id ?? `${entry.status}-${index}`} className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                <Badge variant={statusVariant(entry.status)}>{entry.status}</Badge>
-                <span className="text-muted-foreground">{formatDate(entry.at)}</span>
-                {entry.message && <span>{entry.message}</span>}
+          <details className="group">
+            <summary className="cursor-pointer text-sm font-medium text-muted-foreground group-open:text-foreground">
+              Technical details, raw summaries, and workflow history
+            </summary>
+            <div className="mt-4 grid gap-4">
+              <div className="grid gap-3 text-sm md:grid-cols-4">
+                <div>
+                  <div className="text-muted-foreground">Received</div>
+                  <div className="font-medium">{formatDate(submission.createdAt)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Updated</div>
+                  <div className="font-medium">{formatDate(submission.updatedAt)}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Run</div>
+                  {runId ? (
+                    <Link href={`/generation-runs/${runId}`} className="font-medium hover:underline">
+                      #{runId}
+                    </Link>
+                  ) : "-"}
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Tenant</div>
+                  {tenantSlug ? (
+                    <Link href={`/sites/${tenantSlug}`} className="font-medium hover:underline">
+                      {relationLabel(submission.tenant)}
+                    </Link>
+                  ) : tenantId ? relationLabel(submission.tenant) : "-"}
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Request key</div>
+                  <code className="break-all text-xs">{submission.idempotencyKey}</code>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Data fingerprint</div>
+                  <code className="break-all text-xs">{submission.normalizedHash ?? "-"}</code>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Reviewed</div>
+                  <div className="font-medium">{formatDate(submission.reviewedAt)}</div>
+                  <div>{reviewedByLabel}</div>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <div className="mb-2 text-sm font-medium">Error</div>
+                  <JsonSummaryBlock value={submission.error} />
+                </div>
+                <div>
+                  <div className="mb-2 text-sm font-medium">Normalized summary</div>
+                  <JsonSummaryBlock value={submission.normalized} />
+                </div>
+                <div className="lg:col-span-2">
+                  <div className="mb-2 text-sm font-medium">Raw summary</div>
+                  <JsonSummaryBlock value={submission.raw} />
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-medium">Workflow history</div>
+                <div className="flex flex-col gap-2">
+                  {workflow(submission.statusTransitions).map((entry, index) => (
+                    <div key={entry.id ?? `${entry.status}-${index}`} className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                      <Badge variant={statusVariant(entry.status)}>{entry.status}</Badge>
+                      <span className="text-muted-foreground">{formatDate(entry.at)}</span>
+                      {entry.message && <span>{entry.message}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </details>
         </CardContent>
       </Card>
     </div>

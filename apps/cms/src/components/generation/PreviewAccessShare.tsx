@@ -37,7 +37,7 @@ export function PreviewAccessShare({
     <div className="flex flex-col gap-3 rounded-md border p-3">
       <form action={formAction} className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="grid gap-1.5">
-          <Label htmlFor="preview-customer-email">Customer preview access</Label>
+          <Label htmlFor="preview-customer-email">Send preview</Label>
           <Input
             id="preview-customer-email"
             name="email"
@@ -50,7 +50,7 @@ export function PreviewAccessShare({
         </div>
         <Button type="submit" disabled={Boolean(disabledReason) || pending}>
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />}
-          Send magic link
+          Send preview
         </Button>
       </form>
 
@@ -73,7 +73,7 @@ export function PreviewAccessShare({
       )}
 
       <div className="text-xs text-muted-foreground">
-        {disabledReason || "Creates or refreshes a Better Auth preview grant and emails a magic link."}
+        {disabledReason || "Creates or refreshes preview access and emails the customer link."}
       </div>
 
       {state.message && (

@@ -9,9 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@siteinabox/ui/components/table"
-import { statusVariant } from "@/lib/badge-helpers"
-import { relationId, relationLabel } from "@/lib/queries/generationOperations"
+import { relationId, workflowSummaryForIntakeSubmission } from "@/lib/queries/generationOperations"
 import type { IntakeSubmission } from "@/payload-types"
+import { ClipboardCheck } from "lucide-react"
 
 const formatDate = (value?: string | null) => {
   if (!value) return "-"
@@ -33,10 +33,10 @@ export function IntakeSubmissionsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Status</TableHead>
+            <TableHead>Workflow</TableHead>
             <TableHead>Business</TableHead>
             <TableHead>Contact</TableHead>
-            <TableHead>Linked records</TableHead>
+            <TableHead>Next step</TableHead>
             <TableHead>Received</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -44,41 +44,39 @@ export function IntakeSubmissionsTable({
         <TableBody>
           {submissions.map((submission) => {
             const runId = relationId(submission.generationRun)
-            const tenantId = relationId(submission.tenant)
+            const workflow = workflowSummaryForIntakeSubmission(submission)
 
             return (
               <TableRow key={submission.id}>
                 <TableCell>
-                  <Badge variant={statusVariant(submission.status)}>
+                  <Badge variant={workflow.state === "Needs attention" ? "destructive" : "secondary"}>
                     <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                    {submission.status}
+                    {workflow.state}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="font-medium">{submission.businessName}</div>
-                  <code className="text-xs text-muted-foreground">{submission.normalizedHash ?? submission.idempotencyKey}</code>
+                  {runId && (
+                    <Link href={`/generation-runs/${runId}`} className="text-xs text-muted-foreground hover:underline">
+                      Draft site
+                    </Link>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div>{submission.contactName ?? "-"}</div>
                   <div className="text-xs text-muted-foreground">{submission.contactEmail ?? "-"}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="text-sm">
-                    Run{" "}
-                    {runId ? (
-                      <Link href={`/generation-runs/${runId}`} className="font-medium hover:underline">
-                        #{runId}
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">Tenant {tenantId ? relationLabel(submission.tenant) : "-"}</div>
+                  <div className="font-medium">{workflow.label}</div>
+                  <div className="text-xs text-muted-foreground">{workflow.helper}</div>
                 </TableCell>
                 <TableCell>{formatDate(submission.createdAt)}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/generation-runs/submissions/${submission.id}`}>Open</Link>
+                    <Link href={`/generation-runs/submissions/${submission.id}`} className="gap-1.5">
+                      <ClipboardCheck className="size-3.5" aria-hidden />
+                      {workflow.primaryAction}
+                    </Link>
                   </Button>
                 </TableCell>
               </TableRow>

@@ -8,7 +8,29 @@ import {
 } from "./paginate"
 import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 
-export type GenerationRunFilter = "all" | "failed" | "preview-ready" | "needs-review"
+export type GenerationRunFilter =
+  | "all"
+  | "new-requests"
+  | "draft-sites"
+  | "waiting-on-client"
+  | "ready-to-go-live"
+  | "live"
+  | "needs-attention"
+
+export type OperationsWorkflowState =
+  | "New requests"
+  | "Draft sites"
+  | "Waiting on client"
+  | "Ready to go live"
+  | "Live"
+  | "Needs attention"
+
+export type OperationsWorkflowSummary = {
+  state: OperationsWorkflowState
+  label: string
+  primaryAction: string
+  helper: string
+}
 
 export interface ListGenerationOperationsOpts {
   page?: number
@@ -23,20 +45,32 @@ export type GenerationOperationsResult = {
 }
 
 const failedWhere = { status: { equals: "failed" } }
-const previewReadyWhere = { status: { equals: "preview_ready" } }
-const needsReviewWhere = {
+const newRequestsWhere = {
   or: [
+    { status: { equals: "submitted" } },
     { status: { equals: "normalized" } },
-    { status: { equals: "draft_ready" } },
-    { status: { equals: "preview_ready" } },
   ],
 }
+const draftSitesWhere = {
+  or: [
+    { status: { equals: "queued" } },
+    { status: { equals: "generating" } },
+    { status: { equals: "generated" } },
+    { status: { equals: "validating" } },
+    { status: { equals: "applying" } },
+    { status: { equals: "draft_ready" } },
+  ],
+}
+const waitingOnClientWhere = { status: { equals: "preview_ready" } }
+const readyToGoLiveWhere = { status: { equals: "preview_ready" } }
 
 export function generationRunWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
   const clauses: Record<string, unknown>[] = []
-  if (filter === "failed") clauses.push(failedWhere)
-  if (filter === "preview-ready") clauses.push(previewReadyWhere)
-  if (filter === "needs-review") clauses.push(needsReviewWhere)
+  if (filter === "needs-attention") clauses.push(failedWhere)
+  if (filter === "new-requests") clauses.push(newRequestsWhere)
+  if (filter === "draft-sites") clauses.push(draftSitesWhere)
+  if (filter === "waiting-on-client") clauses.push(waitingOnClientWhere)
+  if (filter === "ready-to-go-live" || filter === "live") clauses.push(readyToGoLiveWhere)
 
   const query = q?.trim()
   if (query) {
@@ -58,9 +92,11 @@ export function generationRunWhere(filter: GenerationRunFilter = "all", q?: stri
 
 export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
   const clauses: Record<string, unknown>[] = []
-  if (filter === "failed") clauses.push(failedWhere)
-  if (filter === "preview-ready") clauses.push(previewReadyWhere)
-  if (filter === "needs-review") clauses.push(needsReviewWhere)
+  if (filter === "needs-attention") clauses.push(failedWhere)
+  if (filter === "new-requests") clauses.push(newRequestsWhere)
+  if (filter === "draft-sites") clauses.push(draftSitesWhere)
+  if (filter === "waiting-on-client") clauses.push(waitingOnClientWhere)
+  if (filter === "ready-to-go-live" || filter === "live") clauses.push(readyToGoLiveWhere)
 
   const query = q?.trim()
   if (query) {
@@ -181,6 +217,141 @@ export function extractIssueCount(value: unknown): number {
   if (!value || typeof value !== "object") return 0
   const issues = (value as { issues?: unknown }).issues
   return Array.isArray(issues) ? issues.length : 0
+}
+
+const jsonStatus = (value: unknown): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const status = (value as { status?: unknown }).status
+  return typeof status === "string" ? status : null
+}
+
+const isPaymentSatisfied = (value: unknown): boolean => {
+  const status = jsonStatus(value)
+  return status === "completed" || status === "waived"
+}
+
+const tenantDomainVerified = (value: unknown): boolean => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  return jsonStatus((value as { domainVerification?: unknown }).domainVerification) === "verified"
+}
+
+const tenantIsLive = (value: unknown): boolean => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const tenant = value as { activeSnapshot?: unknown }
+  return relationId(tenant.activeSnapshot) !== null
+}
+
+export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "status" | "validation" | "applyResult" | "clientApproval" | "payment" | "tenant">): OperationsWorkflowSummary {
+  const issueCount = extractIssueCount(run.validation) + extractIssueCount(run.applyResult)
+  if (run.status === "failed" || issueCount > 0) {
+    return {
+      state: "Needs attention",
+      label: "Needs attention",
+      primaryAction: "Open site",
+      helper: "Review the request before continuing.",
+    }
+  }
+
+  if (tenantIsLive(run.tenant)) {
+    return {
+      state: "Live",
+      label: "Live",
+      primaryAction: "Open site",
+      helper: "The site is active for visitors.",
+    }
+  }
+
+  if (run.status === "draft_ready") {
+    return {
+      state: "Draft sites",
+      label: "Draft site",
+      primaryAction: "Open site",
+      helper: "Review the draft before sending a preview.",
+    }
+  }
+
+  if (run.status === "preview_ready") {
+    const approved = jsonStatus(run.clientApproval) === "approved"
+    const paid = isPaymentSatisfied(run.payment)
+    const domainVerified = tenantDomainVerified(run.tenant)
+
+    if (approved && paid && domainVerified) {
+      return {
+        state: "Ready to go live",
+        label: "Domain verified",
+        primaryAction: "Go live",
+        helper: "Approved, payment handled, and domain verified.",
+      }
+    }
+
+    if (approved && paid) {
+      return {
+        state: "Waiting on client",
+        label: "Payment",
+        primaryAction: "Domain verified",
+        helper: "Confirm the domain before going live.",
+      }
+    }
+
+    if (approved) {
+      return {
+        state: "Waiting on client",
+        label: "Approved",
+        primaryAction: "Waive payment",
+        helper: "Payment is the remaining client gate.",
+      }
+    }
+
+    return {
+      state: "Waiting on client",
+      label: "Send preview",
+      primaryAction: "Send preview",
+      helper: "Share the preview and wait for approval.",
+    }
+  }
+
+  return {
+    state: "Draft sites",
+    label: "Generate draft",
+    primaryAction: "Open site",
+    helper: "The draft site is being prepared.",
+  }
+}
+
+export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmission, "status" | "generationRun">): OperationsWorkflowSummary {
+  if (submission.status === "failed") {
+    return {
+      state: "Needs attention",
+      label: "Needs attention",
+      primaryAction: "Review intake",
+      helper: "Review the request before continuing.",
+    }
+  }
+
+  if ((submission.status === "submitted" || submission.status === "normalized") && !relationId(submission.generationRun)) {
+    return {
+      state: "New requests",
+      label: "New request",
+      primaryAction: "Approve brief",
+      helper: "Review intake details and approve the brief.",
+    }
+  }
+
+  if (submission.status === "preview_ready") {
+    return {
+      state: "Waiting on client",
+      label: "Send preview",
+      primaryAction: "Send preview",
+      helper: "Draft site is ready for client review.",
+    }
+  }
+
+  return {
+    state: "Draft sites",
+    label: "Generate draft",
+    primaryAction: "Generate draft",
+    helper: "The approved brief is being turned into a draft site.",
+  }
 }
 
 export function relationId(value: unknown): string | null {
