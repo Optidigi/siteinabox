@@ -84,7 +84,7 @@ const suggestionForAvailability = (
   }
 }
 
-async function suggestAvailableDomains(
+export async function suggestAvailablePreviewDomains(
   domain: string,
   includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
   token: string,
@@ -141,6 +141,7 @@ export async function checkAndRecordPreviewDomainOrder(
   run: SiteGenerationRun,
   domainInput: string,
   registrant?: DomainRegistrantDetails | null,
+  options?: { record?: boolean },
 ): Promise<PreviewDomainOrderResult> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
@@ -181,13 +182,15 @@ export async function checkAndRecordPreviewDomainOrder(
     now,
   })
 
-  const updated = await payload.update({
-    collection: "site-generation-runs",
-    id: run.id,
-    data: { domainOrder } as any,
-    depth: 0,
-    overrideAccess: true,
-  }) as SiteGenerationRun
+  const updated = options?.record === false
+    ? run
+    : await payload.update({
+      collection: "site-generation-runs",
+      id: run.id,
+      data: { domainOrder } as any,
+      depth: 0,
+      overrideAccess: true,
+    }) as SiteGenerationRun
 
   return {
     run: updated,
@@ -195,7 +198,7 @@ export async function checkAndRecordPreviewDomainOrder(
     included: includedPrice,
     extraFeeAmount: extraFee?.amount ?? null,
     extraFeeCurrency: extraFee?.currency ?? null,
-    suggestions: priceUsable ? [] : await suggestAvailableDomains(normalized.domain, includedProviderPrice, token),
+    suggestions: [],
     messageKey: includedPrice
       ? "checkoutDomainAvailable"
       : priceUsable
@@ -217,29 +220,12 @@ export async function requireReadyPreviewDomainOrder(
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) throw new Error(`Invalid domain: ${normalized.reason}`)
   const state = normalizeDomainOrderState(run.domainOrder)
+  const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain, registrant)
+  if (result.messageKey !== "checkoutDomainAvailable" && result.messageKey !== "checkoutDomainAvailableExtraFee") {
+    throw new Error(result.messageKey)
+  }
   if (state.status !== "ready_to_register" || state.domain !== normalized.domain) {
-    const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain, registrant)
-    if (result.messageKey !== "checkoutDomainAvailable" && result.messageKey !== "checkoutDomainAvailableExtraFee") {
-      throw new Error(result.messageKey)
-    }
     return { run: result.run, domain: result.domain }
   }
-  const existingRegistrant = state.registrant
-  if (registrant && JSON.stringify(existingRegistrant) !== JSON.stringify(registrant)) {
-    const updated = await payload.update({
-      collection: "site-generation-runs",
-      id: run.id,
-      data: {
-        domainOrder: {
-          ...state,
-          registrant,
-          updatedAt: new Date().toISOString(),
-        },
-      } as any,
-      depth: 0,
-      overrideAccess: true,
-    }) as SiteGenerationRun
-    return { run: updated, domain: normalized.domain }
-  }
-  return { run, domain: normalized.domain }
+  return { run: result.run, domain: normalized.domain }
 }

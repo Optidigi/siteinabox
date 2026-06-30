@@ -4,12 +4,14 @@ import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
-import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
+import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomains } from "@/lib/domains/previewDomainOrder"
 import {
   fixedDomainOrderPriceFromEnv,
+  maxDomainProviderPriceFromEnv,
   normalizeDomainRegistrantDetails,
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
+import { loginOpenProvider } from "@/lib/domains/openprovider"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
 
 export type PreviewCheckoutDomainOption = {
@@ -31,6 +33,12 @@ export type PreviewCheckoutActionState = {
   extraFeeCurrency?: string | null
   extraFeeLabel?: string | null
   totalPriceLabel?: string | null
+  suggestions?: PreviewCheckoutDomainOption[]
+}
+
+export type PreviewCheckoutSuggestionsState = {
+  ok: boolean
+  domain?: string
   suggestions?: PreviewCheckoutDomainOption[]
 }
 
@@ -146,7 +154,7 @@ export async function checkPreviewCheckoutDomainAction(
 
   try {
     const locale = await getLocale()
-    const result = await checkAndRecordPreviewDomainOrder(context.payload, context.run, domain, registrant)
+    const result = await checkAndRecordPreviewDomainOrder(context.payload, context.run, domain, registrant, { record: false })
     const extraFee = result.extraFeeAmount && result.extraFeeCurrency
       ? { amount: result.extraFeeAmount, currency: result.extraFeeCurrency }
       : null
@@ -164,7 +172,35 @@ export async function checkPreviewCheckoutDomainAction(
       extraFeeCurrency: result.extraFeeCurrency,
       extraFeeLabel: formatMoney(locale, extraFee),
       totalPriceLabel: formatMoney(locale, totalPrice),
-      suggestions: result.suggestions.map((suggestion) => {
+      suggestions: [],
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: domainErrorStatus(error),
+      message: safeCheckoutErrorMessage(error, t, domain),
+    }
+  }
+}
+
+export async function suggestPreviewCheckoutDomainsAction(
+  clientSlug: string,
+  _previousState: PreviewCheckoutSuggestionsState,
+  formData: FormData,
+): Promise<PreviewCheckoutSuggestionsState> {
+  await requirePreviewCheckoutContext(clientSlug)
+
+  const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
+  if (!domain) return { ok: false, suggestions: [] }
+
+  try {
+    const locale = await getLocale()
+    const token = await loginOpenProvider()
+    const suggestions = await suggestAvailablePreviewDomains(domain, maxDomainProviderPriceFromEnv(), token)
+    return {
+      ok: true,
+      domain,
+      suggestions: suggestions.map((suggestion) => {
         const suggestionExtraFee = suggestion.extraFeeAmount && suggestion.extraFeeCurrency
           ? { amount: suggestion.extraFeeAmount, currency: suggestion.extraFeeCurrency }
           : null
@@ -175,11 +211,8 @@ export async function checkPreviewCheckoutDomainAction(
       }),
     }
   } catch (error) {
-    return {
-      ok: false,
-      status: domainErrorStatus(error),
-      message: safeCheckoutErrorMessage(error, t, domain),
-    }
+    console.error("Preview checkout domain suggestions error", error)
+    return { ok: false, domain, suggestions: [] }
   }
 }
 

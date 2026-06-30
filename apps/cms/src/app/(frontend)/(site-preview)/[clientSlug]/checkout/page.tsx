@@ -15,6 +15,7 @@ import {
 } from "@/lib/domains/orderState"
 import {
   checkPreviewCheckoutDomainAction,
+  suggestPreviewCheckoutDomainsAction,
   startPreviewCheckoutPaymentAction,
 } from "./actions"
 
@@ -86,6 +87,7 @@ export default async function PreviewCheckoutPage({
         approvalStatus={approval?.status ?? "pending"}
         previewHref={`/${context.clientSlug}`}
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
+        suggestDomainAlternativesAction={suggestPreviewCheckoutDomainsAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
       />
     )

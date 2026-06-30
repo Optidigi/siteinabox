@@ -14,7 +14,7 @@ import {
   suggestOpenProviderDomains,
 } from "@/lib/domains/openprovider"
 import { createDomainOrderState, type DomainRegistrantDetails } from "@/lib/domains/orderState"
-import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
+import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomains } from "@/lib/domains/previewDomainOrder"
 
 describe("preview domain order", () => {
   beforeEach(() => {
@@ -29,7 +29,7 @@ describe("preview domain order", () => {
     vi.mocked(suggestOpenProviderDomains).mockResolvedValue([])
   })
 
-  it("suggests five local same-extension alternatives before calling provider suggestions", async () => {
+  it("returns unavailable primary domain results without waiting for alternatives", async () => {
     const run = {
       id: 123,
       domainOrder: null,
@@ -49,6 +49,30 @@ describe("preview domain order", () => {
       price: null,
       internalReason: null,
     })
+    vi.mocked(checkOpenProviderDomainsAvailability).mockImplementation(async () => new Promise(() => {}))
+
+    const result = await checkAndRecordPreviewDomainOrder(payload as any, run as any, "acme.nl")
+
+    expect(result).toMatchObject({
+      messageKey: "checkoutDomainUnavailable",
+      domain: "acme.nl",
+      suggestions: [],
+    })
+    expect(loginOpenProvider).toHaveBeenCalledTimes(1)
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.nl", { token: "token-123" })
+    expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
+    expect(checkOpenProviderDomainsAvailability).not.toHaveBeenCalled()
+    expect(run.domainOrder).toMatchObject({
+      status: "unavailable",
+      domain: "acme.nl",
+      maxProviderPriceAmount: "10.00",
+      maxProviderPriceCurrency: "EUR",
+      maxOfferPriceAmount: null,
+      maxOfferPriceCurrency: null,
+    })
+  })
+
+  it("suggests five local same-extension alternatives in the separate suggestion path", async () => {
     vi.mocked(suggestOpenProviderDomains).mockResolvedValue([
       { domain: "acmesite.nl", name: "acmesite", extension: "nl" },
       { domain: "acme-online.nl", name: "acme-online", extension: "nl" },
@@ -63,39 +87,26 @@ describe("preview domain order", () => {
       domain,
       available: true,
       premium: false,
-      price: { amount: domain === "acme-expensive.nl" ? "26.00" : "6.50", currency: "EUR" },
+      price: { amount: domain === "acme-expensive.nl" ? "30.00" : "6.50", currency: "EUR" },
       internalReason: null,
     })))
 
-    const result = await checkAndRecordPreviewDomainOrder(payload as any, run as any, "acme.nl")
-
-    expect(result).toMatchObject({
-      messageKey: "checkoutDomainUnavailable",
-      domain: "acme.nl",
-      suggestions: [
-        { domain: "acmesite.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acme-site.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acmeonline.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acme-online.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acmeweb.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-      ],
-    })
-    expect(loginOpenProvider).toHaveBeenCalledTimes(1)
-    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.nl", { token: "token-123" })
+    await expect(suggestAvailablePreviewDomains(
+      "acme.nl",
+      { amount: "10.00", currency: "EUR" },
+      "token-123",
+    )).resolves.toEqual([
+      { domain: "acmesite.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+      { domain: "acme-site.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+      { domain: "acmeonline.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+      { domain: "acme-online.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+      { domain: "acmeweb.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+    ])
     expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { token: "token-123", limit: 12 })
-    expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledTimes(1)
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
       expect.arrayContaining(["acmesite.nl", "acme-site.nl", "acmeonline.nl", "acme-online.nl", "acmeweb.nl"]),
       { token: "token-123" },
     )
-    expect(run.domainOrder).toMatchObject({
-      status: "unavailable",
-      domain: "acme.nl",
-      maxProviderPriceAmount: "10.00",
-      maxProviderPriceCurrency: "EUR",
-      maxOfferPriceAmount: null,
-      maxOfferPriceCurrency: null,
-    })
   })
 
   it("marks available domains above the included cap as ready with an extra fee and no offer cap", async () => {
@@ -135,7 +146,36 @@ describe("preview domain order", () => {
     })
   })
 
-  it("persists registrant details on an existing ready order without rechecking availability", async () => {
+  it("can return primary check results without recording domain order state", async () => {
+    const run = { id: 123, domainOrder: null }
+    const payload = {
+      update: vi.fn(async ({ data }: any) => {
+        Object.assign(run, data)
+        return { ...run }
+      }),
+    }
+
+    vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
+      status: "available",
+      domain: "readonly.nl",
+      available: true,
+      premium: false,
+      price: { amount: "8.50", currency: "EUR" },
+      internalReason: null,
+    })
+
+    const result = await checkAndRecordPreviewDomainOrder(payload as any, run as any, "readonly.nl", null, { record: false })
+
+    expect(result).toMatchObject({
+      messageKey: "checkoutDomainAvailable",
+      domain: "readonly.nl",
+      included: true,
+    })
+    expect(payload.update).not.toHaveBeenCalled()
+    expect(run.domainOrder).toBeNull()
+  })
+
+  it("rechecks availability before accepting an existing ready order for payment", async () => {
     const registrant: DomainRegistrantDetails = {
       companyName: "Acme Studio",
       firstName: "Ada",
@@ -171,17 +211,25 @@ describe("preview domain order", () => {
         return { ...run }
       }),
     }
+    vi.mocked(checkOpenProviderDomainAvailability).mockResolvedValue({
+      status: "available",
+      domain: "levelweb.nl",
+      available: true,
+      premium: false,
+      price: { amount: "30.00", currency: "EUR" },
+      internalReason: null,
+    })
 
     const result = await requireReadyPreviewDomainOrder(payload as any, run as any, "levelweb.nl", registrant)
 
     expect(result).toMatchObject({ domain: "levelweb.nl" })
     expect(payload.update).toHaveBeenCalledTimes(1)
-    expect(checkOpenProviderDomainAvailability).not.toHaveBeenCalled()
-    expect(loginOpenProvider).not.toHaveBeenCalled()
+    expect(loginOpenProvider).toHaveBeenCalledTimes(1)
+    expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("levelweb.nl", { token: "token-123" })
     expect(run.domainOrder).toMatchObject({
       status: "ready_to_register",
       domain: "levelweb.nl",
-      providerPriceAmount: "8.50",
+      providerPriceAmount: "30.00",
       registrant,
     })
   })

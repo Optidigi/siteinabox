@@ -43,10 +43,21 @@ export type PreviewCheckoutActionState = {
   suggestions?: PreviewCheckoutDomainOption[]
 }
 
+export type PreviewCheckoutSuggestionsState = {
+  ok: boolean
+  domain?: string
+  suggestions?: PreviewCheckoutDomainOption[]
+}
+
 type PreviewCheckoutAction = (
   previousState: PreviewCheckoutActionState,
   formData: FormData,
 ) => Promise<PreviewCheckoutActionState>
+
+type PreviewCheckoutSuggestionsAction = (
+  previousState: PreviewCheckoutSuggestionsState,
+  formData: FormData,
+) => Promise<PreviewCheckoutSuggestionsState>
 
 type CheckoutStep = "domain" | "payment"
 
@@ -63,12 +74,18 @@ type PreviewCheckoutProps = {
   approvalStatus: string
   previewHref: string
   checkDomainAction: PreviewCheckoutAction
+  suggestDomainAlternativesAction: PreviewCheckoutSuggestionsAction
   startPaymentAction: PreviewCheckoutAction
 }
 
 const initialState: PreviewCheckoutActionState = {
   ok: false,
   message: "",
+}
+
+const initialSuggestionsState: PreviewCheckoutSuggestionsState = {
+  ok: false,
+  suggestions: [],
 }
 
 const emptyRegistrant = (customerEmail: string, registrant?: DomainRegistrantDetails | null): DomainRegistrantDetails => ({
@@ -116,6 +133,7 @@ export function PreviewCheckout({
   paymentStatus,
   previewHref,
   checkDomainAction,
+  suggestDomainAlternativesAction,
   startPaymentAction,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
@@ -128,25 +146,30 @@ export function PreviewCheckout({
     startPaymentAction,
     initialState,
   )
+  const [suggestionsState, suggestionsAction, suggestionsPending] = useActionState(
+    suggestDomainAlternativesAction,
+    initialSuggestionsState,
+  )
   const [domainValue, setDomainValue] = React.useState(currentDomain ?? "")
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(domainReady ? (currentDomain ?? null) : null)
-  const [selectedSuggestion, setSelectedSuggestion] = React.useState<PreviewCheckoutDomainOption | null>(null)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
+  const suggestionsFormRef = React.useRef<HTMLFormElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(domainReady ? (currentDomain ?? null) : null)
+  const lastSuggestionsDomainRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const checkAppliesToCurrentInput = Boolean(checkState.domain && checkState.domain === normalizedDomainValue)
+  const suggestionsApplyToCurrentInput = Boolean(suggestionsState.domain && suggestionsState.domain === normalizedDomainValue)
 
   React.useEffect(() => {
     if (checkState.ok && checkState.domain && checkState.domain === normalizedDomainValue) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
-      setSelectedSuggestion(null)
     }
   }, [checkState, normalizedDomainValue])
 
   React.useEffect(() => {
-    if (step !== "domain" || selectedSuggestion) return
+    if (step !== "domain") return
     if (!normalizedDomainValue.includes(".") || normalizedDomainValue.length < 5) return
     if (normalizedDomainValue === checkedDomain || normalizedDomainValue === lastSubmittedDomainRef.current) return
 
@@ -155,7 +178,7 @@ export function PreviewCheckout({
       domainFormRef.current?.requestSubmit()
     }, 650)
     return () => window.clearTimeout(timer)
-  }, [checkedDomain, normalizedDomainValue, selectedSuggestion, step])
+  }, [checkedDomain, normalizedDomainValue, step])
 
   React.useEffect(() => {
     if (paymentState.ok && paymentState.checkoutUrl) {
@@ -163,17 +186,23 @@ export function PreviewCheckout({
     }
   }, [paymentState])
 
+  React.useEffect(() => {
+    if (!checkAppliesToCurrentInput) return
+    if (!["unavailable", "premium", "service_error"].includes(checkState.status ?? "")) return
+    if (!checkState.domain || checkState.domain === lastSuggestionsDomainRef.current) return
+    lastSuggestionsDomainRef.current = checkState.domain
+    suggestionsFormRef.current?.requestSubmit()
+  }, [checkAppliesToCurrentInput, checkState.domain, checkState.status])
+
   const selectedDomain = checkedDomain && checkedDomain === domainValue ? checkedDomain : null
+  const suggestions = suggestionsApplyToCurrentInput ? suggestionsState.suggestions : []
   const holderComplete = registrantIsComplete(holder)
   const canContinueFromDomain = Boolean(
-    selectedDomain && (checkState.ok || selectedSuggestion || (domainReady && selectedDomain === currentDomain)),
+    selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)),
   )
-  const totalPriceLabel = !selectedSuggestion
-    ? checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
-    : initialTotalPriceLabel || priceLabel
+  const totalPriceLabel = checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
   const domainIsReady = Boolean(selectedDomain && (
     (checkState.ok && checkAppliesToCurrentInput)
-    || selectedSuggestion
     || (domainReady && selectedDomain === currentDomain)
   ))
   const domainResultKind = checkPending
@@ -197,7 +226,6 @@ export function PreviewCheckout({
 
   const updateDomain = (value: string) => {
     setDomainValue(value)
-    setSelectedSuggestion(null)
     if (value !== checkedDomain) {
       setCheckedDomain(null)
       if (step !== "domain") setStep("domain")
@@ -206,8 +234,9 @@ export function PreviewCheckout({
 
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
     setDomainValue(option.domain)
-    setSelectedSuggestion(option)
-    setCheckedDomain(option.domain)
+    setCheckedDomain(null)
+    lastSubmittedDomainRef.current = option.domain
+    window.setTimeout(() => domainFormRef.current?.requestSubmit(), 0)
   }
 
   const goBack = () => {
@@ -275,6 +304,9 @@ export function PreviewCheckout({
                     </div>
                   </div>
                 </form>
+                <form ref={suggestionsFormRef} action={suggestionsAction} className="hidden">
+                  <input type="hidden" name="domain" value={checkState.domain ?? normalizedDomainValue} />
+                </form>
 
                 {domainResultKind === "error" && (
                   <Alert variant="destructive">
@@ -286,8 +318,9 @@ export function PreviewCheckout({
 
                 {checkAppliesToCurrentInput && (
                   <DomainSuggestions
-                    suggestions={checkState.suggestions}
-                    selectedDomain={selectedSuggestion?.domain ?? null}
+                    loading={suggestionsPending}
+                    suggestions={suggestions}
+                    selectedDomain={null}
                     onSelect={selectSuggestedDomain}
                   />
                 )}
@@ -536,20 +569,25 @@ function DomainOptionRow({
 }
 
 function DomainSuggestions({
+  loading,
   suggestions,
   selectedDomain,
   onSelect,
 }: {
+  loading: boolean
   suggestions?: PreviewCheckoutDomainOption[]
   selectedDomain: string | null
   onSelect: (option: PreviewCheckoutDomainOption) => void
 }) {
   const t = useTranslations("preview")
-  if (!suggestions?.length) return null
-  const visibleSuggestions = suggestions.slice(0, 5)
+  if (!loading && !suggestions?.length) return null
+  const visibleSuggestions = (suggestions ?? []).slice(0, 5)
   return (
     <div className="grid gap-2">
-      <div className="text-sm font-medium text-foreground">{t("checkoutDomainSuggestionsTitle")}</div>
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />}
+        <span>{t("checkoutDomainSuggestionsTitle")}</span>
+      </div>
       <div className="grid gap-2">
         {visibleSuggestions.map((option) => (
           <DomainOptionRow
