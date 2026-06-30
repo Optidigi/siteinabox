@@ -82,13 +82,13 @@ function PreviewAccessScreen({
     <main className="flex min-h-dvh items-center justify-center bg-background px-4 py-10 text-foreground">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{denied ? "Preview access unavailable" : "Preview login"}</CardTitle>
+          <CardTitle>{denied ? "Preview-toegang niet beschikbaar" : "Preview-login"}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4">
           <p className="text-sm text-muted-foreground">
             {denied
-              ? "Use the email address that received the preview invitation, or request a new magic link."
-              : "Enter the email address from your preview invitation."}
+              ? "Gebruik het e-mailadres dat de preview-uitnodiging heeft ontvangen, of vraag een nieuwe inloglink aan."
+              : "Vul het e-mailadres uit je preview-uitnodiging in."}
           </p>
           <PreviewLoginForm clientSlug={clientSlug} callbackPath={callbackPath} />
         </CardContent>

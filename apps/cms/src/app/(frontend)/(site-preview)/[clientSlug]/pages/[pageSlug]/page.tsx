@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { renderPreviewRoute } from "@/lib/preview/renderPreviewRoute"
 
 export const metadata: Metadata = {
-  title: "Preview",
+  title: "Voorbeeld",
 }
 
 export default async function ClientPreviewPage({

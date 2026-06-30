@@ -21,7 +21,7 @@ const previewSessionEmail = async (): Promise<string> => {
     query: { disableCookieCache: true },
   })
   const email = session?.user?.email
-  if (!email) throw new Error("Preview login required")
+  if (!email) throw new Error("Preview-login vereist")
   return email
 }
 
@@ -51,7 +51,7 @@ export async function createPreviewMollieCheckout(access: PreviewCustomizerAcces
   reused: boolean
 }> {
   if (access.type === "legacy-token") {
-    throw new Error("Customer checkout requires Better Auth preview access.")
+    throw new Error("Afrekenen vereist preview-toegang via Better Auth.")
   }
   const customerEmail = await previewSessionEmail()
   const context = await loadPreviewGrantContext({

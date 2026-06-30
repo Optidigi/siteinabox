@@ -170,7 +170,7 @@ export async function createOrRefreshPreviewGrant(input: {
 }): Promise<PreviewAccessGrant> {
   const payload = await getPayload({ config })
   const customerEmail = normalizeEmail(input.customerEmail)
-  if (!customerEmail) throw new Error("Customer email is required")
+  if (!customerEmail) throw new Error("E-mailadres van de klant is verplicht")
 
   const run = await payload.findByID({
     collection: "site-generation-runs",

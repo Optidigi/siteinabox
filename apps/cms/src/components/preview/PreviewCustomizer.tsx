@@ -25,7 +25,7 @@ type SaveState = "idle" | "saving" | "saved" | "error"
 
 const formatExpiry = (exp: number) => {
   const date = new Date(exp * 1000)
-  return Number.isNaN(date.getTime()) ? "Unknown expiry" : date.toLocaleString("nl-NL")
+  return Number.isNaN(date.getTime()) ? "Onbekende verloopdatum" : date.toLocaleString("nl-NL")
 }
 
 export function PreviewCustomizer({
@@ -76,11 +76,11 @@ export function PreviewCustomizer({
           initialThemeRef.current = JSON.stringify(saved ?? {})
           setThemeState(saved)
           setThemeSaveState("saved")
-          setThemeMessage("Style changes saved.")
+          setThemeMessage("Stijlaanpassingen opgeslagen.")
         })
         .catch((error) => {
           setThemeSaveState("error")
-          setThemeMessage(error instanceof Error ? error.message : "Style changes could not be saved.")
+          setThemeMessage(error instanceof Error ? error.message : "Stijlaanpassingen konden niet worden opgeslagen.")
         })
     }, 500)
     return () => {
@@ -101,11 +101,11 @@ export function PreviewCustomizer({
         setApprovalState(next.approval)
         setPaymentState(next.payment)
         setApproveState("saved")
-        setApproveMessage("Approval recorded. Continue to checkout when you are ready.")
+        setApproveMessage("Akkoord opgeslagen. Ga verder met afrekenen wanneer je klaar bent.")
       })
       .catch((error) => {
         setApproveState("error")
-        setApproveMessage(error instanceof Error ? error.message : "Approval could not be recorded.")
+        setApproveMessage(error instanceof Error ? error.message : "Akkoord kon niet worden opgeslagen.")
       })
   }
   const handleCheckout = () => {
@@ -118,18 +118,18 @@ export function PreviewCustomizer({
       })
       .catch((error) => {
         setCheckoutState("error")
-        setCheckoutMessage(error instanceof Error ? error.message : "Checkout could not be started.")
+        setCheckoutMessage(error instanceof Error ? error.message : "Afrekenen kon niet worden gestart.")
       })
   }
   const saveStatus =
     themeSaveState === "saving"
-      ? "Saving styles"
+      ? "Stijlen opslaan"
       : themeSaveState === "saved"
         ? themeMessage
         : themeSaveState === "error"
           ? themeMessage
-          : "Styles ready"
-  const paymentStatus = paymentState?.status ? paymentState.status.replace(/_/g, " ") : "not started"
+          : "Stijlen gereed"
+  const paymentStatus = formatPaymentStatus(paymentState?.status)
   const paymentSatisfied = paymentState?.status === "completed" || paymentState?.status === "waived"
   const canCheckout = access.type === "grant" && approvalState?.status === "approved" && !paymentSatisfied
   const pageHref = (summary: PreviewPageSummary) =>
@@ -143,7 +143,7 @@ export function PreviewCustomizer({
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       <div className="sticky top-0 z-20 flex shrink-0 flex-col border-b bg-background/95 backdrop-blur">
         <div className="flex flex-col gap-2 px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
-          <nav className="flex min-w-0 flex-wrap items-center gap-1" aria-label="Preview pages">
+          <nav className="flex min-w-0 flex-wrap items-center gap-1" aria-label="Previewpagina's">
             {pages.map((summary) => {
               const active = String(summary.slug) === String(page.slug) || String(summary.id) === String(page.id)
               return (
@@ -169,7 +169,7 @@ export function PreviewCustomizer({
             {access.type === "legacy-token" && (
               <Badge variant="outline">
                 <Clock className="size-3" aria-hidden />
-                Expires {formatExpiry(access.exp)}
+                Verloopt {formatExpiry(access.exp)}
               </Badge>
             )}
           </div>
@@ -203,9 +203,9 @@ export function PreviewCustomizer({
         <div className="mx-auto flex max-w-7xl flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <Badge variant={approvalState?.status === "approved" ? "success" : "secondary"}>
-              {approvalState?.status === "approved" ? "Approved" : "Pending approval"}
+              {approvalState?.status === "approved" ? "Goedgekeurd" : "Wacht op akkoord"}
             </Badge>
-            <span>Payment gate: {paymentStatus}</span>
+            <span>Betaalstatus: {paymentStatus}</span>
             {approveState === "error" && approveMessage && (
               <span className="text-destructive">{approveMessage}</span>
             )}
@@ -224,7 +224,7 @@ export function PreviewCustomizer({
                 ) : (
                   <CreditCard className="size-4" />
                 )}
-                Pay with Mollie
+                Betaal met Mollie
               </Button>
             )}
             <Button type="button" onClick={handleApprove} disabled={approveState === "saving" || approvalState?.status === "approved"}>
@@ -235,11 +235,28 @@ export function PreviewCustomizer({
               ) : (
                 <CheckCircle2 className="size-4" />
               )}
-              {approvalState?.status === "approved" ? "Approved" : "Approve preview"}
+              {approvalState?.status === "approved" ? "Goedgekeurd" : "Preview goedkeuren"}
             </Button>
           </div>
         </div>
       </footer>
     </div>
   )
+}
+
+function formatPaymentStatus(status: string | null | undefined): string {
+  switch (status) {
+    case "completed":
+      return "betaald"
+    case "waived":
+      return "vrijgesteld"
+    case "pending_provider_payment":
+      return "wacht op betaling"
+    case "not_started":
+    case undefined:
+    case null:
+      return "nog niet gestart"
+    default:
+      return status.replace(/_/g, " ")
+  }
 }

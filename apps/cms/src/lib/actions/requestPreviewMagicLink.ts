@@ -15,12 +15,12 @@ export async function requestPreviewMagicLinkAction(
   _state: RequestPreviewMagicLinkState,
   formData: FormData,
 ): Promise<RequestPreviewMagicLinkState> {
-  const genericSuccess = "If this email has preview access, you will receive a magic link."
+  const genericSuccess = "Als dit e-mailadres toegang heeft tot de preview, ontvang je een inloglink."
   try {
     const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
     const email = String(formData.get("email") ?? "").trim().toLowerCase()
     if (!normalizedClientSlug || !email) {
-      return { ok: false, message: "Email is required." }
+      return { ok: false, message: "E-mailadres is verplicht." }
     }
 
     await (previewAuth.api as any).signInMagicLink({

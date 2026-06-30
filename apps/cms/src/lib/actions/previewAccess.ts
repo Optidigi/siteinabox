@@ -17,7 +17,7 @@ const requireSuperAdmin = async () => {
   const payload = await getPayload({ config })
   const authResult = await payload.auth({ headers: await headers() })
   if (authResult.user?.role !== "super-admin") {
-    throw new Error("Only super-admins can manage customer preview access.")
+    throw new Error("Alleen superbeheerders kunnen klanttoegang tot previews beheren.")
   }
 }
 
@@ -38,7 +38,7 @@ export async function sendPreviewAccessAction(
   try {
     await requireSuperAdmin()
     const email = String(formData.get("email") ?? "").trim().toLowerCase()
-    if (!email) return { ok: false, message: "Customer email is required." }
+    if (!email) return { ok: false, message: "E-mailadres van de klant is verplicht." }
 
     const grant = await createOrRefreshPreviewGrant({
       generationRunId,
@@ -59,11 +59,11 @@ export async function sendPreviewAccessAction(
       headers: await previewAuthHeaders(),
     })
 
-    return { ok: true, previewUrl, message: "Preview magic link sent." }
+    return { ok: true, previewUrl, message: "Preview-inloglink verstuurd." }
   } catch (error) {
     return {
       ok: false,
-      message: error instanceof Error ? error.message : "Preview access could not be sent.",
+      message: error instanceof Error ? error.message : "Preview-toegang kon niet worden verstuurd.",
     }
   }
 }

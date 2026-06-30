@@ -29,7 +29,7 @@ export function PreviewLoginForm({
   return (
     <form action={formAction} className="grid gap-4">
       <div className="grid gap-2">
-        <Label htmlFor="preview-email">Email</Label>
+        <Label htmlFor="preview-email">E-mailadres</Label>
         <Input
           id="preview-email"
           name="email"
@@ -40,11 +40,11 @@ export function PreviewLoginForm({
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Mail className="size-4" aria-hidden />}
-        Send magic link
+        Verstuur inloglink
       </Button>
       {state.message && (
         <Alert variant={state.ok ? "default" : "destructive"}>
-          <AlertTitle>{state.ok ? "Email sent" : "Access unavailable"}</AlertTitle>
+          <AlertTitle>{state.ok ? "E-mail verstuurd" : "Toegang niet beschikbaar"}</AlertTitle>
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
       )}

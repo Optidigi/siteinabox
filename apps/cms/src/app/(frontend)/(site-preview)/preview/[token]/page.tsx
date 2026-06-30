@@ -6,7 +6,7 @@ import { getPreviewCustomizerData } from "@/lib/preview/customizer"
 import { legacyPreviewTokensEnabled } from "@/lib/preview/legacyPreview"
 
 export const metadata: Metadata = {
-  title: "Preview",
+  title: "Voorbeeld",
 }
 
 export default async function PreviewPage({
