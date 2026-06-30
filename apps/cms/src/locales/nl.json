@@ -991,6 +991,9 @@
     "checkoutConfirmDomainLabel": "Domeinnaam bevestigen",
     "checkoutDomainPlaceholder": "voorbeeld.nl",
     "checkoutCheckDomain": "Controleer domein",
+    "checkoutCheckAgain": "Opnieuw controleren",
+    "checkoutDomainCheckingShort": "Controleren",
+    "checkoutDomainOccupied": "Domein bezet",
     "checkoutConfirmDomain": "Bevestig domein",
     "checkoutStartPayment": "Afrekenen",
     "checkoutStepDomain": "Domein",
@@ -1067,6 +1070,7 @@
     "checkoutSummaryApproval": "Akkoord",
     "checkoutSummaryPayment": "Betaling",
     "checkoutSummaryTotal": "Totaal",
+    "checkoutTotalBadge": "Totaal {total}",
     "checkoutPaymentDescription": "Dit totaalbedrag is inclusief website, domeinregistratie en livegang voor het eerste jaar. Daarna geef je toestemming voor maandelijkse automatische verlenging."
   },
   "profile": {

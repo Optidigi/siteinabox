@@ -92,19 +92,16 @@ async function suggestAvailableDomains(
   token: string,
 ): Promise<PreviewDomainSuggestion[]> {
   const normalized = normalizeDomain(domain)
-  const providerCandidates = await suggestOpenProviderDomains(domain, { token, limit: 12 })
-    .then((suggestions) => suggestions.map((suggestion) => suggestion.domain))
-    .catch(() => [])
-  const candidates = new Set<string>([
-    ...providerCandidates.filter((candidate) => {
-      const candidateDomain = normalizeDomain(candidate)
-      return candidateDomain.ok && normalized.ok && candidateDomain.extension === normalized.extension
-    }),
-    ...suggestionCandidates(domain),
-  ])
-  try {
-    const availabilityResults = await checkOpenProviderDomainsAvailability([...candidates], { token })
-    const suggestions: PreviewDomainSuggestion[] = []
+  const suggestions: PreviewDomainSuggestion[] = []
+  const checkedCandidates = new Set<string>()
+  const appendAvailableCandidates = async (candidates: string[]): Promise<void> => {
+    const uncheckedCandidates = candidates.filter((candidate) => {
+      if (checkedCandidates.has(candidate)) return false
+      checkedCandidates.add(candidate)
+      return true
+    })
+    if (uncheckedCandidates.length === 0 || suggestions.length >= 5) return
+    const availabilityResults = await checkOpenProviderDomainsAvailability(uncheckedCandidates, { token })
     for (const availability of availabilityResults) {
       const providerPrice = availability.price
         ? { amount: availability.price.amount, currency: availability.price.currency }
@@ -114,10 +111,23 @@ async function suggestAvailableDomains(
       }
       if (suggestions.length >= 5) break
     }
+  }
+
+  try {
+    await appendAvailableCandidates(suggestionCandidates(domain))
+    if (suggestions.length >= 5) return suggestions
+
+    const providerCandidates = await suggestOpenProviderDomains(domain, { token, limit: 12 })
+      .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
+      .catch(() => [])
+    await appendAvailableCandidates(providerCandidates.filter((candidate) => {
+      const candidateDomain = normalizeDomain(candidate)
+      return candidateDomain.ok && normalized.ok && candidateDomain.extension === normalized.extension
+    }))
     return suggestions
   } catch {
     // Suggestions are optional; the primary domain check result remains authoritative.
-    return []
+    return suggestions
   }
 }
 

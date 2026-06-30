@@ -5,6 +5,7 @@ import { useActionState } from "react"
 import { useTranslations } from "next-intl"
 import {
   ArrowLeft,
+  ChevronLeft,
   CircleAlert,
   CheckCircle2,
   CreditCard,
@@ -116,10 +117,8 @@ export function PreviewCheckout({
   domainReady = false,
   registrant,
   priceLabel,
-  initialExtraFeeLabel,
   initialTotalPriceLabel,
   paymentStatus,
-  approvalStatus,
   previewHref,
   checkDomainAction,
   startPaymentAction,
@@ -139,6 +138,8 @@ export function PreviewCheckout({
   const [selectedSuggestion, setSelectedSuggestion] = React.useState<PreviewCheckoutDomainOption | null>(null)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
   const [detailsEditing, setDetailsEditing] = React.useState(() => !registrant || !registrantIsComplete(emptyRegistrant(customerEmail, registrant)))
+  const normalizedDomainValue = domainValue.trim().toLowerCase()
+  const checkAppliesToCurrentInput = Boolean(checkState.domain && checkState.domain === normalizedDomainValue)
 
   React.useEffect(() => {
     if (checkState.ok && checkState.domain) {
@@ -159,18 +160,12 @@ export function PreviewCheckout({
   const canContinueFromDomain = Boolean(
     selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)),
   )
-  const selectedSuggestionExtraFeeLabel = selectedSuggestion?.domain === selectedDomain ? selectedSuggestion.extraFeeLabel : null
   const totalPriceLabel = !selectedSuggestion
     ? checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
     : initialTotalPriceLabel || priceLabel
-  const selectedExtraFeeLabel = selectedSuggestionExtraFeeLabel ?? (checkState.domain === selectedDomain
-    ? checkState.extraFeeLabel
-    : selectedDomain && domainReady
-      ? initialExtraFeeLabel
-      : null)
   const domainResultKind = checkPending
     ? "loading"
-    : checkState.message
+    : checkState.message && checkAppliesToCurrentInput
       ? checkState.ok
         ? "success"
         : ["unavailable", "premium", "too_expensive"].includes(checkState.status ?? "")
@@ -204,8 +199,18 @@ export function PreviewCheckout({
     }
   }
 
+  const goBack = () => {
+    if (step === "payment") {
+      setStep("details")
+      return
+    }
+    if (step === "details") {
+      setStep("domain")
+    }
+  }
+
   return (
-    <main className="min-h-dvh bg-background text-foreground pb-[max(env(safe-area-inset-bottom),1.5rem)]">
+    <main className="min-h-dvh bg-background pb-28 text-foreground md:pb-6">
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
         <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center gap-3 px-3 py-2 md:min-h-12 md:px-4">
           <a href={previewHref} className="flex min-w-0 items-center gap-2">
@@ -232,7 +237,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-7xl gap-4 p-3 md:p-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="mx-auto grid w-full max-w-4xl gap-4 p-3 md:p-4">
         <section className="grid gap-4">
           <CheckoutStepper step={step} />
 
@@ -241,82 +246,58 @@ export function PreviewCheckout({
               <CardHeader>
                 <CardTitle>{t("checkoutDomainTitle")}</CardTitle>
                 <CardDescription>{t("checkoutDomainStepDescription")}</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-5">
-                  <form action={checkAction} className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-                    <div className="grid gap-2">
-                      <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
-                      <Input
-                        id="checkout-domain"
-                        name="domain"
-                        type="text"
-                        inputMode="url"
-                        autoComplete="url"
-                        value={domainValue}
-                        onChange={(event) => updateDomain(event.target.value)}
-                        placeholder={t("checkoutDomainPlaceholder")}
-                        aria-invalid={domainInputState === "error"}
-                        className={cn(
-                          domainInputState === "success" && "border-primary",
-                          domainInputState === "error" && "border-destructive",
-                        )}
-                        required
-                      />
-                      {domainInputState && !checkPending && (
-                        <p className={cn(
-                          "text-xs",
-                          domainInputState === "success" ? "text-muted-foreground" : "text-destructive",
-                        )}>
-                          {domainInputState === "success" ? t("checkoutDomainInputAvailable") : t("checkoutDomainInputUnavailable")}
-                        </p>
+              </CardHeader>
+              <CardContent className="grid gap-5">
+                <form id="checkout-domain-form" action={checkAction} className="grid gap-3">
+                  <div className="grid gap-2">
+                    <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
+                    <Input
+                      id="checkout-domain"
+                      name="domain"
+                      type="text"
+                      inputMode="url"
+                      autoComplete="url"
+                      value={domainValue}
+                      onChange={(event) => updateDomain(event.target.value)}
+                      placeholder={t("checkoutDomainPlaceholder")}
+                      aria-invalid={domainInputState === "error"}
+                      className={cn(
+                        domainInputState === "success" && "border-primary",
+                        domainInputState === "error" && "border-destructive",
                       )}
-                    </div>
-                  <Button type="submit" variant="outline" disabled={checkPending}>
-                    {checkPending ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                    ) : (
-                      <Globe2 className="size-4" aria-hidden />
-                    )}
-                    {t("checkoutCheckDomain")}
-                  </Button>
+                      required
+                    />
+                  </div>
                 </form>
 
-                {domainResultKind && (
-                  <Alert variant={domainResultKind === "error" ? "destructive" : "default"}>
-                    {domainResultKind === "loading" && <Loader2 className="size-4 animate-spin" aria-hidden />}
-                    {domainResultKind === "success" && <CheckCircle2 className="size-4" aria-hidden />}
-                    {domainResultKind === "unavailable" && <CircleAlert className="size-4" aria-hidden />}
-                    {domainResultKind === "error" && <CircleAlert className="size-4" aria-hidden />}
-                    <AlertTitle>{domainAlertTitle(domainResultKind, t)}</AlertTitle>
-                    <AlertDescription className="grid gap-3">
-                      <span>{domainResultKind === "loading" ? t("checkoutDomainCheckingDescription") : checkState.message}</span>
-                      {domainResultKind === "success" && selectedDomain && (
-                        <DomainOptionRow
-                          option={{
-                            domain: selectedDomain,
-                            included: Boolean(checkState.included),
-                            extraFeeAmount: checkState.extraFeeAmount ?? null,
-                            extraFeeCurrency: checkState.extraFeeCurrency ?? null,
-                            extraFeeLabel: checkState.extraFeeLabel,
-                          }}
-                          selected
-                        />
-                      )}
-                      <DomainSuggestions
-                        suggestions={checkState.suggestions}
-                        selectedDomain={selectedSuggestion?.domain ?? null}
-                        onSelect={selectSuggestedDomain}
-                      />
-                    </AlertDescription>
+                {domainResultKind === "success" && selectedDomain && (
+                  <DomainOptionRow
+                    option={{
+                      domain: selectedDomain,
+                      included: Boolean(checkState.included),
+                      extraFeeAmount: checkState.extraFeeAmount ?? null,
+                      extraFeeCurrency: checkState.extraFeeCurrency ?? null,
+                      extraFeeLabel: checkState.extraFeeLabel,
+                    }}
+                    selected
+                  />
+                )}
+
+                {domainResultKind === "error" && (
+                  <Alert variant="destructive">
+                    <CircleAlert className="size-4" aria-hidden />
+                    <AlertTitle>{t("checkoutDomainErrorTitle")}</AlertTitle>
+                    <AlertDescription>{checkState.message}</AlertDescription>
                   </Alert>
                 )}
 
-                <div className="flex justify-end">
-                  <Button type="button" disabled={!canContinueFromDomain} onClick={() => setStep("details")}>
-                    <CheckCircle2 className="size-4" aria-hidden />
-                    {t("checkoutNext")}
-                  </Button>
-                </div>
+                {checkAppliesToCurrentInput && (
+                  <DomainSuggestions
+                    suggestions={checkState.suggestions}
+                    selectedDomain={selectedSuggestion?.domain ?? null}
+                    onSelect={selectSuggestedDomain}
+                  />
+                )}
               </CardContent>
             </Card>
           )}
@@ -358,14 +339,6 @@ export function PreviewCheckout({
                     <AlertDescription>{t("checkoutDetailsOverviewDescription")}</AlertDescription>
                   </Alert>
                 )}
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-                  <Button type="button" variant="outline" onClick={() => setStep("domain")}>
-                    {t("checkoutBack")}
-                  </Button>
-                  <Button type="button" disabled={!holderComplete || !selectedDomain} onClick={() => setStep("payment")}>
-                    {t("checkoutNext")}
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
@@ -387,21 +360,8 @@ export function PreviewCheckout({
                   <AlertTitle>{t("checkoutRenewalTitle")}</AlertTitle>
                   <AlertDescription>{t("checkoutDomainSubmitDescription")}</AlertDescription>
                 </Alert>
-                <form action={paymentAction} className="grid gap-3">
+                <form id="checkout-payment-form" action={paymentAction} className="hidden">
                   <CheckoutHiddenInputs domain={selectedDomain ?? domainValue} holder={holder} />
-                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-                    <Button type="button" variant="outline" onClick={() => setStep("details")}>
-                      {t("checkoutBack")}
-                    </Button>
-                    <Button type="submit" disabled={paymentPending || !holderComplete || !selectedDomain}>
-                      {paymentPending ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        <CreditCard className="size-4" aria-hidden />
-                      )}
-                      {t("checkoutStartPayment")}
-                    </Button>
-                  </div>
                 </form>
                 {paymentState.message && (
                   <Alert variant={paymentState.ok || paymentState.status === "payment_complete" ? "default" : "destructive"}>
@@ -414,46 +374,22 @@ export function PreviewCheckout({
           )}
         </section>
 
-        <aside className="grid h-fit gap-4 lg:sticky lg:top-20">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("checkoutSummaryTitle")}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 text-sm">
-              <div className="grid gap-1">
-                <div className="text-muted-foreground">{t("checkoutSummaryProduct")}</div>
-                <div className="font-medium">{t("checkoutSummaryProductName")}</div>
-              </div>
-              <div className="grid gap-1">
-                <div className="text-muted-foreground">{t("checkoutSummaryCustomer")}</div>
-                <div className="break-all font-medium">{customerEmail}</div>
-              </div>
-              <div className="grid gap-1">
-                <div className="text-muted-foreground">{t("checkoutSummaryDomain")}</div>
-                <div className="break-all font-medium">{selectedDomain || domainValue || currentDomain || t("checkoutDomainUnset")}</div>
-                {selectedExtraFeeLabel && (
-                  <div className="text-xs text-muted-foreground">{t("checkoutDomainExtraFeeInline", { extraFee: selectedExtraFeeLabel })}</div>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3 border-t pt-4">
-                <div className="text-muted-foreground">{t("checkoutSummaryApproval")}</div>
-                <Badge variant={approvalStatus === "approved" ? "success" : "secondary"}>
-                  {approvalStatus === "approved" ? t("approved") : t("pendingApproval")}
-                </Badge>
-                <div className="text-muted-foreground">{t("checkoutSummaryPayment")}</div>
-                <Badge variant={paymentStatus === "completed" ? "success" : "secondary"}>
-                  {formatPaymentStatus(paymentStatus, t)}
-                </Badge>
-              </div>
-              <div className="flex items-center justify-between border-t pt-4 text-base">
-                <span className="font-medium">{t("checkoutSummaryTotal")}</span>
-                <span className="font-semibold">{totalPriceLabel}</span>
-              </div>
-              <p className="text-xs text-muted-foreground">{t("checkoutPaymentDescription")}</p>
-            </CardContent>
-          </Card>
-        </aside>
       </div>
+      <CheckoutActionBar
+        step={step}
+        priceLabel={totalPriceLabel}
+        canContinueFromDomain={canContinueFromDomain}
+        holderComplete={holderComplete}
+        selectedDomain={selectedDomain}
+        checkPending={checkPending}
+        paymentPending={paymentPending}
+        domainResultKind={domainResultKind}
+        paymentStatus={paymentStatus}
+        previewHref={previewHref}
+        onBack={goBack}
+        onNext={() => setStep(step === "domain" ? "details" : "payment")}
+        t={t}
+      />
     </main>
   )
 }
@@ -467,36 +403,137 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
   ]
   const activeIndex = steps.findIndex((entry) => entry.id === step)
   return (
-    <Card className="py-4">
-      <CardContent className="px-4">
-        <ol className="grid gap-2 sm:grid-cols-3">
-          {steps.map((entry, index) => {
-            const Icon = entry.icon
-            const active = index === activeIndex
-            const complete = index < activeIndex
-            return (
-              <li
-                key={entry.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-md border px-3 py-2 text-sm",
-                  active && "border-primary bg-primary/5",
-                  complete && "border-border bg-muted/40",
-                )}
-              >
-                <span className={cn(
-                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs",
-                  active && "border-primary bg-primary text-primary-foreground",
-                  complete && "border-primary text-primary",
-                )}>
-                  {complete ? <CheckCircle2 className="size-4" aria-hidden /> : <Icon className="size-4" aria-hidden />}
-                </span>
-                <span className="truncate font-medium">{entry.label}</span>
-              </li>
-            )
-          })}
-        </ol>
-      </CardContent>
-    </Card>
+    <ol className="grid grid-cols-3 gap-2 rounded-full border bg-background p-1">
+      {steps.map((entry, index) => {
+        const Icon = entry.icon
+        const active = index === activeIndex
+        const complete = index < activeIndex
+        return (
+          <li
+            key={entry.id}
+            className={cn(
+              "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
+              active && "bg-primary text-primary-foreground",
+              complete && "text-primary",
+            )}
+          >
+            {complete ? <CheckCircle2 className="size-4" aria-hidden /> : <Icon className="size-4" aria-hidden />}
+            <span className="hidden sm:inline">{entry.label}</span>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
+function CheckoutActionBar({
+  step,
+  priceLabel,
+  canContinueFromDomain,
+  holderComplete,
+  selectedDomain,
+  checkPending,
+  paymentPending,
+  domainResultKind,
+  paymentStatus,
+  previewHref,
+  onBack,
+  onNext,
+  t,
+}: {
+  step: CheckoutStep
+  priceLabel: string
+  canContinueFromDomain: boolean
+  holderComplete: boolean
+  selectedDomain: string | null
+  checkPending: boolean
+  paymentPending: boolean
+  domainResultKind: "loading" | "success" | "unavailable" | "error" | null
+  paymentStatus: string
+  previewHref: string
+  onBack: () => void
+  onNext: () => void
+  t: ReturnType<typeof useTranslations<"preview">>
+}) {
+  const priceBadge = (
+    <Badge variant="outline" className="h-9 rounded-md px-3">
+      {t("checkoutTotalBadge", { total: priceLabel })}
+    </Badge>
+  )
+
+  const secondary = step === "domain"
+    ? (
+        <Button asChild variant="outline" size="icon" aria-label={t("checkoutBackToPreview")}>
+          <a href={previewHref}>
+            <ChevronLeft className="size-4" aria-hidden />
+          </a>
+        </Button>
+      )
+    : (
+        <Button type="button" variant="outline" size="icon" aria-label={t("checkoutBack")} onClick={onBack}>
+          <ChevronLeft className="size-4" aria-hidden />
+        </Button>
+      )
+
+  let primary: React.ReactNode
+  if (step === "domain" && canContinueFromDomain) {
+    primary = (
+      <Button type="button" className="min-w-0 flex-1" onClick={onNext}>
+        <CheckCircle2 className="size-4" aria-hidden />
+        {t("checkoutNext")}
+      </Button>
+    )
+  } else if (step === "domain") {
+    const unavailable = domainResultKind === "unavailable"
+    primary = (
+      <Button
+        form="checkout-domain-form"
+        type="submit"
+        variant={unavailable ? "destructive" : "default"}
+        className="min-w-0 flex-1"
+        disabled={checkPending || unavailable}
+      >
+        {checkPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Globe2 className="size-4" aria-hidden />}
+        {checkPending
+          ? t("checkoutDomainCheckingShort")
+          : unavailable
+            ? t("checkoutDomainOccupied")
+            : domainResultKind === "error"
+              ? t("checkoutCheckAgain")
+              : t("checkoutCheckDomain")}
+      </Button>
+    )
+  } else if (step === "details") {
+    primary = (
+      <Button type="button" className="min-w-0 flex-1" disabled={!holderComplete || !selectedDomain} onClick={onNext}>
+        {t("checkoutNext")}
+      </Button>
+    )
+  } else {
+    const complete = paymentStatus === "completed"
+    primary = (
+      <Button
+        form="checkout-payment-form"
+        type="submit"
+        className="min-w-0 flex-1"
+        disabled={paymentPending || !holderComplete || !selectedDomain || complete}
+      >
+        {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
+        {complete ? t("paymentCompleted") : t("checkoutStartPayment")}
+      </Button>
+    )
+  }
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-4xl md:rounded-md md:border md:bg-card md:shadow-none">
+      <div className="flex items-center gap-2">
+        {priceBadge}
+        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
+          {secondary}
+          {primary}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -601,19 +638,6 @@ function ReviewRow({ label, value, onEdit }: { label: string; value: string; onE
       )}
     </div>
   )
-}
-
-function domainAlertTitle(kind: "loading" | "success" | "unavailable" | "error", t: ReturnType<typeof useTranslations<"preview">>): string {
-  switch (kind) {
-    case "loading":
-      return t("checkoutDomainCheckingTitle")
-    case "success":
-      return t("checkoutDomainAvailableTitle")
-    case "unavailable":
-      return t("checkoutDomainUnavailableTitle")
-    case "error":
-      return t("checkoutDomainErrorTitle")
-  }
 }
 
 function paymentAlertTitle(state: PreviewCheckoutActionState, t: ReturnType<typeof useTranslations<"preview">>): string {
@@ -727,19 +751,4 @@ function CheckoutHiddenInputs({ domain, holder }: { domain: string; holder: Doma
       <input type="hidden" name="phoneSubscriberNumber" value={holder.phoneSubscriberNumber} />
     </>
   )
-}
-
-function formatPaymentStatus(status: string, t: ReturnType<typeof useTranslations<"preview">>): string {
-  switch (status) {
-    case "completed":
-      return t("paymentCompleted")
-    case "waived":
-      return t("paymentWaived")
-    case "pending_provider":
-      return t("paymentPendingProvider")
-    case "not_started":
-      return t("paymentNotStarted")
-    default:
-      return status.replace(/_/g, " ")
-  }
 }

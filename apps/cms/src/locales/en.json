@@ -991,6 +991,9 @@
     "checkoutConfirmDomainLabel": "Confirm domain name",
     "checkoutDomainPlaceholder": "example.com",
     "checkoutCheckDomain": "Check domain",
+    "checkoutCheckAgain": "Check again",
+    "checkoutDomainCheckingShort": "Checking",
+    "checkoutDomainOccupied": "Domain taken",
     "checkoutConfirmDomain": "Confirm domain",
     "checkoutStartPayment": "Checkout",
     "checkoutStepDomain": "Domain",
@@ -1067,6 +1070,7 @@
     "checkoutSummaryApproval": "Approval",
     "checkoutSummaryPayment": "Payment",
     "checkoutSummaryTotal": "Total",
+    "checkoutTotalBadge": "Total {total}",
     "checkoutPaymentDescription": "This total includes the website, domain registration, and launch for the first year. After that you authorize monthly automatic renewal."
   },
   "profile": {

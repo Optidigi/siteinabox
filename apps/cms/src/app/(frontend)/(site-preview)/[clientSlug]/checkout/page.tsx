@@ -69,8 +69,6 @@ export default async function PreviewCheckoutPage({
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
     const initialPrice = domainPriceLabels(locale, domainOrder)
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
-      customerEmail: context.customerEmail,
-      tenantName: String(context.tenant.name ?? ""),
       run: context.run,
     })
 
@@ -120,6 +118,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return readObject(value)
 }
 
+function nestedObject(source: Record<string, unknown> | null, key: string): Record<string, unknown> | null {
+  return readObject(source?.[key])
+}
+
 function splitName(value: string | null): { firstName: string; lastName: string } {
   const parts = (value ?? "").trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return { firstName: "", lastName: "" }
@@ -127,35 +129,99 @@ function splitName(value: string | null): { firstName: string; lastName: string 
   return { firstName: parts.slice(0, -1).join(" "), lastName: parts[parts.length - 1] ?? "" }
 }
 
+function splitPhone(value: string | null): { phoneCountryCode: string; phoneAreaCode: string; phoneSubscriberNumber: string } {
+  const cleaned = (value ?? "").replace(/[^\d+]/g, "")
+  if (!cleaned) return { phoneCountryCode: "+31", phoneAreaCode: "", phoneSubscriberNumber: "" }
+  const withoutCountry = cleaned.startsWith("+31")
+    ? cleaned.slice(3)
+    : cleaned.startsWith("0031")
+      ? cleaned.slice(4)
+      : cleaned.startsWith("31") && cleaned.length > 10
+        ? cleaned.slice(2)
+        : cleaned
+  const normalized = withoutCountry.replace(/^0+/, "")
+  return {
+    phoneCountryCode: cleaned.startsWith("+") || cleaned.startsWith("00") || cleaned.startsWith("31") ? "+31" : "+31",
+    phoneAreaCode: normalized.slice(0, 2),
+    phoneSubscriberNumber: normalized.slice(2),
+  }
+}
+
+function splitAddress(value: string | null): { street: string; number: string; suffix: string | null; zipcode: string; city: string } {
+  const cleaned = value?.replace(/\s+/g, " ").trim() ?? ""
+  if (!cleaned) return { street: "", number: "", suffix: null, zipcode: "", city: "" }
+  const postcodeMatch = cleaned.match(/\b(\d{4}\s?[a-z]{2})\b\s*(.*)$/i)
+  const zipcode = postcodeMatch?.[1]?.toUpperCase().replace(/\s+/, "") ?? ""
+  const city = postcodeMatch?.[2]?.replace(/^[,\s]+/, "").trim() ?? ""
+  const streetPart = postcodeMatch ? cleaned.slice(0, postcodeMatch.index).replace(/[,\s]+$/, "") : cleaned
+  const houseMatch = streetPart.match(/^(.+?)\s+(\d+)\s*([a-z0-9 -]*)?$/i)
+  return {
+    street: houseMatch?.[1]?.trim() ?? streetPart,
+    number: houseMatch?.[2]?.trim() ?? "",
+    suffix: houseMatch?.[3]?.trim() || null,
+    zipcode,
+    city,
+  }
+}
+
 function deriveRegistrantDefaults(input: {
-  customerEmail: string
-  tenantName: string
   run: Awaited<ReturnType<typeof loadPreviewGrantContext>>["run"]
 }): DomainRegistrantDetails | null {
   const intake = asRecord(input.run.intakeSubmission)
+  const raw = asRecord(intake?.raw)
   const normalizedIntake = readObject(input.run.normalizedIntake)
   const generationInput = readObject(input.run.generationInput)
-  const contact = readObject(normalizedIntake?.contact) ?? readObject(generationInput?.contact)
-  const company = readObject(normalizedIntake?.company) ?? readObject(generationInput?.company)
-  const contactName = readText(intake, ["contactName"]) ?? readText(contact, ["name", "contactName"]) ?? readText(normalizedIntake, ["contactName"])
+  const generationNormalized = nestedObject(generationInput, "normalizedIntake")
+  const contact = nestedObject(normalizedIntake, "contact") ?? nestedObject(generationNormalized, "contact")
+  const companyFacts = nestedObject(normalizedIntake, "companyFacts") ?? nestedObject(generationInput, "companyFacts")
+  const intakeBrief = nestedObject(normalizedIntake, "intakeBrief") ?? nestedObject(generationInput, "brief")
+  const contactPreferences = nestedObject(intakeBrief, "contactPreferences")
+  const rawCompany = nestedObject(raw, "company")
+  const rawFinalDetails = nestedObject(raw, "finalDetails")
+  const rawContact = nestedObject(raw, "contact")
+
+  const contactName = readText(intake, ["contactName"])
+    ?? readText(rawFinalDetails, ["name"])
+    ?? readText(contact, ["name", "contactName"])
   const { firstName, lastName } = splitName(contactName)
-  const address = readText(contact, ["address"]) ?? readText(company, ["address"]) ?? ""
+  const address = splitAddress(
+    readText(rawCompany, ["address"])
+      ?? readText(rawContact, ["publicAddress"])
+      ?? readText(companyFacts, ["address"])
+      ?? readText(contactPreferences, ["publicAddress"]),
+  )
+  const phone = splitPhone(
+    readText(rawFinalDetails, ["phone"])
+      ?? readText(rawContact, ["phoneNumber"])
+      ?? readText(intake, ["contactPhone"])
+      ?? readText(contact, ["phone"])
+      ?? readText(contactPreferences, ["phoneNumber"]),
+  )
+  const companyName = readText(intake, ["businessName"])
+    ?? readText(rawCompany, ["companyName"])
+    ?? readText(normalizedIntake, ["businessName"])
+    ?? readText(generationNormalized, ["businessName"])
+    ?? readText(companyFacts, ["companyName"])
+  const email = readText(intake, ["contactEmail"])
+    ?? readText(rawFinalDetails, ["email"])
+    ?? readText(raw, ["email"])
+    ?? readText(contact, ["email"])
 
   return {
-    companyName: (readText(intake, ["businessName"]) ?? readText(normalizedIntake, ["businessName"]) ?? input.tenantName) || null,
+    companyName,
     firstName,
     lastName,
-    email: readText(intake, ["contactEmail"]) ?? readText(contact, ["email"]) ?? input.customerEmail,
-    street: address,
-    number: "",
-    suffix: null,
-    zipcode: "",
-    city: "",
+    email: email ?? "",
+    street: address.street,
+    number: address.number,
+    suffix: address.suffix,
+    zipcode: address.zipcode,
+    city: address.city,
     country: "NL",
     state: null,
-    phoneCountryCode: "+31",
-    phoneAreaCode: "",
-    phoneSubscriberNumber: readText(contact, ["phone"]) ?? "",
+    phoneCountryCode: phone.phoneCountryCode,
+    phoneAreaCode: phone.phoneAreaCode,
+    phoneSubscriberNumber: phone.phoneSubscriberNumber,
     locale: "nl_NL",
   }
 }

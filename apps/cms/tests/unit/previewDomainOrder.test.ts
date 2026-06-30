@@ -29,7 +29,7 @@ describe("preview domain order", () => {
     vi.mocked(suggestOpenProviderDomains).mockResolvedValue([])
   })
 
-  it("suggests five available same-extension alternative domains with one batch availability check", async () => {
+  it("suggests five local same-extension alternatives before calling provider suggestions", async () => {
     const run = {
       id: 123,
       domainOrder: null,
@@ -74,18 +74,18 @@ describe("preview domain order", () => {
       domain: "acme.nl",
       suggestions: [
         { domain: "acmesite.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+        { domain: "acme-site.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+        { domain: "acmeonline.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
         { domain: "acme-online.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acme-studio.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acme-hq.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
-        { domain: "acme-groep.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
+        { domain: "acmeweb.nl", included: true, extraFeeAmount: null, extraFeeCurrency: null },
       ],
     })
     expect(loginOpenProvider).toHaveBeenCalledTimes(1)
     expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.nl", { token: "token-123" })
-    expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { token: "token-123", limit: 12 })
+    expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledTimes(1)
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
-      expect.arrayContaining(["acmesite.nl", "acme-online.nl", "acme-expensive.nl", "acme-studio.nl", "acme-hq.nl", "acme-groep.nl"]),
+      expect.arrayContaining(["acmesite.nl", "acme-site.nl", "acmeonline.nl", "acme-online.nl", "acmeweb.nl"]),
       { token: "token-123" },
     )
     expect(run.domainOrder).toMatchObject({
