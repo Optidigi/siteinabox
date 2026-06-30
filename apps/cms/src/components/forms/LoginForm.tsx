@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -80,9 +80,7 @@ export function LoginForm({
   const params = useSearchParams()
   const status = useStatusFeedback()
   const [pending, setPending] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
   const [passwordMode, setPasswordMode] = useState(false)
-  useEffect(() => setHydrated(true), [])
   const errorParam = params.get("error")
   const errorCopy = errorParam
     ? ERROR_KEYS[errorParam]
@@ -240,7 +238,7 @@ export function LoginForm({
             </FormItem>
           )}/>
         )}
-        <Button type="submit" disabled={pending || !hydrated} className="w-full rounded-lg">
+        <Button type="submit" disabled={pending} className="w-full rounded-lg">
           {!passwordMode && <Mail aria-hidden />}
           {pending
             ? passwordMode
@@ -254,7 +252,7 @@ export function LoginForm({
           <Button
             type="button"
             variant="outline"
-            disabled={pending || !hydrated}
+            disabled={pending}
             className="w-full rounded-lg border-transparent ring-1 ring-foreground/25 dark:ring-foreground/30"
             onClick={() => void onMagicLinkSignIn()}
           >
@@ -275,7 +273,7 @@ export function LoginForm({
               key={provider}
               type="button"
               variant="outline"
-              disabled={pending || !hydrated}
+              disabled={pending}
               className="w-full rounded-lg border-transparent ring-1 ring-foreground/25 dark:ring-foreground/30"
               aria-label={t("continueWith", { provider: SOCIAL_AUTH_PROVIDER_LABELS[provider] })}
               onClick={() => void onSocialSignIn(provider)}
