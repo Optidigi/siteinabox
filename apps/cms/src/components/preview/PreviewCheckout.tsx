@@ -11,8 +11,6 @@ import {
   CreditCard,
   Globe2,
   Loader2,
-  Pencil,
-  ShieldCheck,
   UserRound,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
@@ -21,7 +19,6 @@ import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
-import { Separator } from "@siteinabox/ui/components/separator"
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
 
@@ -112,7 +109,6 @@ const registrantIsComplete = (holder: DomainRegistrantDetails): boolean =>
 
 export function PreviewCheckout({
   customerEmail,
-  tenantName,
   currentDomain,
   domainReady = false,
   registrant,
@@ -137,7 +133,6 @@ export function PreviewCheckout({
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(domainReady ? (currentDomain ?? null) : null)
   const [selectedSuggestion, setSelectedSuggestion] = React.useState<PreviewCheckoutDomainOption | null>(null)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
-  const [detailsEditing, setDetailsEditing] = React.useState(() => !registrant || !registrantIsComplete(emptyRegistrant(customerEmail, registrant)))
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const checkAppliesToCurrentInput = Boolean(checkState.domain && checkState.domain === normalizedDomainValue)
 
@@ -178,10 +173,6 @@ export function PreviewCheckout({
       ? "error"
       : null
 
-  const updateHolder = (key: keyof DomainRegistrantDetails, value: string) => {
-    setHolder((current) => ({ ...current, [key]: value }))
-  }
-
   const updateDomain = (value: string) => {
     setDomainValue(value)
     setSelectedSuggestion(null)
@@ -212,23 +203,13 @@ export function PreviewCheckout({
   return (
     <main className="min-h-dvh bg-background pb-28 text-foreground md:pb-6">
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
-        <div className="mx-auto flex min-h-14 w-full max-w-7xl items-center gap-3 px-3 py-2 md:min-h-12 md:px-4">
+        <div className="mx-auto flex min-h-16 w-full max-w-4xl items-center gap-3 px-3 py-3 md:min-h-20 md:px-4">
           <a href={previewHref} className="flex min-w-0 items-center gap-2">
-            <img src="/logos/logo-light.svg" alt="Site in a Box" className="h-7 w-auto dark:hidden" />
-            <img src="/logos/logo-dark.svg" alt="Site in a Box" className="hidden h-7 w-auto dark:block" />
+            <img src="/logos/logo-light.svg" alt="Site in a Box" className="h-8 w-auto dark:hidden md:h-10" />
+            <img src="/logos/logo-dark.svg" alt="Site in a Box" className="hidden h-8 w-auto dark:block md:h-10" />
           </a>
-          <Separator orientation="vertical" className="hidden h-5 sm:block" />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-medium text-foreground">{t("checkoutTitle")}</h1>
-            <p className="truncate text-xs text-muted-foreground">
-              {t("checkoutDescription", { site: tenantName })}
-            </p>
-          </div>
-          <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">
-            <ShieldCheck className="size-3" aria-hidden />
-            {t("checkoutSecureBadge")}
-          </Badge>
-          <Button asChild variant="outline" size="sm" className="shrink-0">
+          <div className="flex-1" />
+          <Button asChild variant="outline" className="shrink-0">
             <a href={previewHref}>
               <ArrowLeft className="size-4" aria-hidden />
               <span className="hidden sm:inline">{t("checkoutBackToPreview")}</span>
@@ -310,35 +291,12 @@ export function PreviewCheckout({
               </CardHeader>
               <CardContent className="grid gap-6">
                 <div className="grid gap-3 rounded-md border p-4 text-sm">
-                  <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} onEdit={() => setStep("domain")} />
+                  <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
                   <ReviewRow
                     label={t("checkoutRegistrantTitle")}
-                    value={formatRegistrantSummary(holder, t)}
-                    onEdit={() => setDetailsEditing(true)}
-                  />
-                  <ReviewRow
-                    label={t("checkoutRegistrantAddress")}
-                    value={formatAddressSummary(holder, t)}
-                    onEdit={() => setDetailsEditing(true)}
+                    value={formatDomainHolderSummary(holder, t)}
                   />
                 </div>
-                {detailsEditing ? (
-                  <div className="grid gap-4">
-                    <DomainHolderFields holder={holder} onChange={updateHolder} />
-                    <div className="flex justify-end">
-                      <Button type="button" variant="outline" disabled={!holderComplete} onClick={() => setDetailsEditing(false)}>
-                        <CheckCircle2 className="size-4" aria-hidden />
-                        {t("checkoutDetailsComplete")}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <Alert>
-                    <CheckCircle2 className="size-4" aria-hidden />
-                    <AlertTitle>{t("checkoutDetailsOverviewTitle")}</AlertTitle>
-                    <AlertDescription>{t("checkoutDetailsOverviewDescription")}</AlertDescription>
-                  </Alert>
-                )}
               </CardContent>
             </Card>
           )}
@@ -351,15 +309,10 @@ export function PreviewCheckout({
               </CardHeader>
               <CardContent className="grid gap-5">
                 <div className="grid gap-3 rounded-md border p-4 text-sm">
-                  <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} onEdit={() => setStep("domain")} />
-                  <ReviewRow label={t("checkoutRegistrantTitle")} value={holder.companyName || `${holder.firstName} ${holder.lastName}`.trim()} onEdit={() => setStep("details")} />
+                  <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
+                  <ReviewRow label={t("checkoutRegistrantTitle")} value={formatDomainHolderSummary(holder, t)} />
                   <ReviewRow label={t("checkoutSummaryTotal")} value={totalPriceLabel} />
                 </div>
-                <Alert>
-                  <ShieldCheck className="size-4" aria-hidden />
-                  <AlertTitle>{t("checkoutRenewalTitle")}</AlertTitle>
-                  <AlertDescription>{t("checkoutDomainSubmitDescription")}</AlertDescription>
-                </Alert>
                 <form id="checkout-payment-form" action={paymentAction} className="hidden">
                   <CheckoutHiddenInputs domain={selectedDomain ?? domainValue} holder={holder} />
                 </form>
@@ -455,23 +408,26 @@ function CheckoutActionBar({
   onNext: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
-  const priceBadge = (
-    <Badge variant="outline" className="h-9 rounded-md px-3">
-      {t("checkoutTotalBadge", { total: priceLabel })}
-    </Badge>
+  const priceFooter = (
+    <div className="flex items-center justify-between rounded-md border bg-primary/5 px-3 py-2 text-sm">
+      <span className="font-medium text-muted-foreground">{t("checkoutSummaryTotal")}</span>
+      <span className="text-base font-semibold text-foreground">{priceLabel}</span>
+    </div>
   )
 
   const secondary = step === "domain"
     ? (
-        <Button asChild variant="outline" size="icon" aria-label={t("checkoutBackToPreview")}>
+        <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
           <a href={previewHref}>
             <ChevronLeft className="size-4" aria-hidden />
+            <span className="hidden md:inline">{t("checkoutBackToPreview")}</span>
           </a>
         </Button>
       )
     : (
-        <Button type="button" variant="outline" size="icon" aria-label={t("checkoutBack")} onClick={onBack}>
+        <Button type="button" variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBack")} onClick={onBack}>
           <ChevronLeft className="size-4" aria-hidden />
+          <span className="hidden md:inline">{t("checkoutBack")}</span>
         </Button>
       )
 
@@ -526,12 +482,12 @@ function CheckoutActionBar({
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] shadow-lg backdrop-blur md:static md:mx-auto md:mt-2 md:w-full md:max-w-4xl md:rounded-md md:border md:bg-card md:shadow-none">
-      <div className="flex items-center gap-2">
-        {priceBadge}
-        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 sm:flex-none">
+      <div className="grid gap-3">
+        <div className="flex min-w-0 items-center justify-end gap-2">
           {secondary}
           {primary}
         </div>
+        {priceFooter}
       </div>
     </div>
   )
@@ -622,20 +578,13 @@ function DomainSuggestions({
   )
 }
 
-function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit?: () => void }) {
-  const t = useTranslations("preview")
+function ReviewRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3">
       <div className="grid gap-1">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="break-words text-sm font-medium">{value || "-"}</div>
       </div>
-      {onEdit && (
-        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-          <Pencil className="size-4" aria-hidden />
-          {t("checkoutEdit")}
-        </Button>
-      )}
     </div>
   )
 }
@@ -646,89 +595,11 @@ function paymentAlertTitle(state: PreviewCheckoutActionState, t: ReturnType<type
   return t("checkoutPaymentErrorTitle")
 }
 
-function formatRegistrantSummary(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
+function formatDomainHolderSummary(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
   const name = [holder.firstName, holder.lastName].filter(Boolean).join(" ").trim()
-  return [holder.companyName, name, holder.email].filter(Boolean).join(" / ") || t("checkoutDetailsMissing")
-}
-
-function formatAddressSummary(holder: DomainRegistrantDetails, t: ReturnType<typeof useTranslations<"preview">>): string {
   const street = [holder.street, holder.number, holder.suffix].filter(Boolean).join(" ").trim()
   const city = [holder.zipcode, holder.city].filter(Boolean).join(" ").trim()
-  const phone = [holder.phoneCountryCode, holder.phoneAreaCode, holder.phoneSubscriberNumber].filter(Boolean).join(" ").trim()
-  return [street, city, holder.country, phone].filter(Boolean).join(" / ") || t("checkoutDetailsMissing")
-}
-
-function DomainHolderFields({
-  holder,
-  onChange,
-}: {
-  holder: DomainRegistrantDetails
-  onChange: (key: keyof DomainRegistrantDetails, value: string) => void
-}) {
-  const t = useTranslations("preview")
-  return (
-    <div className="grid gap-4 rounded-md border p-4">
-      <div className="grid gap-1">
-        <h2 className="text-sm font-medium">{t("checkoutRegistrantTitle")}</h2>
-        <p className="text-sm text-muted-foreground">{t("checkoutRegistrantDescription")}</p>
-      </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <TextField id="checkout-company-name" label={t("checkoutCompanyName")} value={holder.companyName ?? ""} autoComplete="organization" onChange={(value) => onChange("companyName", value)} />
-        <TextField id="checkout-registrant-email" label={t("checkoutRegistrantEmail")} value={holder.email} type="email" autoComplete="email" required onChange={(value) => onChange("email", value)} />
-        <TextField id="checkout-first-name" label={t("checkoutFirstName")} value={holder.firstName} autoComplete="given-name" required onChange={(value) => onChange("firstName", value)} />
-        <TextField id="checkout-last-name" label={t("checkoutLastName")} value={holder.lastName} autoComplete="family-name" required onChange={(value) => onChange("lastName", value)} />
-        <TextField id="checkout-street" label={t("checkoutStreet")} value={holder.street} autoComplete="address-line1" required onChange={(value) => onChange("street", value)} />
-        <div className="grid grid-cols-[1fr_1fr] gap-3">
-          <TextField id="checkout-number" label={t("checkoutHouseNumber")} value={holder.number} required onChange={(value) => onChange("number", value)} />
-          <TextField id="checkout-suffix" label={t("checkoutHouseSuffix")} value={holder.suffix ?? ""} onChange={(value) => onChange("suffix", value)} />
-        </div>
-        <TextField id="checkout-zipcode" label={t("checkoutZipcode")} value={holder.zipcode} autoComplete="postal-code" required onChange={(value) => onChange("zipcode", value)} />
-        <TextField id="checkout-city" label={t("checkoutCity")} value={holder.city} autoComplete="address-level2" required onChange={(value) => onChange("city", value)} />
-        <TextField id="checkout-country" label={t("checkoutCountry")} value={holder.country} autoComplete="country" required onChange={(value) => onChange("country", value.toUpperCase())} />
-        <TextField id="checkout-state" label={t("checkoutState")} value={holder.state ?? ""} autoComplete="address-level1" onChange={(value) => onChange("state", value)} />
-        <div className="grid grid-cols-[5rem_1fr_1fr] gap-3 md:col-span-2">
-          <TextField id="checkout-phone-country" label={t("checkoutPhoneCountry")} value={holder.phoneCountryCode} required onChange={(value) => onChange("phoneCountryCode", value)} />
-          <TextField id="checkout-phone-area" label={t("checkoutPhoneArea")} value={holder.phoneAreaCode} inputMode="tel" required onChange={(value) => onChange("phoneAreaCode", value)} />
-          <TextField id="checkout-phone-number" label={t("checkoutPhoneNumber")} value={holder.phoneSubscriberNumber} inputMode="tel" required onChange={(value) => onChange("phoneSubscriberNumber", value)} />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function TextField({
-  id,
-  label,
-  value,
-  onChange,
-  type = "text",
-  autoComplete,
-  inputMode,
-  required,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  type?: string
-  autoComplete?: string
-  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"]
-  required?: boolean
-}) {
-  return (
-    <div className="grid gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type={type}
-        autoComplete={autoComplete}
-        inputMode={inputMode}
-        value={value}
-        required={required}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </div>
-  )
+  return [holder.companyName, name, holder.email, street, city, holder.country].filter(Boolean).join(" / ") || t("checkoutDetailsMissing")
 }
 
 function CheckoutHiddenInputs({ domain, holder }: { domain: string; holder: DomainRegistrantDetails }) {
