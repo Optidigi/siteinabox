@@ -18,7 +18,6 @@ import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Input } from "@siteinabox/ui/components/input"
-import { Label } from "@siteinabox/ui/components/label"
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
 
@@ -133,16 +132,30 @@ export function PreviewCheckout({
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(domainReady ? (currentDomain ?? null) : null)
   const [selectedSuggestion, setSelectedSuggestion] = React.useState<PreviewCheckoutDomainOption | null>(null)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
+  const domainFormRef = React.useRef<HTMLFormElement | null>(null)
+  const lastSubmittedDomainRef = React.useRef<string | null>(domainReady ? (currentDomain ?? null) : null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
   const checkAppliesToCurrentInput = Boolean(checkState.domain && checkState.domain === normalizedDomainValue)
 
   React.useEffect(() => {
-    if (checkState.ok && checkState.domain) {
+    if (checkState.ok && checkState.domain && checkState.domain === normalizedDomainValue) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
       setSelectedSuggestion(null)
     }
-  }, [checkState])
+  }, [checkState, normalizedDomainValue])
+
+  React.useEffect(() => {
+    if (step !== "domain" || selectedSuggestion) return
+    if (!normalizedDomainValue.includes(".") || normalizedDomainValue.length < 5) return
+    if (normalizedDomainValue === checkedDomain || normalizedDomainValue === lastSubmittedDomainRef.current) return
+
+    const timer = window.setTimeout(() => {
+      lastSubmittedDomainRef.current = normalizedDomainValue
+      domainFormRef.current?.requestSubmit()
+    }, 650)
+    return () => window.clearTimeout(timer)
+  }, [checkedDomain, normalizedDomainValue, selectedSuggestion, step])
 
   React.useEffect(() => {
     if (paymentState.ok && paymentState.checkoutUrl) {
@@ -158,9 +171,16 @@ export function PreviewCheckout({
   const totalPriceLabel = !selectedSuggestion
     ? checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
     : initialTotalPriceLabel || priceLabel
+  const domainIsReady = Boolean(selectedDomain && (
+    (checkState.ok && checkAppliesToCurrentInput)
+    || selectedSuggestion
+    || (domainReady && selectedDomain === currentDomain)
+  ))
   const domainResultKind = checkPending
     ? "loading"
-    : checkState.message && checkAppliesToCurrentInput
+    : domainIsReady
+      ? "success"
+      : checkState.message && checkAppliesToCurrentInput
       ? checkState.ok
         ? "success"
         : ["unavailable", "premium", "too_expensive"].includes(checkState.status ?? "")
@@ -226,9 +246,8 @@ export function PreviewCheckout({
                 <CardDescription>{t("checkoutDomainStepDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
-                <form id="checkout-domain-form" action={checkAction} className="grid gap-3">
-                  <div className="grid gap-2">
-                    <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
+                <form id="checkout-domain-form" ref={domainFormRef} action={checkAction} className="grid gap-3">
+                  <div className="relative">
                     <Input
                       id="checkout-domain"
                       name="domain"
@@ -240,27 +259,22 @@ export function PreviewCheckout({
                       placeholder={t("checkoutDomainPlaceholder")}
                       aria-invalid={domainInputState === "error"}
                       className={cn(
-                        domainInputState === "success" && "border-primary",
+                        "h-14 pr-12 text-base font-medium md:h-16 md:text-xl",
+                        domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
                         domainInputState === "warning" && "border-warning focus-visible:border-warning focus-visible:ring-warning/30",
                         domainInputState === "error" && "border-destructive",
                       )}
                       required
                     />
+                    <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
+                      {checkPending ? (
+                        <Loader2 className="size-5 animate-spin text-muted-foreground" aria-hidden />
+                      ) : domainInputState === "success" ? (
+                        <Check className="size-5 text-success" aria-hidden />
+                      ) : null}
+                    </div>
                   </div>
                 </form>
-
-                {domainResultKind === "success" && selectedDomain && (
-                  <DomainOptionRow
-                    option={{
-                      domain: selectedDomain,
-                      included: Boolean(checkState.included),
-                      extraFeeAmount: checkState.extraFeeAmount ?? null,
-                      extraFeeCurrency: checkState.extraFeeCurrency ?? null,
-                      extraFeeLabel: checkState.extraFeeLabel,
-                    }}
-                    selected
-                  />
-                )}
 
                 {domainResultKind === "error" && (
                   <Alert variant="destructive">
@@ -335,7 +349,7 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
   ]
   const activeIndex = steps.findIndex((entry) => entry.id === step)
   return (
-    <ol className="grid grid-cols-2 gap-2 rounded-full border bg-background p-1">
+    <ol className="grid grid-cols-2 rounded-full border bg-background p-1">
       {steps.map((entry, index) => {
         const Icon = entry.icon
         const active = index === activeIndex
@@ -345,11 +359,12 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
             key={entry.id}
             className={cn(
               "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
-              active && "bg-primary text-primary-foreground",
-              complete && "bg-success text-success-foreground",
+              (active || complete) && "bg-primary text-primary-foreground",
+              complete && index + 1 === activeIndex && "rounded-r-none",
+              active && index > 0 && "rounded-l-none",
             )}
           >
-            {complete ? <CheckCircle2 className="size-4" aria-hidden /> : <Icon className="size-4" aria-hidden />}
+            <Icon className="size-4" aria-hidden />
             <span className="hidden sm:inline">{entry.label}</span>
           </li>
         )
