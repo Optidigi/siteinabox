@@ -120,6 +120,20 @@ export function requireMollieApiKey(env = process.env): string {
   return apiKey
 }
 
+export type MollieApiKeyMode = "test" | "live" | "unknown" | "missing"
+
+export function mollieApiKeyMode(env = process.env): MollieApiKeyMode {
+  const apiKey = cleanEnv(env.MOLLIE_API_KEY)
+  if (!apiKey) return "missing"
+  if (apiKey.startsWith("test_")) return "test"
+  if (apiKey.startsWith("live_")) return "live"
+  return "unknown"
+}
+
+export function mollieDomainProvisioningEnabled(env = process.env): boolean {
+  return mollieApiKeyMode(env) === "live"
+}
+
 export function publicCmsOrigin(env = process.env): string {
   const origin = cleanEnv(env.MOLLIE_WEBHOOK_BASE_URL) ?? cleanEnv(env.SITE_URL)
   if (!origin) throw new Error("SITE_URL or MOLLIE_WEBHOOK_BASE_URL is required for Mollie webhook URLs.")
@@ -211,7 +225,7 @@ export async function retrieveMolliePayment(paymentId: string): Promise<MolliePa
 export function verifyMollieWebhookSignature(rawBody: string, signature: string | null, env = process.env): boolean {
   const secret = cleanEnv(env.MOLLIE_WEBHOOK_SIGNING_SECRET)
   if (!secret) return true
-  if (!signature) return true
+  if (!signature) return false
   const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
   const received = signature.replace(/^sha256=/, "")
   const expectedBuffer = Buffer.from(expected, "hex")

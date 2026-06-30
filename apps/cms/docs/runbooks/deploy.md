@@ -120,7 +120,7 @@ OPENPROVIDER_NS_GROUP=
 OPENPROVIDER_NAMESERVERS=
 OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT=10.00
 OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY=EUR
-OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT=25.00
+OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT=
 OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY=EUR
 OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT=
 OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY=EUR
@@ -572,19 +572,19 @@ Paid customer checkout now owns the first automated domain path:
 1. The customer opens the magic-link gated preview checkout.
 2. The checkout collects domain holder details, checks availability through
    OpenProvider, includes normal domains up to
-   `OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT`, shows a one-time customer surcharge up
-   to `OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT`, rejects premium or over-offer-cap
-   domains, and stores the selected domain on the generation run's `domainOrder`
-   state.
+   `OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT`, shows a one-time customer surcharge for
+   normal available domains above that included cost, rejects premium domains,
+   and stores the selected domain on the generation run's `domainOrder` state.
 3. Mollie checkout is created only after the selected domain is ready to
    register. The first payment charges the first year upfront and creates a
    recurring mandate for monthly renewal after that year.
 4. The Mollie `paid` webhook creates the monthly renewal subscription with a
-   one-year delayed start date, creates a
-   Cloudflare zone, creates the customer owner/admin contact handle in
-   OpenProvider, registers the domain with Cloudflare nameservers and auto-renew
-   enabled, creates the renderer DNS records, and marks tenant domain
-   verification as `verified`.
+   one-year delayed start date. When `MOLLIE_API_KEY` is a live key, the webhook
+   then creates a Cloudflare zone, creates the customer owner/admin contact
+   handle in OpenProvider, registers the domain with Cloudflare nameservers and
+   auto-renew enabled, creates the renderer DNS records, and marks tenant domain
+   verification as `verified`. Test-key payments complete payment state but skip
+   OpenProvider and Cloudflare provisioning.
 5. Publish and activate snapshots only after the domain is verified. Payment
    and domain provisioning do not publish or activate a site by themselves.
 

@@ -23,7 +23,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "too_expensive" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -106,10 +106,9 @@ const safeCheckoutErrorMessage = (
     "checkoutDomainUnavailable",
     "checkoutDomainPremium",
     "checkoutDomainCheckFailed",
-    "checkoutDomainTooExpensive",
   ])
   if (checkoutErrorKeys.has(error.message)) {
-    return t(error.message as "checkoutDomainUnavailable" | "checkoutDomainPremium" | "checkoutDomainCheckFailed" | "checkoutDomainTooExpensive", { domain })
+    return t(error.message as "checkoutDomainUnavailable" | "checkoutDomainPremium" | "checkoutDomainCheckFailed", { domain })
   }
   console.error("Preview checkout domain error", error)
   return t("checkoutDomainServiceUnavailable")
@@ -122,7 +121,6 @@ const domainStatusFromMessageKey = (
   if (messageKey === "checkoutDomainAvailableExtraFee") return "available_extra"
   if (messageKey === "checkoutDomainUnavailable") return "unavailable"
   if (messageKey === "checkoutDomainPremium") return "premium"
-  if (messageKey === "checkoutDomainTooExpensive") return "too_expensive"
   return "service_error"
 }
 
@@ -131,7 +129,6 @@ const domainErrorStatus = (error: unknown): NonNullable<PreviewCheckoutActionSta
   if (error.message.startsWith("Invalid domain")) return "invalid"
   if (error.message === "checkoutDomainUnavailable") return "unavailable"
   if (error.message === "checkoutDomainPremium") return "premium"
-  if (error.message === "checkoutDomainTooExpensive") return "too_expensive"
   return "service_error"
 }
 
@@ -231,7 +228,7 @@ export async function startPreviewCheckoutPaymentAction(
     }
     if (
       error instanceof Error &&
-      ["checkoutDomainUnavailable", "checkoutDomainPremium", "checkoutDomainCheckFailed", "checkoutDomainTooExpensive"].includes(error.message)
+      ["checkoutDomainUnavailable", "checkoutDomainPremium", "checkoutDomainCheckFailed"].includes(error.message)
     ) {
       return { ok: false, status: domainErrorStatus(error), message: safeCheckoutErrorMessage(error, t, domain) }
     }

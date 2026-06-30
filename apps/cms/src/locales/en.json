@@ -1018,7 +1018,6 @@
     "checkoutDomainAvailableExtraFee": "{domain} is available with a one-time {extraFee} domain surcharge. You will see one total before paying.",
     "checkoutDomainUnavailable": "{domain} is not available. Choose another domain name.",
     "checkoutDomainPremium": "{domain} is a premium domain and is not included in this fixed package. Choose another domain name.",
-    "checkoutDomainTooExpensive": "{domain} is outside the fixed domain package. Choose a regular .nl/.com domain name.",
     "checkoutDomainCheckFailed": "We could not check {domain} right now. Try again later.",
     "checkoutDomainInvalid": "Enter a valid domain name, for example example.com.",
     "checkoutDomainServiceUnavailable": "Domain checking is temporarily unavailable. Try again later.",

@@ -32,7 +32,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "too_expensive" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -183,7 +183,7 @@ export function PreviewCheckout({
       : checkState.message && checkAppliesToCurrentInput
       ? checkState.ok
         ? "success"
-        : ["unavailable", "premium", "too_expensive"].includes(checkState.status ?? "")
+        : ["unavailable", "premium"].includes(checkState.status ?? "")
           ? "unavailable"
           : "error"
       : null

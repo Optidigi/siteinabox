@@ -11,7 +11,7 @@ vi.mock("@/payload.config", () => ({
 
 import { getPayload } from "payload"
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
-import { mollieRenewalAmountFromEnv, verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
+import { mollieApiKeyMode, mollieDomainProvisioningEnabled, mollieRenewalAmountFromEnv, verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
 import { POST as mollieWebhookPOST } from "@/app/(payload)/api/payments/mollie/webhook/route"
 
 const registrant = {
@@ -280,7 +280,65 @@ describe("Mollie payment flow", () => {
     expect(result).toMatchObject({ ok: true, status: "completed", duplicate: true })
   })
 
-  it("starts domain provisioning after a paid checkout with a selected domain", async () => {
+  it("does not provision domains after a test-mode paid checkout", async () => {
+    const { payload, run, tenant } = createPayloadStub({
+      payment: {
+        status: "pending_provider",
+        provider: "mollie",
+        externalReference: "tr_test_123",
+        selectedDomain: "clientsite.nl",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("api.mollie.com/v2/customers/cst_test_123/subscriptions")) {
+        return new Response(JSON.stringify({ id: "sub_test_123", status: "active" }), { status: 201 })
+      }
+      throw new Error(`Unexpected fetch ${url}`)
+    }))
+
+    const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+      id: "tr_test_123",
+      status: "paid",
+      amount: { currency: "EUR", value: "499.00" },
+      metadata: {
+        generationRunId: 500,
+        tenantId: 1,
+        customerEmail: "client@example.com",
+        clientSlug: "acme",
+        selectedDomain: "clientsite.nl",
+        mollieCustomerId: "cst_test_123",
+        sequenceType: "first",
+      },
+    }))
+
+    expect(result.status).toBe("completed")
+    expect(mollieApiKeyMode()).toBe("test")
+    expect(mollieDomainProvisioningEnabled()).toBe(false)
+    expect(run.payment).toMatchObject({
+      status: "completed",
+      selectedDomain: "clientsite.nl",
+      mollieSubscriptionId: "sub_test_123",
+      note: "Mollie payment completed in non-live mode; domain provisioning was skipped.",
+    })
+    expect(run.domainOrder).toMatchObject({
+      status: "ready_to_register",
+      domain: "clientsite.nl",
+    })
+    expect(tenant).toMatchObject({
+      domain: "acme.test",
+    })
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("starts domain provisioning after a live paid checkout with a selected domain", async () => {
+    vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
     vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
@@ -351,6 +409,8 @@ describe("Mollie payment flow", () => {
     }))
 
     expect(result.status).toBe("completed")
+    expect(mollieApiKeyMode()).toBe("live")
+    expect(mollieDomainProvisioningEnabled()).toBe(true)
     expect(run.payment).toMatchObject({
       status: "completed",
       selectedDomain: "clientsite.nl",
@@ -397,7 +457,14 @@ describe("Mollie payment flow", () => {
 
     const raw = "id=tr_test_123"
     vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "secret")
+    expect(verifyMollieWebhookSignature(raw, null)).toBe(false)
     expect(verifyMollieWebhookSignature(raw, "bad-signature")).toBe(false)
+
+    const missingSignatureResponse = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+      method: "POST",
+      body: raw,
+    }) as any)
+    expect(missingSignatureResponse.status).toBe(401)
 
     const signature = crypto.createHmac("sha256", "secret").update(raw).digest("hex")
     const { payload } = createPayloadStub({

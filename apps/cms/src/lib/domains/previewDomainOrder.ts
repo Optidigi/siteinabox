@@ -2,10 +2,10 @@ import "server-only"
 import type { Payload } from "payload"
 import type { SiteGenerationRun } from "@/payload-types"
 import {
+  compareMoney,
   createDomainOrderState,
   domainExtraFeeForProviderPrice,
   fixedDomainOrderPriceFromEnv,
-  maxDomainOfferPriceFromEnv,
   maxDomainProviderPriceFromEnv,
   normalizeDomainOrderState,
   providerPriceWithinCap,
@@ -34,7 +34,6 @@ export type PreviewDomainOrderResult = {
     | "checkoutDomainUnavailable"
     | "checkoutDomainPremium"
     | "checkoutDomainCheckFailed"
-    | "checkoutDomainTooExpensive"
     | "checkoutDomainAvailableExtraFee"
   domain: string
   included: boolean
@@ -88,7 +87,6 @@ const suggestionForAvailability = (
 async function suggestAvailableDomains(
   domain: string,
   includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
-  maxOfferPrice: ReturnType<typeof maxDomainOfferPriceFromEnv>,
   token: string,
 ): Promise<PreviewDomainSuggestion[]> {
   const normalized = normalizeDomain(domain)
@@ -106,7 +104,7 @@ async function suggestAvailableDomains(
       const providerPrice = availability.price
         ? { amount: availability.price.amount, currency: availability.price.currency }
         : null
-      if (availability.status === "available" && providerPriceWithinCap(providerPrice, maxOfferPrice)) {
+      if (availability.status === "available" && providerPriceIsUsable(providerPrice, includedProviderPrice)) {
         suggestions.push(suggestionForAvailability(availability.domain, providerPrice, includedProviderPrice))
       }
       if (suggestions.length >= 5) break
@@ -114,12 +112,14 @@ async function suggestAvailableDomains(
   }
 
   try {
+    const providerCandidatesPromise = suggestOpenProviderDomains(domain, { token, limit: 12 })
+      .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
+      .catch(() => [])
+
     await appendAvailableCandidates(suggestionCandidates(domain))
     if (suggestions.length >= 5) return suggestions
 
-    const providerCandidates = await suggestOpenProviderDomains(domain, { token, limit: 12 })
-      .then((providerSuggestions) => providerSuggestions.map((suggestion) => suggestion.domain))
-      .catch(() => [])
+    const providerCandidates = await providerCandidatesPromise
     await appendAvailableCandidates(providerCandidates.filter((candidate) => {
       const candidateDomain = normalizeDomain(candidate)
       return candidateDomain.ok && normalized.ok && candidateDomain.extension === normalized.extension
@@ -130,6 +130,11 @@ async function suggestAvailableDomains(
     return suggestions
   }
 }
+
+const providerPriceIsUsable = (
+  providerPrice: FixedDomainOrderPrice | null,
+  includedProviderPrice: FixedDomainOrderPrice,
+): boolean => providerPrice !== null && compareMoney(providerPrice, includedProviderPrice) !== null
 
 export async function checkAndRecordPreviewDomainOrder(
   payload: Payload,
@@ -144,17 +149,16 @@ export async function checkAndRecordPreviewDomainOrder(
 
   const fixedPrice = fixedDomainOrderPriceFromEnv()
   const includedProviderPrice = maxDomainProviderPriceFromEnv()
-  const maxOfferPrice = maxDomainOfferPriceFromEnv()
   const token = await loginOpenProvider()
   const availability = await checkOpenProviderDomainAvailability(normalized.domain, { token })
   const now = new Date().toISOString()
   const providerPrice = availability.price
     ? { amount: availability.price.amount, currency: availability.price.currency }
     : null
+  const priceUsable = availability.status === "available" && providerPriceIsUsable(providerPrice, includedProviderPrice)
   const includedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, includedProviderPrice)
-  const allowedOfferPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, maxOfferPrice)
   const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
-  const status = allowedOfferPrice
+  const status = priceUsable
     ? "ready_to_register"
     : availability.status === "premium"
       ? "premium"
@@ -167,9 +171,13 @@ export async function checkAndRecordPreviewDomainOrder(
     fixedPrice,
     providerPrice,
     maxProviderPrice: includedProviderPrice,
-    maxOfferPrice,
     registrant: registrant ?? normalizeDomainOrderState(run.domainOrder).registrant,
-    reason: availability.internalReason ?? (availability.status === "available" && !includedPrice ? "domain_cost_above_limit" : null),
+    reason: availability.internalReason
+      ?? (availability.status === "available" && !priceUsable
+        ? "provider_price_unavailable"
+        : availability.status === "available" && !includedPrice
+          ? "domain_cost_above_limit"
+          : null),
     now,
   })
 
@@ -187,18 +195,16 @@ export async function checkAndRecordPreviewDomainOrder(
     included: includedPrice,
     extraFeeAmount: extraFee?.amount ?? null,
     extraFeeCurrency: extraFee?.currency ?? null,
-    suggestions: allowedOfferPrice ? [] : await suggestAvailableDomains(normalized.domain, includedProviderPrice, maxOfferPrice, token),
+    suggestions: priceUsable ? [] : await suggestAvailableDomains(normalized.domain, includedProviderPrice, token),
     messageKey: includedPrice
       ? "checkoutDomainAvailable"
-      : allowedOfferPrice
+      : priceUsable
         ? "checkoutDomainAvailableExtraFee"
       : availability.status === "premium"
         ? "checkoutDomainPremium"
         : availability.status === "unavailable"
           ? "checkoutDomainUnavailable"
-          : availability.status === "available"
-            ? "checkoutDomainTooExpensive"
-            : "checkoutDomainCheckFailed",
+          : "checkoutDomainCheckFailed",
   }
 }
 

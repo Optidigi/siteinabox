@@ -82,7 +82,7 @@ describe("preview domain order", () => {
     })
     expect(loginOpenProvider).toHaveBeenCalledTimes(1)
     expect(checkOpenProviderDomainAvailability).toHaveBeenCalledWith("acme.nl", { token: "token-123" })
-    expect(suggestOpenProviderDomains).not.toHaveBeenCalled()
+    expect(suggestOpenProviderDomains).toHaveBeenCalledWith("acme.nl", { token: "token-123", limit: 12 })
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledTimes(1)
     expect(checkOpenProviderDomainsAvailability).toHaveBeenCalledWith(
       expect.arrayContaining(["acmesite.nl", "acme-site.nl", "acmeonline.nl", "acme-online.nl", "acmeweb.nl"]),
@@ -93,12 +93,12 @@ describe("preview domain order", () => {
       domain: "acme.nl",
       maxProviderPriceAmount: "10.00",
       maxProviderPriceCurrency: "EUR",
-      maxOfferPriceAmount: "25.00",
-      maxOfferPriceCurrency: "EUR",
+      maxOfferPriceAmount: null,
+      maxOfferPriceCurrency: null,
     })
   })
 
-  it("marks available domains above the included cap as ready with an extra fee", async () => {
+  it("marks available domains above the included cap as ready with an extra fee and no offer cap", async () => {
     const run = { id: 123, domainOrder: null }
     const payload = {
       update: vi.fn(async ({ data }: any) => {
@@ -112,7 +112,7 @@ describe("preview domain order", () => {
       domain: "levelweb.nl",
       available: true,
       premium: false,
-      price: { amount: "12.50", currency: "EUR" },
+      price: { amount: "30.00", currency: "EUR" },
       internalReason: null,
     })
 
@@ -122,13 +122,16 @@ describe("preview domain order", () => {
       messageKey: "checkoutDomainAvailableExtraFee",
       domain: "levelweb.nl",
       included: false,
-      extraFeeAmount: "2.50",
+      extraFeeAmount: "20.00",
       extraFeeCurrency: "EUR",
+      suggestions: [],
     })
     expect(run.domainOrder).toMatchObject({
       status: "ready_to_register",
-      providerPriceAmount: "12.50",
+      providerPriceAmount: "30.00",
       reason: "domain_cost_above_limit",
+      maxOfferPriceAmount: null,
+      maxOfferPriceCurrency: null,
     })
   })
 

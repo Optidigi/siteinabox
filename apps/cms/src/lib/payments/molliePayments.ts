@@ -16,6 +16,7 @@ import {
   createMollieCustomer,
   createMolliePayment,
   createMollieSubscription,
+  mollieDomainProvisioningEnabled,
   mollieAmountFromEnv,
   mollieRenewalAmountFromEnv,
   publicCmsOrigin,
@@ -366,8 +367,21 @@ export async function applyMollieWebhookPayment(
       overrideAccess: true,
     }) as SiteGenerationRun
   }
-  if (next.status === "completed" && next.selectedDomain) {
+  if (next.status === "completed" && next.selectedDomain && mollieDomainProvisioningEnabled()) {
     await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })
+  } else if (next.status === "completed" && next.selectedDomain) {
+    const skippedProvisioningPayment = {
+      ...normalizeGenerationRunPaymentState(updatedRun.payment),
+      note: "Mollie payment completed in non-live mode; domain provisioning was skipped.",
+      updatedAt: new Date().toISOString(),
+    }
+    updatedRun = await payload.update({
+      collection: "site-generation-runs",
+      id: run.id,
+      data: { payment: skippedProvisioningPayment } as any,
+      depth: 0,
+      overrideAccess: true,
+    }) as SiteGenerationRun
   }
   return { ok: true, runId: run.id, status: next.status, duplicate }
 }

@@ -4,7 +4,6 @@ import {
   createDomainOrderState,
   domainCheckoutPrice,
   domainExtraFeeForProviderPrice,
-  maxDomainOfferPriceFromEnv,
   maxDomainProviderPriceFromEnv,
   providerPriceWithinCap,
   fixedDomainOrderPriceFromEnv,
@@ -74,11 +73,7 @@ describe("domain order state", () => {
     expect(providerPriceWithinCap({ amount: "9.99", currency: "USD" }, cap)).toBe(false)
   })
 
-  it("defaults to a separate offer cap and computes extra domain fees", () => {
-    const offerCap = maxDomainOfferPriceFromEnv({} as unknown as NodeJS.ProcessEnv)
-    expect(offerCap).toEqual({ amount: "25.00", currency: "EUR" })
-    expect(providerPriceWithinCap({ amount: "24.99", currency: "EUR" }, offerCap)).toBe(true)
-    expect(providerPriceWithinCap({ amount: "25.01", currency: "EUR" }, offerCap)).toBe(false)
+  it("computes extra domain fees without an offer cap", () => {
     expect(domainExtraFeeForProviderPrice(
       { amount: "12.50", currency: "EUR" },
       { amount: "10.00", currency: "EUR" },
@@ -88,6 +83,15 @@ describe("domain order state", () => {
       providerPrice: { amount: "12.50", currency: "EUR" },
       includedProviderPrice: { amount: "10.00", currency: "EUR" },
     })).toEqual({ amount: "230.50", currency: "EUR" })
+    expect(domainExtraFeeForProviderPrice(
+      { amount: "30.00", currency: "EUR" },
+      { amount: "10.00", currency: "EUR" },
+    )).toEqual({ amount: "20.00", currency: "EUR" })
+    expect(domainCheckoutPrice({
+      basePrice: { amount: "228.00", currency: "EUR" },
+      providerPrice: { amount: "30.00", currency: "EUR" },
+      includedProviderPrice: { amount: "10.00", currency: "EUR" },
+    })).toEqual({ amount: "248.00", currency: "EUR" })
   })
 
   it("creates timestamped operational states", () => {

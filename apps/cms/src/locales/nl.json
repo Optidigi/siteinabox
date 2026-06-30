@@ -1018,7 +1018,6 @@
     "checkoutDomainAvailableExtraFee": "{domain} is beschikbaar met {extraFee} eenmalige domeintoelage. Je ziet dit als één totaalbedrag voordat je betaalt.",
     "checkoutDomainUnavailable": "{domain} is helaas niet beschikbaar. Kies een andere domeinnaam.",
     "checkoutDomainPremium": "{domain} is een premiumdomein en valt niet binnen dit vaste pakket. Kies een andere domeinnaam.",
-    "checkoutDomainTooExpensive": "{domain} valt niet binnen het vaste domeinpakket. Kies een normale .nl/.com-domeinnaam.",
     "checkoutDomainCheckFailed": "We konden {domain} nu niet controleren. Probeer het later opnieuw.",
     "checkoutDomainInvalid": "Vul een geldige domeinnaam in, bijvoorbeeld voorbeeld.nl.",
     "checkoutDomainServiceUnavailable": "Domeincontrole is tijdelijk niet beschikbaar. Probeer het later opnieuw.",
