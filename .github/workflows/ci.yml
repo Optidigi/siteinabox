@@ -102,6 +102,8 @@ jobs:
       - run: pnpm site:build
       - run: pnpm site:test
       - run: pnpm intake:build
+      - name: Install intake Playwright browser
+        run: pnpm --dir apps/intake exec playwright install --with-deps chromium
       - run: pnpm intake:test
 
   renderer:
