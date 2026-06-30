@@ -11,7 +11,6 @@ import {
   CreditCard,
   Globe2,
   Loader2,
-  UserRound,
 } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Badge } from "@siteinabox/ui/components/badge"
@@ -49,7 +48,7 @@ type PreviewCheckoutAction = (
   formData: FormData,
 ) => Promise<PreviewCheckoutActionState>
 
-type CheckoutStep = "domain" | "details" | "payment"
+type CheckoutStep = "domain" | "payment"
 
 type PreviewCheckoutProps = {
   customerEmail: string
@@ -194,10 +193,6 @@ export function PreviewCheckout({
 
   const goBack = () => {
     if (step === "payment") {
-      setStep("details")
-      return
-    }
-    if (step === "details") {
       setStep("domain")
     }
   }
@@ -286,24 +281,6 @@ export function PreviewCheckout({
             </Card>
           )}
 
-          {step === "details" && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("checkoutDetailsTitle")}</CardTitle>
-                <CardDescription>{t("checkoutDetailsDescription")}</CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-6">
-                <div className="grid gap-3 rounded-md border p-4 text-sm">
-                  <ReviewRow label={t("checkoutSummaryDomain")} value={selectedDomain ?? domainValue} />
-                  <ReviewRow
-                    label={t("checkoutRegistrantTitle")}
-                    value={formatDomainHolderName(holder, t)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {step === "payment" && (
             <Card>
               <CardHeader>
@@ -342,7 +319,7 @@ export function PreviewCheckout({
         paymentStatus={paymentStatus}
         previewHref={previewHref}
         onBack={goBack}
-        onNext={() => setStep(step === "domain" ? "details" : "payment")}
+        onNext={() => setStep("payment")}
         t={t}
       />
     </main>
@@ -353,12 +330,11 @@ function CheckoutStepper({ step }: { step: CheckoutStep }) {
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; icon: React.ElementType }> = [
     { id: "domain", label: t("checkoutStepDomain"), icon: Globe2 },
-    { id: "details", label: t("checkoutStepDetails"), icon: UserRound },
     { id: "payment", label: t("checkoutStepPayment"), icon: CreditCard },
   ]
   const activeIndex = steps.findIndex((entry) => entry.id === step)
   return (
-    <ol className="grid grid-cols-3 gap-2 rounded-full border bg-background p-1">
+    <ol className="grid grid-cols-2 gap-2 rounded-full border bg-background p-1">
       {steps.map((entry, index) => {
         const Icon = entry.icon
         const active = index === activeIndex
@@ -452,12 +428,6 @@ function CheckoutActionBar({
             : domainResultKind === "error"
               ? t("checkoutCheckAgain")
               : t("checkoutCheckDomain")}
-      </Button>
-    )
-  } else if (step === "details") {
-    primary = (
-      <Button type="button" variant="success" className="min-w-0 flex-1 md:flex-none" disabled={!holderComplete || !selectedDomain} onClick={onNext}>
-        {t("checkoutNext")}
       </Button>
     )
   } else {
