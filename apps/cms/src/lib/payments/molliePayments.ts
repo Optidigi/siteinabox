@@ -12,7 +12,9 @@ import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import {
   MollieApiError,
+  createMollieCustomer,
   createMolliePayment,
+  createMollieSubscription,
   mollieAmountFromEnv,
   publicCmsOrigin,
   retrieveMolliePayment,
@@ -63,6 +65,15 @@ const selectedDomainFromOrder = (value: unknown): string | null => {
   return cleanDomain(source.selectedDomain ?? source.domain)
 }
 
+const mollieSubscriptionInterval = (env: NodeJS.ProcessEnv = process.env): string =>
+  env.MOLLIE_SITE_SUBSCRIPTION_INTERVAL?.trim() || "12 months"
+
+const oneYearFromNowDate = (now = new Date()): string => {
+  const date = new Date(now)
+  date.setUTCFullYear(date.getUTCFullYear() + 1)
+  return date.toISOString().slice(0, 10)
+}
+
 const isApproved = (run: SiteGenerationRun): boolean =>
   (run.clientApproval as { status?: unknown } | null | undefined)?.status === "approved"
 
@@ -102,6 +113,10 @@ const molliePaymentState = (input: {
   currency?: string | null
   actor?: string | number | null
   note?: string | null
+  mollieCustomerId?: string | null
+  mollieSequenceType?: string | null
+  mollieSubscriptionId?: string | null
+  renewalInterval?: string | null
   now?: string
 }): GenerationRunPaymentState => {
   const current = normalizeGenerationRunPaymentState(input.current)
@@ -124,6 +139,10 @@ const molliePaymentState = (input: {
     currency: input.currency ?? current.currency,
     providerStatus: input.providerStatus,
     webhookProcessedAt: input.now ? now : current.webhookProcessedAt,
+    mollieCustomerId: input.mollieCustomerId ?? current.mollieCustomerId,
+    mollieSequenceType: input.mollieSequenceType ?? current.mollieSequenceType,
+    mollieSubscriptionId: input.mollieSubscriptionId ?? current.mollieSubscriptionId,
+    renewalInterval: input.renewalInterval ?? current.renewalInterval,
   }
 }
 
@@ -163,8 +182,21 @@ export async function createMollieCheckoutForGenerationRun(
   const redirectUrl = `https://${PREVIEW_HOST}/${clientSlug}?payment=return`
   const webhookUrl = `${origin}/api/payments/mollie/webhook`
   const idempotencyKey = `siab-run-${run.id}-customer-${email}`
+  const mollieCustomerId = current.mollieCustomerId ?? (await createMollieCustomer({
+    name: String(tenant.name ?? tenant.slug ?? email),
+    email,
+    idempotencyKey: `${idempotencyKey}-mollie-customer`,
+    metadata: {
+      generationRunId: run.id,
+      tenantId: tenant.id,
+      customerEmail: email,
+      clientSlug,
+    },
+  })).id
   const molliePayment = await createMolliePayment({
     amount,
+    customerId: mollieCustomerId,
+    sequenceType: "first",
     description: `Site in a Box website ${selectedDomain}`,
     redirectUrl,
     webhookUrl,
@@ -176,6 +208,9 @@ export async function createMollieCheckoutForGenerationRun(
       clientSlug,
       selectedDomain,
       idempotencyKey,
+      mollieCustomerId,
+      sequenceType: "first",
+      renewalInterval: "1 year",
     },
   })
   const checkoutUrl = molliePayment._links?.checkout?.href
@@ -194,6 +229,9 @@ export async function createMollieCheckoutForGenerationRun(
     currency: amount.currency,
     actor: input.actor ?? email,
     note: "Mollie checkout created. Payment completion is confirmed by webhook.",
+    mollieCustomerId,
+    mollieSequenceType: "first",
+    renewalInterval: "1 year",
   })
   await payload.update({
     collection: "site-generation-runs",
@@ -262,6 +300,9 @@ export async function applyMollieWebhookPayment(
     amount: molliePayment.amount?.value ?? current.amount,
     currency: molliePayment.amount?.currency ?? current.currency,
     note: nextStatus === "completed" ? "Mollie payment completed." : `Mollie payment status: ${molliePayment.status}.`,
+    mollieCustomerId: typeof metadata.mollieCustomerId === "string" ? metadata.mollieCustomerId : current.mollieCustomerId,
+    mollieSequenceType: typeof metadata.sequenceType === "string" ? metadata.sequenceType : current.mollieSequenceType,
+    renewalInterval: typeof metadata.renewalInterval === "string" ? metadata.renewalInterval : current.renewalInterval,
     now,
   })
   const duplicate =
@@ -269,13 +310,49 @@ export async function applyMollieWebhookPayment(
     current.providerStatus === next.providerStatus &&
     current.externalReference === next.externalReference
 
-  const updatedRun = await payload.update({
+  let updatedRun = await payload.update({
     collection: "site-generation-runs",
     id: run.id,
     data: { payment: next } as any,
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
+  if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
+    const subscription = await createMollieSubscription({
+      customerId: next.mollieCustomerId,
+      amount: {
+        value: next.amount ?? molliePayment.amount?.value ?? mollieAmountFromEnv().value,
+        currency: next.currency ?? molliePayment.amount?.currency ?? mollieAmountFromEnv().currency,
+      },
+      interval: mollieSubscriptionInterval(),
+      startDate: oneYearFromNowDate(),
+      description: `Site in a Box yearly renewal ${next.selectedDomain ?? ""}`.trim(),
+      webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
+      idempotencyKey: `siab-run-${run.id}-subscription`,
+      metadata: {
+        generationRunId: run.id,
+        tenantId,
+        customerEmail: next.customerEmail,
+        clientSlug: next.clientSlug,
+        selectedDomain: next.selectedDomain,
+        renewalInterval: mollieSubscriptionInterval(),
+      },
+    })
+    const subscribedPayment = {
+      ...next,
+      mollieSubscriptionId: subscription.id,
+      renewalInterval: mollieSubscriptionInterval(),
+      note: "Mollie payment completed and yearly renewal subscription created.",
+      updatedAt: new Date().toISOString(),
+    }
+    updatedRun = await payload.update({
+      collection: "site-generation-runs",
+      id: run.id,
+      data: { payment: subscribedPayment } as any,
+      depth: 0,
+      overrideAccess: true,
+    }) as SiteGenerationRun
+  }
   if (next.status === "completed" && next.selectedDomain) {
     await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })
   }

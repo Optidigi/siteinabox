@@ -3,7 +3,7 @@ import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { createCloudflareZone, createCloudflareZoneDnsRecords } from "@/lib/domains/cloudflare"
 import { createDomainOrderState, fixedDomainOrderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
-import { registerOpenProviderDomain } from "@/lib/domains/openprovider"
+import { createOpenProviderCustomerHandle, loginOpenProvider, registerOpenProviderDomain } from "@/lib/domains/openprovider"
 import { normalizeDomain } from "@/lib/domains/normalize"
 import { relationshipId } from "@/lib/relationshipId"
 
@@ -39,6 +39,8 @@ export async function provisionPaidDomainOrder(
   }
 
   const now = input?.now ?? new Date().toISOString()
+  const registrant = current.registrant
+  if (!registrant) throw new Error("Cannot provision paid domain without domain holder details.")
   const requested = {
     ...createDomainOrderState({
       status: "registration_requested",
@@ -48,6 +50,12 @@ export async function provisionPaidDomainOrder(
         : fixedDomainOrderPriceFromEnv(),
       providerPrice: current.providerPriceAmount && current.providerPriceCurrency
         ? { amount: current.providerPriceAmount, currency: current.providerPriceCurrency }
+        : null,
+      registrant,
+      ownerHandle: current.ownerHandle,
+      adminHandle: current.adminHandle,
+      maxProviderPrice: current.maxProviderPriceAmount && current.maxProviderPriceCurrency
+        ? { amount: current.maxProviderPriceAmount, currency: current.maxProviderPriceCurrency }
         : null,
       now,
     }),
@@ -61,11 +69,22 @@ export async function provisionPaidDomainOrder(
     overrideAccess: true,
   })
 
+  let ownerHandle = current.ownerHandle
+  let adminHandle = current.adminHandle
   try {
+    const openProviderToken = await loginOpenProvider()
+    ownerHandle = ownerHandle ?? (await createOpenProviderCustomerHandle(registrant, {
+      token: openProviderToken,
+    })).handle
+    adminHandle = adminHandle ?? ownerHandle
     const zone = await createCloudflareZone(normalized.domain)
     const registration = await registerOpenProviderDomain(normalized.domain, {
+      token: openProviderToken,
+      ownerHandle,
+      adminHandle,
       nameServers: zone.nameServers.map((name) => ({ name })),
       nsGroup: null,
+      autorenew: "on",
     })
     const dnsRecords = await createCloudflareZoneDnsRecords(zone.id, normalized.domain)
     const registered = {
@@ -80,6 +99,12 @@ export async function provisionPaidDomainOrder(
           : null,
         providerReference: registration.id == null ? null : String(registration.id),
         reason: "domain_registered",
+        registrant,
+        ownerHandle,
+        adminHandle,
+        maxProviderPrice: requested.maxProviderPriceAmount && requested.maxProviderPriceCurrency
+          ? { amount: requested.maxProviderPriceAmount, currency: requested.maxProviderPriceCurrency }
+          : null,
         now: new Date().toISOString(),
       }),
       cloudflareZoneId: zone.id,
@@ -116,6 +141,8 @@ export async function provisionPaidDomainOrder(
       status: "failed" as const,
       reason: error instanceof Error ? error.message : "domain_provisioning_failed",
       updatedAt: new Date().toISOString(),
+      ownerHandle,
+      adminHandle,
     }
     const updatedRun = await payload.update({
       collection: "site-generation-runs",

@@ -1,5 +1,6 @@
 import "server-only"
 import { splitDomain } from "@/lib/domains/normalize"
+import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
 
 export type OpenProviderAvailabilityStatus = "available" | "unavailable" | "premium" | "internal"
 
@@ -28,6 +29,11 @@ export type OpenProviderRegistrationResult = {
   id: number | string | null
   domain: string
   status: "registered" | "requested"
+  raw: unknown
+}
+
+export type OpenProviderCustomerHandleResult = {
+  handle: string
   raw: unknown
 }
 
@@ -184,6 +190,8 @@ export function buildOpenProviderDomainRegistrationRequest(
   domainInput: string,
   env: NodeJS.ProcessEnv = process.env,
   input?: {
+    ownerHandle?: string
+    adminHandle?: string
     period?: number
     autorenew?: "on" | "off" | "default"
     nameServers?: Array<{ name: string }>
@@ -202,18 +210,71 @@ export function buildOpenProviderDomainRegistrationRequest(
   return {
     domain: { name: domain.name, extension: domain.extension },
     period: input?.period ?? 1,
-    owner_handle: requiredHandle(env, "OPENPROVIDER_OWNER_HANDLE"),
-    admin_handle: requiredHandle(env, "OPENPROVIDER_ADMIN_HANDLE"),
+    owner_handle: cleanEnv(input?.ownerHandle) ?? requiredHandle(env, "OPENPROVIDER_OWNER_HANDLE"),
+    admin_handle: cleanEnv(input?.adminHandle) ?? requiredHandle(env, "OPENPROVIDER_ADMIN_HANDLE"),
     tech_handle: requiredHandle(env, "OPENPROVIDER_TECH_HANDLE"),
     billing_handle: requiredHandle(env, "OPENPROVIDER_BILLING_HANDLE"),
-    autorenew: input?.autorenew ?? "default",
+    autorenew: input?.autorenew ?? "on",
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
   }
+}
+
+export function buildOpenProviderCustomerRequest(details: DomainRegistrantDetails): Record<string, unknown> {
+  return {
+    name: {
+      first_name: details.firstName,
+      last_name: details.lastName,
+    },
+    ...(details.companyName ? { company_name: details.companyName } : {}),
+    email: details.email,
+    address: {
+      street: details.street,
+      number: details.number,
+      ...(details.suffix ? { suffix: details.suffix } : {}),
+      zipcode: details.zipcode,
+      city: details.city,
+      country: details.country,
+      ...(details.state ? { state: details.state } : {}),
+    },
+    phone: {
+      country_code: details.phoneCountryCode,
+      area_code: details.phoneAreaCode,
+      subscriber_number: details.phoneSubscriberNumber,
+    },
+    locale: details.locale,
+  }
+}
+
+export async function createOpenProviderCustomerHandle(
+  details: DomainRegistrantDetails,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderCustomerHandleResult> {
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  const response = await fetcher(options)(`${apiBase(env)}/customers`, {
+    method: "POST",
+    headers: jsonHeaders(token),
+    body: JSON.stringify(buildOpenProviderCustomerRequest(details)),
+  })
+  if (!response.ok) throw new OpenProviderApiError("OpenProvider customer handle creation", response.status)
+
+  const payload = await json(response)
+  const data = dataObject(payload)
+  const handle =
+    typeof data.handle === "string"
+      ? data.handle
+      : typeof data.id === "string"
+        ? data.id
+        : null
+  if (!handle) throw new Error("OpenProvider customer creation response did not include a handle.")
+  return { handle, raw: payload }
 }
 
 export async function registerOpenProviderDomain(
   domainInput: string,
   options?: OpenProviderOptions & {
+    ownerHandle?: string
+    adminHandle?: string
     period?: number
     autorenew?: "on" | "off" | "default"
     nameServers?: Array<{ name: string }>
@@ -224,6 +285,8 @@ export async function registerOpenProviderDomain(
   const domain = splitDomain(domainInput)
   const token = options?.token ?? await loginOpenProvider(options)
   const body = buildOpenProviderDomainRegistrationRequest(domain.domain, env, {
+    ownerHandle: options?.ownerHandle,
+    adminHandle: options?.adminHandle,
     period: options?.period,
     autorenew: options?.autorenew,
     nameServers: options?.nameServers,

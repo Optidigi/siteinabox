@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import { normalizeDomain, splitDomain } from "@/lib/domains/normalize"
 import {
   createDomainOrderState,
+  maxDomainProviderPriceFromEnv,
+  providerPriceWithinCap,
   fixedDomainOrderPriceFromEnv,
   normalizeDomainOrderState,
 } from "@/lib/domains/orderState"
@@ -61,6 +63,14 @@ describe("domain order state", () => {
     } as unknown as NodeJS.ProcessEnv)).toEqual({ amount: "19.00", currency: "EUR" })
   })
 
+  it("defaults to a low provider cost cap and rejects domains above it", () => {
+    const cap = maxDomainProviderPriceFromEnv({} as unknown as NodeJS.ProcessEnv)
+    expect(cap).toEqual({ amount: "7.00", currency: "EUR" })
+    expect(providerPriceWithinCap({ amount: "6.99", currency: "EUR" }, cap)).toBe(true)
+    expect(providerPriceWithinCap({ amount: "7.01", currency: "EUR" }, cap)).toBe(false)
+    expect(providerPriceWithinCap({ amount: "6.99", currency: "USD" }, cap)).toBe(false)
+  })
+
   it("creates timestamped operational states", () => {
     expect(createDomainOrderState({
       status: "ready_to_register",
@@ -82,6 +92,11 @@ describe("domain order state", () => {
       requestedAt: null,
       registeredAt: null,
       updatedAt: "2026-06-30T10:00:00.000Z",
+      registrant: null,
+      ownerHandle: null,
+      adminHandle: null,
+      maxProviderPriceAmount: null,
+      maxProviderPriceCurrency: null,
     })
   })
 })

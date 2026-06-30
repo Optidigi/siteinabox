@@ -134,6 +134,7 @@ export function PreviewCheckout({
                     required
                   />
                 </div>
+                <DomainHolderFields idPrefix="pay" customerEmail={customerEmail} />
                 <div className="text-sm text-muted-foreground">{t("checkoutDomainSubmitDescription")}</div>
                 <Button type="submit" disabled={paymentPending}>
                   {paymentPending ? (
@@ -192,6 +193,81 @@ export function PreviewCheckout({
         </aside>
       </div>
     </main>
+  )
+}
+
+function DomainHolderFields({ idPrefix, customerEmail }: { idPrefix: string; customerEmail: string }) {
+  const t = useTranslations("preview")
+  const id = (name: string) => `checkout-${idPrefix}-${name}`
+  return (
+    <div className="grid gap-4 rounded-md border p-4">
+      <div className="grid gap-1">
+        <h2 className="text-sm font-medium">{t("checkoutRegistrantTitle")}</h2>
+        <p className="text-sm text-muted-foreground">{t("checkoutRegistrantDescription")}</p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor={id("company-name")}>{t("checkoutCompanyName")}</Label>
+          <Input id={id("company-name")} name="companyName" type="text" autoComplete="organization" />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("registrant-email")}>{t("checkoutRegistrantEmail")}</Label>
+          <Input id={id("registrant-email")} name="registrantEmail" type="email" autoComplete="email" defaultValue={customerEmail} required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("first-name")}>{t("checkoutFirstName")}</Label>
+          <Input id={id("first-name")} name="firstName" type="text" autoComplete="given-name" required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("last-name")}>{t("checkoutLastName")}</Label>
+          <Input id={id("last-name")} name="lastName" type="text" autoComplete="family-name" required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("street")}>{t("checkoutStreet")}</Label>
+          <Input id={id("street")} name="street" type="text" autoComplete="address-line1" required />
+        </div>
+        <div className="grid grid-cols-[1fr_1fr] gap-3">
+          <div className="grid gap-2">
+            <Label htmlFor={id("number")}>{t("checkoutHouseNumber")}</Label>
+            <Input id={id("number")} name="number" type="text" required />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={id("suffix")}>{t("checkoutHouseSuffix")}</Label>
+            <Input id={id("suffix")} name="suffix" type="text" />
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("zipcode")}>{t("checkoutZipcode")}</Label>
+          <Input id={id("zipcode")} name="zipcode" type="text" autoComplete="postal-code" required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("city")}>{t("checkoutCity")}</Label>
+          <Input id={id("city")} name="city" type="text" autoComplete="address-level2" required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("country")}>{t("checkoutCountry")}</Label>
+          <Input id={id("country")} name="country" type="text" autoComplete="country" defaultValue="NL" required />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor={id("state")}>{t("checkoutState")}</Label>
+          <Input id={id("state")} name="state" type="text" autoComplete="address-level1" />
+        </div>
+        <div className="grid grid-cols-[5rem_1fr_1fr] gap-3 md:col-span-2">
+          <div className="grid gap-2">
+            <Label htmlFor={id("phone-country")}>{t("checkoutPhoneCountry")}</Label>
+            <Input id={id("phone-country")} name="phoneCountryCode" type="text" defaultValue="+31" required />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={id("phone-area")}>{t("checkoutPhoneArea")}</Label>
+            <Input id={id("phone-area")} name="phoneAreaCode" type="text" inputMode="tel" required />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={id("phone-number")}>{t("checkoutPhoneNumber")}</Label>
+            <Input id={id("phone-number")} name="phoneSubscriberNumber" type="text" inputMode="tel" required />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

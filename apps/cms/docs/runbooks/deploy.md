@@ -106,17 +106,18 @@ EMAIL_FROM=noreply@siteinabox.nl
 MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
 MOLLIE_SITE_PAYMENT_AMOUNT=19.95
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
+MOLLIE_SITE_SUBSCRIPTION_INTERVAL=12 months
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 MOLLIE_WEBHOOK_SIGNING_SECRET=
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
 OPENPROVIDER_API_BASE_URL=
-OPENPROVIDER_OWNER_HANDLE=
-OPENPROVIDER_ADMIN_HANDLE=
 OPENPROVIDER_TECH_HANDLE=
 OPENPROVIDER_BILLING_HANDLE=
 OPENPROVIDER_NS_GROUP=
 OPENPROVIDER_NAMESERVERS=
+OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT=7.00
+OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY=EUR
 OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT=
 OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY=EUR
 CLOUDFLARE_API_TOKEN=
@@ -171,9 +172,11 @@ signing secret in deployment secrets only; `.env.example` intentionally contains
 no real values. The payment gate is satisfied by Mollie `paid` webhooks or a
 super-admin manual waiver. Paid customer checkout provisions the selected
 domain through Cloudflare and OpenProvider when the domain order is ready, but
-payment completion never publishes or activates a site by itself.
-OpenProvider registration requires all four contact handle values. Cloudflare
-DNS automation requires an account id, API token, and either
+payment completion never publishes or activates a site by itself. The checkout
+collects customer holder details and creates OpenProvider owner/admin contact
+handles per customer; deployment env only supplies the SIAB/Optidigi
+technical/billing contact handles.
+Cloudflare DNS automation requires an account id, API token, and either
 `SIAB_RENDERER_TARGET_HOST` for proxied CNAME records or
 `SIAB_RENDERER_TARGET_IP` for proxied A records.
 `RESEND_API_KEY` is obsolete after the Cloudflare SMTP mail-path change and
@@ -194,7 +197,7 @@ Current Phase 3 env readiness status:
 | Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
 | Email | Set `CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM`; remove obsolete `RESEND_API_KEY`. |
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and optional webhook signing secret. |
-| OpenProvider | Set username/password and owner/admin/tech/billing contact handles before enabling paid customer domain registration. |
+| OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
 | Cloudflare DNS | Set API token, account id, and renderer target host or IP before enabling paid customer domain registration. |
 | Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN`, `ENABLE_GRAPHQL_PLAYGROUND`, and `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE` unset unless there is a temporary operator-approved reason. |
 
@@ -563,13 +566,16 @@ snapshot endpoint sees `amicare.optidigi.nl` during renderer requests.
 Paid customer checkout now owns the first automated domain path:
 
 1. The customer opens the magic-link gated preview checkout.
-2. The checkout checks domain availability through OpenProvider and stores the
-   selected domain on the generation run's `domainOrder` state.
+2. The checkout collects domain holder details, checks availability through
+   OpenProvider, rejects premium/above-cap domains, and stores the selected
+   domain on the generation run's `domainOrder` state.
 3. Mollie checkout is created only after the selected domain is ready to
-   register.
-4. The Mollie `paid` webhook creates a Cloudflare zone, registers the domain
-   with OpenProvider using the Cloudflare nameservers, creates the renderer DNS
-   records, and marks the tenant domain verification as `verified`.
+   register. The first payment creates a recurring mandate for yearly renewal.
+4. The Mollie `paid` webhook creates the annual renewal subscription, creates a
+   Cloudflare zone, creates the customer owner/admin contact handle in
+   OpenProvider, registers the domain with Cloudflare nameservers and auto-renew
+   enabled, creates the renderer DNS records, and marks tenant domain
+   verification as `verified`.
 5. Publish and activate snapshots only after the domain is verified. Payment
    and domain provisioning do not publish or activate a site by themselves.
 

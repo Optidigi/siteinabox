@@ -46,6 +46,10 @@ describe("generation run payment abstraction", () => {
       providerStatus: null,
       webhookProcessedAt: null,
       selectedDomain: null,
+      mollieCustomerId: null,
+      mollieSequenceType: null,
+      mollieSubscriptionId: null,
+      renewalInterval: null,
     })
   })
 
@@ -74,6 +78,10 @@ describe("generation run payment abstraction", () => {
       providerStatus: null,
       webhookProcessedAt: null,
       selectedDomain: null,
+      mollieCustomerId: null,
+      mollieSequenceType: null,
+      mollieSubscriptionId: null,
+      renewalInterval: null,
     })
 
     expect(createOperationalPaymentState({

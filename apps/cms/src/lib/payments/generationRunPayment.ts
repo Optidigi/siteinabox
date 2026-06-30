@@ -31,6 +31,10 @@ export type GenerationRunPaymentState = {
   currency: string | null
   providerStatus: string | null
   webhookProcessedAt: string | null
+  mollieCustomerId: string | null
+  mollieSequenceType: string | null
+  mollieSubscriptionId: string | null
+  renewalInterval: string | null
 }
 
 export type GenerationRunPaymentInput = {
@@ -74,6 +78,10 @@ export function normalizeGenerationRunPaymentState(value: unknown): GenerationRu
     currency: cleanText(source.currency),
     providerStatus: cleanText(source.providerStatus),
     webhookProcessedAt: cleanText(source.webhookProcessedAt),
+    mollieCustomerId: cleanText(source.mollieCustomerId),
+    mollieSequenceType: cleanText(source.mollieSequenceType),
+    mollieSubscriptionId: cleanText(source.mollieSubscriptionId),
+    renewalInterval: cleanText(source.renewalInterval),
   }
 }
 
@@ -95,6 +103,10 @@ export function createPendingProviderPaymentState(now = new Date().toISOString()
     currency: null,
     providerStatus: null,
     webhookProcessedAt: null,
+    mollieCustomerId: null,
+    mollieSequenceType: null,
+    mollieSubscriptionId: null,
+    renewalInterval: null,
   }
 }
 
@@ -117,6 +129,10 @@ export function createOperationalPaymentState(input: GenerationRunPaymentInput):
     currency: null,
     providerStatus: null,
     webhookProcessedAt: null,
+    mollieCustomerId: null,
+    mollieSequenceType: null,
+    mollieSubscriptionId: null,
+    renewalInterval: null,
   }
 }
 

@@ -25,10 +25,41 @@ export type MolliePayment = {
   }
 }
 
+export type MollieCustomer = {
+  id: string
+  name?: string | null
+  email?: string | null
+}
+
+export type MollieSubscription = {
+  id: string
+  status?: string
+}
+
 export type CreateMolliePaymentInput = {
   amount: MollieAmount
+  customerId?: string | null
+  sequenceType?: "first" | "recurring" | "oneoff"
   description: string
   redirectUrl: string
+  webhookUrl: string
+  metadata: Record<string, string | number | null>
+  idempotencyKey: string
+}
+
+export type CreateMollieCustomerInput = {
+  name: string
+  email: string
+  metadata?: Record<string, string | number | null>
+  idempotencyKey: string
+}
+
+export type CreateMollieSubscriptionInput = {
+  customerId: string
+  amount: MollieAmount
+  interval: string
+  startDate?: string | null
+  description: string
   webhookUrl: string
   metadata: Record<string, string | number | null>
   idempotencyKey: string
@@ -73,8 +104,31 @@ export function publicCmsOrigin(env = process.env): string {
   return origin.replace(/\/+$/, "")
 }
 
+export async function createMollieCustomer(input: CreateMollieCustomerInput): Promise<MollieCustomer> {
+  const response = await fetch(`${MOLLIE_API_BASE}/customers`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${requireMollieApiKey()}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": input.idempotencyKey,
+    },
+    body: JSON.stringify({
+      name: input.name,
+      email: input.email,
+      metadata: input.metadata,
+    }),
+  })
+  if (!response.ok) {
+    throw new MollieApiError("Mollie customer creation", response.status)
+  }
+  return await response.json() as MollieCustomer
+}
+
 export async function createMolliePayment(input: CreateMolliePaymentInput): Promise<MolliePayment> {
-  const response = await fetch(`${MOLLIE_API_BASE}/payments`, {
+  const path = input.customerId
+    ? `/customers/${encodeURIComponent(input.customerId)}/payments`
+    : "/payments"
+  const response = await fetch(`${MOLLIE_API_BASE}${path}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${requireMollieApiKey()}`,
@@ -86,6 +140,7 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
       description: input.description,
       redirectUrl: input.redirectUrl,
       webhookUrl: input.webhookUrl,
+      ...(input.sequenceType ? { sequenceType: input.sequenceType } : {}),
       metadata: input.metadata,
     }),
   })
@@ -93,6 +148,29 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
     throw new MollieApiError("Mollie payment creation", response.status)
   }
   return await response.json() as MolliePayment
+}
+
+export async function createMollieSubscription(input: CreateMollieSubscriptionInput): Promise<MollieSubscription> {
+  const response = await fetch(`${MOLLIE_API_BASE}/customers/${encodeURIComponent(input.customerId)}/subscriptions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${requireMollieApiKey()}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": input.idempotencyKey,
+    },
+    body: JSON.stringify({
+      amount: input.amount,
+      interval: input.interval,
+      ...(input.startDate ? { startDate: input.startDate } : {}),
+      description: input.description,
+      webhookUrl: input.webhookUrl,
+      metadata: input.metadata,
+    }),
+  })
+  if (!response.ok) {
+    throw new MollieApiError("Mollie subscription creation", response.status)
+  }
+  return await response.json() as MollieSubscription
 }
 
 export async function retrieveMolliePayment(paymentId: string): Promise<MolliePayment> {

@@ -14,6 +14,24 @@ import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from 
 import { verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
 import { POST as mollieWebhookPOST } from "@/app/(payload)/api/payments/mollie/webhook/route"
 
+const registrant = {
+  companyName: "Acme Studio",
+  firstName: "Ada",
+  lastName: "Lovelace",
+  email: "client@example.com",
+  street: "Main Street",
+  number: "10",
+  suffix: null,
+  zipcode: "1011AB",
+  city: "Amsterdam",
+  country: "NL",
+  state: null,
+  phoneCountryCode: "+31",
+  phoneAreaCode: "20",
+  phoneSubscriberNumber: "1234567",
+  locale: "nl_NL",
+}
+
 const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   const tenant = {
     id: 1,
@@ -70,18 +88,23 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("MOLLIE_WEBHOOK_BASE_URL", "")
     vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "")
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
-      id: "tr_test_123",
-      status: "open",
-      amount: { currency: "EUR", value: "499.00" },
-      metadata: {
-        generationRunId: 500,
-        tenantId: 1,
-        customerEmail: "client@example.com",
-        clientSlug: "acme",
-      },
-      _links: { checkout: { href: "https://www.mollie.com/checkout/test" } },
-    }), { status: 201 })))
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "https://api.mollie.com/v2/customers") {
+        return new Response(JSON.stringify({ id: "cst_test_123", name: "Acme Studio", email: "client@example.com" }), { status: 201 })
+      }
+      return new Response(JSON.stringify({
+        id: "tr_test_123",
+        status: "open",
+        amount: { currency: "EUR", value: "499.00" },
+        metadata: {
+          generationRunId: 500,
+          tenantId: 1,
+          customerEmail: "client@example.com",
+          clientSlug: "acme",
+        },
+        _links: { checkout: { href: "https://www.mollie.com/checkout/test" } },
+      }), { status: 201 })
+    }))
   })
 
   it("creates approved-run checkout with run, tenant, customer, and idempotency metadata", async () => {
@@ -96,15 +119,23 @@ describe("Mollie payment flow", () => {
 
     expect(result.checkoutUrl).toBe("https://www.mollie.com/checkout/test")
     expect(result.reused).toBe(false)
-    expect(fetch).toHaveBeenCalledWith("https://api.mollie.com/v2/payments", expect.objectContaining({
+    expect(fetch).toHaveBeenCalledWith("https://api.mollie.com/v2/customers", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({
+        Authorization: "Bearer test_xxx",
+        "Idempotency-Key": "siab-run-500-customer-client@example.com-mollie-customer",
+      }),
+    }))
+    expect(fetch).toHaveBeenCalledWith("https://api.mollie.com/v2/customers/cst_test_123/payments", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({
         Authorization: "Bearer test_xxx",
         "Idempotency-Key": "siab-run-500-customer-client@example.com",
       }),
     }))
-    const request = vi.mocked(fetch).mock.calls[0]?.[1] as RequestInit
+    const request = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit
     expect(JSON.parse(String(request.body))).toMatchObject({
+      sequenceType: "first",
       redirectUrl: "https://preview.siteinabox.nl/acme?payment=return",
       webhookUrl: "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       metadata: {
@@ -112,6 +143,9 @@ describe("Mollie payment flow", () => {
         tenantId: 1,
         customerEmail: "client@example.com",
         clientSlug: "acme",
+        mollieCustomerId: "cst_test_123",
+        sequenceType: "first",
+        renewalInterval: "1 year",
       },
     })
     expect(update).toHaveBeenCalledWith(expect.objectContaining({
@@ -124,6 +158,9 @@ describe("Mollie payment flow", () => {
           externalReference: "tr_test_123",
           customerEmail: "client@example.com",
           checkoutUrl: "https://www.mollie.com/checkout/test",
+          mollieCustomerId: "cst_test_123",
+          mollieSequenceType: "first",
+          renewalInterval: "1 year",
         }),
       },
     }))
@@ -218,8 +255,6 @@ describe("Mollie payment flow", () => {
   it("starts domain provisioning after a paid checkout with a selected domain", async () => {
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
-    vi.stubEnv("OPENPROVIDER_OWNER_HANDLE", "OWNER-NL")
-    vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
     vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
     vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
@@ -237,9 +272,13 @@ describe("Mollie payment flow", () => {
         domain: "clientsite.nl",
         fixedPriceAmount: "499.00",
         fixedPriceCurrency: "EUR",
+        registrant,
       },
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("api.mollie.com/v2/customers/cst_test_123/subscriptions")) {
+        return new Response(JSON.stringify({ id: "sub_test_123", status: "active" }), { status: 201 })
+      }
       if (url.includes("api.cloudflare.com/client/v4/zones") && !url.includes("dns_records")) {
         return new Response(JSON.stringify({
           success: true,
@@ -252,6 +291,9 @@ describe("Mollie payment flow", () => {
       }
       if (url.includes("api.openprovider.eu/v1beta/auth/login")) {
         return new Response(JSON.stringify({ data: { token: "op-token" } }), { status: 200 })
+      }
+      if (url.includes("api.openprovider.eu/v1beta/customers")) {
+        return new Response(JSON.stringify({ data: { handle: "OWNER-CLIENT" } }), { status: 200 })
       }
       if (url.includes("api.openprovider.eu/v1beta/domains")) {
         return new Response(JSON.stringify({ code: 0, data: { id: 9001, status: "ACT" } }), { status: 200 })
@@ -275,16 +317,25 @@ describe("Mollie payment flow", () => {
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "clientsite.nl",
+        mollieCustomerId: "cst_test_123",
+        sequenceType: "first",
       },
     }))
 
     expect(result.status).toBe("completed")
-    expect(run.payment).toMatchObject({ status: "completed", selectedDomain: "clientsite.nl" })
+    expect(run.payment).toMatchObject({
+      status: "completed",
+      selectedDomain: "clientsite.nl",
+      mollieCustomerId: "cst_test_123",
+      mollieSubscriptionId: "sub_test_123",
+    })
     expect(run.domainOrder).toMatchObject({
       status: "registered",
       domain: "clientsite.nl",
       providerReference: "9001",
       cloudflareZoneId: "zone_123",
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: "OWNER-CLIENT",
     })
     expect(tenant).toMatchObject({
       domain: "clientsite.nl",

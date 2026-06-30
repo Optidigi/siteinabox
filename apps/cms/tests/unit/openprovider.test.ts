@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   buildOpenProviderDomainRegistrationRequest,
+  buildOpenProviderCustomerRequest,
   checkOpenProviderDomainAvailability,
+  createOpenProviderCustomerHandle,
   loginOpenProvider,
   registerOpenProviderDomain,
 } from "@/lib/domains/openprovider"
@@ -25,6 +27,24 @@ const env = {
 } as unknown as NodeJS.ProcessEnv
 
 describe("OpenProvider adapter", () => {
+  const registrant = {
+    companyName: "Acme Studio",
+    firstName: "Ada",
+    lastName: "Lovelace",
+    email: "client@example.com",
+    street: "Main Street",
+    number: "10",
+    suffix: null,
+    zipcode: "1011AB",
+    city: "Amsterdam",
+    country: "NL",
+    state: null,
+    phoneCountryCode: "+31",
+    phoneAreaCode: "20",
+    phoneSubscriberNumber: "1234567",
+    locale: "nl_NL",
+  }
+
   it("logs in with server-side credentials and returns the bearer token", async () => {
     const fetchMock = vi.fn(async () => Response.json({ data: { token: "token-123" } }))
 
@@ -125,7 +145,7 @@ describe("OpenProvider adapter", () => {
       admin_handle: "ADMIN",
       tech_handle: "TECH",
       billing_handle: "BILLING",
-      autorenew: "default",
+      autorenew: "on",
       ns_group: "siab-default",
     })
 
@@ -136,6 +156,36 @@ describe("OpenProvider adapter", () => {
     } as unknown as NodeJS.ProcessEnv)).toMatchObject({
       name_servers: [{ name: "ns1.example.nl" }, { name: "ns2.example.nl" }],
     })
+  })
+
+  it("creates customer handles from checkout registrant details", async () => {
+    expect(buildOpenProviderCustomerRequest(registrant)).toMatchObject({
+      company_name: "Acme Studio",
+      email: "client@example.com",
+      name: { first_name: "Ada", last_name: "Lovelace" },
+      address: {
+        street: "Main Street",
+        number: "10",
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+      },
+      phone: {
+        country_code: "+31",
+        area_code: "20",
+        subscriber_number: "1234567",
+      },
+    })
+    const fetchMock = vi.fn(async () => Response.json({ data: { handle: "OWNER-CLIENT" } }))
+    await expect(createOpenProviderCustomerHandle(registrant, {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual({ handle: "OWNER-CLIENT", raw: { data: { handle: "OWNER-CLIENT" } } })
+    expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/customers", expect.objectContaining({
+      method: "POST",
+      headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
+    }))
   })
 
   it("executes domain registration with a configured request body", async () => {

@@ -1,7 +1,14 @@
 import "server-only"
 import type { Payload } from "payload"
 import type { SiteGenerationRun } from "@/payload-types"
-import { createDomainOrderState, fixedDomainOrderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
+import {
+  createDomainOrderState,
+  fixedDomainOrderPriceFromEnv,
+  maxDomainProviderPriceFromEnv,
+  normalizeDomainOrderState,
+  providerPriceWithinCap,
+  type DomainRegistrantDetails,
+} from "@/lib/domains/orderState"
 import { checkOpenProviderDomainAvailability } from "@/lib/domains/openprovider"
 import { normalizeDomain } from "@/lib/domains/normalize"
 
@@ -12,6 +19,7 @@ export type PreviewDomainOrderResult = {
     | "checkoutDomainUnavailable"
     | "checkoutDomainPremium"
     | "checkoutDomainCheckFailed"
+    | "checkoutDomainTooExpensive"
   domain: string
 }
 
@@ -24,6 +32,7 @@ export async function checkAndRecordPreviewDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
   domainInput: string,
+  registrant?: DomainRegistrantDetails | null,
 ): Promise<PreviewDomainOrderResult> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
@@ -31,12 +40,14 @@ export async function checkAndRecordPreviewDomainOrder(
   }
 
   const fixedPrice = fixedDomainOrderPriceFromEnv()
+  const maxProviderPrice = maxDomainProviderPriceFromEnv()
   const availability = await checkOpenProviderDomainAvailability(normalized.domain)
   const now = new Date().toISOString()
   const providerPrice = availability.price
     ? { amount: availability.price.amount, currency: availability.price.currency }
     : null
-  const status = availability.status === "available"
+  const allowedPrice = availability.status === "available" && providerPriceWithinCap(providerPrice, maxProviderPrice)
+  const status = allowedPrice
     ? "ready_to_register"
     : availability.status === "premium"
       ? "premium"
@@ -48,7 +59,9 @@ export async function checkAndRecordPreviewDomainOrder(
     domain: normalized.domain,
     fixedPrice,
     providerPrice,
-    reason: availability.internalReason,
+    maxProviderPrice,
+    registrant: registrant ?? normalizeDomainOrderState(run.domainOrder).registrant,
+    reason: availability.internalReason ?? (availability.status === "available" && !allowedPrice ? "domain_cost_above_limit" : null),
     now,
   })
 
@@ -63,13 +76,15 @@ export async function checkAndRecordPreviewDomainOrder(
   return {
     run: updated,
     domain: normalized.domain,
-    messageKey: availability.status === "available"
+    messageKey: allowedPrice
       ? "checkoutDomainAvailable"
       : availability.status === "premium"
         ? "checkoutDomainPremium"
         : availability.status === "unavailable"
           ? "checkoutDomainUnavailable"
-          : "checkoutDomainCheckFailed",
+          : availability.status === "available"
+            ? "checkoutDomainTooExpensive"
+            : "checkoutDomainCheckFailed",
   }
 }
 
@@ -77,15 +92,21 @@ export async function requireReadyPreviewDomainOrder(
   payload: Payload,
   run: SiteGenerationRun,
   domainInput: string,
+  registrant?: DomainRegistrantDetails | null,
 ): Promise<{ run: SiteGenerationRun; domain: string }> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) throw new Error(`Invalid domain: ${normalized.reason}`)
   const state = normalizeDomainOrderState(run.domainOrder)
   if (state.status !== "ready_to_register" || state.domain !== normalized.domain) {
-    const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain)
+    const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain, registrant)
     if (result.messageKey !== "checkoutDomainAvailable") {
       throw new Error(result.messageKey)
     }
+    return { run: result.run, domain: result.domain }
+  }
+  const existingRegistrant = state.registrant
+  if (!existingRegistrant && registrant) {
+    const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain, registrant)
     return { run: result.run, domain: result.domain }
   }
   return { run, domain: normalized.domain }
