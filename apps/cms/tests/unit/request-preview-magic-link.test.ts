@@ -12,6 +12,15 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(async () => mocks.headers),
 }))
 
+vi.mock("next-intl/server", () => ({
+  getTranslations: vi.fn(async () => (key: string) => {
+    const messages: Record<string, string> = {
+      magicLinkGenericSuccess: "If this email has preview access, you will receive a magic link.",
+    }
+    return messages[key] ?? key
+  }),
+}))
+
 vi.mock("@/lib/preview/betterAuth", () => ({
   previewAuth: {
     api: {

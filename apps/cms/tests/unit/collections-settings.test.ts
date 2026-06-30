@@ -21,11 +21,11 @@ describe("SiteSettings collection config", () => {
     expect(f.required).not.toBe(true)
   })
 
-  it("adds language text with default 'en'", () => {
+  it("adds language text with default 'nl'", () => {
     const f = findField("language")
     expect(f).toBeDefined()
     expect(f.type).toBe("text")
-    expect(f.defaultValue).toBe("en")
+    expect(f.defaultValue).toBe("nl")
   })
 
   it("adds aliases array with required host", () => {

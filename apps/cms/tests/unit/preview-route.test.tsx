@@ -14,6 +14,29 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(async () => mocks.headers),
 }))
 
+vi.mock("next-intl/server", () => ({
+  getTranslations: vi.fn(async () => (key: string) => {
+    const messages: Record<string, string> = {
+      loginTitle: "Preview login",
+      loginDescription: "Enter the email address from your preview invitation.",
+      sendMagicLink: "Send magic link",
+    }
+    return messages[key] ?? key
+  }),
+}))
+
+vi.mock("next-intl", () => ({
+  useTranslations: vi.fn(() => (key: string) => {
+    const messages: Record<string, string> = {
+      accessUnavailable: "Access unavailable",
+      email: "Email",
+      emailSent: "Email sent",
+      sendMagicLink: "Send magic link",
+    }
+    return messages[key] ?? key
+  }),
+}))
+
 vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("not found")

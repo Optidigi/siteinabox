@@ -11,6 +11,16 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(async () => mocks.headers),
 }))
 
+vi.mock("next-intl/server", () => ({
+  getTranslations: vi.fn(async () => (key: string) => {
+    const messages: Record<string, string> = {
+      checkoutRequiresPreviewAccess: "Customer checkout requires Better Auth preview access.",
+      previewLoginRequired: "Preview login required",
+    }
+    return messages[key] ?? key
+  }),
+}))
+
 vi.mock("@/lib/preview/betterAuth", () => ({
   previewAuth: {
     api: {

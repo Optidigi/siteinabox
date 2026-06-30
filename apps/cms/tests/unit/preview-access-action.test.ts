@@ -16,6 +16,18 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(async () => mocks.headers),
 }))
 
+vi.mock("next-intl/server", () => ({
+  getTranslations: vi.fn(async () => (key: string) => {
+    const messages: Record<string, string> = {
+      customerEmailRequired: "Customer email is required.",
+      previewAccessSendFailed: "Could not send preview access.",
+      previewMagicLinkSent: "Preview magic link sent.",
+      superAdminRequired: "Only super-admins can send preview links.",
+    }
+    return messages[key] ?? key
+  }),
+}))
+
 vi.mock("payload", () => ({
   getPayload: vi.fn(async () => mocks.payload),
 }))
