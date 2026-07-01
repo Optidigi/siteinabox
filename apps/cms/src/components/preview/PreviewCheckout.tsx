@@ -667,9 +667,9 @@ function DomainOptionRow({
   const content = (
     <>
       <span className="grid min-w-0 flex-1 gap-1">
-        <span className="break-all text-sm font-medium text-foreground">{option.domain}</span>
+        <span className="break-all text-base font-medium text-foreground">{option.domain}</span>
         {!option.included && option.extraFeeLabel && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {t("checkoutDomainExtraFeeInline", { extraFee: option.extraFeeLabel })}
           </span>
         )}
@@ -699,8 +699,8 @@ function DomainOptionRow({
         type="button"
         variant="outline"
         className={cn(
-          "h-auto w-full justify-between whitespace-normal border-2 border-success bg-success/5 p-3 text-left shadow-xs ring-2 ring-success/35 hover:bg-success/10 hover:ring-success/50 focus-visible:ring-success/60",
-          selected && "bg-success/10 ring-success/70",
+          "h-auto w-full justify-between whitespace-normal border-2 border-success bg-success/5 p-3 text-left shadow-xs hover:bg-success/10",
+          selected && "bg-success/10",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
@@ -713,8 +713,8 @@ function DomainOptionRow({
     <div
       className={cn(
         "flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3",
-        selected && "border-2 border-success bg-success/5 ring-2 ring-success/50",
-        checking && "border-2 border-dashed border-success/70 bg-success/5 text-muted-foreground ring-1 ring-success/30",
+        selected && "border-2 border-success bg-success/5",
+        checking && "border-border bg-muted/30 text-muted-foreground",
       )}
       aria-busy={checking}
     >
@@ -742,7 +742,7 @@ function DomainSuggestions({
   const visiblePlaceholders = placeholders.slice(0, Math.max(0, 5 - visibleSuggestions.length))
   return (
     <div className="grid gap-2">
-      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+      <div className="flex items-center gap-2 text-base font-medium text-foreground">
         {loading && <Loader2 className="size-4 animate-spin text-muted-foreground" aria-hidden />}
         <span>{t("checkoutDomainSuggestionsTitle")}</span>
       </div>
