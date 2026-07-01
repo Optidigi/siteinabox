@@ -191,7 +191,7 @@ describe("sendEmail", () => {
           subject: "Magic link",
           html: "<p>Login</p>",
           text: "Login",
-          replyTo: "support@example.com",
+          reply_to: "support@example.com",
         }),
       }),
     )
