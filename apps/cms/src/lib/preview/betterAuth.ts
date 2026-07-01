@@ -8,6 +8,14 @@ import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
 import { PREVIEW_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 
+async function getMailPayload() {
+  const [{ getPayload }, configModule] = await Promise.all([
+    import("payload"),
+    import("@/payload.config"),
+  ])
+  return getPayload({ config: configModule.default })
+}
+
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
   throw new Error("DATABASE_URI is required for Preview Better Auth")
@@ -80,10 +88,13 @@ export const previewAuth = betterAuth({
         const message = metadata?.previewSiteReady === true
           ? siteReadyPreviewTemplate({ loginUrl: url })
           : magicLinkTemplate({ loginUrl: url })
+        const payload = await getMailPayload()
         await sendEmail({
           to: email,
           subject: message.subject,
           html: message.html,
+          intent: metadata?.previewSiteReady === true ? "preview.site_ready" : "preview.magic_link",
+          payload: payload as any,
         })
       },
     }),

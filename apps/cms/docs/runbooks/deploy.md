@@ -103,6 +103,10 @@ SUPER_ADMIN_DOMAIN=siteinabox.nl
 VPS_IP=<your-vps-ip>
 CLOUDFLARE_EMAIL_SMTP_TOKEN=
 EMAIL_FROM=noreply@siteinabox.nl
+SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10
+SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60
+SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50
+SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600
 MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
 MOLLIE_SITE_PAYMENT_AMOUNT=228.00
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
@@ -166,10 +170,25 @@ snapshot lookup. Use the same value in the renderer stack. In production, the
 CMS snapshot endpoint rejects requests when this token is missing or incorrect.
 `SITE_URL` should match the public CMS/admin origin where runtime metadata or
 absolute URLs need the CMS origin.
-Cloudflare Email Service over Nodemailer is the canonical mail path for all
-SIAB mail. The same `CLOUDFLARE_EMAIL_SMTP_TOKEN` / `EMAIL_FROM` configuration
-is used for Payload email, platform/admin messages, tenant-site messages, and
-Better Auth magic-link delivery for both CMS and customer preview auth.
+Cloudflare Email Sending is the canonical mail path. SMTP delivery uses
+`CLOUDFLARE_EMAIL_SMTP_TOKEN` with `EMAIL_FROM` for platform/admin messages,
+Payload email, Better Auth CMS and preview magic links, intake internal
+notifications, privacy exports, preview handoff mail, and any other
+platform-sender mail. Tenant generated-site form notifications use the tenant's
+verified sender, normally `noreply@mail.<tenant-domain>`, after
+`tenants.emailSending.status` is verified.
+
+The same Cloudflare API env used for DNS automation also provisions and
+refreshes tenant Email Sending subdomains: set `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, and optionally `CLOUDFLARE_API_BASE_URL`. Generated
+site activation for a generation run requires verified tenant Email Sending;
+manual activation bypasses approval/payment only and must not be used to skip
+domain or sender verification.
+
+Mail sends write metadata-only `mail-logs` when the caller supplies Payload,
+and important or repeated failures upsert `operational-alerts`. These
+collections are super-admin-only and must not contain rendered subjects, bodies,
+tokens, or secrets.
 Mollie checkout uses the hosted Payments API and the webhook route
 `/api/payments/mollie/webhook`. Keep `MOLLIE_API_KEY` and any optional webhook
 signing secret in deployment secrets only; `.env.example` intentionally contains
@@ -182,7 +201,8 @@ handles per customer; deployment env only supplies the SIAB/Optidigi
 technical/billing contact handles.
 Cloudflare DNS automation requires an account id, API token, and either
 `SIAB_RENDERER_TARGET_HOST` for proxied CNAME records or
-`SIAB_RENDERER_TARGET_IP` for proxied A records.
+`SIAB_RENDERER_TARGET_IP` for proxied A records. The same account/token must be
+allowed to manage the customer zone and Cloudflare Email Sending subdomains.
 `RESEND_API_KEY` is obsolete after the Cloudflare SMTP mail-path change and
 should not be carried forward into the production `.env`.
 
@@ -200,9 +220,10 @@ Current Phase 3 env readiness status:
 | CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
 | Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
 | Email | Set `CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM`; remove obsolete `RESEND_API_KEY`. |
+| Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and optional webhook signing secret. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
-| Cloudflare DNS | Set API token, account id, and renderer target host or IP before enabling paid customer domain registration. |
+| Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |
 | Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN`, `ENABLE_GRAPHQL_PLAYGROUND`, and `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE` unset unless there is a temporary operator-approved reason. |
 
 **DO NOT wrap values in quotes.** Compose's dotenv parser strips them, but raw
@@ -582,16 +603,19 @@ Paid customer checkout now owns the first automated domain path:
    one-year delayed start date. When `MOLLIE_API_KEY` is a live key, the webhook
    then creates a Cloudflare zone, creates the customer owner/admin contact
    handle in OpenProvider, registers the domain with Cloudflare nameservers and
-   auto-renew enabled, creates the renderer DNS records, and marks tenant domain
-   verification as `verified`. Test-key payments complete payment state but skip
+   auto-renew enabled, creates the renderer DNS records, creates or reuses the
+   Cloudflare Email Sending subdomain, and records tenant domain and sender
+   verification state. Test-key payments complete payment state but skip
    OpenProvider and Cloudflare provisioning.
-5. Publish and activate snapshots only after the domain is verified. Payment
-   and domain provisioning do not publish or activate a site by themselves.
+5. Publish and activate snapshots only after the domain and generated-site
+   tenant sender are verified. Payment and domain/sender provisioning do not
+   publish or activate a site by themselves.
 
-Manual verification remains an operator fallback for domains that were handled
-outside this automated checkout path. Manual activation bypasses
-approval/payment only; it still requires a verified domain and a tenant that is
-not suspended or archived.
+Manual verification remains an operator fallback for domains or senders that
+were handled outside this automated checkout path. Manual activation bypasses
+approval/payment only; run-linked generated-site activation still requires a
+verified domain, verified tenant Email Sending, and a tenant that is not
+suspended or archived.
 
 ## Form-submission retention (GDPR)
 
@@ -676,8 +700,9 @@ no longer serves HTML at all.
 
 ## Future improvements (out of scope for this runbook)
 
-- **Secrets manager.** Move `CLOUDFLARE_EMAIL_SMTP_TOKEN` (and eventually
-  `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`) out of `.env` into a secrets
+- **Secrets manager.** Move `CLOUDFLARE_EMAIL_SMTP_TOKEN`,
+  `CLOUDFLARE_API_TOKEN`, and eventually `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`
+  out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.
 - **CORS / CSRF allowlist.** Once approved automation calls Payload
   cross-origin, add the calling service hostname to `cors` and `csrf` arrays in

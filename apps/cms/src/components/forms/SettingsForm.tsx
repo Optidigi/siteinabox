@@ -176,6 +176,7 @@ export function SettingsForm({
           name: "contactEmail",
           type: "email",
           label: t("contactEmail"),
+          admin: { description: t("contactEmailDescription") },
         }
       : null,
   ].filter(Boolean)

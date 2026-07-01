@@ -149,14 +149,37 @@ const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string
 // scope; the in-app limiter raises the cost-of-attack from one machine to
 // distributed-bot territory. Documented in batch report.
 //
-// Limits: 10 / 60 seconds per (path, ip). Aligns with the audit's literal
-// suggestion ("10/min/IP/route"). Budget is per-route — a flooder hitting
-// /api/forms doesn't cost the /api/users/forgot-password budget for the
-// same IP. Path normalization strips trailing slashes so `/api/forms` and
+// Limits: default 10 / 60 seconds per (path, ip). Aligns with the audit's
+// literal suggestion ("10/min/IP/route"). Budget is per-route — a flooder
+// hitting /api/forms doesn't cost the /api/users/forgot-password budget for
+// the same IP. Path normalization strips trailing slashes so `/api/forms` and
 // `/api/forms/` share one budget (Test Case 5).
+//
+// Generated-site forms also get a second anonymous-only budget keyed by
+// tenant/form target. This catches distributed low-volume spam that rotates IPs
+// but pounds one customer's form. Defaults are intentionally conservative for
+// a single-instance production CMS and can be relaxed/tightened without code:
+//   SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10
+//   SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60
+//   SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50
+//   SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600
 
-const RATE_LIMIT_POINTS = 10
-const RATE_LIMIT_DURATION_SECONDS = 60
+const parsePositiveIntEnv = (name: string, fallback: number): number => {
+  const raw = process.env[name]
+  if (!raw) return fallback
+  const parsed = Number.parseInt(raw, 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback
+}
+
+const publicPostRateLimitConfig = () => ({
+  points: parsePositiveIntEnv("SIAB_PUBLIC_POST_RATE_LIMIT_POINTS", 10),
+  duration: parsePositiveIntEnv("SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS", 60),
+})
+
+const formTargetRateLimitConfig = () => ({
+  points: parsePositiveIntEnv("SIAB_FORM_TARGET_RATE_LIMIT_POINTS", 50),
+  duration: parsePositiveIntEnv("SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS", 3600),
+})
 
 // Single shared limiter instance per process. The composite key
 // `${normalizedPath}:${ip}` provides per-(path,ip) isolation. We don't
@@ -164,15 +187,20 @@ const RATE_LIMIT_DURATION_SECONDS = 60
 // is small and may grow (e.g. /api/health, future contact-v2 endpoints);
 // keying on path keeps the wiring uniform.
 let rateLimiter: RateLimiterMemory | null = null
+let formTargetRateLimiter: RateLimiterMemory | null = null
 
 const getRateLimiter = (): RateLimiterMemory => {
   if (rateLimiter == null) {
-    rateLimiter = new RateLimiterMemory({
-      points: RATE_LIMIT_POINTS,
-      duration: RATE_LIMIT_DURATION_SECONDS,
-    })
+    rateLimiter = new RateLimiterMemory(publicPostRateLimitConfig())
   }
   return rateLimiter
+}
+
+const getFormTargetRateLimiter = (): RateLimiterMemory => {
+  if (formTargetRateLimiter == null) {
+    formTargetRateLimiter = new RateLimiterMemory(formTargetRateLimitConfig())
+  }
+  return formTargetRateLimiter
 }
 
 // Test-only export: drop limiter state between tests so per-IP budgets
@@ -180,6 +208,7 @@ const getRateLimiter = (): RateLimiterMemory => {
 // underscore-prefixed name is the convention for `import-but-do-not-call`.
 export const __resetRateLimitersForTests = (): void => {
   rateLimiter = null
+  formTargetRateLimiter = null
 }
 
 const RATE_LIMITED_PATHS = new Set<string>([
@@ -197,6 +226,9 @@ const isRateLimitedRequest = (req: NextRequest): boolean => {
   if (req.method !== "POST") return false
   return RATE_LIMITED_PATHS.has(normalizePath(req.nextUrl.pathname))
 }
+
+const isFormsRequest = (req: NextRequest): boolean =>
+  req.method === "POST" && normalizePath(req.nextUrl.pathname) === "/api/forms"
 
 // Anonymous = no Authorization header AND no payload-token cookie. Either
 // signal flips the caller to "authed-or-trusted" and the limiter skips.
@@ -239,6 +271,62 @@ const buildRateLimitedResponse = (msBeforeNext: number, pathname: string, nonce:
   return applySecurityHeaders(res, pathname, nonce)
 }
 
+const cleanRateLimitKeyPart = (value: unknown): string | null => {
+  if (typeof value !== "string" && typeof value !== "number") return null
+  const trimmed = String(value).trim().toLowerCase()
+  if (!trimmed) return null
+  return trimmed.replace(/[^a-z0-9._:-]+/g, "-").slice(0, 96)
+}
+
+const relationshipKeyPart = (value: unknown): string | null => {
+  if (typeof value === "string" || typeof value === "number") return cleanRateLimitKeyPart(value)
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  return cleanRateLimitKeyPart(record.id ?? record.value ?? record.slug)
+}
+
+type FormTarget = {
+  tenant: string
+  form: string
+}
+
+const formTargetFromRecord = (record: Record<string, unknown>, hostTenant: string): FormTarget | null => {
+  const form = cleanRateLimitKeyPart(record.formName)
+  if (!form) return null
+  const tenant = relationshipKeyPart(record.tenant) ?? cleanRateLimitKeyPart(hostTenant)
+  if (!tenant) return null
+  return { tenant, form }
+}
+
+const parseFormTarget = async (req: NextRequest, hostTenant: string): Promise<FormTarget | null> => {
+  const contentType = req.headers.get("content-type")?.toLowerCase() ?? ""
+
+  try {
+    if (contentType.includes("application/json")) {
+      const body = await req.clone().json()
+      if (!body || typeof body !== "object" || Array.isArray(body)) return null
+      return formTargetFromRecord(body as Record<string, unknown>, hostTenant)
+    }
+
+    if (
+      contentType.includes("application/x-www-form-urlencoded") ||
+      contentType.includes("multipart/form-data")
+    ) {
+      const formData = await req.clone().formData()
+      const record: Record<string, unknown> = {}
+      for (const key of ["tenant", "formName"]) {
+        const value = formData.get(key)
+        if (typeof value === "string") record[key] = value
+      }
+      return formTargetFromRecord(record, hostTenant)
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
 const API_KEY_AUTH_PREFIX = "users API-Key "
 const MIN_API_KEY_LENGTH = 16
 const MAX_API_KEY_LENGTH = 256
@@ -261,6 +349,16 @@ const isPasswordLoginRequest = (req: NextRequest): boolean =>
 const buildPasswordLoginUnavailableResponse = (pathname: string, nonce: string): NextResponse => {
   const res = NextResponse.json({ error: "Password login is only available on the SIAB admin host" }, { status: 403 })
   return applySecurityHeaders(res, pathname, nonce)
+}
+
+const rateLimitFallbackMs = (durationSeconds: number): number => durationSeconds * 1000
+
+const retryMsFromLimiterRejection = (rejRes: unknown, fallbackMs: number): number => {
+  const ms =
+    typeof rejRes === "object" && rejRes && "msBeforeNext" in rejRes
+      ? Number((rejRes as { msBeforeNext: unknown }).msBeforeNext)
+      : fallbackMs
+  return Number.isFinite(ms) ? ms : fallbackMs
 }
 
 // -----------------------------------------------------------------------------
@@ -303,16 +401,28 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     try {
       await limiter.consume(key, 1)
     } catch (rejRes) {
-      // RateLimiterRes shape: {msBeforeNext: number, ...}
-      const ms =
-        typeof rejRes === "object" && rejRes && "msBeforeNext" in rejRes
-          ? Number((rejRes as { msBeforeNext: unknown }).msBeforeNext)
-          : RATE_LIMIT_DURATION_SECONDS * 1000
       return buildRateLimitedResponse(
-        Number.isFinite(ms) ? ms : RATE_LIMIT_DURATION_SECONDS * 1000,
+        retryMsFromLimiterRejection(rejRes, rateLimitFallbackMs(publicPostRateLimitConfig().duration)),
         req.nextUrl.pathname,
         nonce
       )
+    }
+
+    if (isFormsRequest(req)) {
+      const target = await parseFormTarget(req, domain)
+      if (target) {
+        const targetLimiter = getFormTargetRateLimiter()
+        const targetKey = `forms:${target.tenant}:${target.form}`
+        try {
+          await targetLimiter.consume(targetKey, 1)
+        } catch (rejRes) {
+          return buildRateLimitedResponse(
+            retryMsFromLimiterRejection(rejRes, rateLimitFallbackMs(formTargetRateLimitConfig().duration)),
+            req.nextUrl.pathname,
+            nonce
+          )
+        }
+      }
     }
   }
 

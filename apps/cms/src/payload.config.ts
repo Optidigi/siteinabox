@@ -9,7 +9,9 @@ import { fileURLToPath } from "url"
 import { BlockPresets } from "@/collections/BlockPresets"
 import { Forms } from "@/collections/Forms"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
+import { MailLogs } from "@/collections/MailLogs"
 import { Media } from "@/collections/Media"
+import { OperationalAlerts } from "@/collections/OperationalAlerts"
 import { Pages } from "@/collections/Pages"
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { PreviewAccessGrants } from "@/collections/PreviewAccessGrants"
@@ -17,7 +19,7 @@ import { SiteSettings } from "@/collections/SiteSettings"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
-import { getCloudflareEmailSmtpToken } from "@/lib/email/sendEmail"
+import { getCloudflareEmailSmtpToken, getPlatformMailSender } from "@/lib/email/sendEmail"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import type { Config } from "@/payload-types"
 
@@ -37,7 +39,7 @@ if (!DATABASE_URI) {
 const cloudflareEmailSmtpToken = getCloudflareEmailSmtpToken()
 const emailAdapter = cloudflareEmailSmtpToken
   ? nodemailerAdapter({
-      defaultFromAddress: process.env.EMAIL_FROM || "noreply@siteinabox.nl",
+      defaultFromAddress: getPlatformMailSender(),
       defaultFromName: "SiteInABox",
       transportOptions: {
         host: "smtp.mx.cloudflare.net",
@@ -88,7 +90,7 @@ export default buildConfig({
   }),
   editor: lexicalEditor(),
   ...(emailAdapter ? { email: emailAdapter } : {}),
-  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets, IntakeSubmissions, SiteGenerationRuns, PublishedSiteSnapshots, PreviewAccessGrants],
+  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets, IntakeSubmissions, SiteGenerationRuns, PublishedSiteSnapshots, PreviewAccessGrants, MailLogs, OperationalAlerts],
   // Audit-p2 #10 (T11) — Forms GDPR retention. The purge task auto-schedules
   // a daily job at 02:00 UTC; `autoRun` registers an in-process cron worker
   // that picks up scheduled jobs every minute (default cron: '* * * * *').

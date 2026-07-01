@@ -255,7 +255,8 @@ export const SiteSettings: CollectionConfig = {
       fields: [
         { name: "host", type: "text", required: true }
       ]},
-    { name: "contactEmail", type: "email" },
+    { name: "contactEmail", type: "email",
+      admin: { description: "Tenant contact email for generated-site form notifications. Defaults from intake/generation when available and can be changed here." } },
     { name: "branding", type: "group", fields: [
       { name: "logo", type: "upload", relationTo: "media" },
       { name: "favicon", type: "upload", relationTo: "media" },

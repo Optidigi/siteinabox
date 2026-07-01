@@ -1,11 +1,21 @@
 import "server-only"
 import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
-import { createCloudflareZone, createCloudflareZoneDnsRecords } from "@/lib/domains/cloudflare"
+import {
+  createCloudflareZone,
+  createCloudflareZoneDnsRecords,
+  createOrReuseCloudflareEmailSendingSubdomain,
+} from "@/lib/domains/cloudflare"
 import { createDomainOrderState, fixedDomainOrderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
 import { createOpenProviderCustomerHandle, loginOpenProvider, registerOpenProviderDomain } from "@/lib/domains/openprovider"
 import { normalizeDomain } from "@/lib/domains/normalize"
 import { relationshipId } from "@/lib/relationshipId"
+import {
+  buildFailedTenantEmailSending,
+  buildTenantEmailSendingFromCloudflareSubdomain,
+  type TenantEmailSendingState,
+} from "@/lib/tenants/emailSending"
+import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 
 export type ProvisionPaidDomainResult = {
   status: "registered" | "already_registered"
@@ -90,6 +100,17 @@ export async function provisionPaidDomainOrder(
       autorenew: "on",
     })
     const dnsRecords = await createCloudflareZoneDnsRecords(zone.id, normalized.domain)
+    let emailSending: TenantEmailSendingState
+    try {
+      const subdomain = await createOrReuseCloudflareEmailSendingSubdomain(zone.id, `mail.${normalized.domain}`)
+      emailSending = buildTenantEmailSendingFromCloudflareSubdomain(normalized.domain, zone.id, subdomain)
+    } catch (error) {
+      emailSending = buildFailedTenantEmailSending(
+        normalized.domain,
+        zone.id,
+        redactOperationalMessage(error),
+      )
+    }
     const registered = {
       ...createDomainOrderState({
         status: "registered",
@@ -116,6 +137,19 @@ export async function provisionPaidDomainOrder(
       cloudflareZoneId: zone.id,
       cloudflareNameservers: zone.nameServers,
       cloudflareDnsRecordIds: dnsRecords.map((record) => record.id).filter(Boolean),
+      emailSending: {
+        provider: emailSending.provider,
+        mode: emailSending.mode,
+        status: emailSending.status,
+        sendingDomain: emailSending.sendingDomain,
+        senderEmail: emailSending.senderEmail,
+        cloudflareZoneId: emailSending.cloudflareZoneId,
+        cloudflareSubdomainId: emailSending.cloudflareSubdomainId,
+        returnPathDomain: emailSending.returnPathDomain,
+        dkimSelector: emailSending.dkimSelector,
+        lastCheckedAt: emailSending.lastCheckedAt,
+        lastError: emailSending.lastError,
+      },
     }
     const [updatedRun] = await Promise.all([
       payload.update({
@@ -135,6 +169,7 @@ export async function provisionPaidDomainOrder(
             checkedAt: new Date().toISOString(),
             notes: "Domain registered with OpenProvider and Cloudflare DNS records created by checkout automation.",
           },
+          emailSending,
         } as any,
         depth: 0,
         overrideAccess: true,

@@ -39,6 +39,9 @@ import * as migration_20260628_000000_generic_generation_fixture_defaults from '
 import * as migration_20260630_120000_add_intake_review_fields from './20260630_120000_add_intake_review_fields';
 import * as migration_20260630_130000_default_dutch_locale from './20260630_130000_default_dutch_locale';
 import * as migration_20260630_150000_add_generation_run_domain_order from './20260630_150000_add_generation_run_domain_order';
+import * as migration_20260701_120000_add_mail_logs from './20260701_120000_add_mail_logs';
+import * as migration_20260701_130000_add_tenant_email_sending from './20260701_130000_add_tenant_email_sending';
+import * as migration_20260701_140000_add_operational_alerts from './20260701_140000_add_operational_alerts';
 
 export const migrations = [
   {
@@ -245,5 +248,20 @@ export const migrations = [
     up: migration_20260630_150000_add_generation_run_domain_order.up,
     down: migration_20260630_150000_add_generation_run_domain_order.down,
     name: '20260630_150000_add_generation_run_domain_order'
+  },
+  {
+    up: migration_20260701_120000_add_mail_logs.up,
+    down: migration_20260701_120000_add_mail_logs.down,
+    name: '20260701_120000_add_mail_logs'
+  },
+  {
+    up: migration_20260701_130000_add_tenant_email_sending.up,
+    down: migration_20260701_130000_add_tenant_email_sending.down,
+    name: '20260701_130000_add_tenant_email_sending'
+  },
+  {
+    up: migration_20260701_140000_add_operational_alerts.up,
+    down: migration_20260701_140000_add_operational_alerts.down,
+    name: '20260701_140000_add_operational_alerts'
   },
 ];

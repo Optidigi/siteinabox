@@ -600,6 +600,7 @@
     "description": "Sitebeschrijving",
     "language": "Taal",
     "contactEmail": "Contact-e-mail",
+    "contactEmailDescription": "Ontvangt formuliermeldingen van de gegenereerde site. Staat standaard op het aanmeld-e-mailadres en kan hier worden aangepast.",
     "branding": "Uitstraling",
     "logo": "Logo",
     "favicon": "Favicon",

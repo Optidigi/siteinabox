@@ -63,10 +63,12 @@ current implementation only; it does not define new product behavior.
    `activatePublishedSnapshot` in
    `apps/cms/src/lib/publish/siteSnapshots.ts`. Activation gates require:
    tenant not `suspended` or `archived`; domain verification `verified`;
-   approved generation run unless manual activation is requested; and payment
-   `completed` or `waived` unless manual activation is requested. Activation
-   marks the selected snapshot `active`, supersedes other active snapshots, and
-   updates the tenant to `status: "active"` with `activeSnapshot`.
+   verified tenant Email Sending state for run-linked generated-site
+   activation; approved generation run unless manual activation is requested;
+   and payment `completed` or `waived` unless manual activation is requested.
+   Manual activation bypasses approval/payment only. Activation marks the
+   selected snapshot `active`, supersedes other active snapshots, and updates
+   the tenant to `status: "active"` with `activeSnapshot`.
 9. Renderer lookup starts in `apps/renderer/src/pages/[...path].astro`, which
    normalizes the host and calls `resolvePublishedPage`. The renderer fetches
    `GET /api/renderer/snapshot?host=...` from the CMS when `SIAB_CMS_URL` is
@@ -137,12 +139,13 @@ API calls.
 | Preview/customizer | User-operable with a valid preview Better Auth session and active grant; includes page navigation, style save status, approval state, and payment gate status. |
 | Preview theme persistence | User-operable from the Better Auth gated preview. |
 | Preview approval | User-operable from the Better Auth gated preview; records approval and pending operator payment gate state only. |
-| Payment completion/waiver | Operator UI on `/generation-runs/[id]` records provider-neutral `completed` or `waived` payment state with audit metadata. No customer payment provider adapter exists. |
+| Payment completion/waiver | Mollie checkout/webhook and operator UI on `/generation-runs/[id]` update provider-neutral payment state. Payment never publishes or activates by itself. |
 | Page publish/unpublish | User-operable in the page editor through page `status`; also available through Payload collection writes. |
 | Snapshot publish | Operator UI on `/generation-runs/[id]` and API at `POST /api/publish`. |
 | Snapshot activation | Operator UI on `/generation-runs/[id]` and API/service through `POST /api/publish` or `activatePublishedSnapshot`. |
 | Rollback | Operator UI on `/generation-runs/[id]` and API through `POST /api/publish` with `action: "rollback"`. |
-| Domain verification | Operator checklist on `/generation-runs/[id]` writes existing tenant domain-verification fields; DNS changes remain manual. |
+| Domain and tenant sender verification | Checkout provisioning can create Cloudflare/OpenProvider domain state and Cloudflare Email Sending subdomain state; operator/manual verification remains a fallback. Activation requires verified domain ownership and, for generated-site runs, verified tenant Email Sending. |
+| Mail logs and operational alerts | Payload collections `mail-logs` and `operational-alerts` are super-admin-only, metadata-only visibility for outbound delivery and important/repeated mail failures. |
 | Renderer live lookup | Service-only between renderer and CMS; public users see rendered pages or 404. |
 
 ## State Transitions
@@ -208,10 +211,12 @@ Stored as JSON on `site-generation-runs.payment`.
   `waived`.
 - Current preview approval writes `pending_provider` unless the run already has
   a satisfied `completed` or `waived` payment state.
-- Super-admin operators can mark payment `completed` or `waived` from
-  `/generation-runs/[id]` with provider, external reference, actor, timestamp,
-  and note metadata.
-- No real provider, provider callback route, or customer payment UI was found.
+- Mollie checkout/webhook can update payment state after fetching the provider
+  payment; super-admin operators can also mark payment `completed` or `waived`
+  from `/generation-runs/[id]` with provider, external reference, actor,
+  timestamp, and note metadata.
+- Payment completion can trigger approved provider-side domain/sender
+  provisioning, but payment state never publishes or activates a site by itself.
 
 Ambiguity: payment status naming is centralized in CMS code, but not defined in
 `packages/contracts`.

@@ -85,12 +85,26 @@ not available to generation.
 
 ## Email And Analytics
 
-Cloudflare Email Service over Nodemailer is the canonical email delivery path
-for all SIAB mail. That includes platform/admin mail, tenant-site mail, Payload
-email through the Nodemailer adapter, and Better Auth magic-link mail in both
-CMS and preview auth flows. `RESEND_API_KEY` and alternate transactional mail
-providers are obsolete unless a future architecture decision explicitly adds a
-new provider.
+Cloudflare Email Sending is the canonical email path. Runtime delivery uses
+Cloudflare SMTP through Nodemailer for platform/admin mail, Payload email,
+Better Auth CMS and preview magic links, intake internal notifications, privacy
+exports, preview handoff mail, and verified tenant-site form notifications.
+`CLOUDFLARE_EMAIL_SMTP_TOKEN` and `EMAIL_FROM` configure the SMTP sender.
+
+Tenant generated-site mail uses a per-tenant Cloudflare Email Sending sender,
+normally `noreply@mail.<tenant-domain>`. Domain provisioning creates or reuses
+the Cloudflare zone and Email Sending subdomain through the Cloudflare API
+(`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, optional
+`CLOUDFLARE_API_BASE_URL`) and stores non-secret state on
+`tenants.emailSending`. Run-linked generated-site activation is blocked until
+that tenant email sender is `verified`; manual activation only bypasses
+approval/payment, not domain or sender verification.
+
+Outbound sends create metadata-only `mail-logs` records when a Payload instance
+is supplied. Subjects, bodies, and secrets are not stored. Important or repeated
+mail failures upsert super-admin-visible `operational-alerts`. `RESEND_API_KEY`
+and alternate transactional mail providers are obsolete unless a future
+architecture decision explicitly adds a new provider.
 
 Generated and published sites are PostHog-first by default. Projection resolves
 public analytics settings through the shared analytics config and the renderer

@@ -1,5 +1,19 @@
-import { describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
+
+const mocks = vi.hoisted(() => ({
+  sendEmail: vi.fn(),
+}))
+
+vi.mock("@/lib/email/sendEmail", async () => {
+  const actual = await vi.importActual<any>("@/lib/email/sendEmail")
+  return {
+    ...actual,
+    getPlatformMailSender: () => "noreply@siteinabox.nl",
+    sendEmail: mocks.sendEmail,
+  }
+})
+
 import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
 
 const matchesWhere = (doc: any, where: any): boolean => {
@@ -30,6 +44,7 @@ const createPayloadStub = () => {
       store[args.collection as CollectionSlug].push(doc)
       return doc
     },
+    logger: { warn: vi.fn() },
   }
   return { payload: payload as any, store }
 }
@@ -111,6 +126,11 @@ const rawIntake = (): PublicIntakeSubmission => ({
 })
 
 describe("storeIntakeSubmission", () => {
+  beforeEach(() => {
+    mocks.sendEmail.mockReset()
+    mocks.sendEmail.mockResolvedValue({ provider: "test", providerMessageId: "msg_1" })
+  })
+
   it("stores raw and normalized public intake without creating a generation run", async () => {
     const { payload, store } = createPayloadStub()
 
@@ -143,6 +163,12 @@ describe("storeIntakeSubmission", () => {
       "submitted",
       "normalized",
     ])
+    expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: "admin@siteinabox.nl",
+      from: "noreply@siteinabox.nl",
+      intent: "intake.internal_notification",
+      payload,
+    }))
   })
 
   it("reuses the staged intake record for the same raw and normalized body", async () => {
@@ -156,5 +182,21 @@ describe("storeIntakeSubmission", () => {
     expect(second.intakeSubmissionId).toBe(first.intakeSubmissionId)
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(0)
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps intake storage non-blocking when internal notification fails", async () => {
+    const { payload, store } = createPayloadStub()
+    mocks.sendEmail.mockRejectedValueOnce(new Error("smtp down"))
+
+    const result = await storeIntakeSubmission(payload, rawIntake())
+
+    expect(result.ok).toBe(true)
+    expect(store["intake-submissions"]).toHaveLength(1)
+    expect(payload.logger.warn).toHaveBeenCalledWith(expect.objectContaining({
+      intakeSubmissionId: 1,
+      status: "normalized",
+      error: "smtp down",
+    }), "[intake] internal notification failed")
   })
 })

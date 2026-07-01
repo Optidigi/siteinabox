@@ -77,18 +77,38 @@ type ReqOpts = {
   ip?: string
   authorization?: string
   cookie?: string
+  body?: BodyInit
+  contentType?: string
+  host?: string
 }
 
 const reqAt = (opts: ReqOpts) => {
   const headers: Record<string, string> = {
-    host: "admin.example.com",
+    host: opts.host ?? "admin.example.com",
   }
   if (opts.ip) headers["x-forwarded-for"] = opts.ip
   if (opts.authorization) headers["authorization"] = opts.authorization
   if (opts.cookie) headers["cookie"] = opts.cookie
-  return new NextRequest(`https://admin.example.com${opts.path}`, {
+  if (opts.contentType) headers["content-type"] = opts.contentType
+  return new NextRequest(`https://${opts.host ?? "admin.example.com"}${opts.path}`, {
     method: opts.method ?? "POST",
     headers,
+    body: opts.body,
+  })
+}
+
+const formPostAt = (opts: Omit<ReqOpts, "body" | "contentType" | "method"> & {
+  tenant?: string
+  formName?: string
+}) => {
+  const body = new URLSearchParams()
+  if (opts.tenant !== undefined) body.set("tenant", opts.tenant)
+  body.set("formName", opts.formName ?? "contact")
+  return reqAt({
+    ...opts,
+    method: "POST",
+    body,
+    contentType: "application/x-www-form-urlencoded",
   })
 }
 
@@ -327,6 +347,152 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
       authorization: `users API-Key ${"a".repeat(32)}`,
     }))
     expect(res.status).not.toBe(401)
+  })
+
+  it("generated-site forms: rotating IPs still share a tenant/form target budget", async () => {
+    for (let i = 1; i <= 50; i++) {
+      const res = await middleware(formPostAt({
+        path: "/api/forms",
+        ip: `198.51.100.${i}`,
+        tenant: "tenant-a",
+        formName: "contact",
+      }))
+      expectAllowed(res, `target req #${i}`)
+    }
+
+    const res = await middleware(formPostAt({
+      path: "/api/forms",
+      ip: "198.51.100.251",
+      tenant: "tenant-a",
+      formName: "contact",
+    }))
+    expectBlocked(res, "target req #51")
+  })
+
+  it("generated-site forms: tenant/form target budgets are isolated", async () => {
+    for (let i = 1; i <= 50; i++) {
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: `198.51.101.${i}`,
+        tenant: "tenant-a",
+        formName: "contact",
+      }))
+    }
+
+    expectBlocked(
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: "198.51.101.251",
+        tenant: "tenant-a",
+        formName: "contact",
+      })),
+      "same tenant/form"
+    )
+    expectAllowed(
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: "198.51.101.252",
+        tenant: "tenant-b",
+        formName: "contact",
+      })),
+      "different tenant"
+    )
+    expectAllowed(
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: "198.51.101.253",
+        tenant: "tenant-a",
+        formName: "newsletter",
+      })),
+      "different form"
+    )
+  })
+
+  it("generated-site forms: host-derived tenant target works when the form body omits tenant", async () => {
+    for (let i = 1; i <= 50; i++) {
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: `198.51.102.${i}`,
+        host: "client-one.example",
+        formName: "contact",
+      }))
+    }
+
+    expectBlocked(
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: "198.51.102.251",
+        host: "client-one.example",
+        formName: "contact",
+      })),
+      "same host/form"
+    )
+    expectAllowed(
+      await middleware(formPostAt({
+        path: "/api/forms",
+        ip: "198.51.102.252",
+        host: "client-two.example",
+        formName: "contact",
+      })),
+      "different host"
+    )
+  })
+
+  it("generated-site forms: target budget is env-configurable", async () => {
+    const originalPoints = process.env.SIAB_FORM_TARGET_RATE_LIMIT_POINTS
+    const originalWindow = process.env.SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS
+    process.env.SIAB_FORM_TARGET_RATE_LIMIT_POINTS = "2"
+    process.env.SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS = "120"
+    __resetRateLimitersForTests()
+
+    try {
+      expectAllowed(
+        await middleware(formPostAt({
+          path: "/api/forms",
+          ip: "198.51.103.1",
+          tenant: "tenant-env",
+          formName: "contact",
+        })),
+        "env target #1"
+      )
+      expectAllowed(
+        await middleware(formPostAt({
+          path: "/api/forms",
+          ip: "198.51.103.2",
+          tenant: "tenant-env",
+          formName: "contact",
+        })),
+        "env target #2"
+      )
+      expectBlocked(
+        await middleware(formPostAt({
+          path: "/api/forms",
+          ip: "198.51.103.3",
+          tenant: "tenant-env",
+          formName: "contact",
+        })),
+        "env target #3"
+      )
+    } finally {
+      if (originalPoints === undefined) delete process.env.SIAB_FORM_TARGET_RATE_LIMIT_POINTS
+      else process.env.SIAB_FORM_TARGET_RATE_LIMIT_POINTS = originalPoints
+      if (originalWindow === undefined) delete process.env.SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS
+      else process.env.SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS = originalWindow
+      __resetRateLimitersForTests()
+    }
+  })
+
+  it("generated-site forms: authenticated callers bypass both public form limiters", async () => {
+    for (let i = 1; i <= 60; i++) {
+      const res = await middleware(formPostAt({
+        path: "/api/forms",
+        ip: "203.0.113.42",
+        tenant: "tenant-a",
+        formName: "contact",
+        cookie: "payload-token=opaque-jwt",
+      }))
+      expectAllowed(res, `authed form #${i}`)
+    }
   })
 })
 

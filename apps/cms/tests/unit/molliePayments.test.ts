@@ -365,6 +365,21 @@ describe("Mollie payment flow", () => {
       if (url.includes("api.mollie.com/v2/customers/cst_test_123/subscriptions")) {
         return new Response(JSON.stringify({ id: "sub_test_123", status: "active" }), { status: 201 })
       }
+      if (url.includes("/email/sending/subdomains")) {
+        if (url.endsWith("/email/sending/subdomains")) {
+          return new Response(JSON.stringify({
+            success: true,
+            result: [{
+              enabled: true,
+              name: "mail.clientsite.nl",
+              tag: "subdomain_123",
+              dkim_selector: "cf-bounce",
+              return_path_domain: "cf-bounce.mail.clientsite.nl",
+            }],
+          }), { status: 200 })
+        }
+        throw new Error(`Unexpected fetch ${url}`)
+      }
       if (url.includes("api.cloudflare.com/client/v4/zones") && !url.includes("dns_records")) {
         return new Response(JSON.stringify({
           success: true,
@@ -424,10 +439,34 @@ describe("Mollie payment flow", () => {
       cloudflareZoneId: "zone_123",
       ownerHandle: "OWNER-CLIENT",
       adminHandle: "OWNER-CLIENT",
+      emailSending: {
+        provider: "cloudflare",
+        mode: "subdomain",
+        status: "verified",
+        sendingDomain: "mail.clientsite.nl",
+        senderEmail: "noreply@mail.clientsite.nl",
+        cloudflareZoneId: "zone_123",
+        cloudflareSubdomainId: "subdomain_123",
+        returnPathDomain: "cf-bounce.mail.clientsite.nl",
+        dkimSelector: "cf-bounce",
+        lastError: null,
+      },
     })
     expect(tenant).toMatchObject({
       domain: "clientsite.nl",
       domainVerification: expect.objectContaining({ status: "verified" }),
+      emailSending: expect.objectContaining({
+        provider: "cloudflare",
+        mode: "subdomain",
+        status: "verified",
+        sendingDomain: "mail.clientsite.nl",
+        senderEmail: "noreply@mail.clientsite.nl",
+        cloudflareZoneId: "zone_123",
+        cloudflareSubdomainId: "subdomain_123",
+        returnPathDomain: "cf-bounce.mail.clientsite.nl",
+        dkimSelector: "cf-bounce",
+        lastError: null,
+      }),
     })
     const subscriptionCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/subscriptions"))
     expect(subscriptionCall).toBeDefined()

@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   buildCloudflareDnsRecordRequests,
+  createCloudflareEmailSendingSubdomain,
   createCloudflareDnsRecord,
   createCloudflareZone,
   createCloudflareZoneDnsRecords,
+  createOrReuseCloudflareEmailSendingSubdomain,
+  getCloudflareEmailSendingSubdomain,
+  listCloudflareEmailSendingSubdomains,
 } from "@/lib/domains/cloudflare"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -144,5 +148,109 @@ describe("Cloudflare domain adapter", () => {
       "https://cloudflare.test/client/v4/zones/zone-123/dns_records",
       expect.objectContaining({ method: "POST" }),
     )
+  })
+
+  it("lists, gets, creates, and reuses documented Email Sending subdomains", async () => {
+    const fetchMock = vi.fn(async (url: string, init: RequestInit = {}) => {
+      if (String(url).endsWith("/email/sending/subdomains") && init.method === "GET") {
+        return Response.json({
+          success: true,
+          result: [{
+            enabled: false,
+            name: "mail.example.nl",
+            tag: "subdomain-123",
+            dkim_selector: "cf-bounce",
+            return_path_domain: "cf-bounce.mail.example.nl",
+          }],
+        })
+      }
+      if (String(url).endsWith("/email/sending/subdomains/subdomain-123")) {
+        return Response.json({
+          success: true,
+          result: {
+            enabled: true,
+            name: "mail.example.nl",
+            tag: "subdomain-123",
+            dkim_selector: "cf-bounce",
+            return_path_domain: "cf-bounce.mail.example.nl",
+          },
+        })
+      }
+      if (String(url).endsWith("/email/sending/subdomains") && init.method === "POST") {
+        return Response.json({
+          success: true,
+          result: {
+            enabled: false,
+            name: "mail.other.nl",
+            tag: "subdomain-456",
+          },
+        })
+      }
+      throw new Error(`Unexpected fetch ${url}`)
+    })
+
+    await expect(listCloudflareEmailSendingSubdomains("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual([expect.objectContaining({
+      id: "subdomain-123",
+      name: "mail.example.nl",
+      enabled: false,
+      dkimSelector: "cf-bounce",
+      returnPathDomain: "cf-bounce.mail.example.nl",
+    })])
+
+    await expect(getCloudflareEmailSendingSubdomain("zone-123", "subdomain-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      id: "subdomain-123",
+      enabled: true,
+    })
+
+    await expect(createOrReuseCloudflareEmailSendingSubdomain("zone-123", "mail.example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      id: "subdomain-123",
+      name: "mail.example.nl",
+    })
+
+    await expect(createCloudflareEmailSendingSubdomain("zone-123", "mail.other.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      id: "subdomain-456",
+      name: "mail.other.nl",
+      enabled: false,
+    })
+
+    const createCall = fetchMock.mock.calls.find(([url, init]) =>
+      String(url).endsWith("/email/sending/subdomains") && (init as RequestInit | undefined)?.method === "POST")
+    expect(createCall?.[1]).toMatchObject({
+      method: "POST",
+      headers: expect.objectContaining({
+        Authorization: "Bearer cf-token",
+        "Content-Type": "application/json",
+      }),
+      body: JSON.stringify({ name: "mail.other.nl" }),
+    })
+  })
+
+  it("surfaces Cloudflare Email Sending API errors without token values", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: false,
+      errors: [{ code: 1000, message: "subdomain unavailable" }],
+      result: null,
+    }, { status: 200 }))
+
+    await expect(createCloudflareEmailSendingSubdomain("zone-123", "mail.example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toThrow("subdomain unavailable")
+    await expect(createCloudflareEmailSendingSubdomain("zone-123", "mail.example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.not.toThrow("cf-token")
   })
 })

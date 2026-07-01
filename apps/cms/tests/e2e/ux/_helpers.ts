@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { readE2ESeed } from "../_seed"
 
 /**
@@ -43,9 +43,16 @@ export async function loginAsSuperAdmin(page: Page): Promise<void> {
   const creds = getSuperAdminCreds()
   await page.goto("/login")
   await page.waitForLoadState("networkidle")
-  await page.fill('input[type="email"]', creds.email)
-  await page.fill('input[type="password"]', creds.password)
-  await page.getByRole("button", { name: /sign in/i }).click()
+  await page.locator('input[type="email"]').fill(creds.email)
+
+  const passwordInput = page.locator('input[type="password"]')
+  if (await passwordInput.count() === 0) {
+    await page.getByRole("button", { name: /password|wachtwoord/i }).click()
+  }
+
+  await expect(passwordInput).toBeVisible()
+  await passwordInput.fill(creds.password)
+  await page.getByRole("button", { name: /^(sign in|inloggen)$/i }).click()
   await page.waitForURL("/", { timeout: 30_000 })
 }
 

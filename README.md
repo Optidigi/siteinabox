@@ -41,9 +41,11 @@ Current invariants:
   provenance, variants, and editable-field metadata. CMS block schemas live in
   `apps/cms/src/blocks/`, and live/preview rendering lives in
   `packages/site-renderer/src/blocks/`.
-- Cloudflare Email Service over Nodemailer is the canonical mail path for SIAB
-  platform mail, tenant-site mail, Payload email, and Better Auth magic-link
-  mail. Do not add a second transactional mail provider without an approved
+- Cloudflare Email Sending is the canonical mail path. The CMS sends through
+  Cloudflare SMTP, uses Cloudflare's API to provision/refresh tenant sending
+  subdomains, and records metadata-only mail logs and operational alerts.
+  Tenant generated-site activation requires verified tenant Email Sending state.
+  Do not add a second transactional mail provider without an approved
   architecture decision.
 - Generated-site analytics are PostHog-first by default through the shared
   projection and renderer contracts. Public capture remains consent-gated and

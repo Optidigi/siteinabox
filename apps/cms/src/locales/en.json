@@ -600,6 +600,7 @@
     "description": "Site description",
     "language": "Language",
     "contactEmail": "Contact email",
+    "contactEmailDescription": "Receives generated-site form notifications. Defaults to the signup email and can be changed here.",
     "branding": "Branding",
     "logo": "Logo",
     "favicon": "Favicon",

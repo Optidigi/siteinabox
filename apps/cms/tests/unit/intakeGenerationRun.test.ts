@@ -92,7 +92,15 @@ describe("processIntakeSubmission", () => {
       name: "Phase Six Bakery",
       slug: "phase-six-bakery",
       domain: "phase-six-bakery.test",
+      emailSending: {
+        provider: "cloudflare",
+        mode: "subdomain",
+        status: "not_configured",
+        sendingDomain: "mail.phase-six-bakery.test",
+        senderEmail: "noreply@mail.phase-six-bakery.test",
+      },
     })
+    expect(store["site-settings"][0]?.contactEmail).toBe("sam@example.com")
     expect(store.pages.every((page) => page.status === "draft")).toBe(true)
     expect(store["site-generation-runs"][0]?.applyResult?.ok).toBe(true)
     expect(store["site-generation-runs"][0]?.provider).toBe("mock")

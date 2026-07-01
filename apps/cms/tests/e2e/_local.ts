@@ -6,7 +6,7 @@
  * Kept for older regression specs that still import the local helper names.
  */
 
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { readE2ESeed } from "./_seed"
 
 const seed = readE2ESeed()
@@ -25,11 +25,18 @@ const LOCAL_PASSWORD = seed.localAdmin.password
 export async function loginLocal(page: Page): Promise<void> {
   await page.goto(`${LOCAL_BASE}/login`, { timeout: 30_000, waitUntil: "networkidle" })
 
-  await page.getByLabel(/email/i).fill(LOCAL_EMAIL)
-  await page.getByLabel(/password/i).fill(LOCAL_PASSWORD)
+  await page.locator('input[type="email"]').fill(LOCAL_EMAIL)
+
+  const passwordInput = page.locator('input[type="password"]')
+  if (await passwordInput.count() === 0) {
+    await page.getByRole("button", { name: /password|wachtwoord/i }).click()
+  }
+
+  await expect(passwordInput).toBeVisible()
+  await passwordInput.fill(LOCAL_PASSWORD)
 
   await Promise.all([
     page.waitForURL(/\/(sites|$)/, { timeout: 30_000 }),
-    page.getByRole("button", { name: /sign in/i }).click(),
+    page.getByRole("button", { name: /^(sign in|inloggen)$/i }).click(),
   ])
 }

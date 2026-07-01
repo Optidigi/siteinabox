@@ -1,9 +1,15 @@
 # Social Auth Runbook
 
-OBS-101 adds passwordless CMS login through Better Auth with email magic links,
-Google, Microsoft, and Apple. Better Auth brokers provider identity; Payload
-`users` remain the authorization source for CMS role, tenant membership, and
-sessions.
+OBS-101 makes Better Auth magic links the primary CMS login path, with optional
+Google, Microsoft, and Apple provider buttons. Better Auth brokers provider
+identity; Payload `users` remain the authorization source for CMS role, tenant
+membership, and sessions.
+
+Payload password login is intentionally still present as a ghosted fallback for
+bootstrap, break-glass, reset-password, and API-key/service-user workflows. It
+is host-gated by the proxy: `POST /api/users/login` is accepted only on the
+SIAB super-admin host and returns 403 on tenant admin hosts. Do not document or
+surface password login as the normal tenant-user auth path.
 
 ## Required Environment
 
@@ -45,13 +51,6 @@ SIAB project in the Better Auth dashboard. `BETTER_AUTH_API_URL` and
 `BETTER_AUTH_KV_URL` are optional overrides; leave them blank for Better Auth's
 default hosted endpoints. SIAB does not currently enable Better Auth
 Infrastructure transactional email, SMS, or Sentinel.
-
-Once the paid Better Auth Infrastructure plan is active, magic-link mail should
-move from the current app mailer to Better Auth Infra's native `magic-link`
-template. Treat Dutch/custom email copy as a paid-dashboard template setup item:
-the product assumption is that templates can be localized/customized there, but
-implementation should validate the dashboard controls before removing the
-current fallback mailer.
 
 Email magic links also require the normal app email transport:
 

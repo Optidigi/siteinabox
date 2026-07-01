@@ -3,6 +3,7 @@ import { getPayload } from "payload"
 import { headers } from "next/headers"
 import config from "@/payload.config"
 import crypto from "node:crypto"
+import { auth } from "@/lib/betterAuth"
 
 // fn-batch-6 follow-up — return shape now distinguishes auth/permission
 // failures (still throw — they're system-level) from validation failures
@@ -19,6 +20,21 @@ function ownerTenantId(user: { tenants?: { tenant: unknown }[] | null } | null) 
   const first = user?.tenants?.[0]?.tenant
   if (first == null) return null
   return typeof first === "object" ? (first as { id: number | string }).id : first
+}
+
+export async function sendInviteMagicLink(input: { email: string; name?: string }) {
+  await (auth.api as any).signInMagicLink({
+    body: {
+      email: input.email,
+      name: input.name,
+      callbackURL: "/",
+      errorCallbackURL: "/login",
+      metadata: {
+        intent: "user_invite",
+      },
+    },
+    headers: await headers(),
+  })
 }
 
 export async function inviteUser(input: {
@@ -79,13 +95,12 @@ export async function inviteUser(input: {
     }
     throw err
   }
-  // Trigger forgot-password to send the invite link with reset token.
-  // Email transport isn't configured until Phase 15; until then this silently
-  // no-ops the email send but completes the action successfully.
+  // Normal onboarding is passwordless: create the Payload user, then ask
+  // Better Auth to send the same magic-link flow used by CMS login.
   try {
-    await payload.forgotPassword({ collection: "users", data: { email: input.email } })
+    await sendInviteMagicLink({ email: input.email, name: input.name })
   } catch (err) {
-    payload.logger.warn({ err, email: input.email }, "[invite] forgot-password no-op (email not configured?)")
+    payload.logger.warn({ err, email: input.email }, "[invite] magic-link send failed")
   }
   return { ok: true as const, id: created.id }
 }

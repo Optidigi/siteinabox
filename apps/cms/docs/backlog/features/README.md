@@ -74,8 +74,9 @@ depended on command-run site generation are no longer current source of truth.
   UI to the intended product workflow: client submits intake; SIAB reviews the
   brief and uses AI to create the draft site; SIAB sends preview; client
   approves and pays in the preview UI while choosing/filling domain details;
-  payment triggers deployment/domain registration; deployment completion sends
-  the client the live site and CMS/admin access email. Keep technical snapshot,
+  payment triggers deployment/domain registration and tenant sender verification;
+  deployment completion sends the client the live site and CMS/admin access
+  email. Keep technical snapshot,
   publish, activation, provider/model, hashes, validation, and manual override
   details behind Advanced controls.
 
@@ -134,9 +135,12 @@ live output until another snapshot is published and activated.
 Activation now accepts completed Mollie payment or manual super-admin waiver
 through the payment abstraction. Client approval is required, and payment must
 be completed or waived unless a super-admin performs an explicit manual
-activation override. Domain verification is manual in v1 and recorded on the
-tenant; DNS automation is still outside the CMS workflow. Rollback is
-implemented by reactivating an older snapshot.
+activation override. Domain verification is recorded on the tenant and
+run-linked generated-site activation also requires verified tenant Email
+Sending state, normally the Cloudflare Email Sending subdomain
+`mail.<tenant-domain>`. Manual activation bypasses approval/payment only; it
+does not bypass domain or sender verification. Rollback is implemented by
+reactivating an older snapshot.
 
 Follow-up on 2026-06-28 added CMS-side guardrails for tenant-exclusive legacy
 chrome variants. Amicare variants remain editable for their official
@@ -157,9 +161,30 @@ The generation-run payment gate now has a Mollie checkout and webhook path in
 CMS. Approved preview/customer flows and super-admin operator flows can create a
 Mollie hosted checkout scoped to the generation run, tenant, customer email, and
 preview client slug. Mollie webhooks update only the generation-run payment JSON
-state after fetching the payment from Mollie; they do not publish snapshots,
-activate tenants, or perform domain automation.
+state after fetching the payment from Mollie; they do not publish snapshots or
+activate tenants. Live-key paid checkout can continue into approved
+OpenProvider/Cloudflare domain provisioning and Cloudflare Email Sending
+subdomain setup, but those provider actions still do not publish or activate a
+site by themselves.
 
 Manual waiver remains available to super-admins. Activation continues to require
 client approval plus either completed Mollie payment or manual waiver unless a
-super-admin uses the existing explicit manual activation override.
+super-admin uses the existing explicit manual activation override. Domain and
+tenant sender verification remain separate activation gates.
+
+### 2026-07-01 — Mail observability and tenant sender gate
+
+**Status:** Foundation added 2026-07-01.
+
+Cloudflare Email Sending is now represented in CMS operations as both a
+platform SMTP delivery path and tenant sender state. The CMS records
+metadata-only outbound delivery rows in `mail-logs` and writes
+super-admin-visible `operational-alerts` for important or repeated mail
+failures. Rendered subjects, bodies, and secrets are not stored.
+
+Public intake storage sends an internal notification to the SIAB admin mailbox
+through the platform sender. Generated-site form notifications send only when
+the tenant has a verified Cloudflare sender and a Site Settings contact email.
+Tenant provisioning stores non-secret Email Sending API state on
+`tenants.emailSending`; generated-site activation for a run is blocked until
+that state is verified.

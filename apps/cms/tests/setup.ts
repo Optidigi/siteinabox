@@ -36,6 +36,11 @@ async function loadEnv() {
     process.env.DATA_DIR = dir
     process.env.DATA_DIR_OVERRIDDEN = "1"
   }
+  // Unit/integration tests must never reach real SMTP by accident. Individual
+  // tests inject providers when they need delivery behavior.
+  if (process.env.SIAB_ALLOW_TEST_SMTP !== "1") {
+    delete process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN
+  }
 }
 
 await loadEnv()

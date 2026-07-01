@@ -10,6 +10,14 @@ import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { CMS_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
 
+async function getMailPayload() {
+  const [{ getPayload }, configModule] = await Promise.all([
+    import("payload"),
+    import("@/payload.config"),
+  ])
+  return getPayload({ config: configModule.default })
+}
+
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
   throw new Error("DATABASE_URI is required for Better Auth")
@@ -132,10 +140,13 @@ export const auth = betterAuth({
       sendMagicLink: async ({ email, url }) => {
         await resolvePayloadUserForMagicLink(email)
         const message = magicLinkTemplate({ loginUrl: url })
+        const payload = await getMailPayload()
         await sendEmail({
           to: email,
           subject: message.subject,
           html: message.html,
+          intent: "auth.magic_link",
+          payload: payload as any,
         })
       },
     }),

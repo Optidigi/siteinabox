@@ -5,6 +5,10 @@ import createNextIntlPlugin from "next-intl/plugin"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
+const allowedDevOrigins = (process.env.SIAB_ALLOWED_DEV_ORIGINS || "admin.siteinabox.nl")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -15,6 +19,7 @@ const nextConfig = {
   // a giant unrelated trace at build time.
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
   reactCompiler: false,
+  allowedDevOrigins,
   transpilePackages: ["@siteinabox/ui", "@siteinabox/contracts", "@siteinabox/site-renderer"]
 }
 

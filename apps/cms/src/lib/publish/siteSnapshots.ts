@@ -20,6 +20,8 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { isActivationPaymentSatisfied } from "@/lib/payments/generationRunPayment"
+import { hasVerifiedTenantSender } from "@/lib/tenants/emailSending"
+import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSendingRefresh"
 
 const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: true } as const
 
@@ -81,7 +83,7 @@ export function canActivatePublishedSnapshot(
   run: SiteGenerationRun | null,
   options: {
     manualActivation?: boolean
-    tenant?: Pick<Tenant, "status" | "domainVerification"> | null
+    tenant?: Pick<Tenant, "status" | "domainVerification" | "emailSending"> | null
   } = {},
 ): { ok: true } | { ok: false; reason: string } {
   if (options.tenant?.status === "suspended" || options.tenant?.status === "archived") {
@@ -91,6 +93,10 @@ export function canActivatePublishedSnapshot(
   const domainVerificationStatus = (options.tenant?.domainVerification as { status?: unknown } | null | undefined)?.status
   if (options.tenant && domainVerificationStatus !== "verified") {
     return { ok: false, reason: "Activation requires verified domain ownership." }
+  }
+
+  if (run && !hasVerifiedTenantSender(options.tenant)) {
+    return { ok: false, reason: "Generated-site activation requires verified tenant email sending." }
   }
 
   if (options.manualActivation) return { ok: true }
@@ -277,13 +283,16 @@ export async function activatePublishedSnapshot(
   } as any) as any
   const tenantId = relationshipId(snapshotDoc.tenant)
   if (!tenantId) throw new Error("Published snapshot is missing a tenant.")
-  const tenant = await getTenant(payload, tenantId)
+  let tenant = await getTenant(payload, tenantId)
   if (normalizeRequestHost(snapshotDoc.domain) !== normalizeRequestHost(tenant.domain)) {
     throw new Error("Cannot activate a snapshot for a tenant domain that has changed.")
   }
 
   const runId = relationshipId(snapshotDoc.sourceGenerationRun)
   const run = await getGenerationRun(payload, runId)
+  if (run && !hasVerifiedTenantSender(tenant)) {
+    tenant = await refreshTenantEmailSendingFromCloudflare(payload, tenant)
+  }
   const gate = canActivatePublishedSnapshot(run, { manualActivation: options.manualActivation, tenant })
   if (!gate.ok) throw new Error(gate.reason)
 

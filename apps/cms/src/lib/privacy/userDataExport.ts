@@ -126,6 +126,8 @@ export async function emailUserDataExport(payload: any, user: any) {
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")}</pre>`,
     ].join(""),
+    intent: "privacy.data_export",
+    payload,
   })
   return data
 }

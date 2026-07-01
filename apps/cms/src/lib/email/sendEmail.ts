@@ -1,14 +1,122 @@
 import { createTransport } from "nodemailer"
-
-export type SendEmailOptions = {
-  to: string
-  subject: string
-  html: string
-}
+import type { SendMailOptions, Transporter } from "nodemailer"
+import { recordMailFailureAlert } from "@/lib/email/alerts"
+import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 
 const DEFAULT_FROM = "noreply@siteinabox.nl"
 const CLOUDFLARE_SMTP_HOST = "smtp.mx.cloudflare.net"
 const CLOUDFLARE_SMTP_PORT = 465
+const MAIL_LOG_ERROR_MESSAGE_LIMIT = 1000
+
+export const mailIntents = [
+  "platform.operational",
+  "auth.magic_link",
+  "auth.password_reset",
+  "preview.magic_link",
+  "preview.site_ready",
+  "privacy.data_export",
+  "intake.internal_notification",
+  "forms.tenant_notification",
+  "site.live_notice",
+] as const
+
+export type MailIntent = (typeof mailIntents)[number]
+
+export const mailStatuses = ["sent", "failed"] as const
+export type MailStatus = (typeof mailStatuses)[number]
+
+export const mailRetryStates = ["none", "retryable", "permanent"] as const
+export type MailRetryState = (typeof mailRetryStates)[number]
+
+export const mailIntentOptions = mailIntents.map((intent) => ({ label: intent, value: intent }))
+export const mailStatusOptions = mailStatuses.map((status) => ({ label: status, value: status }))
+export const mailRetryStateOptions = mailRetryStates.map((state) => ({ label: state, value: state }))
+
+export type MailTenantRef = string | number | { id?: string | number } | null | undefined
+
+export type SendEmailOptions = {
+  to: string | string[]
+  subject: string
+  html: string
+  text?: string
+  intent?: MailIntent
+  tenant?: MailTenantRef
+  from?: string
+  replyTo?: string
+  /**
+   * Optional Payload instance for metadata logging. Email subject/body are
+   * intentionally never written to the log collection.
+   */
+  payload?: MailLogPayload
+}
+
+export type MailProviderSendInput = {
+  from: string
+  to: string | string[]
+  subject: string
+  html: string
+  text?: string
+  replyTo?: string
+}
+
+export type MailProviderSuccess = {
+  provider: string
+  providerMessageId?: string
+}
+
+export type MailProviderError = {
+  provider: string
+  providerErrorCode?: string
+  providerErrorMessage: string
+  retryState: MailRetryState
+}
+
+export type MailTransportProvider = {
+  provider: string
+  send(input: MailProviderSendInput): Promise<MailProviderSuccess>
+}
+
+export type MailLogPayload = {
+  create(args: {
+    collection: "mail-logs" | "operational-alerts"
+    data: Record<string, unknown>
+    overrideAccess: true
+  }): Promise<unknown>
+  find?: (args: {
+    collection: "mail-logs" | "operational-alerts"
+    where: Record<string, unknown>
+    limit: number
+    depth: 0
+    overrideAccess: true
+  }) => Promise<{ totalDocs?: number; docs?: unknown[] }>
+  update?: (args: {
+    collection: "operational-alerts"
+    id: string | number
+    data: Record<string, unknown>
+    depth: 0
+    overrideAccess: true
+  }) => Promise<unknown>
+  logger?: {
+    warn?: (message: string | Record<string, unknown>, meta?: string | Record<string, unknown>) => void
+    error?: (message: string | Record<string, unknown>, meta?: string | Record<string, unknown>) => void
+  }
+}
+
+export type SendEmailDeps = {
+  provider?: MailTransportProvider
+  now?: () => Date
+}
+
+export class MailSendError extends Error {
+  normalized: MailProviderError
+
+  constructor(normalized: MailProviderError, cause?: unknown) {
+    super(`Email send failed: ${normalized.providerErrorMessage}`)
+    this.name = "MailSendError"
+    this.normalized = normalized
+    this.cause = cause
+  }
+}
 
 export function getCloudflareEmailSmtpToken() {
   const token = process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN?.trim()
@@ -18,13 +126,17 @@ export function getCloudflareEmailSmtpToken() {
   return token
 }
 
-export async function sendEmail(opts: SendEmailOptions) {
-  const token = getCloudflareEmailSmtpToken()
-  if (!token) {
-    throw new Error("CLOUDFLARE_EMAIL_SMTP_TOKEN missing or invalid - cannot send email")
-  }
+export function getPlatformMailSender(env: NodeJS.ProcessEnv = process.env) {
+  const configured = env.EMAIL_FROM?.trim()
+  return configured || DEFAULT_FROM
+}
 
-  const transport = createTransport({
+export function resolveMailSender(opts: Pick<SendEmailOptions, "from">) {
+  return opts.from?.trim() || getPlatformMailSender()
+}
+
+export function createCloudflareSmtpTransport(token: string): Transporter {
+  return createTransport({
     host: CLOUDFLARE_SMTP_HOST,
     port: CLOUDFLARE_SMTP_PORT,
     secure: true,
@@ -33,11 +145,193 @@ export async function sendEmail(opts: SendEmailOptions) {
       pass: token,
     },
   })
+}
 
-  return transport.sendMail({
-    from: process.env.EMAIL_FROM || DEFAULT_FROM,
-    to: opts.to,
-    subject: opts.subject,
-    html: opts.html,
-  })
+export function createCloudflareSmtpProvider(): MailTransportProvider {
+  const token = getCloudflareEmailSmtpToken()
+  if (!token) {
+    throw new Error("CLOUDFLARE_EMAIL_SMTP_TOKEN missing or invalid - cannot send email")
+  }
+
+  const transport = createCloudflareSmtpTransport(token)
+  return createNodemailerProvider(transport)
+}
+
+export function createNodemailerProvider(transport: Pick<Transporter, "sendMail">): MailTransportProvider {
+  return {
+    provider: "cloudflare-smtp",
+    async send(input) {
+      const message: SendMailOptions = {
+        from: input.from,
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+      }
+      if (input.text) message.text = input.text
+      if (input.replyTo) message.replyTo = input.replyTo
+
+      const info = await transport.sendMail(message)
+      return normalizeProviderResponse(info)
+    },
+  }
+}
+
+export function normalizeProviderResponse(info: unknown): MailProviderSuccess {
+  const maybeInfo = info && typeof info === "object" ? info as { messageId?: unknown } : {}
+  const messageId = typeof maybeInfo.messageId === "string" ? maybeInfo.messageId : undefined
+  return {
+    provider: "cloudflare-smtp",
+    ...(messageId ? { providerMessageId: messageId } : {}),
+  }
+}
+
+export function normalizeProviderError(error: unknown, provider = "cloudflare-smtp"): MailProviderError {
+  const err = error && typeof error === "object"
+    ? error as {
+        code?: unknown
+        command?: unknown
+        response?: unknown
+        responseCode?: unknown
+        message?: unknown
+      }
+    : {}
+  const responseCode = typeof err.responseCode === "number" ? err.responseCode : undefined
+  const rawCode = typeof err.code === "string" ? err.code : undefined
+  const response = typeof err.response === "string" ? err.response : undefined
+  const message = typeof err.message === "string" && err.message.trim()
+    ? err.message
+    : "Unknown provider error"
+  const providerErrorCode = rawCode || (responseCode ? String(responseCode) : undefined)
+  const providerErrorMessage = trimProviderErrorMessage(redactOperationalMessage(response || message))
+
+  return {
+    provider,
+    ...(providerErrorCode ? { providerErrorCode } : {}),
+    providerErrorMessage,
+    retryState: classifyRetryState({ responseCode, code: rawCode, message: providerErrorMessage }),
+  }
+}
+
+export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}) {
+  const intent = opts.intent ?? "platform.operational"
+  const from = resolveMailSender(opts)
+  const now = deps.now ?? (() => new Date())
+  let providerName = deps.provider?.provider ?? "cloudflare-smtp"
+
+  try {
+    const provider = deps.provider ?? createCloudflareSmtpProvider()
+    providerName = provider.provider
+    const result = await provider.send({
+      from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+      text: opts.text,
+      replyTo: opts.replyTo,
+    })
+    const timestamp = now().toISOString()
+    await logMailDelivery(opts.payload, {
+      flow: intent,
+      tenant: formatTenantRef(opts.tenant),
+      sender: from,
+      replyTo: opts.replyTo,
+      recipient: formatRecipient(opts.to),
+      status: "sent",
+      provider: result.provider,
+      providerMessageId: result.providerMessageId,
+      retryState: "none",
+      sentAt: timestamp,
+    })
+    return result
+  } catch (error) {
+    const normalized = error instanceof MailSendError
+      ? error.normalized
+      : normalizeProviderError(error, providerName)
+    const timestamp = now().toISOString()
+    await logMailDelivery(opts.payload, {
+      flow: intent,
+      tenant: formatTenantRef(opts.tenant),
+      sender: from,
+      replyTo: opts.replyTo,
+      recipient: formatRecipient(opts.to),
+      status: "failed",
+      provider: normalized.provider,
+      providerErrorCode: normalized.providerErrorCode,
+      providerErrorMessage: normalized.providerErrorMessage,
+      retryState: normalized.retryState,
+      failedAt: timestamp,
+    })
+    await recordMailFailureAlert(opts.payload, {
+      flow: intent,
+      tenant: opts.tenant,
+      sender: from,
+      recipient: formatRecipient(opts.to),
+      provider: normalized.provider,
+      providerErrorCode: normalized.providerErrorCode,
+      providerErrorMessage: normalized.providerErrorMessage,
+      retryState: normalized.retryState,
+      failedAt: timestamp,
+    })
+    throw error instanceof MailSendError ? error : new MailSendError(normalized, error)
+  }
+}
+
+async function logMailDelivery(payload: MailLogPayload | undefined, data: Record<string, unknown>) {
+  if (!payload) return
+
+  try {
+    await payload.create({
+      collection: "mail-logs",
+      overrideAccess: true,
+      data: compactLogData(data),
+    })
+  } catch (error) {
+    payload.logger?.warn?.("Failed to write outbound mail metadata log", {
+      error: redactOperationalMessage(error),
+    })
+  }
+}
+
+function compactLogData(data: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(data).filter(([, value]) => value !== undefined && value !== null && value !== ""))
+}
+
+function formatRecipient(to: string | string[]) {
+  return Array.isArray(to) ? to.join(", ") : to
+}
+
+function formatTenantRef(tenant: MailTenantRef) {
+  if (tenant && typeof tenant === "object") return tenant.id
+  return tenant
+}
+
+function trimProviderErrorMessage(message: string) {
+  return message.length > MAIL_LOG_ERROR_MESSAGE_LIMIT
+    ? `${message.slice(0, MAIL_LOG_ERROR_MESSAGE_LIMIT - 3)}...`
+    : message
+}
+
+function classifyRetryState({
+  responseCode,
+  code,
+  message,
+}: {
+  responseCode?: number
+  code?: string
+  message: string
+}): MailRetryState {
+  if (message.includes("E_SENDER_NOT_VERIFIED") || message.includes("E_SENDER_DOMAIN_NOT_AVAILABLE")) {
+    return "permanent"
+  }
+  if (responseCode) {
+    if (responseCode >= 500) return "permanent"
+    if (responseCode >= 400) return "retryable"
+  }
+  if (code && ["ETIMEDOUT", "ECONNRESET", "ECONNREFUSED", "EAI_AGAIN"].includes(code)) {
+    return "retryable"
+  }
+  if (code && ["EAUTH", "EENVELOPE"].includes(code)) {
+    return "permanent"
+  }
+  return "none"
 }

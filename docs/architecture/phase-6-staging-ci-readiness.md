@@ -53,8 +53,12 @@ CMS/staging:
 - `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN`: super-admin host domain, expected `siteinabox.nl`.
 - `SITE_URL`: public CMS/admin origin.
 - `DATA_DIR`: CMS tenant media/projection data directory.
-- `CLOUDFLARE_EMAIL_SMTP_TOKEN`, `EMAIL_FROM`: email delivery for auth/preview messaging.
+- `CLOUDFLARE_EMAIL_SMTP_TOKEN`, `EMAIL_FROM`: Cloudflare SMTP delivery for auth, preview, intake/internal, platform, and verified tenant mail.
+- `SIAB_PUBLIC_POST_RATE_LIMIT_POINTS`, `SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS`: anonymous public POST limiter for `/api/forms`, `/api/intake`, and forgot-password.
+- `SIAB_FORM_TARGET_RATE_LIMIT_POINTS`, `SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS`: generated-site form limiter keyed by tenant/form target.
 - `MOLLIE_API_KEY`, `MOLLIE_SITE_PAYMENT_AMOUNT`, `MOLLIE_SITE_PAYMENT_CURRENCY`, `MOLLIE_WEBHOOK_BASE_URL`, `MOLLIE_WEBHOOK_SIGNING_SECRET`: Mollie checkout/webhook configuration.
+- `OPENPROVIDER_USERNAME`, `OPENPROVIDER_PASSWORD`, `OPENPROVIDER_API_BASE_URL`, `OPENPROVIDER_TECH_HANDLE`, `OPENPROVIDER_BILLING_HANDLE`, `OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT`, `OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY`, `OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT`, `OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY`, `OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT`, `OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY`, `OPENPROVIDER_NS_GROUP`, `OPENPROVIDER_NAMESERVERS`: domain availability/registration configuration.
+- `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_BASE_URL`, `SIAB_RENDERER_TARGET_HOST`, `SIAB_RENDERER_TARGET_IP`: Cloudflare DNS and Email Sending subdomain provisioning/refresh configuration.
 - `POSTHOG_ANALYTICS_DISABLED`, `POSTHOG_HOST`, `POSTHOG_PUBLIC_HOST`, `POSTHOG_PROJECT_TOKEN`, `POSTHOG_PROJECT_ID`, `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_ENVIRONMENT`: analytics configuration.
 - `NEXT_PUBLIC_VPS_IP`: operator DNS guidance display.
 - `BOOTSTRAP_TOKEN`: one-time super-admin seed token; must be unset after bootstrap.
@@ -88,6 +92,9 @@ Current production-readiness migrations added by recent phases:
 - `20260625_210000_add_preview_approval_state.ts`: preview approval/payment handoff fields.
 - `20260625_230000_add_published_site_snapshots.ts`: immutable published snapshots.
 - `20260626_120000_add_preview_access_grants.ts`: preview access grants.
+- `20260701_120000_add_mail_logs.ts`: metadata-only outbound mail delivery logs.
+- `20260701_130000_add_tenant_email_sending.ts`: tenant Cloudflare Email Sending state and activation gate data.
+- `20260701_140000_add_operational_alerts.ts`: super-admin operational alerts for mail and other operational sources.
 
 The complete migration list is in `apps/cms/src/migrations/index.ts` and must
 match committed migration files before staging deploy. Run Payload migrations

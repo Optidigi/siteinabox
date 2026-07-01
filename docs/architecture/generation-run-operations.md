@@ -143,6 +143,8 @@ activation gate:
 - manual activation can bypass approval/payment only;
 - suspended or archived tenants cannot publish or activate;
 - domain verification must already be `verified`;
+- run-linked generated-site activation requires verified tenant Email Sending,
+  normally `noreply@mail.<tenant-domain>` through Cloudflare Email Sending;
 - all pages linked to the generation run must be promoted to CMS `published`
   before publishing a snapshot;
 - operators are warned when no snapshots exist or when snapshots exist but none

@@ -8,6 +8,7 @@ import {
   removeTenantDir,
   restoreTenantDir
 } from "@/hooks/tenantLifecycle"
+import { tenantEmailSendingStatuses } from "@/lib/tenants/emailSending"
 import { manifestSchema } from "@/lib/richText/manifest"
 
 // FN-2026-0004 — server-side slug format guard. The /sites/new + /edit
@@ -62,7 +63,11 @@ export const Tenants: CollectionConfig = {
     update: isSuperAdmin,
     delete: isSuperAdmin
   },
-  admin: { useAsTitle: "name", defaultColumns: ["name", "domain", "status"] },
+  admin: {
+    useAsTitle: "name",
+    defaultColumns: ["name", "domain", "status", "emailSending.status", "emailSending.mode", "emailSending.sendingDomain"],
+    listSearchableFields: ["name", "slug", "domain", "emailSending.sendingDomain"],
+  },
   fields: [
     { name: "name", type: "text", required: true },
     { name: "slug", type: "text", required: true, unique: true, validate: validateSlug,
@@ -92,6 +97,51 @@ export const Tenants: CollectionConfig = {
         { name: "checkedAt", type: "date" },
         { name: "checkedBy", type: "relationship", relationTo: "users" },
         { name: "notes", type: "textarea" }
+      ] },
+    { name: "emailSending", type: "group",
+      admin: { description: "Tenant outbound email sender state. Provisioning workers verify this before generated sites can be activated; no secrets are stored here." },
+      fields: [
+        { name: "provider", type: "select", defaultValue: "cloudflare",
+          options: [
+            { label: "Cloudflare Email Sending", value: "cloudflare" }
+          ],
+          admin: { description: "Outbound provider for tenant-domain mail." } },
+        { name: "mode", type: "select", defaultValue: "subdomain", index: true,
+          options: [
+            { label: "Sending subdomain", value: "subdomain" },
+            { label: "Apex domain", value: "apex" }
+          ],
+          admin: { description: "Normal automated path uses noreply@mail.<tenant-domain>." } },
+        { name: "status", type: "select", defaultValue: "not_configured", index: true,
+          options: tenantEmailSendingStatuses.map((value) => ({
+            label: value === "not_configured"
+              ? "Not configured"
+              : value === "pending"
+                ? "Pending verification"
+                : value[0]!.toUpperCase() + value.slice(1),
+            value,
+          })),
+          admin: { description: "Activation will require verified before normal generated-site mail can go live." } },
+        { name: "sendingDomain", type: "text", index: true,
+          admin: { description: "Cloudflare sending domain, normally mail.<tenant-domain>." } },
+        { name: "senderEmail", type: "email",
+          admin: { description: "From address for tenant customer-facing mail, normally noreply@mail.<tenant-domain>." } },
+        { name: "verifiedAt", type: "date",
+          admin: { readOnly: true, description: "Set only after provider verification succeeds." } },
+        { name: "lastCheckedAt", type: "date",
+          admin: { readOnly: true, description: "Last provisioning/status check time." } },
+        { name: "lastError", type: "textarea",
+          admin: { readOnly: true, description: "Last non-secret provider/provisioning error." } },
+        { name: "cloudflareZoneId", type: "text",
+          admin: { readOnly: true, description: "Cloudflare zone identifier for DNS and Email Sending APIs." } },
+        { name: "cloudflareSubdomainId", type: "text",
+          admin: { readOnly: true, description: "Cloudflare Email Sending subdomain identifier/tag, when provided by the API." } },
+        { name: "returnPathDomain", type: "text",
+          admin: { readOnly: true, description: "Provider return-path/bounce domain, if reported." } },
+        { name: "dkimSelector", type: "text",
+          admin: { readOnly: true, description: "Provider DKIM selector, if reported." } },
+        { name: "testMessageId", type: "text",
+          admin: { readOnly: true, description: "Provider message id from the latest controlled verification test." } }
       ] },
     { name: "siteRepo", type: "text", admin: { description: "Optional GitHub source for siteManifest.json, e.g. Optidigi/client-site" } },
     { name: "notes", type: "textarea" },

@@ -219,6 +219,12 @@ The middleware rate limiter still covers anonymous `POST /api/forms` and
 `POST /api/users/forgot-password`, and the existing form payload-size tests
 still document the 32 KB cap, but bot-token validation remains absent.
 
+#### Update — 2026-07-01
+The anonymous public POST limiter now also covers `POST /api/intake`.
+Generated-site forms also have a second anonymous limiter keyed by tenant/form
+target. Bot-token validation remains absent by product decision for the CMS
+surface.
+
 #### Rollback validation
 Rollback verification passed on 2026-05-26:
 

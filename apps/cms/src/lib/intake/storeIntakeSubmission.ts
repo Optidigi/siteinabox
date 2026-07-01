@@ -1,6 +1,7 @@
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import type { Payload } from "payload"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
+import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
 
 type WorkflowStatus = (typeof generationWorkflowStatuses)[number]
@@ -23,6 +24,7 @@ export type IntakeStorageResult = {
 }
 
 const now = () => new Date().toISOString()
+const ADMIN_NOTIFICATION_EMAIL = "admin@siteinabox.nl"
 
 const transition = (status: WorkflowStatus, message?: string): Transition => ({
   status,
@@ -65,6 +67,80 @@ const storedResult = (doc: PayloadDoc, reused: boolean): IntakeStorageResult => 
   error: doc.error as Record<string, unknown> | undefined,
 })
 
+const cleanText = (value: unknown): string | null => {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+
+const intakeInternalNotificationTemplate = (doc: PayloadDoc) => {
+  const status = cleanText(doc.status) ?? "unknown"
+  const businessName = cleanText(doc.businessName) ?? "Unknown business"
+  const contactName = cleanText(doc.contactName) ?? "-"
+  const contactEmail = cleanText(doc.contactEmail) ?? "-"
+  const source = cleanText(doc.source) ?? "-"
+  const subject = status === "failed"
+    ? `Intake storage failed: ${businessName}`
+    : `New intake stored: ${businessName}`
+  const rows: Array<[string, string]> = [
+    ["Status", status],
+    ["Business", businessName],
+    ["Contact", contactName],
+    ["Email", contactEmail],
+    ["Source", source],
+    ["Intake ID", String(doc.id ?? "-")],
+  ]
+  const htmlRows = rows
+    .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
+    .join("")
+  const errorMessage = doc.error && typeof doc.error === "object"
+    ? cleanText((doc.error as Record<string, unknown>).message)
+    : null
+  return {
+    subject,
+    html: `<p>A public intake submission was stored in the CMS.</p>${htmlRows}${errorMessage ? `<p><strong>Error:</strong> ${escapeHtml(errorMessage)}</p>` : ""}`,
+    text: [
+      subject,
+      `Status: ${status}`,
+      `Business: ${businessName}`,
+      `Contact: ${contactName}`,
+      `Email: ${contactEmail}`,
+      `Source: ${source}`,
+      `Intake ID: ${String(doc.id ?? "-")}`,
+      ...(errorMessage ? [`Error: ${errorMessage}`] : []),
+    ].join("\n"),
+  }
+}
+
+export async function notifyAdminOfIntakeStorage(payload: Payload, doc: PayloadDoc) {
+  try {
+    const message = intakeInternalNotificationTemplate(doc)
+    await sendEmail({
+      to: ADMIN_NOTIFICATION_EMAIL,
+      from: getPlatformMailSender(),
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+      intent: "intake.internal_notification",
+      payload: payload as Parameters<typeof sendEmail>[0]["payload"],
+    })
+  } catch (error) {
+    payload.logger.warn({
+      intakeSubmissionId: doc.id,
+      status: doc.status,
+      error: error instanceof Error ? error.message : "Unknown intake notification error",
+    }, "[intake] internal notification failed")
+  }
+}
+
 export async function storeIntakeSubmission(
   payload: Payload,
   raw: PublicIntakeSubmission,
@@ -97,6 +173,7 @@ export async function storeIntakeSubmission(
       overrideAccess: true,
     } as any) as PayloadDoc
 
+    await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)
   } catch (err) {
     const idempotencyKey = `public-intake:invalid:${hashStableValue(raw)}`
@@ -124,6 +201,7 @@ export async function storeIntakeSubmission(
       overrideAccess: true,
     } as any) as PayloadDoc
 
+    await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)
   }
 }

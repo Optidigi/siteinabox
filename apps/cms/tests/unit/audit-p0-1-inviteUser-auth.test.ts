@@ -30,6 +30,17 @@ vi.mock("payload", async () => {
   return { ...actual, getPayload: vi.fn(async () => fakePayload) }
 })
 
+const mocks = vi.hoisted(() => ({
+  signInMagicLink: vi.fn(),
+}))
+vi.mock("@/lib/betterAuth", () => ({
+  auth: {
+    api: {
+      signInMagicLink: mocks.signInMagicLink,
+    },
+  },
+}))
+
 // Import AFTER the mocks above (vi.mock is hoisted, so this is safe).
 import { inviteUser } from "@/lib/actions/inviteUser"
 
@@ -37,8 +48,10 @@ beforeEach(() => {
   fakePayload.auth.mockReset()
   fakePayload.create.mockReset()
   fakePayload.forgotPassword.mockReset()
+  mocks.signInMagicLink.mockReset()
   fakePayload.create.mockResolvedValue({ id: 42 })
   fakePayload.forgotPassword.mockResolvedValue(undefined)
+  mocks.signInMagicLink.mockResolvedValue({ ok: true })
 })
 
 describe("audit-p0 #1 — inviteUser server action must authenticate the caller", () => {
@@ -100,6 +113,25 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
     })
     await inviteUser({ email: "n@x", name: "n", role: "editor", tenantId: 999 })
     expect(fakePayload.create).toHaveBeenCalledTimes(1)
+  })
+
+  it("sends a Better Auth magic link and does not call Payload forgotPassword for normal invite onboarding", async () => {
+    fakePayload.auth.mockResolvedValue({
+      user: { id: 1, role: "super-admin", tenants: [] }
+    })
+
+    await inviteUser({ email: "new@example.com", name: "New User", role: "editor", tenantId: 1 })
+
+    expect(fakePayload.forgotPassword).not.toHaveBeenCalled()
+    expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        email: "new@example.com",
+        name: "New User",
+        callbackURL: "/",
+        errorCallbackURL: "/login",
+      }),
+      headers: expect.any(Headers),
+    }))
   })
 
   it("owner with numeric-id tenant relationship (un-populated FK) still gates correctly", async () => {

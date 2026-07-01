@@ -26,6 +26,7 @@ import type { MediaRef } from "@siteinabox/contracts/site"
 import type { Payload } from "payload"
 import { assertSafeMediaFilename } from "@/lib/mediaFilename"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
+import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 
@@ -761,6 +762,7 @@ const upsertTenant = async (
     slug: spec.tenant.slug,
     domain: spec.tenant.domain,
     status: existing?.status ?? "provisioning",
+    emailSending: existing?.emailSending ?? buildDefaultTenantEmailSending(spec.tenant.domain),
     siteManifest,
     theme,
   }

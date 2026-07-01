@@ -2,6 +2,9 @@ import type { CollectionConfig, JSONFieldValidation } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
+import { sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
+import { relationshipId } from "@/lib/relationshipId"
+import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
 
 // Audit-p1 #5 sub-fix 2 (T4) — payload-size DoS cap on the public-create
 // surface. The audit's suggested cap is ~32 KB, sized for typical contact-
@@ -24,6 +27,178 @@ const validateFormData: JSONFieldValidation = (value) => {
     return `data exceeds ${MAX_FORM_DATA_BYTES}-byte cap (got ${serialised.length} bytes)`
   }
   return true
+}
+
+const cleanText = (value: unknown): string | null => {
+  if (typeof value !== "string") return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+const safeEmail = (value: unknown): string | null => {
+  const email = cleanText(value)?.toLowerCase()
+  if (!email || email.includes("\n") || email.includes("\r")) return null
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null
+  return email
+}
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+
+const nl2br = (value: string) => escapeHtml(value).replace(/\n/g, "<br />")
+
+const firstStringFromRecord = (value: unknown, keys: string[]) => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const record = value as Record<string, unknown>
+  for (const key of keys) {
+    const text = cleanText(record[key])
+    if (text) return text
+  }
+  return null
+}
+
+type FormNotificationPayload = {
+  find(args: {
+    collection: "site-settings"
+    where: Record<string, unknown>
+    limit: 1
+    depth: 0
+    overrideAccess: true
+  }): Promise<{ docs: unknown[] }>
+  findByID(args: {
+    collection: "tenants"
+    id: string | number
+    depth: 0
+    overrideAccess: true
+  }): Promise<unknown>
+  logger?: {
+    warn?: (message: string | Record<string, unknown>, meta?: Record<string, unknown>) => void
+  }
+  create?: MailLogPayload["create"]
+}
+
+type FormNotificationDoc = {
+  id?: string | number
+  tenant?: unknown
+  formName?: unknown
+  pageUrl?: unknown
+  data?: unknown
+  email?: unknown
+  name?: unknown
+  message?: unknown
+}
+
+export async function notifyTenantOfFormSubmission({
+  doc,
+  payload,
+}: {
+  doc: FormNotificationDoc
+  payload: FormNotificationPayload
+}) {
+  const tenantId = relationshipId(doc.tenant as Parameters<typeof relationshipId>[0])
+  if (tenantId == null) {
+    payload.logger?.warn?.("[forms] tenant notification skipped", {
+      reason: "missing_tenant",
+      formId: doc.id,
+    })
+    return
+  }
+
+  try {
+    const [settingsResult, tenant] = await Promise.all([
+      payload.find({
+        collection: "site-settings",
+        where: { tenant: { equals: tenantId } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      }),
+      payload.findByID({
+        collection: "tenants",
+        id: tenantId,
+        depth: 0,
+        overrideAccess: true,
+      }),
+    ])
+    const settings = settingsResult.docs[0] as { contactEmail?: unknown } | undefined
+    const recipient = safeEmail(settings?.contactEmail)
+    if (!recipient) {
+      payload.logger?.warn?.("[forms] tenant notification skipped", {
+        reason: "missing_contact_email",
+        tenantId,
+        formId: doc.id,
+      })
+      return
+    }
+
+    const sender = resolveVerifiedTenantSender(tenant as Parameters<typeof resolveVerifiedTenantSender>[0])
+    if (!sender) {
+      payload.logger?.warn?.("[forms] tenant notification skipped", {
+        reason: "tenant_sender_unverified",
+        tenantId,
+        formId: doc.id,
+      })
+      return
+    }
+
+    const message = tenantFormNotificationTemplate(doc)
+    await sendEmail({
+      to: recipient,
+      from: sender.senderEmail,
+      replyTo: safeEmail(doc.email ?? firstStringFromRecord(doc.data, ["email", "contactEmail"])) ?? undefined,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+      intent: "forms.tenant_notification",
+      tenant: tenantId,
+      payload: payload as unknown as Parameters<typeof sendEmail>[0]["payload"],
+    })
+  } catch (error) {
+    payload.logger?.warn?.("[forms] tenant notification failed", {
+      tenantId,
+      formId: doc.id,
+      error: error instanceof Error ? error.message : "Unknown form notification error",
+    })
+  }
+}
+
+export function tenantFormNotificationTemplate(doc: FormNotificationDoc) {
+  const formName = cleanText(doc.formName) ?? "Website form"
+  const submitterName = cleanText(doc.name ?? firstStringFromRecord(doc.data, ["name", "naam"])) ?? "Unknown"
+  const submitterEmail = safeEmail(doc.email ?? firstStringFromRecord(doc.data, ["email", "contactEmail"]))
+  const pageUrl = cleanText(doc.pageUrl)
+  const message = cleanText(doc.message ?? firstStringFromRecord(doc.data, ["message", "bericht", "notes"]))
+
+  const rows = [
+    ["Form", formName],
+    ["Name", submitterName],
+    ["Email", submitterEmail ?? "-"],
+    ...(pageUrl ? [["Page", pageUrl] as const] : []),
+  ]
+  const htmlRows = rows
+    .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
+    .join("")
+  const htmlMessage = message
+    ? `<h2>Message</h2><p>${nl2br(message)}</p>`
+    : ""
+  const text = [
+    `New form submission: ${formName}`,
+    `Name: ${submitterName}`,
+    `Email: ${submitterEmail ?? "-"}`,
+    ...(pageUrl ? [`Page: ${pageUrl}`] : []),
+    ...(message ? ["", "Message:", message] : []),
+  ].join("\n")
+
+  return {
+    subject: `New form submission: ${formName}`,
+    html: `<p>A new generated-site form submission was stored in the CMS.</p>${htmlRows}${htmlMessage}`,
+    text,
+  }
 }
 
 export const Forms: CollectionConfig = {
@@ -84,6 +259,7 @@ export const Forms: CollectionConfig = {
         if (operation === "create") {
           const { captureAcceptedFormAnalytics } = await import("@/lib/analytics/acceptedForm")
           await captureAcceptedFormAnalytics({ doc, payload: req.payload, logger: req.payload.logger })
+          await notifyTenantOfFormSubmission({ doc, payload: req.payload as any })
         }
         return doc
       },
