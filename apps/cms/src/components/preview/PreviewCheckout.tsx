@@ -414,7 +414,7 @@ export function PreviewCheckout({
                 <CardDescription className="text-base">{t("checkoutDomainStepDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-5">
-                <form id="checkout-domain-form" ref={domainFormRef} action={checkAction} className="grid gap-3">
+                <form id="checkout-domain-form" ref={domainFormRef} action={checkAction} className="grid gap-2">
                   <div className="relative">
                     <Input
                       id="checkout-domain"
@@ -444,7 +444,7 @@ export function PreviewCheckout({
                     </div>
                   </div>
                   {domainInputState === "warning" && (
-                    <p id="checkout-domain-unavailable" className="text-sm font-medium text-warning">
+                    <p id="checkout-domain-unavailable" className="-mt-1 text-sm font-medium text-destructive">
                       {t("checkoutDomainUnavailableTitle")}
                     </p>
                   )}
@@ -699,8 +699,8 @@ function DomainOptionRow({
         type="button"
         variant="outline"
         className={cn(
-          "h-auto w-full justify-between whitespace-normal border-success bg-success/5 p-3 text-left ring-1 ring-success/30 hover:bg-success/10 focus-visible:ring-success/40",
-          selected && "bg-success/10 ring-success/50",
+          "h-auto w-full justify-between whitespace-normal border-2 border-success bg-success/5 p-3 text-left shadow-xs ring-2 ring-success/35 hover:bg-success/10 hover:ring-success/50 focus-visible:ring-success/60",
+          selected && "bg-success/10 ring-success/70",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
@@ -713,8 +713,8 @@ function DomainOptionRow({
     <div
       className={cn(
         "flex w-full items-center justify-between gap-3 rounded-md border bg-background p-3",
-        selected && "border-success bg-success/5 ring-1 ring-success/30",
-        checking && "border-dashed text-muted-foreground",
+        selected && "border-2 border-success bg-success/5 ring-2 ring-success/50",
+        checking && "border-2 border-dashed border-success/70 bg-success/5 text-muted-foreground ring-1 ring-success/30",
       )}
       aria-busy={checking}
     >
