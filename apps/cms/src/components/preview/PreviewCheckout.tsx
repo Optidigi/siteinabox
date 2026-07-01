@@ -699,7 +699,7 @@ function DomainOptionRow({
         type="button"
         variant="ghost"
         className={cn(
-          "h-auto min-h-14 w-full justify-between whitespace-normal border border-success bg-success/5 p-3 text-left shadow-xs hover:bg-success/10 dark:border-success dark:bg-success/5 dark:hover:bg-success/10",
+          "h-auto min-h-12 w-full justify-between whitespace-normal border border-success bg-success/5 p-2.5 text-left shadow-xs hover:bg-success/10 dark:border-success dark:bg-success/5 dark:hover:bg-success/10",
           selected && "bg-success/10 dark:bg-success/10",
         )}
         aria-pressed={selected}
@@ -712,7 +712,7 @@ function DomainOptionRow({
   return (
     <div
       className={cn(
-        "flex min-h-14 w-full items-center justify-between gap-3 rounded-md border bg-background p-3",
+        "flex min-h-12 w-full items-center justify-between gap-3 rounded-md border bg-background p-2.5",
         selected && "border-success bg-success/5",
         checking && "border-border bg-muted/30 text-muted-foreground",
       )}
