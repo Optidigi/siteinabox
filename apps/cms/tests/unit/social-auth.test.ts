@@ -14,7 +14,7 @@ vi.mock("payload", async () => {
 })
 
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
-import { buildCmsAuthHeaders, getBetterAuthBaseURL, getTrustedSocialAuthOrigins, isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
+import { buildCmsAuthHeaders, buildCmsAuthRequest, getBetterAuthBaseURL, getTrustedSocialAuthOrigins, isAllowedSocialAuthHost } from "@/lib/socialAuth/hosts"
 import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 
 describe("social auth provider configuration", () => {
@@ -236,5 +236,25 @@ describe("social auth host validation", () => {
     expect(resolveBaseURL(getBetterAuthBaseURL(), "/api/auth", next, false, true)).toBe(
       "https://admin.ami-care.nl/api/auth",
     )
+  })
+
+  it("builds a fresh auth request without cloning framework request internals", async () => {
+    const request = new Request("https://0.0.0.0:3000/api/auth/sign-in/magic-link", {
+      method: "POST",
+      headers: {
+        host: "0.0.0.0:3000",
+        "content-type": "application/json",
+        "x-forwarded-host": "admin.siteinabox.nl",
+      },
+      body: JSON.stringify({ email: "admin@example.com" }),
+    })
+
+    const next = buildCmsAuthRequest(request)
+
+    expect(next.url).toBe("https://0.0.0.0:3000/api/auth/sign-in/magic-link")
+    expect(next.method).toBe("POST")
+    expect(next.headers.get("host")).toBe("admin.siteinabox.nl")
+    expect(next.headers.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
+    await expect(next.json()).resolves.toEqual({ email: "admin@example.com" })
   })
 })

@@ -76,9 +76,8 @@ export function buildCmsAuthHeaders(source: Headers): Headers {
   const forwardedHost = cleanHeaderHost(source.get("x-forwarded-host"))
   const host = cleanHeaderHost(source.get("host"))
   const tenantDomain = cleanHeaderHost(source.get("x-siab-host"))
-  const fallbackHost = getCmsAuthFallbackOrigin()
-    ? cleanHeaderHost(new URL(getCmsAuthFallbackOrigin() as string).host)
-    : ""
+  const fallbackOrigin = getCmsAuthFallbackOrigin()
+  const fallbackHost = fallbackOrigin ? cleanHeaderHost(new URL(fallbackOrigin).host) : ""
   const publicHost = forwardedHost && !isInternalAuthHost(forwardedHost)
     ? forwardedHost
     : host && !isInternalAuthHost(host)
@@ -96,7 +95,15 @@ export function buildCmsAuthHeaders(source: Headers): Headers {
 }
 
 export function buildCmsAuthRequest(request: Request): Request {
-  return new Request(request, { headers: buildCmsAuthHeaders(request.headers) })
+  const init: RequestInit & { duplex?: "half" } = {
+    method: request.method,
+    headers: buildCmsAuthHeaders(request.headers),
+    body: request.body,
+    redirect: request.redirect,
+    signal: request.signal,
+  }
+  if (request.body) init.duplex = "half"
+  return new Request(request.url, init)
 }
 
 export function getBetterAuthBaseURL() {
