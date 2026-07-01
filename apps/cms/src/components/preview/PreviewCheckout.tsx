@@ -425,7 +425,8 @@ export function PreviewCheckout({
                       value={domainValue}
                       onChange={(event) => updateDomain(event.target.value)}
                       placeholder={t("checkoutDomainPlaceholder")}
-                      aria-invalid={domainInputState === "error"}
+                      aria-invalid={domainInputState === "error" || domainInputState === "warning"}
+                      aria-describedby={domainInputState === "warning" ? "checkout-domain-unavailable" : undefined}
                       className={cn(
                         "h-12 pr-12 text-base font-medium md:h-13 md:text-lg",
                         domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
@@ -442,6 +443,11 @@ export function PreviewCheckout({
                       ) : null}
                     </div>
                   </div>
+                  {domainInputState === "warning" && (
+                    <p id="checkout-domain-unavailable" className="text-sm font-medium text-warning">
+                      {t("checkoutDomainUnavailableTitle")}
+                    </p>
+                  )}
                 </form>
 
                 {domainResultKind === "error" && (
@@ -603,9 +609,10 @@ function CheckoutActionBar({
       <Button
         form="checkout-domain-form"
         type="submit"
+        variant={unavailable ? "ghost" : "default"}
         className={cn(
           "min-w-0 flex-1 md:flex-none",
-          unavailable && "bg-warning text-warning-foreground hover:bg-warning/90 focus-visible:ring-warning/30",
+          unavailable && "text-muted-foreground",
         )}
         disabled={checkPending || unavailable}
       >
@@ -692,8 +699,8 @@ function DomainOptionRow({
         type="button"
         variant="outline"
         className={cn(
-          "h-auto w-full justify-between whitespace-normal border-success p-3 text-left ring-1 ring-success/20",
-          selected && "bg-success/5 ring-success/40",
+          "h-auto w-full justify-between whitespace-normal border-success bg-success/5 p-3 text-left ring-1 ring-success/30 hover:bg-success/10 focus-visible:ring-success/40",
+          selected && "bg-success/10 ring-success/50",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
