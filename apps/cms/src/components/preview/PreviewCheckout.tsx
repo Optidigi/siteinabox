@@ -354,6 +354,11 @@ export function PreviewCheckout({
       : domainResultKind === "error"
         ? "error"
         : null
+  const domainDescriptionId = domainInputState === "success"
+    ? "checkout-domain-available"
+    : domainInputState === "warning"
+      ? "checkout-domain-unavailable"
+      : undefined
 
   const updateDomain = (value: string) => {
     suggestionsAbortRef.current?.abort()
@@ -425,8 +430,8 @@ export function PreviewCheckout({
                       value={domainValue}
                       onChange={(event) => updateDomain(event.target.value)}
                       placeholder={t("checkoutDomainPlaceholder")}
-                      aria-invalid={domainInputState === "error" || domainInputState === "warning"}
-                      aria-describedby={domainInputState === "warning" ? "checkout-domain-unavailable" : undefined}
+                      aria-invalid={domainInputState === "error" ? true : undefined}
+                      aria-describedby={domainDescriptionId}
                       className={cn(
                         "h-12 pr-12 text-base font-medium md:h-13 md:text-lg",
                         domainInputState === "success" && "border-success focus-visible:border-success focus-visible:ring-success/30",
@@ -446,6 +451,11 @@ export function PreviewCheckout({
                   {domainInputState === "warning" && (
                     <p id="checkout-domain-unavailable" className="-mt-1 text-sm font-medium text-warning">
                       {t("checkoutDomainUnavailableTitle")}
+                    </p>
+                  )}
+                  {domainInputState === "success" && (
+                    <p id="checkout-domain-available" className="-mt-1 text-sm font-medium text-success">
+                      {t("checkoutDomainAvailableTitle")}
                     </p>
                   )}
                 </form>
@@ -699,8 +709,8 @@ function DomainOptionRow({
         type="button"
         variant="ghost"
         className={cn(
-          "h-auto min-h-12 w-full justify-between whitespace-normal border border-border bg-success/5 p-2.5 text-left shadow-xs ring-1 ring-success hover:bg-success/10 dark:bg-success/5 dark:hover:bg-success/10",
-          selected && "bg-success/10 dark:bg-success/10",
+          "h-auto min-h-12 w-full justify-between whitespace-normal border border-transparent bg-success/10 p-2.5 text-left shadow-sm shadow-success/10 ring-2 ring-success/70 hover:bg-success/15 hover:ring-success dark:bg-success/10 dark:shadow-success/15 dark:hover:bg-success/15",
+          selected && "bg-success/15 ring-success dark:bg-success/15",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
@@ -713,7 +723,7 @@ function DomainOptionRow({
     <div
       className={cn(
         "flex min-h-12 w-full items-center justify-between gap-3 rounded-md border bg-background p-2.5",
-        selected && "border-success bg-success/5",
+        selected && "border-transparent bg-success/10 shadow-sm shadow-success/10 ring-2 ring-success/70",
         checking && "border-border bg-muted/30 text-muted-foreground",
       )}
       aria-busy={checking}
