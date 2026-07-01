@@ -4,6 +4,7 @@ import type { MailTransportProvider } from "@/lib/email/sendEmail"
 const mocks = vi.hoisted(() => ({
   sendMail: vi.fn(),
   createTransport: vi.fn(),
+  fetch: vi.fn(),
 }))
 
 vi.mock("nodemailer", () => ({
@@ -14,6 +15,9 @@ describe("sendEmail", () => {
   const originalToken = process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN
   const originalFrom = process.env.EMAIL_FROM
   const originalTimeout = process.env.SIAB_MAIL_SEND_TIMEOUT_MS
+  const originalAccountId = process.env.CLOUDFLARE_ACCOUNT_ID
+  const originalApiToken = process.env.CLOUDFLARE_API_TOKEN
+  const originalFetch = globalThis.fetch
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -21,8 +25,15 @@ describe("sendEmail", () => {
     delete process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN
     delete process.env.EMAIL_FROM
     delete process.env.SIAB_MAIL_SEND_TIMEOUT_MS
+    delete process.env.CLOUDFLARE_ACCOUNT_ID
+    delete process.env.CLOUDFLARE_API_TOKEN
+    globalThis.fetch = mocks.fetch
     mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail })
     mocks.sendMail.mockResolvedValue({ messageId: "test-message" })
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn(async () => ({ success: true, errors: [], messages: [], result: { delivered: ["customer@example.com"] } })),
+    })
   })
 
   afterEach(() => {
@@ -42,6 +53,17 @@ describe("sendEmail", () => {
     } else {
       process.env.SIAB_MAIL_SEND_TIMEOUT_MS = originalTimeout
     }
+    if (originalAccountId === undefined) {
+      delete process.env.CLOUDFLARE_ACCOUNT_ID
+    } else {
+      process.env.CLOUDFLARE_ACCOUNT_ID = originalAccountId
+    }
+    if (originalApiToken === undefined) {
+      delete process.env.CLOUDFLARE_API_TOKEN
+    } else {
+      process.env.CLOUDFLARE_API_TOKEN = originalApiToken
+    }
+    globalThis.fetch = originalFetch
   })
 
   it("rejects missing or placeholder Cloudflare tokens before creating a transport", async () => {
@@ -132,6 +154,54 @@ describe("sendEmail", () => {
       to: "customer@example.com",
       subject: "Preview access",
       html: "<p>Login</p>",
+    })
+  })
+
+  it("prefers Cloudflare REST API when account credentials are available", async () => {
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account_123"
+    process.env.CLOUDFLARE_API_TOKEN = "cf-api-token"
+    process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN = "cf-smtp-token"
+    const payload = mockPayload()
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    await sendEmail({
+      intent: "auth.magic_link",
+      to: "customer@example.com",
+      subject: "Magic link",
+      html: "<p>Login</p>",
+      text: "Login",
+      payload,
+    }, {
+      now: () => new Date("2026-07-01T12:03:00.000Z"),
+    })
+
+    expect(mocks.createTransport).not.toHaveBeenCalled()
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "https://api.cloudflare.com/client/v4/accounts/account_123/email/sending/send",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          authorization: "Bearer cf-api-token",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "noreply@siteinabox.nl",
+          to: "customer@example.com",
+          subject: "Magic link",
+          html: "<p>Login</p>",
+          text: "Login",
+        }),
+      }),
+    )
+    expect(payload.create).toHaveBeenCalledWith({
+      collection: "mail-logs",
+      overrideAccess: true,
+      data: expect.objectContaining({
+        flow: "auth.magic_link",
+        status: "sent",
+        provider: "cloudflare-rest",
+        sentAt: "2026-07-01T12:03:00.000Z",
+      }),
     })
   })
 

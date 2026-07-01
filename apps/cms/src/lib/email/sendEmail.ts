@@ -6,6 +6,7 @@ import { redactOperationalMessage } from "@/lib/security/redactOperationalMessag
 const DEFAULT_FROM = "noreply@siteinabox.nl"
 const CLOUDFLARE_SMTP_HOST = "smtp.mx.cloudflare.net"
 const CLOUDFLARE_SMTP_PORT = 465
+const CLOUDFLARE_API_BASE = "https://api.cloudflare.com/client/v4"
 const MAIL_LOG_ERROR_MESSAGE_LIMIT = 1000
 const DEFAULT_MAIL_SEND_TIMEOUT_MS = 10_000
 
@@ -127,6 +128,13 @@ export function getCloudflareEmailSmtpToken() {
   return token
 }
 
+export function getCloudflareEmailRestConfig(env: NodeJS.ProcessEnv = process.env) {
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID?.trim()
+  const token = env.CLOUDFLARE_API_TOKEN?.trim()
+  if (!accountId || !token || (token.startsWith("<") && token.endsWith(">"))) return null
+  return { accountId, token }
+}
+
 export function getPlatformMailSender(env: NodeJS.ProcessEnv = process.env) {
   const configured = env.EMAIL_FROM?.trim()
   return configured || DEFAULT_FROM
@@ -168,6 +176,49 @@ export function createCloudflareSmtpProvider(): MailTransportProvider {
   return createNodemailerProvider(transport)
 }
 
+export function createCloudflareEmailProvider(): MailTransportProvider {
+  const restConfig = getCloudflareEmailRestConfig()
+  if (restConfig) return createCloudflareRestProvider(restConfig)
+  return createCloudflareSmtpProvider()
+}
+
+export function createCloudflareRestProvider(config: { accountId: string; token: string }): MailTransportProvider {
+  return {
+    provider: "cloudflare-rest",
+    async send(input) {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), getMailSendTimeoutMs())
+      try {
+        const response = await fetch(`${CLOUDFLARE_API_BASE}/accounts/${config.accountId}/email/sending/send`, {
+          method: "POST",
+          headers: {
+            authorization: `Bearer ${config.token}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            from: input.from,
+            to: input.to,
+            subject: input.subject,
+            html: input.html,
+            ...(input.text ? { text: input.text } : {}),
+            ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+          }),
+          signal: controller.signal,
+        })
+        const body = await response.json().catch(() => null) as CloudflareRestResponse | null
+        if (!response.ok || body?.success === false) {
+          throw cloudflareRestError(response.status, body)
+        }
+        return {
+          provider: "cloudflare-rest",
+        }
+      } finally {
+        clearTimeout(timeout)
+      }
+    },
+  }
+}
+
 export function createNodemailerProvider(transport: Pick<Transporter, "sendMail">): MailTransportProvider {
   return {
     provider: "cloudflare-smtp",
@@ -185,6 +236,21 @@ export function createNodemailerProvider(transport: Pick<Transporter, "sendMail"
       return normalizeProviderResponse(info)
     },
   }
+}
+
+type CloudflareRestResponse = {
+  success?: boolean
+  errors?: Array<{ code?: number; message?: string }>
+}
+
+function cloudflareRestError(status: number, body: CloudflareRestResponse | null) {
+  const firstError = body?.errors?.[0]
+  const message = firstError?.message || `Cloudflare Email REST API failed with HTTP ${status}`
+  return Object.assign(new Error(message), {
+    code: firstError?.code != null ? String(firstError.code) : String(status),
+    responseCode: status,
+    response: message,
+  })
 }
 
 export function normalizeProviderResponse(info: unknown): MailProviderSuccess {
@@ -231,7 +297,7 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
   let providerName = deps.provider?.provider ?? "cloudflare-smtp"
 
   try {
-    const provider = deps.provider ?? createCloudflareSmtpProvider()
+    const provider = deps.provider ?? createCloudflareEmailProvider()
     providerName = provider.provider
     const result = await withTimeout(provider.send({
       from,
