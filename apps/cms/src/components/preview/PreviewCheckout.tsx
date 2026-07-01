@@ -697,10 +697,10 @@ function DomainOptionRow({
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         className={cn(
-          "h-auto w-full justify-between whitespace-normal border-2 border-success bg-success/5 p-3 text-left shadow-xs hover:bg-success/10",
-          selected && "bg-success/10",
+          "h-auto w-full justify-between whitespace-normal border-2 border-success bg-success/5 p-3 text-left shadow-xs hover:bg-success/10 dark:border-success dark:bg-success/5 dark:hover:bg-success/10",
+          selected && "bg-success/10 dark:bg-success/10",
         )}
         aria-pressed={selected}
         onClick={() => onSelect(option)}
