@@ -1,5 +1,4 @@
 import { postgresAdapter } from "@payloadcms/db-postgres"
-import { nodemailerAdapter } from "@payloadcms/email-nodemailer"
 import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant"
 import { lexicalEditor } from "@payloadcms/richtext-lexical"
 import path from "path"
@@ -19,7 +18,6 @@ import { SiteSettings } from "@/collections/SiteSettings"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
-import { getCloudflareEmailSmtpToken, getPlatformMailSender } from "@/lib/email/sendEmail"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import type { Config } from "@/payload-types"
 
@@ -36,22 +34,10 @@ const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
   throw new Error("DATABASE_URI is required (set in .env or environment)")
 }
-const cloudflareEmailSmtpToken = getCloudflareEmailSmtpToken()
-const emailAdapter = cloudflareEmailSmtpToken
-  ? nodemailerAdapter({
-      defaultFromAddress: getPlatformMailSender(),
-      defaultFromName: "SiteInABox",
-      transportOptions: {
-        host: "smtp.mx.cloudflare.net",
-        port: 465,
-        secure: true,
-        auth: {
-          user: "api_token",
-          pass: cloudflareEmailSmtpToken,
-        },
-      },
-    })
-  : undefined
+
+// Outbound mail is sent through `src/lib/email/sendEmail.ts`. Keep SMTP
+// provider setup out of Payload config so boot, migrations, and health checks
+// do not depend on provider connectivity.
 
 // TODO(phase-1.3): add `cors` + `csrf` allowlists if API-key clients become
 // non-same-origin callers, or confirm same-origin and document.
@@ -89,7 +75,6 @@ export default buildConfig({
       : {})
   }),
   editor: lexicalEditor(),
-  ...(emailAdapter ? { email: emailAdapter } : {}),
   collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets, IntakeSubmissions, SiteGenerationRuns, PublishedSiteSnapshots, PreviewAccessGrants, MailLogs, OperationalAlerts],
   // Audit-p2 #10 (T11) — Forms GDPR retention. The purge task auto-schedules
   // a daily job at 02:00 UTC; `autoRun` registers an in-process cron worker

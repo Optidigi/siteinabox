@@ -37,4 +37,13 @@ describe("passwordless auth surface", () => {
     expect(src("src/lib/preview/betterAuth.ts")).toMatch(/expiresIn:\s*PREVIEW_SESSION_EXPIRES_IN_SECONDS/)
     expect(src("src/collections/Users.ts")).toMatch(/tokenExpiration:\s*CMS_SESSION_EXPIRES_IN_SECONDS/)
   })
+
+  it("keeps SMTP provider setup out of Payload boot", () => {
+    const payloadConfig = src("src/payload.config.ts")
+
+    expect(payloadConfig).not.toContain("@payloadcms/email-nodemailer")
+    expect(payloadConfig).not.toContain("nodemailerAdapter")
+    expect(payloadConfig).not.toMatch(/\bemail:\s*emailAdapter\b/)
+    expect(payloadConfig).toContain("src/lib/email/sendEmail.ts")
+  })
 })
