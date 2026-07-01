@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth"
 import { APIError } from "better-auth/api"
 import { Pool } from "pg"
 import { magicLink } from "better-auth/plugins"
+import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
 import { hasActivePreviewGrant } from "@/lib/preview/previewAccess"
 import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
@@ -77,7 +78,7 @@ export const previewAuth = betterAuth({
   plugins: [
     magicLink({
       expiresIn: 300,
-      rateLimit: { window: 60, max: 3 },
+      rateLimit: getMagicLinkRateLimit(),
       sendMagicLink: async ({ email, url, metadata }) => {
         const clientSlug = typeof metadata?.previewClientSlug === "string" ? metadata.previewClientSlug : ""
         if (!clientSlug || !(await hasActivePreviewGrant(email, clientSlug))) {

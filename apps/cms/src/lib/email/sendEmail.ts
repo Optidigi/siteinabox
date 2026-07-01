@@ -7,6 +7,7 @@ const DEFAULT_FROM = "noreply@siteinabox.nl"
 const CLOUDFLARE_SMTP_HOST = "smtp.mx.cloudflare.net"
 const CLOUDFLARE_SMTP_PORT = 465
 const MAIL_LOG_ERROR_MESSAGE_LIMIT = 1000
+const DEFAULT_MAIL_SEND_TIMEOUT_MS = 10_000
 
 export const mailIntents = [
   "platform.operational",
@@ -131,15 +132,25 @@ export function getPlatformMailSender(env: NodeJS.ProcessEnv = process.env) {
   return configured || DEFAULT_FROM
 }
 
+export function getMailSendTimeoutMs(env: NodeJS.ProcessEnv = process.env) {
+  const configured = Number(env.SIAB_MAIL_SEND_TIMEOUT_MS)
+  if (!Number.isFinite(configured) || configured <= 0) return DEFAULT_MAIL_SEND_TIMEOUT_MS
+  return Math.max(1_000, Math.min(configured, 60_000))
+}
+
 export function resolveMailSender(opts: Pick<SendEmailOptions, "from">) {
   return opts.from?.trim() || getPlatformMailSender()
 }
 
 export function createCloudflareSmtpTransport(token: string): Transporter {
+  const timeout = getMailSendTimeoutMs()
   return createTransport({
     host: CLOUDFLARE_SMTP_HOST,
     port: CLOUDFLARE_SMTP_PORT,
     secure: true,
+    connectionTimeout: timeout,
+    greetingTimeout: timeout,
+    socketTimeout: timeout,
     auth: {
       user: "api_token",
       pass: token,
@@ -216,19 +227,20 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
   const intent = opts.intent ?? "platform.operational"
   const from = resolveMailSender(opts)
   const now = deps.now ?? (() => new Date())
+  const sendTimeoutMs = getMailSendTimeoutMs()
   let providerName = deps.provider?.provider ?? "cloudflare-smtp"
 
   try {
     const provider = deps.provider ?? createCloudflareSmtpProvider()
     providerName = provider.provider
-    const result = await provider.send({
+    const result = await withTimeout(provider.send({
       from,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
       text: opts.text,
       replyTo: opts.replyTo,
-    })
+    }), sendTimeoutMs, provider.provider)
     const timestamp = now().toISOString()
     await logMailDelivery(opts.payload, {
       flow: intent,
@@ -273,6 +285,25 @@ export async function sendEmail(opts: SendEmailOptions, deps: SendEmailDeps = {}
       failedAt: timestamp,
     })
     throw error instanceof MailSendError ? error : new MailSendError(normalized, error)
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, provider: string): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => {
+      const error = Object.assign(
+        new Error(`${provider} send timed out after ${timeoutMs}ms`),
+        { code: "ETIMEDOUT" },
+      )
+      reject(error)
+    }, timeoutMs)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeout) clearTimeout(timeout)
   }
 }
 

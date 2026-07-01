@@ -13,16 +13,20 @@ vi.mock("nodemailer", () => ({
 describe("sendEmail", () => {
   const originalToken = process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN
   const originalFrom = process.env.EMAIL_FROM
+  const originalTimeout = process.env.SIAB_MAIL_SEND_TIMEOUT_MS
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     delete process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN
     delete process.env.EMAIL_FROM
+    delete process.env.SIAB_MAIL_SEND_TIMEOUT_MS
     mocks.createTransport.mockReturnValue({ sendMail: mocks.sendMail })
     mocks.sendMail.mockResolvedValue({ messageId: "test-message" })
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     if (originalToken === undefined) {
       delete process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN
     } else {
@@ -32,6 +36,11 @@ describe("sendEmail", () => {
       delete process.env.EMAIL_FROM
     } else {
       process.env.EMAIL_FROM = originalFrom
+    }
+    if (originalTimeout === undefined) {
+      delete process.env.SIAB_MAIL_SEND_TIMEOUT_MS
+    } else {
+      process.env.SIAB_MAIL_SEND_TIMEOUT_MS = originalTimeout
     }
   })
 
@@ -110,6 +119,9 @@ describe("sendEmail", () => {
       host: "smtp.mx.cloudflare.net",
       port: 465,
       secure: true,
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 10_000,
       auth: {
         user: "api_token",
         pass: "cf-token",
@@ -120,6 +132,48 @@ describe("sendEmail", () => {
       to: "customer@example.com",
       subject: "Preview access",
       html: "<p>Login</p>",
+    })
+  })
+
+  it("bounds Cloudflare SMTP send duration", async () => {
+    vi.useFakeTimers()
+    process.env.SIAB_MAIL_SEND_TIMEOUT_MS = "1000"
+    const payload = mockPayload()
+    const provider: MailTransportProvider = {
+      provider: "cloudflare-smtp",
+      send: vi.fn(async () => new Promise<never>(() => undefined)),
+    }
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+
+    const result = sendEmail({
+      intent: "auth.magic_link",
+      to: "customer@example.com",
+      subject: "Magic link",
+      html: "<p>Login</p>",
+      payload,
+    }, {
+      provider,
+      now: () => new Date("2026-07-01T12:02:00.000Z"),
+    })
+    const expectation = expect(result).rejects.toMatchObject({
+      normalized: {
+        providerErrorCode: "ETIMEDOUT",
+        retryState: "retryable",
+      },
+    })
+    await vi.advanceTimersByTimeAsync(1_000)
+
+    await expectation
+    expect(payload.create).toHaveBeenCalledWith({
+      collection: "mail-logs",
+      overrideAccess: true,
+      data: expect.objectContaining({
+        flow: "auth.magic_link",
+        status: "failed",
+        providerErrorCode: "ETIMEDOUT",
+        retryState: "retryable",
+        failedAt: "2026-07-01T12:02:00.000Z",
+      }),
     })
   })
 

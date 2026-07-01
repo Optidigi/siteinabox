@@ -46,4 +46,13 @@ describe("passwordless auth surface", () => {
     expect(payloadConfig).not.toMatch(/\bemail:\s*emailAdapter\b/)
     expect(payloadConfig).toContain("src/lib/email/sendEmail.ts")
   })
+
+  it("uses a configurable magic-link rate limit for CMS and preview auth", () => {
+    const helper = src("src/lib/auth/magicLinkRateLimit.ts")
+    expect(helper).toContain("SIAB_MAGIC_LINK_RATE_LIMIT_MAX")
+    expect(helper).toContain("DEFAULT_MAGIC_LINK_RATE_LIMIT_MAX = 10")
+
+    expect(src("src/lib/betterAuth.ts")).toContain("rateLimit: getMagicLinkRateLimit()")
+    expect(src("src/lib/preview/betterAuth.ts")).toContain("rateLimit: getMagicLinkRateLimit()")
+  })
 })
