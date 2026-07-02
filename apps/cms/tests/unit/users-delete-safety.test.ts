@@ -35,6 +35,22 @@ describe("Users delete safety", () => {
     expect(payload.count).not.toHaveBeenCalled()
   })
 
+  it("allows explicit internal cleanup deletes", async () => {
+    const payload = {
+      findByID: vi.fn(),
+      count: vi.fn(),
+    }
+
+    await expect(preventUnsafeUserDelete({
+      context: { allowUnsafeUserDelete: true },
+      id: 7,
+      req: makeReq({ id: 7, role: "super-admin" }, payload),
+    } as any)).resolves.toBeUndefined()
+
+    expect(payload.findByID).not.toHaveBeenCalled()
+    expect(payload.count).not.toHaveBeenCalled()
+  })
+
   it("blocks deleting the last super-admin", async () => {
     const payload = {
       findByID: vi.fn().mockResolvedValue({ id: 10, role: "super-admin" }),

@@ -278,7 +278,11 @@ export const canDeleteUsers: Access = ({ req }) => {
   return { "tenants.tenant": { equals: tenantId } } as unknown as Where
 }
 
-export const preventUnsafeUserDelete: CollectionBeforeDeleteHook = async ({ id, req }) => {
+export const preventUnsafeUserDelete: CollectionBeforeDeleteHook = async ({ context, id, req }) => {
+  if ((context as { allowUnsafeUserDelete?: boolean } | undefined)?.allowUnsafeUserDelete === true) {
+    return
+  }
+
   const currentUserId = req.user?.id
   if (currentUserId != null && String(currentUserId) === String(id)) {
     throw new Forbidden(req.t)

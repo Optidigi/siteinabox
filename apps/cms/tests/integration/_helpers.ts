@@ -38,7 +38,12 @@ export async function resetTestData(payload: Payload) {
   for (const slug of ["forms", "pages", "media", "site-settings", "users", "tenants"] as const) {
     const docs = await payload.find({ collection: slug, limit: 1000, overrideAccess: true })
     for (const d of docs.docs) {
-      await payload.delete({ collection: slug, id: (d as any).id, overrideAccess: true })
+      await payload.delete({
+        collection: slug,
+        id: (d as any).id,
+        overrideAccess: true,
+        context: { allowUnsafeUserDelete: true },
+      } as any)
     }
   }
 }
