@@ -63,8 +63,8 @@ export const PALETTE_PRESETS: PalettePreset[] = [
 //   heading — section headings
 //   text    — body / UI copy
 // Values are font-family name strings; the renderer wraps them as needed.
-// Families are chosen from Fontsource-available fonts so the tenant can load
-// them via @fontsource/* packages without hitting Google Fonts in production.
+// Families must stay limited to the variable fonts loaded by CMS and the
+// site renderer: Inter Variable, Fraunces Variable, and Caveat Variable.
 //
 // The "default" preset carries an empty fonts object — the UI resolves the
 // actual families from the tenant's site manifest at render time.
@@ -79,17 +79,17 @@ export const FONT_PRESETS: FontPreset[] = [
   {
     id: "sans",
     label: "Sans",
-    fonts: { title: "Inter", heading: "Inter", text: "Inter" },
+    fonts: { title: "Inter Variable", heading: "Inter Variable", text: "Inter Variable" },
   },
   {
     id: "serif",
     label: "Serif",
-    fonts: { title: "Playfair Display", heading: "Lora", text: "Source Sans 3" },
+    fonts: { title: "Fraunces Variable", heading: "Fraunces Variable", text: "Inter Variable" },
   },
   {
     id: "display",
     label: "Display",
-    fonts: { title: "Pacifico", heading: "Playfair Display", text: "Geist" },
+    fonts: { title: "Caveat Variable", heading: "Fraunces Variable", text: "Inter Variable" },
   },
 ]
 

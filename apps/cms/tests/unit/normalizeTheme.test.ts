@@ -31,10 +31,17 @@ describe("normalizeThemeForSave", () => {
     })
   })
 
-  it("keeps density and style preset tokens", () => {
-    expect(normalizeThemeForSave({ density: "spacious", stylePreset: "bold" })).toEqual({
+  it("keeps shape tokens", () => {
+    expect(normalizeThemeForSave({
+      radius: "1.5rem",
       density: "spacious",
       stylePreset: "bold",
+      borderStyle: "dashed",
+    })).toEqual({
+      radius: "1.5rem",
+      density: "spacious",
+      stylePreset: "bold",
+      borderStyle: "dashed",
     })
   })
 })

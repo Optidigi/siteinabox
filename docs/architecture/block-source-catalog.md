@@ -36,10 +36,17 @@ There are two separate concepts:
 - `SITE_SOURCE_BACKED_BLOCK_VARIANTS` is the renderer-ready page-block subset.
   A block enters this export only after contracts, editable fields, renderer
   markup/CSS, provenance, and tests are in place.
+- `SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS` is the active self-serve
+  generation subset. It is intentionally limited to Tailwind Plus, Preline UI,
+  and Tailblocks. AI prompts, model inputs, generated JSON schema enums, mock
+  generation, and generic runtime validation use this list, not the full
+  provenance catalog.
 - `SITE_CHROME_CATALOG` and `SITE_SOURCE_BACKED_CHROME_VARIANTS` are the
   renderer-ready header, footer, and announcement banner subset. Chrome stays in
   `SiteSettings.chrome` instead of becoming page blocks, so generated sites
   still choose approved nav/footer/banner styles through structured settings.
+- `SITE_SELF_SERVE_CHROME_VARIANTS` is the active chrome generation subset. It
+  currently exposes only the default structured chrome variants.
 
 Refreshing the archive must not expose new variants to AI generation by itself.
 Use:
@@ -52,11 +59,11 @@ Current local archive, retrieved on 2026-06-27:
 
 | Provider | Archived source artifacts | Intended use |
 | --- | ---: | --- |
-| Tailwind Plus free/downloadable | 36 | Operator-approved free/downloadable Tailwind snippets. Current renderer variants use renderer-owned Tailwind utility maps; future interactive snippets require Tailwind Plus Elements. |
-| HyperUI | 130 | Copy-paste Tailwind v4 HTML examples. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
+| Tailwind Plus free/downloadable | 36 | Active self-serve source family. Operator-approved free/downloadable Tailwind snippets. Current renderer variants use renderer-owned Tailwind utility maps; future interactive snippets require Tailwind Plus Elements. |
+| HyperUI | 130 | Archived/backlog source family for future AI/component-composition work. Not an active self-serve generation provider. |
 | Preline free | 89 | Free Preline iframe/source payloads. Current renderer variants use renderer-owned Preline/Tailwind utility maps plus the supported Preline CSS/forms path. |
-| Tailblocks | 126 | Public MIT GitHub source files. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
-| Mamba UI | 16 | Public component pages/source references. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
+| Tailblocks | 126 | Active self-serve source family. Public MIT GitHub source files. Current renderer variants use renderer-owned Tailwind utility maps and no runtime package. |
+| Mamba UI | 16 | Archived/backlog source family for future AI/component-composition work. Not an active self-serve generation provider. |
 
 ## Approval Gate
 
@@ -100,14 +107,21 @@ components. Runtime CSS scans renderer-owned implementation files only.
 Current external page-block and chrome variants are cataloged with native
 runtime kinds:
 
-- Tailwind Plus, HyperUI, Tailblocks, and Mamba UI use `copy-paste-tailwind`
-  or Tailwind Plus static runtime metadata.
+- Tailwind Plus and Tailblocks use `copy-paste-tailwind` or Tailwind Plus
+  static runtime metadata in active self-serve paths.
 - Preline variants use `preline-ui` with `preline`,
   `@tailwindcss/forms`, app-local `node_modules/preline/css/themes/theme.css`,
   and app-local `node_modules/preline/variants.css`.
+- HyperUI and Mamba UI may still appear in archived provenance and the full
+  source-backed catalog for historical review, but generic renderer variant
+  resolution, native class maps, mock generation, AI inputs, and generated JSON
+  schema enums exclude them.
 
 `@siteinabox/site-renderer/styles.css` remains the base/fallback renderer CSS
-and the parity CSS home for Amicare tenant-exclusive variants.
+and the parity CSS home for Amicare tenant-exclusive variants. Amicare CSS and
+rendering are scoped to the legacy tenant path with
+`data-legacy-tenant="amicare"` and must not be used for generic generated
+sites.
 
 ## Chrome Catalog Decision
 
@@ -118,7 +132,7 @@ Header, footer, and announcement/banner are global site chrome. They remain in
 logo, behavior, active mode, mobile menu, navigation arrays, footer composition,
 message/title/link, dismissibility, and visibility.
 
-The first source-backed chrome style is `hyperUiSimple` for:
+The archived source-backed chrome style is `hyperUiSimple` for:
 
 - `header:hyperUiSimple`, sourced from
   `packages/contracts/block-sources/hyperui/marketing/headers/headers-1/example.html`;
@@ -127,8 +141,8 @@ The first source-backed chrome style is `hyperUiSimple` for:
 - `banner:hyperUiSimple`, sourced from
   `packages/contracts/block-sources/hyperui/marketing/announcements/announcements-1/example.html`.
 
-These variants render through `@siteinabox/site-renderer` chrome components and
-renderer-owned native class maps. Generated settings must not include raw HTML,
+These variants remain provenance/backlog material and are excluded from the
+active self-serve chrome list. Generated settings must not include raw HTML,
 component names, source code, file paths, or class strings for chrome.
 
 ## Provider-Native Integration Rules
@@ -140,14 +154,15 @@ The clean implementation path is provider-specific:
   `el-*` elements, `command`, `commandfor`, disclosures, menus, dialogs, tabs, or
   similar interactive behavior, the renderer/CMS preview app must install or
   load `@tailwindplus/elements` before that variant is marked native-ready.
-- HyperUI: copy/paste Tailwind v4 markup. No HyperUI package or runtime is
-  expected. If a component declares official Tailwind plugin assumptions, record
-  them in the variant provenance before using it.
+- HyperUI: backlog only for future AI/component-composition work. No HyperUI
+  package or runtime is expected. If a component is reintroduced later, record
+  plugin assumptions and add contract, schema, typed renderer, picker, and test
+  coverage before it can enter active generation.
 - Tailblocks: copy/paste Tailwind source from the public MIT repository. No
   Tailblocks package or runtime is expected.
-- Mamba UI: copy/paste Tailwind source material. No Mamba runtime is expected.
-  Because public docs/source have moved over time, use the archived source path
-  as the local reference for review.
+- Mamba UI: backlog only for future AI/component-composition work. No Mamba
+  runtime is expected. Because public docs/source have moved over time, use the
+  archived source path as the local reference for any future review.
 - Preline: use the supported Preline installation route. Current static Preline
   blocks require `preline`, `@tailwindcss/forms`, app-local imports for
   `node_modules/preline/css/themes/theme.css` and

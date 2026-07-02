@@ -28,6 +28,19 @@ function isGenerationBlockSlug(blockType: string): blockType is SiteGenerationBl
   return generationBlockSlugs.has(blockType)
 }
 
+function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
+  if (variant.rendererSupportStatus !== "supported") return false
+  if (variant.scope.kind !== "global") return false
+
+  const sourceName = variant.provenance.sourceName.toLowerCase()
+  return (
+    sourceName === "siab" ||
+    sourceName === "tailwind plus" ||
+    sourceName === "tailblocks" ||
+    sourceName === "preline ui"
+  )
+}
+
 export function resolveBlockVariant(block: VariantResolvedBlock): ResolvedBlockVariant {
   if (!isGenerationBlockSlug(block.blockType)) return {}
 
@@ -38,6 +51,7 @@ export function resolveBlockVariant(block: VariantResolvedBlock): ResolvedBlockV
       (variant) => variant.variant === requestedVariant,
     )
     if (!catalogVariant) return {}
+    if (!isGenericRendererVariant(catalogVariant)) return {}
     return {
       variant: catalogVariant.variant,
       rendererClassName: catalogVariant?.rendererClassName,
@@ -50,9 +64,10 @@ export function resolveBlockVariant(block: VariantResolvedBlock): ResolvedBlockV
   const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
     (variant) => variant.sectionVariant === legacySectionVariant,
   )
+  if (!catalogVariant || !isGenericRendererVariant(catalogVariant)) return {}
   return {
-    variant: catalogVariant?.variant,
-    rendererClassName: catalogVariant?.rendererClassName,
+    variant: catalogVariant.variant,
+    rendererClassName: catalogVariant.rendererClassName,
   }
 }
 

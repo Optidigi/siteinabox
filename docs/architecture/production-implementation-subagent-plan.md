@@ -330,15 +330,17 @@ breaking their current live snapshot paths.
 
 ## Phase 5: Block Catalog Governance Agent
 
-Goal: keep generated sites constrained to approved Tailwind/shadcn/catalog
-blocks without making automated pixel verification a blocker.
+Goal: keep generated sites constrained to approved Tailwind/catalog blocks
+without making automated pixel verification a blocker.
 
 ### Research
 
 - Review `packages/contracts` block catalog, `packages/site-renderer` block
   implementations, CMS tests, fixtures, and generation prompts.
-- Reconfirm Tailwind Plus free/public, Tailblocks, Mamba UI, HyperUI, Preline
-  free, shadcn, and SIAB custom-block approval metadata.
+- Reconfirm Tailwind Plus free/public, Tailblocks, Preline free, and SIAB
+  custom-block approval metadata. HyperUI and Mamba UI are future
+  AI/component-composition backlog only; shadcn blocks are CMS/admin primitives,
+  not generated public-site blocks.
 - Identify any path where generation can request unsupported block slugs,
   arbitrary Tailwind classes, raw HTML, or generated component source.
 - Identify whether the AI prompt and runtime validation already force catalog

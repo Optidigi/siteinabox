@@ -83,6 +83,14 @@ Generated-site blocks have one canonical contract path:
 may use. `SITE_DEFERRED_MARKETING_BLOCK_SLUGS` is empty; deferred blocks are
 not available to generation.
 
+Self-serve generation has a narrower active source partition than the full
+provenance catalog. AI inputs, generated JSON schema enums, mock generation,
+and generic runtime validation use only Tailwind Plus, Preline UI, Tailblocks,
+and SIAB-owned variants. HyperUI and Mamba UI are archived/backlog source
+families only. Amicare variants are tenant-exclusive compatibility data for the
+official Ami-care tenant path and are not available to generic generation,
+normal pickers, or non-Amicare routes.
+
 ## Email And Analytics
 
 Cloudflare Email Sending is the canonical email path. Runtime delivery uses

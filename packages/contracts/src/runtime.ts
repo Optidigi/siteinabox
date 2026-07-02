@@ -1,5 +1,11 @@
 import { z } from "zod"
-import { SITE_CHROME_CATALOG, SITE_GENERATION_BLOCK_CATALOG, type SiteBlockCatalogVariant } from "./block-catalog"
+import {
+  SITE_CHROME_CATALOG,
+  SITE_GENERATION_BLOCK_CATALOG,
+  SITE_SELF_SERVE_CHROME_VARIANTS,
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
+  type SiteBlockCatalogVariant,
+} from "./block-catalog"
 import { SITE_GENERATION_BLOCK_SLUGS } from "./site"
 import type {
   AnalyticsBlockMetadata,
@@ -22,6 +28,7 @@ import type {
   ProcessStepsBlock,
   RichTextBlock,
   SiteSettings,
+  SiteChromeVariant,
   SiteGenerationBlockSlug,
   StatsBlock,
   TeamBlock,
@@ -71,9 +78,21 @@ const SLUG_REGEX = /^[a-z0-9-]+$/
 const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|(oklch|color|rgb[a]?|hsl[a]?)\(.*\)|[a-zA-Z]+)$/
 const CSS_LENGTH_REGEX = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%)|var\(--[A-Za-z0-9_-]+\))$/
-const SITE_SHARED_CHROME_VARIANTS = ["default", "hyperUiSimple"] as const
+const SITE_SHARED_CHROME_VARIANTS = SITE_SELF_SERVE_CHROME_VARIANTS
+  .map((variant) => variant.variant)
+  .filter((variant, index, variants) => variants.indexOf(variant) === index) as ["default", ...SiteChromeVariant[]]
 const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "amicareZen"] as const
 type RuntimeVariantScope = "generic" | "officialTenant"
+const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET = new Set<string>(
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
+)
+
+const isSelfServeBlockCatalogVariant = (variant: SiteBlockCatalogVariant) =>
+  variant.scope.kind === "global" &&
+  (
+    variant.provenance.implementation === "siab-owned" ||
+    SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET.has(variant.provenance.sourceName)
+  )
 
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
@@ -112,7 +131,7 @@ export const SITE_GENERIC_SECTION_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
       SITE_GENERATION_BLOCK_CATALOG
         .filter((entry) => entry.slug === slug)
         .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .filter((variant) => variant.scope.kind === "global")
+        .filter(isSelfServeBlockCatalogVariant)
         .map((variant) => variant.sectionVariant)
         .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
     ),
@@ -139,7 +158,7 @@ export const SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
       SITE_GENERATION_BLOCK_CATALOG
         .filter((entry) => entry.slug === slug)
         .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .filter((variant) => variant.scope.kind === "global")
+        .filter(isSelfServeBlockCatalogVariant)
         .map((variant) => variant.variant)
         .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
     ),

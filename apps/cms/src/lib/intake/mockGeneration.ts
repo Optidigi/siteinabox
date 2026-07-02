@@ -66,14 +66,14 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
     branding: { primaryColor: "#2563eb" },
     chrome: {
       header: {
-        variant: "hyperUiSimple",
+        variant: "default",
         behavior: "sticky",
         activeMode: "path",
         mobileMenu: "drawer",
         cta: { label: "Contact", href: "/#contact" },
       },
       footer: {
-        variant: "hyperUiSimple",
+        variant: "default",
         tagline: "Generated with reusable catalog blocks.",
         copyright: "(c) Generated Business",
         legalLinks: [],
@@ -180,9 +180,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "processSteps",
-          variant: "mambaSteps",
+          variant: null,
           anchor: "process",
-          analytics: { sectionVariant: "mamba-process-steps" },
+          analytics: { sectionVariant: null },
           title: inlineText("Van intake naar live site"),
           intro: blockText("Een korte route van bewerkbare draft naar gecontroleerde publicatie."),
           steps: [
@@ -211,9 +211,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "faq",
-          variant: "mambaFaq1",
+          variant: null,
           anchor: "faq",
-          analytics: { sectionVariant: "mamba-faq-1" },
+          analytics: { sectionVariant: null },
           title: inlineText("Veelgestelde vragen"),
           items: [
             {
@@ -244,9 +244,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "contactSection",
-          variant: "hyperUiNewsletterCentered",
+          variant: "prelineCenteredNewsletter",
           anchor: "contact",
-          analytics: { sectionVariant: "hyperui-newsletter-centered" },
+          analytics: { sectionVariant: "preline-centered-newsletter" },
           title: inlineText("Contact"),
           description: blockText("Stuur een bericht, dan nemen we contact op."),
           formName: "generated-contact",

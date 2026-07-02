@@ -529,21 +529,21 @@ describe("applySiteGenerationSpec", () => {
       ...spec.settings,
       chrome: {
         header: {
-          variant: "hyperUiSimple",
+          variant: "default",
           behavior: "sticky",
           activeMode: "path",
           mobileMenu: "drawer",
           cta: { label: "Plan intake", href: "/intake" },
         },
         footer: {
-          variant: "hyperUiSimple",
+          variant: "default",
           tagline: "Structured draft footer",
           copyright: "© Fixture Care",
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [{ id: "main", items: [{ type: "links", label: "Explore", links: [{ label: "Home", href: "/" }] }] }],
         },
         banner: {
-          variant: "hyperUiSimple",
+          variant: "default",
           visible: true,
           title: "Launch offer",
           message: "Book a free intake this month.",
@@ -558,19 +558,19 @@ describe("applySiteGenerationSpec", () => {
     expect(result.ok).toBe(true)
     expect(store["site-settings"][0]!.chrome).toMatchObject({
       header: {
-        variant: "hyperUiSimple",
+        variant: "default",
         behavior: "sticky",
         activeMode: "path",
         mobileMenu: "drawer",
         cta: { label: "Plan intake", href: "/intake" },
       },
       footer: {
-        variant: "hyperUiSimple",
+        variant: "default",
         tagline: "Structured draft footer",
         legalLinks: [{ label: "Privacy", href: "/privacy" }],
       },
       banner: {
-        variant: "hyperUiSimple",
+        variant: "default",
         visible: true,
         title: "Launch offer",
         message: "Book a free intake this month.",

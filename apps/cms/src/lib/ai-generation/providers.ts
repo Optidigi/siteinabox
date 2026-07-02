@@ -6,7 +6,11 @@ import {
   type NormalizedIntake,
   type SiteGenerationSpec,
 } from "@siteinabox/contracts/generation"
-import { SITE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
+import {
+  SITE_SELF_SERVE_CHROME_VARIANTS,
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
+  type SiteChromeCatalogArea,
+} from "@siteinabox/contracts/block-catalog"
 import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { hashStableValue } from "@/lib/intake/normalizeIntake"
 import { loadMockSiteGenerationSpec, type MockGenerationFixture } from "@/lib/intake/mockGeneration"
@@ -149,9 +153,16 @@ const nullableInlineRichTextJsonSchema = { anyOf: [richTextInlineJsonSchema, { t
 const nullableBlockRichTextJsonSchema = { anyOf: [richTextBlockJsonSchema, { type: "null" }] } as const
 
 const approvedSectionVariantsFor = (blockType: string) =>
-  SITE_SOURCE_BACKED_BLOCK_VARIANTS
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS
     .filter((variant) => variant.slug === blockType)
     .map((variant) => variant.sectionVariant)
+
+const approvedChromeVariantsFor = (area: SiteChromeCatalogArea) => [
+  ...SITE_SELF_SERVE_CHROME_VARIANTS
+    .filter((variant) => variant.area === area)
+    .map((variant) => variant.variant),
+  null,
+]
 
 const analyticsJsonSchemaFor = (blockType: string) => {
   const variants = approvedSectionVariantsFor(blockType)
@@ -676,7 +687,7 @@ export const siteGenerationJsonSchema = {
               additionalProperties: false,
               required: ["variant", "behavior", "activeMode", "mobileMenu", "cta"],
               properties: {
-                variant: { type: ["string", "null"], enum: ["default", "hyperUiSimple", null] },
+                variant: { type: ["string", "null"], enum: approvedChromeVariantsFor("header") },
                 behavior: { type: ["string", "null"], enum: ["static", "sticky", null] },
                 activeMode: { type: ["string", "null"], enum: ["path", "anchor", "none", null] },
                 mobileMenu: { type: ["string", "null"], enum: ["dropdown", "drawer", null] },
@@ -688,7 +699,7 @@ export const siteGenerationJsonSchema = {
               additionalProperties: false,
               required: ["variant", "tagline", "copyright", "legalLinks", "columns"],
               properties: {
-                variant: { type: ["string", "null"], enum: ["default", "hyperUiSimple", null] },
+                variant: { type: ["string", "null"], enum: approvedChromeVariantsFor("footer") },
                 tagline: stringOrNull,
                 copyright: stringOrNull,
                 legalLinks: { type: "array", items: linkJsonSchema },
@@ -725,7 +736,7 @@ export const siteGenerationJsonSchema = {
               additionalProperties: false,
               required: ["variant", "visible", "title", "message", "link", "dismissible"],
               properties: {
-                variant: { type: ["string", "null"], enum: ["default", "hyperUiSimple", null] },
+                variant: { type: ["string", "null"], enum: approvedChromeVariantsFor("banner") },
                 visible: { type: ["boolean", "null"] },
                 title: stringOrNull,
                 message: { type: "string" },

@@ -111,6 +111,7 @@ describe("processIntakeSubmission", () => {
     expect(store["site-generation-runs"][0]?.generationOutputHash).toMatch(/^[a-f0-9]{64}$/)
     expect(store["site-generation-runs"][0]?.parsedOutput?.schemaVersion).toBe(1)
     expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/amicare|ami-care/)
+    expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/hyperui|mamba/)
     expect(store["site-generation-runs"][0]?.normalizedIntake?.requestedPages[0]?.slug).toBe("index")
     expect(store["site-generation-runs"][0]?.statusTransitions.map((entry: any) => entry.status)).toContain("applying")
     expect(store.pages).toHaveLength(1)
@@ -118,18 +119,18 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.variant}`)).toEqual([
       "hero:tailwindPlusSimpleCentered",
       "featureList:tailwindPlusCentered2x2",
-      "processSteps:mambaSteps",
-      "faq:mambaFaq1",
+      "processSteps:undefined",
+      "faq:undefined",
       "cta:tailblocksCtaA",
-      "contactSection:hyperUiNewsletterCentered",
+      "contactSection:prelineCenteredNewsletter",
     ])
     expect(store.pages[0]?.blocks.map((block: any) => block.analytics?.sectionVariant)).toEqual([
       "tailwind-plus-simple-centered",
       "tailwind-plus-centered-2x2",
-      "mamba-process-steps",
-      "mamba-faq-1",
+      undefined,
+      undefined,
       "tailblocks-cta-a",
-      "hyperui-newsletter-centered",
+      "preline-centered-newsletter",
     ])
     const processBlock = store.pages[0]?.blocks.find((block: any) => block.blockType === "processSteps")
     expect(processBlock?.steps.every((step: any) => !("cta" in step))).toBe(true)

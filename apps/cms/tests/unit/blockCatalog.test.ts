@@ -14,6 +14,8 @@ import {
   SITE_BLOCK_REFERENCE_SOURCES,
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG,
+  SITE_SELF_SERVE_CHROME_VARIANTS,
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
   SITE_SOURCE_BACKED_CHROME_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
@@ -141,7 +143,7 @@ describe("renderer block catalog", () => {
 
     const processStepsBlock: GeneratedBlockSpec = {
       blockType: "processSteps",
-      variant: "mambaSteps",
+      variant: null,
       title: inlineRoot("Proces"),
       steps: [{ title: inlineRoot("Intake"), description: blockRoot("We verzamelen de basis.") }],
     }
@@ -168,6 +170,7 @@ describe("renderer block catalog", () => {
     }
 
     expect(GeneratedBlockSpecSchema.safeParse({ ...pricingBlock, variant: "mambaSteps" }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({ ...processStepsBlock, variant: "mambaSteps" }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({ ...galleryBlock, html: "<section></section>" }).success).toBe(false)
   })
 
@@ -245,6 +248,12 @@ describe("renderer block catalog", () => {
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Mamba UI")).toBe(true)
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "HyperUI")).toBe(true)
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Preline UI")).toBe(true)
+    expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName)).toEqual(
+      expect.arrayContaining(["Tailwind Plus", "Tailblocks", "Preline UI"]),
+    )
+    expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName)).not.toEqual(
+      expect.arrayContaining(["Mamba UI", "HyperUI", "SIAB legacy tenant snapshots"]),
+    )
     expect(DEFERRED_SOURCE_BLOCK_CANDIDATES).toHaveLength(0)
   })
 
@@ -333,38 +342,55 @@ describe("renderer block catalog", () => {
       expect(variant.provenance.localSourcePath).toBeTruthy()
       expect(existsSync(fromRepoRoot(variant.provenance.localSourcePath!))).toBe(true)
     }
+
+    expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.id)).toEqual([
+      "header:default",
+      "footer:default",
+      "banner:default",
+    ])
   })
 
   it("validates structured chrome settings and rejects code-like chrome fields", () => {
-    expect(GeneratedSiteSettingsSchema.safeParse(v1FixtureSettings).success).toBe(true)
+    const selfServeFixtureSettings = {
+      ...v1FixtureSettings,
+      chrome: {
+        ...v1FixtureSettings.chrome,
+        header: { ...v1FixtureSettings.chrome?.header, variant: "default" as const },
+        footer: { ...v1FixtureSettings.chrome?.footer, variant: "default" as const },
+        banner: { ...v1FixtureSettings.chrome?.banner, variant: "default" as const },
+      },
+    }
+
+    expect(GeneratedSiteSettingsSchema.safeParse(selfServeFixtureSettings).success).toBe(true)
     expect(v1FixtureSettings.chrome?.header?.variant).toBe("hyperUiSimple")
     expect(v1FixtureSettings.chrome?.footer?.variant).toBe("hyperUiSimple")
     expect(v1FixtureSettings.chrome?.banner?.variant).toBe("hyperUiSimple")
+    expect(GeneratedSiteSettingsSchema.safeParse(v1FixtureSettings).success).toBe(false)
 
     expect(
       GeneratedSiteSettingsSchema.safeParse({
-        ...v1FixtureSettings,
+        ...selfServeFixtureSettings,
         chrome: {
-          ...v1FixtureSettings.chrome,
-          header: { ...v1FixtureSettings.chrome?.header, component: "GeneratedHeader" },
+          ...selfServeFixtureSettings.chrome,
+          header: { ...selfServeFixtureSettings.chrome?.header, component: "GeneratedHeader" },
         },
       }).success,
     ).toBe(false)
     expect(
       GeneratedSiteSettingsSchema.safeParse({
-        ...v1FixtureSettings,
+        ...selfServeFixtureSettings,
         chrome: {
-          ...v1FixtureSettings.chrome,
-          footer: { ...v1FixtureSettings.chrome?.footer, rawHtml: "<footer />" },
+          ...selfServeFixtureSettings.chrome,
+          footer: { ...selfServeFixtureSettings.chrome?.footer, rawHtml: "<footer />" },
         },
       }).success,
     ).toBe(false)
     expect(
       GeneratedSiteSettingsSchema.safeParse({
-        ...v1FixtureSettings,
+        ...selfServeFixtureSettings,
         chrome: {
-          ...v1FixtureSettings.chrome,
-          banner: { ...v1FixtureSettings.chrome?.banner, sourceCode: "export default function Banner() {}" },
+          ...selfServeFixtureSettings.chrome,
+          banner: { ...selfServeFixtureSettings.chrome?.banner, sourceCode: "export default function Banner() {}" },
         },
       }).success,
     ).toBe(false)

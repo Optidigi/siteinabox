@@ -1821,6 +1821,11 @@ export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant |
   )
 }
 
+const siteSelfServeSourceBackedProviderNames = ["Tailwind Plus", "Preline UI", "Tailblocks"] as const
+const siteSelfServeSourceBackedProviderNameSet = new Set<string>(siteSelfServeSourceBackedProviderNames)
+
+export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES = siteSelfServeSourceBackedProviderNames
+
 export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((entry) =>
   entry.variants
     .filter(isApprovedSourceBackedVariant)
@@ -1838,6 +1843,10 @@ export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((ent
     }),
 )
 
+export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_SOURCE_BACKED_BLOCK_VARIANTS.filter((variant) =>
+  siteSelfServeSourceBackedProviderNameSet.has(variant.provenance.sourceName),
+)
+
 export const SITE_SOURCE_BACKED_CHROME_VARIANTS = SITE_CHROME_CATALOG
   .filter(isApprovedSourceBackedVariant)
   .map((variant) => {
@@ -1851,6 +1860,14 @@ export const SITE_SOURCE_BACKED_CHROME_VARIANTS = SITE_CHROME_CATALOG
       provenance: catalogVariant.provenance,
     }
   })
+
+export const SITE_SELF_SERVE_CHROME_VARIANTS = SITE_CHROME_CATALOG.filter((variant) =>
+  variant.scope.kind === "global" &&
+  (
+    variant.variant === "default" ||
+    siteSelfServeSourceBackedProviderNameSet.has(variant.provenance.sourceName)
+  ),
+)
 
 export const DEFERRED_SOURCE_BLOCK_CANDIDATES = [
   // Keep this list for future reviewed candidates that fail source or license gates.

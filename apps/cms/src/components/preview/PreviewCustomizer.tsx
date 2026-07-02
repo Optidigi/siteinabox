@@ -32,6 +32,20 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 type PreviewCanvasFormValues = { blocks: Page["blocks"] }
 
+export function shouldApplyPreviewThemeSaveResponse({
+  latestSerializedTheme,
+  latestVersion,
+  requestSerializedTheme,
+  requestVersion,
+}: {
+  latestSerializedTheme: string
+  latestVersion: number
+  requestSerializedTheme: string
+  requestVersion: number
+}) {
+  return requestVersion === latestVersion && requestSerializedTheme === latestSerializedTheme
+}
+
 export function PreviewCustomizer({
   access,
   page,
@@ -59,6 +73,8 @@ export function PreviewCustomizer({
   const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
   const [paymentState] = React.useState<PreviewPaymentState | null>(payment)
   const initialThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
+  const latestThemeRef = React.useRef(initialThemeRef.current)
+  const themeVersionRef = React.useRef(0)
   const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const form = useForm<PreviewCanvasFormValues>({
     defaultValues: { blocks: page.blocks ?? [] },
@@ -69,14 +85,27 @@ export function PreviewCustomizer({
   }, [form, page.id, page.blocks])
 
   React.useEffect(() => {
-    const serialized = JSON.stringify(normalizeThemeForSave(themeState) ?? {})
+    const normalizedTheme = normalizeThemeForSave(themeState)
+    const serialized = JSON.stringify(normalizedTheme ?? {})
+    latestThemeRef.current = serialized
+    const requestVersion = ++themeVersionRef.current
     if (serialized === initialThemeRef.current) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      setPreviewTheme(access, themeState ?? {})
+      const requestSerializedTheme = serialized
+      setPreviewTheme(access, normalizedTheme ?? {})
         .then((saved) => {
-          initialThemeRef.current = JSON.stringify(saved ?? {})
-          setThemeState(saved)
+          if (!shouldApplyPreviewThemeSaveResponse({
+            latestSerializedTheme: latestThemeRef.current,
+            latestVersion: themeVersionRef.current,
+            requestSerializedTheme,
+            requestVersion,
+          })) {
+            return
+          }
+          const savedTheme = normalizeThemeForSave(saved)
+          initialThemeRef.current = JSON.stringify(savedTheme ?? {})
+          setThemeState(savedTheme)
         })
         .catch(() => {})
     }, 500)

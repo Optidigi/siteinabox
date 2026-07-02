@@ -1,5 +1,8 @@
 import type { GenerationInput, NormalizedIntake } from "@siteinabox/contracts/generation"
-import { SITE_CHROME_CATALOG, SITE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
+import {
+  SITE_SELF_SERVE_CHROME_VARIANTS,
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
+} from "@siteinabox/contracts/block-catalog"
 import { buildGenerationInput } from "@/lib/intake/normalizeIntake"
 import { SUPPORTED_SITE_GENERATION_BLOCKS } from "./prompts/siteGenerationPrompt"
 
@@ -33,20 +36,18 @@ export const buildSiteGenerationModelInput = (
   intake,
   generationInput,
   supportedBlocks: SUPPORTED_SITE_GENERATION_BLOCKS,
-  approvedSectionVariants: SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
+  approvedSectionVariants: SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
     blockType: variant.slug,
     sectionVariant: variant.sectionVariant!,
     sourceName: variant.provenance.sourceName,
     variantId: variant.variantId,
   })),
-  approvedChromeVariants: SITE_CHROME_CATALOG
-    .filter((variant) => variant.scope.kind === "global")
-    .map((variant) => ({
-      area: variant.area,
-      variant: variant.variant,
-      sourceName: variant.provenance.sourceName,
-      variantId: variant.id,
-    })),
+  approvedChromeVariants: SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => ({
+    area: variant.area,
+    variant: variant.variant,
+    sourceName: variant.provenance.sourceName,
+    variantId: variant.id,
+  })),
   requirements: [
     "Return exactly one JSON object matching SiteGenerationSpec.",
     "Use only supportedBlocks as page blockType values and blocks[].slug values.",

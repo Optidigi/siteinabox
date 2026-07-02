@@ -71,6 +71,15 @@ describe("FONT_PRESETS (round 4)", () => {
     expect(def?.fonts).toEqual({})
   })
 
+  it("only exposes font families loaded by CMS and the renderer", () => {
+    const loadedFamilies = new Set(["Inter Variable", "Fraunces Variable", "Caveat Variable"])
+    for (const preset of FONT_PRESETS) {
+      for (const family of Object.values(preset.fonts)) {
+        expect(loadedFamilies.has(family)).toBe(true)
+      }
+    }
+  })
+
   it("labels are human-readable", () => {
     expect(FONT_PRESETS.find((p) => p.id === "default")?.label).toBe("Default")
     expect(FONT_PRESETS.find((p) => p.id === "sans")?.label).toBe("Sans")

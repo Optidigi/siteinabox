@@ -10,6 +10,8 @@ export const SITE_GENERATION_SYSTEM_PROMPT = [
   "Use analytics.sectionVariant only when it exactly matches an approved variant for that block type.",
   "Use reusable catalog blocks as structured page blocks; header, footer, and banner choices belong only in settings.chrome.",
   "Use settings.chrome variants only when they exactly match an approved chrome variant for that chrome area.",
+  "Active self-serve source-backed block providers are Tailwind Plus, Preline UI, and Tailblocks only.",
+  "Do not use HyperUI or Mamba UI blocks, chrome variants, source names, classes, content fixtures, or section variants for self-serve generated sites.",
   "Do not use Amicare legacy tenant blocks, variants, chrome variants, classes, content fixtures, domains, source names, or section variants for new generated sites.",
   "Do not return raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, or file paths.",
   "Do not invent unsupported block slugs, block fields, executable code, or per-tenant folders.",

@@ -28,10 +28,11 @@ depended on command-run site generation are no longer current source of truth.
   activate sites by itself.
 - The public `apps/landing` marketing site uses Google Analytics. Do not add
   PostHog there unless this product decision changes.
-- Future source-backed generated-site material should come from Tailwind blocks
-  and Tailwind-based libraries with approved provenance, such as Tailwind Plus,
-  Preline, Mamba UI, HyperUI, and Tailblocks. Shadcn blocks are not part of the
-  current generated-site source plan.
+- Current self-serve generated-site material may use only Tailwind Plus,
+  Preline UI, and Tailblocks variants that have approved provenance and typed
+  renderer support. HyperUI and Mamba UI archives remain future
+  AI/component-composition backlog material, not active generation inputs.
+  Shadcn blocks are not part of the generated public-site source plan.
 
 ## Open Follow-Up
 

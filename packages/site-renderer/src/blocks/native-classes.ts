@@ -100,16 +100,6 @@ const nativeBlockVariantClasses: Record<string, NativeBlockClassMap> = {
     textarea: "!min-h-28",
     submit: "!rounded-md !border-0 !bg-[var(--color-accent)] !px-3.5 !py-2.5 !text-sm !font-semibold !text-white !shadow-xs",
   },
-  hyperUiNewsletterCentered: {
-    section: "!w-full !max-w-none !px-4 !py-16 sm:!px-6 lg:!px-8",
-    title: "!mx-auto !max-w-xl !text-center !text-3xl !font-bold !tracking-normal !text-gray-900 sm:!text-4xl",
-    description: "!mx-auto !mt-4 !max-w-xl !text-center !text-gray-500",
-    form: "!mx-auto !mt-8 !flex !max-w-md !flex-col !gap-4 sm:!flex-row",
-    formField: "!w-full",
-    label: "!sr-only",
-    input: "!w-full !rounded-md !border-gray-200 !bg-white !p-3 !text-sm !shadow-sm",
-    submit: "!rounded-md !border-0 !bg-[var(--color-accent)] !px-5 !py-3 !text-sm !font-medium !text-white",
-  },
   prelineCenteredNewsletter: {
     section: "!w-full !max-w-none !px-4 !py-10 sm:!px-6 lg:!px-8 lg:!py-16",
     title: "!mx-auto !max-w-xl !text-center !text-2xl !font-bold !tracking-normal !text-foreground md:!text-3xl md:!leading-tight",
@@ -121,19 +111,6 @@ const nativeBlockVariantClasses: Record<string, NativeBlockClassMap> = {
       "!block !w-full !rounded-lg !border-layer-line !bg-layer !px-4 !py-2.5 !text-foreground placeholder:!text-muted-foreground-1 focus:!border-primary-focus focus:!ring-primary-focus sm:!py-3 sm:!text-sm",
     submit:
       "!inline-flex !w-full !items-center !justify-center !gap-x-2 !whitespace-nowrap !rounded-lg !border !border-primary-line !bg-primary !px-4 !py-3 !text-sm !font-medium !text-primary-foreground hover:!bg-primary-hover focus:!bg-primary-focus sm:!w-auto",
-  },
-  mambaFaq1: {
-    section: "!w-full !max-w-none !px-4 !py-16 md:!py-24",
-    title: "!mx-auto !max-w-3xl !text-center !text-4xl !font-bold !tracking-normal",
-    list: "!mx-auto !mt-8 !max-w-3xl !divide-y !divide-[var(--color-rule)]",
-    item: "!rounded-none !border-0 !bg-transparent !px-0 !py-5",
-  },
-  mambaTestimonial1: {
-    section: "!w-full !max-w-none !px-4 !py-16 md:!py-24",
-    title: "!mx-auto !max-w-3xl !text-center !text-4xl !font-bold !tracking-normal",
-    list: "!mx-auto !mt-12 !grid !max-w-5xl !grid-cols-1 !gap-6 md:!grid-cols-2",
-    item: "!rounded-lg !border !border-[var(--color-rule)] !bg-[var(--color-card)] !p-8 !shadow-sm",
-    avatar: "!size-12 !rounded-full !object-cover",
   },
   tailwindPlusSimpleTiers: {
     section: "!w-full !max-w-none !px-6 !py-24 sm:!py-32 lg:!px-8",
@@ -180,15 +157,6 @@ const nativeBlockVariantClasses: Record<string, NativeBlockClassMap> = {
     image: "!aspect-video !w-full !rounded-2xl !object-cover",
     meta: "!mt-8 !flex !items-center !gap-x-4 !text-xs !text-[var(--color-ink-muted)]",
   },
-  mambaSteps: {
-    section: "!w-full !max-w-none !px-4 !py-16 md:!py-24",
-    header: "!mx-auto !max-w-3xl !text-center",
-    title: "!text-4xl !font-bold !tracking-normal",
-    intro: "!mt-4 !text-[var(--color-ink-muted)]",
-    list: "!mx-auto !mt-12 !grid !max-w-5xl !grid-cols-1 !gap-8 md:!grid-cols-3",
-    item: "!relative !border-0 !bg-transparent !p-0 !text-center",
-    marker: "!mx-auto !mb-4 !flex !size-12 !items-center !justify-center !rounded-full !bg-[var(--color-accent)] !text-white",
-  },
   "logoCloud:tailwindPlusSimple": {
     section: "!w-full !max-w-none !px-6 !py-24 sm:!py-32 lg:!px-8",
     title: "!text-center !text-lg/8 !font-semibold !text-[var(--color-ink)]",
@@ -198,31 +166,7 @@ const nativeBlockVariantClasses: Record<string, NativeBlockClassMap> = {
   },
 }
 
-const nativeChromeVariantClasses: Record<string, NativeChromeClassMap> = {
-  "header:hyperUiSimple": {
-    root: "!mx-auto !flex !min-h-16 !max-w-7xl !items-center !justify-between !gap-4 !px-4 sm:!px-6 lg:!px-8",
-    brand: "!inline-flex !items-center !gap-2 !text-sm !font-semibold !text-gray-900",
-    nav: "!hidden !items-center !gap-8 md:!flex",
-    link: "!text-sm !font-medium !text-gray-600 hover:!text-gray-900 aria-[current=page]:!text-[var(--color-accent)]",
-    cta: "!hidden !rounded-md !bg-[var(--color-accent)] !px-4 !py-2 !text-sm !font-medium !text-white md:!inline-flex",
-    toggle: "md:!hidden",
-  },
-  "footer:hyperUiSimple": {
-    root: "!w-full !border-t !border-gray-100 !bg-white !px-4 !py-12 sm:!px-6 lg:!px-8",
-    inner: "!mx-auto !grid !max-w-7xl !grid-cols-1 !gap-8 lg:!grid-cols-3",
-    brand: "!max-w-sm",
-    columns: "!grid !grid-cols-2 !gap-8 sm:!grid-cols-3 lg:!col-span-2",
-    item: "!space-y-3",
-    link: "!text-sm !text-gray-700 hover:!text-gray-900",
-    bottom: "!mx-auto !mt-12 !flex !max-w-7xl !flex-col !gap-4 !border-t !border-gray-100 !pt-6 sm:!flex-row sm:!items-center sm:!justify-between",
-  },
-  "banner:hyperUiSimple": {
-    root: "!w-full !bg-[var(--color-accent)] !px-4 !py-3 !text-white sm:!px-6 lg:!px-8",
-    content: "!mx-auto !flex !max-w-7xl !items-center !justify-center !gap-3 !text-center !text-sm !font-medium",
-    link: "!underline !underline-offset-4",
-    dismiss: "!absolute !right-4 !top-1/2 !-translate-y-1/2 !text-white/80 hover:!text-white",
-  },
-}
+const nativeChromeVariantClasses: Record<string, NativeChromeClassMap> = {}
 
 export function cx(...values: Array<string | false | null | undefined>) {
   return values.filter((value): value is string => Boolean(value)).join(" ")

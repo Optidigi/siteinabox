@@ -11,11 +11,8 @@ export type SiteChromeProps = {
 }
 
 type HeaderActiveMode = NonNullable<NonNullable<SiteSettings["chrome"]>["header"]>["activeMode"]
-type ChromeVariant = NonNullable<NonNullable<NonNullable<SiteSettings["chrome"]>["header"]>["variant"]>
 
-function chromeVariantClassName(area: "header" | "footer" | "banner", variant: ChromeVariant | null | undefined) {
-  if (variant === "hyperUiSimple") return `site-${area}--source-hyperui-simple`
-  if (variant === "amicareZen" && area !== "banner") return `site-${area}--source-amicare-zen`
+function chromeVariantClassName() {
   return ""
 }
 
@@ -64,7 +61,7 @@ export function SiteHeader({ settings, currentSlug, mediaResolver }: SiteChromeP
   const logo = resolveMedia(header?.logo ?? settings.branding?.logo ?? null, mediaResolver)
   const activeMode = header?.activeMode ?? "path"
   const variant = header?.variant ?? "default"
-  const variantClassName = chromeVariantClassName("header", variant)
+  const variantClassName = chromeVariantClassName()
   const toggleId = `site-header-menu-toggle-${(currentSlug ?? "index").replace(/[^a-zA-Z0-9_-]/g, "-")}`
   const hasChrome = links.length > 0 || logo || header?.cta?.href
   if (!hasChrome) return null
@@ -115,7 +112,7 @@ export function SiteFooter({ settings, mediaResolver }: SiteChromeProps) {
   const navFooter = settings.navFooter ?? []
   const legalLinks = footer?.legalLinks ?? []
   const variant = footer?.variant ?? "default"
-  const variantClassName = chromeVariantClassName("footer", variant)
+  const variantClassName = chromeVariantClassName()
   const hasChrome = logo || footer?.tagline || footer?.copyright || columns.length > 0 || navFooter.length > 0 || legalLinks.length > 0
   if (!hasChrome) return null
   const businessLines = [
@@ -208,7 +205,7 @@ export function SiteBanner({ settings }: SiteChromeProps) {
   if (!banner || banner.visible === false || !banner.message) return null
 
   const variant = banner.variant ?? "default"
-  const variantClassName = chromeVariantClassName("banner", variant)
+  const variantClassName = chromeVariantClassName()
   const link = banner.link?.href && banner.link.label ? banner.link : null
 
   return (

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 import {
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG,
+  SITE_SELF_SERVE_CHROME_VARIANTS,
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
 import { GeneratedSiteSettingsSchema, SiteGenerationSpecSchema } from "@siteinabox/contracts/generation"
@@ -36,14 +38,16 @@ describe("site generation catalog governance", () => {
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("source code")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("file paths")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("unsupported block slugs")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Tailwind Plus, Preline UI, and Tailblocks only")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use HyperUI or Mamba UI")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare legacy tenant blocks")
   })
 
-  it("passes only approved source-backed variants to the model input", () => {
+  it("passes only active self-serve source-backed variants to the model input", () => {
     const input = buildSiteGenerationModelInput(normalizedIntake)
     const serializedInput = JSON.stringify(input)
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
-    const approved = SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
+    const approved = SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
       blockType: variant.slug,
       sectionVariant: variant.sectionVariant,
       sourceName: variant.provenance.sourceName,
@@ -56,25 +60,31 @@ describe("site generation catalog governance", () => {
     expect(input.requirements.join("\n")).toContain("raw HTML")
     expect(input.requirements.join("\n")).toContain("className/classes")
     expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive Amicare")
+    expect(input.approvedSectionVariants.map((variant) => variant.sourceName)).toEqual(
+      expect.arrayContaining(["Tailwind Plus", "Preline UI", "Tailblocks"]),
+    )
+    expect(input.approvedSectionVariants.map((variant) => variant.sourceName)).not.toEqual(
+      expect.arrayContaining(["HyperUI", "Mamba UI", "SIAB legacy tenant snapshots"]),
+    )
     expect(input.approvedSectionVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.sectionVariant}`))).toBe(false)
+    expect(serializedInput).toMatch(/Tailwind Plus|Preline UI|Tailblocks/)
+    expect(serializedInput).not.toMatch(/HyperUI|Mamba UI|hyperui|mamba/i)
     expect(serializedInput).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(serializedInput).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
+    expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.variant)).toEqual(["default", "default", "default"])
     expect(input.approvedChromeVariants).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ area: "header", variant: "default" }),
-        expect.objectContaining({ area: "header", variant: "hyperUiSimple" }),
         expect.objectContaining({ area: "footer", variant: "default" }),
-        expect.objectContaining({ area: "footer", variant: "hyperUiSimple" }),
         expect.objectContaining({ area: "banner", variant: "default" }),
-        expect.objectContaining({ area: "banner", variant: "hyperUiSimple" }),
       ]),
     )
     expect(input.approvedChromeVariants).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ variant: "amicareZen" })]),
-    )
-    expect(input.approvedChromeVariants).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ variant: "amicareZen" })]),
+      expect.arrayContaining([
+        expect.objectContaining({ variant: "hyperUiSimple" }),
+        expect.objectContaining({ variant: "amicareZen" }),
+      ]),
     )
   })
 
@@ -143,7 +153,7 @@ describe("site generation catalog governance", () => {
     ]))
   })
 
-  it("constrains OpenAI block schemas to the full approved catalog and variants per block type", () => {
+  it("constrains OpenAI block schemas to active self-serve variants per block type", () => {
     const heroSchema = blockSchemaFor("hero")
     const ctaSchema = blockSchemaFor("cta")
     const schemaBlockTypes = (siteGenerationJsonSchema.properties.pages.items as any)
@@ -168,6 +178,14 @@ describe("site generation catalog governance", () => {
       "tailwind-plus-simple-pricing",
       null,
     ])
+    expect(blockSchemaFor("contactSection").properties.analytics.properties.sectionVariant.enum).toEqual([
+      "tailwind-plus-newsletter-details",
+      "preline-centered-newsletter",
+      null,
+    ])
+    expect(blockSchemaFor("faq").properties.analytics.properties.sectionVariant).toEqual({ type: ["string", "null"] })
+    expect(blockSchemaFor("processSteps").properties.analytics.properties.sectionVariant).toEqual({ type: ["string", "null"] })
+    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/hyperui|mamba/i)
     expect(blockSchemaFor("comparison").properties.analytics.properties.sectionVariant).toEqual({ type: ["string", "null"] })
     expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual([...SITE_BLOCK_SLUGS])
   })
@@ -175,10 +193,11 @@ describe("site generation catalog governance", () => {
   it("constrains OpenAI chrome settings and rejects code-like generated settings", () => {
     const settings = (siteGenerationJsonSchema.properties.settings as any)
     expect(settings.required).toContain("chrome")
-    expect(settings.properties.chrome.properties.header.properties.variant.enum).toEqual(["default", "hyperUiSimple", null])
-    expect(settings.properties.chrome.properties.footer.properties.variant.enum).toEqual(["default", "hyperUiSimple", null])
-    expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual(["default", "hyperUiSimple", null])
+    expect(settings.properties.chrome.properties.header.properties.variant.enum).toEqual(["default", null])
+    expect(settings.properties.chrome.properties.footer.properties.variant.enum).toEqual(["default", null])
+    expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual(["default", null])
     expect(settings.properties.chrome.additionalProperties).toBe(false)
+    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/hyperUiSimple|HyperUI|Mamba UI|mamba/i)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenIndustrial|cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
@@ -192,9 +211,9 @@ describe("site generation catalog governance", () => {
       navHeader: [{ label: "Home", href: "/" }],
       navFooter: [{ label: "Contact", href: "mailto:hello@example.com" }],
       chrome: {
-        header: { variant: "hyperUiSimple", cta: { label: "Start", href: "/intake" } },
-        footer: { variant: "hyperUiSimple", tagline: "Built with structured data.", legalLinks: [] },
-        banner: { variant: "hyperUiSimple", visible: true, message: "Now booking", link: { label: "Contact", href: "/#contact" } },
+        header: { variant: "default", cta: { label: "Start", href: "/intake" } },
+        footer: { variant: "default", tagline: "Built with structured data.", legalLinks: [] },
+        banner: { variant: "default", visible: true, message: "Now booking", link: { label: "Contact", href: "/#contact" } },
       },
     }
 
@@ -233,9 +252,9 @@ describe("site generation catalog governance", () => {
         navHeader: [{ label: "Home", href: "/" }],
         navFooter: [{ label: "Contact", href: "mailto:hello@example.com" }],
         chrome: {
-          header: { variant: "hyperUiSimple", cta: { label: "Start", href: "/intake" } },
-          footer: { variant: "hyperUiSimple", tagline: "Structured footer", legalLinks: [] },
-          banner: { variant: "hyperUiSimple", visible: true, message: "Limited launch slots", link: { label: "Book", href: "/#contact" } },
+          header: { variant: "default", cta: { label: "Start", href: "/intake" } },
+          footer: { variant: "default", tagline: "Structured footer", legalLinks: [] },
+          banner: { variant: "default", visible: true, message: "Limited launch slots", link: { label: "Book", href: "/#contact" } },
         },
       },
       pages: [{
