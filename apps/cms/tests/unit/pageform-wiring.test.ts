@@ -25,7 +25,7 @@ describe("PageForm wiring boundaries", () => {
     )
   })
 
-  it("uses the shared renderer shell for official Amicare canvas parity while keeping generic tenants on the editor path", () => {
+  it("uses the shared renderer shell for official Amicare canvas parity and generic customer preview", () => {
     const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
 
@@ -33,7 +33,9 @@ describe("PageForm wiring boundaries", () => {
     expect(canvasMode).toContain('from "@siteinabox/site-renderer"')
     expect(canvasMode).toContain("<SitePageRenderer")
     expect(canvasMode).toContain('legacyTenant === "amicare"')
-    expect(canvasMode).toContain("renderBlocks={() =>")
+    expect(canvasMode).toContain("const useSharedPreviewShell = isCustomerPreviewView(view) && Boolean(rendererSettings)")
+    expect(canvasMode).toContain("renderBlocks={isCustomerPreviewView(view)")
+    expect(canvasMode).toContain("? undefined")
     expect(canvasMode).toContain("renderHeader={renderHeaderChrome")
     expect(canvasMode).toContain("renderFooter={renderFooterChrome")
     expect(canvasMode).toContain("<CanvasBlockRenderer")
