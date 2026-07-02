@@ -4,7 +4,7 @@ import { EditorFrameRuntime } from "@/components/editor-frame/EditorFrameRuntime
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { requireAuth } from "@/lib/authGate"
 import { createEditorFrameNewPagePlaceholder } from "@/lib/editor/editorFramePlaceholderPage"
-import { loadTenantCss } from "@/lib/editor/loadTenantCss"
+import { loadCanvasTenantCss } from "@/lib/editor/loadTenantCss"
 import { getPageById, listPages } from "@/lib/queries/pages"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { getTenantBySlug } from "@/lib/queries/tenants"
@@ -58,7 +58,7 @@ export default async function EditorFramePage({
     getOrCreateSiteSettings(tenant.id),
     listPages(tenant.id),
     loadTenantManifest(tenant.id),
-    loadTenantCss(tenant.id),
+    loadCanvasTenantCss(tenant),
   ])
 
   if (!isNewPage) {

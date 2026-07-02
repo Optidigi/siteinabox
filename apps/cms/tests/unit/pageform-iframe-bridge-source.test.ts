@@ -94,7 +94,8 @@ describe("page editor iframe bridge source contract", () => {
     const runtime = read("apps/cms/src/components/editor-frame/EditorFrameRuntime.tsx")
 
     expect(runtime).toContain("manifest: RtManifest")
-    expect(runtime).toContain("tenantCss: string | null")
+    expect(runtime).toContain("resolveLegacyTenant")
+    expect(runtime).toContain("effectiveTenantCss")
 
     expect(runtime).toContain('message.type === "editor.view.set"')
     expect(runtime).toContain("setFrameView(message.view)")

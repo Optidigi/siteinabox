@@ -86,12 +86,14 @@ describe("CMS preview renderer stylesheet scope", () => {
 
   it("loads scoped embedded renderer canvas CSS only from editor route layouts", () => {
     const canvasStylesheet = read("apps/cms/src/styles/site-renderer-canvas.css")
-    const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
+    const editorFrameRoot = path.join(repoRoot, "apps/cms/src/app/(editor-frame)")
+    const importingFiles = [frontendRoot, payloadRoot, editorFrameRoot].flatMap((root) => collectSourceFiles(root))
       .filter((file) => readFileSync(file, "utf8").includes("site-renderer-canvas.css"))
       .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
 
     expect(canvasStylesheet).toContain(canvasCssImport)
     expect(importingFiles.sort()).toEqual([
+      "apps/cms/src/app/(editor-frame)/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/pages/[id]/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/pages/new/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/layout.tsx",

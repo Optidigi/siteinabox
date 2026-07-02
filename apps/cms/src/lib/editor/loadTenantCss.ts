@@ -1,6 +1,7 @@
 import "server-only"
 import { promises as fs } from "node:fs"
 import { resolve } from "node:path"
+import { resolveLegacyTenant } from "@siteinabox/site-renderer"
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
 
@@ -515,6 +516,26 @@ export const __transformForTest = (raw: string, tenantId: string | number | null
  *
  * Returns null if absent — caller falls back to admin form-mode styles.
  */
+export type CanvasTenantCssContext = {
+  id: string | number
+  slug?: string | null
+  domain?: string | null
+}
+
+/**
+ * Loads scoped tenant canvas CSS for generated/self-serve tenants.
+ * Legacy tenants (Amicare) use bundled site-renderer styles instead of the
+ * compiled `cms-editor.css` artifact under `DATA_DIR/tenants/<id>/`.
+ */
+export const loadCanvasTenantCss = async (
+  tenant: CanvasTenantCssContext,
+): Promise<string | null> => {
+  if (resolveLegacyTenant({ tenantSlug: tenant.slug, domain: tenant.domain })) {
+    return null
+  }
+  return loadTenantCss(tenant.id)
+}
+
 export const loadTenantCss = async (
   tenantId: string | number,
 ): Promise<string | null> => {

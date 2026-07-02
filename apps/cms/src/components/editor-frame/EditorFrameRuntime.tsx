@@ -11,7 +11,7 @@ import {
   type IframeEditorSelection,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { SitePageRenderer, createRendererMediaResolver } from "@siteinabox/site-renderer"
+import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
 import { themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { FrameCanvasSurface } from "@/components/editor-frame/FrameCanvasSurface"
@@ -49,6 +49,10 @@ export function EditorFrameRuntime({
   const [revision, setRevision] = React.useState(0)
   const revisionRef = React.useRef(0)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
+  const effectiveTenantCss = React.useMemo(() => {
+    if (resolveLegacyTenant({ tenantSlug, domain })) return null
+    return tenantCss
+  }, [tenantCss, tenantSlug, domain])
   const emit = React.useCallback((payload: IframeEditorMessage) => {
     window.parent?.postMessage(payload, window.location.origin)
   }, [])
@@ -238,7 +242,7 @@ export function EditorFrameRuntime({
     return (
       <FrameCanvasSurface
         manifest={manifest}
-        tenantCss={tenantCss}
+        tenantCss={effectiveTenantCss}
         view={frameView}
         page={framePage}
         settings={frameSettings}
@@ -255,8 +259,8 @@ export function EditorFrameRuntime({
 
   return (
     <>
-      {tenantCss && (
-        <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: tenantCss }} />
+      {effectiveTenantCss && (
+        <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: effectiveTenantCss }} />
       )}
       {frameTheme && (
         <style

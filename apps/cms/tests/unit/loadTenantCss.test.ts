@@ -322,3 +322,17 @@ describe("loadTenantCss", () => {
     }
   })
 })
+
+describe("loadCanvasTenantCss", () => {
+  it("skips cms-editor.css for official Amicare legacy tenants", async () => {
+    const { loadCanvasTenantCss } = await import("@/lib/editor/loadTenantCss")
+    const css = await loadCanvasTenantCss({ id: TEST_ID, slug: "amicare-zorg", domain: "ami-care.nl" })
+    expect(css).toBeNull()
+  })
+
+  it("loads cms-editor.css for generic generated tenants", async () => {
+    const { loadCanvasTenantCss } = await import("@/lib/editor/loadTenantCss")
+    const css = await loadCanvasTenantCss({ id: TEST_ID, slug: "acme-demo", domain: "acme.example.com" })
+    expect(css).toMatch(/^@import "https:\/\/fonts\.example\/x\.css";/)
+  })
+})

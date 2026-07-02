@@ -819,6 +819,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
   const legacyTenant = rendererSettings
     ? resolveLegacyTenant({ tenantSlug, domain: tenantDomain, settings: rendererSettings })
     : null
+  const effectiveTenantCss = legacyTenant ? null : tenantCss
   const useSharedAmicareShell = legacyTenant === "amicare"
   const useSharedPreviewShell = isCustomerPreviewView(view) && Boolean(rendererSettings)
   const useSharedRendererShell = forceSharedRendererShell || useSharedAmicareShell || useSharedPreviewShell
@@ -854,8 +855,8 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
         className="min-w-0 overflow-x-hidden bg-background"
         onClick={onCanvasClick}
       >
-        {tenantCss && (
-          <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: tenantCss }} />
+        {effectiveTenantCss && (
+          <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: effectiveTenantCss }} />
         )}
         {theme && (
           <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />

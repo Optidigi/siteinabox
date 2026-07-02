@@ -9,10 +9,11 @@ function read(relativePath: string) {
 }
 
 describe("editor frame route source contract", () => {
-  it("loads generated-site renderer CSS only in the editor-frame layout shell", () => {
+  it("loads generated-site renderer CSS and scoped canvas CSS in the editor-frame layout shell", () => {
     const layout = read("apps/cms/src/app/(editor-frame)/layout.tsx")
 
     expect(layout).toContain('import "@/styles/generated-site-renderer.css"')
+    expect(layout).toContain('import "@/styles/site-renderer-canvas.css"')
     expect(layout).toContain("<html")
     expect(layout).toContain("<body>")
   })
@@ -26,6 +27,8 @@ describe("editor frame route source contract", () => {
     expect(route).toContain('import { sameRelationshipId } from "@/lib/relationshipId"')
     expect(route).toContain('import { EditorFrameRuntime } from "@/components/editor-frame/EditorFrameRuntime"')
     expect(route).toContain('import { createEditorFrameNewPagePlaceholder } from "@/lib/editor/editorFramePlaceholderPage"')
+    expect(route).toContain('import { loadCanvasTenantCss } from "@/lib/editor/loadTenantCss"')
+    expect(route).toContain("loadCanvasTenantCss(tenant)")
     expect(route).toContain('import { getTenantBySlug } from "@/lib/queries/tenants"')
     expect(route).toContain("resolveEditorFrameTenant")
     expect(route).toContain('searchParams: Promise<RouteSearchParams>')

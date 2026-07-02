@@ -34,6 +34,8 @@ describe("PageForm wiring boundaries", () => {
     expect(canvasSurface).toContain('from "@siteinabox/site-renderer"')
     expect(canvasSurface).toContain("<SitePageRenderer")
     expect(canvasSurface).toContain('legacyTenant === "amicare"')
+    expect(canvasSurface).toContain("effectiveTenantCss")
+    expect(canvasSurface).toContain("legacyTenant ? null : tenantCss")
     expect(canvasSurface).toContain("? undefined")
     expect(canvasSurface).toContain("renderHeader={renderHeaderChrome")
     expect(canvasSurface).toContain("renderFooter={renderFooterChrome")
