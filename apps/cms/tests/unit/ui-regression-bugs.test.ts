@@ -22,15 +22,15 @@ describe("observed UI bug regressions", () => {
   })
 
   it("routes desktop canvas section deletes through a confirmation dialog", () => {
-    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
 
-    expect(canvasMode).toContain("const [deleteTargetIndex, setDeleteTargetIndex]")
-    expect(canvasMode).toContain("const requestDeleteBlock = (i: number) => {")
-    expect(canvasMode).toContain("onDelete={() => requestDeleteBlock(i)}")
-    expect(canvasMode).toContain("onDelete={requestDeleteBlock}")
-    expect(canvasMode).toContain("<ConfirmDialog")
-    expect(canvasMode).toContain('title={t("deleteBlockTitle")}')
-    expect(canvasMode).toContain('description={t("deleteBlockDescription", { label: deleteTargetLabel })}')
+    expect(canvasSurface).toContain("const [deleteTargetIndex, setDeleteTargetIndex]")
+    expect(canvasSurface).toContain("const requestDeleteBlock = (i: number) => {")
+    expect(canvasSurface).toContain("onDelete={() => requestDeleteBlock(i)}")
+    expect(canvasSurface).toContain("onDelete={requestDeleteBlock}")
+    expect(canvasSurface).toContain("<ConfirmDialog")
+    expect(canvasSurface).toContain('title={t("deleteBlockTitle")}')
+    expect(canvasSurface).toContain('description={t("deleteBlockDescription", { label: deleteTargetLabel })}')
   })
 
   it("resets pending state when API key fetches throw before a response exists", () => {

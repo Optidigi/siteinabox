@@ -33,13 +33,13 @@ describe("generic CMS canvas defaults", () => {
 
   it("resolves filename-only inline images through tenant media when a canvas tenant is known", () => {
     const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
-    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
     const hero = read("src/components/editor/canvas/blocks/Hero.tsx")
     const cta = read("src/components/editor/canvas/blocks/CTA.tsx")
 
     expect(inlineImage).toContain('mediaPathFromValue, publicRendererMediaPath')
     expect(inlineImage).toContain("publicRendererMediaPath(String(tenantId), mediaPath)")
-    expect(canvasMode).toContain("tenantId={tenantId}")
+    expect(canvasSurface).toContain("tenantId={tenantId}")
     expect(hero).toContain("tenantId={tenantId ?? undefined}")
     expect(cta).toContain("tenantId={tenantId ?? undefined}")
   })

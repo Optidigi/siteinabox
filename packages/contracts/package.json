@@ -20,6 +20,10 @@
       "types": "./src/generation.ts",
       "default": "./src/generation.ts"
     },
+    "./iframe-editor": {
+      "types": "./src/iframe-editor.ts",
+      "default": "./src/iframe-editor.ts"
+    },
     "./block-catalog": {
       "types": "./src/block-catalog.ts",
       "default": "./src/block-catalog.ts"

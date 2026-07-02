@@ -3,12 +3,16 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
+const appRoot = path.join(repoRoot, "apps/cms/src/app")
 const frontendRoot = path.join(repoRoot, "apps/cms/src/app/(frontend)")
 const payloadRoot = path.join(repoRoot, "apps/cms/src/app/(payload)")
 const fullRendererStylesheetImport = 'import "@siteinabox/site-renderer/styles.css"'
+const generatedRendererStylesheetImport = 'import "@/styles/generated-site-renderer.css"'
 const canvasStylesheetImport = 'import "@/styles/site-renderer-canvas.css"'
+const fullRendererCssImport = '@import "@siteinabox/site-renderer/styles.css";'
 const canvasCssImport = '@import "@siteinabox/site-renderer/canvas.css";'
 const canvasScope = ".site-renderer[data-siab-site-renderer]"
+const embeddedRendererRoutePattern = /\/(?:\(renderer-frame\)|\(editor-frame\)|renderer-iframe|renderer-frame|editor-frame|site-renderer-frame|embedded-renderer)\//
 
 function read(relativePath: string) {
   return readFileSync(path.join(repoRoot, relativePath), "utf8")
@@ -48,19 +52,24 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(rendererCss).toMatch(/^\*\s*\{/m)
   })
 
-  it("loads full shared renderer CSS only from customer site-preview routes", () => {
-    const sitePreviewLayout = read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx")
-    const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
+  it("loads full shared renderer CSS only from the embedded customer preview renderer route", () => {
+    const sourceFiles = collectSourceFiles(appRoot)
+      .filter((file) => /\.(tsx?|jsx?)$/.test(file))
+    const directRendererCssImportingFiles = sourceFiles
       .filter((file) => readFileSync(file, "utf8").includes(fullRendererStylesheetImport))
       .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+      .sort()
+    const generatedRendererStylesheetImportingFiles = sourceFiles
+      .filter((file) => readFileSync(file, "utf8").includes(generatedRendererStylesheetImport))
+      .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+      .sort()
 
-    expect(sitePreviewLayout).toContain(fullRendererStylesheetImport)
-    expect(sitePreviewLayout.indexOf(fullRendererStylesheetImport)).toBeLessThan(
-      sitePreviewLayout.indexOf(canvasStylesheetImport),
-    )
-    expect(importingFiles.sort()).toEqual([
-      "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
-    ])
+    expect(read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx").includes(fullRendererStylesheetImport)).toBe(false)
+    expect(read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx").includes(generatedRendererStylesheetImport)).toBe(false)
+    expect(read("apps/cms/src/styles/generated-site-renderer.css")).toContain(fullRendererCssImport)
+    expect(directRendererCssImportingFiles).toEqual([])
+    expect(generatedRendererStylesheetImportingFiles.length).toBeGreaterThan(0)
+    expect(generatedRendererStylesheetImportingFiles.every((file) => embeddedRendererRoutePattern.test(file))).toBe(true)
   })
 
   it("keeps renderer canvas CSS out of CMS app-global CSS", () => {
@@ -87,7 +96,6 @@ describe("CMS preview renderer stylesheet scope", () => {
       "apps/cms/src/app/(frontend)/(admin)/pages/new/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/layout.tsx",
-      "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
     ])
     for (const file of importingFiles) expect(read(file)).toContain(canvasStylesheetImport)
   })

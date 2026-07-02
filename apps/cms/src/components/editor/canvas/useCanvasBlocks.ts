@@ -2,17 +2,10 @@
 import * as React from "react"
 import { useFormContext } from "react-hook-form"
 import type { RtManifest } from "@/lib/richText/manifest"
+import { ensureBlockId, ensurePageBlockIds } from "@/lib/editor/ensureBlockIds"
+import type { CanvasBlocksApi } from "@/components/editor/canvas/CanvasBlocksApi"
 
-export interface CanvasBlocksApi {
-  blocks: any[]
-  activeIndex: number | null
-  setActiveIndex: React.Dispatch<React.SetStateAction<number | null>>
-  updateBlock: (i: number) => (next: any) => void
-  insertBlockAt: (i: number, slug: string, seed?: Record<string, unknown>) => void
-  deleteBlock: (i: number) => void
-  duplicateBlock: (i: number) => void
-  reorderBlocks: (from: number, to: number) => void
-}
+export type { CanvasBlocksApi }
 
 export function useCanvasBlocks(manifest?: RtManifest): CanvasBlocksApi {
   const { watch, setValue } = useFormContext()
@@ -33,11 +26,13 @@ export function useCanvasBlocks(manifest?: RtManifest): CanvasBlocksApi {
   const insertBlockAt = (i: number, slug: string, seed?: Record<string, unknown>) => {
     const defaultAnchor = manifest?.blocks?.find((m) => m.slug === slug)?.defaultAnchor
     const next = [...blocks]
-    next.splice(i, 0, {
+    const block: Record<string, unknown> = {
       blockType: slug,
       ...(defaultAnchor ? { anchor: defaultAnchor } : {}),
       ...seed,
-    })
+    }
+    ensureBlockId(block)
+    next.splice(i, 0, block)
     setValue("blocks", next, { shouldDirty: true })
     setActiveIndex(i)
   }
@@ -59,6 +54,8 @@ export function useCanvasBlocks(manifest?: RtManifest): CanvasBlocksApi {
   const duplicateBlock = (i: number) => {
     const next = [...blocks]
     const clone = JSON.parse(JSON.stringify(next[i]))
+    delete clone.id
+    ensureBlockId(clone)
     next.splice(i + 1, 0, clone)
     setValue("blocks", next, { shouldDirty: true })
     setActiveIndex(i + 1)

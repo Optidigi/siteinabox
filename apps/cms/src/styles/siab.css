@@ -283,11 +283,13 @@ body { font-family: var(--font-sans); }
    Each primitive sets data-rt-selected="true" on its root element when it is
    the currently-selected ElementPath. The cursor rules below are applied
    directly by the primitives (via a Tailwind cursor-pointer class) when
-   view === "sidebar", so they are self-contained — no data-rt-view attribute
-   on .rt-canvas is needed. When CanvasMode later sets data-rt-view="sidebar"
-   on .rt-canvas, the .rt-slot cursor rule below can be simplified to:
+   view === "sidebar", so cursor affordance stays primitive-local.
+   `CanvasSurface` (iframe editor frame via `FrameCanvasSurface`) stamps
+   data-rt-view on `.rt-canvas`; the hover/selected ring selectors below use
+   :not([data-rt-view="preview"]) so canvas, sidebar, and mobile editing views
+   share the same affordance rules. A view-only shortcut such as
      .rt-canvas[data-rt-view="sidebar"] .rt-slot { cursor: pointer; }
-   but the primitives' own cursor-pointer class already handles this.
+   would be redundant because primitives already apply cursor-pointer in sidebar.
    Specificity note: [data-rt-selected="true"] is (0,2,0) while :hover is
    (0,3,0) — selected must override hover so it is lifted to (0,3,0) by
    qualifying with .rt-slot (most selections are on rt-slot; non-slot

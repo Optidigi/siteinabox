@@ -121,6 +121,18 @@ slugs/domains. Generic style presets no longer expose `warm-care`, and the
 active Tailwind Plus, Preline, and Tailblocks renderer variants now lean on SIAB
 theme tokens for colors and radii instead of provider hard-coded palette values.
 
+Same-day iframe editor follow-up completed the desktop and mobile iframe shape for
+the CMS page editor and customer preview surfaces. `PageForm` remains the RHF/save/
+ThemeBar/sidebar source of truth, while the authenticated `/__editor-frame`
+iframe owns rendering, inline editing, DnD, gutters, chrome selection, and block
+inspector requests through the shared `iframe-editor` protocol on both desktop and
+mobile. Mobile `edit.start(mode=settings)` opens parent-owned
+`MobileBlockInspectorSheet` (`BlockFormFields` + delete in a Vaul sheet) instead
+of switching to the desktop sidebar. Customer preview uses the separate
+`/__renderer-frame` route and remains token-only: frames accept only `page.replace`
+and `theme.patch`. The legacy in-process `CanvasMode` / `CanvasMobile` editor path
+and the `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch were removed.
+
 ### Phase 7 — AI generation service
 
 **Status:** Foundation added 2026-06-25.

@@ -14,7 +14,7 @@ describe("RichText canvas selection", () => {
   })
 
   it("does not mirror field-level rich-text selection into a whole-section active outline", () => {
-    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const canvasMode = read("src/components/editor/canvas/CanvasSurface.tsx")
 
     expect(canvasMode).toContain('setActiveIndex(selected?.field === "" ? selected.blockIndex : null)')
     expect(canvasMode).not.toContain("setActiveIndex(selected?.blockIndex ?? null)")

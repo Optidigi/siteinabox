@@ -62,7 +62,7 @@ export interface MobileSectionEditLayoutProps {
  * Body: the single rendered section, full mobile width.
  * Bottom: MobileInspectorBar (vaul) — hidden when idle, opens on selection.
  *
- * Selection state lives in MobileEditorContext (mounted by CanvasMobile).
+ * Selection state lives in MobileEditorContext (legacy same-DOM mobile editor).
  */
 export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
   api,

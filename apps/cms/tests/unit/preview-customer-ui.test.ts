@@ -9,8 +9,11 @@ describe("customer preview UI", () => {
   it("uses a dedicated customer preview canvas mode without editor metadata badges", () => {
     const customizer = read("src/components/preview/PreviewCustomizer.tsx")
 
-    expect(customizer).toContain('view: "preview"')
-    expect(customizer).toContain('view="preview"')
+    expect(customizer.includes('view: "preview"')).toBe(false)
+    expect(customizer).toContain("data-siab-renderer-frame")
+    expect(customizer).toContain("/__renderer-frame/preview/")
+    expect(customizer.includes('view="preview"')).toBe(false)
+    expect(customizer.includes("<CanvasMode")).toBe(false)
     expect(customizer).toContain('variant="success"')
     expect(customizer).toContain('variant="secondary" disabled')
     expect(customizer).toContain('t("paymentComplete")')

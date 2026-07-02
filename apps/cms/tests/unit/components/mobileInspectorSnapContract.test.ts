@@ -14,27 +14,29 @@ describe("mobile inspector snap contract", () => {
   })
 
   it("ships vaul snap mechanics through nonce-bearing css for production CSP", () => {
+    const sharedCss = read("src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
     const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
 
     expect(inspectorBar).toContain('import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"')
-    expect(inspectorBar).toContain("const VAUL_BOTTOM_SNAP_CSS = `")
-    expect(inspectorBar).toContain('[data-vaul-drawer][data-vaul-snap-points="true"][data-vaul-drawer-direction="bottom"]')
-    expect(inspectorBar).toContain('[data-vaul-drawer][data-vaul-delayed-snap-points="true"][data-vaul-drawer-direction="bottom"]')
-    expect(inspectorBar).toContain("[data-vaul-handle] {")
-    expect(inspectorBar).toContain("height: 0.375rem;")
-    expect(inspectorBar).toContain("width: 2.5rem;")
+    expect(sharedCss).toContain("export const VAUL_BOTTOM_SNAP_CSS = `")
+    expect(sharedCss).toContain('[data-vaul-drawer][data-vaul-snap-points="true"][data-vaul-drawer-direction="bottom"]')
+    expect(sharedCss).toContain('[data-vaul-drawer][data-vaul-delayed-snap-points="true"][data-vaul-drawer-direction="bottom"]')
+    expect(sharedCss).toContain("[data-vaul-handle] {")
+    expect(sharedCss).toContain("height: 0.375rem;")
+    expect(sharedCss).toContain("width: 2.5rem;")
     expect(inspectorBar).toContain("nonce={cspNonce}")
     expect(inspectorBar).toContain("data-mobile-inspector-vaul-css")
   })
 
   it("promotes to the editing detent only for intentional editable-field focus", () => {
+    const sharedCss = read("src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
     const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
     const componentEditor = read("src/components/editor/canvas/mobile/mobile-component-editor.tsx")
 
     expect(inspectorBar).toContain("handleOnly")
     expect(inspectorBar).toContain("only the visible grip drags the sheet")
-    expect(inspectorBar).toContain("touch-action: auto;")
-    expect(inspectorBar).toContain("touch-action: none;")
+    expect(sharedCss).toContain("touch-action: auto;")
+    expect(sharedCss).toContain("touch-action: none;")
     expect(componentEditor).toContain('import { Drawer as Vaul } from "vaul"')
     expect(componentEditor).toContain("<Vaul.Close asChild>")
     expect(componentEditor).toContain("data-mobile-editor-close")

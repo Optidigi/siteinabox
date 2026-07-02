@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { headers } from "next/headers"
 import { notFound } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { PreviewCustomizer } from "@/components/preview/PreviewCustomizer"
@@ -20,8 +19,7 @@ export default async function PreviewPage({
 }) {
   if (!legacyPreviewTokensEnabled()) notFound()
 
-  const [{ token }, query, headerStore] = await Promise.all([params, searchParams, headers()])
-  const nonce = headerStore.get("x-csp-nonce") ?? undefined
+  const [{ token }, query] = await Promise.all([params, searchParams])
   let data
   try {
     data = await getPreviewCustomizerData(token, query.page)
@@ -30,28 +28,18 @@ export default async function PreviewPage({
   }
 
   return (
-    <>
-      {data.tenantCss && (
-        <style
-          nonce={nonce}
-          suppressHydrationWarning
-          data-rt-tenant-css
-          dangerouslySetInnerHTML={{ __html: data.tenantCss }}
-        />
-      )}
-      <PreviewCustomizer
-        access={data.access}
-        pages={data.pages}
-        page={data.currentPage}
-        settings={data.settings}
-        manifest={data.manifest}
-        theme={data.theme}
-        approval={data.approval}
-        payment={data.payment}
-        tenantId={data.tenant.id}
-        tenantSlug={data.tenant.slug}
-        domain={data.tenant.domain}
-      />
-    </>
+    <PreviewCustomizer
+      access={data.access}
+      pages={data.pages}
+      page={data.currentPage}
+      settings={data.settings}
+      manifest={data.manifest}
+      theme={data.theme}
+      approval={data.approval}
+      payment={data.payment}
+      tenantId={data.tenant.id}
+      tenantSlug={data.tenant.slug}
+      domain={data.tenant.domain}
+    />
   )
 }

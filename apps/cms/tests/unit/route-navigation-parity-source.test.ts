@@ -94,14 +94,15 @@ describe("OBS-103 route and navigation parity source checks", () => {
 
   it("renders viewer page detail through read-only editor chrome", () => {
     const pageForm = read("src/components/forms/PageForm.tsx")
-    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
+    const frameHost = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
 
     expect(pageForm).toContain("readOnly?: boolean")
     expect(pageForm).toContain('const canEditPage = !readOnly')
     expect(pageForm).toContain('value={{ view: readOnly ? "sidebar" : mode')
     expect(pageForm).toContain("{isDesktop && !readOnly && (")
-    expect(canvasMode).toContain("readOnly?: boolean")
-    expect(canvasMode).toContain("const effectiveReadOnly = readOnly || isReadOnlyView(view)")
-    expect(canvasMode).toContain("onUpdate={readOnly ? () => {} : onUpdate}")
+    expect(frameHost).toContain("export function PageEditorFrameHost")
+    expect(canvasSurface).toContain("const effectiveReadOnly = readOnly || isReadOnlyView(view)")
+    expect(canvasSurface).toContain("onUpdate={readOnly ? () => {} : onUpdate}")
   })
 })

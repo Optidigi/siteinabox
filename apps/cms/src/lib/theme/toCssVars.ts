@@ -9,8 +9,9 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
  *   .rt-canvas { ... }
  *   .rt-canvas[data-rt-mode="dark"] { ...dark palette overrides... }
  *
- * `CanvasMode` stamps `data-rt-mode="dark"` on the canvas surface when
- * `theme.mode === "dark"`, so the overlay rule wins.
+ * The iframe editor frame (`FrameCanvasSurface` / `CanvasSurface`) stamps
+ * `data-rt-mode="dark"` on the canvas surface when `theme.mode === "dark"`, so
+ * the overlay rule wins.
  *
  * Returns "" if there is nothing to emit.
  *

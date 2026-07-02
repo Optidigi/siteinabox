@@ -2,20 +2,15 @@
 
 import * as React from "react"
 import { useTranslations } from "next-intl"
-import { useForm } from "react-hook-form"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
+import {
+  IFRAME_EDITOR_PROTOCOL_NAME,
+  IFRAME_EDITOR_PROTOCOL_VERSION,
+  type IframeEditorMessage,
+  validateIframeEditorMessage,
+} from "@siteinabox/contracts/iframe-editor"
 import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
-import { Form } from "@siteinabox/ui/components/form"
-import { BlockPresetsProvider } from "@/components/editor/canvas/BlockPresetsContext"
-import { CanvasMode } from "@/components/editor/canvas/CanvasMode"
-import { CanvasSelectionProvider } from "@/components/editor/canvas/CanvasSelectionContext"
-import {
-  SiteChromeActionFrame,
-  SiteChromePreview,
-  type SiteChromeSelection,
-  type SiteChromeSelectPoint,
-} from "@/components/editor/canvas/SiteChromePreview"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { ThemeBar } from "@/components/editor/theme/theme-bar"
 import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
@@ -29,8 +24,8 @@ import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 
-type PreviewCanvasFormValues = { blocks: Page["blocks"] }
 type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
 type QueuedPreviewThemeSave = {
   normalizedTheme: ThemeTokens | null
@@ -105,17 +100,11 @@ export function PreviewCustomizer({
   const persistedThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
   const latestThemeRef = React.useRef(persistedThemeRef.current)
   const themeVersionRef = React.useRef(0)
+  const frameRevisionRef = React.useRef(0)
   const pendingSaveRef = React.useRef<QueuedPreviewThemeSave | null>(null)
   const inFlightSaveRef = React.useRef<QueuedPreviewThemeSave | null>(null)
   const [themeSaveStatus, setThemeSaveStatus] = React.useState<PreviewThemeSaveStatus>("idle")
-  const form = useForm<PreviewCanvasFormValues>({
-    defaultValues: { blocks: page.blocks ?? [] },
-  })
   themeStateRef.current = themeState
-
-  React.useEffect(() => {
-    form.reset({ blocks: page.blocks ?? [] })
-  }, [form, page.id, page.blocks])
 
   const handleThemeChange = React.useCallback((nextTheme: React.SetStateAction<ThemeTokens | null>) => {
     const resolvedTheme = typeof nextTheme === "function"
@@ -217,100 +206,152 @@ export function PreviewCustomizer({
   const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"
   const reviewHref = access.type === "grant" ? `/${access.clientSlug}/review` : "#"
   const customerNavigationBlocked = shouldBlockPreviewCustomerNavigation(themeSaveStatus)
-  const preventCustomerChromeSelection = React.useCallback((_selection?: SiteChromeSelection, _point?: SiteChromeSelectPoint) => {}, [])
-  const preventCustomerChromeNavigate = React.useCallback((_href: string) => {}, [])
-  const headerChrome = (
-    <SiteChromePreview
-      zone="header"
-      settings={settings}
-      manifest={manifest}
-      onNavigate={preventCustomerChromeNavigate}
-      onSelect={preventCustomerChromeSelection}
-    />
-  )
-  const footerChrome = (
-    <SiteChromePreview
-      zone="footer"
-      settings={settings}
-      manifest={manifest}
-      onNavigate={preventCustomerChromeNavigate}
-      onSelect={preventCustomerChromeSelection}
-    />
-  )
-  const renderHeaderChrome = React.useCallback((defaultChrome: React.ReactNode) => (
-    <SiteChromeActionFrame
-      zone="header"
-      onNavigate={preventCustomerChromeNavigate}
-      onSelect={preventCustomerChromeSelection}
-    >
-      {defaultChrome}
-    </SiteChromeActionFrame>
-  ), [preventCustomerChromeNavigate, preventCustomerChromeSelection])
-  const renderFooterChrome = React.useCallback((defaultChrome: React.ReactNode) => (
-    <SiteChromeActionFrame
-      zone="footer"
-      onNavigate={preventCustomerChromeNavigate}
-      onSelect={preventCustomerChromeSelection}
-    >
-      {defaultChrome}
-    </SiteChromeActionFrame>
-  ), [preventCustomerChromeNavigate, preventCustomerChromeSelection])
+  const rendererTheme = React.useMemo(() => cmsThemeToRendererTheme(themeState), [themeState])
+  const frameSrc = React.useMemo(() => {
+    const slug = page.slug && page.slug !== "index" ? `/pages/${encodeURIComponent(page.slug)}` : ""
+    if (access.type === "grant") {
+      return `/__renderer-frame/preview/${encodeURIComponent(access.clientSlug)}${slug}`
+    }
+    if (access.type === "legacy-token") {
+      return `/__renderer-frame/preview-token/${encodeURIComponent(access.token)}${slug}`
+    }
+    return null
+  }, [access, page.slug])
+
+  const framePageId = React.useMemo(() => {
+    const rawId = page.id ?? page.slug ?? "page"
+    return String(rawId)
+  }, [page.id, page.slug])
 
   return (
     <RtManifestProvider manifest={manifest}>
-      <Form {...form}>
-        <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
-          <CanvasSelectionProvider value={{ view: "preview", selected: null, select: () => {} }}>
-            <div data-siab-cms-sticky-chrome className="sticky top-0 z-20 flex items-center justify-center border-b bg-background px-3 py-2">
-              <div className="pointer-events-auto">
-                <ThemeBar
-                  theme={themeState}
-                  manifest={manifest}
-                  onThemeChange={handleThemeChange}
-                  palettes={PALETTE_PRESETS}
-                  fonts={FONT_PRESETS}
-                  radiusLevels={RADIUS_PRESETS}
-                />
-                <ThemeSaveStatus status={themeSaveStatus} />
-              </div>
-            </div>
-
-            <main className="w-full pb-28">
-              <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                <CanvasMode
-                  view="preview"
-                  manifest={manifest}
-                  tenantCss={null}
-                  theme={themeState}
-                  rendererSettings={settings}
-                  tenantId={tenantId}
-                  tenantSlug={tenantSlug}
-                  tenantDomain={domain}
-                  readOnly
-                  headerChrome={headerChrome}
-                  footerChrome={footerChrome}
-                  renderHeaderChrome={renderHeaderChrome}
-                  renderFooterChrome={renderFooterChrome}
-                  reorderBlocks={() => {}}
-                  deleteBlock={() => {}}
-                  duplicateBlock={() => {}}
-                  pageTitle={page.title || t("metadataTitle")}
-                  onDeletePage={() => {}}
-                />
-              </BlockPresetsProvider>
-            </main>
-
-            <PreviewCommandBar
-              canCompleteOrder={canCompleteOrder}
-              paymentSatisfied={paymentSatisfied}
-              checkoutHref={checkoutHref}
-              reviewHref={reviewHref}
-              customerNavigationBlocked={customerNavigationBlocked}
+      <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
+        <div data-siab-cms-sticky-chrome className="sticky top-0 z-20 flex items-center justify-center border-b bg-background px-3 py-2">
+          <div className="pointer-events-auto">
+            <ThemeBar
+              theme={themeState}
+              manifest={manifest}
+              onThemeChange={handleThemeChange}
+              palettes={PALETTE_PRESETS}
+              fonts={FONT_PRESETS}
+              radiusLevels={RADIUS_PRESETS}
             />
-          </CanvasSelectionProvider>
-        </form>
-      </Form>
+            <ThemeSaveStatus status={themeSaveStatus} />
+          </div>
+        </div>
+
+        <main className="w-full pb-28">
+          {frameSrc ? (
+            <PreviewRendererFrame
+              src={frameSrc}
+              title={page.title || t("metadataTitle")}
+              pageId={framePageId}
+              page={page}
+              settings={settings}
+              theme={rendererTheme}
+              revisionRef={frameRevisionRef}
+            />
+          ) : (
+            <div className="flex min-h-[60dvh] items-center justify-center px-6 text-center text-muted-foreground">
+              {t("accessUnavailableDescription")}
+            </div>
+          )}
+        </main>
+
+        <PreviewCommandBar
+          canCompleteOrder={canCompleteOrder}
+          paymentSatisfied={paymentSatisfied}
+          checkoutHref={checkoutHref}
+          reviewHref={reviewHref}
+          customerNavigationBlocked={customerNavigationBlocked}
+        />
+      </form>
     </RtManifestProvider>
+  )
+}
+
+function PreviewRendererFrame({
+  src,
+  title,
+  pageId,
+  page,
+  settings,
+  theme,
+  revisionRef,
+}: {
+  src: string
+  title: string
+  pageId: string
+  page: Page
+  settings: SiteSettings
+  theme: ReturnType<typeof cmsThemeToRendererTheme>
+  revisionRef: React.MutableRefObject<number>
+}) {
+  const frameRef = React.useRef<HTMLIFrameElement | null>(null)
+  const [ready, setReady] = React.useState(false)
+
+  const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
+    const target = frameRef.current?.contentWindow
+    if (!target) return
+    target.postMessage(payload, window.location.origin)
+  }, [])
+
+  React.useEffect(() => {
+    setReady(false)
+    revisionRef.current = 0
+  }, [revisionRef, src])
+
+  React.useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+      const parsed = validateIframeEditorMessage(event.data)
+      if (parsed.ok && parsed.message.type === "renderer.ready") {
+        setReady(true)
+      }
+    }
+    window.addEventListener("message", onMessage)
+    return () => window.removeEventListener("message", onMessage)
+  }, [])
+
+  React.useEffect(() => {
+    if (!ready) return
+    const expectedRevision = revisionRef.current
+    postToFrame({
+      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+      type: "page.replace",
+      messageId: `page-${expectedRevision}`,
+      expectedRevision,
+      pageId,
+      page,
+      settings,
+    })
+    revisionRef.current = expectedRevision + 1
+  }, [page, pageId, postToFrame, ready, revisionRef, settings])
+
+  React.useEffect(() => {
+    if (!ready) return
+    const expectedRevision = revisionRef.current
+    postToFrame({
+      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+      type: "theme.patch",
+      messageId: `theme-${expectedRevision}`,
+      expectedRevision,
+      theme,
+    })
+    revisionRef.current = expectedRevision + 1
+  }, [postToFrame, ready, revisionRef, theme])
+
+  return (
+    <iframe
+      ref={frameRef}
+      src={src}
+      title={title}
+      className="block h-[calc(100dvh-9rem)] min-h-[640px] w-full border-0 bg-white"
+      sandbox="allow-same-origin allow-scripts allow-forms"
+      data-siab-renderer-frame
+    />
   )
 }
 

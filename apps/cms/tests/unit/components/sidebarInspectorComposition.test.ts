@@ -4,24 +4,12 @@ import { describe, expect, it } from "vitest"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("sidebar inspector composition", () => {
-  it("keeps the mobile inspector exposed through host-composable slots", () => {
-    const canvasMode = read("src/components/editor/canvas/CanvasMode.tsx")
-    const canvasMobile = read("src/components/editor/canvas/mobile/CanvasMobile.tsx")
+  it("keeps legacy mobile inspector layout primitives available for reference", () => {
     const sectionList = read("src/components/editor/canvas/mobile/mobile-section-list.tsx")
     const sectionEdit = read("src/components/editor/canvas/mobile/mobile-section-edit.tsx")
     const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
     const pageSettings = read("src/components/editor/canvas/mobile/mobile-page-settings.tsx")
     const seoSettings = read("src/components/editor/canvas/mobile/mobile-seo-settings.tsx")
-    const pageForm = read("src/components/forms/PageForm.tsx")
-
-    expect(canvasMode).toContain("renderMobileList?: (context: MobileSectionListSlotContext)")
-    expect(canvasMode).toContain("renderMobileSectionEdit?: (context: MobileSectionEditSlotContext)")
-    expect(canvasMode).toContain("renderMobileInspector?: (context: MobileInspectorBarSlotContext)")
-    expect(canvasMode).toContain("renderMobilePageSettings?: (context: MobilePageSettingsSlotContext)")
-    expect(canvasMode).toContain("renderMobileSeoSettings?: (context: MobileSeoSettingsSlotContext)")
-    expect(canvasMobile).toContain("renderList={renderMobileList}")
-    expect(canvasMobile).toContain("renderSectionEdit={renderMobileSectionEdit}")
-    expect(canvasMobile).toContain("renderInspector={renderMobileInspector}")
 
     expect(sectionList).toContain("export interface MobileSectionListSlotContext")
     expect(sectionList).toContain("export const MobileSectionListLayout")
@@ -33,13 +21,6 @@ describe("sidebar inspector composition", () => {
     expect(pageSettings).toContain("export const MobilePageSettingsLayout")
     expect(seoSettings).toContain("export interface MobileSeoSettingsSlotContext")
     expect(seoSettings).toContain("export const MobileSeoSettingsLayout")
-
-    expect(pageForm).toContain("const renderMobileList")
-    expect(pageForm).toContain("const renderMobileSectionEdit")
-    expect(pageForm).toContain("const renderMobileInspector")
-    expect(pageForm).toContain("const renderMobilePageSettings")
-    expect(pageForm).toContain("const renderMobileSeoSettings")
-    expect(pageForm).toContain("renderMobileList={renderMobileList}")
   })
 
   it("keeps the registry page settings state exposed through a host-composable slot", () => {
@@ -57,25 +38,6 @@ describe("sidebar inspector composition", () => {
     expect(pageForm).toContain("type SidebarPageSettingsSlotContext")
     expect(pageForm).toContain("const renderSidebarPageSettings")
     expect(pageForm).toContain("renderPageSettings={renderSidebarPageSettings}")
-  })
-
-  it("composes mobile page settings with Header/Footer navigation after slug without status controls", () => {
-    const pageForm = read("src/components/forms/PageForm.tsx")
-    const pageSettings = read("src/components/editor/canvas/mobile/mobile-page-settings.tsx")
-
-    const titleIndex = pageForm.indexOf("{ctx.titleField}")
-    const slugIndex = pageForm.indexOf("{ctx.slugField}")
-    const navIndex = pageForm.indexOf("{mobileNavigationSection}")
-
-    expect(pageForm).toContain("const mobileNavigationSection = canManageNav")
-    expect(pageForm).toContain('id="mobile-nav-header-toggle"')
-    expect(pageForm).toContain('id="mobile-nav-footer-toggle"')
-    expect(titleIndex).toBeGreaterThan(-1)
-    expect(slugIndex).toBeGreaterThan(titleIndex)
-    expect(navIndex).toBeGreaterThan(slugIndex)
-    expect(pageForm).not.toContain("{ctx.statusField}")
-    expect(pageSettings).not.toContain("statusField")
-    expect(pageSettings).not.toContain('name="status"')
   })
 
   it("keeps the registry block list exposed through a host-composable slot", () => {

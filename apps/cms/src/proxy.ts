@@ -41,6 +41,9 @@ import { stripAdminPrefix, isSuperAdminDomain } from "@/lib/hostToTenant"
 //                                    this, default-src falls back and blocks the
 //                                    cross-origin iframe load.
 //   - frame-ancestors 'none'       — primary fix; blocks clickjacking on admin
+//                                    Renderer-frame routes deliberately use
+//                                    same-origin ancestors so CMS preview can
+//                                    embed the isolated generated-site document.
 //   - base-uri 'self'              — block <base> override
 //   - form-action 'self'           — block form-redirect to attacker origin
 
@@ -79,7 +82,7 @@ const posthogPublicOrigin = normalizeOrigin(process.env.POSTHOG_PUBLIC_HOST, "ht
 const posthogUiOrigin = normalizeOrigin(process.env.POSTHOG_HOST, "https://app.posthog.com")
 const posthogConnectOrigins = Array.from(new Set([posthogPublicOrigin, posthogUiOrigin])).join(" ")
 
-const buildAdminCsp = (nonce: string) => [
+const buildAdminCsp = (nonce: string, options: { allowSameOriginFrameAncestor?: boolean } = {}) => [
   "default-src 'self'",
   `script-src 'self' 'nonce-${nonce}' ${posthogPublicOrigin}${scriptSrcDev}`,
   styleSrc(nonce),
@@ -87,31 +90,33 @@ const buildAdminCsp = (nonce: string) => [
   "font-src 'self' data:",
   `connect-src 'self' ${posthogConnectOrigins}`,
   "frame-src 'self' https:",
-  "frame-ancestors 'none'",
+  options.allowSameOriginFrameAncestor ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
 ].join("; ")
 
-// Reserved for future CMS-admin preview routes (none today). The CMS admin
-// is the EMBEDDER of preview iframes, not the EMBEDDED — the iframe loads
-// from tenant.com (a separate repo). If the CMS admin ever adds a /__preview*
-// route that should be frameable by admin, this branch lets it skip XFO DENY
-// without changing the rest of the hardening set.
 const HSTS = "max-age=63072000; includeSubDomains; preload"
 
 const isPreviewPath = (p: string): boolean =>
   p === "/__preview" || p.startsWith("/__preview/")
 
+const isRendererFramePath = (p: string): boolean =>
+  p === "/__renderer-frame" || p.startsWith("/__renderer-frame/")
+
+const isEditorFramePath = (p: string): boolean =>
+  p === "/__editor-frame" || p.startsWith("/__editor-frame/")
+
 // Stamp the audit-p1 #4 security-header set onto a response. Centralised so
 // the rate-limit branch's 429 path and the regular pass-through path both
 // emit the same set; nonce is generated once per request and threaded through.
 const applySecurityHeaders = (res: NextResponse, pathname: string, nonce: string): NextResponse => {
-  res.headers.set("Content-Security-Policy", buildAdminCsp(nonce))
+  const allowSameOriginFrameAncestor = isRendererFramePath(pathname) || isEditorFramePath(pathname)
+  res.headers.set("Content-Security-Policy", buildAdminCsp(nonce, { allowSameOriginFrameAncestor }))
   res.headers.set("Strict-Transport-Security", HSTS)
   res.headers.set("X-Content-Type-Options", "nosniff")
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   res.headers.set("x-csp-nonce", nonce)
-  res.headers.set("X-Frame-Options", "DENY")
+  res.headers.set("X-Frame-Options", allowSameOriginFrameAncestor ? "SAMEORIGIN" : "DENY")
   return res
 }
 

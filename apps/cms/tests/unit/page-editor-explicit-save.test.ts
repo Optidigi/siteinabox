@@ -95,7 +95,7 @@ describe("page editor explicit-save contract", () => {
 
   it("clears selected footer chrome when canvas selection is cleared or moves to a page element", () => {
     const source = pageFormSource()
-    const canvasMode = readFileSync("src/components/editor/canvas/CanvasMode.tsx", "utf8")
+    const canvasMode = readFileSync("src/components/editor/canvas/CanvasSurface.tsx", "utf8")
     const selectStart = source.indexOf("const selectElement = useCallback")
     const selectEnd = source.indexOf("const selectChrome = useCallback", selectStart)
     const selectElement = source.slice(selectStart, selectEnd)

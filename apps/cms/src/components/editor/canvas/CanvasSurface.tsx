@@ -22,7 +22,6 @@ import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
 import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
-import { CanvasMobile } from "@/components/editor/canvas/mobile/CanvasMobile"
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
@@ -38,7 +37,7 @@ import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChro
 import { CanvasChromeVisibilityProvider } from "@/components/editor/canvas/CanvasChromeVisibilityContext"
 import { useBlockPresets } from "@/components/editor/canvas/BlockPresetsContext"
 import type { BlockPresetDef, BlockTypeDef } from "@/components/editor/canvas/chrome/block-type-picker"
-import { useCanvasBlocks } from "@/components/editor/canvas/useCanvasBlocks"
+import type { CanvasBlocksApi } from "@/components/editor/canvas/CanvasBlocksApi"
 import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
 import { useScrollToSelection } from "@/components/editor/canvas/useScrollToSelection"
 import {
@@ -46,23 +45,16 @@ import {
   remapSelectionAfterInsert,
   remapSelectionAfterReorder,
 } from "@/components/editor/canvas/elementPath"
-import { useIsMobile } from "@siteinabox/ui/hooks/use-mobile"
-import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { toCssVars } from "@/lib/theme/toCssVars"
 import { isCustomerPreviewView, isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
-import type { MobileSectionListSlotContext } from "@/components/editor/canvas/mobile/mobile-section-list"
-import type { MobileSectionEditSlotContext } from "@/components/editor/canvas/mobile/mobile-section-edit"
-import type { MobileInspectorBarSlotContext } from "@/components/editor/canvas/mobile/mobile-inspector-bar"
-import type { MobilePageSettingsSlotContext } from "@/components/editor/canvas/mobile/mobile-page-settings"
-import type { MobileSeoSettingsSlotContext } from "@/components/editor/canvas/mobile/mobile-seo-settings"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 import { useStatusFeedback } from "@/components/status-feedback"
 
-export interface CanvasModeProps {
+export interface CanvasSurfaceProps {
   manifest: RtManifest
   tenantCss: string | null
   view: CanvasView
@@ -72,23 +64,25 @@ export interface CanvasModeProps {
   tenantId?: number | string | null
   tenantSlug?: string | null
   tenantDomain?: string | null
-  dangerZone?: React.ReactNode
-  seoCard?: React.ReactNode
-  reorderBlocks: (from: number, to: number) => void
-  deleteBlock: (i: number) => void
-  duplicateBlock: (i: number) => void
   pageTitle: string
-  onDeletePage: () => void
   headerChrome?: React.ReactNode
   footerChrome?: React.ReactNode
   renderHeaderChrome?: (defaultChrome: React.ReactNode) => React.ReactNode
   renderFooterChrome?: (defaultChrome: React.ReactNode) => React.ReactNode
   onOpenBlockInspector?: (index: number) => void
-  renderMobileList?: (context: MobileSectionListSlotContext) => React.ReactNode
-  renderMobileSectionEdit?: (context: MobileSectionEditSlotContext) => React.ReactNode
-  renderMobileInspector?: (context: MobileInspectorBarSlotContext) => React.ReactNode
-  renderMobilePageSettings?: (context: MobilePageSettingsSlotContext) => React.ReactNode
-  renderMobileSeoSettings?: (context: MobileSeoSettingsSlotContext) => React.ReactNode
+  /** Block-array mutation surface. The iframe editor frame passes
+   *  `useCanvasBlocks(manifest)` (RHF-backed); the iframe editor frame passes
+   *  `useFrameCanvasBlocks(...)` (postMessage-backed). CanvasSurface never
+   *  talks to either transport directly. */
+  blocksApi: CanvasBlocksApi
+  /** Forces the `SitePageRenderer`-driven shared shell path regardless of
+   *  tenant/view. The in-process CMS canvas only needs this for Amicare +
+   *  customer preview (default tenant chrome comes from `headerChrome`/
+   *  `footerChrome`, which wrap CMS-only interactive chrome components).
+   *  `FrameCanvasSurface` (iframe editor frame) has no such CMS chrome
+   *  available across the postMessage boundary, so it always forces this on
+   *  to get real header/footer chrome from the renderer for every tenant. */
+  forceSharedRendererShell?: boolean
 }
 
 type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
@@ -179,6 +173,7 @@ const CanvasGapOverlay: React.FC<{
             className={`${overlayPosition.className} pointer-events-none fixed z-[19] flex h-8 items-center justify-center group/gap`}
           >
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
+            {/* lint:ui-composition:ignore -- low-level canvas overlay trigger needs exact pointer/opacity behavior. */}
             <button
               type="button"
               aria-label={t("insertBlockHere")}
@@ -288,6 +283,7 @@ const CanvasBlockPickerDialog: React.FC<{
                   isExpanded && "border-ring",
                 )}
               >
+                {/* lint:ui-composition:ignore -- block picker rows use native button semantics inside a custom grid surface. */}
                 <button
                   type="button"
                   className="flex w-full items-start gap-3 rounded-md p-3 text-left transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -315,6 +311,7 @@ const CanvasBlockPickerDialog: React.FC<{
                 </button>
                 {isExpanded && hasPresets && (
                   <div className="space-y-1 border-t border-border p-2">
+                    {/* lint:ui-composition:ignore -- menu row needs native button behavior without Button chrome. */}
                     <button
                       type="button"
                       className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -360,6 +357,7 @@ const CanvasPresetRow: React.FC<{
 
   return (
     <div className="flex items-center gap-2 rounded-md transition-colors hover:bg-accent/40">
+      {/* lint:ui-composition:ignore -- preset list row is a compact selectable row inside the canvas picker. */}
       <button
         type="button"
         className="min-w-0 flex-1 rounded-md px-2 py-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -453,6 +451,7 @@ const CanvasBlockContextMenu: React.FC<{
           event.stopPropagation()
         }}
       >
+        {/* lint:ui-composition:ignore -- menuitem uses native button semantics in a portal role=menu. */}
         <button
           type="button"
           role="menuitem"
@@ -465,6 +464,7 @@ const CanvasBlockContextMenu: React.FC<{
           <SlidersHorizontal className="size-4 text-muted-foreground" aria-hidden />
           {t("openInspector")}
         </button>
+        {/* lint:ui-composition:ignore -- menuitem uses native button semantics in a portal role=menu. */}
         <button
           type="button"
           role="menuitem"
@@ -477,6 +477,7 @@ const CanvasBlockContextMenu: React.FC<{
           <Copy className="size-4 text-muted-foreground" aria-hidden />
           {t("duplicate")}
         </button>
+        {/* lint:ui-composition:ignore -- menuitem uses native button semantics in a portal role=menu. */}
         <button
           type="button"
           role="menuitem"
@@ -688,91 +689,14 @@ const SortableRenderedBlockItem: React.FC<{
   )
 }
 
-export const CanvasMode: React.FC<CanvasModeProps> = ({
-  manifest,
-  tenantCss,
-  view,
-  dangerZone,
-  seoCard,
-  theme,
-  rendererSettings,
-  tenantId,
-  tenantSlug,
-  tenantDomain,
-  readOnly = false,
-  reorderBlocks,
-  deleteBlock,
-  duplicateBlock,
-  pageTitle,
-  onDeletePage,
-  headerChrome,
-  footerChrome,
-  renderHeaderChrome,
-  renderFooterChrome,
-  onOpenBlockInspector,
-  renderMobileList,
-  renderMobileSectionEdit,
-  renderMobileInspector,
-  renderMobilePageSettings,
-  renderMobileSeoSettings,
-}) => {
-  const isMobile = useIsMobile(EDITOR_DESKTOP_BREAKPOINT)
-
-  if (isMobile && !readOnly) {
-    return (
-      <div className="[&_[data-mobile-back-pill]]:!inline-flex [&_[data-mobile-trash-pill]]:!inline-flex">
-        <CanvasMobile
-          manifest={manifest}
-          tenantCss={tenantCss}
-          view="mobile"
-          dangerZone={dangerZone}
-          seoCard={seoCard}
-          theme={theme}
-          rendererSettings={rendererSettings}
-          tenantId={tenantId}
-          tenantSlug={tenantSlug}
-          tenantDomain={tenantDomain}
-          reorderBlocks={reorderBlocks}
-          deleteBlock={deleteBlock}
-          duplicateBlock={duplicateBlock}
-          pageTitle={pageTitle}
-          onDeletePage={onDeletePage}
-          renderMobileList={renderMobileList}
-          renderMobileSectionEdit={renderMobileSectionEdit}
-          renderMobileInspector={renderMobileInspector}
-          renderMobilePageSettings={renderMobilePageSettings}
-          renderMobileSeoSettings={renderMobileSeoSettings}
-        />
-      </div>
-    )
-  }
-
-  return (
-    <CanvasModeDesktop
-      manifest={manifest}
-      tenantCss={tenantCss}
-      view={view}
-      theme={theme}
-      rendererSettings={rendererSettings}
-      tenantId={tenantId}
-      tenantSlug={tenantSlug}
-      tenantDomain={tenantDomain}
-      readOnly={readOnly}
-      reorderBlocks={reorderBlocks}
-      deleteBlock={deleteBlock}
-      duplicateBlock={duplicateBlock}
-      pageTitle={pageTitle}
-      onDeletePage={onDeletePage}
-      headerChrome={headerChrome}
-      footerChrome={footerChrome}
-      renderHeaderChrome={renderHeaderChrome}
-      renderFooterChrome={renderFooterChrome}
-      onOpenBlockInspector={onOpenBlockInspector}
-    />
-  )
-}
-
-const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
+/**
+ * Desktop canvas render surface — the shared DnD/gutter/inline-edit body
+ * Shared canvas render body behind the iframe editor frame (`FrameCanvasSurface`)
+ * frame's canvas. Parameterized on `blocksApi` (`CanvasBlocksApi`) instead of
+ * calling `useCanvasBlocks` itself, so callers can back block mutations with
+ * whatever transport is appropriate (RHF vs. postMessage).
+ */
+export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
   manifest,
   tenantCss,
   view,
@@ -788,6 +712,8 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
   renderHeaderChrome,
   renderFooterChrome,
   onOpenBlockInspector,
+  blocksApi,
+  forceSharedRendererShell = false,
 }) => {
   const t = useTranslations("editor")
   const cspNonce = useCspNonce()
@@ -800,7 +726,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
     deleteBlock,
     duplicateBlock,
     reorderBlocks,
-  } = useCanvasBlocks(manifest)
+  } = blocksApi
   const { select, selected } = useCanvasSelection()
 
   React.useEffect(() => {
@@ -895,7 +821,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
     : null
   const useSharedAmicareShell = legacyTenant === "amicare"
   const useSharedPreviewShell = isCustomerPreviewView(view) && Boolean(rendererSettings)
-  const useSharedRendererShell = useSharedAmicareShell || useSharedPreviewShell
+  const useSharedRendererShell = forceSharedRendererShell || useSharedAmicareShell || useSharedPreviewShell
   const rendererPage = React.useMemo(() => ({
     title: pageTitle || "Untitled",
     slug: "index",

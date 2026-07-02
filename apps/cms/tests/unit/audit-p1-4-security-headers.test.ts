@@ -114,6 +114,37 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
     })
   })
 
+  describe("renderer frame path can be embedded by the same-origin CMS shell only", () => {
+    it("/__renderer-frame* uses frame-ancestors 'self' and X-Frame-Options SAMEORIGIN", async () => {
+      const res = await middleware(reqAt("/__renderer-frame/preview/optidigi"))
+      const csp = headerOf(res, "content-security-policy")
+
+      expect(csp).toMatch(/frame-ancestors\s+'self'/)
+      expect(csp).not.toMatch(/frame-ancestors\s+'none'/)
+      expect(headerOf(res, "x-frame-options")).toBe("SAMEORIGIN")
+      expect(headerOf(res, "x-content-type-options")).toBe("nosniff")
+    })
+
+    it("/__editor-frame* uses frame-ancestors 'self' and X-Frame-Options SAMEORIGIN", async () => {
+      const res = await middleware(reqAt("/__editor-frame/pages/42"))
+      const csp = headerOf(res, "content-security-policy")
+
+      expect(csp).toMatch(/frame-ancestors\s+'self'/)
+      expect(csp).not.toMatch(/frame-ancestors\s+'none'/)
+      expect(headerOf(res, "x-frame-options")).toBe("SAMEORIGIN")
+      expect(headerOf(res, "x-content-type-options")).toBe("nosniff")
+    })
+
+    it("does not relax frame ancestors for similarly named non-frame routes", async () => {
+      for (const p of ["/__renderer", "/renderer-frame/preview/optidigi", "/editor-frame/pages/42", "/sites/foo/pages/123"]) {
+        const res = await middleware(reqAt(p))
+
+        expect(headerOf(res, "content-security-policy"), `path=${p}`).toMatch(/frame-ancestors\s+'none'/)
+        expect(headerOf(res, "x-frame-options"), `path=${p}`).toBe("DENY")
+      }
+    })
+  })
+
   describe("OBS-2 — reserved preview paths are fail-closed", () => {
     it("/__preview* returns 404 until a reviewed CMS preview route is deliberately added", async () => {
       const res = await middleware(reqAt("/__preview/page-123"))

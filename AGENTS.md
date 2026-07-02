@@ -65,12 +65,13 @@ Current surfaces:
 ## MCP Status
 
 The monorepo root declares project-local MCP servers in `.mcp.json`,
-`.mcp.toml`, `.codex/config.toml`, and `.codex/mcp.toml`. `apps/cms` also keeps
-matching app-local MCP mirrors for tools started from that directory:
-`apps/cms/.mcp.json`, `apps/cms/.mcp.toml`,
-`apps/cms/.codex/config.toml`, and `apps/cms/.codex/mcp.toml`.
+`.mcp.toml`, `.codex/config.toml`, `.codex/mcp.toml`, and
+`.cursor/mcp.json`. `apps/cms` also keeps matching app-local MCP mirrors for
+tools started from that directory: `apps/cms/.mcp.json`,
+`apps/cms/.mcp.toml`, `apps/cms/.codex/config.toml`,
+`apps/cms/.codex/mcp.toml`, and `apps/cms/.cursor/mcp.json`.
 
-Keep all eight files' server lists in sync.
+Keep all ten files' server lists in sync.
 
 Configured root servers:
 

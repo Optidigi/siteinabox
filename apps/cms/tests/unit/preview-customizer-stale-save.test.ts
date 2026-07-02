@@ -23,8 +23,8 @@ vi.mock("@/components/editor/canvas/BlockPresetsContext", () => ({
   BlockPresetsProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock("@/components/editor/canvas/CanvasMode", () => ({
-  CanvasMode: () => null,
+vi.mock("@/components/editor/iframe/PageEditorFrameHost", () => ({
+  PageEditorFrameHost: () => null,
 }))
 
 vi.mock("@/components/editor/canvas/CanvasSelectionContext", () => ({

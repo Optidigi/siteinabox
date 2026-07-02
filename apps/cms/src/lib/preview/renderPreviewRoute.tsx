@@ -21,7 +21,6 @@ export async function renderPreviewRoute({
   if (!normalizedClientSlug) notFound()
 
   const headerStore = await headers()
-  const nonce = headerStore.get("x-csp-nonce") ?? undefined
   const callbackPath = pageSlug
     ? `/${normalizedClientSlug}/pages/${encodeURIComponent(pageSlug)}`
     : `/${normalizedClientSlug}`
@@ -49,29 +48,19 @@ export async function renderPreviewRoute({
       requestedPage: pageSlug,
     })
     return (
-      <>
-        {data.tenantCss && (
-          <style
-            nonce={nonce}
-            suppressHydrationWarning
-            data-rt-tenant-css
-            dangerouslySetInnerHTML={{ __html: data.tenantCss }}
-          />
-        )}
-        <PreviewCustomizer
-          access={data.access}
-          pages={data.pages}
-          page={data.currentPage}
-          settings={data.settings}
-          manifest={data.manifest}
-          theme={data.theme}
-          approval={data.approval}
-          payment={data.payment}
-          tenantId={data.tenant.id}
-          tenantSlug={data.tenant.slug}
-          domain={data.tenant.domain}
-        />
-      </>
+      <PreviewCustomizer
+        access={data.access}
+        pages={data.pages}
+        page={data.currentPage}
+        settings={data.settings}
+        manifest={data.manifest}
+        theme={data.theme}
+        approval={data.approval}
+        payment={data.payment}
+        tenantId={data.tenant.id}
+        tenantSlug={data.tenant.slug}
+        domain={data.tenant.domain}
+      />
     )
   } catch {
     return (

@@ -25,33 +25,20 @@ import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, SlidersHorizontal } from "lucide-react"
 import type { Page } from "@/payload-types"
+import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
+import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { type EditorMode, resolveDefaultMode } from "@/lib/editor/editorMode"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { ModeBar } from "@/components/editor/mode/mode-bar"
-import { CanvasMode } from "@/components/editor/canvas/CanvasMode"
-import {
-  MobileInspectorBarLayout,
-  type MobileInspectorBarSlotContext,
-} from "@/components/editor/canvas/mobile/mobile-inspector-bar"
-import {
-  MobilePageSettingsLayout,
-  type MobilePageSettingsSlotContext,
-} from "@/components/editor/canvas/mobile/mobile-page-settings"
-import {
-  MobileSectionEditLayout,
-  type MobileSectionEditSlotContext,
-} from "@/components/editor/canvas/mobile/mobile-section-edit"
-import {
-  MobileSectionListLayout,
-  type MobileSectionListSlotContext,
-} from "@/components/editor/canvas/mobile/mobile-section-list"
-import {
-  MobileSeoSettingsLayout,
-  type MobileSeoSettingsSlotContext,
-} from "@/components/editor/canvas/mobile/mobile-seo-settings"
+import { PageEditorFrameHost, type PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
+import { MobileBlockInspectorSheet } from "@/components/editor/iframe/MobileBlockInspectorSheet"
+import { ensureBlockId, ensurePageBlockIds, findBlockIndexByWireId, blockWireId } from "@/lib/editor/ensureBlockIds"
+import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
+import { pageToJson } from "@/lib/projection/pageToJson"
+import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { BlockPresetsProvider } from "@/components/editor/canvas/BlockPresetsContext"
 import { MobileMediaSheetProvider } from "@/components/editor/canvas/MobileMediaSheetContext"
 import {
@@ -91,7 +78,7 @@ import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValu
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import type { NavPage } from "@/lib/projection/resolveNav"
-import { SiteChromeActionFrame, SiteChromePreview, SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
+import { SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
 import { MediaPicker } from "@/components/media/MediaPicker"
 import {
   createFooterItem,
@@ -875,6 +862,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   // SidebarDrillDown and the canvas's click-to-select BOTH write via the context's
   // select; SidebarDrillDown reads selected to know which block to open.
   const [selected, setSelected] = useState<ElementPath | null>(null)
+  const [mobileBlockInspectorIndex, setMobileBlockInspectorIndex] = useState<number | null>(null)
   const [selectedChrome, setSelectedChrome] = useState<SiteChromeSelection | null>(null)
   const [chromeQuickMenu, setChromeQuickMenu] = useState<{ selection: SiteChromeSelection; point: SiteChromeSelectPoint } | null>(null)
   const siteSettingsState = siteSettings ?? null
@@ -1014,7 +1002,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     resolver: zodResolver(schema),
     defaultValues: initial
       ? { title: initial.title, slug: initial.slug ?? "", status: "published",
-          blocks: (initial.blocks as any) ?? [], seo: (initial.seo as any) ?? {} }
+          blocks: ensurePageBlockIds((initial.blocks as any) ?? []), seo: (initial.seo as any) ?? {} }
       : { title: "", slug: "", status: "published", blocks: [], seo: {} }
   })
 
@@ -1483,9 +1471,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   // Watched blocks — needed by SidebarDrillDown in sidebar view.
   const watchedBlocks: any[] = form.watch("blocks") ?? []
 
-  // Reorder helper — lifted from useCanvasBlocks to avoid importing
-  // the hook twice (CanvasMode owns its own instance). PageForm needs
-  // this for SidebarDrillDown's onReorder prop.
+  // Reorder helper for SidebarDrillDown and iframe protocol handlers.
   const reorderBlocks = (from: number, to: number) => {
     if (readOnly) return
     const copy = [...watchedBlocks]
@@ -1506,12 +1492,19 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
 
   const duplicateBlock = (i: number) => {
     if (readOnly) return
-    // Strip Payload id so a new one is generated on save.
-    const dup = { ...watchedBlocks[i], id: undefined }
+    const dup = ensureBlockId(JSON.parse(JSON.stringify(watchedBlocks[i])))
     const next = [...watchedBlocks.slice(0, i + 1), dup, ...watchedBlocks.slice(i + 1)]
     form.setValue("blocks", next, { shouldDirty: true })
     setSelected((prev) => remapSelectionAfterInsert(prev, i + 1))
   }
+
+  const insertBlockAtIndex = useCallback((index: number, block: Record<string, unknown>) => {
+    if (readOnly) return
+    const next = [...watchedBlocks]
+    next.splice(index, 0, ensureBlockId({ ...block }))
+    form.setValue("blocks", next, { shouldDirty: true })
+    setSelected({ blockIndex: index, field: "" })
+  }, [form, readOnly, watchedBlocks])
 
   // FE-53 — SidebarDrillDown's "Add block" affordance. Mirrors
   // useCanvasBlocks.insertBlockAt (defaultAnchor pre-fill + seed merge) but
@@ -1636,24 +1629,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [navigationHref],
   )
 
-  const updateFooterTextItem = useCallback((columnIndex: number, patch: { label?: string | null; text?: string | null }) => {
-    if (!canEditSettingsResolved || !footerContract) return
-    setChromeDraft((current) => {
-      const columns = ensureFooterColumnItems(
-        setFooterColumnCount(current.footer.columns, current.footer.columns.length || footerContract.defaultColumnCount, footerContract),
-        footerContract,
-      )
-      const nextColumns = columns.map((column, index) => {
-        if (index !== columnIndex || column.items[0]?.type !== "text") return column
-        return { ...column, items: [{ ...column.items[0], ...patch }] }
-      })
-      return {
-        ...current,
-        footer: { ...current.footer, columns: normalizeFooterColumns(nextColumns, footerContract) },
-      }
-    })
-  }, [canEditSettingsResolved, footerContract])
-
   const openChromeInSidebar = useCallback((selection: SiteChromeSelection) => {
     setChromeQuickMenu(null)
     setSelected(null)
@@ -1665,61 +1640,28 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setChromeQuickMenu(null)
     setSelectedChrome(null)
     setSelected({ blockIndex: index, field: "" })
+    if (!isDesktop) {
+      setMobileBlockInspectorIndex(index)
+      return
+    }
     void handleModeChange("sidebar")
-  }, [handleModeChange])
+  }, [handleModeChange, isDesktop])
 
-  const headerChrome = chromeSettingsState ? (
-    <SiteChromePreview
-      zone="header"
-      settings={chromeSettingsState}
-      navigationHref={navigationHrefFor("header")}
-      manifest={manifest}
-      onNavigate={navigateFromChrome}
-      selected={selectedChrome}
-      onSelect={selectChrome}
-    />
-  ) : null
+  const closeMobileBlockInspector = useCallback(() => {
+    setMobileBlockInspectorIndex(null)
+  }, [])
 
-  const footerChrome = chromeSettingsState ? (
-    <SiteChromePreview
-      zone="footer"
-      settings={chromeSettingsState}
-      navigationHref={navigationHrefFor("footer")}
-      manifest={manifest}
-      onNavigate={navigateFromChrome}
-      selected={selectedChrome}
-      onSelect={selectChrome}
-      onUpdateFooterTextItem={mode === "canvas" ? updateFooterTextItem : undefined}
-    />
-  ) : null
+  const handleMobileBlockDelete = useCallback((index: number) => {
+    deleteBlock(index)
+    setMobileBlockInspectorIndex(null)
+  }, [deleteBlock])
 
-  const renderHeaderChrome = chromeSettingsState
-    ? (defaultChrome: React.ReactNode) => (
-        <SiteChromeActionFrame
-          zone="header"
-          navigationHref={navigationHrefFor("header")}
-          onNavigate={navigateFromChrome}
-          selected={selectedChrome}
-          onSelect={selectChrome}
-        >
-          {defaultChrome}
-        </SiteChromeActionFrame>
-      )
-    : undefined
-
-  const renderFooterChrome = chromeSettingsState
-    ? (defaultChrome: React.ReactNode) => (
-        <SiteChromeActionFrame
-          zone="footer"
-          navigationHref={navigationHrefFor("footer")}
-          onNavigate={navigateFromChrome}
-          selected={selectedChrome}
-          onSelect={selectChrome}
-        >
-          {defaultChrome}
-        </SiteChromeActionFrame>
-      )
-    : undefined
+  useEffect(() => {
+    if (mobileBlockInspectorIndex == null) return
+    if (!watchedBlocks[mobileBlockInspectorIndex]) {
+      setMobileBlockInspectorIndex(null)
+    }
+  }, [mobileBlockInspectorIndex, watchedBlocks])
 
   const renderSidebarList = useCallback(
     (ctx: SidebarListSlotContext) => (
@@ -1783,146 +1725,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [],
   )
 
-  const renderMobileList = useCallback(
-    (ctx: MobileSectionListSlotContext) => (
-      <MobileSectionListLayout
-        header={ctx.header}
-        sectionsHeader={ctx.sectionsHeader}
-        emptyState={ctx.emptyState}
-        sectionCards={ctx.sectionCards}
-        addSectionButton={ctx.addSectionButton}
-        pageActionsTitle={ctx.pageActionsTitle}
-        pageRows={
-          <>
-            {ctx.pageRows}
-          </>
-        }
-        blockTypePicker={ctx.blockTypePicker}
-      />
-    ),
-    [],
-  )
-
-  const renderMobileSectionEdit = useCallback(
-    (ctx: MobileSectionEditSlotContext) => (
-      <MobileSectionEditLayout
-        header={ctx.header}
-        canvas={ctx.canvas}
-        inspectorBar={ctx.inspectorBar}
-        trashPill={ctx.trashPill}
-        deleteDialog={ctx.deleteDialog}
-      />
-    ),
-    [],
-  )
-
-  const renderMobileInspector = useCallback(
-    (ctx: MobileInspectorBarSlotContext) => (
-      <MobileInspectorBarLayout
-        snapFraction={ctx.snapFraction}
-        handle={ctx.handle}
-        body={ctx.body}
-      />
-    ),
-    [],
-  )
-
-  const mobileNavigationSection = canManageNavResolved ? (
-    <section className="space-y-3 rounded-md border border-border bg-card p-3">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium text-foreground">{t("navigation")}</h3>
-        <p className="text-xs text-muted-foreground">
-          {initial ? t("navigationDescription") : t("savePageFirst")}
-        </p>
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor="mobile-nav-header-toggle" className="text-sm">
-            {t("includeHeaderNavigation")}
-          </Label>
-          <Switch
-            id="mobile-nav-header-toggle"
-            checked={inHeader}
-            disabled={!initial || pending}
-            onCheckedChange={(c) => toggleNav("header", c)}
-          />
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <Label htmlFor="mobile-nav-footer-toggle" className="text-sm">
-            {t("includeFooterNavigation")}
-          </Label>
-          <Switch
-            id="mobile-nav-footer-toggle"
-            checked={inFooter}
-            disabled={!initial || pending}
-            onCheckedChange={(c) => toggleNav("footer", c)}
-          />
-        </div>
-      </div>
-      {initial && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {navigationHrefFor("header") && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => {
-                const href = navigationHrefFor("header")
-                if (href) navigateFromChrome(href)
-              }}
-            >
-              <PanelTop className="size-3.5" aria-hidden />
-              Header
-            </Button>
-          )}
-          {navigationHrefFor("footer") && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => {
-                const href = navigationHrefFor("footer")
-                if (href) navigateFromChrome(href)
-              }}
-            >
-              <PanelBottom className="size-3.5" aria-hidden />
-              Footer
-            </Button>
-          )}
-        </div>
-      )}
-    </section>
-  ) : null
-
-  const renderMobilePageSettings = useCallback(
-    (ctx: MobilePageSettingsSlotContext) => (
-      <MobilePageSettingsLayout
-        header={ctx.header}
-        body={
-          <>
-            {ctx.titleField}
-            {ctx.slugField}
-            {mobileNavigationSection}
-          </>
-        }
-      />
-    ),
-    [mobileNavigationSection],
-  )
-
-  const renderMobileSeoSettings = useCallback(
-    (ctx: MobileSeoSettingsSlotContext) => (
-      <MobileSeoSettingsLayout
-        header={ctx.header}
-        body={ctx.body}
-        mediaSheet={ctx.mediaSheet}
-      />
-    ),
-    [],
-  )
-
   // View-live + copy-URL affordances. Page editor saves publish page rows
   // internally; the status field is no longer an editor-facing control.
   const liveLinks = form.watch("slug") ? (
@@ -1943,6 +1745,155 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     </>
   ) : null
 
+  // The visual pane is always the authenticated `/__editor-frame` iframe when
+  // renderer settings are available. Parent owns RHF/save/ThemeBar/sidebars;
+  // the iframe owns render, inline edit, DnD, gutters, and chrome selection.
+  const watchedSeo = form.watch("seo")
+  const watchedSlug = form.watch("slug")
+  const iframeAnalyticsContext = useMemo(
+    () => ({ tenantId, tenantSlug: tenantSlug ?? null, siteDomain: tenantDomain ?? null }),
+    [tenantId, tenantSlug, tenantDomain],
+  )
+  const framePage = useMemo(
+    () => pageToJson(
+      {
+        id: initial?.id,
+        title: pageTitle,
+        slug: watchedSlug,
+        blocks: watchedBlocks,
+        seo: watchedSeo,
+        updatedAt: initial?.updatedAt,
+      },
+      iframeAnalyticsContext,
+      { preserveBlockIds: true },
+    ) as ContractPage,
+    [initial?.id, initial?.updatedAt, pageTitle, watchedSlug, watchedBlocks, watchedSeo, iframeAnalyticsContext],
+  )
+  const frameSettings = rendererSettingsState as ContractSiteSettings | null
+  const frameTheme = useMemo(() => cmsThemeToRendererTheme(themeState), [themeState])
+  const frameEditorLayout = isDesktop ? "desktop" : "mobile"
+  const frameEditorView: PageEditorFrameView = readOnly ? "sidebar" : isDesktop ? mode : "canvas"
+  const canRenderEditorFrame = frameSettings != null
+  const framePageId = initial?.id ?? "new"
+  const frameSelection = useMemo(
+    () => elementPathToIframeSelection(selected, watchedBlocks, framePageId),
+    [framePageId, selected, watchedBlocks],
+  )
+  const handleFrameSelectionChanged = useCallback((selection: IframeEditorSelection | null) => {
+    if (readOnly) return
+    if (!selection) {
+      setSelectedChrome(null)
+      setSelected(null)
+      return
+    }
+    const path = iframeSelectionToElementPath(selection, watchedBlocks)
+    if (!path) return
+    setChromeQuickMenu(null)
+    setSelectedChrome(null)
+    setSelected(path)
+  }, [readOnly, watchedBlocks])
+  const handleFrameChromeSelect = useCallback(
+    (zone: "header" | "footer", point?: { x: number; y: number }) => {
+      selectChrome({ zone }, point)
+    },
+    [selectChrome],
+  )
+  const handleFrameChromeGeometry = useCallback(
+    (zone: "header" | "footer", rect: { x: number; y: number; width: number; height: number }) => {
+      if (mode !== "canvas") return
+      selectChrome(
+        { zone },
+        { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
+      )
+    },
+    [mode, selectChrome],
+  )
+  const frameMutations = useMemo(() => ({
+    onBlocksInsert: ({
+      block,
+      index,
+      beforeBlockId,
+      afterBlockId,
+    }: {
+      block: Record<string, unknown>
+      index?: number
+      beforeBlockId?: string
+      afterBlockId?: string
+    }) => {
+      let at = index ?? watchedBlocks.length
+      if (afterBlockId) {
+        const afterIndex = findBlockIndexByWireId(watchedBlocks, afterBlockId)
+        if (afterIndex >= 0) at = afterIndex + 1
+      } else if (beforeBlockId) {
+        const beforeIndex = findBlockIndexByWireId(watchedBlocks, beforeBlockId)
+        if (beforeIndex >= 0) at = beforeIndex
+      }
+      insertBlockAtIndex(at, block)
+      setSelected((prev) => remapSelectionAfterInsert(prev, at))
+    },
+    onBlocksDelete: ({ blockId }: { blockId: string }) => {
+      const index = findBlockIndexByWireId(watchedBlocks, blockId)
+      if (index < 0) return
+      deleteBlock(index)
+    },
+    onBlocksReorder: ({ blockIds }: { blockIds: string[] }) => {
+      const byId = new Map<string, unknown>()
+      for (const block of watchedBlocks) {
+        if (!block || typeof block !== "object") continue
+        const id = blockWireId(block as Record<string, unknown>)
+        if (id) byId.set(id, block)
+      }
+      const reordered = blockIds.map((id) => byId.get(id)).filter((block) => block != null)
+      if (reordered.length !== watchedBlocks.length) return
+      form.setValue("blocks", reordered, { shouldDirty: true })
+    },
+    onBlockPatch: ({ blockId, patch }: { blockId: string; patch: Record<string, unknown> }) => {
+      const index = findBlockIndexByWireId(watchedBlocks, blockId)
+      if (index < 0) return
+      form.setValue(`blocks.${index}`, { ...watchedBlocks[index], ...patch }, { shouldDirty: true })
+    },
+    onFieldCommit: ({
+      blockId,
+      fieldPath,
+      value,
+    }: {
+      blockId: string
+      fieldPath: readonly string[]
+      value: unknown
+    }) => {
+      const index = findBlockIndexByWireId(watchedBlocks, blockId)
+      if (index < 0 || fieldPath.length < 2 || fieldPath[0] !== "blocks") return
+      const field = fieldPath.slice(2).join(".")
+      if (!field) {
+        form.setValue(`blocks.${index}`, value as Record<string, unknown>, { shouldDirty: true })
+        return
+      }
+      form.setValue(`blocks.${index}.${field}` as any, value, { shouldDirty: true })
+    },
+  }), [deleteBlock, form, insertBlockAtIndex, watchedBlocks])
+
+  const pageEditorFrame = canRenderEditorFrame ? (
+    <PageEditorFrameHost
+      layout={frameEditorLayout}
+      pageId={framePageId}
+      page={framePage}
+      settings={frameSettings!}
+      theme={frameTheme}
+      view={frameEditorView}
+      tenantId={tenantId}
+      selection={frameSelection}
+      onSelectionChanged={handleFrameSelectionChanged}
+      onOpenBlockInspector={openBlockInSidebar}
+      onChromeSelect={handleFrameChromeSelect}
+      onChromeGeometry={handleFrameChromeGeometry}
+      mutations={readOnly ? undefined : frameMutations}
+    />
+  ) : (
+    <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+      Site settings are required before the editor frame can load.
+    </p>
+  )
+
   return (
     <RtManifestProvider manifest={manifest}>
     <Form {...form}>
@@ -1952,9 +1903,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         className="flex flex-col w-full"
       >
         {/*
-          CanvasSelectionProvider wraps both view branches so the selection
-          state flows through CanvasMode (inline primitives) and through
-          SidebarDrillDown without any prop drilling.
+          CanvasSelectionProvider wraps both view branches so selection
+          state flows through the iframe editor surface and SidebarDrillDown
+          without any prop drilling.
         */}
         <CanvasSelectionProvider value={{ view: readOnly ? "sidebar" : mode, selected, select: selectElement }}>
 
@@ -2003,34 +1954,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
               <div className="w-full">
                 <MobileMediaSheetProvider>
                 <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                  <CanvasMode
-                    view="canvas"
-                    manifest={manifest}
-                    tenantCss={stableTenantCss}
-                    theme={themeState}
-                    rendererSettings={rendererSettingsState}
-                    tenantId={tenantId}
-                    tenantSlug={tenantSlug}
-                    tenantDomain={tenantDomain}
-                    readOnly={readOnly}
-                    headerChrome={headerChrome}
-                    footerChrome={footerChrome}
-                    renderHeaderChrome={renderHeaderChrome}
-                    renderFooterChrome={renderFooterChrome}
-                    seoCard={pageSettings}
-                    dangerZone={dangerZone}
-                    reorderBlocks={reorderBlocks}
-                    deleteBlock={deleteBlock}
-                    duplicateBlock={duplicateBlock}
-                    pageTitle={pageTitle}
-                    onDeletePage={onDeletePage}
-                    onOpenBlockInspector={openBlockInSidebar}
-                    renderMobileList={renderMobileList}
-                    renderMobileSectionEdit={renderMobileSectionEdit}
-                    renderMobileInspector={renderMobileInspector}
-                    renderMobilePageSettings={renderMobilePageSettings}
-                    renderMobileSeoSettings={renderMobileSeoSettings}
-                  />
+                  {pageEditorFrame}
                 </BlockPresetsProvider>
                 </MobileMediaSheetProvider>
                 {/* SEO + Danger grid: full-width breakout cancels main p-4/p-6 padding */}
@@ -2055,34 +1979,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
               <div className="flex w-full min-w-0 items-start gap-3 pt-2">
                 <div ref={canvasPaneRef} className="flex-1 min-w-0 pb-24">
                   <MobileMediaSheetProvider>
-                      <CanvasMode
-                        view="sidebar"
-                        manifest={manifest}
-                        tenantCss={stableTenantCss}
-                        theme={themeState}
-                        rendererSettings={rendererSettingsState}
-                        tenantId={tenantId}
-                        tenantSlug={tenantSlug}
-                        tenantDomain={tenantDomain}
-                        readOnly={readOnly}
-                        headerChrome={headerChrome}
-                        footerChrome={footerChrome}
-                        renderHeaderChrome={renderHeaderChrome}
-                        renderFooterChrome={renderFooterChrome}
-                      seoCard={pageSettings}
-                      dangerZone={dangerZone}
-                      reorderBlocks={reorderBlocks}
-                      deleteBlock={deleteBlock}
-                      duplicateBlock={duplicateBlock}
-                      pageTitle={pageTitle}
-                      onDeletePage={onDeletePage}
-                      onOpenBlockInspector={openBlockInSidebar}
-                      renderMobileList={renderMobileList}
-                      renderMobileSectionEdit={renderMobileSectionEdit}
-                      renderMobileInspector={renderMobileInspector}
-                      renderMobilePageSettings={renderMobilePageSettings}
-                      renderMobileSeoSettings={renderMobileSeoSettings}
-                    />
+                      {pageEditorFrame}
                   </MobileMediaSheetProvider>
                 </div>
                 {isDesktop && !readOnly && (
@@ -2149,6 +2046,18 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
               onSave={triggerSave}
             />
           </div>
+        )}
+        {!isDesktop && !readOnly && mobileBlockInspectorIndex != null && watchedBlocks[mobileBlockInspectorIndex] && (
+          <MobileMediaSheetProvider>
+            <MobileBlockInspectorSheet
+              blockIndex={mobileBlockInspectorIndex}
+              block={watchedBlocks[mobileBlockInspectorIndex]}
+              manifest={manifest}
+              theme={themeState}
+              onClose={closeMobileBlockInspector}
+              onDeleteBlock={handleMobileBlockDelete}
+            />
+          </MobileMediaSheetProvider>
         )}
       </form>
       {/* Floating mode bar — canvas/sidebar switcher, fixed bottom-centre. Desktop only: mobile has a single view. */}

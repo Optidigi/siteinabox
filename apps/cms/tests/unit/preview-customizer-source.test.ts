@@ -3,7 +3,7 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 describe("preview customizer source contract", () => {
-  it("uses the shared editor canvas directly and does not render an iframe", () => {
+  it("hosts customer preview through an embedded renderer iframe contract", () => {
     const componentSource = fs.readFileSync(
       path.resolve(process.cwd(), "src/components/preview/PreviewCustomizer.tsx"),
       "utf8",
@@ -13,13 +13,20 @@ describe("preview customizer source contract", () => {
       "utf8",
     )
 
-    expect(componentSource).toContain("@/components/editor/canvas/CanvasMode")
-    expect(componentSource).toContain("<CanvasMode")
-    expect(componentSource).toContain("readOnly")
+    expect(componentSource).toContain("/__renderer-frame/preview/")
+    expect(componentSource).toContain("data-siab-renderer-frame")
+    expect(componentSource).toMatch(/<iframe\b/i)
+    expect(componentSource.includes("@/components/editor/canvas/CanvasMode")).toBe(false)
+    expect(componentSource.includes("<CanvasMode")).toBe(false)
+    expect(componentSource).toContain("@siteinabox/contracts")
+    expect(componentSource).toContain("IFRAME_EDITOR_PROTOCOL_NAME")
+    expect(componentSource).toContain('type: "page.replace"')
+    expect(componentSource).toContain('type: "theme.patch"')
+    expect(componentSource).not.toContain("siab.renderer.")
     expect(componentSource).toContain("radiusLevels={RADIUS_PRESETS}")
     expect(componentSource).not.toContain("densityLevels={DENSITY_PRESETS}")
     expect(componentSource).not.toContain("stylePresetLevels={STYLE_PRESETS}")
-    expect(componentSource).toContain('view="preview"')
+    expect(componentSource.includes('view="preview"')).toBe(false)
     expect(componentSource).not.toContain('aria-label={t("pagesNav")}')
     expect(componentSource).toContain('access.type === "grant"')
     expect(componentSource).toContain('const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"')
@@ -34,7 +41,7 @@ describe("preview customizer source contract", () => {
     expect(componentSource).toContain("paymentState?.status")
     expect(componentSource).not.toContain("Approve & Pay")
     expect(componentSource).not.toContain('t("approvePreview")')
-    expect(componentSource).not.toMatch(/<iframe\b/i)
-    expect(routeSource).not.toMatch(/<iframe\b/i)
+    expect(componentSource.includes("@siteinabox/site-renderer")).toBe(false)
+    expect(/<iframe\b/i.test(routeSource)).toBe(false)
   })
 })

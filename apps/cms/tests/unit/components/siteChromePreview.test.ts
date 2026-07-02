@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 
 const source = () => readFileSync("src/components/editor/canvas/SiteChromePreview.tsx", "utf8")
 const pageFormSource = () => readFileSync("src/components/forms/PageForm.tsx", "utf8")
-const canvasModeSource = () => readFileSync("src/components/editor/canvas/CanvasMode.tsx", "utf8")
+const canvasModeSource = () => readFileSync("src/components/editor/canvas/CanvasSurface.tsx", "utf8")
 const gutterOverlaySource = () => readFileSync("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx", "utf8")
 
 describe("SiteChromePreview chrome actions", () => {
@@ -134,9 +134,9 @@ describe("SiteChromePreview chrome actions", () => {
 
   it("keeps shared renderer chrome DOM direct and uses a portal overlay target for edit affordances", () => {
     const file = source()
-    const pageForm = pageFormSource()
+    const frameSurface = readFileSync("src/components/editor-frame/FrameCanvasSurface.tsx", "utf8")
 
-    expect(pageForm).toContain("<SiteChromeActionFrame")
+    expect(frameSurface).toContain("<SiteChromeActionFrame")
     expect(file).toContain("const useOverlayTarget = showOptionsButton && !!overlayTargetSelector")
     expect(file).toContain("{useOverlayTarget ? (")
     expect(file).toContain(") : (")

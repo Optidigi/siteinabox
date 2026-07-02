@@ -14,7 +14,7 @@ export interface BlockGutterProps {
   onDelete: () => void
   onDuplicate: () => void
   /** dnd-kit listeners/attributes for the drag handle, forwarded from the
-   *  sortable wrapper in CanvasMode. Pass undefined if DnD not wired. */
+   *  sortable wrapper in the frame canvas surface. Pass undefined if DnD not wired. */
   dragHandleProps?: Record<string, unknown>
 }
 

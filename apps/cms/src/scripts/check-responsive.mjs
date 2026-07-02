@@ -145,7 +145,7 @@ function scanSiteFile(file, source) {
 
 function scanPayload(rootDir) {
   const files = [
-    join(rootDir, "src/components/editor/canvas/CanvasMode.tsx"),
+    join(rootDir, "src/components/editor/canvas/CanvasSurface.tsx"),
     join(rootDir, "src/styles/siab.css"),
   ]
 

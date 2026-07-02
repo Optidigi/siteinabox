@@ -11,11 +11,33 @@ Reference for how the page editor's canvas + sidebar surfaces are wired. The hig
 
 ## Selection model
 
-An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/components/editor/canvas/elementPath.ts`) is the stable address of one editable element. `CanvasSelectionContext` carries `{ view, selected, select }`; `PageForm` owns the `selected` state and provides it. The inline primitives read this context: in `sidebar` view they render read-only and `select(elementPath)` on click; in `canvas` view they edit in place. `CanvasMode` takes a `view` prop and renders only the canvas pane — the desktop sidebar is composed by `PageForm`, not `CanvasMode`.
+An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/components/editor/canvas/elementPath.ts`) is the stable address of one editable element. `CanvasSelectionContext` carries `{ view, selected, select }`; `PageForm` owns the `selected` state and provides it. The inline primitives read this context: in `sidebar` view they render read-only and `select(elementPath)` on click; in `canvas` view they edit in place. The desktop sidebar is composed by `PageForm`, not the iframe frame route.
 
 ## App-shell layout
 
 `PageForm` uses document-scroll: only the browser/window scrollbar exists. The PageMeta header and the ThemeBar are sticky (`sticky top-14 md:top-12` and `top: CHROME_STACK_HEIGHT` = `6.5rem` respectively, via `src/lib/editor/constants.ts`). In sidebar view the right-hand panel is a sticky `<aside>` (`top: CHROME_STACK_HEIGHT; height/maxHeight: calc(100dvh - CHROME_STACK_HEIGHT); overflow-hidden`) so it clears the sticky chrome stack (≈104 px); the inner drill-down has its own internal scrolling per state.
+
+## Iframe editor frame
+
+Desktop and mobile page editing render the visual pane through `PageEditorFrameHost`
+and the authenticated `/__editor-frame/pages/[id]` route. The parent `PageForm`
+still owns RHF, save, ThemeBar, navigation membership, page settings, sidebar
+drill-down, media pickers, and the unsaved-work guard. The iframe owns only the
+rendered visual surface: block rendering, inline editing, DnD, gutters, and
+site-chrome selection. All parent/frame communication uses the typed
+`packages/contracts/src/iframe-editor.ts` postMessage protocol; raw HTML, raw
+CSS, arbitrary class payloads, and executable source do not cross the boundary.
+
+`CanvasSurface` is the transport-neutral render body shared by the iframe editor
+frame (`FrameCanvasSurface` + `useFrameCanvasBlocks`, which mirrors edits locally
+and emits protocol messages back to the parent). The parent remains the source of
+truth and echoes confirmed page/theme/settings state back with `page.replace`
+and `theme.patch`.
+
+The customer preview frame is separate: `PreviewCustomizer` hosts
+`/__renderer-frame/...`, and preview-mode frames accept only `page.replace` and
+`theme.patch`. Customer preview never receives block mutation, selection,
+asset-pick, or chrome-edit messages.
 
 ## Editor error boundary
 
@@ -27,7 +49,7 @@ An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/component
 
 ## Theme control bar
 
-`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill with three segments (`Colours | Fonts | Shape`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`. Each segment opens a panel anchored under it (no inline shape-morph). Sub-controls: `PalettePicker` shows 6 pairs of accent circles (light on top, dark below — every preset has both halves; clicking either applies the matching palette half AND flips `theme.mode`) plus a `+ Custom` popover with a Light/Dark mode tab that edits whichever half is active. `FontPicker` shows 4 cards — Default (uses tenant manifest fonts, falls back to system) + Sans / Serif / Display — each with 3 stacked "Aa" samples (title / heading / text). `RadiusControl` shows 3 corner-radius icons (Sharp / Soft / Round) — border-style is preserved in the schema but not surfaced in the UI. The bar edits **tenant-wide** design tokens — never the CMS's own shadcn tokens — seeded from `FONT_PRESETS` + `PALETTE_PRESETS` in `src/lib/theme/presets.ts`. The schema stores `palette` (light), `darkPalette`, `fonts.{title,heading,text}`, `radius`, `borderStyle`, and `mode: "light"|"dark"`. `toCssVars` emits a base `.rt-canvas { ... }` block plus, when `darkPalette` is set, a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay block; `CanvasMode` stamps `data-rt-mode` from `theme.mode` so the overlay wins. The role tokens consumed by block renderers + `InlineCtaButton` are `var(--font-{title,heading,text})` and `var(--radius-{sm,md,lg})` (sm = radius − 0.25rem clamped at 0; lg = radius + 0.5rem). Changes update `PageForm`'s live `theme` state and debounce-persist to `Tenant.theme` via `setTenantTheme`, validated by `themeSchema`. Live-site honoring of dark mode + the new role tokens is OBS-38 (multi-repo R5 — not in this repo yet).
+`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill with three segments (`Colours | Fonts | Shape`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`. Each segment opens a panel anchored under it (no inline shape-morph). Sub-controls: `PalettePicker` shows 6 pairs of accent circles (light on top, dark below — every preset has both halves; clicking either applies the matching palette half AND flips `theme.mode`) plus a `+ Custom` popover with a Light/Dark mode tab that edits whichever half is active. `FontPicker` shows 4 cards — Default (uses tenant manifest fonts, falls back to system) + Sans / Serif / Display — each with 3 stacked "Aa" samples (title / heading / text). `RadiusControl` shows 3 corner-radius icons (Sharp / Soft / Round) — border-style is preserved in the schema but not surfaced in the UI. The bar edits **tenant-wide** design tokens — never the CMS's own shadcn tokens — seeded from `FONT_PRESETS` + `PALETTE_PRESETS` in `src/lib/theme/presets.ts`. The schema stores `palette` (light), `darkPalette`, `fonts.{title,heading,text}`, `radius`, `borderStyle`, and `mode: "light"|"dark"`. `toCssVars` emits a base `.rt-canvas { ... }` block plus, when `darkPalette` is set, a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay block; `CanvasSurface` stamps `data-rt-mode` from `theme.mode` so the overlay wins. The role tokens consumed by block renderers + `InlineCtaButton` are `var(--font-{title,heading,text})` and `var(--radius-{sm,md,lg})` (sm = radius − 0.25rem clamped at 0; lg = radius + 0.5rem). Changes update `PageForm`'s live `theme` state and debounce-persist to `Tenant.theme` via `setTenantTheme`, validated by `themeSchema`. Live-site honoring of dark mode + the new role tokens is OBS-38 (multi-repo R5 — not in this repo yet).
 
 ## Block renderers
 
@@ -43,13 +65,19 @@ The floating Lexical toolbar (`src/components/editor/richText/toolbar/floating-t
 
 ## Block-array mutations
 
-Mutations go through `useCanvasBlocks` (`src/components/editor/canvas/useCanvasBlocks.ts`) → `setValue("blocks", next, { shouldDirty: true })`. Never mutate the blocks array in place.
+The parent `PageForm` remains the source of truth for block arrays via RHF
+`setValue("blocks", next, { shouldDirty: true })`. Never mutate the blocks array
+in place. Inside the iframe, `useFrameCanvasBlocks`
+(`src/components/editor-frame/useFrameCanvasBlocks.ts`) mirrors edits optimistically
+and emits typed `blocks.*` / `field.commit` messages; `PageEditorFrameHost`
+applies those messages back onto RHF. `SidebarDrillDown` reorder/delete/duplicate
+handlers update RHF directly on desktop.
 
 ## Tenant CSS
 
 Compiled by the tenant's Astro build and loaded from `DATA_DIR/tenants/<id>/cms-editor.css` via `src/lib/editor/loadTenantCss.ts`. That function hoists `@import`/`@charset` and rewrites `:root`/`:host` token selectors to `.rt-canvas` so the tenant's design tokens scope to the canvas surface only. The manifest's `cssEntry` field names the compiled file. If absent, canvas renders without tenant styles (falls back to admin tokens).
 
-OBS-62 responsive contract: desktop canvas renders at actual pane width, not a fixed design width. `.rt-canvas` is the named `site-frame` container (`container-type: inline-size; container-name: site-frame; contain: layout`), and `CanvasMode` wraps the tenant DOM in `.site-frame-root` so tenant CSS can apply container-query-driven global rules without styling the container itself. Generated tenant/site CSS must use named `site-frame` container queries for layout-width responsiveness; `siab-payload` does not runtime-convert `@media`/viewport units into container queries.
+OBS-62 responsive contract: desktop canvas renders at actual pane width, not a fixed design width. `.rt-canvas` is the named `site-frame` container (`container-type: inline-size; container-name: site-frame; contain: layout`), and `CanvasSurface` wraps the tenant DOM in `.site-frame-root` so tenant CSS can apply container-query-driven global rules without styling the container itself. Generated tenant/site CSS must use named `site-frame` container queries for layout-width responsiveness; `siab-payload` does not runtime-convert `@media`/viewport units into container queries.
 
 ## Canvas ↔ sidebar selection sync
 
@@ -57,16 +85,37 @@ Clicking an inline element in the canvas calls `select(elementPath)`; `useScroll
 
 ## Selection remap on mutation
 
-Block-array mutations that reorder, delete, or insert blocks must remap the active `ElementPath` so the selection doesn't drift. `remapSelectionAfterReorder`, `remapSelectionAfterDelete`, and `remapSelectionAfterInsert` (pure helpers in `src/components/editor/canvas/elementPath.ts`) handle this. `useCanvasBlocks` itself only exposes the raw mutators — the remap is applied at the **caller site** by wrapping the call with `setSelected((prev) => remapSelectionAfter*(prev, …))`. Both `PageForm.tsx` and `canvas-mode.tsx` define local mutation handlers (`reorderBlocks` / `deleteBlock` / `duplicateBlock` / `insertBlockAt`) that compose the raw mutator + the remap helper; the mobile path receives those wrapped handlers as props from `PageForm`. Use the wrapped handlers (never the raw `useCanvasBlocks` mutators directly) anywhere block indices may shift.
+Block-array mutations that reorder, delete, or insert blocks must remap the active `ElementPath` so the selection doesn't drift. `remapSelectionAfterReorder`, `remapSelectionAfterDelete`, and `remapSelectionAfterInsert` (pure helpers in `src/components/editor/canvas/elementPath.ts`) handle this. `PageForm` applies the remap when handling iframe `blocks.*` protocol messages and when composing sidebar/canvas mutation handlers.
 
 ## Mobile (<1280px)
 
-`CanvasMode` delegates to `CanvasMobile` (`src/components/editor/canvas/mobile/CanvasMobile.tsx`) → `MobileSectionList` → `MobileSectionEdit` + `MobileInspectorBar` (bottom-sheet, Vaul). The canvas+sidebar layout is replaced with a section-card drill-down. Mobile receives the wrapped block-mutation handlers via props from `PageForm` (the same handlers desktop uses), so selection stays coherent across mutations — see FE-32 in `docs/backlog/features/README.md` for the resolution history.
+Mobile uses the same `PageEditorFrameHost` + `/__editor-frame` route as desktop,
+including `/__editor-frame/pages/new` for unsaved drafts. The frame route boots
+with `createEditorFrameNewPagePlaceholder()` until the parent sends `page.replace`.
+`PageForm` still owns RHF, the floating `MobileSavePill`, and save/status feedback;
+the iframe owns the rendered surface, inline editing, DnD, gutters, and chrome
+selection. Mobile always drives the iframe in `canvas` view (inline editing) even
+when the persisted desktop editor mode is `sidebar`; read-only viewers use
+`sidebar` (select-only) in the frame.
 
-The bottom inspector sheet has snap points `[0.42, 0.92]`. Selecting an element opens the sheet at `0.42`; focusing an editable field inside the inspector promotes it to `0.92` so the field clears the mobile keyboard. Focus leaving the inspector field or keyboard dismissal restores the stored pre-focus detent unless the user manually changed detents. Inspector code must only promote on actual editable targets and must ignore invalid/empty Vaul snap callbacks instead of coercing them into state.
+When the iframe requests block settings (`edit.start` with `mode: "settings"`),
+`PageForm` opens `MobileBlockInspectorSheet` — a parent-owned Vaul bottom sheet
+hosting `BlockFormFields`, media pickers, and delete. Closing the sheet returns
+to iframe canvas editing; block selection stays on the requested block via RHF/
+`selection.set`. This replaces the legacy same-DOM `CanvasMobile` field inspector
+without restoring in-process canvas rendering.
 
-Production CSP is nonce-only for `style-src`, so do not rely on Vaul's un-nonced runtime stylesheet injection for the mobile sheet. The mobile inspector carries the required bottom-snap Vaul mechanics in a nonce-bearing `<style data-mobile-inspector-vaul-css>` tag; drawer visuals/chrome should remain token-class based.
+`PageEditorFrameHost` sets `data-siab-editor-frame-layout="mobile"` and sizes the
+iframe to `calc(100dvh - 4.5rem)` so the editor clears the site header and the
+floating save pill. There is no `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch.
 
-Mobile editor controls follow the same pill language as the floating save/back/trash affordances. Section prev/next/name buttons and the inspector Done/check button should stay round/pill-shaped through local UI composites. The bottom sheet uses Vaul `handleOnly`, so only the visible grip drags the sheet; buttons, media pickers, icon pickers, array rows, and the Done/check control remain normal tappable controls. The Done/check button must both clear mobile selection and participate in Vaul close semantics. Mobile save feedback is owned by `MobileSavePill`: it may briefly show the saved state, then returns to the normal save icon without rendering a separate saved-status badge or continuous pulse animation.
+Legacy mobile layout primitives under `src/components/editor/canvas/mobile/` remain
+for reference and unit contracts; only shared pieces such as `vaulBottomSnapCss`,
+`useInspectorKeyboardLock`, and `MobileMediaSheet` are wired into the iframe mobile
+inspector path.
+
+Mobile editor controls follow the same pill language as the floating save pill.
+The iframe mobile inspector uses a single `0.92` snap detent (not the legacy
+`[0.42, 0.92]` field-level snap contract).
 
 ## Visual auditing

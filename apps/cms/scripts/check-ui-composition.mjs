@@ -18,7 +18,7 @@ const ALLOWED_NATIVE_BUTTON_FILES = new Set([
   "src/components/data-table.tsx",
   "src/components/editor/FieldRenderer.tsx",
   "src/components/editor/canvas/CanvasChromeGutterOverlay.tsx",
-  "src/components/editor/canvas/CanvasMode.tsx",
+  "src/components/editor/canvas/CanvasSurface.tsx",
   "src/components/editor/canvas/SiteChromePreview.tsx",
   "src/components/editor/canvas/blocks/ContactSection.tsx",
   "src/components/editor/canvas/blocks/FeatureList.tsx",

@@ -111,9 +111,9 @@ configured.
 ## MCP Servers
 
 Project MCP definitions are kept in `.mcp.json`, `.mcp.toml`,
-`.codex/config.toml`, and `.codex/mcp.toml`. Keep all four server lists in
-sync. `.codex/` is for Codex-specific config; `.agents/` is for generic
-agent-discovery metadata.
+`.codex/config.toml`, `.codex/mcp.toml`, and `.cursor/mcp.json`. Keep all five
+server lists in sync. `.codex/` is for Codex-specific config, `.cursor/` is for
+Cursor-specific config, and `.agents/` is for generic agent-discovery metadata.
 
 Configured servers:
 

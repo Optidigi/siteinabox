@@ -43,24 +43,31 @@ const ARRAY_ROW_KEYS = new Set([
  *   - drops `blockName` when it's null/undefined (Payload sets it to null
  *     when unset in the admin form; that null leaks into JSON noisily)
  */
-const projectField = (v: any, parentArrayKey?: string): any => {
+const projectField = (v: any, parentArrayKey?: string, options?: { preserveBlockIds?: boolean }): any => {
   if (v == null) return v
-  if (Array.isArray(v)) return v.map((item) => projectField(item, parentArrayKey))
+  if (Array.isArray(v)) return v.map((item) => projectField(item, parentArrayKey, options))
   if (typeof v === "object") {
     if (isPopulatedMediaShape(v)) return mediaToJson(v)
 
     const insideArrayRow = parentArrayKey && ARRAY_ROW_KEYS.has(parentArrayKey)
     const out: Json = {}
     for (const [k, val] of Object.entries(v)) {
-      // Strip the Payload-assigned id on rows inside known array fields.
-      if (insideArrayRow && k === "id") continue
+      // Strip the Payload-assigned id on rows inside known array fields unless
+      // the editor-frame wire path explicitly preserves top-level block ids.
+      if (insideArrayRow && k === "id") {
+        if (!(options?.preserveBlockIds && parentArrayKey === "blocks")) continue
+        const wireId = typeof val === "string" ? val.trim() : typeof val === "number" ? String(val) : ""
+        if (!wireId) continue
+        out[k] = wireId
+        continue
+      }
       // Drop null/undefined/empty blockName. Payload's admin sets it to null
       // when blank; some UI versions emit "" instead. Either way the consumer
       // doesn't want to ship a no-op blockName.
       if (k === "blockName" && (val == null || val === "")) continue
       // Recurse. When the value IS the named array (e.g. blocks: [...]),
       // pass `k` so children know they're inside an array-row.
-      out[k] = projectField(val, ARRAY_ROW_KEYS.has(k) ? k : undefined)
+      out[k] = projectField(val, ARRAY_ROW_KEYS.has(k) ? k : undefined, options)
     }
     return out
   }
@@ -127,11 +134,19 @@ const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
   }
 }
 
-export function pageToJson(doc: Json, analyticsContext: PageAnalyticsProjectionContext = {}): Json {
+export type PageToJsonOptions = {
+  preserveBlockIds?: boolean
+}
+
+export function pageToJson(
+  doc: Json,
+  analyticsContext: PageAnalyticsProjectionContext = {},
+  options: PageToJsonOptions = {},
+): Json {
   const pageSlug = String(doc.slug ?? "")
   const pagePath = pagePathForSlug(pageSlug)
   const blocks = ((doc.blocks ?? []) as Json[])
-    .map((b) => sanitizeBlockHrefs(projectField(b, "blocks")))
+    .map((b) => sanitizeBlockHrefs(projectField(b, "blocks", options)))
     .map((block, index) => ({
       ...block,
       analytics: blockAnalytics(block, index, pageSlug),
