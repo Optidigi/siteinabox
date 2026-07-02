@@ -79,7 +79,7 @@ Configured root servers:
 - `github`: `npx -y @modelcontextprotocol/server-github`
 - `context7`: `npx -y @upstash/context7-mcp`
 - `better-auth`: `https://mcp.better-auth.com/mcp`
-- `cloudflare`: `https://mcp.cloudflare.com/mcp`
+- `cloudflare-api`: `https://mcp.cloudflare.com/mcp`
 - `docker`: `npx -y mcp-server-docker`
 - `sequential-thinking`: `npx -y @modelcontextprotocol/server-sequential-thinking`
 - `posthog`: `https://mcp.posthog.com/mcp`
@@ -102,7 +102,7 @@ repo-local source.
 Task routing:
 
 - Cloudflare DNS, proxy, Workers, Email Sending, Turnstile, analytics, or API
-  work: use `cloudflare`.
+  work: use `cloudflare-api`.
 - Better Auth configuration, routes, plugin behavior, session, magic-link, or
   social-auth work: use `better-auth`.
 - shadcn primitive discovery or upstream component comparison: use `shadcn`.

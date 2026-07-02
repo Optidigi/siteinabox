@@ -24,8 +24,7 @@
       "type": "http",
       "url": "https://mcp.better-auth.com/mcp"
     },
-    "cloudflare": {
-      "type": "http",
+    "cloudflare-api": {
       "url": "https://mcp.cloudflare.com/mcp"
     },
     "docker": {

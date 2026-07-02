@@ -124,7 +124,7 @@ Configured servers:
 - `sequential-thinking`: `npx -y @modelcontextprotocol/server-sequential-thinking`
 - `context7`: `npx -y @upstash/context7-mcp`
 - `better-auth`: `https://mcp.better-auth.com/mcp`
-- `cloudflare`: `https://mcp.cloudflare.com/mcp`
+- `cloudflare-api`: `https://mcp.cloudflare.com/mcp`
 - `posthog`: `https://mcp.posthog.com/mcp`; supply credentials/auth from
   user-scope Codex config or user environment, never repo config.
 
@@ -144,7 +144,7 @@ source.
 Task routing:
 
 - Cloudflare DNS, proxy, Workers, Email Sending, Turnstile, analytics, or API
-  work: use `cloudflare`.
+  work: use `cloudflare-api`.
 - Better Auth configuration, routes, plugin behavior, session, magic-link, or
   social-auth work: use `better-auth`.
 - shadcn primitive discovery or upstream component comparison: use `shadcn`.
