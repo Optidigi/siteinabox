@@ -33,20 +33,7 @@ artifacts, and the provisional product app shell.
 
 ## Open Follow-Up
 
-- Keep the production deploy contract for the generic `apps/renderer` image in
-  `apps/renderer/README.md` and `docs/runbooks/deploy.md` current as the
-  renderer moves from reserved/foundation work to an approved deploy target.
-  It must stay platform-owned and must not introduce per-tenant images,
-  workflows, or source folders.
-- Define any future tenant provisioning/deploy automation as product code or
-  approved infra automation, not as prompt/runbook command flows.
-- Keep local MCP declarations in `.mcp.json`, `.mcp.toml`,
-  `.codex/config.toml`, and `.codex/mcp.toml` synchronized between the
-  monorepo root and `apps/cms`. Use the matching MCP for vendor-specific work
-  when available.
-- Treat retired legacy tenants as out of scope for the current SIAB tenant
-  roster. Do not recreate tenant-specific operations until a future migration
-  is explicitly approved.
+No current open infra follow-up.
 
 ## Implemented Foundation
 
@@ -78,6 +65,9 @@ exact routers continue to win. Future non-`.nl` TLD support still needs an
 approved routing/certificate automation rule before those domains can be
 activated.
 
+Backlog audit on 2026-07-02 confirmed the renderer production deploy contract
+is current in `apps/renderer/README.md` and `apps/cms/docs/runbooks/deploy.md`.
+
 ### 2026-06-29 — Legacy source cleanup
 
 **Status:** Applied.
@@ -90,3 +80,19 @@ trees must not be restored.
 
 Production cleanup removed stale renderer staging tenants for
 `amicare.optidigi.nl`.
+
+### 2026-07-02 — Infra backlog audit closures
+
+**Status:** Applied.
+
+Confirmed that future tenant provisioning/deploy automation is represented as
+product code and approved infra automation through the OpenProvider,
+Cloudflare, renderer, and tenant Email Sending service boundaries, not
+prompt/runbook command flows.
+
+Confirmed that local MCP declarations are synchronized between the monorepo
+root and `apps/cms`.
+
+Confirmed there is no `sites/` source tree in the monorepo. Retired legacy
+tenants remain out of scope for the current SIAB tenant roster unless a future
+migration is explicitly approved.

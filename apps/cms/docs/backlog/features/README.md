@@ -26,6 +26,12 @@ depended on command-run site generation are no longer current source of truth.
 - Mollie is the selected payment provider. Payment-provider-specific code must
   stay behind the CMS Mollie adapter/service boundary and must not publish or
   activate sites by itself.
+- The public `apps/landing` marketing site uses Google Analytics. Do not add
+  PostHog there unless this product decision changes.
+- Future source-backed generated-site material should come from Tailwind blocks
+  and Tailwind-based libraries with approved provenance, such as Tailwind Plus,
+  Preline, Mamba UI, HyperUI, and Tailblocks. Shadcn blocks are not part of the
+  current generated-site source plan.
 
 ## Open Follow-Up
 
@@ -35,9 +41,6 @@ depended on command-run site generation are no longer current source of truth.
   responsibilities as part of that decision.
 - Keep CMS feature work tracked in focused entries or runbooks that match the
   current codebase, not removed generation workflows.
-- Add PostHog analytics to the public `apps/landing` Site in a Box marketing
-  site. Track complete SIAB funnel and content-performance context there too,
-  not only generated tenant sites and CMS/admin usage.
 - Improve the CMS analytics UI so it is more intuitive for operators and
   customers. The dashboard should make visitors, conversions, section behavior,
   block performance, funnel health, and recommended actions easier to scan and
@@ -52,10 +55,6 @@ depended on command-run site generation are no longer current source of truth.
   navigation, footer, error/empty states, and any required conversion or trust
   sections. Add missing surfaces through the same contract/catalog/schema/
   renderer/canvas path instead of one-off code.
-- Introduce approved shadcn blocks as future site-generation source material.
-  They need provenance, license/availability review, structured CMS field
-  mappings, renderer-owned implementations, editable canvas support, and tests
-  before AI can use them.
 - Confirm and enforce that every generated site receives complete SIAB-owned
   PostHog analytics configuration by default, with correct consent behavior,
   public proxy/host config, tenant/site/page/block metadata, and publish-time
@@ -99,9 +98,8 @@ applies it through the CMS SiteGenerationSpec importer to create draft
 tenant/page/settings data. The workflow records hashes, validation, apply
 results, linked CMS records, and failure details.
 
-Remaining integration points:
+Remaining integration point:
 
-- Connect the public `siteinabox.nl/intake` form UI to `POST /api/intake`.
 - Add the later approval/payment/publish handoff after product architecture is
   approved.
 
@@ -109,6 +107,9 @@ Phase 4 hardening on 2026-06-26 aligned generated root pages on the renderer's
 `index` convention, rejected public test-only fixture controls at the intake
 route boundary, kept fixture selection available only through internal test
 hooks, and made draft import writes skip projection/source-file hooks.
+
+Follow-up on 2026-07-02 connected the public `apps/intake` form UI to CMS
+`POST /api/intake` through the intake app submission client and CMS route.
 
 ### Phase 7 — AI generation service
 
