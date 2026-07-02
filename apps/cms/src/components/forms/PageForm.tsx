@@ -1745,7 +1745,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     </>
   ) : null
 
-  // The visual pane is always the authenticated `/__editor-frame` iframe when
+  // The visual pane is always the authenticated `/editor-frame` iframe when
   // renderer settings are available. Parent owns RHF/save/ThemeBar/sidebars;
   // the iframe owns render, inline edit, DnD, gutters, and chrome selection.
   const watchedSeo = form.watch("seo")

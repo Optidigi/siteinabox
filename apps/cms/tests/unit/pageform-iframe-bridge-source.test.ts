@@ -16,7 +16,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).not.toContain("NEXT_PUBLIC_IFRAME_PAGE_EDITOR")
     expect(host).toContain("export function PageEditorFrameHost")
     expect(host).toContain("export type PageEditorFrameLayout")
-    expect(host).toContain("/__editor-frame/pages/")
+    expect(host).toContain("/editor-frame/pages/")
     expect(host).toContain("tenantSlug")
     expect(host).toContain("URLSearchParams")
     expect(host).toContain("@siteinabox/contracts/iframe-editor")

@@ -20,7 +20,7 @@ An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/component
 ## Iframe editor frame
 
 Desktop and mobile page editing render the visual pane through `PageEditorFrameHost`
-and the authenticated `/__editor-frame/pages/[id]` route. The parent `PageForm`
+and the authenticated `/editor-frame/pages/[id]` route. The parent `PageForm`
 still owns RHF, save, ThemeBar, navigation membership, page settings, sidebar
 drill-down, media pickers, and the unsaved-work guard. The iframe owns only the
 rendered visual surface: block rendering, inline editing, DnD, gutters, and
@@ -35,7 +35,7 @@ truth and echoes confirmed page/theme/settings state back with `page.replace`
 and `theme.patch`.
 
 The customer preview frame is separate: `PreviewCustomizer` hosts
-`/__renderer-frame/...`, and preview-mode frames accept only `page.replace` and
+`/renderer-frame/...`, and preview-mode frames accept only `page.replace` and
 `theme.patch`. Customer preview never receives block mutation, selection,
 asset-pick, or chrome-edit messages.
 
@@ -89,8 +89,8 @@ Block-array mutations that reorder, delete, or insert blocks must remap the acti
 
 ## Mobile (<1280px)
 
-Mobile uses the same `PageEditorFrameHost` + `/__editor-frame` route as desktop,
-including `/__editor-frame/pages/new` for unsaved drafts. The frame route boots
+Mobile uses the same `PageEditorFrameHost` + `/editor-frame` route as desktop,
+including `/editor-frame/pages/new` for unsaved drafts. The frame route boots
 with `createEditorFrameNewPagePlaceholder()` until the parent sends `page.replace`.
 `PageForm` still owns RHF, the floating `MobileSavePill`, and save/status feedback;
 the iframe owns the rendered surface, inline editing, DnD, gutters, and chrome

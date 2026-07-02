@@ -115,8 +115,8 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
   })
 
   describe("renderer frame path can be embedded by the same-origin CMS shell only", () => {
-    it("/__renderer-frame* uses frame-ancestors 'self' and X-Frame-Options SAMEORIGIN", async () => {
-      const res = await middleware(reqAt("/__renderer-frame/preview/optidigi"))
+    it("/renderer-frame* uses frame-ancestors 'self' and X-Frame-Options SAMEORIGIN", async () => {
+      const res = await middleware(reqAt("/renderer-frame/preview/optidigi"))
       const csp = headerOf(res, "content-security-policy")
 
       expect(csp).toMatch(/frame-ancestors\s+'self'/)
@@ -125,8 +125,8 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
       expect(headerOf(res, "x-content-type-options")).toBe("nosniff")
     })
 
-    it("/__editor-frame* uses frame-ancestors 'self' and X-Frame-Options SAMEORIGIN", async () => {
-      const res = await middleware(reqAt("/__editor-frame/pages/42"))
+    it("/editor-frame* uses frame-ancestors 'self' and X-Frame-Options SAMEORIGIN", async () => {
+      const res = await middleware(reqAt("/editor-frame/pages/42"))
       const csp = headerOf(res, "content-security-policy")
 
       expect(csp).toMatch(/frame-ancestors\s+'self'/)
@@ -136,7 +136,7 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
     })
 
     it("does not relax frame ancestors for similarly named non-frame routes", async () => {
-      for (const p of ["/__renderer", "/renderer-frame/preview/optidigi", "/editor-frame/pages/42", "/sites/foo/pages/123"]) {
+      for (const p of ["/__renderer", "/renderer", "/editor", "/sites/foo/pages/123"]) {
         const res = await middleware(reqAt(p))
 
         expect(headerOf(res, "content-security-policy"), `path=${p}`).toMatch(/frame-ancestors\s+'none'/)

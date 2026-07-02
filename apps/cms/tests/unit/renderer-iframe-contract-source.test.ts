@@ -48,7 +48,7 @@ describe("renderer iframe source contract", () => {
   it("keeps customer preview on an iframe renderer host instead of same-DOM CanvasMode", () => {
     const previewCustomizer = read(sourcePath("src/components/preview/PreviewCustomizer.tsx"))
 
-    expect(previewCustomizer).toContain("/__renderer-frame/preview/")
+    expect(previewCustomizer).toContain("/renderer-frame/preview/")
     expect(previewCustomizer).toContain("data-siab-renderer-frame")
     expect(previewCustomizer).toMatch(/<iframe\b/i)
     expect(previewCustomizer.includes("@/components/editor/canvas/CanvasMode")).toBe(false)

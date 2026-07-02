@@ -101,10 +101,10 @@ const isPreviewPath = (p: string): boolean =>
   p === "/__preview" || p.startsWith("/__preview/")
 
 const isRendererFramePath = (p: string): boolean =>
-  p === "/__renderer-frame" || p.startsWith("/__renderer-frame/")
+  p === "/renderer-frame" || p.startsWith("/renderer-frame/")
 
 const isEditorFramePath = (p: string): boolean =>
-  p === "/__editor-frame" || p.startsWith("/__editor-frame/")
+  p === "/editor-frame" || p.startsWith("/editor-frame/")
 
 // Stamp the audit-p1 #4 security-header set onto a response. Centralised so
 // the rate-limit branch's 429 path and the regular pass-through path both

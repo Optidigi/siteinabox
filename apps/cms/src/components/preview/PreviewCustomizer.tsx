@@ -210,10 +210,10 @@ export function PreviewCustomizer({
   const frameSrc = React.useMemo(() => {
     const slug = page.slug && page.slug !== "index" ? `/pages/${encodeURIComponent(page.slug)}` : ""
     if (access.type === "grant") {
-      return `/__renderer-frame/preview/${encodeURIComponent(access.clientSlug)}${slug}`
+      return `/renderer-frame/preview/${encodeURIComponent(access.clientSlug)}${slug}`
     }
     if (access.type === "legacy-token") {
-      return `/__renderer-frame/preview-token/${encodeURIComponent(access.token)}${slug}`
+      return `/renderer-frame/preview-token/${encodeURIComponent(access.token)}${slug}`
     }
     return null
   }, [access, page.slug])

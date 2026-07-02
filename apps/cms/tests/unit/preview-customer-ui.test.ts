@@ -11,7 +11,7 @@ describe("customer preview UI", () => {
 
     expect(customizer.includes('view: "preview"')).toBe(false)
     expect(customizer).toContain("data-siab-renderer-frame")
-    expect(customizer).toContain("/__renderer-frame/preview/")
+    expect(customizer).toContain("/renderer-frame/preview/")
     expect(customizer.includes('view="preview"')).toBe(false)
     expect(customizer.includes("<CanvasMode")).toBe(false)
     expect(customizer).toContain('variant="success"')

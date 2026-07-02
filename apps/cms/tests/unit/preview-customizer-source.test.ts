@@ -13,7 +13,7 @@ describe("preview customizer source contract", () => {
       "utf8",
     )
 
-    expect(componentSource).toContain("/__renderer-frame/preview/")
+    expect(componentSource).toContain("/renderer-frame/preview/")
     expect(componentSource).toContain("data-siab-renderer-frame")
     expect(componentSource).toMatch(/<iframe\b/i)
     expect(componentSource.includes("@/components/editor/canvas/CanvasMode")).toBe(false)

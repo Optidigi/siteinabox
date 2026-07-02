@@ -50,7 +50,7 @@ describe("PageForm wiring boundaries", () => {
     expect(pageForm).toContain("SiteChromeRow")
     expect(pageForm).toContain("<PageEditorFrameHost")
     expect(previewCustomizer).toContain("data-siab-renderer-frame")
-    expect(previewCustomizer).toContain("/__renderer-frame/preview/")
+    expect(previewCustomizer).toContain("/renderer-frame/preview/")
     expect(previewCustomizer.includes("<CanvasMode")).toBe(false)
   })
 

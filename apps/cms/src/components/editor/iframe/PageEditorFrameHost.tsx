@@ -77,7 +77,7 @@ export function PageEditorFrameHost({
   pageRef.current = page
 
   const src = React.useMemo(() => {
-    const base = `/__editor-frame/pages/${encodeURIComponent(String(pageId))}`
+    const base = `/editor-frame/pages/${encodeURIComponent(String(pageId))}`
     if (!tenantSlug) return base
     const query = new URLSearchParams({ tenantSlug })
     return `${base}?${query.toString()}`

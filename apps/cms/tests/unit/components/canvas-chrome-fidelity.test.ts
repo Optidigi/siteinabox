@@ -11,7 +11,7 @@ describe("canvas chrome fidelity", () => {
     const previewCustomizer = read("src/components/preview/PreviewCustomizer.tsx")
 
     expect(previewCustomizer).toContain("data-siab-renderer-frame")
-    expect(previewCustomizer).toContain("/__renderer-frame/preview/")
+    expect(previewCustomizer).toContain("/renderer-frame/preview/")
     expect(pageForm).toContain('import { PageEditorFrameHost')
     expect(pageForm).not.toContain('import { CanvasMode }')
     expect(pageForm).not.toContain('import { CanvasMode } from "@siteinabox/ui/components/canvas-mode"')

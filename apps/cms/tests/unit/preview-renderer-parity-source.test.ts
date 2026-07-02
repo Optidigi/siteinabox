@@ -28,7 +28,7 @@ describe("customer preview renderer parity source contract", () => {
     expect(previewRoute).not.toContain("data-rt-tenant-css")
     expect(previewRoute).not.toContain("dangerouslySetInnerHTML")
 
-    expect(previewCustomizer).toContain("/__renderer-frame/preview/")
+    expect(previewCustomizer).toContain("/renderer-frame/preview/")
     expect(previewCustomizer).toContain("data-siab-renderer-frame")
     expect(previewCustomizer).toMatch(/<iframe\b/i)
     expect(previewCustomizer.includes('view="preview"')).toBe(false)

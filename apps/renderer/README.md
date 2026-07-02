@@ -15,7 +15,7 @@ domain/DNS automation.
 
 `src/pages/_renderer/editor.astro` is a renderer-owned isolated iframe smoke
 route for the public renderer runtime. It is not the CMS page-editor iframe
-surface; CMS editing is hosted by `apps/cms` under `/__editor-frame` and keeps
+surface; CMS editing is hosted by `apps/cms` under `/editor-frame` and keeps
 RHF/save/sidebar state in the CMS parent document.
 
 ## Deployment Contract

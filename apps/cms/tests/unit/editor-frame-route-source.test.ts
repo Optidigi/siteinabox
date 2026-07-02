@@ -18,7 +18,7 @@ describe("editor frame route source contract", () => {
   })
 
   it("defines an authenticated editor-frame page route with tenant ownership checks", () => {
-    const route = read("apps/cms/src/app/(editor-frame)/__editor-frame/pages/[id]/page.tsx")
+    const route = read("apps/cms/src/app/(editor-frame)/editor-frame/pages/[id]/page.tsx")
 
     expect(route).toContain('import { requireAuth } from "@/lib/authGate"')
     expect(route).toContain('import { getPageById, listPages } from "@/lib/queries/pages"')
