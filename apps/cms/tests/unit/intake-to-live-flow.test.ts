@@ -231,7 +231,7 @@ const installProviderFetch = () => {
     if (url === "https://api.mollie.com/v2/customers") {
       return new Response(JSON.stringify({ id: "cst_flow_123", name: "Flow Demo", email: "demo@example.com" }), { status: 201 })
     }
-    if (url.includes("api.mollie.com/v2/customers/cst_flow_123/payments")) {
+    if (url === "https://api.mollie.com/v2/payments") {
       return new Response(JSON.stringify({
         id: "tr_flow_123",
         status: "open",

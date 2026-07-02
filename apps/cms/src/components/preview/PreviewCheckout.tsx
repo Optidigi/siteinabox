@@ -167,7 +167,9 @@ export function PreviewCheckout({
   const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
+  const paymentFormRef = React.useRef<HTMLFormElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
+  const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
@@ -205,10 +207,10 @@ export function PreviewCheckout({
   }, [checkedDomain, normalizedDomainValue, step])
 
   React.useEffect(() => {
-    if (paymentState.ok && paymentState.checkoutUrl) {
+    if (paymentSubmitRequested && paymentState.ok && paymentState.checkoutUrl) {
       window.location.assign(paymentState.checkoutUrl)
     }
-  }, [paymentState])
+  }, [paymentState, paymentSubmitRequested])
 
   React.useEffect(() => {
     if (step !== "domain") return
@@ -391,6 +393,11 @@ export function PreviewCheckout({
     }
   }
 
+  const submitPayment = () => {
+    setPaymentSubmitRequested(true)
+    paymentFormRef.current?.requestSubmit()
+  }
+
   return (
     <main className="min-h-dvh bg-background pb-24 text-foreground md:pb-6">
       <header data-siab-cms-sticky-chrome className="sticky top-0 z-30 border-b bg-background">
@@ -495,10 +502,10 @@ export function PreviewCheckout({
                   <ReviewRow label={t("checkoutRegistrantTitle")} value={formatDomainHolderName(holder, t)} />
                   <ReviewRow label={t("checkoutSummaryTotal")} value={totalPriceLabel} />
                 </div>
-                <form id="checkout-payment-form" action={paymentAction} className="hidden">
+                <form id="checkout-payment-form" ref={paymentFormRef} action={paymentAction} className="hidden">
                   <CheckoutHiddenInputs domain={selectedDomain ?? domainValue} holder={holder} />
                 </form>
-                {paymentState.message && (
+                {paymentSubmitRequested && paymentState.message && (
                   <Alert variant={paymentState.ok || paymentState.status === "payment_complete" ? "default" : "destructive"}>
                     <AlertTitle>{paymentAlertTitle(paymentState, t)}</AlertTitle>
                     <AlertDescription>{paymentState.message}</AlertDescription>
@@ -523,6 +530,7 @@ export function PreviewCheckout({
         previewHref={previewHref}
         onBack={goBack}
         onNext={() => setStep("payment")}
+        onPay={submitPayment}
         t={t}
       />
     </main>
@@ -551,6 +559,7 @@ function CheckoutActionBar({
   previewHref,
   onBack,
   onNext,
+  onPay,
   t,
 }: {
   step: CheckoutStep
@@ -565,6 +574,7 @@ function CheckoutActionBar({
   previewHref: string
   onBack: () => void
   onNext: () => void
+  onPay: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
   const secondary = step === "domain"
@@ -619,11 +629,11 @@ function CheckoutActionBar({
     const complete = paymentStatus === "completed"
     primary = (
       <Button
-        form="checkout-payment-form"
-        type="submit"
+        type="button"
         variant="success"
         className="min-w-0 flex-1 md:flex-none"
         disabled={paymentPending || !holderComplete || !selectedDomain || complete}
+        onClick={onPay}
       >
         {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
         {complete ? t("paymentCompleted") : `${t("checkoutStartPayment")} - ${totalPriceLabel}`}

@@ -69,11 +69,15 @@ const MOLLIE_API_BASE = "https://api.mollie.com/v2"
 
 export class MollieApiError extends Error {
   status: number
+  detail?: string | null
+  title?: string | null
 
-  constructor(operation: string, status: number) {
+  constructor(operation: string, status: number, body?: { title?: unknown; detail?: unknown }) {
     super(`${operation} failed with HTTP ${status}.`)
     this.name = "MollieApiError"
     this.status = status
+    this.title = typeof body?.title === "string" ? body.title : null
+    this.detail = typeof body?.detail === "string" ? body.detail : null
   }
 }
 
@@ -155,16 +159,13 @@ export async function createMollieCustomer(input: CreateMollieCustomerInput): Pr
     }),
   })
   if (!response.ok) {
-    throw new MollieApiError("Mollie customer creation", response.status)
+    throw new MollieApiError("Mollie customer creation", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MollieCustomer
 }
 
 export async function createMolliePayment(input: CreateMolliePaymentInput): Promise<MolliePayment> {
-  const path = input.customerId
-    ? `/customers/${encodeURIComponent(input.customerId)}/payments`
-    : "/payments"
-  const response = await fetch(`${MOLLIE_API_BASE}${path}`, {
+  const response = await fetch(`${MOLLIE_API_BASE}/payments`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${requireMollieApiKey()}`,
@@ -176,12 +177,13 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
       description: input.description,
       redirectUrl: input.redirectUrl,
       webhookUrl: input.webhookUrl,
+      ...(input.customerId ? { customerId: input.customerId } : {}),
       ...(input.sequenceType ? { sequenceType: input.sequenceType } : {}),
       metadata: input.metadata,
     }),
   })
   if (!response.ok) {
-    throw new MollieApiError("Mollie payment creation", response.status)
+    throw new MollieApiError("Mollie payment creation", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MolliePayment
 }
@@ -204,7 +206,7 @@ export async function createMollieSubscription(input: CreateMollieSubscriptionIn
     }),
   })
   if (!response.ok) {
-    throw new MollieApiError("Mollie subscription creation", response.status)
+    throw new MollieApiError("Mollie subscription creation", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MollieSubscription
 }
@@ -217,9 +219,20 @@ export async function retrieveMolliePayment(paymentId: string): Promise<MolliePa
     },
   })
   if (!response.ok) {
-    throw new MollieApiError("Mollie payment lookup", response.status)
+    throw new MollieApiError("Mollie payment lookup", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MolliePayment
+}
+
+async function readMollieErrorBody(response: Response): Promise<{ title?: unknown; detail?: unknown } | undefined> {
+  try {
+    const body = await response.json()
+    return body && typeof body === "object" && !Array.isArray(body)
+      ? body as { title?: unknown; detail?: unknown }
+      : undefined
+  } catch {
+    return undefined
+  }
 }
 
 export function verifyMollieWebhookSignature(rawBody: string, signature: string | null, env = process.env): boolean {

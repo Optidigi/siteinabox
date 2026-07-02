@@ -204,16 +204,17 @@ describe("Mollie payment flow", () => {
         "Idempotency-Key": "siab-run-500-customer-client@example.com-mollie-customer",
       }),
     }))
-    expect(fetch).toHaveBeenCalledWith("https://api.mollie.com/v2/customers/cst_test_123/payments", expect.objectContaining({
+    expect(fetch).toHaveBeenCalledWith("https://api.mollie.com/v2/payments", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({
         Authorization: "Bearer test_xxx",
-        "Idempotency-Key": "siab-run-500-customer-client@example.com",
+        "Idempotency-Key": "siab-run-500-customer-client@example.com-payment-v2-acme.test",
       }),
     }))
     const request = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit
     expect(JSON.parse(String(request.body))).toMatchObject({
       sequenceType: "first",
+      customerId: "cst_test_123",
       redirectUrl: "https://preview.siteinabox.nl/acme/checkout?payment=return",
       webhookUrl: "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       metadata: {
@@ -221,6 +222,8 @@ describe("Mollie payment flow", () => {
         tenantId: 1,
         customerEmail: "client@example.com",
         clientSlug: "acme",
+        selectedDomain: "acme.test",
+        idempotencyKey: "siab-run-500-customer-client@example.com-payment-v2-acme.test",
         mollieCustomerId: "cst_test_123",
         sequenceType: "first",
         renewalInterval: "1 month",

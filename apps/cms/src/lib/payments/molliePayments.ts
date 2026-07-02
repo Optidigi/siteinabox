@@ -199,11 +199,12 @@ export async function createMollieCheckoutForGenerationRun(
   const origin = publicCmsOrigin()
   const redirectUrl = `https://${PREVIEW_HOST}/${clientSlug}/checkout?payment=return`
   const webhookUrl = `${origin}/api/payments/mollie/webhook`
-  const idempotencyKey = `siab-run-${run.id}-customer-${email}`
+  const idempotencyBaseKey = `siab-run-${run.id}-customer-${email}`
+  const idempotencyKey = `${idempotencyBaseKey}-payment-v2-${selectedDomain}`
   const mollieCustomerId = current.mollieCustomerId ?? (await createMollieCustomer({
     name: String(tenant.name ?? tenant.slug ?? email),
     email,
-    idempotencyKey: `${idempotencyKey}-mollie-customer`,
+    idempotencyKey: `${idempotencyBaseKey}-mollie-customer`,
     metadata: {
       generationRunId: run.id,
       tenantId: tenant.id,

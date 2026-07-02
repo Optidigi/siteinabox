@@ -9,6 +9,7 @@ import {
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
+import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
 
@@ -301,7 +302,15 @@ export async function startPreviewCheckoutPaymentAction(
     ) {
       return { ok: false, status: domainErrorStatus(error), message: safeCheckoutErrorMessage(error, t, domain) }
     }
-    console.error("Preview checkout payment error", error)
+    if (error instanceof MollieApiError) {
+      console.error("Preview checkout payment error", {
+        status: error.status,
+        title: error.title,
+        detail: error.detail,
+      })
+    } else {
+      console.error("Preview checkout payment error", error)
+    }
     return { ok: false, status: "payment_error", message: t("checkoutPaymentFailed") }
   }
 }
