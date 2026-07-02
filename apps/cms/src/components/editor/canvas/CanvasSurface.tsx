@@ -21,6 +21,8 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
+import { PUBLIC_RENDERER_THEME_SCOPE } from "@siteinabox/site-renderer/theme"
+import { themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
 import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
@@ -89,10 +91,12 @@ type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
 
 const SHARED_SITE_CHROME_SELECTOR =
   "[data-site-chrome], [data-site-chrome-wrapper], [data-site-chrome-menu-trigger], [data-amicare-nav], .site-frame-root > nav, .site-frame-root > footer"
+const AMICARE_CANVAS_THEME_SCOPE =
+  '.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas'
 
 function shouldSuppressCanvasNavigation(target: HTMLElement | null) {
   if (!target) return false
-  if (target.closest("[data-siab-canvas-chrome], [role='dialog'], [data-radix-popper-content-wrapper]")) {
+  if (target.closest("[data-siab-editor-ui], [data-siab-canvas-chrome], [role='dialog'], [data-radix-popper-content-wrapper]")) {
     return false
   }
 
@@ -169,6 +173,7 @@ const CanvasGapOverlay: React.FC<{
         <>
           {overlayPosition.styleElement}
           <div
+            data-siab-editor-ui
             data-siab-canvas-chrome="insert-gap"
             className={`${overlayPosition.className} pointer-events-none fixed z-[19] flex h-8 items-center justify-center group/gap`}
           >
@@ -431,6 +436,7 @@ const CanvasBlockContextMenu: React.FC<{
 
   return createPortal(
     <div
+      data-siab-editor-ui
       className="fixed inset-0 z-50 font-sans"
       role="presentation"
       onClick={onClose}
@@ -442,6 +448,7 @@ const CanvasBlockContextMenu: React.FC<{
     >
       {menuPosition.styleElement}
       <div
+        data-siab-editor-ui
         role="menu"
         aria-label={t("blockActions")}
         className={`${menuPosition.className} fixed min-w-56 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md`}
@@ -659,7 +666,7 @@ const SortableRenderedBlockItem: React.FC<{
         data-block-index={index}
         data-rt-selected={isActive ? "true" : undefined}
         onClick={(event) => {
-          if ((event.target as HTMLElement | null)?.closest("[data-siab-canvas-chrome]")) return
+          if ((event.target as HTMLElement | null)?.closest("[data-siab-editor-ui], [data-siab-canvas-chrome]")) return
           onActivate()
         }}
         onMouseEnter={() => setGutterVisible(true)}
@@ -823,6 +830,12 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
   const useSharedAmicareShell = legacyTenant === "amicare"
   const useSharedPreviewShell = isCustomerPreviewView(view) && Boolean(rendererSettings)
   const useSharedRendererShell = forceSharedRendererShell || useSharedAmicareShell || useSharedPreviewShell
+  const rendererThemeCss = theme && useSharedRendererShell
+    ? themeToCssVars(rendererTheme, PUBLIC_RENDERER_THEME_SCOPE)
+    : ""
+  const amicareCanvasThemeCss = legacyTenant === "amicare" && rendererThemeCss
+    ? rendererThemeCss.replaceAll(PUBLIC_RENDERER_THEME_SCOPE, AMICARE_CANVAS_THEME_SCOPE)
+    : ""
   const rendererPage = React.useMemo(() => ({
     title: pageTitle || "Untitled",
     slug: "index",
@@ -860,6 +873,14 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
         )}
         {theme && (
           <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />
+        )}
+        {theme && useSharedRendererShell && (
+          <style
+            nonce={cspNonce}
+            suppressHydrationWarning
+            data-siab-canvas-theme-overrides
+            dangerouslySetInnerHTML={{ __html: `${rendererThemeCss}${amicareCanvasThemeCss}` }}
+          />
         )}
         {useSharedRendererShell ? (
           <div

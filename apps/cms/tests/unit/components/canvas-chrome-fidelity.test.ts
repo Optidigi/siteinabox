@@ -72,13 +72,16 @@ describe("canvas chrome fidelity", () => {
     expect(canvasSurface).toContain('import { CanvasChromeGutterOverlay } from "@/components/editor/canvas/CanvasChromeGutterOverlay"')
     expect(canvasSurface).toContain('import { CanvasChromeVisibilityProvider } from "@/components/editor/canvas/CanvasChromeVisibilityContext"')
     expect(canvasSurface).toContain('data-siab-canvas-chrome="insert-gap"')
+    expect(canvasSurface).toContain("data-siab-editor-ui")
     expect(canvasSurface).toContain("pointer-events-none fixed z-[19]")
     expect(canvasSurface).toContain("pointer-events-auto relative z-10")
+    expect(gutterOverlay).toContain("data-siab-editor-ui")
     expect(gutterOverlay).toContain('dataChrome = "block-gutter"')
     expect(gutterOverlay).toContain("data-siab-canvas-chrome={dataChrome}")
     expect(gutterOverlay).toContain("[data-siab-cms-sticky-chrome]")
     expect(pageForm).toContain("data-siab-cms-sticky-chrome")
     expect(siteHeader).toContain("data-siab-cms-sticky-chrome")
+    expect(inlineImage).toContain("data-siab-editor-ui")
     expect(inlineImage).toContain('data-siab-canvas-chrome="inline-image"')
     expect(inlineImage).toContain("useCanvasChromeVisibility")
     expect(canvasSurface).toContain("document.body")
@@ -99,6 +102,7 @@ describe("canvas chrome fidelity", () => {
     expect(siteChrome).toContain("overlayTargetSelector={siteChromeTargetSelector(zone)}")
     expect(siteChrome).toContain("document.querySelectorAll<HTMLElement>(overlayTargetSelector)")
     expect(siteChrome).toContain("target.addEventListener(\"click\", onClick)")
+    expect(siteChrome).toContain("data-siab-editor-ui")
     expect(siteChrome).toContain("<CanvasChromeGutterOverlay")
   })
 
@@ -170,5 +174,21 @@ describe("canvas chrome fidelity", () => {
     expect(canvasCss).toContain(".cms-block--hero > div:nth-of-type(3) > p")
     expect(canvasCss).not.toContain(".cms-block--hero p {\n  max-width: 28rem;")
     expect(canvasCss).not.toContain(".cms-block--hero p {\n    font-size: 1.125rem;")
+  })
+
+  it("isolates CMS editor UI from Amicare renderer styling in the canvas stylesheet", () => {
+    const canvasStylesheet = read("src/styles/site-renderer-canvas.css")
+    const rendererCanvasCss = read("../../packages/site-renderer/src/canvas.css")
+
+    const editorFrameLayout = read("src/app/(editor-frame)/layout.tsx")
+
+    expect(editorFrameLayout).toContain('import "@/styles/shadcn.css"')
+    expect(canvasStylesheet).not.toContain(".rt-canvas .rt-slot")
+    expect(canvasStylesheet).not.toContain(".rt-canvas .rt-click-edit")
+    expect(canvasStylesheet).not.toContain("--popover:")
+
+    expect(rendererCanvasCss).toContain('[data-amicare-nav]')
+    expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav]')
+    expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer')
   })
 })

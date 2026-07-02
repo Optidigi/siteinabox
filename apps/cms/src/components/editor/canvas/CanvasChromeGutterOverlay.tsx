@@ -149,6 +149,7 @@ export const CanvasChromeGutterOverlay: React.FC<{
     <>
       {position.styleElement}
       <div
+        data-siab-editor-ui
         data-siab-canvas-chrome={dataChrome}
         className={`${position.className} fixed z-[19] inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground opacity-100 shadow-sm backdrop-blur-sm`}
         onMouseEnter={() => setVisible(true)}
@@ -188,7 +189,7 @@ export const CanvasChromeGutterOverlay: React.FC<{
                 <MoreVertical className="size-4" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" data-siab-editor-ui>
               {onDuplicate && <DropdownMenuItem onClick={onDuplicate}>{t("duplicate")}</DropdownMenuItem>}
               {onDelete && (
                 <DropdownMenuItem
