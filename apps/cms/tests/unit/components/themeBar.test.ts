@@ -18,4 +18,11 @@ describe("ThemeBar controls", () => {
     expect(radiusControl).not.toContain("value={theme?.density")
     expect(radiusControl).not.toContain("value={theme?.stylePreset")
   })
+
+  it("uses functional theme updates so quick toolbar patches merge with the latest state", () => {
+    const themeBar = read("src/components/editor/theme/theme-bar.tsx")
+
+    expect(themeBar).toContain("React.Dispatch<React.SetStateAction<ThemeTokens | null>>")
+    expect(themeBar).toContain("onThemeChange((current) => ({ ...(current ?? theme ?? {}), ...partial }))")
+  })
 })

@@ -502,6 +502,7 @@ interface SortableBlockItemProps {
   isActive: boolean
   manifest: RtManifest
   tenantId?: number | string | null
+  legacyTenant?: "amicare" | null
   onActivate: () => void
   onUpdate: (next: any) => void
   onDelete: () => void
@@ -518,6 +519,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   isActive,
   manifest,
   tenantId,
+  legacyTenant,
   onActivate,
   onUpdate,
   onDelete,
@@ -587,6 +589,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
             isActive={isActive}
             manifest={manifest}
             tenantId={tenantId}
+            legacyTenant={legacyTenant}
             onActivate={onActivate}
             onUpdate={readOnly ? () => {} : onUpdate}
           />
@@ -1083,6 +1086,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                         }}
                         onUpdate={updateBlock(i)}
                         tenantId={tenantId}
+                        legacyTenant={legacyTenant}
                         onDelete={() => requestDeleteBlock(i)}
                         onDuplicate={() => duplicateBlockWithRemap(i)}
                         readOnly={effectiveReadOnly}

@@ -70,4 +70,33 @@ describe("PreviewCustomizer stale theme save guard", () => {
       requestVersion: 2,
     })).toBe(false)
   })
+
+  it("starts a queued save only when no write is in flight and pending differs from persisted", async () => {
+    const { shouldStartPreviewThemeSave } = await import("@/components/preview/PreviewCustomizer")
+
+    expect(shouldStartPreviewThemeSave({
+      hasInFlightSave: false,
+      pendingSerializedTheme: "{\"mode\":\"dark\"}",
+      persistedSerializedTheme: "{}",
+    })).toBe(true)
+
+    expect(shouldStartPreviewThemeSave({
+      hasInFlightSave: true,
+      pendingSerializedTheme: "{\"mode\":\"dark\"}",
+      persistedSerializedTheme: "{}",
+    })).toBe(false)
+
+    expect(shouldStartPreviewThemeSave({
+      hasInFlightSave: false,
+      pendingSerializedTheme: "{\"mode\":\"dark\"}",
+      persistedSerializedTheme: "{\"mode\":\"dark\"}",
+    })).toBe(false)
+
+    expect(shouldStartPreviewThemeSave({
+      hasInFlightSave: false,
+      pendingRequiresWrite: true,
+      pendingSerializedTheme: "{}",
+      persistedSerializedTheme: "{}",
+    })).toBe(true)
+  })
 })

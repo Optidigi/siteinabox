@@ -105,7 +105,8 @@ describe("shape token presets", () => {
   })
 
   it("exposes renderer-backed style preset tokens", () => {
-    expect(STYLE_PRESETS.map((preset) => preset.id)).toEqual(["warm-care", "industrial-cleaning"])
+    expect(STYLE_PRESETS.map((preset) => preset.id)).toEqual(["catalog-clean", "industrial-cleaning"])
+    expect(STYLE_PRESETS.map((preset) => preset.id)).not.toContain("warm-care")
     for (const preset of STYLE_PRESETS) {
       expect(preset.id).toMatch(/^[a-z0-9-]+$/)
     }

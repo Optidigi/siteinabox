@@ -32,7 +32,7 @@ export function ThemeBar({
 }: {
   theme: ThemeTokens | null
   manifest: RtManifest
-  onThemeChange: (theme: ThemeTokens) => void
+  onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
   palettes: PalettePreset[]
   fonts: FontPreset[]
   radiusLevels?: RadiusLevel[]
@@ -44,7 +44,7 @@ export function ThemeBar({
   // behaviour outlier (silent autosave to a different document); routing
   // through the explicit Save button is what users expect.
   function handleUpdate(partial: Partial<ThemeTokens>) {
-    onThemeChange({ ...(theme ?? {}), ...partial })
+    onThemeChange((current) => ({ ...(current ?? theme ?? {}), ...partial }))
   }
 
   const [openSegment, setOpenSegment] = React.useState<Segment | null>(null)

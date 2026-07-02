@@ -34,7 +34,7 @@ export const DEFAULT_DENSITY_LEVELS: DensityLevel[] = [
 ]
 
 export const DEFAULT_STYLE_PRESET_LEVELS: StylePresetLevel[] = [
-  { id: "warm-care", label: "Warm Care" },
+  { id: "catalog-clean", label: "Catalog Clean" },
   { id: "industrial-cleaning", label: "Industrial" },
 ]
 

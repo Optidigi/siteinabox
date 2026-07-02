@@ -14,7 +14,11 @@ import type { CanvasBlockRendererProps } from "@/components/editor/canvas/Canvas
 
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
-function resolvedSourceVariant(block: any): SiteBlockCatalogVariant | undefined {
+type SourceVariantContext = {
+  legacyTenant?: "amicare" | null
+}
+
+export function resolvedSourceVariant(block: any, context: SourceVariantContext = {}): SiteBlockCatalogVariant | undefined {
   if (!generationBlockSlugs.has(block?.blockType)) return undefined
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
   const variant = typeof block.variant === "string" ? block.variant.trim() : ""
@@ -22,15 +26,16 @@ function resolvedSourceVariant(block: any): SiteBlockCatalogVariant | undefined 
   const match = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
     variant ? entry.variant === variant : entry.sectionVariant === sectionVariant
   )
+  if (match?.scope.kind === "tenant-exclusive" && context.legacyTenant !== "amicare") return undefined
   return match
 }
 
-function sourceVariantDataAttribute(block: any) {
-  return resolvedSourceVariant(block)?.variant
+function sourceVariantDataAttribute(block: any, legacyTenant?: "amicare" | null) {
+  return resolvedSourceVariant(block, { legacyTenant })?.variant
 }
 
-function sourceVariantClassName(block: any) {
-  return resolvedSourceVariant(block)?.rendererClassName ?? ""
+function sourceVariantClassName(block: any, legacyTenant?: "amicare" | null) {
+  return resolvedSourceVariant(block, { legacyTenant })?.rendererClassName ?? ""
 }
 
 const setField = (block: any, onUpdate: (next: any) => void) => (field: string) => (value: any) =>
@@ -57,6 +62,7 @@ const valueText = (value: unknown) => {
 export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   block,
   isActive,
+  legacyTenant,
   manifest,
   onActivate,
   onUpdate,
@@ -66,7 +72,7 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   const plans: any[] = block.plans ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--pricing ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--pricing ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Pricing title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__pricingPlans">
@@ -97,13 +103,13 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   )
 }
 
-export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const items: any[] = block.items ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--stats ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--stats ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Stats title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <dl className="cms-block__statsGrid">
@@ -119,13 +125,13 @@ export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActiv
   )
 }
 
-export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
+export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const logos: any[] = block.logos ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--logoCloud ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--logoCloud ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Logo cloud title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <ul className="cms-block__logoCloudList">
@@ -140,13 +146,13 @@ export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
+export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const images: any[] = block.images ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--gallery ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--gallery ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Gallery title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__galleryGrid">
@@ -162,13 +168,13 @@ export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAct
   )
 }
 
-export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
+export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const members: any[] = block.members ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--team ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--team ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Team title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__teamGrid">
@@ -185,13 +191,13 @@ export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   )
 }
 
-export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
+export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const posts: any[] = block.posts ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--blogCards ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--blogCards ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Posts title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__blogGrid">
@@ -208,13 +214,13 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId }) => {
+export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const steps: any[] = block.steps ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--processSteps ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--processSteps ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Process title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <ol className="cms-block__steps">
@@ -230,14 +236,14 @@ export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, 
   )
 }
 
-export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const columns: any[] = block.columns ?? []
   const rows: any[] = block.rows ?? []
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--comparisonMatrix ${sourceVariantClassName(block)}`.trim()} data-source-variant={sourceVariantDataAttribute(block)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section id={block.anchor || undefined} className={`cms-block cms-block--comparisonMatrix ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Comparison title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__comparisonTable" role="table">

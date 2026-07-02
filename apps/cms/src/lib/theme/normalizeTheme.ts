@@ -26,8 +26,7 @@ export const normalizeThemeForSave = (theme: ThemeTokens | null | undefined): Th
   if (hasValue(theme.stylePreset)) normalized.stylePreset = theme.stylePreset
   if (theme.borderStyle) normalized.borderStyle = theme.borderStyle
 
-  const hasConcreteTokens = Object.keys(normalized).length > 0
-  if (theme.mode && hasConcreteTokens) normalized.mode = theme.mode
+  if (theme.mode) normalized.mode = theme.mode
 
-  return hasConcreteTokens ? normalized : null
+  return Object.keys(normalized).length > 0 ? normalized : null
 }

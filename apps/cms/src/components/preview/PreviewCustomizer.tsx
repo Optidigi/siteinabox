@@ -31,6 +31,13 @@ import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/prese
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 type PreviewCanvasFormValues = { blocks: Page["blocks"] }
+type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
+type QueuedPreviewThemeSave = {
+  normalizedTheme: ThemeTokens | null
+  serializedTheme: string
+  version: number
+  requiresWrite?: boolean
+}
 
 export function shouldApplyPreviewThemeSaveResponse({
   latestSerializedTheme,
@@ -44,6 +51,24 @@ export function shouldApplyPreviewThemeSaveResponse({
   requestVersion: number
 }) {
   return requestVersion === latestVersion && requestSerializedTheme === latestSerializedTheme
+}
+
+export function shouldStartPreviewThemeSave({
+  hasInFlightSave,
+  pendingRequiresWrite = false,
+  pendingSerializedTheme,
+  persistedSerializedTheme,
+}: {
+  hasInFlightSave: boolean
+  pendingRequiresWrite?: boolean
+  pendingSerializedTheme: string | null
+  persistedSerializedTheme: string
+}) {
+  return Boolean(
+    !hasInFlightSave &&
+    pendingSerializedTheme != null &&
+    (pendingRequiresWrite || pendingSerializedTheme !== persistedSerializedTheme),
+  )
 }
 
 export function PreviewCustomizer({
@@ -72,10 +97,12 @@ export function PreviewCustomizer({
   const t = useTranslations("preview")
   const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
   const [paymentState] = React.useState<PreviewPaymentState | null>(payment)
-  const initialThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
-  const latestThemeRef = React.useRef(initialThemeRef.current)
+  const persistedThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
+  const latestThemeRef = React.useRef(persistedThemeRef.current)
   const themeVersionRef = React.useRef(0)
-  const saveTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingSaveRef = React.useRef<QueuedPreviewThemeSave | null>(null)
+  const inFlightSaveRef = React.useRef<QueuedPreviewThemeSave | null>(null)
+  const [themeSaveStatus, setThemeSaveStatus] = React.useState<PreviewThemeSaveStatus>("idle")
   const form = useForm<PreviewCanvasFormValues>({
     defaultValues: { blocks: page.blocks ?? [] },
   })
@@ -84,35 +111,80 @@ export function PreviewCustomizer({
     form.reset({ blocks: page.blocks ?? [] })
   }, [form, page.id, page.blocks])
 
+  const flushThemeSaveQueue = React.useCallback(() => {
+    if (!shouldStartPreviewThemeSave({
+      hasInFlightSave: inFlightSaveRef.current != null,
+      pendingRequiresWrite: pendingSaveRef.current?.requiresWrite ?? false,
+      pendingSerializedTheme: pendingSaveRef.current?.serializedTheme ?? null,
+      persistedSerializedTheme: persistedThemeRef.current,
+    })) {
+      return
+    }
+
+    const request = pendingSaveRef.current
+    if (!request) return
+    pendingSaveRef.current = null
+    inFlightSaveRef.current = request
+    setThemeSaveStatus("saving")
+
+    void setPreviewTheme(access, request.normalizedTheme ?? {})
+      .then((saved) => {
+        const savedTheme = normalizeThemeForSave(saved)
+        const savedSerializedTheme = JSON.stringify(savedTheme ?? {})
+        const isCurrentLocalTheme = shouldApplyPreviewThemeSaveResponse({
+          latestSerializedTheme: latestThemeRef.current,
+          latestVersion: themeVersionRef.current,
+          requestSerializedTheme: request.serializedTheme,
+          requestVersion: request.version,
+        })
+
+        if (isCurrentLocalTheme) {
+          persistedThemeRef.current = savedSerializedTheme
+          setThemeState(savedTheme)
+          setThemeSaveStatus("saved")
+          return
+        }
+
+        setThemeSaveStatus(pendingSaveRef.current ? "saving" : "idle")
+      })
+      .catch((error) => {
+        console.error("Failed to save preview theme", error)
+        if (latestThemeRef.current === request.serializedTheme) {
+          setThemeSaveStatus("error")
+        }
+      })
+      .finally(() => {
+        inFlightSaveRef.current = null
+        flushThemeSaveQueue()
+      })
+  }, [access])
+
   React.useEffect(() => {
     const normalizedTheme = normalizeThemeForSave(themeState)
-    const serialized = JSON.stringify(normalizedTheme ?? {})
-    latestThemeRef.current = serialized
-    const requestVersion = ++themeVersionRef.current
-    if (serialized === initialThemeRef.current) return
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(() => {
-      const requestSerializedTheme = serialized
-      setPreviewTheme(access, normalizedTheme ?? {})
-        .then((saved) => {
-          if (!shouldApplyPreviewThemeSaveResponse({
-            latestSerializedTheme: latestThemeRef.current,
-            latestVersion: themeVersionRef.current,
-            requestSerializedTheme,
-            requestVersion,
-          })) {
-            return
-          }
-          const savedTheme = normalizeThemeForSave(saved)
-          initialThemeRef.current = JSON.stringify(savedTheme ?? {})
-          setThemeState(savedTheme)
-        })
-        .catch(() => {})
-    }, 500)
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    const serializedTheme = JSON.stringify(normalizedTheme ?? {})
+    latestThemeRef.current = serializedTheme
+    const version = ++themeVersionRef.current
+
+    if (serializedTheme === persistedThemeRef.current) {
+      if (inFlightSaveRef.current && inFlightSaveRef.current.serializedTheme !== serializedTheme) {
+        pendingSaveRef.current = {
+          normalizedTheme,
+          serializedTheme,
+          version,
+          requiresWrite: true,
+        }
+        flushThemeSaveQueue()
+        return
+      }
+      if (inFlightSaveRef.current == null && pendingSaveRef.current == null) {
+        setThemeSaveStatus("idle")
+      }
+      return
     }
-  }, [themeState, access])
+
+    pendingSaveRef.current = { normalizedTheme, serializedTheme, version }
+    flushThemeSaveQueue()
+  }, [flushThemeSaveQueue, themeState])
 
   const paymentSatisfied = paymentState?.status === "completed" || paymentState?.status === "waived"
   const canCompleteOrder = access.type === "grant" && !paymentSatisfied
@@ -172,6 +244,7 @@ export function PreviewCustomizer({
                   fonts={FONT_PRESETS}
                   radiusLevels={RADIUS_PRESETS}
                 />
+                <ThemeSaveStatus status={themeSaveStatus} />
               </div>
             </div>
 
@@ -210,6 +283,20 @@ export function PreviewCustomizer({
         </form>
       </Form>
     </RtManifestProvider>
+  )
+}
+
+function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
+  if (status === "idle") return null
+  const text = status === "error"
+    ? "Theme changes could not be saved."
+    : status === "saving"
+      ? "Saving theme changes."
+      : "Theme changes saved."
+  return (
+    <p className="sr-only" role={status === "error" ? "alert" : "status"} aria-live="polite">
+      {text}
+    </p>
   )
 }
 

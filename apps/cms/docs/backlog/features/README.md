@@ -112,6 +112,15 @@ one-page Tailwind/Tailwind-based source-backed mock section set. Preview access
 and customer email sending remain manually gated from the generation-run detail
 screen.
 
+Same-day hardening tightened generated-site preview and rendering reliability:
+preview theme edits now preserve mode-only choices, merge rapid toolbar changes,
+and save with a latest-wins queue so stale writes cannot revert the stored
+theme. Generic page saves now reject tenant-exclusive Amicare block variants,
+while official Amicare compatibility remains isolated to the legacy tenant
+slugs/domains. Generic style presets no longer expose `warm-care`, and the
+active Tailwind Plus, Preline, and Tailblocks renderer variants now lean on SIAB
+theme tokens for colors and radii instead of provider hard-coded palette values.
+
 ### Phase 7 — AI generation service
 
 **Status:** Foundation added 2026-06-25.

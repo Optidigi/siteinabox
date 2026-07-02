@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 describe("normalizeThemeForSave", () => {
-  it("drops sparse mode-only theme overrides", () => {
-    expect(normalizeThemeForSave({ mode: "dark" })).toBeNull()
-    expect(normalizeThemeForSave({ mode: "light" })).toBeNull()
-    expect(normalizeThemeForSave({ mode: "dark", palette: {}, darkPalette: {}, fonts: {} })).toBeNull()
+  it("keeps mode-only theme overrides", () => {
+    expect(normalizeThemeForSave({ mode: "dark" })).toEqual({ mode: "dark" })
+    expect(normalizeThemeForSave({ mode: "light" })).toEqual({ mode: "light" })
+    expect(normalizeThemeForSave({ mode: "dark", palette: {}, darkPalette: {}, fonts: {} })).toEqual({ mode: "dark" })
   })
 
   it("keeps mode when concrete theme tokens exist", () => {
