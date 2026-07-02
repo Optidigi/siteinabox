@@ -874,14 +874,6 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
         {theme && (
           <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />
         )}
-        {theme && useSharedRendererShell && (
-          <style
-            nonce={cspNonce}
-            suppressHydrationWarning
-            data-siab-canvas-theme-overrides
-            dangerouslySetInnerHTML={{ __html: `${rendererThemeCss}${amicareCanvasThemeCss}` }}
-          />
-        )}
         {useSharedRendererShell ? (
           <div
             onContextMenuCapture={onCanvasContextMenu}
@@ -979,6 +971,14 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                 />
               </SortableContext>
             </DndContext>
+            {theme && (
+              <style
+                nonce={cspNonce}
+                suppressHydrationWarning
+                data-siab-canvas-theme-overrides
+                dangerouslySetInnerHTML={{ __html: `${rendererThemeCss}${amicareCanvasThemeCss}` }}
+              />
+            )}
           </div>
         ) : (
           <div

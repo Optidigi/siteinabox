@@ -15,6 +15,9 @@ describe("editor frame route source contract", () => {
     expect(layout).toContain('import "@/styles/shadcn.css"')
     expect(layout).toContain('import "@/styles/generated-site-renderer.css"')
     expect(layout).toContain('import "@/styles/site-renderer-canvas.css"')
+    expect(layout.indexOf('import "@/styles/generated-site-renderer.css"')).toBeLessThan(
+      layout.indexOf('import "@/styles/shadcn.css"'),
+    )
     expect(layout).toContain("<html")
     expect(layout).toContain("<body>")
   })

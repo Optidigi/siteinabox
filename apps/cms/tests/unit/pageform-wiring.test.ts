@@ -40,6 +40,9 @@ describe("PageForm wiring boundaries", () => {
     expect(canvasSurface).toContain("AMICARE_CANVAS_THEME_SCOPE")
     expect(canvasSurface).toContain("amicareCanvasThemeCss")
     expect(canvasSurface).toContain("data-siab-canvas-theme-overrides")
+    expect(canvasSurface.indexOf("<SitePageRenderer")).toBeLessThan(
+      canvasSurface.indexOf("data-siab-canvas-theme-overrides"),
+    )
     expect(canvasSurface).toContain("? undefined")
     expect(canvasSurface).toContain("renderHeader={renderHeaderChrome")
     expect(canvasSurface).toContain("renderFooter={renderFooterChrome")

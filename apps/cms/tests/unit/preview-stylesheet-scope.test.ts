@@ -131,6 +131,9 @@ describe("CMS preview renderer stylesheet scope", () => {
     const canvasStylesheet = read("apps/cms/src/styles/site-renderer-canvas.css")
 
     expect(editorFrameLayout).toContain('import "@/styles/shadcn.css"')
+    expect(editorFrameLayout.indexOf('import "@/styles/generated-site-renderer.css"')).toBeLessThan(
+      editorFrameLayout.indexOf('import "@/styles/shadcn.css"'),
+    )
     expect(canvasStylesheet).not.toContain("--foreground:")
     expect(canvasStylesheet).not.toContain("--popover:")
   })

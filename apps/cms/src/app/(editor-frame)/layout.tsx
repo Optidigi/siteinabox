@@ -1,6 +1,6 @@
-import "@/styles/shadcn.css"
 import "@/styles/generated-site-renderer.css"
 import "@/styles/site-renderer-canvas.css"
+import "@/styles/shadcn.css"
 import { cookies, headers } from "next/headers"
 import { NextIntlClientProvider } from "next-intl"
 import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"
