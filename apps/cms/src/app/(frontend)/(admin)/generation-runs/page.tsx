@@ -56,16 +56,10 @@ const stateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | 
   return null
 }
 
-const formatDate = (value?: string | null) => {
-  if (!value) return "-"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("nl-NL")
-}
-
 const inboxTone = (state: OperationsWorkflowState) => {
-  if (state === "Needs attention") return "destructive"
-  if (state === "Live" || state === "Checkout completed") return "success"
-  return "secondary"
+  if (state === "Needs attention") return "warning"
+  if (state === "Live") return "success"
+  return "outline"
 }
 
 const jsonObject = (value: unknown): Record<string, unknown> | null =>
@@ -116,11 +110,7 @@ function ClientQueueItem({ item }: { item: InboxItem }) {
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">{item.label}</span>
-            <span className="mx-1">·</span>
-            <span>{formatDate(item.updatedAt)}</span>
-          </div>
+          <div className="min-w-0 text-xs text-muted-foreground">{item.subtitle}</div>
           <div className="flex shrink-0 gap-2">
             {canSendPreview ? (
               <form action={sendPreviewAccessEmailAction.bind(null, item.runId!)}>

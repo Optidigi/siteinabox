@@ -9,6 +9,7 @@ import { Label } from "@siteinabox/ui/components/label"
 import { Textarea } from "@siteinabox/ui/components/textarea"
 import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PreviewAccessShare } from "@/components/generation/PreviewAccessShare"
+import { ResponsiveOperationsCard } from "@/components/generation/ResponsiveOperationsCard"
 import { PageHeader } from "@/components/page-header"
 import { updateTenantDomainVerificationAction } from "@/lib/actions/domainVerification"
 import { createGenerationRunMollieCheckoutAction, recordGenerationRunPaymentAction } from "@/lib/actions/generationRunPayment"
@@ -127,7 +128,15 @@ const intakeContactEmail = (value: unknown): string | null => {
   return typeof email === "string" && email ? email : null
 }
 
-const statusBadge = (variant: "success" | "default" | "secondary" | "destructive", label: string) => (
+type OperationsBadgeVariant = "success" | "outline" | "warning"
+
+const workflowBadgeVariant = (state: string): OperationsBadgeVariant => {
+  if (state === "Live") return "success"
+  if (state === "Needs attention") return "warning"
+  return "outline"
+}
+
+const statusBadge = (variant: OperationsBadgeVariant, label: string) => (
   <Badge variant={variant}>{label}</Badge>
 )
 
@@ -200,22 +209,22 @@ export default async function GenerationRunDetailPage({
     {
       label: "Preview",
       value: customerPreviewUrl ? "Ready" : "Not ready",
-      badge: statusBadge(previewDisabledReason ? "secondary" : "default", previewDisabledReason ? "waiting" : "send"),
+      badge: statusBadge("outline", previewDisabledReason ? "waiting" : "send"),
     },
     {
       label: "Checkout",
       value: displayStatus(payment.status),
-      badge: statusBadge(paymentSatisfied ? "success" : "secondary", paymentSatisfied ? "complete" : displayStatus(payment.status)),
+      badge: statusBadge(paymentSatisfied ? "success" : "outline", paymentSatisfied ? "complete" : displayStatus(payment.status)),
     },
     {
       label: "Provisioning",
       value: domainVerified && emailSendingVerified ? "Ready" : displayStatus(domainOrderStatus),
-      badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "secondary", domainVerified && emailSendingVerified ? "ready" : "waiting"),
+      badge: statusBadge(domainVerified && emailSendingVerified ? "success" : "outline", domainVerified && emailSendingVerified ? "ready" : "waiting"),
     },
     {
       label: "Live",
       value: isLive ? "Live" : "Not live",
-      badge: statusBadge(isLive ? "success" : readyToGoLive ? "default" : "secondary", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
+      badge: statusBadge(isLive ? "success" : "outline", isLive ? "live" : readyToGoLive ? "ready" : "waiting"),
     },
   ]
   return (
@@ -224,7 +233,7 @@ export default async function GenerationRunDetailPage({
         title={`Draft site #${run.id}`}
         subtitle={
           <span className="inline-flex flex-wrap items-center gap-2">
-            <Badge variant={statusVariant(run.status)}>
+            <Badge variant={workflowBadgeVariant(summary.state)}>
               <span className="size-1.5 rounded-full bg-current" aria-hidden />
               {summary.state}
             </Badge>
@@ -251,11 +260,12 @@ export default async function GenerationRunDetailPage({
         </Alert>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Send preview</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 text-sm lg:grid-cols-[1fr_auto] lg:items-start">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] xl:items-start">
+        <ResponsiveOperationsCard
+          title="Send preview"
+          defaultOpen
+          contentClassName="grid gap-4 text-sm lg:grid-cols-[1fr_auto] lg:items-start"
+        >
           <div className="grid gap-3">
             <div>
               <div className="font-medium">Preview email</div>
@@ -288,14 +298,12 @@ export default async function GenerationRunDetailPage({
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </ResponsiveOperationsCard>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Client</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 text-sm lg:grid-cols-[1.3fr_1fr]">
+        <ResponsiveOperationsCard
+          title="Client"
+          contentClassName="grid gap-4 text-sm lg:grid-cols-[1.3fr_1fr] xl:grid-cols-1"
+        >
           <div className="grid gap-2">
             <div className="text-base font-medium">{relationLabel(run.tenant, "Draft site")}</div>
             <div className="text-muted-foreground">{defaultPreviewEmail ?? "No intake email"}</div>
@@ -304,19 +312,19 @@ export default async function GenerationRunDetailPage({
           <div className="grid gap-2 rounded-md bg-muted/40 p-3">
             <div className="flex items-center justify-between gap-3">
               <span>Payment</span>
-              <Badge variant={paymentSatisfied ? "success" : "secondary"}>{displayStatus(payment.status)}</Badge>
+              <Badge variant={paymentSatisfied ? "success" : "outline"}>{displayStatus(payment.status)}</Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span>Approval</span>
-              <Badge variant={isApproved ? "success" : "secondary"}>{isApproved ? "approved" : "waiting"}</Badge>
+              <Badge variant={isApproved ? "success" : "outline"}>{isApproved ? "approved" : "waiting"}</Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
               <span>Live</span>
-              <Badge variant={isLive ? "success" : "secondary"}>{isLive ? "live" : "not live"}</Badge>
+              <Badge variant={isLive ? "success" : "outline"}>{isLive ? "live" : "not live"}</Badge>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </ResponsiveOperationsCard>
+      </div>
 
       <Card>
         <CardHeader>
