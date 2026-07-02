@@ -12,7 +12,6 @@ describe("editor frame route source contract", () => {
   it("loads generated-site renderer CSS and scoped canvas CSS in the editor-frame layout shell", () => {
     const layout = read("apps/cms/src/app/(editor-frame)/layout.tsx")
 
-    expect(layout).toContain('import "@/styles/shadcn.css"')
     expect(layout).toContain('import "@/styles/generated-site-renderer.css"')
     expect(layout).toContain('import "@/styles/site-renderer-canvas.css"')
     expect(layout).toContain("<html")

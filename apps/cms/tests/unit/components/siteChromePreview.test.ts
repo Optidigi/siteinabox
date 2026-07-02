@@ -105,7 +105,6 @@ describe("SiteChromePreview chrome actions", () => {
     expect(file).toContain("onSelect()")
     expect(gutterOverlay).toContain("data-site-chrome-menu-trigger")
     expect(gutterOverlay).not.toContain("onPointerDown={(event) => {")
-    expect(gutterOverlay).toContain("data-siab-editor-ui")
     expect(gutterOverlay).toContain("data-siab-canvas-chrome={dataChrome}")
     expect(gutterOverlay).toContain("createPortal(")
     expect(gutterOverlay).toContain("premeasure = false")
@@ -177,7 +176,6 @@ describe("SiteChromePreview chrome actions", () => {
   it("portals the actions menu to document.body so tenant canvas theme styles do not own it", () => {
     const file = source()
 
-    expect(file).toContain("data-siab-editor-ui")
     expect(file).toContain('import { createPortal } from "react-dom"')
     expect(file).toContain("document.body")
     expect(file).toContain("border border-border bg-popover")

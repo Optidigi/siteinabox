@@ -41,7 +41,6 @@ describe("CTA quote background image contract", () => {
     expect(inlineImage).toContain("onClick={surfaceIsEditable ? handleSurfaceClick : undefined}")
     expect(inlineImage).toContain("onClick={handleChromeClick}")
     expect(inlineImage).toContain('data-siab-canvas-chrome="inline-image"')
-    expect(inlineImage).toContain("data-siab-editor-ui")
     expect(inlineImage).toContain("createPortal(")
     expect(inlineImage).toContain("useCanvasChromeVisibility")
     expect(inlineImage).toContain("showHoverOverlayChrome")

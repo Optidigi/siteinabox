@@ -426,7 +426,7 @@ function FooterItem({
     return (
       <div className="space-y-3">
         {onUpdateTextItem && manifest ? (
-          <div data-siab-editor-ui onClick={(event) => event.stopPropagation()}>
+          <div onClick={(event) => event.stopPropagation()}>
             <RtSlot
               as="p"
               variant="inline"
@@ -443,7 +443,7 @@ function FooterItem({
           </p>
         )}
         {onUpdateTextItem && manifest ? (
-          <div data-siab-editor-ui onClick={(event) => event.stopPropagation()}>
+          <div onClick={(event) => event.stopPropagation()}>
             <RtSlot
               as="p"
               variant="block"
@@ -833,7 +833,6 @@ function ChromeActionsMenu({
 
   const menu = open && typeof document !== "undefined" ? createPortal(
     <div
-      data-siab-editor-ui
       className="fixed inset-0 z-50 font-sans"
       onClick={() => setPoint(null)}
       onContextMenu={(event) => {
@@ -896,7 +895,6 @@ function ChromeActionsMenu({
       ) : (
         <div
           ref={anchorRef}
-          data-siab-editor-ui
           className={cn(
             "cms-block relative",
             `cms-block--site-chrome cms-block--site-chrome-${zone}`,
