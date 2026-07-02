@@ -129,7 +129,7 @@ export default async function IntakeSubmissionDetailPage({
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title={`Review intake: ${submission.businessName}`}
+        title={`Intake: ${submission.businessName}`}
         subtitle={
           <span className="inline-flex flex-wrap items-center gap-2">
             <Badge variant={workflowSummary.state === "Needs attention" ? "destructive" : "secondary"}>

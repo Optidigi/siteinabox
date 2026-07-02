@@ -10,20 +10,14 @@ import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 
 export type GenerationRunFilter =
   | "all"
-  | "new-requests"
-  | "draft-preparing"
-  | "drafts-to-preview"
-  | "waiting-for-checkout"
-  | "launch-needed"
+  | "preview-ready"
+  | "checkout-completed"
   | "live"
   | "needs-attention"
 
 export type OperationsWorkflowState =
-  | "New requests"
-  | "Draft preparing"
-  | "Drafts to preview"
-  | "Waiting for checkout"
-  | "Launch needed"
+  | "Preview ready"
+  | "Checkout completed"
   | "Live"
   | "Needs attention"
 
@@ -47,35 +41,19 @@ export type GenerationOperationsResult = {
 }
 
 const failedWhere = { status: { equals: "failed" } }
-const newRequestsWhere = {
-  or: [
-    { status: { equals: "submitted" } },
-    { status: { equals: "normalized" } },
-  ],
-}
-const draftPreparingWhere = {
-  or: [
-    { status: { equals: "queued" } },
-    { status: { equals: "generating" } },
-    { status: { equals: "generated" } },
-    { status: { equals: "validating" } },
-    { status: { equals: "applying" } },
-  ],
-}
-const draftsToPreviewWhere = {
+const previewCandidateWhere = {
   or: [
     { status: { equals: "draft_ready" } },
+    { status: { equals: "preview_ready" } },
   ],
 }
-const previewReadyWhere = { status: { equals: "preview_ready" } }
+const dashboardRunWhere = { or: [failedWhere, previewCandidateWhere] }
 
 export function generationRunWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
   const clauses: Record<string, unknown>[] = []
+  if (filter === "all") clauses.push(dashboardRunWhere)
   if (filter === "needs-attention") clauses.push(failedWhere)
-  if (filter === "new-requests") clauses.push(newRequestsWhere)
-  if (filter === "draft-preparing") clauses.push({ or: [newRequestsWhere, draftPreparingWhere] })
-  if (filter === "drafts-to-preview") clauses.push(draftsToPreviewWhere)
-  if (filter === "waiting-for-checkout" || filter === "launch-needed" || filter === "live") clauses.push(previewReadyWhere)
+  if (filter === "preview-ready" || filter === "checkout-completed" || filter === "live") clauses.push(previewCandidateWhere)
 
   const query = q?.trim()
   if (query) {
@@ -97,11 +75,8 @@ export function generationRunWhere(filter: GenerationRunFilter = "all", q?: stri
 
 export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
   const clauses: Record<string, unknown>[] = []
-  if (filter === "needs-attention") clauses.push(failedWhere)
-  if (filter === "new-requests") clauses.push(newRequestsWhere)
-  if (filter === "draft-preparing") clauses.push({ or: [newRequestsWhere, draftPreparingWhere] })
-  if (filter === "drafts-to-preview") clauses.push(draftsToPreviewWhere)
-  if (filter === "waiting-for-checkout" || filter === "launch-needed" || filter === "live") clauses.push(previewReadyWhere)
+  if (filter === "all" || filter === "needs-attention") clauses.push(failedWhere)
+  if (filter === "preview-ready" || filter === "checkout-completed" || filter === "live") clauses.push({ id: { equals: "__none__" } })
 
   const query = q?.trim()
   if (query) {
@@ -249,14 +224,20 @@ const tenantIsLive = (value: unknown): boolean => {
 const reviewedBriefApproved = (value: unknown): boolean =>
   jsonStatus(value) === "admin-approved"
 
-export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "status" | "validation" | "applyResult" | "clientApproval" | "payment" | "tenant">): OperationsWorkflowSummary {
+const postPaymentAutomationFailed = (value: unknown): boolean => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false
+  const state = (value as { postPaymentAutomation?: unknown }).postPaymentAutomation
+  return jsonStatus(state) === "failed" || jsonStatus(state) === "blocked"
+}
+
+export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "status" | "validation" | "applyResult" | "clientApproval" | "payment" | "tenant" | "errors">): OperationsWorkflowSummary {
   const issueCount = extractIssueCount(run.validation) + extractIssueCount(run.applyResult)
-  if (run.status === "failed" || issueCount > 0) {
+  if (run.status === "failed" || issueCount > 0 || postPaymentAutomationFailed(run.errors)) {
     return {
       state: "Needs attention",
       label: "Needs attention",
-      primaryAction: "Review intake",
-      helper: "Review the request before continuing.",
+      primaryAction: "Open client",
+      helper: "A workflow step needs operator recovery.",
     }
   }
 
@@ -264,17 +245,17 @@ export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "st
     return {
       state: "Live",
       label: "Live",
-      primaryAction: "Send handoff email",
+      primaryAction: "Open client",
       helper: "The site is active for visitors.",
     }
   }
 
   if (run.status === "draft_ready") {
     return {
-      state: "Drafts to preview",
-      label: "Open draft",
-      primaryAction: "Open draft",
-      helper: "Review the draft before sending a preview.",
+      state: "Preview ready",
+      label: "Prepare preview",
+      primaryAction: "Open client",
+      helper: "Draft content is ready for the operator preview gate.",
     }
   }
 
@@ -285,44 +266,44 @@ export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "st
 
     if (approved && paid && domainVerified) {
       return {
-        state: "Launch needed",
-        label: "Launch site",
-        primaryAction: "Launch site",
-        helper: "Checkout is complete and the domain is ready.",
+        state: "Checkout completed",
+        label: "Activating",
+        primaryAction: "Open client",
+        helper: "Checkout is complete; automatic activation is expected.",
       }
     }
 
     if (approved && paid) {
       return {
-        state: "Launch needed",
-        label: "Register domain",
-        primaryAction: "Register domain",
-        helper: "Checkout is complete; prepare the domain and launch.",
+        state: "Checkout completed",
+        label: "Provisioning",
+        primaryAction: "Open client",
+        helper: "Payment is complete; provider automation is working.",
       }
     }
 
     if (approved) {
       return {
-        state: "Waiting for checkout",
-        label: "Waiting for checkout",
-        primaryAction: "Waiting for checkout",
-        helper: "Client approval and payment are the remaining checkout gate.",
+        state: "Preview ready",
+        label: "Checkout open",
+        primaryAction: "Open client",
+        helper: "The client approved; payment is still open.",
       }
     }
 
     return {
-      state: "Waiting for checkout",
+      state: "Preview ready",
       label: "Send preview",
       primaryAction: "Send preview",
-      helper: "Share the preview and wait for client checkout.",
+      helper: "Send the preview email when the site is ready for the client.",
     }
   }
 
   return {
-    state: "Draft preparing",
-    label: "Draft preparing",
-    primaryAction: "Open draft",
-    helper: "The draft generation pipeline is preparing CMS content.",
+    state: "Needs attention",
+    label: "Not actionable",
+    primaryAction: "Open client",
+    helper: "This item is outside the normal Operations queue.",
   }
 }
 
@@ -331,32 +312,32 @@ export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmis
     return {
       state: "Needs attention",
       label: "Needs attention",
-      primaryAction: "Review intake",
-      helper: "Review the request before continuing.",
+      primaryAction: "Open client",
+      helper: "Intake automation failed and needs recovery.",
     }
   }
 
   if ((submission.status === "submitted" || submission.status === "normalized") && !relationId(submission.generationRun)) {
     if (reviewedBriefApproved(submission.reviewedGenerationInput)) {
       return {
-        state: "Draft preparing",
+        state: "Needs attention",
         label: "Generation recovery",
-        primaryAction: "Review status",
+        primaryAction: "Open client",
         helper: "The reviewed brief is ready for draft generation recovery.",
       }
     }
 
     return {
-      state: "New requests",
-      label: "Review intake",
-      primaryAction: "Review intake",
-      helper: "Review intake details and prepare the brief.",
+      state: "Needs attention",
+      label: "Intake not processed",
+      primaryAction: "Open client",
+      helper: "The request has no linked draft and needs recovery.",
     }
   }
 
   if (submission.status === "preview_ready") {
     return {
-      state: "Waiting for checkout",
+      state: "Preview ready",
       label: "Send preview",
       primaryAction: "Send preview",
       helper: "Draft site is ready for client checkout.",
@@ -364,10 +345,10 @@ export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmis
   }
 
   return {
-    state: "Draft preparing",
-    label: "Draft preparing",
-    primaryAction: "Review status",
-    helper: "The request is being turned into a draft site automatically.",
+    state: "Needs attention",
+    label: "Not actionable",
+    primaryAction: "Open client",
+    helper: "This intake record is outside the normal Operations queue.",
   }
 }
 

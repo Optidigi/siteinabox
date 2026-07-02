@@ -18,40 +18,26 @@ const read = (path: string) => readFileSync(join(root, path), "utf8")
 
 describe("generation operations UI helpers", () => {
   it("builds manager workflow run filters", () => {
+    expect(generationRunWhere("all")).toEqual({
+      or: [
+        { status: { equals: "failed" } },
+        {
+          or: [
+            { status: { equals: "draft_ready" } },
+            { status: { equals: "preview_ready" } },
+          ],
+        },
+      ],
+    })
     expect(generationRunWhere("needs-attention")).toEqual({ status: { equals: "failed" } })
-    expect(generationRunWhere("new-requests")).toEqual({
-      or: [
-        { status: { equals: "submitted" } },
-        { status: { equals: "normalized" } },
-      ],
-    })
-    expect(generationRunWhere("draft-preparing")).toEqual({
-      or: [
-        {
-          or: [
-            { status: { equals: "submitted" } },
-            { status: { equals: "normalized" } },
-          ],
-        },
-        {
-          or: [
-            { status: { equals: "queued" } },
-            { status: { equals: "generating" } },
-            { status: { equals: "generated" } },
-            { status: { equals: "validating" } },
-            { status: { equals: "applying" } },
-          ],
-        },
-      ],
-    })
-    expect(generationRunWhere("drafts-to-preview")).toEqual({
+    expect(generationRunWhere("preview-ready")).toEqual({
       or: [
         { status: { equals: "draft_ready" } },
+        { status: { equals: "preview_ready" } },
       ],
     })
-    expect(generationRunWhere("waiting-for-checkout")).toEqual({ status: { equals: "preview_ready" } })
-    expect(generationRunWhere("launch-needed")).toEqual({ status: { equals: "preview_ready" } })
-    expect(generationRunWhere("live")).toEqual({ status: { equals: "preview_ready" } })
+    expect(generationRunWhere("checkout-completed")).toEqual(generationRunWhere("preview-ready"))
+    expect(generationRunWhere("live")).toEqual(generationRunWhere("preview-ready"))
   })
 
   it("stacks search with the selected run filter", () => {
@@ -72,9 +58,9 @@ describe("generation operations UI helpers", () => {
   })
 
   it("builds intake filters with business and contact search fields", () => {
-    expect(intakeSubmissionWhere("waiting-for-checkout", "sam@example.com")).toEqual({
+    expect(intakeSubmissionWhere("needs-attention", "sam@example.com")).toEqual({
       and: [
-        { status: { equals: "preview_ready" } },
+        { status: { equals: "failed" } },
         {
           or: [
             { businessName: { like: "sam@example.com" } },
@@ -107,7 +93,7 @@ describe("generation operations UI helpers", () => {
       },
     }
 
-    await listGenerationOperations({ page: 3, pageSize: 20, filter: "waiting-for-checkout", q: "" }, client)
+    await listGenerationOperations({ page: 3, pageSize: 20, filter: "preview-ready", q: "" }, client)
 
     expect(calls).toHaveLength(2)
     expect(calls[0]).toMatchObject({
@@ -126,8 +112,8 @@ describe("generation operations UI helpers", () => {
       depth: 2,
       sort: "-updatedAt",
     })
-    expect(calls[0].where).toEqual(generationRunWhere("waiting-for-checkout", ""))
-    expect(calls[1].where).toEqual(intakeSubmissionWhere("waiting-for-checkout", ""))
+    expect(calls[0].where).toEqual(generationRunWhere("preview-ready", ""))
+    expect(calls[1].where).toEqual(intakeSubmissionWhere("preview-ready", ""))
   })
 
   it("redacts secret-looking and raw provider fields in JSON summaries", () => {
@@ -165,38 +151,38 @@ describe("generation operations UI helpers", () => {
 
   it("maps intake submissions to manager-facing workflow labels", () => {
     expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null } as any)).toMatchObject({
-      state: "New requests",
-      label: "Review intake",
-      primaryAction: "Review intake",
+      state: "Needs attention",
+      label: "Intake not processed",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "submitted", generationRun: null } as any)).toMatchObject({
-      state: "New requests",
-      label: "Review intake",
-      primaryAction: "Review intake",
+      state: "Needs attention",
+      label: "Intake not processed",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null, reviewedGenerationInput: { status: "admin-approved" } } as any)).toMatchObject({
-      state: "Draft preparing",
+      state: "Needs attention",
       label: "Generation recovery",
-      primaryAction: "Review status",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "queued", generationRun: null } as any)).toMatchObject({
-      state: "Draft preparing",
-      label: "Draft preparing",
+      state: "Needs attention",
+      label: "Not actionable",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "failed", generationRun: null } as any)).toMatchObject({
       state: "Needs attention",
-      primaryAction: "Review intake",
+      primaryAction: "Open client",
     })
   })
 
   it("maps generation runs to manager-facing workflow labels", () => {
     expect(workflowSummaryForGenerationRun({ status: "draft_ready", tenant: null } as any)).toMatchObject({
-      state: "Drafts to preview",
-      label: "Open draft",
-      primaryAction: "Open draft",
+      state: "Preview ready",
+      label: "Prepare preview",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForGenerationRun({ status: "preview_ready", clientApproval: null, payment: null, tenant: null } as any)).toMatchObject({
-      state: "Waiting for checkout",
+      state: "Preview ready",
       label: "Send preview",
       primaryAction: "Send preview",
     })
@@ -206,9 +192,9 @@ describe("generation operations UI helpers", () => {
       payment: null,
       tenant: null,
     } as any)).toMatchObject({
-      state: "Waiting for checkout",
-      label: "Waiting for checkout",
-      primaryAction: "Waiting for checkout",
+      state: "Preview ready",
+      label: "Checkout open",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
@@ -216,9 +202,9 @@ describe("generation operations UI helpers", () => {
       payment: { status: "completed" },
       tenant: { domainVerification: { status: "not_checked" } },
     } as any)).toMatchObject({
-      state: "Launch needed",
-      label: "Register domain",
-      primaryAction: "Register domain",
+      state: "Checkout completed",
+      label: "Provisioning",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
@@ -226,9 +212,9 @@ describe("generation operations UI helpers", () => {
       payment: { status: "completed" },
       tenant: { domainVerification: { status: "verified" } },
     } as any)).toMatchObject({
-      state: "Launch needed",
-      label: "Launch site",
-      primaryAction: "Launch site",
+      state: "Checkout completed",
+      label: "Activating",
+      primaryAction: "Open client",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
@@ -236,7 +222,7 @@ describe("generation operations UI helpers", () => {
     } as any)).toMatchObject({
       state: "Live",
       label: "Live",
-      primaryAction: "Send handoff email",
+      primaryAction: "Open client",
     })
   })
 })
@@ -442,14 +428,19 @@ describe("generation operations route access", () => {
   it("presents the operations overview as one task inbox", () => {
     const list = read("src/app/(frontend)/(admin)/generation-runs/page.tsx")
 
-    expect(list).toContain("One queue for intake, preview send, client checkout, provisioning, and live handoff.")
+    expect(list).toContain("Preview send, checkout completion, live sites, and items that need recovery.")
     expect(list).toContain("Task queue")
-    expect(list).toContain("Client / site")
-    expect(list).toContain("Next action")
-    expect(list).toContain("Advanced filters")
-    expect(list).toContain("Waiting for checkout")
-    expect(list).toContain("Launch needed")
+    expect(list).toContain("All active")
+    expect(list).toContain("Preview ready")
+    expect(list).toContain("Checkout completed")
+    expect(list).toContain("Live / published")
     expect(list).toContain("Needs attention")
+    expect(list).toContain("<Card")
+    expect(list).not.toContain("Client / site")
+    expect(list).not.toContain("Advanced filters")
+    expect(list).not.toContain("Waiting for checkout")
+    expect(list).not.toContain("Launch needed")
+    expect(list).not.toContain("Review intake")
     expect(list).not.toContain("Site workflow")
     expect(list).not.toContain("<h2 className=\"text-lg font-semibold\">New requests</h2>")
   })

@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
 import { getPayload } from "payload"
@@ -68,4 +69,13 @@ export async function sendPreviewAccessAction(
       message: error instanceof Error ? error.message : t("previewAccessSendFailed"),
     }
   }
+}
+
+export async function sendPreviewAccessEmailAction(
+  generationRunId: string | number,
+  formData: FormData,
+): Promise<void> {
+  await sendPreviewAccessAction(generationRunId, { ok: false, message: "" }, formData)
+  revalidatePath("/generation-runs")
+  revalidatePath(`/generation-runs/${generationRunId}`)
 }

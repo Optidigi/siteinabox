@@ -2,50 +2,39 @@ import Link from "next/link"
 import type { ComponentType } from "react"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Button, buttonVariants } from "@siteinabox/ui/components/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@siteinabox/ui/components/table"
+import { Card, CardContent } from "@siteinabox/ui/components/card"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { EmptyState } from "@/components/empty-state"
 import { ListPagination } from "@/components/list-pagination"
 import { ListSearch } from "@/components/list-search"
 import { PageHeader } from "@/components/page-header"
+import { sendPreviewAccessEmailAction } from "@/lib/actions/previewAccess"
 import { requireRole } from "@/lib/authGate"
 import {
   listGenerationOperations,
+  relationId,
   relationLabel,
   workflowSummaryForGenerationRun,
   workflowSummaryForIntakeSubmission,
   type GenerationRunFilter,
   type OperationsWorkflowState,
 } from "@/lib/queries/generationOperations"
-import { AlertCircle, CheckCircle2, ClipboardList, ExternalLink, Globe2, Inbox, Search, Send, TimerReset } from "lucide-react"
+import { AlertCircle, CheckCircle2, ExternalLink, Globe2, Inbox, Mail, Search, Send } from "lucide-react"
 
 const PAGE_SIZE = 10
 
 const filters: Array<{ value: GenerationRunFilter; label: string; icon: ComponentType<{ className?: string }> }> = [
-  { value: "all", label: "All", icon: ClipboardList },
-  { value: "new-requests", label: "New requests", icon: Inbox },
-  { value: "draft-preparing", label: "Draft preparing", icon: TimerReset },
-  { value: "drafts-to-preview", label: "Drafts to preview", icon: Send },
-  { value: "waiting-for-checkout", label: "Waiting for checkout", icon: CheckCircle2 },
-  { value: "launch-needed", label: "Launch needed", icon: Globe2 },
-  { value: "live", label: "Live", icon: Globe2 },
+  { value: "all", label: "All active", icon: Inbox },
+  { value: "preview-ready", label: "Preview ready", icon: Send },
+  { value: "checkout-completed", label: "Checkout completed", icon: CheckCircle2 },
+  { value: "live", label: "Live / published", icon: Globe2 },
   { value: "needs-attention", label: "Needs attention", icon: AlertCircle },
 ]
 
 const parseFilter = (value: unknown): GenerationRunFilter => {
   if (
-    value === "new-requests"
-    || value === "draft-preparing"
-    || value === "drafts-to-preview"
-    || value === "waiting-for-checkout"
-    || value === "launch-needed"
+    value === "preview-ready"
+    || value === "checkout-completed"
     || value === "live"
     || value === "needs-attention"
   ) return value
@@ -53,21 +42,15 @@ const parseFilter = (value: unknown): GenerationRunFilter => {
 }
 
 const workflowStates: OperationsWorkflowState[] = [
-  "New requests",
-  "Draft preparing",
-  "Drafts to preview",
-  "Waiting for checkout",
-  "Launch needed",
+  "Preview ready",
+  "Checkout completed",
   "Live",
   "Needs attention",
 ]
 
 const stateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | null => {
-  if (filter === "new-requests") return "New requests"
-  if (filter === "draft-preparing") return "Draft preparing"
-  if (filter === "drafts-to-preview") return "Drafts to preview"
-  if (filter === "waiting-for-checkout") return "Waiting for checkout"
-  if (filter === "launch-needed") return "Launch needed"
+  if (filter === "preview-ready") return "Preview ready"
+  if (filter === "checkout-completed") return "Checkout completed"
   if (filter === "live") return "Live"
   if (filter === "needs-attention") return "Needs attention"
   return null
@@ -81,9 +64,27 @@ const formatDate = (value?: string | null) => {
 
 const inboxTone = (state: OperationsWorkflowState) => {
   if (state === "Needs attention") return "destructive"
-  if (state === "Live" || state === "Launch needed") return "success"
+  if (state === "Live" || state === "Checkout completed") return "success"
   return "secondary"
 }
+
+const jsonObject = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null
+
+const textField = (value: unknown, key: string): string | null => {
+  const text = jsonObject(value)?.[key]
+  return typeof text === "string" && text.trim() ? text.trim() : null
+}
+
+const relationshipText = (value: unknown, key: string): string | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? textField(value, key)
+    : null
+
+const domainForRun = (run: any): string | null =>
+  relationshipText(run.tenant, "domain")
+  ?? textField(run.domainOrder, "domain")
+  ?? textField(run.domainOrder, "requestedDomain")
 
 export const dynamic = "force-dynamic"
 
@@ -124,30 +125,39 @@ export default async function GenerationRunsPage({
   const inboxItems = [
     ...visibleIntakes.map((submission) => {
       const summary = workflowSummaryForIntakeSubmission(submission)
+      const contactEmail = submission.contactEmail ?? relationshipText(submission.generationRun, "customerEmail")
       return {
         id: `submission-${submission.id}`,
         title: submission.businessName,
-        subtitle: submission.contactEmail ?? submission.contactName ?? "New request",
+        subtitle: contactEmail ?? submission.contactName ?? "Client request",
         state: summary.state,
         label: summary.label,
         helper: summary.helper,
         primaryAction: summary.primaryAction,
         href: `/generation-runs/submissions/${submission.id}`,
+        runId: relationId(submission.generationRun),
+        contactEmail,
+        domain: textField(submission.normalized, "primaryDomain") ?? textField(submission.normalized, "domain"),
         updatedAt: submission.updatedAt ?? submission.createdAt,
       }
     }),
     ...visibleRuns.map((run) => {
       const summary = workflowSummaryForGenerationRun(run)
       const pageCount = Array.isArray(run.pages) ? run.pages.length : 0
+      const contactEmail = relationshipText(run.intakeSubmission, "contactEmail") ?? textField(run.payment, "customerEmail")
+      const domain = domainForRun(run)
       return {
         id: `run-${run.id}`,
         title: relationLabel(run.tenant, "Draft site"),
-        subtitle: `${pageCount} pages`,
+        subtitle: contactEmail ?? `${pageCount} pages`,
         state: summary.state,
         label: summary.label,
         helper: summary.helper,
         primaryAction: summary.primaryAction,
         href: `/generation-runs/${run.id}`,
+        runId: run.id,
+        contactEmail,
+        domain,
         updatedAt: run.updatedAt,
       }
     }),
@@ -164,7 +174,7 @@ export default async function GenerationRunsPage({
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Operations"
-        subtitle="One queue for intake, preview send, client checkout, provisioning, and live handoff."
+        subtitle="Preview send, checkout completion, live sites, and items that need recovery."
       />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -181,37 +191,30 @@ export default async function GenerationRunsPage({
           <div>
             <h2 className="text-lg font-semibold">Task queue</h2>
             <p className="text-sm text-muted-foreground">
-              {filter === "all" ? "Showing the next required action for every active workflow." : `Filtered to ${selectedState}.`}
+              {filter === "all" ? "Showing active client/site work only." : `Filtered to ${selectedState}.`}
             </p>
           </div>
-          <details className="relative">
-            <summary className={cn(buttonVariants({ variant: "outline", size: "sm" }), "cursor-pointer list-none")}>
-              Advanced filters
-            </summary>
-            <div className="absolute right-0 z-10 mt-2 grid w-72 gap-2 rounded-md border bg-background p-3 shadow-lg">
-              {filters.map((item) => {
-                const Icon = item.icon
-                const active = item.value === filter
-                const count = item.value === "all"
-                  ? inboxItems.length
-                  : workflowCounts.get(stateForFilter(item.value) ?? "Needs attention") ?? 0
-                return (
-                  <Link
-                    key={item.value}
-                    href={hrefForFilter(item.value)}
-                    className={cn(buttonVariants({ variant: active ? "default" : "ghost", size: "sm" }), "justify-between gap-2")}
-                    aria-current={active ? "page" : undefined}
-                  >
-                    <span className="inline-flex items-center gap-1.5">
-                      <Icon className="size-4" aria-hidden />
-                      {item.label}
-                    </span>
-                    <span>{count}</span>
-                  </Link>
-                )
-              })}
-            </div>
-          </details>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {filters.map((item) => {
+            const Icon = item.icon
+            const active = item.value === filter
+            const count = item.value === "all"
+              ? inboxItems.length
+              : workflowCounts.get(stateForFilter(item.value) ?? "Needs attention") ?? 0
+            return (
+              <Link
+                key={item.value}
+                href={hrefForFilter(item.value)}
+                className={cn(buttonVariants({ variant: active ? "default" : "outline", size: "sm" }), "gap-2")}
+                aria-current={active ? "page" : undefined}
+              >
+                <Icon className="size-4" aria-hidden />
+                <span>{item.label}</span>
+                <span className="text-xs opacity-70">{count}</span>
+              </Link>
+            )
+          })}
         </div>
         {inboxItems.length === 0 ? (
           q ? (
@@ -224,51 +227,52 @@ export default async function GenerationRunsPage({
             <EmptyState
               icon={<Inbox className="h-10 w-10 text-muted-foreground" aria-hidden />}
               title="No tasks"
-              description="Intake, preview, checkout, provisioning, launch, and handoff tasks appear here."
+              description="Preview, checkout, live, and recovery items appear here."
             />
           )
         ) : (
-          <div className="rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Client / site</TableHead>
-                  <TableHead>Next action</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="text-right">Open</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inboxItems.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>
-                      <div className="font-medium">{item.title}</div>
-                      <div className="text-xs text-muted-foreground">{item.subtitle}</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="font-medium">{item.label}</div>
-                      <div className="text-xs text-muted-foreground">{item.helper}</div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={inboxTone(item.state)}>
-                        <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                        {item.state}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{formatDate(item.updatedAt)}</TableCell>
-                    <TableCell className="text-right">
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={item.href} className="gap-1.5">
-                          <ExternalLink className="size-3.5" aria-hidden />
-                          {item.primaryAction}
-                        </Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {inboxItems.map((item) => (
+              <Card key={item.id} className="py-0">
+                <CardContent className="grid gap-4 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate font-medium">{item.title}</div>
+                      <div className="mt-1 truncate text-sm text-muted-foreground">{item.subtitle}</div>
+                    </div>
+                    <Badge variant={inboxTone(item.state)}>{item.state}</Badge>
+                  </div>
+
+                  <div className="grid gap-2 text-sm">
+                    <div className="font-medium">{item.label}</div>
+                    <div className="text-muted-foreground">{item.helper}</div>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {item.domain && <Badge variant="outline">{item.domain}</Badge>}
+                      {item.contactEmail && <Badge variant="secondary">{item.contactEmail}</Badge>}
+                      <Badge variant="outline">{formatDate(item.updatedAt)}</Badge>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {item.primaryAction === "Send preview" && item.runId && item.contactEmail ? (
+                      <form action={sendPreviewAccessEmailAction.bind(null, item.runId)}>
+                        <input type="hidden" name="email" value={item.contactEmail} />
+                        <Button type="submit" size="sm">
+                          <Mail className="mr-1 size-4" aria-hidden />
+                          Send preview email
+                        </Button>
+                      </form>
+                    ) : null}
+                    <Button asChild variant={item.primaryAction === "Send preview" ? "outline" : "default"} size="sm">
+                      <Link href={item.href}>
+                        <ExternalLink className="mr-1 size-4" aria-hidden />
+                        Open client
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         )}
       </section>
