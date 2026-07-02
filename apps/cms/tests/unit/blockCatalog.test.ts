@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 import type { SiteBlockCatalogVariant } from "@siteinabox/contracts/block-catalog"
@@ -43,16 +43,6 @@ const blockRoot = (text: string) => ({
 
 const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
 const fromRepoRoot = (relativePath: string) => path.join(repoRoot, relativePath)
-
-type SourceArchiveManifest = {
-  sources: {
-    tailwindPlus: number
-    hyperUi: number
-    preline: number
-    tailblocks: number
-    mambaUi: number
-  }
-}
 
 type PackageManifest = {
   dependencies?: Record<string, string>
@@ -203,7 +193,7 @@ describe("renderer block catalog", () => {
     expect(DEFERRED_V1_MARKETING_RENDERER_BLOCKS).not.toContain("newsletter")
   })
 
-  it("has exact-source provenance for implemented source-backed variants", () => {
+  it("has compact exact-source provenance for implemented source-backed variants", () => {
     const rendererReadySlugs = SITE_BLOCK_SLUGS.filter((slug) => slug !== "comparison")
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug)).toEqual(expect.arrayContaining(rendererReadySlugs))
 
@@ -219,11 +209,9 @@ describe("renderer block catalog", () => {
       )
       expect(variant.provenance.sourceAccess, `${variant.variantId} missing source access`).toBeTruthy()
       expect(["exact-source", "adapted-exact-style"]).toContain(variant.provenance.implementation)
-      expect(variant.provenance.localSourcePath, `${variant.variantId} missing local source archive path`).toBeTruthy()
-      expect(
-        existsSync(fromRepoRoot(variant.provenance.localSourcePath!)),
-        `${variant.variantId} local source archive does not exist`,
-      ).toBe(true)
+      expect("localSourcePath" in variant.provenance, `${variant.variantId} should not point at raw local provider HTML`).toBe(
+        false,
+      )
       expect(variant.provenance.approvalStatus, `${variant.variantId} is not approved`).toBe("approved")
       expect(variant.provenance.sourceAvailability, `${variant.variantId} is not free/public`).toBe("free-public")
       expect(variant.provenance.licenseCompatibility, `${variant.variantId} is not license-compatible`).toBe("compatible")
@@ -257,19 +245,15 @@ describe("renderer block catalog", () => {
     expect(DEFERRED_SOURCE_BLOCK_CANDIDATES).toHaveLength(0)
   })
 
-  it("archives exact provider source material locally without exposing every archive as renderer-ready", () => {
-    const manifestPath = fromRepoRoot("packages/contracts/block-sources/manifest.json")
-    expect(existsSync(manifestPath)).toBe(true)
+  it("does not require or expose raw provider source archives", () => {
+    expect(JSON.stringify(SITE_BLOCK_CATALOG)).not.toContain("packages/contracts/block-sources")
+    expect(JSON.stringify(SITE_CHROME_CATALOG)).not.toContain("packages/contracts/block-sources")
 
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as SourceArchiveManifest
-    expect(manifest.sources.tailwindPlus).toBeGreaterThanOrEqual(36)
-    expect(manifest.sources.hyperUi).toBeGreaterThanOrEqual(130)
-    expect(manifest.sources.preline).toBeGreaterThanOrEqual(89)
-    expect(manifest.sources.tailblocks).toBeGreaterThanOrEqual(126)
-    expect(manifest.sources.mambaUi).toBeGreaterThanOrEqual(16)
-    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.length).toBeLessThan(
-      Object.values(manifest.sources).reduce((total, count) => total + count, 0),
-    )
+    for (const variant of [...SITE_SOURCE_BACKED_BLOCK_VARIANTS, ...SITE_SOURCE_BACKED_CHROME_VARIANTS]) {
+      expect("localSourcePath" in variant.provenance, `${variant.variantId} has obsolete local archive provenance`).toBe(
+        false,
+      )
+    }
   })
 
   it("records the current native integration route for source-backed variants", () => {
@@ -339,8 +323,7 @@ describe("renderer block catalog", () => {
       expect(variant.provenance.sourceName).toBe("HyperUI")
       expect(variant.provenance.runtime.kind).toBe("copy-paste-tailwind")
       expect(variant.provenance.runtime.interactive).toBe(false)
-      expect(variant.provenance.localSourcePath).toBeTruthy()
-      expect(existsSync(fromRepoRoot(variant.provenance.localSourcePath!))).toBe(true)
+      expect("localSourcePath" in variant.provenance).toBe(false)
     }
 
     expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.id)).toEqual([
@@ -465,7 +448,6 @@ describe("renderer block catalog", () => {
       { visualExactnessStatus: "blocked" as const },
       { rendererSupportStatus: "deferred" as const },
       { rendererSupportStatus: "unsupported" as const },
-      { localSourcePath: "" },
       { retrieval: "" },
       { visualSourceNotes: "" },
       {

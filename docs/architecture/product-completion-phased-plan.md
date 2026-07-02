@@ -211,9 +211,9 @@ new generated sites depend on it.
 - Verify every source-backed variant has source URL, license status, free/public
   availability, upstream block name/id, renderer class, fixture coverage, and
   visual source notes.
-- Re-check Tailwind Plus free/public access for the three current variants and
-  record whether source payloads are publicly available or need a local
-  operator-provided archive.
+- Re-check Tailwind Plus free/public access for the current variants and record
+  whether source payloads are publicly available and compatible with compact
+  provenance.
 - Review Tailblocks, Mamba UI, HyperUI, and Preline free source access and
   confirm the current provenance is sufficient for SIAB generated-site use.
 

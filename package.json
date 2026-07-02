@@ -5,7 +5,6 @@
   "type": "module",
   "packageManager": "pnpm@11.5.0",
   "scripts": {
-    "blocks:archive-sources": "node scripts/archive-block-sources.mjs",
     "cms:typecheck": "pnpm --dir apps/cms --ignore-workspace typecheck",
     "cms:test": "pnpm --dir apps/cms --ignore-workspace test",
     "cms:build": "pnpm --dir apps/cms --ignore-workspace build",
