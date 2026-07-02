@@ -297,16 +297,18 @@ describe("sendEmail", () => {
 
   it("honors explicit sender and reply-to for future tenant flows", async () => {
     const provider = mockProvider({ providerMessageId: "tenant-message" })
+    const payload = mockPayload()
     const { sendEmail } = await import("@/lib/email/sendEmail")
 
     await sendEmail({
       intent: "forms.tenant_notification",
-      tenant: 42,
+      tenant: "42",
       from: "noreply@mail.tenant.example",
       replyTo: "visitor@example.com",
       to: "owner@example.com",
       subject: "New form submission",
       html: "<p>New message</p>",
+      payload,
     }, { provider })
 
     expect(provider.send).toHaveBeenCalledWith({
@@ -316,6 +318,16 @@ describe("sendEmail", () => {
       subject: "New form submission",
       html: "<p>New message</p>",
       text: undefined,
+    })
+    expect(payload.create).toHaveBeenCalledWith({
+      collection: "mail-logs",
+      overrideAccess: true,
+      data: expect.objectContaining({
+        flow: "forms.tenant_notification",
+        tenant: 42,
+        status: "sent",
+        providerMessageId: "tenant-message",
+      }),
     })
   })
 
@@ -377,7 +389,7 @@ describe("sendEmail", () => {
 
     await expect(sendEmail({
       intent: "preview.site_ready",
-      tenant: { id: 42 },
+      tenant: { id: "42" },
       from: "noreply@mail.tenant.example",
       to: "customer@example.com",
       subject: "Your site is ready",

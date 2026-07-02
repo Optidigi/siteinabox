@@ -40,6 +40,18 @@ const relationIds = (items: unknown): string[] =>
     ? items.map((item) => relationshipId(item)).filter((id): id is string => Boolean(id))
     : []
 
+const payloadRelationIds = (items: unknown): Array<string | number> =>
+  Array.isArray(items)
+    ? items
+      .map((item) => {
+        const id = item && typeof item === "object" && "id" in item
+          ? (item as { id?: string | number | null }).id
+          : item
+        return typeof id === "number" || typeof id === "string" ? id : null
+      })
+      .filter((id): id is string | number => id != null)
+    : []
+
 const grantIsActive = (grant: PreviewAccessGrant, now: Date): boolean => {
   if (grant.revokedAt) return false
   const expiresAt = new Date(grant.expiresAt)
@@ -233,7 +245,7 @@ export async function createOrRefreshPreviewGrant(input: {
     depth: 0,
     overrideAccess: true,
   })
-  const pageIds = relationIds(run.pages)
+  const pageIds = payloadRelationIds(run.pages)
   const now = new Date().toISOString()
   const current = existing.docs[0] as PreviewAccessGrant | undefined
   if (current) {

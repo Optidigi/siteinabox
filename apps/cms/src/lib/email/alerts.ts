@@ -239,6 +239,10 @@ function compactAlertData(data: Record<string, unknown>) {
 }
 
 function formatTenantRef(tenant: MailTenantRef) {
-  if (tenant && typeof tenant === "object") return tenant.id
-  return tenant
+  const id = tenant && typeof tenant === "object" ? tenant.id : tenant
+  if (typeof id === "string") {
+    const numeric = Number(id)
+    return Number.isSafeInteger(numeric) && String(numeric) === id ? numeric : id
+  }
+  return id
 }

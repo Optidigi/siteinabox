@@ -181,7 +181,7 @@ describe("preview access grants", () => {
       collection: "preview-access-grants",
       data: expect.objectContaining({
         clientSlug: "preview-studio",
-        pages: ["100", "101"],
+        pages: [100, 101],
         revokedAt: null,
         sentCount: 2,
       }),
