@@ -25,7 +25,7 @@ describe("generation operations UI helpers", () => {
         { status: { equals: "normalized" } },
       ],
     })
-    expect(generationRunWhere("ready-for-ai")).toEqual({
+    expect(generationRunWhere("draft-preparing")).toEqual({
       or: [
         {
           or: [
@@ -175,13 +175,13 @@ describe("generation operations UI helpers", () => {
       primaryAction: "Review intake",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null, reviewedGenerationInput: { status: "admin-approved" } } as any)).toMatchObject({
-      state: "Ready for AI",
-      label: "Send to AI",
-      primaryAction: "Send to AI",
+      state: "Draft preparing",
+      label: "Generation recovery",
+      primaryAction: "Review status",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "queued", generationRun: null } as any)).toMatchObject({
-      state: "Ready for AI",
-      label: "Send to AI",
+      state: "Draft preparing",
+      label: "Draft preparing",
     })
     expect(workflowSummaryForIntakeSubmission({ status: "failed", generationRun: null } as any)).toMatchObject({
       state: "Needs attention",
@@ -348,10 +348,15 @@ describe("generation operations route access", () => {
     expect(action).not.toContain("overrideAccess: true")
     expect(action).toContain("This request already has a generation run")
     expect(action).toContain("This request already has a tenant")
-    expect(detail).toContain("Manager actions")
+    expect(detail).toContain("Intake status")
+    expect(detail).toContain("Open draft")
+    expect(detail).toContain("Manual intake recovery")
     expect(detail).toContain("Approve brief")
-    expect(detail).toContain("Generate draft")
+    expect(detail).toContain("Re-run draft generation")
     expect(detail).toContain("Delete request if safe")
+    expect(detail.indexOf("Advanced")).toBeLessThan(detail.indexOf("Manual intake recovery"))
+    expect(detail).not.toContain("Manager actions")
+    expect(detail).not.toContain("Generate draft")
     expect(detail).toContain("Business facts")
     expect(detail).toContain("Website brief")
     expect(detail).toContain("Design preferences")

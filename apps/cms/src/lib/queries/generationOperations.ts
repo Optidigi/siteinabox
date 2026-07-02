@@ -11,7 +11,7 @@ import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 export type GenerationRunFilter =
   | "all"
   | "new-requests"
-  | "ready-for-ai"
+  | "draft-preparing"
   | "drafts-to-preview"
   | "waiting-for-checkout"
   | "launch-needed"
@@ -20,7 +20,7 @@ export type GenerationRunFilter =
 
 export type OperationsWorkflowState =
   | "New requests"
-  | "Ready for AI"
+  | "Draft preparing"
   | "Drafts to preview"
   | "Waiting for checkout"
   | "Launch needed"
@@ -53,7 +53,7 @@ const newRequestsWhere = {
     { status: { equals: "normalized" } },
   ],
 }
-const readyForAIWhere = {
+const draftPreparingWhere = {
   or: [
     { status: { equals: "queued" } },
     { status: { equals: "generating" } },
@@ -73,7 +73,7 @@ export function generationRunWhere(filter: GenerationRunFilter = "all", q?: stri
   const clauses: Record<string, unknown>[] = []
   if (filter === "needs-attention") clauses.push(failedWhere)
   if (filter === "new-requests") clauses.push(newRequestsWhere)
-  if (filter === "ready-for-ai") clauses.push({ or: [newRequestsWhere, readyForAIWhere] })
+  if (filter === "draft-preparing") clauses.push({ or: [newRequestsWhere, draftPreparingWhere] })
   if (filter === "drafts-to-preview") clauses.push(draftsToPreviewWhere)
   if (filter === "waiting-for-checkout" || filter === "launch-needed" || filter === "live") clauses.push(previewReadyWhere)
 
@@ -99,7 +99,7 @@ export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: s
   const clauses: Record<string, unknown>[] = []
   if (filter === "needs-attention") clauses.push(failedWhere)
   if (filter === "new-requests") clauses.push(newRequestsWhere)
-  if (filter === "ready-for-ai") clauses.push({ or: [newRequestsWhere, readyForAIWhere] })
+  if (filter === "draft-preparing") clauses.push({ or: [newRequestsWhere, draftPreparingWhere] })
   if (filter === "drafts-to-preview") clauses.push(draftsToPreviewWhere)
   if (filter === "waiting-for-checkout" || filter === "launch-needed" || filter === "live") clauses.push(previewReadyWhere)
 
@@ -319,10 +319,10 @@ export function workflowSummaryForGenerationRun(run: Pick<SiteGenerationRun, "st
   }
 
   return {
-    state: "Ready for AI",
-    label: "Send to AI",
+    state: "Draft preparing",
+    label: "Draft preparing",
     primaryAction: "Open draft",
-    helper: "The AI draft is being prepared.",
+    helper: "The draft generation pipeline is preparing CMS content.",
   }
 }
 
@@ -339,10 +339,10 @@ export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmis
   if ((submission.status === "submitted" || submission.status === "normalized") && !relationId(submission.generationRun)) {
     if (reviewedBriefApproved(submission.reviewedGenerationInput)) {
       return {
-        state: "Ready for AI",
-        label: "Send to AI",
-        primaryAction: "Send to AI",
-        helper: "The reviewed brief is ready for AI generation.",
+        state: "Draft preparing",
+        label: "Generation recovery",
+        primaryAction: "Review status",
+        helper: "The reviewed brief is ready for draft generation recovery.",
       }
     }
 
@@ -364,10 +364,10 @@ export function workflowSummaryForIntakeSubmission(submission: Pick<IntakeSubmis
   }
 
   return {
-    state: "Ready for AI",
-    label: "Send to AI",
-    primaryAction: "Send to AI",
-    helper: "The reviewed brief is being turned into a draft site.",
+    state: "Draft preparing",
+    label: "Draft preparing",
+    primaryAction: "Review status",
+    helper: "The request is being turned into a draft site automatically.",
   }
 }
 

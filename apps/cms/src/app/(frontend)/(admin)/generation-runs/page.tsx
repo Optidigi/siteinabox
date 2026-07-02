@@ -24,14 +24,14 @@ import {
   type GenerationRunFilter,
   type OperationsWorkflowState,
 } from "@/lib/queries/generationOperations"
-import { AlertCircle, CheckCircle2, ClipboardList, ExternalLink, Globe2, Inbox, Search, Send, Wand2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, ClipboardList, ExternalLink, Globe2, Inbox, Search, Send, TimerReset } from "lucide-react"
 
 const PAGE_SIZE = 10
 
 const filters: Array<{ value: GenerationRunFilter; label: string; icon: ComponentType<{ className?: string }> }> = [
   { value: "all", label: "All", icon: ClipboardList },
   { value: "new-requests", label: "New requests", icon: Inbox },
-  { value: "ready-for-ai", label: "Ready for AI", icon: Wand2 },
+  { value: "draft-preparing", label: "Draft preparing", icon: TimerReset },
   { value: "drafts-to-preview", label: "Drafts to preview", icon: Send },
   { value: "waiting-for-checkout", label: "Waiting for checkout", icon: CheckCircle2 },
   { value: "launch-needed", label: "Launch needed", icon: Globe2 },
@@ -42,7 +42,7 @@ const filters: Array<{ value: GenerationRunFilter; label: string; icon: Componen
 const parseFilter = (value: unknown): GenerationRunFilter => {
   if (
     value === "new-requests"
-    || value === "ready-for-ai"
+    || value === "draft-preparing"
     || value === "drafts-to-preview"
     || value === "waiting-for-checkout"
     || value === "launch-needed"
@@ -54,7 +54,7 @@ const parseFilter = (value: unknown): GenerationRunFilter => {
 
 const workflowStates: OperationsWorkflowState[] = [
   "New requests",
-  "Ready for AI",
+  "Draft preparing",
   "Drafts to preview",
   "Waiting for checkout",
   "Launch needed",
@@ -64,7 +64,7 @@ const workflowStates: OperationsWorkflowState[] = [
 
 const stateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | null => {
   if (filter === "new-requests") return "New requests"
-  if (filter === "ready-for-ai") return "Ready for AI"
+  if (filter === "draft-preparing") return "Draft preparing"
   if (filter === "drafts-to-preview") return "Drafts to preview"
   if (filter === "waiting-for-checkout") return "Waiting for checkout"
   if (filter === "launch-needed") return "Launch needed"

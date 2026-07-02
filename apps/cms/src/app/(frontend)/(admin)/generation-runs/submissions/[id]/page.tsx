@@ -163,72 +163,32 @@ export default async function IntakeSubmissionDetailPage({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileCheck className="size-5" aria-hidden />
-            Manager actions
+            Intake status
           </CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 lg:grid-cols-3">
-          <form action={approveIntakeGenerationInputAction.bind(null, submission.id)} className="rounded-md border p-4">
-            <div className="mb-3 flex items-center gap-2 font-medium">
-              <FileCheck className="size-4" aria-hidden />
-              Approve brief
-            </div>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Confirm the request is ready to become a draft site.
-            </p>
-            <Textarea
-              id="reviewNotes"
-              name="reviewNotes"
-              rows={4}
-              defaultValue={submission.reviewNotes ?? ""}
-              placeholder="Internal notes"
-            />
-            {approvedBriefJson ? (
-              <textarea name="reviewedGenerationInput" defaultValue={approvedBriefJson} hidden readOnly />
-            ) : null}
-            <Button type="submit" className="mt-3 w-full" disabled={!approvedBriefJson}>
-              Approve brief
-            </Button>
-          </form>
-
-          <form action={generateReviewedIntakeDraftAction.bind(null, submission.id)} className="rounded-md border p-4">
-            <div className="mb-3 flex items-center gap-2 font-medium">
-              <Sparkles className="size-4" aria-hidden />
-              Generate draft
-            </div>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Start the draft-site generation after approval.
-            </p>
-            <Button type="submit" className="w-full" disabled={!reviewedInputApproved}>
-              Generate draft
-            </Button>
-            {!reviewedInputApproved && (
-              <p className="mt-2 text-xs text-muted-foreground">Approve the brief first.</p>
+        <CardContent className="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
+          <div>
+            <div className="text-lg font-semibold">{workflowSummary.primaryAction}</div>
+            <div className="text-muted-foreground">{workflowSummary.helper}</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {runId && (
+              <Button asChild>
+                <Link href={`/generation-runs/${runId}`}>
+                  <Sparkles className="mr-1 size-4" aria-hidden />
+                  Open draft
+                </Link>
+              </Button>
             )}
-          </form>
-
-          <form action={deleteSafeIntakeSubmissionAction.bind(null, submission.id)} className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
-            <div className="mb-3 flex items-center gap-2 font-medium text-destructive">
-              <Trash2 className="size-4" aria-hidden />
-              Delete request if safe
-            </div>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Only unused requests can be removed. Type DELETE to confirm.
-            </p>
-            <input
-              name="confirmDelete"
-              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
-              placeholder="DELETE"
-              disabled={!canDelete}
-            />
-            <Button type="submit" variant="destructive" className="mt-3 w-full" disabled={!canDelete}>
-              Delete request
-            </Button>
-            {!canDelete && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Deletion is blocked because a draft site or tenant is already linked.
-              </p>
+            {tenantSlug && (
+              <Button asChild variant="outline">
+                <Link href={`/sites/${tenantSlug}`}>
+                  <Building2 className="mr-1 size-4" aria-hidden />
+                  Open site
+                </Link>
+              </Button>
             )}
-          </form>
+          </div>
         </CardContent>
       </Card>
 
@@ -332,6 +292,86 @@ export default async function IntakeSubmissionDetailPage({
               Technical details, raw summaries, and workflow history
             </summary>
             <div className="mt-4 grid gap-4">
+              <div className="grid gap-3 rounded-md border p-3">
+                <div>
+                  <div className="font-medium">Manual intake recovery</div>
+                  <div className="text-sm text-muted-foreground">
+                    These controls are for failed or imported requests only. New public intake submissions generate drafts automatically.
+                  </div>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <form action={approveIntakeGenerationInputAction.bind(null, submission.id)} className="rounded-md border p-4">
+                    <div className="mb-3 flex items-center gap-2 font-medium">
+                      <FileCheck className="size-4" aria-hidden />
+                      Approve brief
+                    </div>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      Save reviewed input for legacy or failed requests.
+                    </p>
+                    <Textarea
+                      id="reviewNotes"
+                      name="reviewNotes"
+                      rows={4}
+                      defaultValue={submission.reviewNotes ?? ""}
+                      placeholder="Internal notes"
+                    />
+                    {approvedBriefJson ? (
+                      <textarea name="reviewedGenerationInput" defaultValue={approvedBriefJson} hidden readOnly />
+                    ) : null}
+                    <Button type="submit" variant="outline" className="mt-3 w-full" disabled={!approvedBriefJson || Boolean(runId)}>
+                      Approve brief
+                    </Button>
+                    {runId && (
+                      <p className="mt-2 text-xs text-muted-foreground">A draft is already linked to this intake.</p>
+                    )}
+                  </form>
+
+                  <form action={generateReviewedIntakeDraftAction.bind(null, submission.id)} className="rounded-md border p-4">
+                    <div className="mb-3 flex items-center gap-2 font-medium">
+                      <Sparkles className="size-4" aria-hidden />
+                      Re-run draft generation
+                    </div>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      Recovery only. Normal intake submissions start generation automatically.
+                    </p>
+                    <Button type="submit" variant="outline" className="w-full" disabled={!reviewedInputApproved || Boolean(runId)}>
+                      Re-run draft generation
+                    </Button>
+                    {!reviewedInputApproved && (
+                      <p className="mt-2 text-xs text-muted-foreground">A reviewed brief is required for recovery.</p>
+                    )}
+                    {runId && (
+                      <p className="mt-2 text-xs text-muted-foreground">A draft is already linked to this intake.</p>
+                    )}
+                  </form>
+
+                  <form action={deleteSafeIntakeSubmissionAction.bind(null, submission.id)} className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
+                    <div className="mb-3 flex items-center gap-2 font-medium text-destructive">
+                      <Trash2 className="size-4" aria-hidden />
+                      Delete request if safe
+                    </div>
+                    <p className="mb-3 text-sm text-muted-foreground">
+                      Only unused requests can be removed. Type DELETE to confirm.
+                    </p>
+                    <input
+                      name="confirmDelete"
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      placeholder="DELETE"
+                      disabled={!canDelete}
+                    />
+                    <Button type="submit" variant="destructive" className="mt-3 w-full" disabled={!canDelete}>
+                      Delete request
+                    </Button>
+                    {!canDelete && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Deletion is blocked because a draft site or tenant is already linked.
+                      </p>
+                    )}
+                  </form>
+                </div>
+              </div>
+
               <div className="grid gap-3 text-sm md:grid-cols-4">
                 <div>
                   <div className="text-muted-foreground">Received</div>
