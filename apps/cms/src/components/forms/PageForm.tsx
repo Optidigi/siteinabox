@@ -1881,6 +1881,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       theme={frameTheme}
       view={frameEditorView}
       tenantId={tenantId}
+      tenantSlug={tenantSlug}
       selection={frameSelection}
       onSelectionChanged={handleFrameSelectionChanged}
       onOpenBlockInspector={openBlockInSidebar}

@@ -17,6 +17,8 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain("export function PageEditorFrameHost")
     expect(host).toContain("export type PageEditorFrameLayout")
     expect(host).toContain("/__editor-frame/pages/")
+    expect(host).toContain("tenantSlug")
+    expect(host).toContain("URLSearchParams")
     expect(host).toContain("@siteinabox/contracts/iframe-editor")
     expect(host).toContain("validateIframeEditorMessage")
     expect(host).toContain('type === "renderer.ready"')
@@ -56,7 +58,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(form).toContain("const frameEditorLayout = isDesktop ? \"desktop\" : \"mobile\"")
     expect(form).toContain("const frameEditorView: PageEditorFrameView = readOnly ? \"sidebar\" : isDesktop ? mode : \"canvas\"")
     expect(form).toContain("const pageEditorFrame = canRenderEditorFrame ? (")
-    expect(form).toContain("<PageEditorFrameHost")
+    expect(form).toContain("tenantSlug={tenantSlug}")
     expect(form).toContain("layout={frameEditorLayout}")
     expect(form).toContain("view={frameEditorView}")
 

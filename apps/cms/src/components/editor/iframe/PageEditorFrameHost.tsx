@@ -33,6 +33,7 @@ export function PageEditorFrameHost({
   view,
   layout = "desktop",
   tenantId,
+  tenantSlug,
   selection,
   onSelectionChanged,
   onOpenBlockInspector,
@@ -47,6 +48,8 @@ export function PageEditorFrameHost({
   view: PageEditorFrameView
   layout?: PageEditorFrameLayout
   tenantId: string | number
+  /** Required on super-admin host so the frame route can resolve the selected site. */
+  tenantSlug?: string | null
   selection?: IframeEditorSelection | null
   onSelectionChanged?: (selection: IframeEditorSelection | null) => void
   onOpenBlockInspector?: (index: number) => void
@@ -73,10 +76,12 @@ export function PageEditorFrameHost({
   const pageRef = React.useRef(page)
   pageRef.current = page
 
-  const src = React.useMemo(
-    () => `/__editor-frame/pages/${encodeURIComponent(String(pageId))}`,
-    [pageId],
-  )
+  const src = React.useMemo(() => {
+    const base = `/__editor-frame/pages/${encodeURIComponent(String(pageId))}`
+    if (!tenantSlug) return base
+    const query = new URLSearchParams({ tenantSlug })
+    return `${base}?${query.toString()}`
+  }, [pageId, tenantSlug])
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
     const target = frameRef.current?.contentWindow
