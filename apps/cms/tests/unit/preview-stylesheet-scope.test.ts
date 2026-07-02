@@ -126,6 +126,15 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(canvasCss).toContain(".site-renderer[data-siab-site-renderer][data-legacy-tenant=\"amicare\"] .cms-block--richtext .rt-themed-eyebrow")
   })
 
+  it("loads shadcn CSS for editor UI in the embedded editor frame", () => {
+    const editorFrameLayout = read("apps/cms/src/app/(editor-frame)/layout.tsx")
+    const canvasStylesheet = read("apps/cms/src/styles/site-renderer-canvas.css")
+
+    expect(editorFrameLayout).toContain('import "@/styles/shadcn.css"')
+    expect(canvasStylesheet).not.toContain("--foreground:")
+    expect(canvasStylesheet).not.toContain("--popover:")
+  })
+
   it("covers Amicare canvas shell utilities without leaking Tailwind globals into admin", () => {
     const canvasCss = read("packages/site-renderer/src/canvas.css")
 

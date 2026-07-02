@@ -212,6 +212,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
         <TooltipProvider delayDuration={250}>
           {overlayPosition.styleElement}
           <div
+            data-siab-editor-ui
             data-siab-canvas-chrome="inline-image"
             className={`${overlayPosition.className} fixed z-[19] inline-flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 text-foreground shadow-sm backdrop-blur-sm`}
             onMouseEnter={() => canvasChrome.setVisible(true)}

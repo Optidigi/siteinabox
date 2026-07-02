@@ -1,3 +1,4 @@
+import "@/styles/shadcn.css"
 import "@/styles/generated-site-renderer.css"
 import "@/styles/site-renderer-canvas.css"
 import { cookies, headers } from "next/headers"
