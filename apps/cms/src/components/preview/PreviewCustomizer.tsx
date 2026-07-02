@@ -71,6 +71,10 @@ export function shouldStartPreviewThemeSave({
   )
 }
 
+export function shouldBlockPreviewCustomerNavigation(themeSaveStatus: PreviewThemeSaveStatus) {
+  return themeSaveStatus === "saving"
+}
+
 export function PreviewCustomizer({
   access,
   page,
@@ -97,6 +101,7 @@ export function PreviewCustomizer({
   const t = useTranslations("preview")
   const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
   const [paymentState] = React.useState<PreviewPaymentState | null>(payment)
+  const themeStateRef = React.useRef(themeState)
   const persistedThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
   const latestThemeRef = React.useRef(persistedThemeRef.current)
   const themeVersionRef = React.useRef(0)
@@ -106,10 +111,31 @@ export function PreviewCustomizer({
   const form = useForm<PreviewCanvasFormValues>({
     defaultValues: { blocks: page.blocks ?? [] },
   })
+  themeStateRef.current = themeState
 
   React.useEffect(() => {
     form.reset({ blocks: page.blocks ?? [] })
   }, [form, page.id, page.blocks])
+
+  const handleThemeChange = React.useCallback((nextTheme: React.SetStateAction<ThemeTokens | null>) => {
+    const resolvedTheme = typeof nextTheme === "function"
+      ? (nextTheme as (currentTheme: ThemeTokens | null) => ThemeTokens | null)(themeStateRef.current)
+      : nextTheme
+    const normalizedTheme = normalizeThemeForSave(resolvedTheme)
+    const serializedTheme = JSON.stringify(normalizedTheme ?? {})
+    const hasUnsavedTheme =
+      serializedTheme !== persistedThemeRef.current ||
+      (inFlightSaveRef.current != null && inFlightSaveRef.current.serializedTheme !== serializedTheme) ||
+      (pendingSaveRef.current != null && pendingSaveRef.current.serializedTheme !== serializedTheme)
+
+    themeStateRef.current = resolvedTheme
+
+    if (hasUnsavedTheme) {
+      setThemeSaveStatus("saving")
+    }
+
+    setThemeState(resolvedTheme)
+  }, [])
 
   const flushThemeSaveQueue = React.useCallback(() => {
     if (!shouldStartPreviewThemeSave({
@@ -190,6 +216,7 @@ export function PreviewCustomizer({
   const canCompleteOrder = access.type === "grant" && !paymentSatisfied
   const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"
   const reviewHref = access.type === "grant" ? `/${access.clientSlug}/review` : "#"
+  const customerNavigationBlocked = shouldBlockPreviewCustomerNavigation(themeSaveStatus)
   const preventCustomerChromeSelection = React.useCallback((_selection?: SiteChromeSelection, _point?: SiteChromeSelectPoint) => {}, [])
   const preventCustomerChromeNavigate = React.useCallback((_href: string) => {}, [])
   const headerChrome = (
@@ -239,7 +266,7 @@ export function PreviewCustomizer({
                 <ThemeBar
                   theme={themeState}
                   manifest={manifest}
-                  onThemeChange={setThemeState}
+                  onThemeChange={handleThemeChange}
                   palettes={PALETTE_PRESETS}
                   fonts={FONT_PRESETS}
                   radiusLevels={RADIUS_PRESETS}
@@ -278,6 +305,7 @@ export function PreviewCustomizer({
               paymentSatisfied={paymentSatisfied}
               checkoutHref={checkoutHref}
               reviewHref={reviewHref}
+              customerNavigationBlocked={customerNavigationBlocked}
             />
           </CanvasSelectionProvider>
         </form>
@@ -300,31 +328,47 @@ function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
   )
 }
 
-function PreviewCommandBar({
+export function PreviewCommandBar({
   canCompleteOrder,
   paymentSatisfied,
   checkoutHref,
   reviewHref,
+  customerNavigationBlocked,
 }: {
   canCompleteOrder: boolean
   paymentSatisfied: boolean
   checkoutHref: string
   reviewHref: string
+  customerNavigationBlocked: boolean
 }) {
   const t = useTranslations("preview")
+  const preventBlockedNavigation = React.useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!customerNavigationBlocked) return
+    event.preventDefault()
+  }, [customerNavigationBlocked])
+  const blockedAnchorProps = customerNavigationBlocked
+    ? {
+        "aria-disabled": true,
+        href: undefined,
+        onClick: preventBlockedNavigation,
+        tabIndex: -1,
+      }
+    : {}
+  const blockedClassName = customerNavigationBlocked ? "pointer-events-none opacity-50" : ""
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-3 shadow-lg">
       <div className="flex w-full justify-end">
         <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
-          <Button asChild variant="default" className="w-full sm:w-auto">
-            <a href={reviewHref}>
+          <Button asChild variant="default" className={`w-full sm:w-auto ${blockedClassName}`}>
+            <a href={customerNavigationBlocked ? undefined : reviewHref} {...blockedAnchorProps}>
               <SquarePen className="size-4" />
               {t("reviewChanges")}
             </a>
           </Button>
           {canCompleteOrder && (
-            <Button asChild variant="success" className="w-full sm:w-auto">
-              <a href={checkoutHref}>
+            <Button asChild variant="success" className={`w-full sm:w-auto ${blockedClassName}`}>
+              <a href={customerNavigationBlocked ? undefined : checkoutHref} {...blockedAnchorProps}>
                 <Rocket className="size-4" />
                 {t("launchWebsite")}
               </a>

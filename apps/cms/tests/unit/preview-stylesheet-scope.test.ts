@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
 const frontendRoot = path.join(repoRoot, "apps/cms/src/app/(frontend)")
 const payloadRoot = path.join(repoRoot, "apps/cms/src/app/(payload)")
+const fullRendererStylesheetImport = 'import "@siteinabox/site-renderer/styles.css"'
 const canvasStylesheetImport = 'import "@/styles/site-renderer-canvas.css"'
 const canvasCssImport = '@import "@siteinabox/site-renderer/canvas.css";'
 const canvasScope = ".site-renderer[data-siab-site-renderer]"
@@ -41,10 +42,25 @@ describe("CMS preview renderer stylesheet scope", () => {
     const frontendLayout = read("apps/cms/src/app/(frontend)/layout.tsx")
     const rendererCss = read("packages/site-renderer/src/styles.css")
 
-    expect(frontendLayout).not.toContain('import "@siteinabox/site-renderer/styles.css"')
+    expect(frontendLayout).not.toContain(fullRendererStylesheetImport)
     expect(rendererCss).toMatch(/^:root\s*\{/m)
     expect(rendererCss).toMatch(/^body\s*\{/m)
     expect(rendererCss).toMatch(/^\*\s*\{/m)
+  })
+
+  it("loads full shared renderer CSS only from customer site-preview routes", () => {
+    const sitePreviewLayout = read("apps/cms/src/app/(frontend)/(site-preview)/layout.tsx")
+    const importingFiles = [frontendRoot, payloadRoot].flatMap((root) => collectSourceFiles(root))
+      .filter((file) => readFileSync(file, "utf8").includes(fullRendererStylesheetImport))
+      .map((file) => path.relative(repoRoot, file).split(path.sep).join("/"))
+
+    expect(sitePreviewLayout).toContain(fullRendererStylesheetImport)
+    expect(sitePreviewLayout.indexOf(fullRendererStylesheetImport)).toBeLessThan(
+      sitePreviewLayout.indexOf(canvasStylesheetImport),
+    )
+    expect(importingFiles.sort()).toEqual([
+      "apps/cms/src/app/(frontend)/(site-preview)/layout.tsx",
+    ])
   })
 
   it("keeps renderer canvas CSS out of CMS app-global CSS", () => {
@@ -56,7 +72,7 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(siabCss).toContain('@source "../../../../packages/site-renderer/src";')
     expect(siabCss).not.toContain(canvasCssImport)
     expect(siabCss).not.toContain("site-renderer-preview.css")
-    expect(siabCss).not.toContain('@import "@siteinabox/site-renderer/styles.css"')
+    expect(siabCss).not.toContain(fullRendererStylesheetImport)
   })
 
   it("loads scoped embedded renderer canvas CSS only from editor route layouts", () => {

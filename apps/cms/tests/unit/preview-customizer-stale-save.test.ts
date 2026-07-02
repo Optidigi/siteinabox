@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import type * as React from "react"
+import { readFileSync } from "node:fs"
 
 vi.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
@@ -98,5 +98,24 @@ describe("PreviewCustomizer stale theme save guard", () => {
       pendingSerializedTheme: "{}",
       persistedSerializedTheme: "{}",
     })).toBe(true)
+  })
+
+  it("blocks customer navigation only while a theme save is pending or in flight", async () => {
+    const { shouldBlockPreviewCustomerNavigation } = await import("@/components/preview/PreviewCustomizer")
+
+    expect(shouldBlockPreviewCustomerNavigation("saving")).toBe(true)
+    expect(shouldBlockPreviewCustomerNavigation("idle")).toBe(false)
+    expect(shouldBlockPreviewCustomerNavigation("saved")).toBe(false)
+    expect(shouldBlockPreviewCustomerNavigation("error")).toBe(false)
+  })
+
+  it("wires blocked customer navigation into the command bar links", () => {
+    const source = readFileSync("src/components/preview/PreviewCustomizer.tsx", "utf8")
+
+    expect(source).toContain("customerNavigationBlocked={customerNavigationBlocked}")
+    expect(source).toContain("href={customerNavigationBlocked ? undefined : reviewHref}")
+    expect(source).toContain("href={customerNavigationBlocked ? undefined : checkoutHref}")
+    expect(source).toContain("\"aria-disabled\": true")
+    expect(source).toContain("tabIndex: -1")
   })
 })

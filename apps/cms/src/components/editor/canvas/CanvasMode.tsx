@@ -894,6 +894,8 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
     ? resolveLegacyTenant({ tenantSlug, domain: tenantDomain, settings: rendererSettings })
     : null
   const useSharedAmicareShell = legacyTenant === "amicare"
+  const useSharedPreviewShell = isCustomerPreviewView(view) && Boolean(rendererSettings)
+  const useSharedRendererShell = useSharedAmicareShell || useSharedPreviewShell
   const rendererPage = React.useMemo(() => ({
     title: pageTitle || "Untitled",
     slug: "index",
@@ -932,7 +934,7 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
         {theme && (
           <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />
         )}
-        {useSharedAmicareShell ? (
+        {useSharedRendererShell ? (
           <div
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
@@ -971,59 +973,61 @@ const CanvasModeDesktop: React.FC<CanvasModeProps> = ({
                   canvasAttributes={{ "data-rt-view": view } as React.HTMLAttributes<HTMLDivElement>}
                   canvasClassName={suppressCanvasNavigation ? "[&_a[href]:not(.rt-click-edit)]:pointer-events-none" : undefined}
                   formAction="#"
-                  renderBlocks={() => (
-                    <>
-                      {!effectiveReadOnly && (
-                        <CanvasGapOverlay
-                          onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
-                        />
-                      )}
-                      {blocks.length === 0 && (
-                        <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
-                          <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
-                        </div>
-                      )}
-                      {blocks.map((block, index) => (
-                        <React.Fragment key={`${block.blockType}-${index}`}>
-                          <SortableRenderedBlockItem
-                            id={String(index)}
-                            index={index}
-                            isActive={!isCustomerPreviewView(view) && activeIndex === index}
-                            onActivate={() => {
-                              if (isCustomerPreviewView(view)) return
-                              setActiveIndex(index)
-                              select(null)
-                            }}
-                            onDelete={() => requestDeleteBlock(index)}
-                            onDuplicate={() => duplicateBlockWithRemap(index)}
-                            readOnly={effectiveReadOnly}
-                            gutterVisible={activeBlockGutterIndex === index}
-                            setGutterVisible={(next) => setBlockGutterVisible(index, next)}
-                          >
-                            <CanvasBlockRenderer
-                              block={block}
+                  renderBlocks={isCustomerPreviewView(view)
+                    ? undefined
+                    : () => (
+                      <>
+                        {!effectiveReadOnly && (
+                          <CanvasGapOverlay
+                            onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
+                          />
+                        )}
+                        {blocks.length === 0 && (
+                          <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+                            <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
+                          </div>
+                        )}
+                        {blocks.map((block, index) => (
+                          <React.Fragment key={`${block.blockType}-${index}`}>
+                            <SortableRenderedBlockItem
+                              id={String(index)}
                               index={index}
-                              isActive={activeIndex === index}
-                              manifest={manifest}
+                              isActive={!isCustomerPreviewView(view) && activeIndex === index}
                               onActivate={() => {
                                 if (isCustomerPreviewView(view)) return
                                 setActiveIndex(index)
                                 select(null)
                               }}
-                              onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
-                              tenantId={tenantId}
-                              legacyTenant={legacyTenant}
-                            />
-                          </SortableRenderedBlockItem>
-                          {!effectiveReadOnly && (
-                            <CanvasGapOverlay
-                              onInsert={(slug, seed) => insertBlockAtWithRemap(index + 1, slug, seed)}
-                            />
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </>
-                  )}
+                              onDelete={() => requestDeleteBlock(index)}
+                              onDuplicate={() => duplicateBlockWithRemap(index)}
+                              readOnly={effectiveReadOnly}
+                              gutterVisible={activeBlockGutterIndex === index}
+                              setGutterVisible={(next) => setBlockGutterVisible(index, next)}
+                            >
+                              <CanvasBlockRenderer
+                                block={block}
+                                index={index}
+                                isActive={activeIndex === index}
+                                manifest={manifest}
+                                onActivate={() => {
+                                  if (isCustomerPreviewView(view)) return
+                                  setActiveIndex(index)
+                                  select(null)
+                                }}
+                                onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
+                                tenantId={tenantId}
+                                legacyTenant={legacyTenant}
+                              />
+                            </SortableRenderedBlockItem>
+                            {!effectiveReadOnly && (
+                              <CanvasGapOverlay
+                                onInsert={(slug, seed) => insertBlockAtWithRemap(index + 1, slug, seed)}
+                              />
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </>
+                    )}
                 />
               </SortableContext>
             </DndContext>
