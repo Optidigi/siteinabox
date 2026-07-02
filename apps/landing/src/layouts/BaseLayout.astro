@@ -42,6 +42,16 @@ const { title, description, ogImage, noindex } = Astro.props;
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EM6YQ9893X"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-EM6YQ9893X');
+    </script>
+
     <!-- No-flash theme init. Runs before CSS parses so data-theme is set at
          first paint. Source of truth for the theme: ALWAYS writes a resolved
          data-theme="light"|"dark" to <html> — explicit choices from
