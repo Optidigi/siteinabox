@@ -59,7 +59,7 @@ const stateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | 
 const inboxTone = (state: OperationsWorkflowState) => {
   if (state === "Needs attention") return "warning"
   if (state === "Live") return "success"
-  return "outline"
+  return "default"
 }
 
 const jsonObject = (value: unknown): Record<string, unknown> | null =>
@@ -103,14 +103,22 @@ function ClientQueueItem({ item }: { item: InboxItem }) {
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{item.title}</div>
             <div className="mt-0.5 truncate text-xs text-muted-foreground">
-              {item.domain ?? item.subtitle}
+              {item.contactEmail ?? item.subtitle}
             </div>
           </div>
-          <Badge variant={inboxTone(item.state)} className="shrink-0">{item.state}</Badge>
+          <Badge
+            variant={inboxTone(item.state)}
+            className={cn(
+              "shrink-0",
+              item.state !== "Live" && item.state !== "Needs attention" && "bg-foreground text-background",
+            )}
+          >
+            {item.state}
+          </Badge>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 text-xs text-muted-foreground">{item.subtitle}</div>
+          <div aria-hidden />
           <div className="flex shrink-0 gap-2">
             {canSendPreview ? (
               <form action={sendPreviewAccessEmailAction.bind(null, item.runId!)}>
