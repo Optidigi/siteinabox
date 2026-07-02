@@ -214,7 +214,7 @@ describe("Mollie payment flow", () => {
     const request = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit
     expect(JSON.parse(String(request.body))).toMatchObject({
       sequenceType: "first",
-      redirectUrl: "https://preview.siteinabox.nl/acme?payment=return",
+      redirectUrl: "https://preview.siteinabox.nl/acme/checkout?payment=return",
       webhookUrl: "https://admin.siteinabox.nl/api/payments/mollie/webhook",
       metadata: {
         generationRunId: 500,

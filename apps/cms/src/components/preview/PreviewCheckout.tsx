@@ -162,11 +162,12 @@ export function PreviewCheckout({
   )
   const [suggestionsState, setSuggestionsState] = React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
   const [suggestionsPending, setSuggestionsPending] = React.useState(false)
-  const [domainValue, setDomainValue] = React.useState(currentDomain ?? "")
-  const [checkedDomain, setCheckedDomain] = React.useState<string | null>(domainReady ? (currentDomain ?? null) : null)
+  const readyDomain = domainReady && currentDomain ? currentDomain : null
+  const [domainValue, setDomainValue] = React.useState(readyDomain ?? "")
+  const [checkedDomain, setCheckedDomain] = React.useState<string | null>(readyDomain)
   const [holder, setHolder] = React.useState(() => emptyRegistrant(customerEmail, registrant))
   const domainFormRef = React.useRef<HTMLFormElement | null>(null)
-  const lastSubmittedDomainRef = React.useRef<string | null>(domainReady ? (currentDomain ?? null) : null)
+  const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
@@ -330,12 +331,12 @@ export function PreviewCheckout({
   )
   const holderComplete = registrantIsComplete(holder)
   const canContinueFromDomain = Boolean(
-    selectedDomain && (checkState.ok || (domainReady && selectedDomain === currentDomain)),
+    selectedDomain && (checkState.ok || selectedDomain === readyDomain),
   )
   const totalPriceLabel = checkState.totalPriceLabel || initialTotalPriceLabel || priceLabel
   const domainIsReady = Boolean(selectedDomain && (
     (checkState.ok && checkAppliesToCurrentInput)
-    || (domainReady && selectedDomain === currentDomain)
+    || selectedDomain === readyDomain
   ))
   const domainResultKind = checkPending
     ? "loading"

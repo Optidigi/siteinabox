@@ -67,6 +67,7 @@ export default async function PreviewCheckoutPage({
       ? context.run.clientApproval as { status?: string | null }
       : null
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
+    const selectedDomain = domainOrder.status === "ready_to_register" ? domainOrder.domain : null
     const initialPrice = domainPriceLabels(locale, domainOrder)
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
       run: context.run,
@@ -76,8 +77,8 @@ export default async function PreviewCheckoutPage({
       <PreviewCheckout
         customerEmail={context.customerEmail}
         tenantName={String(context.tenant.name)}
-        currentDomain={domainOrder.domain ?? context.tenant.domain}
-        domainReady={domainOrder.status === "ready_to_register" && Boolean(domainOrder.domain)}
+        currentDomain={selectedDomain}
+        domainReady={Boolean(selectedDomain)}
         registrant={registrant}
         priceLabel={formatCheckoutPrice(locale)}
         initialExtraFeeLabel={initialPrice.extraFeeLabel}

@@ -197,7 +197,7 @@ export async function createMollieCheckoutForGenerationRun(
   })
   const amount = { value: checkoutAmount.amount, currency: checkoutAmount.currency }
   const origin = publicCmsOrigin()
-  const redirectUrl = `https://${PREVIEW_HOST}/${clientSlug}?payment=return`
+  const redirectUrl = `https://${PREVIEW_HOST}/${clientSlug}/checkout?payment=return`
   const webhookUrl = `${origin}/api/payments/mollie/webhook`
   const idempotencyKey = `siab-run-${run.id}-customer-${email}`
   const mollieCustomerId = current.mollieCustomerId ?? (await createMollieCustomer({
