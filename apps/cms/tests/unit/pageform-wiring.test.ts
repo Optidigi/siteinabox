@@ -66,7 +66,7 @@ describe("PageForm wiring boundaries", () => {
 
     expect(richTextCanvas).toContain('legacyTenant === "amicare" ? splitAmicareIntro(block.body) : null')
     expect(richTextCanvas).toContain('className="amicare-richtext-body prose mx-auto mt-10')
-    expect(richTextCanvas).not.toContain("splitBody.body.children.length > 0")
+    expect(richTextCanvas).toContain("splitBody.body.children.length > 0")
     expect(mobileSectionEdit).toContain('data-siab-site-renderer={legacyTenant === "amicare" ? "true" : undefined}')
     expect(mobileSectionEdit).toContain('data-legacy-tenant={legacyTenant === "amicare" ? "amicare" : undefined}')
     expect(mobileSectionEdit).toContain('className="rt-canvas w-full"')

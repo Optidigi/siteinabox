@@ -2,6 +2,7 @@
 import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
 import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 /**
@@ -21,6 +22,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
   manifest,
   onActivate,
   onUpdate,
+  legacyTenant,
 }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
@@ -28,6 +30,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
 
   const fields: Array<{ name: string; label: string; type: string; required: boolean }> =
     block.fields ?? []
+  const isAmicareLegacy = legacyTenant === "amicare"
 
   return (
     <section
@@ -101,7 +104,10 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
             <button
               type="button"
               tabIndex={-1}
-              className="rounded-md bg-accent px-6 py-3 text-[14px] font-medium text-bg transition-colors hover:bg-accent/90 [font-family:var(--font-text)]"
+              className={cn(
+                "rounded-md bg-accent px-6 py-3 text-[14px] font-medium transition-colors hover:bg-accent/90 [font-family:var(--font-text)]",
+                isAmicareLegacy ? "amicare-button-primary" : "text-bg",
+              )}
             >
               {block.submitLabel ?? "Send"}
             </button>

@@ -79,19 +79,21 @@ export const RichTextCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAc
               allowFontFamily
             />
           </div>
-          <div
-            className="amicare-richtext-body prose mx-auto mt-10 max-w-prose space-y-6 text-[17px] leading-[1.6] text-ink/90 @min-[48rem]/site-frame:text-[18px] [font-family:var(--font-text)]"
-          >
-            <RtSlot
-              variant="block"
-              manifest={manifest}
-              value={splitBody.body}
-              onChange={setSplitBody}
-              placeholder={t("longFormContentPlaceholder")}
-              elementPath={{ blockIndex: idx, field: "body" }}
-              allowFontFamily
-            />
-          </div>
+          {splitBody.body.children.length > 0 && (
+            <div
+              className="amicare-richtext-body prose mx-auto mt-10 max-w-prose space-y-6 text-[17px] leading-[1.6] text-ink/90 @min-[48rem]/site-frame:text-[18px] [font-family:var(--font-text)]"
+            >
+              <RtSlot
+                variant="block"
+                manifest={manifest}
+                value={splitBody.body}
+                onChange={setSplitBody}
+                placeholder={t("longFormContentPlaceholder")}
+                elementPath={{ blockIndex: idx, field: "body" }}
+                allowFontFamily
+              />
+            </div>
+          )}
         </>
       ) : (
         <div

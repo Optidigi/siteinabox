@@ -24,10 +24,9 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const idx = block.__index as number
   const isAmicareLegacy = legacyTenant === "amicare"
 
-  const contactCta = block.primary?.href?.trim() ? block.primary : block.secondary
-  const contactHref: string | null | undefined = contactCta?.href?.trim()
+  const primaryHref: string | null | undefined = block.primary?.href?.trim()
   const isContact =
-    contactHref?.startsWith("mailto:") || contactHref?.startsWith("tel:")
+    primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
   const setContactCta = (value: any) => onUpdate({ ...block, primary: value, secondary: null })
   const sectionId = block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")
   const sectionClassName = isContact
@@ -133,7 +132,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
         {isContact ? (
           <div className="space-y-4">
             <InlineCtaButton
-              value={contactCta}
+              value={block.primary}
               onChange={setContactCta}
               className="inline-block font-serif text-[28px] text-ink underline decoration-1 underline-offset-[8px] transition-colors hover:text-accent hover:decoration-accent @min-[48rem]/site-frame:text-[44px]"
               emptyLabel={t("addContactLink")}

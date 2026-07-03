@@ -191,6 +191,29 @@ describe("canvas ↔ renderer block parity contract", () => {
     }
   })
 
+  it("keeps Amicare CTA contact detection aligned with the live renderer", () => {
+    const rendererBody = amicareSource.slice(amicareSource.indexOf("function AmicareCTA"))
+    const canvasSource = read("apps/cms/src/components/editor/canvas/blocks/CTA.tsx")
+
+    expect(rendererBody).toContain('const primaryHref = block.primary?.href?.trim()')
+    expect(rendererBody).toContain('primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")')
+    expect(canvasSource).toContain('const primaryHref: string | null | undefined = block.primary?.href?.trim()')
+    expect(canvasSource).toContain('primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")')
+    expect(canvasSource).not.toContain("const contactCta = block.primary?.href?.trim() ? block.primary : block.secondary")
+  })
+
+  it("keeps Amicare contact form and split rich-text conditional markup aligned", () => {
+    const rendererContactBody = amicareSource.slice(amicareSource.indexOf("function AmicareContactSection"))
+    const contactCanvas = read("apps/cms/src/components/editor/canvas/blocks/ContactSection.tsx")
+    const rendererRichTextBody = amicareSource.slice(amicareSource.indexOf("function AmicareRichText"))
+    const richTextCanvas = read("apps/cms/src/components/editor/canvas/blocks/RichText.tsx")
+
+    expect(rendererContactBody).toContain("amicare-button-primary rounded-md bg-accent")
+    expect(contactCanvas).toContain('isAmicareLegacy ? "amicare-button-primary" : "text-bg"')
+    expect(rendererRichTextBody).toContain("splitBody.body.children.length > 0")
+    expect(richTextCanvas).toContain("splitBody.body.children.length > 0")
+  })
+
   it("documents renderer-native migration in canvas-renderer-parity runbook", () => {
     const runbook = read("apps/cms/docs/runbooks/canvas-renderer-parity.md")
     expect(runbook).toContain("Renderer-native editable blocks")

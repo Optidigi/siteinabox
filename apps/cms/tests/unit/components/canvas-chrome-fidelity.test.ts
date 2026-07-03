@@ -226,8 +226,17 @@ describe("canvas chrome fidelity", () => {
 
     const editorFrameUi = read("src/styles/editor-frame-ui.css")
     expect(editorFrameUi).toContain("[data-siab-editor-ui]")
+    expect(editorFrameUi).toContain("[data-siab-editor-ui] *")
+    expect(editorFrameUi).toContain("[data-radix-popper-content-wrapper]:has([data-siab-editor-ui]) *")
+    expect(editorFrameUi).toContain("--color-card-foreground: var(--card-foreground)")
+    expect(editorFrameUi).toContain("--color-primary: var(--primary)")
+    expect(editorFrameUi).toContain("--color-secondary: var(--secondary)")
+    expect(editorFrameUi).toContain("--color-muted: var(--muted)")
+    expect(editorFrameUi).toContain("--color-input: var(--input)")
+    expect(editorFrameUi).toContain("--color-destructive: var(--destructive)")
     expect(editorFrameUi).toContain('[data-siab-canvas-chrome="insert-gap"]')
     expect(editorFrameUi).toContain("background-color: transparent")
+    expect(editorFrameUi).toContain(':is(button, [role="button"], [role="menuitem"]):is(:hover, :focus-visible, [data-state="open"])')
 
     const affordances = read("src/styles/editor-frame-canvas-affordances.css")
     expect(affordances).toContain(".rt-canvas .rt-slot")
