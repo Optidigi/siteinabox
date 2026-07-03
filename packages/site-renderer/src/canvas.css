@@ -443,7 +443,7 @@
 }
 
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-2xl) {
-  border-radius: 1rem;
+  border-radius: var(--radius-lg, 1rem);
 }
 
 .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border) {

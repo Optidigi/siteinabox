@@ -48,6 +48,7 @@ export const themeSchema = z
         title: z.string().optional(),
         heading: z.string().optional(),
         text: z.string().optional(),
+        script: z.string().optional(),
       })
       .strict()
       .optional(),

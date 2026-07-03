@@ -93,6 +93,11 @@ export function themeToCssVars(
   set(baseParts, "--font-text", theme.fonts?.text)
   set(baseParts, "--font-script", theme.fonts?.script)
 
+  // Legacy renderer utilities consume --font-sans / --font-serif / --font-script
+  // aliases. Mirror role fonts when set so ThemeBar edits reach existing markup.
+  set(baseParts, "--font-sans", theme.fonts?.text)
+  set(baseParts, "--font-serif", theme.fonts?.heading ?? theme.fonts?.title)
+
   if (theme.radius) {
     for (const [prop, value] of deriveRadii(theme.radius)) set(baseParts, prop, value)
   }

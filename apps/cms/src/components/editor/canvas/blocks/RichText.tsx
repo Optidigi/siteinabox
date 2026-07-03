@@ -60,7 +60,7 @@ export const RichTextCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAc
 
   return (
     <section
-      id={block.anchor || undefined}
+      id={block.anchor || (legacyTenant === "amicare" ? "over" : undefined)}
       className="cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}

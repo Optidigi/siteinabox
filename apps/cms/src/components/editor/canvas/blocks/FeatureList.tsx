@@ -23,10 +23,11 @@ const MAX_FEATURE_CARDS = 3
  *   - features[].title: inline rich-text → RtSlot as h3
  *   - features[].description: block rich-text → RtSlot as p
  */
-export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate }) => {
+export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant }) => {
   const t = useTranslations("editor")
   const { view } = useCanvasSelection()
   const isReadOnly = isReadOnlyView(view)
+  const isAmicareLegacy = legacyTenant === "amicare"
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
 
@@ -46,7 +47,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
 
   return (
     <section
-      id={block.anchor || "features"}
+      id={block.anchor || (isAmicareLegacy ? "werkwijze" : "features")}
       className="cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
       data-block-index={block.__index ?? undefined}
       data-active={isActive || undefined}

@@ -36,13 +36,10 @@ describe("PageForm wiring boundaries", () => {
     expect(canvasSurface).toContain('legacyTenant === "amicare"')
     expect(canvasSurface).toContain("effectiveTenantCss")
     expect(canvasSurface).toContain("legacyTenant ? null : tenantCss")
-    expect(canvasSurface).toContain("PUBLIC_RENDERER_THEME_SCOPE")
-    expect(canvasSurface).toContain("AMICARE_CANVAS_THEME_SCOPE")
-    expect(canvasSurface).toContain("amicareCanvasThemeCss")
-    expect(canvasSurface).toContain("data-siab-canvas-theme-overrides")
-    expect(canvasSurface.indexOf("<SitePageRenderer")).toBeLessThan(
-      canvasSurface.indexOf("data-siab-canvas-theme-overrides"),
-    )
+    expect(canvasSurface).toContain("theme && !useSharedRendererShell")
+    expect(canvasSurface).not.toContain("AMICARE_CANVAS_THEME_SCOPE")
+    expect(canvasSurface).not.toContain("amicareCanvasThemeCss")
+    expect(canvasSurface).not.toContain("data-siab-canvas-theme-overrides")
     expect(canvasSurface).toContain("? undefined")
     expect(canvasSurface).toContain("renderHeader={renderHeaderChrome")
     expect(canvasSurface).toContain("renderFooter={renderFooterChrome")

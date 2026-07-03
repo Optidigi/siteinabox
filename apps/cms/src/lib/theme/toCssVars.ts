@@ -31,6 +31,8 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
  *   fonts.title        → --font-title
  *   fonts.heading      → --font-heading
  *   fonts.text         → --font-text
+ *   fonts.script       → --font-script
+ *   compatibility      → --font-sans from text, --font-serif from heading/title
  *   radius             → --radius-md (canonical); derives --radius-sm and --radius-lg
  *   density            → --site-density
  *   stylePreset        → --site-style-preset

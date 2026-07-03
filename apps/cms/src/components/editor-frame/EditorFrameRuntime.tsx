@@ -12,7 +12,6 @@ import {
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
 import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
-import { themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { FrameCanvasSurface } from "@/components/editor-frame/FrameCanvasSurface"
 import type { PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
@@ -261,14 +260,6 @@ export function EditorFrameRuntime({
     <>
       {effectiveTenantCss && (
         <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: effectiveTenantCss }} />
-      )}
-      {frameTheme && (
-        <style
-          nonce={cspNonce}
-          suppressHydrationWarning
-          data-rt-theme-overrides
-          dangerouslySetInnerHTML={{ __html: themeToCssVars(frameTheme, ".rt-canvas") }}
-        />
       )}
       <SitePageRenderer
         page={framePage}

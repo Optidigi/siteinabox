@@ -21,13 +21,15 @@ describe("generic CMS canvas defaults", () => {
     expect(source).toContain("Limburg-Noord")
   })
 
-  it("uses generic canvas anchor fallbacks except for official Amicare CTA parity", () => {
+  it("uses generic canvas anchor fallbacks except for official Amicare parity anchors", () => {
     const source =
       read("src/components/editor/canvas/blocks/CTA.tsx") +
-      read("src/components/editor/canvas/blocks/FeatureList.tsx")
+      read("src/components/editor/canvas/blocks/FeatureList.tsx") +
+      read("src/components/editor/canvas/blocks/RichText.tsx")
 
     expect(source).not.toContain('block.anchor || "werkwijze"')
-    expect(source).toContain('block.anchor || "features"')
+    expect(source).toContain('block.anchor || (isAmicareLegacy ? "werkwijze" : "features")')
+    expect(source).toContain('block.anchor || (legacyTenant === "amicare" ? "over" : undefined)')
     expect(source).toContain('block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")')
   })
 

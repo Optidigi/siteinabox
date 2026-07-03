@@ -27,6 +27,8 @@ describe("toCssVars", () => {
     expect(css).not.toContain("--font-title")
     expect(css).not.toContain("--font-heading")
     expect(css).not.toContain("--font-text")
+    expect(css).not.toContain("--font-sans")
+    expect(css).not.toContain("--font-serif")
   })
 
   it("produces a .rt-canvas rule with mapped custom properties", () => {
@@ -59,6 +61,8 @@ describe("toCssVars", () => {
     expect(css).toContain("--font-title:Inter")
     expect(css).toContain("--font-heading:Georgia")
     expect(css).toContain("--font-text:Dancing Script")
+    expect(css).toContain("--font-sans:Dancing Script")
+    expect(css).toContain("--font-serif:Georgia")
   })
 
   it("maps radius and borderStyle", () => {
@@ -97,6 +101,21 @@ describe("toCssVars (round 4)", () => {
     expect(css).toContain("--font-title:Pacifico")
     expect(css).toContain("--font-heading:Playfair Display")
     expect(css).toContain("--font-text:Geist")
+    expect(css).toContain("--font-sans:Geist")
+    expect(css).toContain("--font-serif:Playfair Display")
+  })
+
+  it("emits compatibility --font-serif from title when heading is unset", () => {
+    const css = toCssVars({ fonts: { title: "Fraunces Variable" } })
+    expect(css).toContain("--font-title:Fraunces Variable")
+    expect(css).toContain("--font-serif:Fraunces Variable")
+    expect(css).not.toContain("--font-heading")
+    expect(css).not.toContain("--font-sans")
+  })
+
+  it("emits --font-script role and alias when script font is set", () => {
+    const css = toCssVars({ fonts: { script: "Caveat Variable" } })
+    expect(css).toContain("--font-script:Caveat Variable")
   })
 
   it("emits --radius-sm and --radius-lg derived from theme.radius", () => {

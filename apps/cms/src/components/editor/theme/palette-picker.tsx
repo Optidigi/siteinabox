@@ -19,12 +19,37 @@ export type PalettePreset = {
 }
 
 // Resolves the canvas's "no overrides" colours by mounting a hidden
-// `.rt-canvas` anchor and reading its computed CSS. We temporarily
-// DISABLE the `<style data-rt-theme-overrides>` tag during the read so we
-// see only the base tenant CSS — that's what "Default" represents (the
-// manifest / site defaults). Without that disable, the anchor reads the
-// currently-applied palette and the Default swatch appears to mirror
-// whichever preset the user just clicked.
+// `.rt-canvas` anchor and reading its computed CSS. We temporarily disable
+// every runtime theme override style tag during the read so we see only the
+// base tenant CSS — that's what "Default" represents (the manifest / site
+// defaults). Without that disable, the anchor reads the currently-applied
+// palette and the Default swatch appears to mirror whichever preset the
+// user just clicked.
+const RUNTIME_THEME_OVERRIDE_SELECTORS = [
+  "style[data-rt-theme-overrides]",
+  "style[data-siab-theme-overrides]",
+  "style[data-siab-canvas-theme-overrides]",
+] as const
+
+function disableRuntimeThemeOverrides(): Array<{ el: HTMLStyleElement; wasDisabled: boolean }> {
+  const overlays: Array<{ el: HTMLStyleElement; wasDisabled: boolean }> = []
+  for (const selector of RUNTIME_THEME_OVERRIDE_SELECTORS) {
+    for (const el of document.querySelectorAll<HTMLStyleElement>(selector)) {
+      overlays.push({ el, wasDisabled: el.disabled })
+      el.disabled = true
+    }
+  }
+  return overlays
+}
+
+function restoreRuntimeThemeOverrides(
+  overlays: Array<{ el: HTMLStyleElement; wasDisabled: boolean }>,
+): void {
+  for (const { el, wasDisabled } of overlays) {
+    el.disabled = wasDisabled
+  }
+}
+
 const DEFAULT_FALLBACK = {
   light: { accent: "#18181b", bg: "#ffffff" } as Palette, // lint:no-css:ignore — color input fallback data
   dark: { accent: "#fafafa", bg: "#09090b" } as Palette, // lint:no-css:ignore — color input fallback data
@@ -35,11 +60,7 @@ function useDefaultPalettes(): { light: Palette; dark: Palette } {
   const [resolved, setResolved] = React.useState<{ light: Palette; dark: Palette }>(DEFAULT_FALLBACK)
   React.useEffect(() => {
     if (!anchor) return
-    // Disable the runtime overlay so the read sees only the base tenant
-    // CSS — i.e. the manifest defaults. Re-enable synchronously after.
-    const overlay = document.querySelector<HTMLStyleElement>("style[data-rt-theme-overrides]")
-    const wasDisabled = overlay?.disabled ?? false
-    if (overlay) overlay.disabled = true
+    const disabledOverlays = disableRuntimeThemeOverrides()
     const read = (mode: "light" | "dark"): Palette => {
       anchor.setAttribute("data-rt-mode", mode)
       const cs = getComputedStyle(anchor)
@@ -50,7 +71,7 @@ function useDefaultPalettes(): { light: Palette; dark: Palette } {
     const light = read("light")
     const dark = read("dark")
     anchor.removeAttribute("data-rt-mode")
-    if (overlay) overlay.disabled = wasDisabled
+    restoreRuntimeThemeOverrides(disabledOverlays)
     setResolved({
       light: {
         accent: light.accent || DEFAULT_FALLBACK.light.accent!,
