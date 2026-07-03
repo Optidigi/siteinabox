@@ -11,7 +11,7 @@ Reference for how the page editor's canvas + sidebar surfaces are wired. The hig
 
 ## Selection model
 
-An `ElementPath` (`{ blockIndex, field, itemIndex?, subField?, subItemIndex?, subSubField? }`, `src/components/editor/canvas/elementPath.ts`) is the stable address of one editable element. `CanvasSelectionContext` carries `{ view, selected, select }`; `PageForm` owns the `selected` state and provides it. The inline primitives read this context: in `sidebar` view they render read-only and `select(elementPath)` on click; in `canvas` view they edit in place. The desktop sidebar is composed by `PageForm`, not the iframe frame route.
+An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/components/editor/canvas/elementPath.ts`) is the stable address of one editable element. `CanvasSelectionContext` carries `{ view, selected, select }`; `PageForm` owns the `selected` state and provides it. The inline primitives read this context: in `sidebar` view they render read-only and `select(elementPath)` on click; in `canvas` view they edit in place. The desktop sidebar is composed by `PageForm`, not the iframe frame route.
 
 ## App-shell layout
 
@@ -53,7 +53,7 @@ asset-pick, or chrome-edit messages.
 
 ## Block renderers
 
-`CanvasBlockRenderer` is a thin adapter over `packages/site-renderer` block renderers. It dispatches by `blockType`, passes `surface: "canvas"`, merges canvas section props, and provides `slots.render` so renderer-owned leaf content becomes CMS inline primitives. The renderer package owns `<section class="cms-block cms-block--<slug> …">`, inner `cms-block__*` structure, source variant classes, and live/customer-preview DOM. Full class contract: `docs/runbooks/rt-dom-contract.md § Canvas block DOM contract`. Parity gates: `docs/runbooks/canvas-renderer-parity.md`. **When you add or change a rendered-site component, add/update its renderer slots and adapter handling in lockstep.**
+Block renderers live in `src/components/editor/canvas/blocks/` — one file per block type (`Hero.tsx`, `FeatureList.tsx`, `CTA.tsx`, `RichText.tsx`, `ContactSection.tsx`, `FAQ.tsx`, `Testimonials.tsx`). Each renderer emits a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the corresponding `packages/site-renderer` component so tenant CSS styles the canvas identically to the live site. Full class contract: `docs/runbooks/rt-dom-contract.md § Canvas block DOM contract`. Migration target and parity gates: `docs/runbooks/canvas-renderer-parity.md`. **When you add or change a block's rendered-site component, update its canvas renderer in lockstep.**
 
 ## Inline-edit primitives
 

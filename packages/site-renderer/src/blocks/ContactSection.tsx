@@ -2,69 +2,37 @@ import * as React from "react"
 import type { ContactSectionBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
 import { RichTextRenderer } from "../rich-text"
-import { resolveBlockAnchor } from "./anchors"
 import { cx, nativeBlockClassName } from "./native-classes"
 import type { BlockRenderOptions } from "./types"
-import { mergeRendererSectionProps } from "./types"
 import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variants"
 
 export function ContactSectionBlockRenderer({ block, options }: { block: ContactSectionBlock; options: BlockRenderOptions }) {
-  const renderSlot = options.slots?.render
   const provider = block.provider
   const formAction = provider?.action ?? provider?.fallbackHref ?? options.formAction ?? "/api/forms"
   const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
   const hasSubmitStatus = method.toUpperCase() === "POST" && !formAction.startsWith("mailto:")
-  const sourceVariant = rendererVariantClassName(block, options.variantContext)
-  const sectionProps = mergeRendererSectionProps(
-    {
-      id: resolveBlockAnchor(block, { legacyTenant: options.variantContext?.legacyTenant, surface: options.surface }),
-      className: cx("cms-block cms-block--contact", sourceVariant, nativeBlockClassName(block, "section", options.variantContext)),
-      "data-source-variant": runtimeVariantDataAttribute(block, options.variantContext),
-      "data-block-index": options.index,
-      ...sectionAnalyticsAttrs(block.analytics, "contactSection", options.index),
-    },
-    options.sectionProps,
-  )
-  const title = renderSlot
-    ? renderSlot({
-      kind: "richtext",
-      value: block.title,
-      path: { blockIndex: options.index, field: "title" },
-      variant: "inline",
-      as: "h2",
-      className: cx("cms-block__title", nativeBlockClassName(block, "title", options.variantContext)),
-      placeholder: "Section title",
-      blockMode: "inline",
-      style: { fontFamily: "var(--font-heading)" },
-    })
-    : block.title ? (
-      <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title", options.variantContext))} style={{ fontFamily: "var(--font-heading)" }}>
-        <RichTextRenderer value={block.title} />
-      </h2>
-    ) : null
-  const description = renderSlot
-    ? renderSlot({
-      kind: "richtext",
-      value: block.description,
-      path: { blockIndex: options.index, field: "description" },
-      variant: "block",
-      as: "div",
-      className: cx("cms-block__description", nativeBlockClassName(block, "description", options.variantContext)),
-      placeholder: "Description",
-      style: { fontFamily: "var(--font-text)" },
-    })
-    : block.description ? (
-      <div className={cx("cms-block__description", nativeBlockClassName(block, "description", options.variantContext))} style={{ fontFamily: "var(--font-text)" }}>
-        <RichTextRenderer value={block.description} />
-      </div>
-    ) : null
+  const sourceVariant = rendererVariantClassName(block)
 
   return (
-    <section {...sectionProps}>
-      {title}
-      {description}
+    <section
+      id={block.anchor || undefined}
+      className={cx("cms-block cms-block--contact", sourceVariant, nativeBlockClassName(block, "section"))}
+      data-source-variant={runtimeVariantDataAttribute(block)}
+      data-block-index={options.index}
+      {...sectionAnalyticsAttrs(block.analytics, "contactSection", options.index)}
+    >
+      {block.title && (
+        <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-heading)" }}>
+          <RichTextRenderer value={block.title} />
+        </h2>
+      )}
+      {block.description && (
+        <div className={cx("cms-block__description", nativeBlockClassName(block, "description"))} style={{ fontFamily: "var(--font-text)" }}>
+          <RichTextRenderer value={block.description} />
+        </div>
+      )}
       <form
-        className={cx("cms-block__form", nativeBlockClassName(block, "form", options.variantContext))}
+        className={cx("cms-block__form", nativeBlockClassName(block, "form"))}
         name={block.formName}
         method={method}
         action={formAction}
@@ -84,25 +52,17 @@ export function ContactSectionBlockRenderer({ block, options }: { block: Contact
             <input id={`field-${provider.honeypotField}`} name={provider.honeypotField} tabIndex={-1} autoComplete="off" />
           </div>
         )}
-        {block.fields.map((field, fieldIndex) => {
+        {block.fields.map((field) => {
           const fieldId = `field-${field.name}`
           return (
-            <div key={field.name} className={cx("cms-block__form-field", nativeBlockClassName(block, "formField", options.variantContext))}>
-              <label className={cx("cms-block__form-label", nativeBlockClassName(block, "label", options.variantContext))} htmlFor={fieldId}>
-                {renderSlot
-                  ? renderSlot({
-                    kind: "text",
-                    value: field.label,
-                    path: { blockIndex: options.index, field: "fields", itemIndex: fieldIndex, subField: "label" },
-                    placeholder: "Field label",
-                  })
-                  : field.label}
-                {field.required ? " *" : ""}
+            <div key={field.name} className={cx("cms-block__form-field", nativeBlockClassName(block, "formField"))}>
+              <label className={cx("cms-block__form-label", nativeBlockClassName(block, "label"))} htmlFor={fieldId}>
+                {field.label}{field.required ? " *" : ""}
               </label>
               {field.type === "textarea" ? (
                 <textarea
                   id={fieldId}
-                  className={cx("cms-block__form-input cms-block__form-input--textarea", nativeBlockClassName(block, "input", options.variantContext), nativeBlockClassName(block, "textarea", options.variantContext))}
+                  className={cx("cms-block__form-input cms-block__form-input--textarea", nativeBlockClassName(block, "input"), nativeBlockClassName(block, "textarea"))}
                   name={field.name}
                   required={field.required ?? false}
                   placeholder={field.placeholder ?? undefined}
@@ -112,7 +72,7 @@ export function ContactSectionBlockRenderer({ block, options }: { block: Contact
               ) : (
                 <input
                   id={fieldId}
-                  className={cx("cms-block__form-input", nativeBlockClassName(block, "input", options.variantContext))}
+                  className={cx("cms-block__form-input", nativeBlockClassName(block, "input"))}
                   type={field.type}
                   name={field.name}
                   required={field.required ?? false}
@@ -124,15 +84,8 @@ export function ContactSectionBlockRenderer({ block, options }: { block: Contact
             </div>
           )
         })}
-        <button type="submit" className={cx("cms-block__form-submit", nativeBlockClassName(block, "submit", options.variantContext))} style={{ borderRadius: "var(--radius-md)" }}>
-          {renderSlot
-            ? renderSlot({
-              kind: "text",
-              value: block.submitLabel,
-              path: { blockIndex: options.index, field: "submitLabel" },
-              placeholder: "Submit label",
-            })
-            : block.submitLabel ?? "Send"}
+        <button type="submit" className={cx("cms-block__form-submit", nativeBlockClassName(block, "submit"))} style={{ borderRadius: "var(--radius-md)" }}>
+          {block.submitLabel ?? "Send"}
         </button>
         {hasSubmitStatus && (
           <p

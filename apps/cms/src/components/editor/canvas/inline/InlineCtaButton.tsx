@@ -16,7 +16,6 @@ export interface InlineCtaButtonProps {
   value?: { label?: string | null; href?: string | null } | null
   onChange: (next: { label: string; href: string } | null) => void
   className?: string
-  style?: React.CSSProperties
   /** Defaults to a sensible "Add CTA" empty-state label. */
   emptyLabel?: string
   /** Stable address of this element within the page block. When provided and
@@ -25,7 +24,7 @@ export interface InlineCtaButtonProps {
   elementPath?: ElementPath
 }
 
-export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChange, className, style, emptyLabel, elementPath }) => {
+export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChange, className, emptyLabel, elementPath }) => {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const { view, selected, select } = useCanvasSelection()
@@ -59,7 +58,7 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
 
   if (isCustomerPreview) {
     return hasValue ? (
-      <a href={value!.href!} className={className} style={style}>
+      <a href={value!.href!} className={className}>
         {value!.label}
       </a>
     ) : null
@@ -75,7 +74,6 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
       <button
         type="button"
         className={[className, "rt-click-edit cursor-pointer"].filter(Boolean).join(" ")}
-        style={style}
         onClick={handleClick}
         data-rt-selected={isSelected ? "true" : undefined}
         data-rt-href={value!.href!}
@@ -86,7 +84,6 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
       <button
         type="button"
         className={[className, "rt-click-edit opacity-70 cursor-pointer"].filter(Boolean).join(" ")}
-        style={style}
         onClick={handleClick}
         data-rt-selected={isSelected ? "true" : undefined}
       >
@@ -104,7 +101,6 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
           <a
             href={value!.href!}
             className={[className, "rt-click-edit"].filter(Boolean).join(" ")}
-            style={style}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true) }}
           >
             {value!.label}
@@ -113,7 +109,6 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
           <button
             type="button"
             className={[className, "rt-click-edit opacity-70 hover:opacity-100"].filter(Boolean).join(" ")}
-            style={style}
             onClick={(e) => { e.stopPropagation(); setOpen(true) }}
           >
             <Plus className="inline size-3.5 mr-1" />

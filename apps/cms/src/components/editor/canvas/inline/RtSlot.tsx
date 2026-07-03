@@ -39,7 +39,6 @@ export interface RtSlotProps {
   *  otherwise downgraded to `<div>` (see component doc). */
   as?: keyof React.JSX.IntrinsicElements
   className?: string
-  style?: React.CSSProperties
   placeholder?: string
   /** Stable address of this element within the page block. When provided and
    *  the canvas is in sidebar view, clicking selects this path instead of
@@ -52,7 +51,7 @@ export interface RtSlotProps {
 }
 
 export const RtSlot: React.FC<RtSlotProps> = ({
-  value, onChange, manifest, variant, as, className, style, placeholder, elementPath, allowFontFamily = false,
+  value, onChange, manifest, variant, as, className, placeholder, elementPath, allowFontFamily = false,
 }) => {
   const { view, selected, select } = useCanvasSelection()
   const isCustomerPreview = isCustomerPreviewView(view)
@@ -95,7 +94,6 @@ export const RtSlot: React.FC<RtSlotProps> = ({
     <Tag
       ref={slotRef}
       className={[isCustomerPreview ? undefined : "rt-slot", isReadOnly && !isCustomerPreview ? "cursor-pointer" : undefined, className].filter(Boolean).join(" ")}
-      style={style}
       data-rt-variant={variant}
       data-rt-selected={isSelected ? "true" : undefined}
       onClick={handleClick}

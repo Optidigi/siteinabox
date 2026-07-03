@@ -21,7 +21,6 @@ export interface ClickToEditFieldProps {
   editor: (close: () => void) => React.ReactNode
   ariaLabel: string
   className?: string
-  style?: React.CSSProperties
   /** Kept for API stability with existing call sites; no visual effect. */
   affordance?: "corner" | "inline"
   /** Stable address of this element within the page block. When provided and
@@ -36,7 +35,6 @@ export interface ClickToEditFieldProps {
 
 export const ClickToEditField: React.FC<ClickToEditFieldProps> = ({
   children, editor, ariaLabel, className, elementPath, autoOpen,
-  style,
 }) => {
   const { view, selected, select } = useCanvasSelection()
   const isCustomerPreview = isCustomerPreviewView(view)
@@ -54,7 +52,6 @@ export const ClickToEditField: React.FC<ClickToEditFieldProps> = ({
     return (
       <span
         className={["rt-click-edit relative inline-block cursor-pointer", className ?? ""].filter(Boolean).join(" ")}
-        style={style}
         data-rt-selected={isSelected ? "true" : undefined}
         onClick={(e) => {
           e.preventDefault()
@@ -72,7 +69,6 @@ export const ClickToEditField: React.FC<ClickToEditFieldProps> = ({
   return (
     <span
       className={["rt-click-edit relative inline-block", editing ? undefined : "cursor-pointer", className].filter(Boolean).join(" ")}
-      style={style}
       role={editing ? undefined : "button"}
       tabIndex={editing ? undefined : 0}
       aria-label={editing ? undefined : ariaLabel}

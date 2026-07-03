@@ -4,8 +4,6 @@ export interface ElementPath {
   field: string          // e.g. "headline", "image", "pills", "items"
   itemIndex?: number     // for array fields (features[], items[], pills[])
   subField?: string      // for array-item sub-fields (items[i].question)
-  subItemIndex?: number  // for nested arrays (plans[i].features[j])
-  subSubField?: string   // for nested array-item sub-fields
 }
 export const elementPathEq = (a: ElementPath | null, b: ElementPath | null): boolean => {
   if (a === b) return true
@@ -13,22 +11,12 @@ export const elementPathEq = (a: ElementPath | null, b: ElementPath | null): boo
   return a.blockIndex === b.blockIndex && a.field === b.field
     && (a.itemIndex ?? null) === (b.itemIndex ?? null)
     && (a.subField ?? null) === (b.subField ?? null)
-    && (a.subItemIndex ?? null) === (b.subItemIndex ?? null)
-    && (a.subSubField ?? null) === (b.subSubField ?? null)
 }
 export const describeElementPath = (p: ElementPath): string =>
-  [
-    p.field,
-    p.itemIndex != null ? `#${p.itemIndex + 1}` : "",
-    p.subField,
-    p.subItemIndex != null ? `#${p.subItemIndex + 1}` : "",
-    p.subSubField,
-  ].filter(Boolean).join(" ")
+  [p.field, p.itemIndex != null ? `#${p.itemIndex + 1}` : "", p.subField].filter(Boolean).join(" ")
 /** RHF field name for this path's value, e.g. `blocks.0.items.1.question`. */
 export const elementPathToName = (p: ElementPath): string =>
-  ["blocks", p.blockIndex, p.field, p.itemIndex, p.subField, p.subItemIndex, p.subSubField]
-    .filter((x) => x != null && x !== "")
-    .join(".")
+  ["blocks", p.blockIndex, p.field, p.itemIndex, p.subField].filter((x) => x != null && x !== "").join(".")
 
 // ---------------------------------------------------------------------------
 // Selection remap helpers — keep `selected` coherent after array mutations.

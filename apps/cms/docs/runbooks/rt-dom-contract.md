@@ -30,7 +30,7 @@ emitted DOM matches this contract.
 
 ## Canvas block DOM contract
 
-Package block renderers (`packages/site-renderer/src/blocks/*.tsx`) emit a `<section class="cms-block cms-block--<slug> …">` and stable `cms-block__*` inner DOM for live sites, customer preview, and editable canvas. In canvas mode, `CanvasBlockRenderer` injects edit slots into those package renderers; it does not own a separate block DOM tree. Tenant CSS targets these class names — they are the stable contract between the canvas editor and the live site. When a rendered-site component's DOM changes, its slot contract and adapter handling must be updated in lockstep.
+Canvas block renderers (`src/components/editor/canvas/blocks/*.tsx`) emit a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the rendered-site components in `packages/site-renderer`. Tenant CSS targets these class names — they are the stable contract between the canvas editor and the live site. When a rendered-site component's DOM changes, its canvas renderer must be updated in lockstep.
 
 | Block | Outer section classes | Key inner structural classes |
 |---|---|---|
@@ -45,12 +45,12 @@ Package block renderers (`packages/site-renderer/src/blocks/*.tsx`) emit a `<sec
 
 Notes:
 - The CTA block dispatches on `primary.href` at render time: `mailto:`/`tel:` prefixes produce the contact variant; anything else produces the quote variant. Both share the `cms-block--cta` base class; the variant class (`cms-block--cta-contact` / `cms-block--cta-quote`) lets tenant CSS target each flavour separately.
-- The `data-active` attribute is a canvas-only affordance; tenant CSS must not rely on it. `data-block-index` is emitted by package renderers for analytics/debug addressing and should not drive tenant visual styling.
-- Canonical implementations live in `packages/site-renderer`. The canvas adapter injects editing primitives into them.
+- The `data-block-index` and `data-active` attributes are canvas-only affordances — they are not emitted by the rendered-site components and tenant CSS must not rely on them.
+- Canonical reference implementations live in `packages/site-renderer`. The canvas renderers mirror them.
 
 ## § Theme tokens consumed by block renderers
 
-The package renderers in `packages/site-renderer` MUST consume these CSS custom properties so the ThemeBar's settings flow to live, preview, and editable canvas surfaces in lockstep.
+The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site renderers in `packages/site-renderer` MUST consume these CSS custom properties so the ThemeBar's settings flow to both surfaces in lockstep.
 
 ### Font role tokens
 
