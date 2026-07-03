@@ -1,5 +1,5 @@
 import type { AnalyticsBlockMetadata, SiteChromeVariant } from "@siteinabox/contracts"
-import { resolveBlockVariant } from "./variants"
+import { resolveBlockVariant, type BlockVariantResolveContext } from "./variants"
 
 type NativeResolvedBlock = {
   blockType: string
@@ -176,8 +176,12 @@ export function cx(...values: Array<string | false | null | undefined>) {
   return values.filter((value): value is string => Boolean(value)).join(" ")
 }
 
-export function nativeBlockClassName(block: NativeResolvedBlock, slot: NativeBlockClassSlot) {
-  const variant = resolveBlockVariant(block).variant
+export function nativeBlockClassName(
+  block: NativeResolvedBlock,
+  slot: NativeBlockClassSlot,
+  context?: BlockVariantResolveContext,
+) {
+  const variant = resolveBlockVariant(block, context).variant
   if (!variant) return ""
   const blockVariantKey = `${block.blockType}:${variant}`
   return (

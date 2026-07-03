@@ -779,6 +779,8 @@ svg {
 
 .site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-zen-hero {
   position: relative;
+  display: grid;
+  align-content: center;
   grid-template-columns: minmax(0, 1fr) minmax(18rem, 0.92fr);
   gap: 3.5rem;
   min-height: 90vh;
@@ -938,6 +940,7 @@ svg {
 }
 
 .site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-care-cards .cms-block__features {
+  display: grid;
   max-width: 70rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2rem;
@@ -947,13 +950,18 @@ svg {
 .site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-care-cards .cms-block__feature {
   overflow: hidden;
   padding: 0;
+  border: 1px solid var(--color-rule);
   border-radius: var(--radius-lg);
+  background: var(--color-card);
   box-shadow: 0 18px 45px rgb(31 26 20 / 8%);
 }
 
 .site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-care-cards .cms-block__feature-icon {
+  display: flex;
   width: 100%;
   height: 8rem;
+  align-items: center;
+  justify-content: center;
   margin: 0;
   border-radius: 0;
   background: color-mix(in srgb, var(--color-accent) 8%, transparent);
@@ -1033,6 +1041,32 @@ svg {
   background: color-mix(in srgb, var(--color-secondary) 42%, transparent);
   color: var(--color-ink);
   text-align: center;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-quote-contact.cms-block--cta-contact {
+  border-top: 1px solid var(--color-rule);
+  background: transparent;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-quote-contact.cms-block--cta-contact::after {
+  content: none;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-quote-contact.cms-block--cta-contact .cms-block__title {
+  color: var(--color-ink-muted);
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-quote-contact.cms-block--cta-contact .cms-block__cta--primary {
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-heading);
+  font-size: clamp(1.75rem, 1.2rem + 2.25vw, 2.75rem);
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 8px;
 }
 
 .site-renderer[data-legacy-tenant="amicare"] .cms-block--source-amicare-quote-contact .cms-block__background-image {

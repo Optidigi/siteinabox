@@ -24,6 +24,7 @@ export interface InlineImageProps {
   onChange: (next: any) => void
   alt?: string | null
   className?: string
+  style?: React.CSSProperties
   /** Controls how the image is rendered. img = inline foreground; div =
    *  background-image on a div (for hero-style backdrops). Defaults to img. */
   as?: "img" | "div"
@@ -123,6 +124,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
   onChange,
   alt,
   className,
+  style,
   as = "img",
   tenantId,
   emptyLabel,
@@ -275,6 +277,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
           src={url}
           alt={alt ?? ""}
           className={[surfaceIsEditable ? "rt-click-edit cursor-pointer" : undefined, className].filter(Boolean).join(" ")}
+          style={style}
           data-rt-selected={isSelected ? "true" : undefined}
           onClick={surfaceIsEditable ? handleSurfaceClick : undefined}
         />
@@ -285,6 +288,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
           <div
             ref={setChromeAnchorRef as React.RefCallback<HTMLDivElement>}
             className={[surfaceIsEditable ? "rt-click-edit cursor-pointer" : undefined, backgroundStyle.className, className].filter(Boolean).join(" ")}
+            style={style}
             onClick={surfaceIsEditable ? handleSurfaceClick : undefined}
             aria-label={alt ?? "image"}
             role="img"
@@ -318,6 +322,7 @@ export const InlineImage: React.FC<InlineImageProps> = ({
         <button
           type="button"
           className={[surfaceIsEditable ? "rt-click-edit cursor-pointer" : undefined, emptyClassName ?? className].filter(Boolean).join(" ")}
+          style={style}
           data-rt-selected={isSelected ? "true" : undefined}
           onClick={surfaceIsEditable ? handleSurfaceClick : undefined}
         >
