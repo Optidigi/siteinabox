@@ -3,7 +3,7 @@ import * as React from "react"
 import { Plus } from "lucide-react"
 import { RtSlot } from "../inline/RtSlot"
 import { InlineIcon } from "../inline/InlineIcon"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
 import { isReadOnlyView } from "@/components/editor/canvas/canvasView"
 import { useTranslations } from "next-intl"
@@ -23,7 +23,7 @@ const MAX_FEATURE_CARDS = 3
  *   - features[].title: inline rich-text → RtSlot as h3
  *   - features[].description: block rich-text → RtSlot as p
  */
-export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant }) => {
+export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const { view } = useCanvasSelection()
   const isReadOnly = isReadOnlyView(view)
@@ -44,15 +44,19 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
     if (!canAddFeature) return
     onUpdate({ ...block, features: [...features, {}] })
   }
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: block.anchor || (isAmicareLegacy ? "werkwijze" : "features"),
+      className: "cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24",
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={block.anchor || (isAmicareLegacy ? "werkwijze" : "features")}
-      className="cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       <div className="mx-auto max-w-7xl">
         <div className="mb-14 space-y-3 text-center">
           <RtSlot

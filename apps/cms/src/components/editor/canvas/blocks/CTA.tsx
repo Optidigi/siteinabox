@@ -3,7 +3,7 @@ import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
 import { InlineCtaButton } from "../inline/InlineCtaButton"
 import { InlineImage } from "../inline/InlineImage"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useTranslations } from "next-intl"
 import { cn } from "@siteinabox/ui/lib/utils"
 
@@ -16,7 +16,7 @@ import { cn } from "@siteinabox/ui/lib/utils"
  * Variant classes follow the site renderer, but every CTA field remains
  * optional and editable. If a field is present, the canvas renders it.
  */
-export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant }) => {
+export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const setPrimary = (value: any) => onUpdate({ ...block, primary: value })
@@ -38,15 +38,19 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const headlineClassName = isContact
     ? "mx-auto max-w-[24ch] font-serif text-[28px] leading-[1.25] tracking-[-0.005em] text-ink-muted @min-[48rem]/site-frame:text-[36px] [font-family:var(--font-heading)]"
     : "font-serif text-[32px] italic leading-[1.2] tracking-[-0.005em] text-ink @min-[48rem]/site-frame:text-[48px] [font-family:var(--font-heading)]"
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: sectionId,
+      className: sectionClassName,
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={sectionId}
-      className={sectionClassName}
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       <InlineImage
         value={block.backgroundImage}
         onChange={set("backgroundImage")}

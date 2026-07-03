@@ -10,7 +10,7 @@ import { InlineCtaButton } from "../inline/InlineCtaButton"
 import { InlineIcon } from "../inline/InlineIcon"
 import { InlineImage } from "../inline/InlineImage"
 import { RtSlot } from "../inline/RtSlot"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
@@ -36,6 +36,27 @@ function sourceVariantDataAttribute(block: any, legacyTenant?: "amicare" | null)
 
 function sourceVariantClassName(block: any, legacyTenant?: "amicare" | null) {
   return resolvedSourceVariant(block, { legacyTenant })?.rendererClassName ?? ""
+}
+
+function generationSectionProps(
+  block: any,
+  isActive: boolean,
+  legacyTenant: "amicare" | null | undefined,
+  onActivate: () => void,
+  className: string,
+  sectionChromeProps?: CanvasBlockRendererProps["sectionChromeProps"],
+) {
+  return mergeCanvasSectionProps(
+    {
+      id: block.anchor || undefined,
+      className,
+      "data-source-variant": sourceVariantDataAttribute(block, legacyTenant),
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 }
 
 const setField = (block: any, onUpdate: (next: any) => void) => (field: string) => (value: any) =>
@@ -66,13 +87,15 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   manifest,
   onActivate,
   onUpdate,
+  sectionChromeProps,
 }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const plans: any[] = block.plans ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--pricing ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--pricing ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Pricing title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__pricingPlans">
@@ -103,13 +126,14 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   )
 }
 
-export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate }) => {
+export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const items: any[] = block.items ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--stats ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--stats ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Stats title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <dl className="cms-block__statsGrid">
@@ -125,13 +149,14 @@ export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActiv
   )
 }
 
-export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
+export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const logos: any[] = block.logos ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--logoCloud ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--logoCloud ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Logo cloud title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <ul className="cms-block__logoCloudList">
@@ -146,13 +171,14 @@ export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
+export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const images: any[] = block.images ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--gallery ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--gallery ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Gallery title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__galleryGrid">
@@ -168,13 +194,14 @@ export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAct
   )
 }
 
-export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
+export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const members: any[] = block.members ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--team ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--team ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Team title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__teamGrid">
@@ -191,13 +218,14 @@ export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   )
 }
 
-export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
+export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const posts: any[] = block.posts ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--blogCards ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--blogCards ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Posts title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__blogGrid">
@@ -214,13 +242,14 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId }) => {
+export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const steps: any[] = block.steps ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--processSteps ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--processSteps ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Process title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <ol className="cms-block__steps">
@@ -236,14 +265,15 @@ export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, 
   )
 }
 
-export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate }) => {
+export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const columns: any[] = block.columns ?? []
   const rows: any[] = block.rows ?? []
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--comparisonMatrix ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
-    <section id={block.anchor || undefined} className={`cms-block cms-block--comparisonMatrix ${sourceVariantClassName(block, legacyTenant)}`.trim()} data-source-variant={sourceVariantDataAttribute(block, legacyTenant)} data-block-index={block.__index ?? undefined} data-active={isActive || undefined} onClick={onActivate}>
+    <section {...sectionProps}>
       <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Comparison title" elementPath={{ blockIndex: idx, field: "title" }} />
       <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
       <div className="cms-block__comparisonTable" role="table">

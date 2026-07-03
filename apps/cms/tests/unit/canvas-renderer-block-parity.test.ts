@@ -24,13 +24,23 @@ function extractSectionClass(source: string, functionName: string): string | nul
   return classMatch[1] ?? classMatch[2] ?? classMatch[3] ?? null
 }
 
-/** Pull `id={...}` expression from the first `<section` in a canvas component export. */
-function extractCanvasSectionId(source: string): string | null {
-  const sectionIdx = source.indexOf("<section")
-  if (sectionIdx < 0) return null
-  const slice = source.slice(sectionIdx, sectionIdx + 400)
-  const idMatch = slice.match(/id=\{([^}]+)\}/)
-  return idMatch?.[1]?.trim() ?? null
+function extractMergedSectionPropsSource(source: string): string {
+  const start = source.indexOf("const sectionProps = mergeCanvasSectionProps(")
+  expect(start, "sectionProps merge call").toBeGreaterThanOrEqual(0)
+  const sectionIdx = source.indexOf("<section {...sectionProps}>", start)
+  expect(sectionIdx, "section uses merged props").toBeGreaterThan(start)
+  return source.slice(start, sectionIdx)
+}
+
+function extractMergedSectionClass(source: string): string | null {
+  const propsSource = extractMergedSectionPropsSource(source)
+  const classMatch = propsSource.match(/className:\s*"([^"]+)"/)
+  return classMatch?.[1] ?? null
+}
+
+function expectMergedSectionId(source: string, expectedExpression: string) {
+  const propsSource = extractMergedSectionPropsSource(source)
+  expect(propsSource).toContain(`id: ${expectedExpression}`)
 }
 
 /** Normalize class strings for comparison — order-independent token sets. */
@@ -183,10 +193,10 @@ describe("canvas ↔ renderer block parity contract", () => {
         expect(rendererClass, `${amicareFn} section class`).toBeTruthy()
 
         const canvasSource = read(canvasFile)
-        const canvasMatch = canvasSource.match(/<section[\s\S]*?className="([^"]+)"/)
-        expect(canvasMatch?.[1], `${canvasFile} section class`).toBeTruthy()
+        const canvasClass = extractMergedSectionClass(canvasSource)
+        expect(canvasClass, `${canvasFile} section class`).toBeTruthy()
 
-        expectClassParity(label, canvasMatch![1]!, rendererClass!, required)
+        expectClassParity(label, canvasClass!, rendererClass!, required)
       })
     }
   })
@@ -221,20 +231,18 @@ describe("canvas ↔ renderer block parity contract", () => {
     expect(runbook).toContain("Not safe for a broad swap")
   })
 
-  it("requires canvas section ids to be explicit expressions (no silent drift)", () => {
-    const cases: Array<{ file: string; mustInclude: string }> = [
-      { file: "Hero.tsx", mustInclude: "block.anchor" },
-      { file: "FeatureList.tsx", mustInclude: "block.anchor" },
-      { file: "RichText.tsx", mustInclude: "block.anchor" },
-      { file: "CTA.tsx", mustInclude: "sectionId" },
-      { file: "FAQ.tsx", mustInclude: "block.anchor" },
-      { file: "Testimonials.tsx", mustInclude: "block.anchor" },
+  it("requires canvas section ids to flow through merged section props (no silent drift)", () => {
+    const cases: Array<{ file: string; idExpression: string }> = [
+      { file: "Hero.tsx", idExpression: 'block.anchor || "top"' },
+      { file: "FeatureList.tsx", idExpression: 'block.anchor || (isAmicareLegacy ? "werkwijze" : "features")' },
+      { file: "RichText.tsx", idExpression: 'block.anchor || (legacyTenant === "amicare" ? "over" : undefined)' },
+      { file: "CTA.tsx", idExpression: "sectionId" },
+      { file: "FAQ.tsx", idExpression: "block.anchor || undefined" },
+      { file: "Testimonials.tsx", idExpression: "block.anchor || undefined" },
     ]
-    for (const { file, mustInclude } of cases) {
+    for (const { file, idExpression } of cases) {
       const source = read(`apps/cms/src/components/editor/canvas/blocks/${file}`)
-      const idExpr = extractCanvasSectionId(source)
-      expect(idExpr, `${file} section id`).toBeTruthy()
-      expect(source).toContain(mustInclude)
+      expectMergedSectionId(source, idExpression)
     }
   })
 })

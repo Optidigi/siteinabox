@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useTranslations } from "next-intl"
 
 /**
@@ -24,6 +24,7 @@ export const FAQCanvas: React.FC<CanvasBlockRendererProps> = ({
   manifest,
   onActivate,
   onUpdate,
+  sectionChromeProps,
 }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
@@ -37,15 +38,19 @@ export const FAQCanvas: React.FC<CanvasBlockRendererProps> = ({
 
   const items: any[] = block.items ?? []
   const visibleItems = items.length ? items : [{}]
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: block.anchor || undefined,
+      className: "cms-block cms-block--faq px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 @min-[64rem]/site-frame:px-24",
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={block.anchor || undefined}
-      className="cms-block cms-block--faq px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 @min-[64rem]/site-frame:px-24"
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       <div className="container mx-auto max-w-3xl">
         <RtSlot
           as="h2"

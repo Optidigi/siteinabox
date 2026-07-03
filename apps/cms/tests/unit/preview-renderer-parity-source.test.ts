@@ -44,6 +44,6 @@ describe("customer preview renderer parity source contract", () => {
     expect(previewCustomizer).toContain("data-siab-renderer-frame")
     expect(previewCustomizer.includes("@siteinabox/site-renderer")).toBe(false)
     expect(previewCustomizer.includes("<SitePageRenderer")).toBe(false)
-    expect(canvasSurface).toContain('import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"')
+    expect(canvasSurface).toContain('import { CanvasBlockRenderer, type CanvasSectionChromeProps } from "@/components/editor/canvas/CanvasBlockRenderer"')
   })
 })

@@ -2,7 +2,7 @@
 import * as React from "react"
 import { ClickToEditField } from "../inline/ClickToEditField"
 import { InlineImage } from "../inline/InlineImage"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { isCoarsePointer } from "@siteinabox/ui/lib/utils"
 import { isReadOnlyView } from "@/components/editor/canvas/canvasView"
 import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
@@ -38,6 +38,7 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   onActivate,
   onUpdate,
   tenantId,
+  sectionChromeProps,
 }) => {
   const t = useTranslations("editor")
   const { view } = useCanvasSelection()
@@ -66,15 +67,19 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
     const last = gridRef.current?.querySelector<HTMLElement>("figure:last-of-type")
     last?.scrollIntoView({ block: "nearest", behavior: "smooth" })
   }, [items.length])
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: block.anchor || undefined,
+      className: "cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20",
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={block.anchor || undefined}
-      className="cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       <div className="container mx-auto">
         <h2 className="mb-12 text-center font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [font-family:var(--font-heading)]">
           <ClickToEditField

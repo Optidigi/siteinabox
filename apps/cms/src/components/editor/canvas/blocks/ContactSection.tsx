@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
@@ -23,6 +23,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
   onActivate,
   onUpdate,
   legacyTenant,
+  sectionChromeProps,
 }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
@@ -31,15 +32,19 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
   const fields: Array<{ name: string; label: string; type: string; required: boolean }> =
     block.fields ?? []
   const isAmicareLegacy = legacyTenant === "amicare"
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: block.anchor || undefined,
+      className: "cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20",
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={block.anchor || undefined}
-      className="cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       <div className="container mx-auto max-w-2xl">
         <RtSlot
           as="h2"

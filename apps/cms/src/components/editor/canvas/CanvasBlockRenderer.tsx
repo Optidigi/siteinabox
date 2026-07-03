@@ -18,6 +18,15 @@ import {
   StatsCanvas,
   TeamCanvas,
 } from "@/components/editor/canvas/blocks/GenerationBlocks"
+import { cn } from "@siteinabox/ui/lib/utils"
+
+type DataAttributes = {
+  [key: `data-${string}`]: string | number | boolean | undefined
+}
+
+type CanvasSectionBaseProps = React.ComponentPropsWithoutRef<"section"> & DataAttributes
+
+export type CanvasSectionChromeProps = React.ComponentPropsWithRef<"section"> & DataAttributes
 
 export interface CanvasBlockRendererProps {
   block: any
@@ -28,6 +37,63 @@ export interface CanvasBlockRendererProps {
   onUpdate: (next: any) => void
   tenantId?: number | string | null
   legacyTenant?: "amicare" | null
+  sectionChromeProps?: CanvasSectionChromeProps
+}
+
+function mergeSyntheticEventHandlers<Event extends React.SyntheticEvent>(
+  base?: (event: Event) => void,
+  chrome?: (event: Event) => void,
+) {
+  if (!base) return chrome
+  if (!chrome) return base
+  return (event: Event) => {
+    base(event)
+    chrome(event)
+  }
+}
+
+function mergeClickHandler(
+  base?: React.MouseEventHandler<HTMLElement>,
+  chrome?: React.MouseEventHandler<HTMLElement>,
+) {
+  return chrome ?? base
+}
+
+export function mergeCanvasSectionProps(
+  baseProps: CanvasSectionBaseProps,
+  chromeProps?: CanvasSectionChromeProps,
+): CanvasSectionChromeProps {
+  if (!chromeProps) return baseProps
+
+  const {
+    className: baseClassName,
+    onClick: baseOnClick,
+    onMouseEnter: baseOnMouseEnter,
+    onMouseLeave: baseOnMouseLeave,
+    onFocusCapture: baseOnFocusCapture,
+    onBlurCapture: baseOnBlurCapture,
+    ...baseRest
+  } = baseProps
+  const {
+    className: chromeClassName,
+    onClick: chromeOnClick,
+    onMouseEnter: chromeOnMouseEnter,
+    onMouseLeave: chromeOnMouseLeave,
+    onFocusCapture: chromeOnFocusCapture,
+    onBlurCapture: chromeOnBlurCapture,
+    ...chromeRest
+  } = chromeProps
+
+  return {
+    ...chromeRest,
+    ...baseRest,
+    className: cn(baseClassName, chromeClassName),
+    onClick: mergeClickHandler(baseOnClick, chromeOnClick),
+    onMouseEnter: mergeSyntheticEventHandlers(baseOnMouseEnter, chromeOnMouseEnter),
+    onMouseLeave: mergeSyntheticEventHandlers(baseOnMouseLeave, chromeOnMouseLeave),
+    onFocusCapture: mergeSyntheticEventHandlers(baseOnFocusCapture, chromeOnFocusCapture),
+    onBlurCapture: mergeSyntheticEventHandlers(baseOnBlurCapture, chromeOnBlurCapture),
+  }
 }
 
 /** Per-block-type dispatcher for canvas mode. Each block renderer is in
@@ -44,6 +110,16 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
   // Stamp __index so block renderers can derive ElementPath without an extra prop.
   const blockWithIndex = { ...block, __index: index }
   const augmented = { ...props, block: blockWithIndex }
+  const unknownSectionProps = mergeCanvasSectionProps(
+    {
+      className: "cms-block cms-block--unknown rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2",
+      "data-block-index": index,
+      "data-active": props.isActive || undefined,
+      onClick: props.onActivate,
+    },
+    props.sectionChromeProps,
+  )
+
   switch (block?.blockType) {
     case "hero":           return <HeroLazy {...augmented} />
     case "featureList":    return <FeatureListLazy {...augmented} />
@@ -62,7 +138,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     case "comparison":     return <ComparisonCanvas {...augmented} />
     default:
       return (
-        <section className="cms-block cms-block--unknown rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2">
+        <section {...unknownSectionProps}>
           Unknown block type: <code>{String(block?.blockType ?? "?")}</code>
         </section>
       )

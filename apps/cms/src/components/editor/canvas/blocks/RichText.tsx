@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useTranslations } from "next-intl"
 import type { RtBlock, RtRoot } from "@/lib/richText/RtNode"
 
@@ -36,7 +36,7 @@ function splitAmicareIntro(value: unknown): { intro: RtRoot; body: RtRoot } | nu
   }
 }
 
-export const RichTextCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant }) => {
+export const RichTextCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
@@ -57,15 +57,19 @@ export const RichTextCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAc
       children: [...(splitBody.intro.children ?? []), ...(nextBody.children ?? [])],
     })
   }
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: block.anchor || (legacyTenant === "amicare" ? "over" : undefined),
+      className: "cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24",
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={block.anchor || (legacyTenant === "amicare" ? "over" : undefined)}
-      className="cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       {splitBody ? (
         <>
           <div className="amicare-richtext-intro mx-auto max-w-3xl text-center">

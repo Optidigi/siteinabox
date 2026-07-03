@@ -21,7 +21,7 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
 import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
-import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { CanvasBlockRenderer, type CanvasSectionChromeProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
@@ -608,7 +608,7 @@ const SortableRenderedBlockItem: React.FC<{
   index: number
   isActive: boolean
   readOnly?: boolean
-  children: React.ReactNode
+  children: (sectionChromeProps: CanvasSectionChromeProps) => React.ReactNode
   onActivate: () => void
   onDelete: () => void
   onDuplicate: () => void
@@ -636,10 +636,10 @@ const SortableRenderedBlockItem: React.FC<{
     transition,
     isDragging,
   } = useSortable({ id, disabled: readOnly })
-  const anchorRef = React.useRef<HTMLDivElement | null>(null)
+  const anchorRef = React.useRef<HTMLElement | null>(null)
 
   const setRefs = React.useCallback(
-    (node: HTMLDivElement | null) => {
+    (node: HTMLElement | null) => {
       setNodeRef(node)
       anchorRef.current = node
     },
@@ -652,42 +652,41 @@ const SortableRenderedBlockItem: React.FC<{
     "canvas-rendered-sortable-block",
     `${transformValue ? `transform:${transformValue};` : ""}${transitionValue ? `transition:${transitionValue};` : ""}`,
   )
+  const sectionChromeProps = React.useMemo<CanvasSectionChromeProps>(() => ({
+    ref: setRefs,
+    className: cn(sortableStyle.className, "relative", isDragging && "opacity-50"),
+    "data-block-index": index,
+    "data-rt-selected": isActive ? "true" : undefined,
+    onClick: (event) => {
+      if ((event.target as HTMLElement | null)?.closest("[data-siab-editor-ui], [data-siab-canvas-chrome]")) return
+      onActivate()
+    },
+    onMouseEnter: () => setGutterVisible(true),
+    onMouseLeave: () => setGutterVisible(false),
+    onFocusCapture: () => setGutterVisible(true),
+    onBlurCapture: (event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setGutterVisible(false)
+      }
+    },
+  }), [index, isActive, isDragging, onActivate, setGutterVisible, setRefs, sortableStyle.className])
 
   return (
     <>
       {sortableStyle.styleElement}
-      <div
-        ref={setRefs}
-        className={cn(sortableStyle.className, "relative", isDragging && "opacity-50")}
-        data-block-index={index}
-        data-rt-selected={isActive ? "true" : undefined}
-        onClick={(event) => {
-          if ((event.target as HTMLElement | null)?.closest("[data-siab-editor-ui], [data-siab-canvas-chrome]")) return
-          onActivate()
-        }}
-        onMouseEnter={() => setGutterVisible(true)}
-        onMouseLeave={() => setGutterVisible(false)}
-        onFocusCapture={() => setGutterVisible(true)}
-        onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-            setGutterVisible(false)
-          }
-        }}
-      >
-        {!readOnly && (
-          <CanvasChromeGutterOverlay
-            anchorRef={anchorRef}
-            visible={gutterVisible}
-            setVisible={setGutterVisible}
-            dragHandleRef={setActivatorNodeRef}
-            dragHandleProps={{ ...attributes, ...listeners }}
-            optionsLabel={t("blockActions")}
-            onDelete={onDelete}
-            onDuplicate={onDuplicate}
-          />
-        )}
-        {children}
-      </div>
+      {!readOnly && (
+        <CanvasChromeGutterOverlay
+          anchorRef={anchorRef}
+          visible={gutterVisible}
+          setVisible={setGutterVisible}
+          dragHandleRef={setActivatorNodeRef}
+          dragHandleProps={{ ...attributes, ...listeners }}
+          optionsLabel={t("blockActions")}
+          onDelete={onDelete}
+          onDuplicate={onDuplicate}
+        />
+      )}
+      {children(sectionChromeProps)}
     </>
   )
 }
@@ -934,20 +933,23 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                               gutterVisible={activeBlockGutterIndex === index}
                               setGutterVisible={(next) => setBlockGutterVisible(index, next)}
                             >
-                              <CanvasBlockRenderer
-                                block={block}
-                                index={index}
-                                isActive={activeIndex === index}
-                                manifest={manifest}
-                                onActivate={() => {
-                                  if (isCustomerPreviewView(view)) return
-                                  setActiveIndex(index)
-                                  select(null)
-                                }}
-                                onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
-                                tenantId={tenantId}
-                                legacyTenant={legacyTenant}
-                              />
+                              {(sectionChromeProps) => (
+                                <CanvasBlockRenderer
+                                  block={block}
+                                  index={index}
+                                  isActive={activeIndex === index}
+                                  manifest={manifest}
+                                  onActivate={() => {
+                                    if (isCustomerPreviewView(view)) return
+                                    setActiveIndex(index)
+                                    select(null)
+                                  }}
+                                  onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
+                                  tenantId={tenantId}
+                                  legacyTenant={legacyTenant}
+                                  sectionChromeProps={sectionChromeProps}
+                                />
+                              )}
                             </SortableRenderedBlockItem>
                             {!effectiveReadOnly && (
                               <CanvasGapOverlay

@@ -15,7 +15,7 @@ describe("canvas chrome fidelity", () => {
     expect(pageForm).toContain('import { PageEditorFrameHost')
     expect(pageForm).not.toContain('import { CanvasMode }')
     expect(pageForm).not.toContain('import { CanvasMode } from "@siteinabox/ui/components/canvas-mode"')
-    expect(canvasSurface).toContain('import { CanvasBlockRenderer } from "@/components/editor/canvas/CanvasBlockRenderer"')
+    expect(canvasSurface).toContain('import { CanvasBlockRenderer, type CanvasSectionChromeProps } from "@/components/editor/canvas/CanvasBlockRenderer"')
     expect(frameHost).toContain("data-siab-editor-frame-layout")
   })
 
@@ -134,6 +134,27 @@ describe("canvas chrome fidelity", () => {
     expect(canvasSurface).not.toContain("const [gutterVisible, setGutterVisible] = React.useState(false)")
     expect(gutterOverlay).toContain("type AnchorRect = Pick<DOMRect, \"bottom\" | \"left\" | \"right\" | \"top\" | \"width\">")
     expect(gutterOverlay).toContain('const hiddenAfterAnchorScrolledAway = rect ? dataChrome !== "site-chrome-gutter" && rect.bottom < cmsChromeBottom : false')
+  })
+
+  it("attaches shared-shell sortable chrome to editable block sections directly", () => {
+    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
+    const blockRenderer = read("src/components/editor/canvas/CanvasBlockRenderer.tsx")
+    const renderedItemStart = canvasSurface.indexOf("const SortableRenderedBlockItem")
+    const renderedItemEnd = canvasSurface.indexOf("/**\n * Desktop canvas render surface", renderedItemStart)
+    const renderedItem = canvasSurface.slice(renderedItemStart, renderedItemEnd)
+
+    expect(blockRenderer).toContain("sectionChromeProps?: CanvasSectionChromeProps")
+    expect(blockRenderer).toContain("export function mergeCanvasSectionProps")
+    expect(blockRenderer).toContain("<section {...unknownSectionProps}>")
+
+    expect(renderedItem).toContain("children: (sectionChromeProps: CanvasSectionChromeProps) => React.ReactNode")
+    expect(renderedItem).toContain("const anchorRef = React.useRef<HTMLElement | null>(null)")
+    expect(renderedItem).toContain("ref: setRefs")
+    expect(renderedItem).toContain('"data-rt-selected": isActive ? "true" : undefined')
+    expect(renderedItem).toContain("{children(sectionChromeProps)}")
+    expect(renderedItem).not.toContain("<div\n        ref={setRefs}")
+    expect(canvasSurface).toContain("sectionChromeProps={sectionChromeProps}")
+    expect(canvasSurface).toMatch(/renderBlocks=\{isCustomerPreviewView\(view\)\s*\?\s*undefined/)
   })
 
   it("keeps Amicare canvas block breakpoints aligned to the live site renderer", () => {

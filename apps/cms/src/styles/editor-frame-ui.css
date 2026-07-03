@@ -74,13 +74,31 @@
   background-color: color-mix(in oklab, var(--background) 95%, transparent);
 }
 
+[data-siab-editor-ui][data-siab-canvas-chrome]:not([data-siab-canvas-chrome="insert-gap"]) {
+  background-color: color-mix(in oklab, var(--background) 95%, transparent);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
 [data-radix-popper-content-wrapper]:has([data-siab-editor-ui]) [data-siab-editor-ui] {
   background-color: var(--popover);
   color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+:is([data-siab-editor-ui], [data-siab-canvas-chrome])
+  :is(button, [role="button"], [role="menuitem"]) {
+  color: var(--muted-foreground);
+  border-color: var(--border);
 }
 
 :is([data-siab-editor-ui], [data-siab-canvas-chrome])
   :is(button, [role="button"], [role="menuitem"]):is(:hover, :focus-visible, [data-state="open"]) {
   background-color: var(--accent);
   color: var(--accent-foreground);
+}
+
+:is([data-siab-editor-ui], [data-siab-canvas-chrome])
+  :is(.text-destructive, [data-variant="destructive"], [role="menuitem"][data-destructive]) {
+  color: var(--destructive);
 }

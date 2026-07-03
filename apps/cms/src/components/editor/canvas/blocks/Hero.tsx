@@ -4,7 +4,7 @@ import { RtSlot } from "../inline/RtSlot"
 import { ClickToEditField } from "../inline/ClickToEditField"
 import { InlineCtaButton } from "../inline/InlineCtaButton"
 import { InlineImage } from "../inline/InlineImage"
-import type { CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { isReadOnlyView } from "../canvasView"
 import { cn, isCoarsePointer } from "@siteinabox/ui/lib/utils"
@@ -20,7 +20,7 @@ import { MapPin } from "lucide-react"
 
 const AMICARE_PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
-export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant }) => {
+export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const set = <K extends string>(field: K) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
@@ -32,15 +32,19 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   // Only one pill editor is ever open at a time, so a single ref suffices.
   // Reset to false at the top of the editor factory (which re-runs each open).
   const pillCommittedRef = React.useRef(false)
+  const sectionProps = mergeCanvasSectionProps(
+    {
+      id: block.anchor || "top",
+      className: "cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24",
+      "data-block-index": block.__index ?? undefined,
+      "data-active": isActive || undefined,
+      onClick: onActivate,
+    },
+    sectionChromeProps,
+  )
 
   return (
-    <section
-      id={block.anchor || "top"}
-      className="cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
-      data-block-index={block.__index ?? undefined}
-      data-active={isActive || undefined}
-      onClick={onActivate}
-    >
+    <section {...sectionProps}>
       <div
         aria-hidden="true"
         className={cn(
