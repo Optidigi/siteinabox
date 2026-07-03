@@ -10,6 +10,7 @@ import {
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
 import { Button } from "@siteinabox/ui/components/button"
+import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { findBlockIndexByWireId } from "@/lib/editor/ensureBlockIds"
@@ -85,6 +86,10 @@ export function PageEditorFrameHost({
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "failed">("loading")
   const [retryKey, setRetryKey] = React.useState(0)
   const [parentChromeBottom, setParentChromeBottom] = React.useState(CHROME_VIEWPORT_GAP)
+  const iframeChromeInset = useCspStyleRule(
+    "editor-frame-chrome-inset",
+    `${PARENT_CHROME_BOTTOM_VAR}:${formatCssPx(parentChromeBottom)};`,
+  )
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   onSelectionChangedRef.current = onSelectionChanged
   const onOpenBlockInspectorRef = React.useRef(onOpenBlockInspector)
@@ -311,18 +316,19 @@ export function PageEditorFrameHost({
       data-siab-editor-frame-view={view}
       data-siab-editor-frame-layout={layout}
     >
+      {iframeChromeInset.styleElement}
       <iframe
         key={`${src}:${retryKey}`}
         ref={frameRef}
         src={src}
         title="Page editor"
         className={cn(
+          iframeChromeInset.className,
           "block w-full border-0 bg-transparent",
           layout === "mobile"
             ? "min-h-[calc(100dvh-4.5rem)] h-[calc(100dvh-4.5rem)]"
             : cn("min-h-[640px]", view === "sidebar" ? "h-[calc(100dvh-6.5rem)]" : "h-[calc(100dvh-9rem)]"),
         )}
-        style={{ [PARENT_CHROME_BOTTOM_VAR]: `${parentChromeBottom}px` } as React.CSSProperties}
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}
