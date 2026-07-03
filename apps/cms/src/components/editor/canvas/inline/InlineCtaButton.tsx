@@ -116,7 +116,13 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent className="w-80 space-y-3" align="start" onClick={(e) => e.stopPropagation()}>
+      <PopoverContent
+        className="w-80 space-y-3"
+        align="start"
+        data-siab-editor-ui
+        data-siab-canvas-chrome="inline-cta-popover"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="space-y-1.5">
           <Label htmlFor="inline-cta-label">{t("buttonText")}</Label>
           <Input id="inline-cta-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Contact" />

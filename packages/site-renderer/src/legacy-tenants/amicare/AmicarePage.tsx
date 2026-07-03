@@ -443,7 +443,7 @@ function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock
   return (
     <section
       id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
-      className="cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
+      className="cms-block cms-block--featurelist cms-block--source-amicare-care-cards relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
       data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "featureList", dataBlockIndex)}
@@ -452,11 +452,11 @@ function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock
         {(block.title || introText) && (
           <div className="mb-14 space-y-3 text-center">
             {introText && (
-              <span className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{introText}</span>
+              <span className="cms-block__intro inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{introText}</span>
             )}
             {block.title && (
               <h2
-                className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent"
+                className="cms-block__title font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent"
                 style={{ fontFamily: "var(--font-heading)" }}
               >
                 <RichTextRenderer value={block.title} />
@@ -465,20 +465,20 @@ function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-8 @min-[48rem]/site-frame:grid-cols-3">
+        <div className="cms-block__features grid grid-cols-1 gap-8 @min-[48rem]/site-frame:grid-cols-3">
           {block.features.map((feature, index) => {
             const Icon = resolveIcon(feature.icon)
             return (
-              <article key={index} className="overflow-hidden rounded-lg border border-rule bg-card shadow-lg">
-                <div className="flex h-32 items-center justify-center bg-accent/[0.08]">
+              <article key={index} className="cms-block__feature overflow-hidden rounded-lg border border-rule bg-card shadow-lg">
+                <div className="cms-block__feature-icon flex h-32 items-center justify-center bg-accent/[0.08]">
                   {Icon && <Icon size={44} className="text-accent" strokeWidth={1.5} aria-hidden />}
                 </div>
                 <div className="space-y-3 p-7 text-center">
-                  <h3 className="font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]">
+                  <h3 className="cms-block__feature-title font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]">
                     <RichTextRenderer value={feature.title} />
                   </h3>
                   {feature.description && (
-                    <p className="text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]">
+                    <p className="cms-block__feature-description text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]">
                       <RichTextRenderer value={feature.description} blockMode="inline" />
                     </p>
                   )}

@@ -133,7 +133,12 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
               <span className="truncate">{label}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" className="min-w-[14rem]">
+          <DropdownMenuContent
+            align="center"
+            className="min-w-[14rem]"
+            data-siab-editor-ui
+            data-siab-canvas-chrome="mobile-section-menu"
+          >
             {blocks.map((b, i) => {
               const c = blockBySlug[b?.blockType]
               const l = c ? (typeof c.labels?.singular === "string" ? c.labels.singular : c.slug) : b?.blockType

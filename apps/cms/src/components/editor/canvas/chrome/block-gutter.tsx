@@ -67,7 +67,7 @@ export const BlockGutter: React.FC<BlockGutterProps> = ({
           <MoreVertical className="size-4" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" data-siab-editor-ui data-siab-canvas-chrome="block-gutter-menu">
         <DropdownMenuItem onClick={onDuplicate}>{t("duplicate")}</DropdownMenuItem>
         <DropdownMenuItem
           onClick={onDelete}

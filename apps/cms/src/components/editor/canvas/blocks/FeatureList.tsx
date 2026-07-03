@@ -34,6 +34,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
   const { view } = useCanvasSelection()
   const isReadOnly = isReadOnlyView(view)
   const isAmicareLegacy = legacyTenant === "amicare"
+  const amicareSourceClassName = isAmicareLegacy ? "cms-block--source-amicare-care-cards" : ""
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
 
@@ -53,7 +54,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
   const sectionProps = mergeCanvasSectionProps(
     {
       id: resolveBlockAnchor(block, { legacyTenant, surface: "canvas" }),
-      className: `cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
+      className: `cms-block cms-block--featurelist ${amicareSourceClassName} relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
       "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
@@ -72,7 +73,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
             manifest={manifest}
             value={block.intro}
             onChange={set("intro")}
-            className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]"
+            className="cms-block__intro inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]"
             placeholder={t("kickerIntroPlaceholder")}
             elementPath={{ blockIndex: idx, field: "intro" }}
           />
@@ -82,19 +83,19 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
             manifest={manifest}
             value={block.title}
             onChange={set("title")}
-            className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent [font-family:var(--font-heading)]"
+            className="cms-block__title font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent [font-family:var(--font-heading)]"
             placeholder={t("sectionTitlePlaceholder")}
             elementPath={{ blockIndex: idx, field: "title" }}
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-8 @min-[48rem]/site-frame:grid-cols-3">
+        <div className="cms-block__features grid grid-cols-1 gap-8 @min-[48rem]/site-frame:grid-cols-3">
           {visibleFeatures.map((feature: any, i: number) => (
             <article
               key={features.length ? i : "empty-feature"}
-              className="overflow-hidden rounded-lg border border-rule bg-card shadow-lg"
+              className="cms-block__feature overflow-hidden rounded-lg border border-rule bg-card shadow-lg"
             >
-              <div className="flex h-32 items-center justify-center bg-accent/[0.08]">
+              <div className="cms-block__feature-icon flex h-32 items-center justify-center bg-accent/[0.08]">
                 <InlineIcon
                   value={feature.icon}
                   onChange={setFeature(i)("icon")}
@@ -111,7 +112,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
                   manifest={manifest}
                   value={feature.title}
                   onChange={setFeature(i)("title")}
-                  className="font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]"
+                  className="cms-block__feature-title font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]"
                   placeholder={t("featureTitlePlaceholder")}
                   elementPath={{ blockIndex: idx, field: "features", itemIndex: i, subField: "title" }}
                 />
@@ -121,7 +122,7 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
                   manifest={manifest}
                   value={feature.description}
                   onChange={setFeature(i)("description")}
-                  className="text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]"
+                  className="cms-block__feature-description text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]"
                   placeholder={t("featureDescriptionPlaceholder")}
                   elementPath={{ blockIndex: idx, field: "features", itemIndex: i, subField: "description" }}
                 />
