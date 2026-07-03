@@ -107,6 +107,33 @@ describe("canvas chrome fidelity", () => {
     expect(siteChrome).toContain("<CanvasChromeGutterOverlay")
   })
 
+  it("marks independently portaled iframe editor chrome for CMS token isolation", () => {
+    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
+    const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
+    const floatingToolbar = read("src/components/editor/richText/toolbar/floating-toolbar.tsx")
+    const slashMenu = read("src/components/editor/richText/toolbar/slash-menu.tsx")
+    const fontChip = read("src/components/editor/richText/toolbar/font-chip.tsx")
+    const styleChip = read("src/components/editor/richText/toolbar/style-chip.tsx")
+    const colorChip = read("src/components/editor/richText/toolbar/color-chip.tsx")
+    const blockChip = read("src/components/editor/richText/toolbar/block-chip.tsx")
+    const linkPopover = read("src/components/editor/richText/toolbar/link-popover.tsx")
+    const themedNodeDialog = read("src/components/editor/richText/toolbar/themed-node-dialog.tsx")
+
+    expect(canvasSurface).toContain('data-siab-canvas-chrome="block-picker-dialog"')
+    expect(inlineImage).toContain('data-siab-canvas-chrome="inline-image-picker"')
+    expect(floatingToolbar).toContain('data-siab-canvas-chrome="rich-text-toolbar"')
+    expect(slashMenu).toContain('data-siab-canvas-chrome="rich-text-slash-menu"')
+    for (const source of [fontChip, styleChip, colorChip, blockChip]) {
+      expect(source).toContain('data-siab-canvas-chrome="rich-text-popover"')
+      expect(source).toContain("data-siab-editor-ui")
+    }
+    for (const source of [canvasSurface, inlineImage, floatingToolbar, slashMenu, linkPopover, themedNodeDialog]) {
+      expect(source).toContain("data-siab-editor-ui")
+    }
+    expect(linkPopover).toContain('data-siab-canvas-chrome="rich-text-dialog"')
+    expect(themedNodeDialog).toContain('data-siab-canvas-chrome="rich-text-dialog"')
+  })
+
   it("shares block hover visibility with nested image canvas chrome", () => {
     const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
     const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")

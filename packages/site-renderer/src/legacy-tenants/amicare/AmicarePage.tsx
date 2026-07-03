@@ -21,6 +21,8 @@ import type {
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../../analytics"
+import { resolveBlockAnchor } from "../../blocks/anchors"
+import { runtimeVariantDataAttribute } from "../../blocks/variants"
 import { resolveIcon } from "../../blocks/icons"
 import type { BlockRegistry } from "../../blocks"
 import type { MediaResolver, ResolvedMedia } from "../../media"
@@ -353,11 +355,13 @@ function AmicareHero({
   const ctaHref = block.cta?.href?.trim()
   const image = media(block.image, mediaResolver)
   const eyebrowText = extractRichText(block.eyebrow)
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
 
   return (
     <section
-      id={block.anchor || "top"}
+      id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
       className="cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "hero", dataBlockIndex)}
     >
@@ -434,11 +438,13 @@ function AmicareHero({
 function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock; dataBlockIndex: number }) {
   if (!block.features || block.features.length === 0) return null
   const introText = extractRichText(block.intro)
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
 
   return (
     <section
-      id={block.anchor || "werkwijze"}
+      id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
       className="cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "featureList", dataBlockIndex)}
     >
@@ -507,10 +513,12 @@ function splitAmicareIntro(value: unknown): { intro: RtRoot; body: RtRoot } | nu
 function AmicareRichText({ block, dataBlockIndex }: { block: RichTextBlock; dataBlockIndex: number }) {
   if (!block.body) return null
   const splitBody = splitAmicareIntro(block.body)
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
   return (
     <section
-      id={block.anchor || "over"}
+      id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
       className="cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "richText", dataBlockIndex)}
     >
@@ -557,7 +565,8 @@ function AmicareCTA({
   const secondaryHref = block.secondary?.href?.trim()
   const isContact = primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
   const backgroundImageUrl = mediaUrl(block.backgroundImage, mediaResolver)
-  const sectionId = block.anchor || (isContact ? "contact" : "wat-telt")
+  const sectionId = resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
 
   return (
     <section
@@ -567,6 +576,7 @@ function AmicareCTA({
           ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
           : "cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28"
       }
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "cta", dataBlockIndex)}
     >
@@ -641,10 +651,12 @@ function AmicareTestimonials({
   mediaResolver?: MediaResolver
 }) {
   if (!block.items || block.items.length === 0) return null
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
   return (
     <section
       id={block.anchor ?? undefined}
       className="cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "testimonials", dataBlockIndex)}
     >
@@ -680,10 +692,12 @@ function AmicareTestimonials({
 
 function AmicareFAQ({ block, dataBlockIndex }: { block: FAQBlock; dataBlockIndex: number }) {
   if (!block.items || block.items.length === 0) return null
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
   return (
     <section
       id={block.anchor ?? undefined}
       className="cms-block cms-block--faq px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 @min-[64rem]/site-frame:px-24"
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "faq", dataBlockIndex)}
     >
@@ -721,10 +735,12 @@ function AmicareContactSection({
   formAction?: string
 }) {
   if (!block.fields || block.fields.length === 0) return null
+  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
   return (
     <section
       id={block.anchor ?? undefined}
       className="cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
+      data-source-variant={sourceVariant}
       data-block-index={dataBlockIndex}
       {...sectionAnalyticsAttrs(block.analytics, "contactSection", dataBlockIndex)}
     >

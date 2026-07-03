@@ -88,46 +88,36 @@ describe("canvas ↔ renderer block parity contract", () => {
       label: string
       amicareFn: string
       canvasFile: string
-      amicareFallback: string
-      canvasExpr: string
     }> = [
       {
         label: "hero",
         amicareFn: "AmicareHero",
         canvasFile: "apps/cms/src/components/editor/canvas/blocks/Hero.tsx",
-        amicareFallback: '"top"',
-        canvasExpr: 'block.anchor || "top"',
       },
       {
         label: "featureList",
         amicareFn: "AmicareFeatureList",
         canvasFile: "apps/cms/src/components/editor/canvas/blocks/FeatureList.tsx",
-        amicareFallback: '"werkwijze"',
-        canvasExpr: 'block.anchor || (isAmicareLegacy ? "werkwijze" : "features")',
       },
       {
         label: "richText",
         amicareFn: "AmicareRichText",
         canvasFile: "apps/cms/src/components/editor/canvas/blocks/RichText.tsx",
-        amicareFallback: '"over"',
-        canvasExpr: 'block.anchor || (legacyTenant === "amicare" ? "over" : undefined)',
       },
       {
         label: "cta quote",
         amicareFn: "AmicareCTA",
         canvasFile: "apps/cms/src/components/editor/canvas/blocks/CTA.tsx",
-        amicareFallback: '(isContact ? "contact" : "wat-telt")',
-        canvasExpr: 'isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta"',
       },
     ]
 
-    for (const { label, amicareFn, canvasFile, amicareFallback, canvasExpr } of cases) {
+    for (const { label, amicareFn, canvasFile } of cases) {
       it(`aligns ${label} default anchor between canvas and Amicare renderer`, () => {
         const amicareBody = amicareSource.slice(amicareSource.indexOf(`function ${amicareFn}`))
-        expect(amicareBody).toContain(`block.anchor || ${amicareFallback}`)
+        expect(amicareBody).toContain('resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })')
 
         const canvasSource = read(canvasFile)
-        expect(canvasSource).toContain(canvasExpr)
+        expect(canvasSource).toContain('resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })')
       })
     }
   })
@@ -212,7 +202,7 @@ describe("canvas ↔ renderer block parity contract", () => {
     expect(canvasSource).not.toContain("const contactCta = block.primary?.href?.trim() ? block.primary : block.secondary")
   })
 
-  it("keeps Amicare source variant classes on editable canvas sections", () => {
+  it("keeps Amicare source variant identity without applying native source classes to legacy editable sections", () => {
     const cases: Array<{ file: string; variantClass: string; variant: string }> = [
       { file: "Hero.tsx", variantClass: "cms-block--source-amicare-zen-hero", variant: "amicareZenHero" },
       { file: "FeatureList.tsx", variantClass: "cms-block--source-amicare-care-cards", variant: "amicareCareCards" },
@@ -226,13 +216,21 @@ describe("canvas ↔ renderer block parity contract", () => {
     for (const { file, variantClass, variant } of cases) {
       const canvasSource = read(`apps/cms/src/components/editor/canvas/blocks/${file}`)
       const propsSource = extractMergedSectionPropsSource(canvasSource)
-      expect(propsSource).toContain("canvasSourceVariantClassName(block, legacyTenant)")
+      expect(propsSource).toContain("canvasSourceVariantClassName(block, legacyTenant,")
       expect(propsSource).toContain("canvasSourceVariantDataAttribute(block, legacyTenant)")
+      expect(propsSource).toContain('rendererDom: "legacy"')
 
       const catalog = read("packages/contracts/src/block-catalog.ts")
       expect(catalog).toContain(`variant: "${variant}"`)
       expect(catalog).toContain(`rendererClassName: "${variantClass}"`)
     }
+  })
+
+  it("stamps Amicare source variant identity on live legacy renderer sections", () => {
+    expect(amicareSource).toContain('import { runtimeVariantDataAttribute } from "../../blocks/variants"')
+    expect(amicareSource).toContain('runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })')
+    expect(amicareSource).toContain("data-source-variant={sourceVariant}")
+    expect(amicareSource).not.toContain("rendererVariantClassName(block")
   })
 
   it("keeps Amicare contact form and split rich-text conditional markup aligned", () => {
@@ -256,9 +254,9 @@ describe("canvas ↔ renderer block parity contract", () => {
 
   it("requires canvas section ids to flow through merged section props (no silent drift)", () => {
     const cases: Array<{ file: string; idExpression: string }> = [
-      { file: "Hero.tsx", idExpression: 'block.anchor || "top"' },
-      { file: "FeatureList.tsx", idExpression: 'block.anchor || (isAmicareLegacy ? "werkwijze" : "features")' },
-      { file: "RichText.tsx", idExpression: 'block.anchor || (legacyTenant === "amicare" ? "over" : undefined)' },
+      { file: "Hero.tsx", idExpression: 'resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })' },
+      { file: "FeatureList.tsx", idExpression: 'resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })' },
+      { file: "RichText.tsx", idExpression: 'resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })' },
       { file: "CTA.tsx", idExpression: "sectionId" },
       { file: "FAQ.tsx", idExpression: "block.anchor || undefined" },
       { file: "Testimonials.tsx", idExpression: "block.anchor || undefined" },

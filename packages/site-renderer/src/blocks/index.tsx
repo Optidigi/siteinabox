@@ -18,6 +18,8 @@ import { TestimonialsBlockRenderer } from "./Testimonials"
 import type { BlockRegistry, BlockRenderOptions } from "./types"
 
 export * from "./types"
+export * from "./anchors"
+export * from "./variants"
 
 export const defaultBlockRegistry: Required<BlockRegistry> = {
   hero: HeroBlockRenderer,

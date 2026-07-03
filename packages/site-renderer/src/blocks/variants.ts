@@ -17,6 +17,11 @@ type ResolvedBlockVariant = {
   rendererClassName?: string
 }
 
+export type BlockVariantResolveContext = {
+  legacyTenant?: "amicare" | null
+  tenantSlug?: string | null
+}
+
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
 function cleanVariant(value: string | null | undefined) {
@@ -41,7 +46,25 @@ function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
   )
 }
 
-export function resolveBlockVariant(block: VariantResolvedBlock): ResolvedBlockVariant {
+function isTenantExclusiveRendererVariantAllowed(variant: SiteBlockCatalogVariant, context: BlockVariantResolveContext) {
+  if (variant.rendererSupportStatus !== "supported") return false
+  if (variant.scope.kind !== "tenant-exclusive") return false
+
+  const tenantSlug = context.tenantSlug?.trim()
+  return (
+    context.legacyTenant === "amicare" ||
+    Boolean(tenantSlug && variant.scope.tenantSlugs.includes(tenantSlug))
+  )
+}
+
+function isRendererVariantAllowed(variant: SiteBlockCatalogVariant, context: BlockVariantResolveContext) {
+  return isGenericRendererVariant(variant) || isTenantExclusiveRendererVariantAllowed(variant, context)
+}
+
+export function resolveBlockVariant(
+  block: VariantResolvedBlock,
+  context: BlockVariantResolveContext = {},
+): ResolvedBlockVariant {
   if (!isGenerationBlockSlug(block.blockType)) return {}
 
   const catalogEntry = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType]
@@ -51,7 +74,7 @@ export function resolveBlockVariant(block: VariantResolvedBlock): ResolvedBlockV
       (variant) => variant.variant === requestedVariant,
     )
     if (!catalogVariant) return {}
-    if (!isGenericRendererVariant(catalogVariant)) return {}
+    if (!isRendererVariantAllowed(catalogVariant, context)) return {}
     return {
       variant: catalogVariant.variant,
       rendererClassName: catalogVariant?.rendererClassName,
@@ -64,17 +87,17 @@ export function resolveBlockVariant(block: VariantResolvedBlock): ResolvedBlockV
   const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
     (variant) => variant.sectionVariant === legacySectionVariant,
   )
-  if (!catalogVariant || !isGenericRendererVariant(catalogVariant)) return {}
+  if (!catalogVariant || !isRendererVariantAllowed(catalogVariant, context)) return {}
   return {
     variant: catalogVariant.variant,
     rendererClassName: catalogVariant.rendererClassName,
   }
 }
 
-export function rendererVariantClassName(block: VariantResolvedBlock) {
-  return resolveBlockVariant(block).rendererClassName ?? ""
+export function rendererVariantClassName(block: VariantResolvedBlock, context?: BlockVariantResolveContext) {
+  return resolveBlockVariant(block, context).rendererClassName ?? ""
 }
 
-export function runtimeVariantDataAttribute(block: VariantResolvedBlock) {
-  return resolveBlockVariant(block).variant
+export function runtimeVariantDataAttribute(block: VariantResolvedBlock, context?: BlockVariantResolveContext) {
+  return resolveBlockVariant(block, context).variant
 }

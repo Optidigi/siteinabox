@@ -28,9 +28,10 @@ describe("generic CMS canvas defaults", () => {
       read("src/components/editor/canvas/blocks/RichText.tsx")
 
     expect(source).not.toContain('block.anchor || "werkwijze"')
-    expect(source).toContain('block.anchor || (isAmicareLegacy ? "werkwijze" : "features")')
-    expect(source).toContain('block.anchor || (legacyTenant === "amicare" ? "over" : undefined)')
-    expect(source).toContain('block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")')
+    expect(source).toContain('resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })')
+    expect(read("../../packages/site-renderer/src/blocks/anchors.ts")).toContain('return isAmicare ? "werkwijze" : context.surface === "canvas" ? "features" : undefined')
+    expect(read("../../packages/site-renderer/src/blocks/anchors.ts")).toContain('return isAmicare ? "over" : undefined')
+    expect(read("../../packages/site-renderer/src/blocks/anchors.ts")).toContain('return isAmicare ? "wat-telt" : context.surface === "canvas" ? "cta" : undefined')
   })
 
   it("resolves filename-only inline images through tenant media when a canvas tenant is known", () => {

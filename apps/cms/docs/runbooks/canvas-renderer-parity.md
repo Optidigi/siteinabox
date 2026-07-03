@@ -35,6 +35,11 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
    layout utilities MUST match the canonical renderer for legacy Amicare blocks.
    See `rt-dom-contract.md § Canvas block DOM contract` and
    `tests/unit/canvas-renderer-block-parity.test.ts`.
+   `data-source-variant` is variant identity and may be stamped on both legacy
+   and native DOM. `rendererClassName` / `cms-block--source-*` is native renderer
+   styling and MUST only be applied to DOM that follows the native `cms-block__*`
+   contract. Legacy Amicare editable markup already carries its visual treatment
+   through legacy classes and must not mix in native source classes.
 3. **Inner BEM classes** — Generation blocks (`pricing`, `stats`, …) MUST keep
    `cms-block__*` inner classes aligned with `packages/site-renderer/src/blocks/*`.
 4. **Canvas-only attributes** — `data-active`, editor gutters, and gap overlays

@@ -258,7 +258,11 @@ const CanvasBlockPickerDialog: React.FC<{
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent
+        className="max-w-2xl"
+        data-siab-editor-ui
+        data-siab-canvas-chrome="block-picker-dialog"
+      >
         <DialogHeader>
           <DialogTitle>{t("addBlockTitle")}</DialogTitle>
           <DialogDescription>{t("pickBlockType")}</DialogDescription>

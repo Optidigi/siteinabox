@@ -9,6 +9,7 @@ import {
   mergeCanvasSectionProps,
   type CanvasBlockRendererProps,
 } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { resolveBlockAnchor } from "@siteinabox/site-renderer"
 import { useTranslations } from "next-intl"
 import { cn } from "@siteinabox/ui/lib/utils"
 
@@ -33,7 +34,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const isContact =
     primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
   const setContactCta = (value: any) => onUpdate({ ...block, primary: value, secondary: null })
-  const sectionId = block.anchor || (isContact ? "contact" : isAmicareLegacy ? "wat-telt" : "cta")
+  const sectionId = resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })
   const sectionClassName = isContact
     ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
     : "cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28"
@@ -46,7 +47,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const sectionProps = mergeCanvasSectionProps(
     {
       id: sectionId,
-      className: `${sectionClassName} ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      className: `${sectionClassName} ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
       "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,

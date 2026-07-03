@@ -9,6 +9,7 @@ import {
   mergeCanvasSectionProps,
   type CanvasBlockRendererProps,
 } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { resolveBlockAnchor } from "@siteinabox/site-renderer"
 import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
 import { isReadOnlyView } from "@/components/editor/canvas/canvasView"
 import { useTranslations } from "next-intl"
@@ -51,8 +52,8 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
   }
   const sectionProps = mergeCanvasSectionProps(
     {
-      id: block.anchor || (isAmicareLegacy ? "werkwijze" : "features"),
-      className: `cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      id: resolveBlockAnchor(block, { legacyTenant, surface: "canvas" }),
+      className: `cms-block cms-block--featurelist relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
       "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,

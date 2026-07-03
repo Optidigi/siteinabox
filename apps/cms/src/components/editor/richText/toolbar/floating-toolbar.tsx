@@ -131,7 +131,12 @@ export const FloatingToolbar: React.FC<{
   if (isMobile && !editor.getRootElement()?.contains(document.activeElement)) return null
 
   const Inner = (
-    <div role="toolbar" className={cn("rt-floating-toolbar flex items-center gap-0.5", FLOATING_PILL_CLASS)}>
+    <div
+      role="toolbar"
+      className={cn("rt-floating-toolbar flex items-center gap-0.5", FLOATING_PILL_CLASS)}
+      data-siab-editor-ui
+      data-siab-canvas-chrome="rich-text-toolbar"
+    >
       <MarkChips manifest={manifest} surface="floating" />
       {allowFontFamily && <FontChip manifest={manifest} />}
       <StyleChip manifest={manifest} />
@@ -147,6 +152,8 @@ export const FloatingToolbar: React.FC<{
           className={`${mobilePosition.className} fixed inset-x-2 z-[9999] overflow-x-auto`}
           onMouseDown={(e) => e.preventDefault()}
           onTouchStart={(e) => e.stopPropagation()}
+          data-siab-editor-ui
+          data-siab-canvas-chrome="rich-text-toolbar"
         >
           {Inner}
         </div>
@@ -166,6 +173,8 @@ export const FloatingToolbar: React.FC<{
           placement === "above" ? "-translate-y-[calc(100%+8px)]" : "translate-y-2",
         ].join(" ")}
         onMouseDown={(e) => e.preventDefault()}
+        data-siab-editor-ui
+        data-siab-canvas-chrome="rich-text-toolbar"
       >
         {Inner}
       </div>

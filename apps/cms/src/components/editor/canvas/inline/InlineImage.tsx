@@ -307,6 +307,8 @@ export const InlineImage: React.FC<InlineImageProps> = ({
           size="sm"
           className="w-full justify-start text-muted-foreground"
           onClick={handleChromeClick}
+          data-siab-editor-ui
+          data-siab-canvas-chrome="inline-image"
         >
           <ImagePlus className="size-4" />
           {emptyLabel ?? t("chooseImage")}
@@ -324,7 +326,11 @@ export const InlineImage: React.FC<InlineImageProps> = ({
       )}
       {url && showDefaultChrome && !isReadOnly && (
         <TooltipProvider delayDuration={250}>
-          <div className="mt-2 flex justify-end gap-1">
+          <div
+            className="mt-2 flex justify-end gap-1"
+            data-siab-editor-ui
+            data-siab-canvas-chrome="inline-image"
+          >
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -364,6 +370,8 @@ export const InlineImage: React.FC<InlineImageProps> = ({
           <SheetContent
             side="right"
             className="w-full sm:w-[640px] sm:max-w-[640px] overflow-y-auto p-0"
+            data-siab-editor-ui
+            data-siab-canvas-chrome="inline-image-picker"
           >
             {/* Header: title only. Default shadcn close-X sits absolute top-4 right-4. */}
             <SheetHeader className="px-6 pt-6 pb-4">

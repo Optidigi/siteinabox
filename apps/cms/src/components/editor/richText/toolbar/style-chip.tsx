@@ -154,6 +154,8 @@ export const StyleChip: React.FC<StyleChipProps> = ({ manifest }) => {
         className="w-64 p-1.5"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
+        data-siab-editor-ui
+        data-siab-canvas-chrome="rich-text-popover"
       >
         {eligible.length === 0 && (
           <div className="px-2 py-1.5 text-xs text-muted-foreground">No styles available for this selection.</div>

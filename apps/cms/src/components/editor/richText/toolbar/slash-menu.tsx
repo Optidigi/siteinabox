@@ -125,6 +125,8 @@ export const SlashMenu: React.FC<{ manifest: RtManifest }> = ({ manifest }) => {
             <div
               role="listbox"
               className="rt-slashmenu relative z-50 min-w-[14rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-black/5"
+              data-siab-editor-ui
+              data-siab-canvas-chrome="rich-text-slash-menu"
             >
               {options.length === 0 ? (
                 <div className="px-2.5 py-1.5 text-xs text-muted-foreground">No matches</div>

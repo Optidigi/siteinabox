@@ -10,6 +10,7 @@ import {
   mergeCanvasSectionProps,
   type CanvasBlockRendererProps,
 } from "@/components/editor/canvas/CanvasBlockRenderer"
+import { resolveBlockAnchor } from "@siteinabox/site-renderer"
 import { useCanvasSelection } from "../CanvasSelectionContext"
 import { isReadOnlyView } from "../canvasView"
 import { cn, isCoarsePointer } from "@siteinabox/ui/lib/utils"
@@ -39,8 +40,8 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   const pillCommittedRef = React.useRef(false)
   const sectionProps = mergeCanvasSectionProps(
     {
-      id: block.anchor || "top",
-      className: `cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      id: resolveBlockAnchor(block, { legacyTenant, surface: "canvas" }),
+      className: `cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
       "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,

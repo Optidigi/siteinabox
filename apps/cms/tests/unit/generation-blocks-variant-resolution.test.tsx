@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { resolvedCanvasSourceVariant } from "@/components/editor/canvas/CanvasBlockRenderer"
+import {
+  canvasSourceVariantClassName,
+  canvasSourceVariantDataAttribute,
+  resolvedCanvasSourceVariant,
+} from "@/components/editor/canvas/CanvasBlockRenderer"
+import { resolveBlockVariant } from "@siteinabox/site-renderer"
 
 describe("canvas source variant resolution", () => {
   it("ignores tenant-exclusive source variants outside the Amicare canvas context", () => {
@@ -20,6 +25,19 @@ describe("canvas source variant resolution", () => {
     }
 
     expect(resolvedCanvasSourceVariant(block, { legacyTenant: "amicare" })?.variant).toBe("amicareZenHero")
+    expect(resolveBlockVariant(block, { legacyTenant: "amicare" }).variant).toBe("amicareZenHero")
+    expect(canvasSourceVariantDataAttribute(block, "amicare")).toBe("amicareZenHero")
+  })
+
+  it("keeps native source classes off legacy editable DOM", () => {
+    const block = {
+      blockType: "hero",
+      variant: "amicareZenHero",
+      analytics: { sectionVariant: "amicare-zen-hero" },
+    }
+
+    expect(canvasSourceVariantClassName(block, "amicare")).toBe("cms-block--source-amicare-zen-hero")
+    expect(canvasSourceVariantClassName(block, "amicare", { rendererDom: "legacy" })).toBe("")
   })
 
   it("keeps global source variants available for generic canvas contexts", () => {

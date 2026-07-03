@@ -6,6 +6,7 @@ import {
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
+import { resolveBlockVariant } from "@siteinabox/site-renderer"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { HeroCanvas as HeroLazy } from "@/components/editor/canvas/blocks/Hero"
 import { FeatureListCanvas as FeatureListLazy } from "@/components/editor/canvas/blocks/FeatureList"
@@ -111,21 +112,24 @@ export function mergeCanvasSectionProps(
 export function resolvedCanvasSourceVariant(block: any, context: SourceVariantContext = {}): SiteBlockCatalogVariant | undefined {
   if (!generationBlockSlugs.has(block?.blockType)) return undefined
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
-  const variant = typeof block.variant === "string" ? block.variant.trim() : ""
-  const sectionVariant = typeof block.analytics?.sectionVariant === "string" ? block.analytics.sectionVariant.trim() : ""
-  const match = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
-    variant ? entry.variant === variant : entry.sectionVariant === sectionVariant
+  const resolved = resolveBlockVariant(block, context)
+  if (!resolved.variant) return undefined
+  return (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
+    entry.variant === resolved.variant
   )
-  if (match?.scope.kind === "tenant-exclusive" && context.legacyTenant !== "amicare") return undefined
-  return match
 }
 
 export function canvasSourceVariantDataAttribute(block: any, legacyTenant?: "amicare" | null) {
-  return resolvedCanvasSourceVariant(block, { legacyTenant })?.variant
+  return resolveBlockVariant(block, { legacyTenant }).variant
 }
 
-export function canvasSourceVariantClassName(block: any, legacyTenant?: "amicare" | null) {
-  return resolvedCanvasSourceVariant(block, { legacyTenant })?.rendererClassName ?? ""
+export function canvasSourceVariantClassName(
+  block: any,
+  legacyTenant?: "amicare" | null,
+  options: { rendererDom?: "native" | "legacy" } = {},
+) {
+  if (options.rendererDom === "legacy") return ""
+  return resolveBlockVariant(block, { legacyTenant }).rendererClassName ?? ""
 }
 
 /** Per-block-type dispatcher for canvas mode. Each block renderer is in

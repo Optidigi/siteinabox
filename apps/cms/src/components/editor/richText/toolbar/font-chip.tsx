@@ -87,6 +87,8 @@ export const FontChip: React.FC<FontChipProps> = ({ manifest }) => {
         className="w-56 p-1.5"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
+        data-siab-editor-ui
+        data-siab-canvas-chrome="rich-text-popover"
       >
         <button
           type="button"

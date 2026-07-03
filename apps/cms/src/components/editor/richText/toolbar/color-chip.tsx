@@ -91,6 +91,8 @@ export const ColorChip: React.FC<ColorChipProps> = ({ manifest }) => {
         className="w-56 p-1.5"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
+        data-siab-editor-ui
+        data-siab-canvas-chrome="rich-text-popover"
       >
         <div className="grid grid-cols-6 gap-1.5 p-1">
           {/* Default colour swatch — rendered first so it lives in-grid with the
