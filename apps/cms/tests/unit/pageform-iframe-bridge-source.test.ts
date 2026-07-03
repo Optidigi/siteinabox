@@ -114,6 +114,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(runtime).toContain("blockId: `chrome:${zone}`")
 
     expect(runtime).toContain('revisioned.type === "theme.patch"')
+    expect(runtime).toContain('revisioned.expectedRevision < revisionRef.current')
     expect(runtime).toContain('if ("theme" in revisioned) setFrameTheme')
     expect(runtime).toContain("if (frameView) return")
   })

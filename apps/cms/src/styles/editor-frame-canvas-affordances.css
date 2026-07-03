@@ -1,0 +1,90 @@
+/* Canvas edit affordances for the editor iframe (mirrors siab.css canvas rules). */
+
+.rt-canvas {
+  --rt-affordance: var(--color-accent, var(--ring));
+}
+
+.rt-canvas ::selection {
+  background-color: color-mix(in oklab, var(--foreground) 28%, transparent);
+  color: inherit;
+}
+
+.rt-canvas[data-rt-mode="dark"] ::selection {
+  background-color: color-mix(in oklab, var(--foreground) 35%, transparent);
+}
+
+.rt-canvas .cms-block {
+  position: relative;
+  cursor: default;
+  transition: outline-color 120ms;
+}
+
+.rt-canvas:not([data-rt-view="preview"]) .cms-block[data-active="true"] {
+  outline: 2px solid var(--rt-affordance);
+  outline-offset: -2px;
+}
+
+.rt-canvas:not([data-rt-view="preview"]) .cms-block:not([data-active="true"]):not(:has(.rt-slot:hover, .rt-click-edit:hover, [data-rt-selected="true"])):hover {
+  outline: 1px dashed var(--border);
+  outline-offset: -1px;
+}
+
+.rt-canvas .rt-slot {
+  position: relative;
+  cursor: text;
+}
+
+.rt-canvas .rt-click-edit {
+  cursor: pointer;
+}
+
+.rt-canvas .rt-slot:focus-within {
+  outline: 2px solid var(--rt-affordance);
+  outline-offset: 2px;
+}
+
+.rt-canvas .rt-slot:has(.rt-click-edit:hover) {
+  outline: none;
+}
+
+.rt-canvas .rt-slot[data-rt-variant="inline"] .rt-p {
+  margin: 0;
+}
+
+.rt-canvas .rt-slot[data-rt-variant="inline"] {
+  min-width: 6ch;
+}
+
+@keyframes rt-arrival-pulse {
+  0% { box-shadow: 0 0 0 0 var(--rt-affordance, currentColor); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+.rt-canvas:not([data-rt-view="preview"]) [data-rt-pulse="true"] {
+  animation: rt-arrival-pulse 1.6s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-canvas [data-rt-pulse="true"] {
+    animation: none;
+  }
+}
+
+.rt-canvas:not([data-rt-view="preview"]) .rt-slot:hover,
+.rt-canvas:not([data-rt-view="preview"]) .rt-click-edit:hover {
+  outline: 2px solid color-mix(in oklab, var(--rt-affordance) 60%, transparent);
+  outline-offset: 2px;
+}
+
+.rt-canvas:not([data-rt-view="preview"]) .rt-slot[data-rt-selected="true"],
+.rt-canvas:not([data-rt-view="preview"]) [data-rt-selected="true"] {
+  outline: 2px solid var(--rt-affordance);
+  outline-offset: 2px;
+}
+
+.rt-canvas[data-rt-view="mobile"] .rt-slot,
+.rt-canvas[data-rt-view="mobile"] .rt-click-edit {
+  outline: 1px dashed color-mix(in oklch, var(--foreground) 15%, transparent);
+  outline-offset: 2px;
+  min-height: 44px;
+}

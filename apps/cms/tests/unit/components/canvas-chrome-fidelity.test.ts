@@ -44,7 +44,8 @@ describe("canvas chrome fidelity", () => {
 
     expect(canvasSurface).toContain("const CanvasGapOverlay")
     expect(canvasSurface).toContain('className="relative h-0"')
-    expect(canvasSurface).toContain("data-siab-canvas-gap-anchor")
+    expect(canvasSurface).toContain('data-siab-canvas-chrome="insert-gap"')
+    expect(canvasSurface).toContain("bg-transparent")
     expect(canvasSurface).not.toContain("group/gap relative flex h-6")
   })
 
@@ -186,6 +187,7 @@ describe("canvas chrome fidelity", () => {
 
     expect(editorFrameLayout).toContain('import "@/styles/shadcn.css"')
     expect(editorFrameLayout).toContain('import "@/styles/editor-frame-ui.css"')
+    expect(editorFrameLayout).toContain('import "@/styles/editor-frame-canvas-affordances.css"')
     expect(canvasStylesheet).not.toContain(".rt-canvas .rt-slot")
     expect(canvasStylesheet).not.toContain(".rt-canvas .rt-click-edit")
     expect(canvasStylesheet).not.toContain("--popover:")
@@ -224,6 +226,11 @@ describe("canvas chrome fidelity", () => {
 
     const editorFrameUi = read("src/styles/editor-frame-ui.css")
     expect(editorFrameUi).toContain("[data-siab-editor-ui]")
-    expect(editorFrameUi).toContain("--color-accent: var(--accent)")
+    expect(editorFrameUi).toContain('[data-siab-canvas-chrome="insert-gap"]')
+    expect(editorFrameUi).toContain("background-color: transparent")
+
+    const affordances = read("src/styles/editor-frame-canvas-affordances.css")
+    expect(affordances).toContain(".rt-canvas .rt-slot")
+    expect(affordances).toContain("--rt-affordance")
   })
 })

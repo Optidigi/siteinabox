@@ -482,7 +482,7 @@
   background-color: var(--color-card, Canvas);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent) {
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent:not(:is([data-siab-editor-ui], [data-siab-canvas-chrome], [data-siab-editor-ui] *, [data-siab-canvas-chrome] *))) {
   background-color: var(--color-accent, currentColor);
 }
 
@@ -494,7 +494,7 @@
   background-color: color-mix(in srgb, var(--color-card, Canvas) 50%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent\/10) {
+.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent\/10:not(:is([data-siab-editor-ui], [data-siab-canvas-chrome], [data-siab-editor-ui] *, [data-siab-canvas-chrome] *))) {
   background-color: color-mix(in srgb, var(--color-accent, currentColor) 10%, transparent);
 }
 

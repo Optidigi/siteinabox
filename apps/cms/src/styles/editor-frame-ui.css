@@ -1,18 +1,72 @@
-/* Editor chrome inside the page iframe must stay on CMS shadcn tokens.
-   generated-site-renderer.css loads tenant @theme --color-* tokens at the
-   document root; without this reset, gutter menus pick up site accent/bg. */
-@layer base {
-  :is([data-siab-editor-ui], [data-siab-canvas-chrome]) {
-    --color-accent: var(--accent);
-    --color-bg: var(--background);
-    --color-ink: var(--foreground);
-    --color-ink-muted: var(--muted-foreground);
-    --color-card: var(--card);
-    --color-secondary: var(--secondary);
-    --color-rule: var(--border);
-    background-color: var(--background);
-    color: var(--foreground);
-    border-color: var(--border);
-    font-family: var(--font-sans);
-  }
+/* Editor chrome in the page iframe must use CMS shadcn tokens.
+   generated-site-renderer.css registers tenant @theme --color-* at :root;
+   utilities like bg-background/95 and hover:bg-accent read semantic tokens.
+   This block is intentionally unlayered so it wins over @layer utilities. */
+
+:is([data-siab-editor-ui], [data-siab-canvas-chrome]) {
+  --background: #f7f8f9;
+  --foreground: #191b1e;
+  --card: #ffffff;
+  --card-foreground: #191b1e;
+  --popover: #ffffff;
+  --popover-foreground: #191b1e;
+  --primary: #191b1e;
+  --primary-foreground: #f7f8f9;
+  --secondary: #f0f2f3;
+  --secondary-foreground: #35383f;
+  --muted: #edeff1;
+  --muted-foreground: #838a93;
+  --accent: #f0f2f3;
+  --accent-foreground: #35383f;
+  --destructive: #dc2626;
+  --border: #dfe2e5;
+  --input: #dfe2e5;
+  --ring: #5c6168;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+
+  /* Block site-renderer token aliases from leaking into chrome utilities */
+  --color-bg: var(--background);
+  --color-ink: var(--foreground);
+  --color-ink-muted: var(--muted-foreground);
+  --color-rule: var(--border);
+
+  color: var(--foreground);
+  border-color: var(--border);
+  font-family: var(--font-sans);
+}
+
+/* Insert-gap hit targets straddle section boundaries — keep transparent. */
+[data-siab-canvas-chrome="insert-gap"] {
+  background-color: transparent;
+}
+
+/* Gutter chips and menus get the CMS card surface. */
+:is([data-siab-editor-ui], [data-siab-canvas-chrome]):not([data-siab-canvas-chrome="insert-gap"]) {
+  background-color: color-mix(in oklab, var(--background) 95%, transparent);
+}
+
+[data-radix-popper-content-wrapper]:has([data-siab-editor-ui]) {
+  --background: #f7f8f9;
+  --foreground: #191b1e;
+  --popover: #ffffff;
+  --popover-foreground: #191b1e;
+  --accent: #f0f2f3;
+  --accent-foreground: #35383f;
+  --muted-foreground: #838a93;
+  --border: #dfe2e5;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-popover: var(--popover);
+  --color-accent: var(--accent);
+  --color-border: var(--border);
 }

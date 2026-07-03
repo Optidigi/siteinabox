@@ -171,7 +171,7 @@ const CanvasGapOverlay: React.FC<{
           <div
             data-siab-editor-ui
             data-siab-canvas-chrome="insert-gap"
-            className={`${overlayPosition.className} pointer-events-none fixed z-[19] flex h-8 items-center justify-center group/gap`}
+            className={`${overlayPosition.className} pointer-events-none fixed z-[19] flex h-8 items-center justify-center bg-transparent group/gap`}
           >
             <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
             {/* lint:ui-composition:ignore -- low-level canvas overlay trigger needs exact pointer/opacity behavior. */}
@@ -855,7 +855,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
     <div className="w-full">
       <div
         ref={paneRef}
-        className="min-w-0 overflow-x-hidden bg-background"
+        className="min-w-0 overflow-x-hidden bg-transparent"
         onClick={onCanvasClick}
       >
         {effectiveTenantCss && (
