@@ -275,6 +275,18 @@ export function PageEditorFrameHost({
     postToFrame({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+      type: "theme.patch",
+      messageId: `theme-${revisionRef.current}-${Date.now()}`,
+      expectedRevision: revisionRef.current,
+      theme,
+    })
+  }, [postToFrame, ready, theme])
+
+  React.useEffect(() => {
+    if (!ready) return
+    postToFrame({
+      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "selection.set",
       messageId: `selection-set-${String(pageId)}-${selection?.blockId ?? selection?.fieldPath?.join(".") ?? "none"}`,
       selection: selection ?? null,

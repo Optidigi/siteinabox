@@ -25,8 +25,8 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain('type === "selection.changed"')
     expect(host).toContain('type === "error"')
     expect(host).toContain('type: "page.replace"')
+    expect(host).toContain('type: "theme.patch"')
     expect(host).toContain("theme,")
-    expect(host).not.toContain('type: "theme.patch"')
     expect(host).toContain("--siab-parent-chrome-bottom")
     expect(host).toContain("expectedRevision")
     expect(host).toMatch(/<iframe\b/i)
@@ -113,6 +113,8 @@ describe("page editor iframe bridge source contract", () => {
     expect(runtime).toContain('type: "geometry.changed"')
     expect(runtime).toContain("blockId: `chrome:${zone}`")
 
+    expect(runtime).toContain('revisioned.type === "theme.patch"')
+    expect(runtime).toContain('if ("theme" in revisioned) setFrameTheme')
     expect(runtime).toContain("if (frameView) return")
   })
 

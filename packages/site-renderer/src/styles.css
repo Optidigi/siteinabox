@@ -51,7 +51,7 @@ svg {
   color: var(--color-ink, #111827);
 }
 
-.site-renderer:not([data-legacy-tenant]) .rt-canvas {
+:where(.site-renderer:not([data-legacy-tenant])) .rt-canvas {
   --color-accent: #0f766e;
   --color-on-accent: #ffffff;
   --color-bg: #f8fafc;
@@ -67,7 +67,7 @@ svg {
   color: var(--color-ink);
 }
 
-.site-renderer[data-legacy-tenant="amicare"] .rt-canvas {
+:where(.site-renderer[data-legacy-tenant="amicare"]) .rt-canvas {
   --color-accent: #a04e32;
   --color-on-accent: #ffffff;
   --color-bg: #fbf7f0;

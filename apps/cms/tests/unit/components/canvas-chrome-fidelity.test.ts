@@ -185,6 +185,7 @@ describe("canvas chrome fidelity", () => {
     const editorFrameLayout = read("src/app/(editor-frame)/layout.tsx")
 
     expect(editorFrameLayout).toContain('import "@/styles/shadcn.css"')
+    expect(editorFrameLayout).toContain('import "@/styles/editor-frame-ui.css"')
     expect(canvasStylesheet).not.toContain(".rt-canvas .rt-slot")
     expect(canvasStylesheet).not.toContain(".rt-canvas .rt-click-edit")
     expect(canvasStylesheet).not.toContain("--popover:")
@@ -220,5 +221,9 @@ describe("canvas chrome fidelity", () => {
     expect(frameHost).toContain("--siab-parent-chrome-bottom")
     expect(frameHost).toContain("measureParentChromeBottom")
     expect(gutterOverlay).toContain("--siab-parent-chrome-bottom")
+
+    const editorFrameUi = read("src/styles/editor-frame-ui.css")
+    expect(editorFrameUi).toContain("[data-siab-editor-ui]")
+    expect(editorFrameUi).toContain("--color-accent: var(--accent)")
   })
 })

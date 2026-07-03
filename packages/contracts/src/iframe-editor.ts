@@ -703,6 +703,13 @@ export const validateIframeEditorMessage = (
     }
   }
 
+  // Theme preview must not participate in the revision stream — page.replace
+  // can race ahead while the user edits, which would drop palette/font/shape
+  // updates if theme.patch shared the same revision gate.
+  if (parsed.data.type === "theme.patch") {
+    return { ok: true, message: parsed.data }
+  }
+
   if (
     options.currentRevision != null &&
     "expectedRevision" in parsed.data &&

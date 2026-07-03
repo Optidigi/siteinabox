@@ -306,6 +306,20 @@ describe("iframe editor message protocol", () => {
     })
   })
 
+  it("accepts theme.patch even when revision is stale", () => {
+    const result = validateIframeEditorMessage({
+      ...baseMessage,
+      type: "theme.patch",
+      expectedRevision: 2,
+      theme: { colors: { accent: "#112233" } },
+    }, { currentRevision: 9 })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.message.type).toBe("theme.patch")
+    }
+  })
+
   it("rejects missing required ids and field paths", () => {
     expect(IframeEditorMessageSchema.safeParse({
       ...baseMessage,

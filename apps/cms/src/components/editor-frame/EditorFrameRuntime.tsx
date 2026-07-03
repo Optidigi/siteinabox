@@ -97,14 +97,14 @@ export function EditorFrameRuntime({
 
       if (revisioned.type === "theme.patch") {
         setFrameTheme(revisioned.theme)
-        bumpRevision()
         return
       }
 
       if (revisioned.type === "page.replace") {
+        if ("theme" in revisioned) setFrameTheme(revisioned.theme ?? null)
+        if (revisioned.expectedRevision !== revisionRef.current) return
         setFramePage(revisioned.page)
         if (revisioned.settings) setFrameSettings(revisioned.settings)
-        if ("theme" in revisioned) setFrameTheme(revisioned.theme ?? null)
         bumpRevision()
       }
     }
