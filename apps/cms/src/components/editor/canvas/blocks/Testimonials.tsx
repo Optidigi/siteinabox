@@ -2,7 +2,12 @@
 import * as React from "react"
 import { ClickToEditField } from "../inline/ClickToEditField"
 import { InlineImage } from "../inline/InlineImage"
-import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import {
+  canvasSourceVariantClassName,
+  canvasSourceVariantDataAttribute,
+  mergeCanvasSectionProps,
+  type CanvasBlockRendererProps,
+} from "@/components/editor/canvas/CanvasBlockRenderer"
 import { isCoarsePointer } from "@siteinabox/ui/lib/utils"
 import { isReadOnlyView } from "@/components/editor/canvas/canvasView"
 import { useCanvasSelection } from "@/components/editor/canvas/CanvasSelectionContext"
@@ -38,6 +43,7 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   onActivate,
   onUpdate,
   tenantId,
+  legacyTenant,
   sectionChromeProps,
 }) => {
   const t = useTranslations("editor")
@@ -70,7 +76,8 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   const sectionProps = mergeCanvasSectionProps(
     {
       id: block.anchor || undefined,
-      className: "cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20",
+      className: `cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,

@@ -34,8 +34,8 @@ function extractMergedSectionPropsSource(source: string): string {
 
 function extractMergedSectionClass(source: string): string | null {
   const propsSource = extractMergedSectionPropsSource(source)
-  const classMatch = propsSource.match(/className:\s*"([^"]+)"/)
-  return classMatch?.[1] ?? null
+  const classMatch = propsSource.match(/className:\s*(?:"([^"]+)"|`([^`]+)`|([^,\n]+))/)
+  return classMatch?.[1] ?? classMatch?.[2] ?? classMatch?.[3]?.trim() ?? null
 }
 
 function expectMergedSectionId(source: string, expectedExpression: string) {
@@ -210,6 +210,29 @@ describe("canvas ↔ renderer block parity contract", () => {
     expect(canvasSource).toContain('const primaryHref: string | null | undefined = block.primary?.href?.trim()')
     expect(canvasSource).toContain('primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")')
     expect(canvasSource).not.toContain("const contactCta = block.primary?.href?.trim() ? block.primary : block.secondary")
+  })
+
+  it("keeps Amicare source variant classes on editable canvas sections", () => {
+    const cases: Array<{ file: string; variantClass: string; variant: string }> = [
+      { file: "Hero.tsx", variantClass: "cms-block--source-amicare-zen-hero", variant: "amicareZenHero" },
+      { file: "FeatureList.tsx", variantClass: "cms-block--source-amicare-care-cards", variant: "amicareCareCards" },
+      { file: "RichText.tsx", variantClass: "cms-block--source-amicare-editorial", variant: "amicareEditorial" },
+      { file: "CTA.tsx", variantClass: "cms-block--source-amicare-quote-contact", variant: "amicareQuoteContact" },
+      { file: "ContactSection.tsx", variantClass: "cms-block--source-amicare-contact-form", variant: "amicareContactForm" },
+      { file: "FAQ.tsx", variantClass: "cms-block--source-amicare-warm-accordion", variant: "amicareWarmAccordion" },
+      { file: "Testimonials.tsx", variantClass: "cms-block--source-amicare-story-cards", variant: "amicareStoryCards" },
+    ]
+
+    for (const { file, variantClass, variant } of cases) {
+      const canvasSource = read(`apps/cms/src/components/editor/canvas/blocks/${file}`)
+      const propsSource = extractMergedSectionPropsSource(canvasSource)
+      expect(propsSource).toContain("canvasSourceVariantClassName(block, legacyTenant)")
+      expect(propsSource).toContain("canvasSourceVariantDataAttribute(block, legacyTenant)")
+
+      const catalog = read("packages/contracts/src/block-catalog.ts")
+      expect(catalog).toContain(`variant: "${variant}"`)
+      expect(catalog).toContain(`rendererClassName: "${variantClass}"`)
+    }
   })
 
   it("keeps Amicare contact form and split rich-text conditional markup aligned", () => {

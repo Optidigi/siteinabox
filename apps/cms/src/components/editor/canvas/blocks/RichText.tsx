@@ -1,7 +1,12 @@
 "use client"
 import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
-import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import {
+  canvasSourceVariantClassName,
+  canvasSourceVariantDataAttribute,
+  mergeCanvasSectionProps,
+  type CanvasBlockRendererProps,
+} from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useTranslations } from "next-intl"
 import type { RtBlock, RtRoot } from "@/lib/richText/RtNode"
 
@@ -60,7 +65,8 @@ export const RichTextCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAc
   const sectionProps = mergeCanvasSectionProps(
     {
       id: block.anchor || (legacyTenant === "amicare" ? "over" : undefined),
-      className: "cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24",
+      className: `cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,

@@ -1,42 +1,15 @@
 "use client"
 import * as React from "react"
-import {
-  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
-  SITE_GENERATION_BLOCK_SLUGS,
-  type SiteBlockCatalogVariant,
-  type SiteGenerationBlockSlug,
-} from "@siteinabox/contracts"
 import { InlineCtaButton } from "../inline/InlineCtaButton"
 import { InlineIcon } from "../inline/InlineIcon"
 import { InlineImage } from "../inline/InlineImage"
 import { RtSlot } from "../inline/RtSlot"
-import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
-
-const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
-
-type SourceVariantContext = {
-  legacyTenant?: "amicare" | null
-}
-
-export function resolvedSourceVariant(block: any, context: SourceVariantContext = {}): SiteBlockCatalogVariant | undefined {
-  if (!generationBlockSlugs.has(block?.blockType)) return undefined
-  const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
-  const variant = typeof block.variant === "string" ? block.variant.trim() : ""
-  const sectionVariant = typeof block.analytics?.sectionVariant === "string" ? block.analytics.sectionVariant.trim() : ""
-  const match = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
-    variant ? entry.variant === variant : entry.sectionVariant === sectionVariant
-  )
-  if (match?.scope.kind === "tenant-exclusive" && context.legacyTenant !== "amicare") return undefined
-  return match
-}
-
-function sourceVariantDataAttribute(block: any, legacyTenant?: "amicare" | null) {
-  return resolvedSourceVariant(block, { legacyTenant })?.variant
-}
-
-function sourceVariantClassName(block: any, legacyTenant?: "amicare" | null) {
-  return resolvedSourceVariant(block, { legacyTenant })?.rendererClassName ?? ""
-}
+import {
+  canvasSourceVariantClassName,
+  canvasSourceVariantDataAttribute,
+  mergeCanvasSectionProps,
+  type CanvasBlockRendererProps,
+} from "@/components/editor/canvas/CanvasBlockRenderer"
 
 function generationSectionProps(
   block: any,
@@ -50,7 +23,7 @@ function generationSectionProps(
     {
       id: block.anchor || undefined,
       className,
-      "data-source-variant": sourceVariantDataAttribute(block, legacyTenant),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,
@@ -92,7 +65,7 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const plans: any[] = block.plans ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--pricing ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--pricing ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -130,7 +103,7 @@ export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActiv
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const items: any[] = block.items ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--stats ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--stats ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -153,7 +126,7 @@ export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const logos: any[] = block.logos ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--logoCloud ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--logoCloud ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -175,7 +148,7 @@ export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAct
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const images: any[] = block.images ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--gallery ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--gallery ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -198,7 +171,7 @@ export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const members: any[] = block.members ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--team ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--team ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -222,7 +195,7 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const posts: any[] = block.posts ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--blogCards ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--blogCards ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -246,7 +219,7 @@ export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, 
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const steps: any[] = block.steps ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--processSteps ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--processSteps ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -270,7 +243,7 @@ export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, is
   const idx = block.__index as number
   const columns: any[] = block.columns ?? []
   const rows: any[] = block.rows ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--comparisonMatrix ${sourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--comparisonMatrix ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>

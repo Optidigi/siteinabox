@@ -3,7 +3,12 @@ import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
 import { InlineCtaButton } from "../inline/InlineCtaButton"
 import { InlineImage } from "../inline/InlineImage"
-import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import {
+  canvasSourceVariantClassName,
+  canvasSourceVariantDataAttribute,
+  mergeCanvasSectionProps,
+  type CanvasBlockRendererProps,
+} from "@/components/editor/canvas/CanvasBlockRenderer"
 import { useTranslations } from "next-intl"
 import { cn } from "@siteinabox/ui/lib/utils"
 
@@ -41,7 +46,8 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const sectionProps = mergeCanvasSectionProps(
     {
       id: sectionId,
-      className: sectionClassName,
+      className: `${sectionClassName} ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,

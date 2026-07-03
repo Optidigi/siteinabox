@@ -1,5 +1,11 @@
 "use client"
 import * as React from "react"
+import {
+  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
+  SITE_GENERATION_BLOCK_SLUGS,
+  type SiteBlockCatalogVariant,
+  type SiteGenerationBlockSlug,
+} from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { HeroCanvas as HeroLazy } from "@/components/editor/canvas/blocks/Hero"
 import { FeatureListCanvas as FeatureListLazy } from "@/components/editor/canvas/blocks/FeatureList"
@@ -27,6 +33,12 @@ type DataAttributes = {
 type CanvasSectionBaseProps = React.ComponentPropsWithoutRef<"section"> & DataAttributes
 
 export type CanvasSectionChromeProps = React.ComponentPropsWithRef<"section"> & DataAttributes
+
+type SourceVariantContext = {
+  legacyTenant?: "amicare" | null
+}
+
+const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
 export interface CanvasBlockRendererProps {
   block: any
@@ -94,6 +106,26 @@ export function mergeCanvasSectionProps(
     onFocusCapture: mergeSyntheticEventHandlers(baseOnFocusCapture, chromeOnFocusCapture),
     onBlurCapture: mergeSyntheticEventHandlers(baseOnBlurCapture, chromeOnBlurCapture),
   }
+}
+
+export function resolvedCanvasSourceVariant(block: any, context: SourceVariantContext = {}): SiteBlockCatalogVariant | undefined {
+  if (!generationBlockSlugs.has(block?.blockType)) return undefined
+  const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
+  const variant = typeof block.variant === "string" ? block.variant.trim() : ""
+  const sectionVariant = typeof block.analytics?.sectionVariant === "string" ? block.analytics.sectionVariant.trim() : ""
+  const match = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
+    variant ? entry.variant === variant : entry.sectionVariant === sectionVariant
+  )
+  if (match?.scope.kind === "tenant-exclusive" && context.legacyTenant !== "amicare") return undefined
+  return match
+}
+
+export function canvasSourceVariantDataAttribute(block: any, legacyTenant?: "amicare" | null) {
+  return resolvedCanvasSourceVariant(block, { legacyTenant })?.variant
+}
+
+export function canvasSourceVariantClassName(block: any, legacyTenant?: "amicare" | null) {
+  return resolvedCanvasSourceVariant(block, { legacyTenant })?.rendererClassName ?? ""
 }
 
 /** Per-block-type dispatcher for canvas mode. Each block renderer is in

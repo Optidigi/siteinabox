@@ -41,6 +41,8 @@ export const BlockGutter: React.FC<BlockGutterProps> = ({
 
   return (
   <div
+    data-siab-editor-ui
+    data-siab-canvas-chrome="block-gutter"
     className={cn(
       "absolute top-2 right-2 z-10 inline-flex items-center gap-0.5 rounded-md",
       "border border-border bg-background/95 backdrop-blur-sm shadow-sm p-0.5",

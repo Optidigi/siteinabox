@@ -23,6 +23,8 @@ export const CanvasGapButton: React.FC<{
     <div className="group/gap relative flex h-6 items-center justify-center">
       <div className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border opacity-0 transition-opacity group-hover/gap:opacity-100" />
       <button
+        data-siab-editor-ui
+        data-siab-canvas-chrome="insert-gap"
         type="button"
         aria-label={t("insertBlockHere")}
         onClick={() => setOpen(true)}

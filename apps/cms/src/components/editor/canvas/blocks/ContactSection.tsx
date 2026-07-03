@@ -1,7 +1,12 @@
 "use client"
 import * as React from "react"
 import { RtSlot } from "../inline/RtSlot"
-import { mergeCanvasSectionProps, type CanvasBlockRendererProps } from "@/components/editor/canvas/CanvasBlockRenderer"
+import {
+  canvasSourceVariantClassName,
+  canvasSourceVariantDataAttribute,
+  mergeCanvasSectionProps,
+  type CanvasBlockRendererProps,
+} from "@/components/editor/canvas/CanvasBlockRenderer"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
@@ -35,7 +40,8 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
   const sectionProps = mergeCanvasSectionProps(
     {
       id: block.anchor || undefined,
-      className: "cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20",
+      className: `cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,

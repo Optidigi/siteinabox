@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { resolvedSourceVariant } from "@/components/editor/canvas/blocks/GenerationBlocks"
+import { resolvedCanvasSourceVariant } from "@/components/editor/canvas/CanvasBlockRenderer"
 
-describe("GenerationBlocks resolvedSourceVariant", () => {
+describe("canvas source variant resolution", () => {
   it("ignores tenant-exclusive source variants outside the Amicare canvas context", () => {
     const block = {
       blockType: "hero",
@@ -9,8 +9,8 @@ describe("GenerationBlocks resolvedSourceVariant", () => {
       analytics: { sectionVariant: "amicare-zen-hero" },
     }
 
-    expect(resolvedSourceVariant(block)).toBeUndefined()
-    expect(resolvedSourceVariant(block, { legacyTenant: null })).toBeUndefined()
+    expect(resolvedCanvasSourceVariant(block)).toBeUndefined()
+    expect(resolvedCanvasSourceVariant(block, { legacyTenant: null })).toBeUndefined()
   })
 
   it("allows tenant-exclusive source variants for the Amicare canvas context", () => {
@@ -19,7 +19,7 @@ describe("GenerationBlocks resolvedSourceVariant", () => {
       analytics: { sectionVariant: "amicare-zen-hero" },
     }
 
-    expect(resolvedSourceVariant(block, { legacyTenant: "amicare" })?.variant).toBe("amicareZenHero")
+    expect(resolvedCanvasSourceVariant(block, { legacyTenant: "amicare" })?.variant).toBe("amicareZenHero")
   })
 
   it("keeps global source variants available for generic canvas contexts", () => {
@@ -28,6 +28,6 @@ describe("GenerationBlocks resolvedSourceVariant", () => {
       analytics: { sectionVariant: "tailwind-plus-simple-pricing" },
     }
 
-    expect(resolvedSourceVariant(block)?.variant).toBe("tailwindPlusSimpleTiers")
+    expect(resolvedCanvasSourceVariant(block)?.variant).toBe("tailwindPlusSimpleTiers")
   })
 })

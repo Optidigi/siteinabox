@@ -115,7 +115,7 @@ export function BlockTypePicker({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" data-siab-editor-ui data-siab-canvas-chrome="block-picker">
         <DialogHeader>
           <DialogTitle>{t("addBlockTitle")}</DialogTitle>
           <DialogDescription className="sr-only">
