@@ -78,6 +78,13 @@ function useFixedAnchorRect(
 
 function cmsChromeBottomAt(x: number) {
   if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
+  const inherited = getComputedStyle(document.documentElement)
+    .getPropertyValue("--siab-parent-chrome-bottom")
+    .trim()
+  if (inherited) {
+    const parsed = Number.parseFloat(inherited)
+    if (Number.isFinite(parsed)) return Math.max(CHROME_VIEWPORT_GAP, parsed)
+  }
   let bottom = CHROME_VIEWPORT_GAP
   document.body.querySelectorAll<HTMLElement>("[data-siab-cms-sticky-chrome]").forEach((element) => {
     if (element.closest(".rt-canvas, [data-siab-canvas-chrome]")) return

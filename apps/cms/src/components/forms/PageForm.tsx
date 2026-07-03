@@ -34,6 +34,7 @@ import { type EditorMode, resolveDefaultMode } from "@/lib/editor/editorMode"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { ModeBar } from "@/components/editor/mode/mode-bar"
 import { PageEditorFrameHost, type PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
+import { EditorFrameDocumentContext } from "@/components/editor/iframe/EditorFrameDocumentContext"
 import { MobileBlockInspectorSheet } from "@/components/editor/iframe/MobileBlockInspectorSheet"
 import { ensureBlockId, ensurePageBlockIds, findBlockIndexByWireId, blockWireId } from "@/lib/editor/ensureBlockIds"
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
@@ -842,6 +843,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const [themeState, setThemeState] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedStyle?.theme ?? null))
   const [themeBaseline, setThemeBaseline] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedStyle?.theme ?? null))
   const [stableTenantCss, setStableTenantCss] = useState<string | null>(() => tenantCss ?? cachedStyle?.tenantCss ?? null)
+  const [editorFrameDocument, setEditorFrameDocument] = useState<Document | null>(null)
   const themeDirty = useMemo(
     () => JSON.stringify(themeState) !== JSON.stringify(themeBaseline),
     [themeState, themeBaseline],
@@ -1887,6 +1889,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       onOpenBlockInspector={openBlockInSidebar}
       onChromeSelect={handleFrameChromeSelect}
       onChromeGeometry={handleFrameChromeGeometry}
+      onFrameDocument={setEditorFrameDocument}
       mutations={readOnly ? undefined : frameMutations}
     />
   ) : (
@@ -1897,6 +1900,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
 
   return (
     <RtManifestProvider manifest={manifest}>
+    <EditorFrameDocumentContext.Provider value={editorFrameDocument}>
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
@@ -2139,6 +2143,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         />
       )}
     </Form>
+    </EditorFrameDocumentContext.Provider>
     </RtManifestProvider>
   )
 }

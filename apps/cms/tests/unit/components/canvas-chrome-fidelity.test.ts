@@ -208,10 +208,17 @@ describe("canvas chrome fidelity", () => {
     expect(canvasSurface).not.toContain("AMICARE_CANVAS_THEME_SCOPE")
     expect(canvasSurface).not.toContain("themeToCssVars")
 
-    expect(palettePicker).toContain("style[data-rt-theme-overrides]")
-    expect(palettePicker).toContain("style[data-siab-theme-overrides]")
-    expect(palettePicker).toContain("style[data-siab-canvas-theme-overrides]")
+    expect(palettePicker).toContain("EditorFrameDocumentContext")
     expect(palettePicker).toContain("disableRuntimeThemeOverrides")
     expect(palettePicker).toContain("restoreRuntimeThemeOverrides")
+  })
+
+  it("forwards parent sticky chrome inset into the iframe for gutter clamping", () => {
+    const frameHost = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    const gutterOverlay = read("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx")
+
+    expect(frameHost).toContain("--siab-parent-chrome-bottom")
+    expect(frameHost).toContain("measureParentChromeBottom")
+    expect(gutterOverlay).toContain("--siab-parent-chrome-bottom")
   })
 })

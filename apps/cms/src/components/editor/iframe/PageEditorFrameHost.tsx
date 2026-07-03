@@ -17,6 +17,25 @@ import { findBlockIndexByWireId } from "@/lib/editor/ensureBlockIds"
 export type PageEditorFrameView = "canvas" | "sidebar"
 export type PageEditorFrameLayout = "desktop" | "mobile"
 
+const PARENT_CHROME_BOTTOM_VAR = "--siab-parent-chrome-bottom"
+const CHROME_VIEWPORT_GAP = 8
+
+function measureParentChromeBottom(): number {
+  if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
+  let bottom = CHROME_VIEWPORT_GAP
+  document.body.querySelectorAll<HTMLElement>("[data-siab-cms-sticky-chrome]").forEach((element) => {
+    const style = window.getComputedStyle(element)
+    if (style.position !== "fixed" && style.position !== "sticky") return
+    const zIndex = Number.parseInt(style.zIndex, 10)
+    if (!Number.isFinite(zIndex) || zIndex < 15) return
+    const rect = element.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    if (rect.top > window.innerHeight / 2) return
+    bottom = Math.max(bottom, rect.bottom + CHROME_VIEWPORT_GAP)
+  })
+  return bottom
+}
+
 export type PageEditorFrameMutationHandlers = {
   onBlockPatch?: (args: { blockId: string; patch: Record<string, unknown> }) => void
   onBlocksInsert?: (args: { block: Block; index?: number; beforeBlockId?: string; afterBlockId?: string }) => void
@@ -39,6 +58,7 @@ export function PageEditorFrameHost({
   onOpenBlockInspector,
   onChromeSelect,
   onChromeGeometry,
+  onFrameDocument,
   mutations,
 }: {
   pageId: string | number
@@ -55,6 +75,7 @@ export function PageEditorFrameHost({
   onOpenBlockInspector?: (index: number) => void
   onChromeSelect?: (zone: "header" | "footer", point?: { x: number; y: number }) => void
   onChromeGeometry?: (zone: "header" | "footer", rect: { x: number; y: number; width: number; height: number }) => void
+  onFrameDocument?: (document: Document | null) => void
   mutations?: PageEditorFrameMutationHandlers
 }) {
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
@@ -63,6 +84,7 @@ export function PageEditorFrameHost({
   const [frameError, setFrameError] = React.useState<string | null>(null)
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "failed">("loading")
   const [retryKey, setRetryKey] = React.useState(0)
+  const [parentChromeBottom, setParentChromeBottom] = React.useState(CHROME_VIEWPORT_GAP)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   onSelectionChangedRef.current = onSelectionChanged
   const onOpenBlockInspectorRef = React.useRef(onOpenBlockInspector)
@@ -94,7 +116,28 @@ export function PageEditorFrameHost({
     setFrameError(null)
     setLoadState("loading")
     revisionRef.current = 0
-  }, [src, retryKey])
+    onFrameDocument?.(null)
+  }, [onFrameDocument, src, retryKey])
+
+  React.useLayoutEffect(() => {
+    const measure = () => setParentChromeBottom(measureParentChromeBottom())
+    measure()
+    window.addEventListener("resize", measure)
+    window.addEventListener("scroll", measure, true)
+    return () => {
+      window.removeEventListener("resize", measure)
+      window.removeEventListener("scroll", measure, true)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (!ready) {
+      onFrameDocument?.(null)
+      return
+    }
+    onFrameDocument?.(frameRef.current?.contentDocument ?? null)
+    return () => onFrameDocument?.(null)
+  }, [onFrameDocument, ready, retryKey, src])
 
   React.useEffect(() => {
     if (ready) {
@@ -225,22 +268,7 @@ export function PageEditorFrameHost({
       theme,
     })
     revisionRef.current = expectedRevision + 1
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, pageId, postToFrame, ready, settings])
-
-  React.useEffect(() => {
-    if (!ready) return
-    const expectedRevision = revisionRef.current
-    postToFrame({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "theme.patch",
-      messageId: `theme-${expectedRevision}`,
-      expectedRevision,
-      theme,
-    })
-    revisionRef.current = expectedRevision + 1
-  }, [postToFrame, ready, theme])
+  }, [page, pageId, postToFrame, ready, settings, theme])
 
   React.useEffect(() => {
     if (!ready) return
@@ -277,11 +305,12 @@ export function PageEditorFrameHost({
         src={src}
         title="Page editor"
         className={cn(
-          "block w-full border-0 bg-white",
+          "block w-full border-0 bg-transparent",
           layout === "mobile"
             ? "min-h-[calc(100dvh-4.5rem)] h-[calc(100dvh-4.5rem)]"
             : cn("min-h-[640px]", view === "sidebar" ? "h-[calc(100dvh-6.5rem)]" : "h-[calc(100dvh-9rem)]"),
         )}
+        style={{ [PARENT_CHROME_BOTTOM_VAR]: `${parentChromeBottom}px` } as React.CSSProperties}
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}

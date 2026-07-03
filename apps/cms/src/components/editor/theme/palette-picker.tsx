@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/componen
 import { Plus, Sun, Moon } from "lucide-react"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useAnchorRtCanvas } from "@/components/editor/hooks/use-rt-canvas-anchor"
+import { EditorFrameDocumentContext } from "@/components/editor/iframe/EditorFrameDocumentContext"
 import { Switch } from "@siteinabox/ui/components/switch"
 import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -31,10 +32,12 @@ const RUNTIME_THEME_OVERRIDE_SELECTORS = [
   "style[data-siab-canvas-theme-overrides]",
 ] as const
 
-function disableRuntimeThemeOverrides(): Array<{ el: HTMLStyleElement; wasDisabled: boolean }> {
+function disableRuntimeThemeOverrides(
+  ownerDocument: Document = document,
+): Array<{ el: HTMLStyleElement; wasDisabled: boolean }> {
   const overlays: Array<{ el: HTMLStyleElement; wasDisabled: boolean }> = []
   for (const selector of RUNTIME_THEME_OVERRIDE_SELECTORS) {
-    for (const el of document.querySelectorAll<HTMLStyleElement>(selector)) {
+    for (const el of ownerDocument.querySelectorAll<HTMLStyleElement>(selector)) {
       overlays.push({ el, wasDisabled: el.disabled })
       el.disabled = true
     }
@@ -57,10 +60,12 @@ const DEFAULT_FALLBACK = {
 
 function useDefaultPalettes(): { light: Palette; dark: Palette } {
   const anchor = useAnchorRtCanvas()
+  const frameDocument = React.useContext(EditorFrameDocumentContext)
   const [resolved, setResolved] = React.useState<{ light: Palette; dark: Palette }>(DEFAULT_FALLBACK)
   React.useEffect(() => {
     if (!anchor) return
-    const disabledOverlays = disableRuntimeThemeOverrides()
+    const ownerDocument = frameDocument ?? document
+    const disabledOverlays = disableRuntimeThemeOverrides(ownerDocument)
     const read = (mode: "light" | "dark"): Palette => {
       anchor.setAttribute("data-rt-mode", mode)
       const cs = getComputedStyle(anchor)
@@ -90,7 +95,7 @@ function useDefaultPalettes(): { light: Palette; dark: Palette } {
           : DEFAULT_FALLBACK.dark.bg!,
       },
     })
-  }, [anchor])
+  }, [anchor, frameDocument])
   return resolved
 }
 
