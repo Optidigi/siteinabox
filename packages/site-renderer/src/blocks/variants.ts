@@ -1,15 +1,13 @@
 import {
   SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
   SITE_GENERATION_BLOCK_SLUGS,
-  type AnalyticsBlockMetadata,
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
 
 type VariantResolvedBlock = {
   blockType: string
-  variant?: string | null
-  analytics?: AnalyticsBlockMetadata | null
+  designVariant?: string | null
 }
 
 type ResolvedBlockVariant = {
@@ -39,7 +37,6 @@ function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
 
   const sourceName = variant.provenance.sourceName.toLowerCase()
   return (
-    sourceName === "siab" ||
     sourceName === "tailwind plus" ||
     sourceName === "tailblocks" ||
     sourceName === "preline ui"
@@ -68,7 +65,7 @@ export function resolveBlockVariant(
   if (!isGenerationBlockSlug(block.blockType)) return {}
 
   const catalogEntry = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType]
-  const requestedVariant = cleanVariant(block.variant)
+  const requestedVariant = cleanVariant(block.designVariant)
   if (requestedVariant) {
     const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
       (variant) => variant.variant === requestedVariant,
@@ -80,18 +77,7 @@ export function resolveBlockVariant(
       rendererClassName: catalogVariant?.rendererClassName,
     }
   }
-
-  const legacySectionVariant = cleanVariant(block.analytics?.sectionVariant)
-  if (!legacySectionVariant) return {}
-
-  const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
-    (variant) => variant.sectionVariant === legacySectionVariant,
-  )
-  if (!catalogVariant || !isRendererVariantAllowed(catalogVariant, context)) return {}
-  return {
-    variant: catalogVariant.variant,
-    rendererClassName: catalogVariant.rendererClassName,
-  }
+  return {}
 }
 
 export function rendererVariantClassName(block: VariantResolvedBlock, context?: BlockVariantResolveContext) {

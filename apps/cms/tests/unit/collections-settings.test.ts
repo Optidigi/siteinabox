@@ -125,13 +125,13 @@ describe("SiteSettings collection config", () => {
     expect(chrome.fields.map((x: any) => x.name)).toEqual(["header", "footer", "banner"])
     expect(header.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "behavior", "activeMode", "mobileMenu", "cta"])
     expect(header.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple", "amicareZen"])
+    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "amicareZen"])
     expect(footer.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "tagline", "copyright", "legalLinks", "columns"])
     expect(footer.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple", "amicareZen"])
+    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "amicareZen"])
     expect(footer.fields.find((x: any) => x.name === "columns")).toMatchObject({ type: "json" })
     expect(banner.fields.map((x: any) => x.name)).toEqual(["variant", "visible", "title", "message", "link", "dismissible"])
-    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "hyperUiSimple"])
+    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default"])
     expect(banner.fields.find((x: any) => x.name === "link")).toMatchObject({ type: "group" })
 
     const maintenance = findField("maintenance")
@@ -158,9 +158,9 @@ describe("SiteSettings collection config", () => {
     expect(headerVariant.filterOptions).toBeTypeOf("function")
     expect(footerVariant.filterOptions).toBeTypeOf("function")
     expect(filterChromeVariantOptions("header", headerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple"])
+      .toEqual(["default"])
     expect(filterChromeVariantOptions("footer", footerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple"])
+      .toEqual(["default"])
   })
 
   it("does not let admin option filtering reject internal writes without tenant context", () => {
@@ -171,9 +171,9 @@ describe("SiteSettings collection config", () => {
     const footerVariant = footer.fields.find((x: any) => x.name === "variant")
 
     expect(filterChromeVariantOptions("header", headerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen"])
+      .toEqual(["default", "amicareZen"])
     expect(filterChromeVariantOptions("footer", footerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen"])
+      .toEqual(["default", "amicareZen"])
   })
 
   it("keeps the active official tenant renderer chrome variants available in admin options", () => {
@@ -184,11 +184,11 @@ describe("SiteSettings collection config", () => {
     const footerOptions = footer.fields.find((x: any) => x.name === "variant").options
 
     expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug: "ami-care" } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen"])
+      .toEqual(["default", "amicareZen"])
     expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "amicare" } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen"])
+      .toEqual(["default", "amicareZen"])
     expect(filterChromeVariantOptions("header", headerOptions, { tenant: 1 }, { user: { tenants: [{ tenant: { slug: "ami-care" } }] } }).map((x) => x.value))
-      .toEqual(["default", "hyperUiSimple", "amicareZen"])
+      .toEqual(["default", "amicareZen"])
   })
 
   it("rejects tenant-exclusive chrome variants for future generated tenants", async () => {

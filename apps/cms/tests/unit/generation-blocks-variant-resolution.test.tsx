@@ -10,8 +10,7 @@ describe("canvas source variant resolution", () => {
   it("ignores tenant-exclusive source variants outside the Amicare canvas context", () => {
     const block = {
       blockType: "hero",
-      variant: "amicareZenHero",
-      analytics: { sectionVariant: "amicare-zen-hero" },
+      designVariant: "amicareZenHero",
     }
 
     expect(resolvedCanvasSourceVariant(block)).toBeUndefined()
@@ -21,7 +20,7 @@ describe("canvas source variant resolution", () => {
   it("allows tenant-exclusive source variants for the Amicare canvas context", () => {
     const block = {
       blockType: "hero",
-      analytics: { sectionVariant: "amicare-zen-hero" },
+      designVariant: "amicareZenHero",
     }
 
     expect(resolvedCanvasSourceVariant(block, { tenantRendererKey: "amicare" })?.variant).toBe("amicareZenHero")
@@ -32,8 +31,7 @@ describe("canvas source variant resolution", () => {
   it("keeps native source classes off fallback editable DOM", () => {
     const block = {
       blockType: "hero",
-      variant: "amicareZenHero",
-      analytics: { sectionVariant: "amicare-zen-hero" },
+      designVariant: "amicareZenHero",
     }
 
     expect(canvasSourceVariantClassName(block, "amicare")).toBe("cms-block--source-amicare-zen-hero")
@@ -43,7 +41,7 @@ describe("canvas source variant resolution", () => {
   it("keeps global source variants available for generic canvas contexts", () => {
     const block = {
       blockType: "pricing",
-      analytics: { sectionVariant: "tailwind-plus-simple-pricing" },
+      designVariant: "tailwindPlusSimpleTiers",
     }
 
     expect(resolvedCanvasSourceVariant(block)?.variant).toBe("tailwindPlusSimpleTiers")

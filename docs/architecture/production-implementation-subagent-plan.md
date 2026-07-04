@@ -62,9 +62,8 @@ tenant-specific images.
   behavior belongs in scoped renderer/CMS snapshot data and
   `packages/site-renderer`, not restored tenant app source.
 - Generated-site styling must come only from approved catalog/library sources:
-  shadcn-owned primitives, Tailwind Plus free/public blocks, Tailblocks, Mamba
-  UI, HyperUI, Preline free, and later SIAB-owned custom blocks that have been
-  reviewed and accepted.
+  Tailwind Plus free/public blocks, Tailblocks, and Preline free blocks that
+  have been reviewed and accepted.
 - Automated pixel-level block verification is not a priority for the next pass.
   The priority is deterministic catalog metadata, source provenance, renderer
   tests, and manual visual review when catalog variants are added or changed.
@@ -337,10 +336,9 @@ without making automated pixel verification a blocker.
 
 - Review `packages/contracts` block catalog, `packages/site-renderer` block
   implementations, CMS tests, fixtures, and generation prompts.
-- Reconfirm Tailwind Plus free/public, Tailblocks, Preline free, and SIAB
-  custom-block approval metadata. HyperUI and Mamba UI are future
-  AI/component-composition backlog only; shadcn blocks are CMS/admin primitives,
-  not generated public-site blocks.
+- Reconfirm Tailwind Plus free/public, Tailblocks, and Preline free approval
+  metadata; shadcn blocks are CMS/admin primitives, not generated public-site
+  blocks.
 - Identify any path where generation can request unsupported block slugs,
   arbitrary Tailwind classes, raw HTML, or generated component source.
 - Identify whether the AI prompt and runtime validation already force catalog

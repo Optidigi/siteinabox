@@ -54,7 +54,7 @@ describe("settingsToJson", () => {
       },
       chrome: {
         header: {
-          variant: "hyperUiSimple",
+          variant: "default",
           logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
           behavior: "sticky",
           activeMode: "path",
@@ -62,7 +62,7 @@ describe("settingsToJson", () => {
           cta: { label: "Start", href: "/intake" },
         },
         footer: {
-          variant: "hyperUiSimple",
+          variant: "default",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
@@ -73,7 +73,7 @@ describe("settingsToJson", () => {
           ],
         },
         banner: {
-          variant: "hyperUiSimple",
+          variant: "default",
           visible: true,
           title: "Update",
           message: "Now booking",
@@ -103,7 +103,7 @@ describe("settingsToJson", () => {
       branding: { primaryColor: "#2563eb" },
       chrome: {
         header: {
-          variant: "hyperUiSimple",
+          variant: "default",
           logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
           behavior: "sticky",
           activeMode: "path",
@@ -111,7 +111,7 @@ describe("settingsToJson", () => {
           cta: { label: "Start", href: "/intake" },
         },
         footer: {
-          variant: "hyperUiSimple",
+          variant: "default",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
@@ -122,7 +122,7 @@ describe("settingsToJson", () => {
           ],
         },
         banner: {
-          variant: "hyperUiSimple",
+          variant: "default",
           visible: true,
           title: "Update",
           message: "Now booking",

@@ -3,12 +3,12 @@ import { sql } from "@payloadcms/db-postgres"
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
-    DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_header_variant" AS ENUM('default', 'hyperUiSimple'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_header_variant" AS ENUM('default'); EXCEPTION WHEN duplicate_object THEN null; END $$;
     DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_header_behavior" AS ENUM('static', 'sticky'); EXCEPTION WHEN duplicate_object THEN null; END $$;
     DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_header_active_mode" AS ENUM('path', 'anchor', 'none'); EXCEPTION WHEN duplicate_object THEN null; END $$;
     DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_header_mobile_menu" AS ENUM('dropdown', 'drawer'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-    DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_footer_variant" AS ENUM('default', 'hyperUiSimple'); EXCEPTION WHEN duplicate_object THEN null; END $$;
-    DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_banner_variant" AS ENUM('default', 'hyperUiSimple'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_footer_variant" AS ENUM('default'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+    DO $$ BEGIN CREATE TYPE "public"."enum_site_settings_chrome_banner_variant" AS ENUM('default'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
     ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'pricing';
     ALTER TYPE "public"."enum_block_presets_block_type" ADD VALUE IF NOT EXISTS 'stats';

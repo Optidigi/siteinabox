@@ -293,6 +293,10 @@ describe("canvas ↔ renderer block parity contract", () => {
     expect(runbook).toContain("Renderer-native editable blocks")
     expect(runbook).toContain("BlockRenderOptions")
     expect(runbook).toContain("Not safe for a broad swap")
+    expect(runbook).toContain("Generation eligibility")
+    expect(runbook).toContain("both sidebar and canvas editing")
+    expect(runbook).toContain("Analytics metadata is not a")
+    expect(runbook).toContain("Inactive provider families, SIAB-owned generic visual")
   })
 
   it("requires canvas section ids to flow through merged section props (no silent drift)", () => {

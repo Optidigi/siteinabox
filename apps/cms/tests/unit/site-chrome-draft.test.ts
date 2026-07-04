@@ -56,9 +56,9 @@ describe("site chrome draft helpers", () => {
 
   it("normalizes media relationships for comparison and PATCH payloads", () => {
     const draft: SiteChromeDraft = {
-      header: { variant: "hyperUiSimple", logo: { id: 10, url: "/logo.png" }, cta: { label: "Start", href: "/start" } },
+      header: { variant: "default", logo: { id: 10, url: "/logo.png" }, cta: { label: "Start", href: "/start" } },
       footer: {
-        variant: "hyperUiSimple",
+        variant: "default",
         logo: { id: "11" },
         tagline: "",
         copyright: null,
@@ -71,8 +71,8 @@ describe("site chrome draft helpers", () => {
     expect(chromeComparable(draft, footerContract).header.logo).toBe(10)
     expect(chromeComparable(draft, footerContract).footer.logo).toBe("11")
     expect(chromePatchFromDraft(draft, footerContract)).toMatchObject({
-      header: { variant: "hyperUiSimple", logo: 10, cta: { label: "Start", href: "/start" } },
-      footer: { variant: "hyperUiSimple", logo: "11", tagline: "", copyright: null, legalLinks: [{ label: "Privacy", href: "/privacy" }] },
+      header: { variant: "default", logo: 10, cta: { label: "Start", href: "/start" } },
+      footer: { variant: "default", logo: "11", tagline: "", copyright: null, legalLinks: [{ label: "Privacy", href: "/privacy" }] },
       banner: { variant: "default", visible: true, message: "Update" },
     })
   })
@@ -96,7 +96,7 @@ describe("site chrome draft helpers", () => {
         legalLinks: [{ label: "Privacy", href: "/privacy" }],
         columns: [],
       },
-      banner: { variant: "hyperUiSimple", visible: false },
+      banner: { variant: "default", visible: false },
     }
 
     expect(mergeChromeSettings(settings, draft)).toEqual({
@@ -112,7 +112,7 @@ describe("site chrome draft helpers", () => {
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [],
         },
-        banner: { variant: "hyperUiSimple", visible: false },
+        banner: { variant: "default", visible: false },
       },
     })
   })

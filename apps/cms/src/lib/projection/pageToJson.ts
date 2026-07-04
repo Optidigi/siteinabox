@@ -115,16 +115,12 @@ const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
   const stored = block.analytics && typeof block.analytics === "object" && !Array.isArray(block.analytics)
     ? block.analytics
     : {}
-  const storedSectionVariant = typeof stored.sectionVariant === "string" && stored.sectionVariant
-    ? stored.sectionVariant
-    : null
   return {
     ...stored,
     sectionId: anchor ?? `${pageSlug}:${index}:${sectionType}`,
     sectionType,
     sectionPosition: index,
     sectionAnchor: anchor,
-    sectionVariant: storedSectionVariant,
     blockPresetId: typeof block.blockPresetId === "string"
       ? block.blockPresetId
       : typeof stored.blockPresetId === "string"

@@ -42,6 +42,8 @@ import * as migration_20260630_150000_add_generation_run_domain_order from './20
 import * as migration_20260701_120000_add_mail_logs from './20260701_120000_add_mail_logs';
 import * as migration_20260701_130000_add_tenant_email_sending from './20260701_130000_add_tenant_email_sending';
 import * as migration_20260701_140000_add_operational_alerts from './20260701_140000_add_operational_alerts';
+import * as migration_20260704_120000_design_variant_and_remove_retired_chrome from './20260704_120000_design_variant_and_remove_retired_chrome';
+import * as migration_20260704_130000_remove_inactive_blocks_and_block_tokens from './20260704_130000_remove_inactive_blocks_and_block_tokens';
 
 export const migrations = [
   {
@@ -263,5 +265,15 @@ export const migrations = [
     up: migration_20260701_140000_add_operational_alerts.up,
     down: migration_20260701_140000_add_operational_alerts.down,
     name: '20260701_140000_add_operational_alerts'
+  },
+  {
+    up: migration_20260704_120000_design_variant_and_remove_retired_chrome.up,
+    down: migration_20260704_120000_design_variant_and_remove_retired_chrome.down,
+    name: '20260704_120000_design_variant_and_remove_retired_chrome'
+  },
+  {
+    up: migration_20260704_130000_remove_inactive_blocks_and_block_tokens.up,
+    down: migration_20260704_130000_remove_inactive_blocks_and_block_tokens.down,
+    name: '20260704_130000_remove_inactive_blocks_and_block_tokens'
   },
 ];

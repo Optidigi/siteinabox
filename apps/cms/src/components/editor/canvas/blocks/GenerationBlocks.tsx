@@ -1,7 +1,6 @@
 "use client"
 import * as React from "react"
 import { InlineCtaButton } from "../inline/InlineCtaButton"
-import { InlineIcon } from "../inline/InlineIcon"
 import { InlineImage } from "../inline/InlineImage"
 import { RtSlot } from "../inline/RtSlot"
 import {
@@ -45,12 +44,6 @@ const setArrayItemField = (
   const next = [...(block[field] ?? [])]
   next[index] = { ...(next[index] ?? {}), [subField]: value }
   onUpdate({ ...block, [field]: next })
-}
-
-const valueText = (value: unknown) => {
-  if (typeof value === "boolean") return value ? "Yes" : "No"
-  if (value == null) return "-"
-  return String(value)
 }
 
 export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
@@ -209,60 +202,6 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
             <RtSlot as="div" variant="block" manifest={manifest} value={post.excerpt} onChange={setArrayItemField(block, onUpdate, "posts", i, "excerpt")} className="cms-block__blogExcerpt" placeholder="Excerpt" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "excerpt" }} />
             <InlineCtaButton value={post.cta ?? { label: "Read more", href: post.href }} onChange={setArrayItemField(block, onUpdate, "posts", i, "cta")} className="cms-block__blogCta" emptyLabel="Post action" elementPath={{ blockIndex: idx, field: "posts", itemIndex: i, subField: "cta" }} />
           </article>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
-  const set = setField(block, onUpdate)
-  const idx = block.__index as number
-  const steps: any[] = block.steps ?? []
-  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--processSteps ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
-
-  return (
-    <section {...sectionProps}>
-      <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Process title" elementPath={{ blockIndex: idx, field: "title" }} />
-      <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
-      <ol className="cms-block__steps">
-        {steps.map((step, i) => (
-          <li key={step.id ?? i} className="cms-block__step">
-            {step.image ? <InlineImage value={step.image} onChange={setArrayItemField(block, onUpdate, "steps", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "image" }} /> : <InlineIcon value={step.icon} onChange={setArrayItemField(block, onUpdate, "steps", i, "icon")} elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "icon" }} />}
-            <RtSlot as="h3" variant="inline" manifest={manifest} value={step.title} onChange={setArrayItemField(block, onUpdate, "steps", i, "title")} className="cms-block__stepTitle" placeholder="Step title" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "title" }} />
-            <RtSlot as="div" variant="block" manifest={manifest} value={step.description} onChange={setArrayItemField(block, onUpdate, "steps", i, "description")} className="cms-block__stepDescription" placeholder="Step description" elementPath={{ blockIndex: idx, field: "steps", itemIndex: i, subField: "description" }} />
-          </li>
-        ))}
-      </ol>
-    </section>
-  )
-}
-
-export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, sectionChromeProps }) => {
-  const set = setField(block, onUpdate)
-  const idx = block.__index as number
-  const columns: any[] = block.columns ?? []
-  const rows: any[] = block.rows ?? []
-  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--comparisonMatrix ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
-
-  return (
-    <section {...sectionProps}>
-      <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Comparison title" elementPath={{ blockIndex: idx, field: "title" }} />
-      <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
-      <div className="cms-block__comparisonTable" role="table">
-        <div className="cms-block__comparisonHeader" role="row">
-          <span role="columnheader">Feature</span>
-          {columns.map((column, i) => (
-            <span key={column.id ?? i} role="columnheader">
-              <RtSlot as="strong" variant="inline" manifest={manifest} value={column.title} onChange={setArrayItemField(block, onUpdate, "columns", i, "title")} placeholder="Column title" elementPath={{ blockIndex: idx, field: "columns", itemIndex: i, subField: "title" }} />
-            </span>
-          ))}
-        </div>
-        {rows.map((row, i) => (
-          <div key={row.id ?? i} className="cms-block__comparisonRow" role="row">
-            <span role="rowheader">{row.label}</span>
-            {(row.values ?? []).map((value: unknown, valueIndex: number) => <span key={valueIndex} role="cell">{valueText(value)}</span>)}
-          </div>
         ))}
       </div>
     </section>

@@ -3,7 +3,7 @@ import { getTestPayload } from "./_helpers"
 
 let payload: Awaited<ReturnType<typeof getTestPayload>>
 let tenantWithMenu: number | string
-let tenantUnrestricted: number | string
+let tenantWithDefaultMenu: number | string
 
 beforeAll(async () => {
   payload = await getTestPayload()
@@ -26,16 +26,16 @@ beforeAll(async () => {
   })
   tenantWithMenu = restricted.id
 
-  const unrestricted = await payload.create({
+  const defaultMenu = await payload.create({
     collection: "tenants",
     data: {
-      name: "unrestricted-blocks",
-      slug: `unrestricted-blocks-${ts}`,
-      domain: `unrestricted-${ts}.test`,
+      name: "default-source-backed-blocks",
+      slug: `default-source-backed-blocks-${ts}`,
+      domain: `default-source-backed-${ts}.test`,
     } as any,
     overrideAccess: true,
   })
-  tenantUnrestricted = unrestricted.id
+  tenantWithDefaultMenu = defaultMenu.id
 }, 30000)
 
 // Inline-variant root: children must be inline nodes (text/link/linebreak),
@@ -76,11 +76,11 @@ describe("enforceTenantBlockMenu — integration", () => {
     ).rejects.toThrow(/cta \(index 0\)/)
   })
 
-  it("allows any block on an unrestricted tenant (no blocks[] in manifest)", async () => {
+  it("allows active source-backed blocks when no blocks[] menu is declared", async () => {
     const result = await payload.create({
       collection: "pages",
       data: {
-        title: "p3", slug: "p3", tenant: tenantUnrestricted,
+        title: "p3", slug: "p3", tenant: tenantWithDefaultMenu,
         blocks: [{
           blockType: "cta",
           headline: minimalInlineHeadline,
@@ -90,5 +90,23 @@ describe("enforceTenantBlockMenu — integration", () => {
       overrideAccess: true,
     })
     expect(result.id).toBeTruthy()
+  })
+
+  it("rejects retired blocks when no blocks[] menu is declared", async () => {
+    await expect(
+      payload.create({
+        collection: "pages",
+        data: {
+          title: "p4", slug: "p4", tenant: tenantWithDefaultMenu,
+          blocks: [{
+            blockType: "comparison",
+            title: minimalInlineHeadline,
+            columns: [{ title: minimalInlineHeadline }],
+            rows: [{ label: "Pages", values: ["1"] }],
+          }],
+        } as any,
+        overrideAccess: true,
+      }),
+    ).rejects.toThrow()
   })
 })

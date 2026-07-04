@@ -1,10 +1,9 @@
-import type { AnalyticsBlockMetadata, SiteChromeVariant } from "@siteinabox/contracts"
+import type { SiteChromeVariant } from "@siteinabox/contracts"
 import { resolveBlockVariant } from "./variants"
 
 type NativeResolvedBlock = {
   blockType: string
-  variant?: string | null
-  analytics?: AnalyticsBlockMetadata | null
+  designVariant?: string | null
 }
 
 type NativeBlockClassSlot =

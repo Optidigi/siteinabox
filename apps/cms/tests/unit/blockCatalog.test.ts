@@ -71,17 +71,21 @@ describe("renderer block catalog", () => {
       expect(entry.renderer.component).toMatch(/Renderer$/)
       expect(entry.themeBehavior.length).toBeGreaterThan(0)
       expect(entry.fixtureCoverage.length).toBeGreaterThan(0)
-      expect(entry.variants.length).toBeGreaterThan(0)
       expect(entry.variants.every((variant) => variant.provenance)).toBe(true)
       expect(entry.variants.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
       expect(entry.variants.every((variant) => variant.rendererSupportStatus === "supported")).toBe(true)
     }
+
+    const globalPageBlockVariantSources = SITE_BLOCK_CATALOG.flatMap((entry) =>
+      entry.variants.filter((variant) => variant.scope.kind === "global").map((variant) => variant.provenance.sourceName),
+    )
+    expect(globalPageBlockVariantSources).not.toContain("SIAB")
   })
 
   it("accepts new structured marketing contracts and rejects unsupported variants or raw code", () => {
     const pricingBlock: GeneratedBlockSpec = {
       blockType: "pricing",
-      variant: "tailwindPlusSimpleTiers",
+      designVariant: "tailwindPlusSimpleTiers",
       title: inlineRoot("Pakketten"),
       intro: blockRoot("Kies een passend pakket."),
       plans: [
@@ -98,52 +102,37 @@ describe("renderer block catalog", () => {
 
     const statsBlock: GeneratedBlockSpec = {
       blockType: "stats",
-      variant: "tailwindPlusSimple",
+      designVariant: "tailwindPlusSimple",
       title: inlineRoot("Resultaten"),
       items: [{ value: "24", label: "Projecten", description: blockRoot("Opgeleverd dit jaar.") }],
     }
 
     const logoCloudBlock: GeneratedBlockSpec = {
       blockType: "logoCloud",
-      variant: "tailwindPlusSimple",
+      designVariant: "tailwindPlusSimple",
       title: inlineRoot("Partners"),
       logos: [{ name: "Partner", image: { url: "/uploads/partner.svg" }, href: "https://example.com" }],
     }
 
     const galleryBlock: GeneratedBlockSpec = {
       blockType: "gallery",
-      variant: "prelineSquareGrid",
+      designVariant: "prelineSquareGrid",
       title: inlineRoot("Werk"),
       images: [{ image: { url: "/uploads/work.jpg" }, caption: blockRoot("Recent werk.") }],
     }
 
     const teamBlock: GeneratedBlockSpec = {
       blockType: "team",
-      variant: "tailwindPlusGrid",
+      designVariant: "tailwindPlusGrid",
       title: inlineRoot("Team"),
       members: [{ name: "Alex", role: "Founder", bio: blockRoot("Helpt klanten online groeien.") }],
     }
 
     const blogCardsBlock: GeneratedBlockSpec = {
       blockType: "blogCards",
-      variant: "tailwindPlusThreeColumn",
+      designVariant: "tailwindPlusThreeColumn",
       title: inlineRoot("Updates"),
       posts: [{ title: inlineRoot("Nieuwe site"), excerpt: blockRoot("Wat er verbeterde."), href: "/blog/nieuwe-site" }],
-    }
-
-    const processStepsBlock: GeneratedBlockSpec = {
-      blockType: "processSteps",
-      variant: null,
-      title: inlineRoot("Proces"),
-      steps: [{ title: inlineRoot("Intake"), description: blockRoot("We verzamelen de basis.") }],
-    }
-
-    const comparisonBlock: GeneratedBlockSpec = {
-      blockType: "comparison",
-      variant: "matrix",
-      title: inlineRoot("Vergelijking"),
-      columns: [{ title: inlineRoot("Basis") }, { title: inlineRoot("Pro"), cta: { label: "Kies Pro", href: "/intake" } }],
-      rows: [{ label: "Pagina's", values: ["1", "5"] }],
     }
 
     for (const block of [
@@ -153,28 +142,40 @@ describe("renderer block catalog", () => {
       galleryBlock,
       teamBlock,
       blogCardsBlock,
-      processStepsBlock,
-      comparisonBlock,
     ]) {
       expect(GeneratedBlockSpecSchema.safeParse(block).success, block.blockType).toBe(true)
     }
 
-    expect(GeneratedBlockSpecSchema.safeParse({ ...pricingBlock, variant: "mambaSteps" }).success).toBe(false)
-    expect(GeneratedBlockSpecSchema.safeParse({ ...processStepsBlock, variant: "mambaSteps" }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({ ...pricingBlock, designVariant: "unsupportedProviderSteps" }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({ blockType: "processSteps", title: inlineRoot("Proces"), steps: [] }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({ blockType: "comparison", title: inlineRoot("Vergelijking"), columns: [], rows: [] }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({ ...galleryBlock, html: "<section></section>" }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({
+      ...pricingBlock,
+      title: {
+        t: "root",
+        variant: "inline",
+        children: [{ t: "text", v: "Styled", style: "color:red", color: "#f00", font: "Comic Sans MS" }],
+      },
+    }).success).toBe(false)
   })
 
   it("records vetted source status and keeps unavailable sources blocked", () => {
     expect(SITE_BLOCK_REFERENCE_SOURCES.tailwindPlusMarketing.availability).toBe("mixed")
     expect(SITE_BLOCK_REFERENCE_SOURCES.tailwindPlusMarketing.licenseStatus).toContain("Operator approval")
     expect(SITE_BLOCK_REFERENCE_SOURCES.tailblocks.availability).toBe("free")
-    expect(SITE_BLOCK_REFERENCE_SOURCES.mambaUi.availability).toBe("free")
-    expect(SITE_BLOCK_REFERENCE_SOURCES.hyperUi.availability).toBe("free")
     expect(SITE_BLOCK_REFERENCE_SOURCES.preline.availability).toBe("mixed")
     expect(SITE_BLOCK_REFERENCE_SOURCES.preline.notes).toContain("Free")
     expect(SITE_BLOCK_REFERENCE_SOURCES.preline.notes).toContain("Pro")
     expect(SITE_BLOCK_REFERENCE_SOURCES.tailgrids.availability).toBe("unavailable")
     expect(SITE_BLOCK_REFERENCE_SOURCES.tailgrids.notes).toContain("Not approved")
+    expect(Object.keys(SITE_BLOCK_REFERENCE_SOURCES).sort()).toEqual([
+      "preline",
+      "tailblocks",
+      "tailgrids",
+      "tailwindPlusMarketing",
+      "tenantRendererSnapshots",
+    ])
   })
 
   it("separates first-catalog contract coverage from deferred renderer work", () => {
@@ -194,13 +195,24 @@ describe("renderer block catalog", () => {
   })
 
   it("has compact exact-source provenance for implemented source-backed variants", () => {
-    const rendererReadySlugs = SITE_BLOCK_SLUGS.filter((slug) => slug !== "comparison")
-    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug)).toEqual(expect.arrayContaining(rendererReadySlugs))
+    const providerBackedSlugs = [
+      "hero",
+      "featureList",
+      "richText",
+      "cta",
+      "contactSection",
+      "pricing",
+      "stats",
+      "logoCloud",
+      "gallery",
+      "team",
+      "blogCards",
+    ]
+    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug)).toEqual(expect.arrayContaining(providerBackedSlugs))
 
     for (const variant of SITE_SOURCE_BACKED_BLOCK_VARIANTS) {
       expect(variant.variant, `${variant.variantId} missing runtime variant`).toBeTruthy()
       expect(variant.variant, `${variant.variantId} runtime variant should be scoped by blockType, not duplicated in the value`).not.toContain(":")
-      expect(variant.sectionVariant, `${variant.variantId} missing sectionVariant metadata`).toBeTruthy()
       expect(variant.rendererClassName, `${variant.variantId} missing rendererClassName`).toMatch(/^cms-block--source-/)
       expect(variant.provenance.url, `${variant.variantId} missing source URL`).toMatch(/^https:\/\//)
       expect(variant.provenance.upstreamBlockName, `${variant.variantId} missing upstream block name`).toBeTruthy()
@@ -233,14 +245,12 @@ describe("renderer block catalog", () => {
 
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Tailwind Plus")).toBe(true)
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Tailblocks")).toBe(true)
-    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Mamba UI")).toBe(true)
-    expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "HyperUI")).toBe(true)
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Preline UI")).toBe(true)
     expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName)).toEqual(
       expect.arrayContaining(["Tailwind Plus", "Tailblocks", "Preline UI"]),
     )
-    expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName)).not.toEqual(
-      expect.arrayContaining(["Mamba UI", "HyperUI", "SIAB tenant renderer snapshots"]),
+    expect(new Set(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName))).toEqual(
+      new Set(["Tailwind Plus", "Tailblocks", "Preline UI"]),
     )
     expect(DEFERRED_SOURCE_BLOCK_CANDIDATES).toHaveLength(0)
   })
@@ -265,15 +275,11 @@ describe("renderer block catalog", () => {
       "contactSection:tailwindPlusNewsletterDetails",
       "richText:tailblocksContentA",
       "cta:tailblocksCtaA",
-      "contactSection:hyperUiNewsletterCentered",
-      "faq:mambaFaq1",
-      "testimonials:mambaTestimonial1",
       "pricing:tailwindPlusSimpleTiers",
       "stats:tailwindPlusSimple",
       "logoCloud:tailwindPlusSimple",
       "team:tailwindPlusGrid",
       "blogCards:tailwindPlusThreeColumn",
-      "processSteps:mambaSteps",
     ]) {
       const runtime = byId.get(variantId)?.provenance.runtime
       expect(runtime?.kind, variantId).toBe("copy-paste-tailwind")
@@ -298,33 +304,22 @@ describe("renderer block catalog", () => {
     expect(byId.has("comparison:matrix")).toBe(false)
   })
 
-  it("catalogs source-backed chrome variants without turning chrome into page blocks", () => {
+  it("catalogs chrome variants without turning chrome into page blocks or generation providers", () => {
     expect(SITE_CHROME_CATALOG.map((entry) => entry.id)).toEqual(
       expect.arrayContaining([
         "header:default",
-        "header:hyperUiSimple",
+        "header:amicareZen",
         "footer:default",
-        "footer:hyperUiSimple",
+        "footer:amicareZen",
         "banner:default",
-        "banner:hyperUiSimple",
       ]),
     )
     expect(SITE_BLOCK_CATALOG.map((entry) => entry.slug)).not.toEqual(
       expect.arrayContaining(["header", "footer", "banner"]),
     )
 
-    for (const area of ["header", "footer", "banner"] as const) {
-      expect(SITE_CHROME_CATALOG.some((entry) => entry.area === area && entry.variant === "hyperUiSimple")).toBe(true)
-    }
-
-    for (const variant of SITE_SOURCE_BACKED_CHROME_VARIANTS) {
-      expect(variant.variant).toBe("hyperUiSimple")
-      expect(variant.rendererClassName).toMatch(/^site-(header|footer|banner)--source-hyperui-simple$/)
-      expect(variant.provenance.sourceName).toBe("HyperUI")
-      expect(variant.provenance.runtime.kind).toBe("copy-paste-tailwind")
-      expect(variant.provenance.runtime.interactive).toBe(false)
-      expect("localSourcePath" in variant.provenance).toBe(false)
-    }
+    expect(SITE_CHROME_CATALOG.some((entry) => entry.area === "banner" && String(entry.variant) === "amicareZen")).toBe(false)
+    expect(SITE_SOURCE_BACKED_CHROME_VARIANTS).toEqual([])
 
     expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.id)).toEqual([
       "header:default",
@@ -345,10 +340,10 @@ describe("renderer block catalog", () => {
     }
 
     expect(GeneratedSiteSettingsSchema.safeParse(selfServeFixtureSettings).success).toBe(true)
-    expect(v1FixtureSettings.chrome?.header?.variant).toBe("hyperUiSimple")
-    expect(v1FixtureSettings.chrome?.footer?.variant).toBe("hyperUiSimple")
-    expect(v1FixtureSettings.chrome?.banner?.variant).toBe("hyperUiSimple")
-    expect(GeneratedSiteSettingsSchema.safeParse(v1FixtureSettings).success).toBe(false)
+    expect(v1FixtureSettings.chrome?.header?.variant).toBe("default")
+    expect(v1FixtureSettings.chrome?.footer?.variant).toBe("default")
+    expect(v1FixtureSettings.chrome?.banner?.variant).toBe("default")
+    expect(GeneratedSiteSettingsSchema.safeParse(v1FixtureSettings).success).toBe(true)
 
     expect(
       GeneratedSiteSettingsSchema.safeParse({
@@ -491,12 +486,12 @@ describe("renderer block catalog", () => {
   it("exercises every source-backed renderer variant in the renderer fixture", () => {
     const fixtureVariants = new Set(
       v1FixturePage.blocks
-        .map((block) => block.analytics?.sectionVariant)
+        .map((block) => block.designVariant)
         .filter((variant): variant is string => typeof variant === "string"),
     )
 
     for (const variant of SITE_SOURCE_BACKED_BLOCK_VARIANTS) {
-      expect(fixtureVariants.has(variant.sectionVariant!), `${variant.sectionVariant} missing fixture coverage`).toBe(true)
+      expect(fixtureVariants.has(variant.variant), `${variant.variantId} missing fixture coverage`).toBe(true)
     }
   })
 })

@@ -30,8 +30,7 @@ depended on command-run site generation are no longer current source of truth.
   PostHog there unless this product decision changes.
 - Current self-serve generated-site material may use only Tailwind Plus,
   Preline UI, and Tailblocks variants that have approved provenance and typed
-  renderer support. HyperUI and Mamba UI remain future AI/component-composition
-  backlog material, not active generation inputs.
+  renderer support. Other provider families are not active generation inputs.
   Shadcn blocks are not part of the generated public-site source plan.
 
 ## Open Follow-Up

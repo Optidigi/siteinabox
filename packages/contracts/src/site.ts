@@ -14,8 +14,6 @@ export const SITE_BLOCK_SLUGS = [
   "gallery",
   "team",
   "blogCards",
-  "processSteps",
-  "comparison",
 ] as const
 
 export type SiteBlockSlug = (typeof SITE_BLOCK_SLUGS)[number]
@@ -51,18 +49,14 @@ export type AnalyticsBlockMetadata = {
   sectionType?: string | null
   sectionPosition?: number | null
   sectionAnchor?: string | null
-  sectionVariant?: string | null
   blockPresetId?: string | null
   contentSignature?: string | null
 }
 
-export type BlockInstanceTokens = Record<string, unknown>
-
 export type BlockInstanceMetadata = Record<string, unknown>
 
 export type BlockInstanceBase = {
-  variant?: string | null
-  tokens?: BlockInstanceTokens | null
+  designVariant?: string | null
   metadata?: BlockInstanceMetadata | null
   analytics?: AnalyticsBlockMetadata | null
   anchor?: string | null
@@ -244,34 +238,6 @@ export type BlogCardsBlock = BlockInstanceBase & {
   }>
 }
 
-export type ProcessStepsBlock = BlockInstanceBase & {
-  blockType: "processSteps"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  steps: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    icon?: string | null
-    image?: MediaRef
-    cta?: LinkRef | null
-  }>
-}
-
-export type ComparisonBlock = BlockInstanceBase & {
-  blockType: "comparison"
-  title?: RtRoot | null
-  intro?: RtRoot | null
-  columns: Array<{
-    title: RtRoot
-    description?: RtRoot | null
-    cta?: LinkRef | null
-  }>
-  rows: Array<{
-    label: string
-    values: Array<string | boolean | null>
-  }>
-}
-
 export type Block =
   | HeroBlock
   | FeatureListBlock
@@ -286,8 +252,6 @@ export type Block =
   | GalleryBlock
   | TeamBlock
   | BlogCardsBlock
-  | ProcessStepsBlock
-  | ComparisonBlock
 
 export type Page = {
   id?: string
@@ -327,7 +291,7 @@ export type NavLink = { label: string; href: string; external?: boolean }
 export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
 
-export type SiteChromeVariant = "default" | "hyperUiSimple" | "amicareZen"
+export type SiteChromeVariant = "default" | "amicareZen"
 
 export type SiteChromeBanner = {
   variant?: SiteChromeVariant | null

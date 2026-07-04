@@ -11,8 +11,8 @@ HTML and the repository no longer keeps a raw provider block-source archive.
 - `packages/contracts/src/generation.ts` owns AI/site-generation input
   contracts.
 - `packages/contracts/src/runtime.ts` owns runtime validation contracts.
-- `packages/contracts/src/block-catalog.ts` owns approved variants, provider
-  provenance, source-family metadata, and CMS editable-field mappings.
+- `packages/contracts/src/block-catalog.ts` owns approved design variants,
+  provider provenance, source-family metadata, and CMS editable-field mappings.
 - `apps/cms/src/blocks/registry.ts` maps canonical block slugs to Payload CMS
   schemas.
 - `packages/site-renderer/src/blocks/index.tsx` maps the same slugs to typed
@@ -21,7 +21,9 @@ HTML and the repository no longer keeps a raw provider block-source archive.
   data to editable canvas renderers and editing affordances.
 
 New AI-generation blocks are available only after the contract, catalog entry,
-CMS schema, renderer, editable canvas behavior, and tests are in place.
+CMS schema, renderer, sidebar fields, editable canvas behavior, and tests are
+in place. A block that cannot be edited through both the sidebar and the canvas
+is not generation-eligible.
 
 ## Provenance vs Runtime
 
@@ -43,17 +45,22 @@ provider HTML. Raw provider source can be consulted externally during review,
 but once a block is converted the repo keeps the typed renderer and compact
 metadata only.
 
-`SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS` is narrower than the full
+`SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS` is narrower than any historical
 provenance catalog. Current self-serve generation uses only Tailwind Plus,
 Preline UI, and Tailblocks variants. AI prompts, model inputs, generated JSON
-schema enums, mock generation, and generic runtime validation use this
-self-serve list.
+schema enums, mock generation, normal pickers, and generic runtime validation
+must use this approved list.
 
-HyperUI and Mamba UI are backlog-only for possible future component-composition
-work. They must not appear in generic self-serve generation, schema enums, AI
-inputs, mock generation, or normal pickers. Amicare remains tenant-exclusive
-legacy compatibility and is only valid on Ami-care preview/canvas/live health
-paths.
+Inactive provider families are removed from the active app/codebase architecture,
+not backlog-only providers. They must not appear in generic self-serve
+generation, schema enums, AI inputs, mock generation, normal pickers, chrome
+choices, renderer fixtures, or active provenance catalogs. SIAB-owned generic
+visual variants are also not generation inputs; generation selects only approved
+provider-backed design variants from Tailwind Plus, Preline UI, or Tailblocks.
+
+Ami-care remains temporary legacy compatibility and is only valid on official
+Ami-care preview/canvas/live tenant-renderer paths. It is unavailable to
+generation, generic tenant validation, normal pickers, and AI model inputs.
 
 ## Runtime Route
 
@@ -62,6 +69,16 @@ Approved source-backed renderer variants render structured
 approved variant IDs and mapped to renderer-owned Tailwind/Preline utility
 classes in `packages/site-renderer/src/blocks/native-classes.ts`. AI and CMS
 data never supply arbitrary class strings or provider HTML.
+
+AI output is structured CMS data only. For visual selection it sets the
+block-level approved `designVariant` ID for the chosen block type. Analytics
+metadata is not a styling API.
+
+Blocks must not expose arbitrary block-level visual tokens such as per-block
+colors, fonts, radii, shape controls, class names, or provider token overrides.
+Site-wide visual control belongs to the global theme toolbar and theme schema:
+colors, font roles, shape, radius, border style, and mode. Renderers consume
+those global tokens through approved class rules.
 
 The public renderer uses `apps/renderer/src/styles/site.css` with Tailwind v4,
 app-local Preline theme/variant imports, the `@tailwindcss/forms` plugin, and
@@ -104,10 +121,9 @@ Header, footer, and announcement/banner are global site chrome. They remain in
 `SiteSettings.chrome.banner`; they are not page blocks and are not listed in
 `SITE_BLOCK_SLUGS`.
 
-Self-serve generation currently exposes only the default structured chrome
-variants. Historical HyperUI chrome variants may remain in the full provenance
-catalog for renderer compatibility tests, but they are not self-serve chrome
-choices and must not be suggested by AI generation.
+Self-serve generation exposes only the default structured chrome variants.
+Inactive provider chrome variants are not active chrome choices, provenance
+entries, renderer fixture requirements, or AI-generation suggestions.
 
 ## Adding Or Reintroducing Providers
 

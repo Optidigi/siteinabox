@@ -11,12 +11,12 @@ import {
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
   type SiteChromeCatalogArea,
 } from "@siteinabox/contracts/block-catalog"
-import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { hashStableValue } from "@/lib/intake/normalizeIntake"
 import { loadMockSiteGenerationSpec, type MockGenerationFixture } from "@/lib/intake/mockGeneration"
 import {
   SITE_GENERATION_PROMPT_VERSION,
   SITE_GENERATION_SYSTEM_PROMPT,
+  SUPPORTED_SITE_GENERATION_BLOCKS,
 } from "./prompts/siteGenerationPrompt"
 import { buildSiteGenerationModelInput, type SiteGenerationModelInput } from "./siteGenerationInput"
 
@@ -152,10 +152,10 @@ const nullableLinkJsonSchema = { anyOf: [linkJsonSchema, { type: "null" }] } as 
 const nullableInlineRichTextJsonSchema = { anyOf: [richTextInlineJsonSchema, { type: "null" }] } as const
 const nullableBlockRichTextJsonSchema = { anyOf: [richTextBlockJsonSchema, { type: "null" }] } as const
 
-const approvedSectionVariantsFor = (blockType: string) =>
+const approvedDesignVariantsFor = (blockType: string) =>
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS
     .filter((variant) => variant.slug === blockType)
-    .map((variant) => variant.sectionVariant)
+    .map((variant) => variant.variant)
 
 const approvedChromeVariantsFor = (area: SiteChromeCatalogArea) => [
   ...SITE_SELF_SERVE_CHROME_VARIANTS
@@ -164,33 +164,29 @@ const approvedChromeVariantsFor = (area: SiteChromeCatalogArea) => [
   null,
 ]
 
-const analyticsJsonSchemaFor = (blockType: string) => {
-  const variants = approvedSectionVariantsFor(blockType)
-  return {
-    type: "object",
-    additionalProperties: false,
-    required: ["sectionVariant"],
-    properties: {
-      sectionVariant: variants.length > 0
-        ? { type: ["string", "null"], enum: [...variants, null] }
-        : stringOrNull,
-    },
-  } as const
+const designVariantJsonSchemaFor = (blockType: string) => {
+  const variants = approvedDesignVariantsFor(blockType)
+  return variants.length > 0
+    ? { type: "string", enum: variants }
+    : stringOrNull
 }
 
 const baseBlockProperties = {
+  designVariant: stringOrNull,
   anchor: stringOrNull,
 } as const
+
+const SELF_SERVE_GENERATION_BLOCK_TYPES = new Set<string>(SUPPORTED_SITE_GENERATION_BLOCKS)
 
 const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "eyebrow", "headline", "subheadline", "pills", "cta", "image"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "pills", "cta", "image"],
     properties: {
       blockType: { type: "string", const: "hero" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("hero"),
+      designVariant: designVariantJsonSchemaFor("hero"),
       eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       headline: richTextInlineJsonSchema,
       subheadline: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
@@ -210,11 +206,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "features"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "features"],
     properties: {
       blockType: { type: "string", const: "featureList" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("featureList"),
+      designVariant: designVariantJsonSchemaFor("featureList"),
       title: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       intro: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
       features: {
@@ -235,22 +231,22 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "body"],
+    required: ["blockType", "designVariant", "anchor", "body"],
     properties: {
       blockType: { type: "string", const: "richText" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("richText"),
+      designVariant: designVariantJsonSchemaFor("richText"),
       body: richTextBlockJsonSchema,
     },
   },
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "eyebrow", "headline", "description", "primary", "secondary", "backgroundImage"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "description", "primary", "secondary", "backgroundImage"],
     properties: {
       blockType: { type: "string", const: "cta" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("cta"),
+      designVariant: designVariantJsonSchemaFor("cta"),
       eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       headline: richTextInlineJsonSchema,
       description: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
@@ -262,11 +258,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "description", "formName", "submitLabel", "fields"],
+    required: ["blockType", "designVariant", "anchor", "title", "description", "formName", "submitLabel", "fields"],
     properties: {
       blockType: { type: "string", const: "contactSection" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("contactSection"),
+      designVariant: designVariantJsonSchemaFor("contactSection"),
       title: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       description: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
       formName: { type: "string" },
@@ -290,11 +286,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "items"],
+    required: ["blockType", "designVariant", "anchor", "title", "items"],
     properties: {
       blockType: { type: "string", const: "faq" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("faq"),
+      designVariant: designVariantJsonSchemaFor("faq"),
       title: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       items: {
         type: "array",
@@ -310,11 +306,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "items"],
+    required: ["blockType", "designVariant", "anchor", "title", "items"],
     properties: {
       blockType: { type: "string", const: "testimonials" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("testimonials"),
+      designVariant: designVariantJsonSchemaFor("testimonials"),
       title: stringOrNull,
       items: {
         type: "array",
@@ -335,11 +331,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "plans"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "plans"],
     properties: {
       blockType: { type: "string", const: "pricing" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("pricing"),
+      designVariant: designVariantJsonSchemaFor("pricing"),
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       plans: {
@@ -373,11 +369,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "items"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "items"],
     properties: {
       blockType: { type: "string", const: "stats" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("stats"),
+      designVariant: designVariantJsonSchemaFor("stats"),
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       items: {
@@ -394,11 +390,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "logos"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "logos"],
     properties: {
       blockType: { type: "string", const: "logoCloud" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("logoCloud"),
+      designVariant: designVariantJsonSchemaFor("logoCloud"),
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       logos: {
@@ -415,11 +411,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "images", "cta"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "images", "cta"],
     properties: {
       blockType: { type: "string", const: "gallery" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("gallery"),
+      designVariant: designVariantJsonSchemaFor("gallery"),
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       images: {
@@ -437,11 +433,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "members"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "members"],
     properties: {
       blockType: { type: "string", const: "team" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("team"),
+      designVariant: designVariantJsonSchemaFor("team"),
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       members: {
@@ -464,11 +460,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "posts"],
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "posts"],
     properties: {
       blockType: { type: "string", const: "blogCards" },
       ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("blogCards"),
+      designVariant: designVariantJsonSchemaFor("blogCards"),
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       posts: {
@@ -490,67 +486,11 @@ const blockJsonSchemas = [
       },
     },
   },
-  {
-    type: "object",
-    additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "steps"],
-    properties: {
-      blockType: { type: "string", const: "processSteps" },
-      ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("processSteps"),
-      title: nullableInlineRichTextJsonSchema,
-      intro: nullableBlockRichTextJsonSchema,
-      steps: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["title", "description", "icon", "image", "cta"],
-          properties: {
-            title: richTextInlineJsonSchema,
-            description: nullableBlockRichTextJsonSchema,
-            icon: stringOrNull,
-            image: mediaRefJsonSchema,
-            cta: nullableLinkJsonSchema,
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "object",
-    additionalProperties: false,
-    required: ["blockType", "anchor", "analytics", "title", "intro", "columns", "rows"],
-    properties: {
-      blockType: { type: "string", const: "comparison" },
-      ...baseBlockProperties,
-      analytics: analyticsJsonSchemaFor("comparison"),
-      title: nullableInlineRichTextJsonSchema,
-      intro: nullableBlockRichTextJsonSchema,
-      columns: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["title", "description", "cta"],
-          properties: { title: richTextInlineJsonSchema, description: nullableBlockRichTextJsonSchema, cta: nullableLinkJsonSchema },
-        },
-      },
-      rows: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["label", "values"],
-          properties: {
-            label: { type: "string" },
-            values: { type: "array", items: { type: ["string", "boolean", "null"] } },
-          },
-        },
-      },
-    },
-  },
 ] as const
+
+const selfServeBlockJsonSchemas = blockJsonSchemas.filter((schema) =>
+  SELF_SERVE_GENERATION_BLOCK_TYPES.has(schema.properties.blockType.const),
+)
 
 const extractOpenAIOutputText = (response: any): string => {
   if (typeof response?.output_text === "string") return response.output_text
@@ -766,7 +706,7 @@ export const siteGenerationJsonSchema = {
           },
           blocks: {
             type: "array",
-            items: { anyOf: blockJsonSchemas },
+            items: { anyOf: selfServeBlockJsonSchemas },
           },
         },
       },
@@ -777,7 +717,7 @@ export const siteGenerationJsonSchema = {
         type: "object",
         additionalProperties: false,
         required: ["slug", "label"],
-        properties: { slug: { type: "string", enum: [...SITE_BLOCK_SLUGS] }, label: { type: "string" } },
+        properties: { slug: { type: "string", enum: SUPPORTED_SITE_GENERATION_BLOCKS }, label: { type: "string" } },
       },
     },
     assets: { type: "array", items: mediaRefJsonSchema },

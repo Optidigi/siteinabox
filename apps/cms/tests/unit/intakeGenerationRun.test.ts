@@ -111,29 +111,20 @@ describe("processIntakeSubmission", () => {
     expect(store["site-generation-runs"][0]?.generationOutputHash).toMatch(/^[a-f0-9]{64}$/)
     expect(store["site-generation-runs"][0]?.parsedOutput?.schemaVersion).toBe(1)
     expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/amicare|ami-care/)
-    expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/hyperui|mamba/)
     expect(store["site-generation-runs"][0]?.normalizedIntake?.requestedPages[0]?.slug).toBe("index")
     expect(store["site-generation-runs"][0]?.statusTransitions.map((entry: any) => entry.status)).toContain("applying")
     expect(store.pages).toHaveLength(1)
     expect(store.pages[0]?.slug).toBe("index")
-    expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.variant}`)).toEqual([
+    expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
       "hero:tailwindPlusSimpleCentered",
       "featureList:tailwindPlusCentered2x2",
-      "processSteps:undefined",
-      "faq:undefined",
+      "richText:tailblocksContentA",
+      "stats:tailwindPlusSimple",
       "cta:tailblocksCtaA",
       "contactSection:prelineCenteredNewsletter",
     ])
-    expect(store.pages[0]?.blocks.map((block: any) => block.analytics?.sectionVariant)).toEqual([
-      "tailwind-plus-simple-centered",
-      "tailwind-plus-centered-2x2",
-      undefined,
-      undefined,
-      "tailblocks-cta-a",
-      "preline-centered-newsletter",
-    ])
-    const processBlock = store.pages[0]?.blocks.find((block: any) => block.blockType === "processSteps")
-    expect(processBlock?.steps.every((step: any) => !("cta" in step))).toBe(true)
+    expect(store.pages[0]?.blocks.every((block: any) => !("variant" in block))).toBe(true)
+    expect(store.pages[0]?.blocks.every((block: any) => Object.keys(block.analytics ?? {}).every((key) => key !== "legacyVisualIdentity"))).toBe(true)
     const ctaBlock = store.pages[0]?.blocks.find((block: any) => block.blockType === "cta")
     expect(ctaBlock).not.toHaveProperty("secondary")
     expect(store["site-settings"][0]?.chrome?.banner).not.toHaveProperty("link")
@@ -210,8 +201,7 @@ describe("processIntakeSubmission", () => {
         } as any
         spec.pages[0]!.blocks[0] = {
           ...spec.pages[0]!.blocks[0]!,
-          variant: "amicareZenHero",
-          analytics: { sectionVariant: "amicare-zen-hero" },
+          designVariant: "amicareZenHero",
           rawHtml: "<section>Generated HTML is not allowed</section>",
         } as any
         return {

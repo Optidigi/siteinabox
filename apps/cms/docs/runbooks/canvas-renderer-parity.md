@@ -31,7 +31,11 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
    - Amicare: hero `top`, featureList `werkwijze`, richText `over`, CTA
      `contact` / `wat-telt` (contact vs quote).
    - Generic tenants: use neutral slugs (`features`, `cta`, etc.) or omit id.
-2. **Outer section classes** — `cms-block cms-block--<slug>` plus variant /
+2. **Generation eligibility** — Every generation-eligible block MUST have a
+   typed renderer, a sidebar `BlockFormFields` mapping, and canvas editing for
+   the same structured fields. Blocks without both sidebar and canvas editing
+   are renderer/catalog work only and must stay out of generation.
+3. **Outer section classes** — `cms-block cms-block--<slug>` plus variant /
    layout utilities MUST match the canonical renderer for Ami-care tenant renderer blocks.
    See `rt-dom-contract.md § Canvas block DOM contract` and
    `tests/unit/canvas-renderer-block-parity.test.ts`.
@@ -40,14 +44,20 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
    styling and MUST only be applied to DOM that follows the native `cms-block__*`
    contract. Ami-care tenant renderer editable markup already carries its visual treatment
    through fallback canvas classes and must not mix in native source classes.
-3. **Inner BEM classes** — Generation blocks (`pricing`, `stats`, …) MUST keep
+4. **Inner BEM classes** — Generation blocks (`pricing`, `stats`, …) MUST keep
    `cms-block__*` inner classes aligned with `packages/site-renderer/src/blocks/*`.
-4. **Canvas-only attributes** — `data-active`, editor gutters, and gap overlays
+5. **Canvas-only attributes** — `data-active`, editor gutters, and gap overlays
    are CMS-only. Renderer output MUST NOT depend on them; tenant CSS MUST NOT
    target them.
-5. **Theme tokens** — Both surfaces consume `var(--font-*)` and
-   `var(--radius-*)` per `rt-dom-contract.md § Theme tokens`. Hard-coded colours
-   in either tree are defects.
+6. **Theme tokens** — Both surfaces consume global theme tokens per
+   `rt-dom-contract.md § Theme tokens`. Hard-coded colours, fonts, radius values,
+   per-block visual tokens, arbitrary class payloads, or provider token
+   overrides in either tree are defects. The global theme toolbar owns fonts,
+   colors, shape, radius, border style, and mode.
+7. **Variant selection** — Generation chooses approved block `designVariant` IDs for
+   Tailwind Plus, Preline UI, or Tailblocks. Analytics metadata is not a
+   design-selection API. Inactive provider families, SIAB-owned generic visual
+   variants, and Ami-care legacy variants must not be available to generation.
 
 ## Renderer-native editable blocks (target architecture)
 

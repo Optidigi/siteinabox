@@ -34,7 +34,6 @@ const nonEmpty = (val: unknown) => typeof val === "string" && val.trim() !== ""
 
 const sharedChromeVariantOptions = [
   { label: "Default", value: "default" },
-  { label: "HyperUI simple", value: "hyperUiSimple" },
 ]
 
 const headerFooterChromeVariantOptions = [

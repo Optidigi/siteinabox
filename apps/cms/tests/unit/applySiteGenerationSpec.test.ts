@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
-import { applySiteGenerationSpec, siteGenerationSpecHash, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
+import { applySiteGenerationSpec, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 import { pageToJson } from "@/lib/projection/pageToJson"
 
 const rtInline = (text: string) =>
@@ -68,12 +68,14 @@ const fixtureSpec = (): SiteGenerationSpec => ({
       blocks: [
         {
           blockType: "hero",
+          designVariant: "tailwindPlusSimpleCentered",
           headline: rtInline("Fixture Care"),
           subheadline: rtBlock("Editable CMS draft content."),
           cta: { label: "Contact", href: "#contact" },
         },
         {
           blockType: "contactSection",
+          designVariant: "prelineCenteredNewsletter",
           anchor: "contact",
           title: rtInline("Contact"),
           formName: "Contact form",
@@ -176,7 +178,7 @@ describe("applySiteGenerationSpec", () => {
       radius: "8px",
       mode: "light",
     })
-    expect(tenant.siteManifest.generation.hash).toBe(siteGenerationSpecHash(fixtureSpec()))
+    expect(tenant.siteManifest.generation.hash).toBe(result.idempotencyKey)
     expect(settings.navHeader[0]).toMatchObject({ type: "page", page: page.id })
     expect(settings.navHeader[1]).toMatchObject({ type: "section", page: page.id, anchor: "contact" })
     expect([...calls.create, ...calls.update].every((call) => call.context?.skipProjection === true)).toBe(true)
@@ -312,6 +314,51 @@ describe("applySiteGenerationSpec", () => {
     } finally {
       fetchMock.mockRestore()
     }
+  })
+
+  it("does not download or require remote media for self-serve generated placeholders", async () => {
+    const { payload, store } = createPayloadStub()
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+    const spec = fixtureSpec()
+
+    const result = await applySiteGenerationSpec(payload, {
+      ...spec,
+      pages: [
+        {
+          ...spec.pages[0]!,
+          blocks: [
+            {
+              ...spec.pages[0]!.blocks[0]!,
+              image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
+            } as any,
+          ],
+        },
+      ],
+    }, { variantScope: "self-serve" })
+
+    expect(result.ok).toBe(true)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(store.media).toHaveLength(0)
+    expect(store.pages[0]!.blocks[0].image).toBeUndefined()
+    fetchMock.mockRestore()
+  })
+
+  it("accepts generated designVariant without writing legacy visual fields", async () => {
+    const { payload, store } = createPayloadStub()
+    const spec = fixtureSpec()
+    spec.pages[0]!.blocks[0] = {
+      ...spec.pages[0]!.blocks[0]!,
+      designVariant: "tailwindPlusSimpleCentered",
+    } as any
+
+    const result = await applySiteGenerationSpec(payload, spec, { variantScope: "self-serve" })
+
+    expect(result.ok).toBe(true)
+    expect(store.pages[0]!.blocks[0]).toMatchObject({
+      designVariant: "tailwindPlusSimpleCentered",
+    })
+    expect(store.pages[0]!.blocks[0]).not.toHaveProperty("variant")
+    expect(store.pages[0]!.blocks[0].analytics ?? {}).toEqual({})
   })
 
   it("updates existing records on repeat apply instead of creating duplicates", async () => {
@@ -486,7 +533,7 @@ describe("applySiteGenerationSpec", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      analytics: { sectionVariant: "tailblocks-cta-a" },
+      designVariant: "tailblocksCtaA",
     } as any
 
     const result = await applySiteGenerationSpec(payload, spec)
@@ -498,16 +545,17 @@ describe("applySiteGenerationSpec", () => {
     expect(store["site-settings"]).toHaveLength(0)
   })
 
-  it("accepts only canonical approved source-backed variants for the matching block type", () => {
+  it("rejects unknown analytics visual identity fields", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      analytics: { sectionVariant: "tailwind-plus-simple-centered" },
+      analytics: { legacyVisualIdentity: "tailwindPlusSimpleCentered" },
     } as any
 
     const report = validateSiteGenerationSpecForCms(spec)
 
-    expect(report.valid).toBe(true)
+    expect(report.valid).toBe(false)
+    expect(report.issues.map((entry) => entry.code)).toContain("invalid_contract_shape")
   })
 
   it("allows canonical generated block source metadata", () => {
@@ -586,7 +634,7 @@ describe("applySiteGenerationSpec", () => {
     spec.pages[0]!.blocks = [
       {
         blockType: "pricing",
-        variant: "tailwindPlusSimpleTiers",
+        designVariant: "tailwindPlusSimpleTiers",
         title: rtInline("Pakketten"),
         intro: rtBlock("Kies een passend pakket."),
         plans: [{
@@ -602,48 +650,35 @@ describe("applySiteGenerationSpec", () => {
       } as any,
       {
         blockType: "stats",
-        variant: "tailwindPlusSimple",
+        designVariant: "tailwindPlusSimple",
         title: rtInline("Resultaten"),
         intro: rtBlock("Meetbare impact."),
         items: [{ value: "24", label: "Projecten", description: rtBlock("Opgeleverd dit jaar.") }],
       } as any,
       {
         blockType: "logoCloud",
-        variant: "tailwindPlusSimple",
+        designVariant: "tailwindPlusSimple",
         title: rtInline("Partners"),
         logos: [{ name: "Partner", image: 12, href: "https://example.com" }],
       } as any,
       {
         blockType: "gallery",
-        variant: "prelineSquareGrid",
+        designVariant: "prelineSquareGrid",
         title: rtInline("Werk"),
         images: [{ image: 13, caption: rtBlock("Recent werk."), link: { label: "Bekijk", href: "/werk" } }],
         cta: { label: "Alles bekijken", href: "/werk" },
       } as any,
       {
         blockType: "team",
-        variant: "tailwindPlusGrid",
+        designVariant: "tailwindPlusGrid",
         title: rtInline("Team"),
         members: [{ name: "Alex", role: "Founder", bio: rtBlock("Helpt klanten groeien."), image: 14, links: [{ label: "LinkedIn", href: "https://example.com" }] }],
       } as any,
       {
         blockType: "blogCards",
-        variant: "tailwindPlusThreeColumn",
+        designVariant: "tailwindPlusThreeColumn",
         title: rtInline("Updates"),
         posts: [{ title: rtInline("Nieuwe site"), excerpt: rtBlock("Wat er verbeterde."), image: 15, href: "/blog/nieuwe-site", date: "2026-06-27", author: "Alex", cta: { label: "Lees", href: "/blog/nieuwe-site" } }],
-      } as any,
-      {
-        blockType: "processSteps",
-        variant: "mambaSteps",
-        title: rtInline("Proces"),
-        steps: [{ title: rtInline("Intake"), description: rtBlock("We verzamelen de basis."), icon: "clipboard-list", image: 16, cta: { label: "Start", href: "/intake" } }],
-      } as any,
-      {
-        blockType: "comparison",
-        variant: "matrix",
-        title: rtInline("Vergelijking"),
-        columns: [{ title: rtInline("Basis"), description: rtBlock("Instap."), cta: { label: "Kies", href: "/intake" } }],
-        rows: [{ label: "Pagina's", values: ["1"] }],
       } as any,
     ]
     spec.blocks = [
@@ -653,8 +688,6 @@ describe("applySiteGenerationSpec", () => {
       { slug: "gallery", label: "Gallery" },
       { slug: "team", label: "Team" },
       { slug: "blogCards", label: "Blog cards" },
-      { slug: "processSteps", label: "Process steps" },
-      { slug: "comparison", label: "Comparison" },
     ]
 
     const report = validateSiteGenerationSpecForCms(spec)
@@ -669,8 +702,6 @@ describe("applySiteGenerationSpec", () => {
       "gallery",
       "team",
       "blogCards",
-      "processSteps",
-      "comparison",
     ])
   })
 
@@ -686,8 +717,7 @@ describe("applySiteGenerationSpec", () => {
     } as any
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      variant: "amicareZenHero",
-      analytics: { sectionVariant: "amicare-zen-hero" },
+      designVariant: "amicareZenHero",
     } as any
 
     const report = validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" })
@@ -705,6 +735,7 @@ describe("applySiteGenerationSpec", () => {
       { key: "html", value: "<div>Generated HTML</div>" },
       { key: "className", value: "bg-red-500 p-[99px]" },
       { key: "classes", value: ["grid", "md:grid-cols-7"] },
+      { key: "style", value: { padding: "64px" } },
       { key: "component", value: "export function GeneratedBlock() { return null }" },
       { key: "sourceCode", value: "const classes = 'p-24'" },
       { key: "filePath", value: "sites/new-tenant/src/pages/index.tsx" },
@@ -726,6 +757,7 @@ describe("applySiteGenerationSpec", () => {
     }
 
     const blockedStructuredFields = [
+      { key: "tokens", value: { spacing: "compact" }, code: "generated_block_visual_tokens" },
       { key: "tokens", value: { className: "p-[99px]", spacing: "compact" } },
       { key: "tokens", value: { nested: { classes: ["grid", "md:grid-cols-7"] } } },
       { key: "metadata", value: { rawHtml: "<div>Generated HTML</div>" } },
@@ -742,7 +774,7 @@ describe("applySiteGenerationSpec", () => {
       const result = await applySiteGenerationSpec(payload, spec)
 
       expect(result.ok, `${field.key}:${JSON.stringify(field.value)}`).toBe(false)
-      expect(result.validation.issues.map((entry) => entry.code), field.key).toContain("invalid_contract_shape")
+      expect(result.validation.issues.map((entry) => entry.code), field.key).toContain(field.code ?? "invalid_contract_shape")
       expect(store.tenants, field.key).toHaveLength(0)
       expect(store.pages, field.key).toHaveLength(0)
       expect(store["site-settings"], field.key).toHaveLength(0)

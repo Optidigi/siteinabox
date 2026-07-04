@@ -21,7 +21,6 @@ const SAFE_KEYS = new Set([
   "section_type",
   "section_position",
   "section_anchor",
-  "section_variant",
   "block_preset_id",
   "content_signature",
   "action_id",

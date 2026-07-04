@@ -127,8 +127,6 @@ describe("generated intake canvas render smoke", () => {
       { blockType: "gallery", title: rtInline("Gallery"), images: [{ image: 1, caption: rtBlock("Work.") }] },
       { blockType: "team", title: rtInline("Team"), members: [{ name: "Alex", role: "Founder", bio: rtBlock("Builds sites."), image: 1 }] },
       { blockType: "blogCards", title: rtInline("Updates"), posts: [{ title: rtInline("Launch"), excerpt: rtBlock("New site."), image: 1, href: "/blog/launch" }] },
-      { blockType: "processSteps", title: rtInline("Process"), steps: [{ title: rtInline("Intake"), description: rtBlock("Gather input."), icon: "clipboard-list" }] },
-      { blockType: "comparison", title: rtInline("Compare"), columns: [{ title: rtInline("Basic") }], rows: [{ label: "Pages", values: ["1"] }] },
     ]
 
     const html = renderToStaticMarkup(
@@ -150,7 +148,6 @@ describe("generated intake canvas render smoke", () => {
     )
 
     expect(html).toContain("cms-block--pricing")
-    expect(html).toContain("cms-block--comparisonMatrix")
     expect(html).not.toContain("cms-block--unknown")
     expect(html).not.toContain("Unknown block type")
   })

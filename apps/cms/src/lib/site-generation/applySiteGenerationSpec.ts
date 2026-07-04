@@ -13,14 +13,15 @@ import type {
 } from "@siteinabox/contracts/generation"
 import {
   contractValidationReport,
-  isSupportedBlockVariant,
-  isSupportedBlockSectionVariant,
   isSupportedOfficialTenantBlockVariant,
-  isSupportedOfficialTenantBlockSectionVariant,
   OfficialTenantSiteGenerationSpecSchema,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
-import { SITE_CHROME_CATALOG, SITE_GENERATION_BLOCK_CATALOG_BY_SLUG } from "@siteinabox/contracts/block-catalog"
+import {
+  SITE_CHROME_CATALOG,
+  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
+} from "@siteinabox/contracts/block-catalog"
 import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import type { MediaRef } from "@siteinabox/contracts/site"
 import type { Payload } from "payload"
@@ -68,9 +69,23 @@ const TENANT_SLUG_REGEX = /^[a-z0-9-]+$/
 const DOMAIN_REGEX =
   /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
+const SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS = new Set<string>(
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug),
+)
+const SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK = new Map<string, Set<string>>()
+
+for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
+  const variants = SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(variant.slug) ?? new Set<string>()
+  variants.add(variant.variant)
+  SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.set(variant.slug, variants)
+}
 
 export type SiteGenerationValidationOptions = {
   variantScope?: "tenant-aware" | "self-serve"
+}
+
+export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
+  mediaMode?: "skip-generated-placeholders" | "upload-generated-media"
 }
 
 const sortValue = (value: unknown): unknown => {
@@ -110,18 +125,53 @@ const variantAllowedForTenant = (
 
 const blockVariantScopeIssue = (
   blockType: string,
-  field: "variant" | "sectionVariant",
   value: string,
   tenantSlug: string | null,
   validationScope: SiteGenerationValidationOptions["variantScope"],
 ): string | null => {
   if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as any)) return null
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
-  const variant = catalog?.variants.find((entry) =>
-    field === "variant" ? entry.variant === value : (entry as { sectionVariant?: string }).sectionVariant === value,
-  )
+  const variant = catalog?.variants.find((entry) => entry.variant === value)
   if (!variant || variantAllowedForTenant(variant.scope, tenantSlug, validationScope)) return null
-  return `Generated block ${field} "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
+  return `Generated block designVariant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
+}
+
+const clonePlain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+const canonicalizeGeneratedBlock = (
+  block: Record<string, unknown>,
+): Record<string, unknown> => {
+  const next = { ...block }
+  const designVariant = typeof next.designVariant === "string" && next.designVariant.trim()
+    ? next.designVariant.trim()
+    : null
+
+  if (designVariant) {
+    next.designVariant = designVariant
+  } else {
+    if (Object.prototype.hasOwnProperty.call(next, "designVariant")) {
+      next.designVariant = null
+    }
+  }
+
+  return next
+}
+
+export const canonicalizeSiteGenerationSpecForCms = (
+  spec: SiteGenerationSpec,
+): SiteGenerationSpec => {
+  const next = clonePlain(spec) as SiteGenerationSpec
+  if (Array.isArray(next.pages)) {
+    next.pages = next.pages.map((page) => ({
+      ...page,
+      blocks: Array.isArray(page.blocks)
+        ? page.blocks.map((block) =>
+            canonicalizeGeneratedBlock(block as Record<string, unknown>) as typeof block,
+          )
+        : page.blocks,
+    }))
+  }
+  return next
 }
 
 const chromeVariantScopeIssue = (
@@ -136,6 +186,11 @@ const chromeVariantScopeIssue = (
   return `Generated ${area} chrome variant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
 }
 
+const isSupportedSelfServeSourceBackedBlockVariant = (
+  blockType: string,
+  variant: string | null | undefined,
+): boolean => typeof variant === "string" && (SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(blockType)?.has(variant) ?? false)
+
 export const validateSiteGenerationSpecForCms = (
   spec: SiteGenerationSpec,
   options: SiteGenerationValidationOptions = {},
@@ -144,10 +199,7 @@ export const validateSiteGenerationSpecForCms = (
   const validationScope = options.variantScope ?? "tenant-aware"
   const supportsBlockVariant = validationScope === "tenant-aware"
     ? isSupportedOfficialTenantBlockVariant
-    : isSupportedBlockVariant
-  const supportsBlockSectionVariant = validationScope === "tenant-aware"
-    ? isSupportedOfficialTenantBlockSectionVariant
-    : isSupportedBlockSectionVariant
+    : isSupportedSelfServeSourceBackedBlockVariant
   const candidate = spec as unknown
 
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -157,7 +209,11 @@ export const validateSiteGenerationSpecForCms = (
     }
   }
 
-  const value = candidate as Partial<SiteGenerationSpec> & Record<string, unknown>
+  const originalValue = candidate as Partial<SiteGenerationSpec> & Record<string, unknown>
+  const canonicalValue = canonicalizeSiteGenerationSpecForCms(
+    originalValue as SiteGenerationSpec,
+  ) as Partial<SiteGenerationSpec> & Record<string, unknown>
+  const value = canonicalValue
   const contractSchema = validationScope === "tenant-aware"
     ? OfficialTenantSiteGenerationSpecSchema
     : SiteGenerationSpecSchema
@@ -169,7 +225,7 @@ export const validateSiteGenerationSpecForCms = (
   const tenant = value.tenant as SiteGenerationSpec["tenant"] | undefined
   const intake = value.intake as SiteGenerationSpec["intake"] | undefined
   const settings = value.settings as SiteGenerationSpec["settings"] | undefined
-  const pages = value.pages as SiteGenerationSpec["pages"] | undefined
+  const pages = canonicalValue.pages as SiteGenerationSpec["pages"] | undefined
   const blocks = value.blocks as SiteGenerationSpec["blocks"] | undefined
   const pagesArray = Array.isArray(pages) ? pages : undefined
   const blocksArray = Array.isArray(blocks) ? blocks : undefined
@@ -247,42 +303,53 @@ export const validateSiteGenerationSpecForCms = (
         ))
         return
       }
-      const analytics = (block as Record<string, unknown>).analytics
-      const sectionVariant = analytics && typeof analytics === "object" && !Array.isArray(analytics)
-        ? (analytics as Record<string, unknown>).sectionVariant
-        : undefined
-      if (typeof sectionVariant === "string" && sectionVariant && !supportsBlockSectionVariant(blockType, sectionVariant)) {
+      if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
         issues.push(issue(
-          "unsupported_block_variant",
-          `Generated block variant "${sectionVariant}" is not approved for block type "${blockType}".`,
-          ["pages", index, "blocks", blockIndex, "analytics", "sectionVariant"],
+          "unsupported_self_serve_block_type",
+          `Generated block type "${blockType}" does not have an approved self-serve source-backed design variant.`,
+          ["pages", index, "blocks", blockIndex, "blockType"],
         ))
       }
-      if (typeof sectionVariant === "string" && sectionVariant) {
-        const message = blockVariantScopeIssue(blockType, "sectionVariant", sectionVariant, tenantSlug, validationScope)
-        if (message) {
-          issues.push(issue(
-            "tenant_exclusive_block_variant",
-            message,
-            ["pages", index, "blocks", blockIndex, "analytics", "sectionVariant"],
-          ))
-        }
+      const originalBlock = Array.isArray((originalValue.pages as SiteGenerationSpec["pages"] | undefined)?.[index]?.blocks)
+        ? ((originalValue.pages as SiteGenerationSpec["pages"])[index]!.blocks[blockIndex] as Record<string, unknown> | undefined)
+        : undefined
+      const designVariant = typeof originalBlock?.designVariant === "string" ? originalBlock.designVariant.trim() : ""
+      if (validationScope === "self-serve" && !designVariant) {
+        issues.push(issue(
+          "missing_approved_design_variant",
+          `Generated block type "${blockType}" must include an approved source-backed designVariant.`,
+          ["pages", index, "blocks", blockIndex, "designVariant"],
+        ))
       }
-      const variant = (block as Record<string, unknown>).variant
+      if (Object.prototype.hasOwnProperty.call(block as Record<string, unknown>, "tokens")) {
+        issues.push(issue(
+          "generated_block_visual_tokens",
+          "Generated blocks must not include block-level tokens.",
+          ["pages", index, "blocks", blockIndex, "tokens"],
+        ))
+      }
+      if (Object.prototype.hasOwnProperty.call(block as Record<string, unknown>, "style")) {
+        issues.push(issue(
+          "generated_block_visual_style",
+          "Generated blocks must not include block-level style data.",
+          ["pages", index, "blocks", blockIndex, "style"],
+        ))
+      }
+      const variant = (block as Record<string, unknown>).designVariant
       if (typeof variant === "string" && variant && !supportsBlockVariant(blockType, variant)) {
         issues.push(issue(
           "unsupported_block_variant",
-          `Generated block variant "${variant}" is not approved for block type "${blockType}".`,
-          ["pages", index, "blocks", blockIndex, "variant"],
+          `Generated block designVariant "${variant}" is not approved for block type "${blockType}".`,
+          ["pages", index, "blocks", blockIndex, "designVariant"],
         ))
       }
       if (typeof variant === "string" && variant) {
-        const message = blockVariantScopeIssue(blockType, "variant", variant, tenantSlug, validationScope)
+        const message = blockVariantScopeIssue(blockType, variant, tenantSlug, validationScope)
         if (message) {
           issues.push(issue(
             "tenant_exclusive_block_variant",
             message,
-            ["pages", index, "blocks", blockIndex, "variant"],
+            ["pages", index, "blocks", blockIndex, "designVariant"],
           ))
         }
       }
@@ -315,6 +382,13 @@ export const validateSiteGenerationSpecForCms = (
     }
     if (!SUPPORTED_BLOCK_SLUGS.has(block.slug)) {
       issues.push(issue("unsupported_manifest_block_slug", `Generated manifest block slug "${String(block.slug)}" is not supported.`, ["blocks", index, "slug"]))
+    }
+    if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
+      issues.push(issue(
+        "unsupported_self_serve_manifest_block_slug",
+        `Generated manifest block slug "${String(block.slug)}" does not have an approved self-serve source-backed design variant.`,
+        ["blocks", index, "slug"],
+      ))
     }
   })
 
@@ -544,7 +618,10 @@ const upsertGeneratedMediaRefs = async (
   payload: Payload,
   tenantId: string | number,
   spec: SiteGenerationSpec,
+  options: Pick<SiteGenerationApplyOptions, "mediaMode"> = {},
 ): Promise<MediaIdMap> => {
+  if (options.mediaMode === "skip-generated-placeholders") return new Map()
+
   const refs = collectGeneratedMediaRefs({
     assets: spec.assets,
     settings: spec.settings,
@@ -885,19 +962,26 @@ const retainedPagesForTenant = async (
 export async function applySiteGenerationSpec(
   payload: Payload,
   spec: SiteGenerationSpec,
+  options: SiteGenerationApplyOptions = {},
 ): Promise<CmsGenerationApplyResult> {
-  const validation = validateSiteGenerationSpecForCms(spec)
+  const validation = validateSiteGenerationSpecForCms(spec, options)
   if (!validation.valid) {
     return { ok: false, validation }
   }
-  const parsedSpec = OfficialTenantSiteGenerationSpecSchema.parse(spec)
+  const canonicalSpec = canonicalizeSiteGenerationSpecForCms(spec)
+  const parsedContractSpec = (options.variantScope === "self-serve"
+    ? SiteGenerationSpecSchema
+    : OfficialTenantSiteGenerationSpecSchema).parse(canonicalSpec)
+  const parsedSpec = parsedContractSpec as SiteGenerationSpec
 
-  const idempotencyKey = siteGenerationSpecHash(parsedSpec)
-  const theme = themeToCmsTokens(parsedSpec.theme)
-  const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
+  const idempotencyKey = siteGenerationSpecHash(parsedContractSpec)
+  const theme = themeToCmsTokens(parsedContractSpec.theme)
+  const siteManifest = siteManifestForSpec(parsedContractSpec, idempotencyKey)
   const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
   const tenantId = tenant.doc.id as string | number
-  const mediaIds = await upsertGeneratedMediaRefs(payload, tenantId, parsedSpec)
+  const mediaIds = await upsertGeneratedMediaRefs(payload, tenantId, parsedSpec, {
+    mediaMode: options.mediaMode ?? (options.variantScope === "self-serve" ? "skip-generated-placeholders" : "upload-generated-media"),
+  })
   const pages = await upsertPages(payload, tenantId, parsedSpec.pages, mediaIds)
   const pageBySlug = new Map(pages.map(({ doc }) => [doc.slug, doc]))
   const settings = await upsertSettings(payload, tenantId, parsedSpec.settings, pageBySlug, mediaIds)

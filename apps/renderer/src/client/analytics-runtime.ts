@@ -370,7 +370,6 @@ const sectionProperties = (section: Element) => ({
   section_type: section.getAttribute("data-siab-section-type") || "unknown",
   section_position: Number(section.getAttribute("data-siab-section-position") || 0),
   section_anchor: section.getAttribute("data-siab-section-anchor") || null,
-  section_variant: section.getAttribute("data-siab-section-variant") || null,
   block_preset_id: section.getAttribute("data-siab-block-preset-id") || null,
   content_signature: section.getAttribute("data-siab-content-signature") || null,
 })

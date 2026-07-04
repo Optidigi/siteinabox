@@ -1470,23 +1470,21 @@ svg {
   border-color: currentColor;
   background: transparent;
   color: inherit;
-}.site-renderer:not([data-tenant-renderer]) .cms-block--pricing,
+}
+
+.site-renderer:not([data-tenant-renderer]) .cms-block--pricing,
 .site-renderer:not([data-tenant-renderer]) .cms-block--stats,
 .site-renderer:not([data-tenant-renderer]) .cms-block--logoCloud,
 .site-renderer:not([data-tenant-renderer]) .cms-block--gallery,
 .site-renderer:not([data-tenant-renderer]) .cms-block--team,
-.site-renderer:not([data-tenant-renderer]) .cms-block--blogCards,
-.site-renderer:not([data-tenant-renderer]) .cms-block--processSteps,
-.site-renderer:not([data-tenant-renderer]) .cms-block--comparisonMatrix {
+.site-renderer:not([data-tenant-renderer]) .cms-block--blogCards {
   color: var(--color-ink);
 }
 
 .site-renderer:not([data-tenant-renderer]) .cms-block__pricingHeader,
 .site-renderer:not([data-tenant-renderer]) .cms-block__statsHeader,
 .site-renderer:not([data-tenant-renderer]) .cms-block__galleryHeader,
-.site-renderer:not([data-tenant-renderer]) .cms-block__blogHeader,
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepsHeader,
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrixHeader {
+.site-renderer:not([data-tenant-renderer]) .cms-block__blogHeader {
   display: grid;
   gap: 1rem;
 }
@@ -1496,8 +1494,7 @@ svg {
 .site-renderer:not([data-tenant-renderer]) .cms-block__logos,
 .site-renderer:not([data-tenant-renderer]) .cms-block__galleryGrid,
 .site-renderer:not([data-tenant-renderer]) .cms-block__teamList,
-.site-renderer:not([data-tenant-renderer]) .cms-block__blogGrid,
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepsList {
+.site-renderer:not([data-tenant-renderer]) .cms-block__blogGrid {
   display: grid;
   gap: 1rem;
   padding: 0;
@@ -1803,128 +1800,6 @@ svg {
 
 .site-renderer:not([data-tenant-renderer]) .cms-block__blogCard h3 {
   font-size: 1.125rem;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepsList {
-  gap: 0;
-  max-width: 48rem;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__step {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 1rem;
-  padding: 0 0 2rem;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__step:not(:last-child)::before {
-  position: absolute;
-  top: 3rem;
-  bottom: 0.5rem;
-  left: 1.25rem;
-  width: 1px;
-  background: var(--color-rule);
-  content: "";
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepMarker {
-  z-index: 1;
-  display: inline-flex;
-  width: 2.5rem;
-  height: 2.5rem;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  font-weight: 800;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepMarker img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepMarker svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__stepCta {
-  display: inline-flex;
-  margin-top: 0.75rem;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrixScroll {
-  margin-top: 2rem;
-  overflow-x: auto;
-  border: 1px solid var(--color-rule);
-  border-radius: var(--radius-lg);
-  background: var(--color-card);
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix {
-  width: 100%;
-  min-width: 42rem;
-  border-collapse: collapse;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix th,
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix td {
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-rule);
-  text-align: left;
-  vertical-align: top;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix thead th {
-  color: var(--color-ink);
-  font-weight: 800;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix thead th:not(:first-child),
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix td {
-  text-align: center;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix th span {
-  display: block;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix th small {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--color-ink-muted);
-  font-weight: 400;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix tbody th {
-  color: var(--color-ink);
-  font-weight: 700;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix tr:last-child th,
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrix tr:last-child td {
-  border-bottom: 0;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrixCheck {
-  color: var(--color-accent);
-  font-weight: 900;
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrixDash {
-  color: var(--color-ink-muted);
-}
-
-.site-renderer:not([data-tenant-renderer]) .cms-block__matrixActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1rem;
 }
 
 .site-renderer:not([data-tenant-renderer]) .cms-block--source-tailwind-plus-simple-pricing {
@@ -2294,7 +2169,6 @@ svg {
   .site-renderer:not([data-tenant-renderer]) .cms-block__features {
     grid-template-columns: 1fr;
   }
-  .site-renderer:not([data-tenant-renderer]) .cms-block__comparisonGrid,
   .site-renderer:not([data-tenant-renderer]) .cms-block--source-tailwind-plus-centered-2x2 .cms-block__features,
   .site-renderer:not([data-tenant-renderer]) .cms-block--source-tailwind-plus-newsletter-details {
     grid-template-columns: 1fr;

@@ -19,11 +19,9 @@ import { AmicareCanvasBlockRenderer } from "@/components/editor/canvas/AmicareCa
 import { RendererCanvasBlockRenderer } from "@/components/editor/canvas/RendererCanvasBlockRenderer"
 import {
   BlogCardsCanvas,
-  ComparisonCanvas,
   GalleryCanvas,
   LogoCloudCanvas,
   PricingCanvas,
-  ProcessStepsCanvas,
   StatsCanvas,
   TeamCanvas,
 } from "@/components/editor/canvas/blocks/GenerationBlocks"
@@ -192,8 +190,6 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     case "gallery":        return <GalleryCanvas {...augmented} />
     case "team":           return <TeamCanvas {...augmented} />
     case "blogCards":      return <BlogCardsCanvas {...augmented} />
-    case "processSteps":   return <ProcessStepsCanvas {...augmented} />
-    case "comparison":     return <ComparisonCanvas {...augmented} />
     default:
       return (
         <section {...unknownSectionProps}>

@@ -1,6 +1,6 @@
 import type { CollectionConfig } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
-import { BLOCKS } from "@/blocks/registry"
+import { ALL_BLOCKS } from "@/blocks/registry"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
 import { deletePageFile } from "@/hooks/deleteFileFromDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -34,7 +34,7 @@ export const Pages: CollectionConfig = {
         { label: "Draft", value: "draft" },
         { label: "Published", value: "published" }
       ]},
-    { name: "blocks", type: "blocks", blocks: [...BLOCKS] },
+    { name: "blocks", type: "blocks", blocks: [...ALL_BLOCKS] },
     { name: "seo", type: "group", fields: [
       { name: "title", type: "text" },
       { name: "description", type: "textarea" },

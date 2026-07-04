@@ -278,9 +278,8 @@ const amicarePages: GeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "hero",
-        variant: "amicareZenHero",
+        designVariant: "amicareZenHero",
         anchor: "top",
-        analytics: { sectionVariant: "amicare-zen-hero" },
         eyebrow: inlineText("Voor jongeren en gezinnen"),
         headline: inlineParts([
           { text: "Jeugdzorg met " },
@@ -298,9 +297,8 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "featureList",
-        variant: "amicareCareCards",
+        designVariant: "amicareCareCards",
         anchor: "werkwijze",
-        analytics: { sectionVariant: "amicare-care-cards" },
         title: inlineParts([{ text: "Wat voor mij " }, { text: "centraal staat", marks: ["italic"] }, { text: "." }]),
         intro: blockText("Drie dingen"),
         features: [
@@ -311,16 +309,14 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "richText",
-        variant: "amicareEditorial",
+        designVariant: "amicareEditorial",
         anchor: "over",
-        analytics: { sectionVariant: "amicare-editorial" },
         body: amicareEditorialBody(),
       },
       {
         blockType: "cta",
-        variant: "amicareQuoteContact",
+        designVariant: "amicareQuoteContact",
         anchor: "wat-telt",
-        analytics: { sectionVariant: "amicare-quote-contact" },
         headline: inlineText("Vertrouwen ontstaat in de tijd, niet in één gesprek."),
         description: blockText("Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen."),
         backgroundImage: {
@@ -334,9 +330,8 @@ const amicarePages: GeneratedPageSpec[] = [
       },
       {
         blockType: "cta",
-        variant: "amicareQuoteContact",
+        designVariant: "amicareQuoteContact",
         anchor: "contact",
-        analytics: { sectionVariant: "amicare-quote-contact" },
         headline: inlineText("Wilt u meer informatie of in contact komen?"),
         primary: { label: "info@ami-care.nl", href: "mailto:info@ami-care.nl" },
       },

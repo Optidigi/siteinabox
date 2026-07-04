@@ -11,7 +11,6 @@ import type {
   AnalyticsBlockMetadata,
   Block,
   BlogCardsBlock,
-  ComparisonBlock,
   ContactSectionBlock,
   CTABlock,
   FAQBlock,
@@ -25,7 +24,6 @@ import type {
   MediaRef,
   Page,
   PricingBlock,
-  ProcessStepsBlock,
   RichTextBlock,
   SiteSettings,
   SiteChromeVariant,
@@ -89,15 +87,24 @@ const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET = new Set<string>(
 
 const isSelfServeBlockCatalogVariant = (variant: SiteBlockCatalogVariant) =>
   variant.scope.kind === "global" &&
-  (
-    variant.provenance.implementation === "siab-owned" ||
-    SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET.has(variant.provenance.sourceName)
-  )
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET.has(variant.provenance.sourceName)
 
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
 const jsonRecordSchema = z.record(z.string(), z.unknown())
-const FORBIDDEN_GENERATED_PAYLOAD_KEYS = ["className", "classes", "rawHtml", "html", "component", "sourceCode", "filePath"] as const
+const FORBIDDEN_GENERATED_PAYLOAD_KEYS = [
+  "className",
+  "classes",
+  "rawHtml",
+  "html",
+  "component",
+  "sourceCode",
+  "filePath",
+  "tokens",
+  "style",
+  "color",
+  "font",
+] as const
 const FORBIDDEN_GENERATED_PAYLOAD_KEY_SET = new Set<string>(FORBIDDEN_GENERATED_PAYLOAD_KEYS)
 const hostnameSchema = z
   .string()
@@ -110,33 +117,6 @@ const hostnameSchema = z
   })
 const slugSchema = z.string().regex(SLUG_REGEX)
 const cssColorSchema = z.string().regex(HEX_OR_CSS_FUNCTION_COLOR_REGEX)
-
-export const SITE_SECTION_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
-  SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
-    slug,
-    new Set(
-      SITE_GENERATION_BLOCK_CATALOG
-        .filter((entry) => entry.slug === slug)
-        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .map((variant) => variant.sectionVariant)
-        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
-    ),
-  ]),
-) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
-
-export const SITE_GENERIC_SECTION_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
-  SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
-    slug,
-    new Set(
-      SITE_GENERATION_BLOCK_CATALOG
-        .filter((entry) => entry.slug === slug)
-        .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .filter(isSelfServeBlockCatalogVariant)
-        .map((variant) => variant.sectionVariant)
-        .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
-    ),
-  ]),
-) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
 
 export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
@@ -151,6 +131,8 @@ export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   ]),
 ) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
 
+export const SITE_DESIGN_VARIANTS_BY_BLOCK_SLUG = SITE_VARIANTS_BY_BLOCK_SLUG
+
 export const SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
   SITE_GENERATION_BLOCK_SLUGS.map((slug) => [
     slug,
@@ -164,6 +146,8 @@ export const SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
     ),
   ]),
 ) as unknown as Record<SiteGenerationBlockSlug, ReadonlySet<string>>
+
+export const SITE_GENERIC_DESIGN_VARIANTS_BY_BLOCK_SLUG = SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG
 
 export const isSupportedBlockVariant = (
   blockType: string,
@@ -181,24 +165,6 @@ export const isSupportedOfficialTenantBlockVariant = (
   if (!variant) return true
   if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
   return SITE_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(variant) ?? false
-}
-
-export const isSupportedBlockSectionVariant = (
-  blockType: string,
-  sectionVariant: string | null | undefined,
-): boolean => {
-  if (!sectionVariant) return true
-  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
-  return SITE_GENERIC_SECTION_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(sectionVariant) ?? false
-}
-
-export const isSupportedOfficialTenantBlockSectionVariant = (
-  blockType: string,
-  sectionVariant: string | null | undefined,
-): boolean => {
-  if (!sectionVariant) return true
-  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
-  return SITE_SECTION_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(sectionVariant) ?? false
 }
 
 export const RtTextSchema: z.ZodType<RtText> = strictObject({
@@ -332,12 +298,10 @@ export const AnalyticsBlockMetadataSchema: z.ZodType<AnalyticsBlockMetadata> = s
   sectionType: nullableString,
   sectionPosition: z.number().nullable().optional(),
   sectionAnchor: nullableString,
-  sectionVariant: nullableString,
   blockPresetId: nullableString,
   contentSignature: nullableString,
 })
 
-const BlockInstanceTokensSchema = jsonRecordSchema.nullable().optional()
 const BlockInstanceMetadataSchema = jsonRecordSchema.nullable().optional()
 
 export const LinkRefSchema: z.ZodType<LinkRef> = strictObject({
@@ -366,8 +330,7 @@ const generatedBlockSourceSchema = z.enum(["ai", "cms", "import", "operator"]).o
 const baseBlockShape = {
   id: z.string().optional(),
   source: generatedBlockSourceSchema,
-  variant: nullableString,
-  tokens: BlockInstanceTokensSchema,
+  designVariant: nullableString,
   metadata: BlockInstanceMetadataSchema,
   analytics: AnalyticsBlockMetadataSchema.nullable().optional(),
   anchor: nullableString,
@@ -560,42 +523,6 @@ export const BlogCardsBlockSchema: z.ZodType<BlogCardsBlock> = strictObject({
     .min(1),
 })
 
-export const ProcessStepsBlockSchema: z.ZodType<ProcessStepsBlock> = strictObject({
-  blockType: z.literal("processSteps"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  steps: z
-    .array(strictObject({
-      title: RtRootSchema,
-      description: RtFieldSchema.optional(),
-      icon: nullableString,
-      image: MediaRefSchema.optional(),
-      cta: LinkRefSchema.nullable().optional(),
-    }))
-    .min(1),
-})
-
-export const ComparisonBlockSchema: z.ZodType<ComparisonBlock> = strictObject({
-  blockType: z.literal("comparison"),
-  ...baseBlockShape,
-  title: RtFieldSchema.optional(),
-  intro: RtFieldSchema.optional(),
-  columns: z
-    .array(strictObject({
-      title: RtRootSchema,
-      description: RtFieldSchema.optional(),
-      cta: LinkRefSchema.nullable().optional(),
-    }))
-    .min(1),
-  rows: z
-    .array(strictObject({
-      label: z.string().min(1),
-      values: z.array(z.union([z.string(), z.boolean(), z.null()])).min(1),
-    }))
-    .min(1),
-})
-
 const BlockSchemaBase = z.union([
   HeroBlockSchema,
   FeatureListBlockSchema,
@@ -610,8 +537,6 @@ const BlockSchemaBase = z.union([
   GalleryBlockSchema,
   TeamBlockSchema,
   BlogCardsBlockSchema,
-  ProcessStepsBlockSchema,
-  ComparisonBlockSchema,
 ])
 
 const GeneratedBlockSchemaBase = z.union([
@@ -628,50 +553,43 @@ const GeneratedBlockSchemaBase = z.union([
   GalleryBlockSchema,
   TeamBlockSchema,
   BlogCardsBlockSchema,
-  ProcessStepsBlockSchema,
-  ComparisonBlockSchema,
 ])
 
-const refineGeneratedBlock = (
-  block: { blockType: string; variant?: string | null; analytics?: AnalyticsBlockMetadata | null },
+const refineBlockVariant = (
+  block: {
+    blockType: string
+    designVariant?: string | null
+  },
   ctx: z.RefinementCtx,
   scope: RuntimeVariantScope = "generic",
 ) => {
-  for (const key of FORBIDDEN_GENERATED_PAYLOAD_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(block, key)) {
-      ctx.addIssue({
-        code: "custom",
-        path: [key],
-        message: `Generated blocks must not include ${key}`,
-      })
-    }
-  }
-  addForbiddenGeneratedPayloadIssues((block as Record<string, unknown>).tokens, ctx, ["tokens"])
-  addForbiddenGeneratedPayloadIssues((block as Record<string, unknown>).metadata, ctx, ["metadata"])
-
-  const variant = block.variant
+  const designVariant = typeof block.designVariant === "string" && block.designVariant.length > 0
+    ? block.designVariant
+    : undefined
   const supportsBlockVariant = scope === "officialTenant" ? isSupportedOfficialTenantBlockVariant : isSupportedBlockVariant
-  if (typeof variant === "string" && variant.length > 0 && !supportsBlockVariant(block.blockType, variant)) {
+  if (designVariant && !supportsBlockVariant(block.blockType, designVariant)) {
     ctx.addIssue({
       code: "custom",
-      path: ["variant"],
-      message: `Unsupported variant "${variant}" for block type "${block.blockType}"`,
-    })
-  }
-
-  const sectionVariant = block.analytics?.sectionVariant
-  const supportsSectionVariant = scope === "officialTenant" ? isSupportedOfficialTenantBlockSectionVariant : isSupportedBlockSectionVariant
-  if (!variant && typeof sectionVariant === "string" && sectionVariant.length > 0 && !supportsSectionVariant(block.blockType, sectionVariant)) {
-    ctx.addIssue({
-      code: "custom",
-      path: ["analytics", "sectionVariant"],
-      message: `Unsupported section variant "${sectionVariant}" for block type "${block.blockType}"`,
+      path: ["designVariant"],
+      message: `Unsupported design variant "${designVariant}" for block type "${block.blockType}"`,
     })
   }
 }
 
+const refineGeneratedBlock = (
+  block: {
+    blockType: string
+    designVariant?: string | null
+  },
+  ctx: z.RefinementCtx,
+  scope: RuntimeVariantScope = "generic",
+) => {
+  addForbiddenGeneratedPayloadIssues(block, ctx, [])
+  refineBlockVariant(block, ctx, scope)
+}
+
 export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
-  refineGeneratedBlock(block, ctx)
+  refineBlockVariant(block, ctx)
 })
 
 export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
@@ -680,7 +598,7 @@ export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
   })
 
 export const OfficialTenantBlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
-  refineGeneratedBlock(block, ctx, "officialTenant")
+  refineBlockVariant(block, ctx, "officialTenant")
 })
 
 export const OfficialTenantGeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
@@ -1202,7 +1120,6 @@ export const SiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> =
 
 const tenantExclusiveBlockVariantAllowedForTenant = (
   blockType: string,
-  field: "variant" | "sectionVariant",
   value: string | null | undefined,
   tenantSlug: string,
 ): boolean => {
@@ -1210,7 +1127,7 @@ const tenantExclusiveBlockVariantAllowedForTenant = (
   const catalogEntry = SITE_GENERATION_BLOCK_CATALOG
     .filter((entry) => entry.slug === blockType)
     .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-    .find((variant) => field === "variant" ? variant.variant === value : variant.sectionVariant === value)
+    .find((variant) => variant.variant === value)
   if (!catalogEntry || catalogEntry.scope.kind === "global") return true
   return catalogEntry.scope.tenantSlugs.includes(tenantSlug)
 }
@@ -1247,19 +1164,14 @@ const refineOfficialTenantVariantOwnership = (
 
   value.pages?.forEach((page, pageIndex) => {
     page.blocks.forEach((block, blockIndex) => {
-      if (!tenantExclusiveBlockVariantAllowedForTenant(block.blockType, "variant", block.variant, tenantSlug)) {
+      const designVariant = typeof block.designVariant === "string" && block.designVariant.length > 0
+        ? block.designVariant
+        : null
+      if (!tenantExclusiveBlockVariantAllowedForTenant(block.blockType, designVariant, tenantSlug)) {
         ctx.addIssue({
           code: "custom",
-          path: ["pages", pageIndex, "blocks", blockIndex, "variant"],
-          message: `Block variant "${block.variant}" is not allowed for official tenant "${tenantSlug}"`,
-        })
-      }
-      const sectionVariant = block.analytics?.sectionVariant
-      if (!block.variant && !tenantExclusiveBlockVariantAllowedForTenant(block.blockType, "sectionVariant", sectionVariant, tenantSlug)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["pages", pageIndex, "blocks", blockIndex, "analytics", "sectionVariant"],
-          message: `Block section variant "${sectionVariant}" is not allowed for official tenant "${tenantSlug}"`,
+          path: ["pages", pageIndex, "blocks", blockIndex, "designVariant"],
+          message: `Block design variant "${designVariant}" is not allowed for official tenant "${tenantSlug}"`,
         })
       }
     })

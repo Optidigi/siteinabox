@@ -80,7 +80,7 @@ export function BlockPresetsProvider({
 
   // Build BlockTypeDef[] from BLOCKS filtered + ordered per the tenant's
   // manifest.blocks[]. When manifest.blocks is absent, falls back to the
-  // full registry (resolveAllowedBlocks handles the default). Per-tenant
+  // active source-backed registry (resolveAllowedBlocks handles the default). Per-tenant
   // label overrides come from manifest.blocks[].label.
   const blockTypes = React.useMemo<BlockTypeDef[]>(() => {
     const allowed = resolveAllowedBlocks(BLOCKS, manifest.blocks)

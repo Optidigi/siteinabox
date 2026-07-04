@@ -1,19 +1,28 @@
 import { describe, expect, it, vi } from "vitest"
+import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
 import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
-import { BLOCKS, resolveAllowedBlocks } from "@/blocks/registry"
+import { ALL_BLOCKS, BLOCKS, resolveAllowedBlocks } from "@/blocks/registry"
 
 describe("resolveAllowedBlocks", () => {
-  it("registers every approved generation block slug", () => {
-    expect(BLOCKS.map((block) => block.slug)).toEqual([...SITE_GENERATION_BLOCK_SLUGS])
+  it("keeps every structured block schema available for Payload and existing content", () => {
+    expect(ALL_BLOCKS.map((block) => block.slug)).toEqual([...SITE_GENERATION_BLOCK_SLUGS])
   })
 
-  it("returns the full registry when declared is undefined", () => {
+  it("exposes only approved source-backed block slugs in the active picker registry", () => {
+    const activeSlugs = [...new Set(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug))]
+    expect(new Set(BLOCKS.map((block) => block.slug))).toEqual(new Set(activeSlugs))
+    expect(BLOCKS.map((block) => block.slug)).not.toEqual(
+      expect.arrayContaining(["faq", "testimonials", "processSteps", "comparison"]),
+    )
+  })
+
+  it("returns the active registry when declared is undefined", () => {
     const result = resolveAllowedBlocks(BLOCKS, undefined)
     expect(result).toHaveLength(BLOCKS.length)
     expect(result.map((b) => b.slug)).toEqual(BLOCKS.map((b) => b.slug))
   })
 
-  it("returns the full registry when declared is empty array", () => {
+  it("returns the active registry when declared is empty array", () => {
     const result = resolveAllowedBlocks(BLOCKS, [])
     expect(result).toHaveLength(BLOCKS.length)
   })

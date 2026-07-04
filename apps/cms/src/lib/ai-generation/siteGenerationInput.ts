@@ -12,9 +12,9 @@ export type SiteGenerationModelInput = {
   intake: NormalizedIntake
   generationInput: GenerationInput
   supportedBlocks: string[]
-  approvedSectionVariants: Array<{
+  approvedDesignVariants: Array<{
     blockType: string
-    sectionVariant: string
+    designVariant: string
     sourceName: string
     variantId: string
   }>
@@ -36,9 +36,9 @@ export const buildSiteGenerationModelInput = (
   intake,
   generationInput,
   supportedBlocks: SUPPORTED_SITE_GENERATION_BLOCKS,
-  approvedSectionVariants: SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
+  approvedDesignVariants: SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
     blockType: variant.slug,
-    sectionVariant: variant.sectionVariant!,
+    designVariant: variant.variant,
     sourceName: variant.provenance.sourceName,
     variantId: variant.variantId,
   })),
@@ -51,10 +51,12 @@ export const buildSiteGenerationModelInput = (
   requirements: [
     "Return exactly one JSON object matching SiteGenerationSpec.",
     "Use only supportedBlocks as page blockType values and blocks[].slug values.",
-    "Set analytics.sectionVariant only to null or to an approvedSectionVariants entry for that exact blockType.",
+    "Set every generated block's designVariant to an approvedDesignVariants entry for that exact blockType.",
+    "Do not set legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
     "Set settings.chrome.header.variant, settings.chrome.footer.variant, and settings.chrome.banner.variant only to null or to approvedChromeVariants values for the matching area.",
-    "Never use tenant-exclusive Amicare tenant renderer variants, chrome variants, classes, content fixtures, domains, or section variants for self-serve generated sites.",
-    "Do not emit raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, or file paths.",
+    "Never use tenant-exclusive tenant renderer variants, chrome variants, classes, content fixtures, domains, or variants for self-serve generated sites.",
+    "Do not emit raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, file paths, block tokens, style objects, or inline styles.",
+    "Use CMS media ids when known. Otherwise use null or structured generated-asset placeholders without requiring remote URL ingestion.",
     "Use page slug index for the root/home page and link it as /.",
     "Include at least one page and at least one block on every page.",
     "Use draft-safe contact and SEO metadata based on the normalized intake.",

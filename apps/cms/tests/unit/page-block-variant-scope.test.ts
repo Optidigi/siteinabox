@@ -31,8 +31,7 @@ describe("enforceTenantBlockVariantScope", () => {
     try {
       await runHook({ id: 1, slug: "generic-care", domain: "generic-care.nl" }, [{
         blockType: "hero",
-        variant: "amicareZenHero",
-        analytics: { sectionVariant: "amicare-zen-hero" },
+        designVariant: "amicareZenHero",
       }])
     } catch (caught) {
       err = caught
@@ -40,16 +39,14 @@ describe("enforceTenantBlockVariantScope", () => {
 
     expect(err).toBeInstanceOf(ValidationError)
     expect((err as any).data?.errors).toEqual([
-      expect.objectContaining({ path: "blocks.0.variant" }),
-      expect.objectContaining({ path: "blocks.0.analytics.sectionVariant" }),
+      expect.objectContaining({ path: "blocks.0.designVariant" }),
     ])
   })
 
   it("allows Amicare official tenants to keep legacy block variants", async () => {
     await expect(runHook({ id: 2, slug: "amicare-zorg", domain: "ami-care.nl" }, [{
       blockType: "hero",
-      variant: "amicareZenHero",
-      analytics: { sectionVariant: "amicare-zen-hero" },
+      designVariant: "amicareZenHero",
     }])).resolves.toMatchObject({
       tenant: 2,
     })
@@ -58,8 +55,7 @@ describe("enforceTenantBlockVariantScope", () => {
   it("keeps normal self-serve variants valid", async () => {
     await expect(runHook({ id: 3, slug: "generic-care", domain: "generic-care.nl" }, [{
       blockType: "hero",
-      variant: "tailwindPlusSimpleCentered",
-      analytics: { sectionVariant: "tailwind-plus-simple-centered" },
+      designVariant: "tailwindPlusSimpleCentered",
     }])).resolves.toMatchObject({
       tenant: 3,
     })

@@ -97,15 +97,10 @@ Confirmed source-backed entries currently include:
 - Tailblocks:
   - `richText:tailblocksContentA`;
   - `cta:tailblocksCtaA`.
-- Mamba UI:
-  - `faq:mambaFaq1`;
-  - `testimonials:mambaTestimonial1`.
-- HyperUI:
-  - `contactSection:hyperUiNewsletterCentered`.
 - Preline free:
   - `contactSection:prelineCenteredNewsletter`.
 
-Those entries are locally available as catalog provenance, section variants, and
+Those entries are locally available as catalog provenance, design variants, and
 renderer implementations. They are not all stored as vendored upstream HTML
 source files. Tailwind Plus entries are recorded as public-page-payload sources,
 so the next agent should verify the public/free source access again before
@@ -158,9 +153,8 @@ Missing or incomplete product UIs:
 - Activation must respect approval, payment/manual override, tenant status, and
   domain verification rules.
 - Generated-site styling must come from approved catalog variants only:
-  shadcn-owned primitives, Tailwind Plus free/public blocks, Tailblocks, Mamba
-  UI, HyperUI, Preline free, or later SIAB-owned custom blocks that have passed
-  source, license, accessibility, and visual review.
+  Tailwind Plus free/public blocks, Tailblocks, or Preline free blocks that
+  have passed source, license, accessibility, and visual review.
 - External blocks must be exact-style implementations of approved source blocks,
   not loose inspiration. Paid, locked, or license-incompatible blocks stay
   unavailable.
@@ -214,8 +208,8 @@ new generated sites depend on it.
 - Re-check Tailwind Plus free/public access for the current variants and record
   whether source payloads are publicly available and compatible with compact
   provenance.
-- Review Tailblocks, Mamba UI, HyperUI, and Preline free source access and
-  confirm the current provenance is sufficient for SIAB generated-site use.
+- Review Tailblocks and Preline free source access and confirm the current
+  provenance is sufficient for SIAB generated-site use.
 
 ### Implement
 

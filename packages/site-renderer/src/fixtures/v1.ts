@@ -39,14 +39,14 @@ export const v1FixtureSettings: SiteSettings = {
   },
   chrome: {
     header: {
-      variant: "hyperUiSimple",
+      variant: "default",
       behavior: "sticky",
       activeMode: "path",
       mobileMenu: "dropdown",
       cta: { label: "Contact", href: "#contact" },
     },
     footer: {
-      variant: "hyperUiSimple",
+      variant: "default",
       tagline: "Typed fixture data for the shared renderer.",
       copyright: "Copyright 2026 Example Site",
       legalLinks: [{ label: "Privacy", href: "/privacy" }],
@@ -68,7 +68,7 @@ export const v1FixtureSettings: SiteSettings = {
       ],
     },
     banner: {
-      variant: "hyperUiSimple",
+      variant: "default",
       title: "New",
       message: "Reusable chrome variants are available for generated sites.",
       link: { label: "View catalog", href: "#catalog" },
@@ -91,14 +91,14 @@ export const v1FixturePage: Page = {
   blocks: [
     {
       blockType: "hero",
-      analytics: { sectionVariant: "tailwind-plus-simple-centered" },
+      designVariant: "tailwindPlusSimpleCentered",
       headline: inlineText("A data-driven site"),
       subheadline: blockText("Rendered by the shared SIAB renderer."),
       cta: { label: "Contact", href: "#contact" },
     },
     {
       blockType: "featureList",
-      analytics: { sectionVariant: "tailwind-plus-centered-2x2" },
+      designVariant: "tailwindPlusCentered2x2",
       title: inlineText("Features"),
       features: [
         { title: inlineText("Shared"), description: blockText("One renderer for CMS and public runtime."), icon: "layers" },
@@ -107,7 +107,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "pricing",
-      analytics: { sectionVariant: "tailwind-plus-simple-pricing" },
+      designVariant: "tailwindPlusSimpleTiers",
       title: inlineText("Choose the right plan"),
       intro: blockText("Structured pricing plans rendered without generated source code."),
       plans: [
@@ -140,7 +140,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "stats",
-      analytics: { sectionVariant: "tailwind-plus-stats-simple" },
+      designVariant: "tailwindPlusSimple",
       title: inlineText("Renderer metrics"),
       items: [
         { value: "8", label: "New block families", description: blockText("Promoted from structured contracts.") },
@@ -150,7 +150,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "logoCloud",
-      analytics: { sectionVariant: "tailwind-plus-logo-cloud-simple" },
+      designVariant: "tailwindPlusSimple",
       title: inlineText("Trusted integrations"),
       logos: [
         { name: "Payload", image: { url: "/media/logo-payload.svg", alt: "Payload" }, href: "https://payloadcms.com" },
@@ -161,7 +161,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "gallery",
-      analytics: { sectionVariant: "preline-gallery-square-grid" },
+      designVariant: "prelineSquareGrid",
       title: inlineText("Gallery"),
       images: [
         { image: { url: "/media/gallery-1.jpg", alt: "Gallery item one" }, caption: blockText("Structured media item.") },
@@ -173,7 +173,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "team",
-      analytics: { sectionVariant: "tailwind-plus-team-grid" },
+      designVariant: "tailwindPlusGrid",
       title: inlineText("Meet the team"),
       intro: blockText("People data maps into the provider-native team layout."),
       members: [
@@ -183,7 +183,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "blogCards",
-      analytics: { sectionVariant: "tailwind-plus-blog-three-column" },
+      designVariant: "tailwindPlusThreeColumn",
       title: inlineText("From the blog"),
       intro: blockText("Article cards can point at CMS or static routes."),
       posts: [
@@ -204,58 +204,30 @@ export const v1FixturePage: Page = {
       ],
     },
     {
-      blockType: "processSteps",
-      analytics: { sectionVariant: "mamba-process-steps" },
-      title: inlineText("Process"),
-      intro: blockText("A concise ordered flow for generated sites."),
-      steps: [
-        { title: inlineText("Intake"), description: blockText("Collect the structured business brief."), icon: "file-text" },
-        { title: inlineText("Review"), description: blockText("Validate content and publishing data."), icon: "check-circle" },
-        { title: inlineText("Publish"), description: blockText("Serve the tenant through the renderer."), icon: "rocket" },
-      ],
-    },
-    {
-      blockType: "comparison",
-      variant: "matrix",
-      title: inlineText("Compare plans"),
-      intro: blockText("SIAB-owned matrix renderer for structured comparisons."),
-      columns: [
-        { title: inlineText("Starter"), cta: { label: "Choose starter", href: "/intake?plan=starter" } },
-        { title: inlineText("Growth"), cta: { label: "Choose growth", href: "/intake?plan=growth" } },
-      ],
-      rows: [
-        { label: "Published pages", values: ["1", "5"] },
-        { label: "Custom domain", values: [true, true] },
-        { label: "Priority support", values: [false, true] },
-      ],
-    },
-    {
       blockType: "testimonials",
-      analytics: { sectionVariant: "mamba-testimonial-1" },
       title: "What clients say",
       items: [{ quote: "Simple and consistent.", author: "Jane Example" }],
     },
     {
       blockType: "faq",
-      analytics: { sectionVariant: "mamba-faq-1" },
       title: inlineText("Questions"),
       items: [{ question: inlineText("Is this generic?"), answer: blockText("Yes. No tenant-specific source is used.") }],
     },
     {
       blockType: "cta",
-      analytics: { sectionVariant: "tailblocks-cta-a" },
+      designVariant: "tailblocksCtaA",
       headline: inlineText("Ready to start?"),
       description: blockText("Send a message and we will respond."),
       primary: { label: "Email", href: "mailto:hello@example.test" },
     },
     {
       blockType: "richText",
-      analytics: { sectionVariant: "tailblocks-content-a" },
+      designVariant: "tailblocksContentA",
       body: blockText("This is a rich text section."),
     },
     {
       blockType: "contactSection",
-      analytics: { sectionVariant: "tailwind-plus-newsletter-details" },
+      designVariant: "tailwindPlusNewsletterDetails",
       anchor: "contact",
       title: inlineText("Get updates"),
       description: blockText("Product news and renderer updates, delivered occasionally."),
@@ -267,18 +239,7 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "contactSection",
-      analytics: { sectionVariant: "hyperui-newsletter-centered" },
-      title: inlineText("Join the renderer list"),
-      description: blockText("Updates for data-backed generated sites, delivered occasionally."),
-      formName: "hyperui-newsletter",
-      submitLabel: "Sign Up",
-      fields: [
-        { name: "email", label: "Email", type: "email", required: true },
-      ],
-    },
-    {
-      blockType: "contactSection",
-      analytics: { sectionVariant: "preline-centered-newsletter" },
+      designVariant: "prelineCenteredNewsletter",
       title: inlineText("Sign up to our newsletter"),
       formName: "preline-newsletter",
       submitLabel: "Subscribe",

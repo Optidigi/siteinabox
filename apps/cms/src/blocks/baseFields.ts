@@ -2,17 +2,10 @@ import type { Field } from "payload"
 
 export const blockBaseFields = (anchorExample: string): Field[] => [
   {
-    name: "variant",
+    name: "designVariant",
     type: "text",
     admin: {
-      description: "Approved renderer variant short name.",
-    },
-  },
-  {
-    name: "tokens",
-    type: "json",
-    admin: {
-      description: "Optional block-level design tokens consumed by the renderer.",
+      description: "Approved renderer design variant.",
     },
   },
   {

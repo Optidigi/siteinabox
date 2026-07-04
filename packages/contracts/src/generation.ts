@@ -2,7 +2,6 @@ import type {
   ContactSectionBlock,
   CTABlock,
   BlogCardsBlock,
-  ComparisonBlock,
   FAQBlock,
   FeatureListBlock,
   GalleryBlock,
@@ -11,7 +10,6 @@ import type {
   MediaRef,
   Page,
   PricingBlock,
-  ProcessStepsBlock,
   RichTextBlock,
   SiteGenerationBlockSlug,
   SiteSettings,
@@ -299,8 +297,6 @@ export type GeneratedLogoCloudBlockSpec = LogoCloudBlock & GeneratedBlockMetadat
 export type GeneratedGalleryBlockSpec = GalleryBlock & GeneratedBlockMetadata
 export type GeneratedTeamBlockSpec = TeamBlock & GeneratedBlockMetadata
 export type GeneratedBlogCardsBlockSpec = BlogCardsBlock & GeneratedBlockMetadata
-export type GeneratedProcessStepsBlockSpec = ProcessStepsBlock & GeneratedBlockMetadata
-export type GeneratedComparisonBlockSpec = ComparisonBlock & GeneratedBlockMetadata
 
 export type GeneratedBlockSpec =
   | GeneratedHeroBlockSpec
@@ -316,8 +312,6 @@ export type GeneratedBlockSpec =
   | GeneratedGalleryBlockSpec
   | GeneratedTeamBlockSpec
   | GeneratedBlogCardsBlockSpec
-  | GeneratedProcessStepsBlockSpec
-  | GeneratedComparisonBlockSpec
 
 export type GeneratedPageSpec = Omit<Page, "blocks" | "updatedAt"> & {
   blocks: GeneratedBlockSpec[]

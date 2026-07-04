@@ -47,6 +47,14 @@ Notes:
 - The CTA block dispatches on `primary.href` at render time: `mailto:`/`tel:` prefixes produce the contact variant; anything else produces the quote variant. Both share the `cms-block--cta` base class; the variant class (`cms-block--cta-contact` / `cms-block--cta-quote`) lets tenant CSS target each flavour separately.
 - The `data-block-index` and `data-active` attributes are canvas-only affordances — they are not emitted by the rendered-site components and tenant CSS must not rely on them.
 - Canonical reference implementations live in `packages/site-renderer`. The canvas renderers mirror them.
+- Generation-eligible blocks must expose the same structured content through
+  sidebar fields and canvas editing. A renderer-only or sidebar-only block must
+  stay out of generation until both editing surfaces and parity tests exist.
+- Visual variants for generation are selected by the approved block `designVariant`
+  field, limited to Tailwind Plus, Preline UI, and Tailblocks. Analytics
+  metadata is not a visual-selection API. Inactive provider families, SIAB-owned
+  generic visual variants, and temporary Ami-care legacy variants are not
+  generation inputs.
 
 ## § Theme tokens consumed by block renderers
 
@@ -91,6 +99,12 @@ Each renderer (canvas + live-site) MUST emit its styling through class rules tha
 resolve to these vars — **never hard-code colour / font / radius values**. If a
 renderer hard-codes a value, the ThemeBar cannot drive it and the user can't see
 the change.
+
+Do not add arbitrary block-level visual tokens, per-block class names, provider
+token override fields, or one-off color/font/radius controls. Fonts, colors,
+shape, radius, border style, and mode are global theme-toolbar settings. Block
+schemas may choose approved design variants, but all visual tuning must resolve
+through global theme tokens and renderer-owned class rules.
 
 For Tailwind classes like `rounded-md`, KEEP them as fallback for the case where
 `theme.radius` is unset, but layer token-driven class rules on top

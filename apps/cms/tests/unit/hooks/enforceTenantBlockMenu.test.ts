@@ -12,7 +12,7 @@ const baseManifest: RtManifest = {
 describe("enforceTenantBlockMenu", () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it("allows all blocks when manifest has no blocks[] (unrestricted tenant)", async () => {
+  it("uses the active source-backed block registry when manifest has no blocks[]", async () => {
     vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = {
       tenant: 7,
@@ -23,6 +23,21 @@ describe("enforceTenantBlockMenu", () => {
     }
     const result = await enforceTenantBlockMenu({ data, originalDoc: undefined } as any)
     expect(result).toBe(data)
+  })
+
+  it("rejects inactive providerless blocks when manifest has no blocks[]", async () => {
+    vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
+    const data = {
+      tenant: 7,
+      blocks: [
+        { blockType: "hero" },
+        { blockType: "processSteps" },
+        { blockType: "comparison" },
+      ],
+    }
+    await expect(
+      enforceTenantBlockMenu({ data, originalDoc: undefined } as any),
+    ).rejects.toThrow(/processSteps \(index 1\).*comparison \(index 2\)/)
   })
 
   it("allows blocks that are in the tenant's allowed menu", async () => {

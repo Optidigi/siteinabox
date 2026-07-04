@@ -14,7 +14,6 @@ export function sectionAnalyticsAttrs(
     "data-siab-section-type": sectionType,
     "data-siab-section-position": position,
     "data-siab-section-anchor": analytics?.sectionAnchor ?? "",
-    "data-siab-section-variant": analytics?.sectionVariant ?? "",
     "data-siab-block-preset-id": analytics?.blockPresetId ?? "",
     "data-siab-content-signature": analytics?.contentSignature ?? "",
     "data-ph-capture-attribute-section_id": analytics?.sectionId ?? "",

@@ -7,9 +7,11 @@ import {
   SITE_SOURCE_BACKED_BLOCK_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
 import { GeneratedSiteSettingsSchema, SiteGenerationSpecSchema } from "@siteinabox/contracts/generation"
-import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { buildSiteGenerationModelInput } from "@/lib/ai-generation/siteGenerationInput"
-import { SITE_GENERATION_SYSTEM_PROMPT } from "@/lib/ai-generation/prompts/siteGenerationPrompt"
+import {
+  SITE_GENERATION_SYSTEM_PROMPT,
+  SUPPORTED_SITE_GENERATION_BLOCKS,
+} from "@/lib/ai-generation/prompts/siteGenerationPrompt"
 import { siteGenerationJsonSchema } from "@/lib/ai-generation/providers"
 import { validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 
@@ -39,8 +41,9 @@ describe("site generation catalog governance", () => {
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("file paths")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("unsupported block slugs")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Tailwind Plus, Preline UI, and Tailblocks only")
-    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use HyperUI or Mamba UI")
-    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare tenant-renderer blocks")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use tenant-renderer blocks")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("block.designVariant")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not author legacy page-block visual identity fields")
   })
 
   it("passes only active self-serve source-backed variants to the model input", () => {
@@ -49,26 +52,26 @@ describe("site generation catalog governance", () => {
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.every((variant) => variant.variant && !variant.variant.includes(":"))).toBe(true)
     const approved = SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
       blockType: variant.slug,
-      sectionVariant: variant.sectionVariant,
+      designVariant: variant.variant,
       sourceName: variant.provenance.sourceName,
       variantId: variant.variantId,
     }))
 
-    expect(input.approvedSectionVariants).toEqual(approved)
-    expect(input.requirements.join("\n")).toContain("approvedSectionVariants")
+    expect(input.approvedDesignVariants).toEqual(approved)
+    expect(input.requirements.join("\n")).toContain("approvedDesignVariants")
+    expect(input.requirements.join("\n")).toContain("Do not set legacy page-block visual identity fields")
     expect(input.requirements.join("\n")).toContain("settings.chrome")
     expect(input.requirements.join("\n")).toContain("raw HTML")
     expect(input.requirements.join("\n")).toContain("className/classes")
-    expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive Amicare")
-    expect(input.approvedSectionVariants.map((variant) => variant.sourceName)).toEqual(
+    expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive tenant renderer")
+    expect(input.approvedDesignVariants.map((variant) => variant.sourceName)).toEqual(
       expect.arrayContaining(["Tailwind Plus", "Preline UI", "Tailblocks"]),
     )
-    expect(input.approvedSectionVariants.map((variant) => variant.sourceName)).not.toEqual(
-      expect.arrayContaining(["HyperUI", "Mamba UI", "SIAB tenant renderer snapshots"]),
+    expect(new Set(input.approvedDesignVariants.map((variant) => variant.sourceName))).toEqual(
+      new Set(["Tailwind Plus", "Preline UI", "Tailblocks"]),
     )
-    expect(input.approvedSectionVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.sectionVariant}`))).toBe(false)
+    expect(input.approvedDesignVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.designVariant}`))).toBe(false)
     expect(serializedInput).toMatch(/Tailwind Plus|Preline UI|Tailblocks/)
-    expect(serializedInput).not.toMatch(/HyperUI|Mamba UI|hyperui|mamba/i)
     expect(serializedInput).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(serializedInput).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
@@ -82,7 +85,6 @@ describe("site generation catalog governance", () => {
     )
     expect(input.approvedChromeVariants).not.toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ variant: "hyperUiSimple" }),
         expect.objectContaining({ variant: "amicareZen" }),
       ]),
     )
@@ -129,8 +131,7 @@ describe("site generation catalog governance", () => {
         seo: { title: "Home", description: "Generated home." },
         blocks: [{
           blockType: "hero",
-          variant: "amicareZenHero",
-          analytics: { sectionVariant: "amicare-zen-hero" },
+          designVariant: "amicareZenHero",
           headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Home" }] },
           subheadline: null,
           pills: [],
@@ -159,35 +160,29 @@ describe("site generation catalog governance", () => {
     const schemaBlockTypes = (siteGenerationJsonSchema.properties.pages.items as any)
       .properties.blocks.items.anyOf.map((entry: any) => entry.properties.blockType.const)
 
-    expect(schemaBlockTypes).toEqual(expect.arrayContaining([...SITE_BLOCK_SLUGS]))
-    expect(schemaBlockTypes).toHaveLength(SITE_BLOCK_SLUGS.length)
+    expect(schemaBlockTypes).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
     expect(heroSchema.additionalProperties).toBe(false)
     expect(heroSchema.properties).not.toHaveProperty("className")
     expect(heroSchema.properties).not.toHaveProperty("rawHtml")
     expect(heroSchema.properties).not.toHaveProperty("sourceCode")
-    expect(heroSchema.properties.analytics.properties.sectionVariant.enum).toEqual([
-      "tailwind-plus-simple-centered",
-      null,
+    expect(heroSchema.properties).not.toHaveProperty("analytics")
+    expect(heroSchema.required).toContain("designVariant")
+    expect(heroSchema.properties.designVariant.enum).toEqual([
+      "tailwindPlusSimpleCentered",
     ])
-    expect(ctaSchema.properties.analytics.properties.sectionVariant.enum).toEqual([
-      "tailblocks-cta-a",
-      null,
+    expect(ctaSchema.properties.designVariant.enum).toEqual([
+      "tailblocksCtaA",
     ])
-    expect(ctaSchema.properties.analytics.properties.sectionVariant.enum).not.toContain("tailwind-plus-simple-centered")
-    expect(blockSchemaFor("pricing").properties.analytics.properties.sectionVariant.enum).toEqual([
-      "tailwind-plus-simple-pricing",
-      null,
+    expect(ctaSchema.properties.designVariant.enum).not.toContain("tailwindPlusSimpleCentered")
+    expect(blockSchemaFor("pricing").properties.designVariant.enum).toEqual([
+      "tailwindPlusSimpleTiers",
     ])
-    expect(blockSchemaFor("contactSection").properties.analytics.properties.sectionVariant.enum).toEqual([
-      "tailwind-plus-newsletter-details",
-      "preline-centered-newsletter",
-      null,
+    expect(blockSchemaFor("contactSection").properties.designVariant.enum).toEqual([
+      "tailwindPlusNewsletterDetails",
+      "prelineCenteredNewsletter",
     ])
-    expect(blockSchemaFor("faq").properties.analytics.properties.sectionVariant).toEqual({ type: ["string", "null"] })
-    expect(blockSchemaFor("processSteps").properties.analytics.properties.sectionVariant).toEqual({ type: ["string", "null"] })
-    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/hyperui|mamba/i)
-    expect(blockSchemaFor("comparison").properties.analytics.properties.sectionVariant).toEqual({ type: ["string", "null"] })
-    expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual([...SITE_BLOCK_SLUGS])
+    expect(schemaBlockTypes).not.toEqual(expect.arrayContaining(["faq", "processSteps", "comparison", "testimonials"]))
+    expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
   })
 
   it("constrains OpenAI chrome settings and rejects code-like generated settings", () => {
@@ -197,7 +192,6 @@ describe("site generation catalog governance", () => {
     expect(settings.properties.chrome.properties.footer.properties.variant.enum).toEqual(["default", null])
     expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual(["default", null])
     expect(settings.properties.chrome.additionalProperties).toBe(false)
-    expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/hyperUiSimple|HyperUI|Mamba UI|mamba/i)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenIndustrial|cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
@@ -264,7 +258,7 @@ describe("site generation catalog governance", () => {
         seo: { title: "Home", description: "Generated home." },
         blocks: [{
           blockType: "pricing",
-          variant: "tailwindPlusSimpleTiers",
+          designVariant: "tailwindPlusSimpleTiers",
           title: { t: "root", variant: "inline", children: [{ t: "text", v: "Pricing" }] },
           intro: null,
           plans: [{

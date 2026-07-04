@@ -2,7 +2,6 @@ import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import { BlogCardsBlockRenderer } from "./BlogCards"
 import { CTABlockRenderer } from "./CTA"
-import { ComparisonBlockRenderer } from "./Comparison"
 import { ContactSectionBlockRenderer } from "./ContactSection"
 import { FAQBlockRenderer } from "./FAQ"
 import { FeatureListBlockRenderer } from "./FeatureList"
@@ -10,7 +9,6 @@ import { GalleryBlockRenderer } from "./Gallery"
 import { HeroBlockRenderer } from "./Hero"
 import { LogoCloudBlockRenderer } from "./LogoCloud"
 import { PricingBlockRenderer } from "./Pricing"
-import { ProcessStepsBlockRenderer } from "./ProcessSteps"
 import { RichTextBlockRenderer } from "./RichText"
 import { StatsBlockRenderer } from "./Stats"
 import { TeamBlockRenderer } from "./Team"
@@ -35,8 +33,6 @@ export const defaultBlockRegistry: Required<BlockRegistry> = {
   gallery: GalleryBlockRenderer,
   team: TeamBlockRenderer,
   blogCards: BlogCardsBlockRenderer,
-  processSteps: ProcessStepsBlockRenderer,
-  comparison: ComparisonBlockRenderer,
 }
 
 export function BlockRenderer({
@@ -67,7 +63,6 @@ export function BlockRenderer({
 export {
   BlogCardsBlockRenderer,
   CTABlockRenderer,
-  ComparisonBlockRenderer,
   ContactSectionBlockRenderer,
   FAQBlockRenderer,
   FeatureListBlockRenderer,
@@ -75,7 +70,6 @@ export {
   HeroBlockRenderer,
   LogoCloudBlockRenderer,
   PricingBlockRenderer,
-  ProcessStepsBlockRenderer,
   RichTextBlockRenderer,
   StatsBlockRenderer,
   TeamBlockRenderer,

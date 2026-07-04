@@ -1,7 +1,6 @@
 import {
   GenerationInputSchema,
   NormalizedIntakeSchema,
-  SiteGenerationSpecSchema,
   type PublicIntakeSubmission,
 } from "@siteinabox/contracts/generation"
 import type { Payload } from "payload"
@@ -232,8 +231,10 @@ const processStoredIntakeGeneration = async (
 
     run = await setRunStatus(payload, run, "applying", { validation })
     intake = await setIntakeStatus(payload, intake, "applying")
-    const parsedSpec = SiteGenerationSpecSchema.parse(spec)
-    const applyResult = await applySiteGenerationSpec(payload, parsedSpec)
+    const applyResult = await applySiteGenerationSpec(payload, spec as any, {
+      variantScope: "self-serve",
+      mediaMode: "skip-generated-placeholders",
+    })
     if (!applyResult.ok) {
       const failure = { message: "Generated SiteGenerationSpec could not be applied", validation: applyResult.validation }
       run = await setRunStatus(payload, run, "failed", { validation: applyResult.validation, applyResult, errors: failure })

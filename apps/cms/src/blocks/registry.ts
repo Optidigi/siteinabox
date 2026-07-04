@@ -7,17 +7,16 @@ import { RichText } from "./RichText"
 import { ContactSection } from "./ContactSection"
 import {
   BlogCards,
-  Comparison,
   Gallery,
   LogoCloud,
   Pricing,
-  ProcessSteps,
   Stats,
   Team,
 } from "./MarketingCatalog"
 import type { BlockWithMeta } from "./_summary"
+import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
 
-export const BLOCKS = [
+export const ALL_BLOCKS = [
   Hero,
   FeatureList,
   Testimonials,
@@ -31,11 +30,15 @@ export const BLOCKS = [
   Gallery,
   Team,
   BlogCards,
-  ProcessSteps,
-  Comparison,
 ] as const
 
-export const blockBySlug = Object.fromEntries(BLOCKS.map((b) => [b.slug, b])) as Record<string, BlockWithMeta>
+const activeSourceBackedBlockSlugs = new Set<string>(
+  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug),
+)
+
+export const BLOCKS = ALL_BLOCKS.filter((block) => activeSourceBackedBlockSlugs.has(block.slug)) as BlockWithMeta[]
+
+export const blockBySlug = Object.fromEntries(ALL_BLOCKS.map((b) => [b.slug, b])) as Record<string, BlockWithMeta>
 
 export function resolveAllowedBlocks(
   registry: readonly BlockWithMeta[],

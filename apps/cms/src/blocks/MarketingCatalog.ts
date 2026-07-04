@@ -2,10 +2,8 @@ import {
   BadgeDollarSign,
   BarChart3,
   GalleryHorizontalEnd,
-  GitCompare,
   Images,
   Newspaper,
-  Route,
   Users,
 } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
@@ -153,49 +151,6 @@ export const BlogCards: BlockWithMeta = {
       { name: "cta", type: "group", fields: linkFields() },
     ]},
     ...blockBaseFields("updates"),
-  ],
-  summary: titleSummary(),
-}
-
-export const ProcessSteps: BlockWithMeta = {
-  slug: "processSteps",
-  icon: Route,
-  description: "Step-by-step process",
-  interfaceName: "ProcessStepsBlock",
-  fields: [
-    richInline("title", "Section heading for the process."),
-    richBlock("intro", "Introductory text above process steps."),
-    { name: "steps", type: "array", required: true, fields: [
-      richInline("title", "Step title."),
-      richBlock("description", "Step description."),
-      { name: "icon", type: "text" },
-      { name: "image", type: "upload", relationTo: "media" },
-      { name: "cta", type: "group", fields: linkFields() },
-    ]},
-    ...blockBaseFields("process"),
-  ],
-  summary: titleSummary(),
-}
-
-export const Comparison: BlockWithMeta = {
-  slug: "comparison",
-  icon: GitCompare,
-  description: "Structured comparison matrix",
-  interfaceName: "ComparisonBlock",
-  fields: [
-    richInline("title", "Section heading for the comparison."),
-    richBlock("intro", "Introductory text above the comparison."),
-    { name: "columns", type: "array", required: true, fields: [
-      richInline("title", "Column title."),
-      richBlock("description", "Column description."),
-      { name: "cta", type: "group", fields: linkFields() },
-    ]},
-    { name: "rows", type: "array", required: true, fields: [
-      { name: "label", type: "text", required: true },
-      { name: "values", type: "json",
-        admin: { description: "Array of structured comparison values matching the column order." } },
-    ]},
-    ...blockBaseFields("compare"),
   ],
   summary: titleSummary(),
 }

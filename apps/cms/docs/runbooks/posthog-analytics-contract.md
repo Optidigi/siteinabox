@@ -127,7 +127,6 @@ Section/component events additionally carry:
 - `section_type`
 - `section_position`
 - `section_anchor`
-- `section_variant`
 - `block_preset_id`
 - `content_signature`
 
@@ -197,8 +196,8 @@ Source model:
   projection.
 - `section_id` uses the explicit anchor where present; otherwise projection
   emits a stable fallback such as page slug + section position + block type.
-- `section_variant` and `block_preset_id` are optional in V1 and may be null
-  until block variants/presets are formalized.
+- `block_preset_id` is optional in V1 and may be null until presets are
+  formalized.
 - `content_signature` is generated during projection from sanitized block
   shape/content and must not expose raw rich text or private content.
 

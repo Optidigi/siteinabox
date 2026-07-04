@@ -40,14 +40,14 @@ const variantAllowedForTenant = (
 
 const scopedVariantIssue = (
   blockType: string,
-  field: "variant" | "sectionVariant",
+  field: "designVariant",
   value: string,
   tenant: { slug?: string | null; domain?: string | null } | null,
 ) => {
   if (!generationBlockSlugs.has(blockType)) return null
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as SiteGenerationBlockSlug]
   const variant = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
-    field === "variant" ? entry.variant === value : entry.sectionVariant === value,
+    entry.variant === value,
   )
   if (!variant || variantAllowedForTenant(variant, tenant)) return null
   if (variant.scope.kind !== "tenant-exclusive") return null
@@ -70,21 +70,12 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
     if (!block || typeof block !== "object" || Array.isArray(block)) return []
     const record = block as Record<string, unknown>
     const blockType = typeof record.blockType === "string" ? record.blockType : ""
-    const variant = typeof record.variant === "string" ? record.variant.trim() : ""
-    const analytics = record.analytics
-    const sectionVariant = analytics && typeof analytics === "object" && !Array.isArray(analytics)
-      ? (analytics as Record<string, unknown>).sectionVariant
-      : undefined
+    const designVariant = typeof record.designVariant === "string" ? record.designVariant.trim() : ""
     const violations: Array<{ path: string; message: string }> = []
 
-    if (variant) {
-      const issue = scopedVariantIssue(blockType, "variant", variant, tenant)
-      if (issue) violations.push({ path: `blocks.${index}.variant`, message: issue.message })
-    }
-    if (typeof sectionVariant === "string" && sectionVariant.trim()) {
-      const value = sectionVariant.trim()
-      const issue = scopedVariantIssue(blockType, "sectionVariant", value, tenant)
-      if (issue) violations.push({ path: `blocks.${index}.analytics.sectionVariant`, message: issue.message })
+    if (designVariant) {
+      const issue = scopedVariantIssue(blockType, "designVariant", designVariant, tenant)
+      if (issue) violations.push({ path: `blocks.${index}.designVariant`, message: issue.message })
     }
     return violations
   })

@@ -84,7 +84,6 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     blocks: [{
       blockType: "hero",
       anchor: "top",
-      analytics: { sectionVariant: null },
       eyebrow: null,
       headline: inlineText("Acme Studio"),
       subheadline: blockText("A compact published page."),

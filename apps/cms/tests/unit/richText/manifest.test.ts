@@ -141,7 +141,7 @@ describe("manifestSchema — blocks[]", () => {
     blockTypes: { paragraph: true as const, heading: { levels: [2, 3] as (2 | 3 | 4)[] } },
   }
 
-  it("accepts manifest without blocks (fallback to full registry)", () => {
+  it("accepts manifest without blocks so callers can apply their active registry fallback", () => {
     expect(manifestSchema.safeParse(baseManifest).success).toBe(true)
   })
 
