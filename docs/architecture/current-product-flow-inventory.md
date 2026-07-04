@@ -12,6 +12,9 @@ current implementation only; it does not define new product behavior.
 - Shared contracts and rendering: `packages/contracts` and
   `packages/site-renderer`.
 
+See `docs/architecture/route-surface-inventory.md` for the full source-defined
+route inventory and production host contract.
+
 ## Perspective Map
 
 | Perspective | Current user-operable surfaces | Current non-UI operations |
@@ -153,7 +156,7 @@ API calls.
 | --- | --- |
 | Public contact inquiry | Fully user-operable in `apps/landing`; posts to CMS `POST /api/contact` and sends platform mail via Cloudflare through `sendEmail`. |
 | Generation intake submission | Public scaffold at `apps/intake` mounted on `/intake`; posts to `POST /api/intake` by configured URL. |
-| Intake storage/review | Public route stores normalized submissions for SIAB review. Generation is intentionally started by super-admin after reviewed input approval. |
+| Intake storage/review | Public route stores normalized submissions and currently starts provider-backed draft generation immediately through `processStoredIntakeSubmission`. The reviewed-intake super-admin controls remain a recovery path for failed or imported submissions that do not already have a generation run. |
 | Generated draft review in CMS | User-operable through `/generation-runs`, `/generation-runs/[id]`, normal page list/editor, Better Auth preview access issuance, and explicit page promotion. |
 | Preview access issuance | Super-admin UI on `/generation-runs/[id]` creates or refreshes a preview grant and sends a Better Auth magic link for `preview.siteinabox.nl/{clientSlug}`. |
 | Preview/customizer | User-operable with a valid preview Better Auth session and active grant; includes page navigation, style save status, approval state, and payment gate status. |

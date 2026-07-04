@@ -9,6 +9,10 @@ Pushes to `main` build and publish an OCI image to
 `.github/workflows/build-site-image.yml`. The VPS pulls the image via
 `docker compose pull && docker compose up -d`.
 
+Production Traefik routing is declared in `compose.yml`. The marketing router
+serves both `siteinabox.nl` and `www.siteinabox.nl`; the separate intake router
+has higher priority for `/intake`.
+
 Source content (text, imagery, Lottie hero) was migrated verbatim from the upstream PHP `siab-landing-standalone`. The jQuery / Bootstrap-bundle / Slick / WOW stack was dropped during the Astro port; interactive bits (mobile nav, pricing tabs, FAQ accordion, sticky header, reduced-motion Lottie) are handled by a small inline script in `BaseLayout.astro`.
 
 ## Local development

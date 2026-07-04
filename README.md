@@ -74,6 +74,9 @@ The monorepo publishes new platform-owned images:
 - VPS stack files live under `/srv/saas/infra/stacks/siteinabox/`, while
   tenant data paths stay unchanged under `/srv/data/saas/siab-payload/`.
 - Traefik remains the edge proxy; routing stays compose-label based.
+- Public marketing routes for both `siteinabox.nl` and `www.siteinabox.nl`
+  belong to `apps/landing`; `/intake` on both hosts belongs to `apps/intake`.
+  See `docs/architecture/route-surface-inventory.md`.
 
 ## Useful Checks
 

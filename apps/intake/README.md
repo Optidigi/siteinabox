@@ -5,6 +5,10 @@ Public intake app boundary for `www.siteinabox.nl/intake`.
 This app contains the public richer intake wizard. Future intake product work
 should stay here rather than in `apps/landing`.
 
+Production Traefik routing is declared in `compose.yml`. The intake router
+serves `/intake` and `/intake/*` on both `siteinabox.nl` and
+`www.siteinabox.nl`, with higher priority than the landing router.
+
 ## Local development
 
 ```bash

@@ -61,6 +61,11 @@ The live renderer compose routes the official tenant domain:
 
 - `ami-care.nl`
 
+Platform-owned marketing hosts (`siteinabox.nl` and `www.siteinabox.nl`) are
+owned by `apps/landing`, while `/intake` on those hosts is owned by
+`apps/intake`. Those exact Traefik routers must keep higher priority than the
+renderer catch-all.
+
 Before enabling these routes in production, remove or disable any legacy
 Traefik routers for the same hosts. `www` aliases are not part of the current
 compose rule and require explicit DNS/certificate confirmation before adding a

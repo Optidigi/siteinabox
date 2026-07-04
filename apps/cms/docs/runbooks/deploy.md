@@ -325,9 +325,44 @@ Future schema changes flow:
 
 ## Step 6 — Traefik route labels
 
-The compose file is the canonical route declaration. Confirm the
-`siteinabox-cms` service has Traefik labels for each admin and preview
-hostname:
+The compose files are the canonical route declaration. Confirm the
+platform-owned public apps have exact host routers with priorities above the
+generic renderer catch-all.
+
+Marketing routes belong to `apps/landing/compose.yml` and must serve both the
+apex and `www` host:
+
+```yaml
+labels:
+  - traefik.enable=true
+  - traefik.docker.network=proxy
+  - traefik.http.routers.siteinabox-site.rule=Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)
+  - traefik.http.routers.siteinabox-site.entrypoints=websecure
+  - traefik.http.routers.siteinabox-site.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-site.middlewares=hsts@docker
+  - traefik.http.routers.siteinabox-site.priority=100
+  - traefik.http.routers.siteinabox-site.service=siteinabox-site
+  - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
+```
+
+Public intake belongs to `apps/intake/compose.yml` and must outrank landing for
+`/intake` on both apex and `www`:
+
+```yaml
+labels:
+  - traefik.enable=true
+  - traefik.docker.network=proxy
+  - traefik.http.routers.siteinabox-intake.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
+  - traefik.http.routers.siteinabox-intake.entrypoints=websecure
+  - traefik.http.routers.siteinabox-intake.tls.certresolver=letsencrypt
+  - traefik.http.routers.siteinabox-intake.middlewares=hsts@docker
+  - traefik.http.routers.siteinabox-intake.priority=300
+  - traefik.http.routers.siteinabox-intake.service=siteinabox-intake
+  - traefik.http.services.siteinabox-intake.loadbalancer.server.port=80
+```
+
+Confirm the `siteinabox-cms` service has Traefik labels for each admin and
+preview hostname and for the public CMS API paths:
 
 ```yaml
 labels:
@@ -338,11 +373,18 @@ labels:
   - traefik.http.routers.siteinabox-cms.tls.certresolver=letsencrypt
   - traefik.http.routers.siteinabox-cms.middlewares=hsts@docker
   - traefik.http.routers.siteinabox-cms.service=siteinabox-cms
+  - traefik.http.routers.siteinabox-cms-intake-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/intake`)
+  - traefik.http.routers.siteinabox-cms-intake-api.priority=250
+  - traefik.http.routers.siteinabox-cms-contact-api.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && PathPrefix(`/api/contact`)
+  - traefik.http.routers.siteinabox-cms-contact-api.priority=250
   - traefik.http.services.siteinabox-cms.loadbalancer.server.port=3000
 ```
 
-DNS for `admin.<your-domain>` must already resolve to the VPS or Let's Encrypt
-issuance will fail.
+The renderer catch-all in `apps/renderer/compose.yml` intentionally stays low
+priority. It must not win for `siteinabox.nl` or `www.siteinabox.nl`.
+
+DNS for `admin.<your-domain>` and all public hosts must already resolve to the
+VPS or Let's Encrypt issuance will fail.
 
 ## Step 7 — Verify health
 

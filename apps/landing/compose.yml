@@ -1,0 +1,29 @@
+# Production compose for the SiteInABox public marketing site.
+# Deploy path on VPS: /srv/saas/infra/stacks/siteinabox/apps/landing/compose.yml
+name: siteinabox-landing
+
+services:
+  siteinabox-site:
+    image: ghcr.io/optidigi/siteinabox-site:latest
+    pull_policy: always
+    container_name: siteinabox-site
+    restart: unless-stopped
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.siteinabox-site.rule=Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)
+      - traefik.http.routers.siteinabox-site.entrypoints=websecure
+      - traefik.http.routers.siteinabox-site.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-site.middlewares=hsts@docker
+      - traefik.http.routers.siteinabox-site.priority=100
+      - traefik.http.routers.siteinabox-site.service=siteinabox-site
+      - traefik.http.services.siteinabox-site.loadbalancer.server.port=80
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  proxy: { external: true }

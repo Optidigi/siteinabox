@@ -7,6 +7,10 @@ replacement for route guards; it documents the expected user-facing behavior so
 future sidebar, dashboard, table, and direct-URL changes can be checked against
 one place.
 
+This file is intentionally scoped to CMS role/context access. The broader
+source-defined route and production host inventory lives at
+`../../../../../docs/architecture/route-surface-inventory.md`.
+
 ## Result Meanings
 
 - `Allowed`: route renders for the role/context.

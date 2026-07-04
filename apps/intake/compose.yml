@@ -1,0 +1,29 @@
+# Production compose for the SiteInABox public intake app.
+# Deploy path on VPS: /srv/saas/infra/stacks/siteinabox/apps/intake/compose.yml
+name: siteinabox-intake
+
+services:
+  siteinabox-intake:
+    image: ghcr.io/optidigi/siteinabox-intake:latest
+    pull_policy: always
+    container_name: siteinabox-intake
+    restart: unless-stopped
+    networks: [proxy]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=proxy
+      - traefik.http.routers.siteinabox-intake.rule=(Host(`siteinabox.nl`) || Host(`www.siteinabox.nl`)) && (Path(`/intake`) || PathPrefix(`/intake/`))
+      - traefik.http.routers.siteinabox-intake.entrypoints=websecure
+      - traefik.http.routers.siteinabox-intake.tls.certresolver=letsencrypt
+      - traefik.http.routers.siteinabox-intake.middlewares=hsts@docker
+      - traefik.http.routers.siteinabox-intake.priority=300
+      - traefik.http.routers.siteinabox-intake.service=siteinabox-intake
+      - traefik.http.services.siteinabox-intake.loadbalancer.server.port=80
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+networks:
+  proxy: { external: true }
