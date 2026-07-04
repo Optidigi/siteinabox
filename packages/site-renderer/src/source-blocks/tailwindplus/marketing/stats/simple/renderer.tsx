@@ -16,6 +16,9 @@ export function TailwindPlusMarketingStatsSimpleRenderer({
     {
       id: block.anchor || undefined,
       className: "bg-white py-24 sm:py-32 cms-block cms-block--stats cms-block--source-tailwindplus-stats-simple",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.stats.simple",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.stats.simple",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "stats", options.index),

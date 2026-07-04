@@ -24,6 +24,9 @@ export function TailwindPlusMarketingHeroSimpleCenteredRenderer({
     {
       id: block.anchor || undefined,
       className: "bg-white cms-block cms-block--hero cms-block--source-tailwindplus-hero-simple-centered",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.hero.simple-centered",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.hero.simple-centered",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "hero", options.index),

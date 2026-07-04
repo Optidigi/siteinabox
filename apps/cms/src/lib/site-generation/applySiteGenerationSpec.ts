@@ -78,6 +78,7 @@ const SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK = new Map<string, Set<string>>(
 for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
   const variants = SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(variant.slug) ?? new Set<string>()
   variants.add(variant.variant)
+  if (variant.legacyDesignVariant) variants.add(variant.legacyDesignVariant)
   SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.set(variant.slug, variants)
 }
 
@@ -132,7 +133,9 @@ const blockVariantScopeIssue = (
 ): string | null => {
   if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as any)) return null
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
-  const variant = catalog?.variants.find((entry) => entry.variant === value)
+  const variant = catalog?.variants.find(
+    (entry) => entry.variant === value || ("providerVariantId" in entry && entry.providerVariantId === value),
+  )
   if (!variant || variantAllowedForTenant(variant.scope, tenantSlug, validationScope)) return null
   return `Generated block designVariant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
 }

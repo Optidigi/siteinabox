@@ -30,6 +30,9 @@ export function TailwindPlusMarketingCtaDarkPanelWithAppScreenshotRenderer({
     {
       id: block.anchor || undefined,
       className: "bg-white cms-block cms-block--cta cms-block--source-tailwindplus-cta-dark-panel-with-app-screenshot",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "cta", options.index),

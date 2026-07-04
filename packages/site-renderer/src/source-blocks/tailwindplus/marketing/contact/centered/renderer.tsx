@@ -38,6 +38,9 @@ export function TailwindPlusMarketingContactCenteredRenderer({
     {
       id: block.anchor || undefined,
       className: "isolate bg-white px-6 py-24 sm:py-32 lg:px-8 cms-block cms-block--contact cms-block--source-tailwindplus-contact-centered",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.contact.centered",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.contact.centered",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "contactSection", options.index),

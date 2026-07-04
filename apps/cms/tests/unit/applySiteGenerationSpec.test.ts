@@ -574,6 +574,29 @@ describe("applySiteGenerationSpec", () => {
     expect(report.valid).toBe(true)
   })
 
+  it("accepts canonical provider IDs for new self-serve generation while keeping legacy aliases compatible", () => {
+    const canonicalSpec = fixtureSpec()
+    canonicalSpec.pages[0]!.blocks[0] = {
+      ...canonicalSpec.pages[0]!.blocks[0]!,
+      designVariant: "tailwindplus.marketing.hero.simple-centered",
+    } as any
+    canonicalSpec.pages[0]!.blocks[1] = {
+      ...canonicalSpec.pages[0]!.blocks[1]!,
+      designVariant: "tailwindplus.marketing.contact.centered",
+      description: null,
+    } as any
+
+    const legacySpec = fixtureSpec()
+    legacySpec.pages[0]!.blocks[1] = {
+      ...legacySpec.pages[0]!.blocks[1]!,
+      designVariant: "tailwindPlusCentered",
+      description: null,
+    } as any
+
+    expect(validateSiteGenerationSpecForCms(canonicalSpec, { variantScope: "self-serve" }).valid).toBe(true)
+    expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "self-serve" }).valid).toBe(true)
+  })
+
   it("preserves generated chrome variants and banner settings during apply", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()

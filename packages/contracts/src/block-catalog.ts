@@ -15,6 +15,7 @@ export type BlockReferenceSource = {
 export type SiteBlockCatalogVariant = {
   id: string
   variant: string
+  providerVariantId?: string
   label: string
   intent: string
   scope: BlockVariantScope
@@ -569,6 +570,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "hero:tailwindPlusSimpleCentered",
         variant: "tailwindPlusSimpleCentered",
+        providerVariantId: "tailwindplus.marketing.hero.simple-centered",
         label: "Tailwind Plus simple centered",
         intent: "Centered marketing hero using the exact local source-backed Tailwind Plus Simple centered block.",
         scope: globalVariantScope,
@@ -634,6 +636,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "featureList:tailwindPlusWithProductScreenshot",
         variant: "tailwindPlusWithProductScreenshot",
+        providerVariantId: "tailwindplus.marketing.feature.with-product-screenshot",
         label: "Tailwind Plus with product screenshot",
         intent: "Feature section using the exact local source-backed Tailwind Plus With product screenshot block.",
         scope: globalVariantScope,
@@ -650,6 +653,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "featureList:tailwindPlusCentered2x2",
         variant: "tailwindPlusCentered2x2",
+        providerVariantId: "tailwindplus.marketing.feature.centered-2x2-grid",
         label: "Tailwind Plus centered 2x2",
         intent: "Centered feature grid using the exact local source-backed Tailwind Plus Centered 2x2 grid block.",
         scope: globalVariantScope,
@@ -795,6 +799,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "cta:tailwindPlusDarkPanelWithAppScreenshot",
         variant: "tailwindPlusDarkPanelWithAppScreenshot",
+        providerVariantId: "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
         label: "Tailwind Plus dark panel with app screenshot",
         intent: "CTA section using the exact local source-backed Tailwind Plus Dark panel with app screenshot block.",
         scope: globalVariantScope,
@@ -896,6 +901,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "contactSection:tailwindPlusCentered",
         variant: "tailwindPlusCentered",
+        providerVariantId: "tailwindplus.marketing.contact.centered",
         label: "Tailwind Plus centered contact",
         intent: "Contact form using the exact local source-backed Tailwind Plus Centered contact section block.",
         scope: globalVariantScope,
@@ -991,6 +997,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "testimonials:tailwindPlusSimpleCentered",
         variant: "tailwindPlusSimpleCentered",
+        providerVariantId: "tailwindplus.marketing.testimonial.simple-centered",
         label: "Tailwind Plus simple centered",
         intent: "Single testimonial section using the exact local source-backed Tailwind Plus Simple centered block.",
         scope: globalVariantScope,
@@ -1104,6 +1111,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "stats:tailwindPlusSimple",
         variant: "tailwindPlusSimple",
+        providerVariantId: "tailwindplus.marketing.stats.simple",
         label: "Tailwind Plus stats",
         intent: "Three-column metric row using the exact local source-backed Tailwind Plus Simple stats block.",
         scope: globalVariantScope,
@@ -1148,6 +1156,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "logoCloud:tailwindPlusSimpleWithHeading",
         variant: "tailwindPlusSimpleWithHeading",
+        providerVariantId: "tailwindplus.marketing.logo-cloud.simple-with-heading",
         label: "Tailwind Plus simple with heading",
         intent: "Logo cloud using the exact local source-backed Tailwind Plus Simple with heading block.",
         scope: globalVariantScope,
@@ -1516,11 +1525,14 @@ export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((ent
     .filter(isApprovedSourceBackedVariant)
     .map((variant) => {
       const catalogVariant = variant as SiteBlockCatalogVariant
+      const preferredVariant = catalogVariant.providerVariantId ?? catalogVariant.variant
       return {
         slug: entry.slug,
         variantId: catalogVariant.id,
-        designVariant: catalogVariant.variant,
-        variant: catalogVariant.variant,
+        providerVariantId: catalogVariant.providerVariantId,
+        legacyDesignVariant: catalogVariant.variant,
+        designVariant: preferredVariant,
+        variant: preferredVariant,
         label: catalogVariant.label,
         rendererClassName: catalogVariant.rendererClassName,
         provenance: catalogVariant.provenance,

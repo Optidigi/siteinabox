@@ -22,6 +22,9 @@ export function TailwindPlusMarketingTestimonialSimpleCenteredRenderer({
     {
       id: block.anchor || undefined,
       className: "relative isolate overflow-hidden bg-white px-6 py-24 sm:py-32 lg:px-8 cms-block cms-block--testimonials cms-block--source-tailwindplus-testimonial-simple-centered",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.testimonial.simple-centered",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.testimonial.simple-centered",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "testimonials", options.index),

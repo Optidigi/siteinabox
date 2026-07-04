@@ -48,7 +48,7 @@ const scopedVariantIssue = (
   if (!generationBlockSlugs.has(blockType)) return null
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as SiteGenerationBlockSlug]
   const variant = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
-    entry.variant === value,
+    entry.variant === value || entry.providerVariantId === value,
   )
   if (!variant || variantAllowedForTenant(variant, tenant)) return null
   if (variant.scope.kind !== "tenant-exclusive") return null

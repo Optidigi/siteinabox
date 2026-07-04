@@ -89,6 +89,11 @@ const isSelfServeBlockCatalogVariant = (variant: SiteBlockCatalogVariant) =>
   variant.scope.kind === "global" &&
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET.has(variant.provenance.sourceName)
 
+const blockVariantIdentifiers = (variant: SiteBlockCatalogVariant): string[] =>
+  [variant.variant, variant.providerVariantId].filter((value): value is string =>
+    typeof value === "string" && value.length > 0,
+  )
+
 const strictObject = <T extends z.ZodRawShape>(shape: T) => z.object(shape).strict()
 const nullableString = z.string().nullable().optional()
 const jsonRecordSchema = z.record(z.string(), z.unknown())
@@ -130,7 +135,7 @@ export const SITE_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
       SITE_GENERATION_BLOCK_CATALOG
         .filter((entry) => entry.slug === slug)
         .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-        .map((variant) => variant.variant)
+        .flatMap(blockVariantIdentifiers)
         .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
     ),
   ]),
@@ -146,7 +151,7 @@ export const SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG = Object.fromEntries(
         .filter((entry) => entry.slug === slug)
         .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
         .filter(isSelfServeBlockCatalogVariant)
-        .map((variant) => variant.variant)
+        .flatMap(blockVariantIdentifiers)
         .filter((variant): variant is string => typeof variant === "string" && variant.length > 0),
     ),
   ]),

@@ -138,7 +138,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
       blocks: [
         {
           blockType: "hero",
-          designVariant: "tailwindPlusSimpleCentered",
+          designVariant: "tailwindplus.marketing.hero.simple-centered",
           anchor: "top",
           eyebrow: inlineText("Nieuwe website"),
           headline: inlineText("Generated Business"),
@@ -148,7 +148,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "featureList",
-          designVariant: "tailwindPlusWithProductScreenshot",
+          designVariant: "tailwindplus.marketing.feature.with-product-screenshot",
           anchor: "services",
           eyebrow: inlineText("Sneller live"),
           title: inlineText("Een website die direct bewerkbaar blijft"),
@@ -167,7 +167,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "featureList",
-          designVariant: "tailwindPlusCentered2x2",
+          designVariant: "tailwindplus.marketing.feature.centered-2x2-grid",
           anchor: "platform",
           title: inlineText("Wat de draft standaard regelt"),
           intro: blockText("Vier vaste featureposities houden de bronlayout intact."),
@@ -180,7 +180,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "cta",
-          designVariant: "tailwindPlusDarkPanelWithAppScreenshot",
+          designVariant: "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
           anchor: "demo",
           headline: inlineText("Bekijk de preview en pas content aan"),
           description: blockText("De broncomponent blijft intact terwijl je labels, links en media beheert."),
@@ -195,7 +195,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "testimonials",
-          designVariant: "tailwindPlusSimpleCentered",
+          designVariant: "tailwindplus.marketing.testimonial.simple-centered",
           anchor: "review",
           logo: {
             url: "https://tailwindcss.com/plus-assets/img/logos/workcation-logo-indigo-600.svg",
@@ -219,7 +219,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "stats",
-          designVariant: "tailwindPlusSimple",
+          designVariant: "tailwindplus.marketing.stats.simple",
           anchor: "stats",
           items: [
             { value: "24", label: "Projecten opgeleverd" },
@@ -229,7 +229,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "logoCloud",
-          designVariant: "tailwindPlusSimpleWithHeading",
+          designVariant: "tailwindplus.marketing.logo-cloud.simple-with-heading",
           anchor: "partners",
           title: inlineText("Vertrouwd door teams die snel willen publiceren"),
           logos: [
@@ -262,7 +262,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "contactSection",
-          designVariant: "tailwindPlusCentered",
+          designVariant: "tailwindplus.marketing.contact.centered",
           anchor: "contact",
           title: inlineText("Neem contact op"),
           description: blockText("Vertel kort wat je nodig hebt; de CMS-formulierbinding handelt de inzending af."),

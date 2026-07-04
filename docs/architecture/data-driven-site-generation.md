@@ -86,31 +86,33 @@ Self-serve generation has a narrower active source partition than the full
 provenance catalog. The current active provider-backed partition contains:
 
 - Tailwind Plus Marketing hero `tailwindplus.marketing.hero.simple-centered`,
-  stored as `tailwindPlusSimpleCentered` on `hero` blocks;
+  with legacy alias `tailwindPlusSimpleCentered` on `hero` blocks;
 - Tailwind Plus Marketing feature section
-  `tailwindplus.marketing.feature.with-product-screenshot`, stored as
+  `tailwindplus.marketing.feature.with-product-screenshot`, with legacy alias
   `tailwindPlusWithProductScreenshot` on `featureList` blocks;
 - Tailwind Plus Marketing feature section
-  `tailwindplus.marketing.feature.centered-2x2-grid`, stored as
+  `tailwindplus.marketing.feature.centered-2x2-grid`, with legacy alias
   `tailwindPlusCentered2x2` on `featureList` blocks;
 - Tailwind Plus Marketing CTA
-  `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, stored as
-  `tailwindPlusDarkPanelWithAppScreenshot` on `cta` blocks;
+  `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, with legacy
+  alias `tailwindPlusDarkPanelWithAppScreenshot` on `cta` blocks;
 - Tailwind Plus Marketing contact section
-  `tailwindplus.marketing.contact.centered`, stored as `tailwindPlusCentered`
-  on `contactSection` blocks;
+  `tailwindplus.marketing.contact.centered`, with legacy alias
+  `tailwindPlusCentered` on `contactSection` blocks;
 - Tailwind Plus Marketing testimonial
-  `tailwindplus.marketing.testimonial.simple-centered`, stored as
+  `tailwindplus.marketing.testimonial.simple-centered`, with legacy alias
   `tailwindPlusSimpleCentered` on `testimonials` blocks;
-- Tailwind Plus Marketing stats `tailwindplus.marketing.stats.simple`, stored
-  as `tailwindPlusSimple` on `stats` blocks;
+- Tailwind Plus Marketing stats `tailwindplus.marketing.stats.simple`, with
+  legacy alias `tailwindPlusSimple` on `stats` blocks;
 - Tailwind Plus Marketing logo cloud
-  `tailwindplus.marketing.logo-cloud.simple-with-heading`, stored as
+  `tailwindplus.marketing.logo-cloud.simple-with-heading`, with legacy alias
   `tailwindPlusSimpleWithHeading` on `logoCloud` blocks.
 
 AI inputs, generated JSON schema enums, mock generation, CMS validation, and
 publish validation use those active executable provider definitions and must not
 expose inactive provider variants or inactive slots.
+New self-serve generation prefers canonical provider IDs in `designVariant`;
+legacy aliases remain accepted for existing saved/imported page data.
 
 Provider block source owns DOM, layout, responsive behavior, and static
 Tailwind classes. SiaB owns structured slots, CMS editing, links/media/forms,
@@ -118,6 +120,9 @@ routing, theme tokens, preview/canvas/public orchestration, and publish
 validation. Generation may choose only approved provider IDs and fill exposed
 slot fields; it must not output raw HTML, TSX/JSX, CSS, imports, `className`,
 arbitrary Tailwind classes, executable code, or layout instructions.
+Provider roots carry `data-provider-block`, `data-provider-variant`, and
+`data-source-backed-block`; generic `.cms-block` CSS excludes those roots so
+legacy SiaB block styling cannot alter provider layout.
 
 Self-serve intake applies generated specs with remote media placeholder
 ingestion disabled. Provider media slots remain editable CMS fields, but active

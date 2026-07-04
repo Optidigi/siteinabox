@@ -47,6 +47,9 @@ export function TailwindPlusMarketingFeatureCentered2x2GridRenderer({
     {
       id: block.anchor || undefined,
       className: "bg-white py-24 sm:py-32 cms-block cms-block--featurelist cms-block--source-tailwindplus-feature-centered-2x2-grid",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.feature.centered-2x2-grid",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.feature.centered-2x2-grid",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "featureList", options.index),

@@ -29,6 +29,9 @@ export function TailwindPlusMarketingLogoCloudSimpleWithHeadingRenderer({
     {
       id: block.anchor || undefined,
       className: "bg-white py-24 sm:py-32 cms-block cms-block--logoCloud cms-block--source-tailwindplus-logo-cloud-simple-with-heading",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.logo-cloud.simple-with-heading",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.logo-cloud.simple-with-heading",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "logoCloud", options.index),

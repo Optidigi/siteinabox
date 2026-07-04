@@ -138,9 +138,11 @@ Same-day follow-up made CMS `POST /api/intake` store the normalized intake and
 start provider-backed draft generation from that stored intake automatically.
 The generated output remains validated CMS data only. As of 2026-07-04, generic
 self-serve generation is limited to active exact-source Tailwind Plus Marketing
-hero and stats provider blocks. Preview access and customer email sending remain gated from the
-generation-run detail flow. Existing operational preview-ready records may
-remain from earlier deployments.
+provider blocks backed by the executable source-block registry. The active set is
+hero, feature sections, CTA, contact, testimonial, stats, and logo-cloud blocks.
+Preview access and customer email sending remain gated from the generation-run
+detail flow. Existing operational preview-ready records may remain from earlier
+deployments.
 
 Same-day hardening tightened generated-site preview and rendering reliability:
 preview theme edits now preserve mode-only choices, merge rapid toolbar changes,
@@ -150,9 +152,8 @@ while official Amicare compatibility remains isolated to tenant-renderer
 slugs/domains. Generic style presets no longer expose `warm-care`. A later
 2026-07-04 cleanup removed the adapted Tailwind Plus runtime path and disabled
 generic self-serve provider variants pending exact-source Tailwind Plus
-implementation. A subsequent provider-block pass reintroduced only active
-Tailwind Plus Marketing hero and stats blocks through the executable
-source-block registry.
+implementation. Subsequent provider-block passes reintroduced only active
+Tailwind Plus Marketing blocks through the executable source-block registry.
 
 Same-day iframe editor follow-up completed the desktop iframe shape for the CMS
 page editor and customer preview surfaces. `PageForm` remains the RHF/save/

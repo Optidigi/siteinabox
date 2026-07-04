@@ -51,6 +51,9 @@ export function TailwindPlusMarketingFeatureWithProductScreenshotRenderer({
     {
       id: block.anchor || undefined,
       className: "overflow-hidden bg-white py-24 sm:py-32 cms-block cms-block--featurelist cms-block--source-tailwindplus-feature-with-product-screenshot",
+      "data-provider-block": "tailwindplus",
+      "data-provider-variant": "tailwindplus.marketing.feature.with-product-screenshot",
+      "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.feature.with-product-screenshot",
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "featureList", options.index),

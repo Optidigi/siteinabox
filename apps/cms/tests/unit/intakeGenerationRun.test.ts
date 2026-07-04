@@ -116,14 +116,14 @@ describe("processIntakeSubmission", () => {
     expect(store.pages).toHaveLength(1)
     expect(store.pages[0]?.slug).toBe("index")
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
-      "hero:tailwindPlusSimpleCentered",
-      "featureList:tailwindPlusWithProductScreenshot",
-      "featureList:tailwindPlusCentered2x2",
-      "cta:tailwindPlusDarkPanelWithAppScreenshot",
-      "testimonials:tailwindPlusSimpleCentered",
-      "stats:tailwindPlusSimple",
-      "logoCloud:tailwindPlusSimpleWithHeading",
-      "contactSection:tailwindPlusCentered",
+      "hero:tailwindplus.marketing.hero.simple-centered",
+      "featureList:tailwindplus.marketing.feature.with-product-screenshot",
+      "featureList:tailwindplus.marketing.feature.centered-2x2-grid",
+      "cta:tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
+      "testimonials:tailwindplus.marketing.testimonial.simple-centered",
+      "stats:tailwindplus.marketing.stats.simple",
+      "logoCloud:tailwindplus.marketing.logo-cloud.simple-with-heading",
+      "contactSection:tailwindplus.marketing.contact.centered",
     ])
     expect(store.pages[0]?.blocks[0]?.secondary).toMatchObject({ label: "Meer informatie", href: "/" })
     expect(store.pages[0]?.blocks[1]?.features).toHaveLength(3)

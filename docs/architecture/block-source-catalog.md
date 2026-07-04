@@ -17,7 +17,9 @@ The active V1 provider runtime is intentionally narrow:
   - `tailwindplus.marketing.testimonial.simple-centered`;
   - `tailwindplus.marketing.stats.simple`;
   - `tailwindplus.marketing.logo-cloud.simple-with-heading`;
-- persisted legacy designVariants:
+- preferred generated `designVariant` values are the canonical provider IDs
+  above;
+- persisted legacy designVariant aliases remain accepted for existing content:
   - `tailwindPlusSimpleCentered`;
   - `tailwindPlusWithProductScreenshot`;
   - `tailwindPlusCentered2x2`;
@@ -84,23 +86,24 @@ renderer-owned approximations are not acceptable for self-serve provider blocks.
 
 `SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS` is narrower than any historical
 provenance catalog. It currently exposes only active executable provider
-definitions:
+definitions. The projection keeps the catalog id and legacy alias, but its
+preferred `designVariant` is the canonical provider id:
 
-- `hero:tailwindPlusSimpleCentered`, backed by
+- `hero:tailwindPlusSimpleCentered` ->
   `tailwindplus.marketing.hero.simple-centered`;
-- `featureList:tailwindPlusWithProductScreenshot`, backed by
+- `featureList:tailwindPlusWithProductScreenshot` ->
   `tailwindplus.marketing.feature.with-product-screenshot`;
-- `featureList:tailwindPlusCentered2x2`, backed by
+- `featureList:tailwindPlusCentered2x2` ->
   `tailwindplus.marketing.feature.centered-2x2-grid`;
-- `cta:tailwindPlusDarkPanelWithAppScreenshot`, backed by
+- `cta:tailwindPlusDarkPanelWithAppScreenshot` ->
   `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`;
-- `contactSection:tailwindPlusCentered`, backed by
+- `contactSection:tailwindPlusCentered` ->
   `tailwindplus.marketing.contact.centered`;
-- `testimonials:tailwindPlusSimpleCentered`, backed by
+- `testimonials:tailwindPlusSimpleCentered` ->
   `tailwindplus.marketing.testimonial.simple-centered`;
-- `stats:tailwindPlusSimple`, backed by
+- `stats:tailwindPlusSimple` ->
   `tailwindplus.marketing.stats.simple`;
-- `logoCloud:tailwindPlusSimpleWithHeading`, backed by
+- `logoCloud:tailwindPlusSimpleWithHeading` ->
   `tailwindplus.marketing.logo-cloud.simple-with-heading`.
 
 Inactive provider families are removed from the active app/codebase architecture,
@@ -122,9 +125,10 @@ provider HTML, component source, imports, CSS, layout instructions, or
 executable code.
 
 AI output is structured CMS data only. For visual selection it sets the
-block-level approved `designVariant` ID for the chosen block type and fills the
-slot fields exposed by the active manifest. Analytics metadata is not a styling
-API.
+block-level approved canonical provider `designVariant` for the chosen block
+type and fills the slot fields exposed by the active manifest. Legacy aliases
+continue to resolve for saved/imported pages but are not the preferred generated
+shape. Analytics metadata is not a styling API.
 
 Blocks must not expose arbitrary block-level visual tokens such as per-block
 colors, fonts, radii, shape controls, class names, or provider token overrides.
@@ -139,44 +143,52 @@ the `@tailwindcss/forms` plugin, and `@source` coverage for
 `packages/site-renderer/src`. CMS preview/customizer uses the CMS generated-site
 renderer stylesheet for matching renderer coverage.
 
+Provider block roots are marked with `data-provider-block="tailwindplus"`,
+`data-provider-variant="<canonical-provider-id>"`,
+`data-source-backed-block="true"`, and the existing `data-source-variant`.
+Generic non-tenant `.cms-block` renderer CSS must be scoped to
+`.cms-block:not([data-provider-block])` and descendant selectors must originate
+from that filtered root. Provider isolation is an exclusion policy, not a
+provider-specific CSS override layer.
+
 Current active runtime families and blocks:
 
-- `tailwindplus.marketing.hero.simple-centered`, mapped to stored
-  `tailwindPlusSimpleCentered` hero data. The active slots are `headline`
+- `tailwindplus.marketing.hero.simple-centered`, with legacy
+  `tailwindPlusSimpleCentered` hero aliases still accepted. The active slots are `headline`
   required and `eyebrow`, `subheadline`, `cta`, and `secondary` optional.
   Upstream `image` and `pills` are recorded as inactive for this exact variant
   and are rejected if generated or saved with values.
-- `tailwindplus.marketing.feature.with-product-screenshot`, mapped to stored
-  `tailwindPlusWithProductScreenshot` feature list data. The active slots are
+- `tailwindplus.marketing.feature.with-product-screenshot`, with legacy
+  `tailwindPlusWithProductScreenshot` aliases still accepted. The active slots are
   `title` and exactly three `features` with required title/description;
   `eyebrow`, `intro`, `feature.icon`, and `image` are editable optional slots.
   The image slot is optional because self-serve intake skips remote generated
   media ingestion; the renderer has the upstream screenshot fallback.
-- `tailwindplus.marketing.feature.centered-2x2-grid`, mapped to stored
-  `tailwindPlusCentered2x2` feature list data. The active slots are `title`,
+- `tailwindplus.marketing.feature.centered-2x2-grid`, with legacy
+  `tailwindPlusCentered2x2` aliases still accepted. The active slots are `title`,
   optional `intro`, and exactly four feature items with required
   title/description. `eyebrow` and `image` are inactive for this exact variant.
-- `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, mapped to stored
-  `tailwindPlusDarkPanelWithAppScreenshot` CTA data. `headline` is required;
+- `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, with legacy
+  `tailwindPlusDarkPanelWithAppScreenshot` aliases still accepted. `headline` is required;
   `description`, `primary`, `secondary`, and `backgroundImage` are optional.
   `eyebrow` is inactive.
-- `tailwindplus.marketing.contact.centered`, mapped to stored
-  `tailwindPlusCentered` contact section data. `title`, `formName`,
+- `tailwindplus.marketing.contact.centered`, with legacy
+  `tailwindPlusCentered` aliases still accepted. `title`, `formName`,
   `submitLabel`, and one to six form fields are required; field labels, names,
   types, required flags, placeholders, and select/checkbox options remain CMS
   data.
-- `tailwindplus.marketing.testimonial.simple-centered`, mapped to stored
-  `tailwindPlusSimpleCentered` testimonial data. It renders exactly one
+- `tailwindplus.marketing.testimonial.simple-centered`, with legacy
+  `tailwindPlusSimpleCentered` testimonial aliases still accepted. It renders exactly one
   testimonial item with required quote, author, and role. Logo and avatar media
   are optional editable slots because self-serve intake does not require remote
   generated media ingestion.
-- `tailwindplus.marketing.stats.simple`, mapped to stored
-  `tailwindPlusSimple` stats data. The active slot is exactly three `items`,
+- `tailwindplus.marketing.stats.simple`, with legacy
+  `tailwindPlusSimple` aliases still accepted. The active slot is exactly three `items`,
   each with editable `value` and `label`. Section `title`, `intro`, and item
   `description` are inactive for this exact variant and are rejected if
   generated or saved with values.
-- `tailwindplus.marketing.logo-cloud.simple-with-heading`, mapped to stored
-  `tailwindPlusSimpleWithHeading` logo cloud data. It renders exactly five logo
+- `tailwindplus.marketing.logo-cloud.simple-with-heading`, with legacy
+  `tailwindPlusSimpleWithHeading` aliases still accepted. It renders exactly five logo
   items; `title`, logo names, and optional hrefs are structured CMS data, and
   logo image media is optional/editable for self-serve drafts that skip remote
   media ingestion. `intro` is inactive.
@@ -221,6 +233,10 @@ Header, footer, and announcement/banner are global site chrome. They remain in
 Self-serve generation exposes only the default structured chrome variants.
 Inactive provider chrome variants are not active chrome choices, provenance
 entries, renderer fixture requirements, or AI-generation suggestions.
+Tailwind Plus Marketing header/navbar chrome is deferred until it can be added
+as a complete provider-backed chrome path with source fixture/hash, typed chrome
+slots, CMS editing, preview/public/canvas parity, generation validation, and
+fail-closed tests.
 
 ## Adding Or Reintroducing Providers
 

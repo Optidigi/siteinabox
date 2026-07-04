@@ -2,6 +2,7 @@ import { createHash } from "node:crypto"
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 import type { Block } from "@siteinabox/contracts"
+import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { BlockRenderer } from "@siteinabox/site-renderer"
@@ -39,6 +40,16 @@ const blockRoot = (text: string) => ({
 const normalizeSource = (source: string) =>
   source.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trim()
 
+const extractFixtureClassNames = (source: string) => [
+  ...source.matchAll(/\bclass(?:Name)?=["']([^"']+)["']/g),
+].map((match) => match[1]!.trim())
+
+const selectorsFor = (css: string) =>
+  [...css.matchAll(/([^{}]+)\{/g)]
+    .flatMap((match) => match[1]!.split(","))
+    .map((selector) => selector.trim())
+    .filter(Boolean)
+
 const providerCases = [
   {
     id: "tailwindplus.marketing.hero.simple-centered",
@@ -50,6 +61,7 @@ const providerCases = [
       "text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-7xl",
       "rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
     ],
+    allowedSlotClassDeltas: ["font-semibold text-indigo-600", "absolute inset-0"],
   },
   {
     id: "tailwindplus.marketing.feature.with-product-screenshot",
@@ -126,6 +138,7 @@ const providerCases = [
   folder: string
   block: Block
   classes: string[]
+  allowedSlotClassDeltas?: string[]
 }>
 
 const fixtureTextFor = (folder: string) =>
@@ -133,6 +146,25 @@ const fixtureTextFor = (folder: string) =>
     .map((file) => fromRepoRoot(`${folder}/${file}`))
     .filter((filePath) => existsSync(filePath))
     .map((filePath) => readFileSync(filePath, "utf8"))
+
+const fixtureTextForHash = (folder: string, sourceHash: string) => {
+  const source = fixtureTextFor(folder).find((candidate) =>
+    `sha256:${createHash("sha256").update(normalizeSource(candidate)).digest("hex")}` === sourceHash,
+  )
+  if (!source) throw new Error(`No fixture in ${folder} matches ${sourceHash}`)
+  return source
+}
+
+const rendererParityFixtureFor = (folder: string) => {
+  const reactFixture = fromRepoRoot(`${folder}/upstream.react.tsx`)
+  if (existsSync(reactFixture)) return readFileSync(reactFixture, "utf8")
+  return fixtureTextForHash(
+    folder,
+    providerCases.find((testCase) => testCase.folder === folder)
+      ? getProviderBlockDefinition(providerCases.find((testCase) => testCase.folder === folder)!.block)?.source.sourceHash ?? ""
+      : "",
+  )
+}
 
 describe("provider block runtime", () => {
   it("has complete active provider definitions with renderers, slots, metadata, and source hashes", () => {
@@ -213,9 +245,16 @@ describe("provider block runtime", () => {
   it("renders every active provider component with upstream Tailwind class parity", () => {
     for (const testCase of providerCases) {
       const html = renderToStaticMarkup(<BlockRenderer block={testCase.block} index={0} />)
-      const upstream = fixtureTextFor(testCase.folder).join("\n")
+      const upstream = rendererParityFixtureFor(testCase.folder)
 
       expect(html, testCase.id).toContain(`data-source-variant="${testCase.id}"`)
+      expect(html, testCase.id).toContain('data-provider-block="tailwindplus"')
+      expect(html, testCase.id).toContain(`data-provider-variant="${testCase.id}"`)
+      expect(html, testCase.id).toContain('data-source-backed-block="true"')
+      const allowedSlotClassDeltas = new Set(testCase.allowedSlotClassDeltas ?? [])
+      for (const className of extractFixtureClassNames(upstream).filter((className) => !allowedSlotClassDeltas.has(className))) {
+        expect(html, `${testCase.id} render missing upstream className: ${className}`).toContain(className)
+      }
       for (const className of testCase.classes) {
         expect(upstream, `${testCase.id} upstream missing ${className}`).toContain(className)
         expect(html, `${testCase.id} render missing ${className}`).toContain(className)
@@ -223,10 +262,50 @@ describe("provider block runtime", () => {
     }
   })
 
-  it("resolves the same provider definition for stored legacy designVariant values", () => {
+  it("resolves the same provider definition for canonical provider IDs and stored legacy designVariant values", () => {
     for (const testCase of providerCases) {
       expect(getProviderBlockDefinition(testCase.block)?.id).toBe(testCase.id)
+      const legacyDesignVariant = getProviderBlockDefinition(testCase.block)?.legacyDesignVariant
+      expect(legacyDesignVariant, testCase.id).toBeTruthy()
+      expect(getProviderBlockDefinition({
+        ...testCase.block,
+        designVariant: legacyDesignVariant,
+      })?.id).toBe(testCase.id)
     }
+  })
+
+  it("keeps self-serve catalog projection in lockstep with executable provider definitions", () => {
+    expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS).toHaveLength(providerBlockDefinitions.length)
+
+    for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
+      const definition = providerBlockDefinitions.find((candidate) =>
+        candidate.blockType === variant.slug &&
+        candidate.id === variant.providerVariantId &&
+        candidate.legacyDesignVariant === variant.legacyDesignVariant
+      )
+      expect(definition, variant.variantId).toBeTruthy()
+      expect(variant.variant, variant.variantId).toBe(definition?.id)
+      expect(variant.designVariant, variant.variantId).toBe(definition?.id)
+      expect(variant.rendererClassName, variant.variantId).toBe(definition?.rendererClassName)
+    }
+  })
+
+  it("keeps generic renderer CSS scoped away from provider block roots", () => {
+    const rendererCss = readFileSync(fromRepoRoot("packages/site-renderer/src/styles.css"), "utf8")
+    const rendererShellCss = readFileSync(fromRepoRoot("apps/renderer/src/styles/site.css"), "utf8")
+    const cmsRendererShellCss = readFileSync(fromRepoRoot("apps/cms/src/styles/generated-site-renderer.css"), "utf8")
+
+    const unsafeSelectors = selectorsFor(rendererCss).filter((selector) =>
+      selector.includes(".site-renderer:not([data-tenant-renderer])") &&
+      selector.includes(".cms-block") &&
+      !selector.includes(":not([data-provider-block])"),
+    )
+
+    expect(unsafeSelectors).toEqual([])
+    expect(rendererShellCss).toContain('@import "tailwindcss" source(none);')
+    expect(rendererShellCss).toContain('@source "../../../../packages/site-renderer/src";')
+    expect(cmsRendererShellCss).toContain('@import "tailwindcss" source(none);')
+    expect(cmsRendererShellCss).toContain('@source "../../../../packages/site-renderer/src";')
   })
 
   it("maps SiaB theme tokens onto static Tailwind provider utility variables", () => {

@@ -16,6 +16,7 @@ export type SiteGenerationModelInput = {
   approvedDesignVariants: Array<{
     blockType: string
     designVariant: string
+    legacyDesignVariant?: string
     sourceName: string
     variantId: string
     providerVariantId?: string
@@ -43,23 +44,29 @@ export const buildSiteGenerationModelInput = (
   intake,
   generationInput,
   supportedBlocks: SUPPORTED_SITE_GENERATION_BLOCKS,
-  approvedDesignVariants: SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => ({
-    blockType: variant.slug,
-    designVariant: variant.variant,
-    sourceName: variant.provenance.sourceName,
-    variantId: variant.variantId,
-    providerVariantId: providerBlockDefinitions.find((definition) =>
+  approvedDesignVariants: SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => {
+    const providerDefinition = providerBlockDefinitions.find((definition) =>
       definition.blockType === variant.slug &&
-      definition.legacyDesignVariant === variant.variant
-    )?.id,
-    slots: Object.fromEntries(
-      Object.entries(providerBlockDefinitions.find((definition) =>
-        definition.blockType === variant.slug &&
+      (
+        definition.id === variant.providerVariantId ||
+        definition.id === variant.variant ||
+        definition.legacyDesignVariant === variant.legacyDesignVariant ||
         definition.legacyDesignVariant === variant.variant
-      )?.slots ?? {})
-        .map(([name, slot]) => [name, { kind: slot.kind, status: slot.status, exposed: slot.exposed }]),
-    ),
-  })),
+      )
+    )
+    return {
+      blockType: variant.slug,
+      designVariant: variant.providerVariantId ?? variant.variant,
+      legacyDesignVariant: variant.legacyDesignVariant,
+      sourceName: variant.provenance.sourceName,
+      variantId: variant.variantId,
+      providerVariantId: providerDefinition?.id,
+      slots: Object.fromEntries(
+        Object.entries(providerDefinition?.slots ?? {})
+          .map(([name, slot]) => [name, { kind: slot.kind, status: slot.status, exposed: slot.exposed }]),
+      ),
+    }
+  }),
   approvedChromeVariants: SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => ({
     area: variant.area,
     variant: variant.variant,
@@ -69,7 +76,7 @@ export const buildSiteGenerationModelInput = (
   requirements: [
     "Return exactly one JSON object matching SiteGenerationSpec.",
     "Use only supportedBlocks as page blockType values and blocks[].slug values.",
-    "Set every generated block's designVariant to an approvedDesignVariants entry for that exact blockType.",
+    "Set every generated block's designVariant to an approvedDesignVariants designVariant entry for that exact blockType; legacyDesignVariant is accepted only for existing stored data.",
     "Fill only exposed slots from the selected approvedDesignVariants slot manifest; do not include inactive slots.",
     "Do not set legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
     "Set settings.chrome.header.variant, settings.chrome.footer.variant, and settings.chrome.banner.variant only to null or to approvedChromeVariants values for the matching area.",
