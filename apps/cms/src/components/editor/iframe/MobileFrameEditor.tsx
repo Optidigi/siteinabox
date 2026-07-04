@@ -11,6 +11,7 @@ import {
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
+import { MobileBackPill } from "@/components/common/mobile-back-pill"
 import { blockBySlug } from "@/blocks/registry"
 import type { CanvasBlocksApi } from "@/components/editor/canvas/CanvasBlocksApi"
 import type { ElementPath } from "@/components/editor/canvas/elementPath"
@@ -204,18 +205,8 @@ function MobileFocusedSection({
     : String(block.blockType ?? "?")
 
   return (
-    <div data-mobile-frame-section-edit className="flex h-[calc(100dvh-4.5rem)] min-h-0 flex-col">
+    <div data-mobile-frame-section-edit className="flex min-h-[calc(100dvh-4.5rem)] flex-col">
       <header className="sticky top-0 z-30 flex min-w-0 items-center justify-center border-b border-border bg-background px-16 py-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute left-3 size-10 rounded-full"
-          onClick={onBack}
-          aria-label={t("backToList")}
-        >
-          <ChevronLeft className="size-5" />
-        </Button>
         <div className="flex min-w-0 max-w-full items-center justify-center gap-2">
           <Button
             type="button"
@@ -278,10 +269,11 @@ function MobileFocusedSection({
           </Button>
         </div>
       </header>
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0">
         {focusedFrame}
       </div>
       <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />
+      <MobileBackPill onBack={onBack} />
       {isInspectorIdle && (
         <MobileFloatingPill
           position="bottom-right"

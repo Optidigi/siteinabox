@@ -22,10 +22,12 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
   ])
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader
-        title={t("new")}
-        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
-      />
+      <div className="max-md:hidden">
+        <PageHeader
+          title={t("new")}
+          beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
+        />
+      </div>
       <PageForm
         tenantId={tenant.id}
         tenantSlug={tenant.slug}

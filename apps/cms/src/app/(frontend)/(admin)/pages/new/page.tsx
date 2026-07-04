@@ -22,7 +22,9 @@ export default async function NewTenantPage() {
   ])
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader title={t("new")} />
+      <div className="max-md:hidden">
+        <PageHeader title={t("new")} />
+      </div>
       <PageForm
         tenantId={ctx.tenant.id}
         tenantSlug={ctx.tenant.slug}

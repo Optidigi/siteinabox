@@ -50,10 +50,12 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open" })
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader
-        title={page.title}
-        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
-      />
+      <div className="max-md:hidden">
+        <PageHeader
+          title={page.title}
+          beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
+        />
+      </div>
       <PageForm
         initial={page as any}
         tenantId={tenant.id}

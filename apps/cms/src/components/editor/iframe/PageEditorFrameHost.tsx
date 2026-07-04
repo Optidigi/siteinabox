@@ -138,8 +138,7 @@ export function PageEditorFrameHost({
     "editor-frame-chrome-inset",
     `${PARENT_CHROME_BOTTOM_VAR}:${formatCssPx(parentChromeBottom)};`,
   )
-  const isFocusedMobileFrame = layout === "mobile" && mobileMode?.mode === "focusedSection"
-  const shouldAutoSizeFrame = view === "canvas" && mobileMode?.mode !== "focusedSection"
+  const shouldAutoSizeFrame = view === "canvas"
   const iframeAutoHeight = useCspStyleRule(
     "editor-frame-auto-height",
     shouldAutoSizeFrame && frameContentHeight != null ? `height:${formatCssPx(frameContentHeight)};` : null,
@@ -443,7 +442,7 @@ export function PageEditorFrameHost({
 
   return (
     <div
-      className={cn("relative w-full", isFocusedMobileFrame && "h-full min-h-0")}
+      className="relative w-full"
       data-siab-editor-frame-host
       data-siab-editor-frame-view={view}
       data-siab-editor-frame-layout={layout}
@@ -460,9 +459,7 @@ export function PageEditorFrameHost({
           iframeAutoHeight.className,
           "block w-full border-0 bg-transparent",
           layout === "mobile"
-            ? isFocusedMobileFrame
-              ? "h-full min-h-0"
-              : cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
+            ? cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
             : cn("min-h-[640px]", view === "sidebar" && "h-[calc(100dvh-6.5rem)]"),
         )}
         data-siab-editor-frame

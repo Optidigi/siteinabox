@@ -61,6 +61,7 @@ describe("mobile inspector snap contract", () => {
 
   it("keeps mobile section navigation and save affordances pill-shaped", () => {
     const sectionEdit = read("src/components/editor/canvas/mobile/mobile-section-edit.tsx")
+    const frameEditor = read("src/components/editor/iframe/MobileFrameEditor.tsx")
     const mobilePill = read("src/components/save-ui/mobile-save-pill.tsx")
     const floatingPill = read("src/components/common/mobile-floating-pill.tsx")
 
@@ -73,6 +74,17 @@ describe("mobile inspector snap contract", () => {
     expect(sectionEdit).toContain('variant="outline"')
     expect(sectionEdit).toContain("rounded-full border-border bg-muted px-4 font-medium shadow-sm")
     expect(sectionEdit).toContain('<span className="truncate">{label}</span>')
+    expect(frameEditor).toContain("data-mobile-frame-section-edit")
+    expect(frameEditor).toContain('import { MobileBackPill } from "@/components/common/mobile-back-pill"')
+    expect(frameEditor).toContain("<MobileBackPill onBack={onBack} />")
+    expect(frameEditor).toContain('aria-label={t("switchSection", { label })}')
+    expect(frameEditor).toContain('aria-label={t("previousSection")}')
+    expect(frameEditor).toContain('aria-label={t("nextSection")}')
+    expect(frameEditor).toContain('position="bottom-right"')
+    expect(frameEditor).toContain('ariaLabel={t("deleteSection")}')
+    expect(frameEditor).toContain('"data-mobile-trash-pill"')
+    expect(frameEditor).not.toContain('className="flex h-[calc(100dvh-4.5rem)] min-h-0 flex-col"')
+    expect(frameEditor).not.toContain('className="min-h-0 flex-1 overflow-hidden"')
     expect(mobilePill).toContain("const [displayStatus, setDisplayStatus] = React.useState<SaveStatus>(status)")
     expect(mobilePill).toContain('import { Save, AlertCircle, Check } from "lucide-react"')
     expect(mobilePill).toContain("saved: <Check")
