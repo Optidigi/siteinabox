@@ -1,14 +1,20 @@
 import { describe, it, expect } from "vitest"
-import { mobileEditorReducer, initialMobileEditorState, type MobileEditorState, type DrillFrame } from "@/components/editor/canvas/mobile/MobileEditorContext"
+import {
+  MOBILE_INSPECTOR_COLLAPSED_SNAP,
+  mobileEditorReducer,
+  initialMobileEditorState,
+  type MobileEditorState,
+  type DrillFrame,
+} from "@/components/editor/canvas/mobile/MobileEditorContext"
 import type { ElementPath } from "@/components/editor/canvas/elementPath"
 
 const path = (over: Partial<ElementPath> = {}): ElementPath => ({ blockIndex: 0, field: "headline", ...over })
 
 describe("mobileEditorReducer", () => {
-  it("initial state has no selection, snap=0.42, empty drill", () => {
+  it("initial state has no selection, collapsed snap, empty drill", () => {
     expect(initialMobileEditorState).toEqual<MobileEditorState>({
       selected: null,
-      activeSnapPoint: 0.42,
+      activeSnapPoint: MOBILE_INSPECTOR_COLLAPSED_SNAP,
       preFocusSnap: null,
       drillStack: [],
     })
@@ -48,11 +54,11 @@ describe("mobileEditorReducer", () => {
     ])
   })
 
-  it("CLEAR_SELECTION resets to initial snap (0.42) and empties drill", () => {
+  it("CLEAR_SELECTION resets to the collapsed snap and empties drill", () => {
     const seeded: MobileEditorState = { selected: path(), activeSnapPoint: 0.92, preFocusSnap: 0.42, drillStack: [{ blockIndex: 0, field: "features", itemIndex: 1 }] }
     const next = mobileEditorReducer(seeded, { type: "CLEAR_SELECTION" })
     expect(next.selected).toBeNull()
-    expect(next.activeSnapPoint).toBe(0.42)
+    expect(next.activeSnapPoint).toBe(MOBILE_INSPECTOR_COLLAPSED_SNAP)
     expect(next.drillStack).toEqual([])
   })
 
@@ -62,7 +68,7 @@ describe("mobileEditorReducer", () => {
     const restored = mobileEditorReducer(cleared, { type: "RESTORE_PRE_FOCUS_SNAP" })
 
     expect(restored.selected).toBeNull()
-    expect(restored.activeSnapPoint).toBe(0.42)
+    expect(restored.activeSnapPoint).toBe(MOBILE_INSPECTOR_COLLAPSED_SNAP)
     expect(restored.preFocusSnap).toBeNull()
     expect(restored.drillStack).toEqual([])
   })
@@ -127,20 +133,23 @@ describe("mobileEditorReducer", () => {
   })
 
   it("FOCUS_POP pops 0.42 → 0.92 and remembers the compact detent", () => {
-    const next = mobileEditorReducer({ ...initialMobileEditorState, selected: path() }, { type: "FOCUS_POP" })
+    const selected = mobileEditorReducer(initialMobileEditorState, { type: "SET_SELECTED", path: path() })
+    const next = mobileEditorReducer(selected, { type: "FOCUS_POP" })
     expect(next.activeSnapPoint).toBe(0.92)
     expect(next.preFocusSnap).toBe(0.42)
   })
 
   it("RESTORE_PRE_FOCUS_SNAP returns to the remembered compact detent", () => {
-    const focused = mobileEditorReducer({ ...initialMobileEditorState, selected: path() }, { type: "FOCUS_POP" })
+    const selected = mobileEditorReducer(initialMobileEditorState, { type: "SET_SELECTED", path: path() })
+    const focused = mobileEditorReducer(selected, { type: "FOCUS_POP" })
     const restored = mobileEditorReducer(focused, { type: "RESTORE_PRE_FOCUS_SNAP" })
     expect(restored.activeSnapPoint).toBe(0.42)
     expect(restored.preFocusSnap).toBeNull()
   })
 
   it("EXPAND_TO clears the remembered focus detent so manual snaps win", () => {
-    const focused = mobileEditorReducer({ ...initialMobileEditorState, selected: path() }, { type: "FOCUS_POP" })
+    const selected = mobileEditorReducer(initialMobileEditorState, { type: "SET_SELECTED", path: path() })
+    const focused = mobileEditorReducer(selected, { type: "FOCUS_POP" })
     const expanded = mobileEditorReducer(focused, { type: "EXPAND_TO", snap: 0.92 })
     expect(expanded.activeSnapPoint).toBe(0.92)
     expect(expanded.preFocusSnap).toBeNull()

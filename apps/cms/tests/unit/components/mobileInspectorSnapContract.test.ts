@@ -4,12 +4,17 @@ import { describe, expect, it } from "vitest"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("mobile inspector snap contract", () => {
-  it("opens from the compact detent and ignores invalid vaul snap callbacks", () => {
+  it("collapses to a handle by default and ignores invalid vaul snap callbacks", () => {
     const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
 
-    expect(inspectorBar).toContain("const SNAP_POINTS: MobileSnap[] = [0.42, 0.92]")
+    expect(inspectorBar).toContain("MOBILE_INSPECTOR_COLLAPSED_SNAP")
+    expect(inspectorBar).toContain("const SNAP_POINTS: MobileSnap[] = [MOBILE_INSPECTOR_COLLAPSED_SNAP, 0.42, 0.92]")
     expect(inspectorBar).toContain("const isMobileSnap = (snap: unknown): snap is MobileSnap")
-    expect(inspectorBar).toContain("if (isMobileSnap(snap)) expandTo(snap)")
+    expect(inspectorBar).toContain("if (!isMobileSnap(snap)) return")
+    expect(inspectorBar).toContain("if (snap === MOBILE_INSPECTOR_COLLAPSED_SNAP)")
+    expect(inspectorBar).toContain('if (isIdle) setSelected({ blockIndex, field: "" })')
+    expect(inspectorBar).toContain("expandTo(snap)")
+    expect(inspectorBar).toContain("dismissible={false}")
     expect(inspectorBar).not.toContain("?? 0.42")
   })
 

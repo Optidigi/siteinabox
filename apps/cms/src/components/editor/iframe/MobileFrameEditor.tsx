@@ -69,7 +69,7 @@ function MobileFrameEditorInner({
   const openSection = React.useCallback((index: number) => {
     setScreen({ type: "section", index })
     onFocusedSectionChange(index)
-    onSelectElement({ blockIndex: index, field: "" })
+    onSelectElement(null)
     clearSelection()
   }, [clearSelection, onFocusedSectionChange, onSelectElement])
 
@@ -281,7 +281,7 @@ function MobileFocusedSection({
       <div className="min-h-0 flex-1 overflow-hidden">
         {focusedFrame}
       </div>
-      <MobileInspectorBar block={block} manifest={manifest} theme={theme} />
+      <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />
       {isInspectorIdle && (
         <MobileFloatingPill
           position="bottom-right"

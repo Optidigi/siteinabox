@@ -206,6 +206,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
   const inspectorBar = (
       <MobileInspectorBar
         block={block}
+        blockIndex={index}
         manifest={manifest}
         theme={theme}
         renderInspector={renderInspector}

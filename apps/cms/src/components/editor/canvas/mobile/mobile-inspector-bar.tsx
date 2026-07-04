@@ -3,7 +3,11 @@ import * as React from "react"
 import { useFormContext } from "react-hook-form"
 import { Drawer as Vaul } from "vaul"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
-import { useMobileEditor, type MobileSnap } from "@/components/editor/canvas/mobile/MobileEditorContext"
+import {
+  MOBILE_INSPECTOR_COLLAPSED_SNAP,
+  useMobileEditor,
+  type MobileSnap,
+} from "@/components/editor/canvas/mobile/MobileEditorContext"
 import { useInspectorKeyboardLock } from "@/components/editor/canvas/mobile/useInspectorKeyboardLock"
 import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/canvas/blockElements"
 import { elementPathToName } from "@/components/editor/canvas/elementPath"
@@ -18,6 +22,7 @@ import { useTranslations } from "next-intl"
 export interface MobileInspectorBarProps {
   /** Block currently displayed in the section view — passed to MobileComponentEditor. */
   block: any
+  blockIndex: number
   manifest: RtManifest
   /** Used ONLY to extract font family overrides for editor content; the drawer chrome itself still inherits admin tokens. */
   theme?: ThemeTokens | null
@@ -39,27 +44,30 @@ export interface MobileInspectorBarLayoutProps {
   body: React.ReactNode
 }
 
-const SNAP_POINTS: MobileSnap[] = [0.42, 0.92]
-const isMobileSnap = (snap: unknown): snap is MobileSnap => snap === 0.42 || snap === 0.92
+const SNAP_POINTS: MobileSnap[] = [MOBILE_INSPECTOR_COLLAPSED_SNAP, 0.42, 0.92]
+const isMobileSnap = (snap: unknown): snap is MobileSnap => snap === MOBILE_INSPECTOR_COLLAPSED_SNAP || snap === 0.42 || snap === 0.92
 
 /**
  * Bottom inspector bar driven by vaul.
  *
- * Snap points: [0.42, 0.92]
+ * Snap points: [0.08, 0.42, 0.92]
+ *   0.08 — collapsed detent; only the handle remains visible.
  *   0.42 — compact detent; the sheet opens here on selection — a canvas
- *          sliver stays visible. A drag down dismisses the sheet.
+ *          sliver stays visible.
  *   0.92 — editing detent; focusing a field pops the sheet here (animated)
  *          so the field clears the keyboard. When focus leaves the inspector
  *          field or the keyboard closes, the sheet restores to its pre-focus
  *          detent unless the user manually changed detents.
  *
- * Idle state (selected null + drillStack empty) fully hides the drawer via
- * open={false} — no persistent strip.
+ * Idle state (selected null + drillStack empty) stays mounted at the collapsed
+ * handle snap so opening a focused section does not immediately cover the
+ * canvas. Dragging/clicking the handle opens the block-level inspector.
  *
  * vaul config:
- *   open={!isIdle}       — hidden when idle
- *   dismissible={true}   — a drag down past the low detent dismisses the
- *                          sheet; onOpenChange then clears the selection
+ *   open={true}          — always mounted so the collapsed handle remains
+ *                          available in focused section view
+ *   dismissible={false}  — dragging down lands on the collapsed snap instead
+ *                          of fully closing the controlled drawer
  *   modal={false}        — canvas stays interactive
  *   noBodyStyles={true}  — PageForm uses document scroll
  *   repositionInputs={false} — vaul's own keyboard handler mis-positions the
@@ -70,10 +78,10 @@ const isMobileSnap = (snap: unknown): snap is MobileSnap => snap === 0.42 || sna
  *   handleOnly={true}    — only the visible grip drags the sheet; controls in
  *                          the editor body keep normal tap/click behavior.
  */
-export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, manifest, theme, renderInspector }) => {
+export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, blockIndex, manifest, theme, renderInspector }) => {
   const t = useTranslations("editor")
   const cspNonce = useCspNonce()
-  const { state, expandTo, clearSelection, restorePreFocusSnap } = useMobileEditor()
+  const { state, setSelected, expandTo, clearSelection, restorePreFocusSnap } = useMobileEditor()
   const { setValue } = useFormContext()
   const isIdle = state.selected == null && state.drillStack.length === 0
   const selectedSpec = state.selected
@@ -88,9 +96,11 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
 
   // Visible snap fraction — the scroll region below is capped to it so content
   // taller than the active detent stays clipped to the visible sheet (FE-60).
-  const snapFraction = typeof state.activeSnapPoint === "number" ? state.activeSnapPoint : 0.42
+  const snapFraction = typeof state.activeSnapPoint === "number" ? state.activeSnapPoint : MOBILE_INSPECTOR_COLLAPSED_SNAP
   const snapClass = snapFraction >= 0.9
     ? "max-h-[calc(92svh-1rem)]"
+    : snapFraction <= MOBILE_INSPECTOR_COLLAPSED_SNAP
+      ? "max-h-0 py-0"
     : "max-h-[calc(42svh-1rem)]"
 
   // iOS Safari only: suppress the native focus-scroll that would otherwise drag
@@ -142,6 +152,10 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
       data-mobile-inspector-grip
       preventCycle
       className="mt-2 shrink-0 !bg-muted-foreground/30"
+      onClick={() => {
+        if (!isIdle) return
+        setSelected({ blockIndex, field: "" })
+      }}
     />
   )
   const editor = state.selected ? (
@@ -185,8 +199,8 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
 
   return (
     <Vaul.Root
-      open={!isIdle}
-      dismissible
+      open
+      dismissible={false}
       modal={false}
       noBodyStyles
       repositionInputs={false}
@@ -194,9 +208,15 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
       snapPoints={SNAP_POINTS}
       activeSnapPoint={state.activeSnapPoint}
       setActiveSnapPoint={(snap) => {
-        if (isMobileSnap(snap)) expandTo(snap)
+        if (!isMobileSnap(snap)) return
+        if (snap === MOBILE_INSPECTOR_COLLAPSED_SNAP) {
+          clearSelection()
+          return
+        }
+        if (isIdle) setSelected({ blockIndex, field: "" })
+        expandTo(snap)
       }}
-      onOpenChange={(open) => { if (!open && !isIdle) clearSelection() }}
+      onOpenChange={(open) => { if (!open) clearSelection() }}
     >
       <Vaul.Portal>
         <style

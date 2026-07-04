@@ -2,10 +2,12 @@
 import * as React from "react"
 import type { ElementPath } from "../elementPath"
 
-/** vaul snap-point identifiers — two detents; idle state hides the drawer entirely.
+/** vaul snap-point identifiers.
+ *  0.08 = collapsed handle strip ·
  *  0.42 = compact detent (opens here on selection) ·
  *  0.92 = editing detent (focus-pops here on field focus). */
-export type MobileSnap = 0.42 | 0.92
+export type MobileSnap = 0.08 | 0.42 | 0.92
+export const MOBILE_INSPECTOR_COLLAPSED_SNAP: MobileSnap = 0.08
 
 /** One frame inside an array-drill (e.g. tapped "features" array → frame for it). */
 export interface DrillFrame {
@@ -28,7 +30,7 @@ export interface MobileEditorState {
 
 export const initialMobileEditorState: MobileEditorState = {
   selected: null,
-  activeSnapPoint: 0.42,
+  activeSnapPoint: MOBILE_INSPECTOR_COLLAPSED_SNAP,
   preFocusSnap: null,
   drillStack: [],
 }
@@ -74,11 +76,11 @@ export function mobileEditorReducer(state: MobileEditorState, action: MobileEdit
     case "CLEAR_SELECTION":
       if (
         state.selected == null
-        && state.activeSnapPoint === 0.42
+        && state.activeSnapPoint === MOBILE_INSPECTOR_COLLAPSED_SNAP
         && state.preFocusSnap == null
         && state.drillStack.length === 0
       ) return state
-      return { selected: null, activeSnapPoint: 0.42, preFocusSnap: null, drillStack: [] }
+      return { selected: null, activeSnapPoint: MOBILE_INSPECTOR_COLLAPSED_SNAP, preFocusSnap: null, drillStack: [] }
     case "PUSH_DRILL":
       return { ...state, drillStack: [...state.drillStack, action.frame] }
     case "POP_DRILL":
