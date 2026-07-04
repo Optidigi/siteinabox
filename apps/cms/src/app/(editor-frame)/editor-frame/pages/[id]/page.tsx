@@ -7,8 +7,8 @@ import { createEditorFrameNewPagePlaceholder } from "@/lib/editor/editorFramePla
 import { loadCanvasTenantCss } from "@/lib/editor/loadTenantCss"
 import { getPageById, listPages } from "@/lib/queries/pages"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
-import { getTenantBySlug } from "@/lib/queries/tenants"
-import { sameRelationshipId } from "@/lib/relationshipId"
+import { getTenantById, getTenantBySlug } from "@/lib/queries/tenants"
+import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
@@ -27,10 +27,21 @@ type RouteSearchParams = {
 async function resolveEditorFrameTenant(
   ctx: Awaited<ReturnType<typeof requireAuth>>["ctx"],
   tenantSlugParam: string | undefined,
+  page: Awaited<ReturnType<typeof getPageById>> | null,
 ): Promise<Tenant> {
   if (ctx.mode === "tenant") return ctx.tenant
 
-  if (ctx.mode !== "super-admin" || !tenantSlugParam) notFound()
+  if (ctx.mode !== "super-admin") notFound()
+
+  if (!tenantSlugParam && page) {
+    const tenantId = relationshipId(page.tenant)
+    if (!tenantId) notFound()
+    const tenant = await getTenantById(tenantId).catch(() => null)
+    if (!tenant) notFound()
+    return tenant
+  }
+
+  if (!tenantSlugParam) notFound()
 
   const tenant = await getTenantBySlug(tenantSlugParam)
   if (!tenant) notFound()
@@ -46,25 +57,25 @@ export default async function EditorFramePage({
 }) {
   const { ctx } = await requireAuth()
   const { tenantSlug: tenantSlugParam } = await searchParams
-  const tenant = await resolveEditorFrameTenant(ctx, tenantSlugParam)
 
   const { id } = await params
   const isNewPage = id === "new"
   const pageId = isNewPage ? null : Number(id)
   if (!isNewPage && !Number.isFinite(pageId)) notFound()
 
-  const [page, settingsDoc, allPages, manifest, tenantCss] = await Promise.all([
-    isNewPage ? Promise.resolve(null) : getPageById(pageId!).catch(() => null),
+  const page = isNewPage ? null : await getPageById(pageId!).catch(() => null)
+  if (!isNewPage && !page) notFound()
+
+  const tenant = await resolveEditorFrameTenant(ctx, tenantSlugParam, page)
+
+  const [settingsDoc, allPages, manifest, tenantCss] = await Promise.all([
     getOrCreateSiteSettings(tenant.id),
     listPages(tenant.id),
     loadTenantManifest(tenant.id),
     loadCanvasTenantCss(tenant),
   ])
 
-  if (!isNewPage) {
-    if (!page) notFound()
-    if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
-  }
+  if (!isNewPage && !sameRelationshipId(page!.tenant, tenant.id)) notFound()
   if (!settingsDoc) notFound()
 
   const analyticsContext = {

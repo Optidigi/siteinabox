@@ -74,3 +74,12 @@ export async function getTenantBySlug(slug: string) {
   })
   return res.docs[0] ?? null
 }
+
+export async function getTenantById(id: number | string) {
+  const payload = await getPayload({ config })
+  return payload.findByID({
+    collection: "tenants",
+    id,
+    overrideAccess: true,
+  })
+}

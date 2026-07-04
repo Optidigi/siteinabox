@@ -26,7 +26,7 @@ describe("observed UI bug regressions", () => {
 
     expect(canvasSurface).toContain("const [deleteTargetIndex, setDeleteTargetIndex]")
     expect(canvasSurface).toContain("const requestDeleteBlock = (i: number) => {")
-    expect(canvasSurface).toContain("onDelete={() => requestDeleteBlock(i)}")
+    expect(canvasSurface).toContain("onDelete={() => requestDeleteBlock(index)}")
     expect(canvasSurface).toContain("onDelete={requestDeleteBlock}")
     expect(canvasSurface).toContain("<ConfirmDialog")
     expect(canvasSurface).toContain('title={t("deleteBlockTitle")}')
