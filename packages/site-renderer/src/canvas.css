@@ -8,7 +8,7 @@
   min-width: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] {
   --color-card: #ffffff;
   --color-secondary: #efe9dd;
   --color-rule: rgba(31, 26, 20, 0.12);
@@ -19,7 +19,7 @@
   --radius-lg: calc(var(--radius-md, 0.5rem) + 0.5rem);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas {
   container-name: site-frame;
   container-type: inline-size;
   font-size: 17px;
@@ -33,55 +33,55 @@
   --color-card-soft: color-mix(in oklab, var(--color-card, Canvas) 80%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.sticky) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.sticky) {
   position: sticky;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.relative) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.relative) {
   position: relative;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.absolute) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.absolute) {
   position: absolute;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.fixed) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.fixed) {
   position: fixed;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.isolate) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.isolate) {
   isolation: isolate;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.block) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.block) {
   display: block;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inline) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.inline) {
   display: inline;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inline-block) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.inline-block) {
   display: inline-block;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inline-flex) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.inline-flex) {
   display: inline-flex;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.flex) {
   display: flex;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.grid) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.grid) {
   display: grid;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.hidden) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.hidden) {
   display: none;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.sr-only) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.sr-only) {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -93,712 +93,712 @@
   border-width: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.pointer-events-none) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.pointer-events-none) {
   pointer-events: none;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas[data-rt-view] [data-amicare-nav] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas[data-rt-view] [data-amicare-nav] {
   z-index: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.top-0) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.top-0) {
   top: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.left-0) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.left-0) {
   left: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.right-0) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.right-0) {
   right: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bottom-4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bottom-4) {
   bottom: 1rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.right-4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.right-4) {
   right: 1rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.top-full) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.top-full) {
   top: 100%;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inset-0) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.inset-0) {
   inset: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.inset-x-4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.inset-x-4) {
   left: 1rem;
   right: 1rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.z-10) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.z-10) {
   z-index: 10;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.z-50) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.z-50) {
   z-index: 50;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.-z-10) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.-z-10) {
   z-index: -10;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.w-full) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.w-full) {
   width: 100%;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.w-auto) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.w-auto) {
   width: auto;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.h-full) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.h-full) {
   height: 100%;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.min-h-\[90vh\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.min-h-\[90vh\]) {
   min-height: 90vh;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-md) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-md) {
   max-width: 28rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-prose) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-prose) {
   max-width: 65ch;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-3xl) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-3xl) {
   max-width: 48rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-7xl) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-7xl) {
   max-width: 80rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-xl) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-xl) {
   max-width: 36rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-40) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-40) {
   max-width: 10rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.max-w-44) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.max-w-44) {
   max-width: 11rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mx-auto) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mx-auto) {
   margin-left: auto;
   margin-right: auto;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.my-8) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.my-8) {
   margin-top: 2rem;
   margin-bottom: 2rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-14) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mt-14) {
   margin-top: 3.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mt-2) {
   margin-top: 0.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-5) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mt-5) {
   margin-top: 1.25rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-6) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mt-6) {
   margin-top: 1.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-7) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mt-7) {
   margin-top: 1.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mt-10) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mt-10) {
   margin-top: 2.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mb-14) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mb-14) {
   margin-bottom: 3.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mb-12) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mb-12) {
   margin-bottom: 3rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.mb-10) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.mb-10) {
   margin-bottom: 2.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.px-3) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.px-3) {
   padding-left: 0.75rem;
   padding-right: 0.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.px-4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.px-4) {
   padding-left: 1rem;
   padding-right: 1rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.px-6) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.px-6) {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-2) {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-3) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-3) {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-5) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-5) {
   padding-top: 1.25rem;
   padding-bottom: 1.25rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-12) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-12) {
   padding-top: 3rem;
   padding-bottom: 3rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-16) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-16) {
   padding-top: 4rem;
   padding-bottom: 4rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-20) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-20) {
   padding-top: 5rem;
   padding-bottom: 5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.py-24) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.py-24) {
   padding-top: 6rem;
   padding-bottom: 6rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.p-2) {
   padding: 0.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-3) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.p-3) {
   padding: 0.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.p-4) {
   padding: 1rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-5) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.p-5) {
   padding: 1.25rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-6) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.p-6) {
   padding: 1.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.p-7) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.p-7) {
   padding: 1.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.pt-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.pt-2) {
   padding-top: 0.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.pt-1\.5) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.pt-1\.5) {
   padding-top: 0.375rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.items-center) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.items-center) {
   align-items: center;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.items-start) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.items-start) {
   align-items: flex-start;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.justify-between) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.justify-between) {
   justify-content: space-between;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.justify-center) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.justify-center) {
   justify-content: center;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex-col) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.flex-col) {
   flex-direction: column;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex-wrap) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.flex-wrap) {
   flex-wrap: wrap;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.flex-1) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.flex-1) {
   flex: 1 1 0%;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.grid-cols-1) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.grid-cols-1) {
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-2) {
   gap: 0.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-2\.5) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-2\.5) {
   gap: 0.625rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-3) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-3) {
   gap: 0.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-5) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-5) {
   gap: 1.25rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-6) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-6) {
   gap: 1.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-8) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-8) {
   gap: 2rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.gap-12) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.gap-12) {
   gap: 3rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-1\.5 > :not([hidden]) ~ :not([hidden])) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.space-y-1\.5 > :not([hidden]) ~ :not([hidden])) {
   margin-top: 0.375rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-3 > :not([hidden]) ~ :not([hidden])) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.space-y-3 > :not([hidden]) ~ :not([hidden])) {
   margin-top: 0.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-4 > :not([hidden]) ~ :not([hidden])) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.space-y-4 > :not([hidden]) ~ :not([hidden])) {
   margin-top: 1rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-6 > :not([hidden]) ~ :not([hidden])) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.space-y-6 > :not([hidden]) ~ :not([hidden])) {
   margin-top: 1.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-7 > :not([hidden]) ~ :not([hidden])) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.space-y-7 > :not([hidden]) ~ :not([hidden])) {
   margin-top: 1.75rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.space-y-8 > :not([hidden]) ~ :not([hidden])) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.space-y-8 > :not([hidden]) ~ :not([hidden])) {
   margin-top: 2rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.overflow-hidden) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.overflow-hidden) {
   overflow: hidden;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.object-cover) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.object-cover) {
   object-fit: cover;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.object-contain) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.object-contain) {
   object-fit: contain;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.aspect-\[4\/5\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.aspect-\[4\/5\]) {
   aspect-ratio: 4 / 5;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rotate-0) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.rotate-0) {
   rotate: 0deg;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.-rotate-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.-rotate-2) {
   rotate: -2deg;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.transform) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.transform) {
   transform: translate(var(--tw-translate-x, 0), var(--tw-translate-y, 0)) rotate(var(--tw-rotate, 0)) skewX(var(--tw-skew-x, 0)) skewY(var(--tw-skew-y, 0)) scaleX(var(--tw-scale-x, 1)) scaleY(var(--tw-scale-y, 1));
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-full) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.rounded-full) {
   border-radius: 9999px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-md) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.rounded-md) {
   border-radius: var(--radius-md, 0.5rem);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-lg) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.rounded-lg) {
   border-radius: var(--radius-lg, 1rem);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.rounded-2xl) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.rounded-2xl) {
   border-radius: var(--radius-lg, 1rem);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.border) {
   border-width: 1px;
   border-style: solid;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-t) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.border-t) {
   border-top-width: 1px;
   border-top-style: solid;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-b) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.border-b) {
   border-bottom-width: 1px;
   border-bottom-style: solid;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-l-2) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.border-l-2) {
   border-left-width: 2px;
   border-left-style: solid;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-rule) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.border-rule) {
   border-color: var(--color-rule, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.border-accent) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.border-accent) {
   border-color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-bg) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-bg) {
   background-color: var(--color-bg, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-card) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-card) {
   background-color: var(--color-card, Canvas);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent:not(:is([data-siab-editor-ui], [data-siab-canvas-chrome], [data-siab-editor-ui] *, [data-siab-canvas-chrome] *))) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-accent:not(:is([data-siab-editor-ui], [data-siab-canvas-chrome], [data-siab-editor-ui] *, [data-siab-canvas-chrome] *))) {
   background-color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-secondary\/40) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-secondary\/40) {
   background-color: color-mix(in srgb, var(--color-secondary, transparent) 40%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-card\/50) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-card\/50) {
   background-color: color-mix(in srgb, var(--color-card, Canvas) 50%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-accent\/10:not(:is([data-siab-editor-ui], [data-siab-canvas-chrome], [data-siab-editor-ui] *, [data-siab-canvas-chrome] *))) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-accent\/10:not(:is([data-siab-editor-ui], [data-siab-canvas-chrome], [data-siab-editor-ui] *, [data-siab-canvas-chrome] *))) {
   background-color: color-mix(in srgb, var(--color-accent, currentColor) 10%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.bg-bg\/80) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.bg-bg\/80) {
   background-color: color-mix(in srgb, var(--color-bg, Canvas) 80%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-ink) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-ink) {
   color: var(--color-ink, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-ink-muted) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-ink-muted) {
   color: var(--color-ink-muted, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-accent) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-accent) {
   color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-serif) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.font-serif) {
   font-family: var(--font-serif, Georgia, serif);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-sans) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.font-sans) {
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-medium) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.font-medium) {
   font-weight: 500;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.font-normal) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.font-normal) {
   font-weight: 400;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.italic) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.italic) {
   font-style: italic;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.uppercase) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.uppercase) {
   text-transform: uppercase;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-center) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-center) {
   text-align: center;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[11px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[11px\]) {
   font-size: 11px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[12px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[12px\]) {
   font-size: 12px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[13px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[13px\]) {
   font-size: 13px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[14px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[14px\]) {
   font-size: 14px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[15px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[15px\]) {
   font-size: 15px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[16px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[16px\]) {
   font-size: 16px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[17px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[17px\]) {
   font-size: 17px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[18px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[18px\]) {
   font-size: 18px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[19px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[19px\]) {
   font-size: 19px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[20px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[20px\]) {
   font-size: 20px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[22px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[22px\]) {
   font-size: 22px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[24px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[24px\]) {
   font-size: 24px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[28px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[28px\]) {
   font-size: 28px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[32px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[32px\]) {
   font-size: 32px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[34px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[34px\]) {
   font-size: 34px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[36px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[36px\]) {
   font-size: 36px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[44px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[44px\]) {
   font-size: 44px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[48px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[48px\]) {
   font-size: 48px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[60px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[60px\]) {
   font-size: 60px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.text-\[76px\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.text-\[76px\]) {
   font-size: 76px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.leading-none) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.leading-none) {
   line-height: 1;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.leading-tight) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.leading-tight) {
   line-height: 1.25;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.leading-relaxed) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.leading-relaxed) {
   line-height: 1.625;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.underline) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.underline) {
   text-decoration-line: underline;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.shadow-lg) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.shadow-lg) {
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.shadow-2xl) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.shadow-2xl) {
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.backdrop-blur-lg) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.backdrop-blur-lg) {
   backdrop-filter: blur(16px);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.blur-3xl) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.blur-3xl) {
   filter: blur(64px);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] :where(.opacity-\[0\.12\]) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] :where(.opacity-\[0\.12\]) {
   opacity: 0.12;
 }
 
 @container site-frame (width >= 48rem) {
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root {
     font-size: 18px;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:flex"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:flex"] {
     display: flex;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:hidden"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:hidden"] {
     display: none;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:flex-row"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:flex-row"] {
     flex-direction: row;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:w-1/2"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:w-1/2"] {
     width: 50%;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:mt-0"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:mt-0"] {
     margin-top: 0;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:px-12"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:px-12"] {
     padding-left: 3rem;
     padding-right: 3rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:py-20"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:py-20"] {
     padding-top: 5rem;
     padding-bottom: 5rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:py-24"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:py-24"] {
     padding-top: 6rem;
     padding-bottom: 6rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:py-28"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:py-28"] {
     padding-top: 7rem;
     padding-bottom: 7rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:p-4"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:p-4"] {
     padding: 1rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:p-5"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:p-5"] {
     padding: 1.25rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:aspect-[4/3]"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:aspect-[4/3]"] {
     aspect-ratio: 4 / 3;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:rotate-3"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:rotate-3"] {
     rotate: 3deg;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-1"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-1"] {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-2"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-2"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-3"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-4"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-4"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-5"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-5"] {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-6"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:grid-cols-6"] {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:gap-8"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:gap-8"] {
     gap: 2rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[48rem]/site-frame:text-left"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[48rem]/site-frame:text-left"] {
     text-align: left;
   }
 }
 
 @container site-frame (width >= 64rem) {
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:px-20"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:px-20"] {
     padding-left: 5rem;
     padding-right: 5rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:px-24"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:px-24"] {
     padding-left: 6rem;
     padding-right: 6rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-3"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-4"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-4"] {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-5"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-5"] {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-6"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:grid-cols-6"] {
     grid-template-columns: repeat(6, minmax(0, 1fr));
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [class~="@min-[64rem]/site-frame:gap-12"] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [class~="@min-[64rem]/site-frame:gap-12"] {
     gap: 3rem;
   }
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block {
   color: var(--color-ink, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--featurelist,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--testimonials,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta-quote {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--featurelist,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--testimonials,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--cta-quote {
   background-color: color-mix(in oklab, var(--color-secondary, transparent) 40%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext {
   background-color: var(--color-bg, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] ::selection {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] ::selection {
   background: color-mix(in srgb, var(--color-accent, currentColor) 18%, transparent);
 }
 
@@ -832,25 +832,25 @@
   }
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .animate-fade-up {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .animate-fade-up {
   animation: amicare-fade-up 0.6s ease-out both;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .animate-fade {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .animate-fade {
   animation: amicare-fade 0.6s ease-out both;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .animate-float {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .animate-float {
   animation: amicare-float 4s ease-in-out infinite;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .prose {
   max-width: 65ch;
   color: color-mix(in oklab, var(--color-ink, currentColor) 90%, transparent);
   font-family: var(--font-text, inherit);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-themed-eyebrow {
   display: block;
   max-width: calc(100% - 3rem);
   margin-right: auto;
@@ -858,9 +858,9 @@
   text-align: center;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-2,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-3,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-4 {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-2,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-3,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-themed-eyebrow + .rt-h-4 {
   max-width: calc(100% - 3rem);
   margin-top: 0.75rem;
   margin-right: auto;
@@ -868,7 +868,7 @@
   text-align: center;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose h2 {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .prose h2 {
   color: var(--color-ink, currentColor);
   font-family: var(--font-heading, inherit);
   font-size: clamp(2.125rem, 8cqw, 2.75rem);
@@ -877,49 +877,49 @@
   letter-spacing: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose p {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .prose p {
   margin-block: 1em;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose em,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .prose a {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .prose em,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .prose a {
   color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-h {
   color: var(--color-ink, currentColor);
   font-family: var(--font-heading, inherit);
   line-height: 1.1;
   letter-spacing: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-2 {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-h-2 {
   font-size: clamp(2.125rem, 1.76rem + 1.6vw, 2.75rem);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-3,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-h-4 {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-h-3,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-h-4 {
   font-size: clamp(1.5rem, 1.32rem + 0.8vw, 2rem);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-p {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-p {
   color: color-mix(in srgb, var(--color-ink, currentColor) 90%, transparent);
   font-size: inherit;
   line-height: inherit;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-i,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-link {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-i,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-link {
   color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-link {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-link {
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 6px;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--richtext .rt-quote {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext .rt-quote {
   padding-left: 1.5rem;
   border-left: 2px solid var(--color-accent, currentColor);
   color: var(--color-ink, currentColor);
@@ -928,39 +928,39 @@
   font-style: italic;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-color-accent {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-color-accent {
   color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-color-ink {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-color-ink {
   color: var(--color-ink, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-color-muted {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-color-muted {
   color: var(--color-ink-muted, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-title {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-font-title {
   font-family: var(--font-title, inherit);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-heading {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-font-heading {
   font-family: var(--font-heading, inherit);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-text {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-font-text {
   font-family: var(--font-text, inherit);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-font-script {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-font-script {
   font-family: var(--font-script, inherit);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta-contact {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--cta-contact {
   background-color: var(--color-bg, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] {
   position: sticky;
   top: 0;
   z-index: 50;
@@ -974,18 +974,18 @@
   backdrop-filter: blur(16px);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] a {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] a {
   color: inherit;
   text-decoration: none;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > a {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] > a {
   display: flex;
   align-items: center;
   gap: 0.625rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > a span:first-child {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] > a span:first-child {
   display: inline-block;
   width: 0.5rem;
   height: 0.5rem;
@@ -993,7 +993,7 @@
   background-color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > a span:last-child {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] > a span:last-child {
   font-family: var(--font-text, inherit);
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1001,7 +1001,7 @@
   text-transform: uppercase;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] input[type="checkbox"] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] input[type="checkbox"] {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -1013,7 +1013,7 @@
   border: 0;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] label[for="amicare-mobile-menu-toggle"] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] label[for="amicare-mobile-menu-toggle"] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1023,16 +1023,16 @@
   color: var(--color-ink, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] [data-amicare-nav-link] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] [data-amicare-nav-link] {
   color: var(--color-ink-muted, currentColor);
   transition: color 150ms ease;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] [data-amicare-nav-link]:hover {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] [data-amicare-nav-link]:hover {
   color: var(--color-ink, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] [data-amicare-nav-indicator] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] [data-amicare-nav-indicator] {
   position: absolute;
   right: 0;
   bottom: -0.25rem;
@@ -1042,11 +1042,11 @@
   background-color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] .hidden {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] .hidden {
   display: none;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero {
   position: relative;
   display: flex;
   min-height: 90vh;
@@ -1056,18 +1056,18 @@
   padding: 3rem 1.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3),
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(3),
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(4) {
   position: relative;
   z-index: 10;
   width: 100%;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(4) {
   margin-top: 3.5rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero h1 {
   max-width: 14ch;
   color: var(--color-ink, currentColor);
   font-family: var(--font-title, var(--font-heading, inherit));
@@ -1078,7 +1078,7 @@
   overflow-wrap: anywhere;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 em {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero h1 em {
   position: relative;
   display: inline-block;
   color: var(--color-accent, currentColor);
@@ -1086,7 +1086,7 @@
   white-space: nowrap;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3) > p {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(3) > p {
   max-width: 28rem;
   color: var(--color-ink-muted, currentColor);
   font-family: var(--font-text, inherit);
@@ -1094,7 +1094,7 @@
   line-height: 1.6;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero img {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero img {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -1104,7 +1104,7 @@
   box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero figure {
   position: absolute;
   bottom: -2rem;
   left: -0.5rem;
@@ -1116,7 +1116,7 @@
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure blockquote {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero figure blockquote {
   display: inline;
   color: var(--color-ink, currentColor);
   font-family: var(--font-heading, serif);
@@ -1125,7 +1125,7 @@
   line-height: 1.35;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure + div {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero figure + div {
   position: absolute;
   top: -1.5rem;
   right: -0.5rem;
@@ -1140,7 +1140,7 @@
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer {
   position: relative;
   padding: 4rem 1.5rem;
   border-top: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
@@ -1153,7 +1153,7 @@
     );
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer > div:first-child {
   display: grid;
   max-width: 80rem;
   margin-inline: auto;
@@ -1161,48 +1161,48 @@
   gap: 3rem;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child + div {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer > div:first-child + div {
   max-width: 80rem;
   margin: 2rem auto;
   border-top: 1px solid var(--color-rule, rgba(0, 0, 0, 0.12));
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer p {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer p {
   color: var(--color-ink-muted, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer a {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer a {
   color: var(--color-ink, currentColor);
   text-decoration: none;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer a:hover {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer a:hover {
   color: var(--color-accent, currentColor);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--cta img[aria-hidden="true"] {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--cta img[aria-hidden="true"] {
   opacity: 0.12;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-button-primary {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .amicare-button-primary {
   color: var(--color-on-accent, #ffffff);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas .amicare-button-primary.rt-click-edit {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas .amicare-button-primary.rt-click-edit {
   display: inline-block;
   width: auto;
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-hero-glow--start {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .amicare-hero-glow--start {
   background: color-mix(in srgb, var(--color-accent, currentColor) 15%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-hero-glow--end,
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-quote-glow {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .amicare-hero-glow--end,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .amicare-quote-glow {
   background: color-mix(in srgb, var(--color-accent, currentColor) 10%, transparent);
 }
 
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .amicare-quote-overlay {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .amicare-quote-overlay {
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--color-bg, Canvas) 70%, transparent),
@@ -1212,12 +1212,12 @@
 }
 
 @container site-frame (width >= 48rem) {
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] {
     padding-right: 3rem;
     padding-left: 3rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > div:nth-of-type(1) {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] > div:nth-of-type(1) {
     display: flex;
     align-items: center;
     gap: 2rem;
@@ -1225,86 +1225,86 @@
     letter-spacing: 0.04em;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] label[for="amicare-mobile-menu-toggle"],
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] > div:nth-of-type(2) {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] label[for="amicare-mobile-menu-toggle"],
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] > div:nth-of-type(2) {
     display: none;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero {
     flex-direction: row;
     padding-right: 3rem;
     padding-left: 3rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3),
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(3),
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(4) {
     width: 50%;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(4) {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(4) {
     margin-top: 0;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero h1 {
     font-size: 3.75rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero > div:nth-of-type(3) > p {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero > div:nth-of-type(3) > p {
     font-size: 1.125rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero img {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero img {
     aspect-ratio: 4 / 3;
     transform: rotate(3deg);
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero figure {
     bottom: -2.5rem;
     left: -2rem;
     padding: 1.25rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure blockquote {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero figure blockquote {
     font-size: 1.1875rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero figure + div {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero figure + div {
     top: -2rem;
     right: -2rem;
     padding: 1rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer {
     padding-right: 3rem;
     padding-left: 3rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer > div:first-child {
     gap: 2rem;
   }
 }
 
 @container site-frame (width >= 64rem) {
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav] {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav] {
     padding-right: 5rem;
     padding-left: 5rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero {
     padding-right: 6rem;
     padding-left: 6rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .cms-block--hero h1 {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--hero h1 {
     font-size: 4.75rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer {
     padding-right: 6rem;
     padding-left: 6rem;
   }
 
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer > div:first-child {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer > div:first-child {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 3rem;
   }

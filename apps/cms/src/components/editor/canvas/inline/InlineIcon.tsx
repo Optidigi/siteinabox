@@ -13,6 +13,8 @@ export interface InlineIconProps {
   onChange: (next: string | null) => void
   /** Class names on the rendered icon (size, color, etc). */
   className?: string
+  /** Class names on the editor trigger wrapper. */
+  triggerClassName?: string
   /** Size in pixels for the lucide icon. Defaults to 44 (matches FeatureList). */
   size?: number
   strokeWidth?: number
@@ -22,7 +24,7 @@ export interface InlineIconProps {
   elementPath?: ElementPath
 }
 
-export const InlineIcon: React.FC<InlineIconProps> = ({ value, onChange, className, size = 44, strokeWidth = 1.5, elementPath }) => {
+export const InlineIcon: React.FC<InlineIconProps> = ({ value, onChange, className, triggerClassName, size = 44, strokeWidth = 1.5, elementPath }) => {
   const t = useTranslations("editor")
   const { view, selected, select } = useCanvasSelection()
   const isCustomerPreview = isCustomerPreviewView(view)
@@ -51,7 +53,7 @@ export const InlineIcon: React.FC<InlineIconProps> = ({ value, onChange, classNa
     return Icon ? (
       <button
         type="button"
-        className="rt-click-edit cursor-pointer"
+        className={["rt-click-edit cursor-pointer", triggerClassName].filter(Boolean).join(" ")}
         aria-label={t("iconLabel", { name: iconName })}
         onClick={handleClick}
         data-rt-selected={isSelected ? "true" : undefined}
@@ -73,7 +75,7 @@ export const InlineIcon: React.FC<InlineIconProps> = ({ value, onChange, classNa
 
   // Canvas view (default): unchanged behaviour — click opens IconPicker
   const trigger = Icon ? (
-    <button type="button" className="rt-click-edit cursor-pointer" aria-label={t("changeIcon", { name: iconName })}>
+    <button type="button" className={["rt-click-edit cursor-pointer", triggerClassName].filter(Boolean).join(" ")} aria-label={t("changeIcon", { name: iconName })}>
       <Icon size={size} strokeWidth={strokeWidth} className={className} />
     </button>
   ) : (

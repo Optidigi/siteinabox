@@ -174,7 +174,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareHome = await fetchWithHost(baseUrl, "ami-care.nl", "/")
   const amicareHtml = await amicareHome.text()
   await assertStatus(amicareHome, 200, "ami-care.nl homepage status", amicareHtml, failureContext)
-  assert.match(amicareHtml, /data-legacy-tenant="amicare"/)
+  assert.match(amicareHtml, /data-tenant-renderer="amicare"/)
   assert.match(amicareHtml, /data-siab-theme-overrides/)
   assert.match(amicareHtml, /\.site-renderer\[data-siab-site-renderer\] \.rt-canvas/)
   assert.match(amicareHtml, /--color-accent:#a04e32/)
@@ -195,13 +195,11 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const traversalMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/%2E%2E/bedroom.jpg")
   assert.equal(traversalMedia.status, 404)
 
-  const amicareRobots = await fetchWithHost(baseUrl, "ami-care.nl", "/robots.txt")
-  assert.equal(amicareRobots.status, 200)
-  assert.match(await amicareRobots.text(), /Sitemap: https:\/\/ami-care\.nl\/sitemap-index\.xml/)
-
   const validNotFoundChecks = [
     ["unknown.example", "/"],
     ["ami-care.nl", "/missing-page"],
+    ["ami-care.nl", "/robots.txt"],
+    ["ami-care.nl", "/manifest.json"],
   ]
 
   for (const [host, pathname] of validNotFoundChecks) {

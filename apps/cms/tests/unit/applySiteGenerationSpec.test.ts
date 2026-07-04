@@ -674,7 +674,7 @@ describe("applySiteGenerationSpec", () => {
     ])
   })
 
-  it("rejects tenant-exclusive legacy variants for self-serve generated tenants", () => {
+  it("rejects tenant-exclusive tenant-exclusive variants for self-serve generated tenants", () => {
     const spec = fixtureSpec()
     spec.settings = {
       ...spec.settings,

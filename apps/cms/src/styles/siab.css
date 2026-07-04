@@ -198,14 +198,14 @@ body { font-family: var(--font-sans); }
 /* Shared renderer surfaces inside the CMS must keep the same base typography
    as the public renderer. Admin layout defaults otherwise win by cascade order
    and make canvas-only text wrap differently from preview/live. */
-.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas {
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas {
     font-family: var(--font-text);
     font-size: 17px;
     line-height: 1.6;
 }
 
 @container site-frame (width >= 48rem) {
-  .site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root {
+  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root {
       font-size: 18px;
   }
 }

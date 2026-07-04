@@ -24,10 +24,7 @@ ENV NODE_ENV=production
 RUN test "${AMICARE_SITE_URL}" = "https://ami-care.nl" \
   && SITE_URL=${RENDERER_SITE_URL} pnpm --filter @siteinabox/renderer build \
   && pnpm --filter @siteinabox/renderer deploy --prod --legacy /app \
-  && cp -R apps/renderer/dist /app/dist \
-  && mkdir -p /app/legacy-tenants/amicare/client /app/legacy-tenants/amicare/media \
-  && cp -R apps/renderer/src/lib/legacy-tenants/_assets/amicare/client/. /app/legacy-tenants/amicare/client/ \
-  && cp -R apps/renderer/src/lib/legacy-tenants/_assets/amicare/media/. /app/legacy-tenants/amicare/media/
+  && cp -R apps/renderer/dist /app/dist
 
 FROM node:26-alpine AS runner
 WORKDIR /app

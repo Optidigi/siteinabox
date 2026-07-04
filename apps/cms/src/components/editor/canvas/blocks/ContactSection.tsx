@@ -27,7 +27,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
   manifest,
   onActivate,
   onUpdate,
-  legacyTenant,
+  tenantRendererKey,
   sectionChromeProps,
 }) => {
   const t = useTranslations("editor")
@@ -36,12 +36,12 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
 
   const fields: Array<{ name: string; label: string; type: string; required: boolean }> =
     block.fields ?? []
-  const isAmicareLegacy = legacyTenant === "amicare"
+  const isAmicareTenantRenderer = tenantRendererKey === "amicare"
   const sectionProps = mergeCanvasSectionProps(
     {
       id: block.anchor || undefined,
-      className: `cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
-      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
+      className: `cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 ${canvasSourceVariantClassName(block, tenantRendererKey, { rendererDom: "canvas-fallback" })}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, tenantRendererKey),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,
@@ -117,7 +117,7 @@ export const ContactSectionCanvas: React.FC<CanvasBlockRendererProps> = ({
               tabIndex={-1}
               className={cn(
                 "rounded-md bg-accent px-6 py-3 text-[14px] font-medium transition-colors hover:bg-accent/90 [font-family:var(--font-text)]",
-                isAmicareLegacy ? "amicare-button-primary" : "text-bg",
+                isAmicareTenantRenderer ? "amicare-button-primary" : "text-bg",
               )}
             >
               {block.submitLabel ?? "Send"}

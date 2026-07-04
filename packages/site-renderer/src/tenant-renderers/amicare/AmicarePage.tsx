@@ -30,6 +30,16 @@ import { resolveMedia } from "../../media"
 import { RichTextRenderer, extractRichText } from "../../rich-text"
 import { isRtRoot } from "@siteinabox/contracts/rich-text"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "../../theme"
+import type {
+  BlockEditSlots,
+  BlockRenderOptions,
+  RendererCtaSlotProps,
+  RendererElementPath,
+  RendererIconSlotProps,
+  RendererImageSlotProps,
+  RendererRichTextSlotProps,
+  RendererTextSlotProps,
+} from "../../blocks/types"
 
 export type AmicarePageRendererProps = {
   page: Page
@@ -80,6 +90,105 @@ const DEFAULT_KVK_NUMBER = "99968347"
 const DEFAULT_ESTABLISHMENT_NUMBER = "000065004922"
 const PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
+type DataAttributes = {
+  [key: `data-${string}`]: string | number | boolean | undefined
+}
+
+type SectionAttributes = React.ComponentPropsWithoutRef<"section"> & DataAttributes
+
+type AmicareBlockOptions = Omit<BlockRenderOptions, "index"> & {
+  sectionAttributes?: SectionAttributes
+}
+
+function mergeSectionAttributes(base: SectionAttributes, extra?: SectionAttributes): SectionAttributes {
+  if (!extra) return base
+  const {
+    className: baseClassName,
+    onClick: baseOnClick,
+    onMouseEnter: baseOnMouseEnter,
+    onMouseLeave: baseOnMouseLeave,
+    onFocusCapture: baseOnFocusCapture,
+    onBlurCapture: baseOnBlurCapture,
+    ...baseRest
+  } = base
+  const {
+    className: extraClassName,
+    onClick: extraOnClick,
+    onMouseEnter: extraOnMouseEnter,
+    onMouseLeave: extraOnMouseLeave,
+    onFocusCapture: extraOnFocusCapture,
+    onBlurCapture: extraOnBlurCapture,
+    ...extraRest
+  } = extra
+
+  const merge = <Event extends React.SyntheticEvent>(
+    first?: (event: Event) => void,
+    second?: (event: Event) => void,
+  ) => {
+    if (!first) return second
+    if (!second) return first
+    return (event: Event) => {
+      first(event)
+      second(event)
+    }
+  }
+
+  return {
+    ...extraRest,
+    ...baseRest,
+    className: cn(baseClassName, extraClassName),
+    onClick: extraOnClick ?? baseOnClick,
+    onMouseEnter: merge(baseOnMouseEnter, extraOnMouseEnter),
+    onMouseLeave: merge(baseOnMouseLeave, extraOnMouseLeave),
+    onFocusCapture: merge(baseOnFocusCapture, extraOnFocusCapture),
+    onBlurCapture: merge(baseOnBlurCapture, extraOnBlurCapture),
+  }
+}
+
+function fieldPath(blockIndex: number, field: string, itemIndex?: number, subField?: string): RendererElementPath {
+  return { blockIndex, field, itemIndex, subField }
+}
+
+function renderRichTextSlot(
+  slots: BlockEditSlots | undefined,
+  props: RendererRichTextSlotProps,
+  fallback: React.ReactNode,
+) {
+  return slots?.renderRichText ? slots.renderRichText(props) : fallback
+}
+
+function renderCtaSlot(
+  slots: BlockEditSlots | undefined,
+  props: RendererCtaSlotProps,
+  fallback: React.ReactNode,
+) {
+  return slots?.renderCta ? slots.renderCta(props) : fallback
+}
+
+function renderImageSlot(
+  slots: BlockEditSlots | undefined,
+  props: RendererImageSlotProps,
+  fallback: React.ReactNode,
+) {
+  return slots?.renderImage ? slots.renderImage(props) : fallback
+}
+
+function renderIconSlot(
+  slots: BlockEditSlots | undefined,
+  props: RendererIconSlotProps,
+  fallback: React.ReactNode,
+) {
+  return slots?.renderIcon ? slots.renderIcon(props) : fallback
+}
+
+function renderTextSlot(
+  slots: BlockEditSlots | undefined,
+  props: RendererTextSlotProps,
+  fallback: React.ReactNode,
+) {
+  return slots?.renderText ? slots.renderText(props) : fallback
+}
+
 function media(value: MediaRef | undefined, mediaResolver?: MediaResolver): ResolvedMedia | null {
   if (!value) return null
   if (!mediaResolver && typeof value === "object" && !Array.isArray(value)) {
@@ -124,6 +233,7 @@ function AmicareNav({
       aria-label="Hoofdnavigatie"
       className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg/80 px-6 py-5 backdrop-blur-lg @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"
       data-amicare-nav
+      data-site-chrome="header"
     >
       <a href="#top" className="flex items-center gap-2.5 transition-opacity hover:opacity-80">
         {logo ? (
@@ -269,7 +379,10 @@ function AmicareFooter({
   )
 
   return (
-    <footer className="relative border-t border-rule bg-gradient-to-br from-secondary/20 via-bg to-accent/5 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24">
+    <footer
+      className="relative border-t border-rule bg-gradient-to-br from-secondary/20 via-bg to-accent/5 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
+      data-site-chrome="footer"
+    >
       {columns.length > 0 ? (
         <div className={cn("mx-auto grid max-w-7xl grid-cols-1 gap-12 @min-[48rem]/site-frame:gap-8 @min-[64rem]/site-frame:gap-12", gridClass)}>
           {columns.map((column, columnIndex) => (
@@ -346,75 +459,152 @@ function AmicareHero({
   block,
   dataBlockIndex,
   mediaResolver,
+  options,
 }: {
   block: HeroBlock
   dataBlockIndex: number
   mediaResolver?: MediaResolver
+  options?: AmicareBlockOptions
 }) {
   const ctaLabel = block.cta?.label?.trim()
   const ctaHref = block.cta?.href?.trim()
   const image = media(block.image, mediaResolver)
   const eyebrowText = extractRichText(block.eyebrow)
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: resolveBlockAnchor(block, { tenantRendererKey: "amicare", surface: "live" }),
+      className: "cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "hero", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
 
   return (
-    <section
-      id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
-      className="cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24"
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "hero", dataBlockIndex)}
-    >
+    <section {...sectionProps}>
       <div aria-hidden="true" className="amicare-hero-glow amicare-hero-glow--start pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full blur-3xl" />
       <div aria-hidden="true" className="amicare-hero-glow amicare-hero-glow--end pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full blur-3xl" />
 
       <div className="relative z-10 w-full space-y-7 @min-[48rem]/site-frame:w-1/2">
-        {eyebrowText && (
-          <span className="inline-block -rotate-2 animate-fade-up text-[22px] text-accent [animation-delay:0ms] [font-family:var(--font-script)]">
-            {eyebrowText}
-          </span>
+        {renderRichTextSlot(
+          slots,
+          {
+            name: "hero.eyebrow",
+            value: block.eyebrow,
+            variant: "inline",
+            as: "span",
+            className: "inline-block -rotate-2 animate-fade-up text-[22px] text-accent [animation-delay:0ms] [font-family:var(--font-script)]",
+            elementPath: fieldPath(dataBlockIndex, "eyebrow"),
+          },
+          eyebrowText ? (
+            <span className="inline-block -rotate-2 animate-fade-up text-[22px] text-accent [animation-delay:0ms] [font-family:var(--font-script)]">
+              {eyebrowText}
+            </span>
+          ) : null,
         )}
-        <h1
-          className="font-serif text-[44px] font-normal leading-[1.05] tracking-[-0.01em] @min-[48rem]/site-frame:text-[60px] @min-[64rem]/site-frame:text-[76px] animate-fade-up [animation-delay:50ms] [overflow-wrap:anywhere] [&_em]:relative [&_em]:not-italic [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent"
-          style={{ maxWidth: "14ch", fontFamily: "var(--font-title)" }}
-        >
-          <RichTextRenderer value={block.headline} />
-        </h1>
-        {block.subheadline && (
-          <p className="max-w-md animate-fade-up text-[17px] leading-[1.6] text-ink-muted [animation-delay:150ms] [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]">
-            <RichTextRenderer value={block.subheadline} blockMode="inline" />
-          </p>
+        {renderRichTextSlot(
+          slots,
+          {
+            name: "hero.headline",
+            value: block.headline,
+            variant: "inline",
+            as: "h1",
+            className: "font-serif text-[44px] font-normal leading-[1.05] tracking-[-0.01em] @min-[48rem]/site-frame:text-[60px] @min-[64rem]/site-frame:text-[76px] animate-fade-up [animation-delay:50ms] [overflow-wrap:anywhere] [&_em]:relative [&_em]:not-italic [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent max-w-[14ch] [font-family:var(--font-title)]",
+            elementPath: fieldPath(dataBlockIndex, "headline"),
+          },
+          (
+            <h1
+              className="font-serif text-[44px] font-normal leading-[1.05] tracking-[-0.01em] @min-[48rem]/site-frame:text-[60px] @min-[64rem]/site-frame:text-[76px] animate-fade-up [animation-delay:50ms] [overflow-wrap:anywhere] [&_em]:relative [&_em]:not-italic [&_em]:inline-block [&_em]:whitespace-nowrap [&_em]:italic [&_em]:text-accent"
+              style={{ maxWidth: "14ch", fontFamily: "var(--font-title)" }}
+            >
+              <RichTextRenderer value={block.headline} />
+            </h1>
+          ),
+        )}
+        {renderRichTextSlot(
+          slots,
+          {
+            name: "hero.subheadline",
+            value: block.subheadline,
+            variant: "block",
+            as: "p",
+            className: "max-w-md animate-fade-up text-[17px] leading-[1.6] text-ink-muted [animation-delay:150ms] [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]",
+            elementPath: fieldPath(dataBlockIndex, "subheadline"),
+          },
+          block.subheadline ? (
+            <p className="max-w-md animate-fade-up text-[17px] leading-[1.6] text-ink-muted [animation-delay:150ms] [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]">
+              <RichTextRenderer value={block.subheadline} blockMode="inline" />
+            </p>
+          ) : null,
         )}
         {block.pills && block.pills.length > 0 && (
           <div className="flex animate-fade flex-wrap gap-2 pt-2 [animation-delay:300ms]">
             {block.pills.map((pill, index) => (
               <span key={pill.id ?? index} className="rounded-md border border-rule bg-secondary/40 px-3 py-1.5 text-[12px] font-medium text-ink-muted [font-family:var(--font-text)]">
-                {pill.label}
+                {renderTextSlot(
+                  slots,
+                  {
+                    name: "hero.pillLabel",
+                    value: pill.label,
+                    className: "contents",
+                    elementPath: fieldPath(dataBlockIndex, "pills", index),
+                  },
+                  pill.label,
+                )}
               </span>
             ))}
           </div>
         )}
         {ctaLabel && ctaHref && (
-          <a
-            href={ctaHref}
-            className="amicare-button-primary inline-block animate-fade-up rounded-md bg-accent px-6 py-3 text-[14px] font-medium shadow-sm transition-colors [animation-delay:400ms] [font-family:var(--font-text)] hover:bg-accent/90"
-            {...actionAnalyticsAttrs("primary", ctaLabel)}
-          >
-            {ctaLabel}
-          </a>
+          renderCtaSlot(
+            slots,
+            {
+              name: "hero.cta",
+              value: block.cta,
+              className: "amicare-button-primary inline-block animate-fade-up rounded-md bg-accent px-6 py-3 text-[14px] font-medium shadow-sm transition-colors [animation-delay:400ms] [font-family:var(--font-text)] hover:bg-accent/90",
+              actionAttributes: actionAnalyticsAttrs("primary", ctaLabel),
+              elementPath: fieldPath(dataBlockIndex, "cta"),
+            },
+            (
+              <a
+                href={ctaHref}
+                className="amicare-button-primary inline-block animate-fade-up rounded-md bg-accent px-6 py-3 text-[14px] font-medium shadow-sm transition-colors [animation-delay:400ms] [font-family:var(--font-text)] hover:bg-accent/90"
+                {...actionAnalyticsAttrs("primary", ctaLabel)}
+              >
+                {ctaLabel}
+              </a>
+            ),
+          )
         )}
       </div>
 
       <div className="relative mt-14 w-full @min-[48rem]/site-frame:mt-0 @min-[48rem]/site-frame:w-1/2">
         {image && (
           <div className="relative z-10 animate-fade [animation-delay:100ms]">
-            <img
-              src={image.src}
-              alt={mediaAlt(block.image, image) ?? ""}
-              loading="eager"
-              decoding="async"
-              className="aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3"
-            />
+            {renderImageSlot(
+              slots,
+              {
+                name: "hero.image",
+                value: block.image,
+                alt: mediaAlt(block.image, image),
+                loading: "eager",
+                decoding: "async",
+                className: "aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3",
+                elementPath: fieldPath(dataBlockIndex, "image"),
+              },
+              (
+                <img
+                  src={image.src}
+                  alt={mediaAlt(block.image, image) ?? ""}
+                  loading="eager"
+                  decoding="async"
+                  className="aspect-[4/5] w-full rotate-0 transform rounded-[var(--radius-lg)] object-cover shadow-2xl @min-[48rem]/site-frame:aspect-[4/3] @min-[48rem]/site-frame:rotate-3"
+                />
+              ),
+            )}
             <figure className="absolute -bottom-8 -left-2 max-w-[230px] animate-float rounded-lg border border-rule bg-card p-4 shadow-lg [animation-delay:0ms] @min-[48rem]/site-frame:-bottom-10 @min-[48rem]/site-frame:-left-8 @min-[48rem]/site-frame:p-5">
               <span aria-hidden="true" className="mr-1 align-top text-3xl italic leading-none text-accent [font-family:var(--font-serif)]">&ldquo;</span>
               <blockquote className="inline font-serif text-[17px] italic leading-[1.35] text-ink @min-[48rem]/site-frame:text-[19px]">{PULL_QUOTE}</blockquote>
@@ -435,32 +625,67 @@ function AmicareHero({
   )
 }
 
-function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock; dataBlockIndex: number }) {
+function AmicareFeatureList({
+  block,
+  dataBlockIndex,
+  options,
+}: {
+  block: FeatureListBlock
+  dataBlockIndex: number
+  options?: AmicareBlockOptions
+}) {
   if (!block.features || block.features.length === 0) return null
   const introText = extractRichText(block.intro)
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: resolveBlockAnchor(block, { tenantRendererKey: "amicare", surface: "live" }),
+      className: "cms-block cms-block--featurelist cms-block--source-amicare-care-cards relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "featureList", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
 
   return (
-    <section
-      id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
-      className="cms-block cms-block--featurelist cms-block--source-amicare-care-cards relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "featureList", dataBlockIndex)}
-    >
+    <section {...sectionProps}>
       <div className="mx-auto max-w-7xl">
         {(block.title || introText) && (
           <div className="mb-14 space-y-3 text-center">
-            {introText && (
-              <span className="cms-block__intro inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{introText}</span>
+            {renderRichTextSlot(
+              slots,
+              {
+                name: "featureList.intro",
+                value: block.intro,
+                variant: "block",
+                as: "span",
+                className: "cms-block__intro inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]",
+                elementPath: fieldPath(dataBlockIndex, "intro"),
+              },
+              introText ? (
+                <span className="cms-block__intro inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{introText}</span>
+              ) : null,
             )}
-            {block.title && (
-              <h2
-                className="cms-block__title font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent"
-                style={{ fontFamily: "var(--font-heading)" }}
-              >
-                <RichTextRenderer value={block.title} />
-              </h2>
+            {renderRichTextSlot(
+              slots,
+              {
+                name: "featureList.title",
+                value: block.title,
+                variant: "inline",
+                as: "h2",
+                className: "cms-block__title font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent [font-family:var(--font-heading)]",
+                elementPath: fieldPath(dataBlockIndex, "title"),
+              },
+              block.title ? (
+                <h2
+                  className="cms-block__title font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px] [&_em]:not-italic [&_em]:italic [&_em]:text-accent"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  <RichTextRenderer value={block.title} />
+                </h2>
+              ) : null,
             )}
           </div>
         )}
@@ -469,18 +694,54 @@ function AmicareFeatureList({ block, dataBlockIndex }: { block: FeatureListBlock
           {block.features.map((feature, index) => {
             const Icon = resolveIcon(feature.icon)
             return (
-              <article key={index} className="cms-block__feature overflow-hidden rounded-lg border border-rule bg-card shadow-lg">
-                <div className="cms-block__feature-icon flex h-32 items-center justify-center bg-accent/[0.08]">
-                  {Icon && <Icon size={44} className="text-accent" strokeWidth={1.5} aria-hidden />}
+                <article key={index} className="cms-block__feature overflow-hidden rounded-lg border border-rule bg-card shadow-lg">
+                  <div className="cms-block__feature-icon flex h-32 items-center justify-center bg-accent/[0.08]">
+                  {renderIconSlot(
+                    slots,
+                    {
+                      name: "featureList.featureIcon",
+                      value: feature.icon,
+                      className: "text-accent",
+                      triggerClassName: "inline-flex items-center justify-center border-0 bg-transparent p-0 text-inherit",
+                      size: 44,
+                      strokeWidth: 1.5,
+                      elementPath: fieldPath(dataBlockIndex, "features", index, "icon"),
+                    },
+                    Icon ? <Icon size={44} className="text-accent" strokeWidth={1.5} aria-hidden /> : null,
+                  )}
                 </div>
                 <div className="space-y-3 p-7 text-center">
-                  <h3 className="cms-block__feature-title font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]">
-                    <RichTextRenderer value={feature.title} />
-                  </h3>
-                  {feature.description && (
-                    <p className="cms-block__feature-description text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]">
-                      <RichTextRenderer value={feature.description} blockMode="inline" />
-                    </p>
+                  {renderRichTextSlot(
+                    slots,
+                    {
+                      name: "featureList.featureTitle",
+                      value: feature.title,
+                      variant: "inline",
+                      as: "h3",
+                      className: "cms-block__feature-title font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]",
+                      elementPath: fieldPath(dataBlockIndex, "features", index, "title"),
+                    },
+                    (
+                      <h3 className="cms-block__feature-title font-serif text-[24px] leading-[1.2] [font-family:var(--font-heading)]">
+                        <RichTextRenderer value={feature.title} />
+                      </h3>
+                    ),
+                  )}
+                  {renderRichTextSlot(
+                    slots,
+                    {
+                      name: "featureList.featureDescription",
+                      value: feature.description,
+                      variant: "block",
+                      as: "p",
+                      className: "cms-block__feature-description text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]",
+                      elementPath: fieldPath(dataBlockIndex, "features", index, "description"),
+                    },
+                    feature.description ? (
+                      <p className="cms-block__feature-description text-[16px] leading-[1.6] text-ink-muted [font-family:var(--font-text)]">
+                        <RichTextRenderer value={feature.description} blockMode="inline" />
+                      </p>
+                    ) : null,
                   )}
                 </div>
               </article>
@@ -510,29 +771,62 @@ function splitAmicareIntro(value: unknown): { intro: RtRoot; body: RtRoot } | nu
   }
 }
 
-function AmicareRichText({ block, dataBlockIndex }: { block: RichTextBlock; dataBlockIndex: number }) {
+function AmicareRichText({
+  block,
+  dataBlockIndex,
+  options,
+}: {
+  block: RichTextBlock
+  dataBlockIndex: number
+  options?: AmicareBlockOptions
+}) {
   if (!block.body) return null
   const splitBody = splitAmicareIntro(block.body)
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: resolveBlockAnchor(block, { tenantRendererKey: "amicare", surface: "live" }),
+      className: "cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "richText", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
   return (
-    <section
-      id={resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })}
-      className="cms-block cms-block--richtext px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24"
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "richText", dataBlockIndex)}
-    >
+    <section {...sectionProps}>
       {splitBody ? (
         <>
           <div className="amicare-richtext-intro mx-auto max-w-3xl text-center">
-            <RichTextRenderer value={splitBody.intro} />
+            {renderRichTextSlot(
+              slots,
+              {
+                name: "richText.intro",
+                value: splitBody.intro,
+                variant: "block",
+                elementPath: fieldPath(dataBlockIndex, "body"),
+                allowFontFamily: true,
+              },
+              <RichTextRenderer value={splitBody.intro} />,
+            )}
           </div>
           {splitBody.body.children.length > 0 && (
             <div
               className="amicare-richtext-body prose mx-auto mt-10 max-w-prose space-y-6 text-[17px] leading-[1.6] text-ink/90 @min-[48rem]/site-frame:text-[18px]"
               style={{ fontFamily: "var(--font-text)" }}
             >
-              <RichTextRenderer value={splitBody.body} />
+              {renderRichTextSlot(
+                slots,
+                {
+                  name: "richText.body",
+                  value: splitBody.body,
+                  variant: "block",
+                  elementPath: fieldPath(dataBlockIndex, "body"),
+                  allowFontFamily: true,
+                },
+                <RichTextRenderer value={splitBody.body} />,
+              )}
             </div>
           )}
         </>
@@ -541,7 +835,17 @@ function AmicareRichText({ block, dataBlockIndex }: { block: RichTextBlock; data
         className="prose mx-auto max-w-prose text-[17px] leading-[1.7] text-ink/90 @min-[48rem]/site-frame:text-[18px] prose-headings:font-serif prose-headings:tracking-[-0.01em] prose-headings:text-ink prose-h2:text-[34px] prose-h2:leading-[1.1] @min-[48rem]/site-frame:prose-h2:text-[44px] prose-p:text-ink/90 prose-strong:text-ink prose-strong:font-semibold prose-em:text-accent prose-em:italic prose-a:text-accent prose-a:underline prose-a:decoration-1 prose-a:underline-offset-[6px] hover:prose-a:decoration-accent prose-blockquote:border-l-2 prose-blockquote:border-accent prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:font-serif prose-blockquote:text-[19px] @min-[48rem]/site-frame:prose-blockquote:text-[22px]"
         style={{ fontFamily: "var(--font-text)" }}
       >
-        <RichTextRenderer value={block.body} />
+        {renderRichTextSlot(
+          slots,
+          {
+            name: "richText.body",
+            value: block.body,
+            variant: "block",
+            elementPath: fieldPath(dataBlockIndex, "body"),
+            allowFontFamily: true,
+          },
+          <RichTextRenderer value={block.body} />,
+        )}
       </div>
       )}
     </section>
@@ -552,10 +856,12 @@ function AmicareCTA({
   block,
   dataBlockIndex,
   mediaResolver,
+  options,
 }: {
   block: CTABlock
   dataBlockIndex: number
   mediaResolver?: MediaResolver
+  options?: AmicareBlockOptions
 }) {
   const eyebrowText = extractRichText(block.eyebrow)
   const descriptionText = extractRichText(block.description)
@@ -565,23 +871,39 @@ function AmicareCTA({
   const secondaryHref = block.secondary?.href?.trim()
   const isContact = primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
   const backgroundImageUrl = mediaUrl(block.backgroundImage, mediaResolver)
-  const sectionId = resolveBlockAnchor(block, { legacyTenant: "amicare", surface: "live" })
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sectionId = resolveBlockAnchor(block, { tenantRendererKey: "amicare", surface: "live" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: sectionId,
+      className: isContact
+        ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
+        : "cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "cta", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
 
   return (
-    <section
-      id={sectionId}
-      className={
-        isContact
-          ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
-          : "cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28"
-      }
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "cta", dataBlockIndex)}
-    >
-      {backgroundImageUrl && (
-        <img aria-hidden="true" src={backgroundImageUrl} alt="" loading="lazy" decoding="async" className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.12]" />
+    <section {...sectionProps}>
+      {renderImageSlot(
+        slots,
+        {
+          name: "cta.backgroundImage",
+          value: block.backgroundImage,
+          alt: "",
+          loading: "lazy",
+          decoding: "async",
+          chrome: "overlay",
+          className: "pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.12]",
+          elementPath: fieldPath(dataBlockIndex, "backgroundImage"),
+        },
+        backgroundImageUrl ? (
+          <img aria-hidden="true" src={backgroundImageUrl} alt="" loading="lazy" decoding="async" className="pointer-events-none absolute inset-0 -z-10 h-full w-full object-cover opacity-[0.12]" />
+        ) : null,
       )}
       {(!isContact || backgroundImageUrl) && (
         <div aria-hidden="true" className="amicare-quote-overlay pointer-events-none absolute inset-0 -z-10" />
@@ -589,50 +911,122 @@ function AmicareCTA({
       {!isContact && <div aria-hidden="true" className="amicare-quote-glow pointer-events-none absolute -bottom-[20%] -right-[10%] -z-10 h-[300px] w-[300px] rounded-full blur-3xl" />}
 
       <div className={isContact ? "mx-auto max-w-3xl space-y-8 text-center" : "mx-auto max-w-3xl text-center"}>
-        {eyebrowText && <span className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{eyebrowText}</span>}
+        {renderRichTextSlot(
+          slots,
+          {
+            name: "cta.eyebrow",
+            value: block.eyebrow,
+            variant: "inline",
+            as: "span",
+            className: "inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]",
+            elementPath: fieldPath(dataBlockIndex, "eyebrow"),
+          },
+          eyebrowText ? <span className="inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script)]">{eyebrowText}</span> : null,
+        )}
         {isContact ? (
-          <h2
-            className="mx-auto max-w-[24ch] font-serif text-[28px] leading-[1.25] tracking-[-0.005em] text-ink-muted @min-[48rem]/site-frame:text-[36px]"
-            style={{ fontFamily: "var(--font-heading)" }}
-          >
-            <RichTextRenderer value={block.headline} />
-          </h2>
+          renderRichTextSlot(
+            slots,
+            {
+              name: "cta.headline",
+              value: block.headline,
+              variant: "inline",
+              as: "h2",
+              className: "mx-auto max-w-[24ch] font-serif text-[28px] leading-[1.25] tracking-[-0.005em] text-ink-muted @min-[48rem]/site-frame:text-[36px] [font-family:var(--font-heading)]",
+              elementPath: fieldPath(dataBlockIndex, "headline"),
+            },
+            (
+              <h2
+                className="mx-auto max-w-[24ch] font-serif text-[28px] leading-[1.25] tracking-[-0.005em] text-ink-muted @min-[48rem]/site-frame:text-[36px]"
+                style={{ fontFamily: "var(--font-heading)" }}
+              >
+                <RichTextRenderer value={block.headline} />
+              </h2>
+            ),
+          )
         ) : (
           <h3
             className="mt-5 font-serif text-[32px] italic leading-[1.2] tracking-[-0.005em] text-ink @min-[48rem]/site-frame:text-[48px]"
             style={{ fontFamily: "var(--font-heading)" }}
           >
-            &ldquo;<RichTextRenderer value={block.headline} />&rdquo;
+            &ldquo;{renderRichTextSlot(
+              slots,
+              {
+                name: "cta.headline",
+                value: block.headline,
+                variant: "inline",
+                className: "font-serif text-[32px] italic leading-[1.2] tracking-[-0.005em] text-ink @min-[48rem]/site-frame:text-[48px] [font-family:var(--font-heading)]",
+                elementPath: fieldPath(dataBlockIndex, "headline"),
+              },
+              <RichTextRenderer value={block.headline} />,
+            )}&rdquo;
           </h3>
         )}
-        {descriptionText && (
-          <p className="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]">
-            <RichTextRenderer value={block.description} blockMode="inline" />
-          </p>
+        {renderRichTextSlot(
+          slots,
+          {
+            name: "cta.description",
+            value: block.description,
+            variant: "block",
+            as: "p",
+            className: "mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]",
+            elementPath: fieldPath(dataBlockIndex, "description"),
+          },
+          descriptionText ? (
+            <p className="mx-auto mt-7 max-w-prose text-[16px] leading-[1.7] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[17px]">
+              <RichTextRenderer value={block.description} blockMode="inline" />
+            </p>
+          ) : null,
         )}
         {(primaryLabel && primaryHref) || (secondaryLabel && secondaryHref) ? (
           <div className={isContact ? "space-y-4" : "mt-6 flex flex-wrap items-center justify-center gap-3"}>
             {primaryLabel && primaryHref && (
-              <a
-                href={primaryHref}
-                className={
+              renderCtaSlot(
+                slots,
+                {
+                  name: "cta.primary",
+                  value: block.primary,
+                  className:
                   isContact
                     ? "inline-block font-serif text-[28px] text-ink underline decoration-1 underline-offset-[8px] transition-colors [font-family:var(--font-heading)] hover:text-accent hover:decoration-accent @min-[48rem]/site-frame:text-[44px]"
-                    : "inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors [font-family:var(--font-text)] hover:border-accent hover:text-accent"
-                }
-                {...actionAnalyticsAttrs("primary", primaryLabel)}
-              >
-                {primaryLabel}
-              </a>
+                    : "inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors [font-family:var(--font-text)] hover:border-accent hover:text-accent",
+                  actionAttributes: actionAnalyticsAttrs("primary", primaryLabel),
+                  elementPath: fieldPath(dataBlockIndex, "primary"),
+                },
+                (
+                  <a
+                    href={primaryHref}
+                    className={
+                      isContact
+                        ? "inline-block font-serif text-[28px] text-ink underline decoration-1 underline-offset-[8px] transition-colors [font-family:var(--font-heading)] hover:text-accent hover:decoration-accent @min-[48rem]/site-frame:text-[44px]"
+                        : "inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors [font-family:var(--font-text)] hover:border-accent hover:text-accent"
+                    }
+                    {...actionAnalyticsAttrs("primary", primaryLabel)}
+                  >
+                    {primaryLabel}
+                  </a>
+                ),
+              )
             )}
             {secondaryLabel && secondaryHref && (
-              <a
-                href={secondaryHref}
-                className="inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors [font-family:var(--font-text)] hover:border-accent hover:text-accent"
-                {...actionAnalyticsAttrs("secondary", secondaryLabel)}
-              >
-                {secondaryLabel}
-              </a>
+              renderCtaSlot(
+                slots,
+                {
+                  name: "cta.secondary",
+                  value: block.secondary,
+                  className: "inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors [font-family:var(--font-text)] hover:border-accent hover:text-accent",
+                  actionAttributes: actionAnalyticsAttrs("secondary", secondaryLabel),
+                  elementPath: fieldPath(dataBlockIndex, "secondary"),
+                },
+                (
+                  <a
+                    href={secondaryHref}
+                    className="inline-block rounded-md border border-rule px-6 py-3 text-[14px] font-medium text-ink transition-colors [font-family:var(--font-text)] hover:border-accent hover:text-accent"
+                    {...actionAnalyticsAttrs("secondary", secondaryLabel)}
+                  >
+                    {secondaryLabel}
+                  </a>
+                ),
+              )
             )}
           </div>
         ) : null}
@@ -645,25 +1039,42 @@ function AmicareTestimonials({
   block,
   dataBlockIndex,
   mediaResolver,
+  options,
 }: {
   block: TestimonialsBlock
   dataBlockIndex: number
   mediaResolver?: MediaResolver
+  options?: AmicareBlockOptions
 }) {
   if (!block.items || block.items.length === 0) return null
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: block.anchor ?? undefined,
+      className: "cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "testimonials", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
+
   return (
-    <section
-      id={block.anchor ?? undefined}
-      className="cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "testimonials", dataBlockIndex)}
-    >
+    <section {...sectionProps}>
       <div className="container mx-auto">
         {block.title && (
           <h2 className="mb-12 text-center font-serif text-[34px] leading-[1.1] tracking-[0] [font-family:var(--font-heading)] @min-[48rem]/site-frame:text-[44px]">
-            {block.title}
+            {renderTextSlot(
+              slots,
+              {
+                name: "testimonials.title",
+                value: block.title,
+                className: "contents",
+                elementPath: fieldPath(dataBlockIndex, "title"),
+              },
+              block.title,
+            )}
           </h2>
         )}
         <div className="grid gap-6 @min-[48rem]/site-frame:grid-cols-2 @min-[64rem]/site-frame:grid-cols-3">
@@ -672,13 +1083,59 @@ function AmicareTestimonials({
             return (
               <figure key={index} className="flex flex-col rounded-lg border border-rule bg-card p-6">
                 <blockquote className="flex-1 font-serif text-[17px] italic leading-[1.5] text-ink [font-family:var(--font-heading)]">
-                  &ldquo;{item.quote}&rdquo;
+                  &ldquo;{renderTextSlot(
+                    slots,
+                    {
+                      name: "testimonials.quote",
+                      value: item.quote,
+                      className: "contents",
+                      multiline: true,
+                      elementPath: fieldPath(dataBlockIndex, "items", index, "quote"),
+                    },
+                    item.quote,
+                  )}&rdquo;
                 </blockquote>
                 <figcaption className="mt-4 flex items-center gap-3">
-                  {avatar && <img src={avatar.src} alt="" className="h-10 w-10 rounded-full object-cover" loading="lazy" decoding="async" />}
+                  {avatar && renderImageSlot(
+                    slots,
+                    {
+                      name: "testimonials.avatar",
+                      value: item.avatar,
+                      alt: mediaAlt(item.avatar, avatar),
+                      loading: "lazy",
+                      decoding: "async",
+                      className: "h-10 w-10 rounded-full object-cover",
+                      elementPath: fieldPath(dataBlockIndex, "items", index, "avatar"),
+                    },
+                    <img src={avatar.src} alt="" className="h-10 w-10 rounded-full object-cover" loading="lazy" decoding="async" />,
+                  )}
                   <div>
-                    <div className="font-medium text-ink [font-family:var(--font-text)]">{item.author}</div>
-                    {item.role && <div className="text-sm text-ink-muted [font-family:var(--font-text)]">{item.role}</div>}
+                    <div className="font-medium text-ink [font-family:var(--font-text)]">
+                      {renderTextSlot(
+                        slots,
+                        {
+                          name: "testimonials.author",
+                          value: item.author,
+                          className: "contents",
+                          elementPath: fieldPath(dataBlockIndex, "items", index, "author"),
+                        },
+                        item.author,
+                      )}
+                    </div>
+                    {item.role && (
+                      <div className="text-sm text-ink-muted [font-family:var(--font-text)]">
+                        {renderTextSlot(
+                          slots,
+                          {
+                            name: "testimonials.role",
+                            value: item.role,
+                            className: "contents",
+                            elementPath: fieldPath(dataBlockIndex, "items", index, "role"),
+                          },
+                          item.role,
+                        )}
+                      </div>
+                    )}
                   </div>
                 </figcaption>
               </figure>
@@ -690,32 +1147,77 @@ function AmicareTestimonials({
   )
 }
 
-function AmicareFAQ({ block, dataBlockIndex }: { block: FAQBlock; dataBlockIndex: number }) {
+function AmicareFAQ({
+  block,
+  dataBlockIndex,
+  options,
+}: {
+  block: FAQBlock
+  dataBlockIndex: number
+  options?: AmicareBlockOptions
+}) {
   if (!block.items || block.items.length === 0) return null
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: block.anchor ?? undefined,
+      className: "cms-block cms-block--faq px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 @min-[64rem]/site-frame:px-24",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "faq", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
+
   return (
-    <section
-      id={block.anchor ?? undefined}
-      className="cms-block cms-block--faq px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 @min-[64rem]/site-frame:px-24"
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "faq", dataBlockIndex)}
-    >
+    <section {...sectionProps}>
       <div className="container mx-auto max-w-3xl">
         {block.title && (
           <h2 className="mb-10 text-center font-serif text-[34px] leading-[1.1] tracking-[0] [font-family:var(--font-heading)] @min-[48rem]/site-frame:text-[44px]">
-            <RichTextRenderer value={block.title} />
+            {renderRichTextSlot(
+              slots,
+              {
+                name: "faq.title",
+                value: block.title,
+                variant: "inline",
+                className: "contents",
+                elementPath: fieldPath(dataBlockIndex, "title"),
+              },
+              <RichTextRenderer value={block.title} />,
+            )}
           </h2>
         )}
         <dl className="space-y-4">
           {block.items.map((item, index) => (
             <details key={index} className="group rounded-lg border border-rule bg-card p-4">
               <summary className="flex list-none cursor-pointer items-center justify-between font-medium text-ink [font-family:var(--font-heading)]">
-                <span><RichTextRenderer value={item.question} /></span>
+                <span>
+                  {renderRichTextSlot(
+                    slots,
+                    {
+                      name: "faq.question",
+                      value: item.question,
+                      variant: "inline",
+                      className: "contents",
+                      elementPath: fieldPath(dataBlockIndex, "items", index, "question"),
+                    },
+                    <RichTextRenderer value={item.question} />,
+                  )}
+                </span>
                 <span className="text-ink-muted transition-transform group-open:rotate-180" aria-hidden>▾</span>
               </summary>
               <div className="mt-3 text-sm leading-relaxed text-ink-muted [font-family:var(--font-text)]">
-                <RichTextRenderer value={item.answer} />
+                {renderRichTextSlot(
+                  slots,
+                  {
+                    name: "faq.answer",
+                    value: item.answer,
+                    variant: "block",
+                    elementPath: fieldPath(dataBlockIndex, "items", index, "answer"),
+                  },
+                  <RichTextRenderer value={item.answer} />,
+                )}
               </div>
             </details>
           ))}
@@ -729,33 +1231,61 @@ function AmicareContactSection({
   block,
   dataBlockIndex,
   formAction,
+  options,
 }: {
   block: ContactSectionBlock
   dataBlockIndex: number
   formAction?: string
+  options?: AmicareBlockOptions
 }) {
   if (!block.fields || block.fields.length === 0) return null
-  const sourceVariant = runtimeVariantDataAttribute(block, { legacyTenant: "amicare" })
+  const sourceVariant = runtimeVariantDataAttribute(block, { tenantRendererKey: "amicare" })
+  const slots = options?.editSlots
+  const sectionProps = mergeSectionAttributes(
+    {
+      id: block.anchor ?? undefined,
+      className: "cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20",
+      "data-source-variant": sourceVariant,
+      "data-block-index": dataBlockIndex,
+      ...sectionAnalyticsAttrs(block.analytics, "contactSection", dataBlockIndex),
+    },
+    options?.sectionAttributes,
+  )
+
   return (
-    <section
-      id={block.anchor ?? undefined}
-      className="cms-block cms-block--contact px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20"
-      data-source-variant={sourceVariant}
-      data-block-index={dataBlockIndex}
-      {...sectionAnalyticsAttrs(block.analytics, "contactSection", dataBlockIndex)}
-    >
+    <section {...sectionProps}>
       <div className="container mx-auto max-w-2xl">
         {block.title && (
           <h2
             className="font-serif text-[34px] leading-[1.1] tracking-[-0.01em] @min-[48rem]/site-frame:text-[44px]"
             style={{ fontFamily: "var(--font-heading)" }}
           >
-            <RichTextRenderer value={block.title} />
+            {renderRichTextSlot(
+              slots,
+              {
+                name: "contactSection.title",
+                value: block.title,
+                variant: "inline",
+                className: "contents",
+                elementPath: fieldPath(dataBlockIndex, "title"),
+              },
+              <RichTextRenderer value={block.title} />,
+            )}
           </h2>
         )}
         {block.description && (
           <p className="mt-3 text-[17px] leading-[1.6] text-ink-muted [font-family:var(--font-text)] @min-[48rem]/site-frame:text-[18px]">
-            <RichTextRenderer value={block.description} blockMode="inline" />
+            {renderRichTextSlot(
+              slots,
+              {
+                name: "contactSection.description",
+                value: block.description,
+                variant: "block",
+                className: "contents",
+                elementPath: fieldPath(dataBlockIndex, "description"),
+              },
+              <RichTextRenderer value={block.description} blockMode="inline" />,
+            )}
           </p>
         )}
         <form
@@ -805,32 +1335,34 @@ function AmicareContactSection({
   )
 }
 
-function AmicareBlock({
+export function AmicareBlock({
   block,
   index,
   mediaResolver,
   formAction,
+  options,
 }: {
   block: Block
   index: number
   mediaResolver?: MediaResolver
   formAction?: string
+  options?: AmicareBlockOptions
 }) {
   switch (block.blockType) {
     case "hero":
-      return <AmicareHero block={block} dataBlockIndex={index} mediaResolver={mediaResolver} />
+      return <AmicareHero block={block} dataBlockIndex={index} mediaResolver={mediaResolver} options={options} />
     case "featureList":
-      return <AmicareFeatureList block={block} dataBlockIndex={index} />
+      return <AmicareFeatureList block={block} dataBlockIndex={index} options={options} />
     case "richText":
-      return <AmicareRichText block={block} dataBlockIndex={index} />
+      return <AmicareRichText block={block} dataBlockIndex={index} options={options} />
     case "cta":
-      return <AmicareCTA block={block} dataBlockIndex={index} mediaResolver={mediaResolver} />
+      return <AmicareCTA block={block} dataBlockIndex={index} mediaResolver={mediaResolver} options={options} />
     case "testimonials":
-      return <AmicareTestimonials block={block} dataBlockIndex={index} mediaResolver={mediaResolver} />
+      return <AmicareTestimonials block={block} dataBlockIndex={index} mediaResolver={mediaResolver} options={options} />
     case "faq":
-      return <AmicareFAQ block={block} dataBlockIndex={index} />
+      return <AmicareFAQ block={block} dataBlockIndex={index} options={options} />
     case "contactSection":
-      return <AmicareContactSection block={block} dataBlockIndex={index} formAction={formAction} />
+      return <AmicareContactSection block={block} dataBlockIndex={index} formAction={formAction} options={options} />
     default:
       return null
   }
@@ -991,9 +1523,9 @@ export function AmicarePageRenderer({
 
   return (
     <div
-      className={cn("site-renderer site-renderer--legacy site-renderer--legacy-amicare", className)}
+      className={cn("site-renderer site-renderer--tenant site-renderer--tenant-amicare", className)}
       data-siab-site-renderer
-      data-legacy-tenant="amicare"
+      data-tenant-renderer="amicare"
     >
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <div

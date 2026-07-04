@@ -1,7 +1,7 @@
 import type { Block } from "@siteinabox/contracts"
 
 export type BlockAnchorResolveContext = {
-  legacyTenant?: "amicare" | null
+  tenantRendererKey?: "amicare" | null
   surface?: "canvas" | "live"
 }
 
@@ -14,7 +14,7 @@ export function resolveBlockAnchor(block: Block, context: BlockAnchorResolveCont
   const anchor = typeof block.anchor === "string" && block.anchor.trim() ? block.anchor.trim() : undefined
   if (anchor) return anchor
 
-  const isAmicare = context.legacyTenant === "amicare"
+  const isAmicare = context.tenantRendererKey === "amicare"
 
   switch (block.blockType) {
     case "hero":

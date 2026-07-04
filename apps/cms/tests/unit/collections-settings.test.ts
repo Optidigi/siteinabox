@@ -176,7 +176,7 @@ describe("SiteSettings collection config", () => {
       .toEqual(["default", "hyperUiSimple", "amicareZen"])
   })
 
-  it("keeps the active official legacy tenant chrome variants available in admin options", () => {
+  it("keeps the active official tenant renderer chrome variants available in admin options", () => {
     const chrome = findField("chrome")
     const header = chrome.fields.find((x: any) => x.name === "header")
     const footer = chrome.fields.find((x: any) => x.name === "footer")
@@ -217,7 +217,7 @@ describe("SiteSettings collection config", () => {
     })
   })
 
-  it("allows the active official legacy tenant to retain its tenant-exclusive chrome variants", async () => {
+  it("allows the active official tenant renderer to retain its tenant-exclusive chrome variants", async () => {
     const req = {
       payload: {
         findByID: async () => ({ id: 1, slug: "ami-care" }),

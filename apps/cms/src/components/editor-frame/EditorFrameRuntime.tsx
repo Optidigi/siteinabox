@@ -11,14 +11,14 @@ import {
   type IframeEditorSelection,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
+import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { FrameCanvasSurface } from "@/components/editor-frame/FrameCanvasSurface"
 import type { PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
 import type { RtManifest } from "@/lib/richText/manifest"
 
-const HEADER_CHROME_SELECTOR = "[data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav]"
-const FOOTER_CHROME_SELECTOR = "[data-siab-site-footer], .site-footer, footer.site-chrome"
+const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav]'
+const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome'
 
 export function EditorFrameRuntime({
   page,
@@ -49,7 +49,7 @@ export function EditorFrameRuntime({
   const revisionRef = React.useRef(0)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
   const effectiveTenantCss = React.useMemo(() => {
-    if (resolveLegacyTenant({ tenantSlug, domain })) return null
+    if (resolveTenantRenderer({ tenantSlug, domain })) return null
     return tenantCss
   }, [tenantCss, tenantSlug, domain])
   const emit = React.useCallback((payload: IframeEditorMessage) => {

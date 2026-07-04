@@ -29,12 +29,12 @@ const MAX_FEATURE_CARDS = 3
  *   - features[].title: inline rich-text → RtSlot as h3
  *   - features[].description: block rich-text → RtSlot as p
  */
-export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, legacyTenant, sectionChromeProps }) => {
+export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantRendererKey, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const { view } = useCanvasSelection()
   const isReadOnly = isReadOnlyView(view)
-  const isAmicareLegacy = legacyTenant === "amicare"
-  const amicareSourceClassName = isAmicareLegacy ? "cms-block--source-amicare-care-cards" : ""
+  const isAmicareTenantRenderer = tenantRendererKey === "amicare"
+  const amicareSourceClassName = isAmicareTenantRenderer ? "cms-block--source-amicare-care-cards" : ""
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
 
@@ -53,9 +53,9 @@ export const FeatureListCanvas: React.FC<CanvasBlockRendererProps> = ({ block, i
   }
   const sectionProps = mergeCanvasSectionProps(
     {
-      id: resolveBlockAnchor(block, { legacyTenant, surface: "canvas" }),
-      className: `cms-block cms-block--featurelist ${amicareSourceClassName} relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
-      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
+      id: resolveBlockAnchor(block, { tenantRendererKey, surface: "canvas" }),
+      className: `cms-block cms-block--featurelist ${amicareSourceClassName} relative bg-card/50 px-6 py-20 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-24 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, tenantRendererKey, { rendererDom: "canvas-fallback" })}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, tenantRendererKey),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,

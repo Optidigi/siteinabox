@@ -6,7 +6,6 @@ export type RendererDeployTarget = {
   readonly productionHost: string
   readonly productionOrigin: `https://${string}`
   readonly siteUrlBuildArg: "AMICARE_SITE_URL"
-  readonly legacyAssetPrefixes: readonly string[]
 }
 
 export const RENDERER_DEPLOY_TARGETS = [
@@ -16,17 +15,6 @@ export const RENDERER_DEPLOY_TARGETS = [
     productionHost: "ami-care.nl",
     productionOrigin: "https://ami-care.nl",
     siteUrlBuildArg: "AMICARE_SITE_URL",
-    legacyAssetPrefixes: [
-      "/_astro/",
-      "/media/",
-      "/api/tenant-media/7/",
-      "/favicon",
-      "/apple-touch-icon.png",
-      "/manifest.json",
-      "/og-default.png",
-      "/robots.txt",
-      "/sitemap-index.xml",
-    ],
   },
 ] as const satisfies readonly RendererDeployTarget[]
 

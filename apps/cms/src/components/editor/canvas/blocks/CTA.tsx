@@ -22,19 +22,19 @@ import { cn } from "@siteinabox/ui/lib/utils"
  * Variant classes follow the site renderer, but every CTA field remains
  * optional and editable. If a field is present, the canvas renders it.
  */
-export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant, sectionChromeProps }) => {
+export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, tenantRendererKey, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const set = (field: string) => (value: any) => onUpdate({ ...block, [field]: value })
   const setPrimary = (value: any) => onUpdate({ ...block, primary: value })
   const setSecondary = (value: any) => onUpdate({ ...block, secondary: value })
   const idx = block.__index as number
-  const isAmicareLegacy = legacyTenant === "amicare"
+  const isAmicareTenantRenderer = tenantRendererKey === "amicare"
 
   const primaryHref: string | null | undefined = block.primary?.href?.trim()
   const isContact =
     primaryHref?.startsWith("mailto:") || primaryHref?.startsWith("tel:")
   const setContactCta = (value: any) => onUpdate({ ...block, primary: value, secondary: null })
-  const sectionId = resolveBlockAnchor(block, { legacyTenant, surface: "canvas" })
+  const sectionId = resolveBlockAnchor(block, { tenantRendererKey, surface: "canvas" })
   const sectionClassName = isContact
     ? "cms-block cms-block--cta cms-block--cta-contact relative isolate overflow-hidden border-t border-rule px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28 @min-[64rem]/site-frame:px-24"
     : "cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 px-6 py-24 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-28"
@@ -47,8 +47,8 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
   const sectionProps = mergeCanvasSectionProps(
     {
       id: sectionId,
-      className: `${sectionClassName} ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
-      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
+      className: `${sectionClassName} ${canvasSourceVariantClassName(block, tenantRendererKey, { rendererDom: "canvas-fallback" })}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, tenantRendererKey),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,
@@ -76,7 +76,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute inset-0 -z-10",
-            isAmicareLegacy ? "amicare-quote-overlay" : "bg-gradient-to-b from-bg/70 via-bg/50 to-bg/70",
+            isAmicareTenantRenderer ? "amicare-quote-overlay" : "bg-gradient-to-b from-bg/70 via-bg/50 to-bg/70",
           )}
         />
       )}
@@ -85,7 +85,7 @@ export const CTACanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive,
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute -bottom-[20%] -right-[10%] -z-10 h-[300px] w-[300px] rounded-full blur-3xl",
-            isAmicareLegacy ? "amicare-quote-glow" : "bg-accent/10",
+            isAmicareTenantRenderer ? "amicare-quote-glow" : "bg-accent/10",
           )}
         />
       )}

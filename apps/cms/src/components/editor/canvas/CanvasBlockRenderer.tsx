@@ -15,6 +15,8 @@ import { RichTextCanvas as RichTextLazy } from "@/components/editor/canvas/block
 import { ContactSectionCanvas } from "@/components/editor/canvas/blocks/ContactSection"
 import { FAQCanvas } from "@/components/editor/canvas/blocks/FAQ"
 import { TestimonialsCanvas } from "@/components/editor/canvas/blocks/Testimonials"
+import { AmicareCanvasBlockRenderer } from "@/components/editor/canvas/AmicareCanvasBlockRenderer"
+import { RendererCanvasBlockRenderer } from "@/components/editor/canvas/RendererCanvasBlockRenderer"
 import {
   BlogCardsCanvas,
   ComparisonCanvas,
@@ -36,7 +38,7 @@ type CanvasSectionBaseProps = React.ComponentPropsWithoutRef<"section"> & DataAt
 export type CanvasSectionChromeProps = React.ComponentPropsWithRef<"section"> & DataAttributes
 
 type SourceVariantContext = {
-  legacyTenant?: "amicare" | null
+  tenantRendererKey?: "amicare" | null
 }
 
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
@@ -49,7 +51,7 @@ export interface CanvasBlockRendererProps {
   onActivate: () => void
   onUpdate: (next: any) => void
   tenantId?: number | string | null
-  legacyTenant?: "amicare" | null
+  tenantRendererKey?: "amicare" | null
   sectionChromeProps?: CanvasSectionChromeProps
 }
 
@@ -119,17 +121,17 @@ export function resolvedCanvasSourceVariant(block: any, context: SourceVariantCo
   )
 }
 
-export function canvasSourceVariantDataAttribute(block: any, legacyTenant?: "amicare" | null) {
-  return resolveBlockVariant(block, { legacyTenant }).variant
+export function canvasSourceVariantDataAttribute(block: any, tenantRendererKey?: "amicare" | null) {
+  return resolveBlockVariant(block, { tenantRendererKey }).variant
 }
 
 export function canvasSourceVariantClassName(
   block: any,
-  legacyTenant?: "amicare" | null,
-  options: { rendererDom?: "native" | "legacy" } = {},
+  tenantRendererKey?: "amicare" | null,
+  options: { rendererDom?: "native" | "canvas-fallback" } = {},
 ) {
-  if (options.rendererDom === "legacy") return ""
-  return resolveBlockVariant(block, { legacyTenant }).rendererClassName ?? ""
+  if (options.rendererDom === "canvas-fallback") return ""
+  return resolveBlockVariant(block, { tenantRendererKey }).rendererClassName ?? ""
 }
 
 /** Per-block-type dispatcher for canvas mode. Each block renderer is in
@@ -146,6 +148,26 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
   // Stamp __index so block renderers can derive ElementPath without an extra prop.
   const blockWithIndex = { ...block, __index: index }
   const augmented = { ...props, block: blockWithIndex }
+  if (
+    props.tenantRendererKey === "amicare" &&
+    (
+      block?.blockType === "hero" ||
+      block?.blockType === "featureList" ||
+      block?.blockType === "richText" ||
+      block?.blockType === "cta" ||
+      block?.blockType === "testimonials" ||
+      block?.blockType === "faq" ||
+      block?.blockType === "contactSection"
+    )
+  ) {
+    return <AmicareCanvasBlockRenderer {...augmented} />
+  }
+  if (
+    props.tenantRendererKey !== "amicare" &&
+    (block?.blockType === "hero" || block?.blockType === "featureList" || block?.blockType === "richText" || block?.blockType === "cta")
+  ) {
+    return <RendererCanvasBlockRenderer {...augmented} />
+  }
   const unknownSectionProps = mergeCanvasSectionProps(
     {
       className: "cms-block cms-block--unknown rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2",

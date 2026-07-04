@@ -61,7 +61,7 @@ export type BlockSourceIntegrationKind =
   | "provider-derived-package-css"
   | "preline-ui"
   | "tailwind-plus-elements"
-  | "legacy-tenant-source"
+  | "tenant-renderer-source"
   | "deferred"
 
 export type BlockSourceRuntimeRequirement = {
@@ -209,8 +209,8 @@ const blockReferenceSources = {
     availability: "unavailable",
     notes: "Not approved for SIAB self-serve generated-site catalogs.",
   },
-  legacyTenantSnapshots: {
-    name: "SIAB legacy tenant snapshots",
+  tenantRendererSnapshots: {
+    name: "SIAB tenant renderer snapshots",
     url: "https://github.com/optidigi/siteinabox",
     licenseStatus: "Operator-owned local tenant snapshot source retained for Amicare migration parity.",
     availability: "free",
@@ -233,17 +233,16 @@ const siabOwnedRuntime: BlockSourceRuntimeRequirement = {
   notes: "No external component runtime. SIAB owns both markup and CSS.",
 }
 
-const legacyTenantRuntime: BlockSourceRuntimeRequirement = {
-  kind: "legacy-tenant-source",
+const tenantRendererRuntime: BlockSourceRuntimeRequirement = {
+  kind: "tenant-renderer-source",
   supportedAstroPath:
-    "Map legacy tenant Astro/React/CSS source into tenant-exclusive @siteinabox/site-renderer variants; do not create new tenant source branches.",
+    "Map tenant renderer Astro/React/CSS source into tenant-exclusive @siteinabox/site-renderer variants; do not create new tenant source branches.",
   interactive: true,
   docs: [
-    "packages/site-renderer/src/legacy-tenants",
-    "apps/renderer/src/lib/legacy-tenants/_assets",
+    "packages/site-renderer/src/tenant-renderers",
   ],
   notes:
-    "Used only for Amicare parity blocks. Renderer-owned legacy tenant sources and assets are canonical; deleted sites/* app sources must not be restored.",
+    "Used only for Amicare parity blocks. Renderer-owned tenant renderer sources and assets are canonical; deleted sites/* app sources must not be restored.",
 }
 
 const copyPasteTailwindRuntime = (sourceName: string, docs: string[]): BlockSourceRuntimeRequirement => ({
@@ -336,12 +335,12 @@ const siabOwnedProvenance = (upstreamBlockName: string): BlockVariantProvenance 
   notes: "Generic canonical renderer style, not copied from an external block.",
 })
 
-const legacyTenantProvenance = (
+const tenantRendererProvenance = (
   upstreamBlockName: string,
   sourcePath: string,
   notes: string,
 ): BlockVariantProvenance => ({
-  sourceName: "SIAB legacy tenant snapshot",
+  sourceName: "SIAB tenant renderer snapshot",
   url: "https://github.com/optidigi/siteinabox",
   licenseStatus: "Operator-owned local tenant snapshot source for Amicare parity.",
   licenseCompatibility: "compatible",
@@ -349,7 +348,7 @@ const legacyTenantProvenance = (
   sourceAvailability: "free-public",
   upstreamBlockName,
   sourceAccessType: "local-source",
-  sourceAccess: "Local repository renderer-owned legacy tenant snapshot.",
+  sourceAccess: "Local repository renderer-owned tenant renderer snapshot.",
   implementation: "adapted-exact-style",
   sourcePath,
   retrieval: `Inspect ${sourcePath} in this repository and map visible behavior to structured contract fields.`,
@@ -357,7 +356,7 @@ const legacyTenantProvenance = (
   visualExactnessStatus: "needs-browser-comparison",
   visualSourceNotes:
     "Phase 2 records the local parity source and required data shape. Phase 3/6 must perform browser comparison after shared renderer implementation.",
-  runtime: legacyTenantRuntime,
+  runtime: tenantRendererRuntime,
   notes,
 })
 
@@ -681,9 +680,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-zen-hero",
         rendererClassName: "cms-block--source-amicare-zen-hero",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare Hero",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps the renderer-owned Amicare hero visual treatment to structured hero fields without restoring deleted tenant app source.",
         ),
       },
@@ -755,9 +754,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-care-cards",
         rendererClassName: "cms-block--source-amicare-care-cards",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare FeatureList",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps the renderer-owned Amicare feature-card grid to structured featureList data and tenant-exclusive renderer CSS.",
         ),
       },
@@ -826,9 +825,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-warm-accordion",
         rendererClassName: "cms-block--source-amicare-warm-accordion",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare FAQ",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps renderer-owned Amicare FAQ details styling to structured FAQ items and tenant-exclusive renderer CSS.",
         ),
       },
@@ -882,9 +881,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-editorial",
         rendererClassName: "cms-block--source-amicare-editorial",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare RichText",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps renderer-owned Amicare rich text and themed eyebrow behavior into structured RtRoot data and package CSS.",
         ),
       },
@@ -945,9 +944,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-quote-contact",
         rendererClassName: "cms-block--source-amicare-quote-contact",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare CTA",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps renderer-owned Amicare quote/contact CTA presentation to structured CTA fields and tenant-exclusive renderer CSS.",
         ),
       },
@@ -1071,9 +1070,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-contact-form",
         rendererClassName: "cms-block--source-amicare-contact-form",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare ContactSection",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps renderer-owned Amicare contact form styling to structured fields and SIAB form provider data.",
         ),
       },
@@ -1144,9 +1143,9 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         rendererSupportStatus: "supported",
         sectionVariant: "amicare-story-cards",
         rendererClassName: "cms-block--source-amicare-story-cards",
-        provenance: legacyTenantProvenance(
+        provenance: tenantRendererProvenance(
           "Amicare Testimonials",
-          "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+          "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
           "Maps renderer-owned Amicare testimonial cards to structured quote, author, role, and optional avatar fields.",
         ),
       },
@@ -1601,9 +1600,9 @@ export const SITE_CHROME_CATALOG = [
     dataSignal: "settings.chrome.variant",
     rendererSupportStatus: "supported",
     rendererClassName: "site-header--source-amicare-zen",
-    provenance: legacyTenantProvenance(
+    provenance: tenantRendererProvenance(
       "Amicare Nav",
-      "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+      "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
       "Maps renderer-owned Amicare sticky anchor navigation to structured SiteSettings navHeader/chrome data.",
     ),
     editableFields: [
@@ -1672,9 +1671,9 @@ export const SITE_CHROME_CATALOG = [
     dataSignal: "settings.chrome.variant",
     rendererSupportStatus: "supported",
     rendererClassName: "site-footer--source-amicare-zen",
-    provenance: legacyTenantProvenance(
+    provenance: tenantRendererProvenance(
       "Amicare Footer",
-      "packages/site-renderer/src/legacy-tenants/amicare/AmicarePage.tsx",
+      "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
       "Maps renderer-owned Amicare footer composition to structured SiteSettings footer columns, navFooter, and NAP data.",
     ),
     editableFields: [

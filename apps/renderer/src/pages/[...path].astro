@@ -1,31 +1,12 @@
 ---
 import { renderToStaticMarkup } from "react-dom/server"
-import { getRendererDeployTargetByHost, isRendererProductionHost } from "@siteinabox/contracts/deploy-targets"
-import { SitePageRenderer, buildPageSeoMetadata, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
+import { SitePageRenderer, buildPageSeoMetadata, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
 import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
-import * as amicareLegacy from "../lib/legacy-tenants/amicare/legacy-response"
 
 const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
-const liveDeployTarget = getRendererDeployTargetByHost(host)
-
-const liveLegacyAssetResponse = async () => {
-  if (!liveDeployTarget?.legacyAssetPrefixes.some((prefix) => pathname.startsWith(prefix))) return null
-
-  if (liveDeployTarget.id === "ami-care") {
-    return amicareLegacy.createAmicareLegacyResponse(pathname)
-  }
-  return null
-}
-
-if (!isRendererProductionHost(host) && amicareLegacy.isAmicareLegacyHost(host)) {
-  return await amicareLegacy.createAmicareLegacyResponseOrNotFound(pathname)
-}
-
-const legacyAssetResponse = await liveLegacyAssetResponse()
-if (legacyAssetResponse) return legacyAssetResponse
 
 const resolved = await resolvePublishedPage(pathname, host)
 
@@ -55,8 +36,8 @@ const rendererHtml = resolved
   : ""
 const analyticsJson =
   resolved ? analyticsConfigJson(buildAnalyticsConfig({ snapshot: resolved.snapshot, page: resolved.page, pathname: resolved.pathname })) : null
-const legacyTenant = resolved
-  ? resolveLegacyTenant({
+const tenantRendererKey = resolved
+  ? resolveTenantRenderer({
       tenantSlug: resolved.snapshot.tenantSlug,
       domain: resolved.snapshot.domain,
       settings: resolved.snapshot.settings,
@@ -72,13 +53,9 @@ const mediaHref = (value: unknown): string | null => {
 }
 const faviconHref =
   resolved
-    ? mediaHref(resolved.snapshot.settings.branding?.favicon) ??
-      (legacyTenant === "amicare" ? "/favicon.svg" : null)
+    ? mediaHref(resolved.snapshot.settings.branding?.favicon)
     : null
-const appleTouchIconHref = legacyTenant ? "/apple-touch-icon.png" : null
-const manifestHref = legacyTenant ? "/manifest.json" : null
-const sitemapHref = legacyTenant ? "/sitemap-index.xml" : null
-const showRendererCookieConsent = Boolean(analyticsJson && legacyTenant !== "amicare")
+const showRendererCookieConsent = Boolean(analyticsJson && tenantRendererKey !== "amicare")
 const rendererCookieConsentScript = `(() => {
   const preferenceKey = "siab_cookie_consent_v1";
   const banner = document.getElementById("renderer-cookie-consent-banner");
@@ -140,9 +117,6 @@ const rendererCookieConsentScript = `(() => {
           }
         </style>
         {faviconHref && <link rel="icon" href={faviconHref} />}
-        {appleTouchIconHref && <link rel="apple-touch-icon" href={appleTouchIconHref} />}
-        {manifestHref && <link rel="manifest" href={manifestHref} />}
-        {sitemapHref && <link rel="sitemap" href={sitemapHref} />}
         <title>{seo.title}</title>
         {seo.description && <meta name="description" content={seo.description} />}
         {seo.canonical && <link rel="canonical" href={seo.canonical} />}

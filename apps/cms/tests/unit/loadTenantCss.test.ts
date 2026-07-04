@@ -324,7 +324,7 @@ describe("loadTenantCss", () => {
 })
 
 describe("loadCanvasTenantCss", () => {
-  it("skips cms-editor.css for official Amicare legacy tenants", async () => {
+  it("skips cms-editor.css for official Amicare tenant-renderers", async () => {
     const { loadCanvasTenantCss } = await import("@/lib/editor/loadTenantCss")
     const css = await loadCanvasTenantCss({ id: TEST_ID, slug: "amicare-zorg", domain: "ami-care.nl" })
     expect(css).toBeNull()

@@ -67,6 +67,17 @@ depended on command-run site generation are no longer current source of truth.
   chrome model is simplified around one rule: hovering a section/header/footer
   shows only that section's badge, leaving that area hides it, and badge
   placement remains visually anchored to its owner.
+- Re-evaluate editor iframe chrome isolation after the canonical site-rendering
+  and generation flow work settles. The remaining issue to verify is whether
+  iframe-mounted editor chrome can still inherit tenant/site styling instead of
+  CMS editor chrome tokens; resolve through the canonical editor chrome boundary,
+  not Ami-care-specific overrides.
+- Re-evaluate Ami-care `featureList` / `amicareCareCards` parity after the
+  canonical site-rendering and generation flow work settles. The known visual
+  delta is in the "drie dingen" / "wat voor mij centraal staat" section:
+  heading color and card top background differ between site output and the
+  editor canvas. Verify whether this remains relevant once the new renderer and
+  generated block flow are in place before making another targeted parity patch.
 - Refactor the Forms/submissions management UI instead of patching the current
   sheet in place. The current `/forms` surface can show viewer users a
   submission status control that the server rejects, but this should be solved
@@ -116,7 +127,7 @@ Same-day hardening tightened generated-site preview and rendering reliability:
 preview theme edits now preserve mode-only choices, merge rapid toolbar changes,
 and save with a latest-wins queue so stale writes cannot revert the stored
 theme. Generic page saves now reject tenant-exclusive Amicare block variants,
-while official Amicare compatibility remains isolated to the legacy tenant
+while official Amicare compatibility remains isolated to tenant-renderer
 slugs/domains. Generic style presets no longer expose `warm-care`, and the
 active Tailwind Plus, Preline, and Tailblocks renderer variants now lean on SIAB
 theme tokens for colors and radii instead of provider hard-coded palette values.
@@ -170,12 +181,12 @@ Sending state, normally the Cloudflare Email Sending subdomain
 does not bypass domain or sender verification. Rollback is implemented by
 reactivating an older snapshot.
 
-Follow-up on 2026-06-28 added CMS-side guardrails for tenant-exclusive legacy
+Follow-up on 2026-06-28 added CMS-side guardrails for tenant-exclusive
 chrome variants. Amicare variants remain editable for their official
-legacy tenant slugs, but SiteSettings validation rejects those variants for
+tenant-renderer slugs, but SiteSettings validation rejects those variants for
 future/generated tenants through server-side collection validation. The
 SiteSettings admin select fields also filter tenant-exclusive choices out for
-generic tenants while keeping them available to the official legacy slugs. The
+generic tenants while keeping them available to the official tenant slugs. The
 publish projection now preserves editable chrome variant, banner, CTA, and
 legal-link settings in immutable snapshots, and snapshot tests cover renderer
 analytics metadata in the published settings shape. A later hardening follow-up

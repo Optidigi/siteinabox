@@ -18,7 +18,7 @@ type ResolvedBlockVariant = {
 }
 
 export type BlockVariantResolveContext = {
-  legacyTenant?: "amicare" | null
+  tenantRendererKey?: "amicare" | null
   tenantSlug?: string | null
 }
 
@@ -52,7 +52,7 @@ function isTenantExclusiveRendererVariantAllowed(variant: SiteBlockCatalogVarian
 
   const tenantSlug = context.tenantSlug?.trim()
   return (
-    context.legacyTenant === "amicare" ||
+    context.tenantRendererKey === "amicare" ||
     Boolean(tenantSlug && variant.scope.tenantSlugs.includes(tenantSlug))
   )
 }

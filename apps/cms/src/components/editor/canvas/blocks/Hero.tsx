@@ -20,29 +20,29 @@ import { MapPin } from "lucide-react"
 /**
  * Canvas-mode renderer for the Hero block.
  *
- * Mirrors the shared legacy Amicare hero DOM: same classes, animations, and
+ * Mirrors the Ami-care tenant renderer hero DOM: same classes, animations, and
  * decorative floating cards (pull-quote + MapPin).
  */
 
 const AMICARE_PULL_QUOTE = "Écht verschil maken voor jongeren en gezinnen."
 
-export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, legacyTenant, sectionChromeProps }) => {
+export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, manifest, onActivate, onUpdate, tenantId, tenantRendererKey, sectionChromeProps }) => {
   const t = useTranslations("editor")
   const set = <K extends string>(field: K) => (value: any) => onUpdate({ ...block, [field]: value })
   const idx = block.__index as number
   const { view, select } = useCanvasSelection()
   const tapToSelect = isReadOnlyView(view)
-  const isAmicareLegacy = legacyTenant === "amicare"
-  const showAmicareBadges = isAmicareLegacy && Boolean(block.image)
+  const isAmicareTenantRenderer = tenantRendererKey === "amicare"
+  const showAmicareBadges = isAmicareTenantRenderer && Boolean(block.image)
   const [autoOpenPillIndex, setAutoOpenPillIndex] = React.useState<number | null>(null)
   // Only one pill editor is ever open at a time, so a single ref suffices.
   // Reset to false at the top of the editor factory (which re-runs each open).
   const pillCommittedRef = React.useRef(false)
   const sectionProps = mergeCanvasSectionProps(
     {
-      id: resolveBlockAnchor(block, { legacyTenant, surface: "canvas" }),
-      className: `cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
-      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
+      id: resolveBlockAnchor(block, { tenantRendererKey, surface: "canvas" }),
+      className: `cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden px-6 py-12 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-24 ${canvasSourceVariantClassName(block, tenantRendererKey, { rendererDom: "canvas-fallback" })}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, tenantRendererKey),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,
@@ -56,14 +56,14 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
         aria-hidden="true"
         className={cn(
           "pointer-events-none absolute -left-[10%] -top-[10%] -z-10 h-[500px] w-[500px] rounded-full blur-3xl",
-          isAmicareLegacy ? "amicare-hero-glow amicare-hero-glow--start" : "bg-accent/15",
+          isAmicareTenantRenderer ? "amicare-hero-glow amicare-hero-glow--start" : "bg-accent/15",
         )}
       />
       <div
         aria-hidden="true"
         className={cn(
           "pointer-events-none absolute -bottom-[10%] -right-[5%] -z-10 h-[400px] w-[400px] rounded-full blur-3xl",
-          isAmicareLegacy ? "amicare-hero-glow amicare-hero-glow--end" : "bg-accent/10",
+          isAmicareTenantRenderer ? "amicare-hero-glow amicare-hero-glow--end" : "bg-accent/10",
         )}
       />
 
@@ -238,7 +238,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
           onChange={set("cta")}
           className={cn(
             "inline-block rounded-md bg-accent px-6 py-3 text-[14px] font-medium shadow-sm transition-colors hover:bg-accent/90 animate-fade-up [animation-delay:400ms]",
-            isAmicareLegacy ? "amicare-button-primary [font-family:var(--font-text)]" : "text-bg",
+            isAmicareTenantRenderer ? "amicare-button-primary [font-family:var(--font-text)]" : "text-bg",
           )}
           emptyLabel={t("addCtaButton")}
           elementPath={{ blockIndex: idx, field: "cta" }}

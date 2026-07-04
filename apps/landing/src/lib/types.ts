@@ -1,4 +1,4 @@
-// Legacy tenant snapshot block and media types.
+// Historical snapshot block and media types.
 // Future generated sites should use shared contracts instead of copied source.
 
 export type MediaRef =

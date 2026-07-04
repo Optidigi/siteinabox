@@ -134,6 +134,21 @@ describe("canvas chrome fidelity", () => {
     expect(themedNodeDialog).toContain('data-siab-canvas-chrome="rich-text-dialog"')
   })
 
+  it("uses stable renderer chrome markers before legacy structural fallbacks", () => {
+    const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
+    const genericChrome = read("../../packages/site-renderer/src/chrome.tsx")
+    const amicareRenderer = read("../../packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx")
+
+    expect(runtime).toContain('[data-site-chrome="header"]')
+    expect(runtime).toContain('[data-site-chrome="footer"]')
+    expect(runtime.indexOf('[data-site-chrome="header"]')).toBeLessThan(runtime.indexOf("[data-siab-site-header]"))
+    expect(runtime.indexOf('[data-site-chrome="footer"]')).toBeLessThan(runtime.indexOf("[data-siab-site-footer]"))
+    expect(genericChrome).toContain('data-site-chrome="header"')
+    expect(genericChrome).toContain('data-site-chrome="footer"')
+    expect(amicareRenderer).toContain('data-site-chrome="header"')
+    expect(amicareRenderer).toContain('data-site-chrome="footer"')
+  })
+
   it("shares block hover visibility with nested image canvas chrome", () => {
     const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
     const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
@@ -207,7 +222,7 @@ describe("canvas chrome fidelity", () => {
     expect(inlineCta).toContain('[className, "rt-click-edit"].filter(Boolean).join(" ")')
     expect(inlineCta).not.toContain('"rt-click-edit rounded-[var(--radius-md)] [font-family:var(--font-text)]"')
     expect(inlineCta).not.toContain('"rt-click-edit cursor-pointer rounded-[var(--radius-md)] [font-family:var(--font-text)]"')
-    expect(canvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .rt-canvas .amicare-button-primary.rt-click-edit')
+    expect(canvasCss).toContain('.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas .amicare-button-primary.rt-click-edit')
     expect(canvasCss).toContain("width: auto;")
     expect(canvasCss).not.toContain("display: flex;\n  flex-direction: column;\n  gap: 1.75rem;")
   })
@@ -241,8 +256,8 @@ describe("canvas chrome fidelity", () => {
     expect(canvasStylesheet).not.toContain("--popover:")
 
     expect(rendererCanvasCss).toContain('[data-amicare-nav]')
-    expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] [data-amicare-nav]')
-    expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-legacy-tenant="amicare"] .site-frame-root > footer')
+    expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] [data-amicare-nav]')
+    expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer')
   })
 
   it("uses one canonical renderer theme injection in the shared shell path", () => {

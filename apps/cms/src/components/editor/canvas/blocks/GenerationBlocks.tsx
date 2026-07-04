@@ -14,7 +14,7 @@ import {
 function generationSectionProps(
   block: any,
   isActive: boolean,
-  legacyTenant: "amicare" | null | undefined,
+  tenantRendererKey: "amicare" | null | undefined,
   onActivate: () => void,
   className: string,
   sectionChromeProps?: CanvasBlockRendererProps["sectionChromeProps"],
@@ -23,7 +23,7 @@ function generationSectionProps(
     {
       id: block.anchor || undefined,
       className,
-      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, tenantRendererKey),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,
@@ -56,7 +56,7 @@ const valueText = (value: unknown) => {
 export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   block,
   isActive,
-  legacyTenant,
+  tenantRendererKey,
   manifest,
   onActivate,
   onUpdate,
@@ -65,7 +65,7 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const plans: any[] = block.plans ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--pricing ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--pricing ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -99,11 +99,11 @@ export const PricingCanvas: React.FC<CanvasBlockRendererProps> = ({
   )
 }
 
-export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, sectionChromeProps }) => {
+export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const items: any[] = block.items ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--stats ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--stats ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -122,11 +122,11 @@ export const StatsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActiv
   )
 }
 
-export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const logos: any[] = block.logos ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--logoCloud ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--logoCloud ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -144,11 +144,11 @@ export const LogoCloudCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const images: any[] = block.images ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--gallery ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--gallery ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -167,11 +167,11 @@ export const GalleryCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isAct
   )
 }
 
-export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const members: any[] = block.members ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--team ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--team ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -191,11 +191,11 @@ export const TeamCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
   )
 }
 
-export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const posts: any[] = block.posts ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--blogCards ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--blogCards ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -215,11 +215,11 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
   )
 }
 
-export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const steps: any[] = block.steps ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--processSteps ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--processSteps ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>
@@ -238,12 +238,12 @@ export const ProcessStepsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, 
   )
 }
 
-export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, legacyTenant, manifest, onActivate, onUpdate, sectionChromeProps }) => {
+export const ComparisonCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, sectionChromeProps }) => {
   const set = setField(block, onUpdate)
   const idx = block.__index as number
   const columns: any[] = block.columns ?? []
   const rows: any[] = block.rows ?? []
-  const sectionProps = generationSectionProps(block, isActive, legacyTenant, onActivate, `cms-block cms-block--comparisonMatrix ${canvasSourceVariantClassName(block, legacyTenant)}`.trim(), sectionChromeProps)
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--comparisonMatrix ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
 
   return (
     <section {...sectionProps}>

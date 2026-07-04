@@ -1,7 +1,7 @@
 # Canvas ↔ live renderer parity
 
 Tier-1 contract for how the CMS editor canvas must stay visually aligned with
-`packages/site-renderer` and legacy tenant renderers (Amicare). Read this before
+`packages/site-renderer` and tenant renderers (Amicare). Read this before
 changing `CanvasBlockRenderer`, `CanvasSurface`, or site-renderer block output.
 
 ## Problem statement
@@ -17,7 +17,7 @@ largest source of editor ↔ live visual drift.
 | Surface | Shell | Blocks | Editing |
 |---|---|---|---|
 | Generic tenant editor (`.rt-canvas` path) | CMS `headerChrome` / `footerChrome` | `CanvasBlockRenderer` | Full inline |
-| Amicare / forced shared shell editor | `SitePageRenderer` → `AmicarePageRenderer` | `CanvasBlockRenderer` via `renderBlocks` | Full inline |
+| Amicare / forced shared shell editor | `SitePageRenderer` → `AmicarePageRenderer` | `CanvasBlockRenderer` via `renderBlocks`; existing Amicare block types delegate to renderer-owned `AmicareBlock` edit slots | Full inline for migrated slots |
 | Customer preview (`view === "preview"`) | Renderer iframe (`/renderer-frame/preview/`) | Native `AmicareBlock` / `BlockRenderer` | None |
 | Amicare customer preview in `CanvasSurface` | `SitePageRenderer` | Native blocks (`renderBlocks` omitted) | None |
 
@@ -32,14 +32,14 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
      `contact` / `wat-telt` (contact vs quote).
    - Generic tenants: use neutral slugs (`features`, `cta`, etc.) or omit id.
 2. **Outer section classes** — `cms-block cms-block--<slug>` plus variant /
-   layout utilities MUST match the canonical renderer for legacy Amicare blocks.
+   layout utilities MUST match the canonical renderer for Ami-care tenant renderer blocks.
    See `rt-dom-contract.md § Canvas block DOM contract` and
    `tests/unit/canvas-renderer-block-parity.test.ts`.
    `data-source-variant` is variant identity and may be stamped on both legacy
    and native DOM. `rendererClassName` / `cms-block--source-*` is native renderer
    styling and MUST only be applied to DOM that follows the native `cms-block__*`
-   contract. Legacy Amicare editable markup already carries its visual treatment
-   through legacy classes and must not mix in native source classes.
+   contract. Ami-care tenant renderer editable markup already carries its visual treatment
+   through fallback canvas classes and must not mix in native source classes.
 3. **Inner BEM classes** — Generation blocks (`pricing`, `stats`, …) MUST keep
    `cms-block__*` inner classes aligned with `packages/site-renderer/src/blocks/*`.
 4. **Canvas-only attributes** — `data-active`, editor gutters, and gap overlays
@@ -70,8 +70,12 @@ into canvas block components via:
 3. **Canvas path** — `CanvasSurface` passes CMS injectors that delegate to
    existing inline primitives; `renderBlocks` wraps native output instead of
    duplicating markup.
-4. **Legacy Amicare** — converge `AmicarePage` block functions and generic
+4. **Ami-care tenant renderer** — converge `AmicarePage` block functions and generic
    `BlockRenderer` behind one implementation; canvas injectors apply to both.
+   Phase 1 is active for existing Amicare block types through
+   `AmicareCanvasBlockRenderer` + exported renderer `AmicareBlock`.
+   Generated `hero`, `featureList`, `richText`, and `cta` blocks use the same
+   slot pattern through `RendererCanvasBlockRenderer` + shared `BlockRenderer`.
 5. **Delete** duplicated `src/components/editor/canvas/blocks/*` only after
    block-by-block parity tests pass for Amicare + one generic tenant fixture.
 
@@ -80,7 +84,7 @@ into canvas block components via:
 | Blocker | Why it blocks swap now |
 |---|---|
 | No edit-slot API on renderer blocks | Renderer components render static HTML only |
-| Dual legacy + generic render trees | Amicare DOM lives in `AmicarePage.tsx`, not shared `blocks/Hero.tsx` |
+| Dual tenant-specific + generic render trees | Amicare DOM lives in `AmicarePage.tsx`, not shared `blocks/Hero.tsx` |
 | Field-level sidebar selection | Read-only sidebar still needs per-field `ElementPath`; native blocks have no selectable fields |
 | Array / dialog editing UX | Pills, FAQ items, themed nodes need canvas-specific controls |
 | postMessage boundary | Iframe frame cannot import CMS inline primitives without bundling editor into renderer frame |

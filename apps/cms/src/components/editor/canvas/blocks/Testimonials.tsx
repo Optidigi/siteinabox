@@ -43,7 +43,7 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   onActivate,
   onUpdate,
   tenantId,
-  legacyTenant,
+  tenantRendererKey,
   sectionChromeProps,
 }) => {
   const t = useTranslations("editor")
@@ -76,8 +76,8 @@ export const TestimonialsCanvas: React.FC<CanvasBlockRendererProps> = ({
   const sectionProps = mergeCanvasSectionProps(
     {
       id: block.anchor || undefined,
-      className: `cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 ${canvasSourceVariantClassName(block, legacyTenant, { rendererDom: "legacy" })}`.trim(),
-      "data-source-variant": canvasSourceVariantDataAttribute(block, legacyTenant),
+      className: `cms-block cms-block--testimonials bg-secondary/40 px-6 py-16 @min-[48rem]/site-frame:px-12 @min-[48rem]/site-frame:py-20 ${canvasSourceVariantClassName(block, tenantRendererKey, { rendererDom: "canvas-fallback" })}`.trim(),
+      "data-source-variant": canvasSourceVariantDataAttribute(block, tenantRendererKey),
       "data-block-index": block.__index ?? undefined,
       "data-active": isActive || undefined,
       onClick: onActivate,

@@ -200,7 +200,7 @@ describe("renderer block catalog", () => {
     for (const variant of SITE_SOURCE_BACKED_BLOCK_VARIANTS) {
       expect(variant.variant, `${variant.variantId} missing runtime variant`).toBeTruthy()
       expect(variant.variant, `${variant.variantId} runtime variant should be scoped by blockType, not duplicated in the value`).not.toContain(":")
-      expect(variant.sectionVariant, `${variant.variantId} missing legacy sectionVariant metadata`).toBeTruthy()
+      expect(variant.sectionVariant, `${variant.variantId} missing sectionVariant metadata`).toBeTruthy()
       expect(variant.rendererClassName, `${variant.variantId} missing rendererClassName`).toMatch(/^cms-block--source-/)
       expect(variant.provenance.url, `${variant.variantId} missing source URL`).toMatch(/^https:\/\//)
       expect(variant.provenance.upstreamBlockName, `${variant.variantId} missing upstream block name`).toBeTruthy()
@@ -240,7 +240,7 @@ describe("renderer block catalog", () => {
       expect.arrayContaining(["Tailwind Plus", "Tailblocks", "Preline UI"]),
     )
     expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName)).not.toEqual(
-      expect.arrayContaining(["Mamba UI", "HyperUI", "SIAB legacy tenant snapshots"]),
+      expect.arrayContaining(["Mamba UI", "HyperUI", "SIAB tenant renderer snapshots"]),
     )
     expect(DEFERRED_SOURCE_BLOCK_CANDIDATES).toHaveLength(0)
   })

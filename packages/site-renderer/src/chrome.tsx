@@ -77,6 +77,7 @@ export function SiteHeader({ settings, currentSlug, mediaResolver }: SiteChromeP
       )}
       data-source-variant={variant}
       data-siab-site-header
+      data-site-chrome="header"
     >
       <a className={cx("site-header__brand", nativeChromeClassName("header", variant, "brand"))} href="/" {...actionAnalyticsAttrs("nav", settings.siteName)}>
         {logo ? <img src={logo.src} alt={logo.alt ?? settings.siteName} loading="eager" decoding="async" /> : null}
@@ -126,7 +127,12 @@ export function SiteFooter({ settings, mediaResolver }: SiteChromeProps) {
   const hasNavigationColumn = columns.some((column) => column.items?.some((item) => item.type === "navigation"))
 
   return (
-    <footer className={cx("site-chrome site-footer", variantClassName, nativeChromeClassName("footer", variant, "root"))} data-source-variant={variant} data-siab-site-footer>
+    <footer
+      className={cx("site-chrome site-footer", variantClassName, nativeChromeClassName("footer", variant, "root"))}
+      data-source-variant={variant}
+      data-siab-site-footer
+      data-site-chrome="footer"
+    >
       <div className={cx("site-footer__inner", nativeChromeClassName("footer", variant, "inner"))}>
         <div className={cx("site-footer__brand", nativeChromeClassName("footer", variant, "brand"))}>
           {logo ? <img src={logo.src} alt={logo.alt ?? settings.siteName} loading="lazy" decoding="async" /> : null}

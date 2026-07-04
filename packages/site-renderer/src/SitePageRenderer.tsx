@@ -4,8 +4,8 @@ import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { BlockRenderer, type BlockRegistry } from "./blocks"
 import { SiteBanner, SiteFooter, SiteHeader, SiteMaintenanceBanner } from "./chrome"
-import { AmicarePageRenderer, type AmicareRenderBlock, type AmicareRenderChrome } from "./legacy-tenants/amicare/AmicarePage"
-import { resolveLegacyTenant } from "./legacy-tenants/resolve"
+import { AmicarePageRenderer, type AmicareRenderBlock, type AmicareRenderChrome } from "./tenant-renderers/amicare/AmicarePage"
+import { resolveTenantRenderer } from "./tenant-renderers/resolve"
 import type { MediaResolver } from "./media"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
 
@@ -59,9 +59,9 @@ export function SitePageRenderer({
   renderBlock,
   renderBlocks,
 }: SitePageRendererProps) {
-  const legacyTenant = resolveLegacyTenant({ tenantSlug, domain, settings })
+  const tenantRendererKey = resolveTenantRenderer({ tenantSlug, domain, settings })
 
-  if (legacyTenant === "amicare") {
+  if (tenantRendererKey === "amicare") {
     return (
       <AmicarePageRenderer
         page={page}

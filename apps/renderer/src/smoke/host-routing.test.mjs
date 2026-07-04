@@ -25,7 +25,7 @@ async function stopChild(child) {
   }
 }
 
-test("routes production hosts through CMS snapshots, dispatches legacy renderers, and keeps 404s analytics-free", async (t) => {
+test("routes production hosts through CMS snapshots, dispatches tenant renderers, and keeps 404s analytics-free", async (t) => {
   const cms = await startStubCms()
   await assertStubCmsSnapshots(cms)
   const dataDir = await mkdtemp(join(tmpdir(), "siab-renderer-media-"))

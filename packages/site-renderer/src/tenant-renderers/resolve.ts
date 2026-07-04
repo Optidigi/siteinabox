@@ -1,8 +1,8 @@
 import type { SiteSettings } from "@siteinabox/contracts"
 
-export type LegacyTenantId = "amicare"
+export type TenantRendererKey = "amicare"
 
-export type LegacyTenantContext = {
+export type TenantRendererContext = {
   tenantSlug?: string | null
   domain?: string | null
   settings?: SiteSettings | null
@@ -27,10 +27,10 @@ function normalizeSlug(value: string | null | undefined): string {
   return (value ?? "").trim().toLowerCase().replace(/_/g, "-")
 }
 
-export function resolveLegacyTenant({
+export function resolveTenantRenderer({
   tenantSlug,
   domain,
-}: LegacyTenantContext): LegacyTenantId | null {
+}: TenantRendererContext): TenantRendererKey | null {
   const slug = normalizeSlug(tenantSlug)
   const host = normalizeHost(domain)
 

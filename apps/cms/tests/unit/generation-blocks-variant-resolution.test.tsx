@@ -15,7 +15,7 @@ describe("canvas source variant resolution", () => {
     }
 
     expect(resolvedCanvasSourceVariant(block)).toBeUndefined()
-    expect(resolvedCanvasSourceVariant(block, { legacyTenant: null })).toBeUndefined()
+    expect(resolvedCanvasSourceVariant(block, { tenantRendererKey: null })).toBeUndefined()
   })
 
   it("allows tenant-exclusive source variants for the Amicare canvas context", () => {
@@ -24,12 +24,12 @@ describe("canvas source variant resolution", () => {
       analytics: { sectionVariant: "amicare-zen-hero" },
     }
 
-    expect(resolvedCanvasSourceVariant(block, { legacyTenant: "amicare" })?.variant).toBe("amicareZenHero")
-    expect(resolveBlockVariant(block, { legacyTenant: "amicare" }).variant).toBe("amicareZenHero")
+    expect(resolvedCanvasSourceVariant(block, { tenantRendererKey: "amicare" })?.variant).toBe("amicareZenHero")
+    expect(resolveBlockVariant(block, { tenantRendererKey: "amicare" }).variant).toBe("amicareZenHero")
     expect(canvasSourceVariantDataAttribute(block, "amicare")).toBe("amicareZenHero")
   })
 
-  it("keeps native source classes off legacy editable DOM", () => {
+  it("keeps native source classes off fallback editable DOM", () => {
     const block = {
       blockType: "hero",
       variant: "amicareZenHero",
@@ -37,7 +37,7 @@ describe("canvas source variant resolution", () => {
     }
 
     expect(canvasSourceVariantClassName(block, "amicare")).toBe("cms-block--source-amicare-zen-hero")
-    expect(canvasSourceVariantClassName(block, "amicare", { rendererDom: "legacy" })).toBe("")
+    expect(canvasSourceVariantClassName(block, "amicare", { rendererDom: "canvas-fallback" })).toBe("")
   })
 
   it("keeps global source variants available for generic canvas contexts", () => {

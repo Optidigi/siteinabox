@@ -40,7 +40,7 @@ describe("site generation catalog governance", () => {
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("unsupported block slugs")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Tailwind Plus, Preline UI, and Tailblocks only")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use HyperUI or Mamba UI")
-    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare legacy tenant blocks")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use Amicare tenant-renderer blocks")
   })
 
   it("passes only active self-serve source-backed variants to the model input", () => {
@@ -64,7 +64,7 @@ describe("site generation catalog governance", () => {
       expect.arrayContaining(["Tailwind Plus", "Preline UI", "Tailblocks"]),
     )
     expect(input.approvedSectionVariants.map((variant) => variant.sourceName)).not.toEqual(
-      expect.arrayContaining(["HyperUI", "Mamba UI", "SIAB legacy tenant snapshots"]),
+      expect.arrayContaining(["HyperUI", "Mamba UI", "SIAB tenant renderer snapshots"]),
     )
     expect(input.approvedSectionVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.sectionVariant}`))).toBe(false)
     expect(serializedInput).toMatch(/Tailwind Plus|Preline UI|Tailblocks/)
@@ -88,7 +88,7 @@ describe("site generation catalog governance", () => {
     )
   })
 
-  it("keeps tenant-exclusive legacy variants out of self-serve generated site validation", () => {
+  it("keeps tenant-exclusive tenant-renderer variants out of self-serve generated site validation", () => {
     const tenantExclusiveBlockVariants = SITE_GENERATION_BLOCK_CATALOG
       .flatMap((entry) => entry.variants.map((variant) => ({ ...variant, blockType: entry.slug })))
       .filter((variant) => variant.scope.kind === "tenant-exclusive")

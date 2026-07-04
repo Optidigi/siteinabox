@@ -378,7 +378,7 @@ export const amicareSiteGenerationSpec: SiteGenerationSpec = {
     language: "nl",
     industry: "Jeugdzorg",
     serviceArea: ["Nederland"],
-    goals: ["CMS-backed legacy tenant parity", "Renderer-compatible data validation"],
+    goals: ["CMS-backed tenant renderer parity", "Renderer-compatible data validation"],
     requestedPages: [{ slug: "index", title: "Home", purpose: "Homepage" }],
   },
   tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "ami-care.nl", status: "active" },

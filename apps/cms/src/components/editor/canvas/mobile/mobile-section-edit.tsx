@@ -26,7 +26,7 @@ export interface MobileSectionEditProps {
   manifest: RtManifest
   theme?: ThemeTokens | null
   tenantId?: number | string | null
-  legacyTenant?: "amicare" | null
+  tenantRendererKey?: "amicare" | null
   onBack: () => void
   onPrev?: () => void
   onNext?: () => void
@@ -70,7 +70,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
   manifest,
   theme,
   tenantId,
-  legacyTenant,
+  tenantRendererKey,
   onBack,
   onPrev,
   onNext,
@@ -182,9 +182,9 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
         }}
       >
         <div
-          className={legacyTenant === "amicare" ? "site-renderer site-renderer--legacy site-renderer--legacy-amicare" : undefined}
-          data-siab-site-renderer={legacyTenant === "amicare" ? "true" : undefined}
-          data-legacy-tenant={legacyTenant === "amicare" ? "amicare" : undefined}
+          className={tenantRendererKey === "amicare" ? "site-renderer site-renderer--tenant site-renderer--tenant-amicare" : undefined}
+          data-siab-site-renderer={tenantRendererKey === "amicare" ? "true" : undefined}
+          data-tenant-renderer={tenantRendererKey === "amicare" ? "amicare" : undefined}
         >
           <div className="rt-canvas w-full" data-rt-view="mobile" data-rt-mode={theme?.mode ?? "light"}>
             <div className="site-frame-root">
@@ -196,7 +196,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
                 onActivate={() => {}}
                 onUpdate={updateBlock(index)}
                 tenantId={tenantId}
-                legacyTenant={legacyTenant}
+                tenantRendererKey={tenantRendererKey}
               />
             </div>
           </div>

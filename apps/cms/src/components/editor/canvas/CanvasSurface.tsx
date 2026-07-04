@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
-import { SitePageRenderer, createRendererMediaResolver, resolveLegacyTenant } from "@siteinabox/site-renderer"
+import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
 import { CanvasBlockRenderer, type CanvasSectionChromeProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
@@ -510,7 +510,7 @@ interface SortableBlockItemProps {
   isActive: boolean
   manifest: RtManifest
   tenantId?: number | string | null
-  legacyTenant?: "amicare" | null
+  tenantRendererKey?: "amicare" | null
   onActivate: () => void
   onUpdate: (next: any) => void
   onDelete: () => void
@@ -527,7 +527,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
   isActive,
   manifest,
   tenantId,
-  legacyTenant,
+  tenantRendererKey,
   onActivate,
   onUpdate,
   onDelete,
@@ -597,7 +597,7 @@ const SortableBlockItem: React.FC<SortableBlockItemProps> = ({
             isActive={isActive}
             manifest={manifest}
             tenantId={tenantId}
-            legacyTenant={legacyTenant}
+            tenantRendererKey={tenantRendererKey}
             onActivate={onActivate}
             onUpdate={readOnly ? () => {} : onUpdate}
           />
@@ -822,11 +822,11 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
     () => tenantId != null ? createRendererMediaResolver(String(tenantId)) : undefined,
     [tenantId],
   )
-  const legacyTenant = rendererSettings
-    ? resolveLegacyTenant({ tenantSlug, domain: tenantDomain, settings: rendererSettings })
+  const tenantRendererKey = rendererSettings
+    ? resolveTenantRenderer({ tenantSlug, domain: tenantDomain, settings: rendererSettings })
     : null
-  const effectiveTenantCss = legacyTenant ? null : tenantCss
-  const useSharedAmicareShell = legacyTenant === "amicare"
+  const effectiveTenantCss = tenantRendererKey ? null : tenantCss
+  const useSharedAmicareShell = tenantRendererKey === "amicare"
   const useSharedPreviewShell = isCustomerPreviewView(view) && Boolean(rendererSettings)
   const useSharedRendererShell = forceSharedRendererShell || useSharedAmicareShell || useSharedPreviewShell
   const rendererPage = React.useMemo(() => ({
@@ -950,7 +950,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                                   }}
                                   onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
                                   tenantId={tenantId}
-                                  legacyTenant={legacyTenant}
+                                  tenantRendererKey={tenantRendererKey}
                                   sectionChromeProps={sectionChromeProps}
                                 />
                               )}
@@ -1026,7 +1026,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                         }}
                         onUpdate={updateBlock(i)}
                         tenantId={tenantId}
-                        legacyTenant={legacyTenant}
+                        tenantRendererKey={tenantRendererKey}
                         onDelete={() => requestDeleteBlock(i)}
                         onDuplicate={() => duplicateBlockWithRemap(i)}
                         readOnly={effectiveReadOnly}
