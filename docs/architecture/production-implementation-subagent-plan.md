@@ -3,7 +3,7 @@
 This plan is the next execution plan after the data-driven generation review and
 the earlier product-completion phases. It records the updated product decisions:
 the landing app rename, the dedicated intake app, Better Auth preview access,
-Mollie, legacy tenant migration, the block catalog policy, and the deferred
+Mollie, official tenant renderer migration, the block catalog policy, and the deferred
 OpenProvider/Cloudflare domain automation path.
 
 This document is a plan only. It does not authorize broad refactors, generated
@@ -58,7 +58,7 @@ tenant-specific images.
   provider automation belongs in approved application/service boundaries, while
   prompt-runbook provisioning flows and tenant-specific deploy artifacts remain
   prohibited.
-- Amicare must stay on the data-driven renderer runtime. Its legacy parity
+- Amicare must stay on the data-driven renderer runtime. Its tenant parity
   behavior belongs in scoped renderer/CMS snapshot data and
   `packages/site-renderer`, not restored tenant app source.
 - Generated-site styling must come only from approved catalog/library sources:
@@ -185,7 +185,7 @@ magic-link access at `preview.siteinabox.nl/{clientSlug}`.
   email when a run reaches preview-ready state.
 - Add an intake/customer-journey entry point that can take the customer to the
   preview URL once the site is ready.
-- Preserve iframe-free rendering through `packages/site-renderer`.
+- Preserve renderer-backed preview through the canonical renderer-frame path.
 - Preserve the style-token customizer and approval action, but require the
   Better Auth preview access check before loading or mutating preview data.
 
@@ -302,13 +302,13 @@ breaking their current live snapshot paths.
 ### Research
 
 - Inventory current Amicare CMS/snapshot data,
-  `packages/site-renderer` legacy tenant fixtures, published snapshot fixtures,
+  `packages/site-renderer` tenant-renderer fixtures, published snapshot fixtures,
   and renderer output.
-- Compare current legacy pages, navigation, SEO, media, forms, theme, and
+- Compare current tenant pages, navigation, SEO, media, forms, theme, and
   interaction behavior against renderer-compatible data.
 - Identify parity gaps and decide which gaps are required before cutover.
-- Identify deployment and rollback requirements for keeping legacy apps alive
-  during migration.
+- Identify deployment and rollback requirements for keeping the current tenant
+  runtime available during migration.
 
 ### Implement
 
@@ -317,7 +317,7 @@ breaking their current live snapshot paths.
 - Add migration scripts or fixtures that create data, not tenant source files.
 - Add renderer parity fixtures/tests for root pages, key subpages, SEO,
   navigation, theme, and media behavior.
-- Do not use legacy tenant source structure as the model for new generated
+- Do not use tenant-specific source structure as the model for new generated
   sites.
 
 ### Review/Test
@@ -415,8 +415,8 @@ Goal: prove the full production-intended flow under staging-like conditions.
 - Preview slug reservation should happen before domain purchase. For the current
   pass, live-domain automation stays deferred and activation tests should use a
   manual/stubbed domain-ready state.
-- The legacy tenant migration phase must not remove or disable current tenant
-  builds until renderer parity and rollback have been reviewed.
+- The tenant-renderer migration phase must not remove or disable current tenant
+  runtime paths until renderer parity and rollback have been reviewed.
 - Any phase that changes external provider assumptions must update env docs and
   deployment/runbook docs in the same phase.
 

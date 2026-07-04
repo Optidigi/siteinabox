@@ -577,12 +577,6 @@ SIAB_RENDERER_FIXTURE_MODE=
 - `HOST` and `PORT` must stay aligned with the Astro standalone start command
   and Docker healthcheck: `node ./dist/server/entry.mjs` on port `4321`.
 
-Phase 2 staging routes only these hosts to the renderer:
-
-- `amicare.optidigi.nl`
-
-Keep `ami-care.nl` on its current route until a later cutover is explicitly approved.
-
 Traefik must route tenant primary domains and aliases to the renderer service
 and preserve the original public hostname via `Host`; forwarding
 `X-Forwarded-Host` as well keeps direct CMS endpoint diagnostics equivalent to
@@ -590,9 +584,13 @@ renderer calls. The CMS resolver treats `site-settings.aliases` as additional
 hosts for the same tenant snapshot. There is no canonical-domain redirect in
 the current renderer contract.
 
-Traefik preserves `Host` by default. The Phase 2 compose template does not add
-an explicit `X-Forwarded-Host` middleware; smoke testing must verify the CMS
-snapshot endpoint sees `amicare.optidigi.nl` during renderer requests.
+The production renderer owns generated-site tenant domains. `ami-care.nl` is
+served through the renderer as the official Ami-care tenant-renderer path, and
+`amicare.optidigi.nl` may be used only as an alias/staging host for the same
+snapshot contract. Traefik preserves `Host` by default. The renderer compose
+template does not add an explicit `X-Forwarded-Host` middleware; smoke testing
+must verify the CMS snapshot endpoint sees the public tenant hostname during
+renderer requests.
 
 ## Customer Domain Provisioning Workflow
 

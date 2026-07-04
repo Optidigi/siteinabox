@@ -6,9 +6,9 @@ import { TextNode, type EditorConfig, type SerializedTextNode } from "lexical"
  * the wire format compatible with rt → lexical → rt round-tripping) into
  * matching `rt-type-{id}` / `rt-color-{id}` / `rt-font-{id}` CLASSES on the rendered DOM.
  *
- * The live-site renderer (`site-amicare-zorg/src/components/cms/RtNodeRenderer.tsx`)
- * wraps marked text in `<span class="rt-type-{style}">` and tenant CSS rules
- * target those classes. Without this subclass, the canvas would only emit the
+ * The shared live-site renderer wraps marked text in
+ * `<span class="rt-type-{style}">` and tenant CSS rules target those classes.
+ * Without this subclass, the canvas would only emit the
  * inline custom property and CSS rules like `.rt-type-highlight::after`
  * would never match → no visible visual treatment in the editor.
  *

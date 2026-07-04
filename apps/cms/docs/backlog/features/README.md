@@ -13,7 +13,8 @@ depended on command-run site generation are no longer current source of truth.
 - Shared UI primitives and app-neutral composites live in `packages/ui`.
 - Existing generated-site runtime is CMS data plus the generic renderer and
   shared `packages/site-renderer` code. Tenant-specific source folders under
-  `sites/*` and the old `packages/site-template` package have been removed.
+  `sites/*` and the removed template package are not part of the current
+  architecture.
 
 ## Current Product Rules
 
@@ -144,8 +145,8 @@ mobile. Mobile `edit.start(mode=settings)` opens parent-owned
 `MobileBlockInspectorSheet` (`BlockFormFields` + delete in a Vaul sheet) instead
 of switching to the desktop sidebar. Customer preview uses the separate
 `/renderer-frame` route and remains token-only: frames accept only `page.replace`
-and `theme.patch`. The legacy in-process `CanvasMode` / `CanvasMobile` editor path
-and the `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch were removed.
+and `theme.patch`. The previous in-process editor path and the
+`NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch were removed.
 
 ### Phase 7 — AI generation service
 

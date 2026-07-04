@@ -51,8 +51,8 @@ export const ThemedPill: React.FC<ThemedPillProps> = ({ id, props, nodeKey }) =>
     typeof props[firstField.name] === "string"
 
   // Per-id visual treatment for known text-only themed types. This MUST mirror
-  // the downstream site renderer's `defaultThemedHandlers` (site-amicare-zorg
-  // `RtNodeRenderer.tsx`) so the canvas is visually identical to the site —
+  // the shared renderer's themed rich-text handlers so the canvas is visually
+  // identical to the site —
   // the eyebrow there is `class="inline-block -rotate-2 text-[20px] text-accent"`
   // + `font-family: var(--font-script)`. Using class names (not an inline
   // `color`) is load-bearing: inside `.rt-canvas` the scoped tenant CSS

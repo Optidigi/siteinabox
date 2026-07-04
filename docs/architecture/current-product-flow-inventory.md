@@ -16,7 +16,7 @@ current implementation only; it does not define new product behavior.
 
 | Perspective | Current user-operable surfaces | Current non-UI operations |
 | --- | --- | --- |
-| Public customer | `apps/landing/src/pages/index.astro` and `apps/landing/src/pages/contact.astro`; contact posts to CMS `POST /api/contact` for platform mail. `apps/intake/src/pages/index.astro` owns the public intake scaffold and posts structured submissions to the configured CMS intake API. Customer preview lives under `apps/cms/src/app/(frontend)/(site-preview)/[clientSlug]`; the legacy token route is `apps/cms/src/app/(frontend)/(site-preview)/preview/[token]/page.tsx`. | Intake depends on CMS `POST /api/intake`, which stores submissions for SIAB review. Richer KVK-backed intake logic remains future work. |
+| Public customer | `apps/landing/src/pages/index.astro` and `apps/landing/src/pages/contact.astro`; contact posts to CMS `POST /api/contact` for platform mail. `apps/intake/src/pages/index.astro` owns the public intake scaffold and posts structured submissions to the configured CMS intake API. Customer preview lives under `apps/cms/src/app/(frontend)/(site-preview)/[clientSlug]` and renders site output through the `/renderer-frame` route. The signed preview-token route is internal compatibility only. | Intake depends on CMS `POST /api/intake`, which stores submissions and starts validated draft generation. Optional KVK enrichment is proxied through CMS-owned `/api/intake/kvk/*` endpoints when configured. |
 | Operator | CMS dashboard, site list/detail/edit, page editor, forms, media, users, settings, analytics, and generation-run operations under `apps/cms/src/app/(frontend)/(admin)`. Payload admin at `apps/cms/src/app/(payload)/admin/[[...segments]]/page.tsx`. | `POST /api/intake`, `POST /api/preview-tokens`, `POST /api/publish`, and direct Payload collection access for operational collections. |
 | CMS admin | Payload collections for tenants, pages, forms, intake submissions, generation runs, and published snapshots. | Generation/import, approval persistence, publish, activation, renderer snapshot lookup, and rollback are implemented in services/routes. |
 | Renderer | `apps/renderer/src/pages/[...path].astro` serves public paths from active snapshots. | `apps/renderer/src/lib/snapshot.ts` fetches CMS snapshots from `GET /api/renderer/snapshot`; fixture mode exists outside production. |
@@ -30,13 +30,12 @@ current implementation only; it does not define new product behavior.
    `storeIntakeSubmission`.
 2. `apps/cms/src/lib/intake/storeIntakeSubmission.ts` normalizes the intake,
    creates or reuses an `intake-submissions` row by idempotency key, and sends
-   an internal notification to `admin@siteinabox.nl`. This is intentionally
-   manual-review first for v1.
-3. A super-admin reviews and approves the stored `GenerationInput` from the CMS
-   generation operations UI. `generateReviewedIntakeDraftAction` then calls
-   `processReviewedIntakeSubmission`, which creates the `site-generation-runs`
-   row, calls the configured generation provider, validates the returned
-   `SiteGenerationSpec`, and imports it through `applySiteGenerationSpec`.
+   an internal notification to `admin@siteinabox.nl`.
+3. The intake route then calls `processStoredIntakeSubmission`, which creates
+   the `site-generation-runs` row, calls the configured generation provider,
+   validates the returned `SiteGenerationSpec`, and imports it through
+   `applySiteGenerationSpec`. The reviewed-intake action remains a recovery
+   path for stored submissions that do not already have a generation run.
 4. `apps/cms/src/lib/site-generation/applySiteGenerationSpec.ts` upserts the
    tenant, site settings, pages, theme, and site manifest from structured data.
    Generated pages are imported with `status: "draft"` and use
@@ -48,8 +47,9 @@ current implementation only; it does not define new product behavior.
 6. The customer preview route at `preview.siteinabox.nl/{clientSlug}` and
    `preview.siteinabox.nl/{clientSlug}/pages/{pageSlug}` requires a valid
    preview Better Auth session plus a matching active grant before loading data
-   through `apps/cms/src/lib/preview/customizer.ts`. It renders
-   `@siteinabox/site-renderer` directly, not in an iframe. The old
+   through `apps/cms/src/lib/preview/customizer.ts`. The visible preview shell
+   hosts renderer output through the `/renderer-frame` route, keeping customer
+   preview on the same renderer contract as live output. The old
    `/preview/[token]` route is internal compatibility only and is disabled in
    production unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`.
 7. Preview theme changes call `setPreviewTheme` and persist tenant theme JSON.
@@ -111,7 +111,7 @@ current implementation only; it does not define new product behavior.
 - `/contact`: contact page in `apps/landing/src/pages/contact.astro`.
   The form posts to CMS `POST /api/contact`, which sends platform mail to
   `admin@siteinabox.nl`; it is intentionally separate from generation intake.
-- `/__preview`: legacy/static site preview page in
+- `/__preview`: static site preview page in
   `apps/landing/src/pages/__preview.astro`.
 - `/404`: public 404 page.
 

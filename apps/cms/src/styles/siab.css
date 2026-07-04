@@ -175,8 +175,7 @@ body { font-family: var(--font-sans); }
  * flipped the Light/Dark toggle. A tenant-saved `darkPalette` is
  * injected later via the data-rt-theme-overrides style tag and naturally
  * overrides this baseline (same selector, later in document order).
- *
- * (Live-site parity in `site-amicare-zorg` is tracked as OBS-52.) */
+ */
 .rt-canvas[data-rt-mode="dark"] {
     --color-bg: #09090b;
     --color-ink: #fafafa;

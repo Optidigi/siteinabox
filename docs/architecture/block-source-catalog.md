@@ -58,8 +58,8 @@ choices, renderer fixtures, or active provenance catalogs. SIAB-owned generic
 visual variants are also not generation inputs; generation selects only approved
 provider-backed design variants from Tailwind Plus, Preline UI, or Tailblocks.
 
-Ami-care remains temporary legacy compatibility and is only valid on official
-Ami-care preview/canvas/live tenant-renderer paths. It is unavailable to
+Ami-care remains temporary official-tenant compatibility and is only valid on
+official Ami-care preview/canvas/live tenant-renderer paths. It is unavailable to
 generation, generic tenant validation, normal pickers, and AI model inputs.
 
 ## Runtime Route

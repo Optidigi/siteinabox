@@ -109,8 +109,7 @@ export const HeroCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive
               // (mobile / read-only). When the desktop hover-X is rendered
               // we need `inline-flex items-center gap-1` so the X tracks
               // baseline; without those classes the bare span sizes to text
-              // line-height — same as the site Hero in
-              // `site-amicare-zorg/src/components/cms/Hero.tsx`.
+              // line-height, matching the shared renderer's hero pill DOM.
               className={cn(
                 "group relative rounded-md border border-rule bg-secondary/40 px-3 py-1.5 text-[12px] font-medium text-ink-muted [font-family:var(--font-text)]",
                 !tapToSelect && "inline-flex items-center gap-1",

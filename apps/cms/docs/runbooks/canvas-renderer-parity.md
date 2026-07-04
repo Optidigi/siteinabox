@@ -39,7 +39,7 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
    layout utilities MUST match the canonical renderer for Ami-care tenant renderer blocks.
    See `rt-dom-contract.md § Canvas block DOM contract` and
    `tests/unit/canvas-renderer-block-parity.test.ts`.
-   `data-source-variant` is variant identity and may be stamped on both legacy
+   `data-source-variant` is variant identity and may be stamped on both tenant
    and native DOM. `rendererClassName` / `cms-block--source-*` is native renderer
    styling and MUST only be applied to DOM that follows the native `cms-block__*`
    contract. Ami-care tenant renderer editable markup already carries its visual treatment
@@ -57,7 +57,7 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
 7. **Variant selection** — Generation chooses approved block `designVariant` IDs for
    Tailwind Plus, Preline UI, or Tailblocks. Analytics metadata is not a
    design-selection API. Inactive provider families, SIAB-owned generic visual
-   variants, and Ami-care legacy variants must not be available to generation.
+   variants, and Ami-care tenant-compatibility variants must not be available to generation.
 
 ## Renderer-native editable blocks (target architecture)
 

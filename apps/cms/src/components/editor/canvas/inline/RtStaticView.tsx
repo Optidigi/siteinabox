@@ -17,10 +17,9 @@ import type { RtManifest } from "@/lib/richText/manifest"
  * defined in docs/runbooks/rt-dom-contract.md so tenant CSS targets the
  * same classes whether the slot is read-only (this) or editable (Lexical).
  *
- * This file is a structural mirror of
- * site-amicare-zorg/src/components/cms/RtNodeRenderer.tsx — emit IDENTICAL
- * DOM so tenant CSS applies identically in canvas (sidebar/mobile read-only
- * view) and on the live site.
+ * This file is a structural mirror of the shared live rich-text renderer:
+ * emit identical rt-* DOM so tenant CSS applies identically in canvas
+ * (sidebar/mobile read-only view) and on the live site.
  *
  * Why not Lexical here? LexicalField captures initialValue once at mount;
  * subsequent prop-change-triggered re-renders are ignored because Lexical
@@ -46,8 +45,8 @@ const alignClass = (align: RtAlign | undefined): string | undefined => {
 }
 
 const renderText = (n: RtText, key: number, manifest?: RtManifest): React.ReactNode => {
-  // Build inside-out: text → marks → style → color → font. Order mirrors
-  // RtNodeRenderer.tsx in site-amicare-zorg so wrapper precedence matches.
+  // Build inside-out: text → marks → style → color → font. Order mirrors the
+  // shared rich-text renderer so wrapper precedence matches.
   let out: React.ReactNode = n.v
   if (n.marks?.includes("bold")) out = <strong className="rt-b">{out}</strong>
   if (n.marks?.includes("italic")) out = <em className="rt-i">{out}</em>

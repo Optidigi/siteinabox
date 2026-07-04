@@ -62,7 +62,7 @@ Promotion is a CMS data operation, not snapshot publishing or activation:
   page status changes are written;
 - promotion changes eligible draft CMS pages to `published` so snapshot creation
   can include them;
-- promotion writes with `skipProjection`, so legacy disk projection does not
+- promotion writes with `skipProjection`, so disk projection does not
   make those pages public;
 - public output still requires a published snapshot and activation.
 
@@ -78,10 +78,10 @@ send a Better Auth magic link for `https://preview.siteinabox.nl/{clientSlug}`.
 The CMS creates or refreshes a `preview-access-grants` row scoped to the
 customer email, tenant, generation run, domain-derived client slug, and pages.
 
-Customer preview remains iframe-free: the preview-host routes load preview data
+Customer preview remains renderer-backed: preview-host routes load preview data
 only after a valid isolated preview Better Auth session and active grant are
-verified, then render directly through `packages/site-renderer`. The preview
-surface exposes page navigation for the previewable tenant pages,
+verified, then host renderer output through the `/renderer-frame` route. The
+preview surface exposes page navigation for the previewable tenant pages,
 style-token save/error status, approval state, and the provider-neutral payment
 gate state. The old `/preview/[token]` HMAC route is internal compatibility
 only and production-disabled unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`.

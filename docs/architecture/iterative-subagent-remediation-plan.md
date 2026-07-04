@@ -232,7 +232,7 @@ deployment contract.
 
 ## Phase 7: Preview And Customizer Agent
 
-Goal: verify the CMS preview/customizer is secure, iframe-free, and limited to
+Goal: verify the CMS preview/customizer is secure, renderer-backed, and limited to
 approved theme edits.
 
 ### Research
@@ -247,15 +247,16 @@ approved theme edits.
 ### Implement
 
 - Fill only missing controls or guards required by the approved preview contract.
-- Keep the preview rendered directly with `packages/site-renderer`; do not add
-  iframe-based preview.
+- Keep preview on the canonical renderer-frame/live-renderer contract; do not
+  route it through editable canvas blocks.
 - Ensure approval cannot bypass payment/activation rules except through explicit
   manual activation.
 
 ### Review
 
 - Run source tests and browser tests for token access, wrong tenant, expiry,
-  theme live update, theme persistence, reload, approval, and no iframe usage.
+  theme live update, theme persistence, reload, approval, and renderer-frame
+  isolation.
 - Confirm preview cannot access another tenant or expose public draft data.
 
 ## Phase 8: Final End-To-End Verification Agent

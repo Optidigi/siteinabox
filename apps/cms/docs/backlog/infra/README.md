@@ -72,9 +72,8 @@ is current in `apps/renderer/README.md` and `apps/cms/docs/runbooks/deploy.md`.
 
 **Status:** Applied.
 
-Removed obsolete tenant/template source directories from the monorepo:
-`sites/`, `packages/site-template/`, and `packages/tools/`. The current source
-contract is CMS tenant data plus the platform-owned renderer in
+Removed obsolete tenant/template source directories from the monorepo. The
+current source contract is CMS tenant data plus the platform-owned renderer in
 `packages/site-renderer` / `apps/renderer`; deleted tenant-specific source
 trees must not be restored.
 

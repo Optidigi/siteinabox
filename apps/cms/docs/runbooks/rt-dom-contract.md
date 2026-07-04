@@ -30,30 +30,49 @@ emitted DOM matches this contract.
 
 ## Canvas block DOM contract
 
-Canvas block renderers (`src/components/editor/canvas/blocks/*.tsx`) emit a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the rendered-site components in `packages/site-renderer`. Tenant CSS targets these class names — they are the stable contract between the canvas editor and the live site. When a rendered-site component's DOM changes, its canvas renderer must be updated in lockstep.
+Canvas block renderers emit a `<section class="cms-block cms-block--<slug> ...">`
+whose inner DOM mirrors the rendered-site components in `packages/site-renderer`.
+Tenant CSS and source-backed variant classes target these class names. When a
+rendered-site component's DOM changes, its editable canvas path must be updated
+in lockstep.
 
-| Block | Outer section classes | Key inner structural classes |
-|---|---|---|
-| **hero** | `cms-block cms-block--hero relative flex min-h-[90vh] flex-col items-center overflow-hidden …` | Content col: `w-full space-y-7 @min-[48rem]/site-frame:w-1/2` · Image col: `relative mt-14 w-full @min-[48rem]/site-frame:mt-0 @min-[48rem]/site-frame:w-1/2` |
-| **featurelist** | `cms-block cms-block--featurelist relative bg-card/50 …` | Inner max-width wrapper: `mx-auto max-w-7xl` · Feature grid: `grid grid-cols-1 gap-8 @min-[48rem]/site-frame:grid-cols-3` · Card: `overflow-hidden rounded-[2rem] border border-rule bg-card shadow-lg` |
-| **cta** (contact variant) | `cms-block cms-block--cta cms-block--cta-contact border-t border-rule …` | Content centred: `mx-auto max-w-3xl space-y-8 text-center` |
-| **cta** (quote variant) | `cms-block cms-block--cta cms-block--cta-quote relative isolate overflow-hidden bg-secondary/40 …` | Content centred: `mx-auto max-w-3xl text-center` |
-| **richtext** | `cms-block cms-block--richtext …` | Prose wrapper: `prose mx-auto max-w-prose … prose-headings:font-serif …` |
-| **contact** | `cms-block cms-block--contact …` | Inner: `container mx-auto max-w-2xl` · Form preview: `pointer-events-none` wrapper |
-| **faq** | `cms-block cms-block--faq …` | Inner: `container mx-auto max-w-3xl` · Item list: `<dl class="space-y-4">` · Each item: `<details class="group rounded-2xl border border-rule bg-card p-4">` |
-| **testimonials** | `cms-block cms-block--testimonials bg-secondary/40 …` | Inner: `container mx-auto` · Card grid: `grid gap-6 @min-[48rem]/site-frame:grid-cols-2 @min-[64rem]/site-frame:grid-cols-3` · Card: `<figure class="flex flex-col rounded-[2rem] border border-rule bg-card p-6">` |
+Canonical reference implementations:
+
+- Public/preview renderer: `packages/site-renderer/src/blocks/*`.
+- Source-backed class maps: `packages/site-renderer/src/blocks/native-classes.ts`.
+- Editable CMS dispatch: `src/components/editor/canvas/CanvasBlockRenderer.tsx`.
+- Editable source-backed canvas blocks: `src/components/editor/canvas/blocks/GenerationBlocks.tsx`.
+- Renderer-native editable wrappers: `src/components/editor/canvas/RendererCanvasBlockRenderer.tsx`.
+- Official Ami-care tenant edit slots: `src/components/editor/canvas/AmicareCanvasBlockRenderer.tsx`.
+
+Active generated page-block slugs are hero, featureList, richText, cta,
+contactSection, faq, testimonials, pricing, stats, logoCloud, gallery, team,
+and blogCards. Each block must preserve:
+
+- `cms-block cms-block--<slug>` on the outer section;
+- `data-source-variant="<designVariant>"` where variant identity is available;
+- renderer-owned `cms-block--source-*` classes only on DOM that follows the
+  native `cms-block__*` contract;
+- `cms-block__*` inner structural classes for source-backed generated blocks;
+- global theme token consumption through class rules, not inline per-block
+  style overrides.
+
+Canvas-only affordances such as `data-block-index`, `data-active`, gutters,
+selection overlays, drag handles, and editor messages are not emitted by
+public/preview renderer output. Tenant CSS must not depend on them.
 
 Notes:
-- The CTA block dispatches on `primary.href` at render time: `mailto:`/`tel:` prefixes produce the contact variant; anything else produces the quote variant. Both share the `cms-block--cta` base class; the variant class (`cms-block--cta-contact` / `cms-block--cta-quote`) lets tenant CSS target each flavour separately.
-- The `data-block-index` and `data-active` attributes are canvas-only affordances — they are not emitted by the rendered-site components and tenant CSS must not rely on them.
-- Canonical reference implementations live in `packages/site-renderer`. The canvas renderers mirror them.
+- CTA contact/quote behavior is a renderer concern derived from structured CTA
+  data and approved design variants, not analytics metadata.
+- Canonical reference implementations live in `packages/site-renderer`. The
+  canvas renderers mirror them and add only editing affordances.
 - Generation-eligible blocks must expose the same structured content through
   sidebar fields and canvas editing. A renderer-only or sidebar-only block must
   stay out of generation until both editing surfaces and parity tests exist.
 - Visual variants for generation are selected by the approved block `designVariant`
   field, limited to Tailwind Plus, Preline UI, and Tailblocks. Analytics
   metadata is not a visual-selection API. Inactive provider families, SIAB-owned
-  generic visual variants, and temporary Ami-care legacy variants are not
+  generic visual variants, and temporary Ami-care tenant-compatibility variants are not
   generation inputs.
 
 ## § Theme tokens consumed by block renderers
@@ -86,7 +105,10 @@ The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site 
 
 ### Dark mode overlay
 
-When `theme.mode === "dark"`, `data-rt-mode="dark"` is set on the canvas root by `CanvasMode` (and on the live-site root by the renderer once R5 ships). All `--color-*` vars MUST be defined in BOTH:
+When `theme.mode === "dark"`, `data-rt-mode="dark"` is set on the editor
+canvas root by `CanvasSurface` and on public/preview renderer roots by
+`packages/site-renderer` (`SitePageRenderer` / tenant renderers). All
+`--color-*` vars MUST be defined in BOTH:
 
 - a base block: `.rt-canvas { --color-accent: …; --color-bg: …; … }` for the canvas, or `html { --color-accent: …; … }` for the live site.
 - a dark overlay block: `.rt-canvas[data-rt-mode="dark"] { … }` for the canvas, or `html[data-rt-mode="dark"] { … }` for the live site.

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import { legacyPreviewTokensEnabled } from "@/lib/preview/legacyPreview"
 
-describe("legacy preview token gate", () => {
-  it("allows legacy HMAC preview tokens outside production for local compatibility", () => {
+describe("signed preview token compatibility gate", () => {
+  it("allows HMAC preview tokens outside production for local compatibility", () => {
     expect(legacyPreviewTokensEnabled({ NODE_ENV: "development" } as NodeJS.ProcessEnv)).toBe(true)
     expect(legacyPreviewTokensEnabled({ NODE_ENV: "test" } as NodeJS.ProcessEnv)).toBe(true)
   })

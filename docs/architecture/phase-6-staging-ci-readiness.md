@@ -17,8 +17,8 @@ images.
 | Intake API | `POST /api/intake` | `apps/cms` | CMS unit tests plus staging POST smoke | Accepts public structured intake only. Rejects test fixture controls and unknown fields. |
 | CMS admin | `/admin`, custom frontend admin routes | `apps/cms` | CMS typecheck/test/UI lint plus staging login smoke | Payload remains the content and tenant authority. |
 | Preview auth | `/api/preview-auth/[...all]` | `apps/cms` | CMS unit tests plus staging magic-link flow | Better Auth preview instance for `preview.siteinabox.nl`. |
-| Preview | `https://preview.siteinabox.nl/{clientSlug}` | `apps/cms` | CMS unit tests plus staging browser smoke | Magic-link/session gated. Renders shared renderer directly; no iframe. |
-| Legacy preview | `/preview/[token]`, `/api/preview-tokens` | `apps/cms` plus legacy snapshots | Unit tests plus production env check | HMAC preview route is fail-closed in production unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`. |
+| Preview | `https://preview.siteinabox.nl/{clientSlug}` | `apps/cms` | CMS unit tests plus staging browser smoke | Magic-link/session gated. Hosts shared renderer output through `/renderer-frame`. |
+| Signed preview compatibility | `/preview/[token]`, `/api/preview-tokens` | `apps/cms` | Unit tests plus production env check | HMAC preview route is fail-closed in production unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`. |
 | Payments | `/api/payments/mollie/webhook` | `apps/cms` | CMS unit tests plus Mollie test webhook in staging | Webhooks update generation-run payment state only. They do not publish, activate, or automate DNS. |
 | Publish | `POST /api/publish` | `apps/cms` | CMS unit tests plus staging operator smoke | Publishes immutable snapshots and optionally activates when gates pass. |
 | Renderer snapshot API | `GET /api/renderer/snapshot?host=<host>` | `apps/cms` | CMS unit tests plus staging bearer-token smoke | Returns only active tenant active snapshots. Requires `SIAB_RENDERER_API_TOKEN` in production. |
@@ -32,12 +32,12 @@ images.
 | Public intake validation | `publicIntakeValidation.test.ts`, `intakeGenerationRun.test.ts`, `apps/intake/tests/intake-schema.test.ts` | Same-origin `/intake` POST reaches CMS; user-safe error display | Intake sends structured data only; no generated source files. |
 | Generation | `applySiteGenerationSpec.test.ts`, `intakeGenerationRun.test.ts`, catalog governance tests | OpenAI provider only if explicitly enabled with staging secrets | AI output must validate as `SiteGenerationSpec`; malformed output writes no tenant/page/settings records. |
 | Preview access | `preview-access.test.ts`, `preview-access-action.test.ts`, `request-preview-magic-link.test.ts`, `preview-route.test.tsx` | Magic-link email delivery and session cookie behavior on `preview.siteinabox.nl` | Preview is Better Auth/session gated and grant scoped. |
-| Preview customizer/approval | `preview-customizer.test.ts`, `preview-customizer-source.test.ts` | Customer preview acceptance browser smoke | Preview renders the shared renderer directly; no iframe boundary. |
+| Preview customizer/approval | `preview-customizer.test.ts`, `preview-customizer-source.test.ts` | Customer preview acceptance browser smoke | Preview uses the renderer-frame contract and does not render editable canvas blocks. |
 | Payment checkout/webhook | `molliePayments.test.ts`, `generationRunPayment.test.ts`, `generationRunPaymentAction.test.ts` | Mollie test checkout and webhook delivery from Mollie dashboard/tunnel | PSP is Mollie. Payment state alone never publishes or activates a site. |
 | Domain and sender verification | `domainVerificationAction.test.ts`, tenant Email Sending tests | DNS, Traefik host-rule, OpenProvider, and Cloudflare provisioning checks | Activation requires verified domain ownership and, for generated-site runs, verified tenant Email Sending state. |
 | Publish/activate/rollback | `publish-current-state.test.ts`, `publish-route.test.ts`, `publishOperations.test.ts` | Operator smoke for publish, activate, rollback in staging | Live activation requires approved preview plus completed/waived payment, unless explicit super-admin manual activation is used; tenant/domain gates still apply. |
 | Renderer snapshot lookup | `renderer-snapshot-route.test.ts`, `renderer-snapshot-loader.test.ts` | Bearer token parity, `Host`/`X-Forwarded-Host` preservation, unknown host 404 | Live renderer serves only active published snapshots and inactive/unknown hosts return 404. |
-| Landing/intake/legacy builds | Package build/test commands | Public route and asset smoke after deploy | Compatibility `site:*` scripts map to landing. |
+| Landing/intake compatibility builds | Package build/test commands | Public route and asset smoke after deploy | Compatibility `site:*` scripts map to landing. |
 
 ## Environment Variable Inventory
 
@@ -74,12 +74,12 @@ Renderer/staging:
 - `SITE_URL`: renderer canonical origin for Astro config.
 - `SIAB_RENDERER_FIXTURE_MODE`: local development only; ignored in production.
 
-Landing/intake/legacy snapshots:
+Landing/intake/preview compatibility:
 
 - `PUBLIC_INTAKE_SUBMIT_ENDPOINT`: intake submit endpoint; production should route `/api/intake` to CMS.
 - `PUBLIC_KVK_SEARCH_ENDPOINT`, `PUBLIC_KVK_PROFILE_ENDPOINT`: browser-facing CMS proxy endpoints for factual KVK prefill; KVK credentials stay in CMS.
-- `PUBLIC_ADMIN_ORIGIN`, `PREVIEW_HMAC_SECRET`: legacy preview compatibility for static surfaces.
-- `CMS_DATA_DIR`, `CMS_DATA_DIR_ABS`, `CMS_TENANT_ID`: legacy tenant snapshot local projection helpers.
+- `PUBLIC_ADMIN_ORIGIN`, `PREVIEW_HMAC_SECRET`: signed preview compatibility for static surfaces.
+- `CMS_DATA_DIR`, `CMS_DATA_DIR_ABS`, `CMS_TENANT_ID`: tenant snapshot local projection helpers.
 
 ## Migration Inventory
 

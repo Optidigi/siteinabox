@@ -49,7 +49,7 @@ asset-pick, or chrome-edit messages.
 
 ## Theme control bar
 
-`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill with three segments (`Colours | Fonts | Shape`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`. Each segment opens a panel anchored under it (no inline shape-morph). Sub-controls: `PalettePicker` shows 6 pairs of accent circles (light on top, dark below — every preset has both halves; clicking either applies the matching palette half AND flips `theme.mode`) plus a `+ Custom` popover with a Light/Dark mode tab that edits whichever half is active. `FontPicker` shows 4 cards — Default (uses tenant manifest fonts, falls back to system) + Sans / Serif / Display — each with 3 stacked "Aa" samples (title / heading / text). `RadiusControl` shows 3 corner-radius icons (Sharp / Soft / Round) — border-style is preserved in the schema but not surfaced in the UI. The bar edits **tenant-wide** design tokens — never the CMS's own shadcn tokens — seeded from `FONT_PRESETS` + `PALETTE_PRESETS` in `src/lib/theme/presets.ts`. The schema stores `palette` (light), `darkPalette`, `fonts.{title,heading,text}`, `radius`, `borderStyle`, and `mode: "light"|"dark"`. `toCssVars` emits a base `.rt-canvas { ... }` block plus, when `darkPalette` is set, a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay block; `CanvasSurface` stamps `data-rt-mode` from `theme.mode` so the overlay wins. The role tokens consumed by block renderers + `InlineCtaButton` are `var(--font-{title,heading,text})` and `var(--radius-{sm,md,lg})` (sm = radius − 0.25rem clamped at 0; lg = radius + 0.5rem). Changes update `PageForm`'s live `theme` state and debounce-persist to `Tenant.theme` via `setTenantTheme`, validated by `themeSchema`. Live-site honoring of dark mode + the new role tokens is OBS-38 (multi-repo R5 — not in this repo yet).
+`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill with three segments (`Colours | Fonts | Shape`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`. Each segment opens a panel anchored under it (no inline shape-morph). Sub-controls: `PalettePicker` shows 6 pairs of accent circles (light on top, dark below — every preset has both halves; clicking either applies the matching palette half AND flips `theme.mode`) plus a `+ Custom` popover with a Light/Dark mode tab that edits whichever half is active. `FontPicker` shows 4 cards — Default (uses tenant manifest fonts, falls back to system) + Sans / Serif / Display — each with 3 stacked "Aa" samples (title / heading / text). `RadiusControl` shows 3 corner-radius icons (Sharp / Soft / Round) — border-style is preserved in the schema but not surfaced in the UI. The bar edits **tenant-wide** design tokens — never the CMS's own shadcn tokens — seeded from `FONT_PRESETS` + `PALETTE_PRESETS` in `src/lib/theme/presets.ts`. The schema stores `palette` (light), `darkPalette`, `fonts.{title,heading,text}`, `radius`, `borderStyle`, and `mode: "light"|"dark"`. `toCssVars` emits a base `.rt-canvas { ... }` block plus, when `darkPalette` is set, a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay block; `CanvasSurface` stamps `data-rt-mode` from `theme.mode` so the overlay wins. `packages/site-renderer` emits the same theme contract through `ThemeStyle`, `themeToCssVars`, and `data-rt-mode` on live/preview renderer roots. The role tokens consumed by block renderers + `InlineCtaButton` are `var(--font-{title,heading,text})` and `var(--radius-{sm,md,lg})` (sm = radius − 0.25rem clamped at 0; lg = radius + 0.5rem). Changes update `PageForm`'s live `theme` state and debounce-persist to `Tenant.theme` via `setTenantTheme`, validated by `themeSchema`.
 
 Generated blocks must not add their own arbitrary visual token fields, class
 names, provider CSS overrides, or per-block color/font/radius controls. Fonts,
@@ -59,7 +59,21 @@ classes.
 
 ## Block renderers
 
-Block renderers live in `src/components/editor/canvas/blocks/` — one file per block type (`Hero.tsx`, `FeatureList.tsx`, `CTA.tsx`, `RichText.tsx`, `ContactSection.tsx`, `FAQ.tsx`, `Testimonials.tsx`). Each renderer emits a `<section class="cms-block cms-block--<slug> …">` whose inner DOM mirrors the corresponding `packages/site-renderer` component so tenant CSS styles the canvas identically to the live site. Full class contract: `docs/runbooks/rt-dom-contract.md § Canvas block DOM contract`. Migration target and parity gates: `docs/runbooks/canvas-renderer-parity.md`. **When you add or change a block's rendered-site component, update its canvas renderer in lockstep.**
+Block renderers are split by surface. `packages/site-renderer/src/blocks/*`
+owns public/preview typed renderers for generated blocks. The editable CMS
+canvas uses `src/components/editor/canvas/CanvasBlockRenderer.tsx` to dispatch
+to renderer-native editable wrappers where available, Ami-care tenant-renderer
+edit slots for the official tenant, and canvas-owned editable block components
+where editor affordances are still required. Active generation blocks include
+hero, featureList, richText, cta, contactSection, faq, testimonials, pricing,
+stats, logoCloud, gallery, team, and blogCards. Each editable renderer emits a
+`<section class="cms-block cms-block--<slug> ...">` and mirrors the matching
+`packages/site-renderer` DOM/classes closely enough for theme tokens and
+source-backed variant classes to behave the same in canvas and live output.
+Full class contract: `docs/runbooks/rt-dom-contract.md § Canvas block DOM
+contract`. Parity gates: `docs/runbooks/canvas-renderer-parity.md`. **When you
+add or change a block's rendered-site component, update its canvas/editable
+path in lockstep.**
 
 Generation-eligible blocks must support both sidebar editing and canvas editing
 for the same structured fields. If a block lacks a `BlockFormFields` mapping,
@@ -94,7 +108,7 @@ handlers update RHF directly on desktop.
 
 Compiled by the tenant's Astro build and loaded from `DATA_DIR/tenants/<id>/cms-editor.css` via `src/lib/editor/loadTenantCss.ts`. That function hoists `@import`/`@charset` and rewrites `:root`/`:host` token selectors to `.rt-canvas` so the tenant's design tokens scope to the canvas surface only. The manifest's `cssEntry` field names the compiled file. If absent, canvas renders without tenant styles (falls back to admin tokens).
 
-Tenant renderers (currently Ami-care) do **not** consume `cms-editor.css`. The editor iframe loads bundled site-renderer styles (`generated-site-renderer.css` + scoped `site-renderer-canvas.css` in `(editor-frame)/layout.tsx`) and `loadCanvasTenantCss` skips the tenant artifact when `resolveTenantRenderer` matches. Generic/generated tenants still use `loadCanvasTenantCss` → `loadTenantCss` in the editor-frame route. Ami-care is temporary legacy compatibility for the official tenant-renderer path only and must not become a generation provider or generic fallback.
+Tenant renderers (currently Ami-care) do **not** consume `cms-editor.css`. The editor iframe loads bundled site-renderer styles (`generated-site-renderer.css` + scoped `site-renderer-canvas.css` in `(editor-frame)/layout.tsx`) and `loadCanvasTenantCss` skips the tenant artifact when `resolveTenantRenderer` matches. Generic/generated tenants still use `loadCanvasTenantCss` → `loadTenantCss` in the editor-frame route. Ami-care is temporary official-tenant compatibility only and must not become a generation provider or generic fallback.
 
 OBS-62 responsive contract: desktop canvas renders at actual pane width, not a fixed design width. `.rt-canvas` is the named `site-frame` container (`container-type: inline-size; container-name: site-frame; contain: layout`), and `CanvasSurface` wraps the tenant DOM in `.site-frame-root` so tenant CSS can apply container-query-driven global rules without styling the container itself. Generated tenant/site CSS must use named `site-frame` container queries for layout-width responsiveness; `siab-payload` does not runtime-convert `@media`/viewport units into container queries.
 

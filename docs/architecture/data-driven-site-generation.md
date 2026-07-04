@@ -118,11 +118,11 @@ public analytics settings through the shared analytics config and the renderer
 emits consent-gated metadata. Capture is active only when deployment env
 provides the required PostHog token/config and analytics is not disabled.
 
-## Legacy Tenant State
+## Official Tenant State
 
 Old tenant app sources have been removed. Renderer/CMS snapshot data is
 canonical; do not restore tenant-specific source folders, workflows, or images.
-Amicare has a scoped legacy-tenant renderer path inside `packages/site-renderer`
+Amicare has a scoped official-tenant renderer path inside `packages/site-renderer`
 for visual parity. Other retired tenant names must not be recreated without an
 explicit future migration decision.
 

@@ -93,8 +93,7 @@ independently of `siteManifest.settings`.
 - If Amicare needs optional settings such as language, contact, NAP, hours, or
   service-area support, the Amicare manifest source must declare them.
 
-Follow-up 2026-06-05: the local `optidigi/site-amicare-zorg` checkout's
-`siteManifest.json` now declares the optional Amicare settings contract for
-description, language, contact email, brand logo/favicon, contact details,
-business/NAP fields, service area, hours, and maintenance. Footer
-tagline/copyright remain omitted from the Settings contract.
+Follow-up 2026-06-05: the Amicare settings manifest declares the optional
+settings contract for description, language, contact email, brand logo/favicon,
+contact details, business/NAP fields, service area, hours, and maintenance.
+Footer tagline/copyright remain omitted from the Settings contract.

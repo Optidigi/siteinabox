@@ -33,8 +33,8 @@ rules.
 ### Intake UI Status
 
 There is a production intake app routed at `/intake` and connected to the CMS
-intake route. The CMS route stores normalized submissions for SIAB review; it
-does not automatically generate a site from the public POST.
+intake route. The CMS route stores normalized submissions and starts
+provider-backed draft generation automatically after validation.
 
 `apps/landing` has public marketing pages and a contact form on `/contact`.
 That form posts to CMS `POST /api/contact` for platform mail to
@@ -49,14 +49,17 @@ multi-step UI, KVK API lookup/enrichment, Zod validation/schema logic, business
 rules, normalized output shape, and wiring into the CMS intake API.
 
 The CMS has tenant form/submission management screens and generation operations
-screens for reviewing intake submissions and triggering draft generation after
-super-admin approval.
+screens for reviewing intake submissions and generated draft runs. Normal
+public intake submissions start provider-backed draft generation automatically
+after validation/storage; operator approval remains required later for preview,
+payment, publish, and activation decisions.
 
 ### Preview UI Status
 
 The current preview/customizer UI exists under
-`apps/cms/src/app/(frontend)/(site-preview)/[clientSlug]` and renders directly
-with `@siteinabox/site-renderer`; it does not use an iframe. The legacy
+`apps/cms/src/app/(frontend)/(site-preview)/[clientSlug]` and hosts renderer
+output through the CMS `/renderer-frame` route so customer preview stays on the
+same renderer contract as live output. The signed compatibility
 `apps/cms/src/app/(frontend)/(site-preview)/preview/[token]` route remains a
 compatibility path and is disabled in production unless explicitly enabled.
 
@@ -357,7 +360,7 @@ Goal: make preview sharing and customer review complete enough for staging.
 - Improve save/error/status feedback for theme-token persistence.
 - Add review notes/comments only if there is an existing storage contract;
   otherwise document as a follow-up.
-- Keep preview iframe-free and directly rendered through `packages/site-renderer`.
+- Keep customer preview on the canonical renderer-frame/live-renderer contract.
 
 ### Review
 

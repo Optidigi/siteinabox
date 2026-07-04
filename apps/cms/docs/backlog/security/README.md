@@ -89,11 +89,12 @@ Still active and not safely closable in this batch. The CSP source is now
 `src/proxy.ts` rather than the older `src/middleware.ts` path, and it still
 emits `style-src 'self' 'unsafe-inline'`.
 
-Repo audit found current inline-style dependencies in app-owned editor/canvas
-code including `LexicalField`, `InlineImage`, `RtStaticView`,
-`SiteChromePreview`, `CanvasMode`, `CanvasChromeGutterOverlay`, `PageForm`,
-`NavEntryRow`, and `status-feedback`. The registry-owned `src/components/ui/*`
-tree also still contains inline styles and runtime `<style>` injection for
+Repo audit found then-current inline-style dependencies in app-owned
+editor/canvas code including `LexicalField`, `InlineImage`, `RtStaticView`,
+site chrome preview, in-process canvas mode, canvas chrome gutter overlay,
+`PageForm`, `NavEntryRow`, and `status-feedback`. The registry-owned
+`src/components/ui/*` tree also still contains inline styles and runtime
+`<style>` injection for
 canvas/theme/chart/mobile toolbar behavior. CSP nonces can authorize `<style>`
 elements, but they do not authorize `style=""` attributes; removing
 `'unsafe-inline'` now would break current admin rendering.
@@ -213,12 +214,11 @@ SSR output contains only the fixed-size placeholder and no
 
 #### Description
 Audit finding #5's third sub-fix (bot protection on the public form widget) was
-explicitly deferred until the v1 contact form landed. That trigger has now
-fired: `site-amicare-zorg` renders a public contact form posting to
-`/api/forms`, and the CMS canvas `ContactSection` emits the same endpoint.
-`siab-site-template` also emits contact form markup for tenant snapshots. The
-Forms collection has anonymous create access with middleware rate limiting and a
-32 KB payload cap, but no hCaptcha / Turnstile token validation exists yet.
+explicitly deferred until the v1 contact form landed. That trigger fired when
+public site rendering and the CMS canvas `ContactSection` both emitted forms
+posting to `/api/forms`. The Forms collection has anonymous create access with
+middleware rate limiting and a 32 KB payload cap, but no hCaptcha / Turnstile
+token validation exists yet.
 
 #### Suggested fix shape
 Add hCaptcha or Cloudflare Turnstile token validation for public form
@@ -247,9 +247,9 @@ OBS-11 is not implemented. A Turnstile/forms batch was attempted on
 2026-05-26, then reverted before acceptance because the public form routing and
 tenant resolution path was not stable enough to keep. The rollback commits are:
 
-- `siab-payload`: `0d573e0 revert: undo public forms turnstile batch`
-- `site-amicare-zorg`: `ea1185e revert: undo turnstile form batch`
-- `siab-site-template`: `6210245 revert: undo turnstile form batch`
+- CMS app: `0d573e0 revert: undo public forms turnstile batch`
+- Previous Amicare site app: `ea1185e revert: undo turnstile form batch`
+- Previous site template package: `6210245 revert: undo turnstile form batch`
 
 The current stable runtime remains the pre-batch behavior: anonymous public
 forms still have the existing middleware rate limit, bogus-auth rejection, and
@@ -275,11 +275,11 @@ platform marketing contact route.
 #### Rollback validation
 Rollback verification passed on 2026-05-26:
 
-- `siab-payload`: `pnpm typecheck`, CI, and build-image smoke-start passed.
-- `site-amicare-zorg`: `pnpm astro check`, `pnpm build`, and image publish
-  passed with existing baseline hints only.
-- `siab-site-template`: `pnpm exec astro check`, `pnpm build`, and image
+- CMS app: `pnpm typecheck`, CI, and build-image smoke-start passed.
+- Previous Amicare site app: `pnpm astro check`, `pnpm build`, and image
   publish passed with existing baseline hints only.
+- Previous site template package: `pnpm exec astro check`, `pnpm build`, and
+  image publish passed with existing baseline hints only.
 - Production health passed for `https://admin.siteinabox.nl/api/health` and
   `https://ami-care.nl/healthz`.
 

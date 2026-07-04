@@ -9,8 +9,8 @@ const render = (root: any) =>
 describe("RtStaticView", () => {
   it("renders a paragraph with bold + italic text per the rt-* contract", () => {
     // RtNode uses v (not text) and marks[] array (not format bitmask).
-    // Wrapper order mirrors site-amicare-zorg/RtNodeRenderer.tsx: bold is
-    // applied first (innermost), then italic wraps around it, etc. — so
+    // Wrapper order mirrors the shared rich-text renderer: bold is applied
+    // first (innermost), then italic wraps around it, etc. — so
     // <em class="rt-i"> wraps <strong class="rt-b">.
     const html = render({
       t: "root", variant: "block",
@@ -139,7 +139,7 @@ describe("RtStaticView", () => {
   it("renders the themed eyebrow as the styled rotated-accent span", () => {
     // The eyebrow handler reads node.props.text and emits a block-level
     // div containing the rotated-accent span. This is the canonical
-    // styled eyebrow markup — matching site-amicare-zorg's RtNodeRenderer.
+    // styled eyebrow markup matching the shared rich-text renderer.
     const html = render({
       t: "root", variant: "block",
       children: [{

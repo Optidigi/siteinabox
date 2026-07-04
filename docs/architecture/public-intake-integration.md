@@ -10,19 +10,20 @@ Current architecture notes for the public intake surface at
 3. The browser submits the completed intake payload to CMS `POST /api/intake`.
 4. The CMS stores the raw submission and normalized `CompanyFacts` /
    `IntakeBrief` data in `intake-submissions`.
-5. A super-admin reviews the staged intake and approves a structured
-   `GenerationInput`.
-6. The approved `GenerationInput` is handed to the generation provider, which
-   must return a validated `SiteGenerationSpec`.
+5. The CMS immediately starts the configured generation provider from the
+   normalized intake and creates a traceable `site-generation-runs` record.
+6. The provider must return a validated `SiteGenerationSpec`.
 7. The CMS imports the valid spec as draft Payload tenant, page, settings, and
    media data.
-8. The existing publish flow freezes approved draft data into a published
+8. Operators review the resulting generation run, preview, payment/domain
+   state, and publish readiness in CMS.
+9. The existing publish flow freezes approved draft data into a published
    snapshot.
-9. `apps/renderer` serves the active published snapshot for the request host.
+10. `apps/renderer` serves the active published snapshot for the request host.
 
-The public intake route stores staged data only. It does not create tenants,
-pages, settings, snapshots, tenant source folders, workflows, Docker images, or
-generated React/source code.
+The public intake route may create draft CMS records through validated
+generation output. It does not create snapshots, activate live sites, tenant
+source folders, workflows, Docker images, or generated React/source code.
 
 ## Public App Boundary
 
@@ -54,12 +55,11 @@ matches must leave manual intake submission possible.
 
 `POST /api/intake` validates the public payload, rejects unsupported/test-only
 fields, stores the raw body, normalizes it into `CompanyFacts` and
-`IntakeBrief`, and records a stable normalized hash for review.
-
-The admin review step builds or edits a `GenerationInput` from the normalized
-intake. Approval marks that object `admin-approved` and checks that its
-`normalizedIntake` still matches the staged submission hash. Draft generation
-is available only after this review step.
+`IntakeBrief`, records a stable normalized hash, and calls
+`processStoredIntakeSubmission`. Normal intake submissions therefore start a
+provider-backed draft generation run automatically. The CMS review UI remains
+available for inspection, recovery, and operator decisions before preview,
+payment, publish, or activation.
 
 Generation provider output is accepted only as structured
 `SiteGenerationSpec` data matching shared contracts. The CMS validation/import

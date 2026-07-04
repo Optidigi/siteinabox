@@ -183,7 +183,7 @@ describe("processIntakeSubmission", () => {
     expect(store["site-generation-runs"][0]?.validation?.issues.map((entry: any) => entry.code)).toContain("unsupported_block_type")
   })
 
-  it("fails safely before CMS writes when a future generated tenant uses legacy variants or code payloads", async () => {
+  it("fails safely before CMS writes when a future generated tenant uses tenant-exclusive variants or code payloads", async () => {
     const { payload, store } = createPayloadStub()
     const provider: SiteGenerationProvider = {
       name: "mock",
