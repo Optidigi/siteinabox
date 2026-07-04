@@ -33,6 +33,13 @@ export const initialMobileEditorState: MobileEditorState = {
   drillStack: [],
 }
 
+function sameElementPath(a: ElementPath | null, b: ElementPath | null): boolean {
+  return a?.blockIndex === b?.blockIndex
+    && a?.field === b?.field
+    && a?.itemIndex === b?.itemIndex
+    && a?.subField === b?.subField
+}
+
 export type MobileEditorAction =
   | { type: "SET_SELECTED"; path: ElementPath }
   | { type: "CLEAR_SELECTION" }
@@ -47,6 +54,7 @@ export function mobileEditorReducer(state: MobileEditorState, action: MobileEdit
   switch (action.type) {
     case "SET_SELECTED": {
       const p = action.path
+      if (sameElementPath(state.selected, p)) return state
       // If the path includes a sub-field, seed TWO drill frames (item + sub-field)
       // so the array UI opens at Level 3 (single sub-field editor) while keeping
       // a parent item frame underneath for Back navigation.
@@ -64,6 +72,12 @@ export function mobileEditorReducer(state: MobileEditorState, action: MobileEdit
       return { selected: p, activeSnapPoint: 0.42, preFocusSnap: null, drillStack }
     }
     case "CLEAR_SELECTION":
+      if (
+        state.selected == null
+        && state.activeSnapPoint === 0.42
+        && state.preFocusSnap == null
+        && state.drillStack.length === 0
+      ) return state
       return { selected: null, activeSnapPoint: 0.42, preFocusSnap: null, drillStack: [] }
     case "PUSH_DRILL":
       return { ...state, drillStack: [...state.drillStack, action.frame] }
@@ -117,16 +131,24 @@ export const useMobileEditor = (): MobileEditorContextValue => {
 
 export const MobileEditorProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = React.useReducer(mobileEditorReducer, initialMobileEditorState)
+  const setSelected = React.useCallback((path: ElementPath) => dispatch({ type: "SET_SELECTED", path }), [])
+  const clearSelection = React.useCallback(() => dispatch({ type: "CLEAR_SELECTION" }), [])
+  const pushDrill = React.useCallback((frame: DrillFrame) => dispatch({ type: "PUSH_DRILL", frame }), [])
+  const popDrill = React.useCallback(() => dispatch({ type: "POP_DRILL" }), [])
+  const clearDrill = React.useCallback(() => dispatch({ type: "CLEAR_DRILL" }), [])
+  const expandTo = React.useCallback((snap: MobileSnap) => dispatch({ type: "EXPAND_TO", snap }), [])
+  const focusPop = React.useCallback(() => dispatch({ type: "FOCUS_POP" }), [])
+  const restorePreFocusSnap = React.useCallback(() => dispatch({ type: "RESTORE_PRE_FOCUS_SNAP" }), [])
   const value = React.useMemo<MobileEditorContextValue>(() => ({
     state,
-    setSelected: (path) => dispatch({ type: "SET_SELECTED", path }),
-    clearSelection: () => dispatch({ type: "CLEAR_SELECTION" }),
-    pushDrill: (frame) => dispatch({ type: "PUSH_DRILL", frame }),
-    popDrill: () => dispatch({ type: "POP_DRILL" }),
-    clearDrill: () => dispatch({ type: "CLEAR_DRILL" }),
-    expandTo: (snap) => dispatch({ type: "EXPAND_TO", snap }),
-    focusPop: () => dispatch({ type: "FOCUS_POP" }),
-    restorePreFocusSnap: () => dispatch({ type: "RESTORE_PRE_FOCUS_SNAP" }),
-  }), [state])
+    setSelected,
+    clearSelection,
+    pushDrill,
+    popDrill,
+    clearDrill,
+    expandTo,
+    focusPop,
+    restorePreFocusSnap,
+  }), [clearDrill, clearSelection, expandTo, focusPop, popDrill, pushDrill, restorePreFocusSnap, setSelected, state])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

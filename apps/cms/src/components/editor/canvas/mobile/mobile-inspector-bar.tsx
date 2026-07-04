@@ -9,6 +9,7 @@ import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/canv
 import { elementPathToName } from "@/components/editor/canvas/elementPath"
 import { MobileComponentEditor } from "@/components/editor/canvas/mobile/mobile-component-editor"
 import { MobileMediaSheet } from "@/components/editor/canvas/mobile/mobile-media-sheet"
+import { BlockFormFields } from "@/components/editor/fields/block-form-fields"
 import { VAUL_BOTTOM_SNAP_CSS } from "@/components/editor/canvas/mobile/vaulBottomSnapCss"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -78,7 +79,8 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
   const selectedSpec = state.selected
     ? resolveSelectedSpec(block?.blockType, manifest, state.selected.field, state.selected.subField)
     : undefined
-  const selectedName = state.selected ? elementPathToName(state.selected) : null
+  const isBlockSelection = state.selected?.field === ""
+  const selectedName = state.selected && !isBlockSelection ? elementPathToName(state.selected) : null
   const isDirectMediaSelection = state.selected != null && selectedName != null && selectedSpec?.kind === "image"
   const pathKey = state.selected
     ? `${state.selected.blockIndex}.${state.selected.field}.${state.selected.itemIndex ?? ""}.${state.selected.subField ?? ""}`
@@ -147,12 +149,21 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
       key={pathKey}
       className="h-full animate-in fade-in slide-in-from-bottom-2 duration-200"
     >
-      <MobileComponentEditor
-        path={state.selected}
-        block={block}
-        manifest={manifest}
-        theme={theme}
-      />
+      {isBlockSelection ? (
+        <BlockFormFields
+          block={block}
+          blockIndex={state.selected.blockIndex}
+          manifest={manifest}
+          theme={theme}
+        />
+      ) : (
+        <MobileComponentEditor
+          path={state.selected}
+          block={block}
+          manifest={manifest}
+          theme={theme}
+        />
+      )}
     </div>
   ) : null
   const body = (

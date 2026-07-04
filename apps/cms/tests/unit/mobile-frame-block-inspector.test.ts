@@ -24,6 +24,8 @@ describe("mobile iframe native editor source contract", () => {
     expect(shell).toContain("if (!block) return null")
     expect(shell).toContain("onFocusedSectionChange(index)")
     expect(shell).toContain("onSelectElement({ blockIndex: index, field: \"\" })")
+    expect(shell).toContain("selected.blockIndex !== screen.index")
+    expect(shell).not.toContain("!selected.field")
     expect(shell).not.toContain("CanvasBlockRenderer")
     expect(shell).not.toContain("CanvasMode")
 
@@ -48,5 +50,19 @@ describe("mobile iframe native editor source contract", () => {
     expect(legacyInspector).toContain("data-mobile-inspector-vaul-css")
     expect(legacyInspector).toContain("const SNAP_POINTS: MobileSnap[] = [0.42, 0.92]")
     expect(legacyInspector).toContain("useInspectorKeyboardLock(!isIdle && !isDirectMediaSelection)")
+    expect(legacyInspector).toContain('import { BlockFormFields } from "@/components/editor/fields/block-form-fields"')
+    expect(legacyInspector).toContain('const isBlockSelection = state.selected?.field === ""')
+    expect(legacyInspector).toContain("<BlockFormFields")
+  })
+
+  it("keeps mobile editor context actions idempotent to avoid section-open render loops", () => {
+    const context = read("apps/cms/src/components/editor/canvas/mobile/MobileEditorContext.tsx")
+
+    expect(context).toContain("function sameElementPath")
+    expect(context).toContain("if (sameElementPath(state.selected, p)) return state")
+    expect(context).toContain("state.selected == null")
+    expect(context).toContain("return state")
+    expect(context).toContain("React.useCallback((path: ElementPath) => dispatch({ type: \"SET_SELECTED\", path }), [])")
+    expect(context).toContain("React.useCallback(() => dispatch({ type: \"CLEAR_SELECTION\" }), [])")
   })
 })

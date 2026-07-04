@@ -91,7 +91,7 @@ function MobileFrameEditorInner({
       clearSelection()
       return
     }
-    if (!selected || selected.blockIndex !== screen.index || !selected.field) {
+    if (!selected || selected.blockIndex !== screen.index) {
       clearSelection()
       return
     }
