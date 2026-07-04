@@ -98,52 +98,49 @@ function MobileFrameEditorInner({
     setSelected(selected)
   }, [clearSelection, screen, selected, setSelected])
 
-  if (screen.type === "page-settings") {
-    return (
-      <MobileSettingsScreen onBack={() => setScreen({ type: "list" })}>
-        <MobilePageSettings />
-      </MobileSettingsScreen>
-    )
-  }
-
-  if (screen.type === "seo") {
-    return (
-      <MobileSettingsScreen onBack={() => setScreen({ type: "list" })}>
-        <MobileSeoSettings />
-      </MobileSettingsScreen>
-    )
-  }
-
-  if (screen.type === "section") {
-    const index = screen.index
-    const block = api.blocks[index]
-    if (!block) return null
-    return (
-      <MobileFocusedSection
-        api={api}
-        index={index}
-        block={block}
-        manifest={manifest}
-        theme={theme}
-        focusedFrame={focusedFrame}
-        onBack={openList}
-        onPrev={index > 0 ? () => openSection(index - 1) : undefined}
-        onNext={index < api.blocks.length - 1 ? () => openSection(index + 1) : undefined}
-        onJumpToSection={openSection}
-      />
-    )
-  }
+  const focusedIndex = screen.type === "section" ? screen.index : 0
+  const focusedBlock = api.blocks[focusedIndex]
+  const isSectionScreen = screen.type === "section"
 
   return (
-    <MobileSectionList
-      api={api}
-      manifest={manifest}
-      pageTitle={pageTitle}
-      onOpenSection={openSection}
-      onOpenPageSettings={() => setScreen({ type: "page-settings" })}
-      onOpenSeo={() => setScreen({ type: "seo" })}
-      onDeletePage={onDeletePage}
-    />
+    <>
+      {screen.type === "page-settings" && (
+        <MobileSettingsScreen onBack={() => setScreen({ type: "list" })}>
+          <MobilePageSettings />
+        </MobileSettingsScreen>
+      )}
+      {screen.type === "seo" && (
+        <MobileSettingsScreen onBack={() => setScreen({ type: "list" })}>
+          <MobileSeoSettings />
+        </MobileSettingsScreen>
+      )}
+      {screen.type === "list" && (
+        <MobileSectionList
+          api={api}
+          manifest={manifest}
+          pageTitle={pageTitle}
+          onOpenSection={openSection}
+          onOpenPageSettings={() => setScreen({ type: "page-settings" })}
+          onOpenSeo={() => setScreen({ type: "seo" })}
+          onDeletePage={onDeletePage}
+        />
+      )}
+      {focusedBlock && (
+        <MobileFocusedSection
+          api={api}
+          active={isSectionScreen}
+          index={focusedIndex}
+          block={focusedBlock}
+          manifest={manifest}
+          theme={theme}
+          focusedFrame={focusedFrame}
+          onBack={openList}
+          onPrev={focusedIndex > 0 ? () => openSection(focusedIndex - 1) : undefined}
+          onNext={focusedIndex < api.blocks.length - 1 ? () => openSection(focusedIndex + 1) : undefined}
+          onJumpToSection={openSection}
+        />
+      )}
+    </>
   )
 }
 
@@ -173,6 +170,7 @@ function MobileSettingsScreen({
 
 function MobileFocusedSection({
   api,
+  active,
   index,
   block,
   manifest,
@@ -184,6 +182,7 @@ function MobileFocusedSection({
   onJumpToSection,
 }: {
   api: Pick<CanvasBlocksApi, "blocks" | "deleteBlock" | "duplicateBlock">
+  active: boolean
   index: number
   block: Record<string, unknown>
   manifest: RtManifest
@@ -204,7 +203,13 @@ function MobileFocusedSection({
     : String(block.blockType ?? "?")
 
   return (
-    <div data-mobile-frame-section-edit className="flex h-[calc(100dvh-4.5rem)] min-h-0 flex-col">
+    <div
+      data-mobile-frame-section-edit
+      aria-hidden={!active}
+      className={active
+        ? "flex h-[calc(100dvh-4.5rem)] min-h-0 flex-col"
+        : "fixed left-0 top-0 h-px w-px overflow-hidden opacity-0 pointer-events-none"}
+    >
       <header className="sticky top-0 z-30 flex min-w-0 items-center justify-center border-b border-border bg-background px-16 py-3">
         <Button
           type="button"
@@ -281,8 +286,8 @@ function MobileFocusedSection({
       <div className="min-h-0 flex-1 overflow-hidden">
         {focusedFrame}
       </div>
-      <MobileInspectorBar block={block} manifest={manifest} theme={theme} />
-      {isInspectorIdle && (
+      {active && <MobileInspectorBar block={block} manifest={manifest} theme={theme} />}
+      {active && isInspectorIdle && (
         <MobileFloatingPill
           position="bottom-right"
           icon={<Trash2 className="h-5 w-5" aria-hidden />}

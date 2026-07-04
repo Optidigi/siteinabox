@@ -128,6 +128,11 @@ describe("page editor iframe bridge source contract", () => {
     expect(runtime).toContain("resolveTenantRenderer")
     expect(runtime).toContain("effectiveTenantCss")
 
+    expect(runtime).toContain("const emitReady = () =>")
+    expect(runtime).toContain("receivedParentCommandRef.current = true")
+    expect(runtime).toContain("window.setInterval")
+    expect(runtime).toContain("window.clearInterval")
+
     expect(runtime).toContain('message.type === "editor.view.set"')
     expect(runtime).toContain("setFrameView(message.view)")
     expect(runtime).toContain('message.type === "editor.mobileMode.set"')

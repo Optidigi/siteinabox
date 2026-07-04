@@ -49,6 +49,9 @@ export function EditorFrameRuntime({
   const [mobileMode, setMobileMode] = React.useState<IframeEditorMobileMode>({ mode: "fullPage" })
   const [revision, setRevision] = React.useState(0)
   const revisionRef = React.useRef(0)
+  const frameViewRef = React.useRef(frameView)
+  const receivedParentCommandRef = React.useRef(false)
+  frameViewRef.current = frameView
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
   const effectiveTenantCss = React.useMemo(() => {
     if (resolveTenantRenderer({ tenantSlug, domain })) return null
@@ -76,11 +79,31 @@ export function EditorFrameRuntime({
   }, [theme])
 
   React.useEffect(() => {
+    receivedParentCommandRef.current = false
+    const emitReady = () => {
+      emit({
+        protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+        schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+        type: "renderer.ready",
+        messageId: "editor-renderer-ready",
+        rendererId: "cms-editor-frame",
+        revision: revisionRef.current,
+        pageId: String(page.id ?? page.slug ?? "page"),
+        capabilities: {
+          selection: true,
+          fieldEditing: frameViewRef.current === "canvas",
+          assetPicking: frameViewRef.current === "canvas",
+          viewportResize: false,
+        },
+      })
+    }
+
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
       if (!parsed.ok) return
 
+      receivedParentCommandRef.current = true
       const message = parsed.message
 
       if (message.type === "selection.set") {
@@ -125,24 +148,16 @@ export function EditorFrameRuntime({
     }
 
     window.addEventListener("message", onMessage)
-    emit({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "renderer.ready",
-      messageId: "editor-renderer-ready",
-      rendererId: "cms-editor-frame",
-      revision: revisionRef.current,
-      pageId: String(page.id ?? page.slug ?? "page"),
-      capabilities: {
-        selection: true,
-        fieldEditing: frameView === "canvas",
-        assetPicking: frameView === "canvas",
-        viewportResize: false,
-      },
-    })
+    emitReady()
+    const readyInterval = window.setInterval(() => {
+      if (!receivedParentCommandRef.current) emitReady()
+    }, 500)
 
-    return () => window.removeEventListener("message", onMessage)
-  }, [bumpRevision, emit, page.id, page.slug])
+    return () => {
+      window.clearInterval(readyInterval)
+      window.removeEventListener("message", onMessage)
+    }
+  }, [emit, page.id, page.slug])
 
   React.useEffect(() => {
     const pageId = String(framePage.id ?? framePage.slug ?? "page")
