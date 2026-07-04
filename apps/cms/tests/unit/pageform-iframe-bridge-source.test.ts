@@ -30,6 +30,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain("--siab-parent-chrome-bottom")
     expect(host).toContain("expectedRevision")
     expect(host).toMatch(/<iframe\b/i)
+    expect(host).not.toContain('sandbox="allow-same-origin allow-scripts allow-forms"')
     expect(host).toContain("selection.set")
     expect(host).toContain("onSelectionChanged")
     expect(host).toContain("onChromeSelect")

@@ -455,7 +455,6 @@ export function PageEditorFrameHost({
               : cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
             : cn("min-h-[640px]", view === "sidebar" && "h-[calc(100dvh-6.5rem)]"),
         )}
-        sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}
         onLoad={() => {
