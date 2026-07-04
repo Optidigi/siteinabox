@@ -25,6 +25,7 @@ import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSend
 import { sendLiveHandoffEmailAfterActivation } from "@/lib/publish/liveHandoffEmail"
 
 const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: true } as const
+const PUBLISHED_SNAPSHOT_RETENTION_LIMIT = 10
 
 export type PublishSiteOptions = {
   tenantId: string | number
@@ -189,6 +190,48 @@ async function nextSnapshotVersion(payload: Payload, tenantId: string | number):
   } as any)
   const latest = result.docs[0] as { version?: number } | undefined
   return Number.isFinite(latest?.version) ? Number(latest!.version) + 1 : 1
+}
+
+export async function prunePublishedSnapshotsForTenant(
+  payload: Payload,
+  tenantId: string | number,
+  options: { keepSnapshotId?: string | number | null; limit?: number } = {},
+): Promise<{ deleted: number; kept: number }> {
+  const limit = options.limit ?? PUBLISHED_SNAPSHOT_RETENTION_LIMIT
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new Error(`Published snapshot retention limit must be a finite integer >= 1 (got ${limit})`)
+  }
+
+  const result = await payload.find({
+    collection: "published-site-snapshots" as any,
+    where: { tenant: { equals: tenantId } },
+    sort: "-version",
+    limit: 1000,
+    depth: 0,
+    overrideAccess: true,
+  } as any)
+
+  const docs = result.docs as Array<{ id: string | number; status?: string | null }>
+  const keepIds = new Set<string>()
+  if (options.keepSnapshotId != null) keepIds.add(String(options.keepSnapshotId))
+
+  for (const doc of docs) {
+    if (doc.status === "active") keepIds.add(String(doc.id))
+  }
+  for (const doc of docs) {
+    if (keepIds.size >= limit) break
+    keepIds.add(String(doc.id))
+  }
+
+  const toDelete = docs.filter((doc) => !keepIds.has(String(doc.id)))
+  await Promise.all(toDelete.map((doc) => payload.delete({
+    collection: "published-site-snapshots" as any,
+    id: doc.id as any,
+    depth: 0,
+    overrideAccess: true,
+  } as any)))
+
+  return { deleted: toDelete.length, kept: docs.length - toDelete.length }
 }
 
 function buildManifest(
@@ -357,6 +400,8 @@ export async function activatePublishedSnapshot(
     rollback: options.rollback,
   })
 
+  await prunePublishedSnapshotsForTenant(payload, tenantId, { keepSnapshotId: snapshotDoc.id })
+
   return activatedSnapshot as any
 }
 
@@ -389,7 +434,10 @@ export async function publishSiteSnapshot(
     overrideAccess: true,
   } as any) as any
 
-  if (!options.activate) return { snapshot: snapshotDoc, activated: false }
+  if (!options.activate) {
+    await prunePublishedSnapshotsForTenant(payload, options.tenantId, { keepSnapshotId: snapshotDoc.id })
+    return { snapshot: snapshotDoc, activated: false }
+  }
 
   const activated = await activatePublishedSnapshot(payload, {
     snapshotId: snapshotDoc.id,

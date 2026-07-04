@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { activatePublishedSnapshot, canActivatePublishedSnapshot } from "@/lib/publish/siteSnapshots"
+import {
+  activatePublishedSnapshot,
+  canActivatePublishedSnapshot,
+  prunePublishedSnapshotsForTenant,
+} from "@/lib/publish/siteSnapshots"
 
 const approvedPaidRun = {
   id: 500,
@@ -216,5 +220,36 @@ describe("published snapshot activation gate", () => {
         emailSending: { status: "not_configured" },
       } as any,
     })).toEqual({ ok: true })
+  })
+
+  it("prunes published snapshots to the latest ten while preserving the active snapshot", async () => {
+    const docs = Array.from({ length: 12 }, (_, index) => {
+      const id = 12 - index
+      return {
+        id,
+        version: id,
+        tenant: 1,
+        status: id === 3 ? "active" : "superseded",
+      }
+    })
+    const payload = {
+      find: vi.fn(async () => ({ docs })),
+      delete: vi.fn(async ({ id }: any) => ({ id })),
+    }
+
+    await expect(prunePublishedSnapshotsForTenant(payload as any, 1)).resolves.toEqual({
+      deleted: 2,
+      kept: 10,
+    })
+
+    expect(payload.find).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "published-site-snapshots",
+      where: { tenant: { equals: 1 } },
+      sort: "-version",
+      limit: 1000,
+      overrideAccess: true,
+    }))
+    expect(payload.delete.mock.calls.map(([call]) => call.id)).toEqual([2, 1])
+    expect(payload.delete.mock.calls.map(([call]) => call.id)).not.toContain(3)
   })
 })
