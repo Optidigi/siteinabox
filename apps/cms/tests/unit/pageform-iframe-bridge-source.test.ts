@@ -173,5 +173,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(surface).toContain("mobileMode?: IframeEditorMobileMode")
     expect(surface).toContain("allowInlineEditing={mobileMode.allowInlineEditing}")
     expect(surface).toContain("focusedBlockIndex={mobileMode.mode === \"focusedSection\" ? mobileMode.focusedBlockIndex : undefined}")
+    expect(surface).toContain("forceSharedRendererShell")
+    expect(surface).not.toContain("mobileMode.mode !== \"focusedSection\"")
   })
 })

@@ -103,7 +103,6 @@ export function FrameCanvasSurface({
 
   const cmsTheme = React.useMemo(() => rendererThemeToCmsTheme(theme), [theme])
   const canvasSelectionView = mobileMode.allowInlineEditing === false ? "sidebar" : view
-  const forceSharedRendererShell = mobileMode.mode !== "focusedSection"
   const selectedChrome = React.useMemo<SiteChromeSelection | null>(() => {
     const zone = selection?.fieldPath?.[1]
     return zone === "header" || zone === "footer" ? { zone } : null
@@ -177,7 +176,7 @@ export function FrameCanvasSurface({
           showChrome={mobileMode.showChrome}
           showGutters={mobileMode.showGutters}
           allowInlineEditing={mobileMode.allowInlineEditing}
-          forceSharedRendererShell={forceSharedRendererShell}
+          forceSharedRendererShell
         />
       </BlockPresetsProvider>
     </CanvasSelectionProvider>
