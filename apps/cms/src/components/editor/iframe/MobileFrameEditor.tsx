@@ -296,10 +296,11 @@ function MobileFocusedSection({
       </div>
       <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />
       <MobileBackPill onBack={onBack} />
-      {isInspectorIdle && trashPillVisible && (
+      {isInspectorIdle && (
         <MobileFloatingPill
           position="top-right"
           offset="3.75rem"
+          visible={trashPillVisible}
           icon={<Trash2 className="h-5 w-5" aria-hidden />}
           onClick={() => setDeleteOpen(true)}
           ariaLabel={t("deleteSection")}

@@ -19,6 +19,8 @@ export interface MobileFloatingPillProps {
   /** Override badge tone (defaults to match variant). */
   badgeTone?: "warning" | "destructive"
   disabled?: boolean
+  /** Animate the pill out and disable pointer events while keeping it mounted. */
+  visible?: boolean
   /** Extra inset (CSS length) along the pill's horizontal edge — lets a
    *  second pill sit beside another that shares the same corner. */
   offset?: string
@@ -44,6 +46,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   badgeCount,
   badgeTone,
   disabled,
+  visible = true,
   offset,
   dataAttrs,
 }) => {
@@ -74,6 +77,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
     variant === "loading" && "opacity-90 cursor-wait border-transparent",
     variant === "success" && "border-transparent bg-success text-success-foreground shadow-success/25",
   )
+  const hiddenMotionClass = position.endsWith("right") ? "translate-x-3" : "-translate-x-3"
 
   return (
     <>
@@ -84,13 +88,14 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
           const tag = document.activeElement?.tagName
           if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
         }}
-        onClick={isLoading || disabled ? undefined : onClick}
-        disabled={isLoading || disabled}
+        onClick={isLoading || disabled || !visible ? undefined : onClick}
+        disabled={isLoading || disabled || !visible}
         aria-label={ariaLabel}
         {...(dataAttrs ?? {})}
         className={cn(
           cspPosition.className,
-          "md:hidden fixed z-50 inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors pointer-events-auto",
+          "md:hidden fixed z-50 inline-flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 ease-out",
+          visible ? "pointer-events-auto opacity-100 scale-100 translate-x-0" : cn("pointer-events-none opacity-0 scale-75", hiddenMotionClass),
           positionClasses,
           variantClasses,
         )}
