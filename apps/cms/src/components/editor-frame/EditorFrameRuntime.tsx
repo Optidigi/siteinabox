@@ -151,6 +151,7 @@ export function EditorFrameRuntime({
           type: "chrome.select",
           messageId: `chrome-select-${pageId}-${zone}`,
           selection: { pageId, fieldPath: ["chrome", zone] },
+          point: { x: event.clientX, y: event.clientY },
         })
         const rect = chromeNode.getBoundingClientRect()
         emit({

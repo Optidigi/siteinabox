@@ -70,7 +70,7 @@ describe("SiteChromePreview chrome actions", () => {
     expect(pageForm).toContain("<SiteChromeQuickMenu")
   })
 
-  it("opens chrome menus from right-click or the explicit options button, not ordinary footer clicks", () => {
+  it("opens chrome menus at the iframe click point for site chrome targets", () => {
     const file = source()
     const canvasMode = canvasModeSource()
     const gutterOverlay = gutterOverlaySource()
@@ -102,7 +102,7 @@ describe("SiteChromePreview chrome actions", () => {
     expect(file).toContain('data-active={selected || undefined}')
     expect(file).toContain("onContextMenu={(event) => {")
     expect(file).toContain("openAt({ x: event.clientX, y: event.clientY })")
-    expect(file).toContain("onSelect()")
+    expect(file).toContain("onSelect({ x: event.clientX, y: event.clientY })")
     expect(gutterOverlay).toContain("data-site-chrome-menu-trigger")
     expect(gutterOverlay).not.toContain("onPointerDown={(event) => {")
     expect(gutterOverlay).toContain("data-siab-editor-ui")

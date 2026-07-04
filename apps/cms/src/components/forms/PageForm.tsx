@@ -1800,16 +1800,10 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     },
     [selectChrome],
   )
-  const handleFrameChromeGeometry = useCallback(
-    (zone: "header" | "footer", rect: { x: number; y: number; width: number; height: number }) => {
-      if (mode !== "canvas") return
-      selectChrome(
-        { zone },
-        { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 },
-      )
-    },
-    [mode, selectChrome],
-  )
+  const handleFrameChromeGeometry = useCallback(() => {
+    // Chrome geometry is still part of the iframe contract, but quick-menu
+    // anchoring must come from the user action point on `chrome.select`.
+  }, [])
   const frameMutations = useMemo(() => ({
     onBlocksInsert: ({
       block,

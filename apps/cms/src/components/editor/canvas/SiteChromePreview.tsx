@@ -720,7 +720,7 @@ function ChromeActionsMenu({
       event.preventDefault()
       event.stopPropagation()
       if (onSelect) {
-        onSelect()
+        onSelect({ x: event.clientX, y: event.clientY })
         return
       }
       setPoint({ x: event.clientX, y: event.clientY })
@@ -797,7 +797,7 @@ function ChromeActionsMenu({
         event.preventDefault()
         event.stopPropagation()
         if (onSelect) {
-          onSelect()
+          onSelect({ x: event.clientX, y: event.clientY })
           return
         }
         setPoint({ x: event.clientX, y: event.clientY })

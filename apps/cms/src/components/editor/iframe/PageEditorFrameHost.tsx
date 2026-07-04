@@ -171,6 +171,9 @@ export function PageEditorFrameHost({
           const point = iframeEl
             ? (() => {
                 const rect = iframeEl.getBoundingClientRect()
+                if (message.point) {
+                  return { x: rect.left + message.point.x, y: rect.top + message.point.y }
+                }
                 return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
               })()
             : undefined

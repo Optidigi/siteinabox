@@ -11,7 +11,7 @@ import {
 import { CanvasSurface } from "@/components/editor/canvas/CanvasSurface"
 import { CanvasSelectionProvider } from "@/components/editor/canvas/CanvasSelectionContext"
 import { BlockPresetsProvider } from "@/components/editor/canvas/BlockPresetsContext"
-import { SiteChromeActionFrame, type SiteChromeSelection } from "@/components/editor/canvas/SiteChromePreview"
+import { SiteChromeActionFrame, type SiteChromeSelection, type SiteChromeSelectPoint } from "@/components/editor/canvas/SiteChromePreview"
 import { useFrameCanvasBlocks } from "@/components/editor-frame/useFrameCanvasBlocks"
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import type { ElementPath } from "@/components/editor/canvas/elementPath"
@@ -103,13 +103,14 @@ export function FrameCanvasSurface({
     const zone = selection?.fieldPath?.[1]
     return zone === "header" || zone === "footer" ? { zone } : null
   }, [selection])
-  const selectChrome = React.useCallback((next: SiteChromeSelection) => {
+  const selectChrome = React.useCallback((next: SiteChromeSelection, point?: SiteChromeSelectPoint) => {
     emit({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "chrome.select",
       messageId: crypto.randomUUID(),
       selection: { pageId, fieldPath: ["chrome", next.zone] },
+      point,
     })
   }, [emit, pageId])
   const requestBlockInspector = React.useCallback((index: number) => {

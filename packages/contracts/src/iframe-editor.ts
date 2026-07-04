@@ -159,6 +159,11 @@ export type IframeEditorRect = {
   height: number
 }
 
+export type IframeEditorPoint = {
+  x: number
+  y: number
+}
+
 export type IframeEditorFieldGeometry = {
   fieldPath: IframeEditorFieldPath
   rect: IframeEditorRect
@@ -252,6 +257,7 @@ export type EditCancelMessage = IframeEditorRevisionedMessageBase<"edit.cancel">
 
 export type ChromeSelectMessage = IframeEditorMessageBase<"chrome.select"> & {
   selection: IframeEditorSelection
+  point?: IframeEditorPoint
 }
 
 export type EditorViewSetMessage = IframeEditorMessageBase<"editor.view.set"> & {
@@ -492,10 +498,16 @@ export const SelectionPulsedMessageSchema = strictObject({
   durationMs: z.number().int().positive().optional(),
 })
 
+const iframeEditorPointSchema = strictObject({
+  x: z.number(),
+  y: z.number(),
+})
+
 export const ChromeSelectMessageSchema = strictObject({
   ...baseMessageShape,
   type: z.literal("chrome.select"),
   selection: selectionSchema,
+  point: iframeEditorPointSchema.optional(),
 })
 
 export const EditorViewSetMessageSchema = strictObject({

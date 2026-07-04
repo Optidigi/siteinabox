@@ -35,6 +35,9 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain("onChromeSelect")
     expect(host).toContain("onOpenBlockInspector")
     expect(host).toContain('message.type === "chrome.select"')
+    expect(host).toContain("message.point")
+    expect(host).toContain("rect.left + message.point.x")
+    expect(host).toContain("rect.top + message.point.y")
     expect(host).toContain('message.type === "edit.start" && message.mode === "settings"')
     expect(host).toContain("findBlockIndexByWireId")
     expect(host).toContain("Retry frame")
@@ -83,6 +86,10 @@ describe("page editor iframe bridge source contract", () => {
 
     expect(form).toContain("handleFrameChromeSelect")
     expect(form).toContain("selectChrome({ zone }, point)")
+    expect(form).toContain("const handleFrameChromeGeometry = useCallback(")
+    expect(form).toContain("quick-menu")
+    expect(form).toContain('`chrome.select`')
+    expect(form).not.toContain("rect.x + rect.width / 2")
     const onChromeSelectOccurrences = form.match(/onChromeSelect=\{handleFrameChromeSelect\}/g) ?? []
     expect(onChromeSelectOccurrences.length).toBe(1)
     const inspectorOccurrences = form.match(/onOpenBlockInspector=\{openBlockInSidebar\}/g) ?? []
@@ -110,6 +117,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(runtime).toContain("[data-amicare-nav]")
 
     expect(runtime).toContain('type: "chrome.select"')
+    expect(runtime).toContain("point: { x: event.clientX, y: event.clientY }")
     expect(runtime).toContain('type: "geometry.changed"')
     expect(runtime).toContain("blockId: `chrome:${zone}`")
 
@@ -125,8 +133,11 @@ describe("page editor iframe bridge source contract", () => {
     expect(surface).toContain('import { CanvasSurface } from "@/components/editor/canvas/CanvasSurface"')
     expect(surface).toContain("useFrameCanvasBlocks")
     expect(surface).toContain("SiteChromeActionFrame")
+    expect(surface).toContain("type SiteChromeSelectPoint")
     expect(surface).toContain('type: "edit.start"')
     expect(surface).toContain('mode: "settings"')
+    expect(surface).toContain("point?: SiteChromeSelectPoint")
+    expect(surface).toContain("point,")
     expect(surface).toContain("onOpenBlockInspector={requestBlockInspector}")
     expect(surface).toContain("renderHeaderChrome={renderHeaderChrome}")
     expect(surface).toContain("renderFooterChrome={renderFooterChrome}")

@@ -208,6 +208,7 @@ const validSamplesByType = {
     ...baseMessage,
     type: "chrome.select",
     selection: { pageId: "home", fieldPath: ["chrome", "header"] },
+    point: { x: 320, y: 48 },
   },
   "chrome.patchRequested": {
     ...revisioned,
@@ -259,6 +260,7 @@ describe("iframe editor message protocol", () => {
       ...baseMessage,
       type: "chrome.select",
       selection: { pageId: "home", fieldPath: ["chrome", "header"] },
+      point: { x: 120, y: 32 },
     }).success).toBe(true)
   })
 
