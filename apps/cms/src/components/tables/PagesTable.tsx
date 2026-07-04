@@ -22,6 +22,7 @@ import { relativeTime } from "@/lib/relativeTime"
 import { statusLabel } from "@/lib/i18nLabels"
 import type { Page } from "@/payload-types"
 import { useStatusFeedback } from "@/components/status-feedback"
+import { pageEditorHref } from "@/lib/pageEditorUrls"
 
 export function PagesTable({
   data,
@@ -100,7 +101,7 @@ export function PagesTable({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
                   <DropdownMenuItem asChild>
-                    <Link href={`${base}/${p.id}`}>
+                    <Link href={pageEditorHref(base, p)}>
                       <Pencil className="mr-2 h-4 w-4" /> {tCommon("edit")}
                     </Link>
                   </DropdownMenuItem>
@@ -130,7 +131,7 @@ export function PagesTable({
         columns={cols}
         data={data}
         emptyState={emptyState}
-        getRowHref={(p) => `${base}/${p.id}`}
+        getRowHref={(p) => pageEditorHref(base, p)}
       />
       {target && (
         <TypedConfirmDialog

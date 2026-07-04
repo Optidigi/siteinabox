@@ -3,6 +3,7 @@ import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@siteinabox/ui/components/dialog"
 import { useTranslations } from "next-intl"
 import type { MediaPageRef } from "@/lib/queries/mediaUsageWalker"
+import { pageEditorHref } from "@/lib/pageEditorUrls"
 
 /**
  * Read-only "Used in" listing for a single media item. Operators reach
@@ -50,7 +51,7 @@ export function MediaUsageDialog({
             return pagesBaseHref ? (
               <Link
                 key={String(p.id)}
-                href={`${pagesBaseHref}/${p.id}`}
+                href={pageEditorHref(pagesBaseHref, p)}
                 className="block rounded px-2 py-1 hover:bg-accent"
                 onClick={() => onOpenChange(false)}
                 aria-label={p.title}

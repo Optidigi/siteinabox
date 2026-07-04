@@ -13,6 +13,7 @@ const PII_RX = /(@|mailto:|tel:|\+?\d[\d\s().-]{6,})/i
 
 const routePatterns: Array<[RegExp, string]> = [
   [/^\/sites\/[^/]+\/pages\/new$/, "/sites/[slug]/pages/new"],
+  [/^\/sites\/[^/]+\/pages\/edit\/[^/]+$/, "/sites/[slug]/pages/edit/[slug]"],
   [/^\/sites\/[^/]+\/pages\/[^/]+$/, "/sites/[slug]/pages/[id]"],
   [/^\/sites\/[^/]+\/users$/, "/sites/[slug]/users"],
   [/^\/sites\/[^/]+\/media$/, "/sites/[slug]/media"],
@@ -24,6 +25,7 @@ const routePatterns: Array<[RegExp, string]> = [
   [/^\/sites\/[^/]+\/onboarding$/, "/sites/[slug]/onboarding"],
   [/^\/sites\/[^/]+$/, "/sites/[slug]"],
   [/^\/pages\/new$/, "/pages/new"],
+  [/^\/pages\/edit\/[^/]+$/, "/pages/edit/[slug]"],
   [/^\/pages\/[^/]+$/, "/pages/[id]"],
   [/^\/users\/[^/]+\/edit$/, "/users/[id]/edit"],
 ]

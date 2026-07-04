@@ -935,8 +935,8 @@ export const getCmsUsageOverview = async (_scope: { days?: 7 | 30 | 90 | number 
       countIf(event = 'cms_route_viewed') AS route_views,
       countIf(event = 'cms_action_clicked') AS action_clicks,
       countIf(event = 'cms_page_editor_opened') AS editor_opens,
-      countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]') AND properties.cms_device_type = 'desktop') AS editor_opens_desktop,
-      countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]') AND properties.cms_device_type = 'mobile') AS editor_opens_mobile,
+      countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]', '/pages/edit/[slug]', '/sites/[slug]/pages/edit/[slug]') AND properties.cms_device_type = 'desktop') AS editor_opens_desktop,
+      countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]', '/pages/edit/[slug]', '/sites/[slug]/pages/edit/[slug]') AND properties.cms_device_type = 'mobile') AS editor_opens_mobile,
       countIf(event = 'cms_page_saved') AS page_saves,
       countIf(event = 'cms_media_uploaded') AS media_uploads,
       countIf(event = 'cms_form_submission_received') AS received_submissions
@@ -1018,7 +1018,7 @@ export const getCmsDeviceMetrics = async (_scope: { days?: 7 | 30 | 90 | number 
       coalesce(properties.cms_device_type, 'unknown') AS device_type,
       countIf(event = 'cms_route_viewed') AS route_views,
       countIf(event = 'cms_action_clicked') AS action_clicks,
-      countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]')) AS editor_opens,
+      countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]', '/pages/edit/[slug]', '/sites/[slug]/pages/edit/[slug]')) AS editor_opens,
       uniq(distinct_id) AS users
     FROM events
     WHERE timestamp >= now() - INTERVAL ${days(_scope.days)} DAY

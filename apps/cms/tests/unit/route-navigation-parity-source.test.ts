@@ -37,6 +37,7 @@ describe("OBS-103 route and navigation parity source checks", () => {
       "src/app/(frontend)/(admin)/sites/[slug]/onboarding/page.tsx",
       "src/app/(frontend)/(admin)/sites/[slug]/page.tsx",
       "src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/page.tsx",
+      "src/app/(frontend)/(admin)/sites/[slug]/pages/edit/[pageSlug]/page.tsx",
       "src/app/(frontend)/(admin)/sites/[slug]/pages/new/page.tsx",
       "src/app/(frontend)/(admin)/sites/[slug]/pages/page.tsx",
     ]) {
@@ -81,7 +82,13 @@ describe("OBS-103 route and navigation parity source checks", () => {
     expect(read("src/app/(frontend)/(admin)/pages/[id]/page.tsx")).toContain(
       'const readOnly = user.role === "viewer"'
     )
+    expect(read("src/app/(frontend)/(admin)/pages/edit/[pageSlug]/page.tsx")).toContain(
+      'const readOnly = user.role === "viewer"'
+    )
     expect(read("src/app/(frontend)/(admin)/pages/[id]/page.tsx")).toContain(
+      "readOnly={readOnly}"
+    )
+    expect(read("src/app/(frontend)/(admin)/pages/edit/[pageSlug]/page.tsx")).toContain(
       "readOnly={readOnly}"
     )
     expect(read("src/app/(frontend)/(admin)/media/page.tsx")).toContain(

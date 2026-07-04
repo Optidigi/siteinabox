@@ -29,6 +29,7 @@ one place.
 | `/sites/[slug]/analytics` | Allowed; unknown slug 404; mobile redirects to `/sites/[slug]` | Host-gated |
 | `/sites/[slug]/pages` | Allowed; unknown slug 404 | Host-gated |
 | `/sites/[slug]/pages/new` | Allowed; unknown slug 404 | Host-gated |
+| `/sites/[slug]/pages/edit/[pageSlug]` | Allowed when page slug belongs to slug tenant; otherwise 404 | Host-gated |
 | `/sites/[slug]/pages/[id]` | Allowed when page belongs to slug tenant; otherwise 404 | Host-gated |
 | `/sites/[slug]/media` | Allowed; unknown slug 404 | Host-gated |
 | `/sites/[slug]/forms` | Allowed; unknown slug 404 | Host-gated |
@@ -50,6 +51,7 @@ one place.
 | `/analytics` | Allowed; mobile redirects to `/` | Allowed; mobile redirects to `/` | Allowed; mobile redirects to `/` | Desktop-only sidebar/dashboard link |
 | `/pages` | Allowed | Allowed | Allowed | Visible to all |
 | `/pages/new` | Allowed | Allowed | Forbidden redirect | New affordance hidden for viewer |
+| `/pages/edit/[pageSlug]` | Allowed for own-tenant page; cross-tenant/missing 404 | Allowed for own-tenant page; cross-tenant/missing 404 | Allowed read-only for own-tenant page; cross-tenant/missing 404 | Row link visible to all; edit/delete/sidebar/save affordances hidden for viewer |
 | `/pages/[id]` | Allowed for own-tenant page; cross-tenant/missing 404 | Allowed for own-tenant page; cross-tenant/missing 404 | Allowed read-only for own-tenant page; cross-tenant/missing 404 | Row link visible to all; edit/delete/sidebar/save affordances hidden for viewer |
 | `/media` | Allowed | Allowed | Allowed read-only | Visible to all; upload/delete hidden for viewer |
 | `/forms` | Allowed | Allowed | Allowed | Visible to all |
@@ -59,7 +61,7 @@ one place.
 | `/users/[id]/edit` | Allowed when collection access can read the user; otherwise 404 | Forbidden redirect | Forbidden redirect | User edit affordance visible only to owner |
 | `/profile` | Allowed | Allowed | Allowed | Account menu visible to all |
 | `/api-key` | Shows non-super-admin explanatory placeholder | Shows non-super-admin explanatory placeholder | Shows non-super-admin explanatory placeholder | Account menu link hidden for non-super-admin |
-| `/sites`, `/sites/new`, `/sites/[slug]`, `/sites/[slug]/edit`, `/sites/[slug]/onboarding`, `/sites/[slug]/analytics`, `/sites/[slug]/pages`, `/sites/[slug]/pages/new`, `/sites/[slug]/pages/[id]`, `/sites/[slug]/media`, `/sites/[slug]/forms` | Host-gated or forbidden via super-admin route guards | Host-gated or forbidden via super-admin route guards | Host-gated or forbidden via super-admin route guards | Hidden |
+| `/sites`, `/sites/new`, `/sites/[slug]`, `/sites/[slug]/edit`, `/sites/[slug]/onboarding`, `/sites/[slug]/analytics`, `/sites/[slug]/pages`, `/sites/[slug]/pages/new`, `/sites/[slug]/pages/edit/[pageSlug]`, `/sites/[slug]/pages/[id]`, `/sites/[slug]/media`, `/sites/[slug]/forms` | Host-gated or forbidden via super-admin route guards | Host-gated or forbidden via super-admin route guards | Host-gated or forbidden via super-admin route guards | Hidden |
 | `/sites/[ownSlug]/settings`, `/sites/[ownSlug]/navigation`, `/sites/[ownSlug]/users` | Allowed through selected-tenant boundary | Forbidden redirect | Forbidden redirect | Hidden in sidebar; selected-site pill links back to `/` for tenant-host owner |
 | `/sites/[otherSlug]/settings`, `/sites/[otherSlug]/navigation`, `/sites/[otherSlug]/users` | 404 via selected-tenant boundary | Forbidden redirect before tenant boundary | Forbidden redirect before tenant boundary | Hidden |
 

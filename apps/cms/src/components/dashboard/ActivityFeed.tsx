@@ -9,9 +9,10 @@ import { statusVariant } from "@/lib/badge-helpers"
 import { relativeTime } from "@/lib/relativeTime"
 import { statusLabel } from "@/lib/i18nLabels"
 import type { ActivityEntry } from "@/lib/activity"
+import { pageEditorHref } from "@/lib/pageEditorUrls"
 
 // FN-2026-0046 + FN-2026-0057 — derive a drill-down href from the
-// activity entry where possible. Pages route to /pages/<id>; forms
+// activity entry where possible. Pages route to the slug editor URL; forms
 // route to /forms; etc.
 //
 // CRITICAL mode awareness (sister of the StatCards FN-0045 reviewer-
@@ -25,14 +26,14 @@ import type { ActivityEntry } from "@/lib/activity"
 type Mode = "super-admin" | "tenant"
 function entryHref(e: ActivityEntry, mode: Mode): string | null {
   if (mode === "tenant") {
-    if (e.type === "page") return `/pages/${e.id}`
+    if (e.type === "page") return pageEditorHref("/pages", { id: e.id, slug: e.pageSlug })
     if (e.type === "form") return "/forms"
     if (e.type === "media") return "/media"
     if (e.type === "settings") return "/settings"
     return null
   }
   if (!e.tenantSlug) return null
-  if (e.type === "page") return `/sites/${e.tenantSlug}/pages/${e.id}`
+  if (e.type === "page") return pageEditorHref(`/sites/${e.tenantSlug}/pages`, { id: e.id, slug: e.pageSlug })
   if (e.type === "form") return `/sites/${e.tenantSlug}/forms`
   if (e.type === "media") return `/sites/${e.tenantSlug}/media`
   if (e.type === "settings") return `/sites/${e.tenantSlug}/settings`

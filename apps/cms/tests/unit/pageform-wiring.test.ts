@@ -93,6 +93,8 @@ describe("PageForm wiring boundaries", () => {
     expect(pageForm).toContain("await Promise.all([themePromise, saveNavMembership(), saveChrome()])")
     expect(pageForm).toContain("await publishCurrentTenantStateAction(")
     expect(pageForm).toContain("auto-publish current CMS state after page")
+    expect(pageForm).toContain("savedValues.slug !== initial.slug")
+    expect(pageForm).toContain("router.replace(pageEditorHref(baseHref, { id: initial.id, slug: savedValues.slug }))")
     expect(pageForm).not.toContain('from "@/lib/actions/setTenantTheme"')
     expect(publishCurrentState).toContain("includeAllPublishedPages: true")
     expect(publishCurrentState).toContain("activate: true")

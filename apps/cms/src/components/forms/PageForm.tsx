@@ -78,6 +78,7 @@ import { useTranslations } from "next-intl"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
+import { pageEditorHref } from "@/lib/pageEditorUrls"
 import type { NavPage } from "@/lib/projection/resolveNav"
 import { SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
 import { MediaPicker } from "@/components/media/MediaPicker"
@@ -1253,7 +1254,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       !initial ||
       form.formState.isDirty ||
       initial.status !== "published"
-    let createdPageId: string | number | null = null
+    let createdPage: { id: string | number; slug?: string | null } | null = null
     if (pageWasDirty) {
       let res: Response
       try {
@@ -1313,7 +1314,10 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       }
       if (!initial) {
         const json = await res.json()
-        createdPageId = json.doc?.id ?? json.id
+        const createdId = json.doc?.id ?? json.id
+        createdPage = createdId == null
+          ? null
+          : { id: createdId, slug: json.doc?.slug ?? json.slug ?? savedValues.slug }
       }
     }
     try {
@@ -1321,7 +1325,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       if (autoPublishLive) {
         await publishCurrentTenantStateAction(
           tenantId,
-          `auto-publish current CMS state after page ${initial?.id ?? createdPageId ?? "new"} save`,
+          `auto-publish current CMS state after page ${initial?.id ?? createdPage?.id ?? "new"} save`,
         )
       }
     } catch (err) {
@@ -1334,7 +1338,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         cms_action: "page-save",
         cms_result: "failure",
         cms_object_type: "page",
-        cms_object_id: initial?.id ?? createdPageId ?? undefined,
+        cms_object_id: initial?.id ?? createdPage?.id ?? undefined,
         cms_error_type: "related-write",
         cms_dirty_count: dirtyCount,
         cms_duration_ms: performance.now() - saveStartedAt,
@@ -1367,15 +1371,17 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       cms_action: "page-save",
       cms_result: "success",
       cms_object_type: "page",
-      cms_object_id: initial?.id ?? createdPageId ?? undefined,
+      cms_object_id: initial?.id ?? createdPage?.id ?? undefined,
       cms_dirty_count: dirtyCount,
       cms_duration_ms: performance.now() - saveStartedAt,
     })
     await deletePageEditorDraft(pageDraftKey)
     // No duplicate notification — the top-right SaveButton already shows
     // the "Saved" / "1 unsaved" state.
-    if (!initial && createdPageId != null) {
-      router.replace(`${baseHref}/${createdPageId}`)
+    if (!initial && createdPage != null) {
+      router.replace(pageEditorHref(baseHref, createdPage))
+    } else if (initial && savedValues.slug !== initial.slug) {
+      router.replace(pageEditorHref(baseHref, { id: initial.id, slug: savedValues.slug }))
     } else {
       router.refresh()
     }

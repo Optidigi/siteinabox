@@ -12,8 +12,10 @@ describe("page editor mobile route header source contract", () => {
   it("hides the page title route header on mobile editor routes", () => {
     const routes = [
       "apps/cms/src/app/(frontend)/(admin)/pages/[id]/page.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/pages/edit/[pageSlug]/page.tsx",
       "apps/cms/src/app/(frontend)/(admin)/pages/new/page.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/page.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/edit/[pageSlug]/page.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/page.tsx",
     ]
 

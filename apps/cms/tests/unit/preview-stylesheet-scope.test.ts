@@ -95,8 +95,10 @@ describe("CMS preview renderer stylesheet scope", () => {
     expect(importingFiles.sort()).toEqual([
       "apps/cms/src/app/(editor-frame)/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/pages/[id]/layout.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/pages/edit/[pageSlug]/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/pages/new/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/[id]/layout.tsx",
+      "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/edit/[pageSlug]/layout.tsx",
       "apps/cms/src/app/(frontend)/(admin)/sites/[slug]/pages/new/layout.tsx",
     ])
     for (const file of importingFiles) expect(read(file)).toContain(canvasStylesheetImport)

@@ -31,7 +31,7 @@ const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variab
 // Pages without a `metadata.title` export inherit `default`. Pages with one
 // get `template` applied — e.g. `title: "Sites"` renders "Sites · SiteInABox".
 // Dynamic routes use `generateMetadata` to inject the tenant / page name (see
-// /sites/[slug]/page.tsx and /sites/[slug]/pages/[id]/page.tsx).
+// /sites/[slug]/page.tsx and /sites/[slug]/pages/edit/[pageSlug]/page.tsx).
 export const metadata: Metadata = {
   title: { default: "SiteInABox", template: "%s · SiteInABox" },
   icons: { icon: "/logos/favicon.svg" },

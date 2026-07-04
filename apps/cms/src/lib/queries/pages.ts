@@ -75,3 +75,20 @@ export async function getPageById(id: number | string) {
   const payload = await getPayload({ config })
   return payload.findByID({ collection: "pages", id, overrideAccess: true, depth: 2 })
 }
+
+export async function getPageBySlug(tenantId: number | string, slug: string) {
+  const payload = await getPayload({ config })
+  const result = await payload.find({
+    collection: "pages",
+    overrideAccess: true,
+    where: {
+      and: [
+        { tenant: { equals: tenantId } },
+        { slug: { equals: slug } },
+      ],
+    },
+    depth: 2,
+    limit: 1,
+  })
+  return result.docs[0] ?? null
+}

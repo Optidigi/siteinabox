@@ -8,7 +8,8 @@ import type { User } from "@/payload-types"
 import { usePathname } from "next/navigation"
 
 function isPageEditorPath(pathname: string) {
-  return /^\/pages\/(?:new|\d+)$/.test(pathname) || /^\/sites\/[^/]+\/pages\/(?:new|\d+)$/.test(pathname)
+  return /^\/pages\/(?:new|\d+|edit\/[^/]+)$/.test(pathname)
+    || /^\/sites\/[^/]+\/pages\/(?:new|\d+|edit\/[^/]+)$/.test(pathname)
 }
 
 export function SiteHeader({ user }: { user: Pick<User, "email" | "name" | "role"> }) {

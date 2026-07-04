@@ -131,8 +131,10 @@ current implementation only; it does not define new product behavior.
 - Super-admin site management: `/sites`, `/sites/new`, `/sites/[slug]` and
   child pages for edit, pages, forms, media, navigation, settings, users,
   onboarding, and analytics.
-- Page editor/canvas: `/pages/new`, `/pages/[id]`,
-  `/sites/[slug]/pages/new`, `/sites/[slug]/pages/[id]`.
+- Page editor/canvas: `/pages/new`, `/pages/edit/[pageSlug]`,
+  `/sites/[slug]/pages/new`, `/sites/[slug]/pages/edit/[pageSlug]`.
+  Numeric `/pages/[id]` and `/sites/[slug]/pages/[id]` remain compatibility
+  routes for old links.
 - Generation operations: `/generation-runs`,
   `/generation-runs/[id]`, and `/generation-runs/submissions/[id]`.
 - Customer preview/customizer: `https://preview.siteinabox.nl/{clientSlug}` and
