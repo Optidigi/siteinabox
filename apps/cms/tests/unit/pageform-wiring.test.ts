@@ -64,15 +64,16 @@ describe("PageForm wiring boundaries", () => {
 
   it("keeps Amicare-only rich text canvas treatment scoped to Amicare renderers", () => {
     const richTextCanvas = read("src/components/editor/canvas/blocks/RichText.tsx")
-    const mobileSectionEdit = read("src/components/editor/canvas/mobile/mobile-section-edit.tsx")
+    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
+    const frameCanvasSurface = read("src/components/editor-frame/FrameCanvasSurface.tsx")
 
     expect(richTextCanvas).toContain('tenantRendererKey === "amicare" ? splitAmicareIntro(block.body) : null')
     expect(richTextCanvas).toContain('className="amicare-richtext-body prose mx-auto mt-10')
     expect(richTextCanvas).toContain("splitBody.body.children.length > 0")
-    expect(mobileSectionEdit).toContain('data-siab-site-renderer={tenantRendererKey === "amicare" ? "true" : undefined}')
-    expect(mobileSectionEdit).toContain('data-tenant-renderer={tenantRendererKey === "amicare" ? "amicare" : undefined}')
-    expect(mobileSectionEdit).toContain('className="rt-canvas w-full"')
-    expect(mobileSectionEdit).toContain("tenantRendererKey={tenantRendererKey}")
+    expect(canvasSurface).toContain('const useSharedAmicareShell = tenantRendererKey === "amicare"')
+    expect(canvasSurface).toContain("tenantRendererKey={tenantRendererKey}")
+    expect(frameCanvasSurface).toContain("rendererSettings={settings}")
+    expect(frameCanvasSurface).toContain("forceSharedRendererShell")
   })
 
   it("publishes official tenant saves without a separate live-publish button", () => {

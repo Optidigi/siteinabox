@@ -212,4 +212,4 @@ Use `context7` for current library documentation when docs are needed. Use
 Before touching `src/components/editor/canvas/` or canvas registry items, read
 `docs/runbooks/canvas-architecture.md`. This covers the selection model,
 app-shell layout, theme bar, sidebar drill-down, block renderers, inline-edit
-primitives, and mobile bottom sheet.
+primitives, and the parent-owned mobile frame editor.

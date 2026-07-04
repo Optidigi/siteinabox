@@ -128,7 +128,6 @@ describe("page editor iframe bridge source contract", () => {
     expect(form).toContain("showGutters: false")
     expect(form).toContain("allowInlineEditing: false")
     expect(form).toContain("<MobileFrameEditor")
-    expect(form).not.toContain("MobileBlockInspectorSheet")
     expect(form).not.toContain("mobileBlockInspectorIndex")
   })
 

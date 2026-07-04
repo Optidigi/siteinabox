@@ -132,23 +132,27 @@ slugs/domains. Generic style presets no longer expose `warm-care`, and the
 active Tailwind Plus, Preline, and Tailblocks renderer variants now lean on SIAB
 theme tokens for colors and radii instead of provider hard-coded palette values.
 
-Same-day iframe editor follow-up completed the desktop and mobile iframe shape for
-the CMS page editor and customer preview surfaces. `PageForm` remains the RHF/save/
-ThemeBar/sidebar source of truth, while the authenticated `/editor-frame`
-iframe owns rendering, inline editing, DnD, gutters, chrome selection, and block
-inspector requests through the shared `iframe-editor` protocol on both desktop and
-mobile. Mobile `edit.start(mode=settings)` opens parent-owned
-`MobileBlockInspectorSheet` (`BlockFormFields` + delete in a Vaul sheet) instead
-of switching to the desktop sidebar. Customer preview uses the separate
-`/renderer-frame` route and remains token-only: frames accept only `page.replace`
-and `theme.patch`. The previous in-process editor path and the
-`NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch were removed.
+Same-day iframe editor follow-up completed the desktop iframe shape for the CMS
+page editor and customer preview surfaces. `PageForm` remains the RHF/save/
+ThemeBar/sidebar source of truth, while the authenticated `/editor-frame` iframe
+owns rendering, inline editing, DnD, gutters, chrome selection, and block
+inspector requests through the shared `iframe-editor` protocol on desktop.
+Customer preview uses the separate `/renderer-frame` route and remains
+token-only: frames accept only `page.replace` and `theme.patch`. The previous
+in-process editor path and the `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch were
+removed.
 
-Follow-up on 2026-07-04 removed the nested scrollbar from page editor canvas
-mode. `PageEditorFrameHost` now auto-sizes canvas-view iframes to the rendered
-frame document height, letting the parent editor page scroll naturally, while
-sidebar/read-only view keeps the bounded viewport-height iframe needed by the
-sticky inspector layout.
+Follow-up on 2026-07-04 made `MobileFrameEditor` the canonical phone editor
+shell on top of the iframe renderer. The parent owns the section list, focused
+section screen, page/SEO settings, save/close/trash pills, media/icon sheets,
+and the two-detent bottom inspector. The iframe renders only the selected
+section in focused mode, with chrome/gutters/add controls hidden and inline
+editing disabled on phone. Section opening happens only from the section list,
+and section reorder remains list-only. `PageEditorFrameHost` auto-sizes
+canvas-view iframes to the rendered frame document height, including focused
+sections, so the parent editor page scrolls naturally while sidebar/read-only
+view keeps the bounded viewport-height iframe needed by the sticky inspector
+layout.
 
 ### Phase 7 — AI generation service
 

@@ -6,12 +6,16 @@ Reference for how the page editor's canvas + sidebar surfaces are wired. The hig
 
 `PageForm` hosts a 2-way segmented control (`ModeToggle`) that toggles between two views, persisted to `users.editorMode` via the `setUserEditorMode` server action. Initial view comes from `resolveDefaultMode(userEditorMode, manifest)` — user pref wins over the manifest's `defaultMode`. `EditorMode = "canvas" | "sidebar"` (`src/lib/editor/editorMode.ts`); the legacy `form` / `preview` modes were removed.
 
-- **Canvas view** — WYSIWYG: inline-edit every element directly on the canvas. The page's SEO fields and Danger Zone render as cards *below* the canvas.
+- **Canvas view** — Desktop WYSIWYG: inline-edit every element directly on the
+  canvas. On phone, `MobileFrameEditor` owns the section list and focused
+  selected-section shell, while the iframe renders that selected section with
+  inline editing disabled. The page's SEO fields and Danger Zone render as cards
+  *below* the desktop canvas.
 - **Sidebar view** — Shopify-customizer style: the canvas is select-only, and a right-hand sidebar (`SidebarDrillDown`) is a drill-down state machine: block list ↔ selected-block form ↔ page settings (SEO + Danger Zone).
 
 ## Selection model
 
-An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/components/editor/canvas/elementPath.ts`) is the stable address of one editable element. `CanvasSelectionContext` carries `{ view, selected, select }`; `PageForm` owns the `selected` state and provides it. The inline primitives read this context: in `sidebar` view they render read-only and `select(elementPath)` on click; in `canvas` view they edit in place. The desktop sidebar is composed by `PageForm`, not the iframe frame route.
+An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/components/editor/canvas/elementPath.ts`) is the stable address of one editable element. `CanvasSelectionContext` carries `{ view, selected, select }`; `PageForm` owns the `selected` state and provides it. The inline primitives read this context: in `sidebar` view they render read-only and `select(elementPath)` on click; in desktop `canvas` view they edit in place. On phone, inline editing is disabled and focused-section editing opens only from the `MobileFrameEditor` section list. The desktop sidebar is composed by `PageForm`, not the iframe frame route.
 
 ## App-shell layout
 
@@ -19,12 +23,16 @@ An `ElementPath` (`{ blockIndex, field, itemIndex?, subField? }`, `src/component
 
 ## Iframe editor frame
 
-Desktop and mobile page editing render the visual pane through `PageEditorFrameHost`
-and the authenticated `/editor-frame/pages/[id]` route. The parent `PageForm`
-still owns RHF, save, ThemeBar, navigation membership, page settings, sidebar
-drill-down, media pickers, and the unsaved-work guard. The iframe owns only the
-rendered visual surface: block rendering, inline editing, DnD, gutters, and
-site-chrome selection. All parent/frame communication uses the typed
+Desktop page editing renders the visual pane through `PageEditorFrameHost` and
+the authenticated `/editor-frame/pages/[id]` route. Mobile page editing is
+parent-owned by `MobileFrameEditor`: the parent renders the section list and
+focused-section shell, while the iframe renders only the focused selected
+section. The parent `PageForm` still owns RHF, save, ThemeBar, navigation
+membership, page settings, sidebar drill-down, media pickers, and the
+unsaved-work guard. On desktop, the iframe owns the rendered visual surface:
+block rendering, inline editing, DnD, gutters, and site-chrome selection. On
+phone, there is no inline editing; section open and reorder happen only from the
+section list. All parent/frame communication uses the typed
 `packages/contracts/src/iframe-editor.ts` postMessage protocol; raw HTML, raw
 CSS, arbitrary class payloads, and executable source do not cross the boundary.
 
@@ -114,44 +122,49 @@ OBS-62 responsive contract: desktop canvas renders at actual pane width, not a f
 
 ## Canvas ↔ sidebar selection sync
 
-Clicking an inline element in the canvas calls `select(elementPath)`; `useScrollToSelection` (`src/components/editor/canvas/useScrollToSelection.ts`) watches `selected` and scrolls the chosen element into the canvas viewport, then stamps `data-rt-pulse="true"` to trigger the CSS arrival-pulse animation (`@keyframes rt-arrival-pulse` in `src/styles/siab.css`, with `prefers-reduced-motion` guard). `SidebarDrillDown` syncs to the external `selectedBlockIndex` via a `useEffect` — when something is selected from outside the drill-down (e.g. a canvas click) it drills the panel to the matching block. `CanvasSelectionContext.select` accepts a `React.SetStateAction<ElementPath | null>` so callers can derive the next selection from the previous.
+On desktop, clicking an inline element in the canvas calls `select(elementPath)`; `useScrollToSelection` (`src/components/editor/canvas/useScrollToSelection.ts`) watches `selected` and scrolls the chosen element into the canvas viewport, then stamps `data-rt-pulse="true"` to trigger the CSS arrival-pulse animation (`@keyframes rt-arrival-pulse` in `src/styles/siab.css`, with `prefers-reduced-motion` guard). `SidebarDrillDown` syncs to the external `selectedBlockIndex` via a `useEffect` — when something is selected from outside the drill-down (e.g. a canvas click) it drills the panel to the matching block. `CanvasSelectionContext.select` accepts a `React.SetStateAction<ElementPath | null>` so callers can derive the next selection from the previous. On phone, focused-section open is driven only by the `MobileFrameEditor` section list, not by tapping inline iframe content.
 
 ## Selection remap on mutation
 
-Block-array mutations that reorder, delete, or insert blocks must remap the active `ElementPath` so the selection doesn't drift. `remapSelectionAfterReorder`, `remapSelectionAfterDelete`, and `remapSelectionAfterInsert` (pure helpers in `src/components/editor/canvas/elementPath.ts`) handle this. `PageForm` applies the remap when handling iframe `blocks.*` protocol messages and when composing sidebar/canvas mutation handlers.
+Block-array mutations that reorder, delete, or insert blocks must remap the active `ElementPath` so the selection doesn't drift. `remapSelectionAfterReorder`, `remapSelectionAfterDelete`, and `remapSelectionAfterInsert` (pure helpers in `src/components/editor/canvas/elementPath.ts`) handle this. `PageForm` applies the remap when handling iframe `blocks.*` protocol messages and when composing sidebar/canvas mutation handlers. On phone, reorder is available only from the `MobileFrameEditor` section list.
 
 ## Mobile (<1280px)
 
 Mobile uses the same `PageEditorFrameHost` + `/editor-frame` route as desktop,
 including `/editor-frame/pages/new` for unsaved drafts. The frame route boots
-with `createEditorFrameNewPagePlaceholder()` until the parent sends `page.replace`.
-`PageForm` still owns RHF, the floating `MobileSavePill`, and save/status feedback;
-the iframe owns the rendered surface, inline editing, DnD, gutters, and chrome
-selection. Mobile always drives the iframe in `canvas` view (inline editing) even
-when the persisted desktop editor mode is `sidebar`; read-only viewers use
-`sidebar` (select-only) in the frame.
+with `createEditorFrameNewPagePlaceholder()` until the parent sends
+`page.replace`. `PageForm` still owns RHF, save/status feedback, the floating
+`MobileSavePill`, mobile screen state, page/SEO settings, media/icon sheets, and
+the unsaved-work guard.
 
-When the iframe requests block settings (`edit.start` with `mode: "settings"`),
-`PageForm` opens `MobileBlockInspectorSheet` — a parent-owned Vaul bottom sheet
-hosting `BlockFormFields`, media pickers, and delete. Closing the sheet returns
-to iframe canvas editing; block selection stays on the requested block via RHF/
-`selection.set`. This replaces the legacy same-DOM `CanvasMobile` field inspector
-without restoring in-process canvas rendering.
+`MobileFrameEditor` is the canonical phone shell. It renders a parent-owned
+section list first; sections can be opened only from that list. Reorder, add,
+page settings, SEO, and page delete live on the list/settings screens. Opening a
+section switches the iframe into `focusedSection` mobile mode: the iframe renders
+only that selected section, hides site chrome/gutters/add controls, and treats
+the section as select-only. Inline editing is intentionally unavailable on
+phones.
+
+The focused-section screen keeps only the mobile editor chrome that matters: a
+top-left close pill, top-right save pill, animated trash pill beside save while
+near the top of the page, and a compact section switcher with previous/next
+buttons. The route-level page title row and mobile sidebar trigger are hidden on
+phone editor routes to preserve vertical space.
+
+Field editing is parent-owned through `MobileInspectorBar`, which is always
+mounted in focused-section mode. The inspector is collapsed to its handle by
+default, opens to the compact detent when a field is selected, and expands to the
+editing detent when the user focuses an editable control or drags it upward. The
+two-detent editing model is `0.42` compact and `0.92` editing; the `0.08`
+collapsed snap exists only for the handle. Media and icon picking are hosted in
+the parent document through `MobileMediaSheet` and `MobileIconSheet`.
 
 `PageEditorFrameHost` sets `data-siab-editor-frame-layout="mobile"` and keeps a
 `calc(100dvh - 4.5rem)` minimum so the editor clears the site header and the
 floating save pill. Canvas view auto-sizes the iframe to the rendered document
-height so the parent editor page scrolls naturally; sidebar/read-only view keeps
-the bounded viewport-height iframe needed by the sticky inspector layout. There
-is no `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch.
-
-Legacy mobile layout primitives under `src/components/editor/canvas/mobile/` remain
-for reference and unit contracts; only shared pieces such as `vaulBottomSnapCss`,
-`useInspectorKeyboardLock`, and `MobileMediaSheet` are wired into the iframe mobile
-inspector path.
-
-Mobile editor controls follow the same pill language as the floating save pill.
-The iframe mobile inspector uses a single `0.92` snap detent (not the legacy
-`[0.42, 0.92]` field-level snap contract).
+height, including focused-section mode, so the parent editor page owns scrolling
+and there is no iframe/body nested scrollbar. Sidebar/read-only view keeps the
+bounded viewport-height iframe needed by the sticky inspector layout. There is no
+`NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch.
 
 ## Visual auditing

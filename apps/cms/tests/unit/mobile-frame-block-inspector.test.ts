@@ -9,7 +9,7 @@ function read(relativePath: string) {
 }
 
 describe("mobile iframe native editor source contract", () => {
-  it("hosts parent-owned section list, focused frame, and two-detent field inspector", () => {
+  it("hosts the canonical parent-owned section list, focused frame, and two-detent inspector", () => {
     const shell = read("apps/cms/src/components/editor/iframe/MobileFrameEditor.tsx")
     const pageForm = read("apps/cms/src/components/forms/PageForm.tsx")
 
@@ -66,19 +66,19 @@ describe("mobile iframe native editor source contract", () => {
 
   it("keeps nonce-bearing vaul snap css on the two-detent mobile field inspector", () => {
     const sharedCss = read("apps/cms/src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
-    const legacyInspector = read("apps/cms/src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+    const inspector = read("apps/cms/src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
 
     expect(sharedCss).toContain("export const VAUL_BOTTOM_SNAP_CSS")
     expect(sharedCss).toContain("[data-vaul-handle]")
-    expect(legacyInspector).toContain('from "@/components/editor/canvas/mobile/vaulBottomSnapCss"')
-    expect(legacyInspector).toContain("data-mobile-inspector-vaul-css")
-    expect(legacyInspector).toContain("const SNAP_POINTS: MobileSnap[] = [MOBILE_INSPECTOR_COLLAPSED_SNAP, 0.42, 0.92]")
-    expect(legacyInspector).toContain("dismissible={false}")
-    expect(legacyInspector).toContain('if (isIdle) setSelected({ blockIndex, field: "" })')
-    expect(legacyInspector).toContain("useInspectorKeyboardLock(!isIdle && !isDirectMediaSelection)")
-    expect(legacyInspector).toContain('import { BlockFormFields } from "@/components/editor/fields/block-form-fields"')
-    expect(legacyInspector).toContain('const isBlockSelection = state.selected?.field === ""')
-    expect(legacyInspector).toContain("<BlockFormFields")
+    expect(inspector).toContain('from "@/components/editor/canvas/mobile/vaulBottomSnapCss"')
+    expect(inspector).toContain("data-mobile-inspector-vaul-css")
+    expect(inspector).toContain("const SNAP_POINTS: MobileSnap[] = [MOBILE_INSPECTOR_COLLAPSED_SNAP, 0.42, 0.92]")
+    expect(inspector).toContain("dismissible={false}")
+    expect(inspector).toContain('if (isIdle) setSelected({ blockIndex, field: "" })')
+    expect(inspector).toContain("useInspectorKeyboardLock(!isIdle && !isDirectMediaSelection)")
+    expect(inspector).toContain('import { BlockFormFields } from "@/components/editor/fields/block-form-fields"')
+    expect(inspector).toContain('const isBlockSelection = state.selected?.field === ""')
+    expect(inspector).toContain("<BlockFormFields")
   })
 
   it("keeps mobile editor context actions idempotent to avoid section-open render loops", () => {

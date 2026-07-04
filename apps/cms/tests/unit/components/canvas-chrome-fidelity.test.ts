@@ -123,7 +123,6 @@ describe("canvas chrome fidelity", () => {
     const confirmDialog = read("src/components/confirm-dialog.tsx")
     const gutterOverlay = read("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx")
     const sidebar = read("src/components/editor/sidebar-drill-down.tsx")
-    const mobileInspectorSheet = read("src/components/editor/iframe/MobileBlockInspectorSheet.tsx")
     const blockFormFields = read("src/components/editor/fields/block-form-fields.tsx")
     const arrayItemCard = read("src/components/editor/fields/array-item-card.tsx")
     const fieldRenderer = read("src/components/editor/FieldRenderer.tsx")
@@ -141,7 +140,6 @@ describe("canvas chrome fidelity", () => {
     expect(confirmDialog).toContain("data-siab-canvas-chrome={canvasChrome}")
     expect(gutterOverlay).toContain('data-siab-canvas-chrome={`${dataChrome}-menu`}')
     expect(sidebar).toContain('data-siab-canvas-chrome="sidebar-block-menu"')
-    expect(mobileInspectorSheet).toContain('data-siab-canvas-chrome="mobile-block-inspector"')
     expect(blockFormFields).toContain('data-siab-canvas-chrome="block-field-select"')
     expect(arrayItemCard).toContain('data-siab-canvas-chrome="array-field-select"')
     expect(fieldRenderer).toContain('data-siab-canvas-chrome="rich-text-field-select"')
@@ -165,7 +163,6 @@ describe("canvas chrome fidelity", () => {
       confirmDialog,
       gutterOverlay,
       sidebar,
-      mobileInspectorSheet,
       blockFormFields,
       arrayItemCard,
       fieldRenderer,

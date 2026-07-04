@@ -4,23 +4,24 @@ import { describe, expect, it } from "vitest"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("sidebar inspector composition", () => {
-  it("keeps legacy mobile inspector layout primitives available for reference", () => {
+  it("keeps the active mobile iframe editor layout primitives available for composition", () => {
     const sectionList = read("src/components/editor/canvas/mobile/mobile-section-list.tsx")
-    const sectionEdit = read("src/components/editor/canvas/mobile/mobile-section-edit.tsx")
     const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
     const pageSettings = read("src/components/editor/canvas/mobile/mobile-page-settings.tsx")
     const seoSettings = read("src/components/editor/canvas/mobile/mobile-seo-settings.tsx")
+    const frameEditor = read("src/components/editor/iframe/MobileFrameEditor.tsx")
 
     expect(sectionList).toContain("export interface MobileSectionListSlotContext")
     expect(sectionList).toContain("export const MobileSectionListLayout")
-    expect(sectionEdit).toContain("export interface MobileSectionEditSlotContext")
-    expect(sectionEdit).toContain("export const MobileSectionEditLayout")
     expect(inspectorBar).toContain("export interface MobileInspectorBarSlotContext")
     expect(inspectorBar).toContain("export const MobileInspectorBarLayout")
     expect(pageSettings).toContain("export interface MobilePageSettingsSlotContext")
     expect(pageSettings).toContain("export const MobilePageSettingsLayout")
     expect(seoSettings).toContain("export interface MobileSeoSettingsSlotContext")
     expect(seoSettings).toContain("export const MobileSeoSettingsLayout")
+    expect(frameEditor).toContain("function MobileFocusedSection")
+    expect(frameEditor).toContain("<MobileSectionList")
+    expect(frameEditor).toContain("<MobileInspectorBar")
   })
 
   it("keeps the registry page settings state exposed through a host-composable slot", () => {
