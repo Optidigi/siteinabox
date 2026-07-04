@@ -147,7 +147,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
             <FormLabel>{field.label ?? field.name}</FormLabel>
             <Select value={f.value ?? ""} onValueChange={f.onChange}>
               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent>
+              <SelectContent data-siab-editor-ui data-siab-canvas-chrome="rich-text-field-select">
                 {field.options.map((opt: any) => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}

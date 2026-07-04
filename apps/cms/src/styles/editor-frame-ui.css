@@ -1,7 +1,6 @@
 /* Editor chrome in the page iframe must use CMS shadcn tokens.
-   generated-site-renderer.css registers tenant @theme --color-* at :root;
-   utilities like bg-background/95 and hover:bg-accent read semantic tokens.
-   This block is intentionally unlayered so it wins over @layer utilities. */
+   The editor-frame layout owns the active theme class; this block only
+   rebinds Tailwind utility aliases so renderer @theme aliases cannot win. */
 
 :is(
   [data-siab-editor-ui],
@@ -11,26 +10,6 @@
   [data-radix-popper-content-wrapper]:has([data-siab-editor-ui]),
   [data-radix-popper-content-wrapper]:has([data-siab-editor-ui]) *
 ) {
-  --background: #f7f8f9;
-  --foreground: #191b1e;
-  --card: #ffffff;
-  --card-foreground: #191b1e;
-  --popover: #ffffff;
-  --popover-foreground: #191b1e;
-  --primary: #191b1e;
-  --primary-foreground: #f7f8f9;
-  --secondary: #f0f2f3;
-  --secondary-foreground: #35383f;
-  --muted: #edeff1;
-  --muted-foreground: #838a93;
-  --accent: #f0f2f3;
-  --accent-foreground: #35383f;
-  --destructive: #dc2626;
-  --destructive-foreground: #ffffff;
-  --border: #dfe2e5;
-  --input: #dfe2e5;
-  --ring: #5c6168;
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

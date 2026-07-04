@@ -73,6 +73,8 @@ export function MobileBlockInspectorSheet({
           />
           <Vaul.Content
             data-mobile-frame-block-inspector
+            data-siab-editor-ui
+            data-siab-canvas-chrome="mobile-block-inspector"
             aria-label={t("sectionInspector")}
             className="fixed inset-x-0 top-0 z-50 flex h-[100svh] flex-col overscroll-contain rounded-t-[10px] border-t border-border bg-background outline-none pointer-events-none"
           >
@@ -127,12 +129,13 @@ export function MobileBlockInspectorSheet({
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={t("deleteBlockTitle")}
-        description={t("deleteBlockDescription", { label })}
-        confirmLabel={t("deleteBlock")}
-        variant="destructive"
-        onConfirm={async () => {
-          onDeleteBlock(blockIndex)
-        }}
+      description={t("deleteBlockDescription", { label })}
+      confirmLabel={t("deleteBlock")}
+      variant="destructive"
+      canvasChrome="block-delete-dialog"
+      onConfirm={async () => {
+        onDeleteBlock(blockIndex)
+      }}
       />
     </>
   )

@@ -452,7 +452,11 @@ const BlockListRow: React.FC<{
             <MoreVertical className="size-3.5" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent
+          align="end"
+          data-siab-editor-ui
+          data-siab-canvas-chrome="sidebar-block-menu"
+        >
           <DropdownMenuItem
             onClick={(e) => {
               e.stopPropagation()
@@ -550,6 +554,7 @@ const BlockFormState: React.FC<{
       description={t("deleteBlockDescription", { label })}
       confirmLabel={t("deleteBlock")}
       variant="destructive"
+      canvasChrome="block-delete-dialog"
       onConfirm={async () => {
         onDelete()
       }}

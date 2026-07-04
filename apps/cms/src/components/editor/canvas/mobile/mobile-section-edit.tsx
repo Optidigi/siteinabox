@@ -229,6 +229,7 @@ export const MobileSectionEdit: React.FC<MobileSectionEditProps> = ({
         description={t("deleteBlockDescription", { label })}
         confirmLabel={t("deleteSection")}
         variant="destructive"
+        canvasChrome="block-delete-dialog"
         onConfirm={async () => {
           deleteBlock(index)
           onBack()

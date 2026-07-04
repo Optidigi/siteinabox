@@ -36,6 +36,8 @@ export const MobileIconSheet: React.FC<MobileIconSheetProps> = ({ open, onOpenCh
         side="bottom"
         className="h-[100dvh] z-[60] overflow-y-auto px-4 pb-4"
         data-mobile-icon-sheet
+        data-siab-editor-ui
+        data-siab-canvas-chrome="mobile-icon-sheet"
       >
         <SheetHeader className="pb-3">
           <SheetTitle>{t("chooseIcon")}</SheetTitle>

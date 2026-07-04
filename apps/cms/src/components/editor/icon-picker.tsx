@@ -47,7 +47,12 @@ export const IconPicker: React.FC<IconPickerProps> = ({ value, onChange, trigger
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="start">
+      <PopoverContent
+        className="w-80 p-2"
+        align="start"
+        data-siab-editor-ui
+        data-siab-canvas-chrome="icon-picker"
+      >
         <div className="flex items-center gap-2 mb-2">
           <Input
             value={filter}

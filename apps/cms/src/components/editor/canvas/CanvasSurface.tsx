@@ -392,6 +392,7 @@ const CanvasPresetRow: React.FC<{
         title={t("deletePresetTitle", { name: preset.name })}
         description={t("deletePresetDescription")}
         confirmLabel={t("deletePreset")}
+        canvasChrome="block-preset-delete-dialog"
         onConfirm={async () => {
           await onDelete(preset)
           status.success(t("deletedPreset", { name: preset.name }))
@@ -1068,6 +1069,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
             description={t("deleteBlockDescription", { label: deleteTargetLabel })}
             confirmLabel={t("deleteBlock")}
             variant="destructive"
+            canvasChrome="block-delete-dialog"
             onConfirm={async () => {
               if (deleteTargetIndex == null) return
               deleteBlockWithRemap(deleteTargetIndex)

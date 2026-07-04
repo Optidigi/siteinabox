@@ -118,16 +118,62 @@ describe("canvas chrome fidelity", () => {
     const blockChip = read("src/components/editor/richText/toolbar/block-chip.tsx")
     const linkPopover = read("src/components/editor/richText/toolbar/link-popover.tsx")
     const themedNodeDialog = read("src/components/editor/richText/toolbar/themed-node-dialog.tsx")
+    const iconPicker = read("src/components/editor/icon-picker.tsx")
+    const mediaPicker = read("src/components/media/MediaPicker.tsx")
+    const confirmDialog = read("src/components/confirm-dialog.tsx")
+    const gutterOverlay = read("src/components/editor/canvas/CanvasChromeGutterOverlay.tsx")
+    const sidebar = read("src/components/editor/sidebar-drill-down.tsx")
+    const mobileInspectorSheet = read("src/components/editor/iframe/MobileBlockInspectorSheet.tsx")
+    const blockFormFields = read("src/components/editor/fields/block-form-fields.tsx")
+    const arrayItemCard = read("src/components/editor/fields/array-item-card.tsx")
+    const fieldRenderer = read("src/components/editor/FieldRenderer.tsx")
+    const mobileComponentEditor = read("src/components/editor/canvas/mobile/mobile-component-editor.tsx")
+    const mobileIconSheet = read("src/components/editor/canvas/mobile/mobile-icon-sheet.tsx")
+    const mobileMediaSheet = read("src/components/editor/canvas/mobile/mobile-media-sheet.tsx")
+    const mobileInspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
 
     expect(canvasSurface).toContain('data-siab-canvas-chrome="block-picker-dialog"')
     expect(inlineImage).toContain('data-siab-canvas-chrome="inline-image-picker"')
     expect(floatingToolbar).toContain('data-siab-canvas-chrome="rich-text-toolbar"')
     expect(slashMenu).toContain('data-siab-canvas-chrome="rich-text-slash-menu"')
+    expect(iconPicker).toContain('data-siab-canvas-chrome="icon-picker"')
+    expect(mediaPicker).toContain('data-siab-canvas-chrome="media-picker"')
+    expect(confirmDialog).toContain("data-siab-canvas-chrome={canvasChrome}")
+    expect(gutterOverlay).toContain('data-siab-canvas-chrome={`${dataChrome}-menu`}')
+    expect(sidebar).toContain('data-siab-canvas-chrome="sidebar-block-menu"')
+    expect(mobileInspectorSheet).toContain('data-siab-canvas-chrome="mobile-block-inspector"')
+    expect(blockFormFields).toContain('data-siab-canvas-chrome="block-field-select"')
+    expect(arrayItemCard).toContain('data-siab-canvas-chrome="array-field-select"')
+    expect(fieldRenderer).toContain('data-siab-canvas-chrome="rich-text-field-select"')
+    expect(mobileComponentEditor).toContain('data-siab-canvas-chrome="mobile-field-select"')
+    expect(mobileIconSheet).toContain('data-siab-canvas-chrome="mobile-icon-sheet"')
+    expect(mobileMediaSheet).toContain('data-siab-canvas-chrome="mobile-media-sheet"')
+    expect(mobileInspectorBar).toContain('data-siab-canvas-chrome="mobile-inspector-bar"')
     for (const source of [fontChip, styleChip, colorChip, blockChip]) {
       expect(source).toContain('data-siab-canvas-chrome="rich-text-popover"')
       expect(source).toContain("data-siab-editor-ui")
     }
-    for (const source of [canvasSurface, inlineImage, floatingToolbar, slashMenu, linkPopover, themedNodeDialog]) {
+    for (const source of [
+      canvasSurface,
+      inlineImage,
+      floatingToolbar,
+      slashMenu,
+      linkPopover,
+      themedNodeDialog,
+      iconPicker,
+      mediaPicker,
+      confirmDialog,
+      gutterOverlay,
+      sidebar,
+      mobileInspectorSheet,
+      blockFormFields,
+      arrayItemCard,
+      fieldRenderer,
+      mobileComponentEditor,
+      mobileIconSheet,
+      mobileMediaSheet,
+      mobileInspectorBar,
+    ]) {
       expect(source).toContain("data-siab-editor-ui")
     }
     expect(linkPopover).toContain('data-siab-canvas-chrome="rich-text-dialog"')
@@ -291,6 +337,7 @@ describe("canvas chrome fidelity", () => {
     expect(editorFrameUi).toContain("[data-siab-editor-ui]")
     expect(editorFrameUi).toContain("[data-siab-editor-ui] *")
     expect(editorFrameUi).toContain("[data-radix-popper-content-wrapper]:has([data-siab-editor-ui]) *")
+    expect(editorFrameUi).toContain("--color-background: var(--background)")
     expect(editorFrameUi).toContain("--color-card-foreground: var(--card-foreground)")
     expect(editorFrameUi).toContain("--color-primary: var(--primary)")
     expect(editorFrameUi).toContain("--color-secondary: var(--secondary)")
@@ -300,6 +347,7 @@ describe("canvas chrome fidelity", () => {
     expect(editorFrameUi).toContain('[data-siab-canvas-chrome="insert-gap"]')
     expect(editorFrameUi).toContain("background-color: transparent")
     expect(editorFrameUi).toContain(':is(button, [role="button"], [role="menuitem"]):is(:hover, :focus-visible, [data-state="open"])')
+    expect(editorFrameUi).not.toMatch(/--(?:background|foreground|card|card-foreground|popover|popover-foreground|primary|primary-foreground|secondary|secondary-foreground|muted|muted-foreground|accent|accent-foreground|border|input|ring):\s*(?:#[0-9a-fA-F]{3,8}|oklch\(|rgb\(|hsl\()/)
 
     const affordances = read("src/styles/editor-frame-canvas-affordances.css")
     expect(affordances).toContain(".rt-canvas .rt-slot")

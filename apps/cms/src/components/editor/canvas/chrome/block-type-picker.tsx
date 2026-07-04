@@ -256,6 +256,7 @@ function PresetRow({
         title={t("deletePresetTitle", { name: preset.name })}
         description={t("deletePresetDescription")}
         confirmLabel={t("deletePreset")}
+        canvasChrome="block-preset-delete-dialog"
         onConfirm={async () => {
           await onDelete(preset)  // throws on failure; ConfirmDialog handles error
           onDeleted()

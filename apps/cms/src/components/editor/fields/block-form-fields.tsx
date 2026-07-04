@@ -123,7 +123,7 @@ const FieldRenderer: React.FC<{
           <SelectTrigger className="w-full">
             <SelectValue placeholder={spec.label} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent data-siab-editor-ui data-siab-canvas-chrome="block-field-select">
             {(spec.options ?? []).map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

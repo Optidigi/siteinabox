@@ -61,6 +61,8 @@ export const MobileMediaSheet: React.FC<MobileMediaSheetProps> = ({
         showCloseButton={false}
         className="h-[100dvh] z-[60] overflow-y-auto px-4 pb-4"
         data-mobile-media-sheet
+        data-siab-editor-ui
+        data-siab-canvas-chrome="mobile-media-sheet"
       >
         <SheetHeader className="flex-row items-center justify-between gap-3 pb-3">
           <SheetTitle>{t("chooseImage")}</SheetTitle>

@@ -9,6 +9,7 @@ import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"
 import { defaultLocale, localeCookieName, resolveLocale } from "@/i18n/config"
 import { loadMessages } from "@/i18n/messages"
 import { StatusFeedbackProvider } from "@/components/status-feedback"
+import { ThemeProvider } from "@/components/theme-provider"
 
 export default async function EditorFrameRootLayout({ children }: { children: React.ReactNode }) {
   const headerStore = await headers()
@@ -25,9 +26,11 @@ export default async function EditorFrameRootLayout({ children }: { children: Re
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <CspNonceProvider nonce={nonce}>
-            <StatusFeedbackProvider>
-              {children}
-            </StatusFeedbackProvider>
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange nonce={nonce}>
+              <StatusFeedbackProvider>
+                {children}
+              </StatusFeedbackProvider>
+            </ThemeProvider>
           </CspNonceProvider>
         </NextIntlClientProvider>
       </body>

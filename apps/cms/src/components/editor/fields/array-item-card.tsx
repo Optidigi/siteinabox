@@ -125,7 +125,7 @@ const SubFieldRenderer: React.FC<{
           <SelectTrigger className="w-full">
             <SelectValue placeholder={sub.label} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent data-siab-editor-ui data-siab-canvas-chrome="array-field-select">
             {(sub.options ?? []).map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

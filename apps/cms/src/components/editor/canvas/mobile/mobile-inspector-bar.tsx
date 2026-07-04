@@ -196,6 +196,8 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, m
         />
         <Vaul.Content
           data-mobile-inspector-bar
+          data-siab-editor-ui
+          data-siab-canvas-chrome="mobile-inspector-bar"
           aria-label={t("sectionInspector")}
           className="fixed inset-x-0 top-0 z-50 flex h-[100svh] flex-col overscroll-contain rounded-t-[10px] border-t border-border bg-background outline-none pointer-events-none"
         >

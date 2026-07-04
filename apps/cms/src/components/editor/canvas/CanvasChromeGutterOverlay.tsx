@@ -196,7 +196,7 @@ export const CanvasChromeGutterOverlay: React.FC<{
                 <MoreVertical className="size-4" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" data-siab-editor-ui>
+            <DropdownMenuContent align="end" data-siab-editor-ui data-siab-canvas-chrome={`${dataChrome}-menu`}>
               {onDuplicate && <DropdownMenuItem onClick={onDuplicate}>{t("duplicate")}</DropdownMenuItem>}
               {onDelete && (
                 <DropdownMenuItem

@@ -95,6 +95,8 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
             // (375px screens were getting clipped at 640px). Desktop:
             // 640px panel as before.
             className="w-full sm:w-[640px] sm:max-w-[640px] overflow-y-auto p-0"
+            data-siab-editor-ui
+            data-siab-canvas-chrome="media-picker"
           >
             {/* Header: title only. Default shadcn close-X sits absolute top-4 right-4
                 — its 16px right inset gives the Upload toolbar room to breathe
