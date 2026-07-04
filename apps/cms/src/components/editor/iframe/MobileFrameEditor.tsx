@@ -69,6 +69,7 @@ function MobileFrameEditorInner({
 
   const openSection = React.useCallback((index: number) => {
     setScreen({ type: "section", index })
+    window.scrollTo({ top: 0 })
     onFocusedSectionChange(index)
     onSelectElement(null)
     clearSelection()
@@ -76,6 +77,7 @@ function MobileFrameEditorInner({
 
   const openList = React.useCallback(() => {
     setScreen({ type: "list" })
+    window.scrollTo({ top: 0 })
     onFocusedSectionChange(null)
     onSelectElement(null)
     clearSelection()
@@ -197,6 +199,7 @@ function MobileFocusedSection({
 }) {
   const t = useTranslations("editor")
   const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [trashPillVisible, setTrashPillVisible] = React.useState(true)
   const { state: editorState } = useMobileEditor()
   const isInspectorIdle = editorState.selected == null && editorState.drillStack.length === 0
   const cfg = blockBySlug[String(block.blockType)]
@@ -204,8 +207,27 @@ function MobileFocusedSection({
     ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug)
     : String(block.blockType ?? "?")
 
+  React.useEffect(() => {
+    let frame = 0
+    const syncTrashVisibility = () => {
+      frame = 0
+      setTrashPillVisible(window.scrollY <= 24)
+    }
+    const onScroll = () => {
+      if (frame !== 0) return
+      frame = window.requestAnimationFrame(syncTrashVisibility)
+    }
+
+    syncTrashVisibility()
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      if (frame !== 0) window.cancelAnimationFrame(frame)
+    }
+  }, [])
+
   return (
-    <div data-mobile-frame-section-edit className="flex min-h-[calc(100dvh-4.5rem)] flex-col">
+    <div data-mobile-frame-section-edit className="-mx-4 flex min-h-[calc(100dvh-4.5rem)] flex-col">
       <header className="sticky top-0 z-30 flex min-w-0 items-center justify-center border-b border-border bg-background px-16 py-3">
         <div className="flex min-w-0 max-w-full items-center justify-center gap-2">
           <Button
@@ -274,9 +296,10 @@ function MobileFocusedSection({
       </div>
       <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />
       <MobileBackPill onBack={onBack} />
-      {isInspectorIdle && (
+      {isInspectorIdle && trashPillVisible && (
         <MobileFloatingPill
-          position="bottom-right"
+          position="top-right"
+          offset="3.75rem"
           icon={<Trash2 className="h-5 w-5" aria-hidden />}
           onClick={() => setDeleteOpen(true)}
           ariaLabel={t("deleteSection")}
