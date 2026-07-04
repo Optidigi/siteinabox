@@ -70,6 +70,11 @@ export interface CanvasSurfaceProps {
   renderHeaderChrome?: (defaultChrome: React.ReactNode) => React.ReactNode
   renderFooterChrome?: (defaultChrome: React.ReactNode) => React.ReactNode
   onOpenBlockInspector?: (index: number) => void
+  focusedBlockId?: string
+  focusedBlockIndex?: number
+  showChrome?: boolean
+  showGutters?: boolean
+  allowInlineEditing?: boolean
   /** Block-array mutation surface. The iframe editor frame passes
    *  `useCanvasBlocks(manifest)` (RHF-backed); the iframe editor frame passes
    *  `useFrameCanvasBlocks(...)` (postMessage-backed). CanvasSurface never
@@ -79,13 +84,14 @@ export interface CanvasSurfaceProps {
    *  tenant/view. The in-process CMS canvas only needs this for Amicare +
    *  customer preview (default tenant chrome comes from `headerChrome`/
    *  `footerChrome`, which wrap CMS-only interactive chrome components).
-   *  `FrameCanvasSurface` (iframe editor frame) has no such CMS chrome
-   *  available across the postMessage boundary, so it always forces this on
-   *  to get real header/footer chrome from the renderer for every tenant. */
+   *  `FrameCanvasSurface` (iframe editor frame) usually forces this on
+   *  to get real header/footer chrome from the renderer for every tenant;
+   *  focused-section mobile mode can leave it off because chrome is hidden. */
   forceSharedRendererShell?: boolean
 }
 
 type AnchorRect = Pick<DOMRect, "left" | "right" | "top" | "width">
+type CanvasBlockEntry = { block: any; index: number; id: string }
 
 const SHARED_SITE_CHROME_SELECTOR =
   "[data-site-chrome], [data-site-chrome-wrapper], [data-site-chrome-menu-trigger], [data-amicare-nav], .site-frame-root > nav, .site-frame-root > footer"
@@ -103,6 +109,16 @@ function shouldSuppressCanvasNavigation(target: HTMLElement | null) {
   if (!submitter || !submitter.closest(".rt-canvas")) return false
   if (submitter instanceof HTMLButtonElement) return submitter.type === "submit"
   return submitter instanceof HTMLInputElement && submitter.type === "submit"
+}
+
+function blockWireId(block: unknown, index: number): string {
+  if (block && typeof block === "object" && "id" in block && typeof block.id === "string" && block.id.trim()) {
+    return block.id
+  }
+  if (block && typeof block === "object" && "id" in block && typeof block.id === "number" && Number.isFinite(block.id)) {
+    return String(block.id)
+  }
+  return String(index)
 }
 
 function useFixedAnchorRect(
@@ -719,6 +735,11 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
   renderHeaderChrome,
   renderFooterChrome,
   onOpenBlockInspector,
+  focusedBlockId,
+  focusedBlockIndex,
+  showChrome = true,
+  showGutters = true,
+  allowInlineEditing = true,
   blocksApi,
   forceSharedRendererShell = false,
 }) => {
@@ -762,10 +783,11 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
     }
   }
 
-  const effectiveReadOnly = readOnly || isReadOnlyView(view)
+  const effectiveReadOnly = readOnly || isReadOnlyView(view) || !allowInlineEditing
+  const showMutationChrome = !effectiveReadOnly && showGutters
 
   const onCanvasContextMenu = (event: React.MouseEvent) => {
-    if (effectiveReadOnly) {
+    if (effectiveReadOnly || !showGutters) {
       event.preventDefault()
       event.stopPropagation()
       setBlockContextMenu(null)
@@ -817,7 +839,23 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
-  const sortableIds = blocks.map((_, i) => String(i))
+  const blockEntries = React.useMemo<CanvasBlockEntry[]>(() => blocks.map((block, index) => ({
+    block,
+    index,
+    id: blockWireId(block, index),
+  })), [blocks])
+  const visibleBlockEntries = React.useMemo(() => {
+    if (focusedBlockId) {
+      const focused = blockEntries.find((entry) => entry.id === focusedBlockId)
+      if (focused) return [focused]
+    }
+    if (focusedBlockIndex != null) {
+      const focused = blockEntries.find((entry) => entry.index === focusedBlockIndex)
+      return focused ? [focused] : []
+    }
+    return blockEntries
+  }, [blockEntries, focusedBlockId, focusedBlockIndex])
+  const sortableIds = visibleBlockEntries.map((entry) => String(entry.index))
   const rendererTheme = React.useMemo(() => cmsThemeToRendererTheme(theme), [theme])
   const mediaResolver = React.useMemo(
     () => tenantId != null ? createRendererMediaResolver(String(tenantId)) : undefined,
@@ -848,7 +886,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
 
   const onDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (effectiveReadOnly || !over || active.id === over.id) return
+    if (effectiveReadOnly || !showGutters || !over || active.id === over.id) return
     const from = Number(active.id)
     const to = Number(over.id)
     if (Number.isNaN(from) || Number.isNaN(to)) return
@@ -898,12 +936,18 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                   nonce={cspNonce}
                   includeThemeStyle
                   includeBehaviorScripts={false}
-                  renderHeader={renderHeaderChrome
-                    ? ({ defaultChrome }) => renderHeaderChrome(defaultChrome)
-                    : undefined}
-                  renderFooter={renderFooterChrome
-                    ? ({ defaultChrome }) => renderFooterChrome(defaultChrome)
-                    : undefined}
+                  header={showChrome ? undefined : null}
+                  footer={showChrome ? undefined : null}
+                  renderHeader={!showChrome
+                    ? () => null
+                    : renderHeaderChrome
+                      ? ({ defaultChrome }) => renderHeaderChrome(defaultChrome)
+                      : undefined}
+                  renderFooter={!showChrome
+                    ? () => null
+                    : renderFooterChrome
+                      ? ({ defaultChrome }) => renderFooterChrome(defaultChrome)
+                      : undefined}
                   canvasAttributes={{ "data-rt-view": view } as React.HTMLAttributes<HTMLDivElement>}
                   canvasClassName={suppressCanvasNavigation ? "[&_a[href]:not(.rt-click-edit)]:pointer-events-none" : undefined}
                   formAction="#"
@@ -911,18 +955,18 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                     ? undefined
                     : () => (
                       <>
-                        {!effectiveReadOnly && (
+                        {showMutationChrome && (
                           <CanvasGapOverlay
                             onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
                           />
                         )}
-                        {blocks.length === 0 && (
+                        {visibleBlockEntries.length === 0 && (
                           <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
                             <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
                           </div>
                         )}
-                        {blocks.map((block, index) => (
-                          <React.Fragment key={`${block.blockType}-${index}`}>
+                        {visibleBlockEntries.map(({ block, index, id }) => (
+                          <React.Fragment key={`${block.blockType}-${id}-${index}`}>
                             <SortableRenderedBlockItem
                               id={String(index)}
                               index={index}
@@ -934,7 +978,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                               }}
                               onDelete={() => requestDeleteBlock(index)}
                               onDuplicate={() => duplicateBlockWithRemap(index)}
-                              readOnly={effectiveReadOnly}
+                              readOnly={effectiveReadOnly || !showGutters}
                               gutterVisible={activeBlockGutterIndex === index}
                               setGutterVisible={(next) => setBlockGutterVisible(index, next)}
                             >
@@ -956,7 +1000,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                                 />
                               )}
                             </SortableRenderedBlockItem>
-                            {!effectiveReadOnly && (
+                            {showMutationChrome && (
                               <CanvasGapOverlay
                                 onInsert={(slug, seed) => insertBlockAtWithRemap(index + 1, slug, seed)}
                               />
@@ -994,13 +1038,13 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                 }
               }}
             >
-              {headerChrome}
-              {!effectiveReadOnly && (
+              {showChrome ? headerChrome : null}
+              {showMutationChrome && (
                 <CanvasGapOverlay
                   onInsert={(slug, seed) => insertBlockAtWithRemap(0, slug, seed)}
                 />
               )}
-              {blocks.length === 0 && (
+              {visibleBlockEntries.length === 0 && (
                 <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
                   <p>{t("noBlocksYet")} {!isReadOnlyView(view) ? t("addFirstBlockHint") : t("switchToCanvasToAddBlocks")}</p>
                 </div>
@@ -1012,43 +1056,43 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                 onDragEnd={onDragEnd}
               >
                 <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-                  {blocks.map((block, i) => (
-                    <React.Fragment key={i}>
+                  {visibleBlockEntries.map(({ block, index, id }) => (
+                    <React.Fragment key={`${id}-${index}`}>
                       <SortableBlockItem
-                        id={String(i)}
+                        id={String(index)}
                         block={block}
-                        index={i}
-                        isActive={!isCustomerPreviewView(view) && activeIndex === i}
+                        index={index}
+                        isActive={!isCustomerPreviewView(view) && activeIndex === index}
                         manifest={manifest}
                         onActivate={() => {
                           if (isCustomerPreviewView(view)) return
-                          setActiveIndex(i)
+                          setActiveIndex(index)
                           select(null)
                         }}
-                        onUpdate={updateBlock(i)}
+                        onUpdate={effectiveReadOnly ? () => {} : updateBlock(index)}
                         tenantId={tenantId}
                         tenantRendererKey={tenantRendererKey}
-                        onDelete={() => requestDeleteBlock(i)}
-                        onDuplicate={() => duplicateBlockWithRemap(i)}
-                        readOnly={effectiveReadOnly}
-                        gutterVisible={activeBlockGutterIndex === i}
-                        setGutterVisible={(next) => setBlockGutterVisible(i, next)}
+                        onDelete={() => requestDeleteBlock(index)}
+                        onDuplicate={() => duplicateBlockWithRemap(index)}
+                        readOnly={effectiveReadOnly || !showGutters}
+                        gutterVisible={activeBlockGutterIndex === index}
+                        setGutterVisible={(next) => setBlockGutterVisible(index, next)}
                       />
-                      {!effectiveReadOnly && (
+                      {showMutationChrome && (
                         <CanvasGapOverlay
-                          onInsert={(slug, seed) => insertBlockAtWithRemap(i + 1, slug, seed)}
+                          onInsert={(slug, seed) => insertBlockAtWithRemap(index + 1, slug, seed)}
                         />
                       )}
                     </React.Fragment>
                   ))}
                 </SortableContext>
               </DndContext>
-              {footerChrome}
+              {showChrome ? footerChrome : null}
             </div>
           </div>
         )}
       </div>
-      {!effectiveReadOnly && (
+      {showMutationChrome && (
         <>
           <CanvasBlockContextMenu
             menu={blockContextMenu}

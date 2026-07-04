@@ -216,7 +216,7 @@ describe("canvas chrome fidelity", () => {
     expect(canvasSurface).toContain("setActiveBlockGutterIndex(index)")
     expect(canvasSurface).toContain("setActiveBlockGutterIndex((current) => current === index ? null : current)")
     expect(canvasSurface).toContain("gutterVisible={activeBlockGutterIndex === index}")
-    expect(canvasSurface).toContain("gutterVisible={activeBlockGutterIndex === i}")
+    expect(canvasSurface).toContain("visibleBlockEntries.map(({ block, index, id }) =>")
     expect(canvasSurface).not.toContain("blockGutterHideTimerRef")
     expect(canvasSurface).not.toContain("window.setTimeout")
     expect(canvasSurface).not.toContain("const [gutterVisible, setGutterVisible] = React.useState(false)")

@@ -7,6 +7,7 @@ import {
   IFRAME_EDITOR_PROTOCOL_NAME,
   IFRAME_EDITOR_PROTOCOL_VERSION,
   type IframeEditorMessage,
+  type IframeEditorMobileMode,
   type IframeEditorRevisionedMessageBase,
   type IframeEditorSelection,
   validateIframeEditorMessage,
@@ -45,6 +46,7 @@ export function EditorFrameRuntime({
   const [frameTheme, setFrameTheme] = React.useState(theme)
   const [activeSelection, setActiveSelection] = React.useState<IframeEditorSelection | null>(null)
   const [frameView, setFrameView] = React.useState<PageEditorFrameView | null>(null)
+  const [mobileMode, setMobileMode] = React.useState<IframeEditorMobileMode>({ mode: "fullPage" })
   const [revision, setRevision] = React.useState(0)
   const revisionRef = React.useRef(0)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
@@ -88,6 +90,18 @@ export function EditorFrameRuntime({
 
       if (message.type === "editor.view.set") {
         setFrameView(message.view)
+        return
+      }
+
+      if (message.type === "editor.mobileMode.set") {
+        setMobileMode({
+          mode: message.mode,
+          focusedBlockId: message.focusedBlockId,
+          focusedBlockIndex: message.focusedBlockIndex,
+          showChrome: message.showChrome,
+          showGutters: message.showGutters,
+          allowInlineEditing: message.allowInlineEditing,
+        })
         return
       }
 
@@ -252,6 +266,7 @@ export function EditorFrameRuntime({
         tenantSlug={tenantSlug}
         domain={domain}
         selection={activeSelection}
+        mobileMode={mobileMode}
         revision={revision}
         emit={emit}
       />

@@ -111,9 +111,14 @@ describe("page editor iframe bridge source contract", () => {
     const inspectorOccurrences = form.match(/onOpenBlockInspector=\{openBlockInSidebar\}/g) ?? []
     expect(inspectorOccurrences.length).toBe(1)
 
-    expect(form).toContain("MobileBlockInspectorSheet")
-    expect(form).toContain("mobileBlockInspectorIndex")
-    expect(form).toContain("setMobileBlockInspectorIndex(index)")
+    expect(form).toContain('import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"')
+    expect(form).toContain("mobileFocusedSectionIndex")
+    expect(form).toContain("frameMobileMode")
+    expect(form).toContain('mode: "focusedSection"')
+    expect(form).toContain("allowInlineEditing: false")
+    expect(form).toContain("<MobileFrameEditor")
+    expect(form).not.toContain("MobileBlockInspectorSheet")
+    expect(form).not.toContain("mobileBlockInspectorIndex")
   })
 
   it("wires EditorFrameRuntime to hand canvas/sidebar editing off to FrameCanvasSurface once the view is known", () => {
@@ -125,6 +130,8 @@ describe("page editor iframe bridge source contract", () => {
 
     expect(runtime).toContain('message.type === "editor.view.set"')
     expect(runtime).toContain("setFrameView(message.view)")
+    expect(runtime).toContain('message.type === "editor.mobileMode.set"')
+    expect(runtime).toContain("setMobileMode")
     expect(runtime).toContain('import { FrameCanvasSurface } from "@/components/editor-frame/FrameCanvasSurface"')
     expect(runtime).toContain("if (frameView) {")
     expect(runtime).toContain("<FrameCanvasSurface")
@@ -157,5 +164,8 @@ describe("page editor iframe bridge source contract", () => {
     expect(surface).toContain("onOpenBlockInspector={requestBlockInspector}")
     expect(surface).toContain("renderHeaderChrome={renderHeaderChrome}")
     expect(surface).toContain("renderFooterChrome={renderFooterChrome}")
+    expect(surface).toContain("mobileMode?: IframeEditorMobileMode")
+    expect(surface).toContain("allowInlineEditing={mobileMode.allowInlineEditing}")
+    expect(surface).toContain("focusedBlockIndex={mobileMode.mode === \"focusedSection\" ? mobileMode.focusedBlockIndex : undefined}")
   })
 })

@@ -35,7 +35,7 @@ import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { ModeBar } from "@/components/editor/mode/mode-bar"
 import { PageEditorFrameHost, type PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
 import { EditorFrameDocumentContext } from "@/components/editor/iframe/EditorFrameDocumentContext"
-import { MobileBlockInspectorSheet } from "@/components/editor/iframe/MobileBlockInspectorSheet"
+import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
 import { ensureBlockId, ensurePageBlockIds, findBlockIndexByWireId, blockWireId } from "@/lib/editor/ensureBlockIds"
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import { pageToJson } from "@/lib/projection/pageToJson"
@@ -864,7 +864,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   // SidebarDrillDown and the canvas's click-to-select BOTH write via the context's
   // select; SidebarDrillDown reads selected to know which block to open.
   const [selected, setSelected] = useState<ElementPath | null>(null)
-  const [mobileBlockInspectorIndex, setMobileBlockInspectorIndex] = useState<number | null>(null)
+  const [mobileFocusedSectionIndex, setMobileFocusedSectionIndex] = useState<number | null>(null)
   const [selectedChrome, setSelectedChrome] = useState<SiteChromeSelection | null>(null)
   const [chromeQuickMenu, setChromeQuickMenu] = useState<{ selection: SiteChromeSelection; point: SiteChromeSelectPoint } | null>(null)
   const siteSettingsState = siteSettings ?? null
@@ -1522,6 +1522,26 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setSelected({ blockIndex: next.length - 1, field: "" })
   }
 
+  const insertMobileBlockAt = useCallback((index: number, blockType: string, seed?: Record<string, unknown>) => {
+    if (readOnly) return
+    const defaultAnchor = manifest?.blocks?.find((m) => m.slug === blockType)?.defaultAnchor
+    insertBlockAtIndex(index, { blockType, ...(defaultAnchor ? { anchor: defaultAnchor } : {}), ...seed })
+  }, [insertBlockAtIndex, manifest?.blocks, readOnly])
+
+  const mobileFrameBlocksApi = useMemo(() => ({
+    blocks: watchedBlocks,
+    reorderBlocks,
+    insertBlockAt: insertMobileBlockAt,
+    deleteBlock,
+    duplicateBlock,
+  }), [deleteBlock, duplicateBlock, insertMobileBlockAt, reorderBlocks, watchedBlocks])
+
+  useEffect(() => {
+    if (mobileFocusedSectionIndex == null) return
+    if (watchedBlocks[mobileFocusedSectionIndex]) return
+    setMobileFocusedSectionIndex(null)
+  }, [mobileFocusedSectionIndex, watchedBlocks])
+
   // Danger zone — standalone card rendered below the canvas (canvas view)
   // or inside the sidebar (sidebar view).
   const dangerZone = readOnly ? null : (
@@ -1643,27 +1663,10 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setSelectedChrome(null)
     setSelected({ blockIndex: index, field: "" })
     if (!isDesktop) {
-      setMobileBlockInspectorIndex(index)
       return
     }
     void handleModeChange("sidebar")
   }, [handleModeChange, isDesktop])
-
-  const closeMobileBlockInspector = useCallback(() => {
-    setMobileBlockInspectorIndex(null)
-  }, [])
-
-  const handleMobileBlockDelete = useCallback((index: number) => {
-    deleteBlock(index)
-    setMobileBlockInspectorIndex(null)
-  }, [deleteBlock])
-
-  useEffect(() => {
-    if (mobileBlockInspectorIndex == null) return
-    if (!watchedBlocks[mobileBlockInspectorIndex]) {
-      setMobileBlockInspectorIndex(null)
-    }
-  }, [mobileBlockInspectorIndex, watchedBlocks])
 
   const renderSidebarList = useCallback(
     (ctx: SidebarListSlotContext) => (
@@ -1781,6 +1784,21 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     () => elementPathToIframeSelection(selected, watchedBlocks, framePageId),
     [framePageId, selected, watchedBlocks],
   )
+  const frameMobileMode = useMemo(() => {
+    if (isDesktop || mobileFocusedSectionIndex == null) return undefined
+    const focusedBlock = watchedBlocks[mobileFocusedSectionIndex]
+    const focusedBlockId = focusedBlock && typeof focusedBlock === "object"
+      ? blockWireId(focusedBlock as Record<string, unknown>) ?? undefined
+      : undefined
+    return {
+      mode: "focusedSection" as const,
+      focusedBlockIndex: mobileFocusedSectionIndex,
+      ...(focusedBlockId ? { focusedBlockId } : {}),
+      showChrome: false,
+      showGutters: false,
+      allowInlineEditing: false,
+    }
+  }, [isDesktop, mobileFocusedSectionIndex, watchedBlocks])
   const handleFrameSelectionChanged = useCallback((selection: IframeEditorSelection | null) => {
     if (readOnly) return
     if (!selection) {
@@ -1879,6 +1897,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       tenantId={tenantId}
       tenantSlug={tenantSlug}
       selection={frameSelection}
+      mobileMode={frameMobileMode}
       onSelectionChanged={handleFrameSelectionChanged}
       onOpenBlockInspector={openBlockInSidebar}
       onChromeSelect={handleFrameChromeSelect}
@@ -1951,11 +1970,29 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             <>
               {/* Document-scroll canvas + SEO/Danger grid below */}
               <div className="w-full">
-                <MobileMediaSheetProvider>
-                <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                  {pageEditorFrame}
-                </BlockPresetsProvider>
-                </MobileMediaSheetProvider>
+                {!isDesktop && !readOnly ? (
+                  <MobileMediaSheetProvider>
+                  <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
+                    <MobileFrameEditor
+                      api={mobileFrameBlocksApi}
+                      manifest={manifest}
+                      theme={themeState}
+                      pageTitle={pageTitle}
+                      selected={selected}
+                      onSelectElement={selectElement}
+                      onFocusedSectionChange={setMobileFocusedSectionIndex}
+                      focusedFrame={pageEditorFrame}
+                      onDeletePage={onDeletePage}
+                    />
+                  </BlockPresetsProvider>
+                  </MobileMediaSheetProvider>
+                ) : (
+                  <MobileMediaSheetProvider>
+                  <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
+                    {pageEditorFrame}
+                  </BlockPresetsProvider>
+                  </MobileMediaSheetProvider>
+                )}
                 {/* SEO + Danger grid: full-width breakout cancels main p-4/p-6 padding */}
                 {isDesktop && !readOnly && (
                   <div className="-mx-4 md:-mx-6 px-4 md:px-6 pt-8 pb-24 grid gap-6 md:grid-cols-2">
@@ -2045,18 +2082,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
               onSave={triggerSave}
             />
           </div>
-        )}
-        {!isDesktop && !readOnly && mobileBlockInspectorIndex != null && watchedBlocks[mobileBlockInspectorIndex] && (
-          <MobileMediaSheetProvider>
-            <MobileBlockInspectorSheet
-              blockIndex={mobileBlockInspectorIndex}
-              block={watchedBlocks[mobileBlockInspectorIndex]}
-              manifest={manifest}
-              theme={themeState}
-              onClose={closeMobileBlockInspector}
-              onDeleteBlock={handleMobileBlockDelete}
-            />
-          </MobileMediaSheetProvider>
         )}
       </form>
       {/* Floating mode bar — canvas/sidebar switcher, fixed bottom-centre. Desktop only: mobile has a single view. */}

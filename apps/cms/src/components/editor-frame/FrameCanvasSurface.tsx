@@ -6,6 +6,7 @@ import {
   IFRAME_EDITOR_PROTOCOL_NAME,
   IFRAME_EDITOR_PROTOCOL_VERSION,
   type IframeEditorMessage,
+  type IframeEditorMobileMode,
   type IframeEditorSelection,
 } from "@siteinabox/contracts/iframe-editor"
 import { CanvasSurface } from "@/components/editor/canvas/CanvasSurface"
@@ -30,6 +31,7 @@ export interface FrameCanvasSurfaceProps {
   tenantSlug?: string | null
   domain?: string | null
   selection: IframeEditorSelection | null
+  mobileMode?: IframeEditorMobileMode
   /** Current revision known to the frame; forwarded to `useFrameCanvasBlocks`
    *  for outbound mutation messages. */
   revision: number
@@ -54,6 +56,7 @@ export function FrameCanvasSurface({
   tenantSlug,
   domain,
   selection,
+  mobileMode = { mode: "fullPage" },
   revision,
   emit,
 }: FrameCanvasSurfaceProps) {
@@ -99,6 +102,8 @@ export function FrameCanvasSurface({
   )
 
   const cmsTheme = React.useMemo(() => rendererThemeToCmsTheme(theme), [theme])
+  const canvasSelectionView = mobileMode.allowInlineEditing === false ? "sidebar" : view
+  const forceSharedRendererShell = mobileMode.mode !== "focusedSection"
   const selectedChrome = React.useMemo<SiteChromeSelection | null>(() => {
     const zone = selection?.fieldPath?.[1]
     return zone === "header" || zone === "footer" ? { zone } : null
@@ -151,7 +156,7 @@ export function FrameCanvasSurface({
   ), [selectChrome, selectedChrome])
 
   return (
-    <CanvasSelectionProvider value={{ view, selected, select }}>
+    <CanvasSelectionProvider value={{ view: canvasSelectionView, selected, select }}>
       <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
         <CanvasSurface
           manifest={manifest}
@@ -167,7 +172,12 @@ export function FrameCanvasSurface({
           renderHeaderChrome={renderHeaderChrome}
           renderFooterChrome={renderFooterChrome}
           onOpenBlockInspector={requestBlockInspector}
-          forceSharedRendererShell
+          focusedBlockId={mobileMode.mode === "focusedSection" ? mobileMode.focusedBlockId : undefined}
+          focusedBlockIndex={mobileMode.mode === "focusedSection" ? mobileMode.focusedBlockIndex : undefined}
+          showChrome={mobileMode.showChrome}
+          showGutters={mobileMode.showGutters}
+          allowInlineEditing={mobileMode.allowInlineEditing}
+          forceSharedRendererShell={forceSharedRendererShell}
         />
       </BlockPresetsProvider>
     </CanvasSelectionProvider>

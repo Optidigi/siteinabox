@@ -6,6 +6,7 @@ import {
   IFRAME_EDITOR_PROTOCOL_NAME,
   IFRAME_EDITOR_PROTOCOL_VERSION,
   type IframeEditorMessage,
+  type IframeEditorMobileMode,
   type IframeEditorSelection,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
@@ -17,6 +18,7 @@ import { findBlockIndexByWireId } from "@/lib/editor/ensureBlockIds"
 
 export type PageEditorFrameView = "canvas" | "sidebar"
 export type PageEditorFrameLayout = "desktop" | "mobile"
+export type PageEditorFrameMobileMode = IframeEditorMobileMode
 
 const PARENT_CHROME_BOTTOM_VAR = "--siab-parent-chrome-bottom"
 const CHROME_VIEWPORT_GAP = 8
@@ -95,6 +97,7 @@ export function PageEditorFrameHost({
   theme,
   view,
   layout = "desktop",
+  mobileMode,
   tenantId,
   tenantSlug,
   selection,
@@ -111,6 +114,7 @@ export function PageEditorFrameHost({
   theme: ReturnType<typeof cmsThemeToRendererTheme>
   view: PageEditorFrameView
   layout?: PageEditorFrameLayout
+  mobileMode?: PageEditorFrameMobileMode
   tenantId: string | number
   /** Required on super-admin host so the frame route can resolve the selected site. */
   tenantSlug?: string | null
@@ -134,7 +138,8 @@ export function PageEditorFrameHost({
     "editor-frame-chrome-inset",
     `${PARENT_CHROME_BOTTOM_VAR}:${formatCssPx(parentChromeBottom)};`,
   )
-  const shouldAutoSizeFrame = view === "canvas"
+  const isFocusedMobileFrame = layout === "mobile" && mobileMode?.mode === "focusedSection"
+  const shouldAutoSizeFrame = view === "canvas" && mobileMode?.mode !== "focusedSection"
   const iframeAutoHeight = useCspStyleRule(
     "editor-frame-auto-height",
     shouldAutoSizeFrame && frameContentHeight != null ? `height:${formatCssPx(frameContentHeight)};` : null,
@@ -406,9 +411,29 @@ export function PageEditorFrameHost({
     })
   }, [postToFrame, ready, view])
 
+  React.useEffect(() => {
+    if (!ready) return
+    const effectiveMobileMode: PageEditorFrameMobileMode = mobileMode ?? { mode: "fullPage" }
+    postToFrame({
+      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+      type: "editor.mobileMode.set",
+      messageId: [
+        "editor-mobile-mode",
+        effectiveMobileMode.mode,
+        effectiveMobileMode.focusedBlockId ?? "none",
+        effectiveMobileMode.focusedBlockIndex ?? "none",
+        effectiveMobileMode.showChrome ?? "default",
+        effectiveMobileMode.showGutters ?? "default",
+        effectiveMobileMode.allowInlineEditing ?? "default",
+      ].join("-"),
+      ...effectiveMobileMode,
+    })
+  }, [mobileMode, postToFrame, ready])
+
   return (
     <div
-      className="relative w-full"
+      className={cn("relative w-full", isFocusedMobileFrame && "h-full min-h-0")}
       data-siab-editor-frame-host
       data-siab-editor-frame-view={view}
       data-siab-editor-frame-layout={layout}
@@ -425,7 +450,9 @@ export function PageEditorFrameHost({
           iframeAutoHeight.className,
           "block w-full border-0 bg-transparent",
           layout === "mobile"
-            ? cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
+            ? isFocusedMobileFrame
+              ? "h-full min-h-0"
+              : cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
             : cn("min-h-[640px]", view === "sidebar" && "h-[calc(100dvh-6.5rem)]"),
         )}
         sandbox="allow-same-origin allow-scripts allow-forms"

@@ -12,7 +12,14 @@ export function iframeSelectionToElementPath(
     const rawIndex = selection.fieldPath[1]
     const parsedIndex = rawIndex != null ? Number.parseInt(String(rawIndex), 10) : Number.NaN
     if (Number.isFinite(parsedIndex) && parsedIndex >= 0) {
-      return { blockIndex: parsedIndex, field: selection.fieldPath[2] ?? "" }
+      const rawItemIndex = selection.fieldPath[3]
+      const parsedItemIndex = rawItemIndex != null ? Number.parseInt(String(rawItemIndex), 10) : Number.NaN
+      return {
+        blockIndex: parsedIndex,
+        field: selection.fieldPath[2] ?? "",
+        ...(Number.isFinite(parsedItemIndex) && parsedItemIndex >= 0 ? { itemIndex: parsedItemIndex } : {}),
+        ...(selection.fieldPath[4] ? { subField: selection.fieldPath[4] } : {}),
+      }
     }
   }
 
@@ -21,7 +28,14 @@ export function iframeSelectionToElementPath(
       const block = blocks[index]
       if (!block || typeof block !== "object") continue
       if (blockWireId(block as Record<string, unknown>) === selection.blockId) {
-        return { blockIndex: index, field: selection.fieldPath?.[2] ?? "" }
+        const rawItemIndex = selection.fieldPath?.[3]
+        const parsedItemIndex = rawItemIndex != null ? Number.parseInt(String(rawItemIndex), 10) : Number.NaN
+        return {
+          blockIndex: index,
+          field: selection.fieldPath?.[2] ?? "",
+          ...(Number.isFinite(parsedItemIndex) && parsedItemIndex >= 0 ? { itemIndex: parsedItemIndex } : {}),
+          ...(selection.fieldPath?.[4] ? { subField: selection.fieldPath[4] } : {}),
+        }
       }
     }
   }
@@ -42,6 +56,12 @@ export function elementPathToIframeSelection(
   return {
     pageId: String(pageId),
     ...(blockId ? { blockId } : {}),
-    fieldPath: ["blocks", String(selected.blockIndex), ...(selected.field ? [selected.field] : [])],
+    fieldPath: [
+      "blocks",
+      String(selected.blockIndex),
+      ...(selected.field ? [selected.field] : []),
+      ...(selected.itemIndex != null ? [String(selected.itemIndex)] : []),
+      ...(selected.subField ? [selected.subField] : []),
+    ],
   }
 }

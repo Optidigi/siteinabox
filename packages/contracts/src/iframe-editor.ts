@@ -34,6 +34,7 @@ export const IFRAME_EDITOR_MESSAGE_TYPES = [
   "chrome.select",
   "chrome.patchRequested",
   "editor.view.set",
+  "editor.mobileMode.set",
   "navigation.requested",
   "error",
 ] as const
@@ -264,6 +265,17 @@ export type EditorViewSetMessage = IframeEditorMessageBase<"editor.view.set"> & 
   view: "canvas" | "sidebar"
 }
 
+export type IframeEditorMobileMode = {
+  mode: "fullPage" | "focusedSection"
+  focusedBlockId?: string
+  focusedBlockIndex?: number
+  showChrome?: boolean
+  showGutters?: boolean
+  allowInlineEditing?: boolean
+}
+
+export type EditorMobileModeSetMessage = IframeEditorMessageBase<"editor.mobileMode.set"> & IframeEditorMobileMode
+
 export type ChromePatchRequestedMessage = IframeEditorRevisionedMessageBase<"chrome.patchRequested"> & {
   pageId: string
   blockId: string
@@ -312,6 +324,7 @@ export type IframeEditorMessage =
   | ChromeSelectMessage
   | ChromePatchRequestedMessage
   | EditorViewSetMessage
+  | EditorMobileModeSetMessage
   | NavigationRequestedMessage
   | IframeEditorErrorMessage
 
@@ -516,6 +529,17 @@ export const EditorViewSetMessageSchema = strictObject({
   view: z.enum(["canvas", "sidebar"]),
 })
 
+export const EditorMobileModeSetMessageSchema = strictObject({
+  ...baseMessageShape,
+  type: z.literal("editor.mobileMode.set"),
+  mode: z.enum(["fullPage", "focusedSection"]),
+  focusedBlockId: idSchema.optional(),
+  focusedBlockIndex: z.number().int().nonnegative().optional(),
+  showChrome: z.boolean().optional(),
+  showGutters: z.boolean().optional(),
+  allowInlineEditing: z.boolean().optional(),
+})
+
 const iframeEditorRectSchema = strictObject({
   x: z.number(),
   y: z.number(),
@@ -679,6 +703,7 @@ export const IframeEditorMessageSchema: z.ZodType<IframeEditorMessage> = z.discr
   ChromeSelectMessageSchema,
   ChromePatchRequestedMessageSchema,
   EditorViewSetMessageSchema,
+  EditorMobileModeSetMessageSchema,
   GeometryChangedMessageSchema,
   FieldInputMessageSchema,
   FieldCommitMessageSchema,

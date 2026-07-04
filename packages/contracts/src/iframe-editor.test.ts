@@ -222,6 +222,16 @@ const validSamplesByType = {
     type: "editor.view.set",
     view: "canvas",
   },
+  "editor.mobileMode.set": {
+    ...baseMessage,
+    type: "editor.mobileMode.set",
+    mode: "focusedSection",
+    focusedBlockId: "block_1",
+    focusedBlockIndex: 0,
+    showChrome: false,
+    showGutters: false,
+    allowInlineEditing: false,
+  },
   "navigation.requested": {
     ...baseMessage,
     type: "navigation.requested",
@@ -269,6 +279,19 @@ describe("iframe editor message protocol", () => {
       ...baseMessage,
       type: "editor.view.set",
       view: "canvas",
+    }).success).toBe(true)
+  })
+
+  it("accepts editor.mobileMode.set messages for focused mobile section mode", () => {
+    expect(IframeEditorMessageSchema.safeParse({
+      ...baseMessage,
+      type: "editor.mobileMode.set",
+      mode: "focusedSection",
+      focusedBlockId: "block_1",
+      focusedBlockIndex: 0,
+      showChrome: false,
+      showGutters: false,
+      allowInlineEditing: false,
     }).success).toBe(true)
   })
 

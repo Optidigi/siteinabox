@@ -8,43 +8,42 @@ function read(relativePath: string) {
   return readFileSync(path.join(repoRoot, relativePath), "utf8")
 }
 
-describe("mobile iframe block inspector source contract", () => {
-  it("hosts parent-owned BlockFormFields in a vaul sheet for iframe mobile editing", () => {
-    const sheet = read("apps/cms/src/components/editor/iframe/MobileBlockInspectorSheet.tsx")
+describe("mobile iframe native editor source contract", () => {
+  it("hosts parent-owned section list, focused frame, and two-detent field inspector", () => {
+    const shell = read("apps/cms/src/components/editor/iframe/MobileFrameEditor.tsx")
     const pageForm = read("apps/cms/src/components/forms/PageForm.tsx")
 
-    expect(sheet).toContain("export function MobileBlockInspectorSheet")
-    expect(sheet).toContain("data-mobile-frame-block-inspector")
-    expect(sheet).toContain("data-mobile-frame-block-inspector-done")
-    expect(sheet).toContain('import { BlockFormFields } from "@/components/editor/fields/block-form-fields"')
-    expect(sheet).toContain('import { VAUL_BOTTOM_SNAP_CSS } from "@/components/editor/canvas/mobile/vaulBottomSnapCss"')
-    expect(sheet).toContain("useInspectorKeyboardLock(true)")
-    expect(sheet).toContain("handleOnly")
-    expect(sheet).toContain("const BLOCK_INSPECTOR_SNAP = 0.92")
-    expect(sheet).not.toContain("CanvasMobile")
-    expect(sheet).not.toContain("CanvasMode")
+    expect(shell).toContain("export function MobileFrameEditor")
+    expect(shell).toContain("<MobileSectionList")
+    expect(shell).toContain("<MobileInspectorBar")
+    expect(shell).toContain("<MobilePageSettings")
+    expect(shell).toContain("<MobileSeoSettings")
+    expect(shell).toContain("focusedFrame")
+    expect(shell).toContain("onFocusedSectionChange(index)")
+    expect(shell).toContain("onSelectElement({ blockIndex: index, field: \"\" })")
+    expect(shell).not.toContain("CanvasBlockRenderer")
+    expect(shell).not.toContain("CanvasMode")
 
-    expect(pageForm).toContain('import { MobileBlockInspectorSheet } from "@/components/editor/iframe/MobileBlockInspectorSheet"')
-    expect(pageForm).toContain("mobileBlockInspectorIndex")
-    expect(pageForm).toContain("setMobileBlockInspectorIndex(index)")
-    expect(pageForm).toContain("closeMobileBlockInspector")
-    expect(pageForm).toContain("handleMobileBlockDelete")
-    expect(pageForm).toContain("<MobileBlockInspectorSheet")
+    expect(pageForm).toContain('import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"')
+    expect(pageForm).toContain("mobileFocusedSectionIndex")
+    expect(pageForm).toContain("setMobileFocusedSectionIndex")
+    expect(pageForm).toContain("frameMobileMode")
+    expect(pageForm).toContain("allowInlineEditing: false")
+    expect(pageForm).toContain("<MobileFrameEditor")
     expect(pageForm).toContain("onOpenBlockInspector={openBlockInSidebar}")
     expect(pageForm).toContain("if (!isDesktop) {")
     expect(pageForm).toContain("<MobileMediaSheetProvider>")
   })
 
-  it("shares nonce-bearing vaul snap css between legacy and iframe mobile inspectors", () => {
+  it("keeps nonce-bearing vaul snap css on the two-detent mobile field inspector", () => {
     const sharedCss = read("apps/cms/src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
     const legacyInspector = read("apps/cms/src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
-    const iframeInspector = read("apps/cms/src/components/editor/iframe/MobileBlockInspectorSheet.tsx")
 
     expect(sharedCss).toContain("export const VAUL_BOTTOM_SNAP_CSS")
     expect(sharedCss).toContain("[data-vaul-handle]")
     expect(legacyInspector).toContain('from "@/components/editor/canvas/mobile/vaulBottomSnapCss"')
-    expect(iframeInspector).toContain('from "@/components/editor/canvas/mobile/vaulBottomSnapCss"')
     expect(legacyInspector).toContain("data-mobile-inspector-vaul-css")
-    expect(iframeInspector).toContain("data-mobile-inspector-vaul-css")
+    expect(legacyInspector).toContain("const SNAP_POINTS: MobileSnap[] = [0.42, 0.92]")
+    expect(legacyInspector).toContain("useInspectorKeyboardLock(!isIdle && !isDirectMediaSelection)")
   })
 })
