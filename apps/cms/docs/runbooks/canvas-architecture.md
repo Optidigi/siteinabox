@@ -138,9 +138,12 @@ to iframe canvas editing; block selection stays on the requested block via RHF/
 `selection.set`. This replaces the legacy same-DOM `CanvasMobile` field inspector
 without restoring in-process canvas rendering.
 
-`PageEditorFrameHost` sets `data-siab-editor-frame-layout="mobile"` and sizes the
-iframe to `calc(100dvh - 4.5rem)` so the editor clears the site header and the
-floating save pill. There is no `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch.
+`PageEditorFrameHost` sets `data-siab-editor-frame-layout="mobile"` and keeps a
+`calc(100dvh - 4.5rem)` minimum so the editor clears the site header and the
+floating save pill. Canvas view auto-sizes the iframe to the rendered document
+height so the parent editor page scrolls naturally; sidebar/read-only view keeps
+the bounded viewport-height iframe needed by the sticky inspector layout. There
+is no `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch.
 
 Legacy mobile layout primitives under `src/components/editor/canvas/mobile/` remain
 for reference and unit contracts; only shared pieces such as `vaulBottomSnapCss`,

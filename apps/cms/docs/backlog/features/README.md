@@ -67,10 +67,6 @@ depended on command-run site generation are no longer current source of truth.
   chrome model is simplified around one rule: hovering a section/header/footer
   shows only that section's badge, leaving that area hides it, and badge
   placement remains visually anchored to its owner.
-- Remove the nested scrollbar from page editor canvas mode. Revisit the iframe/
-  canvas container layout so the editable site can use its natural full document
-  height instead of being clipped inside a separately scrolling site container,
-  while preserving parent-page editor controls and iframe communication.
 - Re-evaluate editor iframe chrome isolation after the canonical site-rendering
   and generation flow work settles. The remaining issue to verify is whether
   iframe-mounted editor chrome can still inherit tenant/site styling instead of
@@ -147,6 +143,12 @@ of switching to the desktop sidebar. Customer preview uses the separate
 `/renderer-frame` route and remains token-only: frames accept only `page.replace`
 and `theme.patch`. The previous in-process editor path and the
 `NEXT_PUBLIC_IFRAME_PAGE_EDITOR` kill switch were removed.
+
+Follow-up on 2026-07-04 removed the nested scrollbar from page editor canvas
+mode. `PageEditorFrameHost` now auto-sizes canvas-view iframes to the rendered
+frame document height, letting the parent editor page scroll naturally, while
+sidebar/read-only view keeps the bounded viewport-height iframe needed by the
+sticky inspector layout.
 
 ### Phase 7 — AI generation service
 

@@ -20,6 +20,7 @@ export type PageEditorFrameLayout = "desktop" | "mobile"
 
 const PARENT_CHROME_BOTTOM_VAR = "--siab-parent-chrome-bottom"
 const CHROME_VIEWPORT_GAP = 8
+const FRAME_HEIGHT_GUTTER = 2
 
 function measureParentChromeBottom(): number {
   if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
@@ -35,6 +36,21 @@ function measureParentChromeBottom(): number {
     bottom = Math.max(bottom, rect.bottom + CHROME_VIEWPORT_GAP)
   })
   return bottom
+}
+
+function measureFrameDocumentHeight(frameDocument: Document | null | undefined): number | null {
+  if (!frameDocument) return null
+  const body = frameDocument.body
+  if (!body) return null
+  const frameWindow = frameDocument.defaultView
+  const scrollY = frameWindow?.scrollY ?? 0
+  const bodyTop = body.getBoundingClientRect().top + scrollY
+  const height = Array.from(body.children).reduce((max, child) => {
+    const rect = child.getBoundingClientRect()
+    if (rect.width <= 0 && rect.height <= 0) return max
+    return Math.max(max, rect.bottom + scrollY - bodyTop)
+  }, 0)
+  return Number.isFinite(height) && height > 0 ? Math.ceil(height + FRAME_HEIGHT_GUTTER) : null
 }
 
 export type PageEditorFrameMutationHandlers = {
@@ -86,9 +102,15 @@ export function PageEditorFrameHost({
   const [loadState, setLoadState] = React.useState<"loading" | "ready" | "failed">("loading")
   const [retryKey, setRetryKey] = React.useState(0)
   const [parentChromeBottom, setParentChromeBottom] = React.useState(CHROME_VIEWPORT_GAP)
+  const [frameContentHeight, setFrameContentHeight] = React.useState<number | null>(null)
   const iframeChromeInset = useCspStyleRule(
     "editor-frame-chrome-inset",
     `${PARENT_CHROME_BOTTOM_VAR}:${formatCssPx(parentChromeBottom)};`,
+  )
+  const shouldAutoSizeFrame = view === "canvas"
+  const iframeAutoHeight = useCspStyleRule(
+    "editor-frame-auto-height",
+    shouldAutoSizeFrame && frameContentHeight != null ? `height:${formatCssPx(frameContentHeight)};` : null,
   )
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   onSelectionChangedRef.current = onSelectionChanged
@@ -143,6 +165,50 @@ export function PageEditorFrameHost({
     onFrameDocument?.(frameRef.current?.contentDocument ?? null)
     return () => onFrameDocument?.(null)
   }, [onFrameDocument, ready, retryKey, src])
+
+  React.useLayoutEffect(() => {
+    if (!ready || !shouldAutoSizeFrame) {
+      setFrameContentHeight(null)
+      return
+    }
+    const frameDocument = frameRef.current?.contentDocument
+    const frameWindow = frameRef.current?.contentWindow
+    if (!frameDocument) return
+
+    let raf: number | null = null
+    const measure = () => {
+      raf = null
+      const next = measureFrameDocumentHeight(frameDocument)
+      setFrameContentHeight((current) => (current === next ? current : next))
+    }
+    const schedule = () => {
+      if (raf != null) return
+      raf = window.requestAnimationFrame(measure)
+    }
+
+    measure()
+    const resizeObserver = new ResizeObserver(schedule)
+    if (frameDocument.documentElement) resizeObserver.observe(frameDocument.documentElement)
+    if (frameDocument.body) resizeObserver.observe(frameDocument.body)
+    const mutationObserver = new MutationObserver(schedule)
+    mutationObserver.observe(frameDocument.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    })
+    frameWindow?.addEventListener("resize", schedule)
+    frameWindow?.addEventListener("load", schedule)
+    window.addEventListener("resize", schedule)
+
+    return () => {
+      if (raf != null) window.cancelAnimationFrame(raf)
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+      frameWindow?.removeEventListener("resize", schedule)
+      frameWindow?.removeEventListener("load", schedule)
+      window.removeEventListener("resize", schedule)
+    }
+  }, [ready, shouldAutoSizeFrame, retryKey, src])
 
   React.useEffect(() => {
     if (ready) {
@@ -320,6 +386,7 @@ export function PageEditorFrameHost({
       data-siab-editor-frame-layout={layout}
     >
       {iframeChromeInset.styleElement}
+      {iframeAutoHeight.styleElement}
       <iframe
         key={`${src}:${retryKey}`}
         ref={frameRef}
@@ -327,10 +394,11 @@ export function PageEditorFrameHost({
         title="Page editor"
         className={cn(
           iframeChromeInset.className,
+          iframeAutoHeight.className,
           "block w-full border-0 bg-transparent",
           layout === "mobile"
-            ? "min-h-[calc(100dvh-4.5rem)] h-[calc(100dvh-4.5rem)]"
-            : cn("min-h-[640px]", view === "sidebar" ? "h-[calc(100dvh-6.5rem)]" : "h-[calc(100dvh-9rem)]"),
+            ? cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
+            : cn("min-h-[640px]", view === "sidebar" && "h-[calc(100dvh-6.5rem)]"),
         )}
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-editor-frame
