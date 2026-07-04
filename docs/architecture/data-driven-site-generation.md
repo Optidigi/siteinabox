@@ -68,6 +68,10 @@ Generated-site blocks have one canonical contract path:
   `packages/contracts/src/block-catalog.ts`.
 - Provider-backed block activation:
   `packages/site-renderer/src/source-blocks`.
+- Provider-backed chrome activation:
+  `packages/site-renderer/src/source-chrome`.
+- Provider-backed system fallback activation:
+  `packages/site-renderer/src/source-templates`.
 - Payload CMS block schemas:
   `apps/cms/src/blocks/*.ts`, exported through
   `apps/cms/src/blocks/registry.ts`.
@@ -126,15 +130,19 @@ legacy SiaB block styling cannot alter provider layout.
 
 Header, footer, and banner remain global chrome under `SiteSettings.chrome` plus
 `navHeader`/`navFooter`; they are not page blocks. Self-serve generation exposes
-only the default structured chrome variants today. Tailwind Plus Marketing
-header/navbar is deferred until a provider-backed chrome registry, local
-source-visible fixture/hash, typed chrome slots, preview/public/canvas rendering,
-CSS isolation, and validation tests exist.
+the default structured chrome variants plus the active Tailwind Plus Marketing
+header chrome `tailwindplus.marketing.header.with-stacked-flyout-menu` through
+`SiteSettings.chrome.header.variant`. Header content remains structured site
+settings data: brand/site name, logo, header navigation, and CTA.
 
-404 output is still renderer route fallback markup, not generated page content
-or CMS system-template data. A Tailwind Plus provider-backed 404 is deferred
-until the platform has a contained system-template contract in published
-snapshots. It must not be added as a normal generated page section.
+404 output is system fallback behavior, not generated page content. Unknown
+hosts and missing snapshots use the platform/default 404. When a published
+snapshot exists but the requested page is missing, the public renderer uses the
+provider-backed Tailwind Plus Simple 404 system template
+`tailwindplus.marketing.feedback.404-simple` with the tenant snapshot's
+settings and theme. There is no CMS-owned system-template editor or generated
+system-template data shape today, so the 404 template uses renderer defaults
+derived from site settings and is not added as a normal generated page section.
 
 Self-serve intake applies generated specs with remote media placeholder
 ingestion disabled. Provider media slots remain editable CMS fields, but active

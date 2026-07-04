@@ -391,14 +391,14 @@ const tailwindPlusExactSourceProvenance = (
   implementation: "exact-source",
   sourcePath,
   retrieval:
-    "Use only the local upstream fixture and metadata under packages/site-renderer/src/source-blocks; do not runtime-fetch or ask generation for provider source.",
+    "Use only the local upstream fixture and metadata under packages/site-renderer/src/source-blocks, source-chrome, or source-templates; do not runtime-fetch or ask generation for provider source.",
   verifiedAt: "2026-07-04",
   visualExactnessStatus: "reviewed-exact-source",
   visualSourceNotes:
     "Provider DOM, layout, responsive classes, and Tailwind utility strings are preserved in the local provider renderer. SiaB replaces only approved text/link slots and theme CSS variables.",
   runtime,
   notes:
-    "Executable provider-block definition, renderer, slot manifest, source metadata/hash, and validation live in @siteinabox/site-renderer/source-blocks.",
+    "Executable provider definition, renderer, slot manifest, source metadata/hash, and validation live in @siteinabox/site-renderer source registries.",
 })
 
 const tailblocksProvenance = (upstreamBlockName: string, sourcePath: string): BlockVariantProvenance => ({
@@ -1374,6 +1374,49 @@ export const SITE_CHROME_CATALOG = [
       "Amicare Nav",
       "packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx",
       "Maps renderer-owned Amicare sticky anchor navigation to structured SiteSettings navHeader/chrome data.",
+    ),
+    editableFields: [
+      image("chrome.header.logo", "Logo"),
+      cta("chrome.header.cta", "Header action"),
+      {
+        name: "navHeader",
+        label: "Header navigation",
+        kind: "array",
+        itemLabel: "Navigation link",
+        itemFields: [text("label", "Label"), text("href", "Href")],
+      },
+    ],
+  },
+  {
+    id: "header:tailwindplus.marketing.header.with-stacked-flyout-menu",
+    area: "header",
+    variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
+    label: "Tailwind Plus stacked flyout header",
+    intent:
+      "Source-backed Tailwind Plus Marketing header adapted to structured site name, header navigation, logo, and CTA settings.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-header--source-tailwindplus-marketing-stacked-flyout",
+    provenance: tailwindPlusExactSourceProvenance(
+      "With stacked flyout menu",
+      "27e5f71ced91b88e3f6b59ca69033a83",
+      "https://tailwindcss.com/plus/ui-blocks/marketing/elements/headers",
+      "packages/site-renderer/src/source-chrome/tailwindplus/marketing/header/with-stacked-flyout-menu/upstream.html",
+      {
+        kind: "copy-paste-tailwind",
+        supportedAstroPath:
+          "Render through @siteinabox/site-renderer React chrome components and package CSS; no per-tenant source branches.",
+        tailwindNotes:
+          "The local renderer preserves source-backed Tailwind utility class strings for the reviewed header shell while mapping SIAB structured chrome data into the slots.",
+        interactive: false,
+        docs: [
+          "https://tailwindcss.com/plus/ui-blocks/marketing/elements/headers",
+          "packages/site-renderer/src/source-chrome",
+        ],
+        notes:
+          "The upstream component uses Tailwind Plus Elements for popovers. SIAB currently renders a fail-closed, CSS-only structured chrome adaptation from the approved source-backed shell.",
+      },
     ),
     editableFields: [
       image("chrome.header.logo", "Logo"),

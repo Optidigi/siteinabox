@@ -3,6 +3,11 @@ import type { LinkRef, NavLink, SiteSettings } from "@siteinabox/contracts"
 import { actionAnalyticsAttrs } from "./analytics"
 import { cx, nativeChromeClassName } from "./blocks/native-classes"
 import { type MediaResolver, resolveMedia } from "./media"
+import {
+  getProviderChromeDefinition,
+  getProviderChromeRenderer,
+  isProviderChromeVariantIdentifier,
+} from "./source-chrome/registry"
 
 export type SiteChromeProps = {
   settings: SiteSettings
@@ -58,9 +63,26 @@ function renderLink(link: LinkRef | NavLink, role: "nav" | "footer", className: 
 export function SiteHeader({ settings, currentSlug, mediaResolver }: SiteChromeProps) {
   const links = settings.navHeader ?? []
   const header = settings.chrome?.header
+  const variant = header?.variant ?? "default"
+  const providerHeaderRenderer = getProviderChromeRenderer("header", variant)
+  if (providerHeaderRenderer) return <>{providerHeaderRenderer({ settings, currentSlug, mediaResolver })}</>
+  if (isProviderChromeVariantIdentifier(variant)) {
+    const providerDefinition = getProviderChromeDefinition("header", variant)
+    return (
+      <header
+        className="site-chrome site-header cms-block--provider-error rounded-md border border-red-300 bg-red-50 p-6 text-sm text-red-900"
+        data-provider-error={!providerDefinition ? "unresolved" : "missing-renderer"}
+        data-provider-variant={variant}
+        data-source-variant={variant}
+        data-siab-site-header
+        data-site-chrome="header"
+      >
+        Unresolved provider chrome variant: <code>{String(variant)}</code>
+      </header>
+    )
+  }
   const logo = resolveMedia(header?.logo ?? settings.branding?.logo ?? null, mediaResolver)
   const activeMode = header?.activeMode ?? "path"
-  const variant = header?.variant ?? "default"
   const variantClassName = chromeVariantClassName()
   const toggleId = `site-header-menu-toggle-${(currentSlug ?? "index").replace(/[^a-zA-Z0-9_-]/g, "-")}`
   const hasChrome = links.length > 0 || logo || header?.cta?.href

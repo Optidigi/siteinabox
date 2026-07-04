@@ -32,14 +32,14 @@ const validatePrimaryColor = (val: unknown) => {
 
 const nonEmpty = (val: unknown) => typeof val === "string" && val.trim() !== ""
 
-const sharedChromeVariantOptions = [
-  { label: "Default", value: "default" },
-]
+const chromeVariantOptionsFor = (area: "header" | "footer" | "banner") =>
+  SITE_CHROME_CATALOG
+    .filter((entry) => entry.area === area)
+    .map((entry) => ({ label: entry.label, value: entry.variant }))
 
-const headerFooterChromeVariantOptions = [
-  ...sharedChromeVariantOptions,
-  { label: "Amicare zen", value: "amicareZen" },
-]
+const headerChromeVariantOptions = chromeVariantOptionsFor("header")
+const footerChromeVariantOptions = chromeVariantOptionsFor("footer")
+const bannerChromeVariantOptions = chromeVariantOptionsFor("banner")
 
 const tenantExclusiveChromeVariants = SITE_CHROME_CATALOG
   .filter((entry) => entry.scope.kind === "tenant-exclusive")
@@ -266,7 +266,7 @@ export const SiteSettings: CollectionConfig = {
       admin: { description: "Non-navigation header/footer content edited from the page editor chrome inspector." },
       fields: [
         { name: "header", type: "group", fields: [
-          { name: "variant", type: "select", options: headerFooterChromeVariantOptions,
+          { name: "variant", type: "select", options: headerChromeVariantOptions,
             filterOptions: ({ options, data, req }) => filterChromeVariantOptions("header", options as any, data, req),
             admin: { description: "Approved renderer variant for the header." } },
           { name: "logo", type: "upload", relationTo: "media",
@@ -287,7 +287,7 @@ export const SiteSettings: CollectionConfig = {
           { name: "cta", type: "group", fields: linkRefFields() },
         ]},
         { name: "footer", type: "group", fields: [
-          { name: "variant", type: "select", options: headerFooterChromeVariantOptions,
+          { name: "variant", type: "select", options: footerChromeVariantOptions,
             filterOptions: ({ options, data, req }) => filterChromeVariantOptions("footer", options as any, data, req),
             admin: { description: "Approved renderer variant for the footer." } },
           { name: "logo", type: "upload", relationTo: "media",
@@ -299,7 +299,7 @@ export const SiteSettings: CollectionConfig = {
             admin: { description: "Manifest-driven footer column composition edited from the page editor." } }
         ]},
         { name: "banner", type: "group", fields: [
-          { name: "variant", type: "select", options: sharedChromeVariantOptions,
+          { name: "variant", type: "select", options: bannerChromeVariantOptions,
             admin: { description: "Approved renderer variant for the announcement banner." } },
           { name: "visible", type: "checkbox", defaultValue: false },
           { name: "title", type: "text" },

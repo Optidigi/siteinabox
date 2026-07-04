@@ -169,10 +169,19 @@ describe("site generation catalog governance", () => {
     expect(serializedInput).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(serializedInput).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
-    expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.variant)).toEqual(["default", "default", "default"])
+    expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.variant)).toEqual([
+      "default",
+      "tailwindplus.marketing.header.with-stacked-flyout-menu",
+      "default",
+      "default",
+    ])
     expect(input.approvedChromeVariants).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ area: "header", variant: "default" }),
+        expect.objectContaining({
+          area: "header",
+          variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
+        }),
         expect.objectContaining({ area: "footer", variant: "default" }),
         expect.objectContaining({ area: "banner", variant: "default" }),
       ]),
@@ -316,7 +325,11 @@ describe("site generation catalog governance", () => {
   it("constrains OpenAI chrome settings and rejects code-like generated settings", () => {
     const settings = (siteGenerationJsonSchema.properties.settings as any)
     expect(settings.required).toContain("chrome")
-    expect(settings.properties.chrome.properties.header.properties.variant.enum).toEqual(["default", null])
+    expect(settings.properties.chrome.properties.header.properties.variant.enum).toEqual([
+      "default",
+      "tailwindplus.marketing.header.with-stacked-flyout-menu",
+      null,
+    ])
     expect(settings.properties.chrome.properties.footer.properties.variant.enum).toEqual(["default", null])
     expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual(["default", null])
     expect(settings.properties.chrome.additionalProperties).toBe(false)

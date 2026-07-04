@@ -1,14 +1,17 @@
 # Block Source Catalog
 
 Generated public sites render structured CMS data through the shared
-`@siteinabox/site-renderer` React renderers. Provider-backed blocks now enter
-self-serve generation only through executable source-block definitions under
-`packages/site-renderer/src/source-blocks`.
+`@siteinabox/site-renderer` React renderers. Provider-backed page sections now
+enter self-serve generation only through executable source-block definitions
+under `packages/site-renderer/src/source-blocks`. Provider-backed chrome and
+system fallbacks use adjacent executable registries under
+`packages/site-renderer/src/source-chrome` and
+`packages/site-renderer/src/source-templates`.
 
 The active V1 provider runtime is intentionally narrow:
 
-- active provider: Tailwind Plus Marketing/Product Marketing;
-- active blocks:
+- active provider: Tailwind Plus Marketing;
+- active page sections:
   - `tailwindplus.marketing.hero.simple-centered`;
   - `tailwindplus.marketing.feature.with-product-screenshot`;
   - `tailwindplus.marketing.feature.centered-2x2-grid`;
@@ -27,8 +30,12 @@ The active V1 provider runtime is intentionally narrow:
   - `tailwindPlusCentered`;
   - `tailwindPlusSimple`;
   - `tailwindPlusSimpleWithHeading`;
-- active CMS block slugs: `hero`, `featureList`, `cta`, `contactSection`,
-  `testimonials`, `stats`, and `logoCloud`.
+- active CMS page block slugs: `hero`, `featureList`, `cta`,
+  `contactSection`, `testimonials`, `stats`, and `logoCloud`;
+- active header chrome:
+  `tailwindplus.marketing.header.with-stacked-flyout-menu`;
+- active system fallback:
+  `tailwindplus.marketing.feedback.404-simple` for known-host missing pages.
 
 Historical adapted Tailwind Plus variants, Preline, Tailblocks, SIAB-owned
 generic visual variants, and locked provider examples remain inactive for
@@ -46,6 +53,11 @@ self-serve generation.
 - `packages/site-renderer/src/source-blocks` owns executable provider-block
   definitions, exact-source fixtures, source metadata/hashes, typed slot
   manifests, renderer lookup, and fail-closed provider validation.
+- `packages/site-renderer/src/source-chrome` owns executable provider chrome
+  definitions, local fixtures/hashes, chrome slot manifests, and fail-closed
+  chrome lookup.
+- `packages/site-renderer/src/source-templates` owns executable provider system
+  templates such as the default known-tenant 404 fallback.
 - `apps/cms/src/blocks/registry.ts` maps canonical block slugs to Payload CMS
   schemas.
 - `packages/site-renderer/src/blocks/index.tsx` maps the same slugs to typed
@@ -63,9 +75,10 @@ and the canvas is not generation-eligible.
 
 `SITE_SOURCE_BACKED_BLOCK_VARIANTS` is a compact provenance catalog for
 renderer-ready page-block variants. It still contains some historical provider
-metadata, but activation truth for provider-backed blocks comes from executable
-definitions in `@siteinabox/site-renderer/source-blocks`. Contracts can expose
-only the subset that is backed by those definitions.
+metadata, but activation truth for provider-backed page blocks comes from
+executable definitions in `@siteinabox/site-renderer/source-blocks`. Chrome
+activation is checked against `@siteinabox/site-renderer/source-chrome`.
+Contracts can expose only the subset that is backed by those definitions.
 
 A new provider variant can enter active self-serve generation only after it has:
 
@@ -152,6 +165,17 @@ Generic non-tenant `.cms-block` renderer CSS must be scoped to
 from that filtered root. Provider isolation is an exclusion policy, not a
 provider-specific CSS override layer.
 
+Provider chrome roots use equivalent chrome markers:
+`data-provider-chrome="tailwindplus"`, `data-provider-variant`,
+`data-source-backed-chrome="true"`, and `data-source-variant`. Generic
+`.site-chrome` CSS excludes `[data-provider-chrome]`.
+
+Provider system-template roots use `data-provider-template="tailwindplus"`,
+`data-provider-variant`, `data-system-template`,
+`data-system-template-kind`, `data-source-backed-template="true"`, and
+`data-source-variant`. The platform fallback keeps its own
+`.renderer-not-found` markup and does not style provider template roots.
+
 Current active runtime families and blocks:
 
 - `tailwindplus.marketing.hero.simple-centered`, with legacy
@@ -233,31 +257,38 @@ Header, footer, and announcement/banner are global site chrome. They remain in
 `SiteSettings.chrome.banner`; they are not page blocks and are not listed in
 `SITE_BLOCK_SLUGS`.
 
-Self-serve generation exposes only the default structured chrome variants.
+Self-serve generation exposes the default structured chrome variants and the
+active Tailwind Plus Marketing header chrome
+`tailwindplus.marketing.header.with-stacked-flyout-menu` for
+`SiteSettings.chrome.header.variant`. It is rendered through
+`packages/site-renderer/src/source-chrome`, not as page content. Header slots
+come from structured `SiteSettings` data: site/brand name, logo, `navHeader`,
+and header CTA. Footer and banner remain SIAB-owned chrome variants.
+
 Inactive provider chrome variants are not active chrome choices, provenance
-entries, renderer fixture requirements, or AI-generation suggestions.
-Tailwind Plus Marketing header/navbar chrome remains deferred. It must not be
-represented as a normal page block. The contained future path is a
-provider-backed chrome registry parallel to source blocks, wired through
-`SiteSettings.chrome.header`, with local source fixture/hash, typed chrome
-slots for brand/logo/navigation/CTA, shared preview/public/canvas rendering,
-chrome-specific CSS isolation, generation validation, publish validation, and
-fail-closed tests. No local source-visible Tailwind Plus header fixture exists
-in the current repo, so activating it now would fail the provider gate.
+entries, renderer fixture requirements, or AI-generation suggestions. Provider
+chrome variants fail closed when unresolved instead of falling back to generic
+chrome.
 
 ## System Templates
 
-The public renderer's 404 handling is currently route-level fallback markup:
-unknown hosts, inactive tenants, missing snapshots, and unknown page paths
-return 404 from `apps/renderer/src/pages/[...path].astro`, while `/404` uses
-`apps/renderer/src/pages/404.astro`. There is no CMS-owned system-template or
-snapshot data model for editable 404 content today.
+The public renderer distinguishes unknown hosts/missing snapshots from known
+tenant missing pages:
 
-Tailwind Plus 404 therefore remains deferred. A provider-backed 404 must wait
-for a contained system-template contract, for example a reserved
-`settings.systemPages.notFound` shape or equivalent published snapshot field,
-plus local source fixture/hash, typed slots, renderer support, validation, and
-tests. It must not be modeled as an ordinary generated page section.
+- no published snapshot for the request host: the platform/default static 404
+  remains in use;
+- published snapshot exists but the requested page is missing:
+  `apps/renderer/src/pages/[...path].astro` renders the provider-backed
+  Tailwind Plus Simple 404 template
+  `tailwindplus.marketing.feedback.404-simple` with the tenant snapshot's
+  settings and theme.
+
+There is no CMS-owned system-template editor or generated system-template data
+model today. The active 404 template therefore uses renderer-owned structured
+defaults derived from site settings, not AI-generated page content. It is not a
+page block and is not duplicated into every generated site. If the provider
+template renderer is missing, the known-tenant 404 path fails closed instead of
+silently falling back to platform markup.
 
 ## Adding Or Reintroducing Providers
 

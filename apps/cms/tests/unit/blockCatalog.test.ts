@@ -29,6 +29,11 @@ import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contr
 import { v1FixturePage } from "@siteinabox/site-renderer"
 import { v1FixtureSettings } from "@siteinabox/site-renderer"
 import { providerBlockDefinitions } from "@siteinabox/site-renderer/source-blocks"
+import { providerChromeDefinitions } from "@siteinabox/site-renderer/source-chrome"
+import {
+  DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID,
+  providerSystemTemplateDefinitions,
+} from "@siteinabox/site-renderer/source-templates"
 
 const inlineRoot = (text: string) => ({
   t: "root" as const,
@@ -289,6 +294,7 @@ describe("renderer block catalog", () => {
       expect.arrayContaining([
         "header:default",
         "header:amicareZen",
+        "header:tailwindplus.marketing.header.with-stacked-flyout-menu",
         "footer:default",
         "footer:amicareZen",
         "banner:default",
@@ -299,13 +305,48 @@ describe("renderer block catalog", () => {
     )
 
     expect(SITE_CHROME_CATALOG.some((entry) => entry.area === "banner" && String(entry.variant) === "amicareZen")).toBe(false)
-    expect(SITE_SOURCE_BACKED_CHROME_VARIANTS).toEqual([])
+    expect(SITE_SOURCE_BACKED_CHROME_VARIANTS).toEqual([
+      expect.objectContaining({
+        area: "header",
+        variantId: "header:tailwindplus.marketing.header.with-stacked-flyout-menu",
+        variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
+        rendererClassName: "site-header--source-tailwindplus-marketing-stacked-flyout",
+      }),
+    ])
 
     expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.id)).toEqual([
       "header:default",
+      "header:tailwindplus.marketing.header.with-stacked-flyout-menu",
       "footer:default",
       "banner:default",
     ])
+  })
+
+  it("keeps source-backed chrome catalog exposure aligned with executable provider chrome definitions", () => {
+    const activeChromeVariants = new Set(providerChromeDefinitions.map((definition) => definition.id))
+
+    expect(activeChromeVariants).toEqual(new Set(["tailwindplus.marketing.header.with-stacked-flyout-menu"]))
+
+    for (const variant of SITE_SOURCE_BACKED_CHROME_VARIANTS) {
+      expect(activeChromeVariants.has(variant.variant), `${variant.variantId} is exposed without active chrome renderer`).toBe(
+        true,
+      )
+      expect(variant.area, `${variant.variantId} should remain chrome, not a page block`).toBe("header")
+      expect(variant.provenance.sourceName).toBe("Tailwind Plus")
+    }
+
+    expect(SITE_SOURCE_BACKED_CHROME_VARIANTS.map((variant) => variant.variant)).toEqual([
+      "tailwindplus.marketing.header.with-stacked-flyout-menu",
+    ])
+  })
+
+  it("keeps provider system templates active only in the renderer registry", () => {
+    expect(providerSystemTemplateDefinitions.map((definition) => definition.id)).toEqual([
+      DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID,
+    ])
+    expect(providerSystemTemplateDefinitions.map((definition) => definition.kind)).toEqual(["notFound"])
+    expect(SITE_BLOCK_CATALOG.map((entry) => entry.slug)).not.toEqual(expect.arrayContaining(["notFound", "404"]))
+    expect(JSON.stringify(SITE_CHROME_CATALOG)).not.toContain(DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID)
   })
 
   it("validates structured chrome settings and rejects code-like chrome fields", () => {
@@ -349,6 +390,30 @@ describe("renderer block catalog", () => {
         chrome: {
           ...selfServeFixtureSettings.chrome,
           banner: { ...selfServeFixtureSettings.chrome?.banner, sourceCode: "export default function Banner() {}" },
+        },
+      }).success,
+    ).toBe(false)
+    expect(
+      GeneratedSiteSettingsSchema.safeParse({
+        ...selfServeFixtureSettings,
+        chrome: {
+          ...selfServeFixtureSettings.chrome,
+          header: {
+            ...selfServeFixtureSettings.chrome?.header,
+            variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
+          },
+        },
+      }).success,
+    ).toBe(true)
+    expect(
+      GeneratedSiteSettingsSchema.safeParse({
+        ...selfServeFixtureSettings,
+        chrome: {
+          ...selfServeFixtureSettings.chrome,
+          footer: {
+            ...selfServeFixtureSettings.chrome?.footer,
+            variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
+          },
         },
       }).success,
     ).toBe(false)

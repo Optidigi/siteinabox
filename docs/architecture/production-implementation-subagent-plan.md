@@ -61,10 +61,13 @@ tenant-specific images.
 - Amicare must stay on the data-driven renderer runtime. Its tenant parity
   behavior belongs in scoped renderer/CMS snapshot data and
   `packages/site-renderer`, not restored tenant app source.
-- Generic self-serve generated-site styling currently has no active
-  provider-backed block sources. The next active family must be exact-source
-  Tailwind Plus only; Tailblocks, Preline, adapted Tailwind Plus renderers, and
-  SIAB-owned generic visual variants are not active self-serve sources.
+- Generic self-serve generated-site styling uses only the active exact-source
+  Tailwind Plus provider runtime. Active provider page sections are backed by
+  `packages/site-renderer/src/source-blocks`, the active provider header chrome
+  is backed by `packages/site-renderer/src/source-chrome`, and the known-tenant
+  404 fallback is backed by `packages/site-renderer/src/source-templates`.
+  Tailblocks, Preline, adapted Tailwind Plus renderers, and SIAB-owned generic
+  visual variants are not active self-serve sources.
 - Automated pixel-level block verification is not a priority for the next pass.
   The priority is deterministic catalog metadata, source provenance, renderer
   tests, and manual visual review when catalog variants are added or changed.

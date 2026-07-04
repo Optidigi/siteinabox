@@ -1,0 +1,108 @@
+import { createHash } from "node:crypto"
+import { readFileSync } from "node:fs"
+import path from "node:path"
+import type { SiteSettings } from "@siteinabox/contracts"
+import { renderToStaticMarkup } from "react-dom/server"
+import { describe, expect, it } from "vitest"
+import {
+  getProviderChromeDefinition,
+  providerChromeDefinitions,
+  SiteHeader,
+} from "@siteinabox/site-renderer"
+
+const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
+const fromRepoRoot = (relativePath: string) => path.join(repoRoot, relativePath)
+
+const variant = "tailwindplus.marketing.header.with-stacked-flyout-menu" as const
+const fixturePath =
+  "packages/site-renderer/src/source-chrome/tailwindplus/marketing/header/with-stacked-flyout-menu/upstream.html"
+const stylesPath = "packages/site-renderer/src/styles.css"
+
+const normalizeSource = (source: string) =>
+  source.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "").trim()
+
+const extractFixtureClassNames = (source: string) => [
+  ...source.matchAll(/\bclass(?:Name)?=["']([^"']+)["']/g),
+].map((match) => match[1]!.trim())
+
+const selectorsFor = (css: string, className: string) => {
+  const escaped = className.replace(".", "\\.")
+  const pattern = new RegExp(`(^|})\\s*([^{}]*${escaped}[^{}]*)\\s*\\{`, "g")
+  return [...css.matchAll(pattern)].map((match) => match[2]!.trim())
+}
+
+const settings = {
+  siteName: "Acme",
+  siteUrl: "https://example.com",
+  language: "en",
+  branding: {
+    logo: { url: "/logo.svg", alt: "Acme" },
+  },
+  navHeader: [
+    { label: "Product", href: "/product" },
+    { label: "Features", href: "/features" },
+    { label: "Company", href: "/company" },
+  ],
+  chrome: {
+    header: {
+      variant,
+      cta: { label: "Log in", href: "/login" },
+    },
+  },
+} satisfies SiteSettings
+
+describe("provider chrome runtime", () => {
+  it("registers the Tailwind Plus stacked flyout header with source metadata", () => {
+    expect(providerChromeDefinitions).toHaveLength(1)
+
+    const definition = getProviderChromeDefinition("header", variant)
+    expect(definition?.id).toBe(variant)
+    expect(definition?.renderer).toBeTypeOf("function")
+    expect(definition?.rendererClassName).toBe("site-header--source-tailwindplus-marketing-stacked-flyout")
+    expect(definition?.source.sourceHash).toMatch(/^sha256:[a-f0-9]{64}$/)
+
+    const source = readFileSync(fromRepoRoot(fixturePath), "utf8")
+    const hash = `sha256:${createHash("sha256").update(normalizeSource(source)).digest("hex")}`
+    expect(definition?.source.sourceHash).toBe(hash)
+  })
+
+  it("renders source-backed header chrome with root markers and upstream utility class parity", () => {
+    const html = renderToStaticMarkup(<SiteHeader settings={settings} currentSlug="features" />)
+    const upstream = readFileSync(fromRepoRoot(fixturePath), "utf8")
+
+    expect(html).toContain('data-site-chrome="header"')
+    expect(html).toContain("data-siab-site-header")
+    expect(html).toContain('data-provider-chrome="tailwindplus"')
+    expect(html).toContain(`data-provider-variant="${variant}"`)
+    expect(html).toContain('data-source-backed-chrome="true"')
+    expect(html).toContain(`data-source-variant="${variant}"`)
+
+    for (const className of extractFixtureClassNames(upstream)) {
+      expect(html, `header render missing upstream className: ${className}`).toContain(className)
+    }
+  })
+
+  it("fails closed for unresolved provider chrome variants", () => {
+    const html = renderToStaticMarkup(
+      <SiteHeader
+        settings={{
+          ...settings,
+          chrome: { header: { variant: "tailwindplus.marketing.header.missing" as typeof variant } },
+        }}
+      />,
+    )
+
+    expect(html).toContain("cms-block--provider-error")
+    expect(html).toContain("Unresolved provider chrome variant")
+    expect(html).not.toContain("mx-auto flex max-w-7xl")
+  })
+
+  it("keeps generic site chrome CSS scoped away from provider chrome roots", () => {
+    const css = readFileSync(fromRepoRoot(stylesPath), "utf8")
+    const selectors = selectorsFor(css, ".site-chrome")
+
+    expect(selectors.length).toBeGreaterThan(0)
+    expect(selectors).toContain(".site-chrome:not([data-provider-chrome])")
+    expect(selectors.every((selector) => !selector.includes(".site-chrome {"))).toBe(true)
+  })
+})

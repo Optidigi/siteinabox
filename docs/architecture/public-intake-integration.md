@@ -59,12 +59,14 @@ fields, stores the raw body, normalizes it into `CompanyFacts` and
 `IntakeBrief`, records a stable normalized hash, and calls
 `processStoredIntakeSubmission`. Normal intake submissions therefore start a
 draft generation run automatically. Generic self-serve generation currently uses
-only active exact-source Tailwind Plus Marketing provider blocks: simple
+only active exact-source Tailwind Plus Marketing provider surfaces: simple
 centered hero, product screenshot feature section, centered 2x2 feature grid,
 dark panel CTA with app screenshot, centered contact form, simple centered
-testimonial, simple stats, and simple logo cloud with heading. The CMS review UI
-remains available for inspection, recovery, and operator decisions before
-preview, payment, publish, or activation.
+testimonial, simple stats, simple logo cloud with heading, and the active
+provider-backed header chrome. Known-tenant missing paths use the provider-backed
+Tailwind Plus 404 fallback in the renderer; that fallback is not generated page
+content. The CMS review UI remains available for inspection, recovery, and
+operator decisions before preview, payment, publish, or activation.
 
 Generation provider output is accepted only as structured
 `SiteGenerationSpec` data matching shared contracts. The CMS validation/import

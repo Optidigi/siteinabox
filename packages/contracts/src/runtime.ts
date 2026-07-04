@@ -25,6 +25,9 @@ import type {
   Page,
   PricingBlock,
   RichTextBlock,
+  SiteBannerChromeVariant,
+  SiteFooterChromeVariant,
+  SiteHeaderChromeVariant,
   SiteSettings,
   SiteChromeVariant,
   SiteGenerationBlockSlug,
@@ -76,10 +79,28 @@ const SLUG_REGEX = /^[a-z0-9-]+$/
 const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|(oklch|color|rgb[a]?|hsl[a]?)\(.*\)|[a-zA-Z]+)$/
 const CSS_LENGTH_REGEX = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%)|var\(--[A-Za-z0-9_-]+\))$/
-const SITE_SHARED_CHROME_VARIANTS = SITE_SELF_SERVE_CHROME_VARIANTS
-  .map((variant) => variant.variant)
-  .filter((variant, index, variants) => variants.indexOf(variant) === index) as ["default", ...SiteChromeVariant[]]
-const SITE_HEADER_FOOTER_CHROME_VARIANTS = [...SITE_SHARED_CHROME_VARIANTS, "amicareZen"] as const
+const uniqueChromeVariantsFor = <T extends SiteChromeVariant>(area: "header" | "footer" | "banner") =>
+  SITE_SELF_SERVE_CHROME_VARIANTS
+    .filter((variant) => variant.area === area)
+    .map((variant) => variant.variant)
+    .filter((variant, index, variants) => variants.indexOf(variant) === index) as T[]
+const SITE_SELF_SERVE_HEADER_CHROME_VARIANT_SET = new Set<SiteHeaderChromeVariant>(
+  uniqueChromeVariantsFor<SiteHeaderChromeVariant>("header"),
+)
+const SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET = new Set<SiteFooterChromeVariant>(
+  uniqueChromeVariantsFor<SiteFooterChromeVariant>("footer"),
+)
+const SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET = new Set<SiteBannerChromeVariant>(
+  uniqueChromeVariantsFor<SiteBannerChromeVariant>("banner"),
+)
+const SITE_OFFICIAL_HEADER_CHROME_VARIANT_SET = new Set<SiteHeaderChromeVariant>([
+  ...SITE_SELF_SERVE_HEADER_CHROME_VARIANT_SET,
+  "amicareZen",
+])
+const SITE_OFFICIAL_FOOTER_CHROME_VARIANT_SET = new Set<SiteFooterChromeVariant>([
+  ...SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET,
+  "amicareZen",
+])
 type RuntimeVariantScope = "generic" | "officialTenant"
 const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET = new Set<string>(
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
@@ -695,8 +716,17 @@ const FooterCompositionColumnSchema: z.ZodType<FooterCompositionColumn> = strict
   items: z.array(FooterCompositionItemSchema).nullable().optional(),
 })
 
+const chromeVariantSchema = <T extends string>(variants: ReadonlySet<T>) =>
+  z.string().refine((value): value is T => variants.has(value as T), {
+    message: "Unsupported chrome variant",
+  })
+
 const createSiteSettingsSchema = (
-  headerFooterChromeVariants: typeof SITE_SHARED_CHROME_VARIANTS | typeof SITE_HEADER_FOOTER_CHROME_VARIANTS,
+  chromeVariants: {
+    header: ReadonlySet<SiteHeaderChromeVariant>
+    footer: ReadonlySet<SiteFooterChromeVariant>
+    banner: ReadonlySet<SiteBannerChromeVariant>
+  },
 ): z.ZodType<SiteSettings> => strictObject({
     siteName: z.string().min(1),
     siteUrl: z.string().url(),
@@ -711,7 +741,7 @@ const createSiteSettingsSchema = (
     }).nullable().optional(),
     chrome: strictObject({
       header: strictObject({
-        variant: z.enum(headerFooterChromeVariants).nullable().optional(),
+        variant: chromeVariantSchema(chromeVariants.header).nullable().optional(),
         logo: MediaRefSchema.optional(),
         behavior: z.enum(["static", "sticky"]).nullable().optional(),
         activeMode: z.enum(["path", "anchor", "none"]).nullable().optional(),
@@ -719,7 +749,7 @@ const createSiteSettingsSchema = (
         cta: LinkRefSchema.nullable().optional(),
       }).nullable().optional(),
       footer: strictObject({
-        variant: z.enum(headerFooterChromeVariants).nullable().optional(),
+        variant: chromeVariantSchema(chromeVariants.footer).nullable().optional(),
         logo: MediaRefSchema.optional(),
         tagline: nullableString,
         copyright: nullableString,
@@ -727,7 +757,7 @@ const createSiteSettingsSchema = (
         columns: z.array(FooterCompositionColumnSchema).nullable().optional(),
       }).nullable().optional(),
       banner: strictObject({
-        variant: z.enum(SITE_SHARED_CHROME_VARIANTS).nullable().optional(),
+        variant: chromeVariantSchema(chromeVariants.banner).nullable().optional(),
         visible: z.boolean().nullable().optional(),
         title: nullableString,
         message: z.string().min(1),
@@ -828,9 +858,17 @@ const createSiteSettingsSchema = (
   }
 })
 
-export const SiteSettingsSchema: z.ZodType<SiteSettings> = createSiteSettingsSchema(SITE_SHARED_CHROME_VARIANTS)
+export const SiteSettingsSchema: z.ZodType<SiteSettings> = createSiteSettingsSchema({
+  header: SITE_SELF_SERVE_HEADER_CHROME_VARIANT_SET,
+  footer: SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET,
+  banner: SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET,
+})
 export const OfficialTenantSiteSettingsSchema: z.ZodType<SiteSettings> =
-  createSiteSettingsSchema(SITE_HEADER_FOOTER_CHROME_VARIANTS)
+  createSiteSettingsSchema({
+    header: SITE_OFFICIAL_HEADER_CHROME_VARIANT_SET,
+    footer: SITE_OFFICIAL_FOOTER_CHROME_VARIANT_SET,
+    banner: SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET,
+  })
 
 export const GeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> = SiteSettingsSchema
 export const OfficialTenantGeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> =

@@ -1,0 +1,19 @@
+{
+  "provider": "tailwindplus",
+  "role": "chrome",
+  "area": "header",
+  "namespace": "tailwindplus.marketing.header",
+  "id": "tailwindplus.marketing.header.with-stacked-flyout-menu",
+  "sourceName": "Tailwind Plus",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/elements/headers",
+  "sourceComponent": "Marketing / Elements / Headers / With stacked flyout menu",
+  "sourceHash": "sha256:adade2d97143884d5a9de578b393fd40c8f8746b3552b363bfd1559248980433",
+  "capturedAt": "2026-07-04",
+  "runtimeImportsProviderSource": false,
+  "slots": {
+    "brandName": { "kind": "text", "status": "required", "exposed": true },
+    "logo": { "kind": "image", "status": "optional", "exposed": true },
+    "navLinks": { "kind": "repeater", "status": "optional", "exposed": true },
+    "primaryCta": { "kind": "cta", "status": "optional", "exposed": true }
+  }
+}

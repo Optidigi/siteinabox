@@ -87,18 +87,19 @@ It is not product-complete yet:
 
 ### Block Catalog And Source Styling Status
 
-A historical source-backed block catalog exists in
-`packages/contracts/src/block-catalog.ts`, but generic self-serve provider-backed
-generation is intentionally disabled after removing the adapted/fake Tailwind
-Plus runtime path. The old catalog metadata remains as provenance and backlog
-context only; it is not an active self-serve generation catalog.
+The source-backed catalog in `packages/contracts/src/block-catalog.ts` is active
+for the approved executable Tailwind Plus provider runtime. Generic self-serve
+generation may choose only the active exact-source Tailwind Plus Marketing page
+sections backed by `packages/site-renderer/src/source-blocks`, and may choose
+the active Tailwind Plus Marketing header chrome through
+`SiteSettings.chrome.header.variant`. The public renderer also uses the active
+Tailwind Plus Simple 404 system fallback for known tenants with missing pages.
 
-The next active catalog must start with exact-source Tailwind Plus blocks only:
-Tailwind Plus is the UI source of truth, CMS data owns editable content slots,
-and approved theme tokens may configure color, font, and shape/radius behavior.
-Do not re-enable adapted Tailwind Plus renderers, Preline, Tailblocks,
-SIAB-owned generic visual variants, raw AI HTML/classes, or generated component
-source as active self-serve blocks.
+Tailwind Plus is the UI source of truth, CMS data owns editable content slots
+and chrome settings, and approved theme tokens may configure color, font, and
+shape/radius behavior. Do not re-enable adapted Tailwind Plus renderers,
+Preline, Tailblocks, SIAB-owned generic visual variants, raw AI HTML/classes,
+or generated component source as active self-serve blocks.
 
 ### Existing UIs
 
@@ -142,8 +143,8 @@ Missing or incomplete product UIs:
 - Activation must respect approval, payment/manual override, tenant status, and
   domain verification rules.
 - Generated-site styling must come from approved exact-source catalog variants
-  only. The next active family is Tailwind Plus only; Preline and Tailblocks are
-  not active self-serve sources.
+  only. The active provider family is Tailwind Plus only; Preline and Tailblocks
+  are not active self-serve sources.
 - Paid, locked, adapted, approximate, or license-incompatible blocks stay
   unavailable.
 

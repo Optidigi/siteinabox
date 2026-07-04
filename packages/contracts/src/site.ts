@@ -296,10 +296,16 @@ export type NavLink = { label: string; href: string; external?: boolean }
 export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
 
-export type SiteChromeVariant = "default" | "amicareZen"
+export type SiteHeaderChromeVariant =
+  | "default"
+  | "amicareZen"
+  | "tailwindplus.marketing.header.with-stacked-flyout-menu"
+export type SiteFooterChromeVariant = "default" | "amicareZen"
+export type SiteBannerChromeVariant = "default"
+export type SiteChromeVariant = SiteHeaderChromeVariant | SiteFooterChromeVariant | SiteBannerChromeVariant
 
 export type SiteChromeBanner = {
-  variant?: SiteChromeVariant | null
+  variant?: SiteBannerChromeVariant | null
   visible?: boolean | null
   title?: string | null
   message: string
@@ -352,7 +358,7 @@ export type SiteSettings = {
   } | null
   chrome?: {
     header?: {
-      variant?: SiteChromeVariant | null
+      variant?: SiteHeaderChromeVariant | null
       logo?: MediaRef
       behavior?: "static" | "sticky" | null
       activeMode?: "path" | "anchor" | "none" | null
@@ -360,7 +366,7 @@ export type SiteSettings = {
       cta?: LinkRef | null
     } | null
     footer?: {
-      variant?: SiteChromeVariant | null
+      variant?: SiteFooterChromeVariant | null
       logo?: MediaRef
       tagline?: string | null
       copyright?: string | null

@@ -76,8 +76,8 @@ intake app for both apex and `www`.
 | `/api/forms` | `api/forms.ts` | Renderer-owned generated-site form ingress; forwards to CMS after host snapshot resolution. |
 | `/siab-media/[tenantId]/[...path]` | `siab-media/[tenantId]/[...path].ts` | Public snapshot media route guarded by active host snapshot. |
 | `/_renderer/editor` | `_renderer/editor.astro` | Intentional renderer smoke/dev iframe route documented in `apps/renderer/README.md`; not the CMS editor frame. |
-| `/404` | `404.astro` | Renderer 404 page. |
-| `/[...path]` | `[...path].astro` | Public snapshot renderer for tenant domains. |
+| `/404` | `404.astro` | Platform/default renderer 404 page for direct/static fallback. |
+| `/[...path]` | `[...path].astro` | Public snapshot renderer for tenant domains; known-host missing paths render the provider-backed Tailwind Plus 404 system fallback, unknown hosts use the platform/default fallback. |
 
 ## Legacy Route Decisions
 

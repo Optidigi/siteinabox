@@ -195,18 +195,28 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const traversalMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/%2E%2E/bedroom.jpg")
   assert.equal(traversalMedia.status, 404)
 
-  const validNotFoundChecks = [
-    ["unknown.example", "/"],
+  const unknownHostNotFound = await fetchWithHost(baseUrl, "unknown.example", "/")
+  const unknownHostHtml = await unknownHostNotFound.text()
+  await assertStatus(unknownHostNotFound, 404, "unknown.example/ status", unknownHostHtml, failureContext)
+  assert.match(unknownHostHtml, /Page not found/)
+  assert.doesNotMatch(unknownHostHtml, /data-system-template="tailwindplus\.marketing\.feedback\.404-simple"/)
+  assertNoAnalyticsLeakage(unknownHostHtml)
+
+  const tenantNotFoundChecks = [
     ["ami-care.nl", "/missing-page"],
     ["ami-care.nl", "/robots.txt"],
     ["ami-care.nl", "/manifest.json"],
   ]
 
-  for (const [host, pathname] of validNotFoundChecks) {
+  for (const [host, pathname] of tenantNotFoundChecks) {
     const response = await fetchWithHost(baseUrl, host, pathname)
     const html = await response.text()
     await assertStatus(response, 404, `${host}${pathname} status`, html, failureContext)
     assert.match(html, /Page not found/)
+    assert.match(html, /data-system-template="tailwindplus\.marketing\.feedback\.404-simple"/)
+    assert.match(html, /data-system-template-kind="not-found"/)
+    assert.match(html, /data-siab-theme-overrides/)
+    assert.match(html, /--color-accent:#a04e32/)
     assertNoAnalyticsLeakage(html)
   }
 

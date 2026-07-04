@@ -33,6 +33,16 @@
       "import": "./src/source-blocks/index.ts",
       "default": "./src/source-blocks/index.ts"
     },
+    "./source-chrome": {
+      "types": "./src/source-chrome/index.ts",
+      "import": "./src/source-chrome/index.ts",
+      "default": "./src/source-chrome/index.ts"
+    },
+    "./source-templates": {
+      "types": "./src/source-templates/index.ts",
+      "import": "./src/source-templates/index.ts",
+      "default": "./src/source-templates/index.ts"
+    },
     "./styles.css": "./src/styles.css",
     "./canvas.css": "./src/canvas.css"
   },

@@ -1,14 +1,37 @@
 ---
+import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
-import { SitePageRenderer, buildPageSeoMetadata, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
+import {
+  SitePageRenderer,
+  buildPageSeoMetadata,
+  createRendererMediaResolver,
+  DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID,
+  getProviderSystemTemplateRenderer,
+  resolveTenantRenderer,
+} from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
-import { normalizeRequestHost, resolvePublishedPage } from "../lib/snapshot"
+import { findPublishedPage, loadPublishedSnapshot, normalizeRequestHost, pagePath } from "../lib/snapshot"
 
 const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
 
-const resolved = await resolvePublishedPage(pathname, host)
+const snapshot = await loadPublishedSnapshot(host)
+const page = snapshot ? findPublishedPage(snapshot, pathname) : null
+const resolved = snapshot && page
+  ? {
+      snapshot,
+      page,
+      pathname: pagePath(page),
+    }
+  : null
+const SystemNotFoundTemplate = snapshot && !page
+  ? getProviderSystemTemplateRenderer("notFound", DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID)
+  : null
+
+if (snapshot && !page && !SystemNotFoundTemplate) {
+  throw new Error(`Unresolved provider system template "${DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID}" for notFound.`)
+}
 
 if (!resolved) {
   Astro.response.status = 404
@@ -33,6 +56,17 @@ const rendererHtml = resolved
         mediaResolver,
       }),
     )
+  : SystemNotFoundTemplate && snapshot
+    ? renderToStaticMarkup(
+        createElement(SystemNotFoundTemplate, {
+          settings: snapshot.settings,
+          theme: snapshot.theme,
+          tenantSlug: snapshot.tenantSlug,
+          domain: snapshot.domain,
+          mediaResolver: createRendererMediaResolver(snapshot.tenantId),
+          pathname,
+        }),
+      )
   : ""
 const analyticsJson =
   resolved ? analyticsConfigJson(buildAnalyticsConfig({ snapshot: resolved.snapshot, page: resolved.page, pathname: resolved.pathname })) : null
@@ -175,6 +209,26 @@ const rendererCookieConsentScript = `(() => {
         <script>
           import "../client/site-behavior"
         </script>
+      </body>
+    </html>
+  ) : SystemNotFoundTemplate && snapshot ? (
+    <html lang={snapshot.settings.language} data-renderer-schema={snapshot.schemaVersion}>
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="generator" content={Astro.generator} />
+        <meta name="robots" content="noindex" />
+        <style is:global>
+          html,
+          body {
+            margin: 0;
+            min-width: 320px;
+          }
+        </style>
+        <title>Page not found | {snapshot.settings.siteName}</title>
+      </head>
+      <body data-tenant-slug={snapshot.tenantSlug}>
+        <div set:html={rendererHtml} />
       </body>
     </html>
   ) : (
