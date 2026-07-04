@@ -794,6 +794,15 @@
   background-color: color-mix(in oklab, var(--color-secondary, transparent) 40%, transparent);
 }
 
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--source-amicare-care-cards .cms-block__title em {
+  color: var(--color-accent, currentColor);
+  font-style: italic;
+}
+
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--source-amicare-care-cards .cms-block__feature-icon {
+  background: color-mix(in srgb, var(--color-accent, currentColor) 8%, transparent);
+}
+
 .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .cms-block--richtext {
   background-color: var(--color-bg, transparent);
 }
