@@ -124,6 +124,18 @@ Provider roots carry `data-provider-block`, `data-provider-variant`, and
 `data-source-backed-block`; generic `.cms-block` CSS excludes those roots so
 legacy SiaB block styling cannot alter provider layout.
 
+Header, footer, and banner remain global chrome under `SiteSettings.chrome` plus
+`navHeader`/`navFooter`; they are not page blocks. Self-serve generation exposes
+only the default structured chrome variants today. Tailwind Plus Marketing
+header/navbar is deferred until a provider-backed chrome registry, local
+source-visible fixture/hash, typed chrome slots, preview/public/canvas rendering,
+CSS isolation, and validation tests exist.
+
+404 output is still renderer route fallback markup, not generated page content
+or CMS system-template data. A Tailwind Plus provider-backed 404 is deferred
+until the platform has a contained system-template contract in published
+snapshots. It must not be added as a normal generated page section.
+
 Self-serve intake applies generated specs with remote media placeholder
 ingestion disabled. Provider media slots remain editable CMS fields, but active
 blocks that use upstream/source fallback imagery mark those media slots
@@ -171,7 +183,7 @@ provides the required PostHog token/config and analytics is not disabled.
 Old tenant app sources have been removed. Renderer/CMS snapshot data is
 canonical; do not restore tenant-specific source folders, workflows, or images.
 Amicare has a scoped official-tenant renderer path inside `packages/site-renderer`
-for visual parity. Other retired tenant names must not be recreated without an
-explicit future migration decision.
+for official compatibility. Other retired tenant names must not be recreated
+without an explicit future migration decision.
 
 Do not use those snapshots as a pattern for new generated sites.

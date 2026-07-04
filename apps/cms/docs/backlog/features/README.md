@@ -103,9 +103,9 @@ depended on command-run site generation are no longer current source of truth.
   Preline, Tailblocks, SIAB-owned generic visual variants, raw AI HTML/classes,
   or any Amicare changes. A block becomes generation-eligible only after exact
   source, renderer, CMS sidebar editing, canvas editing, token behavior, and
-  DOM/class parity tests are complete. Screenshot checks are optional one-shot
-  implementation confirmations for specific visual uncertainty, not a standing
-  regression-test requirement.
+  structural/runtime/source-integrity tests are complete. Browser screenshots,
+  pixel diffs, computed-style checks, and visual parity gates are out of scope
+  for the current provider-block completion pass.
 
 ## Implemented Foundation
 
@@ -183,8 +183,10 @@ layout.
 
 The intake workflow uses a provider-backed AI generation service instead of
 calling the fixture loader directly. Generic self-serve provider-backed block
-generation is currently limited to the exact-source Tailwind Plus Marketing
-hero. The default provider remains `mock` for local development and tests, while
+generation is currently limited to active exact-source Tailwind Plus Marketing
+provider blocks backed by the executable source-block registry: hero, feature
+sections, CTA, contact, testimonial, stats, and logo-cloud. The default provider
+remains `mock` for local development and tests, while
 `SITE_GENERATION_PROVIDER=openai` enables the OpenAI Responses API path.
 Generation runs record provider, model,
 prompt version, input/output hashes, raw/parsed output where available,

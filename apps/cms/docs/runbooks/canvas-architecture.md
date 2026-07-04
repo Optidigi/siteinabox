@@ -88,12 +88,12 @@ for the same structured fields. If a block lacks a `BlockFormFields` mapping,
 canvas inline/select behavior, or renderer parity coverage, keep it out of
 generation until those surfaces are complete.
 
-Self-serve generation currently has no approved provider-backed design variants
-through the block `designVariant` field. The next active family must be
-exact-source Tailwind Plus only. Generation must not rely on analytics metadata
-for visual selection. Inactive provider families, SIAB-owned generic visual
-variants, and temporary Ami-care compatibility variants are unavailable to
-generation.
+Self-serve generation currently uses only approved exact-source Tailwind Plus
+Marketing provider-backed `designVariant` values backed by
+`packages/site-renderer/src/source-blocks`. Generation must not rely on
+analytics metadata for visual selection. Inactive provider families, SIAB-owned
+generic visual variants, and temporary Ami-care compatibility variants are
+unavailable to generation.
 
 ## Inline-edit primitives
 

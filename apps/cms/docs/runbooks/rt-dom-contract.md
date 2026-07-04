@@ -70,11 +70,11 @@ Notes:
   sidebar fields and canvas editing. A renderer-only or sidebar-only block must
   stay out of generation until both editing surfaces and parity tests exist.
 - Visual variants for generation are selected by the approved block
-  `designVariant` field. Generic self-serve generation currently has no active
-  provider-backed variants; the next active family must be exact-source
-  Tailwind Plus only. Analytics metadata is not a visual-selection API.
-  Inactive provider families, SIAB-owned generic visual variants, and temporary
-  Ami-care tenant-compatibility variants are not generation inputs.
+  `designVariant` field. Generic self-serve generation currently exposes only
+  active exact-source Tailwind Plus Marketing provider-backed variants from the
+  executable source-block registry. Analytics metadata is not a visual-selection
+  API. Inactive provider families, SIAB-owned generic visual variants, and
+  temporary Ami-care tenant-compatibility variants are not generation inputs.
 
 ## § Theme tokens consumed by block renderers
 

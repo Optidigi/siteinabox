@@ -77,7 +77,8 @@ A new provider variant can enter active self-serve generation only after it has:
 - license and approval metadata;
 - theme token policy;
 - validation in generation import, page save, and publish;
-- focused registry, validation, and DOM/class parity tests.
+- focused registry, validation, source-fixture/hash, root-marker, CSS-isolation,
+  and fail-closed tests.
 
 The catalog may store provider URLs, upstream IDs, public source paths, runtime
 requirements, and review notes. Tailwind Plus active blocks keep exact local
@@ -218,10 +219,12 @@ provenance is:
 
 Paid, locked, unavailable, license-incompatible, deferred, visually unaudited,
 or raw-HTML-only variants must stay out of the exported source-backed list.
-DOM/class parity tests are the durable automated parity gate. Screenshot checks
-may be used as one-shot implementation confirmation when a specific visual
-uncertainty needs resolving; they are not the standard recurring regression
-requirement for provider activation.
+Durable automated checks for this provider path are structural and integrity
+based: source fixture hashes, static upstream class coverage, provider root
+markers, registry completeness, CSS isolation, fail-closed renderer behavior,
+generation/schema rejection, and publish validation. Browser screenshots,
+pixel diffs, computed-style visual comparisons, Chromatic-style regressions,
+and visual parity gates are explicitly out of scope for this pass.
 
 ## Chrome Decision
 
@@ -233,10 +236,28 @@ Header, footer, and announcement/banner are global site chrome. They remain in
 Self-serve generation exposes only the default structured chrome variants.
 Inactive provider chrome variants are not active chrome choices, provenance
 entries, renderer fixture requirements, or AI-generation suggestions.
-Tailwind Plus Marketing header/navbar chrome is deferred until it can be added
-as a complete provider-backed chrome path with source fixture/hash, typed chrome
-slots, CMS editing, preview/public/canvas parity, generation validation, and
-fail-closed tests.
+Tailwind Plus Marketing header/navbar chrome remains deferred. It must not be
+represented as a normal page block. The contained future path is a
+provider-backed chrome registry parallel to source blocks, wired through
+`SiteSettings.chrome.header`, with local source fixture/hash, typed chrome
+slots for brand/logo/navigation/CTA, shared preview/public/canvas rendering,
+chrome-specific CSS isolation, generation validation, publish validation, and
+fail-closed tests. No local source-visible Tailwind Plus header fixture exists
+in the current repo, so activating it now would fail the provider gate.
+
+## System Templates
+
+The public renderer's 404 handling is currently route-level fallback markup:
+unknown hosts, inactive tenants, missing snapshots, and unknown page paths
+return 404 from `apps/renderer/src/pages/[...path].astro`, while `/404` uses
+`apps/renderer/src/pages/404.astro`. There is no CMS-owned system-template or
+snapshot data model for editable 404 content today.
+
+Tailwind Plus 404 therefore remains deferred. A provider-backed 404 must wait
+for a contained system-template contract, for example a reserved
+`settings.systemPages.notFound` shape or equivalent published snapshot field,
+plus local source fixture/hash, typed slots, renderer support, validation, and
+tests. It must not be modeled as an ordinary generated page section.
 
 ## Adding Or Reintroducing Providers
 
@@ -251,6 +272,8 @@ For any new Tailwind Plus block:
 4. Add catalog metadata, runtime notes, editable fields, and visual review
    notes.
 5. Add contract, generation, renderer, CMS preview, and governance tests.
+   These tests must remain structural/runtime/integrity tests, not visual
+   parity gates.
 6. Add the provider to self-serve generation only if it is approved for the
    current product surface.
 
