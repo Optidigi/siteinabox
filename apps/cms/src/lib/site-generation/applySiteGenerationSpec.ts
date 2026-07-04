@@ -17,6 +17,7 @@ import {
   OfficialTenantSiteGenerationSpecSchema,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
+import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
 import {
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
@@ -352,6 +353,13 @@ export const validateSiteGenerationSpecForCms = (
             ["pages", index, "blocks", blockIndex, "designVariant"],
           ))
         }
+      }
+      for (const providerIssue of validateProviderBlockInstance(block as any)) {
+        issues.push(issue(
+          providerIssue.code,
+          providerIssue.message,
+          ["pages", index, "blocks", blockIndex, ...providerIssue.path],
+        ))
       }
     })
   })

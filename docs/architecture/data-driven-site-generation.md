@@ -66,6 +66,8 @@ Generated-site blocks have one canonical contract path:
 - Approved UI block provenance, variants, source-family metadata, and editable
   field mappings:
   `packages/contracts/src/block-catalog.ts`.
+- Provider-backed block activation:
+  `packages/site-renderer/src/source-blocks`.
 - Payload CMS block schemas:
   `apps/cms/src/blocks/*.ts`, exported through
   `apps/cms/src/blocks/registry.ts`.
@@ -81,14 +83,53 @@ may use. `SITE_DEFERRED_MARKETING_BLOCK_SLUGS` is empty; deferred blocks are
 not available to generation.
 
 Self-serve generation has a narrower active source partition than the full
-provenance catalog. That active partition is currently empty after removing the
-adapted/fake Tailwind Plus runtime path. AI inputs, generated JSON schema enums,
-mock generation, and generic runtime validation must not expose provider-backed
-block variants until exact-source Tailwind Plus blocks are implemented and
-approved. Inactive source families and SIAB-owned generic visual variants are
-not generation inputs. Amicare variants are tenant-exclusive compatibility data
-for the official Ami-care tenant path and are not available to generic
-generation, normal pickers, or non-Amicare routes.
+provenance catalog. The current active provider-backed partition contains:
+
+- Tailwind Plus Marketing hero `tailwindplus.marketing.hero.simple-centered`,
+  stored as `tailwindPlusSimpleCentered` on `hero` blocks;
+- Tailwind Plus Marketing feature section
+  `tailwindplus.marketing.feature.with-product-screenshot`, stored as
+  `tailwindPlusWithProductScreenshot` on `featureList` blocks;
+- Tailwind Plus Marketing feature section
+  `tailwindplus.marketing.feature.centered-2x2-grid`, stored as
+  `tailwindPlusCentered2x2` on `featureList` blocks;
+- Tailwind Plus Marketing CTA
+  `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, stored as
+  `tailwindPlusDarkPanelWithAppScreenshot` on `cta` blocks;
+- Tailwind Plus Marketing contact section
+  `tailwindplus.marketing.contact.centered`, stored as `tailwindPlusCentered`
+  on `contactSection` blocks;
+- Tailwind Plus Marketing testimonial
+  `tailwindplus.marketing.testimonial.simple-centered`, stored as
+  `tailwindPlusSimpleCentered` on `testimonials` blocks;
+- Tailwind Plus Marketing stats `tailwindplus.marketing.stats.simple`, stored
+  as `tailwindPlusSimple` on `stats` blocks;
+- Tailwind Plus Marketing logo cloud
+  `tailwindplus.marketing.logo-cloud.simple-with-heading`, stored as
+  `tailwindPlusSimpleWithHeading` on `logoCloud` blocks.
+
+AI inputs, generated JSON schema enums, mock generation, CMS validation, and
+publish validation use those active executable provider definitions and must not
+expose inactive provider variants or inactive slots.
+
+Provider block source owns DOM, layout, responsive behavior, and static
+Tailwind classes. SiaB owns structured slots, CMS editing, links/media/forms,
+routing, theme tokens, preview/canvas/public orchestration, and publish
+validation. Generation may choose only approved provider IDs and fill exposed
+slot fields; it must not output raw HTML, TSX/JSX, CSS, imports, `className`,
+arbitrary Tailwind classes, executable code, or layout instructions.
+
+Self-serve intake applies generated specs with remote media placeholder
+ingestion disabled. Provider media slots remain editable CMS fields, but active
+blocks that use upstream/source fallback imagery mark those media slots
+optional so publish validation does not depend on fetching arbitrary generated
+remote assets. Required provider slots are limited to the structured content
+and item counts needed to preserve the exact source layout.
+
+Inactive source families and SIAB-owned generic visual variants are not
+generation inputs. Amicare variants are tenant-exclusive compatibility data for
+the official Ami-care tenant path and are not available to generic generation,
+normal pickers, or non-Amicare routes.
 
 ## Email And Analytics
 

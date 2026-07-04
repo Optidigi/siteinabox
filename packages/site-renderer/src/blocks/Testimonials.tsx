@@ -9,6 +9,7 @@ import { rendererVariantClassName, runtimeVariantDataAttribute } from "./variant
 export function TestimonialsBlockRenderer({ block, options }: { block: TestimonialsBlock; options: BlockRenderOptions }) {
   if (!block.items || block.items.length === 0) return null
   const sourceVariant = rendererVariantClassName(block)
+  const logo = resolveMedia(block.logo ?? null, options.mediaResolver)
 
   return (
     <section
@@ -22,6 +23,15 @@ export function TestimonialsBlockRenderer({ block, options }: { block: Testimoni
         <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-heading)" }}>
           {block.title}
         </h2>
+      )}
+      {logo && (
+        <img
+          className="cms-block__testimonial-logo"
+          src={logo.src}
+          alt={logo.alt ?? ""}
+          loading="lazy"
+          decoding="async"
+        />
       )}
       <ul className={cx("cms-block__testimonials-list", nativeBlockClassName(block, "list"))}>
         {block.items.map((item, i) => {

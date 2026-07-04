@@ -76,16 +76,17 @@ export function RendererCanvasBlockRenderer({
   )
 
   const updateField = React.useCallback((path: RendererElementPath, value: unknown) => {
-    if (path.field === "features" && path.itemIndex != null && path.subField) {
-      const next = [...(block.features ?? [])]
-      next[path.itemIndex] = { ...(next[path.itemIndex] ?? {}), [path.subField]: value }
-      onUpdate({ ...block, features: next })
-      return
-    }
     if (path.field === "pills" && path.itemIndex != null) {
       const next = [...(block.pills ?? [])]
       next[path.itemIndex] = { ...(next[path.itemIndex] ?? {}), label: value }
       onUpdate({ ...block, pills: next })
+      return
+    }
+    if (path.itemIndex != null && path.subField) {
+      const current = Array.isArray(block[path.field]) ? block[path.field] : []
+      const next = [...current]
+      next[path.itemIndex] = { ...(next[path.itemIndex] ?? {}), [path.subField]: value }
+      onUpdate({ ...block, [path.field]: next })
       return
     }
     onUpdate({ ...block, [path.field]: value })

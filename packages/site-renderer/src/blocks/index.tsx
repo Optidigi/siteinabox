@@ -13,7 +13,7 @@ import { RichTextBlockRenderer } from "./RichText"
 import { StatsBlockRenderer } from "./Stats"
 import { TeamBlockRenderer } from "./Team"
 import { TestimonialsBlockRenderer } from "./Testimonials"
-import { getSourceBackedVariantRenderer } from "../source-blocks/registry"
+import { getProviderBlockDefinition, getSourceBackedVariantRenderer, isProviderVariantIdentifier } from "../source-blocks/registry"
 import type { BlockRegistry, BlockRenderOptions } from "./types"
 
 export * from "./types"
@@ -48,7 +48,24 @@ export function BlockRenderer({
   options?: Partial<Omit<BlockRenderOptions, "index">>
 }) {
   const renderers = { ...defaultBlockRegistry, ...registry }
-  const Renderer = getSourceBackedVariantRenderer(block) ?? renderers[block.blockType]
+  const sourceRenderer = getSourceBackedVariantRenderer(block)
+  const providerVariant = isProviderVariantIdentifier(block.designVariant)
+  const providerDefinition = providerVariant ? getProviderBlockDefinition(block) : null
+
+  if (providerVariant && (!providerDefinition || !sourceRenderer)) {
+    return (
+      <section
+        className="cms-block cms-block--provider-error rounded-md border border-red-300 bg-red-50 p-6 text-sm text-red-900"
+        data-block-index={index}
+        data-source-variant={block.designVariant ?? undefined}
+        data-provider-error="unresolved"
+      >
+        Unresolved provider block variant: <code>{String(block.designVariant)}</code>
+      </section>
+    )
+  }
+
+  const Renderer = sourceRenderer ?? renderers[block.blockType]
 
   if (!Renderer) {
     return (

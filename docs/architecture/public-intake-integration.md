@@ -14,7 +14,8 @@ Current architecture notes for the public intake surface at
    normalized intake and creates a traceable `site-generation-runs` record.
 6. The provider must return a validated `SiteGenerationSpec`.
 7. The CMS imports the valid spec as draft Payload tenant, page, settings, and
-   media data.
+   structured block data. Self-serve intake does not require remote generated
+   media placeholder ingestion; media slots remain editable CMS fields.
 8. Operators review the resulting generation run, preview, payment/domain
    state, and publish readiness in CMS.
 9. The existing publish flow freezes approved draft data into a published
@@ -57,16 +58,18 @@ matches must leave manual intake submission possible.
 fields, stores the raw body, normalizes it into `CompanyFacts` and
 `IntakeBrief`, records a stable normalized hash, and calls
 `processStoredIntakeSubmission`. Normal intake submissions therefore start a
-draft generation run automatically. Generic self-serve provider-backed block
-variants are currently disabled, so new generation is blocked until exact-source
-Tailwind Plus variants are reintroduced. The CMS review UI remains available for
-inspection, recovery, and operator decisions before preview, payment, publish,
-or activation.
+draft generation run automatically. Generic self-serve generation currently uses
+only active exact-source Tailwind Plus Marketing provider blocks: simple
+centered hero, product screenshot feature section, centered 2x2 feature grid,
+dark panel CTA with app screenshot, centered contact form, simple centered
+testimonial, simple stats, and simple logo cloud with heading. The CMS review UI
+remains available for inspection, recovery, and operator decisions before
+preview, payment, publish, or activation.
 
 Generation provider output is accepted only as structured
 `SiteGenerationSpec` data matching shared contracts. The CMS validation/import
 path creates or updates Payload draft data; it does not emit client-specific
-source code.
+source code, raw HTML, CSS, imports, class names, or arbitrary Tailwind classes.
 
 ## Publish And Renderer
 

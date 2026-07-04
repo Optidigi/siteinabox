@@ -6,6 +6,7 @@ import {
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
+import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
 import { isOfficialTenant } from "@/lib/officialTenants"
 import { relationshipId } from "@/lib/relationshipId"
 
@@ -76,6 +77,12 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
     if (designVariant) {
       const issue = scopedVariantIssue(blockType, "designVariant", designVariant, tenant)
       if (issue) violations.push({ path: `blocks.${index}.designVariant`, message: issue.message })
+    }
+    for (const issue of validateProviderBlockInstance(record as any)) {
+      violations.push({
+        path: `blocks.${index}.${issue.path.join(".")}`,
+        message: issue.message,
+      })
     }
     return violations
   })

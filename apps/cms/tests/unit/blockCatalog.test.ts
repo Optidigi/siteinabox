@@ -28,6 +28,7 @@ import { tenantSiteGenerationSpecs } from "@siteinabox/contracts/fixtures/tenant
 import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { v1FixturePage } from "@siteinabox/site-renderer"
 import { v1FixtureSettings } from "@siteinabox/site-renderer"
+import { providerBlockDefinitions } from "@siteinabox/site-renderer/source-blocks"
 
 const inlineRoot = (text: string) => ({
   t: "root" as const,
@@ -142,6 +143,7 @@ describe("renderer block catalog", () => {
     expect(GeneratedBlockSpecSchema.safeParse({ blockType: "processSteps", title: inlineRoot("Proces"), steps: [] }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({ blockType: "comparison", title: inlineRoot("Vergelijking"), columns: [], rows: [] }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({ ...teamBlock, html: "<section></section>" }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({ ...teamBlock, css: ".hero{}", imports: ["x"], tailwindClasses: "bg-red-500" }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({
       ...pricingBlock,
       title: {
@@ -460,15 +462,23 @@ describe("renderer block catalog", () => {
     }
   })
 
-  it("exercises every source-backed renderer variant in the renderer fixture", () => {
+  it("exercises every active self-serve source-backed variant in a renderer fixture or provider registry", () => {
     const fixtureVariants = new Set(
       v1FixturePage.blocks
         .map((block) => block.designVariant)
         .filter((variant): variant is string => typeof variant === "string"),
     )
+    const providerRegistryVariants = new Set(
+      providerBlockDefinitions.flatMap((definition) =>
+        [definition.id, definition.legacyDesignVariant].filter((variant): variant is string => Boolean(variant)),
+      ),
+    )
 
-    for (const variant of SITE_SOURCE_BACKED_BLOCK_VARIANTS) {
-      expect(fixtureVariants.has(variant.variant), `${variant.variantId} missing fixture coverage`).toBe(true)
+    for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
+      expect(
+        fixtureVariants.has(variant.variant) || providerRegistryVariants.has(variant.variant),
+        `${variant.variantId} missing fixture or provider-registry coverage`,
+      ).toBe(true)
     }
   })
 })

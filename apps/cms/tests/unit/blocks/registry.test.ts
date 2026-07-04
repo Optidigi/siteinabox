@@ -12,7 +12,7 @@ describe("resolveAllowedBlocks", () => {
     const activeSlugs = [...new Set(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug))]
     expect(new Set(BLOCKS.map((block) => block.slug))).toEqual(new Set(activeSlugs))
     expect(BLOCKS.map((block) => block.slug)).not.toEqual(
-      expect.arrayContaining(["faq", "testimonials", "processSteps", "comparison"]),
+      expect.arrayContaining(["faq", "processSteps", "comparison", "pricing"]),
     )
   })
 
@@ -28,7 +28,7 @@ describe("resolveAllowedBlocks", () => {
   })
 
   it("filters + orders by declared slugs", () => {
-    const result = resolveAllowedBlocks(BLOCKS, [
+    const result = resolveAllowedBlocks(ALL_BLOCKS, [
       { slug: "featureList" },
       { slug: "hero" },
     ])
@@ -37,7 +37,7 @@ describe("resolveAllowedBlocks", () => {
 
   it("skips unknown slugs with a warning, keeps the known ones", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
-    const result = resolveAllowedBlocks(BLOCKS, [
+    const result = resolveAllowedBlocks(ALL_BLOCKS, [
       { slug: "hero" },
       { slug: "not-a-real-block" },
       { slug: "contactSection" },

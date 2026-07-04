@@ -1,0 +1,33 @@
+{
+  "provider": "tailwindplus",
+  "namespace": "tailwindplus.marketing.feature",
+  "id": "tailwindplus.marketing.feature.with-product-screenshot",
+  "legacyDesignVariant": "tailwindPlusWithProductScreenshot",
+  "family": "Marketing",
+  "category": "Page Sections / Feature Sections",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/sections/feature-sections",
+  "visibleVariantName": "With product screenshot",
+  "upstreamId": "11e5dbce11b8c462441792503ea864fc",
+  "canonicalSourceFormat": "html",
+  "sourceAvailability": "source-visible-html-only",
+  "sourceHash": "sha256:eed4856b0cdd3050c8fcb563245bcfa81af526244cfe10ecd68ad13b6b6081b8",
+  "retrievedDate": "2026-07-04",
+  "activationStatus": "active",
+  "implementationStatus": "html-derived-exact-dom-renderer-with-typed-slots",
+  "tokenPolicy": "static Tailwind Plus classes; SiaB theme tokens map through CSS variables for color, font, and radius only",
+  "slotManifest": "manifest.ts",
+  "contractNotes": [
+    "FeatureListBlock includes image?: MediaRef, so the upstream screenshot is exposed as an editable image slot. The slot is optional because self-serve intake does not require remote generated media ingestion and the renderer has a source fallback.",
+    "FeatureListBlock does not have a first-class eyebrow field; this provider accepts an optional provider-local eyebrow slot and falls back to the upstream static eyebrow copy."
+  ],
+  "slots": {
+    "eyebrow": { "kind": "richtext", "status": "optional", "exposed": true },
+    "title": { "kind": "richtext", "status": "required", "exposed": true },
+    "intro": { "kind": "richtext", "status": "optional", "exposed": true },
+    "image": { "kind": "image", "status": "optional", "exposed": true },
+    "features": { "kind": "repeater", "status": "required", "exposed": true, "minItems": 3, "maxItems": 3 },
+    "featureTitle": { "kind": "richtext", "status": "required", "exposed": true },
+    "featureDescription": { "kind": "richtext", "status": "required", "exposed": true },
+    "featureIcon": { "kind": "text", "status": "optional", "exposed": true }
+  }
+}

@@ -56,6 +56,7 @@ describe("enforceTenantBlockVariantScope", () => {
     await expect(runHook({ id: 3, slug: "generic-care", domain: "generic-care.nl" }, [{
       blockType: "hero",
       designVariant: "tailwindPlusSimpleCentered",
+      headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Hero" }] },
     }])).resolves.toMatchObject({
       tenant: 3,
     })

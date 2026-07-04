@@ -12,6 +12,8 @@ export function HeroBlockRenderer({ block, options }: { block: HeroBlock; option
   const image = resolveMedia(block.image ?? null, options.mediaResolver)
   const ctaLabel = block.cta?.label?.trim()
   const ctaHref = block.cta?.href?.trim()
+  const secondaryLabel = block.secondary?.label?.trim()
+  const secondaryHref = block.secondary?.href?.trim()
   const sourceVariant = rendererVariantClassName(block)
   const slots = options.editSlots
   const sectionProps = mergeRendererSectionAttributes(
@@ -78,25 +80,46 @@ export function HeroBlockRenderer({ block, options }: { block: HeroBlock; option
         </ul>
       )}
       {((ctaLabel && ctaHref) || slots?.renderCta) && (
-        slots?.renderCta
-          ? slots.renderCta({
-            name: "hero.cta",
-            value: block.cta,
-            className: cx("cms-block__cta", nativeBlockClassName(block, "cta")),
-            style: { borderRadius: "var(--radius-md)" },
-            actionAttributes: actionAnalyticsAttrs("primary", ctaLabel),
-            elementPath: { blockIndex: options.index, field: "cta" },
-          })
-          : (
-            <a
-              className={cx("cms-block__cta", nativeBlockClassName(block, "cta"))}
-              href={ctaHref}
-              style={{ borderRadius: "var(--radius-md)" }}
-              {...actionAnalyticsAttrs("primary", ctaLabel)}
-            >
-              {ctaLabel}
-            </a>
-          )
+        <div className="cms-block__actions">
+          {slots?.renderCta
+            ? slots.renderCta({
+              name: "hero.cta",
+              value: block.cta,
+              className: cx("cms-block__cta", nativeBlockClassName(block, "cta")),
+              style: { borderRadius: "var(--radius-md)" },
+              actionAttributes: actionAnalyticsAttrs("primary", ctaLabel),
+              elementPath: { blockIndex: options.index, field: "cta" },
+            })
+            : (
+              <a
+                className={cx("cms-block__cta", nativeBlockClassName(block, "cta"))}
+                href={ctaHref}
+                style={{ borderRadius: "var(--radius-md)" }}
+                {...actionAnalyticsAttrs("primary", ctaLabel)}
+              >
+                {ctaLabel}
+              </a>
+            )}
+          {((secondaryLabel && secondaryHref) || slots?.renderCta) && (
+            slots?.renderCta
+              ? slots.renderCta({
+                name: "hero.secondary",
+                value: block.secondary,
+                className: "cms-block__cta cms-block__cta--secondary",
+                actionAttributes: actionAnalyticsAttrs("secondary", secondaryLabel),
+                elementPath: { blockIndex: options.index, field: "secondary" },
+              })
+              : (
+                <a
+                  className="cms-block__cta cms-block__cta--secondary"
+                  href={secondaryHref}
+                  {...actionAnalyticsAttrs("secondary", secondaryLabel)}
+                >
+                  {secondaryLabel}
+                </a>
+              )
+          )}
+        </div>
       )}
       {image && (
         <figure className={cx("cms-block__image", nativeBlockClassName(block, "image"))} style={{ borderRadius: "var(--radius-lg)" }}>

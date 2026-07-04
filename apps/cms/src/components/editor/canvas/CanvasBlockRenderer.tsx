@@ -6,7 +6,7 @@ import {
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
-import { resolveBlockVariant } from "@siteinabox/site-renderer"
+import { getSourceBackedVariantRenderer, isProviderVariantIdentifier, resolveBlockVariant } from "@siteinabox/site-renderer"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { HeroCanvas as HeroLazy } from "@/components/editor/canvas/blocks/Hero"
 import { FeatureListCanvas as FeatureListLazy } from "@/components/editor/canvas/blocks/FeatureList"
@@ -111,6 +111,7 @@ export function mergeCanvasSectionProps(
 
 export function resolvedCanvasSourceVariant(block: any, context: SourceVariantContext = {}): SiteBlockCatalogVariant | undefined {
   if (!generationBlockSlugs.has(block?.blockType)) return undefined
+  if (isProviderVariantIdentifier(block?.designVariant) && !getSourceBackedVariantRenderer(block)) return undefined
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
   const resolved = resolveBlockVariant(block, context)
   if (!resolved.variant) return undefined
@@ -146,6 +147,33 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
   // Stamp __index so block renderers can derive ElementPath without an extra prop.
   const blockWithIndex = { ...block, __index: index }
   const augmented = { ...props, block: blockWithIndex }
+  if (
+    isProviderVariantIdentifier(block?.designVariant) &&
+    !getSourceBackedVariantRenderer(blockWithIndex)
+  ) {
+    const providerErrorSectionProps = mergeCanvasSectionProps(
+      {
+        className: "cms-block cms-block--provider-error rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2",
+        "data-block-index": index,
+        "data-active": props.isActive || undefined,
+        "data-source-variant": block?.designVariant,
+        "data-provider-error": "unresolved",
+        onClick: props.onActivate,
+      },
+      props.sectionChromeProps,
+    )
+
+    return (
+      <section {...providerErrorSectionProps}>
+        Unresolved provider block variant: <code>{String(block?.designVariant ?? "?")}</code>
+      </section>
+    )
+  }
+
+  if (getSourceBackedVariantRenderer(blockWithIndex)) {
+    return <RendererCanvasBlockRenderer {...augmented} />
+  }
+
   if (
     props.tenantRendererKey === "amicare" &&
     (

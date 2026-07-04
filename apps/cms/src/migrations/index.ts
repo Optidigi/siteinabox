@@ -45,6 +45,8 @@ import * as migration_20260701_140000_add_operational_alerts from './20260701_14
 import * as migration_20260704_120000_design_variant_and_remove_retired_chrome from './20260704_120000_design_variant_and_remove_retired_chrome';
 import * as migration_20260704_130000_remove_inactive_blocks_and_block_tokens from './20260704_130000_remove_inactive_blocks_and_block_tokens';
 import * as migration_20260704_140000_normalize_published_snapshot_blocks from './20260704_140000_normalize_published_snapshot_blocks';
+import * as migration_20260704_150000_add_hero_secondary_cta from './20260704_150000_add_hero_secondary_cta';
+import * as migration_20260704_160000_add_provider_rich_slots from './20260704_160000_add_provider_rich_slots';
 
 export const migrations = [
   {
@@ -281,5 +283,15 @@ export const migrations = [
     up: migration_20260704_140000_normalize_published_snapshot_blocks.up,
     down: migration_20260704_140000_normalize_published_snapshot_blocks.down,
     name: '20260704_140000_normalize_published_snapshot_blocks'
+  },
+  {
+    up: migration_20260704_150000_add_hero_secondary_cta.up,
+    down: migration_20260704_150000_add_hero_secondary_cta.down,
+    name: '20260704_150000_add_hero_secondary_cta'
+  },
+  {
+    up: migration_20260704_160000_add_provider_rich_slots.up,
+    down: migration_20260704_160000_add_provider_rich_slots.down,
+    name: '20260704_160000_add_provider_rich_slots'
   },
 ];

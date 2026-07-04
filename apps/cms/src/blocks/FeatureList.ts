@@ -8,6 +8,12 @@ export const FeatureList: BlockWithMeta = {
   description: "Feature highlights with icons",
   interfaceName: "FeatureListBlock",
   fields: [
+    { name: "eyebrow", type: "json",
+      admin: {
+        editor: "richTextInline",
+        description: "Optional short provider-backed eyebrow text."
+      } as any
+    },
     { name: "title", type: "json",
       admin: {
         editor: "richTextInline",
@@ -19,6 +25,14 @@ export const FeatureList: BlockWithMeta = {
         editor: "richTextBlock",
         description: "Introductory text above the feature items."
       } as any
+    },
+    {
+      name: "image",
+      type: "upload",
+      relationTo: "media",
+      admin: {
+        description: "Optional provider-backed product screenshot or feature image.",
+      },
     },
     { name: "features", type: "array", required: true, fields: [
       { name: "title", type: "json",

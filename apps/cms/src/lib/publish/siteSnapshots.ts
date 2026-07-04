@@ -11,6 +11,7 @@ import {
   formatContractValidationIssues,
   schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
+import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
@@ -256,6 +257,20 @@ function buildManifest(
   }
 }
 
+function validatePublishedPageProviderBlocks(pages: ContractPage[]) {
+  const errors: string[] = []
+  pages.forEach((page, pageIndex) => {
+    page.blocks.forEach((block, blockIndex) => {
+      for (const issue of validateProviderBlockInstance(block)) {
+        errors.push(`pages.${pageIndex}.blocks.${blockIndex}.${issue.path.join(".")}: ${issue.message}`)
+      }
+    })
+  })
+  if (errors.length > 0) {
+    throw new Error(`Published snapshot failed provider block validation: ${errors.join("; ")}`)
+  }
+}
+
 export async function buildPublishedSiteSnapshot(
   payload: Payload,
   tenantId: string | number,
@@ -281,6 +296,7 @@ export async function buildPublishedSiteSnapshot(
     status: "published" as const,
     updatedAt: page.updatedAt,
   }))
+  validatePublishedPageProviderBlocks(publishedPages)
   const navPages = publishedPages.map((page) => ({ id: page.id ?? page.slug, slug: page.slug, title: page.title }))
   const projectedSettings = settingsToJson(
     settingsDoc,

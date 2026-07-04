@@ -29,12 +29,18 @@ depended on command-run site generation are no longer current source of truth.
   activate sites by itself.
 - The public `apps/landing` marketing site uses Google Analytics. Do not add
   PostHog there unless this product decision changes.
-- Generic self-serve generated-site block generation is currently disabled:
-  there are no active provider-backed design variants after removing the
-  adapted/fake Tailwind Plus path. The next implementation must start with
-  exact-source Tailwind Plus blocks only. Other provider families are not active
-  generation inputs. Shadcn blocks are not part of the generated public-site
-  source plan.
+- Generic self-serve generated-site block generation now starts with active
+  exact-source Tailwind Plus Marketing provider blocks:
+  `tailwindplus.marketing.hero.simple-centered`,
+  `tailwindplus.marketing.feature.with-product-screenshot`,
+  `tailwindplus.marketing.feature.centered-2x2-grid`,
+  `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`,
+  `tailwindplus.marketing.contact.centered`,
+  `tailwindplus.marketing.testimonial.simple-centered`,
+  `tailwindplus.marketing.stats.simple`, and
+  `tailwindplus.marketing.logo-cloud.simple-with-heading`. Other Tailwind Plus
+  candidates, Preline, Tailblocks, SIAB-owned generic visual variants, and
+  shadcn blocks are not active generated public-site inputs.
 
 ## Open Follow-Up
 
@@ -90,14 +96,16 @@ depended on command-run site generation are no longer current source of truth.
   before trusting unattended production activation. Capture provider ids, DNS
   records, sender status, active snapshot, renderer response, and final handoff
   mail log. `.nl` is the only offered TLD for now.
-- Rebuild generic self-serve generation around exact-source Tailwind Plus
+- Continue expanding generic self-serve generation around exact-source Tailwind Plus
   blocks. Tailwind Plus blocks are the UI source of truth; CMS owns editable
   content slots; site-wide tokens may configure only approved color, font, and
   shape/radius behavior. Do not reintroduce adapted Tailwind Plus renderers,
   Preline, Tailblocks, SIAB-owned generic visual variants, raw AI HTML/classes,
   or any Amicare changes. A block becomes generation-eligible only after exact
   source, renderer, CMS sidebar editing, canvas editing, token behavior, and
-  parity/screenshot tests are complete.
+  DOM/class parity tests are complete. Screenshot checks are optional one-shot
+  implementation confirmations for specific visual uncertainty, not a standing
+  regression-test requirement.
 
 ## Implemented Foundation
 
@@ -128,13 +136,11 @@ Follow-up on 2026-07-02 connected the public `apps/intake` form UI to CMS
 
 Same-day follow-up made CMS `POST /api/intake` store the normalized intake and
 start provider-backed draft generation from that stored intake automatically.
-The generated output remains validated CMS data only. As of 2026-07-04, the
-generic provider-backed block list is intentionally empty because the previous
-adapted Tailwind Plus path did not preserve exact Tailwind Plus block source.
-Preview access and customer email sending remain gated from the generation-run
-detail flow. Existing operational preview-ready records may remain from earlier
-deployments, but new valid generic previews require exact-source blocks to be
-restored.
+The generated output remains validated CMS data only. As of 2026-07-04, generic
+self-serve generation is limited to active exact-source Tailwind Plus Marketing
+hero and stats provider blocks. Preview access and customer email sending remain gated from the
+generation-run detail flow. Existing operational preview-ready records may
+remain from earlier deployments.
 
 Same-day hardening tightened generated-site preview and rendering reliability:
 preview theme edits now preserve mode-only choices, merge rapid toolbar changes,
@@ -144,7 +150,9 @@ while official Amicare compatibility remains isolated to tenant-renderer
 slugs/domains. Generic style presets no longer expose `warm-care`. A later
 2026-07-04 cleanup removed the adapted Tailwind Plus runtime path and disabled
 generic self-serve provider variants pending exact-source Tailwind Plus
-implementation.
+implementation. A subsequent provider-block pass reintroduced only active
+Tailwind Plus Marketing hero and stats blocks through the executable
+source-block registry.
 
 Same-day iframe editor follow-up completed the desktop iframe shape for the CMS
 page editor and customer preview surfaces. `PageForm` remains the RHF/save/
@@ -173,12 +181,11 @@ layout.
 **Status:** Foundation added 2026-06-25.
 
 The intake workflow uses a provider-backed AI generation service instead of
-calling the fixture loader directly, but generic self-serve provider-backed block
-variants are currently disabled. The next implementation must start with
-exact-source Tailwind Plus blocks only before intake generation can produce
-valid generic self-serve preview pages again. The default provider remains
-`mock` for local development and tests, while `SITE_GENERATION_PROVIDER=openai`
-enables the OpenAI Responses API path. Generation runs record provider, model,
+calling the fixture loader directly. Generic self-serve provider-backed block
+generation is currently limited to the exact-source Tailwind Plus Marketing
+hero. The default provider remains `mock` for local development and tests, while
+`SITE_GENERATION_PROVIDER=openai` enables the OpenAI Responses API path.
+Generation runs record provider, model,
 prompt version, input/output hashes, raw/parsed output where available,
 validation, apply results, attempts, and errors.
 

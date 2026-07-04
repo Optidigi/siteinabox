@@ -1,0 +1,21 @@
+{
+  "provider": "tailwindplus",
+  "namespace": "tailwindplus.marketing.hero",
+  "id": "tailwindplus.marketing.hero.simple-centered",
+  "legacyDesignVariant": "tailwindPlusSimpleCentered",
+  "sourceName": "Tailwind Plus",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/sections/heroes",
+  "sourceComponent": "Marketing / Page Sections / Hero Sections / Simple centered",
+  "sourceHash": "sha256:522247eba4bf365e40f8a25ec24b27952080ca301988076d0c1148b673ed056f",
+  "capturedAt": "2026-07-04",
+  "runtimeImportsProviderSource": false,
+  "slots": {
+    "eyebrow": { "kind": "richtext", "status": "optional", "exposed": true },
+    "headline": { "kind": "richtext", "status": "required", "exposed": true },
+    "subheadline": { "kind": "richtext", "status": "optional", "exposed": true },
+    "cta": { "kind": "cta", "status": "optional", "exposed": true },
+    "secondary": { "kind": "cta", "status": "optional", "exposed": true },
+    "image": { "kind": "image", "status": "inactive", "exposed": false },
+    "pills": { "kind": "text", "status": "inactive", "exposed": false }
+  }
+}

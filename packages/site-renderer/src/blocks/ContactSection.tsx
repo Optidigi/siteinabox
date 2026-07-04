@@ -69,6 +69,26 @@ export function ContactSectionBlockRenderer({ block, options }: { block: Contact
                   maxLength={field.maxLength ?? undefined}
                   style={{ borderRadius: "var(--radius-sm)", fontFamily: "var(--font-text)" }}
                 />
+              ) : field.type === "select" ? (
+                <select
+                  id={fieldId}
+                  className={cx("cms-block__form-input cms-block__form-input--select", nativeBlockClassName(block, "input"), nativeBlockClassName(block, "select"))}
+                  name={field.name}
+                  required={field.required ?? false}
+                  style={{ borderRadius: "var(--radius-sm)", fontFamily: "var(--font-text)" }}
+                >
+                  {(field.options ?? []).map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              ) : field.type === "checkbox" ? (
+                <input
+                  id={fieldId}
+                  className={cx("cms-block__form-input cms-block__form-input--checkbox", nativeBlockClassName(block, "input"), nativeBlockClassName(block, "checkbox"))}
+                  type="checkbox"
+                  name={field.name}
+                  required={field.required ?? false}
+                />
               ) : (
                 <input
                   id={fieldId}

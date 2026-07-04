@@ -25,6 +25,8 @@ type NativeBlockClassSlot =
   | "label"
   | "input"
   | "textarea"
+  | "select"
+  | "checkbox"
   | "submit"
   | "header"
   | "grid"

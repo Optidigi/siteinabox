@@ -117,14 +117,26 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.slug).toBe("index")
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
       "hero:tailwindPlusSimpleCentered",
+      "featureList:tailwindPlusWithProductScreenshot",
       "featureList:tailwindPlusCentered2x2",
-      "pricing:tailwindPlusSimpleTiers",
+      "cta:tailwindPlusDarkPanelWithAppScreenshot",
+      "testimonials:tailwindPlusSimpleCentered",
       "stats:tailwindPlusSimple",
-      "contactSection:tailwindPlusNewsletterDetails",
+      "logoCloud:tailwindPlusSimpleWithHeading",
+      "contactSection:tailwindPlusCentered",
     ])
+    expect(store.pages[0]?.blocks[0]?.secondary).toMatchObject({ label: "Meer informatie", href: "/" })
+    expect(store.pages[0]?.blocks[1]?.features).toHaveLength(3)
+    expect(store.pages[0]?.blocks[2]?.features).toHaveLength(4)
+    expect(store.pages[0]?.blocks[4]?.items).toHaveLength(1)
+    expect(store.pages[0]?.blocks[5]?.items).toHaveLength(3)
+    expect(store.pages[0]?.blocks[5]).not.toHaveProperty("title")
+    expect(store.pages[0]?.blocks[5]).not.toHaveProperty("intro")
+    expect(store.pages[0]?.blocks[6]?.logos).toHaveLength(5)
+    expect(store.pages[0]?.blocks[7]?.fields).toHaveLength(5)
     expect(store.pages[0]?.blocks.every((block: any) => !("variant" in block))).toBe(true)
     expect(store.pages[0]?.blocks.every((block: any) => Object.keys(block.analytics ?? {}).every((key) => key !== "legacyVisualIdentity"))).toBe(true)
-    expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toMatch(/preline|tailblocks/)
+    expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toMatch(/preline|tailblocks|tailwindplussimpletiers|tailwindplusnewsletterdetails/)
     expect(store["site-settings"][0]?.chrome?.banner).not.toHaveProperty("link")
     expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toContain("shadcn")
   })

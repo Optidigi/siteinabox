@@ -1,0 +1,19 @@
+{
+  "provider": "tailwindplus",
+  "namespace": "tailwindplus.marketing.contact",
+  "id": "tailwindplus.marketing.contact.centered",
+  "legacyDesignVariant": "tailwindPlusCentered",
+  "family": "Marketing",
+  "category": "Page Sections / Contact Sections",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/sections/contact-sections",
+  "visibleVariantName": "Centered",
+  "upstreamId": "986addbc8678313fba5b0dd59c778e9b",
+  "canonicalSourceFormat": "html",
+  "sourceAvailability": "source-visible",
+  "sourceHash": "sha256:6ca277a074929b3dac1276cb3b6e80d4847f02dc5b67b720a7c270c5d322b5e7",
+  "retrievedDate": "2026-07-04",
+  "activationStatus": "active",
+  "implementationStatus": "exact-source-renderer-with-typed-slots",
+  "tokenPolicy": "static Tailwind Plus classes; SiaB theme tokens map through CSS variables for color, font, and radius only",
+  "slotManifest": "manifest.ts"
+}

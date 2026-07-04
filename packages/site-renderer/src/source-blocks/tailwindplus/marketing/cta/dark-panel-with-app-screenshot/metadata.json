@@ -1,0 +1,19 @@
+{
+  "provider": "tailwindplus",
+  "namespace": "tailwindplus.marketing.cta",
+  "id": "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
+  "legacyDesignVariant": "tailwindPlusDarkPanelWithAppScreenshot",
+  "family": "Marketing",
+  "category": "Page Sections / CTA Sections",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/sections/cta-sections",
+  "visibleVariantName": "Dark panel with app screenshot",
+  "upstreamId": "0763876148e2fa400b4f1cf13cdf0093",
+  "canonicalSourceFormat": "html",
+  "sourceAvailability": "source-visible",
+  "sourceHash": "sha256:96aa545a28c9e2028183f08b5d3016412c7f23a2dbf576bc8257df2f55c03d1c",
+  "retrievedDate": "2026-07-04",
+  "activationStatus": "active",
+  "implementationStatus": "exact-source-renderer-with-typed-slots",
+  "tokenPolicy": "static Tailwind Plus classes; SiaB theme tokens map through CSS variables for color, font, and radius only",
+  "slotManifest": "manifest.ts"
+}

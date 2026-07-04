@@ -182,7 +182,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "pills", "cta", "image"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "cta", "secondary"],
     properties: {
       blockType: { type: "string", const: "hero" },
       ...baseBlockProperties,
@@ -190,31 +190,26 @@ const blockJsonSchemas = [
       eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       headline: richTextInlineJsonSchema,
       subheadline: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
-      pills: {
-        type: "array",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["label"],
-          properties: { label: { type: "string" } },
-        },
-      },
       cta: { anyOf: [linkJsonSchema, { type: "null" }] },
-      image: mediaRefJsonSchema,
+      secondary: { anyOf: [linkJsonSchema, { type: "null" }] },
     },
   },
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "intro", "features"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "features"],
     properties: {
       blockType: { type: "string", const: "featureList" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("featureList"),
+      eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       title: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       intro: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
+      image: mediaRefJsonSchema,
       features: {
         type: "array",
+        minItems: 3,
+        maxItems: 4,
         items: {
           type: "object",
           additionalProperties: false,
@@ -242,12 +237,11 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "description", "primary", "secondary", "backgroundImage"],
+    required: ["blockType", "designVariant", "anchor", "headline", "description", "primary", "secondary", "backgroundImage"],
     properties: {
       blockType: { type: "string", const: "cta" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("cta"),
-      eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       headline: richTextInlineJsonSchema,
       description: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
       primary: { anyOf: [linkJsonSchema, { type: "null" }] },
@@ -269,6 +263,8 @@ const blockJsonSchemas = [
       submitLabel: stringOrNull,
       fields: {
         type: "array",
+        minItems: 1,
+        maxItems: 6,
         items: {
           type: "object",
           additionalProperties: false,
@@ -276,8 +272,19 @@ const blockJsonSchemas = [
           properties: {
             name: { type: "string" },
             label: { type: "string" },
-            type: { type: "string", enum: ["text", "email", "tel", "textarea"] },
+            type: { type: "string", enum: ["text", "email", "tel", "textarea", "select", "checkbox"] },
             required: { type: "boolean" },
+            placeholder: stringOrNull,
+            maxLength: { type: ["number", "null"] },
+            options: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["label", "value"],
+                properties: { label: { type: "string" }, value: { type: "string" } },
+              },
+            },
           },
         },
       },
@@ -306,14 +313,16 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "items"],
+    required: ["blockType", "designVariant", "anchor", "logo", "items"],
     properties: {
       blockType: { type: "string", const: "testimonials" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("testimonials"),
-      title: stringOrNull,
+      logo: mediaRefJsonSchema,
       items: {
         type: "array",
+        minItems: 1,
+        maxItems: 1,
         items: {
           type: "object",
           additionalProperties: false,
@@ -369,20 +378,20 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "intro", "items"],
+    required: ["blockType", "designVariant", "anchor", "items"],
     properties: {
       blockType: { type: "string", const: "stats" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("stats"),
-      title: nullableInlineRichTextJsonSchema,
-      intro: nullableBlockRichTextJsonSchema,
       items: {
         type: "array",
+        minItems: 3,
+        maxItems: 3,
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["value", "label", "description"],
-          properties: { value: { type: "string" }, label: { type: "string" }, description: nullableBlockRichTextJsonSchema },
+          required: ["value", "label"],
+          properties: { value: { type: "string" }, label: { type: "string" } },
         },
       },
     },
@@ -390,15 +399,16 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "intro", "logos"],
+    required: ["blockType", "designVariant", "anchor", "title", "logos"],
     properties: {
       blockType: { type: "string", const: "logoCloud" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("logoCloud"),
       title: nullableInlineRichTextJsonSchema,
-      intro: nullableBlockRichTextJsonSchema,
       logos: {
         type: "array",
+        minItems: 5,
+        maxItems: 5,
         items: {
           type: "object",
           additionalProperties: false,

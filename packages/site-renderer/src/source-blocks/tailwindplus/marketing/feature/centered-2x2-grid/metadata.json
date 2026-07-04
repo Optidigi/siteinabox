@@ -1,0 +1,32 @@
+{
+  "provider": "tailwindplus",
+  "namespace": "tailwindplus.marketing.feature",
+  "id": "tailwindplus.marketing.feature.centered-2x2-grid",
+  "legacyDesignVariant": "tailwindPlusCentered2x2",
+  "family": "Marketing",
+  "category": "Page Sections / Feature Sections",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/sections/feature-sections",
+  "visibleVariantName": "Centered 2x2 grid",
+  "upstreamId": "64ac58e032276db96bf343a8d4f332a8",
+  "canonicalSourceFormat": "html",
+  "sourceAvailability": "source-visible-html-only",
+  "sourceHash": "sha256:2bca54eeec9904075e3a38d66db48bd0f2b7bfaecbfc0f49e35f9b6e895719a3",
+  "retrievedDate": "2026-07-04",
+  "activationStatus": "active",
+  "implementationStatus": "html-derived-exact-dom-renderer-with-typed-slots",
+  "tokenPolicy": "static Tailwind Plus classes; SiaB theme tokens map through CSS variables for color, font, and radius only",
+  "slotManifest": "manifest.ts",
+  "constraints": [
+    "Requires exactly four feature items to match the upstream 2x2 grid.",
+    "The upstream eyebrow copy is static because the requested slot surface for this variant is title, intro, and four features."
+  ],
+  "slots": {
+    "title": { "kind": "richtext", "status": "required", "exposed": true },
+    "intro": { "kind": "richtext", "status": "optional", "exposed": true },
+    "features": { "kind": "repeater", "status": "required", "exposed": true, "minItems": 4, "maxItems": 4 },
+    "featureTitle": { "kind": "richtext", "status": "required", "exposed": true },
+    "featureDescription": { "kind": "richtext", "status": "required", "exposed": true },
+    "featureIcon": { "kind": "text", "status": "optional", "exposed": true },
+    "image": { "kind": "image", "status": "inactive", "exposed": false }
+  }
+}

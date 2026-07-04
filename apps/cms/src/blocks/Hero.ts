@@ -38,6 +38,10 @@ export const Hero: BlockWithMeta = {
       { name: "label", type: "text" },
       { name: "href", type: "text", validate: validateSafeHref }
     ]},
+    { name: "secondary", type: "group", fields: [
+      { name: "label", type: "text" },
+      { name: "href", type: "text", validate: validateSafeHref }
+    ]},
     { name: "image", type: "upload", relationTo: "media" },
     ...blockBaseFields("services"),
   ],

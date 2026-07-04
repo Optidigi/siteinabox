@@ -1,6 +1,7 @@
 import * as React from "react"
 import type { FeatureListBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../analytics"
+import { resolveMedia } from "../media"
 import { RichTextRenderer } from "../rich-text"
 import { resolveIcon } from "./icons"
 import { cx, nativeBlockClassName } from "./native-classes"
@@ -12,6 +13,7 @@ export function FeatureListBlockRenderer({ block, options }: { block: FeatureLis
   if ((!block.features || block.features.length === 0) && !options.editSlots) return null
   const sourceVariant = rendererVariantClassName(block)
   const slots = options.editSlots
+  const image = resolveMedia(block.image ?? null, options.mediaResolver)
   const features = block.features && block.features.length > 0
     ? block.features
     : ([{}] as Partial<NonNullable<FeatureListBlock["features"]>[number]>[])
@@ -28,6 +30,18 @@ export function FeatureListBlockRenderer({ block, options }: { block: FeatureLis
 
   return (
     <section {...sectionProps}>
+      {(block.eyebrow || slots?.renderRichText) && (
+        <p className={cx("cms-block__eyebrow", nativeBlockClassName(block, "eyebrow"))} style={{ fontFamily: "var(--font-heading)" }}>
+          {slots?.renderRichText
+            ? slots.renderRichText({
+              name: "featureList.eyebrow",
+              value: block.eyebrow,
+              variant: "inline",
+              elementPath: { blockIndex: options.index, field: "eyebrow" },
+            })
+            : <RichTextRenderer value={block.eyebrow} blockMode="inline" />}
+        </p>
+      )}
       {(block.title || slots?.renderRichText) && (
         <h2 className={cx("cms-block__title", nativeBlockClassName(block, "title"))} style={{ fontFamily: "var(--font-heading)" }}>
           {slots?.renderRichText
@@ -94,6 +108,28 @@ export function FeatureListBlockRenderer({ block, options }: { block: FeatureLis
           )
         })}
       </ul>
+      {(image || slots?.renderImage) && (
+        slots?.renderImage
+          ? slots.renderImage({
+            name: "featureList.image",
+            value: block.image,
+            alt: image?.alt ?? "",
+            className: "cms-block__feature-image",
+            loading: "lazy",
+            decoding: "async",
+            chrome: "overlay",
+            elementPath: { blockIndex: options.index, field: "image" },
+          })
+          : image ? (
+            <img
+              className="cms-block__feature-image"
+              src={image.src}
+              alt={image.alt ?? ""}
+              loading="lazy"
+              decoding="async"
+            />
+          ) : null
+      )}
     </section>
   )
 }

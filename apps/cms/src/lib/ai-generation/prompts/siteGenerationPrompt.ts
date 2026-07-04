@@ -11,7 +11,7 @@ export const SITE_GENERATION_SYSTEM_PROMPT = [
   "Do not author legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
   "Use reusable catalog blocks as structured page blocks; header, footer, and banner choices belong only in settings.chrome.",
   "Use settings.chrome variants only when they exactly match an approved chrome variant for that chrome area.",
-  "There are currently no active self-serve source-backed block providers until exact-source Tailwind Plus blocks are implemented.",
+  "Tailwind Plus only: use only active exact-source Tailwind Plus Marketing provider blocks listed in approvedDesignVariants.",
   "Do not use inactive provider blocks, chrome variants, source names, classes, content fixtures, or variants for self-serve generated sites.",
   "Do not use tenant-renderer blocks, variants, chrome variants, classes, content fixtures, domains, source names, or variants for new generated sites.",
   "Do not return raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, file paths, block tokens, style objects, or inline styles.",

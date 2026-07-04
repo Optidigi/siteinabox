@@ -33,11 +33,17 @@ export const ContactSection: BlockWithMeta = {
           { label: "Text", value: "text" },
           { label: "Email", value: "email" },
           { label: "Tel", value: "tel" },
-          { label: "Textarea", value: "textarea" }
+          { label: "Textarea", value: "textarea" },
+          { label: "Select", value: "select" },
+          { label: "Checkbox", value: "checkbox" }
         ]},
       { name: "required", type: "checkbox", defaultValue: false },
       { name: "placeholder", type: "text" },
-      { name: "maxLength", type: "number", min: 1 }
+      { name: "maxLength", type: "number", min: 1 },
+      { name: "options", type: "array", fields: [
+        { name: "label", type: "text", required: true },
+        { name: "value", type: "text", required: true },
+      ]},
     ]},
     { name: "provider", type: "group", fields: [
       { name: "provider", type: "select", options: [

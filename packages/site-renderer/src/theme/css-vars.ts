@@ -37,6 +37,38 @@ function set(parts: string[], prop: string, value: string | undefined | null) {
 
 const onAccentColor = (value: string | undefined | null) => value ?? "#ffffff"
 
+function setTailwindProviderColorAliases(
+  parts: string[],
+  colors: ThemeTokenSpec["colors"] | ThemeTokenSpec["darkColors"] | undefined,
+  fallback?: Partial<Record<"onAccent" | "bg" | "ink" | "muted" | "card" | "secondary" | "rule", string>>,
+) {
+  const accent = colors?.accent
+  const onAccent = colors?.onAccent ?? fallback?.onAccent
+  const bg = colors?.bg ?? fallback?.bg
+  const ink = colors?.ink ?? fallback?.ink
+  const muted = colors?.muted ?? fallback?.muted
+  const card = colors?.card ?? fallback?.card
+  const secondary = colors?.secondary ?? fallback?.secondary
+  const rule = colors?.rule ?? fallback?.rule
+
+  set(parts, "--color-indigo-600", accent)
+  set(parts, "--color-indigo-500", accent)
+  set(parts, "--color-indigo-400", accent)
+  set(parts, "--color-white", onAccent ?? bg)
+  set(parts, "--color-gray-900", ink)
+  set(parts, "--color-gray-700", ink)
+  set(parts, "--color-gray-600", muted)
+  set(parts, "--color-gray-500", muted)
+  set(parts, "--color-gray-400", muted)
+  set(parts, "--color-gray-200", rule)
+  set(parts, "--color-gray-100", card)
+  set(parts, "--color-gray-50", card ?? bg)
+  set(parts, "--color-slate-900", ink)
+  set(parts, "--color-slate-600", muted)
+  set(parts, "--color-slate-300", rule)
+  set(parts, "--color-secondary", secondary)
+}
+
 export function themeMode(theme: ThemeTokenSpec | null | undefined): "light" | "dark" {
   return theme?.mode === "dark" ? "dark" : "light"
 }
@@ -63,6 +95,7 @@ export function themeToCssVars(
     set(baseParts, "--color-card", dark?.card ?? DEFAULT_DARK.card)
     set(baseParts, "--color-secondary", dark?.secondary ?? DEFAULT_DARK.secondary)
     set(baseParts, "--color-rule", dark?.rule ?? DEFAULT_DARK.rule)
+    setTailwindProviderColorAliases(baseParts, dark, DEFAULT_DARK)
   } else {
     const colors = theme.colors
     set(baseParts, "--color-accent", colors?.accent)
@@ -73,6 +106,7 @@ export function themeToCssVars(
     set(baseParts, "--color-card", colors?.card)
     set(baseParts, "--color-secondary", colors?.secondary)
     set(baseParts, "--color-rule", colors?.rule)
+    setTailwindProviderColorAliases(baseParts, colors)
 
     const dark = theme.darkColors
     const useDefaultDark = theme.mode === "dark"
@@ -86,6 +120,7 @@ export function themeToCssVars(
     set(darkParts, "--color-card", dark?.card ?? (useDefaultDark ? DEFAULT_DARK.card : undefined))
     set(darkParts, "--color-secondary", dark?.secondary ?? (useDefaultDark ? DEFAULT_DARK.secondary : undefined))
     set(darkParts, "--color-rule", dark?.rule ?? (useDefaultDark ? DEFAULT_DARK.rule : undefined))
+    setTailwindProviderColorAliases(darkParts, dark, useDefaultDark ? DEFAULT_DARK : undefined)
   }
 
   set(baseParts, "--font-title", theme.fonts?.title)

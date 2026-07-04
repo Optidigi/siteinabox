@@ -38,12 +38,12 @@ describe("canvas source variant resolution", () => {
     expect(canvasSourceVariantClassName(block, "amicare", { rendererDom: "canvas-fallback" })).toBe("")
   })
 
-  it("keeps global source variants available for generic canvas contexts", () => {
+  it("keeps inactive provider candidates unavailable for generic canvas contexts", () => {
     const block = {
       blockType: "pricing",
       designVariant: "tailwindPlusSimpleTiers",
     }
 
-    expect(resolvedCanvasSourceVariant(block)?.variant).toBe("tailwindPlusSimpleTiers")
+    expect(resolvedCanvasSourceVariant(block)).toBeUndefined()
   })
 })

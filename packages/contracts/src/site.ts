@@ -97,13 +97,16 @@ export type HeroBlock = BlockInstanceBase & {
   subheadline?: RtRoot | null
   pills?: Array<{ label: string; id?: string | null }>
   cta?: LinkRef | null
+  secondary?: LinkRef | null
   image?: MediaRef
 }
 
 export type FeatureListBlock = BlockInstanceBase & {
   blockType: "featureList"
+  eyebrow?: RtRoot | null
   title?: RtRoot | null
   intro?: RtRoot | null
+  image?: MediaRef
   features: Array<{
     title: RtRoot
     description?: RtRoot | null
@@ -114,6 +117,7 @@ export type FeatureListBlock = BlockInstanceBase & {
 export type TestimonialsBlock = BlockInstanceBase & {
   blockType: "testimonials"
   title?: string | null
+  logo?: MediaRef
   items: Array<{
     quote: string
     author: string
@@ -152,10 +156,11 @@ export type ContactSectionBlock = BlockInstanceBase & {
   fields: Array<{
     name: string
     label: string
-    type: "text" | "email" | "tel" | "textarea"
+    type: "text" | "email" | "tel" | "textarea" | "select" | "checkbox"
     required?: boolean
     placeholder?: string | null
     maxLength?: number | null
+    options?: Array<{ label: string; value: string }> | null
   }>
   provider?: FormProviderConfig | null
 }

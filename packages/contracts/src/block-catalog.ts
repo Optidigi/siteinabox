@@ -370,6 +370,36 @@ const tailwindPlusFreeProvenance = (
     "Renderer keeps SIAB structured-data props and maps the public block's spacing, layout, and visual treatment through renderer-owned Tailwind utility classes.",
 })
 
+const tailwindPlusExactSourceProvenance = (
+  upstreamBlockName: string,
+  upstreamId: string,
+  url: string,
+  sourcePath: string,
+  runtime: BlockSourceRuntimeRequirement = tailwindPlusStaticRuntime(false),
+): BlockVariantProvenance => ({
+  sourceName: "Tailwind Plus",
+  url,
+  licenseStatus: "Public/free source-visible Tailwind Plus Marketing block with operator approval for SIAB use.",
+  licenseCompatibility: "compatible",
+  approvalStatus: "approved",
+  sourceAvailability: "free-public",
+  upstreamBlockName,
+  upstreamId,
+  sourceAccessType: "public-page-payload",
+  sourceAccess: "Source-visible Tailwind Plus Marketing page data captured into a local renderer fixture.",
+  implementation: "exact-source",
+  sourcePath,
+  retrieval:
+    "Use only the local upstream fixture and metadata under packages/site-renderer/src/source-blocks; do not runtime-fetch or ask generation for provider source.",
+  verifiedAt: "2026-07-04",
+  visualExactnessStatus: "reviewed-exact-source",
+  visualSourceNotes:
+    "Provider DOM, layout, responsive classes, and Tailwind utility strings are preserved in the local provider renderer. SiaB replaces only approved text/link slots and theme CSS variables.",
+  runtime,
+  notes:
+    "Executable provider-block definition, renderer, slot manifest, source metadata/hash, and validation live in @siteinabox/site-renderer/source-blocks.",
+})
+
 const tailblocksProvenance = (upstreamBlockName: string, sourcePath: string): BlockVariantProvenance => ({
   sourceName: "Tailblocks",
   url: `https://github.com/mertJF/tailblocks/blob/master/${sourcePath}`,
@@ -521,37 +551,35 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       richtext("eyebrow", "Eyebrow", "inline", "script"),
       richtext("headline", "Headline", "inline", "title"),
       richtext("subheadline", "Subheadline", "block", "text"),
-      {
-        name: "pills",
-        label: "Pills",
-        kind: "array",
-        itemLabel: "Pill",
-        itemFields: [text("label", "Label")],
-      },
       cta("cta", "Primary action"),
-      image("image", "Image"),
+      cta("secondary", "Secondary action"),
     ],
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "HeroBlockRenderer",
-      output: "Responsive hero section with optional eyebrow, headline, subheadline, pills, CTA, and media.",
+      output: "Responsive hero section with optional eyebrow, headline, subheadline, primary CTA, and secondary CTA.",
     },
     themeBehavior: ["font-title", "font-text", "radius-sm", "radius-md", "radius-lg", "accent", "ink", "bg"],
-    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts", "amicareSiteGenerationSpec"],
+    fixtureCoverage: [
+      "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/simple-centered",
+      "packages/site-renderer/src/fixtures/v1.ts",
+      "amicareSiteGenerationSpec",
+    ],
     variants: [
       {
         id: "hero:tailwindPlusSimpleCentered",
         variant: "tailwindPlusSimpleCentered",
         label: "Tailwind Plus simple centered",
-        intent: "Centered marketing hero adapted from the public free Tailwind Plus Simple centered block.",
+        intent: "Centered marketing hero using the exact local source-backed Tailwind Plus Simple centered block.",
         scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-simple-centered",
-        provenance: tailwindPlusFreeProvenance(
+        rendererClassName: "cms-block--source-tailwindplus-hero-simple-centered",
+        provenance: tailwindPlusExactSourceProvenance(
           "Simple centered",
           "b9bcab4538776a17fff93d18f82a8272",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/heroes#component-b9bcab4538776a17fff93d18f82a8272",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/simple-centered",
         ),
       },
       {
@@ -579,8 +607,10 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     contractType: "FeatureListBlock",
     runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms; Phase 3 should add FeatureListBlock runtime schema.",
     cmsEditableFields: [
+      richtext("eyebrow", "Eyebrow", "inline", "script"),
       richtext("title", "Title", "inline", "heading"),
       richtext("intro", "Intro", "block", "text"),
+      image("image", "Image"),
       {
         name: "features",
         label: "Features",
@@ -602,18 +632,35 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts", "amicareSiteGenerationSpec"],
     variants: [
       {
-        id: "featureList:tailwindPlusCentered2x2",
-        variant: "tailwindPlusCentered2x2",
-        label: "Tailwind Plus centered 2x2",
-        intent: "Centered feature grid adapted from the public free Tailwind Plus Centered 2x2 grid block.",
+        id: "featureList:tailwindPlusWithProductScreenshot",
+        variant: "tailwindPlusWithProductScreenshot",
+        label: "Tailwind Plus with product screenshot",
+        intent: "Feature section using the exact local source-backed Tailwind Plus With product screenshot block.",
         scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-centered-2x2",
-        provenance: tailwindPlusFreeProvenance(
+        rendererClassName: "cms-block--source-tailwindplus-feature-with-product-screenshot",
+        provenance: tailwindPlusExactSourceProvenance(
+          "With product screenshot",
+          "11e5dbce11b8c462441792503ea864fc",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/feature-sections#component-11e5dbce11b8c462441792503ea864fc",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/feature/with-product-screenshot",
+        ),
+      },
+      {
+        id: "featureList:tailwindPlusCentered2x2",
+        variant: "tailwindPlusCentered2x2",
+        label: "Tailwind Plus centered 2x2",
+        intent: "Centered feature grid using the exact local source-backed Tailwind Plus Centered 2x2 grid block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-feature-centered-2x2-grid",
+        provenance: tailwindPlusExactSourceProvenance(
           "Centered 2x2 grid",
           "64ac58e032276db96bf343a8d4f332a8",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/feature-sections#component-64ac58e032276db96bf343a8d4f332a8",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/feature/centered-2x2-grid",
         ),
       },
       {
@@ -746,6 +793,22 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts", "amicareSiteGenerationSpec"],
     variants: [
       {
+        id: "cta:tailwindPlusDarkPanelWithAppScreenshot",
+        variant: "tailwindPlusDarkPanelWithAppScreenshot",
+        label: "Tailwind Plus dark panel with app screenshot",
+        intent: "CTA section using the exact local source-backed Tailwind Plus Dark panel with app screenshot block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-cta-dark-panel-with-app-screenshot",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Dark panel with app screenshot",
+          "0763876148e2fa400b4f1cf13cdf0093",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/cta-sections#component-0763876148e2fa400b4f1cf13cdf0093",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/cta/dark-panel-with-app-screenshot",
+        ),
+      },
+      {
         id: "cta:tailblocksCtaA",
         variant: "tailblocksCtaA",
         label: "Tailblocks CTA A",
@@ -803,10 +866,19 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
               { label: "Email", value: "email" },
               { label: "Phone", value: "tel" },
               { label: "Textarea", value: "textarea" },
+              { label: "Select", value: "select" },
+              { label: "Checkbox", value: "checkbox" },
             ],
           },
           { name: "required", label: "Required", kind: "checkbox" },
           text("maxLength", "Max length"),
+          {
+            name: "options",
+            label: "Options",
+            kind: "array",
+            itemLabel: "Option",
+            itemFields: [text("label", "Label"), text("value", "Value")],
+          },
         ],
       },
       text("provider.provider", "Form provider"),
@@ -821,6 +893,22 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     themeBehavior: ["font-heading", "font-text", "radius-md", "radius-lg", "accent", "card", "rule"],
     fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts", "amicareSiteGenerationSpec"],
     variants: [
+      {
+        id: "contactSection:tailwindPlusCentered",
+        variant: "tailwindPlusCentered",
+        label: "Tailwind Plus centered contact",
+        intent: "Contact form using the exact local source-backed Tailwind Plus Centered contact section block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-contact-centered",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Centered",
+          "986addbc8678313fba5b0dd59c778e9b",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/contact-sections#component-986addbc8678313fba5b0dd59c778e9b",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/contact/centered",
+        ),
+      },
       {
         id: "contactSection:tailwindPlusNewsletterDetails",
         variant: "tailwindPlusNewsletterDetails",
@@ -878,6 +966,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms; Phase 3 should add TestimonialsBlock runtime schema.",
     cmsEditableFields: [
       text("title", "Title"),
+      image("logo", "Logo"),
       {
         name: "items",
         label: "Testimonials",
@@ -899,6 +988,22 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     themeBehavior: ["font-heading", "font-text", "radius-lg", "card", "rule", "muted"],
     fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
     variants: [
+      {
+        id: "testimonials:tailwindPlusSimpleCentered",
+        variant: "tailwindPlusSimpleCentered",
+        label: "Tailwind Plus simple centered",
+        intent: "Single testimonial section using the exact local source-backed Tailwind Plus Simple centered block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-testimonial-simple-centered",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Simple centered",
+          "fd7b8bd425f42f6504b22e1ecc6b43c9",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/testimonials#component-fd7b8bd425f42f6504b22e1ecc6b43c9",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/testimonial/simple-centered",
+        ),
+      },
       {
         id: "testimonials:amicareStoryCards",
         variant: "amicareStoryCards",
@@ -988,24 +1093,28 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "StatsBlockRenderer",
-      output: "Shared renderer for structured metric/value sections.",
+      output: "Provider-backed Tailwind Plus stats section with exactly three editable stat items.",
     },
     themeBehavior: ["font-heading", "font-text", "accent", "ink", "muted", "rule"],
-    fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
+    fixtureCoverage: [
+      "packages/site-renderer/src/source-blocks/tailwindplus/marketing/stats/simple",
+      "packages/site-renderer/src/fixtures/v1.ts",
+    ],
     variants: [
       {
         id: "stats:tailwindPlusSimple",
         variant: "tailwindPlusSimple",
         label: "Tailwind Plus stats",
-        intent: "Metric row adapted from a reviewed Tailwind Plus stats source.",
+        intent: "Three-column metric row using the exact local source-backed Tailwind Plus Simple stats block.",
         scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-stats-simple",
-        provenance: tailwindPlusFreeProvenance(
-          "Stats section",
+        rendererClassName: "cms-block--source-tailwindplus-stats-simple",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Simple",
           "b5eb58f5c8fd565cc54bf488d647f02b",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/stats-sections#component-b5eb58f5c8fd565cc54bf488d647f02b",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/stats/simple",
         ),
       },
     ],
@@ -1036,6 +1145,22 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     themeBehavior: ["font-heading", "font-text", "muted", "rule", "logo-treatment"],
     fixtureCoverage: ["packages/site-renderer/src/fixtures/v1.ts"],
     variants: [
+      {
+        id: "logoCloud:tailwindPlusSimpleWithHeading",
+        variant: "tailwindPlusSimpleWithHeading",
+        label: "Tailwind Plus simple with heading",
+        intent: "Logo cloud using the exact local source-backed Tailwind Plus Simple with heading block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-logo-cloud-simple-with-heading",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Simple with heading",
+          "6b864c393af88d7b8a2ac53eaebf6403",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/logo-clouds#component-6b864c393af88d7b8a2ac53eaebf6403",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/logo-cloud/simple-with-heading",
+        ),
+      },
       {
         id: "logoCloud:tailwindPlusSimple",
         variant: "tailwindPlusSimple",
@@ -1370,7 +1495,18 @@ export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant |
   )
 }
 
-const siteSelfServeSourceBackedProviderNames = [] as const
+const siteSelfServeSourceBackedProviderNames = ["Tailwind Plus"] as const
+const siteSelfServeSourceBackedVariantIds = [
+  "hero:tailwindPlusSimpleCentered",
+  "featureList:tailwindPlusWithProductScreenshot",
+  "featureList:tailwindPlusCentered2x2",
+  "cta:tailwindPlusDarkPanelWithAppScreenshot",
+  "contactSection:tailwindPlusCentered",
+  "testimonials:tailwindPlusSimpleCentered",
+  "stats:tailwindPlusSimple",
+  "logoCloud:tailwindPlusSimpleWithHeading",
+] as const
+const siteSelfServeSourceBackedVariantIdSet = new Set<string>(siteSelfServeSourceBackedVariantIds)
 const siteSelfServeSourceBackedProviderNameSet = new Set<string>(siteSelfServeSourceBackedProviderNames)
 
 export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES = siteSelfServeSourceBackedProviderNames
@@ -1393,7 +1529,8 @@ export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((ent
 )
 
 export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_SOURCE_BACKED_BLOCK_VARIANTS.filter((variant) =>
-  siteSelfServeSourceBackedProviderNameSet.has(variant.provenance.sourceName),
+  siteSelfServeSourceBackedProviderNameSet.has(variant.provenance.sourceName) &&
+  siteSelfServeSourceBackedVariantIdSet.has(variant.variantId),
 )
 
 export const SITE_SOURCE_BACKED_CHROME_VARIANTS = SITE_CHROME_CATALOG

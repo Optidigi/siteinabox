@@ -75,7 +75,6 @@ const fixtureSpec = (): SiteGenerationSpec => ({
         },
         {
           blockType: "contactSection",
-          designVariant: "tailwindPlusNewsletterDetails",
           anchor: "contact",
           title: rtInline("Contact"),
           formName: "Contact form",
@@ -249,6 +248,7 @@ describe("applySiteGenerationSpec", () => {
           blocks: [
             {
               ...spec.pages[0]!.blocks[0]!,
+              designVariant: null,
               image: { id: "generated-hero", url: "/hero.jpg", filename: "hero.jpg", alt: "Hero" },
             } as any,
           ],
@@ -297,6 +297,7 @@ describe("applySiteGenerationSpec", () => {
             blocks: [
               {
                 ...spec.pages[0]!.blocks[0]!,
+                designVariant: null,
                 image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
               } as any,
             ],
@@ -316,7 +317,7 @@ describe("applySiteGenerationSpec", () => {
     }
   })
 
-  it("does not download or require remote media for self-serve generated placeholders", async () => {
+  it("rejects inactive provider media for self-serve output before downloads", async () => {
     const { payload, store } = createPayloadStub()
     const fetchMock = vi.spyOn(globalThis, "fetch")
     const spec = fixtureSpec()
@@ -336,10 +337,11 @@ describe("applySiteGenerationSpec", () => {
       ],
     }, { variantScope: "self-serve" })
 
-    expect(result.ok).toBe(true)
+    expect(result.ok).toBe(false)
+    expect(result.validation.issues.map((issue) => issue.code)).toContain("inactive_slot_value")
     expect(fetchMock).not.toHaveBeenCalled()
     expect(store.media).toHaveLength(0)
-    expect(store.pages[0]!.blocks[0].image).toBeUndefined()
+    expect(store.pages).toHaveLength(0)
     fetchMock.mockRestore()
   })
 
@@ -350,6 +352,8 @@ describe("applySiteGenerationSpec", () => {
       ...spec.pages[0]!.blocks[0]!,
       designVariant: "tailwindPlusSimpleCentered",
     } as any
+    spec.pages[0]!.blocks = [spec.pages[0]!.blocks[0]!]
+    spec.blocks = [{ slug: "hero", label: "Hero" }]
 
     const result = await applySiteGenerationSpec(payload, spec, { variantScope: "self-serve" })
 
@@ -628,7 +632,7 @@ describe("applySiteGenerationSpec", () => {
     })
   })
 
-  it("validates and applies generated specs with new reusable marketing blocks", async () => {
+  it("rejects inactive provider candidate variants before mutating CMS state", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
     spec.pages[0]!.blocks = [
@@ -683,17 +687,16 @@ describe("applySiteGenerationSpec", () => {
     ]
 
     const report = validateSiteGenerationSpecForCms(spec)
-    expect(report.valid).toBe(true)
+    expect(report.valid).toBe(false)
+    expect(report.issues.map((entry) => entry.code)).toEqual(expect.arrayContaining([
+      "unresolved_provider_variant",
+    ]))
 
     const result = await applySiteGenerationSpec(payload, spec)
-    expect(result.ok).toBe(true)
-    expect(store.pages[0]!.blocks.map((block: any) => block.blockType)).toEqual([
-      "pricing",
-      "stats",
-      "logoCloud",
-      "team",
-      "blogCards",
-    ])
+    expect(result.ok).toBe(false)
+    expect(store.tenants).toHaveLength(0)
+    expect(store.pages).toHaveLength(0)
+    expect(store["site-settings"]).toHaveLength(0)
   })
 
   it("rejects tenant-exclusive tenant-exclusive variants for self-serve generated tenants", () => {

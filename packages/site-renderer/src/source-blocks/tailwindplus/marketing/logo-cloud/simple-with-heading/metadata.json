@@ -1,0 +1,20 @@
+{
+  "provider": "tailwindplus",
+  "namespace": "tailwindplus.marketing.logo-cloud",
+  "id": "tailwindplus.marketing.logo-cloud.simple-with-heading",
+  "legacyDesignVariant": "tailwindPlusSimpleWithHeading",
+  "family": "Marketing",
+  "category": "Page Sections / Logo Clouds",
+  "sourceUrl": "https://tailwindcss.com/plus/ui-blocks/marketing/sections/logo-clouds",
+  "visibleVariantName": "Simple with heading",
+  "upstreamId": "6b864c393af88d7b8a2ac53eaebf6403",
+  "canonicalSourceFormat": "html",
+  "sourceAvailability": "source-visible",
+  "sourceHash": "sha256:329f4f78f6433ca02a71366c95f0f6b682a28fb71082a9d8d5441efba3efa383",
+  "retrievedDate": "2026-07-04",
+  "activationStatus": "active",
+  "implementationStatus": "exact-source-renderer-with-typed-slots",
+  "tokenPolicy": "static Tailwind Plus classes; SiaB theme tokens map through CSS variables for color, font, and radius only",
+  "slotManifest": "manifest.ts",
+  "slotNotes": "Renderer exposes exactly five logo items and preserves the upstream per-position grid classes; logo image media is optional for self-serve drafts that skip remote generated media ingestion; href is optional and only wraps a logo when provided."
+}

@@ -95,9 +95,14 @@ const jsonRecordSchema = z.record(z.string(), z.unknown())
 const FORBIDDEN_GENERATED_PAYLOAD_KEYS = [
   "className",
   "classes",
+  "tailwindClasses",
   "rawHtml",
   "html",
+  "css",
   "component",
+  "imports",
+  "jsx",
+  "tsx",
   "sourceCode",
   "filePath",
   "tokens",
@@ -344,14 +349,17 @@ export const HeroBlockSchema: z.ZodType<HeroBlock> = strictObject({
   subheadline: RtFieldSchema.optional(),
   pills: z.array(strictObject({ label: z.string().min(1), id: nullableString })).optional(),
   cta: LinkRefSchema.nullable().optional(),
+  secondary: LinkRefSchema.nullable().optional(),
   image: MediaRefSchema.optional(),
 })
 
 export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject({
   blockType: z.literal("featureList"),
   ...baseBlockShape,
+  eyebrow: RtFieldSchema.optional(),
   title: RtFieldSchema.optional(),
   intro: RtFieldSchema.optional(),
+  image: MediaRefSchema.optional(),
   features: z
     .array(strictObject({
       title: RtRootSchema,
@@ -365,6 +373,7 @@ export const TestimonialsBlockSchema: z.ZodType<TestimonialsBlock> = strictObjec
   blockType: z.literal("testimonials"),
   ...baseBlockShape,
   title: nullableString,
+  logo: MediaRefSchema.optional(),
   items: z
     .array(strictObject({
       quote: z.string().min(1),
@@ -415,10 +424,14 @@ export const ContactSectionBlockSchema: z.ZodType<ContactSectionBlock> = strictO
     .array(strictObject({
       name: z.string().min(1),
       label: z.string().min(1),
-      type: z.enum(["text", "email", "tel", "textarea"]),
+      type: z.enum(["text", "email", "tel", "textarea", "select", "checkbox"]),
       required: z.boolean().optional(),
       placeholder: nullableString,
       maxLength: z.number().int().positive().nullable().optional(),
+      options: z.array(strictObject({
+        label: z.string().min(1),
+        value: z.string().min(1),
+      })).nullable().optional(),
     }))
     .min(1),
   provider: FormProviderConfigSchema.nullable().optional(),
