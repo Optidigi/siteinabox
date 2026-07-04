@@ -67,6 +67,10 @@ depended on command-run site generation are no longer current source of truth.
   chrome model is simplified around one rule: hovering a section/header/footer
   shows only that section's badge, leaving that area hides it, and badge
   placement remains visually anchored to its owner.
+- Remove the nested scrollbar from page editor canvas mode. Revisit the iframe/
+  canvas container layout so the editable site can use its natural full document
+  height instead of being clipped inside a separately scrolling site container,
+  while preserving parent-page editor controls and iframe communication.
 - Re-evaluate editor iframe chrome isolation after the canonical site-rendering
   and generation flow work settles. The remaining issue to verify is whether
   iframe-mounted editor chrome can still inherit tenant/site styling instead of
