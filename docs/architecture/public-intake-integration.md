@@ -57,9 +57,11 @@ matches must leave manual intake submission possible.
 fields, stores the raw body, normalizes it into `CompanyFacts` and
 `IntakeBrief`, records a stable normalized hash, and calls
 `processStoredIntakeSubmission`. Normal intake submissions therefore start a
-provider-backed draft generation run automatically. The CMS review UI remains
-available for inspection, recovery, and operator decisions before preview,
-payment, publish, or activation.
+draft generation run automatically. Generic self-serve provider-backed block
+variants are currently disabled, so new generation is blocked until exact-source
+Tailwind Plus variants are reintroduced. The CMS review UI remains available for
+inspection, recovery, and operator decisions before preview, payment, publish,
+or activation.
 
 Generation provider output is accepted only as structured
 `SiteGenerationSpec` data matching shared contracts. The CMS validation/import

@@ -54,10 +54,12 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
    per-block visual tokens, arbitrary class payloads, or provider token
    overrides in either tree are defects. The global theme toolbar owns fonts,
    colors, shape, radius, border style, and mode.
-7. **Variant selection** — Generation chooses approved block `designVariant` IDs for
-   Tailwind Plus, Preline UI, or Tailblocks. Analytics metadata is not a
+7. **Variant selection** — Generic self-serve generation currently has no
+   approved provider-backed block `designVariant` IDs. The next active family
+   must be exact-source Tailwind Plus only. Analytics metadata is not a
    design-selection API. Inactive provider families, SIAB-owned generic visual
-   variants, and Ami-care tenant-compatibility variants must not be available to generation.
+   variants, and Ami-care tenant-compatibility variants must not be available to
+   generation.
 
 ## Renderer-native editable blocks (target architecture)
 

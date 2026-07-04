@@ -91,14 +91,12 @@ export const v1FixturePage: Page = {
   blocks: [
     {
       blockType: "hero",
-      designVariant: "tailwindPlusSimpleCentered",
       headline: inlineText("A data-driven site"),
       subheadline: blockText("Rendered by the shared SIAB renderer."),
       cta: { label: "Contact", href: "#contact" },
     },
     {
       blockType: "featureList",
-      designVariant: "tailwindPlusCentered2x2",
       title: inlineText("Features"),
       features: [
         { title: inlineText("Shared"), description: blockText("One renderer for CMS and public runtime."), icon: "layers" },
@@ -107,7 +105,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "pricing",
-      designVariant: "tailwindPlusSimpleTiers",
       title: inlineText("Choose the right plan"),
       intro: blockText("Structured pricing plans rendered without generated source code."),
       plans: [
@@ -140,7 +137,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "stats",
-      designVariant: "tailwindPlusSimple",
       title: inlineText("Renderer metrics"),
       items: [
         { value: "8", label: "New block families", description: blockText("Promoted from structured contracts.") },
@@ -150,7 +146,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "logoCloud",
-      designVariant: "tailwindPlusSimple",
       title: inlineText("Trusted integrations"),
       logos: [
         { name: "Payload", image: { url: "/media/logo-payload.svg", alt: "Payload" }, href: "https://payloadcms.com" },
@@ -161,7 +156,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "gallery",
-      designVariant: "prelineSquareGrid",
       title: inlineText("Gallery"),
       images: [
         { image: { url: "/media/gallery-1.jpg", alt: "Gallery item one" }, caption: blockText("Structured media item.") },
@@ -173,7 +167,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "team",
-      designVariant: "tailwindPlusGrid",
       title: inlineText("Meet the team"),
       intro: blockText("People data maps into the provider-native team layout."),
       members: [
@@ -183,7 +176,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "blogCards",
-      designVariant: "tailwindPlusThreeColumn",
       title: inlineText("From the blog"),
       intro: blockText("Article cards can point at CMS or static routes."),
       posts: [
@@ -215,19 +207,16 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "cta",
-      designVariant: "tailblocksCtaA",
       headline: inlineText("Ready to start?"),
       description: blockText("Send a message and we will respond."),
       primary: { label: "Email", href: "mailto:hello@example.test" },
     },
     {
       blockType: "richText",
-      designVariant: "tailblocksContentA",
       body: blockText("This is a rich text section."),
     },
     {
       blockType: "contactSection",
-      designVariant: "tailwindPlusNewsletterDetails",
       anchor: "contact",
       title: inlineText("Get updates"),
       description: blockText("Product news and renderer updates, delivered occasionally."),
@@ -239,7 +228,6 @@ export const v1FixturePage: Page = {
     },
     {
       blockType: "contactSection",
-      designVariant: "prelineCenteredNewsletter",
       title: inlineText("Sign up to our newsletter"),
       formName: "preline-newsletter",
       submitLabel: "Subscribe",

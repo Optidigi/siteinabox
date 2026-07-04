@@ -81,9 +81,11 @@ may use. `SITE_DEFERRED_MARKETING_BLOCK_SLUGS` is empty; deferred blocks are
 not available to generation.
 
 Self-serve generation has a narrower active source partition than the full
-provenance catalog. AI inputs, generated JSON schema enums, mock generation,
-and generic runtime validation use only Tailwind Plus, Preline UI, and
-Tailblocks. Inactive source families and SIAB-owned generic visual variants are
+provenance catalog. That active partition is currently empty after removing the
+adapted/fake Tailwind Plus runtime path. AI inputs, generated JSON schema enums,
+mock generation, and generic runtime validation must not expose provider-backed
+block variants until exact-source Tailwind Plus blocks are implemented and
+approved. Inactive source families and SIAB-owned generic visual variants are
 not generation inputs. Amicare variants are tenant-exclusive compatibility data
 for the official Ami-care tenant path and are not available to generic
 generation, normal pickers, or non-Amicare routes.

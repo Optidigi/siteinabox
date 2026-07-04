@@ -61,9 +61,10 @@ tenant-specific images.
 - Amicare must stay on the data-driven renderer runtime. Its tenant parity
   behavior belongs in scoped renderer/CMS snapshot data and
   `packages/site-renderer`, not restored tenant app source.
-- Generated-site styling must come only from approved catalog/library sources:
-  Tailwind Plus free/public blocks, Tailblocks, and Preline free blocks that
-  have been reviewed and accepted.
+- Generic self-serve generated-site styling currently has no active
+  provider-backed block sources. The next active family must be exact-source
+  Tailwind Plus only; Tailblocks, Preline, adapted Tailwind Plus renderers, and
+  SIAB-owned generic visual variants are not active self-serve sources.
 - Automated pixel-level block verification is not a priority for the next pass.
   The priority is deterministic catalog metadata, source provenance, renderer
   tests, and manual visual review when catalog variants are added or changed.
@@ -329,16 +330,15 @@ breaking their current live snapshot paths.
 
 ## Phase 5: Block Catalog Governance Agent
 
-Goal: keep generated sites constrained to approved Tailwind/catalog blocks
-without making automated pixel verification a blocker.
+Goal: rebuild generated-site blocks around exact-source Tailwind Plus blocks
+without reintroducing adapted provider approximations.
 
 ### Research
 
 - Review `packages/contracts` block catalog, `packages/site-renderer` block
   implementations, CMS tests, fixtures, and generation prompts.
-- Reconfirm Tailwind Plus free/public, Tailblocks, and Preline free approval
-  metadata; shadcn blocks are CMS/admin primitives, not generated public-site
-  blocks.
+- Reconfirm Tailwind Plus free/public approval metadata and source availability;
+  shadcn blocks are CMS/admin primitives, not generated public-site blocks.
 - Identify any path where generation can request unsupported block slugs,
   arbitrary Tailwind classes, raw HTML, or generated component source.
 - Identify whether the AI prompt and runtime validation already force catalog
@@ -346,8 +346,8 @@ without making automated pixel verification a blocker.
 
 ### Implement
 
-- Ensure generation prompts and schemas allow only approved block slugs and
-  approved source-backed variants.
+- Ensure generation prompts and schemas allow only approved Tailwind Plus
+  exact-source block slugs and variants once the catalog is re-enabled.
 - Add or tighten catalog metadata for source, license, approval state, variant
   id, renderer support, and manual visual-review status.
 - Add tests that reject unsupported blocks, unsupported variants, raw HTML,

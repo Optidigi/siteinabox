@@ -1,8 +1,9 @@
 # Block Source Catalog
 
 Generated public sites render structured CMS data through the shared
-`@siteinabox/site-renderer` React renderers. They do not render raw provider
-HTML and the repository no longer keeps a raw provider block-source archive.
+`@siteinabox/site-renderer` React renderers. The previous adapted provider
+renderer path has been disabled for self-serve generation because it did not
+preserve exact Tailwind Plus source blocks.
 
 ## Canonical Generated Block Path
 
@@ -28,8 +29,10 @@ is not generation-eligible.
 ## Provenance vs Runtime
 
 `SITE_SOURCE_BACKED_BLOCK_VARIANTS` is a compact provenance catalog for
-renderer-ready page-block variants. A variant can enter this list only after it
-has:
+renderer-ready page-block variants. It still contains some historical adapted
+provider metadata, but only `SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS`
+defines the active generic generation surface. A new provider variant can enter
+active self-serve generation only after it has:
 
 - structured CMS/editable fields;
 - typed renderer support;
@@ -40,23 +43,21 @@ has:
 - focused tests.
 
 The catalog may store provider URLs, upstream IDs, public source paths, runtime
-requirements, and review notes. It must not store or point at repo-local raw
-provider HTML. Raw provider source can be consulted externally during review,
-but once a block is converted the repo keeps the typed renderer and compact
-metadata only.
+requirements, and review notes. The next Tailwind Plus implementation must keep
+an exact local TSX/HTML template or snapshot that can be tested against the
+approved source; adapted renderer-owned approximations are not acceptable for
+new self-serve provider blocks.
 
 `SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS` is narrower than any historical
-provenance catalog. Current self-serve generation uses only Tailwind Plus,
-Preline UI, and Tailblocks variants. AI prompts, model inputs, generated JSON
-schema enums, mock generation, normal pickers, and generic runtime validation
-must use this approved list.
+provenance catalog. It is currently empty. Self-serve generation must not use
+Tailwind Plus, Preline UI, Tailblocks, or any other provider-labelled block
+until exact-source provider blocks are implemented and approved.
 
 Inactive provider families are removed from the active app/codebase architecture,
 not backlog-only providers. They must not appear in generic self-serve
 generation, schema enums, AI inputs, mock generation, normal pickers, chrome
-choices, renderer fixtures, or active provenance catalogs. SIAB-owned generic
-visual variants are also not generation inputs; generation selects only approved
-provider-backed design variants from Tailwind Plus, Preline UI, or Tailblocks.
+choices, renderer fixtures, or active runtime registries. SIAB-owned generic
+visual variants are also not generation inputs.
 
 Ami-care remains temporary official-tenant compatibility and is only valid on
 official Ami-care preview/canvas/live tenant-renderer paths. It is unavailable to
@@ -64,11 +65,10 @@ generation, generic tenant validation, normal pickers, and AI model inputs.
 
 ## Runtime Route
 
-Approved source-backed renderer variants render structured
-`@siteinabox/site-renderer` React components. Provider styling is selected by
-approved variant IDs and mapped to renderer-owned Tailwind/Preline utility
-classes in `packages/site-renderer/src/blocks/native-classes.ts`. AI and CMS
-data never supply arbitrary class strings or provider HTML.
+Approved source-backed renderer variants must preserve exact provider source
+templates and fill only approved CMS content slots. AI and CMS data never supply
+arbitrary class strings, raw provider HTML, component source, imports, or
+executable code.
 
 AI output is structured CMS data only. For visual selection it sets the
 block-level approved `designVariant` ID for the chosen block type. Analytics
@@ -81,33 +81,27 @@ colors, font roles, shape, radius, border style, and mode. Renderers consume
 those global tokens through approved class rules.
 
 The public renderer uses `apps/renderer/src/styles/site.css` with Tailwind v4,
-app-local Preline theme/variant imports, the `@tailwindcss/forms` plugin, and
-`@source` coverage for `packages/site-renderer/src`. CMS preview/customizer uses
-`apps/cms/src/styles/site-renderer-canvas.css` for matching renderer coverage.
+the `@tailwindcss/forms` plugin, and `@source` coverage for
+`packages/site-renderer/src`. CMS preview/customizer uses the CMS generated-site
+renderer stylesheet for matching renderer coverage.
 
 Current active runtime families:
 
-- Tailwind Plus: approved free/downloadable references rendered through typed
-  React components and static renderer-owned Tailwind class maps.
-- Preline UI: approved free references rendered through typed React components,
-  Preline CSS/theme imports, and static class maps. Interactive Preline
-  components would also require `preline/dist` initialization before approval.
-- Tailblocks: MIT public source references rendered through typed React
-  components and renderer-owned Tailwind class maps.
+- None for generic self-serve generation. Amicare tenant-exclusive rendering is
+  separate compatibility code and is not part of self-serve provider blocks.
 
 ## Approval Gate
 
-`SITE_SOURCE_BACKED_BLOCK_VARIANTS` may include only variants whose provenance
-is:
+New active self-serve provider variants may include only variants whose
+provenance is:
 
 - `approvalStatus: "approved"`;
 - `sourceAvailability: "free-public"`;
 - `licenseCompatibility: "compatible"`;
 - `sourceAccessType` in `public-page-payload`, `public-page-copy`, or
   `public-github-source`;
-- `implementation` in `exact-source` or `adapted-exact-style`;
-- `visualExactnessStatus` in `reviewed-exact-source` or
-  `reviewed-adapted-exact-style`;
+- `implementation: "exact-source"`;
+- `visualExactnessStatus: "reviewed-exact-source"`;
 - backed by a renderer class, source URL, retrieval process, verification date,
   upstream source identity, visual source notes, and runtime requirements.
 
@@ -130,12 +124,17 @@ entries, renderer fixture requirements, or AI-generation suggestions.
 For any new provider or backlog provider:
 
 1. Confirm source access, license compatibility, and allowed product use.
-2. Convert the selected block into a typed renderer with structured CMS data.
-3. Use static renderer-owned class maps or an approved runtime package.
+2. Preserve the selected block as an exact TSX/HTML template with named CMS
+   content slots.
+3. Use Tailwind's intended compile path: literal utility classes in source,
+   Tailwind v4 scanning via `@source`, and any required official runtime
+   package for interactive provider elements.
 4. Add catalog metadata, runtime notes, editable fields, and visual review
    notes.
 5. Add contract, generation, renderer, CMS preview, and governance tests.
 6. Add the provider to self-serve generation only if it is approved for the
    current product surface.
 
-Do not commit copied raw provider HTML as a block archive or runtime input.
+Do not let AI output raw provider HTML, classes, imports, source code, or
+runtime input. AI chooses approved block IDs and supplies structured content
+only.

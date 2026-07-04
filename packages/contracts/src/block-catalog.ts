@@ -1370,7 +1370,7 @@ export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant |
   )
 }
 
-const siteSelfServeSourceBackedProviderNames = ["Tailwind Plus"] as const
+const siteSelfServeSourceBackedProviderNames = [] as const
 const siteSelfServeSourceBackedProviderNameSet = new Set<string>(siteSelfServeSourceBackedProviderNames)
 
 export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES = siteSelfServeSourceBackedProviderNames

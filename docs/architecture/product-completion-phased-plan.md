@@ -87,32 +87,18 @@ It is not product-complete yet:
 
 ### Block Catalog And Source Styling Status
 
-A source-backed block catalog exists in
-`packages/contracts/src/block-catalog.ts`, with renderer classes and fixtures in
-`packages/site-renderer`.
+A historical source-backed block catalog exists in
+`packages/contracts/src/block-catalog.ts`, but generic self-serve provider-backed
+generation is intentionally disabled after removing the adapted/fake Tailwind
+Plus runtime path. The old catalog metadata remains as provenance and backlog
+context only; it is not an active self-serve generation catalog.
 
-Confirmed source-backed entries currently include:
-
-- Tailwind Plus free/public blocks:
-  - `hero:tailwindPlusSimpleCentered`;
-  - `featureList:tailwindPlusCentered2x2`;
-  - `contactSection:tailwindPlusNewsletterDetails`.
-- Tailblocks:
-  - `richText:tailblocksContentA`;
-  - `cta:tailblocksCtaA`.
-- Preline free:
-  - `contactSection:prelineCenteredNewsletter`.
-
-Those entries are locally available as catalog provenance, design variants, and
-renderer implementations. They are not all stored as vendored upstream HTML
-source files. Tailwind Plus entries are recorded as public-page-payload sources,
-so the next agent should verify the public/free source access again before
-expanding the catalog.
-
-The current implementation uses `adapted-exact-style` rather than literal tenant
-source generation. That matches the data-driven architecture, but it means visual
-exactness must be reviewed against the approved source block before each source
-variant is accepted.
+The next active catalog must start with exact-source Tailwind Plus blocks only:
+Tailwind Plus is the UI source of truth, CMS data owns editable content slots,
+and approved theme tokens may configure color, font, and shape/radius behavior.
+Do not re-enable adapted Tailwind Plus renderers, Preline, Tailblocks,
+SIAB-owned generic visual variants, raw AI HTML/classes, or generated component
+source as active self-serve blocks.
 
 ### Existing UIs
 
@@ -155,11 +141,10 @@ Missing or incomplete product UIs:
   activated.
 - Activation must respect approval, payment/manual override, tenant status, and
   domain verification rules.
-- Generated-site styling must come from approved catalog variants only:
-  Tailwind Plus free/public blocks, Tailblocks, or Preline free blocks that
-  have passed source, license, accessibility, and visual review.
-- External blocks must be exact-style implementations of approved source blocks,
-  not loose inspiration. Paid, locked, or license-incompatible blocks stay
+- Generated-site styling must come from approved exact-source catalog variants
+  only. The next active family is Tailwind Plus only; Preline and Tailblocks are
+  not active self-serve sources.
+- Paid, locked, adapted, approximate, or license-incompatible blocks stay
   unavailable.
 
 ## Phase 1: Product Flow Inventory Agent
@@ -205,19 +190,19 @@ new generated sites depend on it.
 - Re-read `packages/contracts/src/block-catalog.ts`,
   `packages/site-renderer/src/styles.css`, renderer block components, fixtures,
   and `apps/cms/tests/unit/blockCatalog.test.ts`.
-- Verify every source-backed variant has source URL, license status, free/public
-  availability, upstream block name/id, renderer class, fixture coverage, and
-  visual source notes.
-- Re-check Tailwind Plus free/public access for the current variants and record
-  whether source payloads are publicly available and compatible with compact
-  provenance.
-- Review Tailblocks and Preline free source access and confirm the current
-  provenance is sufficient for SIAB generated-site use.
+- Verify every proposed Tailwind Plus variant has approved source access,
+  license status, free/public availability, upstream block name/id, a local
+  exact-source template/snapshot path, fixture coverage, and visual source
+  notes.
+- Re-check Tailwind Plus free/public access for the proposed variants and record
+  whether source payloads are available for exact local use.
+- Do not include Tailblocks, Preline, adapted variants, or SIAB-owned generic
+  visual variants in the next active self-serve catalog.
 
 ### Implement
 
 - Add any missing catalog metadata needed to prove source, license, approval,
-  visual-exactness status, and free/public availability.
+  exact-source visual status, and free/public availability.
 - Add or update tests so unsupported, paid, locked, or license-incompatible
   source variants cannot enter `SITE_SOURCE_BACKED_BLOCK_VARIANTS`.
 - If exact upstream markup is needed for auditability, add a minimal local
@@ -227,8 +212,8 @@ new generated sites depend on it.
 
 ### Review
 
-- Compare each renderer source-backed variant against its approved source block
-  at desktop and mobile widths.
+- Compare each exact-source Tailwind Plus renderer variant against its approved
+  source block at desktop and mobile widths.
 - Confirm every first-catalog source-backed variant is exercised in fixtures and
   tests.
 - Run `pnpm packages:typecheck`, focused block-catalog tests, and

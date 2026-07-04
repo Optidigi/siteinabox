@@ -138,7 +138,6 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
       blocks: [
         {
           blockType: "hero",
-          designVariant: "tailwindPlusSimpleCentered",
           anchor: "top",
           eyebrow: inlineText("Nieuwe website"),
           headline: inlineText("Generated Business"),
@@ -149,7 +148,6 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "featureList",
-          designVariant: "tailwindPlusCentered2x2",
           anchor: "services",
           title: inlineText("Wat we doen"),
           intro: blockText("De belangrijkste diensten en voordelen, klaar om in het CMS te verfijnen."),
@@ -178,7 +176,6 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "pricing",
-          designVariant: "tailwindPlusSimpleTiers",
           anchor: "process",
           title: inlineText("Van intake naar preview"),
           intro: blockText("Een compacte route van aanvraag naar bewerkbare eerste website-preview."),
@@ -190,7 +187,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
               period: "concept",
               cta: { label: "Bekijk aanpak", href: "/#contact" },
               features: [
-                { label: inlineText("Tailwind Plus blokken"), included: true },
+                { label: inlineText("Exact-source UI blokken"), included: true },
                 { label: inlineText("CMS-bewerkbare inhoud"), included: true },
                 { label: inlineText("Thema via toolbar"), included: true },
               ],
@@ -215,10 +212,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "stats",
-          designVariant: "tailwindPlusSimple",
           anchor: "proof",
-          title: inlineText("Klaar om te verfijnen"),
-          intro: blockText("De draft gebruikt uitsluitend goedgekeurde catalogusvarianten en blijft volledig CMS-bewerkbaar."),
+          title: inlineText("Wacht op exact-source UI"),
+          intro: blockText("De mock fixture bevat geen actieve provider-variant totdat exacte UI-bronnen zijn ingevoerd."),
           items: [
             {
               value: "100%",
@@ -227,8 +223,8 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
             },
             {
               value: "3",
-              label: "Tailwind Plus",
-              description: blockText("De preview gebruikt Tailwind Plus als enige UI-bronfamilie."),
+              label: "Geblokkeerd",
+              description: blockText("Fake provider-varianten zijn verwijderd uit self-serve generatie."),
             },
             {
               value: "1",
@@ -239,7 +235,6 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         },
         {
           blockType: "contactSection",
-          designVariant: "tailwindPlusNewsletterDetails",
           anchor: "contact",
           title: inlineText("Contact"),
           description: blockText("Stuur een bericht, dan nemen we contact op."),

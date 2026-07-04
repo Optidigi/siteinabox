@@ -1,28 +1,9 @@
 import type { Block } from "@siteinabox/contracts"
 import type { BlockRendererComponent } from "../blocks/types"
-import {
-  TailwindPlusSimpleLogoCloud,
-  TailwindPlusCentered2x2FeatureList,
-  TailwindPlusNewsletterDetails,
-  TailwindPlusSimplePricing,
-  TailwindPlusSimpleCenteredHero,
-  TailwindPlusSimpleStats,
-  TailwindPlusTeamGrid,
-  TailwindPlusThreeColumnBlogCards,
-} from "./tailwind-plus"
 
 type SourceBackedVariantKey = `${Block["blockType"]}:${string}`
 
-export const sourceBackedVariantRegistry = {
-  "hero:tailwindPlusSimpleCentered": TailwindPlusSimpleCenteredHero,
-  "featureList:tailwindPlusCentered2x2": TailwindPlusCentered2x2FeatureList,
-  "contactSection:tailwindPlusNewsletterDetails": TailwindPlusNewsletterDetails,
-  "pricing:tailwindPlusSimpleTiers": TailwindPlusSimplePricing,
-  "stats:tailwindPlusSimple": TailwindPlusSimpleStats,
-  "logoCloud:tailwindPlusSimple": TailwindPlusSimpleLogoCloud,
-  "team:tailwindPlusGrid": TailwindPlusTeamGrid,
-  "blogCards:tailwindPlusThreeColumn": TailwindPlusThreeColumnBlogCards,
-} satisfies Partial<Record<SourceBackedVariantKey, BlockRendererComponent<any>>>
+export const sourceBackedVariantRegistry = {} satisfies Partial<Record<SourceBackedVariantKey, BlockRendererComponent<any>>>
 
 const sourceBackedVariantRenderers: Partial<Record<SourceBackedVariantKey, BlockRendererComponent<any>>> =
   sourceBackedVariantRegistry
