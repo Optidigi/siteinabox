@@ -12,20 +12,21 @@ const baseManifest: RtManifest = {
 describe("enforceTenantBlockMenu", () => {
   beforeEach(() => vi.restoreAllMocks())
 
-  it("uses the active source-backed block registry when manifest has no blocks[]", async () => {
+  it("uses the canonical Payload block registry when manifest has no blocks[]", async () => {
     vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = {
       tenant: 7,
       blocks: [
         { blockType: "hero" },
         { blockType: "cta" },
+        { blockType: "richText" },
       ],
     }
     const result = await enforceTenantBlockMenu({ data, originalDoc: undefined } as any)
     expect(result).toBe(data)
   })
 
-  it("rejects inactive providerless blocks when manifest has no blocks[]", async () => {
+  it("rejects unsupported block types when manifest has no blocks[]", async () => {
     vi.spyOn(loadManifest, "loadTenantManifest").mockResolvedValue(baseManifest)
     const data = {
       tenant: 7,

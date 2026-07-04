@@ -118,15 +118,13 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
       "hero:tailwindPlusSimpleCentered",
       "featureList:tailwindPlusCentered2x2",
-      "richText:tailblocksContentA",
+      "pricing:tailwindPlusSimpleTiers",
       "stats:tailwindPlusSimple",
-      "cta:tailblocksCtaA",
-      "contactSection:prelineCenteredNewsletter",
+      "contactSection:tailwindPlusNewsletterDetails",
     ])
     expect(store.pages[0]?.blocks.every((block: any) => !("variant" in block))).toBe(true)
     expect(store.pages[0]?.blocks.every((block: any) => Object.keys(block.analytics ?? {}).every((key) => key !== "legacyVisualIdentity"))).toBe(true)
-    const ctaBlock = store.pages[0]?.blocks.find((block: any) => block.blockType === "cta")
-    expect(ctaBlock).not.toHaveProperty("secondary")
+    expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toMatch(/preline|tailblocks/)
     expect(store["site-settings"][0]?.chrome?.banner).not.toHaveProperty("link")
     expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toContain("shadcn")
   })

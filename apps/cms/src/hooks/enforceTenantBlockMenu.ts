@@ -1,10 +1,11 @@
 import type { CollectionBeforeValidateHook } from "payload"
-import { BLOCKS } from "@/blocks/registry"
+import { ALL_BLOCKS } from "@/blocks/registry"
 
 /**
  * Reject saves containing block types that fall outside the tenant's
  * declared siteManifest.blocks[] menu. When the tenant has no explicit
- * blocks[] menu, fall back to the active source-backed block registry.
+ * blocks[] menu, fall back to every canonical block schema accepted by the
+ * Payload collection so existing pages remain editable.
  *
  * Lives in Pages.hooks.beforeValidate alongside validateRichTextOnSave
  * because both validate content shape before Payload runs its own
@@ -42,7 +43,7 @@ export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ dat
   const allowed = new Set(
     manifest.blocks && manifest.blocks.length > 0
       ? manifest.blocks.map((b) => b.slug)
-      : BLOCKS.map((b) => b.slug),
+      : ALL_BLOCKS.map((b) => b.slug),
   )
   const blocks = ((data as any)?.blocks ?? []) as { blockType: string }[]
   const violations = blocks

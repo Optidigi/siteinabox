@@ -36,11 +36,7 @@ function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
   if (variant.scope.kind !== "global") return false
 
   const sourceName = variant.provenance.sourceName.toLowerCase()
-  return (
-    sourceName === "tailwind plus" ||
-    sourceName === "tailblocks" ||
-    sourceName === "preline ui"
-  )
+  return sourceName === "tailwind plus"
 }
 
 function isTenantExclusiveRendererVariantAllowed(variant: SiteBlockCatalogVariant, context: BlockVariantResolveContext) {

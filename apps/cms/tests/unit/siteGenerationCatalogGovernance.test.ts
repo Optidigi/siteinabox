@@ -40,7 +40,7 @@ describe("site generation catalog governance", () => {
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("source code")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("file paths")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("unsupported block slugs")
-    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Tailwind Plus, Preline UI, and Tailblocks only")
+    expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Tailwind Plus only")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not use tenant-renderer blocks")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("block.designVariant")
     expect(SITE_GENERATION_SYSTEM_PROMPT).toContain("Do not author legacy page-block visual identity fields")
@@ -65,13 +65,14 @@ describe("site generation catalog governance", () => {
     expect(input.requirements.join("\n")).toContain("className/classes")
     expect(input.requirements.join("\n")).toContain("Never use tenant-exclusive tenant renderer")
     expect(input.approvedDesignVariants.map((variant) => variant.sourceName)).toEqual(
-      expect.arrayContaining(["Tailwind Plus", "Preline UI", "Tailblocks"]),
+      expect.arrayContaining(["Tailwind Plus"]),
     )
     expect(new Set(input.approvedDesignVariants.map((variant) => variant.sourceName))).toEqual(
-      new Set(["Tailwind Plus", "Preline UI", "Tailblocks"]),
+      new Set(["Tailwind Plus"]),
     )
     expect(input.approvedDesignVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.designVariant}`))).toBe(false)
-    expect(serializedInput).toMatch(/Tailwind Plus|Preline UI|Tailblocks/)
+    expect(serializedInput).toMatch(/Tailwind Plus/)
+    expect(serializedInput).not.toMatch(/Preline UI|Tailblocks/)
     expect(serializedInput).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(serializedInput).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
@@ -156,7 +157,6 @@ describe("site generation catalog governance", () => {
 
   it("constrains OpenAI block schemas to active self-serve variants per block type", () => {
     const heroSchema = blockSchemaFor("hero")
-    const ctaSchema = blockSchemaFor("cta")
     const schemaBlockTypes = (siteGenerationJsonSchema.properties.pages.items as any)
       .properties.blocks.items.anyOf.map((entry: any) => entry.properties.blockType.const)
 
@@ -170,16 +170,12 @@ describe("site generation catalog governance", () => {
     expect(heroSchema.properties.designVariant.enum).toEqual([
       "tailwindPlusSimpleCentered",
     ])
-    expect(ctaSchema.properties.designVariant.enum).toEqual([
-      "tailblocksCtaA",
-    ])
-    expect(ctaSchema.properties.designVariant.enum).not.toContain("tailwindPlusSimpleCentered")
+    expect(schemaBlockTypes).not.toContain("cta")
     expect(blockSchemaFor("pricing").properties.designVariant.enum).toEqual([
       "tailwindPlusSimpleTiers",
     ])
     expect(blockSchemaFor("contactSection").properties.designVariant.enum).toEqual([
       "tailwindPlusNewsletterDetails",
-      "prelineCenteredNewsletter",
     ])
     expect(schemaBlockTypes).not.toEqual(expect.arrayContaining(["faq", "processSteps", "comparison", "testimonials"]))
     expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)

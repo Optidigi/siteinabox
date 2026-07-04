@@ -29,10 +29,10 @@ describe("resolveAllowedBlocks", () => {
 
   it("filters + orders by declared slugs", () => {
     const result = resolveAllowedBlocks(BLOCKS, [
-      { slug: "richText" },
+      { slug: "featureList" },
       { slug: "hero" },
     ])
-    expect(result.map((b) => b.slug)).toEqual(["richText", "hero"])
+    expect(result.map((b) => b.slug)).toEqual(["featureList", "hero"])
   })
 
   it("skips unknown slugs with a warning, keeps the known ones", () => {
@@ -40,9 +40,9 @@ describe("resolveAllowedBlocks", () => {
     const result = resolveAllowedBlocks(BLOCKS, [
       { slug: "hero" },
       { slug: "not-a-real-block" },
-      { slug: "cta" },
+      { slug: "contactSection" },
     ])
-    expect(result.map((b) => b.slug)).toEqual(["hero", "cta"])
+    expect(result.map((b) => b.slug)).toEqual(["hero", "contactSection"])
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("not-a-real-block"))
     warn.mockRestore()
   })

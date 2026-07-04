@@ -1,4 +1,3 @@
-import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
 import { RichTextRenderer } from "../rich-text"
 import type { BlockRenderOptions, RendererElementPath } from "../blocks/types"
@@ -29,10 +28,3 @@ export function richTextSlot({
   }
   return <RichTextRenderer value={value} blockMode={blockMode} />
 }
-
-export const providerTokenStyles = {
-  title: { fontFamily: "var(--font-title)" },
-  heading: { fontFamily: "var(--font-heading)" },
-  text: { fontFamily: "var(--font-text)" },
-  script: { fontFamily: "var(--font-script)" },
-} as const satisfies Record<string, React.CSSProperties>

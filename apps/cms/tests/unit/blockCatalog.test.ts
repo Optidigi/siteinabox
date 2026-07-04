@@ -114,13 +114,6 @@ describe("renderer block catalog", () => {
       logos: [{ name: "Partner", image: { url: "/uploads/partner.svg" }, href: "https://example.com" }],
     }
 
-    const galleryBlock: GeneratedBlockSpec = {
-      blockType: "gallery",
-      designVariant: "prelineSquareGrid",
-      title: inlineRoot("Werk"),
-      images: [{ image: { url: "/uploads/work.jpg" }, caption: blockRoot("Recent werk.") }],
-    }
-
     const teamBlock: GeneratedBlockSpec = {
       blockType: "team",
       designVariant: "tailwindPlusGrid",
@@ -139,7 +132,6 @@ describe("renderer block catalog", () => {
       pricingBlock,
       statsBlock,
       logoCloudBlock,
-      galleryBlock,
       teamBlock,
       blogCardsBlock,
     ]) {
@@ -149,7 +141,7 @@ describe("renderer block catalog", () => {
     expect(GeneratedBlockSpecSchema.safeParse({ ...pricingBlock, designVariant: "unsupportedProviderSteps" }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({ blockType: "processSteps", title: inlineRoot("Proces"), steps: [] }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({ blockType: "comparison", title: inlineRoot("Vergelijking"), columns: [], rows: [] }).success).toBe(false)
-    expect(GeneratedBlockSpecSchema.safeParse({ ...galleryBlock, html: "<section></section>" }).success).toBe(false)
+    expect(GeneratedBlockSpecSchema.safeParse({ ...teamBlock, html: "<section></section>" }).success).toBe(false)
     expect(GeneratedBlockSpecSchema.safeParse({
       ...pricingBlock,
       title: {
@@ -247,10 +239,10 @@ describe("renderer block catalog", () => {
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Tailblocks")).toBe(true)
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.some((variant) => variant.provenance.sourceName === "Preline UI")).toBe(true)
     expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName)).toEqual(
-      expect.arrayContaining(["Tailwind Plus", "Tailblocks", "Preline UI"]),
+      expect.arrayContaining(["Tailwind Plus"]),
     )
     expect(new Set(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.provenance.sourceName))).toEqual(
-      new Set(["Tailwind Plus", "Tailblocks", "Preline UI"]),
+      new Set(["Tailwind Plus"]),
     )
     expect(DEFERRED_SOURCE_BLOCK_CANDIDATES).toHaveLength(0)
   })
@@ -273,8 +265,6 @@ describe("renderer block catalog", () => {
       "hero:tailwindPlusSimpleCentered",
       "featureList:tailwindPlusCentered2x2",
       "contactSection:tailwindPlusNewsletterDetails",
-      "richText:tailblocksContentA",
-      "cta:tailblocksCtaA",
       "pricing:tailwindPlusSimpleTiers",
       "stats:tailwindPlusSimple",
       "logoCloud:tailwindPlusSimple",
@@ -287,18 +277,6 @@ describe("renderer block catalog", () => {
       expect(runtime?.packages, variantId).toBeUndefined()
       expect(runtime?.cssImports, variantId).toBeUndefined()
       expect(runtime?.jsImports, variantId).toBeUndefined()
-    }
-
-    for (const variantId of ["contactSection:prelineCenteredNewsletter", "gallery:prelineSquareGrid"]) {
-      const runtime = byId.get(variantId)?.provenance.runtime
-      expect(runtime?.kind, variantId).toBe("preline-ui")
-      expect(runtime?.interactive, variantId).toBe(false)
-      expect(runtime?.packages, variantId).toEqual(["preline", "@tailwindcss/forms"])
-      expect(runtime?.cssImports, variantId).toEqual([
-        "node_modules/preline/css/themes/theme.css",
-        "node_modules/preline/variants.css",
-      ])
-      expect(runtime?.jsImports, variantId).toEqual([])
     }
 
     expect(byId.has("comparison:matrix")).toBe(false)
@@ -387,10 +365,9 @@ describe("renderer block catalog", () => {
 
     expect(rendererPage).toContain('import "../styles/site.css"')
     expect(rendererCss).toContain('@import "tailwindcss" source(none);')
-    expect(rendererCss).toContain('@import "../../node_modules/preline/css/themes/theme.css";')
-    expect(rendererCss).toContain('@import "../../node_modules/preline/variants.css";')
     expect(rendererCss).toContain('@import "@siteinabox/site-renderer/styles.css";')
     expect(rendererCss).toContain('@source "../../../../packages/site-renderer/src";')
+    expect(rendererCss).not.toContain("preline")
     expect(rendererCss).not.toContain("packages/contracts/block-sources")
     expect(cmsFrontendLayout).not.toContain("site-renderer-preview.css")
     expect(cmsAdminLayout).not.toContain("site-renderer-preview.css")

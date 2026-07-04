@@ -14,7 +14,7 @@ import { resolveMedia } from "../media"
 import { resolveIcon } from "../blocks/icons"
 import { mergeRendererSectionAttributes } from "../blocks/section-attributes"
 import type { BlockRenderOptions } from "../blocks/types"
-import { cx, providerTokenStyles, richTextSlot } from "./utils"
+import { cx, richTextSlot } from "./utils"
 
 export function TailwindPlusSimpleCenteredHero({ block, options }: { block: HeroBlock; options: BlockRenderOptions }) {
   const image = resolveMedia(block.image ?? null, options.mediaResolver)
@@ -23,7 +23,7 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
   const sectionProps = mergeRendererSectionAttributes(
     {
       id: block.anchor || undefined,
-      className: "bg-[var(--color-bg)]",
+      className: "bg-white",
       "data-source-variant": block.designVariant ?? undefined,
       "data-block-index": options.index,
       ...sectionAnalyticsAttrs(block.analytics, "hero", options.index),
@@ -37,7 +37,7 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
         <div className="mx-auto max-w-2xl text-center">
           {(block.eyebrow || options.editSlots?.renderRichText) && (
             <div className="mb-8 flex justify-center">
-              <div className="relative rounded-full px-3 py-1 text-sm/6 text-[var(--color-ink-muted)] ring-1 ring-[var(--color-rule)] hover:ring-[var(--color-rule)]">
+              <div className="relative rounded-full px-3 py-1 text-sm/6 text-gray-600 ring-1 ring-gray-900/10 hover:ring-gray-900/20">
                 {richTextSlot({
                   options,
                   name: "hero.eyebrow",
@@ -49,7 +49,7 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
               </div>
             </div>
           )}
-          <h1 className="text-5xl font-semibold tracking-tight text-balance text-[var(--color-ink)] sm:text-7xl" style={providerTokenStyles.title}>
+          <h1 className="text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-7xl">
             {richTextSlot({
               options,
               name: "hero.headline",
@@ -59,7 +59,7 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
             })}
           </h1>
           {(block.subheadline || options.editSlots?.renderRichText) && (
-            <div className="mt-8 text-lg font-medium text-pretty text-[var(--color-ink-muted)] sm:text-xl/8" style={providerTokenStyles.text}>
+            <div className="mt-8 text-lg font-medium text-pretty text-gray-500 sm:text-xl/8">
               {richTextSlot({
                 options,
                 name: "hero.subheadline",
@@ -72,7 +72,7 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
           {block.pills && block.pills.length > 0 && (
             <ul className="mt-8 flex flex-wrap items-center justify-center gap-2">
               {block.pills.map((pill, i) => (
-                <li key={pill.id ?? i} className="rounded-full bg-[var(--color-card)] px-3 py-1 text-sm font-medium text-[var(--color-ink-muted)] ring-1 ring-[var(--color-rule)]">
+                <li key={pill.id ?? i} className="rounded-full bg-white px-3 py-1 text-sm font-medium text-gray-600 ring-1 ring-gray-900/10">
                   {options.editSlots?.renderText
                     ? options.editSlots.renderText({
                       name: "hero.pillLabel",
@@ -91,14 +91,14 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
                 ? options.editSlots.renderCta({
                   name: "hero.cta",
                   value: block.cta,
-                  className: "rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3.5 py-2.5 text-sm font-semibold text-[var(--color-on-accent)] shadow-xs hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]",
+                  className: "rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600",
                   actionAttributes: actionAnalyticsAttrs("primary", ctaLabel),
                   elementPath: { blockIndex: options.index, field: "cta" },
                 })
                 : (
                   <a
                     href={ctaHref}
-                    className="rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3.5 py-2.5 text-sm font-semibold text-[var(--color-on-accent)] shadow-xs hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+                    className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                     {...actionAnalyticsAttrs("primary", ctaLabel)}
                   >
                     {ctaLabel}
@@ -109,8 +109,8 @@ export function TailwindPlusSimpleCenteredHero({ block, options }: { block: Hero
         </div>
         {image && (
           <div className="mt-16 flow-root sm:mt-24">
-            <div className="-m-2 rounded-[var(--radius-lg)] bg-[var(--color-rule)]/10 p-2 ring-1 ring-inset ring-[var(--color-rule)] lg:-m-4 lg:rounded-[calc(var(--radius-lg)+0.25rem)] lg:p-4">
-              <img className="rounded-[var(--radius-lg)] shadow-2xl ring-1 ring-[var(--color-rule)]" src={image.src} alt={image.alt ?? ""} loading="eager" decoding="async" />
+            <div className="-m-2 rounded-xl bg-gray-900/5 p-2 ring-1 ring-inset ring-gray-900/10 lg:-m-4 lg:rounded-2xl lg:p-4">
+              <img className="rounded-md shadow-2xl ring-1 ring-gray-900/10" src={image.src} alt={image.alt ?? ""} loading="eager" decoding="async" />
             </div>
           </div>
         )}
@@ -128,7 +128,7 @@ export function TailwindPlusCentered2x2FeatureList({ block, options }: { block: 
   return (
     <section
       id={block.anchor || undefined}
-      className="bg-[var(--color-bg)] py-24 sm:py-32"
+      className="bg-white py-24 sm:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "featureList", options.index)}
@@ -136,7 +136,7 @@ export function TailwindPlusCentered2x2FeatureList({ block, options }: { block: 
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:text-center">
           {(block.title || options.editSlots?.renderRichText) && (
-            <h2 className="mt-2 text-4xl font-semibold tracking-tight text-pretty text-[var(--color-ink)] sm:text-5xl lg:text-balance" style={providerTokenStyles.heading}>
+            <h2 className="mt-2 text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
               {richTextSlot({
                 options,
                 name: "featureList.title",
@@ -147,7 +147,7 @@ export function TailwindPlusCentered2x2FeatureList({ block, options }: { block: 
             </h2>
           )}
           {(block.intro || options.editSlots?.renderRichText) && (
-            <div className="mt-6 text-lg/8 text-[var(--color-ink-muted)]" style={providerTokenStyles.text}>
+            <div className="mt-6 text-lg/8 text-gray-600">
               {richTextSlot({
                 options,
                 name: "featureList.intro",
@@ -164,8 +164,8 @@ export function TailwindPlusCentered2x2FeatureList({ block, options }: { block: 
               const Icon = resolveIcon(feature.icon)
               return (
                 <div key={i} className="relative pl-16">
-                  <dt className="text-base/7 font-semibold text-[var(--color-ink)]" style={providerTokenStyles.heading}>
-                    <div className="absolute top-0 left-0 flex size-10 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-accent)] text-[var(--color-on-accent)]">
+                  <dt className="text-base/7 font-semibold text-gray-900">
+                    <div className="absolute top-0 left-0 flex size-10 items-center justify-center rounded-lg bg-indigo-600 text-white">
                       {options.editSlots?.renderIcon
                         ? options.editSlots.renderIcon({
                           name: "featureList.featureIcon",
@@ -184,7 +184,7 @@ export function TailwindPlusCentered2x2FeatureList({ block, options }: { block: 
                     })}
                   </dt>
                   {(feature.description || options.editSlots?.renderRichText) && (
-                    <dd className="mt-2 text-base/7 text-[var(--color-ink-muted)]" style={providerTokenStyles.text}>
+                    <dd className="mt-2 text-base/7 text-gray-600">
                       {richTextSlot({
                         options,
                         name: "featureList.featureDescription",
@@ -210,7 +210,7 @@ export function TailwindPlusSimpleStats({ block, options }: { block: StatsBlock;
   return (
     <section
       id={block.anchor || undefined}
-      className="bg-[var(--color-bg)] py-24 sm:py-32"
+      className="bg-white py-24 sm:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "stats", options.index)}
@@ -219,7 +219,7 @@ export function TailwindPlusSimpleStats({ block, options }: { block: StatsBlock;
         {(block.title || block.intro) && (
           <div className="mx-auto max-w-2xl lg:mx-0">
             {block.title && (
-              <h2 className="text-4xl font-semibold tracking-tight text-pretty text-[var(--color-ink)] sm:text-5xl" style={providerTokenStyles.heading}>
+              <h2 className="text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl">
                 {richTextSlot({
                   options,
                   name: "stats.title",
@@ -230,7 +230,7 @@ export function TailwindPlusSimpleStats({ block, options }: { block: StatsBlock;
               </h2>
             )}
             {block.intro && (
-              <div className="mt-6 text-lg/8 text-[var(--color-ink-muted)]" style={providerTokenStyles.text}>
+              <div className="mt-6 text-lg/8 text-gray-600">
                 {richTextSlot({
                   options,
                   name: "stats.intro",
@@ -242,13 +242,13 @@ export function TailwindPlusSimpleStats({ block, options }: { block: StatsBlock;
             )}
           </div>
         )}
-        <dl className={cx("mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-10 text-[var(--color-ink)] sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-4", block.title || block.intro ? "mt-16" : "")}>
+        <dl className={cx("mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-10 text-gray-900 sm:grid-cols-2 lg:mx-0 lg:max-w-none lg:grid-cols-4", block.title || block.intro ? "mt-16" : "")}>
           {block.items.map((item, i) => (
-            <div key={i} className="flex flex-col gap-y-3 border-l border-[var(--color-rule)] pl-6">
-              <dt className="text-sm/6 text-[var(--color-ink-muted)]">{item.label}</dt>
-              <dd className="order-first text-3xl font-semibold tracking-tight text-[var(--color-ink)]">{item.value}</dd>
+            <div key={i} className="flex flex-col gap-y-3 border-l border-gray-900/10 pl-6">
+              <dt className="text-sm/6 text-gray-600">{item.label}</dt>
+              <dd className="order-first text-3xl font-semibold tracking-tight text-gray-900">{item.value}</dd>
               {item.description && (
-                <div className="text-sm/6 text-[var(--color-ink-muted)]">
+                <div className="text-sm/6 text-gray-600">
                   {richTextSlot({
                     options,
                     name: "stats.description",
@@ -276,7 +276,7 @@ export function TailwindPlusNewsletterDetails({ block, options }: { block: Conta
   return (
     <section
       id={block.anchor || undefined}
-      className="relative isolate overflow-hidden bg-[var(--color-ink)] py-16 sm:py-24 lg:py-32"
+      className="relative isolate overflow-hidden bg-gray-900 py-16 sm:py-24 lg:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "contactSection", options.index)}
@@ -285,7 +285,7 @@ export function TailwindPlusNewsletterDetails({ block, options }: { block: Conta
         <div className="mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2">
           <div className="max-w-xl lg:max-w-lg">
             {(block.title || options.editSlots?.renderRichText) && (
-              <h2 className="text-4xl font-semibold tracking-tight text-[var(--color-bg)]" style={providerTokenStyles.heading}>
+              <h2 className="text-4xl font-semibold tracking-tight text-white">
                 {richTextSlot({
                   options,
                   name: "contactSection.title",
@@ -296,7 +296,7 @@ export function TailwindPlusNewsletterDetails({ block, options }: { block: Conta
               </h2>
             )}
             {(block.description || options.editSlots?.renderRichText) && (
-              <div className="mt-4 text-lg text-[var(--color-bg)]/80" style={providerTokenStyles.text}>
+              <div className="mt-4 text-lg text-gray-300">
                 {richTextSlot({
                   options,
                   name: "contactSection.description",
@@ -324,9 +324,9 @@ export function TailwindPlusNewsletterDetails({ block, options }: { block: Conta
                 required={primaryField.required ?? false}
                 placeholder={primaryField.placeholder ?? primaryField.label}
                 maxLength={primaryField.maxLength ?? undefined}
-                className="min-w-0 flex-auto rounded-[var(--radius-md)] bg-[var(--color-card)]/5 px-3.5 py-2 text-base text-[var(--color-bg)] outline-1 -outline-offset-1 outline-[var(--color-bg)]/10 placeholder:text-[var(--color-bg)]/60 focus:outline-2 focus:-outline-offset-2 focus:outline-[var(--color-accent)] sm:text-sm/6"
+                className="min-w-0 flex-auto rounded-md bg-white/5 px-3.5 py-2 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6"
               />
-              <button type="submit" className="flex-none rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3.5 py-2.5 text-sm font-semibold text-[var(--color-on-accent)] shadow-xs hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]">
+              <button type="submit" className="flex-none rounded-md bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
                 {block.submitLabel ?? "Subscribe"}
               </button>
             </form>
@@ -341,7 +341,7 @@ export function TailwindPlusSimplePricing({ block, options }: { block: PricingBl
   return (
     <section
       id={block.anchor || undefined}
-      className="bg-[var(--color-bg)] py-24 sm:py-32"
+      className="bg-white py-24 sm:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "pricing", options.index)}
@@ -349,12 +349,12 @@ export function TailwindPlusSimplePricing({ block, options }: { block: PricingBl
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-4xl text-center">
           {block.title && (
-            <h2 className="text-5xl font-semibold tracking-tight text-balance text-[var(--color-ink)] sm:text-6xl" style={providerTokenStyles.heading}>
+            <h2 className="text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-6xl">
               {richTextSlot({ options, name: "pricing.title", value: block.title, variant: "inline", elementPath: { blockIndex: options.index, field: "title" } })}
             </h2>
           )}
           {block.intro && (
-            <div className="mx-auto mt-6 max-w-2xl text-center text-lg font-medium text-pretty text-[var(--color-ink-muted)] sm:text-xl/8" style={providerTokenStyles.text}>
+            <div className="mx-auto mt-6 max-w-2xl text-center text-lg font-medium text-pretty text-gray-600 sm:text-xl/8">
               {richTextSlot({ options, name: "pricing.intro", value: block.intro, variant: "block", elementPath: { blockIndex: options.index, field: "intro" } })}
             </div>
           )}
@@ -364,23 +364,23 @@ export function TailwindPlusSimplePricing({ block, options }: { block: PricingBl
             const ctaLabel = plan.cta?.label?.trim()
             const ctaHref = plan.cta?.href?.trim()
             return (
-              <article key={i} className="rounded-[var(--radius-lg)] bg-[var(--color-card)] p-8 ring-1 ring-[var(--color-rule)] xl:p-10 data-[highlighted=true]:bg-[var(--color-ink)]" data-highlighted={plan.highlighted ? "true" : undefined}>
-                <h3 className="text-lg/8 font-semibold text-[var(--color-ink)] data-[highlighted=true]:text-[var(--color-bg)]" style={providerTokenStyles.heading}>
+              <article key={i} className="rounded-3xl bg-white p-8 ring-1 ring-gray-900/10 xl:p-10 data-[highlighted=true]:bg-gray-900" data-highlighted={plan.highlighted ? "true" : undefined}>
+                <h3 className="text-lg/8 font-semibold text-gray-900 data-[highlighted=true]:text-white">
                   {richTextSlot({ options, name: "pricing.planTitle", value: plan.title, variant: "inline", elementPath: { blockIndex: options.index, field: "plans", itemIndex: i, subField: "title" } })}
                 </h3>
                 {plan.description && (
-                  <div className="mt-4 text-sm/6 text-[var(--color-ink-muted)]" style={providerTokenStyles.text}>
+                  <div className="mt-4 text-sm/6 text-gray-600">
                     {richTextSlot({ options, name: "pricing.planDescription", value: plan.description, variant: "block", elementPath: { blockIndex: options.index, field: "plans", itemIndex: i, subField: "description" } })}
                   </div>
                 )}
                 {plan.price && (
                   <p className="mt-6 flex items-baseline gap-x-1">
-                    <span className="text-4xl font-semibold tracking-tight text-[var(--color-ink)]">{plan.price}</span>
-                    {plan.period && <span className="text-sm/6 font-semibold text-[var(--color-ink-muted)]">{plan.period}</span>}
+                    <span className="text-4xl font-semibold tracking-tight text-gray-900">{plan.price}</span>
+                    {plan.period && <span className="text-sm/6 font-semibold text-gray-600">{plan.period}</span>}
                   </p>
                 )}
                 {ctaLabel && ctaHref && (
-                  <a href={ctaHref} className="mt-8 block rounded-[var(--radius-md)] bg-[var(--color-accent)] px-3 py-2 text-center text-sm/6 font-semibold text-[var(--color-on-accent)] shadow-xs hover:brightness-95">
+                  <a href={ctaHref} className="mt-8 block rounded-md bg-indigo-600 px-3 py-2 text-center text-sm/6 font-semibold text-white shadow-xs hover:bg-indigo-500">
                     {ctaLabel}
                   </a>
                 )}
@@ -397,14 +397,14 @@ export function TailwindPlusSimpleLogoCloud({ block, options }: { block: LogoClo
   return (
     <section
       id={block.anchor || undefined}
-      className="bg-[var(--color-bg)] py-24 sm:py-32"
+      className="bg-white py-24 sm:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "logoCloud", options.index)}
     >
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         {block.title && (
-          <h2 className="text-center text-lg/8 font-semibold text-[var(--color-ink)]" style={providerTokenStyles.heading}>
+          <h2 className="text-center text-lg/8 font-semibold text-gray-900">
             {richTextSlot({ options, name: "logoCloud.title", value: block.title, variant: "inline", elementPath: { blockIndex: options.index, field: "title" } })}
           </h2>
         )}
@@ -425,7 +425,7 @@ export function TailwindPlusTeamGrid({ block, options }: { block: TeamBlock; opt
   return (
     <section
       id={block.anchor || undefined}
-      className="bg-[var(--color-bg)] py-24 sm:py-32"
+      className="bg-white py-24 sm:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "team", options.index)}
@@ -433,12 +433,12 @@ export function TailwindPlusTeamGrid({ block, options }: { block: TeamBlock; opt
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
           {block.title && (
-            <h2 className="text-4xl font-semibold tracking-tight text-pretty text-[var(--color-ink)] sm:text-5xl" style={providerTokenStyles.heading}>
+            <h2 className="text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl">
               {richTextSlot({ options, name: "team.title", value: block.title, variant: "inline", elementPath: { blockIndex: options.index, field: "title" } })}
             </h2>
           )}
           {block.intro && (
-            <div className="mt-6 text-lg/8 text-[var(--color-ink-muted)]" style={providerTokenStyles.text}>
+            <div className="mt-6 text-lg/8 text-gray-600">
               {richTextSlot({ options, name: "team.intro", value: block.intro, variant: "block", elementPath: { blockIndex: options.index, field: "intro" } })}
             </div>
           )}
@@ -448,9 +448,9 @@ export function TailwindPlusTeamGrid({ block, options }: { block: TeamBlock; opt
             const image = resolveMedia(member.image ?? null, options.mediaResolver)
             return (
               <li key={i}>
-                {image && <img className="aspect-3/2 w-full rounded-[var(--radius-lg)] object-cover" src={image.src} alt={image.alt ?? member.name} loading="lazy" decoding="async" />}
-                <h3 className="mt-6 text-lg/8 font-semibold tracking-tight text-[var(--color-ink)]">{member.name}</h3>
-                {member.role && <p className="text-base/7 text-[var(--color-accent)]">{member.role}</p>}
+                {image && <img className="aspect-3/2 w-full rounded-2xl object-cover" src={image.src} alt={image.alt ?? member.name} loading="lazy" decoding="async" />}
+                <h3 className="mt-6 text-lg/8 font-semibold tracking-tight text-gray-900">{member.name}</h3>
+                {member.role && <p className="text-base/7 text-gray-600">{member.role}</p>}
               </li>
             )
           })}
@@ -464,7 +464,7 @@ export function TailwindPlusThreeColumnBlogCards({ block, options }: { block: Bl
   return (
     <section
       id={block.anchor || undefined}
-      className="bg-[var(--color-bg)] py-24 sm:py-32"
+      className="bg-white py-24 sm:py-32"
       data-source-variant={block.designVariant ?? undefined}
       data-block-index={options.index}
       {...sectionAnalyticsAttrs(block.analytics, "blogCards", options.index)}
@@ -472,12 +472,12 @@ export function TailwindPlusThreeColumnBlogCards({ block, options }: { block: Bl
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
           {block.title && (
-            <h2 className="text-4xl font-semibold tracking-tight text-pretty text-[var(--color-ink)] sm:text-5xl" style={providerTokenStyles.heading}>
+            <h2 className="text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl">
               {richTextSlot({ options, name: "blogCards.title", value: block.title, variant: "inline", elementPath: { blockIndex: options.index, field: "title" } })}
             </h2>
           )}
           {block.intro && (
-            <div className="mt-2 text-lg/8 text-[var(--color-ink-muted)]" style={providerTokenStyles.text}>
+            <div className="mt-2 text-lg/8 text-gray-600">
               {richTextSlot({ options, name: "blogCards.intro", value: block.intro, variant: "block", elementPath: { blockIndex: options.index, field: "intro" } })}
             </div>
           )}
@@ -487,14 +487,14 @@ export function TailwindPlusThreeColumnBlogCards({ block, options }: { block: Bl
             const image = resolveMedia(post.image ?? null, options.mediaResolver)
             const article = (
               <article className="flex flex-col items-start justify-between">
-                {image && <img className="aspect-video w-full rounded-[var(--radius-lg)] object-cover" src={image.src} alt={image.alt ?? ""} loading="lazy" decoding="async" />}
+                {image && <img className="aspect-video w-full rounded-2xl object-cover" src={image.src} alt={image.alt ?? ""} loading="lazy" decoding="async" />}
                 <div className="max-w-xl">
-                  {(post.date || post.author) && <div className="mt-8 flex items-center gap-x-4 text-xs text-[var(--color-ink-muted)]">{post.date}{post.author ? ` / ${post.author}` : ""}</div>}
-                  <h3 className="mt-3 text-lg/6 font-semibold text-[var(--color-ink)]">
+                  {(post.date || post.author) && <div className="mt-8 flex items-center gap-x-4 text-xs text-gray-500">{post.date}{post.author ? ` / ${post.author}` : ""}</div>}
+                  <h3 className="mt-3 text-lg/6 font-semibold text-gray-900">
                     {richTextSlot({ options, name: "blogCards.postTitle", value: post.title, variant: "inline", elementPath: { blockIndex: options.index, field: "posts", itemIndex: i, subField: "title" } })}
                   </h3>
                   {post.excerpt && (
-                    <div className="mt-5 line-clamp-3 text-sm/6 text-[var(--color-ink-muted)]">
+                    <div className="mt-5 line-clamp-3 text-sm/6 text-gray-600">
                       {richTextSlot({ options, name: "blogCards.postExcerpt", value: post.excerpt, variant: "block", elementPath: { blockIndex: options.index, field: "posts", itemIndex: i, subField: "excerpt" } })}
                     </div>
                   )}

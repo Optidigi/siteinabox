@@ -75,7 +75,7 @@ const fixtureSpec = (): SiteGenerationSpec => ({
         },
         {
           blockType: "contactSection",
-          designVariant: "prelineCenteredNewsletter",
+          designVariant: "tailwindPlusNewsletterDetails",
           anchor: "contact",
           title: rtInline("Contact"),
           formName: "Contact form",
@@ -662,13 +662,6 @@ describe("applySiteGenerationSpec", () => {
         logos: [{ name: "Partner", image: 12, href: "https://example.com" }],
       } as any,
       {
-        blockType: "gallery",
-        designVariant: "prelineSquareGrid",
-        title: rtInline("Werk"),
-        images: [{ image: 13, caption: rtBlock("Recent werk."), link: { label: "Bekijk", href: "/werk" } }],
-        cta: { label: "Alles bekijken", href: "/werk" },
-      } as any,
-      {
         blockType: "team",
         designVariant: "tailwindPlusGrid",
         title: rtInline("Team"),
@@ -685,7 +678,6 @@ describe("applySiteGenerationSpec", () => {
       { slug: "pricing", label: "Pricing" },
       { slug: "stats", label: "Stats" },
       { slug: "logoCloud", label: "Logo cloud" },
-      { slug: "gallery", label: "Gallery" },
       { slug: "team", label: "Team" },
       { slug: "blogCards", label: "Blog cards" },
     ]
@@ -699,7 +691,6 @@ describe("applySiteGenerationSpec", () => {
       "pricing",
       "stats",
       "logoCloud",
-      "gallery",
       "team",
       "blogCards",
     ])
