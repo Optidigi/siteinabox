@@ -13,6 +13,7 @@ import { RichTextBlockRenderer } from "./RichText"
 import { StatsBlockRenderer } from "./Stats"
 import { TeamBlockRenderer } from "./Team"
 import { TestimonialsBlockRenderer } from "./Testimonials"
+import { getSourceBackedVariantRenderer } from "../source-blocks/registry"
 import type { BlockRegistry, BlockRenderOptions } from "./types"
 
 export * from "./types"
@@ -47,7 +48,7 @@ export function BlockRenderer({
   options?: Partial<Omit<BlockRenderOptions, "index">>
 }) {
   const renderers = { ...defaultBlockRegistry, ...registry }
-  const Renderer = renderers[block.blockType]
+  const Renderer = getSourceBackedVariantRenderer(block) ?? renderers[block.blockType]
 
   if (!Renderer) {
     return (
