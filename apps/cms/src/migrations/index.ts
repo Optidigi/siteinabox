@@ -44,6 +44,7 @@ import * as migration_20260701_130000_add_tenant_email_sending from './20260701_
 import * as migration_20260701_140000_add_operational_alerts from './20260701_140000_add_operational_alerts';
 import * as migration_20260704_120000_design_variant_and_remove_retired_chrome from './20260704_120000_design_variant_and_remove_retired_chrome';
 import * as migration_20260704_130000_remove_inactive_blocks_and_block_tokens from './20260704_130000_remove_inactive_blocks_and_block_tokens';
+import * as migration_20260704_140000_normalize_published_snapshot_blocks from './20260704_140000_normalize_published_snapshot_blocks';
 
 export const migrations = [
   {
@@ -275,5 +276,10 @@ export const migrations = [
     up: migration_20260704_130000_remove_inactive_blocks_and_block_tokens.up,
     down: migration_20260704_130000_remove_inactive_blocks_and_block_tokens.down,
     name: '20260704_130000_remove_inactive_blocks_and_block_tokens'
+  },
+  {
+    up: migration_20260704_140000_normalize_published_snapshot_blocks.up,
+    down: migration_20260704_140000_normalize_published_snapshot_blocks.down,
+    name: '20260704_140000_normalize_published_snapshot_blocks'
   },
 ];
