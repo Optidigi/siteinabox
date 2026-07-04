@@ -20,7 +20,11 @@ export type PageEditorFrameLayout = "desktop" | "mobile"
 
 const PARENT_CHROME_BOTTOM_VAR = "--siab-parent-chrome-bottom"
 const CHROME_VIEWPORT_GAP = 8
+const DESKTOP_CANVAS_VIEWPORT_OFFSET = 144
+const MOBILE_CANVAS_VIEWPORT_OFFSET = 72
+const DESKTOP_CANVAS_MIN_VIEWPORT_HEIGHT = 640
 const FRAME_HEIGHT_GUTTER = 2
+const FRAME_VIEWPORT_STYLE_ID = "siab-editor-frame-viewport-height"
 
 function measureParentChromeBottom(): number {
   if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
@@ -51,6 +55,29 @@ function measureFrameDocumentHeight(frameDocument: Document | null | undefined):
     return Math.max(max, rect.bottom + scrollY - bodyTop)
   }, 0)
   return Number.isFinite(height) && height > 0 ? Math.ceil(height + FRAME_HEIGHT_GUTTER) : null
+}
+
+function measureEditorFrameViewportHeight(layout: PageEditorFrameLayout): number {
+  const viewportHeight = window.visualViewport?.height ?? window.innerHeight
+  const offset = layout === "mobile" ? MOBILE_CANVAS_VIEWPORT_OFFSET : DESKTOP_CANVAS_VIEWPORT_OFFSET
+  const minimum = layout === "mobile" ? 0 : DESKTOP_CANVAS_MIN_VIEWPORT_HEIGHT
+  return Math.max(minimum, Math.round(viewportHeight - offset))
+}
+
+function writeFrameViewportHeight(frameDocument: Document | null | undefined, height: number) {
+  if (!frameDocument) return
+  if (!frameDocument.head) return
+  let styleElement = frameDocument.getElementById(FRAME_VIEWPORT_STYLE_ID) as HTMLStyleElement | null
+  if (!styleElement) {
+    styleElement = frameDocument.createElement("style")
+    styleElement.id = FRAME_VIEWPORT_STYLE_ID
+    styleElement.dataset.siabEditorFrameViewport = "true"
+    const nonceElement = frameDocument.querySelector<HTMLStyleElement | HTMLScriptElement>("style[nonce],script[nonce]")
+    const nonce = nonceElement?.nonce || nonceElement?.getAttribute("nonce")
+    if (nonce) styleElement.nonce = nonce
+    frameDocument.head.append(styleElement)
+  }
+  styleElement.textContent = `:root{--siab-editor-frame-viewport-height:${formatCssPx(height)};}`
 }
 
 export type PageEditorFrameMutationHandlers = {
@@ -178,6 +205,7 @@ export function PageEditorFrameHost({
     let raf: number | null = null
     const measure = () => {
       raf = null
+      writeFrameViewportHeight(frameDocument, measureEditorFrameViewportHeight(layout))
       const next = measureFrameDocumentHeight(frameDocument)
       setFrameContentHeight((current) => (current === next ? current : next))
     }
@@ -208,7 +236,7 @@ export function PageEditorFrameHost({
       frameWindow?.removeEventListener("load", schedule)
       window.removeEventListener("resize", schedule)
     }
-  }, [ready, shouldAutoSizeFrame, retryKey, src])
+  }, [layout, ready, shouldAutoSizeFrame, retryKey, src])
 
   React.useEffect(() => {
     if (ready) {

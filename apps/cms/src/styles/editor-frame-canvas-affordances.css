@@ -4,6 +4,16 @@
   --rt-affordance: var(--color-accent, var(--ring));
 }
 
+.site-renderer[data-siab-site-renderer] .rt-canvas[data-rt-view="canvas"] .cms-block--hero {
+  min-height: calc(var(--siab-editor-frame-viewport-height, 100vh) * 0.58);
+}
+
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas[data-rt-view="canvas"] .cms-block--hero,
+.site-renderer[data-tenant-renderer="amicare"] .rt-canvas[data-rt-view="canvas"] .cms-block--source-amicare-zen-hero,
+.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas[data-rt-view="canvas"] :where(.min-h-\[90vh\]) {
+  min-height: calc(var(--siab-editor-frame-viewport-height, 100vh) * 0.9);
+}
+
 .rt-canvas ::selection {
   background-color: color-mix(in oklab, var(--foreground) 28%, transparent);
   color: inherit;
