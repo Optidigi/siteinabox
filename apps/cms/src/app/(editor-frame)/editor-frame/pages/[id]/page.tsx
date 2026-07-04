@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
 import { EditorFrameRuntime } from "@/components/editor-frame/EditorFrameRuntime"
+import type { PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
+import type { IframeEditorMobileMode } from "@siteinabox/contracts/iframe-editor"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { requireAuth } from "@/lib/authGate"
 import { createEditorFrameNewPagePlaceholder } from "@/lib/editor/editorFramePlaceholderPage"
@@ -22,6 +24,39 @@ type RouteParams = {
 
 type RouteSearchParams = {
   tenantSlug?: string
+  view?: string
+  mobileMode?: string
+  focusedBlockId?: string
+  focusedBlockIndex?: string
+  showChrome?: string
+  showGutters?: string
+  allowInlineEditing?: string
+}
+
+function parseBooleanParam(value: string | undefined): boolean | undefined {
+  if (value === "true") return true
+  if (value === "false") return false
+  return undefined
+}
+
+function parseInitialView(value: string | undefined): PageEditorFrameView | null {
+  return value === "canvas" || value === "sidebar" ? value : null
+}
+
+function parseInitialMobileMode(searchParams: RouteSearchParams): IframeEditorMobileMode | null {
+  if (searchParams.mobileMode !== "fullPage" && searchParams.mobileMode !== "focusedSection") return null
+  const focusedBlockIndex = searchParams.focusedBlockIndex != null
+    ? Number.parseInt(searchParams.focusedBlockIndex, 10)
+    : undefined
+  const hasFocusedBlockIndex = focusedBlockIndex != null && Number.isInteger(focusedBlockIndex) && focusedBlockIndex >= 0
+  return {
+    mode: searchParams.mobileMode,
+    ...(searchParams.focusedBlockId ? { focusedBlockId: searchParams.focusedBlockId } : {}),
+    ...(hasFocusedBlockIndex ? { focusedBlockIndex } : {}),
+    ...(parseBooleanParam(searchParams.showChrome) != null ? { showChrome: parseBooleanParam(searchParams.showChrome) } : {}),
+    ...(parseBooleanParam(searchParams.showGutters) != null ? { showGutters: parseBooleanParam(searchParams.showGutters) } : {}),
+    ...(parseBooleanParam(searchParams.allowInlineEditing) != null ? { allowInlineEditing: parseBooleanParam(searchParams.allowInlineEditing) } : {}),
+  }
 }
 
 async function resolveEditorFrameTenant(
@@ -56,7 +91,10 @@ export default async function EditorFramePage({
   searchParams: Promise<RouteSearchParams>
 }) {
   const { ctx } = await requireAuth()
-  const { tenantSlug: tenantSlugParam } = await searchParams
+  const resolvedSearchParams = await searchParams
+  const { tenantSlug: tenantSlugParam } = resolvedSearchParams
+  const initialView = parseInitialView(resolvedSearchParams.view)
+  const initialMobileMode = parseInitialMobileMode(resolvedSearchParams)
 
   const { id } = await params
   const isNewPage = id === "new"
@@ -104,6 +142,8 @@ export default async function EditorFramePage({
         domain={tenant.domain}
         manifest={manifest}
         tenantCss={tenantCss}
+        initialView={initialView}
+        initialMobileMode={initialMobileMode}
       />
     </RtManifestProvider>
   )

@@ -159,10 +159,20 @@ export function PageEditorFrameHost({
 
   const src = React.useMemo(() => {
     const base = `/editor-frame/pages/${encodeURIComponent(String(pageId))}`
-    if (!tenantSlug) return base
-    const query = new URLSearchParams({ tenantSlug })
+    const query = new URLSearchParams()
+    if (tenantSlug) query.set("tenantSlug", tenantSlug)
+    if (mobileMode) {
+      query.set("view", view)
+      query.set("mobileMode", mobileMode.mode)
+      if (mobileMode.focusedBlockId) query.set("focusedBlockId", mobileMode.focusedBlockId)
+      if (mobileMode.focusedBlockIndex != null) query.set("focusedBlockIndex", String(mobileMode.focusedBlockIndex))
+      if (mobileMode.showChrome != null) query.set("showChrome", String(mobileMode.showChrome))
+      if (mobileMode.showGutters != null) query.set("showGutters", String(mobileMode.showGutters))
+      if (mobileMode.allowInlineEditing != null) query.set("allowInlineEditing", String(mobileMode.allowInlineEditing))
+    }
+    if (Array.from(query).length === 0) return base
     return `${base}?${query.toString()}`
-  }, [pageId, tenantSlug])
+  }, [mobileMode, pageId, tenantSlug, view])
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
     const target = frameRef.current?.contentWindow

@@ -30,6 +30,8 @@ export function EditorFrameRuntime({
   domain,
   manifest,
   tenantCss,
+  initialView,
+  initialMobileMode,
 }: {
   page: Page
   settings: SiteSettings
@@ -39,14 +41,16 @@ export function EditorFrameRuntime({
   domain?: string | null
   manifest: RtManifest
   tenantCss: string | null
+  initialView?: PageEditorFrameView | null
+  initialMobileMode?: IframeEditorMobileMode | null
 }) {
   const cspNonce = useCspNonce()
   const [framePage, setFramePage] = React.useState(page)
   const [frameSettings, setFrameSettings] = React.useState(settings)
   const [frameTheme, setFrameTheme] = React.useState(theme)
   const [activeSelection, setActiveSelection] = React.useState<IframeEditorSelection | null>(null)
-  const [frameView, setFrameView] = React.useState<PageEditorFrameView | null>(null)
-  const [mobileMode, setMobileMode] = React.useState<IframeEditorMobileMode>({ mode: "fullPage" })
+  const [frameView, setFrameView] = React.useState<PageEditorFrameView | null>(initialView ?? null)
+  const [mobileMode, setMobileMode] = React.useState<IframeEditorMobileMode>(initialMobileMode ?? { mode: "fullPage" })
   const [revision, setRevision] = React.useState(0)
   const revisionRef = React.useRef(0)
   const frameViewRef = React.useRef(frameView)

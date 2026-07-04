@@ -63,6 +63,11 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain("const pageRef = React.useRef(page)")
     expect(host).toContain("pageRef.current = page")
     expect(host).toContain("findBlockIndexByWireId(pageRef.current.blocks ?? [], message.blockId)")
+    expect(host).toContain('query.set("view", view)')
+    expect(host).toContain('query.set("mobileMode", mobileMode.mode)')
+    expect(host).toContain('query.set("focusedBlockIndex", String(mobileMode.focusedBlockIndex))')
+    expect(host).toContain('query.set("showChrome", String(mobileMode.showChrome))')
+    expect(host).toContain('query.set("allowInlineEditing", String(mobileMode.allowInlineEditing))')
     expect(host).toMatch(/const postToFrame = React\.useCallback\([\s\S]*?\}, \[\]\)/)
   })
 
@@ -126,6 +131,10 @@ describe("page editor iframe bridge source contract", () => {
     const runtime = read("apps/cms/src/components/editor-frame/EditorFrameRuntime.tsx")
 
     expect(runtime).toContain("manifest: RtManifest")
+    expect(runtime).toContain("initialView?: PageEditorFrameView | null")
+    expect(runtime).toContain("initialMobileMode?: IframeEditorMobileMode | null")
+    expect(runtime).toContain("useState<PageEditorFrameView | null>(initialView ?? null)")
+    expect(runtime).toContain('useState<IframeEditorMobileMode>(initialMobileMode ?? { mode: "fullPage" })')
     expect(runtime).toContain("resolveTenantRenderer")
     expect(runtime).toContain("effectiveTenantCss")
 
