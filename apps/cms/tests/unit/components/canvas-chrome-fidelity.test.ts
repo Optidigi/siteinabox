@@ -323,6 +323,11 @@ describe("canvas chrome fidelity", () => {
     expect(palettePicker).toContain("EditorFrameDocumentContext")
     expect(palettePicker).toContain("disableRuntimeThemeOverrides")
     expect(palettePicker).toContain("restoreRuntimeThemeOverrides")
+    expect(palettePicker).toContain("createDefaultPaletteProbe")
+    expect(palettePicker).toContain('".site-renderer[data-siab-site-renderer] .rt-canvas, .rt-canvas"')
+    expect(palettePicker).toContain('closest<HTMLElement>(".site-renderer[data-siab-site-renderer]")')
+    expect(palettePicker).toContain('attribute.name !== "data-siab-site-renderer"')
+    expect(palettePicker).toContain("defaultView.getComputedStyle(anchor)")
   })
 
   it("forwards parent sticky chrome inset into the iframe for gutter clamping", () => {

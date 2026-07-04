@@ -3,7 +3,6 @@ import * as React from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
 import { Plus, Sun, Moon } from "lucide-react"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { useAnchorRtCanvas } from "@/components/editor/hooks/use-rt-canvas-anchor"
 import { EditorFrameDocumentContext } from "@/components/editor/iframe/EditorFrameDocumentContext"
 import { Switch } from "@siteinabox/ui/components/switch"
 import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
@@ -58,44 +57,91 @@ const DEFAULT_FALLBACK = {
   dark: { accent: "#fafafa", bg: "#09090b" } as Palette, // lint:no-css:ignore — color input fallback data
 }
 
+function copyDataAttributes(source: HTMLElement, target: HTMLElement): void {
+  for (const attribute of Array.from(source.attributes)) {
+    // Keep tenant-renderer scope (e.g. Amicare) but avoid matching runtime
+    // theme override rules scoped to `.site-renderer[data-siab-site-renderer]`.
+    if (attribute.name.startsWith("data-") && attribute.name !== "data-siab-site-renderer") {
+      target.setAttribute(attribute.name, attribute.value)
+    }
+  }
+}
+
+function hidePaletteProbe(node: HTMLElement): void {
+  node.style.position = "absolute"
+  node.style.width = "0"
+  node.style.height = "0"
+  node.style.overflow = "hidden"
+  node.style.visibility = "hidden"
+  node.style.pointerEvents = "none"
+}
+
+function createDefaultPaletteProbe(ownerDocument: Document): { anchor: HTMLDivElement; cleanup: () => void } {
+  const sourceCanvas = ownerDocument.querySelector<HTMLElement>(".site-renderer[data-siab-site-renderer] .rt-canvas, .rt-canvas")
+  const sourceRenderer = sourceCanvas?.closest<HTMLElement>(".site-renderer[data-siab-site-renderer]") ?? null
+  const anchor = ownerDocument.createElement("div")
+  anchor.className = sourceCanvas?.className || "rt-canvas"
+  anchor.removeAttribute("data-rt-mode")
+  hidePaletteProbe(anchor)
+  anchor.setAttribute("aria-hidden", "true")
+
+  if (sourceRenderer) {
+    const wrapper = ownerDocument.createElement("div")
+    wrapper.className = sourceRenderer.className
+    copyDataAttributes(sourceRenderer, wrapper)
+    hidePaletteProbe(wrapper)
+    wrapper.appendChild(anchor)
+    ownerDocument.body.appendChild(wrapper)
+    return { anchor, cleanup: () => wrapper.remove() }
+  }
+
+  ownerDocument.body.appendChild(anchor)
+  return { anchor, cleanup: () => anchor.remove() }
+}
+
 function useDefaultPalettes(): { light: Palette; dark: Palette } {
-  const anchor = useAnchorRtCanvas()
   const frameDocument = React.useContext(EditorFrameDocumentContext)
   const [resolved, setResolved] = React.useState<{ light: Palette; dark: Palette }>(DEFAULT_FALLBACK)
   React.useEffect(() => {
-    if (!anchor) return
     const ownerDocument = frameDocument ?? document
+    const defaultView = ownerDocument.defaultView
+    if (!defaultView) return
+
+    const { anchor, cleanup } = createDefaultPaletteProbe(ownerDocument)
     const disabledOverlays = disableRuntimeThemeOverrides(ownerDocument)
-    const read = (mode: "light" | "dark"): Palette => {
-      anchor.setAttribute("data-rt-mode", mode)
-      const cs = getComputedStyle(anchor)
-      const accent = (cs.getPropertyValue("--color-accent") || cs.getPropertyValue("--rt-tenant-color-accent")).trim()
-      const bg = (cs.getPropertyValue("--color-bg") || cs.getPropertyValue("--rt-tenant-color-bg")).trim()
-      return { accent, bg }
+    try {
+      const read = (nextMode: "light" | "dark"): Palette => {
+        anchor.setAttribute("data-rt-mode", nextMode)
+        const cs = defaultView.getComputedStyle(anchor)
+        const accent = (cs.getPropertyValue("--color-accent") || cs.getPropertyValue("--rt-tenant-color-accent")).trim()
+        const bg = (cs.getPropertyValue("--color-bg") || cs.getPropertyValue("--rt-tenant-color-bg")).trim()
+        return { accent, bg }
+      }
+      const light = read("light")
+      const dark = read("dark")
+      setResolved({
+        light: {
+          accent: light.accent || DEFAULT_FALLBACK.light.accent!,
+          bg: light.bg || DEFAULT_FALLBACK.light.bg!,
+        },
+        dark: {
+          // Dark accent: prefer the dark-mode read; if identical to light
+          // (no tenant dark overlay exists), keep the tenant accent and
+          // pair it with a dark surface so the swatch is visibly dark AND
+          // visibly tenant-themed.
+          accent: dark.accent && dark.accent !== light.accent
+            ? dark.accent
+            : light.accent || DEFAULT_FALLBACK.dark.accent!,
+          bg: dark.bg && dark.bg !== light.bg
+            ? dark.bg
+            : DEFAULT_FALLBACK.dark.bg!,
+        },
+      })
+    } finally {
+      restoreRuntimeThemeOverrides(disabledOverlays)
+      cleanup()
     }
-    const light = read("light")
-    const dark = read("dark")
-    anchor.removeAttribute("data-rt-mode")
-    restoreRuntimeThemeOverrides(disabledOverlays)
-    setResolved({
-      light: {
-        accent: light.accent || DEFAULT_FALLBACK.light.accent!,
-        bg: light.bg || DEFAULT_FALLBACK.light.bg!,
-      },
-      dark: {
-        // Dark accent: prefer the dark-mode read; if identical to light
-        // (no tenant dark overlay exists), keep the tenant accent and
-        // pair it with a dark surface so the swatch is visibly dark AND
-        // visibly tenant-themed.
-        accent: dark.accent && dark.accent !== light.accent
-          ? dark.accent
-          : light.accent || DEFAULT_FALLBACK.dark.accent!,
-        bg: dark.bg && dark.bg !== light.bg
-          ? dark.bg
-          : DEFAULT_FALLBACK.dark.bg!,
-      },
-    })
-  }, [anchor, frameDocument])
+  }, [frameDocument])
   return resolved
 }
 
