@@ -306,7 +306,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
               author: "Sam Intake",
               role: "Founder, Generated Business",
               avatar: {
-                url: "https://tailwindcss.com/plus-assets/img/avatars/avatar-1.jpg",
+                url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
                 alt: "Sam Intake",
                 width: 256,
                 height: 256,
