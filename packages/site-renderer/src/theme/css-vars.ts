@@ -24,10 +24,17 @@ function parseLength(value: string): { num: number; unit: string } | null {
 function deriveRadii(md: string): Array<[string, string]> {
   const parsed = parseLength(md)
   if (!parsed) return []
+  const offset = (delta: number) => `${Math.max(parsed.num + delta, 0)}${parsed.unit}`
   return [
-    ["--radius-sm", `${Math.max(parsed.num - 0.25, 0)}${parsed.unit}`],
+    ["--radius-none", "0"],
+    ["--radius-xs", offset(-0.375)],
+    ["--radius-sm", offset(-0.25)],
     ["--radius-md", md],
-    ["--radius-lg", `${parsed.num + 0.5}${parsed.unit}`],
+    ["--radius-lg", offset(0.5)],
+    ["--radius-xl", offset(0.75)],
+    ["--radius-2xl", offset(1)],
+    ["--radius-3xl", offset(1.5)],
+    ["--radius-4xl", offset(2)],
   ]
 }
 
@@ -51,15 +58,27 @@ function setTailwindProviderColorAliases(
   const secondary = colors?.secondary ?? fallback?.secondary
   const rule = colors?.rule ?? fallback?.rule
 
+  const accentSoft = accent ? `color-mix(in oklab, ${accent} 16%, white)` : undefined
+  const accentSofter = accent ? `color-mix(in oklab, ${accent} 8%, white)` : undefined
+
+  set(parts, "--color-indigo-700", accent)
   set(parts, "--color-indigo-600", accent)
   set(parts, "--color-indigo-500", accent)
   set(parts, "--color-indigo-400", accent)
+  set(parts, "--color-indigo-300", accentSoft)
+  set(parts, "--color-indigo-200", accentSoft)
+  set(parts, "--color-indigo-100", accentSofter)
+  set(parts, "--color-indigo-50", accentSofter)
   set(parts, "--color-white", onAccent ?? bg)
+  set(parts, "--color-black", ink)
+  set(parts, "--color-gray-950", ink)
   set(parts, "--color-gray-900", ink)
+  set(parts, "--color-gray-800", ink)
   set(parts, "--color-gray-700", ink)
   set(parts, "--color-gray-600", muted)
   set(parts, "--color-gray-500", muted)
   set(parts, "--color-gray-400", muted)
+  set(parts, "--color-gray-300", rule)
   set(parts, "--color-gray-200", rule)
   set(parts, "--color-gray-100", card)
   set(parts, "--color-gray-50", card ?? bg)

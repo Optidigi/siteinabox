@@ -123,6 +123,10 @@ describe("toCssVars (round 4)", () => {
     expect(css).toContain("--radius-md:0.5rem")
     expect(css).toContain("--radius-sm:0.25rem") // 0.5 - 0.25
     expect(css).toContain("--radius-lg:1rem")    // 0.5 + 0.5
+    expect(css).toContain("--radius-xl:1.25rem")
+    expect(css).toContain("--radius-2xl:1.5rem")
+    expect(css).toContain("--radius-3xl:2rem")
+    expect(css).toContain("--radius-4xl:2.5rem")
   })
 
   it("clamps --radius-sm at 0 when theme.radius is small", () => {

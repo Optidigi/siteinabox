@@ -550,8 +550,26 @@ type MediaIdMap = Map<string, string | number>
 const mediaFilename = (value: unknown): string | undefined => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
   const filename = (value as { filename?: unknown }).filename
-  if (typeof filename !== "string" || filename.length === 0) return undefined
-  return assertSafeMediaFilename(filename)
+  if (typeof filename === "string" && filename.length > 0) return assertSafeMediaFilename(filename)
+
+  const url = (value as { url?: unknown }).url
+  if (typeof url !== "string" || url.length === 0) return undefined
+  let parsed: URL
+  try {
+    parsed = new URL(url)
+  } catch {
+    return undefined
+  }
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return undefined
+
+  const pathBasename = path.basename(parsed.pathname)
+  const extension = path.extname(pathBasename) || ".jpg"
+  const base = pathBasename && pathBasename !== "/" && pathBasename !== "."
+    ? pathBasename.slice(0, pathBasename.length - path.extname(pathBasename).length)
+    : "generated-media"
+  const safeBase = base.replace(/[^a-z0-9._-]+/gi, "-").replace(/^-+|-+$/g, "") || "generated-media"
+  const urlHash = createHash("sha256").update(url).digest("hex").slice(0, 12)
+  return assertSafeMediaFilename(`${urlHash}-${safeBase}${extension}`)
 }
 
 const collectGeneratedMediaRefs = (

@@ -231,9 +231,10 @@ const processStoredIntakeGeneration = async (
 
     run = await setRunStatus(payload, run, "applying", { validation })
     intake = await setIntakeStatus(payload, intake, "applying")
+    const mediaMode = providerResult.provider === "mock" ? "upload-generated-media" : "skip-generated-placeholders"
     const applyResult = await applySiteGenerationSpec(payload, spec as any, {
       variantScope: "self-serve",
-      mediaMode: "skip-generated-placeholders",
+      mediaMode,
     })
     if (!applyResult.ok) {
       const failure = { message: "Generated SiteGenerationSpec could not be applied", validation: applyResult.validation }
