@@ -1377,8 +1377,6 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           richtext("title", "Title", "inline", "heading"),
           richtext("description", "Description", "block", "text"),
           image("image", "Image"),
-          text("icon", "Icon"),
-          cta("cta", "Action"),
         ],
       },
     ],
@@ -1432,18 +1430,16 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
         itemFields: [
           richtext("title", "Title", "inline", "heading"),
           richtext("description", "Description", "block", "text"),
-          text("icon", "Icon"),
         ],
       },
       richtext("secondaryTitle", "Secondary title", "inline", "heading"),
       richtext("secondaryBody", "Secondary body", "block", "text"),
       image("image", "Image"),
-      cta("cta", "Action"),
     ],
     renderer: {
       package: "@siteinabox/site-renderer",
       component: "ContentSectionBlockRenderer",
-      output: "Structured content section with optional media and CTA.",
+      output: "Structured content section with fixed text, feature, and optional media slots.",
     },
     themeBehavior: ["font-heading", "font-text", "font-script", "accent", "radius-lg", "media-treatment"],
     fixtureCoverage: [

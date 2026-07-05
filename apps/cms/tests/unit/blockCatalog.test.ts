@@ -287,6 +287,21 @@ describe("renderer block catalog", () => {
     expect(byId.has("comparison:matrix")).toBe(false)
   })
 
+  it("does not expose inactive provider slots through editable catalog metadata", () => {
+    const bentoFields = SITE_BLOCK_CATALOG_BY_SLUG.bentoGrid?.cmsEditableFields ?? []
+    const bentoItems = bentoFields.find((field) => field.name === "items" && field.kind === "array")
+    expect(bentoItems?.kind).toBe("array")
+    if (bentoItems?.kind !== "array") throw new Error("bentoGrid.items editable field missing")
+    expect((bentoItems.itemFields ?? []).map((field) => field.name)).toEqual(["title", "description", "image"])
+
+    const contentFields = SITE_BLOCK_CATALOG_BY_SLUG.contentSection?.cmsEditableFields ?? []
+    expect(contentFields.map((field) => field.name)).not.toEqual(expect.arrayContaining(["cta"]))
+    const contentFeatures = contentFields.find((field) => field.name === "features" && field.kind === "array")
+    expect(contentFeatures?.kind).toBe("array")
+    if (contentFeatures?.kind !== "array") throw new Error("contentSection.features editable field missing")
+    expect((contentFeatures.itemFields ?? []).map((field) => field.name)).toEqual(["title", "description"])
+  })
+
   it("catalogs chrome variants without turning chrome into page blocks or generation providers", () => {
     expect(SITE_CHROME_CATALOG.map((entry) => entry.id)).toEqual(
       expect.arrayContaining([
