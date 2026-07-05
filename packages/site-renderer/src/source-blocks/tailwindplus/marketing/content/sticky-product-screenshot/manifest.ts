@@ -27,6 +27,7 @@ export const tailwindPlusMarketingContentStickyProductScreenshotProviderBlock =
       features: { kind: "repeater", status: "required", exposed: true, sourceField: "features", minItems: 3, maxItems: 3 },
       featureTitle: { kind: "richtext", status: "required", exposed: true, sourceField: "features.title" },
       featureDescription: { kind: "richtext", status: "required", exposed: true, sourceField: "features.description" },
+      featureIcon: { kind: "text", status: "inactive", exposed: false, sourceField: "features.icon" },
       secondaryTitle: { kind: "richtext", status: "required", exposed: true, sourceField: "secondaryTitle" },
       secondaryBody: { kind: "richtext", status: "required", exposed: true, sourceField: "secondaryBody" },
       cta: { kind: "cta", status: "inactive", exposed: false, sourceField: "cta" },

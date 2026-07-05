@@ -518,6 +518,7 @@ describe("site generation catalog governance", () => {
     expect(contentSectionSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.content.sticky-product-screenshot"])
     expect(contentSectionSchema.properties.features.minItems).toBe(3)
     expect(contentSectionSchema.properties.features.maxItems).toBe(3)
+    expect(contentSectionSchema.properties.features.items.properties).not.toHaveProperty("icon")
     expect(contentSectionSchema.properties).not.toHaveProperty("cta")
     expect(contentSectionSchema.properties).not.toHaveProperty("rawHtml")
     expect(blogCardsSchema.additionalProperties).toBe(false)

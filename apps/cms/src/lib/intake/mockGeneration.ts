@@ -239,9 +239,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
             height: 1080,
           },
           features: [
-            { title: inlineText("Publiceerbare snapshots."), description: blockText("Preview en live runtime lezen dezelfde gevalideerde publicatievorm."), icon: "cloud-arrow-up" },
-            { title: inlineText("Veilige infrastructuur."), description: blockText("Domeinen, certificaten en hosting blijven platformverantwoordelijkheid."), icon: "lock-closed" },
-            { title: inlineText("Herstelbare content."), description: blockText("CMS-data blijft de bron, niet gegenereerde clientcode."), icon: "server" },
+            { title: inlineText("Publiceerbare snapshots."), description: blockText("Preview en live runtime lezen dezelfde gevalideerde publicatievorm.") },
+            { title: inlineText("Veilige infrastructuur."), description: blockText("Domeinen, certificaten en hosting blijven platformverantwoordelijkheid.") },
+            { title: inlineText("Herstelbare content."), description: blockText("CMS-data blijft de bron, niet gegenereerde clientcode.") },
           ],
           secondaryTitle: inlineText("Geen tenant source nodig"),
           secondaryBody: blockText("Nieuwe websites worden samengesteld uit gevalideerde tenantdata en actieve providercomponenten."),
@@ -543,7 +543,6 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
           itemFields: [
             { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
             { name: "description", label: "Description", kind: "richtext", variant: "block", role: "text" },
-            { name: "icon", label: "Icon", kind: "text" },
           ],
         },
       ],

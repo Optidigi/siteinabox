@@ -145,6 +145,7 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.blocks[4]).not.toHaveProperty("intro")
     expect(store.pages[0]?.blocks[5]?.features).toHaveLength(3)
     expect(store.pages[0]?.blocks[5]).not.toHaveProperty("cta")
+    expect(store.pages[0]?.blocks[5]?.features.every((feature: any) => !("icon" in feature))).toBe(true)
     expect(store.pages[0]?.blocks[6]?.items).toHaveLength(4)
     expect(store.pages[0]?.blocks[6]?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
     expect(store.pages[0]?.blocks[7]?.items).toHaveLength(1)

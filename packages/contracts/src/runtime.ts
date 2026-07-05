@@ -562,8 +562,6 @@ export const BentoGridBlockSchema: z.ZodType<BentoGridBlock> = strictObject({
     title: RtRootSchema,
     description: RtFieldSchema.optional(),
     image: MediaRefSchema.optional(),
-    icon: nullableString,
-    cta: LinkRefSchema.nullable().optional(),
   })).min(1),
 })
 
@@ -577,12 +575,10 @@ export const ContentSectionBlockSchema: z.ZodType<ContentSectionBlock> = strictO
   features: z.array(strictObject({
     title: RtRootSchema,
     description: RtFieldSchema.optional(),
-    icon: nullableString,
   })).nullable().optional(),
   secondaryTitle: RtFieldSchema.optional(),
   secondaryBody: RtFieldSchema.optional(),
   image: MediaRefSchema.optional(),
-  cta: LinkRefSchema.nullable().optional(),
 })
 
 export const TeamBlockSchema: z.ZodType<TeamBlock> = strictObject({

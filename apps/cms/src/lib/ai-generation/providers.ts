@@ -560,11 +560,10 @@ const blockJsonSchemas = [
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["title", "description", "icon"],
+          required: ["title", "description"],
           properties: {
             title: richTextInlineJsonSchema,
             description: richTextBlockJsonSchema,
-            icon: stringOrNull,
           },
         },
       },
