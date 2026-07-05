@@ -218,7 +218,7 @@ describe("preview customizer service", () => {
 
     expect(saved).toEqual({
       palette: { accent: "#0f766e" },
-      fonts: { title: "Inter" },
+      fonts: { title: "Inter Variable" },
       radius: "0.5rem",
       density: "spacious",
       stylePreset: "warm-care",
