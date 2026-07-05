@@ -49,6 +49,7 @@ import * as migration_20260704_150000_add_hero_secondary_cta from './20260704_15
 import * as migration_20260704_160000_add_provider_rich_slots from './20260704_160000_add_provider_rich_slots';
 import * as migration_20260705_120000_add_tailwindplus_header_enum_value from './20260705_120000_add_tailwindplus_header_enum_value';
 import * as migration_20260705_162355_add_newsletter_bento_content_blocks from './20260705_162355_add_newsletter_bento_content_blocks';
+import * as migration_20260705_210000_make_logo_cloud_images_optional from './20260705_210000_make_logo_cloud_images_optional';
 
 export const migrations = [
   {
@@ -305,5 +306,10 @@ export const migrations = [
     up: migration_20260705_162355_add_newsletter_bento_content_blocks.up,
     down: migration_20260705_162355_add_newsletter_bento_content_blocks.down,
     name: '20260705_162355_add_newsletter_bento_content_blocks'
+  },
+  {
+    up: migration_20260705_210000_make_logo_cloud_images_optional.up,
+    down: migration_20260705_210000_make_logo_cloud_images_optional.down,
+    name: '20260705_210000_make_logo_cloud_images_optional'
   },
 ];
