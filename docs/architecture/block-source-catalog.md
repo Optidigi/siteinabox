@@ -187,10 +187,12 @@ shape. Analytics metadata is not a styling API.
 Blocks must not expose arbitrary block-level visual tokens such as per-block
 colors, fonts, radii, shape controls, class names, or provider token overrides.
 Site-wide visual control belongs to the global theme toolbar and theme schema:
-colors, font roles, radius/shape, and mode where supported. Renderers consume
-those global tokens through CSS variables. The Tailwind Plus V1 path maps SiaB
-theme choices onto Tailwind v4 CSS variables while keeping provider utility
-classes static and detectable.
+colors, font roles, radius/shape, mode, and coarse density/rhythm where
+supported. Renderers consume those global tokens through CSS variables. The
+Tailwind Plus V1 path maps SiaB theme choices onto Tailwind v4 CSS variables
+and scoped provider-root bridge rules while keeping provider utility classes
+static and detectable. It does not expose arbitrary spacing, breakpoint,
+grid/flex, or per-block layout controls.
 
 The public renderer uses `apps/renderer/src/styles/site.css` with Tailwind v4,
 the `@tailwindcss/forms` plugin, and `@source` coverage for

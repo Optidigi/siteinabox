@@ -508,6 +508,8 @@ describe("provider block runtime", () => {
     expect(css).toContain("--color-indigo-600:#2563eb")
     expect(css).toContain("--color-indigo-500:#2563eb")
     expect(css).toContain("--color-indigo-100:color-mix(in oklab, #2563eb 8%, white)")
+    expect(css).toContain("--color-white:#ffffff")
+    expect(css).toContain("--color-tailwindplus-surface:#ffffff")
     expect(css).toContain("--color-gray-950:#111827")
     expect(css).toContain("--color-gray-900:#111827")
     expect(css).toContain("--color-gray-300:rgba(17, 24, 39, 0.1)")
@@ -516,5 +518,33 @@ describe("provider block runtime", () => {
     expect(css).toContain("--radius-md:0.375rem")
     expect(css).toContain("--radius-3xl:1.875rem")
     expect(css).toContain("--radius-4xl:2.375rem")
+  })
+
+  it("bridges Tailwind Plus source surface classes without remapping text-white", () => {
+    const css = themeToCssVars({
+      colors: {
+        accent: "#dc2626",
+        bg: "#fff7f7",
+        ink: "#1f1212",
+        muted: "#8f4a4a",
+        card: "#ffffff",
+      },
+      darkColors: {
+        accent: "#f87171",
+        bg: "#1f0a0a",
+        ink: "#fee2e2",
+        muted: "#c08484",
+        card: "#281010",
+      },
+      mode: "dark",
+    })
+
+    expect(css).toContain("--color-white:#ffffff")
+    expect(css).not.toContain("--color-white:#fff7f7")
+    expect(css).toContain(':where([data-provider-block="tailwindplus"].bg-white)')
+    expect(css).toContain('background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))')
+    expect(css).toContain(':where([data-provider-chrome="tailwindplus"]).bg-gray-50')
+    expect(css).toContain('.rt-canvas[data-rt-mode="dark"]{')
+    expect(css).toContain("--color-tailwindplus-surface:#1f0a0a")
   })
 })

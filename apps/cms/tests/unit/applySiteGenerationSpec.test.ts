@@ -44,6 +44,7 @@ const fixtureSpec = (): SiteGenerationSpec => ({
       card: "#f8fafc",
     },
     fonts: {
+      title: "Fraunces Variable, Georgia, serif",
       heading: "Inter",
       text: "Inter",
       script: "Georgia",
@@ -171,9 +172,10 @@ describe("applySiteGenerationSpec", () => {
         muted: "#6b7280",
       },
       fonts: {
-        heading: "Inter",
-        text: "Inter",
-        script: "Georgia",
+        title: "Fraunces Variable",
+        heading: "Inter Variable",
+        text: "Inter Variable",
+        script: "Caveat Variable",
       },
       radius: "8px",
       mode: "light",

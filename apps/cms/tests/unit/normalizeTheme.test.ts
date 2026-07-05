@@ -27,7 +27,43 @@ describe("normalizeThemeForSave", () => {
     })).toEqual({
       mode: "dark",
       palette: { bg: "#fff" },
-      fonts: { title: "Inter" },
+      fonts: { title: "Inter Variable" },
+    })
+  })
+
+  it("normalizes font aliases and CSS stacks to renderer-loaded families", () => {
+    expect(normalizeThemeForSave({
+      fonts: {
+        title: "Fraunces Variable, Georgia, serif",
+        heading: "Georgia",
+        text: "Inter",
+        script: "Dancing Script",
+      },
+    })).toEqual({
+      fonts: {
+        title: "Fraunces Variable",
+        heading: "Fraunces Variable",
+        text: "Inter Variable",
+        script: "Caveat Variable",
+      },
+    })
+  })
+
+  it("falls back unknown font values to the loaded renderer family for each role", () => {
+    expect(normalizeThemeForSave({
+      fonts: {
+        title: "Unknown Display",
+        heading: "Unknown Heading",
+        text: "Unknown Sans",
+        script: "Unknown Script",
+      },
+    })).toEqual({
+      fonts: {
+        title: "Fraunces Variable",
+        heading: "Fraunces Variable",
+        text: "Inter Variable",
+        script: "Caveat Variable",
+      },
     })
   })
 

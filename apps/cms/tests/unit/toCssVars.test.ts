@@ -27,7 +27,7 @@ describe("toCssVars", () => {
     expect(css).not.toContain("--font-title")
     expect(css).not.toContain("--font-heading")
     expect(css).not.toContain("--font-text")
-    expect(css).not.toContain("--font-sans")
+    expect(css).not.toContain("--font-sans:")
     expect(css).not.toContain("--font-serif")
   })
 
@@ -74,7 +74,10 @@ describe("toCssVars", () => {
   it("maps density and style preset", () => {
     const css = toCssVars({ density: "spacious", stylePreset: "bold" })
     expect(css).toContain("--site-density:spacious")
+    expect(css).toContain("--site-section-padding-y:7rem")
+    expect(css).toContain("--site-section-padding-y-sm:9rem")
     expect(css).toContain("--site-style-preset:bold")
+    expect(css).toContain(':where([data-provider-block="tailwindplus"]):is(.py-24,.py-32)')
   })
 
   it("does NOT emit unset properties", () => {
@@ -109,8 +112,8 @@ describe("toCssVars (round 4)", () => {
     const css = toCssVars({ fonts: { title: "Fraunces Variable" } })
     expect(css).toContain("--font-title:Fraunces Variable")
     expect(css).toContain("--font-serif:Fraunces Variable")
-    expect(css).not.toContain("--font-heading")
-    expect(css).not.toContain("--font-sans")
+    expect(css).not.toContain("--font-sans:")
+    expect(css).not.toContain("--font-heading:")
   })
 
   it("emits --font-script role and alias when script font is set", () => {

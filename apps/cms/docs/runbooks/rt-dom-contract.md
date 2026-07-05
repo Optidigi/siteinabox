@@ -98,6 +98,19 @@ The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site 
 
 `--radius-sm` and `--radius-lg` are derived by `toCssVars` from the user's chosen `theme.radius` value (`sm = max(radius - 0.25rem, 0)`, `lg = radius + 0.5rem`).
 
+### Density / rhythm tokens
+
+| Token | Where to use |
+|---|---|
+| `var(--site-density)` | metadata only; do not branch layout directly from arbitrary values |
+| `var(--site-section-padding-y)` | coarse section vertical rhythm on mobile/default breakpoints |
+| `var(--site-section-padding-y-sm)` | coarse section vertical rhythm from the Tailwind `sm` breakpoint upward |
+
+Density is a tenant-wide coarse rhythm setting (`compact`, `comfortable`,
+`spacious`). It is not an arbitrary spacing API. Generation and CMS editing
+must not supply per-block spacing values, breakpoint choices, grid spans, or
+layout instructions.
+
 ### Border style
 
 | Token | Where to use |
@@ -124,10 +137,11 @@ renderer hard-codes a value, the ThemeBar cannot drive it and the user can't see
 the change.
 
 Do not add arbitrary block-level visual tokens, per-block class names, provider
-token override fields, or one-off color/font/radius controls. Fonts, colors,
-shape, radius, border style, and mode are global theme-toolbar settings. Block
-schemas may choose approved design variants, but all visual tuning must resolve
-through global theme tokens and renderer-owned class rules.
+token override fields, or one-off color/font/radius/spacing controls. Fonts,
+colors, shape, radius, border style, mode, and coarse density/rhythm are global
+theme-schema settings. Block schemas may choose approved design variants, but
+all visual tuning must resolve through global theme tokens and renderer-owned
+class or provider bridge rules.
 
 For Tailwind classes like `rounded-md`, KEEP them as fallback for the case where
 `theme.radius` is unset, but layer token-driven class rules on top

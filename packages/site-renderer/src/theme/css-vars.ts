@@ -57,6 +57,60 @@ function set(parts: string[], prop: string, value: string | undefined | null) {
 
 const onAccentColor = (value: string | undefined | null) => value ?? "#ffffff"
 
+function providerThemeBridgeRules(
+  scope: ThemeCssVarScope,
+  options: { colors: boolean; fonts: boolean; density: boolean },
+): string[] {
+  const baseSelector = scope === ":root" ? "html:root" : scope
+  const providerRootSelectors = [
+    `${baseSelector} :where([data-provider-block="tailwindplus"])`,
+    `${baseSelector} :where([data-provider-chrome="tailwindplus"])`,
+    `${baseSelector} :where([data-provider-template="tailwindplus"])`,
+  ]
+  const providerSurfaceRoots = [
+    `${baseSelector}:where(.bg-white)`,
+    `${baseSelector} :where([data-provider-block="tailwindplus"].bg-white)`,
+    `${baseSelector} :where([data-provider-chrome="tailwindplus"].bg-white)`,
+    `${baseSelector} :where([data-provider-template="tailwindplus"].bg-white)`,
+  ].join(",")
+  const providerSurfaceDescendants = [
+    `${baseSelector} :where([data-provider-block="tailwindplus"] .bg-white)`,
+    `${baseSelector} :where([data-provider-chrome="tailwindplus"] .bg-white)`,
+    `${baseSelector} :where([data-provider-template="tailwindplus"] .bg-white)`,
+  ].join(",")
+  const rootClass = (className: string, pseudo = "") => providerRootSelectors.map((selector) => `${selector}.${className}${pseudo}`).join(",")
+  const descendant = (className: string, pseudo = "") => providerRootSelectors.map((selector) => `${selector} .${className}${pseudo}`).join(",")
+
+  const rules: string[] = []
+  if (options.colors) rules.push(
+    `${providerSurfaceRoots}{background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))}`,
+    `${providerSurfaceDescendants}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
+    `${rootClass("bg-gray-50")}{background-color:var(--color-card,var(--color-bg))}`,
+    `${descendant("bg-gray-50")}{background-color:var(--color-card,var(--color-bg))}`,
+    `${descendant("ring-gray-900\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink) 10%,transparent)}`,
+    `${descendant("hover\\:ring-gray-900\\/20", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-ink) 20%,transparent)}`,
+    `${descendant("outline-gray-300")}{outline-color:var(--color-rule)}`,
+    `${descendant("ring-gray-400\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink-muted) 10%,transparent)}`,
+  )
+  if (options.fonts) rules.push(
+    `${providerRootSelectors.map((selector) => `${selector} :is(h1)`).join(",")}{font-family:var(--font-title,var(--font-sans,inherit))}`,
+    `${providerRootSelectors.map((selector) => `${selector} :is(h2,h3,h4,dt,legend)`).join(",")}{font-family:var(--font-heading,var(--font-sans,inherit))}`,
+    `${providerRootSelectors.map((selector) => `${selector} :is(p,dd,li,label,input,select,textarea,button,a)`).join(",")}{font-family:var(--font-text,var(--font-sans,inherit))}`,
+  )
+  if (options.density) rules.push(
+    `${providerRootSelectors.map((selector) => `${selector}:is(.py-24,.py-32)`).join(",")}{padding-top:var(--site-section-padding-y,6rem);padding-bottom:var(--site-section-padding-y,6rem)}`,
+    `@media (min-width:40rem){${providerRootSelectors.map((selector) => `${selector}:is(.sm\\:py-24,.sm\\:py-32)`).join(",")}{padding-top:var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem));padding-bottom:var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem))}}`,
+  )
+  return rules
+}
+
+function sectionSpacingForDensity(density: ThemeTokenSpec["density"]): [string, string] | null {
+  if (density === "compact") return ["4rem", "5rem"]
+  if (density === "spacious") return ["7rem", "9rem"]
+  if (density === "comfortable") return ["6rem", "8rem"]
+  return null
+}
+
 function setTailwindProviderColorAliases(
   parts: string[],
   colors: ThemeTokenSpec["colors"] | ThemeTokenSpec["darkColors"] | undefined,
@@ -73,6 +127,8 @@ function setTailwindProviderColorAliases(
 
   const accentSoft = accent ? `color-mix(in oklab, ${accent} 16%, white)` : undefined
   const accentSofter = accent ? `color-mix(in oklab, ${accent} 8%, white)` : undefined
+  const hasColors = Boolean(accent || onAccent || bg || ink || muted || card || secondary || rule)
+  if (!hasColors) return
 
   set(parts, "--color-indigo-700", accent)
   set(parts, "--color-indigo-600", accent)
@@ -82,7 +138,9 @@ function setTailwindProviderColorAliases(
   set(parts, "--color-indigo-200", accentSoft)
   set(parts, "--color-indigo-100", accentSofter)
   set(parts, "--color-indigo-50", accentSofter)
-  set(parts, "--color-white", onAccent ?? bg)
+  set(parts, "--color-white", onAccentColor(onAccent))
+  set(parts, "--color-tailwindplus-surface", bg)
+  set(parts, "--color-tailwindplus-card", card ?? bg)
   set(parts, "--color-black", ink)
   set(parts, "--color-gray-950", ink)
   set(parts, "--color-gray-900", ink)
@@ -170,13 +228,34 @@ export function themeToCssVars(
   }
 
   set(baseParts, "--border-style", theme.borderStyle)
-  if (theme.density) set(baseParts, "--site-density", theme.density)
+  if (theme.density) {
+    set(baseParts, "--site-density", theme.density)
+    const sectionSpacing = sectionSpacingForDensity(theme.density)
+    if (sectionSpacing) {
+      set(baseParts, "--site-section-padding-y", sectionSpacing[0])
+      set(baseParts, "--site-section-padding-y-sm", sectionSpacing[1])
+    }
+  }
   if (theme.stylePreset) set(baseParts, "--site-style-preset", theme.stylePreset)
 
   const baseSelector = scope === ":root" ? "html:root" : scope
   const darkSelector = scope === ":root" ? "html:root[data-rt-mode=\"dark\"]" : `${scope}[data-rt-mode="dark"]`
+  const hasColorBridge = Boolean(
+    theme.colors?.bg ||
+    theme.colors?.ink ||
+    theme.colors?.muted ||
+    theme.colors?.card ||
+    theme.darkColors?.bg ||
+    theme.darkColors?.ink ||
+    theme.darkColors?.muted ||
+    theme.darkColors?.card ||
+    theme.mode === "dark"
+  )
+  const hasFontBridge = Boolean(theme.fonts?.title || theme.fonts?.heading || theme.fonts?.text || theme.fonts?.script)
+  const hasDensityBridge = Boolean(theme.density)
   const rules: string[] = []
   if (baseParts.length > 0) rules.push(`${baseSelector}{${baseParts.join(";")}}`)
   if (darkParts.length > 0) rules.push(`${darkSelector}{${darkParts.join(";")}}`)
+  rules.push(...providerThemeBridgeRules(scope, { colors: hasColorBridge, fonts: hasFontBridge, density: hasDensityBridge }))
   return rules.join(" ")
 }

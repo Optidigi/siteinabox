@@ -47,9 +47,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
       rule: "#e5e7eb",
     },
     fonts: {
-      title: "Inter",
-      heading: "Inter",
-      text: "Inter",
+      title: "Inter Variable",
+      heading: "Inter Variable",
+      text: "Inter Variable",
     },
     radius: "8px",
     density: "comfortable",

@@ -33,8 +33,8 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
  *   fonts.text         → --font-text
  *   fonts.script       → --font-script
  *   compatibility      → --font-sans from text, --font-serif from heading/title
- *   radius             → --radius-md (canonical); derives --radius-sm and --radius-lg
- *   density            → --site-density
+ *   radius             → --radius-md (canonical); derives Tailwind radius vars
+ *   density            → --site-density plus coarse section rhythm vars
  *   stylePreset        → --site-style-preset
  *   borderStyle        → --border-style
  */

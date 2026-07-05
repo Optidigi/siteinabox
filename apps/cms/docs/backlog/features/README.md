@@ -111,7 +111,8 @@ depended on command-run site generation are no longer current source of truth.
 - Continue expanding generic self-serve generation around exact-source Tailwind
   Plus provider surfaces. Tailwind Plus source is the UI source of truth; CMS
   owns editable content/chrome slots; site-wide tokens may configure only
-  approved color, font, and shape/radius behavior. Do not reintroduce adapted
+  approved color, font, shape/radius, mode, and coarse density/rhythm behavior.
+  Do not reintroduce adapted
   Tailwind Plus renderers, Preline, Tailblocks, SIAB-owned generic visual
   variants, raw AI HTML/classes, or any Amicare changes. A provider surface
   becomes generation-eligible only after exact source, renderer, CMS/sidebar or

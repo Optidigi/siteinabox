@@ -97,10 +97,11 @@ The public renderer also uses the active
 Tailwind Plus Simple 404 system fallback for known tenants with missing pages.
 
 Tailwind Plus is the UI source of truth, CMS data owns editable content slots
-and chrome settings, and approved theme tokens may configure color, font, and
-shape/radius behavior. Do not re-enable adapted Tailwind Plus renderers,
-Preline, Tailblocks, SIAB-owned generic visual variants, raw AI HTML/classes,
-or generated component source as active self-serve blocks.
+and chrome settings, and approved theme tokens may configure color, font,
+shape/radius, mode, and coarse density/rhythm behavior. Do not re-enable
+adapted Tailwind Plus renderers, Preline, Tailblocks, SIAB-owned generic visual
+variants, raw AI HTML/classes, or generated component source as active
+self-serve blocks.
 
 ### Existing UIs
 

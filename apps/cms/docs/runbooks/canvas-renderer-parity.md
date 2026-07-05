@@ -51,9 +51,10 @@ renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
    target them.
 6. **Theme tokens** — Both surfaces consume global theme tokens per
    `rt-dom-contract.md § Theme tokens`. Hard-coded colours, fonts, radius values,
-   per-block visual tokens, arbitrary class payloads, or provider token
+   per-block visual tokens, arbitrary spacing values, class payloads, or provider token
    overrides in either tree are defects. The global theme toolbar owns fonts,
-   colors, shape, radius, border style, and mode.
+   colors, shape, radius, border style, and mode; the theme schema also carries
+   coarse density/rhythm where renderer rules explicitly support it.
 7. **Variant selection** — Generic self-serve generation currently exposes only
    approved exact-source Tailwind Plus Marketing provider-backed block
    `designVariant` IDs from the executable source-block registry. Analytics metadata is not a design-selection API.
