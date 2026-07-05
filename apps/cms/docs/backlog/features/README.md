@@ -110,6 +110,46 @@ depended on command-run site generation are no longer current source of truth.
   behavior, and structural/runtime/source-integrity tests are complete. Browser
   screenshots, pixel diffs, computed-style checks, and visual parity gates are
   out of scope for the current provider completion pass.
+- Improve CMS generation-run operations UI beyond the 2026-07-02 task-queue
+  simplification. `/generation-runs` and run detail should help operators
+  understand what needs attention next, why a run is blocked, and which
+  recovery or handoff step to take without digging through Advanced panels.
+  This is distinct from the analytics dashboard follow-up above.
+- Add consistent skeleton or loading affordances on slow customer and operator
+  surfaces. Priority gaps today include preview checkout, alternative-domain
+  suggestion loading, and generation-run list/detail routes that currently rely
+  on spinners, muted placeholders, or no route-level loading shell.
+- Improve preview checkout domain availability UX for both actual and perceived
+  speed. Keep OpenProvider as the availability source of truth, but tighten the
+  domain step UI: faster feedback while checks and suggestions run, clearer
+  checking/ready/unavailable states, and a small visual polish pass on the
+  alternative-domain picker.
+- Add settings search in the CMS so operators can find a setting or section
+  without drilling through every Settings group manually. Scope this to the
+  existing Settings contract/sidebar model rather than inventing a separate
+  settings information architecture.
+- Add a cancel-subscription affordance for eligible customers or operators when
+  Mollie renewal subscriptions exist. Eligibility must follow the commercial
+  contract: for example, a one-year upfront term followed by monthly renewal
+  should keep cancel disabled or ghosted until the committed term allows it.
+  Wire UI state to real subscription metadata; do not add a cosmetic button the
+  server would reject.
+- Polish the public customer journey across preview, checkout, intake handoffs,
+  and related transactional messages. Align naming conventions, styled HTML/email
+  copy, step labels, and success/error states so the flow feels cohesive from
+  intake through preview approval, domain selection, payment, and live-site
+  handoff.
+- Decide the commercial pricing strategy and make Mollie/product logic match it.
+  Today deploy config uses fixed first-year and monthly renewal amounts; product
+  rules for discounts, launch actions, included-domain surcharges, and renewal
+  timing must be explicit in contracts and reflected in checkout/payment state
+  rather than only in environment variables.
+- Fix canvas block right-click behavior in the page editor. Right-clicking a
+  block currently opens the block context menu through a full-viewport overlay
+  that greys out or visually obscures the canvas; header/footer chrome does not
+  show the same regression because it uses the separate site-chrome context-menu
+  path. Resolve through the canonical canvas editor chrome boundary rather than
+  a one-off overlay workaround.
 
 ## Implemented Foundation
 
