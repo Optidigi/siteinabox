@@ -349,6 +349,8 @@ const blockJsonSchemas = [
       intro: nullableBlockRichTextJsonSchema,
       plans: {
         type: "array",
+        minItems: 2,
+        maxItems: 2,
         items: {
           type: "object",
           additionalProperties: false,
@@ -360,6 +362,8 @@ const blockJsonSchemas = [
             period: stringOrNull,
             features: {
               type: "array",
+              minItems: 4,
+              maxItems: 6,
               items: {
                 type: "object",
                 additionalProperties: false,
@@ -452,6 +456,8 @@ const blockJsonSchemas = [
       intro: nullableBlockRichTextJsonSchema,
       members: {
         type: "array",
+        minItems: 2,
+        maxItems: 6,
         items: {
           type: "object",
           additionalProperties: false,
@@ -479,6 +485,8 @@ const blockJsonSchemas = [
       intro: nullableBlockRichTextJsonSchema,
       posts: {
         type: "array",
+        minItems: 3,
+        maxItems: 3,
         items: {
           type: "object",
           additionalProperties: false,

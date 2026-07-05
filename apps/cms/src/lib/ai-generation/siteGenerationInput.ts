@@ -63,7 +63,16 @@ export const buildSiteGenerationModelInput = (
       providerVariantId: providerDefinition?.id,
       slots: Object.fromEntries(
         Object.entries(providerDefinition?.slots ?? {})
-          .map(([name, slot]) => [name, { kind: slot.kind, status: slot.status, exposed: slot.exposed }]),
+          .map(([name, slot]) => [
+            name,
+            {
+              kind: slot.kind,
+              status: slot.status,
+              exposed: slot.exposed,
+              ...(slot.minItems != null ? { minItems: slot.minItems } : {}),
+              ...(slot.maxItems != null ? { maxItems: slot.maxItems } : {}),
+            },
+          ]),
       ),
     }
   }),

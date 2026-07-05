@@ -38,12 +38,16 @@ depended on command-run site generation are no longer current source of truth.
   `tailwindplus.marketing.contact.centered`,
   `tailwindplus.marketing.testimonial.simple-centered`,
   `tailwindplus.marketing.stats.simple`, and
-  `tailwindplus.marketing.logo-cloud.simple-with-heading`; active header chrome
+  `tailwindplus.marketing.logo-cloud.simple-with-heading`,
+  `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`,
+  `tailwindplus.marketing.team.with-small-images`, and
+  `tailwindplus.marketing.blog.three-column`; active header chrome
   `tailwindplus.marketing.header.with-stacked-flyout-menu`; and active
   known-tenant 404 fallback `tailwindplus.marketing.feedback.404-simple`.
-  Other Tailwind Plus candidates, Preline, Tailblocks, SIAB-owned generic
-  visual variants, and shadcn blocks are not active generated public-site
-  inputs.
+  Tailwind Plus FAQ and Footer variants are present upstream but remain inactive
+  because their current public payload variants are locked/non-downloadable.
+  Other Tailwind Plus candidates, Preline, Tailblocks, SIAB-owned generic visual
+  variants, and shadcn blocks are not active generated public-site inputs.
 
 ## Open Follow-Up
 

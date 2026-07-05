@@ -66,7 +66,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
     branding: { primaryColor: "#2563eb" },
     chrome: {
       header: {
-        variant: "default",
+        variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
         behavior: "sticky",
         activeMode: "path",
         mobileMenu: "drawer",
@@ -465,6 +465,10 @@ export const loadMockSiteGenerationSpec = (
       ],
       chrome: {
         ...spec.settings.chrome,
+        header: {
+          ...spec.settings.chrome?.header,
+          cta: { label: "Contact", href: contactHref },
+        },
         footer: {
           ...spec.settings.chrome?.footer,
           copyright: `(c) ${normalized.businessName}`,

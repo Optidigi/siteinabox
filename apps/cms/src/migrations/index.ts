@@ -47,6 +47,7 @@ import * as migration_20260704_130000_remove_inactive_blocks_and_block_tokens fr
 import * as migration_20260704_140000_normalize_published_snapshot_blocks from './20260704_140000_normalize_published_snapshot_blocks';
 import * as migration_20260704_150000_add_hero_secondary_cta from './20260704_150000_add_hero_secondary_cta';
 import * as migration_20260704_160000_add_provider_rich_slots from './20260704_160000_add_provider_rich_slots';
+import * as migration_20260705_120000_add_tailwindplus_header_enum_value from './20260705_120000_add_tailwindplus_header_enum_value';
 
 export const migrations = [
   {
@@ -293,5 +294,10 @@ export const migrations = [
     up: migration_20260704_160000_add_provider_rich_slots.up,
     down: migration_20260704_160000_add_provider_rich_slots.down,
     name: '20260704_160000_add_provider_rich_slots'
+  },
+  {
+    up: migration_20260705_120000_add_tailwindplus_header_enum_value.up,
+    down: migration_20260705_120000_add_tailwindplus_header_enum_value.down,
+    name: '20260705_120000_add_tailwindplus_header_enum_value'
   },
 ];

@@ -1051,6 +1051,16 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           cta("cta", "Action"),
           text("badge", "Badge"),
           { name: "highlighted", label: "Highlighted", kind: "checkbox" },
+          {
+            name: "features",
+            label: "Features",
+            kind: "array",
+            itemLabel: "Feature",
+            itemFields: [
+              richtext("label", "Label", "inline", "text"),
+              { name: "included", label: "Included", kind: "checkbox" },
+            ],
+          },
         ],
       },
     ],
@@ -1065,16 +1075,19 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "pricing:tailwindPlusSimpleTiers",
         variant: "tailwindPlusSimpleTiers",
+        providerVariantId: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
         label: "Tailwind Plus simple tiers",
-        intent: "Pricing cards adapted from a reviewed Tailwind Plus free/downloadable pricing source.",
+        intent:
+          "Two-tier pricing section using the exact local source-backed Tailwind Plus Two tiers with emphasized right tier block.",
         scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-simple-pricing",
-        provenance: tailwindPlusFreeProvenance(
-          "Simple pricing tiers",
+        rendererClassName: "cms-block--source-tailwindplus-pricing-two-tiers-with-emphasized-right-tier",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Two tiers with emphasized right tier",
           "4a9182e85945751476472f12356adb68",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/pricing#component-4a9182e85945751476472f12356adb68",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/pricing/two-tiers-with-emphasized-right-tier",
         ),
       },
     ],
@@ -1267,16 +1280,18 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "team:tailwindPlusGrid",
         variant: "tailwindPlusGrid",
-        label: "Tailwind Plus team grid",
-        intent: "Team grid adapted from a reviewed Tailwind Plus team section source.",
+        providerVariantId: "tailwindplus.marketing.team.with-small-images",
+        label: "Tailwind Plus with small images",
+        intent: "Team grid using the exact local source-backed Tailwind Plus With small images block.",
         scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-team-grid",
-        provenance: tailwindPlusFreeProvenance(
-          "Team grid",
+        rendererClassName: "cms-block--source-tailwindplus-team-with-small-images",
+        provenance: tailwindPlusExactSourceProvenance(
+          "With small images",
           "1ea7e52a3e89a3cf7b4a0a4fd2dcdf84",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/team-sections#component-1ea7e52a3e89a3cf7b4a0a4fd2dcdf84",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/team/with-small-images",
         ),
       },
     ],
@@ -1318,16 +1333,18 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       {
         id: "blogCards:tailwindPlusThreeColumn",
         variant: "tailwindPlusThreeColumn",
+        providerVariantId: "tailwindplus.marketing.blog.three-column",
         label: "Tailwind Plus three column",
-        intent: "Article cards adapted from a reviewed Tailwind Plus blog section source.",
+        intent: "Article cards using the exact local source-backed Tailwind Plus Three-column block.",
         scope: globalVariantScope,
         dataSignal: "variant",
         rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-blog-three-column",
-        provenance: tailwindPlusFreeProvenance(
+        rendererClassName: "cms-block--source-tailwindplus-blog-three-column",
+        provenance: tailwindPlusExactSourceProvenance(
           "Three-column blog section",
           "b8172652fa29dc3eac306c2a8a922323",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/blog-sections#component-b8172652fa29dc3eac306c2a8a922323",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/blog/three-column",
         ),
       },
     ],
@@ -1557,6 +1574,9 @@ const siteSelfServeSourceBackedVariantIds = [
   "testimonials:tailwindPlusSimpleCentered",
   "stats:tailwindPlusSimple",
   "logoCloud:tailwindPlusSimpleWithHeading",
+  "pricing:tailwindPlusSimpleTiers",
+  "team:tailwindPlusGrid",
+  "blogCards:tailwindPlusThreeColumn",
 ] as const
 const siteSelfServeSourceBackedVariantIdSet = new Set<string>(siteSelfServeSourceBackedVariantIds)
 const siteSelfServeSourceBackedProviderNameSet = new Set<string>(siteSelfServeSourceBackedProviderNames)

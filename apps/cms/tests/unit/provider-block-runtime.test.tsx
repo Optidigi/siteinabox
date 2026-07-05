@@ -11,13 +11,16 @@ import {
   getProviderBlockDefinition,
   getSourceBackedVariantRenderer,
   providerBlockDefinitions,
+  tailwindPlusMarketingBlogThreeColumnDemoSlots,
   tailwindPlusMarketingContactCenteredDemoSlots,
   tailwindPlusMarketingCtaDarkPanelWithAppScreenshotDemoSlots,
   tailwindPlusMarketingFeatureCentered2x2GridDemoSlots,
   tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots,
   tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
   tailwindPlusMarketingLogoCloudSimpleWithHeadingDemoSlots,
+  tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots,
   tailwindPlusMarketingStatsSimpleDemoSlots,
+  tailwindPlusMarketingTeamWithSmallImagesDemoSlots,
   tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots,
   validateProviderBlockInstance,
 } from "@siteinabox/site-renderer/source-blocks"
@@ -133,6 +136,40 @@ const providerCases = [
       "mx-auto mt-10 grid max-w-lg grid-cols-4 items-center gap-x-8 gap-y-10 sm:max-w-xl sm:grid-cols-6 sm:gap-x-10 lg:mx-0 lg:max-w-none lg:grid-cols-5",
     ],
   },
+  {
+    id: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/pricing/two-tiers-with-emphasized-right-tier",
+    block: tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots,
+    classes: [
+      "relative isolate bg-white px-6 py-24 sm:py-32 lg:px-8",
+      "mx-auto mt-16 grid max-w-lg grid-cols-1 items-center gap-y-6 sm:mt-20 sm:gap-y-0 lg:max-w-4xl lg:grid-cols-2",
+      "relative rounded-3xl bg-gray-900 p-8 shadow-2xl ring-1 ring-gray-900/10 sm:p-10",
+      "mt-8 block rounded-md bg-indigo-500 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 sm:mt-10",
+    ],
+  },
+  {
+    id: "tailwindplus.marketing.team.with-small-images",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/team/with-small-images",
+    block: tailwindPlusMarketingTeamWithSmallImagesDemoSlots,
+    classes: [
+      "bg-white py-24 sm:py-32",
+      "mx-auto grid max-w-7xl gap-20 px-6 lg:px-8 xl:grid-cols-3",
+      "grid gap-x-8 gap-y-12 sm:grid-cols-2 sm:gap-y-16 xl:col-span-2",
+      "size-16 rounded-full outline-1 -outline-offset-1 outline-black/5",
+    ],
+  },
+  {
+    id: "tailwindplus.marketing.blog.three-column",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/blog/three-column",
+    block: tailwindPlusMarketingBlogThreeColumnDemoSlots,
+    classes: [
+      "bg-white py-24 sm:py-32",
+      "mx-auto mt-10 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 border-t border-gray-200 pt-10 sm:mt-16 sm:pt-16 lg:mx-0 lg:max-w-none lg:grid-cols-3",
+      "flex max-w-xl flex-col items-start justify-between",
+      "relative z-10 rounded-full bg-gray-50 px-3 py-1.5 font-medium text-gray-600 hover:bg-gray-100",
+    ],
+    allowedSlotClassDeltas: ["absolute inset-0"],
+  },
 ] satisfies Array<{
   id: string
   folder: string
@@ -224,6 +261,23 @@ describe("provider block runtime", () => {
         intro: blockRoot("Inactive intro."),
         logos: tailwindPlusMarketingLogoCloudSimpleWithHeadingDemoSlots.logos.slice(0, 4),
       }),
+      ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots,
+        plans: [
+          {
+            ...tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots.plans[0]!,
+            badge: "Unsupported badge",
+          },
+        ],
+      }),
+      ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingTeamWithSmallImagesDemoSlots,
+        members: tailwindPlusMarketingTeamWithSmallImagesDemoSlots.members.slice(0, 1),
+      }),
+      ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingBlogThreeColumnDemoSlots,
+        posts: tailwindPlusMarketingBlogThreeColumnDemoSlots.posts.slice(0, 2),
+      }),
     ]
 
     expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
@@ -239,6 +293,10 @@ describe("provider block runtime", () => {
       "items",
       "features",
       "logos",
+      "plans.0.badge",
+      "plans",
+      "members",
+      "posts",
     ]))
   })
 

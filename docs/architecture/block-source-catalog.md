@@ -20,6 +20,9 @@ The active V1 provider runtime is intentionally narrow:
   - `tailwindplus.marketing.testimonial.simple-centered`;
   - `tailwindplus.marketing.stats.simple`;
   - `tailwindplus.marketing.logo-cloud.simple-with-heading`;
+  - `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`;
+  - `tailwindplus.marketing.team.with-small-images`;
+  - `tailwindplus.marketing.blog.three-column`;
 - preferred generated `designVariant` values are the canonical provider IDs
   above;
 - persisted legacy designVariant aliases remain accepted for existing content:
@@ -30,8 +33,12 @@ The active V1 provider runtime is intentionally narrow:
   - `tailwindPlusCentered`;
   - `tailwindPlusSimple`;
   - `tailwindPlusSimpleWithHeading`;
+  - `tailwindPlusSimpleTiers`;
+  - `tailwindPlusGrid`;
+  - `tailwindPlusThreeColumn`;
 - active CMS page block slugs: `hero`, `featureList`, `cta`,
-  `contactSection`, `testimonials`, `stats`, and `logoCloud`;
+  `contactSection`, `testimonials`, `stats`, `logoCloud`, `pricing`, `team`,
+  and `blogCards`;
 - active header chrome:
   `tailwindplus.marketing.header.with-stacked-flyout-menu`;
 - active system fallback:
@@ -40,6 +47,11 @@ The active V1 provider runtime is intentionally narrow:
 Historical adapted Tailwind Plus variants, Preline, Tailblocks, SIAB-owned
 generic visual variants, and locked provider examples remain inactive for
 self-serve generation.
+
+Mock/self-serve fixture generation defaults global header chrome to
+`tailwindplus.marketing.header.with-stacked-flyout-menu`. Footer and banner
+chrome remain on the SiaB `default` variants until source-visible
+provider-backed footer/banner implementations are active.
 
 ## Canonical Generated Block Path
 
@@ -119,6 +131,12 @@ preferred `designVariant` is the canonical provider id:
   `tailwindplus.marketing.stats.simple`;
 - `logoCloud:tailwindPlusSimpleWithHeading` ->
   `tailwindplus.marketing.logo-cloud.simple-with-heading`.
+- `pricing:tailwindPlusSimpleTiers` ->
+  `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`.
+- `team:tailwindPlusGrid` ->
+  `tailwindplus.marketing.team.with-small-images`.
+- `blogCards:tailwindPlusThreeColumn` ->
+  `tailwindplus.marketing.blog.three-column`.
 
 Inactive provider families are removed from the active app/codebase architecture,
 not backlog-only providers. They must not appear in generic self-serve
@@ -217,6 +235,22 @@ Current active runtime families and blocks:
   items; `title`, logo names, and optional hrefs are structured CMS data, and
   logo image media is optional/editable for self-serve drafts that skip remote
   media ingestion. `intro` is inactive.
+- `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`, with
+  legacy `tailwindPlusSimpleTiers` aliases still accepted. It renders exactly
+  two pricing plans, with the right-hand tier emphasized by the provider source
+  layout. `title`, `intro`, plan titles, descriptions, prices, periods, CTAs,
+  highlight flags, and feature labels are structured CMS data. Plan badges are
+  inactive for this exact variant and are rejected if generated or saved with
+  values.
+- `tailwindplus.marketing.team.with-small-images`, with legacy
+  `tailwindPlusGrid` aliases still accepted. It renders two to six team
+  members with required names and roles plus optional member images. Bio and
+  social links remain CMS fields but are not exposed by this exact source
+  variant.
+- `tailwindplus.marketing.blog.three-column`, with legacy
+  `tailwindPlusThreeColumn` aliases still accepted. It renders exactly three
+  article cards with required titles, excerpts, and hrefs plus optional dates,
+  authors, categories, and author images.
 
 Amicare tenant-exclusive rendering is separate compatibility code and is not
 part of self-serve provider blocks.
@@ -250,6 +284,93 @@ generation/schema rejection, and publish validation. Browser screenshots,
 pixel diffs, computed-style visual comparisons, Chromatic-style regressions,
 and visual parity gates are explicitly out of scope for this pass.
 
+## Current Tailwind Plus Inventory Notes
+
+The July 5, 2026 inventory used the public Tailwind Plus Marketing UI Blocks
+pages and treated only examples with visible `PreviewCode`/downloadable source
+payloads as eligible. Application UI, Ecommerce, page examples, locked
+`Get the code` examples, Preline, and Tailblocks are excluded from this
+provider-backed self-serve path.
+
+Active source-visible Marketing/Product Marketing variants after this pass:
+
+- Hero Sections: `Simple centered` ->
+  `tailwindplus.marketing.hero.simple-centered`.
+- Feature Sections: `With product screenshot` ->
+  `tailwindplus.marketing.feature.with-product-screenshot`.
+- Feature Sections: `Centered 2x2 grid` ->
+  `tailwindplus.marketing.feature.centered-2x2-grid`.
+- CTA Sections: `Dark panel with app screenshot` ->
+  `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`.
+- Pricing Sections: `Two tiers with emphasized right tier` ->
+  `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`.
+- Contact Sections: `Centered` ->
+  `tailwindplus.marketing.contact.centered`.
+- Testimonials: `Simple centered` ->
+  `tailwindplus.marketing.testimonial.simple-centered`.
+- Stats: `Simple` -> `tailwindplus.marketing.stats.simple`.
+- Logo Clouds: `Simple with heading` ->
+  `tailwindplus.marketing.logo-cloud.simple-with-heading`.
+- Team Sections: `With small images` ->
+  `tailwindplus.marketing.team.with-small-images`.
+- Blog Sections: `Three-column` ->
+  `tailwindplus.marketing.blog.three-column`.
+- Marketing Headers: `With stacked flyout menu` ->
+  `tailwindplus.marketing.header.with-stacked-flyout-menu`.
+- Feedback/404 Pages: `Simple` ->
+  `tailwindplus.marketing.feedback.404-simple`.
+
+Deferred source-visible Marketing candidates:
+
+- Bento Grids `Three column bento grid`: deferred because the current block
+  contract does not encode the provider bento geometry cleanly enough for
+  generation-safe slot validation.
+- Header Sections `With stats`: deferred as a page-intro role, not a homepage
+  hero replacement; needs a deliberate mapping to existing rich text/stats
+  contracts.
+- Newsletter Sections `Side-by-side with details`: deferred because newsletter
+  backend, consent copy, and form semantics need a tighter product decision.
+- Content Sections `With sticky product screenshot`: deferred as
+  product/SaaS-specific and asset-heavy.
+- Banners `With button`: deferred until banner chrome/page-alert ownership is
+  modeled separately from page blocks.
+- Flyout Menus `Stacked with footer actions`: deferred as header substructure;
+  it should not be exposed independently from a supported header renderer.
+
+Footer and FAQ current state, verified July 5, 2026:
+
+- FAQ Sections are available on Tailwind Plus at
+  `https://tailwindcss.com/plus/ui-blocks/marketing/sections/faq-sections`,
+  but every public page-payload variant is currently locked/non-downloadable:
+  `Offset with supporting text` (`8017f4faee579f7ca518cdde140d4689`),
+  `Centered accordion` (`8699d80b13ef524eb573e54b4d4b89d1`),
+  `Side-by-side` (`a79cba194f17e6b28fe610c07bcdb8a0`),
+  `Three columns` (`f273cb93c5b5acf64f2c1711417aadfa`),
+  `Three columns with centered introduction`
+  (`a113dbf75844a04b403f4c7a55d431c5`), `Two columns`
+  (`1c3fc65e9a4924a065d231ea14f07e16`), and
+  `Two columns with centered introduction`
+  (`f23694a5070bbd968770234e5d1e178e`). Dark variants are also present but
+  likewise non-downloadable. None are active until a source-visible fixture is
+  available or the operator supplies licensed source under the provider fixture
+  policy.
+- Footer Sections are available on Tailwind Plus at
+  `https://tailwindcss.com/plus/ui-blocks/marketing/sections/footers`, but
+  every public page-payload variant is currently locked/non-downloadable:
+  `4-column with company mission` (`de25869ecf8c2903fbede9b3a7602adb`),
+  `4-column with call-to-action` (`2e47a11aec9a4e1aab7fc0e20d6b5951`),
+  `4-column simple` (`c5a3339d6971da22d5ffe67aa4fd168b`),
+  `4-column with newsletter` (`38c15f2c35def7c2c555175450d1448e`),
+  `4-column with newsletter below` (`b2c41f4521a0b989aa8e3c0d6ee400c9`),
+  `Simple centered` (`8fd8a490ec2fae888154eb83685bbe23`), and
+  `Simple with social links` (`2804f3d86cef85d9e040bee6d08633d6`). Dark
+  variants are also present but likewise non-downloadable. Footer remains
+  SIAB-owned `default` chrome until a source-visible fixture is available or
+  licensed source is supplied and mapped through `packages/site-renderer/src/source-chrome`.
+
+Preline and Tailblocks are future/non-provider work for this pass and were not
+implemented. No visual parity gates or screenshot/pixel tests were added.
+
 ## Chrome Decision
 
 Header, footer, and announcement/banner are global site chrome. They remain in
@@ -263,7 +384,8 @@ active Tailwind Plus Marketing header chrome
 `SiteSettings.chrome.header.variant`. It is rendered through
 `packages/site-renderer/src/source-chrome`, not as page content. Header slots
 come from structured `SiteSettings` data: site/brand name, logo, `navHeader`,
-and header CTA. Footer and banner remain SIAB-owned chrome variants.
+and header CTA. Mock generation now uses this header by default. Footer and
+banner remain SIAB-owned chrome variants.
 
 Inactive provider chrome variants are not active chrome choices, provenance
 entries, renderer fixture requirements, or AI-generation suggestions. Provider

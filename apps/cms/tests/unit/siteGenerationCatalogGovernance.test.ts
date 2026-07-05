@@ -59,7 +59,7 @@ describe("site generation catalog governance", () => {
     }))
 
     expect(input.approvedDesignVariants.map(({ slots: _slots, providerVariantId: _providerVariantId, ...variant }) => variant)).toEqual(approved)
-    expect(input.approvedDesignVariants).toHaveLength(8)
+    expect(input.approvedDesignVariants).toHaveLength(11)
     expect(input.approvedDesignVariants).toEqual(expect.arrayContaining([
       expect.objectContaining({
         blockType: "hero",
@@ -148,6 +148,45 @@ describe("site generation catalog governance", () => {
           intro: expect.objectContaining({ status: "inactive", exposed: false }),
         }),
       }),
+      expect.objectContaining({
+        blockType: "pricing",
+        designVariant: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+        legacyDesignVariant: "tailwindPlusSimpleTiers",
+        providerVariantId: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+        slots: expect.objectContaining({
+          plans: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 2, maxItems: 2 }),
+          planTitle: expect.objectContaining({ status: "required", exposed: true }),
+          planPrice: expect.objectContaining({ status: "required", exposed: true }),
+          planCta: expect.objectContaining({ status: "required", exposed: true }),
+          planBadge: expect.objectContaining({ status: "inactive", exposed: false }),
+        }),
+      }),
+      expect.objectContaining({
+        blockType: "team",
+        designVariant: "tailwindplus.marketing.team.with-small-images",
+        legacyDesignVariant: "tailwindPlusGrid",
+        providerVariantId: "tailwindplus.marketing.team.with-small-images",
+        slots: expect.objectContaining({
+          members: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 2, maxItems: 6 }),
+          memberName: expect.objectContaining({ status: "required", exposed: true }),
+          memberRole: expect.objectContaining({ status: "required", exposed: true }),
+          memberBio: expect.objectContaining({ status: "optional", exposed: false }),
+          memberLinks: expect.objectContaining({ status: "optional", exposed: false }),
+        }),
+      }),
+      expect.objectContaining({
+        blockType: "blogCards",
+        designVariant: "tailwindplus.marketing.blog.three-column",
+        legacyDesignVariant: "tailwindPlusThreeColumn",
+        providerVariantId: "tailwindplus.marketing.blog.three-column",
+        slots: expect.objectContaining({
+          posts: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 3, maxItems: 3 }),
+          postTitle: expect.objectContaining({ status: "required", exposed: true }),
+          postExcerpt: expect.objectContaining({ status: "required", exposed: true }),
+          postHref: expect.objectContaining({ status: "required", exposed: true }),
+          postAuthorImage: expect.objectContaining({ status: "optional", exposed: true }),
+        }),
+      }),
     ]))
     expect(input.requirements.join("\n")).toContain("approvedDesignVariants")
     expect(input.requirements.join("\n")).toContain("inactive slots")
@@ -165,7 +204,7 @@ describe("site generation catalog governance", () => {
     expect(input.approvedDesignVariants.some((variant) => /amicare/i.test(`${variant.variantId} ${variant.designVariant}`))).toBe(false)
     expect(serializedInput).toMatch(/Tailwind Plus/)
     expect(serializedInput).not.toMatch(/Preline UI|Tailblocks/)
-    expect(serializedInput).not.toMatch(/tailwindPlusSimpleTiers|tailwindPlusNewsletterDetails/)
+    expect(serializedInput).not.toMatch(/tailwindPlusNewsletterDetails/)
     expect(serializedInput).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(serializedInput).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)
     expect(serializedInput).not.toMatch(/cms-block--source-(?:amicare)|site-(?:header|footer)--source-(?:amicare)/)
@@ -262,11 +301,25 @@ describe("site generation catalog governance", () => {
     const ctaSchema = blockSchemaFor("cta")
     const contactSchema = blockSchemaFor("contactSection")
     const testimonialsSchema = blockSchemaFor("testimonials")
+    const pricingSchema = blockSchemaFor("pricing")
     const statsSchema = blockSchemaFor("stats")
     const logoCloudSchema = blockSchemaFor("logoCloud")
+    const teamSchema = blockSchemaFor("team")
+    const blogCardsSchema = blockSchemaFor("blogCards")
     const schemaBlockTypes = (siteGenerationJsonSchema.properties.pages.items as any)
       .properties.blocks.items.anyOf.map((entry: any) => entry.properties.blockType.const)
-    const expectedBlockTypes = ["hero", "featureList", "cta", "contactSection", "testimonials", "stats", "logoCloud"]
+    const expectedBlockTypes = [
+      "hero",
+      "featureList",
+      "cta",
+      "contactSection",
+      "testimonials",
+      "pricing",
+      "stats",
+      "logoCloud",
+      "team",
+      "blogCards",
+    ]
 
     expect(schemaBlockTypes).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
     expect(schemaBlockTypes).toEqual(expectedBlockTypes)
@@ -304,6 +357,16 @@ describe("site generation catalog governance", () => {
     expect(testimonialsSchema.properties).not.toHaveProperty("title")
     expect(testimonialsSchema.properties.items.minItems).toBe(1)
     expect(testimonialsSchema.properties.items.maxItems).toBe(1)
+    expect(pricingSchema.additionalProperties).toBe(false)
+    expect(pricingSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "plans"])
+    expect(pricingSchema.properties.designVariant.enum).toEqual([
+      "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+    ])
+    expect(pricingSchema.properties.plans.minItems).toBe(2)
+    expect(pricingSchema.properties.plans.maxItems).toBe(2)
+    expect(pricingSchema.properties.plans.items.properties.features.minItems).toBe(4)
+    expect(pricingSchema.properties.plans.items.properties.features.maxItems).toBe(6)
+    expect(pricingSchema.properties).not.toHaveProperty("className")
     expect(statsSchema.additionalProperties).toBe(false)
     expect(statsSchema.required).toEqual(["blockType", "designVariant", "anchor", "items"])
     expect(statsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.stats.simple"])
@@ -318,7 +381,19 @@ describe("site generation catalog governance", () => {
     expect(logoCloudSchema.properties).not.toHaveProperty("intro")
     expect(logoCloudSchema.properties.logos.minItems).toBe(5)
     expect(logoCloudSchema.properties.logos.maxItems).toBe(5)
-    expect(schemaBlockTypes).not.toEqual(expect.arrayContaining(["pricing", "faq", "processSteps", "comparison"]))
+    expect(teamSchema.additionalProperties).toBe(false)
+    expect(teamSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "members"])
+    expect(teamSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.team.with-small-images"])
+    expect(teamSchema.properties.members.minItems).toBe(2)
+    expect(teamSchema.properties.members.maxItems).toBe(6)
+    expect(teamSchema.properties).not.toHaveProperty("className")
+    expect(blogCardsSchema.additionalProperties).toBe(false)
+    expect(blogCardsSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "posts"])
+    expect(blogCardsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.blog.three-column"])
+    expect(blogCardsSchema.properties.posts.minItems).toBe(3)
+    expect(blogCardsSchema.properties.posts.maxItems).toBe(3)
+    expect(blogCardsSchema.properties).not.toHaveProperty("rawHtml")
+    expect(schemaBlockTypes).not.toEqual(expect.arrayContaining(["faq", "processSteps", "comparison"]))
     expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
   })
 
@@ -399,7 +474,7 @@ describe("site generation catalog governance", () => {
         seo: { title: "Home", description: "Generated home." },
         blocks: [{
           blockType: "pricing",
-          designVariant: "tailwindPlusSimpleTiers",
+          designVariant: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
           title: { t: "root", variant: "inline", children: [{ t: "text", v: "Pricing" }] },
           intro: null,
           plans: [{

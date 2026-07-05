@@ -102,6 +102,10 @@ describe("processIntakeSubmission", () => {
       },
     })
     expect(store["site-settings"][0]?.contactEmail).toBe("sam@example.com")
+    expect(store["site-settings"][0]?.chrome?.header?.variant).toBe("tailwindplus.marketing.header.with-stacked-flyout-menu")
+    expect(store["site-settings"][0]?.chrome?.header?.cta).toMatchObject({ label: "Contact", href: "mailto:sam@example.com" })
+    expect(store["site-settings"][0]?.chrome?.footer?.variant).toBe("default")
+    expect(store["site-settings"][0]?.chrome?.banner?.variant).toBe("default")
     expect(store.pages.every((page) => page.status === "draft")).toBe(true)
     expect(store["site-generation-runs"][0]?.applyResult?.ok).toBe(true)
     expect(store["site-generation-runs"][0]?.provider).toBe("mock")

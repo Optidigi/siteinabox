@@ -4,9 +4,12 @@ import { tailwindPlusMarketingContactCenteredProviderBlock } from "./tailwindplu
 import { tailwindPlusMarketingCtaDarkPanelWithAppScreenshotProviderBlock } from "./tailwindplus/marketing/cta/dark-panel-with-app-screenshot"
 import { tailwindPlusMarketingFeatureCentered2x2GridProviderBlock } from "./tailwindplus/marketing/feature/centered-2x2-grid"
 import { tailwindPlusMarketingFeatureWithProductScreenshotProviderBlock } from "./tailwindplus/marketing/feature/with-product-screenshot"
+import { tailwindPlusMarketingBlogThreeColumnProviderBlock } from "./tailwindplus/marketing/blog/three-column"
 import { tailwindPlusMarketingHeroSimpleCenteredProviderBlock } from "./tailwindplus/marketing/hero/simple-centered"
 import { tailwindPlusMarketingLogoCloudSimpleWithHeadingProviderBlock } from "./tailwindplus/marketing/logo-cloud/simple-with-heading"
+import { tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierProviderBlock } from "./tailwindplus/marketing/pricing/two-tiers-with-emphasized-right-tier"
 import { tailwindPlusMarketingStatsSimpleProviderBlock } from "./tailwindplus/marketing/stats/simple"
+import { tailwindPlusMarketingTeamWithSmallImagesProviderBlock } from "./tailwindplus/marketing/team/with-small-images"
 import { tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock } from "./tailwindplus/marketing/testimonial/simple-centered"
 
 export type ProviderBlockSlotKind = "richtext" | "text" | "cta" | "image" | "repeater"
@@ -61,6 +64,9 @@ export const providerBlockDefinitions = [
   tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock,
   tailwindPlusMarketingStatsSimpleProviderBlock,
   tailwindPlusMarketingLogoCloudSimpleWithHeadingProviderBlock,
+  tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierProviderBlock,
+  tailwindPlusMarketingTeamWithSmallImagesProviderBlock,
+  tailwindPlusMarketingBlogThreeColumnProviderBlock,
 ] as const satisfies readonly ProviderBlockDefinition<any>[]
 
 export type ProviderBlockId = typeof providerBlockDefinitions[number]["id"]
