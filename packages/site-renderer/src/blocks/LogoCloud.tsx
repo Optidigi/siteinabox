@@ -31,7 +31,7 @@ export function LogoCloudBlockRenderer({ block, options }: { block: LogoCloudBlo
       )}
       <ul className={cx("cms-block__logos", nativeBlockClassName(block, "list"))}>
         {block.logos.map((logo, i) => {
-          const image = resolveMedia(logo.image, options.mediaResolver)
+          const image = resolveMedia(logo.image ?? null, options.mediaResolver)
           const content = image ? <img src={image.src} alt={image.alt ?? logo.name} loading="lazy" decoding="async" /> : <span>{logo.name}</span>
           return (
             <li key={i} className={cx("cms-block__logo", nativeBlockClassName(block, "item"))}>

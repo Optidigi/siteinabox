@@ -89,7 +89,7 @@ export const LogoCloud: BlockWithMeta = {
     richBlock("intro", "Introductory text above logos."),
     { name: "logos", type: "array", required: true, fields: [
       { name: "name", type: "text", required: true },
-      { name: "image", type: "upload", relationTo: "media", required: true },
+      { name: "image", type: "upload", relationTo: "media" },
       { name: "href", type: "text", validate: validateSafeHref },
     ]},
     ...blockBaseFields("partners"),

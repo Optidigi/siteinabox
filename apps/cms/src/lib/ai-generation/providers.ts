@@ -427,7 +427,7 @@ const blockJsonSchemas = [
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["name", "image", "href"],
+          required: ["name", "href"],
           properties: { name: { type: "string" }, image: mediaRefJsonSchema, href: stringOrNull },
         },
       },

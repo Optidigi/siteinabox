@@ -728,6 +728,36 @@ const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): 
         : item,
     )
   }
+  if (Array.isArray(normalized.logos)) {
+    normalized.logos = normalized.logos.map((item) =>
+      item && typeof item === "object"
+        ? {
+            ...(item as Record<string, unknown>),
+            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
+          }
+        : item,
+    )
+  }
+  if (Array.isArray(normalized.members)) {
+    normalized.members = normalized.members.map((item) =>
+      item && typeof item === "object"
+        ? {
+            ...(item as Record<string, unknown>),
+            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
+          }
+        : item,
+    )
+  }
+  if (Array.isArray(normalized.posts)) {
+    normalized.posts = normalized.posts.map((item) =>
+      item && typeof item === "object"
+        ? {
+            ...(item as Record<string, unknown>),
+            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
+          }
+        : item,
+    )
+  }
   if (Array.isArray(normalized.pairs)) {
     normalized.pairs = normalized.pairs.map((pair) =>
       pair && typeof pair === "object"

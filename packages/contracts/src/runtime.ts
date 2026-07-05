@@ -532,7 +532,7 @@ export const LogoCloudBlockSchema: z.ZodType<LogoCloudBlock> = strictObject({
   logos: z
     .array(strictObject({
       name: z.string().min(1),
-      image: MediaRefSchema,
+      image: MediaRefSchema.optional(),
       href: nullableString,
     }))
     .min(1),

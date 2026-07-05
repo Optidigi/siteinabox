@@ -222,7 +222,7 @@ export type LogoCloudBlock = BlockInstanceBase & {
   intro?: RtRoot | null
   logos: Array<{
     name: string
-    image: MediaRef
+    image?: MediaRef
     href?: string | null
   }>
 }

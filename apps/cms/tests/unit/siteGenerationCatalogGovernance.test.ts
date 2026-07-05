@@ -498,6 +498,7 @@ describe("site generation catalog governance", () => {
     expect(logoCloudSchema.properties).not.toHaveProperty("intro")
     expect(logoCloudSchema.properties.logos.minItems).toBe(5)
     expect(logoCloudSchema.properties.logos.maxItems).toBe(5)
+    expect(logoCloudSchema.properties.logos.items.required).toEqual(["name", "href"])
     expect(teamSchema.additionalProperties).toBe(false)
     expect(teamSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "members"])
     expect(teamSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.team.with-small-images"])
