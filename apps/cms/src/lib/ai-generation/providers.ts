@@ -324,7 +324,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "logo", "items"],
+    required: ["blockType", "designVariant", "anchor", "items"],
     properties: {
       blockType: { type: "string", const: "testimonials" },
       ...baseBlockProperties,
@@ -337,7 +337,7 @@ const blockJsonSchemas = [
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["quote", "author", "role", "avatar"],
+          required: ["quote", "author", "role"],
           properties: {
             quote: { type: "string" },
             author: { type: "string" },

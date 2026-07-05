@@ -714,7 +714,7 @@ const omitNullishCmsValues = (value: unknown): unknown => {
 const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): Record<string, unknown> => {
   const { id: _id, source: _source, ...rest } = block
   const normalized: Record<string, unknown> = { ...rest }
-  for (const key of ["image", "avatar", "backgroundImage", "foregroundImage", "before", "after"]) {
+  for (const key of ["image", "avatar", "logo", "backgroundImage", "foregroundImage", "before", "after"]) {
     if (key in normalized) normalized[key] = normalizeMediaRef(normalized[key], mediaIds)
   }
   if (Array.isArray(normalized.items)) {

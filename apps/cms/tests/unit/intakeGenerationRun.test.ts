@@ -150,6 +150,8 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.blocks[6]?.items).toHaveLength(4)
     expect(store.pages[0]?.blocks[6]?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
     expect(store.pages[0]?.blocks[7]?.items).toHaveLength(1)
+    expect(store.pages[0]?.blocks[7]).not.toHaveProperty("logo")
+    expect(store.pages[0]?.blocks[7]?.items.every((item: any) => !("avatar" in item))).toBe(true)
     expect(store.pages[0]?.blocks[8]?.plans).toHaveLength(2)
     expect(store.pages[0]?.blocks[8]?.plans.every((plan: any) => !("badge" in plan))).toBe(true)
     expect(store.pages[0]?.blocks[9]?.members).toHaveLength(3)

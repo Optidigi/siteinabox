@@ -469,11 +469,12 @@ describe("site generation catalog governance", () => {
     expect(contactSchema.properties.fields.minItems).toBe(1)
     expect(contactSchema.properties.fields.maxItems).toBe(6)
     expect(testimonialsSchema.additionalProperties).toBe(false)
-    expect(testimonialsSchema.required).toEqual(["blockType", "designVariant", "anchor", "logo", "items"])
+    expect(testimonialsSchema.required).toEqual(["blockType", "designVariant", "anchor", "items"])
     expect(testimonialsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.testimonial.simple-centered"])
     expect(testimonialsSchema.properties).not.toHaveProperty("title")
     expect(testimonialsSchema.properties.items.minItems).toBe(1)
     expect(testimonialsSchema.properties.items.maxItems).toBe(1)
+    expect(testimonialsSchema.properties.items.items.required).toEqual(["quote", "author", "role"])
     expect(pricingSchema.additionalProperties).toBe(false)
     expect(pricingSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "plans"])
     expect(pricingSchema.properties.designVariant.enum).toEqual([
