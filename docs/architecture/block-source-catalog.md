@@ -22,7 +22,11 @@ The active V1 provider runtime is intentionally narrow:
   - `tailwindplus.marketing.logo-cloud.simple-with-heading`;
   - `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`;
   - `tailwindplus.marketing.team.with-small-images`;
+  - `tailwindplus.marketing.newsletter.side-by-side-with-details`;
+  - `tailwindplus.marketing.bento.three-column-bento-grid`;
+  - `tailwindplus.marketing.content.sticky-product-screenshot`;
   - `tailwindplus.marketing.blog.three-column`;
+  - `tailwindplus.marketing.hero.with-stats`;
 - preferred generated `designVariant` values are the canonical provider IDs
   above;
 - persisted legacy designVariant aliases remain accepted for existing content:
@@ -35,12 +39,19 @@ The active V1 provider runtime is intentionally narrow:
   - `tailwindPlusSimpleWithHeading`;
   - `tailwindPlusSimpleTiers`;
   - `tailwindPlusGrid`;
+  - `tailwindPlusNewsletterSideBySideWithDetails`;
+  - `tailwindPlusThreeColumnBentoGrid`;
+  - `tailwindPlusContentStickyProductScreenshot`;
   - `tailwindPlusThreeColumn`;
-- active CMS page block slugs: `hero`, `featureList`, `cta`,
-  `contactSection`, `testimonials`, `stats`, `logoCloud`, `pricing`, `team`,
-  and `blogCards`;
+  - `tailwindPlusHeroWithStats`;
+- active CMS page block slugs for self-serve provider generation: `hero`,
+  `featureList`, `cta`, `contactSection`, `testimonials`, `stats`,
+  `logoCloud`, `pricing`, `team`, `newsletter`, `contentSection`, and
+  `bentoGrid`, and `blogCards`;
 - active header chrome:
   `tailwindplus.marketing.header.with-stacked-flyout-menu`;
+- active banner chrome:
+  `tailwindplus.marketing.banner.with-button`;
 - active system fallback:
   `tailwindplus.marketing.feedback.404-simple` for known-host missing pages.
 
@@ -49,9 +60,12 @@ generic visual variants, and locked provider examples remain inactive for
 self-serve generation.
 
 Mock/self-serve fixture generation defaults global header chrome to
-`tailwindplus.marketing.header.with-stacked-flyout-menu`. Footer and banner
-chrome remain on the SiaB `default` variants until source-visible
-provider-backed footer/banner implementations are active.
+`tailwindplus.marketing.header.with-stacked-flyout-menu` and emits the active
+homepage-suitable Tailwind Plus page-section set, including pricing, team,
+blog/cards, newsletter, and content section. The mock fixture also uses the
+active Tailwind Plus bento grid and banner chrome. Footer chrome remains on the
+SiaB `default` variant until a source-visible provider-backed footer
+implementation is active.
 
 ## Canonical Generated Block Path
 
@@ -135,8 +149,16 @@ preferred `designVariant` is the canonical provider id:
   `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`.
 - `team:tailwindPlusGrid` ->
   `tailwindplus.marketing.team.with-small-images`.
+- `newsletter:tailwindPlusNewsletterSideBySideWithDetails` ->
+  `tailwindplus.marketing.newsletter.side-by-side-with-details`.
+- `bentoGrid:tailwindPlusThreeColumnBentoGrid` ->
+  `tailwindplus.marketing.bento.three-column-bento-grid`.
+- `contentSection:tailwindPlusContentStickyProductScreenshot` ->
+  `tailwindplus.marketing.content.sticky-product-screenshot`.
 - `blogCards:tailwindPlusThreeColumn` ->
   `tailwindplus.marketing.blog.three-column`.
+- `hero:tailwindPlusHeroWithStats` ->
+  `tailwindplus.marketing.hero.with-stats`.
 
 Inactive provider families are removed from the active app/codebase architecture,
 not backlog-only providers. They must not appear in generic self-serve
@@ -178,6 +200,9 @@ renderer stylesheet for matching renderer coverage.
 Provider block roots are marked with `data-provider-block="tailwindplus"`,
 `data-provider-variant="<canonical-provider-id>"`,
 `data-source-backed-block="true"`, and the existing `data-source-variant`.
+Projected block analytics also carries the selected `designVariant` as
+`providerVariant`, emitted as `data-siab-provider-variant` and PostHog capture
+attributes for provider-variant performance analysis.
 Generic non-tenant `.cms-block` renderer CSS must be scoped to
 `.cms-block:not([data-provider-block])` and descendant selectors must originate
 from that filtered root. Provider isolation is an exclusion policy, not a
@@ -251,6 +276,39 @@ Current active runtime families and blocks:
   `tailwindPlusThreeColumn` aliases still accepted. It renders exactly three
   article cards with required titles, excerpts, and hrefs plus optional dates,
   authors, categories, and author images.
+- `tailwindplus.marketing.newsletter.side-by-side-with-details`, with legacy
+  `tailwindPlusNewsletterSideBySideWithDetails` aliases still accepted. It is
+  a `newsletter` page section, not a contact section. It renders exactly two
+  benefit items and exposes title, description, email label, placeholder,
+  submit label, provider binding, and benefit title/description/icon slots.
+  Consent copy is inactive for this exact source variant and is rejected if
+  generated or saved with a value.
+- `tailwindplus.marketing.hero.with-stats`, with legacy
+  `tailwindPlusHeroWithStats` aliases still accepted. It treats Tailwind Plus
+  Header Sections `With stats` as a `hero` variant. It renders headline,
+  optional body, optional primary/secondary CTAs, optional media, and exactly
+  four stats. Eyebrow and pill links are inactive for this exact variant.
+- `tailwindplus.marketing.content.sticky-product-screenshot`, with legacy
+  `tailwindPlusContentStickyProductScreenshot` aliases still accepted. It
+  renders a Tailwind Plus Content Sections `With sticky product screenshot`
+  layout through the `contentSection` block contract. Active slots are eyebrow,
+  title, intro, body, optional screenshot media, exactly three feature rows,
+  secondary title, and secondary body. CTA is inactive because the provider
+  source variant has no action.
+- `tailwindplus.marketing.bento.three-column-bento-grid`, with legacy
+  `tailwindPlusThreeColumnBentoGrid` aliases still accepted. It renders the
+  Tailwind Plus Bento Grids `Three column bento grid` source through exactly
+  four ordered `bentoGrid` items. Geometry is fixed by renderer order; generated
+  data cannot set spans, placement, layout classes, or breakpoint behavior.
+  Item icons and CTAs are inactive for this exact source variant.
+
+Current active provider chrome:
+
+- `tailwindplus.marketing.header.with-stacked-flyout-menu` renders global
+  header chrome from structured site settings and `navHeader`.
+- `tailwindplus.marketing.banner.with-button` renders global banner chrome from
+  `SiteSettings.chrome.banner`. It is not a page block and is not exposed in
+  `SITE_BLOCK_SLUGS`.
 
 Amicare tenant-exclusive rendering is separate compatibility code and is not
 part of self-serve provider blocks.
@@ -259,6 +317,13 @@ Provider-like designVariant values fail closed. Missing or inactive provider
 variants render a controlled editor/preview error instead of falling back to a
 generic SiaB block. Publishing rejects pages containing unresolved provider
 variants before snapshots are created.
+
+Optional provider slots may be empty in drafts. Canvas/editor surfaces can show
+clear add-style affordances for empty optional CTAs, images, or text, but live
+and customer-preview output must omit unset optional elements entirely. Required
+provider slots and fixed provider repeaters remain publish-blocking when unset
+or outside their manifest `minItems`/`maxItems`; public output must not invent
+placeholder cards, buttons, or layout cells to compensate.
 
 ## Approval Gate
 
@@ -296,6 +361,8 @@ Active source-visible Marketing/Product Marketing variants after this pass:
 
 - Hero Sections: `Simple centered` ->
   `tailwindplus.marketing.hero.simple-centered`.
+- Header Sections: `With stats` ->
+  `tailwindplus.marketing.hero.with-stats` as a hero variant.
 - Feature Sections: `With product screenshot` ->
   `tailwindplus.marketing.feature.with-product-screenshot`.
 - Feature Sections: `Centered 2x2 grid` ->
@@ -313,29 +380,53 @@ Active source-visible Marketing/Product Marketing variants after this pass:
   `tailwindplus.marketing.logo-cloud.simple-with-heading`.
 - Team Sections: `With small images` ->
   `tailwindplus.marketing.team.with-small-images`.
+- Newsletter Sections: `Side-by-side with details` ->
+  `tailwindplus.marketing.newsletter.side-by-side-with-details`.
+- Bento Grids: `Three column bento grid` ->
+  `tailwindplus.marketing.bento.three-column-bento-grid`.
+- Content Sections: `With sticky product screenshot` ->
+  `tailwindplus.marketing.content.sticky-product-screenshot`.
 - Blog Sections: `Three-column` ->
   `tailwindplus.marketing.blog.three-column`.
 - Marketing Headers: `With stacked flyout menu` ->
   `tailwindplus.marketing.header.with-stacked-flyout-menu`.
+- Banners: `With button` ->
+  `tailwindplus.marketing.banner.with-button` as banner chrome.
 - Feedback/404 Pages: `Simple` ->
   `tailwindplus.marketing.feedback.404-simple`.
 
-Deferred source-visible Marketing candidates:
+Next Tailwind Plus-only expansion classification:
 
-- Bento Grids `Three column bento grid`: deferred because the current block
-  contract does not encode the provider bento geometry cleanly enough for
-  generation-safe slot validation.
-- Header Sections `With stats`: deferred as a page-intro role, not a homepage
-  hero replacement; needs a deliberate mapping to existing rich text/stats
-  contracts.
-- Newsletter Sections `Side-by-side with details`: deferred because newsletter
-  backend, consent copy, and form semantics need a tighter product decision.
-- Content Sections `With sticky product screenshot`: deferred as
-  product/SaaS-specific and asset-heavy.
-- Banners `With button`: deferred until banner chrome/page-alert ownership is
-  modeled separately from page blocks.
+A. Ready to add now:
+
+- Additional variants for already-supported roles: more source-visible Tailwind
+  Plus Marketing hero, feature, CTA, stats, testimonials, contact, logo-cloud,
+  pricing, team, blog, newsletter, bento, content section, header, and banner
+  variants that reuse the existing typed slots without new CMS fields. Each still needs
+  the full exact-source fixture/hash, renderer, typed slot manifest, token
+  policy, root marker, CSS isolation, generation exposure, fail-closed
+  validation, and structural test gates before activation.
+
+B. Add after small contract/editor work:
+
+- Newsletter variants with consent text, extra fields, or list segmentation:
+  useful, but require explicit form/consent editor semantics beyond the current
+  side-by-side source variant.
+- Additional banner variants with multiple actions, audience targeting, or
+  persistence behavior: useful, but require a small `SiteSettings.chrome.banner`
+  contract/editor extension before activation.
+
+C. Deferred until separate model or source availability:
+
+- Additional Bento Grid variants whose source geometry cannot be represented as
+  fixed renderer order with strict item counts remain deferred. Generation still
+  cannot supply layout spans, placement, classes, or breakpoint behavior.
 - Flyout Menus `Stacked with footer actions`: deferred as header substructure;
   it should not be exposed independently from a supported header renderer.
+- FAQ Sections: deferred while public Tailwind Plus FAQ examples remain
+  locked/non-downloadable.
+- Footer Sections: deferred while public Tailwind Plus Footer examples remain
+  locked/non-downloadable and until footer chrome ownership is modeled.
 
 Footer and FAQ current state, verified July 5, 2026:
 
@@ -381,11 +472,14 @@ Header, footer, and announcement/banner are global site chrome. They remain in
 Self-serve generation exposes the default structured chrome variants and the
 active Tailwind Plus Marketing header chrome
 `tailwindplus.marketing.header.with-stacked-flyout-menu` for
-`SiteSettings.chrome.header.variant`. It is rendered through
+`SiteSettings.chrome.header.variant` and the active Tailwind Plus Marketing
+banner chrome `tailwindplus.marketing.banner.with-button` for
+`SiteSettings.chrome.banner.variant`. They are rendered through
 `packages/site-renderer/src/source-chrome`, not as page content. Header slots
 come from structured `SiteSettings` data: site/brand name, logo, `navHeader`,
-and header CTA. Mock generation now uses this header by default. Footer and
-banner remain SIAB-owned chrome variants.
+and header CTA. Banner slots come from `SiteSettings.chrome.banner`: title,
+message, link, visibility, and dismissibility. Mock generation now uses this
+header and banner by default. Footer remains a SIAB-owned chrome variant.
 
 Inactive provider chrome variants are not active chrome choices, provenance
 entries, renderer fixture requirements, or AI-generation suggestions. Provider

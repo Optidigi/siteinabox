@@ -82,15 +82,24 @@ Generated-site blocks have one canonical contract path:
   `apps/cms/src/components/editor/canvas/CanvasBlockRenderer.tsx` and
   `apps/cms/src/components/editor/canvas/blocks/*.tsx`.
 
-`SITE_BLOCK_SLUGS` currently contains every generated-site page block that AI
-may use. `SITE_DEFERRED_MARKETING_BLOCK_SLUGS` is empty; deferred blocks are
-not available to generation.
+`SITE_BLOCK_SLUGS` contains the structured generated-site page block contracts
+that Payload, runtime validation, and shared renderers understand. Self-serve
+AI generation uses a narrower active partition:
+`SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS`, plus its generated JSON schema
+projection. Structured contracts can exist for CMS/runtime coverage without
+becoming self-serve generation candidates until a complete source-backed
+provider variant is activated.
+`SITE_DEFERRED_MARKETING_BLOCK_SLUGS` is empty; deferred blocks are not
+available to generation.
 
 Self-serve generation has a narrower active source partition than the full
 provenance catalog. The current active provider-backed partition contains:
 
 - Tailwind Plus Marketing hero `tailwindplus.marketing.hero.simple-centered`,
   with legacy alias `tailwindPlusSimpleCentered` on `hero` blocks;
+- Tailwind Plus Marketing hero/header section
+  `tailwindplus.marketing.hero.with-stats`, with legacy alias
+  `tailwindPlusHeroWithStats` on `hero` blocks;
 - Tailwind Plus Marketing feature section
   `tailwindplus.marketing.feature.with-product-screenshot`, with legacy alias
   `tailwindPlusWithProductScreenshot` on `featureList` blocks;
@@ -110,7 +119,26 @@ provenance catalog. The current active provider-backed partition contains:
   legacy alias `tailwindPlusSimple` on `stats` blocks;
 - Tailwind Plus Marketing logo cloud
   `tailwindplus.marketing.logo-cloud.simple-with-heading`, with legacy alias
-  `tailwindPlusSimpleWithHeading` on `logoCloud` blocks.
+  `tailwindPlusSimpleWithHeading` on `logoCloud` blocks;
+- Tailwind Plus Marketing pricing
+  `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`, with
+  legacy alias `tailwindPlusSimpleTiers` on `pricing` blocks;
+- Tailwind Plus Marketing team
+  `tailwindplus.marketing.team.with-small-images`, with legacy alias
+  `tailwindPlusGrid` on `team` blocks;
+- Tailwind Plus Marketing newsletter
+  `tailwindplus.marketing.newsletter.side-by-side-with-details`, with legacy
+  alias `tailwindPlusNewsletterSideBySideWithDetails` on `newsletter` blocks;
+- Tailwind Plus Marketing bento grid
+  `tailwindplus.marketing.bento.three-column-bento-grid`, with legacy alias
+  `tailwindPlusThreeColumnBentoGrid` on `bentoGrid` blocks;
+- Tailwind Plus Marketing content section
+  `tailwindplus.marketing.content.sticky-product-screenshot`, with legacy
+  alias `tailwindPlusContentStickyProductScreenshot` on `contentSection`
+  blocks;
+- Tailwind Plus Marketing blog/cards
+  `tailwindplus.marketing.blog.three-column`, with legacy alias
+  `tailwindPlusThreeColumn` on `blogCards` blocks.
 
 AI inputs, generated JSON schema enums, mock generation, CMS validation, and
 publish validation use those active executable provider definitions and must not
@@ -127,13 +155,19 @@ arbitrary Tailwind classes, executable code, or layout instructions.
 Provider roots carry `data-provider-block`, `data-provider-variant`, and
 `data-source-backed-block`; generic `.cms-block` CSS excludes those roots so
 legacy SiaB block styling cannot alter provider layout.
+Projected analytics stores the selected `designVariant` as `providerVariant`
+and emits it to PostHog section/action context for provider-variant performance
+analysis.
 
 Header, footer, and banner remain global chrome under `SiteSettings.chrome` plus
 `navHeader`/`navFooter`; they are not page blocks. Self-serve generation exposes
 the default structured chrome variants plus the active Tailwind Plus Marketing
 header chrome `tailwindplus.marketing.header.with-stacked-flyout-menu` through
-`SiteSettings.chrome.header.variant`. Header content remains structured site
-settings data: brand/site name, logo, header navigation, and CTA.
+`SiteSettings.chrome.header.variant` and the active Tailwind Plus Marketing
+banner chrome `tailwindplus.marketing.banner.with-button` through
+`SiteSettings.chrome.banner.variant`. Header and banner content remains
+structured site settings data: brand/site name, logo, header navigation, CTA,
+banner message/link, and dismissibility.
 
 404 output is system fallback behavior, not generated page content. Unknown
 hosts and missing snapshots use the platform/default 404. When a published
@@ -185,6 +219,8 @@ Generated and published sites are PostHog-first by default. Projection resolves
 public analytics settings through the shared analytics config and the renderer
 emits consent-gated metadata. Capture is active only when deployment env
 provides the required PostHog token/config and analytics is not disabled.
+The public renderer does not need its own PostHog env; it consumes the
+CMS-projected snapshot analytics config.
 
 ## Official Tenant State
 

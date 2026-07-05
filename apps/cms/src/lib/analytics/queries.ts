@@ -43,6 +43,7 @@ export type TopCtaMetric = {
 export type SectionPerformanceMetric = {
   sectionId: string | null
   sectionType: string | null
+  providerVariant: string | null
   pagePath: string | null
   views: number
   engagements: number
@@ -420,6 +421,7 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
     SELECT
       properties.section_id AS section_id,
       properties.section_type AS section_type,
+      properties.provider_variant AS provider_variant,
       properties.page_path AS page_path,
       countIf(event = 'site_section_viewed') AS views,
       countIf(event = 'site_section_engaged') AS engagements,
@@ -427,7 +429,7 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
     FROM events
     WHERE ${analyticsWhere(_scope)}
       AND (event IN ('site_section_viewed', 'site_section_engaged') OR ${ctaClickCondition})
-    GROUP BY section_id, section_type, page_path
+    GROUP BY section_id, section_type, provider_variant, page_path
     ORDER BY views DESC
     LIMIT 10
   `, "siab_section_performance")
@@ -435,10 +437,11 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
   return (response?.results ?? []).map((row) => ({
     sectionId: stringAt(row, 0),
     sectionType: stringAt(row, 1),
-    pagePath: stringAt(row, 2),
-    views: numberAt(row, 3),
-    engagements: numberAt(row, 4),
-    ctaClicks: numberAt(row, 5),
+    providerVariant: stringAt(row, 2),
+    pagePath: stringAt(row, 3),
+    views: numberAt(row, 4),
+    engagements: numberAt(row, 5),
+    ctaClicks: numberAt(row, 6),
   }))
 }
 

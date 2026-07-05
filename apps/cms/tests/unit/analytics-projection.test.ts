@@ -11,7 +11,13 @@ describe("analytics projection", () => {
         slug: "home",
         updatedAt: "2026-06-04T00:00:00.000Z",
         blocks: [
-          { id: "row-1", blockType: "hero", anchor: "top", headline: "Welkom" },
+          {
+            id: "row-1",
+            blockType: "hero",
+            designVariant: "tailwindplus.marketing.hero.simple-centered",
+            anchor: "top",
+            headline: "Welkom",
+          },
           { id: "row-2", blockType: "cta", headline: "Contact", primary: { label: "Bel", href: "tel:+31612345678" } },
         ],
       },
@@ -40,6 +46,7 @@ describe("analytics projection", () => {
       sectionType: "hero",
       sectionPosition: 0,
       sectionAnchor: "top",
+      providerVariant: "tailwindplus.marketing.hero.simple-centered",
     })
     expect(json.blocks[0].analytics.contentSignature).toMatch(/^[a-f0-9]{24}$/)
     expect(json.blocks[1].analytics).toMatchObject({

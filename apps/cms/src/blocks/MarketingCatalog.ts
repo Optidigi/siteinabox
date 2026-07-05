@@ -1,8 +1,11 @@
 import {
   BadgeDollarSign,
   BarChart3,
+  FileText,
   GalleryHorizontalEnd,
   Images,
+  LayoutGrid,
+  Mail,
   Newspaper,
   Users,
 } from "lucide-react"
@@ -109,6 +112,82 @@ export const Gallery: BlockWithMeta = {
     ]},
     { name: "cta", type: "group", fields: linkFields() },
     ...blockBaseFields("gallery"),
+  ],
+  summary: titleSummary(),
+}
+
+export const Newsletter: BlockWithMeta = {
+  slug: "newsletter",
+  icon: Mail,
+  description: "Newsletter signup section",
+  interfaceName: "NewsletterBlock",
+  fields: [
+    richInline("title", "Section heading for the newsletter signup."),
+    richBlock("description", "Supporting text for the newsletter signup."),
+    { name: "emailLabel", type: "text" },
+    { name: "emailPlaceholder", type: "text" },
+    { name: "submitLabel", type: "text" },
+    { name: "consentLabel", type: "textarea" },
+    { name: "benefits", type: "array", fields: [
+      richInline("title", "Benefit title."),
+      richBlock("description", "Benefit description."),
+      { name: "icon", type: "text" },
+    ]},
+    { name: "provider", type: "group", fields: [
+      { name: "provider", type: "text" },
+      { name: "action", type: "text", validate: validateSafeHref },
+      { name: "method", type: "select", options: [
+        { label: "POST", value: "POST" },
+        { label: "GET", value: "GET" },
+      ]},
+      { name: "requiresConsent", type: "checkbox", defaultValue: true },
+      { name: "analyticsEnabled", type: "checkbox", defaultValue: true },
+    ]},
+    ...blockBaseFields("newsletter"),
+  ],
+  summary: titleSummary(),
+}
+
+export const BentoGrid: BlockWithMeta = {
+  slug: "bentoGrid",
+  icon: LayoutGrid,
+  description: "Structured bento grid",
+  interfaceName: "BentoGridBlock",
+  fields: [
+    richInline("title", "Section heading for the bento grid."),
+    richBlock("intro", "Introductory text above the bento grid."),
+    { name: "items", type: "array", required: true, fields: [
+      richInline("title", "Item title."),
+      richBlock("description", "Item description."),
+      { name: "image", type: "upload", relationTo: "media" },
+      { name: "icon", type: "text" },
+      { name: "cta", type: "group", fields: linkFields() },
+    ]},
+    ...blockBaseFields("bento"),
+  ],
+  summary: titleSummary(),
+}
+
+export const ContentSection: BlockWithMeta = {
+  slug: "contentSection",
+  icon: FileText,
+  description: "Content section with optional media",
+  interfaceName: "ContentSectionBlock",
+  fields: [
+    richInline("eyebrow", "Small label above the heading."),
+    richInline("title", "Section heading."),
+    richBlock("intro", "Introductory text below the heading."),
+    richBlock("body", "Structured body content."),
+    { name: "features", type: "array", fields: [
+      richInline("title", "Feature title."),
+      richBlock("description", "Feature description."),
+      { name: "icon", type: "text" },
+    ]},
+    richInline("secondaryTitle", "Secondary heading."),
+    richBlock("secondaryBody", "Secondary body content."),
+    { name: "image", type: "upload", relationTo: "media" },
+    { name: "cta", type: "group", fields: linkFields() },
+    ...blockBaseFields("content"),
   ],
   summary: titleSummary(),
 }

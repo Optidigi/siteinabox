@@ -14,12 +14,14 @@ export function sectionAnalyticsAttrs(
     "data-siab-section-type": sectionType,
     "data-siab-section-position": position,
     "data-siab-section-anchor": analytics?.sectionAnchor ?? "",
+    "data-siab-provider-variant": analytics?.providerVariant ?? "",
     "data-siab-block-preset-id": analytics?.blockPresetId ?? "",
     "data-siab-content-signature": analytics?.contentSignature ?? "",
     "data-ph-capture-attribute-section_id": analytics?.sectionId ?? "",
     "data-ph-capture-attribute-section_type": sectionType,
     "data-ph-capture-attribute-section_position": position,
     "data-ph-capture-attribute-section_anchor": analytics?.sectionAnchor ?? "",
+    "data-ph-capture-attribute-provider_variant": analytics?.providerVariant ?? "",
   }
 }
 

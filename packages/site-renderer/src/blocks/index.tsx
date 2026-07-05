@@ -1,6 +1,8 @@
 import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
+import { BentoGridBlockRenderer } from "./BentoGrid"
 import { BlogCardsBlockRenderer } from "./BlogCards"
+import { ContentSectionBlockRenderer } from "./ContentSection"
 import { CTABlockRenderer } from "./CTA"
 import { ContactSectionBlockRenderer } from "./ContactSection"
 import { FAQBlockRenderer } from "./FAQ"
@@ -8,6 +10,7 @@ import { FeatureListBlockRenderer } from "./FeatureList"
 import { GalleryBlockRenderer } from "./Gallery"
 import { HeroBlockRenderer } from "./Hero"
 import { LogoCloudBlockRenderer } from "./LogoCloud"
+import { NewsletterBlockRenderer } from "./Newsletter"
 import { PricingBlockRenderer } from "./Pricing"
 import { RichTextBlockRenderer } from "./RichText"
 import { StatsBlockRenderer } from "./Stats"
@@ -32,6 +35,9 @@ export const defaultBlockRegistry: Required<BlockRegistry> = {
   stats: StatsBlockRenderer,
   logoCloud: LogoCloudBlockRenderer,
   gallery: GalleryBlockRenderer,
+  newsletter: NewsletterBlockRenderer,
+  bentoGrid: BentoGridBlockRenderer,
+  contentSection: ContentSectionBlockRenderer,
   team: TeamBlockRenderer,
   blogCards: BlogCardsBlockRenderer,
 }
@@ -80,6 +86,8 @@ export function BlockRenderer({
 
 export {
   BlogCardsBlockRenderer,
+  BentoGridBlockRenderer,
+  ContentSectionBlockRenderer,
   CTABlockRenderer,
   ContactSectionBlockRenderer,
   FAQBlockRenderer,
@@ -87,6 +95,7 @@ export {
   GalleryBlockRenderer,
   HeroBlockRenderer,
   LogoCloudBlockRenderer,
+  NewsletterBlockRenderer,
   PricingBlockRenderer,
   RichTextBlockRenderer,
   StatsBlockRenderer,

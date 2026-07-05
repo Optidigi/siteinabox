@@ -127,6 +127,7 @@ Section/component events additionally carry:
 - `section_type`
 - `section_position`
 - `section_anchor`
+- `provider_variant`
 - `block_preset_id`
 - `content_signature`
 
@@ -194,6 +195,9 @@ Source model:
   path, preferably commit SHA or image revision.
 - `section_type`, `section_position`, and `section_anchor` come from page block
   projection.
+- `provider_variant` comes from the page block `designVariant` when present.
+  This lets PostHog compare source-backed/provider variants without treating
+  analytics metadata as a design-selection API.
 - `section_id` uses the explicit anchor where present; otherwise projection
   emits a stable fallback such as page slug + section position + block type.
 - `block_preset_id` is optional in V1 and may be null until presets are

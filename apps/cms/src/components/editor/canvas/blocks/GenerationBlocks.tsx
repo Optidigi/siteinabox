@@ -1,5 +1,6 @@
 "use client"
 import * as React from "react"
+import { Button } from "@siteinabox/ui/components/button"
 import { InlineCtaButton } from "../inline/InlineCtaButton"
 import { InlineImage } from "../inline/InlineImage"
 import { RtSlot } from "../inline/RtSlot"
@@ -204,6 +205,88 @@ export const BlogCardsCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isA
           </article>
         ))}
       </div>
+    </section>
+  )
+}
+
+export const NewsletterCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, sectionChromeProps }) => {
+  const set = setField(block, onUpdate)
+  const idx = block.__index as number
+  const benefits: any[] = block.benefits ?? []
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--newsletter ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
+
+  return (
+    <section {...sectionProps}>
+      <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Newsletter title" elementPath={{ blockIndex: idx, field: "title" }} />
+      <RtSlot as="div" variant="block" manifest={manifest} value={block.description} onChange={set("description")} className="cms-block__description" placeholder="Description" elementPath={{ blockIndex: idx, field: "description" }} />
+      <form className="cms-block__form">
+        <label>{block.emailLabel || "Email address"}</label>
+        <input readOnly placeholder={block.emailPlaceholder ?? "you@example.com"} />
+        {block.consentLabel ? <p className="cms-block__form-consent">{block.consentLabel}</p> : null}
+        <Button type="button">{block.submitLabel || "Subscribe"}</Button>
+      </form>
+      <ul className="cms-block__features">
+        {benefits.map((benefit, i) => (
+          <li key={benefit.id ?? i} className="cms-block__feature">
+            <RtSlot as="h3" variant="inline" manifest={manifest} value={benefit.title} onChange={setArrayItemField(block, onUpdate, "benefits", i, "title")} placeholder="Benefit title" elementPath={{ blockIndex: idx, field: "benefits", itemIndex: i, subField: "title" }} />
+            <RtSlot as="div" variant="block" manifest={manifest} value={benefit.description} onChange={setArrayItemField(block, onUpdate, "benefits", i, "description")} placeholder="Benefit description" elementPath={{ blockIndex: idx, field: "benefits", itemIndex: i, subField: "description" }} />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+export const BentoGridCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+  const set = setField(block, onUpdate)
+  const idx = block.__index as number
+  const items: any[] = block.items ?? []
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--bentoGrid ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
+
+  return (
+    <section {...sectionProps}>
+      <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Bento title" elementPath={{ blockIndex: idx, field: "title" }} />
+      <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
+      <div className="cms-block__bentoGrid">
+        {items.map((item, i) => (
+          <article key={item.id ?? i} className="cms-block__bentoItem">
+            <InlineImage value={item.image} onChange={setArrayItemField(block, onUpdate, "items", i, "image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "items", itemIndex: i, subField: "image" }} />
+            <RtSlot as="h3" variant="inline" manifest={manifest} value={item.title} onChange={setArrayItemField(block, onUpdate, "items", i, "title")} placeholder="Item title" elementPath={{ blockIndex: idx, field: "items", itemIndex: i, subField: "title" }} />
+            <RtSlot as="div" variant="block" manifest={manifest} value={item.description} onChange={setArrayItemField(block, onUpdate, "items", i, "description")} placeholder="Item description" elementPath={{ blockIndex: idx, field: "items", itemIndex: i, subField: "description" }} />
+            <InlineCtaButton value={item.cta} onChange={setArrayItemField(block, onUpdate, "items", i, "cta")} className="cms-block__bentoCta" emptyLabel="Item action" elementPath={{ blockIndex: idx, field: "items", itemIndex: i, subField: "cta" }} />
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export const ContentSectionCanvas: React.FC<CanvasBlockRendererProps> = ({ block, isActive, tenantRendererKey, manifest, onActivate, onUpdate, tenantId, sectionChromeProps }) => {
+  const set = setField(block, onUpdate)
+  const idx = block.__index as number
+  const features: any[] = block.features ?? []
+  const sectionProps = generationSectionProps(block, isActive, tenantRendererKey, onActivate, `cms-block cms-block--contentSection ${canvasSourceVariantClassName(block, tenantRendererKey)}`.trim(), sectionChromeProps)
+
+  return (
+    <section {...sectionProps}>
+      <RtSlot as="p" variant="inline" manifest={manifest} value={block.eyebrow} onChange={set("eyebrow")} className="cms-block__eyebrow" placeholder="Eyebrow" elementPath={{ blockIndex: idx, field: "eyebrow" }} />
+      <RtSlot as="h2" variant="inline" manifest={manifest} value={block.title} onChange={set("title")} className="cms-block__title" placeholder="Content title" elementPath={{ blockIndex: idx, field: "title" }} />
+      <RtSlot as="div" variant="block" manifest={manifest} value={block.intro} onChange={set("intro")} className="cms-block__intro" placeholder="Intro" elementPath={{ blockIndex: idx, field: "intro" }} />
+      <RtSlot as="div" variant="block" manifest={manifest} value={block.body} onChange={set("body")} className="cms-block__body" placeholder="Body" elementPath={{ blockIndex: idx, field: "body" }} />
+      {features.length ? (
+        <ul className="cms-block__features">
+          {features.map((feature, i) => (
+            <li key={feature.id ?? i} className="cms-block__feature">
+              <RtSlot as="strong" variant="inline" manifest={manifest} value={feature.title} onChange={setArrayItemField(block, onUpdate, "features", i, "title")} placeholder="Feature title" elementPath={{ blockIndex: idx, field: "features", itemIndex: i, subField: "title" }} />
+              <RtSlot as="div" variant="block" manifest={manifest} value={feature.description} onChange={setArrayItemField(block, onUpdate, "features", i, "description")} placeholder="Feature description" elementPath={{ blockIndex: idx, field: "features", itemIndex: i, subField: "description" }} />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <RtSlot as="h3" variant="inline" manifest={manifest} value={block.secondaryTitle} onChange={set("secondaryTitle")} className="cms-block__subtitle" placeholder="Secondary title" elementPath={{ blockIndex: idx, field: "secondaryTitle" }} />
+      <RtSlot as="div" variant="block" manifest={manifest} value={block.secondaryBody} onChange={set("secondaryBody")} className="cms-block__body" placeholder="Secondary body" elementPath={{ blockIndex: idx, field: "secondaryBody" }} />
+      <InlineImage value={block.image} onChange={set("image")} tenantId={tenantId ?? undefined} chrome="overlay" elementPath={{ blockIndex: idx, field: "image" }} />
+      <InlineCtaButton value={block.cta} onChange={set("cta")} className="cms-block__cta" emptyLabel="Content action" elementPath={{ blockIndex: idx, field: "cta" }} />
     </section>
   )
 }

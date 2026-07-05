@@ -59,7 +59,7 @@ describe("site generation catalog governance", () => {
     }))
 
     expect(input.approvedDesignVariants.map(({ slots: _slots, providerVariantId: _providerVariantId, ...variant }) => variant)).toEqual(approved)
-    expect(input.approvedDesignVariants).toHaveLength(11)
+    expect(input.approvedDesignVariants).toHaveLength(15)
     expect(input.approvedDesignVariants).toEqual(expect.arrayContaining([
       expect.objectContaining({
         blockType: "hero",
@@ -72,6 +72,18 @@ describe("site generation catalog governance", () => {
           secondary: expect.objectContaining({ status: "optional", exposed: true }),
           pills: expect.objectContaining({ status: "inactive", exposed: false }),
           image: expect.objectContaining({ status: "inactive", exposed: false }),
+        }),
+      }),
+      expect.objectContaining({
+        blockType: "hero",
+        designVariant: "tailwindplus.marketing.hero.with-stats",
+        legacyDesignVariant: "tailwindPlusHeroWithStats",
+        providerVariantId: "tailwindplus.marketing.hero.with-stats",
+        slots: expect.objectContaining({
+          stats: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 4, maxItems: 4 }),
+          statValue: expect.objectContaining({ status: "required", exposed: true }),
+          statLabel: expect.objectContaining({ status: "required", exposed: true }),
+          eyebrow: expect.objectContaining({ status: "inactive", exposed: false }),
         }),
       }),
       expect.objectContaining({
@@ -175,6 +187,46 @@ describe("site generation catalog governance", () => {
         }),
       }),
       expect.objectContaining({
+        blockType: "newsletter",
+        designVariant: "tailwindplus.marketing.newsletter.side-by-side-with-details",
+        legacyDesignVariant: "tailwindPlusNewsletterSideBySideWithDetails",
+        providerVariantId: "tailwindplus.marketing.newsletter.side-by-side-with-details",
+        slots: expect.objectContaining({
+          benefits: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 2, maxItems: 2 }),
+          benefitTitle: expect.objectContaining({ status: "required", exposed: true }),
+          benefitDescription: expect.objectContaining({ status: "required", exposed: true }),
+          consentLabel: expect.objectContaining({ status: "inactive", exposed: false }),
+        }),
+      }),
+      expect.objectContaining({
+        blockType: "bentoGrid",
+        designVariant: "tailwindplus.marketing.bento.three-column-bento-grid",
+        legacyDesignVariant: "tailwindPlusThreeColumnBentoGrid",
+        providerVariantId: "tailwindplus.marketing.bento.three-column-bento-grid",
+        slots: expect.objectContaining({
+          items: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 4, maxItems: 4 }),
+          itemTitle: expect.objectContaining({ status: "required", exposed: true }),
+          itemDescription: expect.objectContaining({ status: "required", exposed: true }),
+          itemImage: expect.objectContaining({ status: "optional", exposed: true }),
+          itemIcon: expect.objectContaining({ status: "inactive", exposed: false }),
+          itemCta: expect.objectContaining({ status: "inactive", exposed: false }),
+        }),
+      }),
+      expect.objectContaining({
+        blockType: "contentSection",
+        designVariant: "tailwindplus.marketing.content.sticky-product-screenshot",
+        legacyDesignVariant: "tailwindPlusContentStickyProductScreenshot",
+        providerVariantId: "tailwindplus.marketing.content.sticky-product-screenshot",
+        slots: expect.objectContaining({
+          features: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 3, maxItems: 3 }),
+          featureTitle: expect.objectContaining({ status: "required", exposed: true }),
+          featureDescription: expect.objectContaining({ status: "required", exposed: true }),
+          secondaryTitle: expect.objectContaining({ status: "required", exposed: true }),
+          secondaryBody: expect.objectContaining({ status: "required", exposed: true }),
+          cta: expect.objectContaining({ status: "inactive", exposed: false }),
+        }),
+      }),
+      expect.objectContaining({
         blockType: "blogCards",
         designVariant: "tailwindplus.marketing.blog.three-column",
         legacyDesignVariant: "tailwindPlusThreeColumn",
@@ -213,6 +265,7 @@ describe("site generation catalog governance", () => {
       "tailwindplus.marketing.header.with-stacked-flyout-menu",
       "default",
       "default",
+      "tailwindplus.marketing.banner.with-button",
     ])
     expect(input.approvedChromeVariants).toEqual(
       expect.arrayContaining([
@@ -223,6 +276,7 @@ describe("site generation catalog governance", () => {
         }),
         expect.objectContaining({ area: "footer", variant: "default" }),
         expect.objectContaining({ area: "banner", variant: "default" }),
+        expect.objectContaining({ area: "banner", variant: "tailwindplus.marketing.banner.with-button" }),
       ]),
     )
     expect(input.approvedChromeVariants).not.toEqual(
@@ -295,6 +349,61 @@ describe("site generation catalog governance", () => {
     ]))
   })
 
+  it("rejects structured blocks without active self-serve source-backed variants", () => {
+    const spec = {
+      schemaVersion: 1,
+      intake: normalizedIntake,
+      tenant: { name: "Catalog Governance", slug: "catalog-governance", domain: "catalog-governance.test", status: "provisioning" },
+      theme: {
+        colors: { accent: "#2563eb", bg: "#ffffff", ink: "#111827", muted: "#6b7280", card: "#f8fafc" },
+        fonts: { heading: "Inter", text: "Inter" },
+        radius: "8px",
+        mode: "light",
+      },
+      settings: {
+        siteName: "Catalog Governance",
+        siteUrl: "https://catalog-governance.test",
+        description: "Generated draft.",
+        language: "en",
+        contactEmail: "hello@example.com",
+        navHeader: [{ label: "Home", href: "/" }],
+        navFooter: [{ label: "Contact", href: "mailto:hello@example.com" }],
+        chrome: {
+          header: { variant: "tailwindplus.marketing.header.with-stacked-flyout-menu" },
+          footer: { variant: "default", tagline: "Structured footer", legalLinks: [] },
+          banner: { variant: "default", visible: false, message: "Preview ready" },
+        },
+      },
+      pages: [{
+        slug: "index",
+        title: "Home",
+        status: "draft",
+        seo: { title: "Home", description: "Generated home." },
+        blocks: [{
+          blockType: "faq",
+          title: { t: "root", variant: "inline", children: [{ t: "text", v: "Highlights" }] },
+          items: [{
+            question: { t: "root", variant: "inline", children: [{ t: "text", v: "Question?" }] },
+            answer: { t: "root", variant: "block", children: [{ t: "paragraph", children: [{ t: "text", v: "Answer." }] }] },
+          }],
+        }],
+      }],
+      blocks: [{ slug: "faq", label: "FAQ" }],
+      assets: [],
+      generatedAt: "2026-06-27T00:00:00.000Z",
+      generator: { name: "test", version: "1.0.0", model: "test" },
+    }
+
+    const report = validateSiteGenerationSpecForCms(spec as any, { variantScope: "self-serve" })
+
+    expect(report.valid).toBe(false)
+    expect(report.issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
+      "unsupported_self_serve_block_type",
+      "missing_approved_design_variant",
+      "unsupported_self_serve_manifest_block_slug",
+    ]))
+  })
+
   it("constrains OpenAI block schemas to active self-serve variants per block type", () => {
     const heroSchema = blockSchemaFor("hero")
     const featureSchema = blockSchemaFor("featureList")
@@ -305,6 +414,8 @@ describe("site generation catalog governance", () => {
     const statsSchema = blockSchemaFor("stats")
     const logoCloudSchema = blockSchemaFor("logoCloud")
     const teamSchema = blockSchemaFor("team")
+    const bentoGridSchema = blockSchemaFor("bentoGrid")
+    const contentSectionSchema = blockSchemaFor("contentSection")
     const blogCardsSchema = blockSchemaFor("blogCards")
     const schemaBlockTypes = (siteGenerationJsonSchema.properties.pages.items as any)
       .properties.blocks.items.anyOf.map((entry: any) => entry.properties.blockType.const)
@@ -318,6 +429,9 @@ describe("site generation catalog governance", () => {
       "stats",
       "logoCloud",
       "team",
+      "newsletter",
+      "bentoGrid",
+      "contentSection",
       "blogCards",
     ]
 
@@ -331,9 +445,12 @@ describe("site generation catalog governance", () => {
     expect(heroSchema.properties).not.toHaveProperty("pills")
     expect(heroSchema.required).toContain("designVariant")
     expect(heroSchema.required).toContain("secondary")
+    expect(heroSchema.required).toContain("stats")
     expect(heroSchema.properties.designVariant.enum).toEqual([
       "tailwindplus.marketing.hero.simple-centered",
+      "tailwindplus.marketing.hero.with-stats",
     ])
+    expect(heroSchema.properties.stats.maxItems).toBe(4)
     expect(featureSchema.additionalProperties).toBe(false)
     expect(featureSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "features"])
     expect(featureSchema.properties.designVariant.enum).toEqual([
@@ -387,6 +504,22 @@ describe("site generation catalog governance", () => {
     expect(teamSchema.properties.members.minItems).toBe(2)
     expect(teamSchema.properties.members.maxItems).toBe(6)
     expect(teamSchema.properties).not.toHaveProperty("className")
+    expect(bentoGridSchema.additionalProperties).toBe(false)
+    expect(bentoGridSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "items"])
+    expect(bentoGridSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.bento.three-column-bento-grid"])
+    expect(bentoGridSchema.properties.items.minItems).toBe(4)
+    expect(bentoGridSchema.properties.items.maxItems).toBe(4)
+    expect(bentoGridSchema.properties.items.items.properties).not.toHaveProperty("icon")
+    expect(bentoGridSchema.properties.items.items.properties).not.toHaveProperty("cta")
+    expect(bentoGridSchema.properties).not.toHaveProperty("layout")
+    expect(bentoGridSchema.properties).not.toHaveProperty("className")
+    expect(contentSectionSchema.additionalProperties).toBe(false)
+    expect(contentSectionSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "secondaryTitle", "secondaryBody"])
+    expect(contentSectionSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.content.sticky-product-screenshot"])
+    expect(contentSectionSchema.properties.features.minItems).toBe(3)
+    expect(contentSectionSchema.properties.features.maxItems).toBe(3)
+    expect(contentSectionSchema.properties).not.toHaveProperty("cta")
+    expect(contentSectionSchema.properties).not.toHaveProperty("rawHtml")
     expect(blogCardsSchema.additionalProperties).toBe(false)
     expect(blogCardsSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "posts"])
     expect(blogCardsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.blog.three-column"])
@@ -406,7 +539,11 @@ describe("site generation catalog governance", () => {
       null,
     ])
     expect(settings.properties.chrome.properties.footer.properties.variant.enum).toEqual(["default", null])
-    expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual(["default", null])
+    expect(settings.properties.chrome.properties.banner.properties.variant.enum).toEqual([
+      "default",
+      "tailwindplus.marketing.banner.with-button",
+      null,
+    ])
     expect(settings.properties.chrome.additionalProperties).toBe(false)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHero|amicareCareCards|amicareEditorial|amicareQuoteContact|amicareContactForm|amicareWarmAccordion|amicareStoryCards/)
     expect(JSON.stringify(siteGenerationJsonSchema)).not.toMatch(/amicareZenHeroImageBoxesSwiperServicesPortfolioContactCards/)

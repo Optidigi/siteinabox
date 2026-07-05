@@ -510,6 +510,8 @@ export const REQUIRED_V1_MARKETING_BLOCKS = [
   "gallery",
   "team",
   "newsletter",
+  "bentoGrid",
+  "contentSection",
   "blogCards",
 ] as const
 
@@ -522,15 +524,6 @@ export const DEFERRED_V1_MARKETING_RENDERER_BLOCKS = [
 ] as const satisfies readonly SiteGenerationBlockSlug[]
 
 export const APPROVED_V1_MARKETING_CAPABILITY_COVERAGE = [
-  {
-    capability: "newsletter",
-    blockSlug: "contactSection",
-    variantId: "contactSection:tailwindPlusNewsletterDetails",
-    designVariant: "tailwindPlusNewsletterDetails",
-    variant: "tailwindPlusNewsletterDetails",
-    rendererClassName: "cms-block--source-tailwind-plus-newsletter-details",
-    notes: "Newsletter is represented by the approved contactSection contract rather than a separate newsletter block slug.",
-  },
 ] as const satisfies readonly {
   capability: Exclude<RequiredV1MarketingBlock, SiteBlockSlug>
   blockSlug: SiteBlockSlug
@@ -554,6 +547,14 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       richtext("subheadline", "Subheadline", "block", "text"),
       cta("cta", "Primary action"),
       cta("secondary", "Secondary action"),
+      image("image", "Background image"),
+      {
+        name: "stats",
+        label: "Stats",
+        kind: "array",
+        itemLabel: "Stat",
+        itemFields: [text("value", "Value"), text("label", "Label")],
+      },
     ],
     renderer: {
       package: "@siteinabox/site-renderer",
@@ -563,6 +564,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     themeBehavior: ["font-title", "font-text", "radius-sm", "radius-md", "radius-lg", "accent", "ink", "bg"],
     fixtureCoverage: [
       "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/simple-centered",
+      "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/with-stats",
       "packages/site-renderer/src/fixtures/v1.ts",
       "amicareSiteGenerationSpec",
     ],
@@ -582,6 +584,23 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "b9bcab4538776a17fff93d18f82a8272",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/heroes#component-b9bcab4538776a17fff93d18f82a8272",
           "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/simple-centered",
+        ),
+      },
+      {
+        id: "hero:tailwindPlusHeroWithStats",
+        variant: "tailwindPlusHeroWithStats",
+        providerVariantId: "tailwindplus.marketing.hero.with-stats",
+        label: "Tailwind Plus with stats",
+        intent: "Header-section source rendered as a hero using the exact local source-backed Tailwind Plus With stats block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-hero-with-stats",
+        provenance: tailwindPlusExactSourceProvenance(
+          "With stats",
+          "813ce86310c2c337070a66a152012665",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/header#component-813ce86310c2c337070a66a152012665",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/with-stats",
         ),
       },
       {
@@ -913,21 +932,6 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           "986addbc8678313fba5b0dd59c778e9b",
           "https://tailwindcss.com/plus/ui-blocks/marketing/sections/contact-sections#component-986addbc8678313fba5b0dd59c778e9b",
           "packages/site-renderer/src/source-blocks/tailwindplus/marketing/contact/centered",
-        ),
-      },
-      {
-        id: "contactSection:tailwindPlusNewsletterDetails",
-        variant: "tailwindPlusNewsletterDetails",
-        label: "Tailwind Plus newsletter details",
-        intent: "Dark side-by-side newsletter/contact capture section adapted from public free Tailwind Plus.",
-        scope: globalVariantScope,
-        dataSignal: "variant",
-        rendererSupportStatus: "supported",
-        rendererClassName: "cms-block--source-tailwind-plus-newsletter-details",
-        provenance: tailwindPlusFreeProvenance(
-          "Side-by-side with details",
-          "82fc139db99143307df48bb9fe6152c5",
-          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/newsletter-sections#component-82fc139db99143307df48bb9fe6152c5",
         ),
       },
       {
@@ -1298,6 +1302,176 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     referenceSources: [blockReferenceSources.tailwindPlusMarketing],
   },
   {
+    slug: "newsletter",
+    label: "Newsletter",
+    status: "approved",
+    contractType: "NewsletterBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + NewsletterBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("description", "Description", "block", "text"),
+      text("emailLabel", "Email label"),
+      text("emailPlaceholder", "Email placeholder"),
+      text("submitLabel", "Submit label"),
+      text("consentLabel", "Consent label"),
+      {
+        name: "benefits",
+        label: "Benefits",
+        kind: "array",
+        itemLabel: "Benefit",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          text("icon", "Icon"),
+        ],
+      },
+      text("provider.provider", "Form provider"),
+      text("provider.action", "Form action"),
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "NewsletterBlockRenderer",
+      output: "Structured newsletter signup section with email, consent, provider metadata, and optional benefit items.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "radius-md", "form"],
+    fixtureCoverage: [
+      "packages/site-renderer/src/source-blocks/tailwindplus/marketing/newsletter/side-by-side-with-details",
+      "packages/site-renderer/src/fixtures/v1.ts",
+    ],
+    variants: [
+      {
+        id: "newsletter:tailwindPlusNewsletterSideBySideWithDetails",
+        variant: "tailwindPlusNewsletterSideBySideWithDetails",
+        providerVariantId: "tailwindplus.marketing.newsletter.side-by-side-with-details",
+        label: "Tailwind Plus side-by-side with details",
+        intent: "Newsletter signup using the exact local source-backed Tailwind Plus Side-by-side with details block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-newsletter-side-by-side-with-details",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Side-by-side with details",
+          "82fc139db99143307df48bb9fe6152c5",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/newsletter-sections#component-82fc139db99143307df48bb9fe6152c5",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/newsletter/side-by-side-with-details",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing],
+  },
+  {
+    slug: "bentoGrid",
+    label: "Bento grid",
+    status: "approved",
+    contractType: "BentoGridBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + BentoGridBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      {
+        name: "items",
+        label: "Items",
+        kind: "array",
+        itemLabel: "Item",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          image("image", "Image"),
+          text("icon", "Icon"),
+          cta("cta", "Action"),
+        ],
+      },
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "BentoGridBlockRenderer",
+      output: "Structured bento content cells without generated layout or span controls.",
+    },
+    themeBehavior: ["font-heading", "font-text", "accent", "card", "radius-lg", "media-grid"],
+    fixtureCoverage: [
+      "packages/site-renderer/src/source-blocks/tailwindplus/marketing/bento/three-column-bento-grid",
+      "packages/site-renderer/src/fixtures/v1.ts",
+    ],
+    variants: [
+      {
+        id: "bentoGrid:tailwindPlusThreeColumnBentoGrid",
+        variant: "tailwindPlusThreeColumnBentoGrid",
+        providerVariantId: "tailwindplus.marketing.bento.three-column-bento-grid",
+        label: "Tailwind Plus three-column bento grid",
+        intent: "Bento grid using the exact local source-backed Tailwind Plus Three column bento grid block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-bento-three-column-bento-grid",
+        provenance: tailwindPlusExactSourceProvenance(
+          "Three column bento grid",
+          "dc65cfa183921e10d45c401610332cca",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/bento-grids#component-dc65cfa183921e10d45c401610332cca",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/bento/three-column-bento-grid",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing],
+  },
+  {
+    slug: "contentSection",
+    label: "Content section",
+    status: "approved",
+    contractType: "ContentSectionBlock",
+    runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + ContentSectionBlockSchema + GeneratedBlockSpecSchema.",
+    cmsEditableFields: [
+      richtext("eyebrow", "Eyebrow", "inline", "script"),
+      richtext("title", "Title", "inline", "heading"),
+      richtext("intro", "Intro", "block", "text"),
+      richtext("body", "Body", "block", "text"),
+      {
+        name: "features",
+        label: "Features",
+        kind: "array",
+        itemLabel: "Feature",
+        itemFields: [
+          richtext("title", "Title", "inline", "heading"),
+          richtext("description", "Description", "block", "text"),
+          text("icon", "Icon"),
+        ],
+      },
+      richtext("secondaryTitle", "Secondary title", "inline", "heading"),
+      richtext("secondaryBody", "Secondary body", "block", "text"),
+      image("image", "Image"),
+      cta("cta", "Action"),
+    ],
+    renderer: {
+      package: "@siteinabox/site-renderer",
+      component: "ContentSectionBlockRenderer",
+      output: "Structured content section with optional media and CTA.",
+    },
+    themeBehavior: ["font-heading", "font-text", "font-script", "accent", "radius-lg", "media-treatment"],
+    fixtureCoverage: [
+      "packages/site-renderer/src/source-blocks/tailwindplus/marketing/content/sticky-product-screenshot",
+      "packages/site-renderer/src/fixtures/v1.ts",
+    ],
+    variants: [
+      {
+        id: "contentSection:tailwindPlusContentStickyProductScreenshot",
+        variant: "tailwindPlusContentStickyProductScreenshot",
+        providerVariantId: "tailwindplus.marketing.content.sticky-product-screenshot",
+        label: "Tailwind Plus sticky product screenshot",
+        intent: "Content section using the exact local source-backed Tailwind Plus With sticky product screenshot block.",
+        scope: globalVariantScope,
+        dataSignal: "variant",
+        rendererSupportStatus: "supported",
+        rendererClassName: "cms-block--source-tailwindplus-content-sticky-product-screenshot",
+        provenance: tailwindPlusExactSourceProvenance(
+          "With sticky product screenshot",
+          "218027743700ff38c54be7e9c1ce3bf8",
+          "https://tailwindcss.com/plus/ui-blocks/marketing/sections/content-sections#component-218027743700ff38c54be7e9c1ce3bf8",
+          "packages/site-renderer/src/source-blocks/tailwindplus/marketing/content/sticky-product-screenshot",
+        ),
+      },
+    ],
+    referenceSources: [blockReferenceSources.tailwindPlusMarketing],
+  },
+  {
     slug: "blogCards",
     label: "Blog cards",
     status: "approved",
@@ -1507,6 +1681,43 @@ export const SITE_CHROME_CATALOG = [
       { name: "chrome.banner.dismissible", label: "Dismissible", kind: "checkbox" },
     ],
   },
+  {
+    id: "banner:tailwindplus.marketing.banner.with-button",
+    area: "banner",
+    variant: "tailwindplus.marketing.banner.with-button",
+    label: "Tailwind Plus banner with button",
+    intent: "Source-backed Tailwind Plus Marketing announcement banner mapped to structured banner settings.",
+    scope: globalVariantScope,
+    dataSignal: "settings.chrome.variant",
+    rendererSupportStatus: "supported",
+    rendererClassName: "site-banner--source-tailwindplus-marketing-with-button",
+    provenance: tailwindPlusExactSourceProvenance(
+      "With button",
+      "8904b9d9a9fbb9a2313df3975112f9d7",
+      "https://tailwindcss.com/plus/ui-blocks/marketing/elements/banners#component-8904b9d9a9fbb9a2313df3975112f9d7",
+      "packages/site-renderer/src/source-chrome/tailwindplus/marketing/banner/with-button/upstream.html",
+      {
+        kind: "copy-paste-tailwind",
+        supportedAstroPath:
+          "Render through @siteinabox/site-renderer React chrome components and package CSS; no per-tenant source branches.",
+        tailwindNotes:
+          "The local renderer preserves source-backed Tailwind utility class strings while mapping SIAB structured banner data into the slots.",
+        interactive: false,
+        docs: [
+          "https://tailwindcss.com/plus/ui-blocks/marketing/elements/banners",
+          "packages/site-renderer/src/source-chrome",
+        ],
+        notes:
+          "Banner is global site chrome under SiteSettings.chrome.banner and is not exposed as a page block.",
+      },
+    ),
+    editableFields: [
+      text("chrome.banner.title", "Title"),
+      text("chrome.banner.message", "Message"),
+      cta("chrome.banner.link", "Banner link"),
+      { name: "chrome.banner.dismissible", label: "Dismissible", kind: "checkbox" },
+    ],
+  },
 ] as const satisfies readonly SiteChromeCatalogVariant[]
 
 export const SITE_GENERATION_BLOCK_CATALOG = SITE_GENERATION_BLOCK_CATALOG_ENTRIES
@@ -1567,6 +1778,7 @@ export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant |
 const siteSelfServeSourceBackedProviderNames = ["Tailwind Plus"] as const
 const siteSelfServeSourceBackedVariantIds = [
   "hero:tailwindPlusSimpleCentered",
+  "hero:tailwindPlusHeroWithStats",
   "featureList:tailwindPlusWithProductScreenshot",
   "featureList:tailwindPlusCentered2x2",
   "cta:tailwindPlusDarkPanelWithAppScreenshot",
@@ -1576,6 +1788,9 @@ const siteSelfServeSourceBackedVariantIds = [
   "logoCloud:tailwindPlusSimpleWithHeading",
   "pricing:tailwindPlusSimpleTiers",
   "team:tailwindPlusGrid",
+  "newsletter:tailwindPlusNewsletterSideBySideWithDetails",
+  "bentoGrid:tailwindPlusThreeColumnBentoGrid",
+  "contentSection:tailwindPlusContentStickyProductScreenshot",
   "blogCards:tailwindPlusThreeColumn",
 ] as const
 const siteSelfServeSourceBackedVariantIdSet = new Set<string>(siteSelfServeSourceBackedVariantIds)

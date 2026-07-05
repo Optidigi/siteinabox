@@ -18,9 +18,12 @@ import { TestimonialsCanvas } from "@/components/editor/canvas/blocks/Testimonia
 import { AmicareCanvasBlockRenderer } from "@/components/editor/canvas/AmicareCanvasBlockRenderer"
 import { RendererCanvasBlockRenderer } from "@/components/editor/canvas/RendererCanvasBlockRenderer"
 import {
+  BentoGridCanvas,
   BlogCardsCanvas,
+  ContentSectionCanvas,
   GalleryCanvas,
   LogoCloudCanvas,
+  NewsletterCanvas,
   PricingCanvas,
   StatsCanvas,
   TeamCanvas,
@@ -216,6 +219,9 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     case "stats":          return <StatsCanvas {...augmented} />
     case "logoCloud":      return <LogoCloudCanvas {...augmented} />
     case "gallery":        return <GalleryCanvas {...augmented} />
+    case "newsletter":     return <NewsletterCanvas {...augmented} />
+    case "bentoGrid":      return <BentoGridCanvas {...augmented} />
+    case "contentSection": return <ContentSectionCanvas {...augmented} />
     case "team":           return <TeamCanvas {...augmented} />
     case "blogCards":      return <BlogCardsCanvas {...augmented} />
     default:

@@ -6,9 +6,12 @@ import { CTA } from "./CTA"
 import { RichText } from "./RichText"
 import { ContactSection } from "./ContactSection"
 import {
+  BentoGrid,
   BlogCards,
+  ContentSection,
   Gallery,
   LogoCloud,
+  Newsletter,
   Pricing,
   Stats,
   Team,
@@ -29,6 +32,9 @@ export const ALL_BLOCKS = [
   LogoCloud,
   Gallery,
   Team,
+  Newsletter,
+  BentoGrid,
+  ContentSection,
   BlogCards,
 ] as const
 

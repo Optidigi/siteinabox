@@ -11,13 +11,17 @@ import {
   getProviderBlockDefinition,
   getSourceBackedVariantRenderer,
   providerBlockDefinitions,
+  tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots,
   tailwindPlusMarketingBlogThreeColumnDemoSlots,
   tailwindPlusMarketingContactCenteredDemoSlots,
+  tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
   tailwindPlusMarketingCtaDarkPanelWithAppScreenshotDemoSlots,
   tailwindPlusMarketingFeatureCentered2x2GridDemoSlots,
   tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots,
   tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
+  tailwindPlusMarketingHeroWithStatsDemoSlots,
   tailwindPlusMarketingLogoCloudSimpleWithHeadingDemoSlots,
+  tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots,
   tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots,
   tailwindPlusMarketingStatsSimpleDemoSlots,
   tailwindPlusMarketingTeamWithSmallImagesDemoSlots,
@@ -67,6 +71,17 @@ const providerCases = [
     allowedSlotClassDeltas: ["font-semibold text-indigo-600", "absolute inset-0"],
   },
   {
+    id: "tailwindplus.marketing.hero.with-stats",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/hero/with-stats",
+    block: tailwindPlusMarketingHeroWithStatsDemoSlots,
+    classes: [
+      "relative isolate overflow-hidden bg-gray-900 py-24 sm:py-32",
+      "absolute inset-0 -z-10 size-full object-cover object-right md:object-center",
+      "text-5xl font-semibold tracking-tight text-white sm:text-7xl",
+      "mt-16 grid grid-cols-1 gap-8 sm:mt-20 sm:grid-cols-2 lg:grid-cols-4",
+    ],
+  },
+  {
     id: "tailwindplus.marketing.feature.with-product-screenshot",
     folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/feature/with-product-screenshot",
     block: tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots,
@@ -94,6 +109,31 @@ const providerCases = [
       "relative isolate overflow-hidden bg-gray-900 px-6 pt-16 shadow-2xl sm:rounded-3xl sm:px-16 md:pt-24 lg:flex lg:gap-x-20 lg:px-24 lg:pt-0",
       "mx-auto max-w-md text-center lg:mx-0 lg:flex-auto lg:py-32 lg:text-left",
       "absolute top-0 left-0 w-228 max-w-none rounded-md bg-white/5 ring-1 ring-white/10",
+    ],
+  },
+  {
+    id: "tailwindplus.marketing.bento.three-column-bento-grid",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/bento/three-column-bento-grid",
+    block: tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots,
+    classes: [
+      "bg-gray-50 py-24 sm:py-32",
+      "mt-10 grid gap-4 sm:mt-16 lg:grid-cols-3 lg:grid-rows-2",
+      "relative lg:row-span-2",
+      "relative flex h-full flex-col overflow-hidden rounded-[calc(var(--radius-lg)+1px)] lg:rounded-l-[calc(2rem+1px)]",
+      "@container relative min-h-120 w-full grow max-lg:mx-auto max-lg:max-w-sm",
+      "absolute top-10 right-0 bottom-0 left-10 overflow-hidden rounded-tl-xl bg-gray-900 shadow-2xl outline outline-white/10",
+    ],
+  },
+  {
+    id: "tailwindplus.marketing.content.sticky-product-screenshot",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/content/sticky-product-screenshot",
+    block: tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
+    classes: [
+      "relative isolate overflow-hidden bg-white px-6 py-24 sm:py-32 lg:overflow-visible lg:px-0",
+      "absolute top-0 left-[max(50%,25rem)] h-256 w-512 -translate-x-1/2 mask-[radial-gradient(64rem_64rem_at_top,white,transparent)] stroke-gray-200",
+      "-mt-12 -ml-12 p-12 lg:sticky lg:top-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:overflow-hidden",
+      "w-3xl max-w-none rounded-xl bg-gray-900 shadow-xl ring-1 ring-gray-400/10 sm:w-228",
+      "mt-8 space-y-8 text-gray-600",
     ],
   },
   {
@@ -156,6 +196,17 @@ const providerCases = [
       "mx-auto grid max-w-7xl gap-20 px-6 lg:px-8 xl:grid-cols-3",
       "grid gap-x-8 gap-y-12 sm:grid-cols-2 sm:gap-y-16 xl:col-span-2",
       "size-16 rounded-full outline-1 -outline-offset-1 outline-black/5",
+    ],
+  },
+  {
+    id: "tailwindplus.marketing.newsletter.side-by-side-with-details",
+    folder: "packages/site-renderer/src/source-blocks/tailwindplus/marketing/newsletter/side-by-side-with-details",
+    block: tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots,
+    classes: [
+      "relative isolate overflow-hidden bg-gray-900 py-16 sm:py-24 lg:py-32",
+      "mx-auto grid max-w-2xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-2",
+      "min-w-0 flex-auto rounded-md bg-white/5 px-3.5 py-2 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6",
+      "grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:pt-2",
     ],
   },
   {
@@ -267,12 +318,28 @@ describe("provider block runtime", () => {
           {
             ...tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots.plans[0]!,
             badge: "Unsupported badge",
+            cta: null,
           },
         ],
       }),
       ...validateProviderBlockInstance({
         ...tailwindPlusMarketingTeamWithSmallImagesDemoSlots,
         members: tailwindPlusMarketingTeamWithSmallImagesDemoSlots.members.slice(0, 1),
+      }),
+      ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots,
+        items: [
+          {
+            ...tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots.items[0]!,
+            icon: "layout-grid",
+            cta: { label: "Unsupported", href: "/unsupported" },
+          },
+          ...tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots.items.slice(1, 3),
+        ],
+      }),
+      ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
+        cta: { label: "Unsupported", href: "/unsupported" },
       }),
       ...validateProviderBlockInstance({
         ...tailwindPlusMarketingBlogThreeColumnDemoSlots,
@@ -294,8 +361,13 @@ describe("provider block runtime", () => {
       "features",
       "logos",
       "plans.0.badge",
+      "plans.cta",
       "plans",
       "members",
+      "items.0.icon",
+      "items.0.cta",
+      "items",
+      "cta",
       "posts",
     ]))
   })
@@ -318,6 +390,58 @@ describe("provider block runtime", () => {
         expect(html, `${testCase.id} render missing ${className}`).toContain(className)
       }
     }
+  })
+
+  it("omits optional empty CTAs from live provider output while preserving editor add affordances", () => {
+    const block = {
+      ...tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
+      cta: null,
+      secondary: null,
+    }
+
+    const liveHtml = renderToStaticMarkup(<BlockRenderer block={block} index={0} />)
+    const editorHtml = renderToStaticMarkup(
+      <BlockRenderer
+        block={block}
+        index={0}
+        options={{
+          editSlots: {
+            renderCta: ({ value, className }) =>
+              value?.label && value.href
+                ? <a href={value.href} className={className}>{value.label}</a>
+                : <button className={className} type="button">Add CTA</button>,
+          },
+        }}
+      />,
+    )
+
+    expect(liveHtml).not.toContain("Add CTA")
+    expect(liveHtml).not.toContain('data-siab-analytics-action="true"')
+    expect(editorHtml).toContain("Add CTA")
+  })
+
+  it("emits provider variant analytics attributes when projected metadata includes them", () => {
+    const variant = "tailwindplus.marketing.hero.simple-centered"
+    const html = renderToStaticMarkup(
+      <BlockRenderer
+        block={{
+          ...tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
+          analytics: {
+            sectionId: "top",
+            sectionType: "hero",
+            sectionPosition: 0,
+            sectionAnchor: "top",
+            providerVariant: variant,
+            blockPresetId: null,
+            contentSignature: "abc123",
+          },
+        }}
+        index={0}
+      />,
+    )
+
+    expect(html).toContain(`data-siab-provider-variant="${variant}"`)
+    expect(html).toContain(`data-ph-capture-attribute-provider_variant="${variant}"`)
   })
 
   it("resolves the same provider definition for canonical provider IDs and stored legacy designVariant values", () => {

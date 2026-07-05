@@ -105,7 +105,8 @@ describe("processIntakeSubmission", () => {
     expect(store["site-settings"][0]?.chrome?.header?.variant).toBe("tailwindplus.marketing.header.with-stacked-flyout-menu")
     expect(store["site-settings"][0]?.chrome?.header?.cta).toMatchObject({ label: "Contact", href: "mailto:sam@example.com" })
     expect(store["site-settings"][0]?.chrome?.footer?.variant).toBe("default")
-    expect(store["site-settings"][0]?.chrome?.banner?.variant).toBe("default")
+    expect(store["site-settings"][0]?.chrome?.banner?.variant).toBe("tailwindplus.marketing.banner.with-button")
+    expect(store["site-settings"][0]?.chrome?.banner?.link).toMatchObject({ label: "Contact", href: "/#contact" })
     expect(store.pages.every((page) => page.status === "draft")).toBe(true)
     expect(store["site-generation-runs"][0]?.applyResult?.ok).toBe(true)
     expect(store["site-generation-runs"][0]?.provider).toBe("mock")
@@ -121,27 +122,58 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.slug).toBe("index")
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
       "hero:tailwindplus.marketing.hero.simple-centered",
+      "logoCloud:tailwindplus.marketing.logo-cloud.simple-with-heading",
       "featureList:tailwindplus.marketing.feature.with-product-screenshot",
       "featureList:tailwindplus.marketing.feature.centered-2x2-grid",
-      "cta:tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
-      "testimonials:tailwindplus.marketing.testimonial.simple-centered",
       "stats:tailwindplus.marketing.stats.simple",
-      "logoCloud:tailwindplus.marketing.logo-cloud.simple-with-heading",
+      "contentSection:tailwindplus.marketing.content.sticky-product-screenshot",
+      "bentoGrid:tailwindplus.marketing.bento.three-column-bento-grid",
+      "testimonials:tailwindplus.marketing.testimonial.simple-centered",
+      "pricing:tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+      "team:tailwindplus.marketing.team.with-small-images",
+      "blogCards:tailwindplus.marketing.blog.three-column",
+      "newsletter:tailwindplus.marketing.newsletter.side-by-side-with-details",
+      "cta:tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
       "contactSection:tailwindplus.marketing.contact.centered",
     ])
     expect(store.pages[0]?.blocks[0]?.secondary).toMatchObject({ label: "Meer informatie", href: "/" })
-    expect(store.pages[0]?.blocks[1]?.features).toHaveLength(3)
-    expect(store.pages[0]?.blocks[2]?.features).toHaveLength(4)
-    expect(store.pages[0]?.blocks[4]?.items).toHaveLength(1)
-    expect(store.pages[0]?.blocks[5]?.items).toHaveLength(3)
-    expect(store.pages[0]?.blocks[5]).not.toHaveProperty("title")
-    expect(store.pages[0]?.blocks[5]).not.toHaveProperty("intro")
-    expect(store.pages[0]?.blocks[6]?.logos).toHaveLength(5)
-    expect(store.pages[0]?.blocks[7]?.fields).toHaveLength(5)
+    expect(store.pages[0]?.blocks[1]?.logos).toHaveLength(5)
+    expect(store.pages[0]?.blocks[2]?.features).toHaveLength(3)
+    expect(store.pages[0]?.blocks[3]?.features).toHaveLength(4)
+    expect(store.pages[0]?.blocks[4]?.items).toHaveLength(3)
+    expect(store.pages[0]?.blocks[4]).not.toHaveProperty("title")
+    expect(store.pages[0]?.blocks[4]).not.toHaveProperty("intro")
+    expect(store.pages[0]?.blocks[5]?.features).toHaveLength(3)
+    expect(store.pages[0]?.blocks[5]).not.toHaveProperty("cta")
+    expect(store.pages[0]?.blocks[6]?.items).toHaveLength(4)
+    expect(store.pages[0]?.blocks[6]?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
+    expect(store.pages[0]?.blocks[7]?.items).toHaveLength(1)
+    expect(store.pages[0]?.blocks[8]?.plans).toHaveLength(2)
+    expect(store.pages[0]?.blocks[8]?.plans.every((plan: any) => !("badge" in plan))).toBe(true)
+    expect(store.pages[0]?.blocks[9]?.members).toHaveLength(3)
+    expect(store.pages[0]?.blocks[9]?.members.every((member: any) => !("bio" in member) && !("links" in member))).toBe(true)
+    expect(store.pages[0]?.blocks[10]?.posts).toHaveLength(3)
+    expect(store.pages[0]?.blocks[11]?.benefits).toHaveLength(2)
+    expect(store.pages[0]?.blocks[11]).not.toHaveProperty("consentLabel")
+    expect(store.pages[0]?.blocks[13]?.fields).toHaveLength(5)
+    expect(store["site-generation-runs"][0]?.parsedOutput?.blocks.map((block: any) => block.slug)).toEqual([
+      "hero",
+      "featureList",
+      "cta",
+      "testimonials",
+      "stats",
+      "logoCloud",
+      "pricing",
+      "team",
+      "blogCards",
+      "bentoGrid",
+      "contentSection",
+      "newsletter",
+      "contactSection",
+    ])
     expect(store.pages[0]?.blocks.every((block: any) => !("variant" in block))).toBe(true)
     expect(store.pages[0]?.blocks.every((block: any) => Object.keys(block.analytics ?? {}).every((key) => key !== "legacyVisualIdentity"))).toBe(true)
     expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toMatch(/preline|tailblocks|tailwindplussimpletiers|tailwindplusnewsletterdetails/)
-    expect(store["site-settings"][0]?.chrome?.banner).not.toHaveProperty("link")
     expect(JSON.stringify(store.pages[0]?.blocks).toLowerCase()).not.toContain("shadcn")
   })
 

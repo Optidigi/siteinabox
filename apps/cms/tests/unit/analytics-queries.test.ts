@@ -11,6 +11,7 @@ import {
   getGeoCities,
   getGeoCountries,
   getJourneySteps,
+  getSectionPerformance,
   getSiteAnalyticsOverview,
   getScrollDepth,
   getTenantPerformance,
@@ -115,6 +116,40 @@ describe("analytics queries", () => {
       clicks: 8,
     }])
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("queries section performance by provider variant", async () => {
+    process.env.POSTHOG_PROJECT_ID = "123"
+    process.env.POSTHOG_PERSONAL_API_KEY = "phx_test"
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [[
+          "top",
+          "hero",
+          "tailwindplus.marketing.hero.simple-centered",
+          "/",
+          14,
+          9,
+          3,
+        ]],
+      }),
+    } as Response)
+
+    await expect(getSectionPerformance({ tenantId: 7 })).resolves.toEqual([{
+      sectionId: "top",
+      sectionType: "hero",
+      providerVariant: "tailwindplus.marketing.hero.simple-centered",
+      pagePath: "/",
+      views: 14,
+      engagements: 9,
+      ctaClicks: 3,
+    }])
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(body.name).toBe("siab_section_performance")
+    expect(body.query.query).toContain("properties.provider_variant AS provider_variant")
+    expect(body.query.query).toContain("GROUP BY section_id, section_type, provider_variant, page_path")
   })
 
   it("parses form funnel, traffic source, and device metrics", async () => {

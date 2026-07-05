@@ -1,11 +1,15 @@
 import type { Block } from "@siteinabox/contracts"
 import type { BlockRendererComponent } from "../blocks/types"
+import { tailwindPlusMarketingBentoThreeColumnBentoGridProviderBlock } from "./tailwindplus/marketing/bento/three-column-bento-grid"
 import { tailwindPlusMarketingContactCenteredProviderBlock } from "./tailwindplus/marketing/contact/centered"
+import { tailwindPlusMarketingContentStickyProductScreenshotProviderBlock } from "./tailwindplus/marketing/content/sticky-product-screenshot"
 import { tailwindPlusMarketingCtaDarkPanelWithAppScreenshotProviderBlock } from "./tailwindplus/marketing/cta/dark-panel-with-app-screenshot"
 import { tailwindPlusMarketingFeatureCentered2x2GridProviderBlock } from "./tailwindplus/marketing/feature/centered-2x2-grid"
 import { tailwindPlusMarketingFeatureWithProductScreenshotProviderBlock } from "./tailwindplus/marketing/feature/with-product-screenshot"
 import { tailwindPlusMarketingBlogThreeColumnProviderBlock } from "./tailwindplus/marketing/blog/three-column"
+import { tailwindPlusMarketingNewsletterSideBySideWithDetailsProviderBlock } from "./tailwindplus/marketing/newsletter/side-by-side-with-details"
 import { tailwindPlusMarketingHeroSimpleCenteredProviderBlock } from "./tailwindplus/marketing/hero/simple-centered"
+import { tailwindPlusMarketingHeroWithStatsProviderBlock } from "./tailwindplus/marketing/hero/with-stats"
 import { tailwindPlusMarketingLogoCloudSimpleWithHeadingProviderBlock } from "./tailwindplus/marketing/logo-cloud/simple-with-heading"
 import { tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierProviderBlock } from "./tailwindplus/marketing/pricing/two-tiers-with-emphasized-right-tier"
 import { tailwindPlusMarketingStatsSimpleProviderBlock } from "./tailwindplus/marketing/stats/simple"
@@ -57,16 +61,20 @@ export function defineProviderBlock<TBlock extends Block>(definition: ProviderBl
 
 export const providerBlockDefinitions = [
   tailwindPlusMarketingHeroSimpleCenteredProviderBlock,
+  tailwindPlusMarketingHeroWithStatsProviderBlock,
   tailwindPlusMarketingFeatureWithProductScreenshotProviderBlock,
   tailwindPlusMarketingFeatureCentered2x2GridProviderBlock,
   tailwindPlusMarketingCtaDarkPanelWithAppScreenshotProviderBlock,
+  tailwindPlusMarketingContentStickyProductScreenshotProviderBlock,
   tailwindPlusMarketingContactCenteredProviderBlock,
   tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock,
   tailwindPlusMarketingStatsSimpleProviderBlock,
   tailwindPlusMarketingLogoCloudSimpleWithHeadingProviderBlock,
   tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierProviderBlock,
   tailwindPlusMarketingTeamWithSmallImagesProviderBlock,
+  tailwindPlusMarketingNewsletterSideBySideWithDetailsProviderBlock,
   tailwindPlusMarketingBlogThreeColumnProviderBlock,
+  tailwindPlusMarketingBentoThreeColumnBentoGridProviderBlock,
 ] as const satisfies readonly ProviderBlockDefinition<any>[]
 
 export type ProviderBlockId = typeof providerBlockDefinitions[number]["id"]

@@ -91,8 +91,9 @@ The source-backed catalog in `packages/contracts/src/block-catalog.ts` is active
 for the approved executable Tailwind Plus provider runtime. Generic self-serve
 generation may choose only the active exact-source Tailwind Plus Marketing page
 sections backed by `packages/site-renderer/src/source-blocks`, and may choose
-the active Tailwind Plus Marketing header chrome through
-`SiteSettings.chrome.header.variant`. The public renderer also uses the active
+the active Tailwind Plus Marketing header and banner chrome through
+`SiteSettings.chrome.header.variant` and `SiteSettings.chrome.banner.variant`.
+The public renderer also uses the active
 Tailwind Plus Simple 404 system fallback for known tenants with missing pages.
 
 Tailwind Plus is the UI source of truth, CMS data owns editable content slots

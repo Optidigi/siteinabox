@@ -1,6 +1,8 @@
 import type * as React from "react"
 import type { SiteSettings } from "@siteinabox/contracts"
+import type { SiteChromeCatalogArea } from "@siteinabox/contracts/block-catalog"
 import type { MediaResolver } from "../media"
+import { tailwindPlusMarketingBannerWithButtonProviderChrome } from "./tailwindplus/marketing/banner/with-button"
 import { tailwindPlusMarketingHeaderWithStackedFlyoutMenuProviderChrome } from "./tailwindplus/marketing/header/with-stacked-flyout-menu"
 
 export type ProviderChromeSlotKind = "text" | "cta" | "image" | "repeater"
@@ -33,7 +35,7 @@ export type ProviderChromeRendererProps = {
 export type ProviderChromeDefinition = {
   provider: "tailwindplus"
   role: "chrome"
-  area: "header"
+  area: SiteChromeCatalogArea
   namespace: string
   id: string
   rendererClassName?: string
@@ -48,6 +50,7 @@ export function defineProviderChrome(definition: ProviderChromeDefinition) {
 
 export const providerChromeDefinitions = [
   tailwindPlusMarketingHeaderWithStackedFlyoutMenuProviderChrome,
+  tailwindPlusMarketingBannerWithButtonProviderChrome,
 ] as const satisfies readonly ProviderChromeDefinition[]
 
 export type ProviderChromeId = typeof providerChromeDefinitions[number]["id"]
@@ -73,18 +76,18 @@ export function isProviderChromeVariantIdentifier(value: string | null | undefin
   )
 }
 
-export function getProviderChromeDefinition(area: "header", variant: string | null | undefined) {
+export function getProviderChromeDefinition(area: SiteChromeCatalogArea, variant: string | null | undefined) {
   const clean = cleanVariant(variant)
   if (!clean) return null
   const definition = providerChromeDefinitionsByVariant[clean] ?? null
   return definition?.area === area ? definition : null
 }
 
-export function getProviderChromeRenderer(area: "header", variant: string | null | undefined) {
+export function getProviderChromeRenderer(area: SiteChromeCatalogArea, variant: string | null | undefined) {
   return getProviderChromeDefinition(area, variant)?.renderer ?? null
 }
 
-export function assertProviderChromeRenderer(area: "header", variant: string | null | undefined) {
+export function assertProviderChromeRenderer(area: SiteChromeCatalogArea, variant: string | null | undefined) {
   const clean = cleanVariant(variant)
   if (!clean || !isProviderChromeVariantIdentifier(clean)) return
   const definition = getProviderChromeDefinition(area, clean)

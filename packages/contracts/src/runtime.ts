@@ -9,9 +9,11 @@ import {
 import { SITE_GENERATION_BLOCK_SLUGS } from "./site"
 import type {
   AnalyticsBlockMetadata,
+  BentoGridBlock,
   Block,
   BlogCardsBlock,
   ContactSectionBlock,
+  ContentSectionBlock,
   CTABlock,
   FAQBlock,
   FeatureListBlock,
@@ -22,6 +24,7 @@ import type {
   LinkRef,
   LogoCloudBlock,
   MediaRef,
+  NewsletterBlock,
   Page,
   PricingBlock,
   RichTextBlock,
@@ -329,6 +332,7 @@ export const AnalyticsBlockMetadataSchema: z.ZodType<AnalyticsBlockMetadata> = s
   sectionType: nullableString,
   sectionPosition: z.number().nullable().optional(),
   sectionAnchor: nullableString,
+  providerVariant: nullableString,
   blockPresetId: nullableString,
   contentSignature: nullableString,
 })
@@ -377,6 +381,10 @@ export const HeroBlockSchema: z.ZodType<HeroBlock> = strictObject({
   cta: LinkRefSchema.nullable().optional(),
   secondary: LinkRefSchema.nullable().optional(),
   image: MediaRefSchema.optional(),
+  stats: z.array(strictObject({
+    value: z.string().min(1),
+    label: z.string().min(1),
+  })).nullable().optional(),
 })
 
 export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject({
@@ -463,6 +471,23 @@ export const ContactSectionBlockSchema: z.ZodType<ContactSectionBlock> = strictO
   provider: FormProviderConfigSchema.nullable().optional(),
 })
 
+export const NewsletterBlockSchema: z.ZodType<NewsletterBlock> = strictObject({
+  blockType: z.literal("newsletter"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  description: RtFieldSchema.optional(),
+  emailLabel: nullableString,
+  emailPlaceholder: nullableString,
+  submitLabel: nullableString,
+  consentLabel: nullableString,
+  benefits: z.array(strictObject({
+    title: RtRootSchema,
+    description: RtFieldSchema.optional(),
+    icon: nullableString,
+  })).nullable().optional(),
+  provider: FormProviderConfigSchema.nullable().optional(),
+})
+
 export const PricingBlockSchema: z.ZodType<PricingBlock> = strictObject({
   blockType: z.literal("pricing"),
   ...baseBlockShape,
@@ -528,6 +553,38 @@ export const GalleryBlockSchema: z.ZodType<GalleryBlock> = strictObject({
   cta: LinkRefSchema.nullable().optional(),
 })
 
+export const BentoGridBlockSchema: z.ZodType<BentoGridBlock> = strictObject({
+  blockType: z.literal("bentoGrid"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  items: z.array(strictObject({
+    title: RtRootSchema,
+    description: RtFieldSchema.optional(),
+    image: MediaRefSchema.optional(),
+    icon: nullableString,
+    cta: LinkRefSchema.nullable().optional(),
+  })).min(1),
+})
+
+export const ContentSectionBlockSchema: z.ZodType<ContentSectionBlock> = strictObject({
+  blockType: z.literal("contentSection"),
+  ...baseBlockShape,
+  eyebrow: RtFieldSchema.optional(),
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  body: RtRootSchema,
+  features: z.array(strictObject({
+    title: RtRootSchema,
+    description: RtFieldSchema.optional(),
+    icon: nullableString,
+  })).nullable().optional(),
+  secondaryTitle: RtFieldSchema.optional(),
+  secondaryBody: RtFieldSchema.optional(),
+  image: MediaRefSchema.optional(),
+  cta: LinkRefSchema.nullable().optional(),
+})
+
 export const TeamBlockSchema: z.ZodType<TeamBlock> = strictObject({
   blockType: z.literal("team"),
   ...baseBlockShape,
@@ -570,10 +627,13 @@ const BlockSchemaBase = z.union([
   CTABlockSchema,
   RichTextBlockSchema,
   ContactSectionBlockSchema,
+  NewsletterBlockSchema,
   PricingBlockSchema,
   StatsBlockSchema,
   LogoCloudBlockSchema,
   GalleryBlockSchema,
+  BentoGridBlockSchema,
+  ContentSectionBlockSchema,
   TeamBlockSchema,
   BlogCardsBlockSchema,
 ])
@@ -586,10 +646,13 @@ const GeneratedBlockSchemaBase = z.union([
   CTABlockSchema,
   RichTextBlockSchema,
   ContactSectionBlockSchema,
+  NewsletterBlockSchema,
   PricingBlockSchema,
   StatsBlockSchema,
   LogoCloudBlockSchema,
   GalleryBlockSchema,
+  BentoGridBlockSchema,
+  ContentSectionBlockSchema,
   TeamBlockSchema,
   BlogCardsBlockSchema,
 ])

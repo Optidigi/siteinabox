@@ -135,7 +135,10 @@ describe("SiteSettings collection config", () => {
     expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "amicareZen"])
     expect(footer.fields.find((x: any) => x.name === "columns")).toMatchObject({ type: "json" })
     expect(banner.fields.map((x: any) => x.name)).toEqual(["variant", "visible", "title", "message", "link", "dismissible"])
-    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default"])
+    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual([
+      "default",
+      "tailwindplus.marketing.banner.with-button",
+    ])
     expect(banner.fields.find((x: any) => x.name === "link")).toMatchObject({ type: "group" })
 
     const maintenance = findField("maintenance")

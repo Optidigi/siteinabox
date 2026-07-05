@@ -51,6 +51,12 @@ export const tailwindPlusMarketingHeroSimpleCenteredProviderBlock = defineProvid
       exposed: false,
       sourceField: "image",
     },
+    stats: {
+      kind: "repeater",
+      status: "inactive",
+      exposed: false,
+      sourceField: "stats",
+    },
     pills: {
       kind: "text",
       status: "inactive",

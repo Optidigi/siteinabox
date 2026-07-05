@@ -41,9 +41,14 @@ depended on command-run site generation are no longer current source of truth.
   `tailwindplus.marketing.logo-cloud.simple-with-heading`,
   `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`,
   `tailwindplus.marketing.team.with-small-images`, and
-  `tailwindplus.marketing.blog.three-column`; active header chrome
-  `tailwindplus.marketing.header.with-stacked-flyout-menu`; and active
-  known-tenant 404 fallback `tailwindplus.marketing.feedback.404-simple`.
+  `tailwindplus.marketing.blog.three-column`,
+  `tailwindplus.marketing.newsletter.side-by-side-with-details`, and
+  `tailwindplus.marketing.bento.three-column-bento-grid`,
+  `tailwindplus.marketing.content.sticky-product-screenshot`, and
+  `tailwindplus.marketing.hero.with-stats`; active header chrome
+  `tailwindplus.marketing.header.with-stacked-flyout-menu`; active banner
+  chrome `tailwindplus.marketing.banner.with-button`; and active known-tenant
+  404 fallback `tailwindplus.marketing.feedback.404-simple`.
   Tailwind Plus FAQ and Footer variants are present upstream but remain inactive
   because their current public payload variants are locked/non-downloadable.
   Other Tailwind Plus candidates, Preline, Tailblocks, SIAB-owned generic visual
@@ -184,13 +189,16 @@ Follow-up on 2026-07-02 connected the public `apps/intake` form UI to CMS
 
 Same-day follow-up made CMS `POST /api/intake` store the normalized intake and
 start provider-backed draft generation from that stored intake automatically.
-The generated output remains validated CMS data only. As of 2026-07-04, generic
+The generated output remains validated CMS data only. As of 2026-07-05, generic
 self-serve generation is limited to active exact-source Tailwind Plus Marketing
 provider surfaces: page sections backed by the executable source-block registry
-and header chrome backed by the executable source-chrome registry. The active
+and header/banner chrome backed by the executable source-chrome registry. The active
 page-section set is hero, feature sections, CTA, contact, testimonial, stats,
-and logo-cloud blocks. The provider-backed known-tenant 404 fallback is renderer
-system behavior, not generated page content.
+logo-cloud, pricing, team, newsletter, bento grid, content section, and blog/cards blocks.
+The generic mock homepage now
+exercises that active page-section set with canonical provider IDs, including
+pricing, team, newsletter, bento grid, content section, and blog/cards. The provider-backed known-tenant 404 fallback is
+renderer system behavior, not generated page content.
 Preview access and customer email sending remain gated from the generation-run
 detail flow. Existing operational preview-ready records may remain from earlier
 deployments.
@@ -237,10 +245,12 @@ The intake workflow uses a provider-backed AI generation service instead of
 calling the fixture loader directly. Generic self-serve provider-backed
 generation is currently limited to active exact-source Tailwind Plus Marketing
 page sections backed by the executable source-block registry: hero, feature
-sections, CTA, contact, testimonial, stats, and logo-cloud. It may also select
-the active Tailwind Plus Marketing header chrome through structured
-`SiteSettings.chrome.header.variant` data. The known-tenant 404 fallback is
-provider-backed in the renderer and is not generated as page content. The
+sections, CTA, contact, testimonial, stats, logo-cloud, pricing, team, and
+newsletter, bento grid, content section, and blog/cards. It may also select the active Tailwind Plus
+Marketing header and banner chrome through structured
+`SiteSettings.chrome.header.variant` and `SiteSettings.chrome.banner.variant`
+data. The known-tenant 404 fallback is provider-backed in the renderer and is
+not generated as page content. The
 default provider remains `mock` for local development and tests, while
 `SITE_GENERATION_PROVIDER=openai` enables the OpenAI Responses API path.
 Generation runs record provider, model,

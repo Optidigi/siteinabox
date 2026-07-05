@@ -1,13 +1,16 @@
 import type {
   ContactSectionBlock,
   CTABlock,
+  BentoGridBlock,
   BlogCardsBlock,
+  ContentSectionBlock,
   FAQBlock,
   FeatureListBlock,
   GalleryBlock,
   HeroBlock,
   LogoCloudBlock,
   MediaRef,
+  NewsletterBlock,
   Page,
   PricingBlock,
   RichTextBlock,
@@ -291,10 +294,13 @@ export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
 export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
 export type GeneratedRichTextBlockSpec = RichTextBlock & GeneratedBlockMetadata
 export type GeneratedContactSectionBlockSpec = ContactSectionBlock & GeneratedBlockMetadata
+export type GeneratedNewsletterBlockSpec = NewsletterBlock & GeneratedBlockMetadata
 export type GeneratedPricingBlockSpec = PricingBlock & GeneratedBlockMetadata
 export type GeneratedStatsBlockSpec = StatsBlock & GeneratedBlockMetadata
 export type GeneratedLogoCloudBlockSpec = LogoCloudBlock & GeneratedBlockMetadata
 export type GeneratedGalleryBlockSpec = GalleryBlock & GeneratedBlockMetadata
+export type GeneratedBentoGridBlockSpec = BentoGridBlock & GeneratedBlockMetadata
+export type GeneratedContentSectionBlockSpec = ContentSectionBlock & GeneratedBlockMetadata
 export type GeneratedTeamBlockSpec = TeamBlock & GeneratedBlockMetadata
 export type GeneratedBlogCardsBlockSpec = BlogCardsBlock & GeneratedBlockMetadata
 
@@ -306,10 +312,13 @@ export type GeneratedBlockSpec =
   | GeneratedCTABlockSpec
   | GeneratedRichTextBlockSpec
   | GeneratedContactSectionBlockSpec
+  | GeneratedNewsletterBlockSpec
   | GeneratedPricingBlockSpec
   | GeneratedStatsBlockSpec
   | GeneratedLogoCloudBlockSpec
   | GeneratedGalleryBlockSpec
+  | GeneratedBentoGridBlockSpec
+  | GeneratedContentSectionBlockSpec
   | GeneratedTeamBlockSpec
   | GeneratedBlogCardsBlockSpec
 

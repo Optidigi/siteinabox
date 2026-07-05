@@ -13,6 +13,9 @@ export const SITE_BLOCK_SLUGS = [
   "logoCloud",
   "gallery",
   "team",
+  "newsletter",
+  "bentoGrid",
+  "contentSection",
   "blogCards",
 ] as const
 
@@ -49,6 +52,7 @@ export type AnalyticsBlockMetadata = {
   sectionType?: string | null
   sectionPosition?: number | null
   sectionAnchor?: string | null
+  providerVariant?: string | null
   blockPresetId?: string | null
   contentSignature?: string | null
 }
@@ -99,6 +103,10 @@ export type HeroBlock = BlockInstanceBase & {
   cta?: LinkRef | null
   secondary?: LinkRef | null
   image?: MediaRef
+  stats?: Array<{
+    value: string
+    label: string
+  }> | null
 }
 
 export type FeatureListBlock = BlockInstanceBase & {
@@ -165,6 +173,22 @@ export type ContactSectionBlock = BlockInstanceBase & {
   provider?: FormProviderConfig | null
 }
 
+export type NewsletterBlock = BlockInstanceBase & {
+  blockType: "newsletter"
+  title?: RtRoot | null
+  description?: RtRoot | null
+  emailLabel?: string | null
+  emailPlaceholder?: string | null
+  submitLabel?: string | null
+  consentLabel?: string | null
+  benefits?: Array<{
+    title: RtRoot
+    description?: RtRoot | null
+    icon?: string | null
+  }> | null
+  provider?: FormProviderConfig | null
+}
+
 export type PricingBlock = BlockInstanceBase & {
   blockType: "pricing"
   title?: RtRoot | null
@@ -215,6 +239,36 @@ export type GalleryBlock = BlockInstanceBase & {
   cta?: LinkRef | null
 }
 
+export type BentoGridBlock = BlockInstanceBase & {
+  blockType: "bentoGrid"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: Array<{
+    title: RtRoot
+    description?: RtRoot | null
+    image?: MediaRef
+    icon?: string | null
+    cta?: LinkRef | null
+  }>
+}
+
+export type ContentSectionBlock = BlockInstanceBase & {
+  blockType: "contentSection"
+  eyebrow?: RtRoot | null
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  body: RtRoot
+  features?: Array<{
+    title: RtRoot
+    description?: RtRoot | null
+    icon?: string | null
+  }> | null
+  secondaryTitle?: RtRoot | null
+  secondaryBody?: RtRoot | null
+  image?: MediaRef
+  cta?: LinkRef | null
+}
+
 export type TeamBlock = BlockInstanceBase & {
   blockType: "team"
   title?: RtRoot | null
@@ -251,10 +305,13 @@ export type Block =
   | CTABlock
   | RichTextBlock
   | ContactSectionBlock
+  | NewsletterBlock
   | PricingBlock
   | StatsBlock
   | LogoCloudBlock
   | GalleryBlock
+  | BentoGridBlock
+  | ContentSectionBlock
   | TeamBlock
   | BlogCardsBlock
 
@@ -301,7 +358,7 @@ export type SiteHeaderChromeVariant =
   | "amicareZen"
   | "tailwindplus.marketing.header.with-stacked-flyout-menu"
 export type SiteFooterChromeVariant = "default" | "amicareZen"
-export type SiteBannerChromeVariant = "default"
+export type SiteBannerChromeVariant = "default" | "tailwindplus.marketing.banner.with-button"
 export type SiteChromeVariant = SiteHeaderChromeVariant | SiteFooterChromeVariant | SiteBannerChromeVariant
 
 export type SiteChromeBanner = {

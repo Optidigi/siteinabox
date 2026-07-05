@@ -182,7 +182,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "cta", "secondary"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "cta", "secondary", "stats"],
     properties: {
       blockType: { type: "string", const: "hero" },
       ...baseBlockProperties,
@@ -192,6 +192,17 @@ const blockJsonSchemas = [
       subheadline: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
       cta: { anyOf: [linkJsonSchema, { type: "null" }] },
       secondary: { anyOf: [linkJsonSchema, { type: "null" }] },
+      stats: {
+        type: "array",
+        minItems: 0,
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["value", "label"],
+          properties: { value: { type: "string" }, label: { type: "string" } },
+        },
+      },
     },
   },
   {
@@ -471,6 +482,94 @@ const blockJsonSchemas = [
           },
         },
       },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "designVariant", "anchor", "title", "description", "emailLabel", "emailPlaceholder", "submitLabel", "benefits"],
+    properties: {
+      blockType: { type: "string", const: "newsletter" },
+      ...baseBlockProperties,
+      designVariant: designVariantJsonSchemaFor("newsletter"),
+      title: richTextInlineJsonSchema,
+      description: richTextBlockJsonSchema,
+      emailLabel: stringOrNull,
+      emailPlaceholder: stringOrNull,
+      submitLabel: { type: "string" },
+      benefits: {
+        type: "array",
+        minItems: 2,
+        maxItems: 2,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "description"],
+          properties: {
+            title: richTextInlineJsonSchema,
+            description: richTextBlockJsonSchema,
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "designVariant", "anchor", "title", "intro", "items"],
+    properties: {
+      blockType: { type: "string", const: "bentoGrid" },
+      ...baseBlockProperties,
+      designVariant: designVariantJsonSchemaFor("bentoGrid"),
+      title: richTextInlineJsonSchema,
+      intro: richTextBlockJsonSchema,
+      items: {
+        type: "array",
+        minItems: 4,
+        maxItems: 4,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "description", "image"],
+          properties: {
+            title: richTextInlineJsonSchema,
+            description: richTextBlockJsonSchema,
+            image: mediaRefJsonSchema,
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "object",
+    additionalProperties: false,
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "secondaryTitle", "secondaryBody"],
+    properties: {
+      blockType: { type: "string", const: "contentSection" },
+      ...baseBlockProperties,
+      designVariant: designVariantJsonSchemaFor("contentSection"),
+      eyebrow: nullableInlineRichTextJsonSchema,
+      title: richTextInlineJsonSchema,
+      intro: richTextBlockJsonSchema,
+      body: richTextBlockJsonSchema,
+      image: mediaRefJsonSchema,
+      features: {
+        type: "array",
+        minItems: 3,
+        maxItems: 3,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["title", "description", "icon"],
+          properties: {
+            title: richTextInlineJsonSchema,
+            description: richTextBlockJsonSchema,
+            icon: stringOrNull,
+          },
+        },
+      },
+      secondaryTitle: richTextInlineJsonSchema,
+      secondaryBody: richTextBlockJsonSchema,
     },
   },
   {

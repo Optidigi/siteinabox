@@ -43,6 +43,13 @@ export const Hero: BlockWithMeta = {
       { name: "href", type: "text", validate: validateSafeHref }
     ]},
     { name: "image", type: "upload", relationTo: "media" },
+    { name: "stats", type: "array",
+      admin: { description: "Fixed hero metric slots for provider variants that include stats." },
+      fields: [
+        { name: "value", type: "text", required: true },
+        { name: "label", type: "text", required: true },
+      ]
+    },
     ...blockBaseFields("services"),
   ],
   summary: (v) => {

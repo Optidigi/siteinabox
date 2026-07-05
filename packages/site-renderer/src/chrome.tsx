@@ -228,11 +228,28 @@ export function SiteFooter({ settings, mediaResolver }: SiteChromeProps) {
   )
 }
 
-export function SiteBanner({ settings }: SiteChromeProps) {
+export function SiteBanner({ settings, currentSlug, mediaResolver }: SiteChromeProps) {
   const banner = settings.chrome?.banner
   if (!banner || banner.visible === false || !banner.message) return null
 
   const variant = banner.variant ?? "default"
+  const providerBannerRenderer = getProviderChromeRenderer("banner", variant)
+  if (providerBannerRenderer) return <>{providerBannerRenderer({ settings, currentSlug, mediaResolver })}</>
+  if (isProviderChromeVariantIdentifier(variant)) {
+    const providerDefinition = getProviderChromeDefinition("banner", variant)
+    return (
+      <aside
+        className="site-chrome site-banner cms-block--provider-error rounded-md border border-red-300 bg-red-50 p-6 text-sm text-red-900"
+        data-provider-error={!providerDefinition ? "unresolved" : "missing-renderer"}
+        data-provider-variant={variant}
+        data-source-variant={variant}
+        data-siab-site-banner
+        data-site-chrome="banner"
+      >
+        Unresolved provider chrome variant: <code>{String(variant)}</code>
+      </aside>
+    )
+  }
   const variantClassName = chromeVariantClassName()
   const link = banner.link?.href && banner.link.label ? banner.link : null
 

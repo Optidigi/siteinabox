@@ -179,15 +179,8 @@ describe("renderer block catalog", () => {
 
   it("separates first-catalog contract coverage from deferred renderer work", () => {
     expect(REQUIRED_V1_MARKETING_BLOCKS).toEqual(expect.arrayContaining([...SITE_BLOCK_SLUGS]))
-    expect(APPROVED_V1_MARKETING_CAPABILITY_COVERAGE).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          capability: "newsletter",
-          blockSlug: "contactSection",
-          variantId: "contactSection:tailwindPlusNewsletterDetails",
-        }),
-      ]),
-    )
+    expect(APPROVED_V1_MARKETING_CAPABILITY_COVERAGE).toEqual([])
+    expect(SITE_BLOCK_SLUGS).toEqual(expect.arrayContaining(["newsletter", "bentoGrid", "contentSection"]))
     expect(DEFERRED_V1_MARKETING_BLOCKS).toEqual([])
     expect(DEFERRED_V1_MARKETING_RENDERER_BLOCKS).toEqual([])
     expect(DEFERRED_V1_MARKETING_RENDERER_BLOCKS).not.toContain("newsletter")
@@ -205,6 +198,9 @@ describe("renderer block catalog", () => {
       "logoCloud",
       "gallery",
       "team",
+      "newsletter",
+      "bentoGrid",
+      "contentSection",
       "blogCards",
     ]
     expect(SITE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug)).toEqual(expect.arrayContaining(providerBackedSlugs))
@@ -271,11 +267,13 @@ describe("renderer block catalog", () => {
     for (const variantId of [
       "hero:tailwindPlusSimpleCentered",
       "featureList:tailwindPlusCentered2x2",
-      "contactSection:tailwindPlusNewsletterDetails",
       "pricing:tailwindPlusSimpleTiers",
       "stats:tailwindPlusSimple",
       "logoCloud:tailwindPlusSimple",
       "team:tailwindPlusGrid",
+      "newsletter:tailwindPlusNewsletterSideBySideWithDetails",
+      "bentoGrid:tailwindPlusThreeColumnBentoGrid",
+      "contentSection:tailwindPlusContentStickyProductScreenshot",
       "blogCards:tailwindPlusThreeColumn",
     ]) {
       const runtime = byId.get(variantId)?.provenance.runtime
@@ -298,6 +296,7 @@ describe("renderer block catalog", () => {
         "footer:default",
         "footer:amicareZen",
         "banner:default",
+        "banner:tailwindplus.marketing.banner.with-button",
       ]),
     )
     expect(SITE_BLOCK_CATALOG.map((entry) => entry.slug)).not.toEqual(
@@ -312,6 +311,12 @@ describe("renderer block catalog", () => {
         variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
         rendererClassName: "site-header--source-tailwindplus-marketing-stacked-flyout",
       }),
+      expect.objectContaining({
+        area: "banner",
+        variantId: "banner:tailwindplus.marketing.banner.with-button",
+        variant: "tailwindplus.marketing.banner.with-button",
+        rendererClassName: "site-banner--source-tailwindplus-marketing-with-button",
+      }),
     ])
 
     expect(SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => variant.id)).toEqual([
@@ -319,24 +324,29 @@ describe("renderer block catalog", () => {
       "header:tailwindplus.marketing.header.with-stacked-flyout-menu",
       "footer:default",
       "banner:default",
+      "banner:tailwindplus.marketing.banner.with-button",
     ])
   })
 
   it("keeps source-backed chrome catalog exposure aligned with executable provider chrome definitions", () => {
     const activeChromeVariants = new Set(providerChromeDefinitions.map((definition) => definition.id))
 
-    expect(activeChromeVariants).toEqual(new Set(["tailwindplus.marketing.header.with-stacked-flyout-menu"]))
+    expect(activeChromeVariants).toEqual(new Set([
+      "tailwindplus.marketing.header.with-stacked-flyout-menu",
+      "tailwindplus.marketing.banner.with-button",
+    ]))
 
     for (const variant of SITE_SOURCE_BACKED_CHROME_VARIANTS) {
       expect(activeChromeVariants.has(variant.variant), `${variant.variantId} is exposed without active chrome renderer`).toBe(
         true,
       )
-      expect(variant.area, `${variant.variantId} should remain chrome, not a page block`).toBe("header")
+      expect(["header", "banner"]).toContain(variant.area)
       expect(variant.provenance.sourceName).toBe("Tailwind Plus")
     }
 
     expect(SITE_SOURCE_BACKED_CHROME_VARIANTS.map((variant) => variant.variant)).toEqual([
       "tailwindplus.marketing.header.with-stacked-flyout-menu",
+      "tailwindplus.marketing.banner.with-button",
     ])
   })
 

@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest"
 import {
   getProviderChromeDefinition,
   providerChromeDefinitions,
+  SiteBanner,
   SiteHeader,
 } from "@siteinabox/site-renderer"
 
@@ -14,8 +15,11 @@ const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}
 const fromRepoRoot = (relativePath: string) => path.join(repoRoot, relativePath)
 
 const variant = "tailwindplus.marketing.header.with-stacked-flyout-menu" as const
+const bannerVariant = "tailwindplus.marketing.banner.with-button" as const
 const fixturePath =
   "packages/site-renderer/src/source-chrome/tailwindplus/marketing/header/with-stacked-flyout-menu/upstream.html"
+const bannerFixturePath =
+  "packages/site-renderer/src/source-chrome/tailwindplus/marketing/banner/with-button/upstream.html"
 const stylesPath = "packages/site-renderer/src/styles.css"
 
 const normalizeSource = (source: string) =>
@@ -48,12 +52,20 @@ const settings = {
       variant,
       cta: { label: "Log in", href: "/login" },
     },
+    banner: {
+      variant: bannerVariant,
+      visible: true,
+      title: "GeneriCon 2026",
+      message: "Join us in Amsterdam to see what is coming next.",
+      link: { label: "Register now", href: "/register" },
+      dismissible: true,
+    },
   },
 } satisfies SiteSettings
 
 describe("provider chrome runtime", () => {
-  it("registers the Tailwind Plus stacked flyout header with source metadata", () => {
-    expect(providerChromeDefinitions).toHaveLength(1)
+  it("registers active Tailwind Plus chrome with source metadata", () => {
+    expect(providerChromeDefinitions).toHaveLength(2)
 
     const definition = getProviderChromeDefinition("header", variant)
     expect(definition?.id).toBe(variant)
@@ -64,6 +76,14 @@ describe("provider chrome runtime", () => {
     const source = readFileSync(fromRepoRoot(fixturePath), "utf8")
     const hash = `sha256:${createHash("sha256").update(normalizeSource(source)).digest("hex")}`
     expect(definition?.source.sourceHash).toBe(hash)
+
+    const bannerDefinition = getProviderChromeDefinition("banner", bannerVariant)
+    expect(bannerDefinition?.id).toBe(bannerVariant)
+    expect(bannerDefinition?.renderer).toBeTypeOf("function")
+    expect(bannerDefinition?.rendererClassName).toBe("site-banner--source-tailwindplus-marketing-with-button")
+    const bannerSource = readFileSync(fromRepoRoot(bannerFixturePath), "utf8")
+    const bannerHash = `sha256:${createHash("sha256").update(normalizeSource(bannerSource)).digest("hex")}`
+    expect(bannerDefinition?.source.sourceHash).toBe(bannerHash)
   })
 
   it("renders source-backed header chrome with root markers and upstream utility class parity", () => {
@@ -79,6 +99,22 @@ describe("provider chrome runtime", () => {
 
     for (const className of extractFixtureClassNames(upstream)) {
       expect(html, `header render missing upstream className: ${className}`).toContain(className)
+    }
+  })
+
+  it("renders source-backed banner chrome with root markers and upstream utility class parity", () => {
+    const html = renderToStaticMarkup(<SiteBanner settings={settings} currentSlug="features" />)
+    const upstream = readFileSync(fromRepoRoot(bannerFixturePath), "utf8")
+
+    expect(html).toContain('data-site-chrome="banner"')
+    expect(html).toContain("data-siab-site-banner")
+    expect(html).toContain('data-provider-chrome="tailwindplus"')
+    expect(html).toContain(`data-provider-variant="${bannerVariant}"`)
+    expect(html).toContain('data-source-backed-chrome="true"')
+    expect(html).toContain(`data-source-variant="${bannerVariant}"`)
+
+    for (const className of extractFixtureClassNames(upstream)) {
+      expect(html, `banner render missing upstream className: ${className}`).toContain(className)
     }
   })
 

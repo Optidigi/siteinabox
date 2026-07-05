@@ -29,10 +29,12 @@ const ARRAY_ROW_KEYS = new Set([
   "items",         // Testimonials.items, FAQ.items
   "features",      // FeatureList.features
   "fields",        // ContactSection.fields
+  "benefits",      // Newsletter.benefits
   "hiddenFields",  // ContactSection.provider.hiddenFields
   "social",        // SiteSettings.contact.social — future-proofs pages
                    // should they ever embed it
-  "pills"          // Hero.pills
+  "pills",         // Hero.pills
+  "stats"          // Hero.stats
 ])
 
 /**
@@ -121,6 +123,11 @@ const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
     sectionType,
     sectionPosition: index,
     sectionAnchor: anchor,
+    providerVariant: typeof block.designVariant === "string" && block.designVariant.trim()
+      ? block.designVariant.trim()
+      : typeof stored.providerVariant === "string"
+        ? stored.providerVariant
+        : null,
     blockPresetId: typeof block.blockPresetId === "string"
       ? block.blockPresetId
       : typeof stored.blockPresetId === "string"

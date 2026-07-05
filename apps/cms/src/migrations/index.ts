@@ -48,6 +48,7 @@ import * as migration_20260704_140000_normalize_published_snapshot_blocks from '
 import * as migration_20260704_150000_add_hero_secondary_cta from './20260704_150000_add_hero_secondary_cta';
 import * as migration_20260704_160000_add_provider_rich_slots from './20260704_160000_add_provider_rich_slots';
 import * as migration_20260705_120000_add_tailwindplus_header_enum_value from './20260705_120000_add_tailwindplus_header_enum_value';
+import * as migration_20260705_162355_add_newsletter_bento_content_blocks from './20260705_162355_add_newsletter_bento_content_blocks';
 
 export const migrations = [
   {
@@ -223,81 +224,86 @@ export const migrations = [
   {
     up: migration_20260627_120000_add_concrete_block_model_schema.up,
     down: migration_20260627_120000_add_concrete_block_model_schema.down,
-    name: '20260627_120000_add_concrete_block_model_schema'
+    name: '20260627_120000_add_concrete_block_model_schema',
   },
   {
     up: migration_20260627_130000_add_marketing_catalog_cms_schema.up,
     down: migration_20260627_130000_add_marketing_catalog_cms_schema.down,
-    name: '20260627_130000_add_marketing_catalog_cms_schema'
+    name: '20260627_130000_add_marketing_catalog_cms_schema',
   },
   {
     up: migration_20260627_140000_add_tenant_chrome_variant_enum_values.up,
     down: migration_20260627_140000_add_tenant_chrome_variant_enum_values.down,
-    name: '20260627_140000_add_tenant_chrome_variant_enum_values'
+    name: '20260627_140000_add_tenant_chrome_variant_enum_values',
   },
   {
     up: migration_20260628_000000_generic_generation_fixture_defaults.up,
     down: migration_20260628_000000_generic_generation_fixture_defaults.down,
-    name: '20260628_000000_generic_generation_fixture_defaults'
+    name: '20260628_000000_generic_generation_fixture_defaults',
   },
   {
     up: migration_20260630_120000_add_intake_review_fields.up,
     down: migration_20260630_120000_add_intake_review_fields.down,
-    name: '20260630_120000_add_intake_review_fields'
+    name: '20260630_120000_add_intake_review_fields',
   },
   {
     up: migration_20260630_130000_default_dutch_locale.up,
     down: migration_20260630_130000_default_dutch_locale.down,
-    name: '20260630_130000_default_dutch_locale'
+    name: '20260630_130000_default_dutch_locale',
   },
   {
     up: migration_20260630_150000_add_generation_run_domain_order.up,
     down: migration_20260630_150000_add_generation_run_domain_order.down,
-    name: '20260630_150000_add_generation_run_domain_order'
+    name: '20260630_150000_add_generation_run_domain_order',
   },
   {
     up: migration_20260701_120000_add_mail_logs.up,
     down: migration_20260701_120000_add_mail_logs.down,
-    name: '20260701_120000_add_mail_logs'
+    name: '20260701_120000_add_mail_logs',
   },
   {
     up: migration_20260701_130000_add_tenant_email_sending.up,
     down: migration_20260701_130000_add_tenant_email_sending.down,
-    name: '20260701_130000_add_tenant_email_sending'
+    name: '20260701_130000_add_tenant_email_sending',
   },
   {
     up: migration_20260701_140000_add_operational_alerts.up,
     down: migration_20260701_140000_add_operational_alerts.down,
-    name: '20260701_140000_add_operational_alerts'
+    name: '20260701_140000_add_operational_alerts',
   },
   {
     up: migration_20260704_120000_design_variant_and_remove_retired_chrome.up,
     down: migration_20260704_120000_design_variant_and_remove_retired_chrome.down,
-    name: '20260704_120000_design_variant_and_remove_retired_chrome'
+    name: '20260704_120000_design_variant_and_remove_retired_chrome',
   },
   {
     up: migration_20260704_130000_remove_inactive_blocks_and_block_tokens.up,
     down: migration_20260704_130000_remove_inactive_blocks_and_block_tokens.down,
-    name: '20260704_130000_remove_inactive_blocks_and_block_tokens'
+    name: '20260704_130000_remove_inactive_blocks_and_block_tokens',
   },
   {
     up: migration_20260704_140000_normalize_published_snapshot_blocks.up,
     down: migration_20260704_140000_normalize_published_snapshot_blocks.down,
-    name: '20260704_140000_normalize_published_snapshot_blocks'
+    name: '20260704_140000_normalize_published_snapshot_blocks',
   },
   {
     up: migration_20260704_150000_add_hero_secondary_cta.up,
     down: migration_20260704_150000_add_hero_secondary_cta.down,
-    name: '20260704_150000_add_hero_secondary_cta'
+    name: '20260704_150000_add_hero_secondary_cta',
   },
   {
     up: migration_20260704_160000_add_provider_rich_slots.up,
     down: migration_20260704_160000_add_provider_rich_slots.down,
-    name: '20260704_160000_add_provider_rich_slots'
+    name: '20260704_160000_add_provider_rich_slots',
   },
   {
     up: migration_20260705_120000_add_tailwindplus_header_enum_value.up,
     down: migration_20260705_120000_add_tailwindplus_header_enum_value.down,
-    name: '20260705_120000_add_tailwindplus_header_enum_value'
+    name: '20260705_120000_add_tailwindplus_header_enum_value',
+  },
+  {
+    up: migration_20260705_162355_add_newsletter_bento_content_blocks.up,
+    down: migration_20260705_162355_add_newsletter_bento_content_blocks.down,
+    name: '20260705_162355_add_newsletter_bento_content_blocks'
   },
 ];
