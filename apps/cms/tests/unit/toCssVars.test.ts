@@ -131,7 +131,24 @@ describe("toCssVars (round 4)", () => {
 
   it("clamps --radius-sm at 0 when theme.radius is small", () => {
     const css = toCssVars({ radius: "0" })
-    expect(css).toContain("--radius-sm:0rem")
+    expect(css).toContain("--radius-sm:0")
+  })
+
+  it("collapses every derived Tailwind radius var for the square shape", () => {
+    const css = toCssVars({ radius: "0" })
+    for (const prop of [
+      "--radius-none",
+      "--radius-xs",
+      "--radius-sm",
+      "--radius-md",
+      "--radius-lg",
+      "--radius-xl",
+      "--radius-2xl",
+      "--radius-3xl",
+      "--radius-4xl",
+    ]) {
+      expect(css).toContain(`${prop}:0`)
+    }
   })
 
   it("emits a [data-rt-mode='dark'] overlay rule when darkPalette is set", () => {

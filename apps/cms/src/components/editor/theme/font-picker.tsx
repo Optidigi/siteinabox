@@ -26,6 +26,15 @@ function fontsMatchPreset(value: Fonts | undefined, preset: Fonts): boolean {
   )
 }
 
+function fontsEqual(left: Fonts | undefined, right: Fonts | undefined): boolean {
+  return (
+    left?.title === right?.title &&
+    left?.heading === right?.heading &&
+    left?.text === right?.text &&
+    left?.script === right?.script
+  )
+}
+
 function resolveRole(
   role: "title" | "heading" | "text",
   presetFonts: Fonts,
@@ -53,8 +62,11 @@ export const FontPicker: React.FC<{
   // a `fonts` field today. If/when it does, prefer it. Otherwise the
   // FALLBACK in resolveRole kicks in.
   const manifestFonts = (manifest as unknown as { fonts?: Fonts }).fonts
+  const generatedDefaultRef = React.useRef<Fonts | undefined>(value && Object.keys(value).length > 0 ? value : undefined)
 
-  const activeId = fonts.find((p) => fontsMatchPreset(value ?? undefined, p.fonts))?.id
+  const activeId = generatedDefaultRef.current && fontsEqual(value ?? undefined, generatedDefaultRef.current)
+    ? "default"
+    : fonts.find((p) => fontsMatchPreset(value ?? undefined, p.fonts))?.id
 
   return (
     // Compact vertical list — each row is the preset name set in its own
@@ -63,12 +75,13 @@ export const FontPicker: React.FC<{
     <div className="flex w-[14rem] flex-col">
       {fonts.map((preset) => {
         const isActive = activeId === preset.id
-        const headingFont = resolveRole("heading", preset.fonts, manifestFonts)
+        const presetFonts = preset.id === "default" ? (generatedDefaultRef.current ?? preset.fonts) : preset.fonts
+        const headingFont = resolveRole("heading", presetFonts, manifestFonts)
         return (
           <button
             key={preset.id}
             type="button"
-            onClick={() => onChange(preset.fonts)}
+            onClick={() => onChange(presetFonts)}
             aria-pressed={isActive}
             aria-label={`Apply ${preset.label} font preset`}
             className={[

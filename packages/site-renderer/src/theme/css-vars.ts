@@ -24,6 +24,19 @@ function parseLength(value: string): { num: number; unit: string } | null {
 function deriveRadii(md: string): Array<[string, string]> {
   const parsed = parseLength(md)
   if (!parsed) return []
+  if (parsed.num === 0) {
+    return [
+      ["--radius-none", "0"],
+      ["--radius-xs", "0"],
+      ["--radius-sm", "0"],
+      ["--radius-md", "0"],
+      ["--radius-lg", "0"],
+      ["--radius-xl", "0"],
+      ["--radius-2xl", "0"],
+      ["--radius-3xl", "0"],
+      ["--radius-4xl", "0"],
+    ]
+  }
   const offset = (delta: number) => `${Math.max(parsed.num + delta, 0)}${parsed.unit}`
   return [
     ["--radius-none", "0"],

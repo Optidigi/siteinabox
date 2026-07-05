@@ -457,6 +457,7 @@ const themeToCmsTokens = (theme: ThemeTokenSpec): ThemeTokens | null => {
           title: theme.fonts.title,
           heading: theme.fonts.heading,
           text: theme.fonts.text,
+          script: theme.fonts.script,
         }
       : undefined,
     radius: theme.radius,

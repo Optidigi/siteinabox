@@ -166,10 +166,35 @@ export const PalettePicker: React.FC<{
   }
   const activePalette = mode === "dark" ? darkValue : value
   const defaults = useDefaultPalettes()
+  const generatedDefaultRef = React.useRef<{
+    light?: Palette
+    dark?: Palette
+    hasTheme: boolean
+  } | null>(null)
+  if (generatedDefaultRef.current == null) {
+    generatedDefaultRef.current = {
+      light: value,
+      dark: darkValue,
+      hasTheme: Boolean(value || darkValue),
+    }
+  }
+  const generatedDefault = generatedDefaultRef.current
+  const defaultPalette = (mode === "dark" ? generatedDefault.dark : generatedDefault.light) ?? defaults[mode]
 
-  // "Default" = no overrides on either half. Live-site / manifest tokens win.
-  const isDefaultHalf = (half: "light" | "dark"): boolean =>
-    mode === half && value == null && darkValue == null
+  const isDefaultHalf = (half: "light" | "dark"): boolean => {
+    if (mode !== half) return false
+    if (!generatedDefault.hasTheme) return value == null && darkValue == null
+    return (
+      value?.accent === generatedDefault.light?.accent &&
+      value?.bg === generatedDefault.light?.bg &&
+      value?.ink === generatedDefault.light?.ink &&
+      value?.muted === generatedDefault.light?.muted &&
+      darkValue?.accent === generatedDefault.dark?.accent &&
+      darkValue?.bg === generatedDefault.dark?.bg &&
+      darkValue?.ink === generatedDefault.dark?.ink &&
+      darkValue?.muted === generatedDefault.dark?.muted
+    )
+  }
 
   function isActiveHalf(palette: Palette, half: "light" | "dark"): boolean {
     if (mode !== half) return false
@@ -190,7 +215,15 @@ export const PalettePicker: React.FC<{
   }
 
   function pickDefault(half: "light" | "dark") {
-    onChange({ palette: undefined, darkPalette: undefined, mode: half })
+    if (!generatedDefault.hasTheme) {
+      onChange({ palette: undefined, darkPalette: undefined, mode: half })
+      return
+    }
+    onChange({
+      palette: generatedDefault.light,
+      darkPalette: generatedDefault.dark,
+      mode: half,
+    })
   }
 
   function handleCustomSlot(slot: keyof Palette, hex: string) {
@@ -219,8 +252,8 @@ export const PalettePicker: React.FC<{
   const rows: Row[] = [
     {
       id: "default",
-      label: t("default"),
-      palette: defaults[mode],
+      label: "Generated Style",
+      palette: defaultPalette,
       isActive: isDefaultHalf(mode),
       onPick: () => pickDefault(mode),
     },

@@ -10,6 +10,7 @@ import {
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
 import { SitePageRenderer, createRendererMediaResolver } from "@siteinabox/site-renderer"
+import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 
 export function RendererFrameRuntime({
   page,
@@ -31,6 +32,7 @@ export function RendererFrameRuntime({
   const [framePage, setFramePage] = React.useState(page)
   const [frameSettings, setFrameSettings] = React.useState(settings)
   const [frameTheme, setFrameTheme] = React.useState(theme)
+  const cspNonce = useCspNonce()
   const revisionRef = React.useRef(0)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
 
@@ -101,6 +103,7 @@ export function RendererFrameRuntime({
       tenantSlug={tenantSlug}
       domain={domain}
       mediaResolver={mediaResolver}
+      nonce={cspNonce}
       includeBehaviorScripts={false}
       formAction="#"
     />

@@ -123,4 +123,27 @@ describe("renderer iframe source contract", () => {
     expect(frameRuntime).toContain("viewportResize: false")
     expect(frameRuntime).not.toContain("siab.renderer.")
   })
+
+  it("passes the request CSP nonce through the renderer-frame shell into SitePageRenderer", () => {
+    const layout = read("apps/cms/src/app/(renderer-frame)/layout.tsx")
+    const frameRuntime = read(sourcePath("src/components/renderer-frame/RendererFrameRuntime.tsx"))
+
+    expect(layout).toContain('import { headers } from "next/headers"')
+    expect(layout).toContain('import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"')
+    expect(layout).toContain('const nonce = (await headers()).get("x-csp-nonce") ?? undefined')
+    expect(layout).toContain("<CspNonceProvider nonce={nonce}>")
+    expect(layout.indexOf("<CspNonceProvider nonce={nonce}>")).toBeLessThan(
+      layout.indexOf("{children}"),
+    )
+
+    expect(frameRuntime).toContain('import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"')
+    expect(frameRuntime).toContain("const cspNonce = useCspNonce()")
+    expect(frameRuntime).toContain("nonce={cspNonce}")
+    expect(frameRuntime.indexOf("const cspNonce = useCspNonce()")).toBeLessThan(
+      frameRuntime.indexOf("<SitePageRenderer"),
+    )
+    expect(frameRuntime.indexOf("nonce={cspNonce}")).toBeGreaterThan(
+      frameRuntime.indexOf("<SitePageRenderer"),
+    )
+  })
 })

@@ -173,6 +173,7 @@ describe("applySiteGenerationSpec", () => {
       fonts: {
         heading: "Inter",
         text: "Inter",
+        script: "Georgia",
       },
       radius: "8px",
       mode: "light",

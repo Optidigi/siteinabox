@@ -18,40 +18,34 @@ import type { DensityLevel, RadiusLevel, StylePresetLevel } from "@/components/e
 
 export const PALETTE_PRESETS: PalettePreset[] = [
   {
-    id: "warm-sand",
-    label: "Warm Sand",
-    light: { accent: "#c97c2e", bg: "#faf7f2", ink: "#2c2318", muted: "#8a7966" },
-    dark:  { accent: "#e09354", bg: "#1f1812", ink: "#f5ede0", muted: "#a89683" },
+    id: "red",
+    label: "Red",
+    light: { accent: "#dc2626", bg: "#fff7f7", ink: "#1f1212", muted: "#8f4a4a" },
+    dark:  { accent: "#f87171", bg: "#1f0a0a", ink: "#fee2e2", muted: "#c08484" },
   },
   {
-    id: "slate-sky",
-    label: "Slate & Sky",
-    light: { accent: "#3b82f6", bg: "#f8fafc", ink: "#1e293b", muted: "#64748b" },
-    dark:  { accent: "#60a5fa", bg: "#0f172a", ink: "#e2e8f0", muted: "#94a3b8" },
+    id: "blue",
+    label: "Blue",
+    light: { accent: "#2563eb", bg: "#f5f9ff", ink: "#111827", muted: "#526480" },
+    dark:  { accent: "#60a5fa", bg: "#081526", ink: "#dbeafe", muted: "#8aa7cf" },
   },
   {
-    id: "forest",
-    label: "Forest",
-    light: { accent: "#4a7c59", bg: "#f4f9f4", ink: "#1c2e22", muted: "#6b8f74" },
-    dark:  { accent: "#6fae82", bg: "#0e1a13", ink: "#dceee0", muted: "#8aab93" },
+    id: "green",
+    label: "Green",
+    light: { accent: "#16803c", bg: "#f3faf5", ink: "#102018", muted: "#587764" },
+    dark:  { accent: "#4ade80", bg: "#07160d", ink: "#dcfce7", muted: "#86b695" },
   },
   {
-    id: "mono",
-    label: "Mono",
-    light: { accent: "#18181b", bg: "#ffffff", ink: "#09090b", muted: "#71717a" },
-    dark:  { accent: "#fafafa", bg: "#09090b", ink: "#fafafa", muted: "#a1a1aa" },
+    id: "amber-gold",
+    label: "Amber Gold",
+    light: { accent: "#b7791f", bg: "#fffaf0", ink: "#241a0c", muted: "#80683a" },
+    dark:  { accent: "#fbbf24", bg: "#1c1405", ink: "#fef3c7", muted: "#c6a65a" },
   },
   {
-    id: "rose",
-    label: "Rose",
-    light: { accent: "#e11d48", bg: "#fff5f7", ink: "#1f0a0e", muted: "#9f4155" },
-    dark:  { accent: "#fb7185", bg: "#1a070b", ink: "#fde7eb", muted: "#bb6677" },
-  },
-  {
-    id: "midnight",
-    label: "Midnight",
-    light: { accent: "#6366f1", bg: "#f5f5ff", ink: "#1e1b4b", muted: "#6b6e98" },
-    dark:  { accent: "#818cf8", bg: "#0f0f18", ink: "#e2e8f0", muted: "#94a3b8" },
+    id: "mono-slate",
+    label: "Mono Slate",
+    light: { accent: "#334155", bg: "#ffffff", ink: "#0f172a", muted: "#64748b" },
+    dark:  { accent: "#cbd5e1", bg: "#020617", ink: "#f8fafc", muted: "#94a3b8" },
   },
 ]
 
@@ -73,23 +67,28 @@ export const PALETTE_PRESETS: PalettePreset[] = [
 export const FONT_PRESETS: FontPreset[] = [
   {
     id: "default",
-    label: "Default",
+    label: "Generated Style",
     fonts: {}, // empty — UI resolves from tenant manifest at render time
   },
   {
-    id: "sans",
-    label: "Sans",
+    id: "clear-modern",
+    label: "Clear Modern",
     fonts: { title: "Inter Variable", heading: "Inter Variable", text: "Inter Variable" },
   },
   {
-    id: "serif",
-    label: "Serif",
+    id: "classic-editorial",
+    label: "Classic Editorial",
     fonts: { title: "Fraunces Variable", heading: "Fraunces Variable", text: "Inter Variable" },
   },
   {
-    id: "display",
-    label: "Display",
+    id: "friendly-organic",
+    label: "Friendly Organic",
     fonts: { title: "Caveat Variable", heading: "Fraunces Variable", text: "Inter Variable" },
+  },
+  {
+    id: "bold-confident",
+    label: "Bold Confident",
+    fonts: { title: "Inter Variable", heading: "Fraunces Variable", text: "Inter Variable" },
   },
 ]
 
@@ -103,9 +102,10 @@ export const FONT_PRESETS: FontPreset[] = [
 // ---------------------------------------------------------------------------
 
 export const RADIUS_PRESETS: RadiusLevel[] = [
-  { id: "sharp", label: "Sharp", value: "0", icon: "square" },
-  { id: "soft", label: "Soft", value: "0.5rem", icon: "squircle" },
-  { id: "round", label: "Round", value: "1.5rem", icon: "circle" },
+  { id: "rounded", label: "Rounded", value: "1.25rem", icon: "circle" },
+  { id: "soft", label: "Soft", value: "0.75rem", icon: "squircle" },
+  { id: "subtle", label: "Subtle", value: "0.25rem", icon: "squircle" },
+  { id: "square", label: "Square", value: "0", icon: "square" },
 ]
 
 export const DENSITY_PRESETS: DensityLevel[] = [
