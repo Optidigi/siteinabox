@@ -177,9 +177,9 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /data-tenant-renderer="amicare"/)
   assert.match(amicareHtml, /data-siab-theme-overrides/)
   assert.match(amicareHtml, /\.site-renderer\[data-siab-site-renderer\] \.rt-canvas/)
-  assert.match(amicareHtml, /--color-accent:#a04e32/)
-  assert.match(amicareHtml, /--font-title:Fraunces Variable, Georgia, serif/)
-  assert.match(amicareHtml, /--site-style-preset:warm-care/)
+  assert.match(amicareHtml, /--color-accent:#d97706/)
+  assert.match(amicareHtml, /--font-title:Fraunces Variable, ui-serif, Georgia, serif/)
+  assert.doesNotMatch(amicareHtml, /--site-style-preset:/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
   assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)
   assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/bedroom\.jpg/)
@@ -216,7 +216,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
     assert.match(html, /data-system-template="tailwindplus\.marketing\.feedback\.404-simple"/)
     assert.match(html, /data-system-template-kind="not-found"/)
     assert.match(html, /data-siab-theme-overrides/)
-    assert.match(html, /--color-accent:#a04e32/)
+    assert.match(html, /--color-accent:#d97706/)
     assertNoAnalyticsLeakage(html)
   }
 
