@@ -117,6 +117,8 @@ const defaultLight: ProviderColorSchemeMode = {
 }
 
 const tailwindSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
+const editorialSerifStack = "Fraunces Variable, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
+const humanistSansStack = "\"Avenir Next\", Avenir, Nunito, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
 
 const defaultDark: ProviderColorSchemeMode = {
   neutral: grayDark,
@@ -170,26 +172,26 @@ export const fontSchemes = {
     id: "classic-editorial",
     label: "Classic Editorial",
     source: "system",
-    roles: { body: tailwindSansStack, heading: "Fraunces Variable, ui-serif, Georgia, serif", display: "Fraunces Variable, ui-serif, Georgia, serif", mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
+    roles: { body: editorialSerifStack, heading: editorialSerifStack, display: editorialSerifStack, mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
   },
   "friendly-organic": {
     id: "friendly-organic",
     label: "Friendly Organic",
     source: "system",
-    roles: { body: tailwindSansStack, heading: "Fraunces Variable, ui-serif, Georgia, serif", display: "Caveat Variable, ui-serif, Georgia, serif", mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
+    roles: { body: humanistSansStack, heading: humanistSansStack, display: humanistSansStack, mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
   },
 } as const satisfies Record<string, FontScheme>
 
 export const densitySchemes = {
-  comfortable: { id: "comfortable", label: "Comfortable", sectionPaddingY: { base: "6rem", sm: "8rem" } },
-  compact: { id: "compact", label: "Compact", sectionPaddingY: { base: "4rem", sm: "5rem" } },
   spacious: { id: "spacious", label: "Spacious", sectionPaddingY: { base: "8rem", sm: "10rem", lg: "12rem" } },
+  comfortable: { id: "comfortable", label: "Comfortable", sectionPaddingY: { base: "6rem", sm: "8rem", lg: "8rem" } },
+  compact: { id: "compact", label: "Compact", sectionPaddingY: { base: "4rem", sm: "5rem", lg: "5rem" } },
 } as const satisfies Record<string, DensityScheme>
 
 export const shapeSchemes = {
-  soft: { id: "soft", label: "Soft", radius: { none: "0", sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem", full: "9999px" } },
-  sharp: { id: "sharp", label: "Sharp", radius: { none: "0", sm: "0", md: "0", lg: "0", xl: "0", "2xl": "0", "3xl": "0", full: "9999px" } },
-  rounded: { id: "rounded", label: "Rounded", radius: { none: "0", sm: "0.5rem", md: "0.75rem", lg: "1rem", xl: "1.25rem", "2xl": "1.75rem", "3xl": "2.25rem", full: "9999px" } },
+  rounded: { id: "rounded", label: "Rounded", radius: { none: "0", sm: "0.75rem", md: "1rem", lg: "1.25rem", xl: "1.75rem", "2xl": "2.25rem", "3xl": "3rem", "4xl": "3.5rem", full: "9999px" } },
+  soft: { id: "soft", label: "Soft", radius: { none: "0", sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "4xl": "2rem", full: "9999px" } },
+  sharp: { id: "sharp", label: "Sharp", radius: { none: "0", sm: "0", md: "0", lg: "0", xl: "0", "2xl": "0", "3xl": "0", "4xl": "0", full: "9999px" } },
 } as const satisfies Record<string, ShapeScheme>
 
 export type ResolvedTheme = {

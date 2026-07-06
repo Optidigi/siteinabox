@@ -12,15 +12,15 @@ export const FONT_SCHEME_IDS = [
 ] as const
 
 export const SHAPE_SCHEME_IDS = [
-  "sharp",
-  "soft",
   "rounded",
+  "soft",
+  "sharp",
 ] as const
 
 export const DENSITY_SCHEME_IDS = [
-  "compact",
-  "comfortable",
   "spacious",
+  "comfortable",
+  "compact",
 ] as const
 
 export type ColorSchemeId = (typeof COLOR_SCHEME_IDS)[number]
@@ -47,15 +47,15 @@ export const FONT_SCHEME_PRESETS = [
 ] as const satisfies readonly ThemePresetOption<FontSchemeId>[]
 
 export const SHAPE_SCHEME_PRESETS = [
+  { id: "rounded", label: "Rounded" },
   { id: "soft", label: "Soft" },
   { id: "sharp", label: "Sharp" },
-  { id: "rounded", label: "Rounded" },
 ] as const satisfies readonly ThemePresetOption<ShapeSchemeId>[]
 
 export const DENSITY_SCHEME_PRESETS = [
+  { id: "spacious", label: "Spacious" },
   { id: "comfortable", label: "Comfortable" },
   { id: "compact", label: "Compact" },
-  { id: "spacious", label: "Spacious" },
 ] as const satisfies readonly ThemePresetOption<DensitySchemeId>[]
 
 export const DEFAULT_THEME_TOKEN_SPEC = {

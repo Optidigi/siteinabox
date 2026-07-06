@@ -11,6 +11,12 @@ import {
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
   type SiteChromeCatalogArea,
 } from "@siteinabox/contracts/block-catalog"
+import {
+  COLOR_SCHEME_IDS,
+  DENSITY_SCHEME_IDS,
+  FONT_SCHEME_IDS,
+  SHAPE_SCHEME_IDS,
+} from "@siteinabox/contracts"
 import { hashStableValue } from "@/lib/intake/normalizeIntake"
 import { loadMockSiteGenerationSpec, type MockGenerationFixture } from "@/lib/intake/mockGeneration"
 import {
@@ -712,7 +718,7 @@ export const siteGenerationJsonSchema = {
           additionalProperties: false,
           required: ["schemeId"],
           properties: {
-            schemeId: { type: "string", enum: ["blue-professional", "red-confident", "emerald-calm", "amber-warm"] },
+            schemeId: { type: "string", enum: [...COLOR_SCHEME_IDS] },
           },
         },
         fonts: {
@@ -720,20 +726,20 @@ export const siteGenerationJsonSchema = {
           additionalProperties: false,
           required: ["schemeId"],
           properties: {
-            schemeId: { type: "string", enum: ["clear-modern", "classic-editorial", "friendly-organic"] },
+            schemeId: { type: "string", enum: [...FONT_SCHEME_IDS] },
           },
         },
         density: {
           type: "object",
           additionalProperties: false,
           required: ["schemeId"],
-          properties: { schemeId: { type: "string", enum: ["comfortable", "compact", "spacious"] } },
+          properties: { schemeId: { type: "string", enum: [...DENSITY_SCHEME_IDS] } },
         },
         shape: {
           type: "object",
           additionalProperties: false,
           required: ["schemeId"],
-          properties: { schemeId: { type: "string", enum: ["soft", "sharp", "rounded"] } },
+          properties: { schemeId: { type: "string", enum: [...SHAPE_SCHEME_IDS] } },
         },
       },
     },

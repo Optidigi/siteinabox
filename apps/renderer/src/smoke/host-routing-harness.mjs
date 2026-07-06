@@ -178,7 +178,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /data-siab-theme-overrides/)
   assert.match(amicareHtml, /\.site-renderer\[data-siab-site-renderer\] \.rt-canvas/)
   assert.match(amicareHtml, /--color-accent:#d97706/)
-  assert.match(amicareHtml, /--font-title:Fraunces Variable, ui-serif, Georgia, serif/)
+  assert.match(amicareHtml, /--font-title:Fraunces Variable, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif/)
   assert.doesNotMatch(amicareHtml, /--site-style-preset:/)
   assert.match(amicareHtml, /id="siab-analytics-config"/)
   assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)

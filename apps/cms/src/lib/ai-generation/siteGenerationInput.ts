@@ -89,7 +89,7 @@ export const buildSiteGenerationModelInput = (
     "Fill only exposed slots from the selected approvedDesignVariants slot manifest; do not include inactive slots.",
     "Do not set legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
     "Set settings.chrome.header.variant, settings.chrome.footer.variant, and settings.chrome.banner.variant only to null or to approvedChromeVariants values for the matching area.",
-    "Set theme only to approved ThemeTokenSpec V2 preset IDs: colors blue-professional/red-confident/emerald-calm/amber-warm; fonts clear-modern/classic-editorial/friendly-organic; shape soft/sharp/rounded; density comfortable/compact/spacious; mode light/dark/system.",
+    "Set theme only to approved ThemeTokenSpec V2 preset IDs: colors blue-professional/red-confident/emerald-calm/amber-warm; fonts clear-modern/classic-editorial/friendly-organic; shape rounded/soft/sharp; density spacious/comfortable/compact; mode light/dark/system.",
     "Map intake visual preferences to the nearest approved theme preset and use defaults when the intake is unclear.",
     "Never use tenant-exclusive tenant renderer variants, chrome variants, classes, content fixtures, domains, or variants for self-serve generated sites.",
     "Do not emit raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, file paths, block tokens, style objects, or inline styles.",

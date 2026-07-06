@@ -194,7 +194,7 @@ export const v1FixturePage: Page = {
       items: [
         {
           title: inlineText("Typed slots"),
-          description: blockText("Generation fills content fields, not layout instructions."),
+          description: blockText("Generation fills content fields while layout stays renderer-owned."),
           icon: "layout-grid",
         },
         {

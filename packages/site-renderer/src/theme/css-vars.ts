@@ -116,6 +116,10 @@ function providerThemeBridgeRules(
   const groupHover = (classNames: string[]) => providerRootSelectors
     .flatMap((selector) => classNames.map((className) => `${selector} .group:hover .${className}`))
     .join(",")
+  const classToken = (token: string, pseudo = "") => providerRootSelectors
+    .map((selector) => `${selector} :where([class~="${token}"])${pseudo}`)
+    .join(",")
+  const classTokens = (tokens: string[], pseudo = "") => tokens.map((token) => classToken(token, pseudo)).join(",")
 
   const rules: string[] = []
   if (options.colors) rules.push(
@@ -130,6 +134,7 @@ function providerThemeBridgeRules(
     `${rootsAndDescendants(["bg-gray-200"])}{background-color:var(--siab-neutral-200,#e5e7eb)}`,
     `${rootsAndDescendants(["bg-gray-900"])}{background-color:#111827}`,
     `${rootsAndDescendants(["hover\\:bg-gray-700"], ":hover")}{background-color:#374151}`,
+    `${classToken("bg-white/5")}{background-color:rgb(255 255 255 / 0.05)}`,
     `${providerRootSelectors.map((selector) => `${selector} .flex.bg-white :is(input,select)`).join(",")}{background-color:transparent}`,
     `${rootsAndDescendants(["text-gray-950"])}{color:var(--siab-neutral-950,var(--color-ink,#030712))}`,
     `${rootsAndDescendants(["text-gray-900"])}{color:var(--siab-neutral-900,var(--color-ink,#111827))}`,
@@ -163,18 +168,35 @@ function providerThemeBridgeRules(
     `${descendant("hover\\:ring-gray-900\\/20", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 20%,transparent)}`,
     `${descendant("ring-gray-400\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink-muted,#64748b) 10%,transparent)}`,
     `${descendant("ring-indigo-50")},${descendant("inset-ring-indigo-200")},${descendant("hover\\:inset-ring-indigo-300", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-accent,#4f46e5) 20%,transparent)}`,
+    `${classToken("shadow-indigo-600/10")}{--tw-shadow-color:color-mix(in oklab,var(--color-accent,#4f46e5) 10%,transparent)}`,
+    `${classToken("ring-white/10")}{--tw-ring-color:rgb(255 255 255 / 0.1)}`,
     `${descendants(["outline-gray-300", "border-gray-300", "border-gray-200", "divide-gray-200", "stroke-gray-200"])}{border-color:var(--color-rule,rgba(17,24,39,.12));outline-color:var(--color-rule,rgba(17,24,39,.12));stroke:var(--color-rule,rgba(17,24,39,.12))}`,
+    `${classTokens(["border-gray-600/10"])}{border-color:color-mix(in oklab,var(--color-ink-muted,#4b5563) 10%,transparent)}`,
+    `${classTokens(["border-gray-700"])}{border-color:#374151}`,
+    `${classTokens(["border-r-white/10"])}{border-right-color:rgb(255 255 255 / 0.1)}`,
+    `${classTokens(["border-b-white/20"])}{border-bottom-color:rgb(255 255 255 / 0.2)}`,
     `${descendants(["outline-black\\/5"])}{outline-color:color-mix(in oklab,var(--color-ink,#111827) 5%,transparent)}`,
+    `${classTokens(["outline-white/5"])}{outline-color:rgb(255 255 255 / 0.05)}`,
+    `${classTokens(["outline-white/10"])}{outline-color:rgb(255 255 255 / 0.1)}`,
+    `${classToken("focus-visible:outline-white", ":focus-visible")}{outline-color:#ffffff}`,
+    `${classToken("focus-visible:outline-gray-900", ":focus-visible")}{outline-color:var(--siab-neutral-900,var(--color-ink,#111827))}`,
+    `${classTokens(["fill-gray-50"])}{fill:var(--siab-neutral-50,#f9fafb)}`,
+    `${classTokens(["fill-gray-900"])}{fill:var(--siab-neutral-900,var(--color-ink,#111827))}`,
+    `${classTokens(["from-[#ff80b5]", "from-[#ff4694]"])}{--tw-gradient-from:var(--siab-accent-300,#a5b4fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
+    `${classTokens(["to-[#9089fc]", "to-[#776fff]"])}{--tw-gradient-to:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${providerRootSelectors.map((selector) => `${selector}[data-provider-variant="tailwindplus.marketing.logo-cloud.simple-with-heading"] img[src*="-logo-gray-900.svg"]`).join(",")}{filter:var(--tailwindplus-logo-filter,none)}`,
   )
   if (options.fonts) rules.push(
+    `${providerRootSelectors.join(",")}{font-family:var(--font-text,var(--font-sans,inherit))}`,
+    `${providerRootSelectors.map((selector) => `${selector} :is(p,dd,li,label,input,select,textarea,button,a,span,div,time,strong,small,figcaption)`).join(",")}{font-family:var(--font-text,var(--font-sans,inherit))}`,
     `${providerRootSelectors.map((selector) => `${selector} :is(h1)`).join(",")}{font-family:var(--font-title,var(--font-sans,inherit))}`,
-    `${providerRootSelectors.map((selector) => `${selector} :is(h2,h3,h4,dt,legend)`).join(",")}{font-family:var(--font-heading,var(--font-sans,inherit))}`,
-    `${providerRootSelectors.map((selector) => `${selector} :is(p,dd,li,label,input,select,textarea,button,a)`).join(",")}{font-family:var(--font-text,var(--font-sans,inherit))}`,
+    `${providerRootSelectors.map((selector) => `${selector} :is(h2,h3,h4,dt,legend,blockquote)`).join(",")}{font-family:var(--font-heading,var(--font-sans,inherit))}`,
+    `${providerRootSelectors.map((selector) => `${selector} :is(h1,h2,h3,h4,dt,legend,blockquote) :is(span,div,strong,small)`).join(",")}{font-family:inherit}`,
   )
   if (options.density) rules.push(
-    `${providerRootSelectors.map((selector) => `${selector}:is(.py-24,.py-32)`).join(",")}{padding-top:var(--site-section-padding-y,6rem);padding-bottom:var(--site-section-padding-y,6rem)}`,
-    `@media (min-width:40rem){${providerRootSelectors.map((selector) => `${selector}:is(.sm\\:py-24,.sm\\:py-32)`).join(",")}{padding-top:var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem));padding-bottom:var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem))}}`,
+    `${providerRootSelectors.map((selector) => `${selector}:is(.py-16,.py-24,.py-32)`).join(",")}{padding-top:var(--site-section-padding-y,6rem);padding-bottom:var(--site-section-padding-y,6rem)}`,
+    `@media (min-width:40rem){${providerRootSelectors.map((selector) => `${selector}:is(.sm\\:py-24,.sm\\:py-32,.sm\\:py-48)`).join(",")}{padding-top:var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem));padding-bottom:var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem))}}`,
+    `@media (min-width:64rem){${providerRootSelectors.map((selector) => `${selector}:is(.lg\\:py-32,.lg\\:py-56)`).join(",")}{padding-top:var(--site-section-padding-y-lg,var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem)));padding-bottom:var(--site-section-padding-y-lg,var(--site-section-padding-y-sm,var(--site-section-padding-y,8rem)))}}`,
   )
   return rules
 }
@@ -234,6 +256,7 @@ export function themeToCssVars(
   set(baseParts, "--radius-xl", resolved.shape.radius.xl)
   set(baseParts, "--radius-2xl", resolved.shape.radius["2xl"])
   set(baseParts, "--radius-3xl", resolved.shape.radius["3xl"])
+  set(baseParts, "--radius-4xl", resolved.shape.radius["4xl"])
   set(baseParts, "--radius-full", resolved.shape.radius.full)
 
   const baseSelector = scope === ":root" ? "html:root" : scope

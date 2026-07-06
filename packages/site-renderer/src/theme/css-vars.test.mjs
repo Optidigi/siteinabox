@@ -53,3 +53,43 @@ test("themeToCssVars bridges source-specific dark media gaps", () => {
   assert.match(css, /\[data-provider-variant="tailwindplus\.marketing\.logo-cloud\.simple-with-heading"\] img\[src\*="-logo-gray-900\.svg"\]/)
   assert.match(css, /\.flex\.bg-white :is\(input,select\)\{background-color:transparent\}/)
 })
+
+test("themeToCssVars emits distinct full typography schemes", () => {
+  const classicCss = themeToCssVars({ ...theme, fonts: { schemeId: "classic-editorial" } }, PUBLIC_RENDERER_THEME_SCOPE)
+  const friendlyCss = themeToCssVars({ ...theme, fonts: { schemeId: "friendly-organic" } }, PUBLIC_RENDERER_THEME_SCOPE)
+
+  assert.match(classicCss, /--font-text:Fraunces Variable, ui-serif/)
+  assert.match(classicCss, /--font-heading:Fraunces Variable, ui-serif/)
+  assert.match(friendlyCss, /--font-text:"Avenir Next", Avenir, Nunito/)
+  assert.match(friendlyCss, /--font-heading:"Avenir Next", Avenir, Nunito/)
+  assert.match(classicCss, /:is\(p,dd,li,label,input,select,textarea,button,a,span,div,time,strong,small,figcaption\)/)
+  assert.match(classicCss, /:is\(h2,h3,h4,dt,legend,blockquote\)/)
+})
+
+test("themeToCssVars bridges active Tailwind Plus accent utilities without class changes", () => {
+  const css = themeToCssVars({ ...theme, colors: { schemeId: "red-confident" } }, PUBLIC_RENDERER_THEME_SCOPE)
+
+  assert.match(css, /--siab-accent-600:#dc2626/)
+  assert.match(css, /\[class~="shadow-indigo-600\/10"\][^}]*--tw-shadow-color:color-mix\(in oklab,var\(--color-accent,#4f46e5\) 10%,transparent\)/)
+  assert.match(css, /\[class~="from-\[#ff80b5\]"\][^}]*--tw-gradient-from:var\(--siab-accent-300,#a5b4fc\)/)
+  assert.match(css, /\[class~="to-\[#9089fc\]"\][^}]*--tw-gradient-to:var\(--siab-accent-600,var\(--color-accent,#4f46e5\)\)/)
+  assert.match(css, /\[class~="fill-gray-900"\][^}]*fill:var\(--siab-neutral-900/)
+  assert.match(css, /\[class~="focus-visible:outline-gray-900"\]\):focus-visible[^}]*outline-color:var\(--siab-neutral-900/)
+  assert.match(css, /\[class~="bg-white\/5"\][^}]*background-color:rgb\(255 255 255 \/ 0\.05\)/)
+  assert.match(css, /\[class~="ring-white\/10"\][^}]*--tw-ring-color:rgb\(255 255 255 \/ 0\.1\)/)
+})
+
+test("themeToCssVars emits full radius scale and section-only density bridge", () => {
+  const roundedCss = themeToCssVars({ ...theme, shape: { schemeId: "rounded" } }, PUBLIC_RENDERER_THEME_SCOPE)
+  const softCss = themeToCssVars(theme, PUBLIC_RENDERER_THEME_SCOPE)
+  const compactCss = themeToCssVars({ ...theme, density: { schemeId: "compact" } }, PUBLIC_RENDERER_THEME_SCOPE)
+
+  assert.match(roundedCss, /--radius-md:1rem/)
+  assert.match(roundedCss, /--radius-4xl:3\.5rem/)
+  assert.match(softCss, /--radius-md:0\.375rem/)
+  assert.match(softCss, /--radius-4xl:2rem/)
+  assert.match(compactCss, /--site-section-padding-y:4rem/)
+  assert.match(compactCss, /:is\(\.py-16,\.py-24,\.py-32\)/)
+  assert.match(compactCss, /:is\(\.sm\\:py-24,\.sm\\:py-32,\.sm\\:py-48\)/)
+  assert.match(compactCss, /:is\(\.lg\\:py-32,\.lg\\:py-56\)/)
+})

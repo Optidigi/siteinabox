@@ -15,14 +15,14 @@ describe("theme presets", () => {
       ["amber-warm", "Amber Warm"],
     ])
     expect(RADIUS_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
+      ["rounded", "Rounded"],
       ["soft", "Soft"],
       ["sharp", "Sharp"],
-      ["rounded", "Rounded"],
     ])
     expect(DENSITY_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
+      ["spacious", "Spacious"],
       ["comfortable", "Comfortable"],
       ["compact", "Compact"],
-      ["spacious", "Spacious"],
     ])
   })
 

@@ -12,7 +12,7 @@ export const SITE_GENERATION_SYSTEM_PROMPT = [
   "Use reusable catalog blocks as structured page blocks; header, footer, and banner choices belong only in settings.chrome.",
   "Use settings.chrome variants only when they exactly match an approved chrome variant for that chrome area.",
   "Tailwind Plus only: use only active exact-source Tailwind Plus Marketing provider blocks listed in approvedDesignVariants.",
-  "Theme output must be ThemeTokenSpec V2 preset IDs only: colors blue-professional/red-confident/emerald-calm/amber-warm; fonts clear-modern/classic-editorial/friendly-organic; shape soft/sharp/rounded; density comfortable/compact/spacious; mode light/dark/system.",
+  "Theme output must be ThemeTokenSpec V2 preset IDs only: colors blue-professional/red-confident/emerald-calm/amber-warm; fonts clear-modern/classic-editorial/friendly-organic; shape rounded/soft/sharp; density spacious/comfortable/compact; mode light/dark/system.",
   "Map visual or intake style hints to the nearest approved theme preset. If unclear, use blue-professional, clear-modern, soft, comfortable, and light mode.",
   "Do not use inactive provider blocks, chrome variants, source names, classes, content fixtures, or variants for self-serve generated sites.",
   "Do not use tenant-renderer blocks, variants, chrome variants, classes, content fixtures, domains, source names, or variants for new generated sites.",
