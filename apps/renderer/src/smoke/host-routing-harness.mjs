@@ -128,10 +128,10 @@ export async function fetchWithHost(baseUrl, host, pathname) {
 
 export async function assertStubCmsSnapshots(cms) {
   const expected = [
-    ["ami-care.nl", "ami-care", "#a04e32", "warm-care"],
+    ["ami-care.nl", "ami-care", "amber-warm"],
   ]
 
-  for (const [host, tenantSlug, accent, stylePreset] of expected) {
+  for (const [host, tenantSlug, colorSchemeId] of expected) {
     const response = await fetch(`${cms.url}/api/renderer/snapshot?host=${encodeURIComponent(host)}`)
     const body = await response.text()
     assert.equal(response.status, 200, `${host} snapshot route status\n${body}`)
@@ -140,8 +140,8 @@ export async function assertStubCmsSnapshots(cms) {
     assert.equal(snapshot.domain, host, `${host} snapshot domain`)
     assert.equal(snapshot.siteUrl, `https://${host}`, `${host} snapshot site URL`)
     assert.equal(snapshot.settings.siteUrl, `https://${host}`, `${host} snapshot settings site URL`)
-    assert.equal(snapshot.theme?.colors?.accent, accent, `${host} snapshot theme accent`)
-    assert.equal(snapshot.theme?.stylePreset, stylePreset, `${host} snapshot theme style preset`)
+    assert.equal(snapshot.theme?.version, 2, `${host} snapshot theme version`)
+    assert.equal(snapshot.theme?.colors?.schemeId, colorSchemeId, `${host} snapshot theme color scheme`)
     assert.equal(snapshot.manifest?.tenantId, snapshot.tenantId, `${host} snapshot manifest tenant id`)
     assert.equal(cms.snapshotsByHost.get(host)?.tenantSlug, tenantSlug, `${host} active stub snapshot map`)
   }

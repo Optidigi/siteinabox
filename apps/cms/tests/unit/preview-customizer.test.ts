@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 import { signPreviewToken } from "@/lib/preview/sign"
 
@@ -164,7 +165,7 @@ describe("preview customizer service", () => {
 
   it("loads preview data with page navigation, token expiry, persisted theme, approval, and payment state", async () => {
     const { tenant, runs } = createState()
-    tenant.theme = { density: "compact", palette: { accent: "#0f766e" } } as any
+    tenant.theme = { ...DEFAULT_THEME_TOKEN_SPEC, density: { schemeId: "compact" } } as any
     runs[0]!.clientApproval = { status: "pending" } as any
     runs[0]!.payment = { status: "not_started" } as any
     const { getPreviewCustomizerData } = await import("@/lib/preview/customizer")
@@ -178,7 +179,7 @@ describe("preview customizer service", () => {
       { id: 101, slug: "about", title: "About" },
     ])
     expect(data.currentPage.slug).toBe("about")
-    expect(data.theme).toEqual({ density: "compact", palette: { accent: "#0f766e" } })
+    expect(data.theme).toEqual({ ...DEFAULT_THEME_TOKEN_SPEC, density: { schemeId: "compact" } })
     expect(data.approval).toEqual({ status: "pending" })
     expect(data.payment).toEqual({ status: "not_started" })
   })
@@ -200,28 +201,30 @@ describe("preview customizer service", () => {
     tenant.status = "suspended"
     const { persistPreviewTheme, approvePreview } = await import("@/lib/preview/customizer")
 
-    await expect(persistPreviewTheme(tokenFor(1, 100), { density: "compact" })).rejects.toThrow("Preview tenant is not available")
+    await expect(persistPreviewTheme(tokenFor(1, 100), DEFAULT_THEME_TOKEN_SPEC)).rejects.toThrow("Preview tenant is not available")
     await expect(approvePreview(tokenFor(1, 100))).rejects.toThrow("Preview tenant is not available")
     expect(mocks.payload.update).not.toHaveBeenCalled()
   })
 
-  it("persists only schema-approved theme tokens including density and style preset", async () => {
+  it("persists only schema-approved V2 preset tokens", async () => {
     const { persistPreviewTheme } = await import("@/lib/preview/customizer")
 
     const saved = await persistPreviewTheme(tokenFor(1, 100), {
-      palette: { accent: "#0f766e" },
-      fonts: { title: "Inter" },
-      radius: "0.5rem",
-      density: "spacious",
-      stylePreset: "warm-care",
+      version: 2,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "spacious" },
     })
 
     expect(saved).toEqual({
-      palette: { accent: "#0f766e" },
-      fonts: { title: "Inter Variable" },
-      radius: "0.5rem",
-      density: "spacious",
-      stylePreset: "warm-care",
+      version: 2,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "spacious" },
     })
     expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
       collection: "tenants",

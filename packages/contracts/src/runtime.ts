@@ -1,5 +1,12 @@
 import { z } from "zod"
 import {
+  COLOR_SCHEME_IDS,
+  DENSITY_SCHEME_IDS,
+  FONT_SCHEME_IDS,
+  SHAPE_SCHEME_IDS,
+} from "./theme-presets"
+
+import {
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG,
   SITE_SELF_SERVE_CHROME_VARIANTS,
@@ -81,7 +88,6 @@ const DOMAIN_REGEX =
 const SLUG_REGEX = /^[a-z0-9-]+$/
 const HEX_OR_CSS_FUNCTION_COLOR_REGEX =
   /^(#[0-9a-fA-F]{3,8}|(oklch|color|rgb[a]?|hsl[a]?)\(.*\)|[a-zA-Z]+)$/
-const CSS_LENGTH_REGEX = /^(0|[0-9]+(\.[0-9]+)?(px|rem|em|%)|var\(--[A-Za-z0-9_-]+\))$/
 const uniqueChromeVariantsFor = <T extends SiteChromeVariant>(area: "header" | "footer" | "banner") =>
   SITE_SELF_SERVE_CHROME_VARIANTS
     .filter((variant) => variant.area === area)
@@ -732,113 +738,27 @@ function addForbiddenGeneratedPayloadIssues(
   }
 }
 
-const ThemeTokenSpecV1Schema = strictObject({
-  version: z.literal(1).optional(),
-  colors: strictObject({
-    accent: cssColorSchema.optional(),
-    onAccent: cssColorSchema.optional(),
-    bg: cssColorSchema.optional(),
-    ink: cssColorSchema.optional(),
-    muted: cssColorSchema.optional(),
-    card: cssColorSchema.optional(),
-    secondary: cssColorSchema.optional(),
-    rule: cssColorSchema.optional(),
-  }).optional(),
-  darkColors: strictObject({
-    accent: cssColorSchema.optional(),
-    onAccent: cssColorSchema.optional(),
-    bg: cssColorSchema.optional(),
-    ink: cssColorSchema.optional(),
-    muted: cssColorSchema.optional(),
-    card: cssColorSchema.optional(),
-    secondary: cssColorSchema.optional(),
-    rule: cssColorSchema.optional(),
-  }).optional(),
-  fonts: strictObject({
-    title: z.string().min(1).optional(),
-    heading: z.string().min(1).optional(),
-    text: z.string().min(1).optional(),
-    script: z.string().min(1).optional(),
-  }).optional(),
-  radius: z.string().regex(CSS_LENGTH_REGEX).optional(),
-  density: z.enum(["compact", "comfortable", "spacious"]).optional(),
-  stylePreset: z.string().regex(/^[a-z0-9-]+$/).optional(),
-  borderStyle: z.enum(["solid", "dashed", "none"]).optional(),
-  mode: z.enum(["light", "dark"]).optional(),
-})
-
-const ColorRampSchema = strictObject({
-  50: cssColorSchema,
-  100: cssColorSchema,
-  200: cssColorSchema,
-  300: cssColorSchema,
-  400: cssColorSchema,
-  500: cssColorSchema,
-  600: cssColorSchema,
-  700: cssColorSchema,
-  800: cssColorSchema,
-  900: cssColorSchema,
-  950: cssColorSchema.optional(),
-})
-
-const ProviderColorSchemeModeSchema = strictObject({
-  neutral: ColorRampSchema,
-  accent: ColorRampSchema,
-  surface: cssColorSchema,
-  ink: cssColorSchema,
-  muted: cssColorSchema,
-  rule: cssColorSchema,
-  onAccent: cssColorSchema,
-})
-
-const ProviderColorSchemeSchema = strictObject({
-  id: z.string().min(1),
-  label: z.string().min(1),
-  source: z.enum(["tailwind", "siab", "custom"]),
-  light: ProviderColorSchemeModeSchema,
-  dark: ProviderColorSchemeModeSchema,
-})
-
-const FontSchemeSchema = strictObject({
-  id: z.string().min(1),
-  label: z.string().min(1),
-  source: z.enum(["tailwind", "system", "custom"]),
-  roles: strictObject({
-    body: z.string().min(1),
-    heading: z.string().min(1),
-    display: z.string().min(1).optional(),
-    mono: z.string().min(1).optional(),
-  }),
-})
-
 const ThemeTokenSpecV2Schema = strictObject({
   version: z.literal(2),
   appearance: strictObject({
     mode: z.enum(["light", "dark", "system"]),
     defaultMode: z.enum(["light", "dark"]).optional(),
-  }).optional(),
+  }),
   colors: strictObject({
-    schemeId: z.string().min(1),
-    lightSchemeId: z.string().min(1).optional(),
-    darkSchemeId: z.string().min(1).optional(),
-    custom: ProviderColorSchemeSchema.optional(),
-  }).optional(),
+    schemeId: z.enum(COLOR_SCHEME_IDS),
+  }),
   fonts: strictObject({
-    schemeId: z.string().min(1),
-    custom: FontSchemeSchema.optional(),
-  }).optional(),
+    schemeId: z.enum(FONT_SCHEME_IDS),
+  }),
   density: strictObject({
-    schemeId: z.string().min(1),
-  }).optional(),
+    schemeId: z.enum(DENSITY_SCHEME_IDS),
+  }),
   shape: strictObject({
-    schemeId: z.string().min(1),
-  }).optional(),
+    schemeId: z.enum(SHAPE_SCHEME_IDS),
+  }),
 })
 
-export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = z.union([
-  ThemeTokenSpecV2Schema,
-  ThemeTokenSpecV1Schema,
-])
+export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = ThemeTokenSpecV2Schema
 
 const FooterCompositionLinkSchema = LinkRefSchema
 const FooterCompositionItemSchema = strictObject({

@@ -1,16 +1,6 @@
 import type { ThemeTokenSpec } from "@siteinabox/contracts"
 import { resolveThemeTokens } from "./resolve"
 
-const DEFAULT_DARK = {
-  onAccent: "#ffffff",
-  bg: "#09090b",
-  ink: "#fafafa",
-  muted: "#a1a1aa",
-  card: "#18181b",
-  secondary: "#27272a",
-  rule: "rgba(255, 255, 255, 0.12)",
-} as const
-
 export const PUBLIC_RENDERER_THEME_SCOPE = ".site-renderer[data-siab-site-renderer] .rt-canvas" as const
 export type ThemeCssVarScope = ".rt-canvas" | ":root" | typeof PUBLIC_RENDERER_THEME_SCOPE
 
@@ -189,47 +179,6 @@ function providerThemeBridgeRules(
   return rules
 }
 
-function sectionSpacingForDensity(density: string | undefined): [string, string] | null {
-  if (density === "compact") return ["4rem", "5rem"]
-  if (density === "spacious") return ["7rem", "9rem"]
-  if (density === "comfortable") return ["6rem", "8rem"]
-  return null
-}
-
-function setTailwindProviderColorAliases(
-  parts: string[],
-  colors: any,
-  fallback?: Partial<Record<"onAccent" | "bg" | "ink" | "muted" | "card" | "secondary" | "rule", string>>,
-) {
-  const accent = colors?.accent
-  const bg = colors?.bg ?? fallback?.bg
-  const ink = colors?.ink ?? fallback?.ink
-  const muted = colors?.muted ?? fallback?.muted
-  const card = colors?.card ?? fallback?.card
-  const secondary = colors?.secondary ?? fallback?.secondary
-  const rule = colors?.rule ?? fallback?.rule
-
-  const accentSoft = accent ? `color-mix(in oklab, ${accent} 16%, white)` : undefined
-  const accentSofter = accent ? `color-mix(in oklab, ${accent} 8%, white)` : undefined
-  const hasColors = Boolean(accent || bg || ink || muted || card || secondary || rule)
-  if (!hasColors) return
-
-  // Only alias accent utilities globally. Neutral Tailwind utilities are
-  // role-specific in provider source: e.g. text-gray-900 and bg-gray-900 must
-  // not share the same runtime value in dark mode.
-  set(parts, "--color-indigo-700", accent)
-  set(parts, "--color-indigo-600", accent)
-  set(parts, "--color-indigo-500", accent)
-  set(parts, "--color-indigo-400", accent)
-  set(parts, "--color-indigo-300", accentSoft)
-  set(parts, "--color-indigo-200", accentSoft)
-  set(parts, "--color-indigo-100", accentSofter)
-  set(parts, "--color-indigo-50", accentSofter)
-  set(parts, "--color-tailwindplus-surface", bg)
-  set(parts, "--color-tailwindplus-card", card ?? bg)
-  set(parts, "--color-secondary", secondary)
-}
-
 export function themeMode(theme: ThemeTokenSpec | null | undefined): "light" | "dark" {
   const resolved = resolveThemeTokens(theme)
   if (resolved.mode === "system") return resolved.defaultMode
@@ -241,7 +190,6 @@ export function themeToCssVars(
   scope: ThemeCssVarScope = ".rt-canvas",
 ): string {
   const resolved = resolveThemeTokens(theme)
-  const legacyTheme = theme && (!("version" in theme) || theme.version !== 2) ? theme : null
   const baseParts: string[] = []
   const darkParts: string[] = []
   const writeMode = (parts: string[], mode: typeof resolved.light) => {
@@ -279,7 +227,6 @@ export function themeToCssVars(
   set(baseParts, "--site-section-padding-y-sm", resolved.density.sectionPaddingY.sm ?? resolved.density.sectionPaddingY.base)
   set(baseParts, "--site-section-padding-y-lg", resolved.density.sectionPaddingY.lg ?? resolved.density.sectionPaddingY.sm ?? resolved.density.sectionPaddingY.base)
   set(baseParts, "--site-inter-block-gap", resolved.density.interBlockGap)
-  set(baseParts, "--site-style-preset", legacyTheme?.stylePreset)
 
   set(baseParts, "--radius-none", resolved.shape.radius.none)
   set(baseParts, "--radius-sm", resolved.shape.radius.sm)
@@ -295,6 +242,19 @@ export function themeToCssVars(
   const rules: string[] = []
   if (baseParts.length > 0) rules.push(`${baseSelector}{${baseParts.join(";")}}`)
   if (darkParts.length > 0) rules.push(`${darkSelector}{${darkParts.join(";")}}`)
+  rules.push(`${baseSelector}{background-color:var(--color-bg,#ffffff);color:var(--color-ink,#111827)}`)
   rules.push(...providerThemeBridgeRules(scope, { colors: true, fonts: true, density: true }))
+  const darkProviderSelectors = [
+    `${darkSelector}:where([data-provider-block="tailwindplus"])`,
+    `${darkSelector}:where([data-provider-chrome="tailwindplus"])`,
+    `${darkSelector}:where([data-provider-template="tailwindplus"])`,
+    `${darkSelector} :where([data-provider-block="tailwindplus"])`,
+    `${darkSelector} :where([data-provider-chrome="tailwindplus"])`,
+    `${darkSelector} :where([data-provider-template="tailwindplus"])`,
+  ]
+  rules.push(
+    darkProviderSelectors.map((selector) => `${selector} :is(.text-indigo-700,.text-indigo-600,.text-indigo-500)`).join(",")
+      + "{color:var(--siab-accent-400,#818cf8)}",
+  )
   return rules.join(" ")
 }

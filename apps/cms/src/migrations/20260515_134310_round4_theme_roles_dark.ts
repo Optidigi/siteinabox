@@ -37,7 +37,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     }
 
     // Initialise mode to "light" if unset.
-    // darkPalette is intentionally NOT auto-derived (per R4 design spec § 1.4).
+    // Legacy migration context: the former V1 dark palette was not auto-derived.
     if (next.mode === undefined) {
       next.mode = "light"
       dirty = true

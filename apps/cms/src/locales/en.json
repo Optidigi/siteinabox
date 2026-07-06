@@ -712,7 +712,6 @@
     "light": "Light",
     "dark": "Dark",
     "mode": "Mode",
-    "customPalette": "Custom palette",
     "applyPalette": "Apply {label}",
     "applyFont": "Apply {label} font preset",
     "pageTitle": "Page title",
@@ -925,12 +924,6 @@
       "sans": "Sans",
       "serif": "Serif",
       "display": "Display"
-    },
-    "paletteSlot": {
-      "accent": "Accent",
-      "bg": "Background",
-      "ink": "Text",
-      "muted": "Muted"
     }
   },
   "preview": {

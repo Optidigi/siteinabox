@@ -33,6 +33,7 @@ vi.mock("next/headers", () => ({
 }))
 
 import { setTenantTheme } from "@/lib/actions/setTenantTheme"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 beforeEach(() => {
   fakeAuth.mockReset()
@@ -43,7 +44,7 @@ beforeEach(() => {
 const userOf = (role: string, tenants: Array<{ tenant: number | string | { id: number | string } }> = []) =>
   fakeAuth.mockResolvedValueOnce({ user: { id: 1, role, tenants } })
 
-const minimalTheme = { palette: { accent: "#ff0000" } }
+const minimalTheme = DEFAULT_THEME_TOKEN_SPEC
 
 describe("setTenantTheme — OBS-64 authorization boundary", () => {
   it("super-admin can update any tenant's theme", async () => {
@@ -94,7 +95,7 @@ describe("setTenantTheme — OBS-64 authorization boundary", () => {
   })
 
   it("invalid theme is rejected before auth runs", async () => {
-    await expect(setTenantTheme(42, { palette: { accent: "not-a-color" } as any })).rejects.toThrow(/Invalid theme data/i)
+    await expect(setTenantTheme(42, { ...DEFAULT_THEME_TOKEN_SPEC, colors: { schemeId: "not-a-scheme" } } as any)).rejects.toThrow(/Invalid theme data/i)
     expect(fakeAuth).not.toHaveBeenCalled()
     expect(fakeUpdate).not.toHaveBeenCalled()
   })

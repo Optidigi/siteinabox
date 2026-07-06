@@ -36,21 +36,12 @@ const fixtureSpec = (): SiteGenerationSpec => ({
     status: "provisioning",
   },
   theme: {
-    colors: {
-      accent: "#2563eb",
-      bg: "#ffffff",
-      ink: "#111827",
-      muted: "#6b7280",
-      card: "#f8fafc",
-    },
-    fonts: {
-      title: "Fraunces Variable, Georgia, serif",
-      heading: "Inter",
-      text: "Inter",
-      script: "Georgia",
-    },
-    radius: "8px",
-    mode: "light",
+    version: 2,
+    appearance: { mode: "light" },
+    colors: { schemeId: "blue-professional" },
+    fonts: { schemeId: "clear-modern" },
+    shape: { schemeId: "tailwind-default" },
+    density: { schemeId: "tailwind-default" },
   },
   settings: {
     siteName: "Fixture Care",
@@ -165,20 +156,12 @@ describe("applySiteGenerationSpec", () => {
     expect(tenant.status).toBe("provisioning")
     expect(page.status).toBe("draft")
     expect(tenant.theme).toEqual({
-      palette: {
-        accent: "#2563eb",
-        bg: "#ffffff",
-        ink: "#111827",
-        muted: "#6b7280",
-      },
-      fonts: {
-        title: "Fraunces Variable",
-        heading: "Inter Variable",
-        text: "Inter Variable",
-        script: "Caveat Variable",
-      },
-      radius: "8px",
-      mode: "light",
+      version: 2,
+      appearance: { mode: "light" },
+      colors: { schemeId: "blue-professional" },
+      fonts: { schemeId: "clear-modern" },
+      shape: { schemeId: "tailwind-default" },
+      density: { schemeId: "tailwind-default" },
     })
     expect(tenant.siteManifest.generation.hash).toBe(result.idempotencyKey)
     expect(settings.navHeader[0]).toMatchObject({ type: "page", page: page.id })

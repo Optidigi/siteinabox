@@ -5,12 +5,12 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 /**
  * Converts a ThemeTokens object to a CSS rule string scoped to `.rt-canvas`.
  *
- * Emits two rules when `darkPalette` is set:
+ * Emits base and dark-mode rules from ThemeTokenSpec V2 preset selections:
  *   .rt-canvas { ... }
  *   .rt-canvas[data-rt-mode="dark"] { ...dark palette overrides... }
  *
  * The iframe editor frame (`FrameCanvasSurface` / `CanvasSurface`) stamps
- * `data-rt-mode="dark"` on the canvas surface when `theme.mode === "dark"`, so
+ * `data-rt-mode="dark"` on the canvas surface when `theme.appearance.mode === "dark"`, so
  * the overlay rule wins.
  *
  * Returns "" if there is nothing to emit.
@@ -23,20 +23,10 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
  * otherwise an override is emitted but nothing reads it. The block renderers
  * in `src/components/editor/canvas/blocks/` consume the role tokens directly
  * via inline style props (`var(--font-title)` etc.).
- *   palette.accent     → --color-accent
- *   palette.bg         → --color-bg
- *   palette.ink        → --color-ink
- *   palette.muted      → --color-ink-muted
- *   darkPalette.*      → same names, inside the [data-rt-mode="dark"] block
- *   fonts.title        → --font-title
- *   fonts.heading      → --font-heading
- *   fonts.text         → --font-text
- *   fonts.script       → --font-script
- *   compatibility      → --font-sans from text, --font-serif from heading/title
- *   radius             → --radius-md (canonical); derives Tailwind radius vars
- *   density            → --site-density plus coarse section rhythm vars
- *   stylePreset        → --site-style-preset
- *   borderStyle        → --border-style
+ *   colors.schemeId    → provider color ramp variables
+ *   fonts.schemeId     → role font variables
+ *   shape.schemeId     → Tailwind radius-scale variables
+ *   density.schemeId   → coarse section rhythm variables
  */
 
 export function toCssVars(

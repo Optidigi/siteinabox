@@ -7,26 +7,26 @@ import {
   PopoverContent,
 } from "@siteinabox/ui/components/popover"
 import { Palette, Type, SquareRoundCorner, SlidersHorizontal } from "lucide-react"
-import { PalettePicker, type PalettePreset } from "@/components/editor/theme/palette-picker"
-import { FontPicker, type FontPreset } from "@/components/editor/theme/font-picker"
+import { PalettePicker } from "@/components/editor/theme/palette-picker"
+import { FontPicker } from "@/components/editor/theme/font-picker"
 import {
   DensityControl,
   ShapeControl,
-  type DensityLevel,
-  type RadiusLevel,
 } from "@/components/editor/theme/radius-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { RtManifest } from "@/lib/richText/manifest"
+import type { ColorPreset, DensityPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
 import { SegmentedPill } from "@/components/common/segmented-pill"
 import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
-type Segment = "palette" | "fonts" | "shape" | "density"
+type Segment = "colors" | "fonts" | "shape" | "density"
 
 export function ThemeBar({
   theme,
-  manifest,
+  manifest: _manifest,
   onThemeChange,
   palettes,
   fonts,
@@ -36,10 +36,10 @@ export function ThemeBar({
   theme: ThemeTokens | null
   manifest: RtManifest
   onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
-  palettes: PalettePreset[]
+  palettes: ColorPreset[]
   fonts: FontPreset[]
-  radiusLevels?: RadiusLevel[]
-  densityLevels?: DensityLevel[]
+  radiusLevels?: ShapePreset[]
+  densityLevels?: DensityPreset[]
 }) {
   const t = useTranslations("editor")
   // Theme edits are *not* autosaved — they flow up via onThemeChange so the
@@ -48,7 +48,7 @@ export function ThemeBar({
   // behaviour outlier (silent autosave to a different document); routing
   // through the explicit Save button is what users expect.
   function handleUpdate(partial: Partial<ThemeTokens>) {
-    onThemeChange((current) => ({ ...(current ?? theme ?? {}), ...partial }))
+    onThemeChange((current) => normalizeThemeForSave({ ...(current ?? theme ?? {}), ...partial } as ThemeTokens))
   }
 
   const [openSegment, setOpenSegment] = React.useState<Segment | null>(null)
@@ -62,7 +62,7 @@ export function ThemeBar({
   }, [openSegment])
 
   const segmentRefs = React.useRef<Record<Segment, HTMLButtonElement | null>>({
-    palette: null,
+    colors: null,
     fonts: null,
     shape: null,
     density: null,
@@ -79,7 +79,7 @@ export function ThemeBar({
               onValueChange={(next) => setOpenSegment(next)}
               itemRef={(value, el) => { segmentRefs.current[value] = el }}
               items={[
-                { value: "palette", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
+                { value: "colors", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
                 { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
                 { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
                 { value: "density", label: t("density"), icon: SlidersHorizontal, ariaLabel: t("spacingDensity") },
@@ -102,35 +102,33 @@ export function ThemeBar({
             }
           }}
         >
-          {openSegment === "palette" && (
+          {openSegment === "colors" && (
             <PalettePicker
               palettes={palettes}
-              value={theme?.palette}
-              darkValue={theme?.darkPalette}
-              mode={theme?.mode ?? "light"}
+              value={theme?.colors?.schemeId}
+              mode={theme?.appearance?.mode ?? "light"}
               onChange={(patch) => handleUpdate(patch)}
             />
           )}
           {openSegment === "fonts" && (
             <FontPicker
               fonts={fonts}
-              value={theme?.fonts}
-              manifest={manifest}
+              value={theme?.fonts?.schemeId}
               onChange={(next) => handleUpdate({ fonts: next })}
             />
           )}
           {openSegment === "shape" && (
             <ShapeControl
-              theme={theme}
+              shapeId={theme?.shape?.schemeId}
               radiusLevels={radiusLevels}
-              onChange={(next) => handleUpdate(next)}
+              onChange={(next) => handleUpdate({ shape: next })}
             />
           )}
           {openSegment === "density" && (
             <DensityControl
-              density={theme?.density}
+              densityId={theme?.density?.schemeId}
               levels={densityLevels}
-              onChange={(next) => handleUpdate(next)}
+              onChange={(next) => handleUpdate({ density: next })}
             />
           )}
         </PopoverContent>

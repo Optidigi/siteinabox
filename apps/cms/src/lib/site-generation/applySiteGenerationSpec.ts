@@ -18,7 +18,6 @@ import {
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
 import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
-import { resolveThemeTokens } from "@siteinabox/site-renderer/theme/resolve"
 import {
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
@@ -436,72 +435,9 @@ const relationshipId = (value: unknown): string | number | undefined => {
 }
 
 const themeToCmsTokens = (theme: ThemeTokenSpec): ThemeTokens | null => {
-  if ("version" in theme && theme.version === 2) {
-    const resolved = resolveThemeTokens(theme)
-    const candidate: ThemeTokens = {
-      palette: {
-        accent: resolved.light.accent[600],
-        bg: resolved.light.surface,
-        ink: resolved.light.ink,
-        muted: resolved.light.muted,
-      },
-      darkPalette: {
-        accent: resolved.dark.accent[600],
-        bg: resolved.dark.surface,
-        ink: resolved.dark.ink,
-        muted: resolved.dark.muted,
-      },
-      fonts: {
-        title: resolved.fonts.roles.display ?? resolved.fonts.roles.heading,
-        heading: resolved.fonts.roles.heading,
-        text: resolved.fonts.roles.body,
-      },
-      radius: resolved.shape.radius.md,
-      density: resolved.density.id === "compact" ? "compact" : "comfortable",
-      mode: resolved.mode === "system" ? resolved.defaultMode : resolved.mode,
-    }
-    const parsed = themeSchema.safeParse(normalizeThemeForSave(candidate) ?? {})
-    if (!parsed.success) {
-      throw new Error(`Invalid CMS theme tokens: ${parsed.error.issues.map((entry) => entry.message).join("; ")}`)
-    }
-    return normalizeThemeForSave(parsed.data)
-  }
-
-  const legacyTheme = theme
-  const candidate: ThemeTokens = {
-    palette: legacyTheme.colors
-      ? {
-          accent: legacyTheme.colors.accent,
-          bg: legacyTheme.colors.bg,
-          ink: legacyTheme.colors.ink,
-          muted: legacyTheme.colors.muted,
-        }
-      : undefined,
-    darkPalette: legacyTheme.darkColors
-      ? {
-          accent: legacyTheme.darkColors.accent,
-          bg: legacyTheme.darkColors.bg,
-          ink: legacyTheme.darkColors.ink,
-          muted: legacyTheme.darkColors.muted,
-        }
-      : undefined,
-    fonts: legacyTheme.fonts
-      ? {
-          title: legacyTheme.fonts.title,
-          heading: legacyTheme.fonts.heading,
-          text: legacyTheme.fonts.text,
-          script: legacyTheme.fonts.script,
-        }
-      : undefined,
-    radius: legacyTheme.radius,
-    density: legacyTheme.density,
-    stylePreset: legacyTheme.stylePreset,
-    borderStyle: legacyTheme.borderStyle,
-    mode: legacyTheme.mode,
-  }
-  const parsed = themeSchema.safeParse(normalizeThemeForSave(candidate) ?? {})
+  const parsed = themeSchema.safeParse(normalizeThemeForSave(theme) ?? {})
   if (!parsed.success) {
-    throw new Error(`Invalid CMS theme tokens: ${parsed.error.issues.map((entry) => entry.message).join("; ")}`)
+    throw new Error(`Invalid CMS theme tokens: ${parsed.error.issues.map((entry: { message: string }) => entry.message).join("; ")}`)
   }
   return normalizeThemeForSave(parsed.data)
 }

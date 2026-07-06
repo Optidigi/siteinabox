@@ -163,18 +163,16 @@ body { font-family: var(--font-sans); }
 
 /* Default dark-mode fallback for the canvas — INTENTIONALLY UNLAYERED.
  * Tenant CSS (the data-rt-tenant-css style tag) is emitted verbatim with no
- * @layer wrapper, so its `.rt-canvas { --color-bg: (light palette value) }` rule wins
+ * @layer wrapper, so its `.rt-canvas { --color-bg: ... }` rule wins
  * over anything inside `@layer base` regardless of specificity. By
  * declaring this rule outside the layer it sits in the same cascade tier
  * as the tenant CSS, and the higher selector specificity
  * (`.rt-canvas[data-rt-mode="dark"]` vs `.rt-canvas`) lets it win.
  *
  * Fires when the canvas stamps `data-rt-mode="dark"` (driven by
- * `theme.mode === "dark"`) but the tenant has NOT saved a `darkPalette`
- * — i.e. they picked "Default" in the ThemeBar palette swatch and
- * flipped the Light/Dark toggle. A tenant-saved `darkPalette` is
+ * `theme.appearance.mode === "dark"`). ThemeTokenSpec V2 preset overrides are
  * injected later via the data-rt-theme-overrides style tag and naturally
- * overrides this baseline (same selector, later in document order).
+ * override this baseline (same selector, later in document order).
  */
 .rt-canvas[data-rt-mode="dark"] {
     --color-bg: #09090b;

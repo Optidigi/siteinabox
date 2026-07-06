@@ -1,103 +1,65 @@
 "use client"
 import * as React from "react"
 import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
-import { Square, Squircle, Circle } from "lucide-react"
-import type { ThemeTokens } from "@/lib/theme/schema"
+import { Circle, Square, Squircle } from "lucide-react"
+import type { DensitySchemeId, ShapeSchemeId } from "@siteinabox/contracts"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
+import type { DensityPreset, ShapePreset } from "@/lib/theme/presets"
 
-export type RadiusLevel = {
-  id: string
-  label: string
-  value: string
-  icon?: "square" | "squircle" | "circle"
-}
-
-export type DensityLevel = {
-  id: NonNullable<ThemeTokens["density"]>
-  label: string
-}
-
-export type StylePresetLevel = {
-  id: string
-  label: string
-}
-
-export const DEFAULT_RADIUS_LEVELS: RadiusLevel[] = [
-  { id: "sharp", label: "Sharp", value: "0", icon: "square" },
-  { id: "soft", label: "Soft", value: "0.5rem", icon: "squircle" },
-  { id: "round", label: "Round", value: "1.5rem", icon: "circle" },
-]
-
-export const DEFAULT_DENSITY_LEVELS: DensityLevel[] = [
-  { id: "compact", label: "Compact" },
-  { id: "comfortable", label: "Comfortable" },
-  { id: "spacious", label: "Spacious" },
-]
-
-export const DEFAULT_STYLE_PRESET_LEVELS: StylePresetLevel[] = [
-  { id: "catalog-clean", label: "Catalog Clean" },
-  { id: "industrial-cleaning", label: "Industrial" },
-]
-
-function iconFor(level: RadiusLevel): React.ComponentType<{ className?: string }> {
+function iconFor(level: ShapePreset): React.ComponentType<{ className?: string }> {
   if (level.icon === "circle") return Circle
   if (level.icon === "squircle") return Squircle
   return Square
 }
 
-function findRadiusLevel(radius: string | undefined, levels: RadiusLevel[]): string | undefined {
-  return levels.find((l) => l.value === radius)?.id
-}
-
-export const RadiusControl: React.FC<{
-  radius: ThemeTokens["radius"]
-  levels?: RadiusLevel[]
-  onChange: (next: { radius?: string }) => void
-}> = ({ radius, levels = DEFAULT_RADIUS_LEVELS, onChange }) => {
-  const activeLevel = findRadiusLevel(radius, levels)
+export const ShapeControl: React.FC<{
+  shapeId: ShapeSchemeId | undefined
+  radiusLevels?: ShapePreset[]
+  onChange: (next: { schemeId: ShapeSchemeId }) => void
+}> = ({ shapeId, radiusLevels = [], onChange }) => {
+  const activeId = shapeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId
 
   return (
-    <div className="flex items-center gap-2">
-      <ToggleGroup
-        type="single"
-        value={activeLevel ?? ""}
-        onValueChange={(id) => {
-          if (!id) return
-          const level = levels.find((l) => l.id === id)
-          if (level) onChange({ radius: level.value })
-        }}
-        className="gap-1"
-      >
-        {levels.map((level) => {
-          const Icon = iconFor(level)
-          return (
-            <ToggleGroupItem
-              key={level.id}
-              value={level.id}
-              aria-label={level.label}
-              className="size-9 rounded-md border border-border bg-background p-0 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-            >
-              <Icon className="size-4" aria-hidden />
-            </ToggleGroupItem>
-          )
-        })}
-      </ToggleGroup>
-    </div>
+    <ToggleGroup
+      type="single"
+      value={activeId}
+      onValueChange={(id) => {
+        const level = radiusLevels.find((entry) => entry.id === id)
+        if (level) onChange({ schemeId: level.id })
+      }}
+      className="justify-start gap-1"
+    >
+      {radiusLevels.map((level) => {
+        const Icon = iconFor(level)
+        return (
+          <ToggleGroupItem
+            key={level.id}
+            value={level.id}
+            aria-label={level.label}
+            className="size-9 rounded-md border border-border bg-background p-0 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+          >
+            <Icon className="size-4" aria-hidden />
+          </ToggleGroupItem>
+        )
+      })}
+    </ToggleGroup>
   )
 }
 
 export const DensityControl: React.FC<{
-  density: ThemeTokens["density"]
-  levels?: DensityLevel[]
-  onChange: (next: { density?: ThemeTokens["density"] }) => void
-}> = ({ density, levels = DEFAULT_DENSITY_LEVELS, onChange }) => {
+  densityId: DensitySchemeId | undefined
+  levels?: DensityPreset[]
+  onChange: (next: { schemeId: DensitySchemeId }) => void
+}> = ({ densityId, levels = [], onChange }) => {
+  const activeId = densityId ?? DEFAULT_THEME_TOKEN_SPEC.density.schemeId
+
   return (
     <ToggleGroup
       type="single"
-      value={density ?? ""}
+      value={activeId}
       onValueChange={(id) => {
-        if (!id) return
         const level = levels.find((entry) => entry.id === id)
-        if (level) onChange({ density: level.id })
+        if (level) onChange({ schemeId: level.id })
       }}
       className="justify-start gap-1"
     >
@@ -112,47 +74,5 @@ export const DensityControl: React.FC<{
         </ToggleGroupItem>
       ))}
     </ToggleGroup>
-  )
-}
-
-export const ShapeControl: React.FC<{
-  theme: ThemeTokens | null
-  radiusLevels?: RadiusLevel[]
-  onChange: (next: Pick<ThemeTokens, "radius" | "density" | "stylePreset">) => void
-}> = ({
-  theme,
-  radiusLevels = DEFAULT_RADIUS_LEVELS,
-  onChange,
-}) => {
-  const activeRadiusLevel = findRadiusLevel(theme?.radius, radiusLevels)
-
-  return (
-    <div className="flex flex-col gap-3">
-      <ToggleGroup
-        type="single"
-        value={activeRadiusLevel ?? ""}
-        onValueChange={(id) => {
-          if (!id) return
-          const level = radiusLevels.find((entry) => entry.id === id)
-          if (level) onChange({ radius: level.value })
-        }}
-        className="justify-start gap-1"
-      >
-        {radiusLevels.map((level) => {
-          const Icon = iconFor(level)
-          return (
-            <ToggleGroupItem
-              key={level.id}
-              value={level.id}
-              aria-label={level.label}
-              className="size-9 rounded-md border border-border bg-background p-0 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
-            >
-              <Icon className="size-4" aria-hidden />
-            </ToggleGroupItem>
-          )
-        })}
-      </ToggleGroup>
-
-    </div>
   )
 }

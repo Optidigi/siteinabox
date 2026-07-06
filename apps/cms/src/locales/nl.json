@@ -712,7 +712,6 @@
     "light": "Licht",
     "dark": "Donker",
     "mode": "Weergave",
-    "customPalette": "Eigen palet",
     "applyPalette": "{label} toepassen",
     "applyFont": "Lettertypepreset {label} toepassen",
     "pageTitle": "Paginatitel",
@@ -925,12 +924,6 @@
       "sans": "Schreefloos",
       "serif": "Schreef",
       "display": "Display"
-    },
-    "paletteSlot": {
-      "accent": "Accent",
-      "bg": "Achtergrond",
-      "ink": "Tekst",
-      "muted": "Gedempt"
     }
   },
   "preview": {

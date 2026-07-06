@@ -148,26 +148,12 @@ const toSnapshot = (
 }
 
 export const amicareTheme: ThemeTokenSpec = {
-  colors: {
-    accent: "#a04e32",
-    bg: "#fbf7f0",
-    ink: "#1f1a14",
-    muted: "#5a4f44",
-    card: "#ffffff",
-    secondary: "#efe9dd",
-    rule: "rgba(31, 26, 20, 0.12)",
-  },
-  fonts: {
-    title: "Fraunces Variable, Georgia, serif",
-    heading: "Fraunces Variable, Georgia, serif",
-    text: "Inter Variable, system-ui, sans-serif",
-    script: "Caveat Variable, cursive",
-  },
-  radius: "0.5rem",
-  density: "comfortable",
-  borderStyle: "solid",
-  mode: "light",
-  stylePreset: "warm-care",
+  version: 2,
+  appearance: { mode: "light" },
+  colors: { schemeId: "amber-warm" },
+  fonts: { schemeId: "classic-editorial" },
+  shape: { schemeId: "soft" },
+  density: { schemeId: "comfortable" },
 }
 
 const canonicalBlocks: SiteBlockManifestItem[] = [

@@ -317,14 +317,12 @@ describe("canvas chrome fidelity", () => {
     expect(canvasSurface).not.toContain("AMICARE_CANVAS_THEME_SCOPE")
     expect(canvasSurface).not.toContain("themeToCssVars")
 
-    expect(palettePicker).toContain("EditorFrameDocumentContext")
-    expect(palettePicker).toContain("disableRuntimeThemeOverrides")
-    expect(palettePicker).toContain("restoreRuntimeThemeOverrides")
-    expect(palettePicker).toContain("createDefaultPaletteProbe")
-    expect(palettePicker).toContain('".site-renderer[data-siab-site-renderer] .rt-canvas, .rt-canvas"')
-    expect(palettePicker).toContain('closest<HTMLElement>(".site-renderer[data-siab-site-renderer]")')
-    expect(palettePicker).toContain('attribute.name !== "data-siab-site-renderer"')
-    expect(palettePicker).toContain("defaultView.getComputedStyle(anchor)")
+    expect(palettePicker).toContain("ColorSchemeId")
+    expect(palettePicker).toContain("DEFAULT_THEME_TOKEN_SPEC")
+    expect(palettePicker).toContain("onChange({ colors: { schemeId: preset.id } })")
+    expect(palettePicker).not.toContain("EditorFrameDocumentContext")
+    expect(palettePicker).not.toContain("createDefaultPaletteProbe")
+    expect(palettePicker).not.toContain('type="color"')
   })
 
   it("forwards parent sticky chrome inset into the iframe for gutter clamping", () => {

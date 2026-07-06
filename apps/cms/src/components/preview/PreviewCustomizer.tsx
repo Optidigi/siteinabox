@@ -142,7 +142,8 @@ export function PreviewCustomizer({
     inFlightSaveRef.current = request
     setThemeSaveStatus("saving")
 
-    void setPreviewTheme(access, request.normalizedTheme ?? {})
+    if (!request.normalizedTheme) return
+    void setPreviewTheme(access, request.normalizedTheme)
       .then((saved) => {
         const savedTheme = normalizeThemeForSave(saved)
         const savedSerializedTheme = JSON.stringify(savedTheme ?? {})

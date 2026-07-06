@@ -20,6 +20,7 @@ import type {
   TeamBlock,
   TestimonialsBlock,
 } from "./site"
+import type { ColorSchemeId, DensitySchemeId, FontSchemeId, ShapeSchemeId } from "./theme-presets"
 
 export type IntakeSubmission = {
   submittedAt?: string
@@ -185,7 +186,6 @@ export type IntakeBrief = {
     colorSourceType?: Exclude<IntakeVisualColorSourceType, ""> | null
     colorSourceValue?: string | null
     selectedPalette?: Exclude<IntakeVisualPaletteId, ""> | null
-    tokens?: IntakeVisualThemeTokens | null
     shape?: Exclude<IntakeVisualShape, ""> | null
     typography?: Exclude<IntakeVisualTypography, ""> | null
   }
@@ -238,31 +238,6 @@ export type NormalizedIntake = {
   companyFacts?: CompanyFacts | null
   intakeBrief?: IntakeBrief | null
   raw?: Record<string, unknown> | null
-}
-
-export type ThemeColorRole =
-  | "accent"
-  | "onAccent"
-  | "bg"
-  | "ink"
-  | "muted"
-  | "card"
-  | "secondary"
-  | "rule"
-
-export type ThemeFontRole = "title" | "heading" | "text" | "script"
-export type ThemeDensity = "compact" | "comfortable" | "spacious"
-
-export type ThemeTokenSpecV1 = {
-  version?: 1
-  colors?: Partial<Record<ThemeColorRole, string>>
-  darkColors?: Partial<Record<ThemeColorRole, string>>
-  fonts?: Partial<Record<ThemeFontRole, string>>
-  radius?: string
-  density?: ThemeDensity
-  stylePreset?: string
-  borderStyle?: "solid" | "dashed" | "none"
-  mode?: "light" | "dark"
 }
 
 export type ThemeModeV2 = "light" | "dark" | "system"
@@ -341,29 +316,25 @@ export type ShapeScheme = {
 
 export type ThemeTokenSpecV2 = {
   version: 2
-  appearance?: {
+  appearance: {
     mode: ThemeModeV2
     defaultMode?: "light" | "dark"
   }
-  colors?: {
-    schemeId: string
-    lightSchemeId?: string
-    darkSchemeId?: string
-    custom?: ProviderColorScheme
+  colors: {
+    schemeId: ColorSchemeId
   }
-  fonts?: {
-    schemeId: string
-    custom?: FontScheme
+  fonts: {
+    schemeId: FontSchemeId
   }
-  density?: {
-    schemeId: string
+  density: {
+    schemeId: DensitySchemeId
   }
-  shape?: {
-    schemeId: string
+  shape: {
+    schemeId: ShapeSchemeId
   }
 }
 
-export type ThemeTokenSpec = ThemeTokenSpecV1 | ThemeTokenSpecV2
+export type ThemeTokenSpec = ThemeTokenSpecV2
 
 export type SiteBlockEditorField = {
   name: string

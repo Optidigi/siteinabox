@@ -62,7 +62,14 @@ describe("provider system template runtime", () => {
     const html = renderToStaticMarkup(
       <TemplateRenderer
         settings={settings}
-        theme={{ radius: "0.5rem", mode: "light" }}
+        theme={{
+          version: 2,
+          appearance: { mode: "light" },
+          colors: { schemeId: "tailwind-default" },
+          fonts: { schemeId: "clear-modern" },
+          shape: { schemeId: "soft" },
+          density: { schemeId: "tailwind-default" },
+        }}
         tenantSlug="acme"
         domain="example.com"
         pathname="/missing"

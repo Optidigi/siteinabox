@@ -14,24 +14,12 @@ const blockText = (text: string) => ({
 })
 
 const fixtureTheme: ThemeTokenSpec = {
-  colors: {
-    accent: "#0f766e",
-    bg: "#f8fafc",
-    ink: "#111827",
-    muted: "#64748b",
-    card: "#ffffff",
-    secondary: "#e2e8f0",
-    rule: "rgba(15, 23, 42, 0.14)",
-  },
-  fonts: {
-    title: "Georgia, 'Times New Roman', serif",
-    heading: "Inter, system-ui, sans-serif",
-    text: "Inter, system-ui, sans-serif",
-  },
-  radius: "0.5rem",
-  density: "comfortable",
-  borderStyle: "solid",
-  mode: "light",
+  version: 2,
+  appearance: { mode: "light" },
+  colors: { schemeId: "emerald-calm" },
+  fonts: { schemeId: "classic-editorial" },
+  shape: { schemeId: "soft" },
+  density: { schemeId: "comfortable" },
 }
 
 const pages: Page[] = [

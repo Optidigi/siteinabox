@@ -9,7 +9,7 @@ describe("ThemeBar controls", () => {
     const radiusControl = read("src/components/editor/theme/radius-control.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
 
-    expect(themeBar).toContain('type Segment = "palette" | "fonts" | "shape" | "density"')
+    expect(themeBar).toContain('type Segment = "colors" | "fonts" | "shape" | "density"')
     expect(themeBar).toContain("DensityControl")
     expect(themeBar).toContain("densityLevels")
     expect(themeBar).not.toContain("stylePresetLevels")
@@ -17,14 +17,14 @@ describe("ThemeBar controls", () => {
     expect(pageForm).not.toContain("stylePresetLevels={STYLE_PRESETS}")
     expect(radiusControl).toContain("export const ShapeControl")
     expect(radiusControl).toContain("export const DensityControl")
-    expect(radiusControl).not.toContain("value={theme?.density")
-    expect(radiusControl).not.toContain("value={theme?.stylePreset")
+    expect(radiusControl).toContain("shapeId")
+    expect(radiusControl).toContain("densityId")
   })
 
   it("uses functional theme updates so quick toolbar patches merge with the latest state", () => {
     const themeBar = read("src/components/editor/theme/theme-bar.tsx")
 
     expect(themeBar).toContain("React.Dispatch<React.SetStateAction<ThemeTokens | null>>")
-    expect(themeBar).toContain("onThemeChange((current) => ({ ...(current ?? theme ?? {}), ...partial }))")
+    expect(themeBar).toContain("onThemeChange((current) => normalizeThemeForSave")
   })
 })

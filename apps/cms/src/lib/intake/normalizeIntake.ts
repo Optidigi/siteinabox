@@ -148,7 +148,6 @@ const buildIntakeBriefFromRich = (raw: RawIntakeSubmission): IntakeBrief => {
       ...(raw.visual.color.sourceType ? { colorSourceType: raw.visual.color.sourceType } : {}),
       ...(cleanText(raw.visual.color.sourceValue) ? { colorSourceValue: cleanText(raw.visual.color.sourceValue) } : {}),
       ...(raw.visual.color.selectedPalette ? { selectedPalette: raw.visual.color.selectedPalette } : {}),
-      tokens: raw.visual.color.tokens,
       ...(raw.visual.shape ? { shape: raw.visual.shape } : {}),
       ...(raw.visual.typography ? { typography: raw.visual.typography } : {}),
     },

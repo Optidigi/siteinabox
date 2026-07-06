@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, afterEach } from "vitest"
 import { promises as fs } from "node:fs"
 import path from "node:path"
 import os from "node:os"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 let tmpDir: string
 
@@ -21,11 +22,11 @@ describe("projectTenantTheme", () => {
     const tenantDir = path.join(tmpDir, "tenants", "t1")
     await fs.mkdir(tenantDir, { recursive: true })
 
-    await projectTenantTheme("t1", { palette: { accent: "#f00" } })
+    await projectTenantTheme("t1", { ...DEFAULT_THEME_TOKEN_SPEC, colors: { schemeId: "blue-professional" } })
 
     const written = await fs.readFile(path.join(tenantDir, "tenant-theme.css"), "utf8")
     expect(written).toContain(":root{")
-    expect(written).toContain("--color-accent:#f00")
+    expect(written).toContain("--color-accent:#2563eb")
   })
 
   it("writes Tailwind default CSS when theme is null", async () => {
@@ -43,6 +44,6 @@ describe("projectTenantTheme", () => {
   it("does not throw when tenant dir does not exist — logs error and returns", async () => {
     const { projectTenantTheme } = await import("@/lib/projection/projectTenantTheme")
     // No tenants/t3 dir — writeFile will ENOENT
-    await expect(projectTenantTheme("t3", { palette: { accent: "#f00" } })).resolves.toBeUndefined()
+    await expect(projectTenantTheme("t3", DEFAULT_THEME_TOKEN_SPEC)).resolves.toBeUndefined()
   })
 })

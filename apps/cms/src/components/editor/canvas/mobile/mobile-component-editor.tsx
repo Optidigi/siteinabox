@@ -14,6 +14,7 @@ import { elementPathToName } from "@/components/editor/canvas/elementPath"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { resolveThemeTokens } from "@siteinabox/site-renderer/theme/resolve"
 import { useMobileEditor, type MobileSnap } from "@/components/editor/canvas/mobile/MobileEditorContext"
 import { LexicalField } from "@/components/editor/richText/LexicalField"
 import { MobileMediaSheet } from "@/components/editor/canvas/mobile/mobile-media-sheet"
@@ -366,9 +367,10 @@ function getEditableFocusTarget(target: EventTarget | null): HTMLElement | null 
 }
 
 function inspectorFontDeclarations(theme: ThemeTokens | null | undefined): string {
-  const title = formatRuntimeCssValue(theme?.fonts?.title) ?? "var(--rt-tenant-font-title, inherit)"
-  const heading = formatRuntimeCssValue(theme?.fonts?.heading) ?? "var(--rt-tenant-font-heading, inherit)"
-  const text = formatRuntimeCssValue(theme?.fonts?.text) ?? "var(--rt-tenant-font-text, inherit)"
+  const resolved = resolveThemeTokens(theme)
+  const title = formatRuntimeCssValue(resolved.fonts.roles.display ?? resolved.fonts.roles.heading) ?? "var(--rt-tenant-font-title, inherit)"
+  const heading = formatRuntimeCssValue(resolved.fonts.roles.heading) ?? "var(--rt-tenant-font-heading, inherit)"
+  const text = formatRuntimeCssValue(resolved.fonts.roles.body) ?? "var(--rt-tenant-font-text, inherit)"
   return `--rt-inspector-font-title:${title};--rt-inspector-font-heading:${heading};--rt-inspector-font-text:${text};`
 }
 

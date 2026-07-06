@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 const mocks = vi.hoisted(() => ({
   payload: {
@@ -34,7 +35,7 @@ describe("tenant theme route", () => {
   it("rejects unauthenticated callers", async () => {
     mocks.payload.auth.mockResolvedValue({ user: null })
 
-    const res = await POST(req({ tenantId: 7, theme: { palette: { accent: "#a04e32" } } }))
+    const res = await POST(req({ tenantId: 7, theme: DEFAULT_THEME_TOKEN_SPEC }))
 
     expect(res.status).toBe(403)
     expect(await res.json()).toEqual({ message: "Forbidden" })
@@ -47,9 +48,10 @@ describe("tenant theme route", () => {
     })
 
     const theme = {
-      palette: { accent: "#a04e32", bg: "#fbf7f0" },
-      fonts: { heading: "Nunito", text: "Nunito" },
-      radius: "1rem",
+      ...DEFAULT_THEME_TOKEN_SPEC,
+      colors: { schemeId: "amber-warm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
     }
     const res = await POST(req({ tenantId: "7", theme }))
 
@@ -66,13 +68,13 @@ describe("tenant theme route", () => {
   it("allows super-admin callers to update any tenant theme", async () => {
     mocks.payload.auth.mockResolvedValue({ user: { id: 1, role: "super-admin", tenants: [] } })
 
-    const res = await POST(req({ tenantId: 7, theme: {} }))
+    const res = await POST(req({ tenantId: 7, theme: DEFAULT_THEME_TOKEN_SPEC }))
 
     expect(res.status).toBe(200)
     expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
       collection: "tenants",
       id: "7",
-      data: { theme: {} },
+      data: { theme: DEFAULT_THEME_TOKEN_SPEC },
       overrideAccess: true,
     }))
   })
@@ -81,12 +83,12 @@ describe("tenant theme route", () => {
     mocks.payload.auth.mockResolvedValue({
       user: { id: 2, role: "viewer", tenants: [{ tenant: 7 }] },
     })
-    expect((await POST(req({ tenantId: 7, theme: {} }))).status).toBe(403)
+    expect((await POST(req({ tenantId: 7, theme: DEFAULT_THEME_TOKEN_SPEC }))).status).toBe(403)
 
     mocks.payload.auth.mockResolvedValue({
       user: { id: 3, role: "editor", tenants: [{ tenant: 8 }] },
     })
-    expect((await POST(req({ tenantId: 7, theme: {} }))).status).toBe(403)
+    expect((await POST(req({ tenantId: 7, theme: DEFAULT_THEME_TOKEN_SPEC }))).status).toBe(403)
 
     expect(mocks.payload.update).not.toHaveBeenCalled()
   })
@@ -96,7 +98,7 @@ describe("tenant theme route", () => {
 
     expect((await POST(req("{"))).status).toBe(400)
     expect((await POST(req(["not", "object"]))).status).toBe(400)
-    expect((await POST(req({ theme: {} }))).status).toBe(400)
+    expect((await POST(req({ theme: DEFAULT_THEME_TOKEN_SPEC }))).status).toBe(400)
     const invalid = await POST(req({ tenantId: 7, theme: { palette: { accent: "not-a-color" } } }))
     expect(invalid.status).toBe(400)
     expect((await invalid.json()).message).toContain("Invalid theme data")

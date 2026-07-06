@@ -14,19 +14,12 @@ const blockText = (text: string) => ({
 })
 
 export const v1FixtureTheme: ThemeTokenSpec = {
-  colors: {
-    accent: "#0f766e",
-    bg: "#ffffff",
-    ink: "#111827",
-    muted: "#6b7280",
-  },
-  fonts: {
-    title: "serif",
-    heading: "serif",
-    text: "sans-serif",
-  },
-  radius: "0.5rem",
-  mode: "light",
+  version: 2,
+  appearance: { mode: "light" },
+  colors: { schemeId: "emerald-calm" },
+  fonts: { schemeId: "classic-editorial" },
+  shape: { schemeId: "soft" },
+  density: { schemeId: "tailwind-default" },
 }
 
 export const v1FixtureSettings: SiteSettings = {

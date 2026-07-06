@@ -42,34 +42,12 @@ const maxMismatchRatio = 0.01
 const pixelmatchThreshold = 0.1
 
 const darkTheme = {
-  mode: "dark",
-  colors: {
-    accent: "#4f46e5",
-    onAccent: "#ffffff",
-    bg: "#ffffff",
-    ink: "#111827",
-    muted: "#4b5563",
-    card: "#ffffff",
-    secondary: "#f3f4f6",
-    rule: "rgba(17, 24, 39, 0.12)",
-  },
-  darkColors: {
-    accent: "#818cf8",
-    bg: "#09090b",
-    ink: "#fafafa",
-    muted: "#a1a1aa",
-    card: "#18181b",
-    secondary: "#27272a",
-    rule: "rgba(255, 255, 255, 0.12)",
-  },
-  fonts: {
-    title: "Inter Variable",
-    heading: "Inter Variable",
-    text: "Inter Variable",
-    script: "Inter Variable",
-  },
-  radius: "0.75rem",
-  density: "comfortable",
+  version: 2,
+  appearance: { mode: "dark" },
+  colors: { schemeId: "tailwind-default" },
+  fonts: { schemeId: "clear-modern" },
+  shape: { schemeId: "tailwind-default" },
+  density: { schemeId: "comfortable" },
 }
 
 const blockCases = [
@@ -263,13 +241,13 @@ function renderChrome({ id, area }) {
   )
 }
 
-function renderSystemTemplate({ id, kind }) {
+function renderSystemTemplate({ id, kind }, theme = null) {
   const definition = providerSystemTemplateDefinitions.find((candidate) => candidate.id === id && candidate.kind === kind)
   if (!definition?.renderer) throw new Error(`Missing provider system template renderer for ${id}`)
   return renderToStaticMarkup(
     React.createElement(React.Fragment, null, definition.renderer({
       settings: { siteName: "this site", contactEmail: null, navHeader: [], navFooter: [], branding: {} },
-      theme: null,
+      theme,
       tenantSlug: "visual-parity",
       pathname: "/missing",
     })),
@@ -279,7 +257,7 @@ function renderSystemTemplate({ id, kind }) {
 function htmlPage(css, bodyHtml, options = {}) {
   const themeCss = options.theme ? themeToCssVars(options.theme, PUBLIC_RENDERER_THEME_SCOPE) : ""
   const visualRoot = options.theme
-    ? `<div class="site-renderer" data-siab-site-renderer><div class="rt-canvas" data-rt-mode="${options.theme.mode === "dark" ? "dark" : "light"}" data-visual-root>${bodyHtml}</div></div>`
+    ? `<div class="site-renderer" data-siab-site-renderer><div class="rt-canvas" data-rt-mode="${options.theme.appearance?.mode === "dark" ? "dark" : "light"}" data-visual-root>${bodyHtml}</div></div>`
     : `<div data-visual-root>${bodyHtml}</div>`
   return `<!doctype html>
 <html>
@@ -511,7 +489,7 @@ async function main() {
     ...systemTemplateCases.map((testCase) => ({
       ...testCase,
       kind: "system-template",
-      renderedHtml: () => renderSystemTemplate(testCase),
+      renderedHtml: (theme) => renderSystemTemplate(testCase, theme),
     })),
   ]
 
@@ -524,7 +502,7 @@ async function main() {
           const sourceBuffer = await screenshot(page, css, sourceHtml, viewport)
           const renderedBuffer = await screenshot(page, css, renderedHtml, viewport)
           const mismatchRatio = comparePngs(testCase.id, viewport.name, sourceBuffer, renderedBuffer)
-          await assertDarkThemeSmoke(page, css, testCase, renderedHtml, viewport)
+          await assertDarkThemeSmoke(page, css, testCase, testCase.renderedHtml(darkTheme), viewport)
           results.push({ id: testCase.id, viewport: viewport.name, mismatchRatio })
         } catch (error) {
           failures.push(error instanceof Error ? error.message : String(error))

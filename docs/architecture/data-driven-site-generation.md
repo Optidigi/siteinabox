@@ -163,17 +163,17 @@ analysis.
 ThemeTokenSpec V2 is the generated-site theme contract. It supports:
 
 - `appearance.mode`: `light`, `dark`, or `system`;
-- approved color scheme IDs, with complete custom schemes only when validation
-  covers the full neutral/accent ramp and role tokens;
+- approved color scheme IDs;
 - approved font scheme IDs;
 - approved density scheme IDs;
 - approved shape/radius scheme IDs.
 
-Missing theme data resolves to `tailwind-default`. Default parity means
-`tailwind-default` plus light mode, default fonts, default density, and default
-shape should reproduce upstream Tailwind Plus behavior as closely as the
-source-backed renderer allows. Themed parity may differ visually only through
-approved CSS variable outputs. Generation and CMS must not use theme data to
+Missing theme data resolves to the default preset set: `tailwind-default`
+colors, `clear-modern` fonts, `tailwind-default` density,
+`tailwind-default` shape, and light mode. Default parity should reproduce
+upstream Tailwind Plus behavior as closely as the source-backed renderer
+allows. Themed parity may differ visually only through approved CSS variable
+outputs. Generation and CMS must not use theme data to
 change provider DOM, classes, item counts, responsive rules, or layout.
 
 Header, footer, and banner remain global chrome under `SiteSettings.chrome` plus

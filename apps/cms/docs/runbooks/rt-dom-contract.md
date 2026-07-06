@@ -115,11 +115,9 @@ layout instructions.
 
 | Token | Where to use |
 |---|---|
-| `var(--border-style)` | optional — borders that should adopt the user's chosen style (`solid` / `dashed` / `none`) |
-
 ### Dark mode overlay
 
-When `theme.mode === "dark"`, `data-rt-mode="dark"` is set on the editor
+When `theme.appearance.mode === "dark"`, `data-rt-mode="dark"` is set on the editor
 canvas root by `CanvasSurface` and on public/preview renderer roots by
 `packages/site-renderer` (`SitePageRenderer` / tenant renderers). All
 `--color-*` vars MUST be defined in BOTH:
@@ -127,7 +125,7 @@ canvas root by `CanvasSurface` and on public/preview renderer roots by
 - a base block: `.rt-canvas { --color-accent: …; --color-bg: …; … }` for the canvas, or `html { --color-accent: …; … }` for the live site.
 - a dark overlay block: `.rt-canvas[data-rt-mode="dark"] { … }` for the canvas, or `html[data-rt-mode="dark"] { … }` for the live site.
 
-The base block holds the LIGHT palette; the overlay block holds the DARK palette. `toCssVars` emits both blocks when `theme.darkPalette` is set.
+The base block and dark overlay are resolved from ThemeTokenSpec V2 preset IDs. `toCssVars` emits both blocks from the selected color, font, shape, density, and appearance presets; CMS/generation do not store raw palettes.
 
 Generated-site CSS wires Tailwind's native `dark:` variant to
 `[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use

@@ -7,32 +7,14 @@ import { FontPicker } from "@/components/editor/theme/font-picker"
 import { FONT_PRESETS } from "@/lib/theme/presets"
 
 describe("FontPicker", () => {
-  it("restores the generated font set from the Generated Style row", () => {
-    const generatedFonts = {
-      title: "Fraunces Variable",
-      heading: "Fraunces Variable",
-      text: "Inter Variable",
-      script: "Caveat Variable",
-    }
+  it("renders only fixed font presets and saves scheme IDs", () => {
     const onChange = vi.fn()
+    render(<FontPicker fonts={FONT_PRESETS} value={undefined} onChange={onChange} />)
 
-    render(
-      <FontPicker
-        fonts={FONT_PRESETS}
-        value={generatedFonts}
-        manifest={{ version: 1 } as any}
-        onChange={onChange}
-      />,
-    )
+    expect(screen.getAllByRole("button")).toHaveLength(4)
+    expect(screen.queryByText("Generated Style")).toBeNull()
 
-    fireEvent.click(screen.getByRole("button", { name: "Apply Clear Modern font preset" }))
-    expect(onChange).toHaveBeenLastCalledWith({
-      title: "Inter Variable",
-      heading: "Inter Variable",
-      text: "Inter Variable",
-    })
-
-    fireEvent.click(screen.getByRole("button", { name: "Apply Generated Style font preset" }))
-    expect(onChange).toHaveBeenLastCalledWith(generatedFonts)
+    fireEvent.click(screen.getByRole("button", { name: "Apply Classic Editorial font preset" }))
+    expect(onChange).toHaveBeenLastCalledWith({ schemeId: "classic-editorial" })
   })
 })

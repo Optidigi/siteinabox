@@ -1194,8 +1194,8 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     const themeWasDirty = themeDirty
     const themeSnapshot = themeState
     const normalizedThemeSnapshot = normalizeThemeForSave(themeSnapshot)
-    const themePromise = themeWasDirty
-      ? saveTenantTheme(tenantId, normalizedThemeSnapshot ?? {}).then((savedTheme) => {
+    const themePromise = themeWasDirty && normalizedThemeSnapshot
+      ? saveTenantTheme(tenantId, normalizedThemeSnapshot).then((savedTheme) => {
           setThemeState(savedTheme)
           setThemeBaseline(savedTheme)
           const previous = pageEditorStyleCache.get(tenantStyleCacheKey)

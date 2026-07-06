@@ -522,22 +522,17 @@ describe("provider block runtime", () => {
 
   it("maps SiaB theme tokens onto static Tailwind provider accent variables and role bridges", () => {
     const css = themeToCssVars({
-      colors: {
-        accent: "#2563eb",
-        bg: "#ffffff",
-        ink: "#111827",
-        muted: "#6b7280",
-        card: "#f9fafb",
-        rule: "rgba(17, 24, 39, 0.1)",
-      },
-      fonts: { heading: "Inter", text: "Inter" },
-      radius: "0.375rem",
-      mode: "light",
+      version: 2,
+      appearance: { mode: "light" },
+      colors: { schemeId: "blue-professional" },
+      fonts: { schemeId: "clear-modern" },
+      shape: { schemeId: "tailwind-default" },
+      density: { schemeId: "tailwind-default" },
     })
 
     expect(css).toContain("--color-indigo-600:#2563eb")
-    expect(css).toContain("--color-indigo-500:#2563eb")
-    expect(css).toContain("--siab-accent-100:#2563eb")
+    expect(css).toContain("--color-indigo-500:#3b82f6")
+    expect(css).toContain("--siab-accent-100:#dbeafe")
     expect(css).toContain("--color-tailwindplus-surface:#ffffff")
     expect(css).not.toContain("--color-white:")
     expect(css).toContain("--color-gray-900:#111827")
@@ -548,39 +543,30 @@ describe("provider block runtime", () => {
     expect(css).toContain("color:var(--siab-neutral-600,var(--color-ink-muted,#4b5563))")
     expect(css).toContain(".bg-gray-50")
     expect(css).toContain("background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))")
-    expect(css).toContain("--font-sans:Inter")
+    expect(css).toContain("--font-sans:Inter Variable")
     expect(css).toContain("--radius-md:0.375rem")
-    expect(css).toContain("--radius-3xl:0.375rem")
+    expect(css).toContain("--radius-3xl:1.5rem")
     expect(css).toContain("--radius-full:9999px")
   })
 
   it("bridges Tailwind Plus source surface classes without remapping text-white", () => {
     const css = themeToCssVars({
-      colors: {
-        accent: "#dc2626",
-        bg: "#fff7f7",
-        ink: "#1f1212",
-        muted: "#8f4a4a",
-        card: "#ffffff",
-      },
-      darkColors: {
-        accent: "#f87171",
-        bg: "#1f0a0a",
-        ink: "#fee2e2",
-        muted: "#c08484",
-        card: "#281010",
-      },
-      mode: "dark",
+      version: 2,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "amber-warm" },
+      fonts: { schemeId: "clear-modern" },
+      shape: { schemeId: "tailwind-default" },
+      density: { schemeId: "tailwind-default" },
     })
 
     expect(css).not.toContain("--color-white:")
-    expect(css).not.toContain("--color-white:#fff7f7")
+    expect(css).not.toContain("--color-white:#fffbeb")
     expect(css).toContain("--color-gray-900:#111827")
     expect(css).toContain(':where([data-provider-block="tailwindplus"].bg-white)')
     expect(css).toContain('background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))')
     expect(css).toContain(':where([data-provider-chrome="tailwindplus"]).bg-gray-50')
     expect(css).toContain('.rt-canvas[data-rt-mode="dark"]{')
-    expect(css).toContain("--color-tailwindplus-surface:#1f0a0a")
+    expect(css).toContain("--color-tailwindplus-surface:#030712")
     expect(css).toContain('data-theme-zone="fixed-dark"')
   })
 })
