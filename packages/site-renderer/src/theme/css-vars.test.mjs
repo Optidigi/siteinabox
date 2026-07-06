@@ -57,3 +57,20 @@ test("themeToCssVars applies dark role tokens without remapping source dark pane
   assert.equal(css.includes("--color-gray-900:#fafafa"), false)
   assert.equal(css.includes("--color-gray-50:#18181b"), false)
 })
+
+test("themeToCssVars derives readable provider dark accents and bridges source-specific dark media gaps", () => {
+  const css = themeToCssVars({
+    ...theme,
+    darkColors: {
+      ...theme.darkColors,
+      accent: "#818cf8",
+      onAccent: undefined,
+    },
+    mode: "dark",
+  })
+
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-on-accent:#111827/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--tailwindplus-logo-filter:invert\(1\) brightness\(1\.6\) grayscale\(1\)/)
+  assert.match(css, /\[data-provider-variant="tailwindplus\.marketing\.logo-cloud\.simple-with-heading"\] img\[src\*="-logo-gray-900\.svg"\]/)
+  assert.match(css, /\.flex\.bg-white :is\(input,select\)\{background-color:transparent\}/)
+})

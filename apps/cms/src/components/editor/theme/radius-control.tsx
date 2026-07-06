@@ -85,6 +85,36 @@ export const RadiusControl: React.FC<{
   )
 }
 
+export const DensityControl: React.FC<{
+  density: ThemeTokens["density"]
+  levels?: DensityLevel[]
+  onChange: (next: { density?: ThemeTokens["density"] }) => void
+}> = ({ density, levels = DEFAULT_DENSITY_LEVELS, onChange }) => {
+  return (
+    <ToggleGroup
+      type="single"
+      value={density ?? ""}
+      onValueChange={(id) => {
+        if (!id) return
+        const level = levels.find((entry) => entry.id === id)
+        if (level) onChange({ density: level.id })
+      }}
+      className="justify-start gap-1"
+    >
+      {levels.map((level) => (
+        <ToggleGroupItem
+          key={level.id}
+          value={level.id}
+          aria-label={level.label}
+          className="h-9 rounded-md border border-border bg-background px-3 text-xs font-medium data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+        >
+          {level.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
+  )
+}
+
 export const ShapeControl: React.FC<{
   theme: ThemeTokens | null
   radiusLevels?: RadiusLevel[]

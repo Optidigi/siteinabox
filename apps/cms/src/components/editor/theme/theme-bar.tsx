@@ -6,11 +6,13 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@siteinabox/ui/components/popover"
-import { Palette, Type, SquareRoundCorner } from "lucide-react"
+import { Palette, Type, SquareRoundCorner, SlidersHorizontal } from "lucide-react"
 import { PalettePicker, type PalettePreset } from "@/components/editor/theme/palette-picker"
 import { FontPicker, type FontPreset } from "@/components/editor/theme/font-picker"
 import {
+  DensityControl,
   ShapeControl,
+  type DensityLevel,
   type RadiusLevel,
 } from "@/components/editor/theme/radius-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -20,7 +22,7 @@ import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
-type Segment = "palette" | "fonts" | "shape"
+type Segment = "palette" | "fonts" | "shape" | "density"
 
 export function ThemeBar({
   theme,
@@ -29,6 +31,7 @@ export function ThemeBar({
   palettes,
   fonts,
   radiusLevels,
+  densityLevels,
 }: {
   theme: ThemeTokens | null
   manifest: RtManifest
@@ -36,6 +39,7 @@ export function ThemeBar({
   palettes: PalettePreset[]
   fonts: FontPreset[]
   radiusLevels?: RadiusLevel[]
+  densityLevels?: DensityLevel[]
 }) {
   const t = useTranslations("editor")
   // Theme edits are *not* autosaved — they flow up via onThemeChange so the
@@ -61,6 +65,7 @@ export function ThemeBar({
     palette: null,
     fonts: null,
     shape: null,
+    density: null,
   })
 
   return (
@@ -77,6 +82,7 @@ export function ThemeBar({
                 { value: "palette", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
                 { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
                 { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
+                { value: "density", label: t("density"), icon: SlidersHorizontal, ariaLabel: t("spacingDensity") },
               ]}
             />
           </div>
@@ -117,6 +123,13 @@ export function ThemeBar({
             <ShapeControl
               theme={theme}
               radiusLevels={radiusLevels}
+              onChange={(next) => handleUpdate(next)}
+            />
+          )}
+          {openSegment === "density" && (
+            <DensityControl
+              density={theme?.density}
+              levels={densityLevels}
               onChange={(next) => handleUpdate(next)}
             />
           )}

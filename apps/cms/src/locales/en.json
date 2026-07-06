@@ -706,6 +706,8 @@
     "fontPairings": "Font pairings",
     "shape": "Shape",
     "cornerRadius": "Corner radius",
+    "density": "Density",
+    "spacingDensity": "Spacing density",
     "default": "Default",
     "light": "Light",
     "dark": "Dark",

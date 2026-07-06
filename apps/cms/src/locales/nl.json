@@ -706,6 +706,8 @@
     "fontPairings": "Lettertypecombinaties",
     "shape": "Vorm",
     "cornerRadius": "Hoekafronding",
+    "density": "Dichtheid",
+    "spacingDensity": "Ruimtedichtheid",
     "default": "Standaard",
     "light": "Licht",
     "dark": "Donker",

@@ -24,7 +24,7 @@ describe("preview customizer source contract", () => {
     expect(componentSource).toContain('type: "theme.patch"')
     expect(componentSource).not.toContain("siab.renderer.")
     expect(componentSource).toContain("radiusLevels={RADIUS_PRESETS}")
-    expect(componentSource).not.toContain("densityLevels={DENSITY_PRESETS}")
+    expect(componentSource).toContain("densityLevels={DENSITY_PRESETS}")
     expect(componentSource).not.toContain("stylePresetLevels={STYLE_PRESETS}")
     expect(componentSource.includes('view="preview"')).toBe(false)
     expect(componentSource).not.toContain('aria-label={t("pagesNav")}')

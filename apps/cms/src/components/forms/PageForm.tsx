@@ -29,7 +29,7 @@ import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from 
 import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { type EditorMode, resolveDefaultMode } from "@/lib/editor/editorMode"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { ModeBar } from "@/components/editor/mode/mode-bar"
@@ -1963,6 +1963,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                   palettes={PALETTE_PRESETS}
                   fonts={FONT_PRESETS}
                   radiusLevels={RADIUS_PRESETS}
+                  densityLevels={DENSITY_PRESETS}
                 />
               </div>
             </div>

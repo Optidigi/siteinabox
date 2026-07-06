@@ -55,7 +55,40 @@ function set(parts: string[], prop: string, value: string | undefined | null) {
   if (value != null && value !== "") parts.push(`${prop}:${value}`)
 }
 
-const onAccentColor = (value: string | undefined | null) => value ?? "#ffffff"
+function hexToRgb(value: string | undefined | null): { r: number; g: number; b: number } | null {
+  if (!value) return null
+  const hex = value.trim().replace(/^#/, "")
+  const expanded = hex.length === 3 ? hex.split("").map((part) => `${part}${part}`).join("") : hex
+  if (!/^[0-9a-f]{6}$/i.test(expanded)) return null
+  return {
+    r: Number.parseInt(expanded.slice(0, 2), 16),
+    g: Number.parseInt(expanded.slice(2, 4), 16),
+    b: Number.parseInt(expanded.slice(4, 6), 16),
+  }
+}
+
+function relativeLuminance(color: { r: number; g: number; b: number }) {
+  const channel = (value: number) => {
+    const srgb = value / 255
+    return srgb <= 0.03928 ? srgb / 12.92 : ((srgb + 0.055) / 1.055) ** 2.4
+  }
+  return 0.2126 * channel(color.r) + 0.7152 * channel(color.g) + 0.0722 * channel(color.b)
+}
+
+function contrastRatio(a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }) {
+  const lighter = Math.max(relativeLuminance(a), relativeLuminance(b))
+  const darker = Math.min(relativeLuminance(a), relativeLuminance(b))
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+const onAccentColor = (value: string | undefined | null, accent?: string | undefined | null) => {
+  if (value) return value
+  const accentRgb = hexToRgb(accent)
+  if (!accentRgb) return "#ffffff"
+  const white = { r: 255, g: 255, b: 255 }
+  const ink = { r: 17, g: 24, b: 39 }
+  return contrastRatio(accentRgb, white) >= contrastRatio(accentRgb, ink) ? "#ffffff" : "#111827"
+}
 
 function providerThemeBridgeRules(
   scope: ThemeCssVarScope,
@@ -98,6 +131,7 @@ function providerThemeBridgeRules(
     `${rootsAndDescendants(["bg-gray-50", "bg-gray-100"])}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
     `${rootsAndDescendants(["hover\\:bg-gray-50", "hover\\:bg-gray-100"], ":hover")}{background-color:var(--color-secondary,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))))}`,
     `${rootsAndDescendants(["bg-gray-200"])}{background-color:var(--color-secondary,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))))}`,
+    `${providerRootSelectors.map((selector) => `${selector} .flex.bg-white :is(input,select)`).join(",")}{background-color:transparent}`,
     `${rootsAndDescendants(["text-gray-950", "text-gray-900", "text-gray-800", "text-gray-700"])}{color:var(--color-ink,#111827)}`,
     `${rootsAndDescendants(["text-gray-600", "text-gray-500", "text-gray-400", "text-gray-300"])}{color:var(--color-ink-muted,#64748b)}`,
     `${rootsAndDescendants(["placeholder\\:text-gray-400", "placeholder\\:text-gray-500"], "::placeholder")}{color:var(--color-ink-muted,#64748b)}`,
@@ -117,6 +151,7 @@ function providerThemeBridgeRules(
     `${descendant("ring-indigo-50")},${descendant("inset-ring-indigo-200")},${descendant("hover\\:inset-ring-indigo-300", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-accent,#4f46e5) 20%,transparent)}`,
     `${descendants(["outline-gray-300", "border-gray-300", "border-gray-200", "divide-gray-200", "stroke-gray-200"])}{border-color:var(--color-rule,rgba(17,24,39,.12));outline-color:var(--color-rule,rgba(17,24,39,.12));stroke:var(--color-rule,rgba(17,24,39,.12))}`,
     `${descendants(["outline-black\\/5"])}{outline-color:color-mix(in oklab,var(--color-ink,#111827) 5%,transparent)}`,
+    `${providerRootSelectors.map((selector) => `${selector}[data-provider-variant="tailwindplus.marketing.logo-cloud.simple-with-heading"] img[src*="-logo-gray-900.svg"]`).join(",")}{filter:var(--tailwindplus-logo-filter,none)}`,
   )
   if (options.fonts) rules.push(
     `${providerRootSelectors.map((selector) => `${selector} :is(h1)`).join(",")}{font-family:var(--font-title,var(--font-sans,inherit))}`,
@@ -189,7 +224,7 @@ export function themeToCssVars(
     const dark = theme.darkColors
     if (dark?.accent) set(baseParts, "--color-accent", dark.accent)
     if (dark?.accent || dark?.onAccent || theme.colors?.onAccent) {
-      set(baseParts, "--color-on-accent", onAccentColor(dark?.onAccent ?? theme.colors?.onAccent ?? DEFAULT_DARK.onAccent))
+      set(baseParts, "--color-on-accent", onAccentColor(dark?.onAccent ?? theme.colors?.onAccent, dark?.accent))
     }
     set(baseParts, "--color-bg", dark?.bg ?? DEFAULT_DARK.bg)
     set(baseParts, "--color-ink", dark?.ink ?? DEFAULT_DARK.ink)
@@ -197,11 +232,12 @@ export function themeToCssVars(
     set(baseParts, "--color-card", dark?.card ?? DEFAULT_DARK.card)
     set(baseParts, "--color-secondary", dark?.secondary ?? DEFAULT_DARK.secondary)
     set(baseParts, "--color-rule", dark?.rule ?? DEFAULT_DARK.rule)
+    set(baseParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
     setTailwindProviderColorAliases(baseParts, dark, DEFAULT_DARK)
   } else {
     const colors = theme.colors
     set(baseParts, "--color-accent", colors?.accent)
-    if (colors?.accent || colors?.onAccent) set(baseParts, "--color-on-accent", onAccentColor(colors?.onAccent))
+    if (colors?.accent || colors?.onAccent) set(baseParts, "--color-on-accent", onAccentColor(colors?.onAccent, colors?.accent))
     set(baseParts, "--color-bg", colors?.bg)
     set(baseParts, "--color-ink", colors?.ink)
     set(baseParts, "--color-ink-muted", colors?.muted)
@@ -214,7 +250,7 @@ export function themeToCssVars(
     const useDefaultDark = theme.mode === "dark"
     set(darkParts, "--color-accent", dark?.accent)
     if (dark?.accent || dark?.onAccent || useDefaultDark) {
-      set(darkParts, "--color-on-accent", dark?.onAccent ?? DEFAULT_DARK.onAccent)
+      set(darkParts, "--color-on-accent", onAccentColor(dark?.onAccent, dark?.accent))
     }
     set(darkParts, "--color-bg", dark?.bg ?? (useDefaultDark ? DEFAULT_DARK.bg : undefined))
     set(darkParts, "--color-ink", dark?.ink ?? (useDefaultDark ? DEFAULT_DARK.ink : undefined))
@@ -222,6 +258,9 @@ export function themeToCssVars(
     set(darkParts, "--color-card", dark?.card ?? (useDefaultDark ? DEFAULT_DARK.card : undefined))
     set(darkParts, "--color-secondary", dark?.secondary ?? (useDefaultDark ? DEFAULT_DARK.secondary : undefined))
     set(darkParts, "--color-rule", dark?.rule ?? (useDefaultDark ? DEFAULT_DARK.rule : undefined))
+    if (useDefaultDark || dark?.bg) {
+      set(darkParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
+    }
     setTailwindProviderColorAliases(darkParts, dark, useDefaultDark ? DEFAULT_DARK : undefined)
   }
 

@@ -22,7 +22,7 @@ import type {
 } from "@/lib/preview/customizer"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 
@@ -235,6 +235,7 @@ export function PreviewCustomizer({
               palettes={PALETTE_PRESETS}
               fonts={FONT_PRESETS}
               radiusLevels={RADIUS_PRESETS}
+              densityLevels={DENSITY_PRESETS}
             />
             <ThemeSaveStatus status={themeSaveStatus} />
           </div>

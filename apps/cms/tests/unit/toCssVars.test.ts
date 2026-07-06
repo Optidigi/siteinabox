@@ -39,7 +39,7 @@ describe("toCssVars", () => {
     })
     expect(css).toContain(".rt-canvas")
     expect(css).toContain("--color-accent:#f00")
-    expect(css).toContain("--color-on-accent:#ffffff")
+    expect(css).toContain("--color-on-accent:#111827")
     expect(css).toContain("--font-title:Inter")
     expect(css).toContain("--radius-md:0.5rem")
   })
