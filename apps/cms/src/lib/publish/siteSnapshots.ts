@@ -69,6 +69,31 @@ const snapshotThemeForTenant = (
   return cmsThemeToRendererTheme(theme) as ThemeTokenSpec | null
 }
 
+const snapshotThemeForServing = (snapshot: unknown): unknown => {
+  const record = snapshot && typeof snapshot === "object" ? snapshot as Record<string, any> : null
+  const theme = record?.theme
+  if (!theme || typeof theme !== "object") return theme
+  if (theme.version === 2) return normalizeThemeForSave(theme as any)
+
+  const legacyStylePreset = typeof theme.stylePreset === "string" ? theme.stylePreset : ""
+  return normalizeThemeForSave({
+    version: 2,
+    appearance: { mode: theme.mode === "dark" || theme.mode === "system" ? theme.mode : "light" },
+    colors: { schemeId: legacyStylePreset === "warm-care" ? "amber-warm" : "tailwind-default" },
+    fonts: { schemeId: legacyStylePreset === "warm-care" ? "classic-editorial" : "clear-modern" },
+    shape: { schemeId: legacyStylePreset === "warm-care" ? "soft" : "tailwind-default" },
+    density: { schemeId: theme.density === "comfortable" || legacyStylePreset === "warm-care" ? "comfortable" : "tailwind-default" },
+  } as any)
+}
+
+const publishedSnapshotForServing = (snapshot: unknown): unknown => {
+  if (!snapshot || typeof snapshot !== "object") return snapshot
+  return {
+    ...snapshot as Record<string, unknown>,
+    theme: snapshotThemeForServing(snapshot),
+  }
+}
+
 const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | "siteManifest">) => {
   const manifest = tenant.siteManifest as Record<string, any> | null | undefined
   return {
@@ -531,7 +556,8 @@ export async function resolvePublishedSnapshotByHost(
   const activeSnapshot = await activeSnapshotForTenant(payload, tenant)
   if (!activeSnapshot || activeSnapshot.status !== "active") return null
 
-  const parsedSnapshot = schemaForPublishedSiteSnapshot(activeSnapshot.snapshot as PublishedSiteSnapshot).safeParse(activeSnapshot.snapshot)
+  const snapshotForServing = publishedSnapshotForServing(activeSnapshot.snapshot)
+  const parsedSnapshot = schemaForPublishedSiteSnapshot(snapshotForServing as PublishedSiteSnapshot).safeParse(snapshotForServing)
   if (!parsedSnapshot.success) {
     throw new Error(`Stored published site snapshot failed contract validation: ${formatContractValidationIssues(parsedSnapshot.error)}`)
   }
