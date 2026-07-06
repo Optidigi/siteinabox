@@ -121,6 +121,31 @@ depended on command-run site generation are no longer current source of truth.
   parity coverage are complete. Tailwind Plus provider parity is now gated by
   `pnpm provider:visual-parity`; broader page-level or Chromatic-style visual
   regression remains separate follow-up work.
+- Broaden Tailwind Plus provider visual parity coverage so it verifies both
+  light and dark rendered output for every active component/block/chrome
+  surface. This should remain provider-focused and deterministic: source
+  fixtures, active registry coverage, theme-token smoke checks, and visual
+  comparisons for the supported theme modes. Do not use visual tests to bless
+  arbitrary CMS layout output or generation-created classes.
+- Improve CMS editing affordances per active provider component. Every editable
+  slot that exists in a block/chrome manifest should have a clear sidebar or
+  canvas editing path, visible hover/select cues, empty-state affordances that
+  do not leak placeholders to live output, and component-specific controls that
+  respect the provider's fixed layout contract. This includes repeaters, media
+  fields, optional CTAs, logo-cloud items, bento cells, newsletter form copy,
+  banner copy/action, and other provider-owned slots as they are activated.
+- Expand the density theme control from outer section padding into a finite
+  provider-aware page-rhythm system. Density must still be tenant-wide and
+  token-driven, not arbitrary spacing/class editing. For each active Tailwind
+  Plus provider variant, map the source's known spacing utilities to approved
+  compact/comfortable/spacious values across the whole component: hero inner
+  padding such as `py-32 sm:py-48 lg:py-56`, section padding, vertical stacks,
+  card/list gaps, grid gaps, media margins, CTA spacing, form spacing, and
+  header/banner chrome spacing where appropriate. Keep default/comfortable equal
+  to the upstream source values so exact-source parity remains the baseline;
+  compact and spacious may adjust only through explicit renderer-owned bridge
+  rules for known source classes. Generation and CMS must not output spacing
+  classes, layout spans, breakpoints, or per-block spacing overrides.
 - Improve CMS generation-run operations UI beyond the 2026-07-02 task-queue
   simplification. `/generation-runs` and run detail should help operators
   understand what needs attention next, why a run is blocked, and which
