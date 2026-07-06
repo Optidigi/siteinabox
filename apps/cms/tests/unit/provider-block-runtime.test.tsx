@@ -526,8 +526,8 @@ describe("provider block runtime", () => {
       appearance: { mode: "light" },
       colors: { schemeId: "blue-professional" },
       fonts: { schemeId: "clear-modern" },
-      shape: { schemeId: "tailwind-default" },
-      density: { schemeId: "tailwind-default" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "comfortable" },
     })
 
     expect(css).toContain("--color-indigo-600:#2563eb")
@@ -555,8 +555,8 @@ describe("provider block runtime", () => {
       appearance: { mode: "dark" },
       colors: { schemeId: "amber-warm" },
       fonts: { schemeId: "clear-modern" },
-      shape: { schemeId: "tailwind-default" },
-      density: { schemeId: "tailwind-default" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "comfortable" },
     })
 
     expect(css).not.toContain("--color-white:")

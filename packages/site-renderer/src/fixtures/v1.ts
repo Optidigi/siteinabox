@@ -19,7 +19,7 @@ export const v1FixtureTheme: ThemeTokenSpec = {
   colors: { schemeId: "emerald-calm" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "soft" },
-  density: { schemeId: "tailwind-default" },
+  density: { schemeId: "comfortable" },
 }
 
 export const v1FixtureSettings: SiteSettings = {

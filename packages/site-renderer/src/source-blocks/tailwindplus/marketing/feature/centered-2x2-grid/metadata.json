@@ -18,9 +18,10 @@
   "slotManifest": "manifest.ts",
   "constraints": [
     "Requires exactly four feature items to match the upstream 2x2 grid.",
-    "The upstream eyebrow copy is static because the requested slot surface for this variant is title, intro, and four features."
+    "The upstream eyebrow copy is exposed as an optional editable rich-text slot."
   ],
   "slots": {
+    "eyebrow": { "kind": "richtext", "status": "optional", "exposed": true },
     "title": { "kind": "richtext", "status": "required", "exposed": true },
     "intro": { "kind": "richtext", "status": "optional", "exposed": true },
     "features": { "kind": "repeater", "status": "required", "exposed": true, "minItems": 4, "maxItems": 4 },

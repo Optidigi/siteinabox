@@ -65,10 +65,10 @@ describe("provider system template runtime", () => {
         theme={{
           version: 2,
           appearance: { mode: "light" },
-          colors: { schemeId: "tailwind-default" },
+          colors: { schemeId: "blue-professional" },
           fonts: { schemeId: "clear-modern" },
           shape: { schemeId: "soft" },
-          density: { schemeId: "tailwind-default" },
+          density: { schemeId: "comfortable" },
         }}
         tenantSlug="acme"
         domain="example.com"

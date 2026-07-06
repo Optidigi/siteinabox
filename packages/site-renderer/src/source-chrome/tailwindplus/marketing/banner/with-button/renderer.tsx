@@ -15,7 +15,7 @@ export function TailwindPlusMarketingBannerWithButtonRenderer({ settings }: Prov
 
   return (
     <>
-      {banner.dismissible === true ? <input id={dismissId} type="checkbox" className="peer sr-only" aria-hidden="true" tabIndex={-1} /> : null}
+      {banner.dismissible === true ? <input id={dismissId} type="checkbox" className="peer sr-only" aria-label="Dismiss announcement" /> : null}
       <div
         className="site-chrome relative isolate flex items-center gap-x-6 overflow-hidden bg-gray-50 px-6 py-2.5 sm:px-3.5 sm:before:flex-1 peer-checked:hidden site-banner--source-tailwindplus-marketing-with-button"
         data-provider-chrome="tailwindplus"

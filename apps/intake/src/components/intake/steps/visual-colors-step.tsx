@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { UseFormReturn } from "react-hook-form";
-import { ChevronDown, ChevronLeft, Palette } from "lucide-react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 
 import {
   generateVisualPalettes,
@@ -24,19 +24,16 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { FieldError } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import { RadioGroup } from "@/components/ui/radio-group";
 import { cn } from "@/components/ui/utils";
 
 const presetOptions = visualColorPresets.filter(
   (option) => option.id === "preset",
 );
-const customOption = visualColorPresets.find((option) => option.id === "custom");
 
 function colorSourceKey(sourceType: VisualColorSourceType, sourceValue: string) {
   const normalizedSourceValue = normalizeHexColor(sourceValue);
 
-  if (sourceType === "custom") return "custom";
   if (sourceType === "logo") return `logo:${normalizedSourceValue}`;
 
   const preset = presetOptions.find(
@@ -54,18 +51,6 @@ function SourceSwatch({ color }: { color: string }) {
       style={{ backgroundColor: color }}
       aria-hidden="true"
     />
-  );
-}
-
-function CustomColorSwatch() {
-  return (
-    <span
-      className="relative flex size-14 items-center justify-center rounded-full border border-intake-border bg-[conic-gradient(from_90deg,#e53935,#f7b733,#7ac943,#1c9bd1,#5b5fc7,#c23b9a,#e53935)] shadow-[inset_0_0_0_4px_rgba(255,255,255,0.9)]"
-      aria-hidden="true"
-    >
-      <span className="absolute inset-[13px] rounded-full bg-background/90" />
-      <Palette className="relative size-5 text-intake-text" strokeWidth={1.75} />
-    </span>
   );
 }
 
@@ -184,7 +169,7 @@ export function VisualColorsStep({
   onBack: () => void;
 }) {
   const visual = form.watch("visual");
-  const [customOpen, setCustomOpen] = useState(false);
+  const [sourceOptionsOpen, setSourceOptionsOpen] = useState(false);
   const [logoColors, setLogoColors] = useState<string[]>([]);
   const [logoExtractionFailed, setLogoExtractionFailed] = useState(false);
   const lastExtractedLogoRef = useRef<File | null>(null);
@@ -291,7 +276,7 @@ export function VisualColorsStep({
     visual.color.sourceType === "logo" &&
     logoColors.includes(normalizeHexColor(visual.color.sourceValue));
   const showLogoColorSummary =
-    sourceValueFromLogo && !customOpen && !logoExtractionFailed;
+    sourceValueFromLogo && !sourceOptionsOpen && !logoExtractionFailed;
   const sourceQuestion = showLogoColorSummary
     ? "Hoofdkleur uit je logo"
     : "Welke hoofdkleur wil je gebruiken?";
@@ -331,7 +316,7 @@ export function VisualColorsStep({
                 </div>
               </div>
 
-              <Collapsible open={customOpen} onOpenChange={setCustomOpen}>
+              <Collapsible open={sourceOptionsOpen} onOpenChange={setSourceOptionsOpen}>
                 <CollapsibleTrigger asChild>
                   <Button
                     type="button"
@@ -342,7 +327,7 @@ export function VisualColorsStep({
                     <ChevronDown
                       className={cn(
                         "size-4 transition-transform",
-                        customOpen && "rotate-180",
+                        sourceOptionsOpen && "rotate-180",
                       )}
                       strokeWidth={1.75}
                       aria-hidden="true"
@@ -418,31 +403,6 @@ function SourceColorOptions({
   sourceValue: string;
   onSelect: (sourceType: VisualColorSourceType, value: string) => void;
 }) {
-  const customSelected = selectedKey === "custom";
-  const customValue = normalizeHexColor(sourceValue) || customOption?.value || "#274a34";
-  const [customDraft, setCustomDraft] = useState(customValue);
-  const [customError, setCustomError] = useState("");
-
-  useEffect(() => {
-    if (!customSelected) {
-      setCustomDraft(customValue);
-      setCustomError("");
-      return;
-    }
-
-    if (!customError) setCustomDraft(customValue);
-  }, [customError, customSelected, customValue]);
-
-  function handleCustomTextChange(value: string) {
-    setCustomDraft(value);
-    const normalized = normalizeHexColor(value);
-
-    if (!normalized) return;
-
-    setCustomError("");
-    onSelect("custom", normalized);
-  }
-
   return (
     <div className="grid gap-4">
       <RadioGroup
@@ -450,11 +410,6 @@ function SourceColorOptions({
         onValueChange={(value) => {
           if (value.startsWith("logo:")) {
             onSelect("logo", value.replace("logo:", ""));
-            return;
-          }
-
-          if (value === "custom") {
-            onSelect("custom", customValue);
             return;
           }
 
@@ -495,76 +450,7 @@ function SourceColorOptions({
             </div>
           </VisualRadioCard>
         ))}
-        <VisualRadioCard
-          value="custom"
-          checked={customSelected}
-          className="grid min-h-[120px] place-items-center p-4 text-center"
-        >
-          <div className="grid place-items-center gap-3 pr-0">
-            <CustomColorSwatch />
-            <span className="text-base font-normal leading-6 text-intake-text">
-              Eigen kleur
-            </span>
-          </div>
-        </VisualRadioCard>
       </RadioGroup>
-
-      {customSelected ? (
-        <div className="grid max-w-[520px] gap-2">
-          <label
-            htmlFor="visual-custom-color"
-            className="text-base font-normal leading-6 text-intake-text"
-          >
-            Eigen hoofdkleur
-          </label>
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)]">
-            <Input
-              id="visual-custom-color"
-              name="visual-custom-color"
-              type="color"
-              value={customValue}
-              aria-label="Eigen hoofdkleur kiezen"
-              onChange={(event) => {
-                setCustomDraft(event.target.value);
-                setCustomError("");
-                onSelect("custom", event.target.value);
-              }}
-              className="sr-only"
-            />
-            <label
-              htmlFor="visual-custom-color"
-              className="flex h-12 cursor-pointer items-center gap-3 rounded-[8px] border border-intake-border-strong bg-background px-3 text-base font-normal leading-6 text-intake-text shadow-none transition-colors hover:bg-intake-panel"
-            >
-              <span
-                className="size-7 rounded-full border border-intake-border"
-                style={{ backgroundColor: customValue }}
-                aria-hidden="true"
-              />
-              Kleur kiezen
-            </label>
-            <Input
-              id="visual-custom-color-text"
-              name="visual-custom-color-text"
-              value={customDraft}
-              inputMode="text"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              aria-label="Eigen kleurcode"
-              aria-invalid={Boolean(customError)}
-              onChange={(event) => handleCustomTextChange(event.target.value)}
-              onBlur={() => {
-                if (normalizeHexColor(customDraft)) return;
-                setCustomError("Gebruik een kleurcode zoals #274a34.");
-              }}
-              className="h-12 rounded-[8px] border-intake-border-strong bg-background px-4 text-base font-normal leading-6 text-intake-text shadow-none focus-visible:ring-intake-primary/20"
-            />
-          </div>
-          {customError ? (
-            <FieldError className="text-sm leading-5">{customError}</FieldError>
-          ) : null}
-        </div>
-      ) : null}
     </div>
   );
 }

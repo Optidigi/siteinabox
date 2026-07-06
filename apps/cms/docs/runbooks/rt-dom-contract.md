@@ -96,7 +96,9 @@ The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site 
 | `var(--radius-md)` | buttons, inputs, default surfaces |
 | `var(--radius-lg)` | cards, large rounded panels, image containers |
 
-`--radius-sm` and `--radius-lg` are derived by `toCssVars` from the user's chosen `theme.radius` value (`sm = max(radius - 0.25rem, 0)`, `lg = radius + 0.5rem`).
+Radius variables are resolved by `toCssVars` from the user's selected shape
+preset (`soft`, `sharp`, or `rounded`). CMS and generation never store raw
+radius values.
 
 ### Density / rhythm tokens
 
@@ -107,14 +109,9 @@ The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site 
 | `var(--site-section-padding-y-sm)` | coarse section vertical rhythm from the Tailwind `sm` breakpoint upward |
 
 Density is a tenant-wide coarse rhythm setting (`compact`, `comfortable`,
-`spacious`). It is not an arbitrary spacing API. Generation and CMS editing
-must not supply per-block spacing values, breakpoint choices, grid spans, or
-layout instructions.
-
-### Border style
-
-| Token | Where to use |
-|---|---|
+`spacious`). In V1 it affects provider section vertical padding only. It is not
+an arbitrary spacing API. Generation and CMS editing must not supply per-block
+spacing values, breakpoint choices, grid spans, or layout instructions.
 ### Dark mode overlay
 
 When `theme.appearance.mode === "dark"`, `data-rt-mode="dark"` is set on the editor
@@ -144,13 +141,13 @@ the change.
 
 Do not add arbitrary block-level visual tokens, per-block class names, provider
 token override fields, or one-off color/font/radius/spacing controls. Fonts,
-colors, shape, radius, border style, mode, and coarse density/rhythm are global
-theme-schema settings. Block schemas may choose approved design variants, but
-all visual tuning must resolve through global theme tokens and renderer-owned
-class or provider bridge rules.
+colors, shape, mode, and section-padding density are global theme-schema
+settings. Block schemas may choose approved design variants, but all visual
+tuning must resolve through global theme tokens and renderer-owned class or
+provider bridge rules.
 
 For Tailwind classes like `rounded-md`, KEEP them as fallback for the case where
-`theme.radius` is unset, but layer token-driven class rules on top
+shape tokens are unavailable, but layer token-driven class rules on top
 (`rounded-[var(--radius-md)]`, `[font-family:var(--font-text)]`, etc.) so the
 user's choice wins without React inline `style=""` attributes. This keeps the
 canvas compatible with a future nonce-only CSP `style-src`.

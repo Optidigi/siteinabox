@@ -40,8 +40,8 @@ const fixtureSpec = (): SiteGenerationSpec => ({
     appearance: { mode: "light" },
     colors: { schemeId: "blue-professional" },
     fonts: { schemeId: "clear-modern" },
-    shape: { schemeId: "tailwind-default" },
-    density: { schemeId: "tailwind-default" },
+    shape: { schemeId: "soft" },
+    density: { schemeId: "comfortable" },
   },
   settings: {
     siteName: "Fixture Care",
@@ -160,8 +160,8 @@ describe("applySiteGenerationSpec", () => {
       appearance: { mode: "light" },
       colors: { schemeId: "blue-professional" },
       fonts: { schemeId: "clear-modern" },
-      shape: { schemeId: "tailwind-default" },
-      density: { schemeId: "tailwind-default" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "comfortable" },
     })
     expect(tenant.siteManifest.generation.hash).toBe(result.idempotencyKey)
     expect(settings.navHeader[0]).toMatchObject({ type: "page", page: page.id })

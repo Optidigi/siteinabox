@@ -23,7 +23,11 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
   options: BlockRenderOptions
 }) {
   const image = resolveMedia(block.image ?? defaultImage, options.mediaResolver)
-  const links = (block.links ?? []).slice(0, 4)
+  const links = (block.links ?? [])
+    .filter((link): link is { label: string; href: string } =>
+      typeof link?.label === "string" && link.label.length > 0 && typeof link.href === "string" && link.href.length > 0,
+    )
+    .slice(0, 4)
   const stats = (block.stats ?? []).slice(0, 4)
 
   const sectionProps = mergeRendererSectionAttributes(
@@ -77,13 +81,13 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
           )}
         </div>
         <div className="mx-auto mt-10 max-w-2xl lg:mx-0 lg:max-w-none">
-          {links.length > 0 ? (
+          {links.length === 4 ? (
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 text-base/7 font-semibold text-white sm:grid-cols-2 md:flex lg:gap-x-10">
-              {links.map((link, index) => link?.label && link.href ? (
+              {links.map((link, index) => (
                 <a key={`${link.label}-${index}`} href={link.href} {...actionAnalyticsAttrs(index === 0 ? "primary" : "secondary", link.label)}>
                   {link.label} <span aria-hidden="true">→</span>
                 </a>
-              ) : null)}
+              ))}
             </div>
           ) : null}
           {stats.length > 0 ? (

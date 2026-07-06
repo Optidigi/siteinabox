@@ -70,7 +70,6 @@ export const visualColorPresets: Array<{
     label: "Antraciet",
     value: "#303234",
   },
-  { id: "custom", label: "Eigen kleur", value: "#274a34" },
 ];
 
 export const visualShapeOptions: Array<{

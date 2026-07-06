@@ -114,9 +114,31 @@ describe("normalizeIntakeSubmission", () => {
       phoneNumber: "0612345678",
       availabilityMode: "appointment_only",
     })
-    expect(normalized.raw).toMatchObject({
-      company: { companyName: "Demo Studio" },
-      content: { offers: [{ value: "Interieuradvies" }, { value: "Projectinrichting" }] },
+    expect(normalized.intakeBrief?.visualPreferences).toMatchObject({
+      colorSourceType: "preset",
+      colorSourceValue: "green",
+      selectedPalette: "palette_1",
+      colorSchemeId: "emerald-calm",
+      fontSchemeId: "clear-modern",
+      shapeSchemeId: "soft",
+      densitySchemeId: "comfortable",
+    })
+    expect(JSON.stringify(normalized.intakeBrief?.visualPreferences)).not.toContain("primary")
+    expect(normalized.raw).toBeNull()
+  })
+
+  it("maps intake visual choices to finite theme preset hints", () => {
+    const raw = richIntake()
+    raw.visual.color.sourceValue = "#dc2626"
+    raw.visual.shape = "rounded"
+    raw.visual.typography = "classic"
+    const normalized = normalizeIntakeSubmission(PublicIntakeSubmissionSchema.parse(raw))
+
+    expect(normalized.intakeBrief?.visualPreferences).toMatchObject({
+      colorSchemeId: "red-confident",
+      fontSchemeId: "classic-editorial",
+      shapeSchemeId: "rounded",
+      densitySchemeId: "comfortable",
     })
   })
 
@@ -141,5 +163,6 @@ describe("normalizeIntakeSubmission", () => {
     expect(input.status).toBe("ai-prepared")
     expect(input.companyFacts.companyName).toBe("Demo Studio")
     expect(input.brief.services).toEqual(["Interieuradvies", "Projectinrichting"])
+    expect((input.brief.visualPreferences as any).tokens).toBeUndefined()
   })
 })

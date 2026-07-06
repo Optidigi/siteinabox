@@ -7,8 +7,8 @@ const theme = {
   appearance: { mode: "light" },
   colors: { schemeId: "blue-professional" },
   fonts: { schemeId: "clear-modern" },
-  shape: { schemeId: "tailwind-default" },
-  density: { schemeId: "tailwind-default" },
+  shape: { schemeId: "soft" },
+  density: { schemeId: "comfortable" },
 }
 
 test("themeToCssVars keeps neutral Tailwind colors literal while bridging provider utility roles", () => {
@@ -44,7 +44,7 @@ test("themeToCssVars applies dark role tokens without remapping source dark pane
 })
 
 test("themeToCssVars bridges source-specific dark media gaps", () => {
-  const css = themeToCssVars({ ...theme, colors: { schemeId: "tailwind-default" }, appearance: { mode: "dark" } })
+  const css = themeToCssVars({ ...theme, appearance: { mode: "dark" } })
 
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-on-accent:#ffffff/)
   assert.match(css, /\.bg-gray-900[^}]*background-color:#111827/)

@@ -44,9 +44,9 @@ const pixelmatchThreshold = 0.1
 const darkTheme = {
   version: 2,
   appearance: { mode: "dark" },
-  colors: { schemeId: "tailwind-default" },
+  colors: { schemeId: "blue-professional" },
   fonts: { schemeId: "clear-modern" },
-  shape: { schemeId: "tailwind-default" },
+  shape: { schemeId: "soft" },
   density: { schemeId: "comfortable" },
 }
 
@@ -252,6 +252,14 @@ function renderSystemTemplate({ id, kind }, theme = null) {
       pathname: "/missing",
     })),
   )
+}
+
+function sourceParityHtml(html) {
+  // Product templates always inject the token bridge. Source parity compares the
+  // renderer's Tailwind Plus structure/classes against the upstream fixture, so
+  // the bridge is removed only for this exact visual comparison. Tokenized
+  // output is still covered by the dark-theme smoke checks below.
+  return html.replace(/<style[^>]*data-siab-theme-overrides[^>]*>[\s\S]*?<\/style>/g, "")
 }
 
 function htmlPage(css, bodyHtml, options = {}) {
@@ -496,7 +504,7 @@ async function main() {
   try {
     for (const testCase of cases) {
       const sourceHtml = await sourceHtmlFor(testCase.folder)
-      const renderedHtml = testCase.renderedHtml()
+      const renderedHtml = sourceParityHtml(testCase.renderedHtml())
       for (const viewport of viewports) {
         try {
           const sourceBuffer = await screenshot(page, css, sourceHtml, viewport)

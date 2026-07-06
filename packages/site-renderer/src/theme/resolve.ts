@@ -92,32 +92,18 @@ const amber: ColorRamp = {
   950: "#451a03",
 }
 
-const slate: ColorRamp = {
-  50: "#f8fafc",
-  100: "#f1f5f9",
-  200: "#e2e8f0",
-  300: "#cbd5e1",
-  400: "#94a3b8",
-  500: "#64748b",
-  600: "#475569",
-  700: "#334155",
-  800: "#1e293b",
-  900: "#0f172a",
-  950: "#020617",
-}
-
-const slateDark: ColorRamp = {
-  50: slate[950] ?? "#020617",
-  100: slate[900],
-  200: slate[800],
-  300: slate[700],
-  400: slate[500],
-  500: slate[400],
-  600: slate[300],
-  700: slate[200],
-  800: slate[100],
-  900: slate[50],
-  950: "#ffffff",
+const red: ColorRamp = {
+  50: "#fef2f2",
+  100: "#fee2e2",
+  200: "#fecaca",
+  300: "#fca5a5",
+  400: "#f87171",
+  500: "#ef4444",
+  600: "#dc2626",
+  700: "#b91c1c",
+  800: "#991b1b",
+  900: "#7f1d1d",
+  950: "#450a0a",
 }
 
 const defaultLight: ProviderColorSchemeMode = {
@@ -143,26 +129,19 @@ const defaultDark: ProviderColorSchemeMode = {
 }
 
 export const colorSchemes = {
-  "tailwind-default": {
-    id: "tailwind-default",
-    label: "Tailwind Native",
-    source: "tailwind",
-    light: defaultLight,
-    dark: defaultDark,
-  },
-  "slate-indigo": {
-    id: "slate-indigo",
-    label: "Slate Indigo",
-    source: "tailwind",
-    light: { ...defaultLight, neutral: slate, accent: indigo, ink: slate[900], muted: slate[600], rule: slate[200] },
-    dark: { ...defaultDark, neutral: slateDark, accent: indigo, surface: slate[950] ?? "#020617", ink: slate[50], muted: slate[300] },
-  },
   "blue-professional": {
     id: "blue-professional",
     label: "Blue Professional",
     source: "tailwind",
     light: { ...defaultLight, accent: blue },
     dark: { ...defaultDark, accent: blue },
+  },
+  "red-confident": {
+    id: "red-confident",
+    label: "Red Confident",
+    source: "tailwind",
+    light: { ...defaultLight, accent: red },
+    dark: { ...defaultDark, accent: red },
   },
   "emerald-calm": {
     id: "emerald-calm",
@@ -199,32 +178,24 @@ export const fontSchemes = {
     source: "system",
     roles: { body: tailwindSansStack, heading: "Fraunces Variable, ui-serif, Georgia, serif", display: "Caveat Variable, ui-serif, Georgia, serif", mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
   },
-  "bold-confident": {
-    id: "bold-confident",
-    label: "Bold Confident",
-    source: "system",
-    roles: { body: tailwindSansStack, heading: "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif", display: "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif", mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
-  },
 } as const satisfies Record<string, FontScheme>
 
 export const densitySchemes = {
-  "tailwind-default": { id: "tailwind-default", label: "Tailwind Native", sectionPaddingY: { base: "6rem", sm: "8rem" }, interBlockGap: "0" },
-  compact: { id: "compact", label: "Compact", sectionPaddingY: { base: "4rem", sm: "5rem" }, interBlockGap: "0" },
-  comfortable: { id: "comfortable", label: "Comfortable", sectionPaddingY: { base: "7rem", sm: "9rem" }, interBlockGap: "0" },
-  spacious: { id: "spacious", label: "Spacious", sectionPaddingY: { base: "8rem", sm: "10rem", lg: "12rem" }, interBlockGap: "0" },
+  comfortable: { id: "comfortable", label: "Comfortable", sectionPaddingY: { base: "6rem", sm: "8rem" } },
+  compact: { id: "compact", label: "Compact", sectionPaddingY: { base: "4rem", sm: "5rem" } },
+  spacious: { id: "spacious", label: "Spacious", sectionPaddingY: { base: "8rem", sm: "10rem", lg: "12rem" } },
 } as const satisfies Record<string, DensityScheme>
 
 export const shapeSchemes = {
-  "tailwind-default": { id: "tailwind-default", label: "Tailwind Native", radius: { none: "0", sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem", full: "9999px" } },
+  soft: { id: "soft", label: "Soft", radius: { none: "0", sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem", full: "9999px" } },
   sharp: { id: "sharp", label: "Sharp", radius: { none: "0", sm: "0", md: "0", lg: "0", xl: "0", "2xl": "0", "3xl": "0", full: "9999px" } },
-  soft: { id: "soft", label: "Soft", radius: { none: "0", sm: "0.375rem", md: "0.5rem", lg: "0.75rem", xl: "1rem", "2xl": "1.25rem", "3xl": "1.75rem", full: "9999px" } },
   rounded: { id: "rounded", label: "Rounded", radius: { none: "0", sm: "0.5rem", md: "0.75rem", lg: "1rem", xl: "1.25rem", "2xl": "1.75rem", "3xl": "2.25rem", full: "9999px" } },
 } as const satisfies Record<string, ShapeScheme>
 
 export type ResolvedTheme = {
   version: 2
   mode: "light" | "dark" | "system"
-  defaultMode: "light" | "dark"
+  systemFallbackMode: "light" | "dark"
   light: ProviderColorSchemeMode
   dark: ProviderColorSchemeMode
   fonts: FontScheme
@@ -233,16 +204,16 @@ export type ResolvedTheme = {
 }
 
 export function resolveThemeTokens(theme: ThemeTokenSpec | null | undefined): ResolvedTheme {
-  const scheme = colorSchemes[theme?.colors?.schemeId as keyof typeof colorSchemes] ?? colorSchemes["tailwind-default"]
+  const scheme = colorSchemes[theme?.colors?.schemeId as keyof typeof colorSchemes] ?? colorSchemes["blue-professional"]
   const fonts = fontSchemes[theme?.fonts?.schemeId as keyof typeof fontSchemes] ?? fontSchemes["clear-modern"]
   return {
     version: 2,
     mode: theme?.appearance?.mode ?? "light",
-    defaultMode: "light",
+    systemFallbackMode: "light",
     light: scheme.light,
     dark: scheme.dark,
     fonts,
-    density: densitySchemes[theme?.density?.schemeId as keyof typeof densitySchemes] ?? densitySchemes["tailwind-default"],
-    shape: shapeSchemes[theme?.shape?.schemeId as keyof typeof shapeSchemes] ?? shapeSchemes["tailwind-default"],
+    density: densitySchemes[theme?.density?.schemeId as keyof typeof densitySchemes] ?? densitySchemes.comfortable,
+    shape: shapeSchemes[theme?.shape?.schemeId as keyof typeof shapeSchemes] ?? shapeSchemes.soft,
   }
 }

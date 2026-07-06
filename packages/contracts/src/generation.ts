@@ -186,6 +186,10 @@ export type IntakeBrief = {
     colorSourceType?: Exclude<IntakeVisualColorSourceType, ""> | null
     colorSourceValue?: string | null
     selectedPalette?: Exclude<IntakeVisualPaletteId, ""> | null
+    colorSchemeId?: ColorSchemeId | null
+    fontSchemeId?: FontSchemeId | null
+    shapeSchemeId?: ShapeSchemeId | null
+    densitySchemeId?: DensitySchemeId | null
     shape?: Exclude<IntakeVisualShape, ""> | null
     typography?: Exclude<IntakeVisualTypography, ""> | null
   }
@@ -296,7 +300,6 @@ export type DensityScheme = {
     sm?: string
     lg?: string
   }
-  interBlockGap: string
 }
 
 export type ShapeScheme = {
@@ -318,7 +321,6 @@ export type ThemeTokenSpecV2 = {
   version: 2
   appearance: {
     mode: ThemeModeV2
-    defaultMode?: "light" | "dark"
   }
   colors: {
     schemeId: ColorSchemeId

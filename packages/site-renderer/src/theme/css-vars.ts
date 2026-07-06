@@ -181,7 +181,7 @@ function providerThemeBridgeRules(
 
 export function themeMode(theme: ThemeTokenSpec | null | undefined): "light" | "dark" {
   const resolved = resolveThemeTokens(theme)
-  if (resolved.mode === "system") return resolved.defaultMode
+  if (resolved.mode === "system") return resolved.systemFallbackMode
   return resolved.mode
 }
 
@@ -226,7 +226,6 @@ export function themeToCssVars(
   set(baseParts, "--site-section-padding-y", resolved.density.sectionPaddingY.base)
   set(baseParts, "--site-section-padding-y-sm", resolved.density.sectionPaddingY.sm ?? resolved.density.sectionPaddingY.base)
   set(baseParts, "--site-section-padding-y-lg", resolved.density.sectionPaddingY.lg ?? resolved.density.sectionPaddingY.sm ?? resolved.density.sectionPaddingY.base)
-  set(baseParts, "--site-inter-block-gap", resolved.density.interBlockGap)
 
   set(baseParts, "--radius-none", resolved.shape.radius.none)
   set(baseParts, "--radius-sm", resolved.shape.radius.sm)

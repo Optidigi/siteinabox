@@ -42,6 +42,35 @@ const cleanStringArray = (value: unknown): string[] => {
 const compactUnique = <T extends string>(values: Array<T | null | undefined>): T[] =>
   Array.from(new Set(values.filter((entry): entry is T => Boolean(entry))))
 
+const themeColorHint = (value: string | null | undefined) => {
+  const lower = value?.toLowerCase() ?? ""
+  if (/\b(red|rose|pink|confident)\b/.test(lower)) return "red-confident"
+  if (/\b(green|emerald|calm|nature|eco)\b/.test(lower)) return "emerald-calm"
+  if (/\b(amber|yellow|orange|warm|gold)\b/.test(lower)) return "amber-warm"
+  const hex = lower.match(/#?([0-9a-f]{6})\b/)
+  if (hex?.[1]) {
+    const r = Number.parseInt(hex[1].slice(0, 2), 16)
+    const g = Number.parseInt(hex[1].slice(2, 4), 16)
+    const b = Number.parseInt(hex[1].slice(4, 6), 16)
+    if (r > g + 30 && r > b + 30) return "red-confident"
+    if (g > r + 20 && g > b + 20) return "emerald-calm"
+    if (r > 160 && g > 100 && b < 100) return "amber-warm"
+  }
+  return "blue-professional"
+}
+
+const themeFontHint = (value: RawIntakeSubmission["visual"]["typography"]) => {
+  if (value === "classic") return "classic-editorial"
+  if (value === "soft") return "friendly-organic"
+  return "clear-modern"
+}
+
+const themeShapeHint = (value: RawIntakeSubmission["visual"]["shape"]) => {
+  if (value === "straight") return "sharp"
+  if (value === "rounded") return "rounded"
+  return "soft"
+}
+
 const normalizeDomain = (domain: unknown, fallbackSlug: string): string => {
   const cleaned = cleanText(domain)?.toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "") ?? ""
   if (cleaned && DOMAIN_REGEX.test(cleaned) && /[a-z]/.test(cleaned.split(".").pop() ?? "")) {
@@ -148,6 +177,10 @@ const buildIntakeBriefFromRich = (raw: RawIntakeSubmission): IntakeBrief => {
       ...(raw.visual.color.sourceType ? { colorSourceType: raw.visual.color.sourceType } : {}),
       ...(cleanText(raw.visual.color.sourceValue) ? { colorSourceValue: cleanText(raw.visual.color.sourceValue) } : {}),
       ...(raw.visual.color.selectedPalette ? { selectedPalette: raw.visual.color.selectedPalette } : {}),
+      colorSchemeId: themeColorHint(cleanText(raw.visual.color.sourceValue)),
+      fontSchemeId: themeFontHint(raw.visual.typography),
+      shapeSchemeId: themeShapeHint(raw.visual.shape),
+      densitySchemeId: "comfortable",
       ...(raw.visual.shape ? { shape: raw.visual.shape } : {}),
       ...(raw.visual.typography ? { typography: raw.visual.typography } : {}),
     },
@@ -258,6 +291,6 @@ export const normalizeIntakeSubmission = (raw: PublicIntakeSubmission): Normaliz
       : {}),
     companyFacts,
     intakeBrief,
-    raw: richRaw ? richRaw as Record<string, unknown> : legacyRaw.content && typeof legacyRaw.content === "object" ? legacyRaw.content : null,
+    raw: richRaw ? null : legacyRaw.content && typeof legacyRaw.content === "object" ? legacyRaw.content : null,
   })
 }

@@ -41,8 +41,8 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
     appearance: { mode: "light" },
     colors: { schemeId: "blue-professional" },
     fonts: { schemeId: "clear-modern" },
-    shape: { schemeId: "tailwind-default" },
-    density: { schemeId: "tailwind-default" },
+    shape: { schemeId: "soft" },
+    density: { schemeId: "comfortable" },
   },
   settings: {
     siteName: "Generated Business",

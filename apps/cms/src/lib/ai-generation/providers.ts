@@ -702,10 +702,9 @@ export const siteGenerationJsonSchema = {
         appearance: {
           type: "object",
           additionalProperties: false,
-          required: ["mode", "defaultMode"],
+          required: ["mode"],
           properties: {
             mode: { type: "string", enum: ["light", "dark", "system"] },
-            defaultMode: { type: "string", enum: ["light", "dark"] },
           },
         },
         colors: {
@@ -713,7 +712,7 @@ export const siteGenerationJsonSchema = {
           additionalProperties: false,
           required: ["schemeId"],
           properties: {
-            schemeId: { type: "string", enum: ["tailwind-default", "slate-indigo", "blue-professional", "emerald-calm", "amber-warm"] },
+            schemeId: { type: "string", enum: ["blue-professional", "red-confident", "emerald-calm", "amber-warm"] },
           },
         },
         fonts: {
@@ -721,20 +720,20 @@ export const siteGenerationJsonSchema = {
           additionalProperties: false,
           required: ["schemeId"],
           properties: {
-            schemeId: { type: "string", enum: ["clear-modern", "classic-editorial", "friendly-organic", "bold-confident"] },
+            schemeId: { type: "string", enum: ["clear-modern", "classic-editorial", "friendly-organic"] },
           },
         },
         density: {
           type: "object",
           additionalProperties: false,
           required: ["schemeId"],
-          properties: { schemeId: { type: "string", enum: ["tailwind-default", "compact", "comfortable", "spacious"] } },
+          properties: { schemeId: { type: "string", enum: ["comfortable", "compact", "spacious"] } },
         },
         shape: {
           type: "object",
           additionalProperties: false,
           required: ["schemeId"],
-          properties: { schemeId: { type: "string", enum: ["tailwind-default", "sharp", "soft", "rounded"] } },
+          properties: { schemeId: { type: "string", enum: ["soft", "sharp", "rounded"] } },
         },
       },
     },

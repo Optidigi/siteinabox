@@ -1714,7 +1714,7 @@ export const SITE_CHROME_CATALOG = [
           "packages/site-renderer/src/source-chrome",
         ],
         notes:
-          "Banner is global site chrome under SiteSettings.chrome.banner and is not exposed as a page block.",
+          "Banner is global site chrome under SiteSettings.chrome.banner and is not exposed as a page block. Dismissible uses local CSS-only hide behavior for the current page view; dismissal is not persisted.",
       },
     ),
     editableFields: [

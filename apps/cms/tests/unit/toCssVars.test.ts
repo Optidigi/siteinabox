@@ -3,15 +3,15 @@ import { toCssVars } from "@/lib/theme/toCssVars"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 describe("toCssVars", () => {
-  it("resolves missing themes to Tailwind-native defaults", () => {
+  it("resolves missing themes to product V2 defaults", () => {
     const css = toCssVars(undefined)
 
     expect(css).toContain(".rt-canvas{")
-    expect(css).toContain("--color-indigo-600:#4f46e5")
+    expect(css).toContain("--color-indigo-600:#2563eb")
     expect(css).toContain("--color-gray-900:#111827")
     expect(css).toContain("--font-sans:Inter Variable")
     expect(css).toContain("--radius-3xl:1.5rem")
-    expect(css).toContain("--site-density:tailwind-default")
+    expect(css).toContain("--site-density:comfortable")
     expect(css).not.toContain("--site-style-preset")
   })
 
@@ -27,7 +27,7 @@ describe("toCssVars", () => {
 
     expect(css).toContain("--color-indigo-600:#059669")
     expect(css).toContain("--font-heading:Fraunces Variable")
-    expect(css).toContain("--radius-md:0.5rem")
+    expect(css).toContain("--radius-md:0.375rem")
     expect(css).toContain("--site-density:spacious")
     expect(css).toContain("--site-section-padding-y:8rem")
     expect(css).toContain('.rt-canvas[data-rt-mode="dark"]{')

@@ -336,7 +336,14 @@ describe("iframe editor message protocol", () => {
       ...baseMessage,
       type: "theme.patch",
       expectedRevision: 2,
-      theme: { colors: { accent: "#112233" } },
+      theme: {
+        version: 2,
+        appearance: { mode: "light" },
+        colors: { schemeId: "blue-professional" },
+        fonts: { schemeId: "clear-modern" },
+        shape: { schemeId: "soft" },
+        density: { schemeId: "comfortable" },
+      },
     }, { currentRevision: 9 })
 
     expect(result.ok).toBe(true)

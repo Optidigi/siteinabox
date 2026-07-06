@@ -308,10 +308,10 @@ describe("site generation catalog governance", () => {
       theme: {
         version: 2,
         appearance: { mode: "light" },
-        colors: { schemeId: "tailwind-default" },
+        colors: { schemeId: "blue-professional" },
         fonts: { schemeId: "clear-modern" },
-        shape: { schemeId: "tailwind-default" },
-        density: { schemeId: "tailwind-default" },
+        shape: { schemeId: "soft" },
+        density: { schemeId: "comfortable" },
       },
       settings: {
         siteName: "Catalog Governance",
@@ -364,10 +364,10 @@ describe("site generation catalog governance", () => {
       theme: {
         version: 2,
         appearance: { mode: "light" },
-        colors: { schemeId: "tailwind-default" },
+        colors: { schemeId: "blue-professional" },
         fonts: { schemeId: "clear-modern" },
-        shape: { schemeId: "tailwind-default" },
-        density: { schemeId: "tailwind-default" },
+        shape: { schemeId: "soft" },
+        density: { schemeId: "comfortable" },
       },
       settings: {
         siteName: "Catalog Governance",
@@ -600,10 +600,10 @@ describe("site generation catalog governance", () => {
       theme: {
         version: 2,
         appearance: { mode: "light" },
-        colors: { schemeId: "tailwind-default" },
+        colors: { schemeId: "blue-professional" },
         fonts: { schemeId: "clear-modern" },
-        shape: { schemeId: "tailwind-default" },
-        density: { schemeId: "tailwind-default" },
+        shape: { schemeId: "soft" },
+        density: { schemeId: "comfortable" },
       },
       settings: {
         siteName: "Catalog Governance",
@@ -648,5 +648,97 @@ describe("site generation catalog governance", () => {
     }
 
     expect(SiteGenerationSpecSchema.safeParse(spec).success).toBe(true)
+  })
+
+  it("enforces provider-required source-backed content slots", () => {
+    const rt = (text: string) => ({ t: "root" as const, variant: "inline" as const, children: [{ t: "text" as const, v: text }] })
+    const blockRt = (text: string) => ({
+      t: "root" as const,
+      variant: "block" as const,
+      children: [{ t: "paragraph" as const, children: [{ t: "text" as const, v: text }] }],
+    })
+    const baseSpec = {
+      schemaVersion: 1,
+      intake: normalizedIntake,
+      tenant: { name: "Catalog Governance", slug: "catalog-governance", domain: "catalog-governance.test", status: "provisioning" },
+      theme: {
+        version: 2,
+        appearance: { mode: "light" },
+        colors: { schemeId: "blue-professional" },
+        fonts: { schemeId: "clear-modern" },
+        shape: { schemeId: "soft" },
+        density: { schemeId: "comfortable" },
+      },
+      settings: {
+        siteName: "Catalog Governance",
+        siteUrl: "https://catalog-governance.test",
+        description: "Generated draft.",
+        language: "en",
+        contactEmail: "hello@example.com",
+        navHeader: [{ label: "Home", href: "/" }],
+        navFooter: [{ label: "Contact", href: "mailto:hello@example.com" }],
+        chrome: {
+          header: { variant: "default", cta: { label: "Start", href: "/intake" } },
+          footer: { variant: "default", tagline: "Structured footer", legalLinks: [] },
+          banner: { variant: "default", visible: true, message: "Limited launch slots", link: { label: "Book", href: "/#contact" } },
+        },
+      },
+      blocks: [{ slug: "hero", label: "Hero" }],
+      assets: [],
+      generatedAt: "2026-06-27T00:00:00.000Z",
+      generator: { name: "test", version: "1.0.0", model: "test" },
+    }
+    const heroBlock = {
+      blockType: "hero",
+      designVariant: "tailwindplus.marketing.hero.with-stats",
+      headline: rt("Hero"),
+      subheadline: blockRt("Intro"),
+      links: [
+        { label: "Product", href: "#product" },
+        { label: "Features", href: "#features" },
+        { label: "Pricing", href: "#pricing" },
+        { label: "Contact", href: "#contact" },
+      ],
+      stats: [
+        { value: "10k", label: "Users" },
+        { value: "4x", label: "Faster" },
+        { value: "99%", label: "Uptime" },
+        { value: "24/7", label: "Support" },
+      ],
+    }
+    const validHeroSpec = {
+      ...baseSpec,
+      pages: [{ slug: "index", title: "Home", status: "draft", seo: { title: "Home", description: "Generated home." }, blocks: [heroBlock] }],
+    }
+
+    expect(SiteGenerationSpecSchema.safeParse(validHeroSpec).success).toBe(true)
+    expect(SiteGenerationSpecSchema.safeParse({
+      ...validHeroSpec,
+      pages: [{ ...validHeroSpec.pages[0], blocks: [{ ...heroBlock, links: heroBlock.links.slice(0, 3) }] }],
+    }).success).toBe(false)
+    expect(SiteGenerationSpecSchema.safeParse({
+      ...baseSpec,
+      blocks: [{ slug: "contentSection", label: "Content" }],
+      pages: [{
+        slug: "index",
+        title: "Home",
+        status: "draft",
+        seo: { title: "Home", description: "Generated home." },
+        blocks: [{
+          blockType: "contentSection",
+          designVariant: "tailwindplus.marketing.content.sticky-product-screenshot",
+          title: rt("Content"),
+          intro: blockRt("Intro"),
+          body: blockRt("Body"),
+          features: [
+            { title: rt("One"), description: blockRt("One") },
+            { title: rt("Two"), description: blockRt("Two") },
+            { title: rt("Three"), description: blockRt("Three") },
+          ],
+          secondaryTitle: rt("More"),
+          secondaryBody: blockRt("More body"),
+        }],
+      }],
+    }).success).toBe(false)
   })
 })

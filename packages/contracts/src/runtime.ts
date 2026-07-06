@@ -682,6 +682,46 @@ const refineBlockVariant = (
       message: `Unsupported design variant "${designVariant}" for block type "${block.blockType}"`,
     })
   }
+  refineProviderContentSlots(block, ctx)
+}
+
+function refineProviderContentSlots(
+  block: {
+    blockType: string
+    designVariant?: string | null
+  },
+  ctx: z.RefinementCtx,
+) {
+  const designVariant = typeof block.designVariant === "string" ? block.designVariant : ""
+  if (block.blockType === "hero" && designVariant === "tailwindplus.marketing.hero.with-stats") {
+    const links = Array.isArray((block as HeroBlock).links) ? (block as HeroBlock).links ?? [] : []
+    if (links.length !== 4) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["links"],
+        message: "Tailwind Plus hero with stats requires exactly four links",
+      })
+    }
+    links.forEach((link, index) => {
+      if (!link?.label || !link.href) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["links", index],
+          message: "Tailwind Plus hero with stats links require label and href",
+        })
+      }
+    })
+  }
+
+  if (block.blockType === "contentSection" && designVariant === "tailwindplus.marketing.content.sticky-product-screenshot") {
+    if (!(block as ContentSectionBlock).bridge) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["bridge"],
+        message: "Tailwind Plus sticky product screenshot requires bridge content",
+      })
+    }
+  }
 }
 
 const refineGeneratedBlock = (
@@ -742,7 +782,6 @@ const ThemeTokenSpecV2Schema = strictObject({
   version: z.literal(2),
   appearance: strictObject({
     mode: z.enum(["light", "dark", "system"]),
-    defaultMode: z.enum(["light", "dark"]).optional(),
   }),
   colors: strictObject({
     schemeId: z.enum(COLOR_SCHEME_IDS),
@@ -1128,7 +1167,10 @@ export const IntakeBriefSchema: z.ZodType<IntakeBrief> = strictObject({
     colorSourceType: z.enum(["logo", "preset", "custom"]).nullable().optional(),
     colorSourceValue: nullableString,
     selectedPalette: z.enum(["palette_1", "palette_2", "palette_3"]).nullable().optional(),
-    tokens: IntakeVisualThemeTokensSchema.nullable().optional(),
+    colorSchemeId: z.enum(COLOR_SCHEME_IDS).nullable().optional(),
+    fontSchemeId: z.enum(FONT_SCHEME_IDS).nullable().optional(),
+    shapeSchemeId: z.enum(SHAPE_SCHEME_IDS).nullable().optional(),
+    densitySchemeId: z.enum(DENSITY_SCHEME_IDS).nullable().optional(),
     shape: z.enum(["straight", "slightly_rounded", "rounded"]).nullable().optional(),
     typography: z.enum(["clear", "soft", "classic", "strong"]).nullable().optional(),
   }),

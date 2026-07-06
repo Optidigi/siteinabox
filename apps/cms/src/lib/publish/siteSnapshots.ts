@@ -74,16 +74,7 @@ const snapshotThemeForServing = (snapshot: unknown): unknown => {
   const theme = record?.theme
   if (!theme || typeof theme !== "object") return theme
   if (theme.version === 2) return normalizeThemeForSave(theme as any)
-
-  const legacyStylePreset = typeof theme.stylePreset === "string" ? theme.stylePreset : ""
-  return normalizeThemeForSave({
-    version: 2,
-    appearance: { mode: theme.mode === "dark" || theme.mode === "system" ? theme.mode : "light" },
-    colors: { schemeId: legacyStylePreset === "warm-care" ? "amber-warm" : "tailwind-default" },
-    fonts: { schemeId: legacyStylePreset === "warm-care" ? "classic-editorial" : "clear-modern" },
-    shape: { schemeId: legacyStylePreset === "warm-care" ? "soft" : "tailwind-default" },
-    density: { schemeId: theme.density === "comfortable" || legacyStylePreset === "warm-care" ? "comfortable" : "tailwind-default" },
-  } as any)
+  return null
 }
 
 const publishedSnapshotForServing = (snapshot: unknown): unknown => {

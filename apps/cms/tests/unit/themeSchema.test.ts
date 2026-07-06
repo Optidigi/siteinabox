@@ -18,6 +18,7 @@ describe("themeSchema", () => {
       { generatedStyle: true },
       { "generated-style": true },
       { css: ".x{}" },
+      { ...DEFAULT_THEME_TOKEN_SPEC, appearance: { mode: "system", defaultMode: "dark" } },
     ]) {
       expect(themeSchema.safeParse(theme).success).toBe(false)
     }
@@ -31,6 +32,18 @@ describe("themeSchema", () => {
     expect(themeSchema.safeParse({
       ...DEFAULT_THEME_TOKEN_SPEC,
       fonts: { schemeId: "generated-style" },
+    }).success).toBe(false)
+    expect(themeSchema.safeParse({
+      ...DEFAULT_THEME_TOKEN_SPEC,
+      colors: { schemeId: "tailwind-default" },
+    }).success).toBe(false)
+    expect(themeSchema.safeParse({
+      ...DEFAULT_THEME_TOKEN_SPEC,
+      colors: { schemeId: "slate-indigo" },
+    }).success).toBe(false)
+    expect(themeSchema.safeParse({
+      ...DEFAULT_THEME_TOKEN_SPEC,
+      fonts: { schemeId: "bold-confident" },
     }).success).toBe(false)
   })
 })

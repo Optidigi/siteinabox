@@ -203,11 +203,11 @@ Blocks must not expose arbitrary block-level visual tokens such as per-block
 colors, fonts, radii, shape controls, class names, or provider token overrides.
 Site-wide visual control belongs to ThemeTokenSpec V2: appearance mode,
 approved color schemes, approved font schemes, approved density schemes, and
-approved shape/radius schemes. Missing theme data resolves to the default
-preset set: `tailwind-default` colors, `clear-modern` fonts,
-`tailwind-default` density, `tailwind-default` shape, and light mode. The
-default presets preserve upstream Tailwind Plus values; non-default schemes
-theme the same renderer through CSS variables only.
+approved shape/radius schemes. Missing theme data resolves to the product
+default preset set: `blue-professional` colors, `clear-modern` fonts,
+`comfortable` density, `soft` shape, and light mode. Product presets theme the
+same renderer through CSS variables only; source/default parity checks verify
+renderer fidelity separately from user-facing tokenized output.
 
 Provider utility classes stay static and detectable. The Tailwind Plus bridge
 maps neutral and accent utility shades deliberately (`gray-50` through
@@ -215,7 +215,7 @@ maps neutral and accent utility shades deliberately (`gray-50` through
 one muted token. Provider roots use stable theme zones:
 `data-theme-zone="ambient"` for normal themeable sections and
 `data-theme-zone="fixed-dark"` for source dark panels that must remain
-coherent. Density is limited to provider section/composition rhythm. Shape is a
+coherent. Density is limited to provider section vertical padding in V1. Shape is a
 full Tailwind-like radius scale. The theme system does not expose arbitrary
 spacing, breakpoint, grid/flex, CSS, classes, or per-block layout controls.
 

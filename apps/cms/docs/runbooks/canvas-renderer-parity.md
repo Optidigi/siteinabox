@@ -81,12 +81,13 @@ Verification gates:
    are CMS-only. Renderer output MUST NOT depend on them; tenant CSS MUST NOT
    target them.
 6. **Theme tokens** — Both surfaces consume global ThemeTokenSpec V2 values per
-   `rt-dom-contract.md § Theme tokens`. Missing themes resolve to
-   `tailwind-default`. Hard-coded colours, fonts, radius values, per-block
+   `rt-dom-contract.md § Theme tokens`. Missing themes resolve to the product
+   defaults: `blue-professional`, `clear-modern`, `soft`, and `comfortable`.
+   Hard-coded colours, fonts, radius values, per-block
    visual tokens, arbitrary spacing values, class payloads, arbitrary CSS, or
    provider token overrides in either tree are defects. The global theme toolbar
    owns approved color schemes, light/dark/system mode, font schemes, density,
-   and shape/radius. Density is limited to section/composition rhythm. Provider
+   and shape/radius. Density is limited to provider section vertical padding in V1. Provider
    classes and DOM remain renderer-owned.
 7. **Variant selection** — Generic self-serve generation currently exposes only
    approved exact-source Tailwind Plus Marketing provider-backed block

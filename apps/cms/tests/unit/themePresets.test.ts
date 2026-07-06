@@ -7,25 +7,21 @@ describe("theme presets", () => {
       ["clear-modern", "Clear Modern"],
       ["classic-editorial", "Classic Editorial"],
       ["friendly-organic", "Friendly Organic"],
-      ["bold-confident", "Bold Confident"],
     ])
     expect(PALETTE_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
-      ["tailwind-default", "Tailwind Native"],
-      ["slate-indigo", "Slate Indigo"],
       ["blue-professional", "Blue Professional"],
+      ["red-confident", "Red Confident"],
       ["emerald-calm", "Emerald Calm"],
       ["amber-warm", "Amber Warm"],
     ])
     expect(RADIUS_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
-      ["tailwind-default", "Tailwind Native"],
-      ["sharp", "Sharp"],
       ["soft", "Soft"],
+      ["sharp", "Sharp"],
       ["rounded", "Rounded"],
     ])
     expect(DENSITY_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
-      ["tailwind-default", "Tailwind Native"],
-      ["compact", "Compact"],
       ["comfortable", "Comfortable"],
+      ["compact", "Compact"],
       ["spacious", "Spacious"],
     ])
   })
