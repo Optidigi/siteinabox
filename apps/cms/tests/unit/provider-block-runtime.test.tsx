@@ -485,12 +485,14 @@ describe("provider block runtime", () => {
 
     expect(unsafeSelectors).toEqual([])
     expect(rendererShellCss).toContain('@import "tailwindcss" source(none);')
+    expect(rendererShellCss).toContain('@custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *));')
     expect(rendererShellCss).toContain('@source "../../../../packages/site-renderer/src";')
     expect(cmsRendererShellCss).toContain('@import "tailwindcss" source(none);')
+    expect(cmsRendererShellCss).toContain('@custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *));')
     expect(cmsRendererShellCss).toContain('@source "../../../../packages/site-renderer/src";')
   })
 
-  it("maps SiaB theme tokens onto static Tailwind provider utility variables", () => {
+  it("maps SiaB theme tokens onto static Tailwind provider accent variables and role bridges", () => {
     const css = themeToCssVars({
       colors: {
         accent: "#2563eb",
@@ -508,12 +510,16 @@ describe("provider block runtime", () => {
     expect(css).toContain("--color-indigo-600:#2563eb")
     expect(css).toContain("--color-indigo-500:#2563eb")
     expect(css).toContain("--color-indigo-100:color-mix(in oklab, #2563eb 8%, white)")
-    expect(css).toContain("--color-white:#ffffff")
     expect(css).toContain("--color-tailwindplus-surface:#ffffff")
-    expect(css).toContain("--color-gray-950:#111827")
-    expect(css).toContain("--color-gray-900:#111827")
-    expect(css).toContain("--color-gray-300:rgba(17, 24, 39, 0.1)")
-    expect(css).toContain("--color-gray-500:#6b7280")
+    expect(css).not.toContain("--color-white:")
+    expect(css).not.toContain("--color-gray-900:")
+    expect(css).not.toContain("--color-gray-500:")
+    expect(css).toContain(".text-gray-900")
+    expect(css).toContain("color:var(--color-ink,#111827)")
+    expect(css).toContain(".text-gray-600")
+    expect(css).toContain("color:var(--color-ink-muted,#64748b)")
+    expect(css).toContain(".bg-gray-50")
+    expect(css).toContain("background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))")
     expect(css).toContain("--font-sans:Inter")
     expect(css).toContain("--radius-md:0.375rem")
     expect(css).toContain("--radius-3xl:1.875rem")
@@ -539,8 +545,9 @@ describe("provider block runtime", () => {
       mode: "dark",
     })
 
-    expect(css).toContain("--color-white:#ffffff")
+    expect(css).not.toContain("--color-white:")
     expect(css).not.toContain("--color-white:#fff7f7")
+    expect(css).not.toContain("--color-gray-900:#fee2e2")
     expect(css).toContain(':where([data-provider-block="tailwindplus"].bg-white)')
     expect(css).toContain('background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))')
     expect(css).toContain(':where([data-provider-chrome="tailwindplus"]).bg-gray-50')

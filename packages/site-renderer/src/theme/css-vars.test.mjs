@@ -26,27 +26,34 @@ const theme = {
   mode: "light",
 }
 
-test("themeToCssVars keeps text-white on on-accent while bridging provider bg-white surfaces", () => {
+test("themeToCssVars keeps neutral Tailwind colors literal while bridging provider utility roles", () => {
   const css = themeToCssVars(theme, PUBLIC_RENDERER_THEME_SCOPE)
 
-  assert.match(css, /--color-white:#fff7ed/)
   assert.match(css, /--color-tailwindplus-surface:#f8fafc/)
   assert.match(css, /--color-tailwindplus-card:#ffffff/)
   assert.match(css, /--color-indigo-600:#2563eb/)
-  assert.match(css, /--color-gray-900:#111827/)
-  assert.match(css, /--color-gray-500:#6b7280/)
+  assert.equal(css.includes("--color-white:"), false)
+  assert.equal(css.includes("--color-gray-900:"), false)
+  assert.equal(css.includes("--color-gray-500:"), false)
   assert.match(css, /:where\(\[data-provider-block="tailwindplus"\]\.bg-white\)/)
   assert.match(css, /:where\(\[data-provider-block="tailwindplus"\] \.bg-white\)/)
   assert.match(css, /:where\(\[data-provider-chrome="tailwindplus"\]\.bg-white\)/)
   assert.match(css, /background-color:var\(--color-tailwindplus-surface,var\(--color-bg,#ffffff\)\)/)
-  assert.equal(css.includes(".text-white"), false)
+  assert.match(css, /\.text-white\{color:var\(--color-on-accent,#ffffff\)/)
+  assert.doesNotMatch(css, /(^|[,{])\.text-white\{/)
+  assert.match(css, /\.text-gray-900/)
+  assert.match(css, /color:var\(--color-ink,#111827\)/)
+  assert.match(css, /\.text-gray-600/)
+  assert.match(css, /color:var\(--color-ink-muted,#64748b\)/)
 })
 
-test("themeToCssVars applies dark provider aliases through the existing dark mode scope", () => {
+test("themeToCssVars applies dark role tokens without remapping source dark panels", () => {
   const css = themeToCssVars(theme)
 
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-white:#020617/)
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-gray-900:#fafafa/)
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-gray-500:#a1a1aa/)
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-gray-50:#18181b/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-bg:#09090b/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-ink:#fafafa/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-ink-muted:#a1a1aa/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-surface:#09090b/)
+  assert.equal(css.includes("--color-gray-900:#fafafa"), false)
+  assert.equal(css.includes("--color-gray-50:#18181b"), false)
 })

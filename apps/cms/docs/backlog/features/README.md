@@ -117,9 +117,10 @@ depended on command-run site generation are no longer current source of truth.
   variants, raw AI HTML/classes, or any Amicare changes. A provider surface
   becomes generation-eligible only after exact source, renderer, CMS/sidebar or
   settings editing where applicable, canvas/preview/public behavior, token
-  behavior, and structural/runtime/source-integrity tests are complete. Browser
-  screenshots, pixel diffs, computed-style checks, and visual parity gates are
-  out of scope for the current provider completion pass.
+  behavior, structural/runtime/source-integrity tests, and provider visual
+  parity coverage are complete. Tailwind Plus provider parity is now gated by
+  `pnpm provider:visual-parity`; broader page-level or Chromatic-style visual
+  regression remains separate follow-up work.
 - Improve CMS generation-run operations UI beyond the 2026-07-02 task-queue
   simplification. `/generation-runs` and run detail should help operators
   understand what needs attention next, why a run is blocked, and which

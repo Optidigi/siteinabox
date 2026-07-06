@@ -3,4 +3,6 @@
 
 @plugin "@tailwindcss/forms";
 
+@custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *));
+
 @source "../../../../packages/site-renderer/src";

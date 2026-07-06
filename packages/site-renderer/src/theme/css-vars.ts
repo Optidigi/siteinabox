@@ -80,17 +80,43 @@ function providerThemeBridgeRules(
   ].join(",")
   const rootClass = (className: string, pseudo = "") => providerRootSelectors.map((selector) => `${selector}.${className}${pseudo}`).join(",")
   const descendant = (className: string, pseudo = "") => providerRootSelectors.map((selector) => `${selector} .${className}${pseudo}`).join(",")
+  const rootClasses = (classNames: string[], pseudo = "") => classNames.map((className) => rootClass(className, pseudo)).join(",")
+  const descendants = (classNames: string[], pseudo = "") => classNames.map((className) => descendant(className, pseudo)).join(",")
+  const rootsAndDescendants = (classNames: string[], pseudo = "") => [
+    rootClasses(classNames, pseudo),
+    descendants(classNames, pseudo),
+  ].filter(Boolean).join(",")
+  const groupHover = (classNames: string[]) => providerRootSelectors
+    .flatMap((selector) => classNames.map((className) => `${selector} .group:hover .${className}`))
+    .join(",")
 
   const rules: string[] = []
   if (options.colors) rules.push(
     `${providerSurfaceRoots}{background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))}`,
     `${providerSurfaceDescendants}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
-    `${rootClass("bg-gray-50")}{background-color:var(--color-card,var(--color-bg))}`,
-    `${descendant("bg-gray-50")}{background-color:var(--color-card,var(--color-bg))}`,
-    `${descendant("ring-gray-900\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink) 10%,transparent)}`,
-    `${descendant("hover\\:ring-gray-900\\/20", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-ink) 20%,transparent)}`,
-    `${descendant("outline-gray-300")}{outline-color:var(--color-rule)}`,
-    `${descendant("ring-gray-400\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink-muted) 10%,transparent)}`,
+    `${rootsAndDescendants(["bg-white\\/60"])}{background-color:color-mix(in oklab,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))) 60%,transparent)}`,
+    `${rootsAndDescendants(["bg-gray-50", "bg-gray-100"])}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
+    `${rootsAndDescendants(["hover\\:bg-gray-50", "hover\\:bg-gray-100"], ":hover")}{background-color:var(--color-secondary,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))))}`,
+    `${rootsAndDescendants(["bg-gray-200"])}{background-color:var(--color-secondary,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))))}`,
+    `${rootsAndDescendants(["text-gray-950", "text-gray-900", "text-gray-800", "text-gray-700"])}{color:var(--color-ink,#111827)}`,
+    `${rootsAndDescendants(["text-gray-600", "text-gray-500", "text-gray-400", "text-gray-300"])}{color:var(--color-ink-muted,#64748b)}`,
+    `${rootsAndDescendants(["placeholder\\:text-gray-400", "placeholder\\:text-gray-500"], "::placeholder")}{color:var(--color-ink-muted,#64748b)}`,
+    `${groupHover(["group-hover\\:text-gray-600"])}{color:var(--color-ink-muted,#64748b)}`,
+    `${rootsAndDescendants(["text-indigo-700", "text-indigo-600", "text-indigo-500", "text-indigo-400"])}{color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["bg-indigo-700", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"])}{background-color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["hover\\:bg-indigo-500", "hover\\:bg-indigo-400"], ":hover")}{background-color:color-mix(in oklab,var(--color-accent,#4f46e5) 88%,white)}`,
+    `${rootsAndDescendants(["has-checked\\:bg-indigo-600"], ":has(:checked)")}{background-color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["outline-indigo-600", "focus\\:outline-indigo-500", "focus-visible\\:outline-indigo-500"])}{outline-color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["focus\\:ring-indigo-600"], ":focus")}{--tw-ring-color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["focus\\:outline-indigo-600"], ":focus")}{outline-color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["focus-visible\\:outline-indigo-600"], ":focus-visible")}{outline-color:var(--color-accent,#4f46e5)}`,
+    `${descendants(["bg-indigo-700", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"].flatMap((bg) => ["text-white"].map((text) => `${bg}.${text}`)))}{color:var(--color-on-accent,#ffffff)}`,
+    `${descendant("ring-gray-900\\/10")},${descendant("-ring-gray-900\\/5")},${descendant("ring-gray-900\\/5")},${descendant("inset-ring-gray-900\\/5")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 10%,transparent)}`,
+    `${descendant("hover\\:ring-gray-900\\/20", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 20%,transparent)}`,
+    `${descendant("ring-gray-400\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink-muted,#64748b) 10%,transparent)}`,
+    `${descendant("ring-indigo-50")},${descendant("inset-ring-indigo-200")},${descendant("hover\\:inset-ring-indigo-300", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-accent,#4f46e5) 20%,transparent)}`,
+    `${descendants(["outline-gray-300", "border-gray-300", "border-gray-200", "divide-gray-200", "stroke-gray-200"])}{border-color:var(--color-rule,rgba(17,24,39,.12));outline-color:var(--color-rule,rgba(17,24,39,.12));stroke:var(--color-rule,rgba(17,24,39,.12))}`,
+    `${descendants(["outline-black\\/5"])}{outline-color:color-mix(in oklab,var(--color-ink,#111827) 5%,transparent)}`,
   )
   if (options.fonts) rules.push(
     `${providerRootSelectors.map((selector) => `${selector} :is(h1)`).join(",")}{font-family:var(--font-title,var(--font-sans,inherit))}`,
@@ -117,7 +143,6 @@ function setTailwindProviderColorAliases(
   fallback?: Partial<Record<"onAccent" | "bg" | "ink" | "muted" | "card" | "secondary" | "rule", string>>,
 ) {
   const accent = colors?.accent
-  const onAccent = colors?.onAccent ?? fallback?.onAccent
   const bg = colors?.bg ?? fallback?.bg
   const ink = colors?.ink ?? fallback?.ink
   const muted = colors?.muted ?? fallback?.muted
@@ -127,9 +152,12 @@ function setTailwindProviderColorAliases(
 
   const accentSoft = accent ? `color-mix(in oklab, ${accent} 16%, white)` : undefined
   const accentSofter = accent ? `color-mix(in oklab, ${accent} 8%, white)` : undefined
-  const hasColors = Boolean(accent || onAccent || bg || ink || muted || card || secondary || rule)
+  const hasColors = Boolean(accent || bg || ink || muted || card || secondary || rule)
   if (!hasColors) return
 
+  // Only alias accent utilities globally. Neutral Tailwind utilities are
+  // role-specific in provider source: e.g. text-gray-900 and bg-gray-900 must
+  // not share the same runtime value in dark mode.
   set(parts, "--color-indigo-700", accent)
   set(parts, "--color-indigo-600", accent)
   set(parts, "--color-indigo-500", accent)
@@ -138,24 +166,8 @@ function setTailwindProviderColorAliases(
   set(parts, "--color-indigo-200", accentSoft)
   set(parts, "--color-indigo-100", accentSofter)
   set(parts, "--color-indigo-50", accentSofter)
-  set(parts, "--color-white", onAccentColor(onAccent))
   set(parts, "--color-tailwindplus-surface", bg)
   set(parts, "--color-tailwindplus-card", card ?? bg)
-  set(parts, "--color-black", ink)
-  set(parts, "--color-gray-950", ink)
-  set(parts, "--color-gray-900", ink)
-  set(parts, "--color-gray-800", ink)
-  set(parts, "--color-gray-700", ink)
-  set(parts, "--color-gray-600", muted)
-  set(parts, "--color-gray-500", muted)
-  set(parts, "--color-gray-400", muted)
-  set(parts, "--color-gray-300", rule)
-  set(parts, "--color-gray-200", rule)
-  set(parts, "--color-gray-100", card)
-  set(parts, "--color-gray-50", card ?? bg)
-  set(parts, "--color-slate-900", ink)
-  set(parts, "--color-slate-600", muted)
-  set(parts, "--color-slate-300", rule)
   set(parts, "--color-secondary", secondary)
 }
 

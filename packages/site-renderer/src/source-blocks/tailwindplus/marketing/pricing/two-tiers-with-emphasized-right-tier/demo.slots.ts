@@ -20,7 +20,7 @@ export const tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlot
   blockType: "pricing",
   designVariant: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
   title: inlineRt("Choose the right plan for you"),
-  intro: blockRt("Choose an affordable plan that is packed with the best features for engaging your audience."),
+  intro: blockRt("Choose an affordable plan that’s packed with the best features for engaging your audience, creating customer loyalty, and driving sales."),
   plans: [
     {
       title: inlineRt("Hobby"),

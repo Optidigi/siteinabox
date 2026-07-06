@@ -17,11 +17,11 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
   designVariant: "tailwindplus.marketing.bento.three-column-bento-grid",
   anchor: "platform-grid",
   title: inlineText("Deploy faster"),
-  intro: blockText("Everything you need to publish and operate a generated site."),
+  intro: blockText("Everything you need to deploy your app"),
   items: [
     {
       title: inlineText("Mobile friendly"),
-      description: blockText("Responsive provider layout remains fixed while the card copy stays editable."),
+      description: blockText("Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo."),
       image: {
         url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-mobile-friendly.png",
         alt: "Mobile app preview",
@@ -31,7 +31,7 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
     },
     {
       title: inlineText("Performance"),
-      description: blockText("Public snapshots are rendered by the shared runtime without tenant source builds."),
+      description: blockText("Lorem ipsum, dolor sit amet consectetur adipisicing elit maiores impedit."),
       image: {
         url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-performance.png",
         alt: "Performance chart preview",
@@ -41,7 +41,7 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
     },
     {
       title: inlineText("Security"),
-      description: blockText("Provider blocks fail closed and generated data cannot inject code or classes."),
+      description: blockText("Morbi viverra dui mi arcu sed. Tellus semper adipiscing suspendisse semper morbi."),
       image: {
         url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-security.png",
         alt: "Security preview",
@@ -51,7 +51,7 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
     },
     {
       title: inlineText("Powerful APIs"),
-      description: blockText("CMS, preview, and renderer orchestration stay platform-owned."),
+      description: blockText("Sit quis amet rutrum tellus ullamcorper ultricies libero dolor eget sem sodales gravida."),
     },
   ],
 }

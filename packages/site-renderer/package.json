@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs",
+    "typecheck": "tsc --noEmit",
+    "visual:provider-parity": "tsx src/visual-parity/tailwindplus-visual-parity.mjs"
   },
   "exports": {
     ".": {
@@ -61,6 +62,9 @@
   "devDependencies": {
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "pixelmatch": "^7.1.0",
+    "playwright": "1.61.0",
+    "pngjs": "^7.0.0",
     "tsx": "^4.22.4",
     "typescript": "6.0.3"
   }

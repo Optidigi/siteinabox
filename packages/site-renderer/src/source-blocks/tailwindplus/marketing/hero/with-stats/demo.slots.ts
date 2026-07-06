@@ -16,7 +16,7 @@ export const tailwindPlusMarketingHeroWithStatsDemoSlots: HeroBlock = {
   blockType: "hero",
   designVariant: "tailwindplus.marketing.hero.with-stats",
   headline: inlineText("Work with us"),
-  subheadline: blockText("Build faster with structured CMS content and provider-native page sections."),
+  subheadline: blockText("Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo. Elit sunt amet fugiat veniam occaecat fugiat."),
   cta: { label: "Open roles", href: "/careers" },
   secondary: { label: "Our values", href: "/values" },
   stats: [

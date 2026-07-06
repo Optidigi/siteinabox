@@ -129,6 +129,14 @@ canvas root by `CanvasSurface` and on public/preview renderer roots by
 
 The base block holds the LIGHT palette; the overlay block holds the DARK palette. `toCssVars` emits both blocks when `theme.darkPalette` is set.
 
+Generated-site CSS wires Tailwind's native `dark:` variant to
+`[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use
+that native path. Active Tailwind Plus provider sources that do not include
+`dark:` utilities must be themed through renderer-owned provider bridge rules.
+Those bridge rules map utility roles, not global Tailwind neutral palette
+variables: `text-gray-900` may become theme ink, while `bg-gray-900` remains a
+dark panel.
+
 ### Implementation rule
 
 Each renderer (canvas + live-site) MUST emit its styling through class rules that

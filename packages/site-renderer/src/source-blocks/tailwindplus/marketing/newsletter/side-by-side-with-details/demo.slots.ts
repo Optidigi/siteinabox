@@ -16,13 +16,13 @@ export const tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots: News
   blockType: "newsletter",
   designVariant: "tailwindplus.marketing.newsletter.side-by-side-with-details",
   title: inlineText("Subscribe to our newsletter"),
-  description: blockText("Get useful updates and implementation notes in your inbox."),
+  description: blockText("Nostrud amet eu ullamco nisi aute in ad minim nostrud adipisicing velit quis. Duis tempor incididunt dolore."),
   emailLabel: "Email address",
   emailPlaceholder: "Enter your email",
   submitLabel: "Subscribe",
   benefits: [
-    { title: inlineText("Weekly articles"), description: blockText("Practical notes for building better generated websites.") },
-    { title: inlineText("No spam"), description: blockText("Only useful product and implementation updates.") },
+    { title: inlineText("Weekly articles"), description: blockText("Non laboris consequat cupidatat laborum magna. Eiusmod non irure cupidatat duis commodo amet.") },
+    { title: inlineText("No spam"), description: blockText("Officia excepteur ullamco ut sint duis proident non adipisicing. Voluptate incididunt anim.") },
   ],
   provider: { provider: "siab", action: "/api/forms/newsletter", method: "POST" },
 }

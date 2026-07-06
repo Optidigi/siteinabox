@@ -189,10 +189,14 @@ colors, fonts, radii, shape controls, class names, or provider token overrides.
 Site-wide visual control belongs to the global theme toolbar and theme schema:
 colors, font roles, radius/shape, mode, and coarse density/rhythm where
 supported. Renderers consume those global tokens through CSS variables. The
-Tailwind Plus V1 path maps SiaB theme choices onto Tailwind v4 CSS variables
-and scoped provider-root bridge rules while keeping provider utility classes
-static and detectable. It does not expose arbitrary spacing, breakpoint,
-grid/flex, or per-block layout controls.
+Tailwind Plus V1 path wires Tailwind's native `dark:` variant to
+`data-rt-mode="dark"` for source variants that include dark utilities. Current
+active provider sources are mostly light-only, so their theme behavior comes
+from scoped provider-root bridge rules that map provider utility roles
+(`text-gray-900`, `bg-white`, `bg-indigo-600`, rings, borders, etc.) to SiaB
+tokens without globally redefining neutral Tailwind palette variables. Provider
+utility classes stay static and detectable. It does not expose arbitrary
+spacing, breakpoint, grid/flex, or per-block layout controls.
 
 The public renderer uses `apps/renderer/src/styles/site.css` with Tailwind v4,
 the `@tailwindcss/forms` plugin, and `@source` coverage for
@@ -347,9 +351,14 @@ or raw-HTML-only variants must stay out of the exported source-backed list.
 Durable automated checks for this provider path are structural and integrity
 based: source fixture hashes, static upstream class coverage, provider root
 markers, registry completeness, CSS isolation, fail-closed renderer behavior,
-generation/schema rejection, and publish validation. Browser screenshots,
-pixel diffs, computed-style visual comparisons, Chromatic-style regressions,
-and visual parity gates are explicitly out of scope for this pass.
+generation/schema rejection, and publish validation. Active Tailwind Plus
+provider variants also have a browser screenshot parity gate:
+`pnpm provider:visual-parity` builds the public renderer CSS, renders each
+active source-backed block/chrome/system-template variant against its approved
+source fixture at desktop and mobile widths, and fails if the pixel delta
+exceeds the provider threshold or if any active provider registry entry lacks a
+visual case. This gate is provider-scoped; it is not a broad page-level visual
+regression suite.
 
 ## Current Tailwind Plus Inventory Notes
 
@@ -462,7 +471,9 @@ Footer and FAQ current state, verified July 5, 2026:
   licensed source is supplied and mapped through `packages/site-renderer/src/source-chrome`.
 
 Preline and Tailblocks are future/non-provider work for this pass and were not
-implemented. No visual parity gates or screenshot/pixel tests were added.
+implemented. Tailwind Plus provider visual parity is covered by
+`pnpm provider:visual-parity`; Preline and Tailblocks have no active visual
+parity cases because they remain inactive.
 
 ## Chrome Decision
 
@@ -520,9 +531,10 @@ For any new Tailwind Plus block:
    package for interactive provider elements.
 4. Add catalog metadata, runtime notes, editable fields, and visual review
    notes.
-5. Add contract, generation, renderer, CMS preview, and governance tests.
-   These tests must remain structural/runtime/integrity tests, not visual
-   parity gates.
+5. Add contract, generation, renderer, CMS preview, governance, and provider
+   visual parity coverage. The provider visual gate must compare the active
+   renderer to the approved source fixture and must not expose inactive source
+   affordances just to make the screenshot match.
 6. Add the provider to self-serve generation only if it is approved for the
    current product surface.
 

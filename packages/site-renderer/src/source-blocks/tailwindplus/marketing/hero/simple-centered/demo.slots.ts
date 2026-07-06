@@ -18,7 +18,7 @@ export const tailwindPlusMarketingHeroSimpleCenteredDemoSlots = {
   designVariant: "tailwindplus.marketing.hero.simple-centered",
   eyebrow: inlineRt("Announcing our next round of funding."),
   headline: inlineRt("Data to enrich your online business"),
-  subheadline: blockRt("Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo."),
+  subheadline: blockRt("Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo. Elit sunt amet fugiat veniam occaecat."),
   cta: {
     label: "Get started",
     href: "#",
