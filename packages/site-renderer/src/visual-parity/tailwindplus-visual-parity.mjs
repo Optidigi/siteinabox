@@ -50,6 +50,20 @@ const darkTheme = {
   density: { schemeId: "comfortable" },
 }
 
+const tokenizedLightTheme = {
+  version: 2,
+  appearance: { mode: "light" },
+  colors: { schemeId: "amber-warm" },
+  fonts: { schemeId: "clear-modern" },
+  shape: { schemeId: "soft" },
+  density: { schemeId: "comfortable" },
+}
+
+const tokenizedDarkTheme = {
+  ...tokenizedLightTheme,
+  appearance: { mode: "dark" },
+}
+
 const blockCases = [
   {
     id: "tailwindplus.marketing.hero.simple-centered",
@@ -418,6 +432,119 @@ async function assertDarkThemeSmoke(page, css, testCase, html, viewport) {
   }
 }
 
+async function assertTokenizedThemeSmoke(page, css, testCase, html, viewport, theme) {
+  await page.setViewportSize({ width: viewport.width, height: viewport.height })
+  await page.setContent(htmlPage(css, html, { theme }), { waitUntil: "networkidle" })
+  await waitForVisualReady(page)
+  const issues = await page.evaluate(({ id, mode }) => {
+    const providerSelector = "[data-provider-block='tailwindplus'],[data-provider-chrome='tailwindplus'],[data-provider-template='tailwindplus']"
+    const providerRoots = Array.from(document.querySelectorAll(providerSelector))
+    const failures = []
+    const accidentalBlue = new Set([
+      "rgb(37, 99, 235)",
+      "rgb(59, 130, 246)",
+      "rgb(79, 70, 229)",
+      "rgb(99, 102, 241)",
+      "rgb(129, 140, 248)",
+    ])
+    const amberAccent = new Set([
+      "rgb(217, 119, 6)",
+      "rgb(245, 158, 11)",
+      "rgb(251, 191, 36)",
+    ])
+
+    if (!providerRoots.length) failures.push(`${id} rendered no Tailwind Plus provider root`)
+
+    function visible(element) {
+      const style = getComputedStyle(element)
+      if (style.display === "none" || style.visibility === "hidden" || Number.parseFloat(style.opacity) === 0) return false
+      const rect = element.getBoundingClientRect()
+      return rect.width > 0 && rect.height > 0
+    }
+
+    for (const root of providerRoots) {
+      const indigoElements = [root, ...Array.from(root.querySelectorAll("[class*='indigo']"))]
+        .filter((element) => element instanceof HTMLElement || element instanceof SVGElement)
+      for (const element of indigoElements) {
+        if (!visible(element)) continue
+        const className = element.getAttribute("class") || ""
+        if (!className.includes("indigo")) continue
+        const style = getComputedStyle(element)
+        const themedValues = [
+          ["color", style.color],
+          ["background-color", style.backgroundColor],
+          ["outline-color", style.outlineColor],
+          ["border-color", style.borderColor],
+          ["fill", style.fill],
+          ["stroke", style.stroke],
+        ].filter(([, value]) => value && value !== "none" && value !== "rgba(0, 0, 0, 0)")
+        for (const [property, value] of themedValues) {
+          if (accidentalBlue.has(value)) {
+            failures.push(`${id} ${mode} leaves ${property} blue on ${className}`)
+          }
+        }
+      }
+
+      for (const element of Array.from(root.querySelectorAll(".bg-indigo-600,.bg-indigo-500,.text-indigo-600,.text-indigo-500,.text-indigo-400"))) {
+        if (!visible(element)) continue
+        const style = getComputedStyle(element)
+        if (
+          (element.classList.contains("bg-indigo-600") || element.classList.contains("bg-indigo-500")) &&
+          !amberAccent.has(style.backgroundColor)
+        ) {
+          failures.push(`${id} ${mode} expected amber background for ${element.getAttribute("class")}`)
+        }
+        if (
+          (element.classList.contains("text-indigo-600") || element.classList.contains("text-indigo-500") || element.classList.contains("text-indigo-400")) &&
+          !amberAccent.has(style.color)
+        ) {
+          failures.push(`${id} ${mode} expected amber text for ${element.getAttribute("class")}`)
+        }
+      }
+
+      for (const element of Array.from(root.querySelectorAll(".bg-gray-900.text-white,[data-theme-zone='fixed-dark'] .text-white"))) {
+        if (!visible(element)) continue
+        if (
+          element.classList.contains("bg-indigo-700") ||
+          element.classList.contains("bg-indigo-600") ||
+          element.classList.contains("bg-indigo-500") ||
+          element.classList.contains("bg-indigo-400")
+        ) {
+          continue
+        }
+        const color = getComputedStyle(element).color
+        if (color !== "rgb(255, 255, 255)") {
+          failures.push(`${id} ${mode} fixed dark text-white rendered as ${color}`)
+        }
+      }
+    }
+
+    if (id === "tailwindplus.marketing.contact.centered") {
+      const consent = document.querySelector("[data-provider-variant='tailwindplus.marketing.contact.centered'] input[name='agree-to-policies']")
+      const checkboxes = document.querySelectorAll("[data-provider-variant='tailwindplus.marketing.contact.centered'] input[type='checkbox']")
+      if (!consent) failures.push(`${id} ${mode} missing consent toggle input`)
+      if (checkboxes.length !== 1) failures.push(`${id} ${mode} expected one checkbox-backed toggle, found ${checkboxes.length}`)
+      const className = consent?.getAttribute("class") || ""
+      if (!className.includes("appearance-none") || !className.includes("absolute")) {
+        failures.push(`${id} ${mode} consent checkbox is not the Tailwind Plus toggle scaffold`)
+      }
+    }
+
+    if (id === "tailwindplus.marketing.testimonial.simple-centered" && mode === "dark") {
+      const radial = document.querySelector("[class~='bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]']")
+      const backgroundImage = radial ? getComputedStyle(radial).backgroundImage : ""
+      if (backgroundImage.includes("rgb(255, 255, 255)")) {
+        failures.push(`${id} dark testimonial radial gradient still ends in white`)
+      }
+    }
+
+    return failures
+  }, { id: testCase.id, mode: theme.appearance.mode })
+  if (issues.length) {
+    throw new Error(`${testCase.id} (${viewport.name}) ${theme.appearance.mode} tokenized smoke failed: ${issues.join("; ")}`)
+  }
+}
+
 function comparePngs(caseId, viewportName, sourceBuffer, renderedBuffer) {
   const source = PNG.sync.read(sourceBuffer)
   const rendered = PNG.sync.read(renderedBuffer)
@@ -511,6 +638,8 @@ async function main() {
           const renderedBuffer = await screenshot(page, css, renderedHtml, viewport)
           const mismatchRatio = comparePngs(testCase.id, viewport.name, sourceBuffer, renderedBuffer)
           await assertDarkThemeSmoke(page, css, testCase, testCase.renderedHtml(darkTheme), viewport)
+          await assertTokenizedThemeSmoke(page, css, testCase, testCase.renderedHtml(tokenizedLightTheme), viewport, tokenizedLightTheme)
+          await assertTokenizedThemeSmoke(page, css, testCase, testCase.renderedHtml(tokenizedDarkTheme), viewport, tokenizedDarkTheme)
           results.push({ id: testCase.id, viewport: viewport.name, mismatchRatio })
         } catch (error) {
           failures.push(error instanceof Error ? error.message : String(error))

@@ -95,7 +95,7 @@ export function TailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierRende
       )}
       <div className="mx-auto mt-16 grid max-w-lg grid-cols-1 items-center gap-y-6 sm:mt-20 sm:gap-y-0 lg:max-w-4xl lg:grid-cols-2">
         {plans.map((plan, index) => {
-          const emphasized = index === 1 || plan.highlighted === true
+          const emphasized = index === 1
           const ctaLabel = plan.cta?.label?.trim()
           const ctaHref = plan.cta?.href?.trim()
           return (

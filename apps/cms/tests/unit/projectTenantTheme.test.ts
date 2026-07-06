@@ -29,7 +29,7 @@ describe("projectTenantTheme", () => {
     expect(written).toContain("--color-accent:#2563eb")
   })
 
-  it("writes Tailwind default CSS when theme is null", async () => {
+  it("writes V2 Blue Professional default CSS when theme is null", async () => {
     const { projectTenantTheme } = await import("@/lib/projection/projectTenantTheme")
     const tenantDir = path.join(tmpDir, "tenants", "t2")
     await fs.mkdir(tenantDir, { recursive: true })
@@ -38,7 +38,7 @@ describe("projectTenantTheme", () => {
 
     const written = await fs.readFile(path.join(tenantDir, "tenant-theme.css"), "utf8")
     expect(written).toContain("html:root{")
-    expect(written).toContain("--color-indigo-600:#4f46e5")
+    expect(written).toContain("--color-indigo-600:#2563eb")
   })
 
   it("does not throw when tenant dir does not exist — logs error and returns", async () => {

@@ -9,6 +9,7 @@ const gradientClipPath =
   "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
 
 const sourceFieldOrder = ["first-name", "last-name", "company", "email", "phone-number", "message"] as const
+type SourceFieldName = typeof sourceFieldOrder[number]
 
 function fieldAutocomplete(field: ContactSectionBlock["fields"][number]) {
   if (field.name === "first-name") return "given-name"
@@ -20,7 +21,18 @@ function fieldAutocomplete(field: ContactSectionBlock["fields"][number]) {
 }
 
 function isPhoneField(field: ContactSectionBlock["fields"][number]) {
-  return field.type === "tel" || field.name.includes("phone")
+  return field.name === "phone-number" || field.type === "tel" || field.name.includes("phone")
+}
+
+function sourceFieldInputType(field: ContactSectionBlock["fields"][number]) {
+  if (field.name === "email") return "email"
+  if (field.name === "phone-number") return "text"
+  if (field.name === "message") return "textarea"
+  return "text"
+}
+
+function isSourceFieldName(name: string): name is SourceFieldName {
+  return (sourceFieldOrder as readonly string[]).includes(name)
 }
 
 export function TailwindPlusMarketingContactCenteredRenderer({
@@ -36,7 +48,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
   const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
   const hasSubmitStatus = method.toUpperCase() === "POST" && !formAction.startsWith("mailto:")
   const submitLabel = block.submitLabel ?? "Let's talk"
-  const fieldsByName = new Map(block.fields.map((field) => [field.name, field]))
+  const fieldsByName = new Map(block.fields.filter((field) => isSourceFieldName(field.name)).map((field) => [field.name, field]))
   const orderedFields = sourceFieldOrder
     .map((name) => fieldsByName.get(name))
     .filter((field): field is ContactSectionBlock["fields"][number] => Boolean(field))
@@ -115,6 +127,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
             const fieldClassName = index < 2 ? undefined : "sm:col-span-2"
             const autoComplete = fieldAutocomplete(field)
             const placeholder = field.placeholder ?? undefined
+            const sourceType = sourceFieldInputType(field)
             return (
               <div key={field.name} className={fieldClassName}>
                 <label htmlFor={field.name} className="block text-sm/6 font-semibold text-gray-900">
@@ -129,7 +142,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
                     : field.label}
                 </label>
                 <div className="mt-2.5">
-                  {field.type === "textarea" ? (
+                  {sourceType === "textarea" ? (
                     <textarea
                       id={field.name}
                       name={field.name}
@@ -169,7 +182,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
                       </div>
                       <input
                         id={field.name}
-                        type={field.type}
+                        type={sourceType}
                         name={field.name}
                         required={field.required ?? false}
                         placeholder={placeholder}
@@ -178,29 +191,10 @@ export function TailwindPlusMarketingContactCenteredRenderer({
                         className="block min-w-0 grow py-1.5 pr-3 pl-1 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none sm:text-sm/6"
                       />
                     </div>
-                  ) : field.type === "select" ? (
-                    <select
-                      id={field.name}
-                      name={field.name}
-                      required={field.required ?? false}
-                      className="block w-full rounded-md bg-white px-3.5 py-2 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600"
-                    >
-                      {(field.options ?? []).map((option) => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  ) : field.type === "checkbox" ? (
-                    <input
-                      id={field.name}
-                      type="checkbox"
-                      name={field.name}
-                      required={field.required ?? false}
-                      className="size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600"
-                    />
                   ) : (
                     <input
                       id={field.name}
-                      type={field.type}
+                      type={sourceType}
                       name={field.name}
                       required={field.required ?? false}
                       placeholder={placeholder}

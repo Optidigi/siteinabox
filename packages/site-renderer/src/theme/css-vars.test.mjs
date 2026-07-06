@@ -79,6 +79,33 @@ test("themeToCssVars bridges active Tailwind Plus accent utilities without class
   assert.match(css, /\[class~="ring-white\/10"\][^}]*--tw-ring-color:rgb\(255 255 255 \/ 0\.1\)/)
 })
 
+test("themeToCssVars preserves selected accent tokens inside fixed dark Tailwind Plus zones", () => {
+  const css = themeToCssVars({ ...theme, colors: { schemeId: "red-confident" } }, PUBLIC_RENDERER_THEME_SCOPE)
+  const fixedDarkRule = css.match(/[^{}]*data-theme-zone="fixed-dark"[^{}]*\{[^}]*\}/)?.[0] ?? ""
+
+  assert.match(fixedDarkRule, /data-theme-zone="fixed-dark"/)
+  assert.match(css, /--siab-accent-500:#ef4444/)
+  assert.match(css, /--siab-accent-600:#dc2626/)
+  assert.doesNotMatch(fixedDarkRule, /--siab-accent-500:#6366f1/)
+  assert.doesNotMatch(fixedDarkRule, /--siab-accent-600:#4f46e5/)
+  assert.doesNotMatch(fixedDarkRule, /--color-indigo-500:#6366f1/)
+  assert.doesNotMatch(fixedDarkRule, /--color-indigo-600:#4f46e5/)
+})
+
+test("themeToCssVars keeps accent foregrounds readable while preserving fixed dark white text", () => {
+  const css = themeToCssVars({ ...theme, colors: { schemeId: "amber-warm" } }, PUBLIC_RENDERER_THEME_SCOPE)
+
+  assert.match(css, /--color-on-accent-500:#111827/)
+  assert.match(css, /--color-on-accent-400:#111827/)
+  assert.match(css, /\.bg-indigo-600\.text-white[^}]*color:var\(--color-on-accent,#ffffff\)/)
+  assert.match(css, /\.bg-indigo-500\.text-white[^}]*color:var\(--color-on-accent-500,var\(--color-on-accent,#ffffff\)\)/)
+  assert.match(css, /\.bg-indigo-400\.text-white[^}]*color:var\(--color-on-accent-400,var\(--color-on-accent,#ffffff\)\)/)
+  assert.match(css, /data-theme-zone="fixed-dark"[^}]*\.text-white[^}]*color:#ffffff/)
+  assert.match(css, /\.bg-gray-900\.text-white[^}]*color:#ffffff/)
+  assert.doesNotMatch(css, /\.bg-indigo-500\.text-white[^}]*color:#000000/)
+  assert.doesNotMatch(css, /\.bg-indigo-400\.text-white[^}]*color:#000000/)
+})
+
 test("themeToCssVars emits full radius scale and section-only density bridge", () => {
   const roundedCss = themeToCssVars({ ...theme, shape: { schemeId: "rounded" } }, PUBLIC_RENDERER_THEME_SCOPE)
   const softCss = themeToCssVars(theme, PUBLIC_RENDERER_THEME_SCOPE)

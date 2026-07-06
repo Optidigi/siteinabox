@@ -120,10 +120,20 @@ function providerThemeBridgeRules(
     .map((selector) => `${selector} :where([class~="${token}"])${pseudo}`)
     .join(",")
   const classTokens = (tokens: string[], pseudo = "") => tokens.map((token) => classToken(token, pseudo)).join(",")
+  const fixedDarkZoneSelectors = [
+    ...providerRootSelectors.map((selector) => `${selector} :where([data-theme-zone="fixed-dark"])`),
+    ...providerRootSelectors.map((selector) => `${selector}:where([data-theme-zone="fixed-dark"])`),
+  ].join(",")
+  const fixedDarkTextWhiteSelectors = [
+    ...providerRootSelectors.map((selector) => `${selector} :where([data-theme-zone="fixed-dark"]) .text-white`),
+    ...providerRootSelectors.map((selector) => `${selector}:where([data-theme-zone="fixed-dark"]) .text-white`),
+    ...providerRootSelectors.map((selector) => `${selector} :where([data-theme-zone="fixed-dark"].text-white)`),
+    ...providerRootSelectors.map((selector) => `${selector}:where([data-theme-zone="fixed-dark"].text-white)`),
+  ].join(",")
 
   const rules: string[] = []
   if (options.colors) rules.push(
-    `${providerRootSelectors.map((selector) => `${selector} :where([data-theme-zone="fixed-dark"])`).join(",")},${providerRootSelectors.map((selector) => `${selector}:where([data-theme-zone="fixed-dark"])`).join(",")}{--color-tailwindplus-surface:#ffffff;--color-tailwindplus-card:#ffffff;--color-on-accent:#ffffff;--siab-neutral-50:#f9fafb;--siab-neutral-100:#f3f4f6;--siab-neutral-200:#e5e7eb;--siab-neutral-300:#d1d5db;--siab-neutral-400:#9ca3af;--siab-neutral-500:#6b7280;--siab-neutral-600:#4b5563;--siab-neutral-700:#374151;--siab-neutral-800:#1f2937;--siab-neutral-900:#111827;--siab-neutral-950:#030712;--siab-accent-50:#eef2ff;--siab-accent-100:#e0e7ff;--siab-accent-200:#c7d2fe;--siab-accent-300:#a5b4fc;--siab-accent-400:#818cf8;--siab-accent-500:#6366f1;--siab-accent-600:#4f46e5;--siab-accent-700:#4338ca;--siab-accent-800:#3730a3;--siab-accent-900:#312e81;--siab-accent-950:#1e1b4b;--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-gray-950:#030712;--color-indigo-50:#eef2ff;--color-indigo-100:#e0e7ff;--color-indigo-200:#c7d2fe;--color-indigo-300:#a5b4fc;--color-indigo-400:#818cf8;--color-indigo-500:#6366f1;--color-indigo-600:#4f46e5;--color-indigo-700:#4338ca;--color-indigo-800:#3730a3;--color-indigo-900:#312e81;--color-indigo-950:#1e1b4b}`,
+    `${fixedDarkZoneSelectors}{--color-tailwindplus-surface:#ffffff;--color-tailwindplus-card:#ffffff;--siab-neutral-50:#f9fafb;--siab-neutral-100:#f3f4f6;--siab-neutral-200:#e5e7eb;--siab-neutral-300:#d1d5db;--siab-neutral-400:#9ca3af;--siab-neutral-500:#6b7280;--siab-neutral-600:#4b5563;--siab-neutral-700:#374151;--siab-neutral-800:#1f2937;--siab-neutral-900:#111827;--siab-neutral-950:#030712;--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-gray-950:#030712}`,
     `${providerSurfaceRoots}{background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))}`,
     `${providerSurfaceDescendants}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
     `${rootsAndDescendants(["bg-white\\/60"])}{background-color:color-mix(in oklab,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))) 60%,transparent)}`,
@@ -134,6 +144,7 @@ function providerThemeBridgeRules(
     `${rootsAndDescendants(["bg-gray-200"])}{background-color:var(--siab-neutral-200,#e5e7eb)}`,
     `${rootsAndDescendants(["bg-gray-900"])}{background-color:#111827}`,
     `${rootsAndDescendants(["hover\\:bg-gray-700"], ":hover")}{background-color:#374151}`,
+    `${fixedDarkTextWhiteSelectors},${rootsAndDescendants(["bg-gray-900.text-white"])}{color:#ffffff}`,
     `${classToken("bg-white/5")}{background-color:rgb(255 255 255 / 0.05)}`,
     `${providerRootSelectors.map((selector) => `${selector} .flex.bg-white :is(input,select)`).join(",")}{background-color:transparent}`,
     `${rootsAndDescendants(["text-gray-950"])}{color:var(--siab-neutral-950,var(--color-ink,#030712))}`,
@@ -159,11 +170,14 @@ function providerThemeBridgeRules(
     `${rootsAndDescendants(["hover\\:bg-indigo-400"], ":hover")}{background-color:var(--siab-accent-400,#818cf8)}`,
     `${rootsAndDescendants(["has-checked\\:bg-indigo-600"], ":has(:checked)")}{background-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${rootsAndDescendants(["outline-indigo-600", "focus\\:outline-indigo-500", "focus-visible\\:outline-indigo-500"])}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${classToken("has-[input:focus-within]:outline-indigo-600")}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${rootsAndDescendants(["focus\\:ring-indigo-600"], ":focus")}{--tw-ring-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${rootsAndDescendants(["focus\\:outline-indigo-600"], ":focus")}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${rootsAndDescendants(["focus-visible\\:outline-indigo-600"], ":focus-visible")}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
-    `${descendants(["bg-indigo-700", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"].flatMap((bg) => ["text-white"].map((text) => `${bg}.${text}`)))}{color:var(--color-on-accent,#ffffff)}`,
-    `${rootsAndDescendants(["bg-indigo-500.text-white", "bg-indigo-400.text-white"])}{color:#000000}`,
+    `${rootsAndDescendants(["bg-indigo-700.text-white", "bg-indigo-600.text-white"])}{color:var(--color-on-accent,#ffffff)}`,
+    `${rootsAndDescendants(["bg-indigo-500.text-white"])}{color:var(--color-on-accent-500,var(--color-on-accent,#ffffff))}`,
+    `${rootsAndDescendants(["bg-indigo-400.text-white"])}{color:var(--color-on-accent-400,var(--color-on-accent,#ffffff))}`,
+    `${providerRootSelectors.map((selector) => `${selector} input[type="checkbox"].text-indigo-600`).join(",")}{accent-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${descendant("ring-gray-900\\/10")},${descendant("-ring-gray-900\\/5")},${descendant("ring-gray-900\\/5")},${descendant("inset-ring-gray-900\\/5")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 10%,transparent)}`,
     `${descendant("hover\\:ring-gray-900\\/20", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 20%,transparent)}`,
     `${descendant("ring-gray-400\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink-muted,#64748b) 10%,transparent)}`,
@@ -184,6 +198,7 @@ function providerThemeBridgeRules(
     `${classTokens(["fill-gray-900"])}{fill:var(--siab-neutral-900,var(--color-ink,#111827))}`,
     `${classTokens(["from-[#ff80b5]", "from-[#ff4694]"])}{--tw-gradient-from:var(--siab-accent-300,#a5b4fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
     `${classTokens(["to-[#9089fc]", "to-[#776fff]"])}{--tw-gradient-to:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-indigo-100),var(--color-tailwindplus-surface,var(--color-bg,#ffffff)))}`,
     `${providerRootSelectors.map((selector) => `${selector}[data-provider-variant="tailwindplus.marketing.logo-cloud.simple-with-heading"] img[src*="-logo-gray-900.svg"]`).join(",")}{filter:var(--tailwindplus-logo-filter,none)}`,
   )
   if (options.fonts) rules.push(
@@ -217,6 +232,8 @@ export function themeToCssVars(
   const writeMode = (parts: string[], mode: typeof resolved.light) => {
     set(parts, "--color-accent", mode.accent[600])
     set(parts, "--color-on-accent", mode.onAccent)
+    set(parts, "--color-on-accent-500", onAccentColor(undefined, mode.accent[500]))
+    set(parts, "--color-on-accent-400", onAccentColor(undefined, mode.accent[400]))
     set(parts, "--color-bg", mode.surface)
     set(parts, "--color-ink", mode.ink)
     set(parts, "--color-ink-muted", mode.muted)

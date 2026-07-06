@@ -388,6 +388,7 @@ describe("provider block runtime", () => {
   })
 
   it("keeps the Tailwind Plus contact layout tied to source field roles", () => {
+    const sourceFixtureHtml = rendererParityFixtureFor("packages/site-renderer/src/source-blocks/tailwindplus/marketing/contact/centered")
     const shuffled = {
       ...tailwindPlusMarketingContactCenteredDemoSlots,
       fields: [
@@ -411,7 +412,10 @@ describe("provider block runtime", () => {
     }
 
     const html = renderToStaticMarkup(<BlockRenderer block={shuffled} index={0} />)
+    const exactSourceHtml = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingContactCenteredDemoSlots} index={0} />)
 
+    expect(sourceFixtureHtml).toContain("group relative inline-flex w-8 shrink-0 rounded-full bg-gray-200")
+    expect(sourceFixtureHtml).toContain("absolute inset-0 size-full appearance-none focus:outline-hidden")
     expect(validateProviderBlockInstance(shuffled).map((issue) => issue.path.join("."))).toContain("fields")
     expect(html.indexOf('name="first-name"')).toBeLessThan(html.indexOf('name="last-name"'))
     expect(html.indexOf('name="last-name"')).toBeLessThan(html.indexOf('name="company"'))
@@ -423,6 +427,12 @@ describe("provider block runtime", () => {
     expect(html).toContain('name="tenantId"')
     expect(html).toContain('class="hidden"')
     expect(html).toContain('name="company_website"')
+    expect(exactSourceHtml).toContain("group relative inline-flex w-8 shrink-0 rounded-full bg-gray-200")
+    expect(exactSourceHtml).toContain('type="checkbox"')
+    expect(exactSourceHtml).toContain('name="agree-to-policies"')
+    expect(exactSourceHtml).toContain("absolute inset-0 size-full appearance-none focus:outline-hidden")
+    expect(exactSourceHtml.match(/type="checkbox"/g)).toHaveLength(1)
+    expect(exactSourceHtml).not.toContain("size-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600")
   })
 
   it("keeps testimonial optional media and role absence visually honest", () => {
