@@ -55,6 +55,24 @@ The active V1 provider runtime is intentionally narrow:
 - active system fallback:
   `tailwindplus.marketing.feedback.404-simple` for known-host missing pages.
 
+Current verification status as of 2026-07-06:
+
+- Runtime/unit provider coverage passed for the active block/chrome/template
+  registries: source hashes, upstream class coverage, fail-closed behavior,
+  catalog lockstep, inactive slot validation, CSS isolation, generation scope,
+  and intake mock generation all passed in the focused CMS unit suite.
+- The provider visual parity gate is not fully green. `pnpm
+  provider:visual-parity` builds the renderer cleanly but currently fails two
+  mobile-only screenshot height comparisons:
+  `tailwindplus.marketing.content.sticky-product-screenshot` renders 24px taller
+  than the approved source fixture, and
+  `tailwindplus.marketing.bento.three-column-bento-grid` renders 24px taller
+  than the approved source fixture.
+- The generic intake smoke fixture exercises the broad homepage set plus active
+  Tailwind Plus header and banner chrome, but it does not exercise
+  `tailwindplus.marketing.hero.with-stats` or the known-tenant 404 template.
+  Treat it as broad smoke coverage, not complete provider inventory coverage.
+
 Historical adapted Tailwind Plus variants, Preline, Tailblocks, SIAB-owned
 generic visual variants, and locked provider examples remain inactive for
 self-serve generation.
@@ -311,7 +329,9 @@ Current active runtime families and blocks:
 Current active provider chrome:
 
 - `tailwindplus.marketing.header.with-stacked-flyout-menu` renders global
-  header chrome from structured site settings and `navHeader`.
+  header chrome from structured site settings and `navHeader`. The upstream
+  source uses Tailwind Plus Elements popover behavior; SIAB's current renderer is
+  a structured CSS-only adaptation, so full interaction parity remains open.
 - `tailwindplus.marketing.banner.with-button` renders global banner chrome from
   `SiteSettings.chrome.banner`. It is not a page block and is not exposed in
   `SITE_BLOCK_SLUGS`.
@@ -358,7 +378,10 @@ active source-backed block/chrome/system-template variant against its approved
 source fixture at desktop and mobile widths, and fails if the pixel delta
 exceeds the provider threshold or if any active provider registry entry lacks a
 visual case. This gate is provider-scoped; it is not a broad page-level visual
-regression suite.
+regression suite. As of 2026-07-06 this gate fails for the mobile screenshots of
+`tailwindplus.marketing.content.sticky-product-screenshot` and
+`tailwindplus.marketing.bento.three-column-bento-grid`; those deltas must be
+fixed before claiming full Tailwind Plus visual parity.
 
 ## Current Tailwind Plus Inventory Notes
 

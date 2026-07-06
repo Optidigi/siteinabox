@@ -12,6 +12,7 @@ artifacts, and the provisional product app shell.
   `packages/site-renderer`.
 - Platform-owned images remain:
   - `ghcr.io/optidigi/siteinabox-cms`
+  - `ghcr.io/optidigi/siteinabox-intake`
   - `ghcr.io/optidigi/siteinabox-site`
   - `ghcr.io/optidigi/siteinabox-renderer`
 - VPS stack files remain under `/srv/saas/infra/stacks/siteinabox/`.

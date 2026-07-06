@@ -7,9 +7,11 @@ changing `CanvasBlockRenderer`, `CanvasSurface`, or site-renderer block output.
 ## Problem statement
 
 `CanvasSurface` uses `SitePageRenderer` for shell/chrome on Amicare and customer
-preview, but **editable** surfaces still render blocks through
-`CanvasBlockRenderer` and `src/components/editor/canvas/blocks/*`. The live
-renderer uses `BlockRenderer` / `AmicareBlock`. Two parallel DOM trees are the
+preview. Editable surfaces still dispatch through `CanvasBlockRenderer`, but
+active exact-source Tailwind Plus provider variants are now routed to
+`RendererCanvasBlockRenderer`, which calls the shared `BlockRenderer` with CMS
+edit-slot injectors. Generic fallback blocks and some tenant-specific
+compatibility paths still have separate editable DOM trees, so they remain the
 largest source of editor ↔ live visual drift.
 
 ## Current routing (authoritative)
@@ -23,6 +25,39 @@ largest source of editor ↔ live visual drift.
 
 Customer preview and read-only renderer iframe paths **must** keep using native
 renderer blocks. Do not reintroduce `CanvasBlockRenderer` on those paths.
+
+For active Tailwind Plus provider-backed page blocks, `CanvasBlockRenderer`
+MUST keep using `RendererCanvasBlockRenderer` and the shared
+`packages/site-renderer` provider renderer. Do not add a parallel
+provider-specific CMS canvas renderer unless the block is intentionally removed
+from provider-backed generation.
+
+## Current provider verification
+
+Current verified provider inventory is 15 active Tailwind Plus page-block
+variants, 2 provider chrome variants, and 1 known-tenant 404 system template.
+The active registry is executable source, not prose:
+`packages/site-renderer/src/source-blocks/registry.tsx`,
+`packages/site-renderer/src/source-chrome/registry.tsx`, and
+`packages/site-renderer/src/source-templates/registry.tsx`.
+
+Verification on 2026-07-06:
+
+- `pnpm --dir apps/cms --ignore-workspace test tests/unit/provider-block-runtime.test.tsx tests/unit/provider-chrome-runtime.test.tsx tests/unit/provider-system-template-runtime.test.tsx tests/unit/generation-blocks-variant-resolution.test.tsx tests/unit/page-block-variant-scope.test.ts tests/unit/intakeGenerationRun.test.ts`
+  passed: 6 files, 40 tests.
+- `pnpm provider:visual-parity` built `apps/renderer` successfully and ran the
+  Playwright pixel gate. It failed on two mobile-only height deltas:
+  `tailwindplus.marketing.content.sticky-product-screenshot` rendered
+  `390x1652` against source `390x1628`, and
+  `tailwindplus.marketing.bento.three-column-bento-grid` rendered `390x2285`
+  against source `390x2261`.
+- The measured deltas are current backlog, not accepted parity. They appear
+  consistent with rich-text block slots rendering extra block flow where the
+  Tailwind Plus source uses plain text nodes.
+- The Tailwind Plus header chrome is an active source-backed structured chrome
+  variant, but upstream Tailwind Plus Elements popover behavior is not fully
+  represented by the current CSS-only SIAB adaptation. Treat this as a chrome
+  interaction backlog item until implemented or explicitly scoped out.
 
 ## Parity contract (Tier 1)
 
@@ -74,9 +109,11 @@ into canvas block components via:
 
 ### Required migration shape (next architecture)
 
-1. **Extend `BlockRenderOptions`** in `packages/site-renderer` with optional
-   edit-slot injectors, e.g. `renderRichText`, `renderCta`, `renderImage`, each
-   receiving `{ value, onChange, elementPath, readOnly }`.
+1. **Continue extending `BlockRenderOptions`** in `packages/site-renderer` with
+   optional edit-slot injectors. `renderRichText`, `renderCta`, `renderImage`,
+   `renderIcon`, and `renderText` are active for provider-backed editable
+   rendering; add any new slot kinds there instead of building separate provider
+   canvas DOM.
 2. **Default path** — injectors absent → current read-only `RichTextRenderer` /
    static markup (live site + customer preview unchanged).
 3. **Canvas path** — `CanvasSurface` passes CMS injectors that delegate to
@@ -95,7 +132,7 @@ into canvas block components via:
 
 | Blocker | Why it blocks swap now |
 |---|---|
-| No edit-slot API on renderer blocks | Renderer components render static HTML only |
+| Incomplete edit-slot coverage on some non-provider/fallback paths | Provider blocks use renderer edit slots, but generic fallback and tenant-specific paths still need canvas-specific components |
 | Dual tenant-specific + generic render trees | Amicare DOM lives in `AmicarePage.tsx`, not shared `blocks/Hero.tsx` |
 | Field-level sidebar selection | Read-only sidebar still needs per-field `ElementPath`; native blocks have no selectable fields |
 | Array / dialog editing UX | Pills, FAQ items, themed nodes need canvas-specific controls |
