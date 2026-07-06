@@ -41,6 +41,7 @@ export const Pricing: BlockWithMeta = {
   description: "Structured pricing plans",
   interfaceName: "PricingBlock",
   fields: [
+    richInline("eyebrow", "Small label above the pricing heading."),
     richInline("title", "Section heading for the pricing plans."),
     richBlock("intro", "Introductory text above the pricing plans."),
     { name: "plans", type: "array", required: true, fields: [
@@ -180,6 +181,7 @@ export const ContentSection: BlockWithMeta = {
       richInline("title", "Feature title."),
       richBlock("description", "Feature description."),
     ]},
+    richBlock("bridge", "Bridge paragraph between the feature list and secondary heading."),
     richInline("secondaryTitle", "Secondary heading."),
     richBlock("secondaryBody", "Secondary body content."),
     { name: "image", type: "upload", relationTo: "media" },
@@ -223,6 +225,7 @@ export const BlogCards: BlockWithMeta = {
       { name: "href", type: "text", validate: validateSafeHref },
       { name: "date", type: "text" },
       { name: "author", type: "text" },
+      { name: "authorRole", type: "text" },
       { name: "cta", type: "group", fields: linkFields() },
     ]},
     ...blockBaseFields("updates"),

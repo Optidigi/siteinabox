@@ -378,6 +378,7 @@ export const HeroBlockSchema: z.ZodType<HeroBlock> = strictObject({
   headline: RtRootSchema,
   subheadline: RtFieldSchema.optional(),
   pills: z.array(strictObject({ label: z.string().min(1), id: nullableString })).optional(),
+  links: z.array(LinkRefSchema).nullable().optional(),
   cta: LinkRefSchema.nullable().optional(),
   secondary: LinkRefSchema.nullable().optional(),
   image: MediaRefSchema.optional(),
@@ -491,6 +492,7 @@ export const NewsletterBlockSchema: z.ZodType<NewsletterBlock> = strictObject({
 export const PricingBlockSchema: z.ZodType<PricingBlock> = strictObject({
   blockType: z.literal("pricing"),
   ...baseBlockShape,
+  eyebrow: RtFieldSchema.optional(),
   title: RtFieldSchema.optional(),
   intro: RtFieldSchema.optional(),
   plans: z
@@ -576,6 +578,7 @@ export const ContentSectionBlockSchema: z.ZodType<ContentSectionBlock> = strictO
     title: RtRootSchema,
     description: RtFieldSchema.optional(),
   })).nullable().optional(),
+  bridge: RtFieldSchema.optional(),
   secondaryTitle: RtFieldSchema.optional(),
   secondaryBody: RtFieldSchema.optional(),
   image: MediaRefSchema.optional(),
@@ -610,6 +613,7 @@ export const BlogCardsBlockSchema: z.ZodType<BlogCardsBlock> = strictObject({
       href: nullableString,
       date: nullableString,
       author: nullableString,
+      authorRole: nullableString,
       cta: LinkRefSchema.nullable().optional(),
     }))
     .min(1),
@@ -728,7 +732,8 @@ function addForbiddenGeneratedPayloadIssues(
   }
 }
 
-export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = strictObject({
+const ThemeTokenSpecV1Schema = strictObject({
+  version: z.literal(1).optional(),
   colors: strictObject({
     accent: cssColorSchema.optional(),
     onAccent: cssColorSchema.optional(),
@@ -761,6 +766,79 @@ export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = strictObject({
   borderStyle: z.enum(["solid", "dashed", "none"]).optional(),
   mode: z.enum(["light", "dark"]).optional(),
 })
+
+const ColorRampSchema = strictObject({
+  50: cssColorSchema,
+  100: cssColorSchema,
+  200: cssColorSchema,
+  300: cssColorSchema,
+  400: cssColorSchema,
+  500: cssColorSchema,
+  600: cssColorSchema,
+  700: cssColorSchema,
+  800: cssColorSchema,
+  900: cssColorSchema,
+  950: cssColorSchema.optional(),
+})
+
+const ProviderColorSchemeModeSchema = strictObject({
+  neutral: ColorRampSchema,
+  accent: ColorRampSchema,
+  surface: cssColorSchema,
+  ink: cssColorSchema,
+  muted: cssColorSchema,
+  rule: cssColorSchema,
+  onAccent: cssColorSchema,
+})
+
+const ProviderColorSchemeSchema = strictObject({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  source: z.enum(["tailwind", "siab", "custom"]),
+  light: ProviderColorSchemeModeSchema,
+  dark: ProviderColorSchemeModeSchema,
+})
+
+const FontSchemeSchema = strictObject({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  source: z.enum(["tailwind", "system", "custom"]),
+  roles: strictObject({
+    body: z.string().min(1),
+    heading: z.string().min(1),
+    display: z.string().min(1).optional(),
+    mono: z.string().min(1).optional(),
+  }),
+})
+
+const ThemeTokenSpecV2Schema = strictObject({
+  version: z.literal(2),
+  appearance: strictObject({
+    mode: z.enum(["light", "dark", "system"]),
+    defaultMode: z.enum(["light", "dark"]).optional(),
+  }).optional(),
+  colors: strictObject({
+    schemeId: z.string().min(1),
+    lightSchemeId: z.string().min(1).optional(),
+    darkSchemeId: z.string().min(1).optional(),
+    custom: ProviderColorSchemeSchema.optional(),
+  }).optional(),
+  fonts: strictObject({
+    schemeId: z.string().min(1),
+    custom: FontSchemeSchema.optional(),
+  }).optional(),
+  density: strictObject({
+    schemeId: z.string().min(1),
+  }).optional(),
+  shape: strictObject({
+    schemeId: z.string().min(1),
+  }).optional(),
+})
+
+export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = z.union([
+  ThemeTokenSpecV2Schema,
+  ThemeTokenSpecV1Schema,
+])
 
 const FooterCompositionLinkSchema = LinkRefSchema
 const FooterCompositionItemSchema = strictObject({

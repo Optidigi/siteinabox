@@ -521,10 +521,10 @@ describe("applySiteGenerationSpec", () => {
     spec.theme = {
       ...spec.theme,
       colors: {
-        ...spec.theme.colors,
+        ...(spec.theme as any).colors,
         accent: "not-a-color",
       },
-    }
+    } as any
 
     const result = await applySiteGenerationSpec(payload, spec)
 

@@ -232,6 +232,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
           title: inlineText("Content en screenshot blijven gestructureerd"),
           intro: blockText("De sticky contentsectie gebruikt vaste Tailwind Plus layout en vult alleen goedgekeurde CMS-slots."),
           body: blockText("SiaB bewaart de tekst, screenshot en drie feature-rijen als data. De providerbron bepaalt de sticky positie, spacing, achtergrond en responsive framing."),
+          bridge: blockText("Deze tussenparagraaf blijft een expliciet CMS-slot, zodat de bronlayout compleet blijft zonder vrije layoutvelden."),
           image: {
             url: "https://tailwindcss.com/plus-assets/img/component-images/dark-project-app-screenshot.png",
             alt: "Preview workflow screenshot",
@@ -318,6 +319,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
           blockType: "pricing",
           designVariant: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
           anchor: "pricing",
+          eyebrow: inlineText("Prijzen"),
           title: inlineText("Kies het pakket dat bij je lancering past"),
           intro: blockText("Twee duidelijke opties houden de Tailwind Plus bronlayout intact en blijven volledig bewerkbaar in het CMS."),
           plans: [
@@ -405,6 +407,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
               href: "/blog/bewerkbare-providerblokken",
               date: "Jul 5, 2026",
               author: "Sanne de Vries",
+              authorRole: "Content strategist",
               cta: { label: "CMS", href: "/blog" },
               image: {
                 url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
@@ -419,6 +422,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
               href: "/blog/canonical-provider-ids",
               date: "Jul 5, 2026",
               author: "Milan Bakker",
+              authorRole: "Frontend engineer",
               cta: { label: "Runtime", href: "/blog" },
               image: {
                 url: "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
@@ -433,6 +437,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
               href: "/blog/intake-preview",
               date: "Jul 5, 2026",
               author: "Nora Jansen",
+              authorRole: "CMS editor",
               cta: { label: "Intake", href: "/blog" },
               image: {
                 url: "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
@@ -601,6 +606,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
       label: "Logo cloud",
       defaultAnchor: "partners",
       fields: [
+        { name: "eyebrow", label: "Eyebrow", kind: "richtext", variant: "inline", role: "script" },
         { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
         {
           name: "logos",
@@ -686,6 +692,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
             { name: "href", label: "Href", kind: "text" },
             { name: "date", label: "Date", kind: "text" },
             { name: "author", label: "Author", kind: "text" },
+            { name: "authorRole", label: "Author role", kind: "text" },
             { name: "cta", label: "Category", kind: "cta" },
             { name: "image", label: "Author image", kind: "image" },
           ],
@@ -721,6 +728,7 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
         { name: "intro", label: "Intro", kind: "richtext", variant: "block", role: "text" },
         { name: "body", label: "Body", kind: "richtext", variant: "block", role: "text" },
+        { name: "bridge", label: "Bridge paragraph", kind: "richtext", variant: "block", role: "text" },
         { name: "image", label: "Image", kind: "image" },
         {
           name: "features",

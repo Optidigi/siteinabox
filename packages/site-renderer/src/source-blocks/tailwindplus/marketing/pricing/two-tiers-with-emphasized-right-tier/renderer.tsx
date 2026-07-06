@@ -56,7 +56,19 @@ export function TailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierRende
         />
       </div>
       <div className="mx-auto max-w-4xl text-center">
-        <h2 className="text-base/7 font-semibold text-indigo-600">Pricing</h2>
+        {(block.eyebrow || slots?.renderRichText) && (
+          <h2 className="text-base/7 font-semibold text-indigo-600">
+            {richTextSlot({
+              options,
+              name: "pricing.eyebrow",
+              value: block.eyebrow,
+              variant: "inline",
+              className: "contents",
+              elementPath: { blockIndex: options.index, field: "eyebrow" },
+              blockMode: "inline",
+            })}
+          </h2>
+        )}
         <p className="mt-2 text-5xl font-semibold tracking-tight text-balance text-gray-900 sm:text-6xl">
           {richTextSlot({
             options,
@@ -89,6 +101,7 @@ export function TailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierRende
           return (
             <div
               key={index}
+              data-theme-zone={emphasized ? "fixed-dark" : "ambient"}
               className={emphasized
                 ? "relative rounded-3xl bg-gray-900 p-8 shadow-2xl ring-1 ring-gray-900/10 sm:p-10"
                 : "rounded-3xl rounded-t-3xl bg-white/60 p-8 ring-1 ring-gray-900/10 sm:mx-8 sm:rounded-b-none sm:p-10 lg:mx-0 lg:rounded-tr-none lg:rounded-bl-3xl"}

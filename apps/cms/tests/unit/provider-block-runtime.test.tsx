@@ -289,6 +289,13 @@ describe("provider block runtime", () => {
   it("rejects inactive slots and exact provider repeater violations", () => {
     const issues = [
       ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingHeroWithStatsDemoSlots,
+        links: tailwindPlusMarketingHeroWithStatsDemoSlots.links?.slice(0, 3),
+        cta: { label: "Hidden primary", href: "/hidden" },
+        secondary: { label: "Hidden secondary", href: "/hidden-secondary" },
+        pills: [{ label: "Not in this provider source" }],
+      }),
+      ...validateProviderBlockInstance({
         ...tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
         pills: [{ label: "Not in this provider source" }],
         image: { url: "/demo.png", alt: "Demo" },
@@ -369,7 +376,28 @@ describe("provider block runtime", () => {
       "items",
       "cta",
       "posts",
+      "links",
+      "cta",
+      "secondary",
     ]))
+  })
+
+  it("keeps fixed Tailwind Plus content slots separate and complete", () => {
+    const blogHtml = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingBlogThreeColumnDemoSlots} index={0} />)
+    expect(blogHtml).toContain("Marketing")
+    expect(blogHtml).toContain("Co-Founder / CTO")
+    expect(blogHtml).toContain("Sales")
+    expect(blogHtml).toContain("Front-end Developer")
+
+    const heroHtml = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingHeroWithStatsDemoSlots} index={0} />)
+    expect(heroHtml).toContain("Open roles")
+    expect(heroHtml).toContain("Internship program")
+    expect(heroHtml).toContain("Our values")
+    expect(heroHtml).toContain("Meet our leadership")
+    expect(validateProviderBlockInstance(tailwindPlusMarketingHeroWithStatsDemoSlots)).toEqual([])
+
+    const contentHtml = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingContentStickyProductScreenshotDemoSlots} index={0} />)
+    expect(contentHtml).toContain("Et vitae blandit facilisi magna lacus commodo")
   })
 
   it("renders every active provider component with upstream Tailwind class parity", () => {
@@ -509,21 +537,21 @@ describe("provider block runtime", () => {
 
     expect(css).toContain("--color-indigo-600:#2563eb")
     expect(css).toContain("--color-indigo-500:#2563eb")
-    expect(css).toContain("--color-indigo-100:color-mix(in oklab, #2563eb 8%, white)")
+    expect(css).toContain("--siab-accent-100:#2563eb")
     expect(css).toContain("--color-tailwindplus-surface:#ffffff")
     expect(css).not.toContain("--color-white:")
-    expect(css).not.toContain("--color-gray-900:")
-    expect(css).not.toContain("--color-gray-500:")
+    expect(css).toContain("--color-gray-900:#111827")
+    expect(css).toContain("--color-gray-500:#6b7280")
     expect(css).toContain(".text-gray-900")
-    expect(css).toContain("color:var(--color-ink,#111827)")
+    expect(css).toContain("color:var(--siab-neutral-900,var(--color-ink,#111827))")
     expect(css).toContain(".text-gray-600")
-    expect(css).toContain("color:var(--color-ink-muted,#64748b)")
+    expect(css).toContain("color:var(--siab-neutral-600,var(--color-ink-muted,#4b5563))")
     expect(css).toContain(".bg-gray-50")
     expect(css).toContain("background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))")
     expect(css).toContain("--font-sans:Inter")
     expect(css).toContain("--radius-md:0.375rem")
-    expect(css).toContain("--radius-3xl:1.875rem")
-    expect(css).toContain("--radius-4xl:2.375rem")
+    expect(css).toContain("--radius-3xl:0.375rem")
+    expect(css).toContain("--radius-full:9999px")
   })
 
   it("bridges Tailwind Plus source surface classes without remapping text-white", () => {
@@ -547,11 +575,12 @@ describe("provider block runtime", () => {
 
     expect(css).not.toContain("--color-white:")
     expect(css).not.toContain("--color-white:#fff7f7")
-    expect(css).not.toContain("--color-gray-900:#fee2e2")
+    expect(css).toContain("--color-gray-900:#111827")
     expect(css).toContain(':where([data-provider-block="tailwindplus"].bg-white)')
     expect(css).toContain('background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))')
     expect(css).toContain(':where([data-provider-chrome="tailwindplus"]).bg-gray-50')
     expect(css).toContain('.rt-canvas[data-rt-mode="dark"]{')
     expect(css).toContain("--color-tailwindplus-surface:#1f0a0a")
+    expect(css).toContain('data-theme-zone="fixed-dark"')
   })
 })

@@ -29,6 +29,11 @@
       "import": "./src/theme/css-vars.ts",
       "default": "./src/theme/css-vars.ts"
     },
+    "./theme/resolve": {
+      "types": "./src/theme/resolve.ts",
+      "import": "./src/theme/resolve.ts",
+      "default": "./src/theme/resolve.ts"
+    },
     "./source-blocks": {
       "types": "./src/source-blocks/index.ts",
       "import": "./src/source-blocks/index.ts",

@@ -41,22 +41,19 @@ The active registry is executable source, not prose:
 `packages/site-renderer/src/source-chrome/registry.tsx`, and
 `packages/site-renderer/src/source-templates/registry.tsx`.
 
-Verification on 2026-07-06:
+Verification gates:
 
 - `pnpm --dir apps/cms --ignore-workspace test tests/unit/provider-block-runtime.test.tsx tests/unit/provider-chrome-runtime.test.tsx tests/unit/provider-system-template-runtime.test.tsx tests/unit/generation-blocks-variant-resolution.test.tsx tests/unit/page-block-variant-scope.test.ts tests/unit/intakeGenerationRun.test.ts`
-  passed: 6 files, 40 tests.
-- `pnpm provider:visual-parity` built `apps/renderer` successfully and passed
-  for all 18 active provider variants across desktop and mobile. The previous
-  mobile-only height deltas for
-  `tailwindplus.marketing.content.sticky-product-screenshot` and
-  `tailwindplus.marketing.bento.three-column-bento-grid` were resolved by
-  aligning provider demo/fallback image `alt` values with the decorative
-  upstream fixtures and by rendering plain-text source slots in text mode where
-  the Tailwind Plus source uses text nodes.
+  covers provider runtime/chrome/template registration and fail-closed behavior.
+- `pnpm provider:visual-parity` builds `apps/renderer` and compares active
+  provider variants across desktop and mobile. Exact-source variants must not
+  pass by stripping source-visible content through `sourceTransform` masks.
 - The Tailwind Plus header chrome is an active source-backed structured chrome
   variant, but upstream Tailwind Plus Elements popover behavior is not fully
-  represented by the current CSS-only SIAB adaptation. Treat this as a chrome
-  interaction backlog item until implemented or explicitly scoped out.
+  represented by the current SIAB renderer. The supported scope is
+  static/closed-state chrome plus CSS-only mobile disclosure. Treat full stacked
+  flyout interaction as a chrome backlog item until implemented with schema,
+  hydration, accessibility, and open-state parity tests.
 
 ## Parity contract (Tier 1)
 
@@ -83,12 +80,14 @@ Verification on 2026-07-06:
 5. **Canvas-only attributes** — `data-active`, editor gutters, and gap overlays
    are CMS-only. Renderer output MUST NOT depend on them; tenant CSS MUST NOT
    target them.
-6. **Theme tokens** — Both surfaces consume global theme tokens per
-   `rt-dom-contract.md § Theme tokens`. Hard-coded colours, fonts, radius values,
-   per-block visual tokens, arbitrary spacing values, class payloads, or provider token
-   overrides in either tree are defects. The global theme toolbar owns fonts,
-   colors, shape, radius, border style, and mode; the theme schema also carries
-   coarse density/rhythm where renderer rules explicitly support it.
+6. **Theme tokens** — Both surfaces consume global ThemeTokenSpec V2 values per
+   `rt-dom-contract.md § Theme tokens`. Missing themes resolve to
+   `tailwind-default`. Hard-coded colours, fonts, radius values, per-block
+   visual tokens, arbitrary spacing values, class payloads, arbitrary CSS, or
+   provider token overrides in either tree are defects. The global theme toolbar
+   owns approved color schemes, light/dark/system mode, font schemes, density,
+   and shape/radius. Density is limited to section/composition rhythm. Provider
+   classes and DOM remain renderer-owned.
 7. **Variant selection** — Generic self-serve generation currently exposes only
    approved exact-source Tailwind Plus Marketing provider-backed block
    `designVariant` IDs from the executable source-block registry. Analytics metadata is not a design-selection API.

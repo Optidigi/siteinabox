@@ -34,6 +34,13 @@ export const Hero: BlockWithMeta = {
         { name: "label", type: "text", required: true }
       ]
     },
+    { name: "links", type: "array",
+      admin: { description: "Fixed provider-backed hero text links for source variants that include a link row." },
+      fields: [
+        { name: "label", type: "text", required: true },
+        { name: "href", type: "text", validate: validateSafeHref, required: true },
+      ]
+    },
     { name: "cta", type: "group", fields: [
       { name: "label", type: "text" },
       { name: "href", type: "text", validate: validateSafeHref }

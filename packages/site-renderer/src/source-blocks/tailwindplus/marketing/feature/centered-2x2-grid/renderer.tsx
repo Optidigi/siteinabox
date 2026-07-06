@@ -61,7 +61,19 @@ export function TailwindPlusMarketingFeatureCentered2x2GridRenderer({
     <section {...sectionProps}>
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:text-center">
-          <h2 className="text-base/7 font-semibold text-indigo-600">Deploy faster</h2>
+          {(block.eyebrow || slots?.renderRichText) && (
+            <h2 className="text-base/7 font-semibold text-indigo-600">
+              {richTextSlot({
+                options,
+                name: "featureList.eyebrow",
+                value: block.eyebrow,
+                variant: "inline",
+                className: "contents",
+                elementPath: { blockIndex: options.index, field: "eyebrow" },
+                blockMode: "inline",
+              })}
+            </h2>
+          )}
           <p className="mt-2 text-4xl font-semibold tracking-tight text-pretty text-gray-900 sm:text-5xl lg:text-balance">
             {richTextSlot({
               options,

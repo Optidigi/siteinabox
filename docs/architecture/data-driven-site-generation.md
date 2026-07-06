@@ -13,7 +13,8 @@ New generated sites must be represented as validated structured data:
 - domain and routing metadata
 - site settings and navigation
 - page records and block data
-- theme tokens and style presets
+- global ThemeTokenSpec V2 selections and typed token values where validation is
+  complete
 - SEO metadata and analytics metadata
 - publish state and published site snapshots
 
@@ -34,8 +35,8 @@ Generation must not create:
 AI-assisted generation, when implemented, must output a validated
 `SiteGenerationSpec` or equivalent contract data. That data is applied to CMS
 draft tenant/site/page/theme/SEO records and later published as a snapshot.
-AI output must not include raw HTML, arbitrary class strings, file paths, source
-code, workflows, or executable code.
+AI output must not include raw HTML, arbitrary class strings, arbitrary CSS,
+file paths, source code, workflows, layout instructions, or executable code.
 
 ## Repo Roles
 
@@ -159,6 +160,22 @@ Projected analytics stores the selected `designVariant` as `providerVariant`
 and emits it to PostHog section/action context for provider-variant performance
 analysis.
 
+ThemeTokenSpec V2 is the generated-site theme contract. It supports:
+
+- `appearance.mode`: `light`, `dark`, or `system`;
+- approved color scheme IDs, with complete custom schemes only when validation
+  covers the full neutral/accent ramp and role tokens;
+- approved font scheme IDs;
+- approved density scheme IDs;
+- approved shape/radius scheme IDs.
+
+Missing theme data resolves to `tailwind-default`. Default parity means
+`tailwind-default` plus light mode, default fonts, default density, and default
+shape should reproduce upstream Tailwind Plus behavior as closely as the
+source-backed renderer allows. Themed parity may differ visually only through
+approved CSS variable outputs. Generation and CMS must not use theme data to
+change provider DOM, classes, item counts, responsive rules, or layout.
+
 Header, footer, and banner remain global chrome under `SiteSettings.chrome` plus
 `navHeader`/`navFooter`; they are not page blocks. Self-serve generation exposes
 the default structured chrome variants plus the active Tailwind Plus Marketing
@@ -168,6 +185,11 @@ banner chrome `tailwindplus.marketing.banner.with-button` through
 `SiteSettings.chrome.banner.variant`. Header and banner content remains
 structured site settings data: brand/site name, logo, header navigation, CTA,
 banner message/link, and dismissibility.
+
+The active Tailwind Plus header is static/closed-state chrome with CSS-only
+mobile disclosure; full Tailwind Plus stacked-flyout interactivity is not
+claimed. Banner `dismissible` is boolean behavior: a local CSS-only dismiss
+control is rendered only when the setting is true.
 
 404 output is system fallback behavior, not generated page content. Unknown
 hosts and missing snapshots use the platform/default 404. When a published
@@ -184,6 +206,20 @@ blocks that use upstream/source fallback imagery mark those media slots
 optional so publish validation does not depend on fetching arbitrary generated
 remote assets. Required provider slots are limited to the structured content
 and item counts needed to preserve the exact source layout.
+
+Current P0 exact-source content rules:
+
+- `tailwindplus.marketing.blog.three-column` uses a dedicated `authorRole`
+  field; category/CTA labels must not be reused as author subtitles.
+- `tailwindplus.marketing.hero.with-stats` requires exactly four structured
+  text links and exactly four stats. `cta`, `secondary`, and `pills` are
+  inactive for this variant.
+- `tailwindplus.marketing.content.sticky-product-screenshot` exposes the
+  source-visible bridge paragraph between the feature list and secondary
+  heading.
+- Visible content-bearing eyebrows in active exact variants are editable where
+  represented by the source-backed renderer; otherwise they must be explicitly
+  inactive and rejected rather than silently generated.
 
 Inactive source families and SIAB-owned generic visual variants are not
 generation inputs. Amicare variants are tenant-exclusive compatibility data for

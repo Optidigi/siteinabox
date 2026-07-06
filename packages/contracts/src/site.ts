@@ -100,6 +100,7 @@ export type HeroBlock = BlockInstanceBase & {
   headline: RtRoot
   subheadline?: RtRoot | null
   pills?: Array<{ label: string; id?: string | null }>
+  links?: LinkRef[] | null
   cta?: LinkRef | null
   secondary?: LinkRef | null
   image?: MediaRef
@@ -191,6 +192,7 @@ export type NewsletterBlock = BlockInstanceBase & {
 
 export type PricingBlock = BlockInstanceBase & {
   blockType: "pricing"
+  eyebrow?: RtRoot | null
   title?: RtRoot | null
   intro?: RtRoot | null
   plans: Array<{
@@ -263,6 +265,7 @@ export type ContentSectionBlock = BlockInstanceBase & {
     description?: RtRoot | null
     icon?: string | null
   }> | null
+  bridge?: RtRoot | null
   secondaryTitle?: RtRoot | null
   secondaryBody?: RtRoot | null
   image?: MediaRef
@@ -293,6 +296,7 @@ export type BlogCardsBlock = BlockInstanceBase & {
     href?: string | null
     date?: string | null
     author?: string | null
+    authorRole?: string | null
     cta?: LinkRef | null
   }>
 }

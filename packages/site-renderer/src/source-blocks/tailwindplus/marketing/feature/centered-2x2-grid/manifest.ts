@@ -19,8 +19,8 @@ export const tailwindPlusMarketingFeatureCentered2x2GridProviderBlock = definePr
   slots: {
     eyebrow: {
       kind: "richtext",
-      status: "inactive",
-      exposed: false,
+      status: "optional",
+      exposed: true,
       sourceField: "eyebrow",
     },
     title: {

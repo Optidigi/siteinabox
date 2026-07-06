@@ -80,10 +80,15 @@ describe("site generation catalog governance", () => {
         legacyDesignVariant: "tailwindPlusHeroWithStats",
         providerVariantId: "tailwindplus.marketing.hero.with-stats",
         slots: expect.objectContaining({
+          links: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 4, maxItems: 4 }),
+          linkLabel: expect.objectContaining({ status: "required", exposed: true }),
+          linkHref: expect.objectContaining({ status: "required", exposed: true }),
           stats: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 4, maxItems: 4 }),
           statValue: expect.objectContaining({ status: "required", exposed: true }),
           statLabel: expect.objectContaining({ status: "required", exposed: true }),
           eyebrow: expect.objectContaining({ status: "inactive", exposed: false }),
+          cta: expect.objectContaining({ status: "inactive", exposed: false }),
+          secondary: expect.objectContaining({ status: "inactive", exposed: false }),
         }),
       }),
       expect.objectContaining({
@@ -116,7 +121,7 @@ describe("site generation catalog governance", () => {
         legacyDesignVariant: "tailwindPlusCentered2x2",
         providerVariantId: "tailwindplus.marketing.feature.centered-2x2-grid",
         slots: expect.objectContaining({
-          eyebrow: expect.objectContaining({ status: "inactive", exposed: false }),
+          eyebrow: expect.objectContaining({ status: "optional", exposed: true }),
           image: expect.objectContaining({ status: "inactive", exposed: false }),
           features: expect.objectContaining({ kind: "repeater", status: "required", exposed: true }),
         }),
@@ -476,7 +481,7 @@ describe("site generation catalog governance", () => {
     expect(testimonialsSchema.properties.items.maxItems).toBe(1)
     expect(testimonialsSchema.properties.items.items.required).toEqual(["quote", "author", "role"])
     expect(pricingSchema.additionalProperties).toBe(false)
-    expect(pricingSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "plans"])
+    expect(pricingSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "plans"])
     expect(pricingSchema.properties.designVariant.enum).toEqual([
       "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
     ])
@@ -516,7 +521,7 @@ describe("site generation catalog governance", () => {
     expect(bentoGridSchema.properties).not.toHaveProperty("layout")
     expect(bentoGridSchema.properties).not.toHaveProperty("className")
     expect(contentSectionSchema.additionalProperties).toBe(false)
-    expect(contentSectionSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "secondaryTitle", "secondaryBody"])
+    expect(contentSectionSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "bridge", "secondaryTitle", "secondaryBody"])
     expect(contentSectionSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.content.sticky-product-screenshot"])
     expect(contentSectionSchema.properties.features.minItems).toBe(3)
     expect(contentSectionSchema.properties.features.maxItems).toBe(3)
@@ -528,6 +533,7 @@ describe("site generation catalog governance", () => {
     expect(blogCardsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.blog.three-column"])
     expect(blogCardsSchema.properties.posts.minItems).toBe(3)
     expect(blogCardsSchema.properties.posts.maxItems).toBe(3)
+    expect(blogCardsSchema.properties.posts.items.required).toContain("authorRole")
     expect(blogCardsSchema.properties).not.toHaveProperty("rawHtml")
     expect(schemaBlockTypes).not.toEqual(expect.arrayContaining(["faq", "processSteps", "comparison"]))
     expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)

@@ -19,6 +19,7 @@ export const tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierProvider
     rendererClassName: "cms-block--source-tailwindplus-pricing-two-tiers-with-emphasized-right-tier",
     renderer: TailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierRenderer,
     slots: {
+      eyebrow: { kind: "richtext", status: "optional", exposed: true, sourceField: "eyebrow" },
       title: { kind: "richtext", status: "required", exposed: true, sourceField: "title" },
       intro: { kind: "richtext", status: "optional", exposed: true, sourceField: "intro" },
       plans: {

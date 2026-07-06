@@ -23,7 +23,7 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
   options: BlockRenderOptions
 }) {
   const image = resolveMedia(block.image ?? defaultImage, options.mediaResolver)
-  const links = [block.cta, block.secondary, ...(block.pills ?? []).map((pill) => ({ label: pill.label, href: "#" }))].slice(0, 4)
+  const links = (block.links ?? []).slice(0, 4)
   const stats = (block.stats ?? []).slice(0, 4)
 
   const sectionProps = mergeRendererSectionAttributes(
@@ -32,6 +32,7 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
       className: "relative isolate overflow-hidden bg-gray-900 py-24 sm:py-32 cms-block cms-block--hero cms-block--source-tailwindplus-hero-with-stats",
       "data-provider-block": "tailwindplus",
       "data-provider-variant": "tailwindplus.marketing.hero.with-stats",
+      "data-theme-zone": "fixed-dark",
       "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.hero.with-stats",
       "data-block-index": options.index,

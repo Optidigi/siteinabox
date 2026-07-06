@@ -253,7 +253,8 @@ export type ThemeColorRole =
 export type ThemeFontRole = "title" | "heading" | "text" | "script"
 export type ThemeDensity = "compact" | "comfortable" | "spacious"
 
-export type ThemeTokenSpec = {
+export type ThemeTokenSpecV1 = {
+  version?: 1
   colors?: Partial<Record<ThemeColorRole, string>>
   darkColors?: Partial<Record<ThemeColorRole, string>>
   fonts?: Partial<Record<ThemeFontRole, string>>
@@ -263,6 +264,106 @@ export type ThemeTokenSpec = {
   borderStyle?: "solid" | "dashed" | "none"
   mode?: "light" | "dark"
 }
+
+export type ThemeModeV2 = "light" | "dark" | "system"
+export type ThemeSchemeSource = "tailwind" | "siab" | "custom"
+export type FontSchemeSource = "tailwind" | "system" | "custom"
+
+export type ColorRamp = {
+  50: string
+  100: string
+  200: string
+  300: string
+  400: string
+  500: string
+  600: string
+  700: string
+  800: string
+  900: string
+  950?: string
+}
+
+export type ProviderColorSchemeMode = {
+  neutral: ColorRamp
+  accent: ColorRamp
+  surface: string
+  ink: string
+  muted: string
+  rule: string
+  onAccent: string
+}
+
+export type ProviderColorScheme = {
+  id: string
+  label: string
+  source: ThemeSchemeSource
+  light: ProviderColorSchemeMode
+  dark: ProviderColorSchemeMode
+}
+
+export type FontScheme = {
+  id: string
+  label: string
+  source: FontSchemeSource
+  roles: {
+    body: string
+    heading: string
+    display?: string
+    mono?: string
+  }
+}
+
+export type DensityScheme = {
+  id: string
+  label: string
+  sectionPaddingY: {
+    base: string
+    sm?: string
+    lg?: string
+  }
+  interBlockGap: string
+}
+
+export type ShapeScheme = {
+  id: string
+  label: string
+  radius: {
+    none: string
+    sm: string
+    md: string
+    lg: string
+    xl: string
+    "2xl": string
+    "3xl": string
+    full: string
+  }
+}
+
+export type ThemeTokenSpecV2 = {
+  version: 2
+  appearance?: {
+    mode: ThemeModeV2
+    defaultMode?: "light" | "dark"
+  }
+  colors?: {
+    schemeId: string
+    lightSchemeId?: string
+    darkSchemeId?: string
+    custom?: ProviderColorScheme
+  }
+  fonts?: {
+    schemeId: string
+    custom?: FontScheme
+  }
+  density?: {
+    schemeId: string
+  }
+  shape?: {
+    schemeId: string
+  }
+}
+
+export type ThemeTokenSpec = ThemeTokenSpecV1 | ThemeTokenSpecV2
 
 export type SiteBlockEditorField = {
   name: string

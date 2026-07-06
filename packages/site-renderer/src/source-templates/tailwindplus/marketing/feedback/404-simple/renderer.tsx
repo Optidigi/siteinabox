@@ -30,6 +30,12 @@ export function TailwindPlusMarketingFeedback404SimpleRenderer({
       <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />
       <main
         className="rt-canvas grid min-h-full place-items-center bg-white px-6 py-24 sm:py-32 lg:px-8 renderer-not-found--source-tailwindplus-404-simple"
+        data-provider-template="tailwindplus"
+        data-provider-variant="tailwindplus.marketing.feedback.404-simple"
+        data-system-template="tailwindplus.marketing.feedback.404-simple"
+        data-system-template-kind="not-found"
+        data-source-backed-template="true"
+        data-source-variant="tailwindplus.marketing.feedback.404-simple"
         data-rt-mode={themeMode(theme)}
         aria-label={pathname?.trim() ? `Missing page: ${pathname}` : undefined}
       >

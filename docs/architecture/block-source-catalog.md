@@ -55,21 +55,16 @@ The active V1 provider runtime is intentionally narrow:
 - active system fallback:
   `tailwindplus.marketing.feedback.404-simple` for known-host missing pages.
 
-Current verification status as of 2026-07-06:
+Current verification status:
 
 - Runtime/unit provider coverage passed for the active block/chrome/template
   registries: source hashes, upstream class coverage, fail-closed behavior,
   catalog lockstep, inactive slot validation, CSS isolation, generation scope,
   and intake mock generation all passed in the focused CMS unit suite.
-- The provider visual parity gate is green. `pnpm provider:visual-parity` builds
-  the renderer cleanly and passes all 18 active provider block/chrome/template
-  variants across desktop and mobile. The previous mobile-only 24px screenshot
-  height comparisons for
-  `tailwindplus.marketing.content.sticky-product-screenshot` and
-  `tailwindplus.marketing.bento.three-column-bento-grid` were traced to
-  non-upstream fallback/demo image `alt` text affecting failed remote-image
-  layout in the deterministic fixture environment, with adjacent plain-text
-  slots also aligned to text-mode rendering where the source uses text nodes.
+- The provider visual parity gate is `pnpm provider:visual-parity`. It must pass
+  without exact-source `sourceTransform` masks for active exact variants. The
+  active hero with-stats and sticky content variants now represent their
+  source-visible content slots directly instead of stripping fixture content.
 - The generic intake smoke fixture exercises the broad homepage set plus active
   Tailwind Plus header and banner chrome, but it does not exercise
   `tailwindplus.marketing.hero.with-stats` or the known-tenant 404 template.
@@ -206,17 +201,21 @@ shape. Analytics metadata is not a styling API.
 
 Blocks must not expose arbitrary block-level visual tokens such as per-block
 colors, fonts, radii, shape controls, class names, or provider token overrides.
-Site-wide visual control belongs to the global theme toolbar and theme schema:
-colors, font roles, radius/shape, mode, and coarse density/rhythm where
-supported. Renderers consume those global tokens through CSS variables. The
-Tailwind Plus V1 path wires Tailwind's native `dark:` variant to
-`data-rt-mode="dark"` for source variants that include dark utilities. Current
-active provider sources are mostly light-only, so their theme behavior comes
-from scoped provider-root bridge rules that map provider utility roles
-(`text-gray-900`, `bg-white`, `bg-indigo-600`, rings, borders, etc.) to SiaB
-tokens without globally redefining neutral Tailwind palette variables. Provider
-utility classes stay static and detectable. It does not expose arbitrary
-spacing, breakpoint, grid/flex, or per-block layout controls.
+Site-wide visual control belongs to ThemeTokenSpec V2: appearance mode,
+approved color schemes, approved font schemes, approved density schemes, and
+approved shape/radius schemes. Missing theme data resolves to
+`tailwind-default`. The default scheme preserves upstream Tailwind Plus values;
+non-default schemes theme the same renderer through CSS variables only.
+
+Provider utility classes stay static and detectable. The Tailwind Plus bridge
+maps neutral and accent utility shades deliberately (`gray-50` through
+`gray-950`, `indigo-50` through `indigo-950`) instead of collapsing shades into
+one muted token. Provider roots use stable theme zones:
+`data-theme-zone="ambient"` for normal themeable sections and
+`data-theme-zone="fixed-dark"` for source dark panels that must remain
+coherent. Density is limited to provider section/composition rhythm. Shape is a
+full Tailwind-like radius scale. The theme system does not expose arbitrary
+spacing, breakpoint, grid/flex, CSS, classes, or per-block layout controls.
 
 The public renderer uses `apps/renderer/src/styles/site.css` with Tailwind v4,
 the `@tailwindcss/forms` plugin, and `@source` coverage for
@@ -260,8 +259,8 @@ Current active runtime families and blocks:
   media ingestion; the renderer has the upstream screenshot fallback.
 - `tailwindplus.marketing.feature.centered-2x2-grid`, with legacy
   `tailwindPlusCentered2x2` aliases still accepted. The active slots are `title`,
-  optional `intro`, and exactly four feature items with required
-  title/description. `eyebrow` and `image` are inactive for this exact variant.
+  optional `eyebrow`, optional `intro`, and exactly four feature items with
+  required title/description. `image` is inactive for this exact variant.
 - `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, with legacy
   `tailwindPlusDarkPanelWithAppScreenshot` aliases still accepted. `headline` is required;
   `description`, `primary`, `secondary`, and `backgroundImage` are optional.
@@ -289,10 +288,10 @@ Current active runtime families and blocks:
 - `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`, with
   legacy `tailwindPlusSimpleTiers` aliases still accepted. It renders exactly
   two pricing plans, with the right-hand tier emphasized by the provider source
-  layout. `title`, `intro`, plan titles, descriptions, prices, periods, CTAs,
-  highlight flags, and feature labels are structured CMS data. Plan badges are
-  inactive for this exact variant and are rejected if generated or saved with
-  values.
+  layout. `eyebrow`, `title`, `intro`, plan titles, descriptions, prices,
+  periods, CTAs, highlight flags, and feature labels are structured CMS data.
+  Plan badges are inactive for this exact variant and are rejected if generated
+  or saved with values.
 - `tailwindplus.marketing.team.with-small-images`, with legacy
   `tailwindPlusGrid` aliases still accepted. It renders two to six team
   members with required names and roles plus optional member images. Bio and
@@ -301,7 +300,8 @@ Current active runtime families and blocks:
 - `tailwindplus.marketing.blog.three-column`, with legacy
   `tailwindPlusThreeColumn` aliases still accepted. It renders exactly three
   article cards with required titles, excerpts, and hrefs plus optional dates,
-  authors, categories, and author images.
+  authors, author roles, categories, and author images. Author role is a
+  dedicated post field and must not be derived from category or CTA label data.
 - `tailwindplus.marketing.newsletter.side-by-side-with-details`, with legacy
   `tailwindPlusNewsletterSideBySideWithDetails` aliases still accepted. It is
   a `newsletter` page section, not a contact section. It renders exactly two
@@ -312,15 +312,17 @@ Current active runtime families and blocks:
 - `tailwindplus.marketing.hero.with-stats`, with legacy
   `tailwindPlusHeroWithStats` aliases still accepted. It treats Tailwind Plus
   Header Sections `With stats` as a `hero` variant. It renders headline,
-  optional body, optional primary/secondary CTAs, optional media, and exactly
-  four stats. Eyebrow and pill links are inactive for this exact variant.
+  optional body, optional media, exactly four text links, and exactly four
+  stats. The four-link repeater is required because the upstream layout has
+  four source-visible links. `cta`, `secondary`, `eyebrow`, and `pills` are
+  inactive for this exact variant.
 - `tailwindplus.marketing.content.sticky-product-screenshot`, with legacy
   `tailwindPlusContentStickyProductScreenshot` aliases still accepted. It
   renders a Tailwind Plus Content Sections `With sticky product screenshot`
   layout through the `contentSection` block contract. Active slots are eyebrow,
   title, intro, body, optional screenshot media, exactly three feature rows,
-  secondary title, and secondary body. CTA is inactive because the provider
-  source variant has no action.
+  the source-visible bridge paragraph, secondary title, and secondary body. CTA
+  is inactive because the provider source variant has no action.
 - `tailwindplus.marketing.bento.three-column-bento-grid`, with legacy
   `tailwindPlusThreeColumnBentoGrid` aliases still accepted. It renders the
   Tailwind Plus Bento Grids `Three column bento grid` source through exactly
@@ -332,11 +334,14 @@ Current active provider chrome:
 
 - `tailwindplus.marketing.header.with-stacked-flyout-menu` renders global
   header chrome from structured site settings and `navHeader`. The upstream
-  source uses Tailwind Plus Elements popover behavior; SIAB's current renderer is
-  a structured CSS-only adaptation, so full interaction parity remains open.
+  source uses Tailwind Plus Elements popover behavior; SIAB's current renderer
+  is an honest structured static/closed-state chrome adaptation with CSS-only
+  mobile disclosure. Full stacked-flyout interaction parity is not claimed.
 - `tailwindplus.marketing.banner.with-button` renders global banner chrome from
   `SiteSettings.chrome.banner`. It is not a page block and is not exposed in
-  `SITE_BLOCK_SLUGS`.
+  `SITE_BLOCK_SLUGS`. `dismissible` is a boolean setting; when true the banner
+  renders a local CSS-only dismiss control, and when false no dismiss affordance
+  is rendered.
 
 Amicare tenant-exclusive rendering is separate compatibility code and is not
 part of self-serve provider blocks.
@@ -380,8 +385,8 @@ active source-backed block/chrome/system-template variant against its approved
 source fixture at desktop and mobile widths, and fails if the pixel delta
 exceeds the provider threshold or if any active provider registry entry lacks a
 visual case. This gate is provider-scoped; it is not a broad page-level visual
-regression suite. As of 2026-07-06 this gate passes all active Tailwind Plus
-provider block, chrome, and system-template variants across desktop and mobile.
+regression suite. Exact-source variants must not rely on fixture-stripping
+`sourceTransform` masks to pass this gate.
 
 ## Current Tailwind Plus Inventory Notes
 

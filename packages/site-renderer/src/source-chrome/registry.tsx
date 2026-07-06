@@ -5,7 +5,7 @@ import type { MediaResolver } from "../media"
 import { tailwindPlusMarketingBannerWithButtonProviderChrome } from "./tailwindplus/marketing/banner/with-button"
 import { tailwindPlusMarketingHeaderWithStackedFlyoutMenuProviderChrome } from "./tailwindplus/marketing/header/with-stacked-flyout-menu"
 
-export type ProviderChromeSlotKind = "text" | "cta" | "image" | "repeater"
+export type ProviderChromeSlotKind = "text" | "cta" | "image" | "repeater" | "checkbox"
 export type ProviderChromeSlotStatus = "required" | "optional" | "inactive"
 
 export type ProviderChromeSlotManifestEntry = {

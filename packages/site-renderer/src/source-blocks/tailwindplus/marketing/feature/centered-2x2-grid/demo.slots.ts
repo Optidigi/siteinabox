@@ -16,6 +16,7 @@ const blockRt = (text: string): RtBlockRoot => ({
 export const tailwindPlusMarketingFeatureCentered2x2GridDemoSlots = {
   blockType: "featureList",
   designVariant: "tailwindPlusCentered2x2",
+  eyebrow: inlineRt("Deploy faster"),
   title: inlineRt("Everything you need to deploy your app"),
   intro: blockRt("Quis tellus eget adipiscing convallis sit sit eget aliquet quis. Suspendisse eget egestas a elementum pulvinar et feugiat blandit at. In mi viverra elit nunc."),
   features: [

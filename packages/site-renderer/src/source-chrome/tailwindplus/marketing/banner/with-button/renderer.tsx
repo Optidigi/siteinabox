@@ -11,17 +11,20 @@ export function TailwindPlusMarketingBannerWithButtonRenderer({ settings }: Prov
   const linkLabel = banner.link?.label?.trim()
   const linkHref = banner.link?.href?.trim()
   const title = banner.title?.trim()
+  const dismissId = `tailwindplus-banner-dismiss-${settings.siteName.replace(/[^a-zA-Z0-9_-]/g, "-") || "site"}`
 
   return (
-    <div
-      className="site-chrome relative isolate flex items-center gap-x-6 overflow-hidden bg-gray-50 px-6 py-2.5 sm:px-3.5 sm:before:flex-1 site-banner--source-tailwindplus-marketing-with-button"
-      data-provider-chrome="tailwindplus"
-      data-provider-variant="tailwindplus.marketing.banner.with-button"
-      data-source-backed-chrome="true"
-      data-source-variant="tailwindplus.marketing.banner.with-button"
-      data-siab-site-banner="true"
-      data-site-chrome="banner"
-    >
+    <>
+      {banner.dismissible === true ? <input id={dismissId} type="checkbox" className="peer sr-only" aria-hidden="true" tabIndex={-1} /> : null}
+      <div
+        className="site-chrome relative isolate flex items-center gap-x-6 overflow-hidden bg-gray-50 px-6 py-2.5 sm:px-3.5 sm:before:flex-1 peer-checked:hidden site-banner--source-tailwindplus-marketing-with-button"
+        data-provider-chrome="tailwindplus"
+        data-provider-variant="tailwindplus.marketing.banner.with-button"
+        data-source-backed-chrome="true"
+        data-source-variant="tailwindplus.marketing.banner.with-button"
+        data-siab-site-banner="true"
+        data-site-chrome="banner"
+      >
       <div aria-hidden="true" className="absolute top-1/2 left-[max(-7rem,calc(50%-52rem))] -z-10 -translate-y-1/2 transform-gpu blur-2xl">
         <div style={{ clipPath: gradientClipPath }} className="aspect-577/310 w-144.25 bg-linear-to-r from-[#ff80b5] to-[#9089fc] opacity-30" />
       </div>
@@ -39,16 +42,17 @@ export function TailwindPlusMarketingBannerWithButtonRenderer({ settings }: Prov
           </a>
         ) : null}
       </div>
-      {banner.dismissible !== false ? (
+      {banner.dismissible === true ? (
         <div className="flex flex-1 justify-end">
-          <button type="button" className="-m-3 p-3 focus-visible:-outline-offset-4">
+          <label htmlFor={dismissId} className="-m-3 p-3 focus-visible:-outline-offset-4 cursor-pointer">
             <span className="sr-only">Dismiss</span>
             <svg viewBox="0 0 20 20" fill="currentColor" data-slot="icon" aria-hidden="true" className="size-5 text-gray-900">
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
             </svg>
-          </button>
+          </label>
         </div>
       ) : null}
-    </div>
+      </div>
+    </>
   )
 }

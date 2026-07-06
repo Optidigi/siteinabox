@@ -167,6 +167,17 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
                   </li>
                 ))}
               </ul>
+              <p className="mt-8">
+                {richTextSlot({
+                  options,
+                  name: "contentSection.bridge",
+                  value: block.bridge,
+                  variant: "inline",
+                  className: "contents",
+                  elementPath: { blockIndex: options.index, field: "bridge" },
+                  blockMode: "text",
+                })}
+              </p>
               <h3 className="mt-16 text-2xl font-bold tracking-tight text-gray-900">
                 {richTextSlot({
                   options,

@@ -17,8 +17,12 @@ export const tailwindPlusMarketingHeroWithStatsDemoSlots: HeroBlock = {
   designVariant: "tailwindplus.marketing.hero.with-stats",
   headline: inlineText("Work with us"),
   subheadline: blockText("Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo. Elit sunt amet fugiat veniam occaecat fugiat."),
-  cta: { label: "Open roles", href: "/careers" },
-  secondary: { label: "Our values", href: "/values" },
+  links: [
+    { label: "Open roles", href: "#" },
+    { label: "Internship program", href: "#" },
+    { label: "Our values", href: "#" },
+    { label: "Meet our leadership", href: "#" },
+  ],
   stats: [
     { value: "12", label: "Offices worldwide" },
     { value: "300+", label: "Full-time colleagues" },

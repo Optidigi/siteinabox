@@ -117,7 +117,7 @@ export function TailwindPlusMarketingBlogThreeColumnRenderer({
                         </a>
                       </p>
                     ) : null}
-                    {post.cta?.label ? <p className="text-gray-600">{post.cta.label}</p> : null}
+                    {post.authorRole ? <p className="text-gray-600">{post.authorRole}</p> : null}
                   </div>
                 </div>
               </article>

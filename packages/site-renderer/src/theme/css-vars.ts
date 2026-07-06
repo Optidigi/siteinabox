@@ -1,4 +1,5 @@
 import type { ThemeTokenSpec } from "@siteinabox/contracts"
+import { resolveThemeTokens } from "./resolve"
 
 const DEFAULT_DARK = {
   onAccent: "#ffffff",
@@ -96,6 +97,9 @@ function providerThemeBridgeRules(
 ): string[] {
   const baseSelector = scope === ":root" ? "html:root" : scope
   const providerRootSelectors = [
+    `${baseSelector}:where([data-provider-block="tailwindplus"])`,
+    `${baseSelector}:where([data-provider-chrome="tailwindplus"])`,
+    `${baseSelector}:where([data-provider-template="tailwindplus"])`,
     `${baseSelector} :where([data-provider-block="tailwindplus"])`,
     `${baseSelector} :where([data-provider-chrome="tailwindplus"])`,
     `${baseSelector} :where([data-provider-template="tailwindplus"])`,
@@ -125,26 +129,46 @@ function providerThemeBridgeRules(
 
   const rules: string[] = []
   if (options.colors) rules.push(
+    `${providerRootSelectors.map((selector) => `${selector} :where([data-theme-zone="fixed-dark"])`).join(",")},${providerRootSelectors.map((selector) => `${selector}:where([data-theme-zone="fixed-dark"])`).join(",")}{--color-tailwindplus-surface:#ffffff;--color-tailwindplus-card:#ffffff;--color-on-accent:#ffffff;--siab-neutral-50:#f9fafb;--siab-neutral-100:#f3f4f6;--siab-neutral-200:#e5e7eb;--siab-neutral-300:#d1d5db;--siab-neutral-400:#9ca3af;--siab-neutral-500:#6b7280;--siab-neutral-600:#4b5563;--siab-neutral-700:#374151;--siab-neutral-800:#1f2937;--siab-neutral-900:#111827;--siab-neutral-950:#030712;--siab-accent-50:#eef2ff;--siab-accent-100:#e0e7ff;--siab-accent-200:#c7d2fe;--siab-accent-300:#a5b4fc;--siab-accent-400:#818cf8;--siab-accent-500:#6366f1;--siab-accent-600:#4f46e5;--siab-accent-700:#4338ca;--siab-accent-800:#3730a3;--siab-accent-900:#312e81;--siab-accent-950:#1e1b4b;--color-gray-50:#f9fafb;--color-gray-100:#f3f4f6;--color-gray-200:#e5e7eb;--color-gray-300:#d1d5db;--color-gray-400:#9ca3af;--color-gray-500:#6b7280;--color-gray-600:#4b5563;--color-gray-700:#374151;--color-gray-800:#1f2937;--color-gray-900:#111827;--color-gray-950:#030712;--color-indigo-50:#eef2ff;--color-indigo-100:#e0e7ff;--color-indigo-200:#c7d2fe;--color-indigo-300:#a5b4fc;--color-indigo-400:#818cf8;--color-indigo-500:#6366f1;--color-indigo-600:#4f46e5;--color-indigo-700:#4338ca;--color-indigo-800:#3730a3;--color-indigo-900:#312e81;--color-indigo-950:#1e1b4b}`,
     `${providerSurfaceRoots}{background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))}`,
     `${providerSurfaceDescendants}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
     `${rootsAndDescendants(["bg-white\\/60"])}{background-color:color-mix(in oklab,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))) 60%,transparent)}`,
-    `${rootsAndDescendants(["bg-gray-50", "bg-gray-100"])}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
-    `${rootsAndDescendants(["hover\\:bg-gray-50", "hover\\:bg-gray-100"], ":hover")}{background-color:var(--color-secondary,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))))}`,
-    `${rootsAndDescendants(["bg-gray-200"])}{background-color:var(--color-secondary,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))))}`,
+    `${rootsAndDescendants(["bg-gray-50"])}{background-color:var(--siab-neutral-50,#f9fafb)}`,
+    `${rootsAndDescendants(["bg-gray-100"])}{background-color:var(--siab-neutral-100,#f3f4f6)}`,
+    `${rootsAndDescendants(["hover\\:bg-gray-50"], ":hover")}{background-color:var(--siab-neutral-50,#f9fafb)}`,
+    `${rootsAndDescendants(["hover\\:bg-gray-100"], ":hover")}{background-color:var(--siab-neutral-100,#f3f4f6)}`,
+    `${rootsAndDescendants(["bg-gray-200"])}{background-color:var(--siab-neutral-200,#e5e7eb)}`,
+    `${rootsAndDescendants(["bg-gray-900"])}{background-color:#111827}`,
+    `${rootsAndDescendants(["hover\\:bg-gray-700"], ":hover")}{background-color:#374151}`,
     `${providerRootSelectors.map((selector) => `${selector} .flex.bg-white :is(input,select)`).join(",")}{background-color:transparent}`,
-    `${rootsAndDescendants(["text-gray-950", "text-gray-900", "text-gray-800", "text-gray-700"])}{color:var(--color-ink,#111827)}`,
-    `${rootsAndDescendants(["text-gray-600", "text-gray-500", "text-gray-400", "text-gray-300"])}{color:var(--color-ink-muted,#64748b)}`,
-    `${rootsAndDescendants(["placeholder\\:text-gray-400", "placeholder\\:text-gray-500"], "::placeholder")}{color:var(--color-ink-muted,#64748b)}`,
-    `${groupHover(["group-hover\\:text-gray-600"])}{color:var(--color-ink-muted,#64748b)}`,
-    `${rootsAndDescendants(["text-indigo-700", "text-indigo-600", "text-indigo-500", "text-indigo-400"])}{color:var(--color-accent,#4f46e5)}`,
-    `${rootsAndDescendants(["bg-indigo-700", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"])}{background-color:var(--color-accent,#4f46e5)}`,
-    `${rootsAndDescendants(["hover\\:bg-indigo-500", "hover\\:bg-indigo-400"], ":hover")}{background-color:color-mix(in oklab,var(--color-accent,#4f46e5) 88%,white)}`,
-    `${rootsAndDescendants(["has-checked\\:bg-indigo-600"], ":has(:checked)")}{background-color:var(--color-accent,#4f46e5)}`,
-    `${rootsAndDescendants(["outline-indigo-600", "focus\\:outline-indigo-500", "focus-visible\\:outline-indigo-500"])}{outline-color:var(--color-accent,#4f46e5)}`,
-    `${rootsAndDescendants(["focus\\:ring-indigo-600"], ":focus")}{--tw-ring-color:var(--color-accent,#4f46e5)}`,
-    `${rootsAndDescendants(["focus\\:outline-indigo-600"], ":focus")}{outline-color:var(--color-accent,#4f46e5)}`,
-    `${rootsAndDescendants(["focus-visible\\:outline-indigo-600"], ":focus-visible")}{outline-color:var(--color-accent,#4f46e5)}`,
+    `${rootsAndDescendants(["text-gray-950"])}{color:var(--siab-neutral-950,var(--color-ink,#030712))}`,
+    `${rootsAndDescendants(["text-gray-900"])}{color:var(--siab-neutral-900,var(--color-ink,#111827))}`,
+    `${rootsAndDescendants(["text-gray-800"])}{color:var(--siab-neutral-800,#1f2937)}`,
+    `${rootsAndDescendants(["text-gray-700"])}{color:var(--siab-neutral-700,#374151)}`,
+    `${rootsAndDescendants(["text-gray-600"])}{color:var(--siab-neutral-600,var(--color-ink-muted,#4b5563))}`,
+    `${rootsAndDescendants(["text-gray-500"])}{color:var(--siab-neutral-500,#6b7280)}`,
+    `${rootsAndDescendants(["text-gray-400"])}{color:var(--siab-neutral-400,#9ca3af)}`,
+    `${rootsAndDescendants(["text-gray-300"])}{color:var(--siab-neutral-300,#d1d5db)}`,
+    `${rootsAndDescendants(["placeholder\\:text-gray-400"], "::placeholder")}{color:var(--siab-neutral-400,#9ca3af)}`,
+    `${rootsAndDescendants(["placeholder\\:text-gray-500"], "::placeholder")}{color:var(--siab-neutral-500,#6b7280)}`,
+    `${groupHover(["group-hover\\:text-gray-600"])}{color:var(--siab-neutral-600,var(--color-ink-muted,#4b5563))}`,
+    `${rootsAndDescendants(["text-indigo-700"])}{color:var(--siab-accent-700,#4338ca)}`,
+    `${rootsAndDescendants(["text-indigo-600"])}{color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${rootsAndDescendants(["text-indigo-500"])}{color:var(--siab-accent-500,#6366f1)}`,
+    `${rootsAndDescendants(["text-indigo-400"])}{color:var(--siab-accent-400,#818cf8)}`,
+    `${rootsAndDescendants(["bg-indigo-700"])}{background-color:var(--siab-accent-700,#4338ca)}`,
+    `${rootsAndDescendants(["bg-indigo-600"])}{background-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${rootsAndDescendants(["bg-indigo-500"])}{background-color:var(--siab-accent-500,#6366f1)}`,
+    `${rootsAndDescendants(["bg-indigo-400"])}{background-color:var(--siab-accent-400,#818cf8)}`,
+    `${rootsAndDescendants(["hover\\:bg-indigo-500"], ":hover")}{background-color:var(--siab-accent-500,#6366f1)}`,
+    `${rootsAndDescendants(["hover\\:bg-indigo-400"], ":hover")}{background-color:var(--siab-accent-400,#818cf8)}`,
+    `${rootsAndDescendants(["has-checked\\:bg-indigo-600"], ":has(:checked)")}{background-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${rootsAndDescendants(["outline-indigo-600", "focus\\:outline-indigo-500", "focus-visible\\:outline-indigo-500"])}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${rootsAndDescendants(["focus\\:ring-indigo-600"], ":focus")}{--tw-ring-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${rootsAndDescendants(["focus\\:outline-indigo-600"], ":focus")}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${rootsAndDescendants(["focus-visible\\:outline-indigo-600"], ":focus-visible")}{outline-color:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
     `${descendants(["bg-indigo-700", "bg-indigo-600", "bg-indigo-500", "bg-indigo-400"].flatMap((bg) => ["text-white"].map((text) => `${bg}.${text}`)))}{color:var(--color-on-accent,#ffffff)}`,
+    `${rootsAndDescendants(["bg-indigo-500.text-white", "bg-indigo-400.text-white"])}{color:#000000}`,
     `${descendant("ring-gray-900\\/10")},${descendant("-ring-gray-900\\/5")},${descendant("ring-gray-900\\/5")},${descendant("inset-ring-gray-900\\/5")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 10%,transparent)}`,
     `${descendant("hover\\:ring-gray-900\\/20", ":hover")}{--tw-ring-color:color-mix(in oklab,var(--color-ink,#111827) 20%,transparent)}`,
     `${descendant("ring-gray-400\\/10")}{--tw-ring-color:color-mix(in oklab,var(--color-ink-muted,#64748b) 10%,transparent)}`,
@@ -165,7 +189,7 @@ function providerThemeBridgeRules(
   return rules
 }
 
-function sectionSpacingForDensity(density: ThemeTokenSpec["density"]): [string, string] | null {
+function sectionSpacingForDensity(density: string | undefined): [string, string] | null {
   if (density === "compact") return ["4rem", "5rem"]
   if (density === "spacious") return ["7rem", "9rem"]
   if (density === "comfortable") return ["6rem", "8rem"]
@@ -174,7 +198,7 @@ function sectionSpacingForDensity(density: ThemeTokenSpec["density"]): [string, 
 
 function setTailwindProviderColorAliases(
   parts: string[],
-  colors: ThemeTokenSpec["colors"] | ThemeTokenSpec["darkColors"] | undefined,
+  colors: any,
   fallback?: Partial<Record<"onAccent" | "bg" | "ink" | "muted" | "card" | "secondary" | "rule", string>>,
 ) {
   const accent = colors?.accent
@@ -207,106 +231,70 @@ function setTailwindProviderColorAliases(
 }
 
 export function themeMode(theme: ThemeTokenSpec | null | undefined): "light" | "dark" {
-  return theme?.mode === "dark" ? "dark" : "light"
+  const resolved = resolveThemeTokens(theme)
+  if (resolved.mode === "system") return resolved.defaultMode
+  return resolved.mode
 }
 
 export function themeToCssVars(
   theme: ThemeTokenSpec | null | undefined,
   scope: ThemeCssVarScope = ".rt-canvas",
 ): string {
-  if (!theme) return ""
-
+  const resolved = resolveThemeTokens(theme)
+  const legacyTheme = theme && (!("version" in theme) || theme.version !== 2) ? theme : null
   const baseParts: string[] = []
   const darkParts: string[] = []
-  const flatten = scope === ":root" && theme.mode === "dark"
-
-  if (flatten) {
-    const dark = theme.darkColors
-    if (dark?.accent) set(baseParts, "--color-accent", dark.accent)
-    if (dark?.accent || dark?.onAccent || theme.colors?.onAccent) {
-      set(baseParts, "--color-on-accent", onAccentColor(dark?.onAccent ?? theme.colors?.onAccent, dark?.accent))
-    }
-    set(baseParts, "--color-bg", dark?.bg ?? DEFAULT_DARK.bg)
-    set(baseParts, "--color-ink", dark?.ink ?? DEFAULT_DARK.ink)
-    set(baseParts, "--color-ink-muted", dark?.muted ?? DEFAULT_DARK.muted)
-    set(baseParts, "--color-card", dark?.card ?? DEFAULT_DARK.card)
-    set(baseParts, "--color-secondary", dark?.secondary ?? DEFAULT_DARK.secondary)
-    set(baseParts, "--color-rule", dark?.rule ?? DEFAULT_DARK.rule)
-    set(baseParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
-    setTailwindProviderColorAliases(baseParts, dark, DEFAULT_DARK)
-  } else {
-    const colors = theme.colors
-    set(baseParts, "--color-accent", colors?.accent)
-    if (colors?.accent || colors?.onAccent) set(baseParts, "--color-on-accent", onAccentColor(colors?.onAccent, colors?.accent))
-    set(baseParts, "--color-bg", colors?.bg)
-    set(baseParts, "--color-ink", colors?.ink)
-    set(baseParts, "--color-ink-muted", colors?.muted)
-    set(baseParts, "--color-card", colors?.card)
-    set(baseParts, "--color-secondary", colors?.secondary)
-    set(baseParts, "--color-rule", colors?.rule)
-    setTailwindProviderColorAliases(baseParts, colors)
-
-    const dark = theme.darkColors
-    const useDefaultDark = theme.mode === "dark"
-    set(darkParts, "--color-accent", dark?.accent)
-    if (dark?.accent || dark?.onAccent || useDefaultDark) {
-      set(darkParts, "--color-on-accent", onAccentColor(dark?.onAccent, dark?.accent))
-    }
-    set(darkParts, "--color-bg", dark?.bg ?? (useDefaultDark ? DEFAULT_DARK.bg : undefined))
-    set(darkParts, "--color-ink", dark?.ink ?? (useDefaultDark ? DEFAULT_DARK.ink : undefined))
-    set(darkParts, "--color-ink-muted", dark?.muted ?? (useDefaultDark ? DEFAULT_DARK.muted : undefined))
-    set(darkParts, "--color-card", dark?.card ?? (useDefaultDark ? DEFAULT_DARK.card : undefined))
-    set(darkParts, "--color-secondary", dark?.secondary ?? (useDefaultDark ? DEFAULT_DARK.secondary : undefined))
-    set(darkParts, "--color-rule", dark?.rule ?? (useDefaultDark ? DEFAULT_DARK.rule : undefined))
-    if (useDefaultDark || dark?.bg) {
-      set(darkParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
-    }
-    setTailwindProviderColorAliases(darkParts, dark, useDefaultDark ? DEFAULT_DARK : undefined)
-  }
-
-  set(baseParts, "--font-title", theme.fonts?.title)
-  set(baseParts, "--font-heading", theme.fonts?.heading)
-  set(baseParts, "--font-text", theme.fonts?.text)
-  set(baseParts, "--font-script", theme.fonts?.script)
-
-  // Legacy renderer utilities consume --font-sans / --font-serif / --font-script
-  // aliases. Mirror role fonts when set so ThemeBar edits reach existing markup.
-  set(baseParts, "--font-sans", theme.fonts?.text)
-  set(baseParts, "--font-serif", theme.fonts?.heading ?? theme.fonts?.title)
-
-  if (theme.radius) {
-    for (const [prop, value] of deriveRadii(theme.radius)) set(baseParts, prop, value)
-  }
-
-  set(baseParts, "--border-style", theme.borderStyle)
-  if (theme.density) {
-    set(baseParts, "--site-density", theme.density)
-    const sectionSpacing = sectionSpacingForDensity(theme.density)
-    if (sectionSpacing) {
-      set(baseParts, "--site-section-padding-y", sectionSpacing[0])
-      set(baseParts, "--site-section-padding-y-sm", sectionSpacing[1])
+  const writeMode = (parts: string[], mode: typeof resolved.light) => {
+    set(parts, "--color-accent", mode.accent[600])
+    set(parts, "--color-on-accent", mode.onAccent)
+    set(parts, "--color-bg", mode.surface)
+    set(parts, "--color-ink", mode.ink)
+    set(parts, "--color-ink-muted", mode.muted)
+    set(parts, "--color-card", mode.surface)
+    set(parts, "--color-secondary", mode.neutral[50])
+    set(parts, "--color-rule", mode.rule)
+    set(parts, "--color-tailwindplus-surface", mode.surface)
+    set(parts, "--color-tailwindplus-card", mode.surface)
+    for (const shade of ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const) {
+      set(parts, `--siab-neutral-${shade}`, mode.neutral[shade])
+      set(parts, `--siab-accent-${shade}`, mode.accent[shade])
+      set(parts, `--color-gray-${shade}`, mode.neutral[shade])
+      set(parts, `--color-indigo-${shade}`, mode.accent[shade])
     }
   }
-  if (theme.stylePreset) set(baseParts, "--site-style-preset", theme.stylePreset)
+
+  writeMode(baseParts, resolved.light)
+  writeMode(darkParts, resolved.dark)
+  set(darkParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
+
+  set(baseParts, "--font-title", resolved.fonts.roles.display ?? resolved.fonts.roles.heading)
+  set(baseParts, "--font-heading", resolved.fonts.roles.heading)
+  set(baseParts, "--font-text", resolved.fonts.roles.body)
+  set(baseParts, "--font-sans", resolved.fonts.roles.body)
+  set(baseParts, "--font-serif", resolved.fonts.roles.heading)
+  set(baseParts, "--font-mono", resolved.fonts.roles.mono)
+
+  set(baseParts, "--site-density", resolved.density.id)
+  set(baseParts, "--site-section-padding-y", resolved.density.sectionPaddingY.base)
+  set(baseParts, "--site-section-padding-y-sm", resolved.density.sectionPaddingY.sm ?? resolved.density.sectionPaddingY.base)
+  set(baseParts, "--site-section-padding-y-lg", resolved.density.sectionPaddingY.lg ?? resolved.density.sectionPaddingY.sm ?? resolved.density.sectionPaddingY.base)
+  set(baseParts, "--site-inter-block-gap", resolved.density.interBlockGap)
+  set(baseParts, "--site-style-preset", legacyTheme?.stylePreset)
+
+  set(baseParts, "--radius-none", resolved.shape.radius.none)
+  set(baseParts, "--radius-sm", resolved.shape.radius.sm)
+  set(baseParts, "--radius-md", resolved.shape.radius.md)
+  set(baseParts, "--radius-lg", resolved.shape.radius.lg)
+  set(baseParts, "--radius-xl", resolved.shape.radius.xl)
+  set(baseParts, "--radius-2xl", resolved.shape.radius["2xl"])
+  set(baseParts, "--radius-3xl", resolved.shape.radius["3xl"])
+  set(baseParts, "--radius-full", resolved.shape.radius.full)
 
   const baseSelector = scope === ":root" ? "html:root" : scope
   const darkSelector = scope === ":root" ? "html:root[data-rt-mode=\"dark\"]" : `${scope}[data-rt-mode="dark"]`
-  const hasColorBridge = Boolean(
-    theme.colors?.bg ||
-    theme.colors?.ink ||
-    theme.colors?.muted ||
-    theme.colors?.card ||
-    theme.darkColors?.bg ||
-    theme.darkColors?.ink ||
-    theme.darkColors?.muted ||
-    theme.darkColors?.card ||
-    theme.mode === "dark"
-  )
-  const hasFontBridge = Boolean(theme.fonts?.title || theme.fonts?.heading || theme.fonts?.text || theme.fonts?.script)
-  const hasDensityBridge = Boolean(theme.density)
   const rules: string[] = []
   if (baseParts.length > 0) rules.push(`${baseSelector}{${baseParts.join(";")}}`)
   if (darkParts.length > 0) rules.push(`${darkSelector}{${darkParts.join(";")}}`)
-  rules.push(...providerThemeBridgeRules(scope, { colors: hasColorBridge, fonts: hasFontBridge, density: hasDensityBridge }))
+  rules.push(...providerThemeBridgeRules(scope, { colors: true, fonts: true, density: true }))
   return rules.join(" ")
 }

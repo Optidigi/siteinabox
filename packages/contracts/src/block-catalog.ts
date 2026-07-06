@@ -545,6 +545,13 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
       richtext("eyebrow", "Eyebrow", "inline", "script"),
       richtext("headline", "Headline", "inline", "title"),
       richtext("subheadline", "Subheadline", "block", "text"),
+      {
+        name: "links",
+        label: "Links",
+        kind: "array",
+        itemLabel: "Link",
+        itemFields: [text("label", "Label"), text("href", "Href")],
+      },
       cta("cta", "Primary action"),
       cta("secondary", "Secondary action"),
       image("image", "Background image"),
@@ -1040,6 +1047,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
     contractType: "PricingBlock",
     runtimeValidationTarget: "SITE_BLOCK_SLUGS + validateSiteGenerationSpecForCms + PricingBlockSchema + GeneratedBlockSpecSchema.",
     cmsEditableFields: [
+      richtext("eyebrow", "Eyebrow", "inline", "script"),
       richtext("title", "Title", "inline", "heading"),
       richtext("intro", "Intro", "block", "text"),
       {
@@ -1432,6 +1440,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           richtext("description", "Description", "block", "text"),
         ],
       },
+      richtext("bridge", "Bridge paragraph", "block", "text"),
       richtext("secondaryTitle", "Secondary title", "inline", "heading"),
       richtext("secondaryBody", "Secondary body", "block", "text"),
       image("image", "Image"),
@@ -1488,6 +1497,7 @@ const SITE_GENERATION_BLOCK_CATALOG_ENTRIES = [
           text("href", "Href"),
           text("date", "Date"),
           text("author", "Author"),
+          text("authorRole", "Author role"),
           cta("cta", "Action"),
         ],
       },

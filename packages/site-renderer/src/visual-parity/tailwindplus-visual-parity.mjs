@@ -82,9 +82,6 @@ const blockCases = [
     id: "tailwindplus.marketing.hero.with-stats",
     folder: "source-blocks/tailwindplus/marketing/hero/with-stats",
     block: tailwindPlusMarketingHeroWithStatsDemoSlots,
-    sourceTransform: (html) => html
-      .replace(/\s*<a href="#">Internship program <span aria-hidden="true">&rarr;<\/span><\/a>/, "")
-      .replace(/\s*<a href="#">Meet our leadership <span aria-hidden="true">&rarr;<\/span><\/a>/, ""),
   },
   {
     id: "tailwindplus.marketing.feature.with-product-screenshot",
@@ -105,10 +102,6 @@ const blockCases = [
     id: "tailwindplus.marketing.content.sticky-product-screenshot",
     folder: "source-blocks/tailwindplus/marketing/content/sticky-product-screenshot",
     block: tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
-    sourceTransform: (html) => html.replace(
-      /\s*<p class="mt-8">Et vitae blandit facilisi magna lacus commodo\. Vitae sapien duis odio id et\. Id blandit molestie auctor fermentum dignissim\. Lacus diam tincidunt ac cursus in vel\. Mauris varius vulputate et ultrices hac adipiscing egestas\. Iaculis convallis ac tempor et ut\. Ac lorem vel integer orci\.<\/p>/,
-      "",
-    ),
   },
   {
     id: "tailwindplus.marketing.contact.centered",
@@ -524,9 +517,7 @@ async function main() {
 
   try {
     for (const testCase of cases) {
-      const sourceHtml = testCase.sourceTransform
-        ? testCase.sourceTransform(await sourceHtmlFor(testCase.folder))
-        : await sourceHtmlFor(testCase.folder)
+      const sourceHtml = await sourceHtmlFor(testCase.folder)
       const renderedHtml = testCase.renderedHtml()
       for (const viewport of viewports) {
         try {

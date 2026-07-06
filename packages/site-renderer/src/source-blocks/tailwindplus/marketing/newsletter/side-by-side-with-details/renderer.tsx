@@ -47,6 +47,7 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
       className: "relative isolate overflow-hidden bg-gray-900 py-16 sm:py-24 lg:py-32 cms-block cms-block--newsletter cms-block--source-tailwindplus-newsletter-side-by-side-with-details",
       "data-provider-block": "tailwindplus",
       "data-provider-variant": "tailwindplus.marketing.newsletter.side-by-side-with-details",
+      "data-theme-zone": "fixed-dark",
       "data-source-backed-block": "true",
       "data-source-variant": "tailwindplus.marketing.newsletter.side-by-side-with-details",
       "data-block-index": options.index,

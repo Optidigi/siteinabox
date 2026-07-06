@@ -16,7 +16,7 @@ export const tailwindPlusMarketingBannerWithButtonProviderChrome = defineProvide
     title: { kind: "text", status: "optional", exposed: true, sourceField: "chrome.banner.title" },
     message: { kind: "text", status: "required", exposed: true, sourceField: "chrome.banner.message" },
     link: { kind: "cta", status: "optional", exposed: true, sourceField: "chrome.banner.link" },
-    dismissible: { kind: "text", status: "optional", exposed: true, sourceField: "chrome.banner.dismissible" },
+    dismissible: { kind: "checkbox", status: "optional", exposed: true, sourceField: "chrome.banner.dismissible" },
   },
   source: {
     sourceName: "Tailwind Plus",

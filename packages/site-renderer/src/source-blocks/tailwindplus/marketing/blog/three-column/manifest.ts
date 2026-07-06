@@ -30,6 +30,7 @@ export const tailwindPlusMarketingBlogThreeColumnProviderBlock = defineProviderB
     postHref: { kind: "text", status: "required", exposed: true, sourceField: "posts.href" },
     postDate: { kind: "text", status: "optional", exposed: true, sourceField: "posts.date" },
     postAuthor: { kind: "text", status: "optional", exposed: true, sourceField: "posts.author" },
+    postAuthorRole: { kind: "text", status: "optional", exposed: true, sourceField: "posts.authorRole" },
     postCategory: { kind: "cta", status: "optional", exposed: true, sourceField: "posts.cta" },
     postAuthorImage: { kind: "image", status: "optional", exposed: true, sourceField: "posts.image" },
   },

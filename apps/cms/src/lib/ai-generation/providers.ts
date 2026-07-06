@@ -182,7 +182,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "cta", "secondary", "stats"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "links", "cta", "secondary", "stats"],
     properties: {
       blockType: { type: "string", const: "hero" },
       ...baseBlockProperties,
@@ -190,6 +190,12 @@ const blockJsonSchemas = [
       eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       headline: richTextInlineJsonSchema,
       subheadline: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
+      links: {
+        type: "array",
+        minItems: 0,
+        maxItems: 4,
+        items: linkJsonSchema,
+      },
       cta: { anyOf: [linkJsonSchema, { type: "null" }] },
       secondary: { anyOf: [linkJsonSchema, { type: "null" }] },
       stats: {
@@ -351,11 +357,12 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "intro", "plans"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "plans"],
     properties: {
       blockType: { type: "string", const: "pricing" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("pricing"),
+      eyebrow: nullableInlineRichTextJsonSchema,
       title: nullableInlineRichTextJsonSchema,
       intro: nullableBlockRichTextJsonSchema,
       plans: {
@@ -543,7 +550,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "secondaryTitle", "secondaryBody"],
+    required: ["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "bridge", "secondaryTitle", "secondaryBody"],
     properties: {
       blockType: { type: "string", const: "contentSection" },
       ...baseBlockProperties,
@@ -567,6 +574,7 @@ const blockJsonSchemas = [
           },
         },
       },
+      bridge: richTextBlockJsonSchema,
       secondaryTitle: richTextInlineJsonSchema,
       secondaryBody: richTextBlockJsonSchema,
     },
@@ -588,7 +596,7 @@ const blockJsonSchemas = [
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["title", "excerpt", "image", "href", "date", "author", "cta"],
+          required: ["title", "excerpt", "image", "href", "date", "author", "authorRole", "cta"],
           properties: {
             title: richTextInlineJsonSchema,
             excerpt: nullableBlockRichTextJsonSchema,
@@ -596,6 +604,7 @@ const blockJsonSchemas = [
             href: stringOrNull,
             date: stringOrNull,
             author: stringOrNull,
+            authorRole: stringOrNull,
             cta: nullableLinkJsonSchema,
           },
         },
@@ -687,38 +696,48 @@ export const siteGenerationJsonSchema = {
     theme: {
       type: "object",
       additionalProperties: false,
-      required: ["colors", "fonts", "radius", "density", "stylePreset", "borderStyle", "mode"],
+      required: ["version", "appearance", "colors", "fonts", "density", "shape"],
       properties: {
+        version: { type: "number", const: 2 },
+        appearance: {
+          type: "object",
+          additionalProperties: false,
+          required: ["mode", "defaultMode"],
+          properties: {
+            mode: { type: "string", enum: ["light", "dark", "system"] },
+            defaultMode: { type: "string", enum: ["light", "dark"] },
+          },
+        },
         colors: {
           type: "object",
           additionalProperties: false,
-          required: ["accent", "bg", "ink", "muted", "card", "secondary", "rule"],
+          required: ["schemeId"],
           properties: {
-            accent: { type: "string" },
-            bg: { type: "string" },
-            ink: { type: "string" },
-            muted: { type: "string" },
-            card: { type: "string" },
-            secondary: { type: "string" },
-            rule: { type: "string" },
+            schemeId: { type: "string", enum: ["tailwind-default", "tailwind-emerald", "tailwind-slate"] },
+            lightSchemeId: { type: "string", enum: ["tailwind-default", "tailwind-emerald", "tailwind-slate"] },
+            darkSchemeId: { type: "string", enum: ["tailwind-default", "tailwind-emerald", "tailwind-slate"] },
           },
         },
         fonts: {
           type: "object",
           additionalProperties: false,
-          required: ["title", "heading", "text", "script"],
+          required: ["schemeId"],
           properties: {
-            title: { type: "string" },
-            heading: { type: "string" },
-            text: { type: "string" },
-            script: { type: "string" },
+            schemeId: { type: "string", enum: ["tailwind-default", "system", "editorial-serif"] },
           },
         },
-        radius: { type: "string" },
-        density: { type: "string", enum: ["compact", "comfortable", "spacious"] },
-        stylePreset: { type: "string" },
-        borderStyle: { type: "string", enum: ["solid", "dashed", "none"] },
-        mode: { type: "string", enum: ["light", "dark"] },
+        density: {
+          type: "object",
+          additionalProperties: false,
+          required: ["schemeId"],
+          properties: { schemeId: { type: "string", enum: ["tailwind-default", "compact", "comfortable"] } },
+        },
+        shape: {
+          type: "object",
+          additionalProperties: false,
+          required: ["schemeId"],
+          properties: { schemeId: { type: "string", enum: ["tailwind-default", "sharp", "soft", "rounded"] } },
+        },
       },
     },
     settings: {

@@ -25,6 +25,9 @@ export function cmsThemeToRendererTheme(theme: ThemeTokens | null | undefined): 
  */
 export function rendererThemeToCmsTheme(theme: ThemeTokenSpec | null | undefined): ThemeTokens | null {
   if (!theme) return null
+  if ("version" in theme && theme.version === 2) {
+    return null
+  }
   return {
     palette: theme.colors,
     darkPalette: theme.darkColors,

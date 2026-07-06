@@ -28,6 +28,7 @@ export const tailwindPlusMarketingContentStickyProductScreenshotProviderBlock =
       featureTitle: { kind: "richtext", status: "required", exposed: true, sourceField: "features.title" },
       featureDescription: { kind: "richtext", status: "required", exposed: true, sourceField: "features.description" },
       featureIcon: { kind: "text", status: "inactive", exposed: false, sourceField: "features.icon" },
+      bridge: { kind: "richtext", status: "required", exposed: true, sourceField: "bridge" },
       secondaryTitle: { kind: "richtext", status: "required", exposed: true, sourceField: "secondaryTitle" },
       secondaryBody: { kind: "richtext", status: "required", exposed: true, sourceField: "secondaryBody" },
       cta: { kind: "cta", status: "inactive", exposed: false, sourceField: "cta" },
