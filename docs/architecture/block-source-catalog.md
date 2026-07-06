@@ -61,13 +61,15 @@ Current verification status as of 2026-07-06:
   registries: source hashes, upstream class coverage, fail-closed behavior,
   catalog lockstep, inactive slot validation, CSS isolation, generation scope,
   and intake mock generation all passed in the focused CMS unit suite.
-- The provider visual parity gate is not fully green. `pnpm
-  provider:visual-parity` builds the renderer cleanly but currently fails two
-  mobile-only screenshot height comparisons:
-  `tailwindplus.marketing.content.sticky-product-screenshot` renders 24px taller
-  than the approved source fixture, and
-  `tailwindplus.marketing.bento.three-column-bento-grid` renders 24px taller
-  than the approved source fixture.
+- The provider visual parity gate is green. `pnpm provider:visual-parity` builds
+  the renderer cleanly and passes all 18 active provider block/chrome/template
+  variants across desktop and mobile. The previous mobile-only 24px screenshot
+  height comparisons for
+  `tailwindplus.marketing.content.sticky-product-screenshot` and
+  `tailwindplus.marketing.bento.three-column-bento-grid` were traced to
+  non-upstream fallback/demo image `alt` text affecting failed remote-image
+  layout in the deterministic fixture environment, with adjacent plain-text
+  slots also aligned to text-mode rendering where the source uses text nodes.
 - The generic intake smoke fixture exercises the broad homepage set plus active
   Tailwind Plus header and banner chrome, but it does not exercise
   `tailwindplus.marketing.hero.with-stats` or the known-tenant 404 template.
@@ -378,10 +380,8 @@ active source-backed block/chrome/system-template variant against its approved
 source fixture at desktop and mobile widths, and fails if the pixel delta
 exceeds the provider threshold or if any active provider registry entry lacks a
 visual case. This gate is provider-scoped; it is not a broad page-level visual
-regression suite. As of 2026-07-06 this gate fails for the mobile screenshots of
-`tailwindplus.marketing.content.sticky-product-screenshot` and
-`tailwindplus.marketing.bento.three-column-bento-grid`; those deltas must be
-fixed before claiming full Tailwind Plus visual parity.
+regression suite. As of 2026-07-06 this gate passes all active Tailwind Plus
+provider block, chrome, and system-template variants across desktop and mobile.
 
 ## Current Tailwind Plus Inventory Notes
 

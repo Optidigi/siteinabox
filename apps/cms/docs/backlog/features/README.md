@@ -121,15 +121,16 @@ depended on command-run site generation are no longer current source of truth.
   parity coverage are complete. Tailwind Plus provider parity is now gated by
   `pnpm provider:visual-parity`; broader page-level or Chromatic-style visual
   regression remains separate follow-up work.
-- Fix the two current Tailwind Plus provider mobile visual parity deltas before
-  claiming full Tailwind Plus visual parity. On 2026-07-06, `pnpm
-  provider:visual-parity` built the renderer cleanly but failed
-  `tailwindplus.marketing.content.sticky-product-screenshot` at mobile
-  (`390x1652` rendered vs `390x1628` source) and
-  `tailwindplus.marketing.bento.three-column-bento-grid` at mobile
-  (`390x2285` rendered vs `390x2261` source). The likely fix area is provider
-  rich-text slot insertion where SIAB renders block-flow rich text into source
-  positions that are plain text nodes.
+- Maintain Tailwind Plus provider visual parity as the active source-backed
+  inventory evolves. On 2026-07-06, `pnpm provider:visual-parity` passed all 18
+  active provider block/chrome/template variants across desktop and mobile. The
+  earlier mobile height deltas for
+  `tailwindplus.marketing.content.sticky-product-screenshot` and
+  `tailwindplus.marketing.bento.three-column-bento-grid` were traced to
+  non-upstream fallback/demo image `alt` text affecting failed remote-image
+  layout in the deterministic fixture environment, with adjacent plain-text
+  slots aligned to text-mode rendering where the Tailwind Plus source uses text
+  nodes.
 - Complete or explicitly scope the Tailwind Plus header chrome interaction
   parity gap. The active
   `tailwindplus.marketing.header.with-stacked-flyout-menu` renderer is a

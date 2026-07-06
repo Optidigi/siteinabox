@@ -45,15 +45,14 @@ Verification on 2026-07-06:
 
 - `pnpm --dir apps/cms --ignore-workspace test tests/unit/provider-block-runtime.test.tsx tests/unit/provider-chrome-runtime.test.tsx tests/unit/provider-system-template-runtime.test.tsx tests/unit/generation-blocks-variant-resolution.test.tsx tests/unit/page-block-variant-scope.test.ts tests/unit/intakeGenerationRun.test.ts`
   passed: 6 files, 40 tests.
-- `pnpm provider:visual-parity` built `apps/renderer` successfully and ran the
-  Playwright pixel gate. It failed on two mobile-only height deltas:
-  `tailwindplus.marketing.content.sticky-product-screenshot` rendered
-  `390x1652` against source `390x1628`, and
-  `tailwindplus.marketing.bento.three-column-bento-grid` rendered `390x2285`
-  against source `390x2261`.
-- The measured deltas are current backlog, not accepted parity. They appear
-  consistent with rich-text block slots rendering extra block flow where the
-  Tailwind Plus source uses plain text nodes.
+- `pnpm provider:visual-parity` built `apps/renderer` successfully and passed
+  for all 18 active provider variants across desktop and mobile. The previous
+  mobile-only height deltas for
+  `tailwindplus.marketing.content.sticky-product-screenshot` and
+  `tailwindplus.marketing.bento.three-column-bento-grid` were resolved by
+  aligning provider demo/fallback image `alt` values with the decorative
+  upstream fixtures and by rendering plain-text source slots in text mode where
+  the Tailwind Plus source uses text nodes.
 - The Tailwind Plus header chrome is an active source-backed structured chrome
   variant, but upstream Tailwind Plus Elements popover behavior is not fully
   represented by the current CSS-only SIAB adaptation. Treat this as a chrome

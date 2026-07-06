@@ -10,19 +10,19 @@ import { richTextSlot } from "../../../../../source-blocks/utils"
 const fallbackImages: Array<MediaRef> = [
   {
     url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-mobile-friendly.png",
-    alt: "Mobile app preview",
+    alt: "",
     width: 720,
     height: 1280,
   },
   {
     url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-performance.png",
-    alt: "Performance chart preview",
+    alt: "",
     width: 1024,
     height: 768,
   },
   {
     url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-security.png",
-    alt: "Security preview",
+    alt: "",
     width: 1024,
     height: 512,
   },
@@ -47,9 +47,9 @@ function CardText({
         <RichTextRenderer value={item.title} blockMode="inline" />
       </p>
       {item.description ? (
-        <div className="mt-2 max-w-lg text-sm/6 text-gray-600 max-lg:text-center">
-          <RichTextRenderer value={item.description} />
-        </div>
+        <p className="mt-2 max-w-lg text-sm/6 text-gray-600 max-lg:text-center">
+          <RichTextRenderer value={item.description} blockMode="text" />
+        </p>
       ) : null}
     </div>
   )
@@ -117,16 +117,17 @@ export function TailwindPlusMarketingBentoThreeColumnBentoGridRenderer({
             blockMode: "inline",
           })}
         </h2>
-        <div className="mx-auto mt-2 max-w-lg text-center text-4xl font-semibold tracking-tight text-balance text-gray-950 sm:text-5xl">
+        <p className="mx-auto mt-2 max-w-lg text-center text-4xl font-semibold tracking-tight text-balance text-gray-950 sm:text-5xl">
           {richTextSlot({
             options,
             name: "bentoGrid.intro",
             value: block.intro,
-            variant: "block",
+            variant: "inline",
             className: "contents",
             elementPath: { blockIndex: options.index, field: "intro" },
+            blockMode: "text",
           })}
-        </div>
+        </p>
         <div className="mt-10 grid gap-4 sm:mt-16 lg:grid-cols-3 lg:grid-rows-2">
           <div className="relative lg:row-span-2">
             <div className="absolute inset-px rounded-lg bg-white lg:rounded-l-4xl" />

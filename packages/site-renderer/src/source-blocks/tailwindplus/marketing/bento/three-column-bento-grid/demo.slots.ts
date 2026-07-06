@@ -24,7 +24,7 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
       description: blockText("Anim aute id magna aliqua ad ad non deserunt sunt. Qui irure qui lorem cupidatat commodo."),
       image: {
         url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-mobile-friendly.png",
-        alt: "Mobile app preview",
+        alt: "",
         width: 720,
         height: 1280,
       },
@@ -34,7 +34,7 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
       description: blockText("Lorem ipsum, dolor sit amet consectetur adipisicing elit maiores impedit."),
       image: {
         url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-performance.png",
-        alt: "Performance chart preview",
+        alt: "",
         width: 1024,
         height: 768,
       },
@@ -44,7 +44,7 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots: BentoGridB
       description: blockText("Morbi viverra dui mi arcu sed. Tellus semper adipiscing suspendisse semper morbi."),
       image: {
         url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-security.png",
-        alt: "Security preview",
+        alt: "",
         width: 1024,
         height: 512,
       },

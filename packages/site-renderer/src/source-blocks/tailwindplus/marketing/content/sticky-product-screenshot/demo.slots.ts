@@ -22,7 +22,7 @@ export const tailwindPlusMarketingContentStickyProductScreenshotDemoSlots: Conte
   body: blockText("Faucibus commodo massa rhoncus, volutpat. Dignissim sed eget risus enim. Mattis mauris semper sed amet vitae sed turpis id. Id dolor praesent donec est. Odio penatibus risus viverra tellus varius sit neque erat velit. Faucibus commodo massa rhoncus, volutpat. Dignissim sed eget risus enim. Mattis mauris semper sed amet vitae sed turpis id."),
   image: {
     url: "https://tailwindcss.com/plus-assets/img/component-images/dark-project-app-screenshot.png",
-    alt: "Product workflow screenshot",
+    alt: "",
     width: 1824,
     height: 1080,
   },

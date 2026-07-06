@@ -9,7 +9,7 @@ import { richTextSlot } from "../../../../../source-blocks/utils"
 
 const defaultScreenshot: Exclude<MediaRef, null> = {
   url: "https://tailwindcss.com/plus-assets/img/component-images/dark-project-app-screenshot.png",
-  alt: "Product screenshot",
+  alt: "",
   width: 1824,
   height: 1080,
 }
@@ -105,16 +105,17 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
                   blockMode: "inline",
                 })}
               </h2>
-              <div className="mt-6 text-xl/8 text-gray-700">
+              <p className="mt-6 text-xl/8 text-gray-700">
                 {richTextSlot({
                   options,
                   name: "contentSection.intro",
                   value: block.intro,
-                  variant: "block",
+                  variant: "inline",
                   className: "contents",
                   elementPath: { blockIndex: options.index, field: "intro" },
+                  blockMode: "text",
                 })}
-              </div>
+              </p>
             </div>
           </div>
         </div>
@@ -132,7 +133,7 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
             : resolvedImage ? (
               <img
                 src={resolvedImage.src}
-                alt={resolvedImage.alt ?? "Product screenshot"}
+                alt={resolvedImage.alt ?? ""}
                 className="w-3xl max-w-none rounded-xl bg-gray-900 shadow-xl ring-1 ring-gray-400/10 sm:w-228"
                 loading="lazy"
                 decoding="async"
@@ -142,16 +143,17 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
         <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 lg:mx-auto lg:grid lg:w-full lg:max-w-7xl lg:grid-cols-2 lg:gap-x-8 lg:px-8">
           <div className="lg:pr-4">
             <div className="max-w-xl text-base/7 text-gray-600 lg:max-w-lg">
-              <div>
+              <p>
                 {richTextSlot({
                   options,
                   name: "contentSection.body",
                   value: block.body,
-                  variant: "block",
+                  variant: "inline",
                   className: "contents",
                   elementPath: { blockIndex: options.index, field: "body" },
+                  blockMode: "text",
                 })}
-              </div>
+              </p>
               <ul role="list" className="mt-8 space-y-8 text-gray-600">
                 {features.map((feature, index) => (
                   <li key={index} className="flex gap-x-3">
@@ -160,7 +162,7 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
                       <strong className="font-semibold text-gray-900">
                         <RichTextRenderer value={feature.title} blockMode="inline" />
                       </strong>{" "}
-                      {feature.description ? <RichTextRenderer value={feature.description} blockMode="inline" /> : null}
+                      {feature.description ? <RichTextRenderer value={feature.description} blockMode="text" /> : null}
                     </span>
                   </li>
                 ))}
@@ -176,16 +178,17 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
                   blockMode: "inline",
                 })}
               </h3>
-              <div className="mt-6">
+              <p className="mt-6">
                 {richTextSlot({
                   options,
                   name: "contentSection.secondaryBody",
                   value: block.secondaryBody,
-                  variant: "block",
+                  variant: "inline",
                   className: "contents",
                   elementPath: { blockIndex: options.index, field: "secondaryBody" },
+                  blockMode: "text",
                 })}
-              </div>
+              </p>
             </div>
           </div>
         </div>
