@@ -131,13 +131,15 @@ depended on command-run site generation are no longer current source of truth.
   layout in the deterministic fixture environment, with adjacent plain-text
   slots aligned to text-mode rendering where the Tailwind Plus source uses text
   nodes.
-- Complete or explicitly scope the Tailwind Plus header chrome interaction
-  parity gap. The active
+- Keep the Tailwind Plus header chrome interaction gap explicitly scoped. The active
   `tailwindplus.marketing.header.with-stacked-flyout-menu` renderer is a
   structured CSS-only adaptation fed by site settings and `navHeader`, while the
-  upstream source uses Tailwind Plus Elements popover behavior. Decide whether to
-  implement the upstream interaction model through an approved runtime dependency
-  and structured menu data, or document the supported SIAB interaction subset.
+  upstream source uses Tailwind Plus Elements popover behavior. This is not
+  necessary for the current generated-site focus: mostly one-pagers, or at most
+  small sites with roughly 5-6 flat pages. Revisit full stacked-flyout behavior
+  only if SIAB product scope expands to larger multi-level sites with grouped
+  navigation, nested menu data, keyboard/a11y open-state requirements, and a
+  tested hydration/runtime interaction model.
 - Broaden Tailwind Plus provider visual parity coverage so it verifies both
   light and dark rendered output for every active component/block/chrome
   surface. This should remain provider-focused and deterministic: source

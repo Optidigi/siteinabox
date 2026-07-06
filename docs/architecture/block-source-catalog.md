@@ -269,9 +269,10 @@ Current active runtime families and blocks:
   `eyebrow` is inactive.
 - `tailwindplus.marketing.contact.centered`, with legacy
   `tailwindPlusCentered` aliases still accepted. `title`, `formName`,
-  `submitLabel`, and one to six form fields are required; field labels, names,
-  types, required flags, placeholders, and select/checkbox options remain CMS
-  data.
+  `submitLabel`, and exactly six source-role form fields are required:
+  `first-name`, `last-name`, `company`, `email`, `phone-number`, and `message`.
+  Field labels, required flags, placeholders, and select/checkbox options remain
+  CMS data; layout and field order remain renderer-owned.
 - `tailwindplus.marketing.testimonial.simple-centered`, with legacy
   `tailwindPlusSimpleCentered` testimonial aliases still accepted. It renders exactly one
   testimonial item with required quote, author, and role. Logo and avatar media

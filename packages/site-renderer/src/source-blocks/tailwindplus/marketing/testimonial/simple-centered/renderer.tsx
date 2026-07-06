@@ -18,6 +18,7 @@ export function TailwindPlusMarketingTestimonialSimpleCenteredRenderer({
   const slots = options.editSlots
   const logo = resolveMedia(block.logo ?? null, options.mediaResolver)
   const avatar = resolveMedia(item.avatar ?? null, options.mediaResolver)
+  const hasRole = Boolean(item.role?.trim())
   const sectionProps = mergeRendererSectionAttributes(
     {
       id: block.anchor || undefined,
@@ -89,20 +90,24 @@ export function TailwindPlusMarketingTestimonialSimpleCenteredRenderer({
                   })
                   : item.author}
               </div>
-              <svg viewBox="0 0 2 2" width="3" height="3" aria-hidden="true" className="fill-gray-900">
-                <circle r="1" cx="1" cy="1" />
-              </svg>
-              <div className="text-gray-600">
-                {slots?.renderText
-                  ? slots.renderText({
-                    name: "testimonials.role",
-                    value: item.role,
-                    className: "contents",
-                    placeholder: "Role",
-                    elementPath: { blockIndex: options.index, field: "items", itemIndex: 0, subField: "role" },
-                  })
-                  : item.role}
-              </div>
+              {hasRole && (
+                <>
+                  <svg viewBox="0 0 2 2" width="3" height="3" aria-hidden="true" className="fill-gray-900">
+                    <circle r="1" cx="1" cy="1" />
+                  </svg>
+                  <div className="text-gray-600">
+                    {slots?.renderText
+                      ? slots.renderText({
+                        name: "testimonials.role",
+                        value: item.role,
+                        className: "contents",
+                        placeholder: "Role",
+                        elementPath: { blockIndex: options.index, field: "items", itemIndex: 0, subField: "role" },
+                      })
+                      : item.role}
+                  </div>
+                </>
+              )}
             </div>
           </figcaption>
         </figure>

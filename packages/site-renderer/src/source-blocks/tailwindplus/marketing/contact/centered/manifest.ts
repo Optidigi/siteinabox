@@ -44,7 +44,7 @@ export const tailwindPlusMarketingContactCenteredProviderBlock = defineProviderB
       status: "required",
       exposed: true,
       sourceField: "fields",
-      minItems: 1,
+      minItems: 6,
       maxItems: 6,
     },
     fieldName: {

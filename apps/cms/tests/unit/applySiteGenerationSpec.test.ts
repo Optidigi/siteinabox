@@ -71,7 +71,14 @@ const fixtureSpec = (): SiteGenerationSpec => ({
           title: rtInline("Contact"),
           formName: "Contact form",
           submitLabel: "Send",
-          fields: [{ name: "email", label: "Email", type: "email", required: true }],
+          fields: [
+            { name: "first-name", label: "First name", type: "text", required: true },
+            { name: "last-name", label: "Last name", type: "text", required: true },
+            { name: "company", label: "Company", type: "text" },
+            { name: "email", label: "Email", type: "email", required: true },
+            { name: "phone-number", label: "Phone number", type: "tel" },
+            { name: "message", label: "Message", type: "textarea", required: true },
+          ],
         },
       ],
       seo: {

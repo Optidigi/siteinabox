@@ -164,7 +164,7 @@ describe("processIntakeSubmission", () => {
     expect(store.pages[0]?.blocks[10]?.posts.every((post: any) => typeof post.image === "number")).toBe(true)
     expect(store.pages[0]?.blocks[11]?.benefits).toHaveLength(2)
     expect(store.pages[0]?.blocks[11]).not.toHaveProperty("consentLabel")
-    expect(store.pages[0]?.blocks[13]?.fields).toHaveLength(5)
+    expect(store.pages[0]?.blocks[13]?.fields).toHaveLength(6)
     expect(store.media.length).toBeGreaterThan(0)
     expect(store["site-generation-runs"][0]?.parsedOutput?.blocks.map((block: any) => block.slug)).toEqual([
       "hero",

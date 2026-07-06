@@ -8,6 +8,8 @@ import { RichTextRenderer } from "../../../../../rich-text"
 const gradientClipPath =
   "polygon(74.1% 44.1%, 100% 61.6%, 97.5% 26.9%, 85.5% 0.1%, 80.7% 2%, 72.5% 32.5%, 60.2% 62.4%, 52.4% 68.1%, 47.5% 58.3%, 45.2% 34.5%, 27.5% 76.7%, 0.1% 64.9%, 17.9% 100%, 27.6% 76.8%, 76.1% 97.7%, 74.1% 44.1%)"
 
+const sourceFieldOrder = ["first-name", "last-name", "company", "email", "phone-number", "message"] as const
+
 function fieldAutocomplete(field: ContactSectionBlock["fields"][number]) {
   if (field.name === "first-name") return "given-name"
   if (field.name === "last-name") return "family-name"
@@ -34,6 +36,10 @@ export function TailwindPlusMarketingContactCenteredRenderer({
   const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
   const hasSubmitStatus = method.toUpperCase() === "POST" && !formAction.startsWith("mailto:")
   const submitLabel = block.submitLabel ?? "Let's talk"
+  const fieldsByName = new Map(block.fields.map((field) => [field.name, field]))
+  const orderedFields = sourceFieldOrder
+    .map((name) => fieldsByName.get(name))
+    .filter((field): field is ContactSectionBlock["fields"][number] => Boolean(field))
   const sectionProps = mergeRendererSectionAttributes(
     {
       id: block.anchor || undefined,
@@ -105,7 +111,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
           </div>
         )}
         <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-          {block.fields.slice(0, 6).map((field, index) => {
+          {orderedFields.map((field, index) => {
             const fieldClassName = index < 2 ? undefined : "sm:col-span-2"
             const autoComplete = fieldAutocomplete(field)
             const placeholder = field.placeholder ?? undefined

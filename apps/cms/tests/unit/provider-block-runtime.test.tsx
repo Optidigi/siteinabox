@@ -352,6 +352,10 @@ describe("provider block runtime", () => {
         ...tailwindPlusMarketingBlogThreeColumnDemoSlots,
         posts: tailwindPlusMarketingBlogThreeColumnDemoSlots.posts.slice(0, 2),
       }),
+      ...validateProviderBlockInstance({
+        ...tailwindPlusMarketingContactCenteredDemoSlots,
+        fields: tailwindPlusMarketingContactCenteredDemoSlots.fields.slice(0, 5),
+      }),
     ]
 
     expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
@@ -379,7 +383,69 @@ describe("provider block runtime", () => {
       "links",
       "cta",
       "secondary",
+      "fields",
     ]))
+  })
+
+  it("keeps the Tailwind Plus contact layout tied to source field roles", () => {
+    const shuffled = {
+      ...tailwindPlusMarketingContactCenteredDemoSlots,
+      fields: [
+        tailwindPlusMarketingContactCenteredDemoSlots.fields[5]!,
+        tailwindPlusMarketingContactCenteredDemoSlots.fields[2]!,
+        tailwindPlusMarketingContactCenteredDemoSlots.fields[0]!,
+        tailwindPlusMarketingContactCenteredDemoSlots.fields[4]!,
+        tailwindPlusMarketingContactCenteredDemoSlots.fields[1]!,
+        tailwindPlusMarketingContactCenteredDemoSlots.fields[3]!,
+        {
+          name: "unexpected",
+          label: "Unexpected",
+          type: "text" as const,
+        },
+      ],
+      provider: {
+        ...tailwindPlusMarketingContactCenteredDemoSlots.provider,
+        hiddenFields: [{ name: "tenantId", value: "tenant-1" }],
+        honeypotField: "company_website",
+      },
+    }
+
+    const html = renderToStaticMarkup(<BlockRenderer block={shuffled} index={0} />)
+
+    expect(validateProviderBlockInstance(shuffled).map((issue) => issue.path.join("."))).toContain("fields")
+    expect(html.indexOf('name="first-name"')).toBeLessThan(html.indexOf('name="last-name"'))
+    expect(html.indexOf('name="last-name"')).toBeLessThan(html.indexOf('name="company"'))
+    expect(html.indexOf('name="company"')).toBeLessThan(html.indexOf('name="email"'))
+    expect(html.indexOf('name="email"')).toBeLessThan(html.indexOf('name="phone-number"'))
+    expect(html.indexOf('name="phone-number"')).toBeLessThan(html.indexOf('name="message"'))
+    expect(html).not.toContain('name="unexpected"')
+    expect(html).toContain('type="hidden"')
+    expect(html).toContain('name="tenantId"')
+    expect(html).toContain('class="hidden"')
+    expect(html).toContain('name="company_website"')
+  })
+
+  it("keeps testimonial optional media and role absence visually honest", () => {
+    const noMediaOrRole = {
+      ...tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots,
+      logo: null,
+      items: [{
+        ...tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots.items[0]!,
+        role: "",
+        avatar: null,
+      }],
+    }
+
+    const mediaPresentHtml = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots} index={0} />)
+    const noMediaOrRoleHtml = renderToStaticMarkup(<BlockRenderer block={noMediaOrRole} index={0} />)
+
+    expect(mediaPresentHtml).toContain('class="mx-auto h-12"')
+    expect(mediaPresentHtml).toContain('class="mx-auto size-10 rounded-full"')
+    expect(mediaPresentHtml).toContain('class="fill-gray-900"')
+    expect(noMediaOrRoleHtml).not.toContain('class="mx-auto h-12"')
+    expect(noMediaOrRoleHtml).not.toContain('class="mx-auto size-10 rounded-full"')
+    expect(noMediaOrRoleHtml).not.toContain('class="fill-gray-900"')
+    expect(noMediaOrRoleHtml).not.toContain('class="text-gray-600"></div>')
   })
 
   it("keeps fixed Tailwind Plus content slots separate and complete", () => {

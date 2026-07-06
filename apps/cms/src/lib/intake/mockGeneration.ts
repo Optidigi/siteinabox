@@ -490,8 +490,9 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
           fields: [
             { name: "first-name", label: "Voornaam", type: "text", required: true, placeholder: "Sam" },
             { name: "last-name", label: "Achternaam", type: "text", required: true, placeholder: "Intake" },
+            { name: "company", label: "Bedrijf", type: "text", required: false, placeholder: "Bedrijfsnaam" },
             { name: "email", label: "E-mail", type: "email", required: true, placeholder: "sam@example.com" },
-            { name: "phone", label: "Telefoon", type: "tel", required: false, placeholder: "+31 6 12345678" },
+            { name: "phone-number", label: "Telefoon", type: "tel", required: false, placeholder: "+31 6 12345678" },
             { name: "message", label: "Bericht", type: "textarea", required: true, placeholder: "Waar kunnen we mee helpen?", maxLength: 1000 },
           ],
           provider: {
