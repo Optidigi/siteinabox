@@ -11,6 +11,8 @@ import {
 } from "@siteinabox/contracts/iframe-editor"
 import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
+import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { ThemeBar } from "@/components/editor/theme/theme-bar"
 import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
@@ -25,6 +27,8 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+
+const PREVIEW_FRAME_HEIGHT_GUTTER = 2
 
 type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
 type QueuedPreviewThemeSave = {
@@ -68,6 +72,21 @@ export function shouldStartPreviewThemeSave({
 
 export function shouldBlockPreviewCustomerNavigation(themeSaveStatus: PreviewThemeSaveStatus) {
   return themeSaveStatus === "saving"
+}
+
+function measurePreviewFrameDocumentHeight(frameDocument: Document | null | undefined): number | null {
+  if (!frameDocument) return null
+  const body = frameDocument.body
+  if (!body) return null
+  const frameWindow = frameDocument.defaultView
+  const scrollY = frameWindow?.scrollY ?? 0
+  const bodyTop = body.getBoundingClientRect().top + scrollY
+  const height = Array.from(body.children).reduce((max, child) => {
+    const rect = child.getBoundingClientRect()
+    if (rect.width <= 0 && rect.height <= 0) return max
+    return Math.max(max, rect.bottom + scrollY - bodyTop)
+  }, 0)
+  return Number.isFinite(height) && height > 0 ? Math.ceil(height + PREVIEW_FRAME_HEIGHT_GUTTER) : null
 }
 
 export function PreviewCustomizer({
@@ -227,22 +246,7 @@ export function PreviewCustomizer({
   return (
     <RtManifestProvider manifest={manifest}>
       <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
-        <div data-siab-cms-sticky-chrome className="sticky top-0 z-20 flex items-center justify-center border-b bg-background px-3 py-2">
-          <div className="pointer-events-auto">
-            <ThemeBar
-              theme={themeState}
-              manifest={manifest}
-              onThemeChange={handleThemeChange}
-              palettes={PALETTE_PRESETS}
-              fonts={FONT_PRESETS}
-              radiusLevels={RADIUS_PRESETS}
-              densityLevels={DENSITY_PRESETS}
-            />
-            <ThemeSaveStatus status={themeSaveStatus} />
-          </div>
-        </div>
-
-        <main className="w-full pb-28">
+        <main className="w-full pb-40 md:pb-28">
           {frameSrc ? (
             <PreviewRendererFrame
               src={frameSrc}
@@ -261,6 +265,20 @@ export function PreviewCustomizer({
         </main>
 
         <PreviewCommandBar
+          themeControls={
+            <>
+              <ThemeBar
+                theme={themeState}
+                manifest={manifest}
+                onThemeChange={handleThemeChange}
+                palettes={PALETTE_PRESETS}
+                fonts={FONT_PRESETS}
+                radiusLevels={RADIUS_PRESETS}
+                densityLevels={DENSITY_PRESETS}
+              />
+              <ThemeSaveStatus status={themeSaveStatus} />
+            </>
+          }
           canCompleteOrder={canCompleteOrder}
           paymentSatisfied={paymentSatisfied}
           checkoutHref={checkoutHref}
@@ -291,6 +309,11 @@ function PreviewRendererFrame({
 }) {
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const [ready, setReady] = React.useState(false)
+  const [frameContentHeight, setFrameContentHeight] = React.useState<number | null>(null)
+  const iframeAutoHeight = useCspStyleRule(
+    "preview-renderer-frame-auto-height",
+    frameContentHeight != null ? `height:${formatCssPx(frameContentHeight)};` : null,
+  )
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
     const target = frameRef.current?.contentWindow
@@ -300,12 +323,14 @@ function PreviewRendererFrame({
 
   React.useEffect(() => {
     setReady(false)
+    setFrameContentHeight(null)
     revisionRef.current = 0
   }, [revisionRef, src])
 
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
+      if (event.source !== frameRef.current?.contentWindow) return
       const parsed = validateIframeEditorMessage(event.data)
       if (parsed.ok && parsed.message.type === "renderer.ready") {
         setReady(true)
@@ -314,6 +339,50 @@ function PreviewRendererFrame({
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
   }, [])
+
+  React.useLayoutEffect(() => {
+    if (!ready) {
+      setFrameContentHeight(null)
+      return
+    }
+    const frameDocument = frameRef.current?.contentDocument
+    const frameWindow = frameRef.current?.contentWindow
+    if (!frameDocument) return
+
+    let raf: number | null = null
+    const measure = () => {
+      raf = null
+      const next = measurePreviewFrameDocumentHeight(frameDocument)
+      setFrameContentHeight((current) => (current === next ? current : next))
+    }
+    const schedule = () => {
+      if (raf != null) return
+      raf = window.requestAnimationFrame(measure)
+    }
+
+    measure()
+    const resizeObserver = new ResizeObserver(schedule)
+    if (frameDocument.documentElement) resizeObserver.observe(frameDocument.documentElement)
+    if (frameDocument.body) resizeObserver.observe(frameDocument.body)
+    const mutationObserver = new MutationObserver(schedule)
+    mutationObserver.observe(frameDocument.documentElement, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+    })
+    frameWindow?.addEventListener("resize", schedule)
+    frameWindow?.addEventListener("load", schedule)
+    window.addEventListener("resize", schedule)
+
+    return () => {
+      if (raf != null) window.cancelAnimationFrame(raf)
+      resizeObserver.disconnect()
+      mutationObserver.disconnect()
+      frameWindow?.removeEventListener("resize", schedule)
+      frameWindow?.removeEventListener("load", schedule)
+      window.removeEventListener("resize", schedule)
+    }
+  }, [ready, src])
 
   React.useEffect(() => {
     if (!ready) return
@@ -346,14 +415,17 @@ function PreviewRendererFrame({
   }, [postToFrame, ready, revisionRef, theme])
 
   return (
-    <iframe
-      ref={frameRef}
-      src={src}
-      title={title}
-      className="block h-[calc(100dvh-9rem)] min-h-[640px] w-full border-0 bg-white"
-      sandbox="allow-same-origin allow-scripts allow-forms"
-      data-siab-renderer-frame
-    />
+    <>
+      {iframeAutoHeight.styleElement}
+      <iframe
+        ref={frameRef}
+        src={src}
+        title={title}
+        className={cn(iframeAutoHeight.className, "block min-h-dvh w-full border-0 bg-white")}
+        sandbox="allow-same-origin allow-scripts allow-forms"
+        data-siab-renderer-frame
+      />
+    </>
   )
 }
 
@@ -372,12 +444,14 @@ function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
 }
 
 export function PreviewCommandBar({
+  themeControls,
   canCompleteOrder,
   paymentSatisfied,
   checkoutHref,
   reviewHref,
   customerNavigationBlocked,
 }: {
+  themeControls: React.ReactNode
   canCompleteOrder: boolean
   paymentSatisfied: boolean
   checkoutHref: string
@@ -400,29 +474,36 @@ export function PreviewCommandBar({
   const blockedClassName = customerNavigationBlocked ? "pointer-events-none opacity-50" : ""
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-3 shadow-lg">
-      <div className="flex w-full justify-end">
-        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
-          <Button asChild variant="default" className={`w-full sm:w-auto ${blockedClassName}`}>
-            <a href={customerNavigationBlocked ? undefined : reviewHref} {...blockedAnchorProps}>
-              <SquarePen className="size-4" />
-              {t("reviewChanges")}
-            </a>
-          </Button>
-          {canCompleteOrder && (
-            <Button asChild variant="success" className={`w-full sm:w-auto ${blockedClassName}`}>
-              <a href={customerNavigationBlocked ? undefined : checkoutHref} {...blockedAnchorProps}>
-                <Rocket className="size-4" />
-                {t("launchWebsite")}
+    <div
+      data-siab-cms-sticky-chrome
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-3 shadow-lg"
+    >
+      <div className="grid w-full items-center gap-3 md:grid-cols-[1fr_auto_1fr]">
+        <div className="hidden md:block" aria-hidden />
+        <div className="flex justify-center">{themeControls}</div>
+        <div className="flex w-full justify-end">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
+            <Button asChild variant="default" className={`w-full sm:w-auto ${blockedClassName}`}>
+              <a href={customerNavigationBlocked ? undefined : reviewHref} {...blockedAnchorProps}>
+                <SquarePen className="size-4" />
+                {t("reviewChanges")}
               </a>
             </Button>
-          )}
-          {paymentSatisfied && (
-            <Button type="button" variant="secondary" disabled className="w-full sm:w-auto">
-              <CheckCircle2 className="size-4" />
-              {t("paymentComplete")}
-            </Button>
-          )}
+            {canCompleteOrder && (
+              <Button asChild variant="success" className={`w-full sm:w-auto ${blockedClassName}`}>
+                <a href={customerNavigationBlocked ? undefined : checkoutHref} {...blockedAnchorProps}>
+                  <Rocket className="size-4" />
+                  {t("launchWebsite")}
+                </a>
+              </Button>
+            )}
+            {paymentSatisfied && (
+              <Button type="button" variant="secondary" disabled className="w-full sm:w-auto">
+                <CheckCircle2 className="size-4" />
+                {t("paymentComplete")}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

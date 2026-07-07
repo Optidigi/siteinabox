@@ -27,4 +27,21 @@ describe("ThemeBar controls", () => {
     expect(themeBar).toContain("React.Dispatch<React.SetStateAction<ThemeTokens | null>>")
     expect(themeBar).toContain("onThemeChange((current) => normalizeThemeForSave")
   })
+
+  it("renders mobile shuffle/default controls from approved theme presets only", () => {
+    const themeBar = read("src/components/editor/theme/theme-bar.tsx")
+
+    expect(themeBar).toContain("DEFAULT_THEME_TOKEN_SPEC")
+    expect(themeBar).toContain("MOBILE_RANDOM_MODES")
+    expect(themeBar).toContain("pickRandom(palettes)")
+    expect(themeBar).toContain("pickRandom(fonts)")
+    expect(themeBar).toContain("pickRandom(radiusLevels ?? [])")
+    expect(themeBar).toContain("pickRandom(densityLevels ?? [])")
+    expect(themeBar).toContain('className="flex justify-center py-2 md:hidden"')
+    expect(themeBar).toContain("<Dices")
+    expect(themeBar).toContain("<RotateCcw")
+    expect(themeBar).toContain('t("shuffle")')
+    expect(themeBar).toContain('t("default")')
+    expect(themeBar).toContain('className="hidden md:block"')
+  })
 })

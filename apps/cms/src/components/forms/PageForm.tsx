@@ -1953,8 +1953,11 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           )}
 
           {/* Sticky-but-transparent ThemeBar — pill's own glass styling makes it look floating */}
-          {isDesktop && !readOnly && (
-            <div data-siab-cms-sticky-chrome className="sticky top-[6.5rem] z-20 flex justify-center pointer-events-none">
+          {!readOnly && (
+            <div
+              data-siab-cms-sticky-chrome
+              className={`sticky z-20 flex justify-center pointer-events-none ${isDesktop ? "top-[6.5rem]" : "top-0"}`}
+            >
               <div className="pointer-events-auto">
                 <ThemeBar
                   theme={themeState}

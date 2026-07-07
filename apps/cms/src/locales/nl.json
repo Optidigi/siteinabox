@@ -708,6 +708,7 @@
     "cornerRadius": "Hoekafronding",
     "density": "Dichtheid",
     "spacingDensity": "Ruimtedichtheid",
+    "shuffle": "Shuffle",
     "default": "Standaard",
     "light": "Licht",
     "dark": "Donker",
