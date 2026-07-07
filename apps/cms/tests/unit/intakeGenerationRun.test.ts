@@ -147,6 +147,8 @@ describe("processIntakeSubmission", () => {
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")?.stats).toHaveLength(4)
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")).not.toHaveProperty("cta")
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")).not.toHaveProperty("secondary")
+    expect(blocksByVariant.get("tailwindplus.marketing.feature.with-product-screenshot")?.features).toHaveLength(3)
+    expect(blocksByVariant.get("tailwindplus.marketing.feature.with-product-screenshot")?.features.every((feature: any) => feature.description?.variant === "block")).toBe(true)
     expect(blocksByVariant.get("tailwindplus.marketing.content.sticky-product-screenshot")?.features).toHaveLength(3)
     expect(typeof blocksByVariant.get("tailwindplus.marketing.content.sticky-product-screenshot")?.image).toBe("number")
     expect(blocksByVariant.get("tailwindplus.marketing.content.sticky-product-screenshot")?.features.every((feature: any) => !("icon" in feature))).toBe(true)

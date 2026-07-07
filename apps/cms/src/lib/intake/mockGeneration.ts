@@ -40,6 +40,27 @@ const blockText = (text: string): RtBlockRoot => ({
   children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
 })
 
+const richTextPlainText = (value: RtBlockRoot | RtInlineRoot | null | undefined): string => {
+  const parts: string[] = []
+  const visit = (node: unknown) => {
+    if (!node || typeof node !== "object") return
+    const record = node as { v?: unknown; children?: unknown }
+    if (typeof record.v === "string") parts.push(record.v)
+    if (Array.isArray(record.children)) {
+      for (const child of record.children) visit(child)
+    }
+  }
+  visit(value)
+  return parts.join(" ").replace(/\s+/g, " ").trim()
+}
+
+const asBlockText = (value: RtBlockRoot | RtInlineRoot | null | undefined): RtBlockRoot | null => {
+  if (!value) return null
+  if (value.variant === "block") return clonePlain(value)
+  const text = richTextPlainText(value)
+  return text ? blockText(text) : null
+}
+
 const canonicalProviderBlock = <TBlock extends Block>(block: TBlock, anchor: string): TBlock => {
   const definition = getProviderBlockDefinition(block)
   if (!definition) {
@@ -66,7 +87,13 @@ const buildTailwindSmokeBlocks = (
   }, "top"),
   canonicalProviderBlock(tailwindPlusMarketingLogoCloudSimpleWithHeadingDemoSlots, "logo-cloud"),
   canonicalProviderBlock(tailwindPlusMarketingFeatureCentered2x2GridDemoSlots, "feature-grid"),
-  canonicalProviderBlock(tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots, "product-screenshot"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots,
+    features: tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots.features?.map((feature) => ({
+      ...feature,
+      description: asBlockText(feature.description),
+    })),
+  }, "product-screenshot"),
   canonicalProviderBlock({
     ...tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
     features: tailwindPlusMarketingContentStickyProductScreenshotDemoSlots.features?.map(({ icon: _icon, ...feature }) => feature),
