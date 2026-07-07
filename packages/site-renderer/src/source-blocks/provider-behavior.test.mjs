@@ -170,6 +170,15 @@ test("newsletter source block keeps runtime form extras hidden and validates col
   assert.ok(validateProviderBlockInstance(consent).some((issue) => issue.path.join(".") === "provider.requiresConsent"))
 })
 
+test("hero simple-centered keeps source gradient classes while marking glow for token bridge", () => {
+  const definition = providerBlockDefinitions.find((candidate) => candidate.id === "tailwindplus.marketing.hero.simple-centered")
+  const html = renderDefinition(definition, clone(tailwindPlusMarketingHeroSimpleCenteredDemoSlots))
+
+  assert.equal((html.match(/data-siab-tokenized-gradient="hero-glow"/g) ?? []).length, 2)
+  assert.equal((html.match(/from-\[#ff80b5\]/g) ?? []).length, 2)
+  assert.equal((html.match(/to-\[#9089fc\]/g) ?? []).length, 2)
+})
+
 test("testimonial optional media validates and keeps the dark radial token marker", () => {
   const definition = providerBlockDefinitions.find((candidate) => candidate.id === "tailwindplus.marketing.testimonial.simple-centered")
   const block = clone(tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots)

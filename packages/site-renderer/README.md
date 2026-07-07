@@ -43,7 +43,9 @@ its default palette variables. The default SIAB presets (`blue-professional`,
 `comfortable` leaves provider section padding untouched. SIAB token overrides
 are applied only through explicit renderer-owned bridge roles such as
 non-default accent schemes, ambient surfaces/ink, borders, fonts, shape,
-non-default density, and reviewed tokenized decoration.
+non-default density, and reviewed tokenized decoration. Tailwind Plus hero glow
+decoration keeps the source pink-to-violet glow for the default identity preset
+and uses the selected accent ramp only for non-default color schemes.
 
 Provider chrome remains structured site chrome, not page content. The shared
 renderer may compose compatible top chrome with the first provider section when

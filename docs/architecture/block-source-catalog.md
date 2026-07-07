@@ -242,7 +242,11 @@ Current runtime-compatible provider families and blocks:
   `tailwindPlusSimpleCentered` hero aliases still accepted. The active slots are `headline`
   required and `eyebrow`, `subheadline`, `cta`, and `secondary` optional.
   Upstream `image` and `pills` are recorded as inactive for this exact variant
-  and are rejected if generated or saved with values.
+  and are rejected if generated or saved with values. The decorative hero glow
+  keeps the literal Tailwind pink-to-violet classes and carries
+  `data-siab-tokenized-gradient="hero-glow"`; the default identity preset keeps
+  the source pink-to-violet glow, while non-default color schemes compute the
+  glow from the selected accent ramp.
 - `tailwindplus.marketing.feature.with-product-screenshot`, with legacy
   `tailwindPlusWithProductScreenshot` aliases still accepted. The active slots are
   `title` and exactly three `features` with required title/description;
@@ -400,8 +404,9 @@ separate runtime tests. Dark-mode source adaptation is limited to explicit
 site-wide token bridge rules for ambient surfaces. Fixed-dark source islands
 pin source white/dark semantic aliases so ambient dark-mode variables cannot
 alter their rings, borders, or text. Ambient surfaces such as the testimonial
-radial gradient and skew panel use stable source-scoped markers rather than
-tenant-provided classes or per-block style tokens.
+radial gradient and skew panel, and reviewed decoration such as the hero glow,
+use stable source-scoped markers rather than tenant-provided classes or
+per-block style tokens.
 
 ## Current Tailwind Plus Inventory Notes
 
@@ -544,7 +549,10 @@ rule is intentionally narrow: `tailwindplus.marketing.header.with-stacked-flyout
 anchors to a first `tailwindplus.marketing.hero.simple-centered` block through
 a `data-siab-top-stack="tailwindplus.marketing.header-hero"` wrapper. The banner
 variant remains a standalone Tailwind element; it is not anchored to a page
-section and is not listed in `SITE_BLOCK_SLUGS`.
+section and is not listed in `SITE_BLOCK_SLUGS`. Provider top stacks are normal
+renderer-owned provider surfaces and are covered by the Tailwind Plus token
+bridge; they must not introduce extra margin/padding spacing around the
+anchored source elements.
 
 Inactive provider chrome variants are not active chrome choices, provenance
 entries, renderer fixture requirements, or AI-generation suggestions. Provider

@@ -722,6 +722,7 @@ describe("provider block runtime", () => {
     expect(css).not.toContain("--color-white:#fffbeb")
     expect(css).not.toMatch(/--color-gray-\d+:/)
     expect(css).toContain(':where([data-provider-block="tailwindplus"].bg-white)')
+    expect(css).toContain(':where([data-provider-top-stack="tailwindplus"].bg-white)')
     expect(css).toContain('background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))')
     expect(css).toContain(':where([data-provider-chrome="tailwindplus"]).bg-gray-50')
     expect(css).toContain('.rt-canvas[data-rt-mode="dark"]{')

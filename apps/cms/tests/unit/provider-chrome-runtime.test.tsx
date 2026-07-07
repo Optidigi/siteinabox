@@ -138,6 +138,7 @@ describe("provider chrome runtime", () => {
     )
 
     expect(html).toContain('data-siab-top-stack="tailwindplus.marketing.header-hero"')
+    expect(html).toContain('data-provider-top-stack="tailwindplus"')
     expect(html).toContain(`data-anchored-source-variant="tailwindplus.marketing.hero.simple-centered"`)
     expect(html).toContain('data-site-chrome="banner"')
     expect(html).toContain("site-top-stack--source-tailwindplus-marketing-header-hero bg-white")
