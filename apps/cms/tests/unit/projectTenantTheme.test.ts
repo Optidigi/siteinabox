@@ -38,7 +38,9 @@ describe("projectTenantTheme", () => {
 
     const written = await fs.readFile(path.join(tenantDir, "tenant-theme.css"), "utf8")
     expect(written).toContain("html:root{")
-    expect(written).toContain("--color-indigo-600:#2563eb")
+    expect(written).toContain("--color-accent:#2563eb")
+    expect(written).toContain("--siab-accent-600:#2563eb")
+    expect(written).not.toMatch(/--color-indigo-\d+:/)
   })
 
   it("does not throw when tenant dir does not exist — logs error and returns", async () => {

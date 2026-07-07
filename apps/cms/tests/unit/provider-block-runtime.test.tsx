@@ -678,7 +678,7 @@ describe("provider block runtime", () => {
     expect(cmsRendererShellCss).toContain('@source "../../../../packages/site-renderer/src";')
   })
 
-  it("maps SiaB theme tokens onto static Tailwind provider accent variables and role bridges", () => {
+  it("maps SiaB theme tokens onto explicit Tailwind provider role bridges", () => {
     const css = themeToCssVars({
       version: 2,
       appearance: { mode: "light" },
@@ -688,13 +688,14 @@ describe("provider block runtime", () => {
       density: { schemeId: "comfortable" },
     })
 
-    expect(css).toContain("--color-indigo-600:#2563eb")
-    expect(css).toContain("--color-indigo-500:#3b82f6")
+    expect(css).toContain("--color-accent:#2563eb")
+    expect(css).toContain("--siab-accent-600:#2563eb")
+    expect(css).toContain("--siab-accent-500:#3b82f6")
     expect(css).toContain("--siab-accent-100:#dbeafe")
     expect(css).toContain("--color-tailwindplus-surface:#ffffff")
     expect(css).not.toContain("--color-white:")
-    expect(css).toContain("--color-gray-900:#111827")
-    expect(css).toContain("--color-gray-500:#6b7280")
+    expect(css).not.toMatch(/--color-gray-\d+:/)
+    expect(css).not.toMatch(/--color-indigo-\d+:/)
     expect(css).toContain(".text-gray-900")
     expect(css).toContain("color:var(--siab-neutral-900,var(--color-ink,#111827))")
     expect(css).toContain(".text-gray-600")
@@ -719,7 +720,7 @@ describe("provider block runtime", () => {
 
     expect(css).not.toContain("--color-white:")
     expect(css).not.toContain("--color-white:#fffbeb")
-    expect(css).toContain("--color-gray-900:#111827")
+    expect(css).not.toMatch(/--color-gray-\d+:/)
     expect(css).toContain(':where([data-provider-block="tailwindplus"].bg-white)')
     expect(css).toContain('background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))')
     expect(css).toContain(':where([data-provider-chrome="tailwindplus"]).bg-gray-50')

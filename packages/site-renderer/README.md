@@ -33,4 +33,12 @@ Provider tests are split by boundary:
 Generation data may select only approved block IDs plus typed slots. It must
 not provide HTML, React, CSS, Tailwind class strings, imports, layout rules, or
 per-block style tokens. Runtime-only form metadata is not treated as provider
-source UI, and dark-mode adaptation stays in explicit token bridge rules.
+source UI.
+
+Theme rendering is Tailwind-default first. The generated-site CSS wires
+Tailwind's native `dark:` variant to `[data-rt-mode="dark"]`, and Tailwind owns
+its default palette variables. The default SIAB presets (`blue-professional`,
+`clear-modern`, `soft`, `comfortable`) are the Tailwind-identity configuration.
+SIAB token overrides are applied only through explicit renderer-owned bridge
+roles such as accent affordances, ambient surfaces/ink, borders, fonts, shape,
+density, and reviewed tokenized decoration.

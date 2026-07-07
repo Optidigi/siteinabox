@@ -188,12 +188,17 @@ approved shape/radius schemes. Missing theme data resolves to the product
 default preset set: `blue-professional` colors, `clear-modern` fonts,
 `comfortable` density, `soft` shape, and light mode. Product presets theme the
 same renderer through CSS variables only; source/default parity checks verify
-renderer fidelity separately from user-facing tokenized output.
+renderer fidelity separately from user-facing tokenized output. The default
+preset set is the Tailwind-identity configuration: with those presets selected,
+provider source should compute like the Tailwind source unless an explicitly
+documented runtime bridge owns that semantic role.
 
-Provider utility classes stay static and detectable. The Tailwind Plus bridge
-maps neutral and accent utility shades deliberately (`gray-50` through
-`gray-950`, `indigo-50` through `indigo-950`) instead of collapsing shades into
-one muted token. Provider roots use stable theme zones:
+Provider utility classes stay static and detectable. Tailwind owns its default
+palette variables and native `dark:` computation. The Tailwind Plus bridge does
+not globally rewrite Tailwind `--color-gray-*` or `--color-indigo-*` variables;
+it applies SIAB tokens only through explicit semantic role rules such as
+ambient surfaces, ambient ink, brand/accent affordances, borders, provider
+section density, and reviewed tokenized decoration. Provider roots use stable theme zones:
 `data-theme-zone="ambient"` for normal themeable sections and
 `data-theme-zone="fixed-dark"` for source dark panels that must remain
 coherent. Density is limited to provider section vertical padding in V1. Shape is a

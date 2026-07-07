@@ -114,23 +114,27 @@ an arbitrary spacing API. Generation and CMS editing must not supply per-block
 spacing values, breakpoint choices, grid spans, or layout instructions.
 ### Dark mode overlay
 
-When `theme.appearance.mode === "dark"`, `data-rt-mode="dark"` is set on the editor
-canvas root by `CanvasSurface` and on public/preview renderer roots by
-`packages/site-renderer` (`SitePageRenderer` / tenant renderers). All
-`--color-*` vars MUST be defined in BOTH:
+When the resolved renderer theme mode is dark, `data-rt-mode="dark"` is set on
+the editor canvas root by `CanvasSurface` and on public/preview renderer roots
+by `packages/site-renderer` (`SitePageRenderer` / tenant renderers). SIAB
+semantic color vars MUST be defined in BOTH:
 
 - a base block: `.rt-canvas { --color-accent: …; --color-bg: …; … }` for the canvas, or `html { --color-accent: …; … }` for the live site.
 - a dark overlay block: `.rt-canvas[data-rt-mode="dark"] { … }` for the canvas, or `html[data-rt-mode="dark"] { … }` for the live site.
 
-The base block and dark overlay are resolved from ThemeTokenSpec V2 preset IDs. `toCssVars` emits both blocks from the selected color, font, shape, density, and appearance presets; CMS/generation do not store raw palettes.
+The base block and dark overlay are resolved from ThemeTokenSpec V2 preset IDs.
+`toCssVars` emits both blocks from the selected color, font, shape, density, and
+appearance presets; CMS/generation do not store raw palettes.
 
 Generated-site CSS wires Tailwind's native `dark:` variant to
 `[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use
-that native path. Active Tailwind Plus provider sources that do not include
-`dark:` utilities must be themed through renderer-owned provider bridge rules.
-Those bridge rules map utility roles, not global Tailwind neutral palette
-variables: `text-gray-900` may become theme ink, while `bg-gray-900` remains a
-dark panel.
+that native path and should compute from Tailwind's default palette values. SIAB
+theme presets do not globally redefine Tailwind `--color-gray-*` or
+`--color-indigo-*` variables. Active Tailwind Plus provider sources that do not
+include `dark:` utilities may be themed only through renderer-owned bridge rules
+for explicit semantic roles: ambient surfaces, ambient ink, accent affordances,
+borders, shape, density, and reviewed tokenized decoration. `bg-gray-900`
+remains a source-owned dark panel unless an explicit bridge says otherwise.
 
 ### Implementation rule
 

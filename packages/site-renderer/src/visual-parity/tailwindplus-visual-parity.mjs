@@ -27,7 +27,7 @@ import {
 import { providerChromeDefinitions } from "../source-chrome/index.ts"
 import { providerSystemTemplateDefinitions } from "../source-templates/index.ts"
 import { SitePageRenderer } from "../SitePageRenderer.tsx"
-import { PUBLIC_RENDERER_THEME_SCOPE, themeToCssVars } from "../theme/css-vars.ts"
+import { PUBLIC_RENDERER_THEME_SCOPE, themeMode, themeToCssVars } from "../theme/css-vars.ts"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, "../../../..")
@@ -336,7 +336,7 @@ function sourceParityHtml(html) {
 function htmlPage(css, bodyHtml, options = {}) {
   const themeCss = options.theme ? themeToCssVars(options.theme, PUBLIC_RENDERER_THEME_SCOPE) : ""
   const visualRoot = options.theme
-    ? `<div class="site-renderer" data-siab-site-renderer><div class="rt-canvas" data-rt-mode="${options.theme.appearance?.mode === "dark" ? "dark" : "light"}" data-visual-root>${bodyHtml}</div></div>`
+    ? `<div class="site-renderer" data-siab-site-renderer><div class="rt-canvas" data-rt-mode="${themeMode(options.theme)}" data-visual-root>${bodyHtml}</div></div>`
     : `<div data-visual-root>${bodyHtml}</div>`
   return `<!doctype html>
 <html>

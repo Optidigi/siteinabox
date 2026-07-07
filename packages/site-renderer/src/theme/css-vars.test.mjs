@@ -11,16 +11,15 @@ const theme = {
   density: { schemeId: "comfortable" },
 }
 
-test("themeToCssVars keeps neutral Tailwind colors literal while bridging provider utility roles", () => {
+test("themeToCssVars keeps Tailwind palette variables literal while bridging provider utility roles", () => {
   const css = themeToCssVars(theme, PUBLIC_RENDERER_THEME_SCOPE)
 
   assert.match(css, /--color-tailwindplus-surface:#ffffff/)
-  assert.match(css, /--color-indigo-600:#2563eb/)
   assert.match(css, /--siab-accent-600:#2563eb/)
   assert.match(css, /--siab-neutral-900:#111827/)
   assert.equal(css.includes("--color-white:"), false)
-  assert.match(css, /--color-gray-900:#111827/)
-  assert.match(css, /--color-gray-500:#6b7280/)
+  assert.doesNotMatch(css, /--color-gray-\d+:/)
+  assert.doesNotMatch(css, /--color-indigo-\d+:/)
   assert.match(css, /:where\(\[data-provider-block="tailwindplus"\]\.bg-white\)/)
   assert.match(css, /:where\(\[data-provider-block="tailwindplus"\] \.bg-white\)/)
   assert.match(css, /:where\(\[data-provider-chrome="tailwindplus"\]\.bg-white\)/)
@@ -70,6 +69,7 @@ test("themeToCssVars bridges active Tailwind Plus accent utilities without class
   const css = themeToCssVars({ ...theme, colors: { schemeId: "red-confident" } }, PUBLIC_RENDERER_THEME_SCOPE)
 
   assert.match(css, /--siab-accent-600:#dc2626/)
+  assert.doesNotMatch(css, /--color-indigo-\d+:/)
   assert.match(css, /\[class~="shadow-indigo-600\/10"\][^}]*--tw-shadow-color:color-mix\(in oklab,var\(--color-accent,#4f46e5\) 10%,transparent\)/)
   assert.match(css, /\[class~="from-\[#ff80b5\]"\][^}]*--tw-gradient-from:var\(--siab-accent-300,#a5b4fc\)/)
   assert.match(css, /\[class~="to-\[#9089fc\]"\][^}]*--tw-gradient-to:var\(--siab-accent-600,var\(--color-accent,#4f46e5\)\)/)

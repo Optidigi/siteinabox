@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
-import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
+import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer, themeMode } from "@siteinabox/site-renderer"
 import { CanvasBlockRenderer, type CanvasSectionChromeProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
@@ -1017,7 +1017,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
           <div
             className={cn("rt-canvas w-full", suppressCanvasNavigation && "[&_a[href]:not(.rt-click-edit)]:pointer-events-none")}
             data-rt-view={view}
-            data-rt-mode={theme?.appearance?.mode === "dark" ? "dark" : "light"}
+            data-rt-mode={themeMode(rendererTheme)}
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
               if (suppressCanvasNavigation && shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {
