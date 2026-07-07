@@ -1,10 +1,32 @@
-import type { NormalizedIntake, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { NormalizedIntake, SiteBlockManifestItem, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { Block, SiteGenerationBlockSlug } from "@siteinabox/contracts/site"
 import type { RtBlockRoot, RtInlineRoot } from "@siteinabox/contracts/rich-text"
+import {
+  getProviderBlockDefinition,
+  selfServeProviderBlockDefinitions,
+  tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots,
+  tailwindPlusMarketingBlogThreeColumnDemoSlots,
+  tailwindPlusMarketingContactCenteredDemoSlots,
+  tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
+  tailwindPlusMarketingCtaDarkPanelWithAppScreenshotDemoSlots,
+  tailwindPlusMarketingFeatureCentered2x2GridDemoSlots,
+  tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots,
+  tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
+  tailwindPlusMarketingHeroWithStatsDemoSlots,
+  tailwindPlusMarketingLogoCloudSimpleWithHeadingDemoSlots,
+  tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots,
+  tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots,
+  tailwindPlusMarketingStatsSimpleDemoSlots,
+  tailwindPlusMarketingTeamWithSmallImagesDemoSlots,
+  tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots,
+} from "@siteinabox/site-renderer/source-blocks"
 
 export type MockGenerationFixture = "generic" | "invalid"
 
 const cloneSpec = (spec: SiteGenerationSpec): SiteGenerationSpec =>
   JSON.parse(JSON.stringify(spec)) as SiteGenerationSpec
+
+const clonePlain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 
 const inlineText = (text: string): RtInlineRoot => ({
   t: "root",
@@ -17,6 +39,113 @@ const blockText = (text: string): RtBlockRoot => ({
   variant: "block",
   children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
 })
+
+const canonicalProviderBlock = <TBlock extends Block>(block: TBlock, anchor: string): TBlock => {
+  const definition = getProviderBlockDefinition(block)
+  if (!definition) {
+    throw new Error(`Missing smoke fixture provider definition for ${block.blockType}:${block.designVariant ?? ""}`)
+  }
+  return {
+    ...clonePlain(block),
+    designVariant: definition.id,
+    anchor,
+  } as TBlock
+}
+
+const buildTailwindSmokeBlocks = (
+  businessName: string,
+  summary: string,
+  contactHref: string,
+): Block[] => [
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
+    headline: inlineText(businessName),
+    subheadline: blockText(summary),
+    cta: { label: "Bekijk workflow", href: "/#workflow" },
+    secondary: { label: "Contact", href: contactHref },
+  }, "top"),
+  canonicalProviderBlock(tailwindPlusMarketingLogoCloudSimpleWithHeadingDemoSlots, "logo-cloud"),
+  canonicalProviderBlock(tailwindPlusMarketingFeatureCentered2x2GridDemoSlots, "feature-grid"),
+  canonicalProviderBlock(tailwindPlusMarketingFeatureWithProductScreenshotDemoSlots, "product-screenshot"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingContentStickyProductScreenshotDemoSlots,
+    features: tailwindPlusMarketingContentStickyProductScreenshotDemoSlots.features?.map(({ icon: _icon, ...feature }) => feature),
+  }, "workflow"),
+  canonicalProviderBlock(tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots, "platform-grid"),
+  canonicalProviderBlock(tailwindPlusMarketingStatsSimpleDemoSlots, "metrics"),
+  canonicalProviderBlock(tailwindPlusMarketingHeroWithStatsDemoSlots, "coverage"),
+  canonicalProviderBlock(tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots, "testimonial"),
+  canonicalProviderBlock(tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots, "pricing"),
+  canonicalProviderBlock(tailwindPlusMarketingTeamWithSmallImagesDemoSlots, "team"),
+  canonicalProviderBlock(tailwindPlusMarketingBlogThreeColumnDemoSlots, "resources"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots,
+    provider: { provider: "siab", action: "/api/newsletter", method: "POST", requiresConsent: true, analyticsEnabled: true },
+  }, "newsletter"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingCtaDarkPanelWithAppScreenshotDemoSlots,
+    primary: { label: "Contact", href: contactHref },
+    secondary: { label: "Bekijk prijzen", href: "/#pricing" },
+  }, "cta"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingContactCenteredDemoSlots,
+    formName: "smoke-contact",
+    provider: {
+      provider: "siab",
+      action: "/api/forms",
+      method: "POST",
+      requiresConsent: true,
+      successMessage: "Thanks, we will get back to you.",
+      errorMessage: "Something went wrong. Please try again.",
+    },
+  }, "contact"),
+]
+
+const blockLabels: Partial<Record<SiteGenerationBlockSlug, string>> = {
+  bentoGrid: "Bento grid",
+  blogCards: "Blog cards",
+  contactSection: "Contact section",
+  contentSection: "Content section",
+  cta: "CTA",
+  featureList: "Feature list",
+  hero: "Hero",
+  logoCloud: "Logo cloud",
+  newsletter: "Newsletter",
+  pricing: "Pricing",
+  stats: "Stats",
+  team: "Team",
+  testimonials: "Testimonials",
+}
+
+const tailwindSmokeBlockManifest = (blocks: Block[]): SiteBlockManifestItem[] => {
+  const seen = new Set<string>()
+  const items: SiteBlockManifestItem[] = []
+  for (const block of blocks) {
+    if (seen.has(block.blockType)) continue
+    seen.add(block.blockType)
+    items.push({
+      slug: block.blockType as SiteGenerationBlockSlug,
+      label: blockLabels[block.blockType as SiteGenerationBlockSlug] ?? block.blockType,
+      ...(block.anchor ? { defaultAnchor: block.anchor } : {}),
+    })
+  }
+  return items
+}
+
+const genericSmokeBlocks = buildTailwindSmokeBlocks(
+  "Generated Business",
+  "Een volledige smoke preview met alle actieve lokale Tailwind bronblokken en gedeelde Tailwind chrome.",
+  "mailto:hello@example.com",
+)
+
+const expectedSelfServeProviderIds = new Set(selfServeProviderBlockDefinitions.map((definition) => definition.id))
+const genericSmokeProviderIds = new Set(genericSmokeBlocks.map((block) => block.designVariant).filter(Boolean))
+if (
+  genericSmokeProviderIds.size !== expectedSelfServeProviderIds.size ||
+  [...expectedSelfServeProviderIds].some((id) => !genericSmokeProviderIds.has(id))
+) {
+  throw new Error("Generic smoke fixture must exercise every active self-serve provider block exactly once.")
+}
 
 const genericSiteGenerationSpec: SiteGenerationSpec = {
   schemaVersion: 1,
@@ -123,228 +252,10 @@ const genericSiteGenerationSpec: SiteGenerationSpec = {
         description: "Generated draft site.",
         ogImage: null,
       },
-      blocks: [
-        {
-          blockType: "hero",
-          designVariant: "tailwindplus.marketing.hero.with-stats",
-          anchor: "top",
-          headline: inlineText("Generated Business"),
-          subheadline: blockText("Een compacte draft op basis van vrije publieke bronblokken en gestructureerde CMS-slots."),
-          image: {
-            url: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=80",
-            alt: "Team reviewing a website preview",
-            width: 1600,
-            height: 1067,
-          },
-          links: [
-            { label: "Workflow", href: "/#workflow" },
-            { label: "Platform", href: "/#platform-grid" },
-            { label: "Updates", href: "/#newsletter" },
-            { label: "Contact", href: "mailto:hello@example.com" },
-          ],
-          stats: [
-            { value: "4", label: "vrije publieke varianten" },
-            { value: "0", label: "gegenereerde bronbestanden" },
-            { value: "1", label: "gedeeld rendererpad" },
-            { value: "100%", label: "gestructureerde slots" },
-          ],
-        },
-        {
-          blockType: "contentSection",
-          designVariant: "tailwindplus.marketing.content.sticky-product-screenshot",
-          anchor: "workflow",
-          eyebrow: inlineText("Workflow"),
-          title: inlineText("Content en screenshot blijven gestructureerd"),
-          intro: blockText("De sticky contentsectie gebruikt vaste Tailwind Plus layout en vult alleen goedgekeurde CMS-slots."),
-          body: blockText("SiaB bewaart de tekst, screenshot en drie feature-rijen als data. De providerbron bepaalt de sticky positie, spacing, achtergrond en responsive framing."),
-          bridge: blockText("Deze tussenparagraaf blijft een expliciet CMS-slot, zodat de bronlayout compleet blijft zonder vrije layoutvelden."),
-          image: {
-            url: "https://tailwindcss.com/plus-assets/img/component-images/dark-project-app-screenshot.png",
-            alt: "Preview workflow screenshot",
-            width: 1824,
-            height: 1080,
-          },
-          features: [
-            { title: inlineText("Publiceerbare snapshots."), description: blockText("Preview en live runtime lezen dezelfde gevalideerde publicatievorm.") },
-            { title: inlineText("Veilige infrastructuur."), description: blockText("Domeinen, certificaten en hosting blijven platformverantwoordelijkheid.") },
-            { title: inlineText("Herstelbare content."), description: blockText("CMS-data blijft de bron, niet gegenereerde clientcode.") },
-          ],
-          secondaryTitle: inlineText("Geen tenant source nodig"),
-          secondaryBody: blockText("Nieuwe websites worden samengesteld uit gevalideerde tenantdata en actieve providercomponenten."),
-        },
-        {
-          blockType: "bentoGrid",
-          designVariant: "tailwindplus.marketing.bento.three-column-bento-grid",
-          anchor: "platform-grid",
-          title: inlineText("Platformbouwstenen"),
-          intro: blockText("Vier vaste bento-posities tonen hoe providergeometrie vast blijft terwijl content bewerkbaar is."),
-          items: [
-            {
-              title: inlineText("Mobiel vriendelijk"),
-              description: blockText("De linker kaart gebruikt de vaste mobile-preview positie uit de bronlayout."),
-              image: {
-                url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-mobile-friendly.png",
-                alt: "Mobiele preview",
-                width: 720,
-                height: 1280,
-              },
-            },
-            {
-              title: inlineText("Snel geladen"),
-              description: blockText("De public runtime rendert snapshots zonder per-tenant buildstappen."),
-              image: {
-                url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-performance.png",
-                alt: "Performance preview",
-                width: 1024,
-                height: 768,
-              },
-            },
-            {
-              title: inlineText("Fail-closed"),
-              description: blockText("Onbekende provider-ID's vallen niet stil terug naar generieke layout."),
-              image: {
-                url: "https://tailwindcss.com/plus-assets/img/component-images/bento-03-security.png",
-                alt: "Security preview",
-                width: 1024,
-                height: 512,
-              },
-            },
-            {
-              title: inlineText("Platform API's"),
-              description: blockText("CMS, preview, publicatie en renderer blijven platformgrenzen."),
-              image: null,
-            },
-          ],
-        },
-        {
-          blockType: "newsletter",
-          designVariant: "tailwindplus.marketing.newsletter.side-by-side-with-details",
-          anchor: "newsletter",
-          title: inlineText("Ontvang updates over je lancering"),
-          description: blockText("De nieuwsbriefsectie gebruikt een eigen section contract en houdt formulier- en consentgedrag buiten vrije layoutvelden."),
-          emailLabel: "E-mailadres",
-          emailPlaceholder: "jij@example.com",
-          submitLabel: "Aanmelden",
-          benefits: [
-            {
-              title: inlineText("Lanceringstips"),
-              description: blockText("Korte praktische updates over content, publicatie en vervolgacties."),
-            },
-            {
-              title: inlineText("Geen vrije code"),
-              description: blockText("Alle nieuwsbriefdata blijft gestructureerd en CMS-bewerkbaar."),
-            },
-          ],
-          provider: {
-            provider: "siab",
-            action: "/api/newsletter",
-            method: "POST",
-            requiresConsent: true,
-            analyticsEnabled: true,
-          },
-        },
-      ],
+      blocks: genericSmokeBlocks,
     },
   ],
-  blocks: [
-    {
-      slug: "hero",
-      label: "Hero",
-      defaultAnchor: "top",
-      fields: [
-        { name: "headline", label: "Headline", kind: "richtext", variant: "inline", role: "title" },
-        { name: "subheadline", label: "Subheadline", kind: "richtext", variant: "block", role: "text" },
-        { name: "image", label: "Image", kind: "image" },
-        {
-          name: "links",
-          label: "Links",
-          kind: "array",
-          itemLabel: "Link",
-          itemFields: [
-            { name: "label", label: "Label", kind: "text" },
-            { name: "href", label: "Href", kind: "text" },
-          ],
-        },
-        {
-          name: "stats",
-          label: "Stats",
-          kind: "array",
-          itemLabel: "Stat",
-          itemFields: [
-            { name: "value", label: "Value", kind: "text" },
-            { name: "label", label: "Label", kind: "text" },
-          ],
-        },
-      ],
-    },
-    {
-      slug: "bentoGrid",
-      label: "Bento grid",
-      defaultAnchor: "platform-grid",
-      fields: [
-        { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
-        { name: "intro", label: "Intro", kind: "richtext", variant: "block", role: "text" },
-        {
-          name: "items",
-          label: "Items",
-          kind: "array",
-          itemLabel: "Item",
-          itemFields: [
-            { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
-            { name: "description", label: "Description", kind: "richtext", variant: "block", role: "text" },
-            { name: "image", label: "Image", kind: "image" },
-          ],
-        },
-      ],
-    },
-    {
-      slug: "contentSection",
-      label: "Content section",
-      defaultAnchor: "workflow",
-      fields: [
-        { name: "eyebrow", label: "Eyebrow", kind: "richtext", variant: "inline", role: "script" },
-        { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
-        { name: "intro", label: "Intro", kind: "richtext", variant: "block", role: "text" },
-        { name: "body", label: "Body", kind: "richtext", variant: "block", role: "text" },
-        { name: "bridge", label: "Bridge paragraph", kind: "richtext", variant: "block", role: "text" },
-        { name: "image", label: "Image", kind: "image" },
-        {
-          name: "features",
-          label: "Features",
-          kind: "array",
-          itemLabel: "Feature",
-          itemFields: [
-            { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
-            { name: "description", label: "Description", kind: "richtext", variant: "block", role: "text" },
-          ],
-        },
-        { name: "secondaryTitle", label: "Secondary title", kind: "richtext", variant: "inline", role: "heading" },
-        { name: "secondaryBody", label: "Secondary body", kind: "richtext", variant: "block", role: "text" },
-      ],
-    },
-    {
-      slug: "newsletter",
-      label: "Newsletter",
-      defaultAnchor: "newsletter",
-      fields: [
-        { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
-        { name: "description", label: "Description", kind: "richtext", variant: "block", role: "text" },
-        { name: "emailLabel", label: "Email label", kind: "text" },
-        { name: "emailPlaceholder", label: "Email placeholder", kind: "text" },
-        { name: "submitLabel", label: "Submit label", kind: "text" },
-        {
-          name: "benefits",
-          label: "Benefits",
-          kind: "array",
-          itemLabel: "Benefit",
-          itemFields: [
-            { name: "title", label: "Title", kind: "richtext", variant: "inline", role: "heading" },
-            { name: "description", label: "Description", kind: "richtext", variant: "block", role: "text" },
-          ],
-        },
-      ],
-    },
-  ],
+  blocks: tailwindSmokeBlockManifest(genericSmokeBlocks),
   assets: [],
   generatedAt: "2026-06-25T00:00:00.000Z",
   generator: {
@@ -365,6 +276,10 @@ export const loadMockSiteGenerationSpec = (
   const requestedPages = normalized.requestedPages.length > 0
     ? normalized.requestedPages
     : [{ slug: "index", title: "Home", purpose: "Generated homepage" }]
+  const summary = normalized.goals.length > 0
+    ? normalized.goals.join(". ")
+    : `Een volledige smoke preview voor ${normalized.businessName}.`
+  const smokeBlocks = buildTailwindSmokeBlocks(normalized.businessName, summary, contactHref)
 
   const rewritten: SiteGenerationSpec = {
     ...spec,
@@ -388,9 +303,10 @@ export const loadMockSiteGenerationSpec = (
       serviceArea: normalized.serviceArea.map((name) => ({ name })),
       navHeader: [
         { label: "Home", href: "/" },
-        { label: "Workflow", href: "/#workflow" },
+        { label: "Blokken", href: "/#feature-grid" },
         { label: "Platform", href: "/#platform-grid" },
-        { label: "Updates", href: "/#newsletter" },
+        { label: "Pricing", href: "/#pricing" },
+        { label: "Contact", href: "/#contact" },
       ],
       navFooter: [
         { label: "Home", href: "/" },
@@ -424,21 +340,9 @@ export const loadMockSiteGenerationSpec = (
         title: normalized.businessName,
         description: `${normalized.businessName} - generated preview draft.`,
       },
-      blocks: page.blocks.map((block) => {
-        if (block.blockType === "hero") {
-          return {
-            ...block,
-            headline: inlineText(normalized.businessName),
-            subheadline: blockText(
-              normalized.goals.length > 0
-                ? normalized.goals.join(". ")
-                : `Een bewerkbare preview voor ${normalized.businessName}.`,
-            ),
-          }
-        }
-        return block
-      }),
+      blocks: smokeBlocks,
     })),
+    blocks: tailwindSmokeBlockManifest(smokeBlocks),
     generatedAt,
     generator: {
       name: "mock-site-generation",

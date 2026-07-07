@@ -59,7 +59,7 @@ describe("site generation catalog governance", () => {
     }))
 
     expect(input.approvedDesignVariants.map(({ slots: _slots, providerVariantId: _providerVariantId, ...variant }) => variant)).toEqual(approved)
-    expect(input.approvedDesignVariants).toHaveLength(4)
+    expect(input.approvedDesignVariants).toHaveLength(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.length)
     expect(input.approvedDesignVariants).toEqual(expect.arrayContaining([
       expect.objectContaining({
         blockType: "hero",
@@ -297,9 +297,18 @@ describe("site generation catalog governance", () => {
       .properties.blocks.items.anyOf.map((entry: any) => entry.properties.blockType.const)
     const expectedBlockTypes = [
       "hero",
+      "featureList",
+      "cta",
+      "contactSection",
+      "testimonials",
+      "pricing",
+      "stats",
+      "logoCloud",
+      "team",
       "newsletter",
       "bentoGrid",
       "contentSection",
+      "blogCards",
     ]
 
     expect(schemaBlockTypes).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
@@ -310,16 +319,19 @@ describe("site generation catalog governance", () => {
     expect(heroSchema.properties).not.toHaveProperty("sourceCode")
     expect(heroSchema.properties).not.toHaveProperty("analytics")
     expect(heroSchema.properties).not.toHaveProperty("pills")
-    expect(heroSchema.properties).not.toHaveProperty("cta")
-    expect(heroSchema.properties).not.toHaveProperty("secondary")
+    expect(heroSchema.properties).toHaveProperty("cta")
+    expect(heroSchema.properties).toHaveProperty("secondary")
     expect(heroSchema.required).toContain("designVariant")
     expect(heroSchema.required).not.toContain("eyebrow")
     expect(heroSchema.required).not.toContain("cta")
     expect(heroSchema.required).not.toContain("secondary")
-    expect(heroSchema.required).toContain("links")
-    expect(heroSchema.required).toContain("image")
-    expect(heroSchema.required).toContain("stats")
-    expect(heroSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.hero.with-stats"])
+    expect(heroSchema.required).not.toContain("links")
+    expect(heroSchema.required).not.toContain("image")
+    expect(heroSchema.required).not.toContain("stats")
+    expect(heroSchema.properties.designVariant.enum).toEqual([
+      "tailwindplus.marketing.hero.simple-centered",
+      "tailwindplus.marketing.hero.with-stats",
+    ])
     expect(heroSchema.properties.links.minItems).toBe(4)
     expect(heroSchema.properties.links.maxItems).toBe(4)
     expect(heroSchema.properties.stats.minItems).toBe(4)

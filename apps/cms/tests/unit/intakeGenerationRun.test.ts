@@ -121,31 +121,57 @@ describe("processIntakeSubmission", () => {
     expect(store.pages).toHaveLength(1)
     expect(store.pages[0]?.slug).toBe("index")
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
-      "hero:tailwindplus.marketing.hero.with-stats",
+      "hero:tailwindplus.marketing.hero.simple-centered",
+      "logoCloud:tailwindplus.marketing.logo-cloud.simple-with-heading",
+      "featureList:tailwindplus.marketing.feature.centered-2x2-grid",
+      "featureList:tailwindplus.marketing.feature.with-product-screenshot",
       "contentSection:tailwindplus.marketing.content.sticky-product-screenshot",
       "bentoGrid:tailwindplus.marketing.bento.three-column-bento-grid",
+      "stats:tailwindplus.marketing.stats.simple",
+      "hero:tailwindplus.marketing.hero.with-stats",
+      "testimonials:tailwindplus.marketing.testimonial.simple-centered",
+      "pricing:tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+      "team:tailwindplus.marketing.team.with-small-images",
+      "blogCards:tailwindplus.marketing.blog.three-column",
       "newsletter:tailwindplus.marketing.newsletter.side-by-side-with-details",
+      "cta:tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
+      "contactSection:tailwindplus.marketing.contact.centered",
     ])
-    expect(store.pages[0]?.blocks[0]?.links).toHaveLength(4)
-    expect(store.pages[0]?.blocks[0]?.stats).toHaveLength(4)
-    expect(typeof store.pages[0]?.blocks[0]?.image).toBe("number")
-    expect(store.pages[0]?.blocks[0]).not.toHaveProperty("cta")
-    expect(store.pages[0]?.blocks[0]).not.toHaveProperty("secondary")
-    expect(store.pages[0]?.blocks[1]?.features).toHaveLength(3)
-    expect(typeof store.pages[0]?.blocks[1]?.image).toBe("number")
-    expect(store.pages[0]?.blocks[1]?.features.every((feature: any) => !("icon" in feature))).toBe(true)
-    expect(store.pages[0]?.blocks[2]?.items).toHaveLength(4)
-    expect(store.pages[0]?.blocks[2]?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
-    expect(store.pages[0]?.blocks[2]?.items.filter((item: any) => typeof item.image === "number")).toHaveLength(3)
-    expect(store.pages[0]?.blocks[3]?.benefits).toHaveLength(2)
-    expect(store.pages[0]?.blocks[3]?.benefits.every((benefit: any) => !("icon" in benefit))).toBe(true)
-    expect(store.pages[0]?.blocks[3]).not.toHaveProperty("consentLabel")
+    const blocksByVariant = new Map<string, any>(store.pages[0]?.blocks.map((block: any) => [block.designVariant, block]))
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.simple-centered")).toMatchObject({
+      cta: { label: "Bekijk workflow", href: "/#workflow" },
+      secondary: { label: "Contact", href: "mailto:sam@example.com" },
+    })
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.simple-centered")).not.toHaveProperty("image")
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")?.links).toHaveLength(4)
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")?.stats).toHaveLength(4)
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")).not.toHaveProperty("cta")
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")).not.toHaveProperty("secondary")
+    expect(blocksByVariant.get("tailwindplus.marketing.content.sticky-product-screenshot")?.features).toHaveLength(3)
+    expect(typeof blocksByVariant.get("tailwindplus.marketing.content.sticky-product-screenshot")?.image).toBe("number")
+    expect(blocksByVariant.get("tailwindplus.marketing.content.sticky-product-screenshot")?.features.every((feature: any) => !("icon" in feature))).toBe(true)
+    expect(blocksByVariant.get("tailwindplus.marketing.bento.three-column-bento-grid")?.items).toHaveLength(4)
+    expect(blocksByVariant.get("tailwindplus.marketing.bento.three-column-bento-grid")?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
+    expect(blocksByVariant.get("tailwindplus.marketing.bento.three-column-bento-grid")?.items.filter((item: any) => typeof item.image === "number")).toHaveLength(3)
+    expect(blocksByVariant.get("tailwindplus.marketing.newsletter.side-by-side-with-details")?.benefits).toHaveLength(2)
+    expect(blocksByVariant.get("tailwindplus.marketing.newsletter.side-by-side-with-details")?.benefits.every((benefit: any) => !("icon" in benefit))).toBe(true)
+    expect(blocksByVariant.get("tailwindplus.marketing.newsletter.side-by-side-with-details")).not.toHaveProperty("consentLabel")
+    expect(blocksByVariant.get("tailwindplus.marketing.contact.centered")?.fields).toHaveLength(6)
     expect(store.media.length).toBeGreaterThan(0)
     expect(store["site-generation-runs"][0]?.parsedOutput?.blocks.map((block: any) => block.slug)).toEqual([
       "hero",
-      "bentoGrid",
+      "logoCloud",
+      "featureList",
       "contentSection",
+      "bentoGrid",
+      "stats",
+      "testimonials",
+      "pricing",
+      "team",
+      "blogCards",
       "newsletter",
+      "cta",
+      "contactSection",
     ])
     expect(store.pages[0]?.blocks.every((block: any) => !("variant" in block))).toBe(true)
     expect(store.pages[0]?.blocks.every((block: any) => Object.keys(block.analytics ?? {}).every((key) => key !== "legacyVisualIdentity"))).toBe(true)

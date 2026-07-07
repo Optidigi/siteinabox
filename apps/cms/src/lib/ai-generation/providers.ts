@@ -188,13 +188,16 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "headline", "subheadline", "links", "image", "stats"],
+    required: ["blockType", "designVariant", "anchor", "headline"],
     properties: {
       blockType: { type: "string", const: "hero" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("hero"),
+      eyebrow: nullableInlineRichTextJsonSchema,
       headline: richTextInlineJsonSchema,
-      subheadline: richTextBlockJsonSchema,
+      subheadline: nullableBlockRichTextJsonSchema,
+      cta: nullableLinkJsonSchema,
+      secondary: nullableLinkJsonSchema,
       image: mediaRefJsonSchema,
       links: {
         type: "array",

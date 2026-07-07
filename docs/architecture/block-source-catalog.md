@@ -8,28 +8,50 @@ system fallbacks use adjacent executable registries under
 `packages/site-renderer/src/source-chrome` and
 `packages/site-renderer/src/source-templates`.
 
-The active V1 self-serve provider runtime is intentionally narrow. Runtime
-compatibility can keep older provider renderers available for already-saved
-content, but self-serve generation only sees executable source-block
-definitions whose manifests declare free-public source availability, compatible
-license status, approved review status, exact-source implementation, and
-reviewed exact visual parity.
+The active V1 self-serve provider runtime is intentionally source-backed and
+registry-driven. Self-serve generation sees the local executable Tailwind Plus
+source-block definitions whose manifests declare source availability,
+compatible license status, approved review status, exact-source implementation,
+and reviewed visual parity.
 
 - active provider: Tailwind Plus Marketing;
 - active page sections:
+  - `tailwindplus.marketing.hero.simple-centered`;
+  - `tailwindplus.marketing.feature.with-product-screenshot`;
+  - `tailwindplus.marketing.feature.centered-2x2-grid`;
+  - `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`;
+  - `tailwindplus.marketing.contact.centered`;
+  - `tailwindplus.marketing.testimonial.simple-centered`;
+  - `tailwindplus.marketing.stats.simple`;
+  - `tailwindplus.marketing.logo-cloud.simple-with-heading`;
+  - `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`;
+  - `tailwindplus.marketing.team.with-small-images`;
   - `tailwindplus.marketing.hero.with-stats`;
   - `tailwindplus.marketing.newsletter.side-by-side-with-details`;
   - `tailwindplus.marketing.bento.three-column-bento-grid`;
   - `tailwindplus.marketing.content.sticky-product-screenshot`;
+  - `tailwindplus.marketing.blog.three-column`;
 - preferred generated `designVariant` values are the canonical provider IDs
   above;
 - persisted legacy designVariant aliases remain accepted for existing content:
+  - `tailwindPlusSimpleCentered`;
+  - `tailwindPlusWithProductScreenshot`;
+  - `tailwindPlusCentered2x2`;
+  - `tailwindPlusDarkPanelWithAppScreenshot`;
+  - `tailwindPlusCentered`;
+  - `tailwindPlusSimple`;
+  - `tailwindPlusSimpleWithHeading`;
+  - `tailwindPlusSimpleTiers`;
+  - `tailwindPlusGrid`;
   - `tailwindPlusHeroWithStats`;
   - `tailwindPlusNewsletterSideBySideWithDetails`;
   - `tailwindPlusThreeColumnBentoGrid`;
   - `tailwindPlusContentStickyProductScreenshot`;
+  - `tailwindPlusThreeColumn`;
 - active CMS page block slugs for self-serve provider generation: `hero`,
-  `newsletter`, `contentSection`, and `bentoGrid`;
+  `featureList`, `cta`, `contactSection`, `testimonials`, `stats`,
+  `logoCloud`, `pricing`, `team`, `newsletter`, `contentSection`,
+  `bentoGrid`, and `blogCards`;
 - active header chrome:
   `tailwindplus.marketing.header.with-stacked-flyout-menu`;
 - active banner chrome:
@@ -47,21 +69,19 @@ Current verification status:
   without source fixture mutation for active exact variants. The
   active hero with-stats and sticky content variants now represent their
   source-visible content slots directly instead of stripping fixture content.
-- The generic intake smoke fixture exercises the active free-public homepage
-  provider set plus active Tailwind Plus header and banner chrome. It does not
-  exercise the known-tenant 404 template.
+- The generic intake smoke fixture exercises every active local Tailwind Plus
+  page-section provider variant plus active Tailwind Plus header and banner
+  chrome. It does not exercise the known-tenant 404 template.
 
-Historical paid Tailwind Plus variants, raw-HTML-only Tailwind Plus variants,
-adapted Tailwind Plus variants, Preline, Tailblocks, SIAB-owned generic visual
-variants, and locked provider examples remain inactive for self-serve
-generation.
+Historical raw-HTML-only Tailwind Plus variants, adapted Tailwind Plus variants,
+Preline, Tailblocks, SIAB-owned generic visual variants, and locked provider
+examples remain inactive for self-serve generation.
 
 Mock/self-serve fixture generation defaults global header chrome to
-`tailwindplus.marketing.header.with-stacked-flyout-menu` and emits only the
-active free-public Tailwind Plus page-section set: hero with stats, sticky
-content, bento grid, and newsletter. Footer chrome remains on the SiaB
-`default` variant until a source-visible provider-backed footer implementation
-is active.
+`tailwindplus.marketing.header.with-stacked-flyout-menu` and emits every active
+local Tailwind Plus page-section provider variant. Footer chrome remains on the
+SiaB `default` variant until a source-visible provider-backed footer
+implementation is active.
 
 ## Canonical Generated Block Path
 
@@ -330,15 +350,15 @@ provenance is:
 - `approvalStatus: "approved"`;
 - `sourceAvailability: "free-public"`;
 - `licenseCompatibility: "compatible"`;
-- `sourceAccessType` in `public-page-payload`, `public-page-copy`, or
-  `public-github-source`;
+- local source-backed Tailwind snapshot or public source access recorded in the
+  source-block manifest;
 - `implementation: "exact-source"`;
 - `visualExactnessStatus: "reviewed-exact-source"`;
 - backed by a renderer class, source URL, retrieval process, verification date,
   upstream source identity, visual source notes, and runtime requirements.
 
-Paid, locked, unavailable, license-incompatible, deferred, visually unaudited,
-or raw-HTML-only variants must stay out of the exported self-serve source-backed
+Locked, unavailable, license-incompatible, deferred, visually unaudited, or
+raw-HTML-only variants must stay out of the exported self-serve source-backed
 generation list.
 Durable automated checks for this provider path are structural and integrity
 based: source fixture hashes, static upstream class coverage, provider root
