@@ -73,6 +73,20 @@ depended on command-run site generation are no longer current source of truth.
   Do not use `sourceTransform`, fixture stripping, broad thresholds, generic
   renderer fallback, arbitrary CMS layout controls, or new legacy theme
   compatibility to make the tests pass.
+- HIGH PRIORITY: fix CMS Tailwind Plus provider rendering/canvas parity as its
+  own product blocker. As of 2026-07-07, Amicare save/auto-publish is fixed and
+  should not be conflated with this issue, but Tailwind-based provider rendering
+  in the CMS still does not match the expected live/source behavior closely
+  enough for real smoke testing. Audit the actual editor-frame and page-editor
+  surfaces with screenshots, DOM/class inspection, computed styles, and slot
+  hover/edit state checks for every active Tailwind Plus block and chrome.
+  Specifically verify that provider DOM keeps literal Tailwind classes such as
+  `contents`, that renderer-owned `blockMode` and slot wrappers do not alter
+  layout, that CMS editor affordances do not change provider grid/flex/text
+  flow, and that all intended editable slots have stable hover/select/edit
+  behavior. Acceptance requires a browser-level CMS canvas/preview parity gate
+  in addition to public/source visual parity; unit tests alone and the current
+  `provider:visual-parity` pass are not sufficient evidence.
 - Write a new architecture decision before starting any replacement product
   surface.
 - Revisit tenant provisioning, preview, approval, payment handoff, and publish
