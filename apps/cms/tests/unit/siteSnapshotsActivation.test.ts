@@ -4,6 +4,8 @@ import {
   canActivatePublishedSnapshot,
   prunePublishedSnapshotsForTenant,
 } from "@/lib/publish/siteSnapshots"
+import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
+import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 
 const approvedPaidRun = {
   id: 500,
@@ -220,6 +222,104 @@ describe("published snapshot activation gate", () => {
         emailSending: { status: "not_configured" },
       } as any,
     })).toEqual({ ok: true })
+  })
+
+  it("lets internal lifecycle updates supersede unchanged legacy snapshots", () => {
+    const legacySnapshot = {
+      schemaVersion: 1,
+      tenantId: "1",
+      tenantSlug: "ami-care",
+      theme: {
+        mode: "light",
+        radius: "1.5rem",
+        density: "comfortable",
+        borderStyle: "solid",
+        stylePreset: "warm-care",
+      },
+    }
+    const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
+    if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
+
+    const result = beforeValidate({
+      operation: "update",
+      data: {
+        status: "superseded",
+        snapshot: legacySnapshot,
+      },
+      originalDoc: {
+        status: "active",
+        snapshot: legacySnapshot,
+      },
+      context: { publishSnapshotLifecycleMutation: true },
+    } as any)
+
+    expect(result).toEqual({
+      status: "superseded",
+      snapshot: legacySnapshot,
+    })
+  })
+
+  it("normalizes legacy snapshot themes before validating new snapshots", () => {
+    const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
+    if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
+
+    const result = beforeValidate({
+      operation: "create",
+      data: {
+        snapshot: {
+          ...amicarePublishedSiteSnapshot,
+          theme: {
+            mode: "light",
+            radius: "1.5rem",
+            density: "comfortable",
+            borderStyle: "solid",
+            stylePreset: "warm-care",
+          },
+        },
+      },
+    } as any) as any
+
+    expect(result.snapshot.theme).toEqual({
+      version: 2,
+      appearance: { mode: "light" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "clear-modern" },
+      shape: { schemeId: "rounded" },
+      density: { schemeId: "comfortable" },
+    })
+  })
+
+  it("still rejects changed invalid snapshots during lifecycle updates", () => {
+    const legacySnapshot = {
+      schemaVersion: 1,
+      tenantId: "1",
+      tenantSlug: "ami-care",
+      theme: {
+        mode: "light",
+        radius: "1.5rem",
+        density: "comfortable",
+        borderStyle: "solid",
+        stylePreset: "warm-care",
+      },
+    }
+    const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
+    if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
+
+    expect(() => beforeValidate({
+      operation: "update",
+      data: {
+        status: "superseded",
+        snapshot: {
+          ...legacySnapshot,
+          tenantSlug: "changed",
+        },
+      },
+      originalDoc: {
+        status: "active",
+        snapshot: legacySnapshot,
+      },
+      context: { publishSnapshotLifecycleMutation: true },
+    } as any)).toThrow("Published site snapshot failed contract validation")
   })
 
   it("prunes published snapshots to the latest ten while preserving the active snapshot", async () => {

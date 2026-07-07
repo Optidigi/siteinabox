@@ -560,7 +560,7 @@ describe("provider block runtime", () => {
 
   it("exposes provider visual subfields through editor edit slots without changing live output", () => {
     const editSlots: BlockEditSlots = {
-      renderRichText: ({ name, className }) => <span data-edit-slot={name} className={className}>{name}</span>,
+      renderRichText: ({ name, className, blockMode }) => <span data-edit-slot={name} data-block-mode={blockMode} className={className}>{name}</span>,
       renderText: ({ name }) => <span data-edit-slot={name}>{name}</span>,
       renderImage: ({ name, className, alt }) => <img data-edit-slot={name} className={className} alt={alt ?? ""} />,
     }
@@ -571,6 +571,8 @@ describe("provider block runtime", () => {
     expect(bentoEditor).toContain('data-edit-slot="bentoGrid.itemTitle"')
     expect(bentoEditor).toContain('data-edit-slot="bentoGrid.itemDescription"')
     expect(bentoEditor).toContain('class="contents"')
+    expect(bentoEditor).toContain('data-block-mode="inline"')
+    expect(bentoEditor).toContain('data-block-mode="text"')
 
     const contentEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingContentStickyProductScreenshotDemoSlots} index={0} options={{ editSlots }} />)
     expect(contentEditor).toContain('data-edit-slot="contentSection.featureTitle"')

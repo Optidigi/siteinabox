@@ -24,6 +24,7 @@ export type RendererRichTextSlotProps = {
   placeholder?: string
   elementPath: RendererElementPath
   allowFontFamily?: boolean
+  blockMode?: "normal" | "inline" | "text"
 }
 
 export type RendererCtaSlotProps = {

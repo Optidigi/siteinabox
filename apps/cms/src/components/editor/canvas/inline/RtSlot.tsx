@@ -48,10 +48,11 @@ export interface RtSlotProps {
    *  chip for dedicated RichText block editing. Every other slot relies on
    *  role fonts/theme configuration. Defaults to false. */
   allowFontFamily?: boolean
+  blockMode?: "normal" | "inline" | "text"
 }
 
 export const RtSlot: React.FC<RtSlotProps> = ({
-  value, onChange, manifest, variant, as, className, placeholder, elementPath, allowFontFamily = false,
+  value, onChange, manifest, variant, as, className, placeholder, elementPath, allowFontFamily = false, blockMode: explicitBlockMode,
 }) => {
   const { view, selected, select } = useCanvasSelection()
   const isCustomerPreview = isCustomerPreviewView(view)
@@ -64,15 +65,11 @@ export const RtSlot: React.FC<RtSlotProps> = ({
   const editingTag = (SAFE_BLOCK_TAGS.has(requested) ? requested : "div") as React.ElementType
   const staticTag = requested as React.ElementType
   const Tag = (!isReadOnly && editing ? editingTag : staticTag) as React.ElementType
-  const blockMode = variant !== "block" ? "normal"
+  const blockMode = explicitBlockMode ?? (variant !== "block" ? "normal"
     : requested === "span" ? "text"
     : INLINE_CONTENT_TAGS.has(requested) ? "inline"
-    : "normal"
+    : "normal")
   const normalizedClassName = className
-    ?.split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part === "contents" ? (variant === "inline" ? "inline" : "block") : part)
-    .join(" ")
   const hasStaticValue = !!value?.children?.length
   const shouldRenderEmptySlot = !isCustomerPreview && (!!placeholder || elementPath != null || !isReadOnly)
 

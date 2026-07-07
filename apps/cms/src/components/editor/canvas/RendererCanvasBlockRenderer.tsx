@@ -104,6 +104,7 @@ export function RendererCanvasBlockRenderer({
         placeholder={slot.placeholder ?? placeholderFor(slot.name, t)}
         elementPath={slot.elementPath}
         allowFontFamily={slot.allowFontFamily}
+        blockMode={slot.blockMode}
       />
     ),
     renderCta: (slot) => (

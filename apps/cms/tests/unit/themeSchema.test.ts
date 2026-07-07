@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { themeSchema } from "@/lib/theme/schema"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 describe("themeSchema", () => {
   it("accepts ThemeTokenSpec V2 preset selections", () => {
@@ -45,5 +46,22 @@ describe("themeSchema", () => {
       ...DEFAULT_THEME_TOKEN_SPEC,
       fonts: { schemeId: "bold-confident" },
     }).success).toBe(false)
+  })
+
+  it("normalizes legacy Amicare theme fields to approved V2 presets", () => {
+    expect(normalizeThemeForSave({
+      mode: "dark",
+      radius: "1.5rem",
+      density: "comfortable",
+      borderStyle: "solid",
+      stylePreset: "warm-care",
+    })).toEqual({
+      version: 2,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "clear-modern" },
+      shape: { schemeId: "rounded" },
+      density: { schemeId: "comfortable" },
+    })
   })
 })

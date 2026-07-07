@@ -1,14 +1,67 @@
-import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
+import {
+  COLOR_SCHEME_IDS,
+  DEFAULT_THEME_TOKEN_SPEC,
+  DENSITY_SCHEME_IDS,
+  FONT_SCHEME_IDS,
+  SHAPE_SCHEME_IDS,
+  type ColorSchemeId,
+  type DensitySchemeId,
+  type FontSchemeId,
+  type ShapeSchemeId,
+  type ThemeModeV2,
+} from "@siteinabox/contracts"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
-export const normalizeThemeForSave = (theme: ThemeTokens | null | undefined): ThemeTokens | null => {
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value && typeof value === "object" && !Array.isArray(value))
+
+const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
+  typeof value === "string" && (allowed as readonly string[]).includes(value) ? value as T : fallback
+
+const normalizeMode = (theme: Record<string, unknown>): ThemeModeV2 => {
+  const appearance = isRecord(theme.appearance) ? theme.appearance : null
+  return oneOf(appearance?.mode ?? theme.mode, ["light", "dark", "system"] as const, DEFAULT_THEME_TOKEN_SPEC.appearance.mode)
+}
+
+const normalizeColorScheme = (theme: Record<string, unknown>): ColorSchemeId => {
+  const colors = isRecord(theme.colors) ? theme.colors : null
+  const legacyStylePreset = typeof theme.stylePreset === "string" ? theme.stylePreset : null
+  const mappedLegacyPreset = legacyStylePreset === "warm-care" ? "emerald-calm" : undefined
+  return oneOf(colors?.schemeId ?? mappedLegacyPreset, COLOR_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.colors.schemeId)
+}
+
+const normalizeFontScheme = (theme: Record<string, unknown>): FontSchemeId => {
+  const fonts = isRecord(theme.fonts) ? theme.fonts : null
+  return oneOf(fonts?.schemeId, FONT_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId)
+}
+
+const normalizeDensityScheme = (theme: Record<string, unknown>): DensitySchemeId => {
+  const density = isRecord(theme.density) ? theme.density : null
+  return oneOf(density?.schemeId ?? theme.density, DENSITY_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.density.schemeId)
+}
+
+const normalizeShapeScheme = (theme: Record<string, unknown>): ShapeSchemeId => {
+  const shape = isRecord(theme.shape) ? theme.shape : null
+  const radius = typeof theme.radius === "string" ? Number.parseFloat(theme.radius) : null
+  const legacyShape = radius == null || Number.isNaN(radius)
+    ? undefined
+    : radius <= 0
+      ? "sharp"
+      : radius >= 1
+        ? "rounded"
+        : "soft"
+  return oneOf(shape?.schemeId ?? legacyShape, SHAPE_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.shape.schemeId)
+}
+
+export const normalizeThemeForSave = (theme: unknown): ThemeTokens | null => {
   if (!theme) return null
+  if (!isRecord(theme)) return null
   return {
     version: 2,
-    appearance: { mode: theme.appearance?.mode ?? DEFAULT_THEME_TOKEN_SPEC.appearance.mode },
-    colors: { schemeId: theme.colors?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.colors.schemeId },
-    fonts: { schemeId: theme.fonts?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId },
-    shape: { schemeId: theme.shape?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId },
-    density: { schemeId: theme.density?.schemeId ?? DEFAULT_THEME_TOKEN_SPEC.density.schemeId },
+    appearance: { mode: normalizeMode(theme) },
+    colors: { schemeId: normalizeColorScheme(theme) },
+    fonts: { schemeId: normalizeFontScheme(theme) },
+    shape: { schemeId: normalizeShapeScheme(theme) },
+    density: { schemeId: normalizeDensityScheme(theme) },
   }
 }

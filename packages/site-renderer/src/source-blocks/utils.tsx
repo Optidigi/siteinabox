@@ -24,7 +24,7 @@ export function richTextSlot({
   blockMode?: "normal" | "inline" | "text"
 }) {
   if (options.editSlots?.renderRichText) {
-    return options.editSlots.renderRichText({ name, value, variant, className, elementPath })
+    return options.editSlots.renderRichText({ name, value, variant, className, elementPath, blockMode })
   }
   return <RichTextRenderer value={value} blockMode={blockMode} />
 }

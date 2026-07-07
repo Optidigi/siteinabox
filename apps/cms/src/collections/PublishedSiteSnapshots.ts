@@ -4,6 +4,7 @@ import {
   schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
 import { relationshipId } from "@/lib/relationshipId"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 const allowedLifecycleUpdateFields = new Set([
   "status",
@@ -35,6 +36,15 @@ const immutableFieldIsUnchanged = (field: string, nextValue: unknown, originalDo
   return stableStringify(nextValue) === stableStringify(originalValue)
 }
 
+const normalizeSnapshotTheme = (snapshot: unknown): unknown => {
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return snapshot
+  const record = snapshot as Record<string, unknown>
+  return {
+    ...record,
+    theme: normalizeThemeForSave(record.theme),
+  }
+}
+
 export const protectImmutableSnapshot = (args: any) => {
   if (args.operation !== "update") return args.data
   if (!isInternalLifecycleMutation(args)) {
@@ -63,9 +73,18 @@ export const PublishedSiteSnapshots: CollectionConfig = {
   slug: "published-site-snapshots",
   hooks: {
     beforeValidate: [
-      ({ data }) => {
+      (args) => {
+        const { data, operation, originalDoc } = args
         if (!data?.snapshot) return data
-        const parsed = schemaForPublishedSiteSnapshot(data.snapshot).safeParse(data.snapshot)
+        if (
+          operation === "update" &&
+          isInternalLifecycleMutation(args) &&
+          immutableFieldIsUnchanged("snapshot", data.snapshot, originalDoc)
+        ) {
+          return data
+        }
+        const snapshot = normalizeSnapshotTheme(data.snapshot)
+        const parsed = schemaForPublishedSiteSnapshot(snapshot as any).safeParse(snapshot)
         if (!parsed.success) {
           throw new Error(`Published site snapshot failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
         }
