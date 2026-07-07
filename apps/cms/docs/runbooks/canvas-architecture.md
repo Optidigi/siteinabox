@@ -48,7 +48,11 @@ The customer preview frame is separate: `PreviewCustomizer` hosts
 asset-pick, or chrome-edit messages. The preview page owns scrolling: the
 same-origin renderer iframe is measured after `renderer.ready` and auto-sized to
 the rendered document height, so customer preview should not introduce a nested
-site scrollbar.
+site scrollbar. Customer preview chrome is a fixed bottom icon toolbar with
+feedback/change request on the left, the Shuffle/Default theme mini-toolbar in
+the middle, and launch/payment state on the right. The preview page keeps bottom
+padding so the footer does not cover the final rendered section when the
+customer scrolls to the end.
 
 ## Editor error boundary
 

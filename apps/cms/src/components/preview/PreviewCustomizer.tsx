@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { useTranslations } from "next-intl"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
 import {
@@ -9,12 +10,11 @@ import {
   type IframeEditorMessage,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
+import { CheckCircle2, Dices, Rocket, RotateCcw, SquarePen } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
-import { ThemeBar } from "@/components/editor/theme/theme-bar"
 import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
 import type {
   PreviewApprovalState,
@@ -29,6 +29,9 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
+type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
+
+const PREVIEW_RANDOM_MODES: AppearanceMode[] = ["light", "dark"]
 
 type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
 type QueuedPreviewThemeSave = {
@@ -87,6 +90,11 @@ function measurePreviewFrameDocumentHeight(frameDocument: Document | null | unde
     return Math.max(max, rect.bottom + scrollY - bodyTop)
   }, 0)
   return Number.isFinite(height) && height > 0 ? Math.ceil(height + PREVIEW_FRAME_HEIGHT_GUTTER) : null
+}
+
+function pickRandom<T>(items: T[]): T | null {
+  if (items.length === 0) return null
+  return items[Math.floor(Math.random() * items.length)] ?? null
 }
 
 export function PreviewCustomizer({
@@ -243,10 +251,34 @@ export function PreviewCustomizer({
     return String(rawId)
   }, [page.id, page.slug])
 
+  const handleShuffleTheme = React.useCallback(() => {
+    const palette = pickRandom(PALETTE_PRESETS)
+    const font = pickRandom(FONT_PRESETS)
+    const shape = pickRandom(RADIUS_PRESETS)
+    const density = pickRandom(DENSITY_PRESETS)
+    const mode = pickRandom(PREVIEW_RANDOM_MODES) ?? "light"
+
+    handleThemeChange((current) =>
+      normalizeThemeForSave({
+        ...(current ?? themeStateRef.current ?? DEFAULT_THEME_TOKEN_SPEC),
+        version: 2,
+        appearance: { mode },
+        ...(palette ? { colors: { schemeId: palette.id } } : {}),
+        ...(font ? { fonts: { schemeId: font.id } } : {}),
+        ...(shape ? { shape: { schemeId: shape.id } } : {}),
+        ...(density ? { density: { schemeId: density.id } } : {}),
+      } as ThemeTokens),
+    )
+  }, [handleThemeChange])
+
+  const handleDefaultTheme = React.useCallback(() => {
+    handleThemeChange(normalizeThemeForSave(DEFAULT_THEME_TOKEN_SPEC))
+  }, [handleThemeChange])
+
   return (
     <RtManifestProvider manifest={manifest}>
       <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
-        <main className="w-full pb-40 md:pb-28">
+        <main className="w-full pb-32">
           {frameSrc ? (
             <PreviewRendererFrame
               src={frameSrc}
@@ -265,26 +297,15 @@ export function PreviewCustomizer({
         </main>
 
         <PreviewCommandBar
-          themeControls={
-            <>
-              <ThemeBar
-                theme={themeState}
-                manifest={manifest}
-                onThemeChange={handleThemeChange}
-                palettes={PALETTE_PRESETS}
-                fonts={FONT_PRESETS}
-                radiusLevels={RADIUS_PRESETS}
-                densityLevels={DENSITY_PRESETS}
-              />
-              <ThemeSaveStatus status={themeSaveStatus} />
-            </>
-          }
+          onShuffleTheme={handleShuffleTheme}
+          onDefaultTheme={handleDefaultTheme}
           canCompleteOrder={canCompleteOrder}
           paymentSatisfied={paymentSatisfied}
           checkoutHref={checkoutHref}
           reviewHref={reviewHref}
           customerNavigationBlocked={customerNavigationBlocked}
         />
+        <ThemeSaveStatus status={themeSaveStatus} />
       </form>
     </RtManifestProvider>
   )
@@ -444,14 +465,16 @@ function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
 }
 
 export function PreviewCommandBar({
-  themeControls,
+  onShuffleTheme,
+  onDefaultTheme,
   canCompleteOrder,
   paymentSatisfied,
   checkoutHref,
   reviewHref,
   customerNavigationBlocked,
 }: {
-  themeControls: React.ReactNode
+  onShuffleTheme: () => void
+  onDefaultTheme: () => void
   canCompleteOrder: boolean
   paymentSatisfied: boolean
   checkoutHref: string
@@ -476,35 +499,71 @@ export function PreviewCommandBar({
   return (
     <div
       data-siab-cms-sticky-chrome
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-3 shadow-lg"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-2 shadow-lg"
     >
-      <div className="grid w-full items-center gap-3 md:grid-cols-[1fr_auto_1fr]">
-        <div className="hidden md:block" aria-hidden />
-        <div className="flex justify-center">{themeControls}</div>
-        <div className="flex w-full justify-end">
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-end">
-            <Button asChild variant="default" className={`w-full sm:w-auto ${blockedClassName}`}>
-              <a href={customerNavigationBlocked ? undefined : reviewHref} {...blockedAnchorProps}>
-                <SquarePen className="size-4" />
-                {t("reviewChanges")}
-              </a>
-            </Button>
-            {canCompleteOrder && (
-              <Button asChild variant="success" className={`w-full sm:w-auto ${blockedClassName}`}>
-                <a href={customerNavigationBlocked ? undefined : checkoutHref} {...blockedAnchorProps}>
-                  <Rocket className="size-4" />
-                  {t("launchWebsite")}
-                </a>
-              </Button>
-            )}
-            {paymentSatisfied && (
-              <Button type="button" variant="secondary" disabled className="w-full sm:w-auto">
-                <CheckCircle2 className="size-4" />
-                {t("paymentComplete")}
-              </Button>
-            )}
-          </div>
+      <div className="mx-auto grid w-fit grid-cols-[auto_auto_auto] items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5">
+        <Button asChild variant="default" size="icon" className={`size-9 rounded-sm ${blockedClassName}`}>
+          <a
+            href={customerNavigationBlocked ? undefined : reviewHref}
+            aria-label={t("reviewChanges")}
+            title={t("reviewChanges")}
+            {...blockedAnchorProps}
+          >
+            <SquarePen className="size-4" aria-hidden />
+          </a>
+        </Button>
+
+        <div className="inline-flex items-center gap-1" role="group" aria-label={t("themeControls")}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 rounded-sm"
+            onClick={onShuffleTheme}
+            aria-label={t("shuffleTheme")}
+            title={t("shuffleTheme")}
+          >
+            <Dices className="size-4" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-9 rounded-sm"
+            onClick={onDefaultTheme}
+            aria-label={t("defaultTheme")}
+            title={t("defaultTheme")}
+          >
+            <RotateCcw className="size-4" aria-hidden />
+          </Button>
         </div>
+
+        {canCompleteOrder ? (
+          <Button asChild variant="success" size="icon" className={`size-9 rounded-sm ${blockedClassName}`}>
+            <a
+              href={customerNavigationBlocked ? undefined : checkoutHref}
+              aria-label={t("launchWebsite")}
+              title={t("launchWebsite")}
+              {...blockedAnchorProps}
+            >
+              <Rocket className="size-4" aria-hidden />
+            </a>
+          </Button>
+        ) : paymentSatisfied ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            disabled
+            className="size-9 rounded-sm"
+            aria-label={t("paymentComplete")}
+            title={t("paymentComplete")}
+          >
+            <CheckCircle2 className="size-4" aria-hidden />
+          </Button>
+        ) : (
+          <span className="size-9" aria-hidden />
+        )}
       </div>
     </div>
   )
