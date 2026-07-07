@@ -61,6 +61,9 @@ const asBlockText = (value: RtBlockRoot | RtInlineRoot | null | undefined): RtBl
   return text ? blockText(text) : null
 }
 
+const smokeBlogHrefs = ["/#workflow", "/#platform-grid", "/#contact"] as const
+const smokeBlogCtaHrefs = ["/#pricing", "/#newsletter", "/#cta"] as const
+
 const canonicalProviderBlock = <TBlock extends Block>(block: TBlock, anchor: string): TBlock => {
   const definition = getProviderBlockDefinition(block)
   if (!definition) {
@@ -100,11 +103,32 @@ const buildTailwindSmokeBlocks = (
   }, "workflow"),
   canonicalProviderBlock(tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots, "platform-grid"),
   canonicalProviderBlock(tailwindPlusMarketingStatsSimpleDemoSlots, "metrics"),
-  canonicalProviderBlock(tailwindPlusMarketingHeroWithStatsDemoSlots, "coverage"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingHeroWithStatsDemoSlots,
+    links: [
+      { label: "Feature grid", href: "/#feature-grid" },
+      { label: "Workflow", href: "/#workflow" },
+      { label: "Pricing", href: "/#pricing" },
+      { label: "Contact", href: contactHref },
+    ],
+  }, "coverage"),
   canonicalProviderBlock(tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots, "testimonial"),
-  canonicalProviderBlock(tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots, "pricing"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots,
+    plans: tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots.plans?.map((plan) => ({
+      ...plan,
+      cta: { label: plan.cta?.label ?? "Contact", href: contactHref },
+    })),
+  }, "pricing"),
   canonicalProviderBlock(tailwindPlusMarketingTeamWithSmallImagesDemoSlots, "team"),
-  canonicalProviderBlock(tailwindPlusMarketingBlogThreeColumnDemoSlots, "resources"),
+  canonicalProviderBlock({
+    ...tailwindPlusMarketingBlogThreeColumnDemoSlots,
+    posts: tailwindPlusMarketingBlogThreeColumnDemoSlots.posts?.map((post, index) => ({
+      ...post,
+      href: smokeBlogHrefs[index] ?? "/#resources",
+      cta: post.cta ? { ...post.cta, href: smokeBlogCtaHrefs[index] ?? "/#resources" } : post.cta,
+    })),
+  }, "resources"),
   canonicalProviderBlock({
     ...tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots,
     provider: { provider: "siab", action: "/api/newsletter", method: "POST", requiresConsent: true, analyticsEnabled: true },

@@ -145,6 +145,7 @@ describe("processIntakeSubmission", () => {
     expect(blocksByVariant.get("tailwindplus.marketing.hero.simple-centered")).not.toHaveProperty("image")
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")?.links).toHaveLength(4)
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")?.stats).toHaveLength(4)
+    expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")?.links.every((link: any) => link.href !== "#")).toBe(true)
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")).not.toHaveProperty("cta")
     expect(blocksByVariant.get("tailwindplus.marketing.hero.with-stats")).not.toHaveProperty("secondary")
     expect(blocksByVariant.get("tailwindplus.marketing.feature.with-product-screenshot")?.features).toHaveLength(3)
@@ -158,6 +159,8 @@ describe("processIntakeSubmission", () => {
     expect(blocksByVariant.get("tailwindplus.marketing.newsletter.side-by-side-with-details")?.benefits).toHaveLength(2)
     expect(blocksByVariant.get("tailwindplus.marketing.newsletter.side-by-side-with-details")?.benefits.every((benefit: any) => !("icon" in benefit))).toBe(true)
     expect(blocksByVariant.get("tailwindplus.marketing.newsletter.side-by-side-with-details")).not.toHaveProperty("consentLabel")
+    expect(blocksByVariant.get("tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier")?.plans.every((plan: any) => plan.cta?.href !== "#")).toBe(true)
+    expect(blocksByVariant.get("tailwindplus.marketing.blog.three-column")?.posts.every((post: any) => post.href !== "#" && post.cta?.href !== "#")).toBe(true)
     expect(blocksByVariant.get("tailwindplus.marketing.contact.centered")?.fields).toHaveLength(6)
     expect(store.media.length).toBeGreaterThan(0)
     expect(store["site-generation-runs"][0]?.parsedOutput?.blocks.map((block: any) => block.slug)).toEqual([
