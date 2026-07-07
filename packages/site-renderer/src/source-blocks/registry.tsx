@@ -182,11 +182,11 @@ export type ProviderBlockValidationIssue = {
   path: string[]
 }
 
-function hasSlotValue(value: unknown) {
+function hasSlotValue(value: unknown): boolean {
   if (value == null) return false
-  if (Array.isArray(value)) return value.length > 0
+  if (Array.isArray(value)) return value.some((item) => hasSlotValue(item))
   if (typeof value === "string") return value.trim().length > 0
-  if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length > 0
+  if (typeof value === "object") return Object.values(value as Record<string, unknown>).some((item) => hasSlotValue(item))
   return true
 }
 

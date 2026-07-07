@@ -288,6 +288,12 @@ describe("provider block runtime", () => {
   })
 
   it("rejects inactive slots and exact provider repeater violations", () => {
+    expect(validateProviderBlockInstance({
+      ...tailwindPlusMarketingHeroWithStatsDemoSlots,
+      cta: {},
+      secondary: { label: "", href: null },
+    } as any)).toEqual([])
+
     const issues = [
       ...validateProviderBlockInstance({
         ...tailwindPlusMarketingHeroWithStatsDemoSlots,
