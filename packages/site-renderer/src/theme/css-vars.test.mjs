@@ -73,6 +73,8 @@ test("themeToCssVars bridges active Tailwind Plus accent utilities without class
   assert.match(css, /\[class~="shadow-indigo-600\/10"\][^}]*--tw-shadow-color:color-mix\(in oklab,var\(--color-accent,#4f46e5\) 10%,transparent\)/)
   assert.match(css, /\[class~="from-\[#ff80b5\]"\][^}]*--tw-gradient-from:var\(--siab-accent-300,#a5b4fc\)/)
   assert.match(css, /\[class~="to-\[#9089fc\]"\][^}]*--tw-gradient-to:var\(--siab-accent-600,var\(--color-accent,#4f46e5\)\)/)
+  assert.match(css, /\[data-siab-tokenized-gradient="testimonial-radial"\][^}]*background-image:radial-gradient\(45rem 50rem at top,var\(--color-indigo-100\),var\(--color-tailwindplus-surface,var\(--color-bg,#ffffff\)\)\)/)
+  assert.match(css, /\[class~="bg-\[radial-gradient\(45rem_50rem_at_top,var\(--color-indigo-100\),white\)\]"\][^}]*background-image:radial-gradient\(45rem 50rem at top,var\(--color-indigo-100\),var\(--color-tailwindplus-surface,var\(--color-bg,#ffffff\)\)\)/)
   assert.match(css, /\[class~="fill-gray-900"\][^}]*fill:var\(--siab-neutral-900/)
   assert.match(css, /\[class~="focus-visible:outline-gray-900"\]\):focus-visible[^}]*outline-color:var\(--siab-neutral-900/)
   assert.match(css, /\[class~="bg-white\/5"\][^}]*background-color:rgb\(255 255 255 \/ 0\.05\)/)

@@ -128,11 +128,9 @@ export const Newsletter: BlockWithMeta = {
     { name: "emailLabel", type: "text" },
     { name: "emailPlaceholder", type: "text" },
     { name: "submitLabel", type: "text" },
-    { name: "consentLabel", type: "textarea" },
     { name: "benefits", type: "array", fields: [
       richInline("title", "Benefit title."),
       richBlock("description", "Benefit description."),
-      { name: "icon", type: "text" },
     ]},
     { name: "provider", type: "group", fields: [
       { name: "provider", type: "text" },
@@ -141,7 +139,6 @@ export const Newsletter: BlockWithMeta = {
         { label: "POST", value: "POST" },
         { label: "GET", value: "GET" },
       ]},
-      { name: "requiresConsent", type: "checkbox", defaultValue: true },
       { name: "analyticsEnabled", type: "checkbox", defaultValue: true },
     ]},
     ...blockBaseFields("newsletter"),
@@ -201,9 +198,7 @@ export const Team: BlockWithMeta = {
     { name: "members", type: "array", required: true, fields: [
       { name: "name", type: "text", required: true },
       { name: "role", type: "text" },
-      richBlock("bio", "Short team member bio."),
       { name: "image", type: "upload", relationTo: "media" },
-      { name: "links", type: "array", fields: linkFields() },
     ]},
     ...blockBaseFields("team"),
   ],

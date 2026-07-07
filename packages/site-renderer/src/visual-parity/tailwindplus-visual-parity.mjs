@@ -314,6 +314,11 @@ function structuralSignature(html) {
   return html
     .replace(/<style[^>]*data-siab-theme-overrides[^>]*>[\s\S]*?<\/style>/g, "")
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")
+    .replace(/<input\b[^>]*type="hidden"[^>]*>/g, "")
+    .replace(/<div class="hidden" aria-hidden="true">[\s\S]*?<\/div>/g, "")
+    .replace(/<p\b[^>]*role="status"[^>]*>[\s\S]*?<\/p>/g, "")
+    .replace(/\sdata-siab-analytics-form="[^"]*"/g, "")
+    .replace(/\sdata-siab-form-[a-z-]+="[^"]*"/g, "")
     .replace(/\s(?:style|data-success-message|data-error-message)="[^"]*"/g, "")
     .replace(/\saction="[^"]*"/g, ' action=""')
     .replace(/\smethod="[^"]*"/g, ' method=""')
@@ -583,7 +588,10 @@ async function assertTokenizedThemeSmoke(page, css, testCase, html, viewport, th
     }
 
     if (id === "tailwindplus.marketing.testimonial.simple-centered" && mode === "dark") {
-      const radial = document.querySelector("[class~='bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]']")
+      const radial = document.querySelector('[data-siab-tokenized-gradient="testimonial-radial"]')
+      if (!radial) {
+        failures.push(`${id} dark testimonial radial gradient is missing its token marker`)
+      }
       const backgroundImage = radial ? getComputedStyle(radial).backgroundImage : ""
       if (backgroundImage.includes("rgb(255, 255, 255)")) {
         failures.push(`${id} dark testimonial radial gradient still ends in white`)

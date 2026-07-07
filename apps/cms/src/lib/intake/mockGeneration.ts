@@ -131,7 +131,7 @@ const buildTailwindSmokeBlocks = (
   }, "resources"),
   canonicalProviderBlock({
     ...tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots,
-    provider: { provider: "siab", action: "/api/newsletter", method: "POST", requiresConsent: true, analyticsEnabled: true },
+    provider: { provider: "siab", action: "/api/newsletter", method: "POST", analyticsEnabled: true },
   }, "newsletter"),
   canonicalProviderBlock({
     ...tailwindPlusMarketingCtaDarkPanelWithAppScreenshotDemoSlots,

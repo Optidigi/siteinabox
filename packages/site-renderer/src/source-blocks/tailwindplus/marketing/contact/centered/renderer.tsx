@@ -264,7 +264,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
         </div>
         {source.hasSubmitStatus && (
           <p
-            className="mt-4 text-sm/6 text-gray-600"
+            className="cms-block__form-message mt-4 text-sm/6 text-gray-600"
             data-success-message={provider?.successMessage ?? undefined}
             data-error-message={provider?.errorMessage ?? undefined}
             hidden

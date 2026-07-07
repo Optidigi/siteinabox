@@ -253,12 +253,19 @@ Current runtime-compatible provider families and blocks:
   `submitLabel`, and exactly six source-role form fields are required:
   `first-name`, `last-name`, `company`, `email`, `phone-number`, and `message`.
   Field labels, required flags, placeholders, and select/checkbox options remain
-  CMS data; layout and field order remain renderer-owned.
+  CMS data; layout and field order remain renderer-owned. Runtime-only SIAB
+  form behavior such as hidden `formName`, provider hidden fields, honeypot,
+  analytics attributes, required consent state, and status messages is tested
+  separately from source-visible visual parity.
 - `tailwindplus.marketing.testimonial.simple-centered`, with legacy
   `tailwindPlusSimpleCentered` testimonial aliases still accepted. It renders exactly one
-  testimonial item with required quote, author, and role. Logo and avatar media
+  testimonial item with required quote and author; role, logo, and avatar media
   are optional editable slots because self-serve intake does not require remote
-  generated media ingestion.
+  generated media ingestion. The decorative radial gradient keeps the literal
+  Tailwind arbitrary class from source and carries the stable
+  `data-siab-tokenized-gradient="testimonial-radial"` marker so the dark-mode
+  token bridge can replace the source `white` endpoint with the site surface
+  token.
 - `tailwindplus.marketing.stats.simple`, with legacy
   `tailwindPlusSimple` aliases still accepted. The active slot is exactly three `items`,
   each with editable `value` and `label`. Section `title`, `intro`, and item
@@ -279,8 +286,8 @@ Current runtime-compatible provider families and blocks:
 - `tailwindplus.marketing.team.with-small-images`, with legacy
   `tailwindPlusGrid` aliases still accepted. It renders two to six team
   members with required names and roles plus optional member images. Bio and
-  social links remain CMS fields but are not exposed by this exact source
-  variant.
+  social links are inactive for this exact source variant and are rejected if
+  generated or saved with values.
 - `tailwindplus.marketing.blog.three-column`, with legacy
   `tailwindPlusThreeColumn` aliases still accepted. It renders exactly three
   article cards with required titles, excerpts, and hrefs plus optional dates,
@@ -292,7 +299,10 @@ Current runtime-compatible provider families and blocks:
   benefit items and exposes title, description, email label, placeholder,
   submit label, provider binding, and benefit title/description slots. Benefit
   icons and consent copy are inactive for this exact source variant and are
-  rejected if generated or saved with values.
+  rejected if generated or saved with values. Runtime-only hidden fields,
+  honeypot, analytics attributes, and status messages follow the same
+  parity-vs-runtime policy as contact; newsletter has a fixed runtime
+  `formName` of `newsletter`.
 - `tailwindplus.marketing.hero.with-stats`, with legacy
   `tailwindPlusHeroWithStats` aliases still accepted. It treats Tailwind Plus
   Header Sections `With stats` as a `hero` variant. It renders headline,
@@ -371,7 +381,14 @@ source fixture at desktop and mobile widths, and fails if the pixel delta
 exceeds the provider threshold or if any active provider registry entry lacks a
 visual case. This gate is provider-scoped; it is not a broad page-level visual
 regression suite. Exact-source variants must compare directly against the
-approved source fixture without fixture-stripping masks.
+approved source fixture without fixture-stripping masks. Exact source parity
+compares source-visible DOM/classes/content; runtime-only hidden form controls,
+honeypots, analytics metadata, and status nodes are normalized or asserted in
+separate runtime tests. Dark-mode source adaptation is limited to explicit
+site-wide token bridge rules for ambient surfaces. Fixed-dark source islands
+keep source white/dark affordances, while ambient surfaces such as the
+testimonial radial gradient use stable source-scoped markers rather than
+tenant-provided classes or per-block style tokens.
 
 ## Current Tailwind Plus Inventory Notes
 

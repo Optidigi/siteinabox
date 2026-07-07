@@ -28,8 +28,8 @@ export const tailwindPlusMarketingTeamWithSmallImagesProviderBlock = defineProvi
     memberName: { kind: "text", status: "required", exposed: true, sourceField: "members.name" },
     memberRole: { kind: "text", status: "required", exposed: true, sourceField: "members.role" },
     memberImage: { kind: "image", status: "optional", exposed: true, sourceField: "members.image" },
-    memberBio: { kind: "richtext", status: "optional", exposed: false, sourceField: "members.bio" },
-    memberLinks: { kind: "repeater", status: "optional", exposed: false, sourceField: "members.links" },
+    memberBio: { kind: "richtext", status: "inactive", exposed: false, sourceField: "members.bio" },
+    memberLinks: { kind: "repeater", status: "inactive", exposed: false, sourceField: "members.links" },
   },
   source: {
     sourceName: "Tailwind Plus",

@@ -56,23 +56,16 @@ depended on command-run site generation are no longer current source of truth.
 
 ## Open Follow-Up
 
-- HIGH PRIORITY: close the Tailwind Plus provider parity gap before claiming
-  source-backed blocks are production-ready. The contact section, especially
-  `tailwindplus.marketing.contact.centered`, is the first repro target: verify
-  form layout, field order/count/roles, grid spans, consent placement, button
-  placement, decorative backgrounds, spacing, and max-widths against the
-  Tailwind Plus source. More broadly, current output does not yet have full
-  parity with Tailwind Plus components/blocks even if the automated gate passed
-  in the last deploy cycle; treat this as an active product blocker, not a
-  cosmetic cleanup. Reproduce deltas with screenshots and DOM/class inspection,
-  then update the source shell/slot adapter/renderer wrapper contract until the
-  upstream fixture, CMS preview path, and public renderer path all match for the
-  same block data and `ThemeTokenSpec`. Acceptance requires desktop and mobile
-  source parity, preview/public parity, tokenized smoke proving DOM/class
-  stability, and explicit exact/adapted status for every active provider block.
-  Do not use `sourceTransform`, fixture stripping, broad thresholds, generic
-  renderer fallback, arbitrary CMS layout controls, or new legacy theme
-  compatibility to make the tests pass.
+- HIGH PRIORITY: browser-verify CMS Tailwind Plus provider rendering/canvas
+  parity before claiming the editor surface is production-ready. Public
+  source-backed block parity and the contact/newsletter runtime-form boundary
+  are now covered by package/CMS tests and the provider visual gate, but the CMS
+  editor-frame surface still needs browser-level evidence for every active
+  Tailwind Plus block and chrome. Verify DOM/classes, computed styles,
+  source-visible slot wrappers, hover/select/edit states, and `ThemeTokenSpec`
+  behavior against the shared renderer path. Do not use fixture stripping,
+  broad thresholds, generic renderer fallback, arbitrary CMS layout controls, or
+  new legacy theme compatibility to make the tests pass.
 - HIGH PRIORITY: fix CMS Tailwind Plus provider rendering/canvas parity as its
   own product blocker. As of 2026-07-07, Amicare save/auto-publish is fixed and
   should not be conflated with this issue, but Tailwind-based provider rendering

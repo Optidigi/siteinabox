@@ -276,15 +276,15 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "description", "formName", "submitLabel", "fields"],
+    required: ["blockType", "designVariant", "anchor", "title", "formName", "submitLabel", "fields"],
     properties: {
       blockType: { type: "string", const: "contactSection" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("contactSection"),
-      title: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
+      title: richTextInlineJsonSchema,
       description: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
       formName: { type: "string" },
-      submitLabel: stringOrNull,
+      submitLabel: { type: "string" },
       fields: {
         type: "array",
         minItems: 6,
@@ -337,7 +337,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "logo", "items"],
+    required: ["blockType", "designVariant", "anchor", "items"],
     properties: {
       blockType: { type: "string", const: "testimonials" },
       ...baseBlockProperties,
@@ -350,7 +350,7 @@ const blockJsonSchemas = [
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["quote", "author", "avatar"],
+          required: ["quote", "author"],
           properties: {
             quote: { type: "string" },
             author: { type: "string" },

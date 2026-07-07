@@ -23,7 +23,7 @@ function isManagedPostForm(form: HTMLFormElement) {
   const action = form.getAttribute("action") || ""
   if (method !== "POST") return false
   if (!action || action.startsWith("mailto:")) return false
-  return action === "/api/forms" || action.startsWith("/api/forms?")
+  return action === "/api/forms" || action.startsWith("/api/forms?") || action.startsWith("/api/forms/")
 }
 
 document.addEventListener("submit", async (event) => {

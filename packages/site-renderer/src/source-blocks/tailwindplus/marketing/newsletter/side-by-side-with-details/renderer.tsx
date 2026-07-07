@@ -34,6 +34,8 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
   const provider = block.provider
   const action = provider?.action ?? provider?.fallbackHref ?? options.formAction ?? "/api/forms"
   const method = provider?.method ?? "POST"
+  const normalizedMethod = method === "GET" ? "GET" : "POST"
+  const hasSubmitStatus = normalizedMethod === "POST" && !action.startsWith("mailto:")
   const emailLabel = block.emailLabel?.trim() || "Email address"
   const submitLabel = block.submitLabel?.trim() || "Subscribe"
   const inputId = `tailwindplus-newsletter-email-${options.index}`
@@ -83,8 +85,25 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
                 })}
               </div>
             )}
-            <form className="mt-6 flex max-w-md gap-x-4" name="newsletter" method={method} action={action} data-siab-form-name="newsletter" data-siab-form-provider={provider?.provider || undefined}>
+            <form
+              className="mt-6 flex max-w-md gap-x-4"
+              name="newsletter"
+              method={normalizedMethod}
+              action={action}
+              data-siab-analytics-form="true"
+              data-siab-form-name="newsletter"
+              data-siab-form-provider={provider?.provider || undefined}
+            >
               <input type="hidden" name="formName" value="newsletter" />
+              {provider?.hiddenFields?.map((field) => (
+                <input key={field.name} type="hidden" name={field.name} value={field.value ?? ""} />
+              ))}
+              {provider?.honeypotField && (
+                <div className="hidden" aria-hidden="true">
+                  <label htmlFor={provider.honeypotField}>Leave this field empty</label>
+                  <input id={provider.honeypotField} name={provider.honeypotField} tabIndex={-1} autoComplete="off" />
+                </div>
+              )}
               <label htmlFor={inputId} className="sr-only">{emailLabel}</label>
               <input id={inputId} type="email" name="email" required placeholder={block.emailPlaceholder ?? "Enter your email"} autoComplete="email" className="min-w-0 flex-auto rounded-md bg-white/5 px-3.5 py-2 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" />
               <button type="submit" className="flex-none rounded-md bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
@@ -97,6 +116,17 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
                   })
                   : submitLabel}
               </button>
+              {hasSubmitStatus && (
+                <p
+                  className="cms-block__form-message sr-only"
+                  data-success-message={provider?.successMessage ?? undefined}
+                  data-error-message={provider?.errorMessage ?? undefined}
+                  hidden
+                  role="status"
+                >
+                  {provider?.successMessage ?? provider?.errorMessage ?? ""}
+                </p>
+              )}
             </form>
           </div>
           <dl className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:pt-2">

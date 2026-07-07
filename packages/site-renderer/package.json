@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs",
+    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/source-blocks/**/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "visual:provider-parity": "tsx src/visual-parity/tailwindplus-visual-parity.mjs"
   },

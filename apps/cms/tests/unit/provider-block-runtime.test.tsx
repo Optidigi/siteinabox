@@ -482,10 +482,7 @@ describe("provider block runtime", () => {
     expect(noMediaOrRoleHtml).not.toContain('class="mx-auto size-10 rounded-full"')
     expect(noMediaOrRoleHtml).not.toContain('class="fill-gray-900"')
     expect(noMediaOrRoleHtml).not.toContain('class="text-gray-600"></div>')
-    expect(validateProviderBlockInstance(noMediaOrRole).map((issue) => issue.path.join("."))).toEqual(expect.arrayContaining([
-      "logo",
-      "items.0.avatar",
-    ]))
+    expect(validateProviderBlockInstance(noMediaOrRole)).toEqual([])
     expect(validateProviderBlockInstance({
       ...tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots,
       items: [{ ...tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots.items[0]!, role: "" }],

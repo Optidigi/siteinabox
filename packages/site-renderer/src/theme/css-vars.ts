@@ -116,6 +116,9 @@ function providerThemeBridgeRules(
   const groupHover = (classNames: string[]) => providerRootSelectors
     .flatMap((selector) => classNames.map((className) => `${selector} .group:hover .${className}`))
     .join(",")
+  const dataToken = (name: string, value: string, pseudo = "") => providerRootSelectors
+    .map((selector) => `${selector} :where([${name}="${value}"])${pseudo}`)
+    .join(",")
   const classToken = (token: string, pseudo = "") => providerRootSelectors
     .map((selector) => `${selector} :where([class~="${token}"])${pseudo}`)
     .join(",")
@@ -198,7 +201,7 @@ function providerThemeBridgeRules(
     `${classTokens(["fill-gray-900"])}{fill:var(--siab-neutral-900,var(--color-ink,#111827))}`,
     `${classTokens(["from-[#ff80b5]", "from-[#ff4694]"])}{--tw-gradient-from:var(--siab-accent-300,#a5b4fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
     `${classTokens(["to-[#9089fc]", "to-[#776fff]"])}{--tw-gradient-to:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
-    `${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-indigo-100),var(--color-tailwindplus-surface,var(--color-bg,#ffffff)))}`,
+    `${dataToken("data-siab-tokenized-gradient", "testimonial-radial")},${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-indigo-100),var(--color-tailwindplus-surface,var(--color-bg,#ffffff)))}`,
     `${providerRootSelectors.map((selector) => `${selector}[data-provider-variant="tailwindplus.marketing.logo-cloud.simple-with-heading"] img[src*="-logo-gray-900.svg"]`).join(",")}{filter:var(--tailwindplus-logo-filter,none)}`,
   )
   if (options.fonts) rules.push(

@@ -273,7 +273,7 @@ function buildManifest(
   }
 }
 
-function validatePublishedPageProviderBlocks(pages: ContractPage[]) {
+function validatePublishedPageProviderBlocks(pages: Array<{ blocks: ContractPage["blocks"] }>) {
   const errors: string[] = []
   pages.forEach((page, pageIndex) => {
     page.blocks.forEach((block, blockIndex) => {
@@ -553,6 +553,7 @@ export async function resolvePublishedSnapshotByHost(
     throw new Error(`Stored published site snapshot failed contract validation: ${formatContractValidationIssues(parsedSnapshot.error)}`)
   }
   const snapshot = parsedSnapshot.data
+  validatePublishedPageProviderBlocks(snapshot.pages)
   if (normalizeRequestHost(snapshot.domain) !== normalizeRequestHost(tenant.domain)) return null
 
   return {

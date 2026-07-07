@@ -92,7 +92,7 @@ export const tailwindPlusMarketingContactCenteredProviderBlock = defineProviderB
   slots: {
     title: {
       kind: "richtext",
-      status: "optional",
+      status: "required",
       exposed: true,
       sourceField: "title",
     },
@@ -110,7 +110,7 @@ export const tailwindPlusMarketingContactCenteredProviderBlock = defineProviderB
     },
     submitLabel: {
       kind: "text",
-      status: "optional",
+      status: "required",
       exposed: true,
       sourceField: "submitLabel",
     },
