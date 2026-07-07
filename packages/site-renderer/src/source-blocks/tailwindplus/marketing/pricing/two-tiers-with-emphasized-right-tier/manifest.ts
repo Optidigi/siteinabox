@@ -45,5 +45,10 @@ export const tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierProvider
       sourceHash: "sha256:fe08d276628c09c8c5eaa241bb6de03da4df206c8cc9dc9c210067e263bca3b4",
       capturedAt: "2026-07-05",
       license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+      sourceAvailability: "paid",
+      licenseCompatibility: "unknown",
+      approvalStatus: "deferred",
+      implementation: "exact-source",
+      visualExactnessStatus: "reviewed-exact-source",
     },
   })

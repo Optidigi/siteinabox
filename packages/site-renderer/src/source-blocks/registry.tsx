@@ -35,6 +35,11 @@ export type ProviderBlockSourceMetadata = {
   sourceHash: string
   capturedAt: string
   license: string
+  sourceAvailability: "free-public" | "locked" | "paid" | "unavailable"
+  licenseCompatibility: "compatible" | "incompatible" | "unknown"
+  approvalStatus: "approved" | "deferred" | "rejected"
+  implementation: "exact-source" | "html-derived-source" | "adapted"
+  visualExactnessStatus: "reviewed-exact-source" | "needs-browser-comparison" | "deferred"
 }
 
 export type ProviderBlockDefinition<TBlock extends Block = Block> = {
@@ -80,6 +85,21 @@ export const providerBlockDefinitions = [
 
 export type ProviderBlockId = typeof providerBlockDefinitions[number]["id"]
 export type ProviderBlockNamespace = typeof providerBlockDefinitions[number]["namespace"]
+
+export function isSelfServeProviderBlockDefinition(definition: ProviderBlockDefinition<any>) {
+  return (
+    definition.source.sourceAvailability === "free-public" &&
+    definition.source.licenseCompatibility === "compatible" &&
+    definition.source.approvalStatus === "approved" &&
+    definition.source.implementation === "exact-source" &&
+    definition.source.visualExactnessStatus === "reviewed-exact-source" &&
+    Boolean(definition.renderer) &&
+    Boolean(definition.rendererClassName) &&
+    /^sha256:[a-f0-9]{64}$/.test(definition.source.sourceHash)
+  )
+}
+
+export const selfServeProviderBlockDefinitions = providerBlockDefinitions.filter(isSelfServeProviderBlockDefinition)
 
 const providerBlockDefinitionsByVariant: Partial<Record<SourceBackedVariantKey, ProviderBlockDefinition<any>>> = {}
 const sourceBackedVariantRenderers: Partial<Record<SourceBackedVariantKey, BlockRendererComponent<any>>> = {}
@@ -225,7 +245,7 @@ export function validateProviderBlockInstance(block: Block): ProviderBlockValida
         })
       }
     }
-    if (slot.status === "inactive" && hasValue) {
+    if ((slot.status === "inactive" || !slot.exposed) && hasValue) {
       for (const entry of slotValues.filter((candidate) => hasSlotValue(candidate.value))) {
         issues.push({
           code: "inactive_slot_value",

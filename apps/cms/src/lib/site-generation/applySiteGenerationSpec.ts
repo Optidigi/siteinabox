@@ -78,7 +78,6 @@ const SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK = new Map<string, Set<string>>(
 for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
   const variants = SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(variant.slug) ?? new Set<string>()
   variants.add(variant.variant)
-  if (variant.legacyDesignVariant) variants.add(variant.legacyDesignVariant)
   SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.set(variant.slug, variants)
 }
 

@@ -75,5 +75,10 @@ export const tailwindPlusMarketingFeatureCentered2x2GridProviderBlock = definePr
     sourceHash: "sha256:2bca54eeec9904075e3a38d66db48bd0f2b7bfaecbfc0f49e35f9b6e895719a3",
     capturedAt: "2026-07-04",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "unavailable",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "html-derived-source",
+    visualExactnessStatus: "needs-browser-comparison",
   },
 })

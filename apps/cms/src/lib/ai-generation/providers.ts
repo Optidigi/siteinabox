@@ -188,25 +188,23 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "eyebrow", "headline", "subheadline", "links", "cta", "secondary", "stats"],
+    required: ["blockType", "designVariant", "anchor", "headline", "subheadline", "links", "image", "stats"],
     properties: {
       blockType: { type: "string", const: "hero" },
       ...baseBlockProperties,
       designVariant: designVariantJsonSchemaFor("hero"),
-      eyebrow: { anyOf: [richTextInlineJsonSchema, { type: "null" }] },
       headline: richTextInlineJsonSchema,
-      subheadline: { anyOf: [richTextBlockJsonSchema, { type: "null" }] },
+      subheadline: richTextBlockJsonSchema,
+      image: mediaRefJsonSchema,
       links: {
         type: "array",
-        minItems: 0,
+        minItems: 4,
         maxItems: 4,
         items: linkJsonSchema,
       },
-      cta: { anyOf: [linkJsonSchema, { type: "null" }] },
-      secondary: { anyOf: [linkJsonSchema, { type: "null" }] },
       stats: {
         type: "array",
-        minItems: 0,
+        minItems: 4,
         maxItems: 4,
         items: {
           type: "object",

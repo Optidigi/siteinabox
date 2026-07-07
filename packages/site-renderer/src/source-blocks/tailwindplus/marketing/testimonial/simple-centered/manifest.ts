@@ -94,5 +94,10 @@ export const tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock = defin
     sourceHash: "sha256:409952590df6ccf21b79639a920853168a21c5ed82237483d2341ff824dc86a7",
     capturedAt: "2026-07-04",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

@@ -41,5 +41,10 @@ export const tailwindPlusMarketingContentStickyProductScreenshotProviderBlock =
       sourceHash: "sha256:fbc4dbd626b016ea22b0487bb4db614046dbb1f088ec41d690ddb2e67ac924de",
       capturedAt: "2026-07-05",
       license: "Tailwind Plus public downloadable component source; keep local snapshot out of runtime imports.",
+      sourceAvailability: "free-public",
+      licenseCompatibility: "compatible",
+      approvalStatus: "approved",
+      implementation: "exact-source",
+      visualExactnessStatus: "reviewed-exact-source",
     },
   })

@@ -38,5 +38,10 @@ export const tailwindPlusMarketingTeamWithSmallImagesProviderBlock = defineProvi
     sourceHash: "sha256:45fbdfeeb04b94f7195cd1479fd7d2670e76fe789e41c6a46f30dff1bf25173e",
     capturedAt: "2026-07-05",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

@@ -36,5 +36,10 @@ export const tailwindPlusMarketingHeroWithStatsProviderBlock = defineProviderBlo
     sourceHash: "sha256:62e7fbad5325b4f47539a746a9f8ec97d316acada9b8d3e762875e55d476afcb",
     capturedAt: "2026-07-05",
     license: "Tailwind Plus public downloadable component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "free-public",
+    licenseCompatibility: "compatible",
+    approvalStatus: "approved",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

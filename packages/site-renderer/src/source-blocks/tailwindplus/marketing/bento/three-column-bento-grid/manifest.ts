@@ -34,5 +34,10 @@ export const tailwindPlusMarketingBentoThreeColumnBentoGridProviderBlock = defin
     sourceHash: "sha256:a8a79ed6f4abec319bec1c5ce1d10acf41fb2be51135c0bee8138eb87eecebab",
     capturedAt: "2026-07-05",
     license: "Tailwind Plus public downloadable component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "free-public",
+    licenseCompatibility: "compatible",
+    approvalStatus: "approved",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

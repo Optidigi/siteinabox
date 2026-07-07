@@ -26,6 +26,7 @@ export const tailwindPlusMarketingNewsletterSideBySideWithDetailsProviderBlock =
       benefits: { kind: "repeater", status: "required", exposed: true, sourceField: "benefits", minItems: 2, maxItems: 2 },
       benefitTitle: { kind: "richtext", status: "required", exposed: true, sourceField: "benefits.title" },
       benefitDescription: { kind: "richtext", status: "required", exposed: true, sourceField: "benefits.description" },
+      benefitIcon: { kind: "text", status: "inactive", exposed: false, sourceField: "benefits.icon" },
       consentLabel: { kind: "text", status: "inactive", exposed: false, sourceField: "consentLabel" },
     },
     source: {
@@ -35,5 +36,10 @@ export const tailwindPlusMarketingNewsletterSideBySideWithDetailsProviderBlock =
       sourceHash: "sha256:a548f09374f7fdbfd73e320774cf73e48d54b3a61b3b832295654506986ae2f2",
       capturedAt: "2026-07-05",
       license: "Tailwind Plus public downloadable component source; keep local snapshot out of runtime imports.",
+      sourceAvailability: "free-public",
+      licenseCompatibility: "compatible",
+      approvalStatus: "approved",
+      implementation: "exact-source",
+      visualExactnessStatus: "reviewed-exact-source",
     },
   })

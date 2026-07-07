@@ -121,65 +121,31 @@ describe("processIntakeSubmission", () => {
     expect(store.pages).toHaveLength(1)
     expect(store.pages[0]?.slug).toBe("index")
     expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
-      "hero:tailwindplus.marketing.hero.simple-centered",
-      "logoCloud:tailwindplus.marketing.logo-cloud.simple-with-heading",
-      "featureList:tailwindplus.marketing.feature.with-product-screenshot",
-      "featureList:tailwindplus.marketing.feature.centered-2x2-grid",
-      "stats:tailwindplus.marketing.stats.simple",
+      "hero:tailwindplus.marketing.hero.with-stats",
       "contentSection:tailwindplus.marketing.content.sticky-product-screenshot",
       "bentoGrid:tailwindplus.marketing.bento.three-column-bento-grid",
-      "testimonials:tailwindplus.marketing.testimonial.simple-centered",
-      "pricing:tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
-      "team:tailwindplus.marketing.team.with-small-images",
-      "blogCards:tailwindplus.marketing.blog.three-column",
       "newsletter:tailwindplus.marketing.newsletter.side-by-side-with-details",
-      "cta:tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
-      "contactSection:tailwindplus.marketing.contact.centered",
     ])
-    expect(store.pages[0]?.blocks[0]?.secondary).toMatchObject({ label: "Meer informatie", href: "/" })
-    expect(store.pages[0]?.blocks[1]?.logos).toHaveLength(5)
-    expect(store.pages[0]?.blocks[1]?.logos.every((logo: any) => typeof logo.image === "number")).toBe(true)
-    expect(store.pages[0]?.blocks[2]?.features).toHaveLength(3)
-    expect(typeof store.pages[0]?.blocks[2]?.image).toBe("number")
-    expect(store.pages[0]?.blocks[3]?.features).toHaveLength(4)
-    expect(store.pages[0]?.blocks[4]?.items).toHaveLength(3)
-    expect(store.pages[0]?.blocks[4]).not.toHaveProperty("title")
-    expect(store.pages[0]?.blocks[4]).not.toHaveProperty("intro")
-    expect(store.pages[0]?.blocks[5]?.features).toHaveLength(3)
-    expect(typeof store.pages[0]?.blocks[5]?.image).toBe("number")
-    expect(store.pages[0]?.blocks[5]).not.toHaveProperty("cta")
-    expect(store.pages[0]?.blocks[5]?.features.every((feature: any) => !("icon" in feature))).toBe(true)
-    expect(store.pages[0]?.blocks[6]?.items).toHaveLength(4)
-    expect(store.pages[0]?.blocks[6]?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
-    expect(store.pages[0]?.blocks[6]?.items.filter((item: any) => typeof item.image === "number")).toHaveLength(3)
-    expect(store.pages[0]?.blocks[7]?.items).toHaveLength(1)
-    expect(typeof store.pages[0]?.blocks[7]?.logo).toBe("number")
-    expect(store.pages[0]?.blocks[7]?.items.every((item: any) => typeof item.avatar === "number")).toBe(true)
-    expect(store.pages[0]?.blocks[8]?.plans).toHaveLength(2)
-    expect(store.pages[0]?.blocks[8]?.plans.every((plan: any) => !("badge" in plan))).toBe(true)
-    expect(store.pages[0]?.blocks[9]?.members).toHaveLength(3)
-    expect(store.pages[0]?.blocks[9]?.members.every((member: any) => !("bio" in member) && !("links" in member))).toBe(true)
-    expect(store.pages[0]?.blocks[9]?.members.every((member: any) => typeof member.image === "number")).toBe(true)
-    expect(store.pages[0]?.blocks[10]?.posts).toHaveLength(3)
-    expect(store.pages[0]?.blocks[10]?.posts.every((post: any) => typeof post.image === "number")).toBe(true)
-    expect(store.pages[0]?.blocks[11]?.benefits).toHaveLength(2)
-    expect(store.pages[0]?.blocks[11]).not.toHaveProperty("consentLabel")
-    expect(store.pages[0]?.blocks[13]?.fields).toHaveLength(6)
+    expect(store.pages[0]?.blocks[0]?.links).toHaveLength(4)
+    expect(store.pages[0]?.blocks[0]?.stats).toHaveLength(4)
+    expect(typeof store.pages[0]?.blocks[0]?.image).toBe("number")
+    expect(store.pages[0]?.blocks[0]).not.toHaveProperty("cta")
+    expect(store.pages[0]?.blocks[0]).not.toHaveProperty("secondary")
+    expect(store.pages[0]?.blocks[1]?.features).toHaveLength(3)
+    expect(typeof store.pages[0]?.blocks[1]?.image).toBe("number")
+    expect(store.pages[0]?.blocks[1]?.features.every((feature: any) => !("icon" in feature))).toBe(true)
+    expect(store.pages[0]?.blocks[2]?.items).toHaveLength(4)
+    expect(store.pages[0]?.blocks[2]?.items.every((item: any) => !("icon" in item) && !("cta" in item))).toBe(true)
+    expect(store.pages[0]?.blocks[2]?.items.filter((item: any) => typeof item.image === "number")).toHaveLength(3)
+    expect(store.pages[0]?.blocks[3]?.benefits).toHaveLength(2)
+    expect(store.pages[0]?.blocks[3]?.benefits.every((benefit: any) => !("icon" in benefit))).toBe(true)
+    expect(store.pages[0]?.blocks[3]).not.toHaveProperty("consentLabel")
     expect(store.media.length).toBeGreaterThan(0)
     expect(store["site-generation-runs"][0]?.parsedOutput?.blocks.map((block: any) => block.slug)).toEqual([
       "hero",
-      "featureList",
-      "cta",
-      "testimonials",
-      "stats",
-      "logoCloud",
-      "pricing",
-      "team",
-      "blogCards",
       "bentoGrid",
       "contentSection",
       "newsletter",
-      "contactSection",
     ])
     expect(store.pages[0]?.blocks.every((block: any) => !("variant" in block))).toBe(true)
     expect(store.pages[0]?.blocks.every((block: any) => Object.keys(block.analytics ?? {}).every((key) => key !== "legacyVisualIdentity"))).toBe(true)

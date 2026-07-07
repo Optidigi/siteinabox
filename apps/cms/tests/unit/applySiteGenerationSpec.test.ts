@@ -343,7 +343,24 @@ describe("applySiteGenerationSpec", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      designVariant: "tailwindPlusSimpleCentered",
+      designVariant: "tailwindplus.marketing.hero.with-stats",
+      eyebrow: undefined,
+      subheadline: rtBlock("Editable CMS draft content."),
+      cta: undefined,
+      secondary: undefined,
+      links: [
+        { label: "Workflow", href: "/#workflow" },
+        { label: "Platform", href: "/#platform" },
+        { label: "Updates", href: "/#updates" },
+        { label: "Contact", href: "mailto:hello@example.com" },
+      ],
+      image: null,
+      stats: [
+        { value: "4", label: "Variants" },
+        { value: "0", label: "Generated files" },
+        { value: "1", label: "Renderer" },
+        { value: "100%", label: "Structured" },
+      ],
     } as any
     spec.pages[0]!.blocks = [spec.pages[0]!.blocks[0]!]
     spec.blocks = [{ slug: "hero", label: "Hero" }]
@@ -352,7 +369,7 @@ describe("applySiteGenerationSpec", () => {
 
     expect(result.ok).toBe(true)
     expect(store.pages[0]!.blocks[0]).toMatchObject({
-      designVariant: "tailwindPlusSimpleCentered",
+      designVariant: "tailwindplus.marketing.hero.with-stats",
     })
     expect(store.pages[0]!.blocks[0]).not.toHaveProperty("variant")
     expect(store.pages[0]!.blocks[0].analytics ?? {}).toEqual({})
@@ -567,27 +584,44 @@ describe("applySiteGenerationSpec", () => {
     expect(report.valid).toBe(true)
   })
 
-  it("accepts canonical provider IDs for new self-serve generation while keeping legacy aliases compatible", () => {
+  it("requires canonical provider IDs for new self-serve generation while keeping legacy aliases compatible outside generation", () => {
     const canonicalSpec = fixtureSpec()
     canonicalSpec.pages[0]!.blocks[0] = {
       ...canonicalSpec.pages[0]!.blocks[0]!,
-      designVariant: "tailwindplus.marketing.hero.simple-centered",
+      designVariant: "tailwindplus.marketing.hero.with-stats",
+      eyebrow: undefined,
+      subheadline: rtBlock("Editable CMS draft content."),
+      cta: undefined,
+      secondary: undefined,
+      links: [
+        { label: "Workflow", href: "/#workflow" },
+        { label: "Platform", href: "/#platform" },
+        { label: "Updates", href: "/#updates" },
+        { label: "Contact", href: "mailto:hello@example.com" },
+      ],
+      image: null,
+      stats: [
+        { value: "4", label: "Variants" },
+        { value: "0", label: "Generated files" },
+        { value: "1", label: "Renderer" },
+        { value: "100%", label: "Structured" },
+      ],
     } as any
-    canonicalSpec.pages[0]!.blocks[1] = {
-      ...canonicalSpec.pages[0]!.blocks[1]!,
-      designVariant: "tailwindplus.marketing.contact.centered",
-      description: null,
-    } as any
+    canonicalSpec.pages[0]!.blocks = [canonicalSpec.pages[0]!.blocks[0]!]
+    canonicalSpec.blocks = [{ slug: "hero", label: "Hero" }]
 
     const legacySpec = fixtureSpec()
-    legacySpec.pages[0]!.blocks[1] = {
-      ...legacySpec.pages[0]!.blocks[1]!,
-      designVariant: "tailwindPlusCentered",
-      description: null,
+    legacySpec.pages[0]!.blocks[0] = {
+      ...canonicalSpec.pages[0]!.blocks[0]!,
+      designVariant: "tailwindPlusHeroWithStats",
     } as any
+    legacySpec.pages[0]!.blocks = [legacySpec.pages[0]!.blocks[0]!]
+    legacySpec.blocks = [{ slug: "hero", label: "Hero" }]
 
-    expect(validateSiteGenerationSpecForCms(canonicalSpec, { variantScope: "self-serve" }).valid).toBe(true)
-    expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "self-serve" }).valid).toBe(true)
+    const canonicalReport = validateSiteGenerationSpecForCms(canonicalSpec, { variantScope: "self-serve" })
+    expect(canonicalReport.issues).toEqual([])
+    expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "self-serve" }).valid).toBe(false)
+    expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "tenant-aware" }).valid).toBe(true)
   })
 
   it("preserves generated chrome variants and banner settings during apply", async () => {

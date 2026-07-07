@@ -11,6 +11,7 @@ import {
   getProviderBlockDefinition,
   getSourceBackedVariantRenderer,
   providerBlockDefinitions,
+  selfServeProviderBlockDefinitions,
   tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots,
   tailwindPlusMarketingBlogThreeColumnDemoSlots,
   tailwindPlusMarketingContactCenteredDemoSlots,
@@ -587,10 +588,10 @@ describe("provider block runtime", () => {
   })
 
   it("keeps self-serve catalog projection in lockstep with executable provider definitions", () => {
-    expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS).toHaveLength(providerBlockDefinitions.length)
+    expect(SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS).toHaveLength(selfServeProviderBlockDefinitions.length)
 
     for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
-      const definition = providerBlockDefinitions.find((candidate) =>
+      const definition = selfServeProviderBlockDefinitions.find((candidate) =>
         candidate.blockType === variant.slug &&
         candidate.id === variant.providerVariantId &&
         candidate.legacyDesignVariant === variant.legacyDesignVariant
@@ -599,6 +600,11 @@ describe("provider block runtime", () => {
       expect(variant.variant, variant.variantId).toBe(definition?.id)
       expect(variant.designVariant, variant.variantId).toBe(definition?.id)
       expect(variant.rendererClassName, variant.variantId).toBe(definition?.rendererClassName)
+      expect(definition?.source.sourceAvailability, variant.variantId).toBe("free-public")
+      expect(definition?.source.licenseCompatibility, variant.variantId).toBe("compatible")
+      expect(definition?.source.approvalStatus, variant.variantId).toBe("approved")
+      expect(definition?.source.implementation, variant.variantId).toBe("exact-source")
+      expect(definition?.source.visualExactnessStatus, variant.variantId).toBe("reviewed-exact-source")
     }
   })
 

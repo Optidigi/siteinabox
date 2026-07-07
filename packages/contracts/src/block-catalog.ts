@@ -1783,21 +1783,10 @@ export function isApprovedSourceBackedVariant(variant: SiteBlockCatalogVariant |
 
 const siteSelfServeSourceBackedProviderNames = ["Tailwind Plus"] as const
 const siteSelfServeSourceBackedVariantIds = [
-  "hero:tailwindPlusSimpleCentered",
   "hero:tailwindPlusHeroWithStats",
-  "featureList:tailwindPlusWithProductScreenshot",
-  "featureList:tailwindPlusCentered2x2",
-  "cta:tailwindPlusDarkPanelWithAppScreenshot",
-  "contactSection:tailwindPlusCentered",
-  "testimonials:tailwindPlusSimpleCentered",
-  "stats:tailwindPlusSimple",
-  "logoCloud:tailwindPlusSimpleWithHeading",
-  "pricing:tailwindPlusSimpleTiers",
-  "team:tailwindPlusGrid",
   "newsletter:tailwindPlusNewsletterSideBySideWithDetails",
   "bentoGrid:tailwindPlusThreeColumnBentoGrid",
   "contentSection:tailwindPlusContentStickyProductScreenshot",
-  "blogCards:tailwindPlusThreeColumn",
 ] as const
 const siteSelfServeSourceBackedVariantIdSet = new Set<string>(siteSelfServeSourceBackedVariantIds)
 const siteSelfServeSourceBackedProviderNameSet = new Set<string>(siteSelfServeSourceBackedProviderNames)

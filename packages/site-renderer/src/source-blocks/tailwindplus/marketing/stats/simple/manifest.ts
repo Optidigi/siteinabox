@@ -61,5 +61,10 @@ export const tailwindPlusMarketingStatsSimpleProviderBlock = defineProviderBlock
     sourceHash: "sha256:cb068ee7616fce869c7c1698ddb76b59fcc4f5996ac486f5f9d6d4cbfadc347d",
     capturedAt: "2026-07-04",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

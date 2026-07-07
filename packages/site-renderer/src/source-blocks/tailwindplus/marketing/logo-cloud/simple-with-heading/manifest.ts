@@ -61,5 +61,10 @@ export const tailwindPlusMarketingLogoCloudSimpleWithHeadingProviderBlock = defi
     sourceHash: "sha256:329f4f78f6433ca02a71366c95f0f6b682a28fb71082a9d8d5441efba3efa383",
     capturedAt: "2026-07-04",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

@@ -71,5 +71,10 @@ export const tailwindPlusMarketingHeroSimpleCenteredProviderBlock = defineProvid
     sourceHash: "sha256:522247eba4bf365e40f8a25ec24b27952080ca301988076d0c1148b673ed056f",
     capturedAt: "2026-07-04",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

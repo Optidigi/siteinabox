@@ -160,5 +160,10 @@ export const tailwindPlusMarketingContactCenteredProviderBlock = defineProviderB
     sourceHash: "sha256:6ca277a074929b3dac1276cb3b6e80d4847f02dc5b67b720a7c270c5d322b5e7",
     capturedAt: "2026-07-04",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

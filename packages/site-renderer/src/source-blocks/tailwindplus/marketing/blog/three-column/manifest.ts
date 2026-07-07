@@ -41,5 +41,10 @@ export const tailwindPlusMarketingBlogThreeColumnProviderBlock = defineProviderB
     sourceHash: "sha256:437980b5554ab8a2666d52680ff82c2da5728f76aa79f514bd0c44fdc6a1df01",
     capturedAt: "2026-07-05",
     license: "Tailwind Plus commercial component source; keep local snapshot out of runtime imports.",
+    sourceAvailability: "paid",
+    licenseCompatibility: "unknown",
+    approvalStatus: "deferred",
+    implementation: "exact-source",
+    visualExactnessStatus: "reviewed-exact-source",
   },
 })

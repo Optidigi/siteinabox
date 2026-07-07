@@ -59,21 +59,8 @@ describe("site generation catalog governance", () => {
     }))
 
     expect(input.approvedDesignVariants.map(({ slots: _slots, providerVariantId: _providerVariantId, ...variant }) => variant)).toEqual(approved)
-    expect(input.approvedDesignVariants).toHaveLength(15)
+    expect(input.approvedDesignVariants).toHaveLength(4)
     expect(input.approvedDesignVariants).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        blockType: "hero",
-        designVariant: "tailwindplus.marketing.hero.simple-centered",
-        legacyDesignVariant: "tailwindPlusSimpleCentered",
-        providerVariantId: "tailwindplus.marketing.hero.simple-centered",
-        slots: expect.objectContaining({
-          headline: expect.objectContaining({ status: "required", exposed: true }),
-          cta: expect.objectContaining({ status: "optional", exposed: true }),
-          secondary: expect.objectContaining({ status: "optional", exposed: true }),
-          pills: expect.objectContaining({ status: "inactive", exposed: false }),
-          image: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
       expect.objectContaining({
         blockType: "hero",
         designVariant: "tailwindplus.marketing.hero.with-stats",
@@ -92,106 +79,6 @@ describe("site generation catalog governance", () => {
         }),
       }),
       expect.objectContaining({
-        blockType: "stats",
-        designVariant: "tailwindplus.marketing.stats.simple",
-        legacyDesignVariant: "tailwindPlusSimple",
-        providerVariantId: "tailwindplus.marketing.stats.simple",
-        slots: expect.objectContaining({
-          items: expect.objectContaining({ kind: "repeater", status: "required", exposed: true }),
-          itemValue: expect.objectContaining({ status: "required", exposed: true }),
-          itemLabel: expect.objectContaining({ status: "required", exposed: true }),
-          title: expect.objectContaining({ status: "inactive", exposed: false }),
-          intro: expect.objectContaining({ status: "inactive", exposed: false }),
-          itemDescription: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "featureList",
-        designVariant: "tailwindplus.marketing.feature.with-product-screenshot",
-        legacyDesignVariant: "tailwindPlusWithProductScreenshot",
-        providerVariantId: "tailwindplus.marketing.feature.with-product-screenshot",
-        slots: expect.objectContaining({
-          image: expect.objectContaining({ status: "optional", exposed: true }),
-          features: expect.objectContaining({ kind: "repeater", status: "required", exposed: true }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "featureList",
-        designVariant: "tailwindplus.marketing.feature.centered-2x2-grid",
-        legacyDesignVariant: "tailwindPlusCentered2x2",
-        providerVariantId: "tailwindplus.marketing.feature.centered-2x2-grid",
-        slots: expect.objectContaining({
-          eyebrow: expect.objectContaining({ status: "optional", exposed: true }),
-          image: expect.objectContaining({ status: "inactive", exposed: false }),
-          features: expect.objectContaining({ kind: "repeater", status: "required", exposed: true }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "cta",
-        designVariant: "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
-        legacyDesignVariant: "tailwindPlusDarkPanelWithAppScreenshot",
-        providerVariantId: "tailwindplus.marketing.cta.dark-panel-with-app-screenshot",
-        slots: expect.objectContaining({
-          headline: expect.objectContaining({ status: "required", exposed: true }),
-          eyebrow: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "contactSection",
-        designVariant: "tailwindplus.marketing.contact.centered",
-        legacyDesignVariant: "tailwindPlusCentered",
-        providerVariantId: "tailwindplus.marketing.contact.centered",
-        slots: expect.objectContaining({
-          fields: expect.objectContaining({ kind: "repeater", status: "required", exposed: true }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "testimonials",
-        designVariant: "tailwindplus.marketing.testimonial.simple-centered",
-        legacyDesignVariant: "tailwindPlusSimpleCentered",
-        providerVariantId: "tailwindplus.marketing.testimonial.simple-centered",
-        slots: expect.objectContaining({
-          logo: expect.objectContaining({ status: "optional", exposed: true }),
-          title: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "logoCloud",
-        designVariant: "tailwindplus.marketing.logo-cloud.simple-with-heading",
-        legacyDesignVariant: "tailwindPlusSimpleWithHeading",
-        providerVariantId: "tailwindplus.marketing.logo-cloud.simple-with-heading",
-        slots: expect.objectContaining({
-          logos: expect.objectContaining({ kind: "repeater", status: "required", exposed: true }),
-          intro: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "pricing",
-        designVariant: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
-        legacyDesignVariant: "tailwindPlusSimpleTiers",
-        providerVariantId: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
-        slots: expect.objectContaining({
-          plans: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 2, maxItems: 2 }),
-          planTitle: expect.objectContaining({ status: "required", exposed: true }),
-          planPrice: expect.objectContaining({ status: "required", exposed: true }),
-          planCta: expect.objectContaining({ status: "required", exposed: true }),
-          planBadge: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "team",
-        designVariant: "tailwindplus.marketing.team.with-small-images",
-        legacyDesignVariant: "tailwindPlusGrid",
-        providerVariantId: "tailwindplus.marketing.team.with-small-images",
-        slots: expect.objectContaining({
-          members: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 2, maxItems: 6 }),
-          memberName: expect.objectContaining({ status: "required", exposed: true }),
-          memberRole: expect.objectContaining({ status: "required", exposed: true }),
-          memberBio: expect.objectContaining({ status: "optional", exposed: false }),
-          memberLinks: expect.objectContaining({ status: "optional", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
         blockType: "newsletter",
         designVariant: "tailwindplus.marketing.newsletter.side-by-side-with-details",
         legacyDesignVariant: "tailwindPlusNewsletterSideBySideWithDetails",
@@ -200,6 +87,7 @@ describe("site generation catalog governance", () => {
           benefits: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 2, maxItems: 2 }),
           benefitTitle: expect.objectContaining({ status: "required", exposed: true }),
           benefitDescription: expect.objectContaining({ status: "required", exposed: true }),
+          benefitIcon: expect.objectContaining({ status: "inactive", exposed: false }),
           consentLabel: expect.objectContaining({ status: "inactive", exposed: false }),
         }),
       }),
@@ -229,19 +117,6 @@ describe("site generation catalog governance", () => {
           secondaryTitle: expect.objectContaining({ status: "required", exposed: true }),
           secondaryBody: expect.objectContaining({ status: "required", exposed: true }),
           cta: expect.objectContaining({ status: "inactive", exposed: false }),
-        }),
-      }),
-      expect.objectContaining({
-        blockType: "blogCards",
-        designVariant: "tailwindplus.marketing.blog.three-column",
-        legacyDesignVariant: "tailwindPlusThreeColumn",
-        providerVariantId: "tailwindplus.marketing.blog.three-column",
-        slots: expect.objectContaining({
-          posts: expect.objectContaining({ kind: "repeater", status: "required", exposed: true, minItems: 3, maxItems: 3 }),
-          postTitle: expect.objectContaining({ status: "required", exposed: true }),
-          postExcerpt: expect.objectContaining({ status: "required", exposed: true }),
-          postHref: expect.objectContaining({ status: "required", exposed: true }),
-          postAuthorImage: expect.objectContaining({ status: "optional", exposed: true }),
         }),
       }),
     ]))
@@ -415,33 +290,16 @@ describe("site generation catalog governance", () => {
 
   it("constrains OpenAI block schemas to active self-serve variants per block type", () => {
     const heroSchema = blockSchemaFor("hero")
-    const featureSchema = blockSchemaFor("featureList")
-    const ctaSchema = blockSchemaFor("cta")
-    const contactSchema = blockSchemaFor("contactSection")
-    const testimonialsSchema = blockSchemaFor("testimonials")
-    const pricingSchema = blockSchemaFor("pricing")
-    const statsSchema = blockSchemaFor("stats")
-    const logoCloudSchema = blockSchemaFor("logoCloud")
-    const teamSchema = blockSchemaFor("team")
+    const newsletterSchema = blockSchemaFor("newsletter")
     const bentoGridSchema = blockSchemaFor("bentoGrid")
     const contentSectionSchema = blockSchemaFor("contentSection")
-    const blogCardsSchema = blockSchemaFor("blogCards")
     const schemaBlockTypes = (siteGenerationJsonSchema.properties.pages.items as any)
       .properties.blocks.items.anyOf.map((entry: any) => entry.properties.blockType.const)
     const expectedBlockTypes = [
       "hero",
-      "featureList",
-      "cta",
-      "contactSection",
-      "testimonials",
-      "pricing",
-      "stats",
-      "logoCloud",
-      "team",
       "newsletter",
       "bentoGrid",
       "contentSection",
-      "blogCards",
     ]
 
     expect(schemaBlockTypes).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
@@ -452,69 +310,25 @@ describe("site generation catalog governance", () => {
     expect(heroSchema.properties).not.toHaveProperty("sourceCode")
     expect(heroSchema.properties).not.toHaveProperty("analytics")
     expect(heroSchema.properties).not.toHaveProperty("pills")
+    expect(heroSchema.properties).not.toHaveProperty("cta")
+    expect(heroSchema.properties).not.toHaveProperty("secondary")
     expect(heroSchema.required).toContain("designVariant")
-    expect(heroSchema.required).toContain("secondary")
+    expect(heroSchema.required).not.toContain("eyebrow")
+    expect(heroSchema.required).not.toContain("cta")
+    expect(heroSchema.required).not.toContain("secondary")
+    expect(heroSchema.required).toContain("links")
+    expect(heroSchema.required).toContain("image")
     expect(heroSchema.required).toContain("stats")
-    expect(heroSchema.properties.designVariant.enum).toEqual([
-      "tailwindplus.marketing.hero.simple-centered",
-      "tailwindplus.marketing.hero.with-stats",
-    ])
+    expect(heroSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.hero.with-stats"])
+    expect(heroSchema.properties.links.minItems).toBe(4)
+    expect(heroSchema.properties.links.maxItems).toBe(4)
+    expect(heroSchema.properties.stats.minItems).toBe(4)
     expect(heroSchema.properties.stats.maxItems).toBe(4)
-    expect(featureSchema.additionalProperties).toBe(false)
-    expect(featureSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "features"])
-    expect(featureSchema.properties.designVariant.enum).toEqual([
-      "tailwindplus.marketing.feature.with-product-screenshot",
-      "tailwindplus.marketing.feature.centered-2x2-grid",
-    ])
-    expect(featureSchema.properties).not.toHaveProperty("className")
-    expect(featureSchema.properties.features.minItems).toBe(3)
-    expect(featureSchema.properties.features.maxItems).toBe(4)
-    expect(ctaSchema.additionalProperties).toBe(false)
-    expect(ctaSchema.required).toEqual(["blockType", "designVariant", "anchor", "headline", "description", "primary", "secondary", "backgroundImage"])
-    expect(ctaSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.cta.dark-panel-with-app-screenshot"])
-    expect(ctaSchema.properties).not.toHaveProperty("eyebrow")
-    expect(contactSchema.additionalProperties).toBe(false)
-    expect(contactSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.contact.centered"])
-    expect(contactSchema.properties.fields.minItems).toBe(6)
-    expect(contactSchema.properties.fields.maxItems).toBe(6)
-    expect(testimonialsSchema.additionalProperties).toBe(false)
-    expect(testimonialsSchema.required).toEqual(["blockType", "designVariant", "anchor", "logo", "items"])
-    expect(testimonialsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.testimonial.simple-centered"])
-    expect(testimonialsSchema.properties).not.toHaveProperty("title")
-    expect(testimonialsSchema.properties.items.minItems).toBe(1)
-    expect(testimonialsSchema.properties.items.maxItems).toBe(1)
-    expect(testimonialsSchema.properties.items.items.required).toEqual(["quote", "author", "avatar"])
-    expect(pricingSchema.additionalProperties).toBe(false)
-    expect(pricingSchema.required).toEqual(["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "plans"])
-    expect(pricingSchema.properties.designVariant.enum).toEqual([
-      "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
-    ])
-    expect(pricingSchema.properties.plans.minItems).toBe(2)
-    expect(pricingSchema.properties.plans.maxItems).toBe(2)
-    expect(pricingSchema.properties.plans.items.properties.features.minItems).toBe(4)
-    expect(pricingSchema.properties.plans.items.properties.features.maxItems).toBe(6)
-    expect(pricingSchema.properties).not.toHaveProperty("className")
-    expect(statsSchema.additionalProperties).toBe(false)
-    expect(statsSchema.required).toEqual(["blockType", "designVariant", "anchor", "items"])
-    expect(statsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.stats.simple"])
-    expect(statsSchema.properties).not.toHaveProperty("title")
-    expect(statsSchema.properties).not.toHaveProperty("intro")
-    expect(statsSchema.properties.items.minItems).toBe(3)
-    expect(statsSchema.properties.items.maxItems).toBe(3)
-    expect(statsSchema.properties.items.items.properties).not.toHaveProperty("description")
-    expect(logoCloudSchema.additionalProperties).toBe(false)
-    expect(logoCloudSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "logos"])
-    expect(logoCloudSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.logo-cloud.simple-with-heading"])
-    expect(logoCloudSchema.properties).not.toHaveProperty("intro")
-    expect(logoCloudSchema.properties.logos.minItems).toBe(5)
-    expect(logoCloudSchema.properties.logos.maxItems).toBe(5)
-    expect(logoCloudSchema.properties.logos.items.required).toEqual(["name", "href"])
-    expect(teamSchema.additionalProperties).toBe(false)
-    expect(teamSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "members"])
-    expect(teamSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.team.with-small-images"])
-    expect(teamSchema.properties.members.minItems).toBe(2)
-    expect(teamSchema.properties.members.maxItems).toBe(6)
-    expect(teamSchema.properties).not.toHaveProperty("className")
+    expect(newsletterSchema.additionalProperties).toBe(false)
+    expect(newsletterSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.newsletter.side-by-side-with-details"])
+    expect(newsletterSchema.properties.benefits.minItems).toBe(2)
+    expect(newsletterSchema.properties.benefits.maxItems).toBe(2)
+    expect(newsletterSchema.properties.benefits.items.properties).not.toHaveProperty("icon")
     expect(bentoGridSchema.additionalProperties).toBe(false)
     expect(bentoGridSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "items"])
     expect(bentoGridSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.bento.three-column-bento-grid"])
@@ -532,13 +346,6 @@ describe("site generation catalog governance", () => {
     expect(contentSectionSchema.properties.features.items.properties).not.toHaveProperty("icon")
     expect(contentSectionSchema.properties).not.toHaveProperty("cta")
     expect(contentSectionSchema.properties).not.toHaveProperty("rawHtml")
-    expect(blogCardsSchema.additionalProperties).toBe(false)
-    expect(blogCardsSchema.required).toEqual(["blockType", "designVariant", "anchor", "title", "intro", "posts"])
-    expect(blogCardsSchema.properties.designVariant.enum).toEqual(["tailwindplus.marketing.blog.three-column"])
-    expect(blogCardsSchema.properties.posts.minItems).toBe(3)
-    expect(blogCardsSchema.properties.posts.maxItems).toBe(3)
-    expect(blogCardsSchema.properties.posts.items.required).toContain("authorRole")
-    expect(blogCardsSchema.properties).not.toHaveProperty("rawHtml")
     expect(schemaBlockTypes).not.toEqual(expect.arrayContaining(["faq", "processSteps", "comparison"]))
     expect((siteGenerationJsonSchema.properties.blocks.items as any).properties.slug.enum).toEqual(SUPPORTED_SITE_GENERATION_BLOCKS)
   })
