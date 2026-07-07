@@ -140,6 +140,12 @@ describe("provider chrome runtime", () => {
     expect(html).toContain('data-siab-top-stack="tailwindplus.marketing.header-hero"')
     expect(html).toContain(`data-anchored-source-variant="tailwindplus.marketing.hero.simple-centered"`)
     expect(html).toContain('data-site-chrome="banner"')
+    expect(html).toContain("site-top-stack--source-tailwindplus-marketing-header-hero bg-white")
+    const stackClassName = html.match(
+      /class="([^"]*site-top-stack--source-tailwindplus-marketing-header-hero[^"]*)"[^>]*data-siab-top-stack="tailwindplus\.marketing\.header-hero"/,
+    )?.[1]
+    expect(stackClassName).toBeDefined()
+    expect(stackClassName).not.toMatch(/\b(?:m|p)[trblxy]?-/)
 
     const bannerIndex = html.indexOf('data-site-chrome="banner"')
     const stackIndex = html.indexOf('data-siab-top-stack="tailwindplus.marketing.header-hero"')

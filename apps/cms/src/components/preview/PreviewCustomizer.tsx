@@ -648,17 +648,17 @@ export function PreviewCommandBar({
   return (
     <div
       data-siab-cms-sticky-chrome
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-4 py-3 shadow-lg"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-4 py-4 shadow-lg"
     >
-      <div className="mx-auto grid w-full max-w-5xl grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <Button asChild variant="default" size="default" className={`h-11 justify-self-start rounded-md px-3 md:px-4 ${blockedClassName}`}>
+      <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4">
+        <Button asChild variant="default" size="default" className={`h-12 justify-self-start rounded-md px-4 md:px-5 ${blockedClassName}`}>
           <a
             href={customerNavigationBlocked ? undefined : reviewHref}
             aria-label={t("reviewChanges")}
             title={t("reviewChanges")}
             {...blockedAnchorProps}
           >
-            <SquarePen className="size-5 md:size-4" aria-hidden />
+            <SquarePen className="size-5" aria-hidden />
             <span className="sr-only md:not-sr-only md:ml-2">{t("reviewChanges")}</span>
           </a>
         </Button>
@@ -671,14 +671,14 @@ export function PreviewCommandBar({
         />
 
         {canCompleteOrder ? (
-          <Button asChild variant="success" size="default" className={`h-11 justify-self-end rounded-md px-3 md:px-4 ${blockedClassName}`}>
+          <Button asChild variant="success" size="default" className={`h-12 justify-self-end rounded-md px-4 md:px-5 ${blockedClassName}`}>
             <a
               href={customerNavigationBlocked ? undefined : checkoutHref}
               aria-label={t("launchWebsite")}
               title={t("launchWebsite")}
               {...blockedAnchorProps}
             >
-              <Rocket className="size-5 md:size-4" aria-hidden />
+              <Rocket className="size-5" aria-hidden />
               <span className="sr-only md:not-sr-only md:ml-2">{t("launchWebsite")}</span>
             </a>
           </Button>
@@ -688,15 +688,15 @@ export function PreviewCommandBar({
             variant="secondary"
             size="default"
             disabled
-            className="h-11 justify-self-end rounded-md px-3 md:px-4"
+            className="h-12 justify-self-end rounded-md px-4 md:px-5"
             aria-label={t("paymentComplete")}
             title={t("paymentComplete")}
           >
-            <CheckCircle2 className="size-5 md:size-4" aria-hidden />
+            <CheckCircle2 className="size-5" aria-hidden />
             <span className="sr-only md:not-sr-only md:ml-2">{t("paymentComplete")}</span>
           </Button>
         ) : (
-          <span className="size-11 justify-self-end" aria-hidden />
+          <span className="size-12 justify-self-end" aria-hidden />
         )}
       </div>
     </div>
