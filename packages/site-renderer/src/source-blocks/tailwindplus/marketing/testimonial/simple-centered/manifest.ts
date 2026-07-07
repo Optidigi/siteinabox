@@ -1,10 +1,36 @@
 import type { TestimonialsBlock } from "@siteinabox/contracts"
-import { defineProviderBlock } from "../../../../registry"
+import { defineProviderBlock, type ProviderBlockValidationIssue } from "../../../../registry"
 import { TailwindPlusMarketingTestimonialSimpleCenteredRenderer } from "./renderer"
 
 export const TAILWIND_PLUS_MARKETING_TESTIMONIAL_SIMPLE_CENTERED_NAMESPACE = "tailwindplus.marketing.testimonial"
 export const TAILWIND_PLUS_MARKETING_TESTIMONIAL_SIMPLE_CENTERED_ID = "tailwindplus.marketing.testimonial.simple-centered"
 export const TAILWIND_PLUS_MARKETING_TESTIMONIAL_SIMPLE_CENTERED_LEGACY_VARIANT = "tailwindPlusSimpleCentered"
+
+function hasMedia(value: TestimonialsBlock["logo"]): boolean {
+  if (!value) return false
+  if (typeof value === "string" || typeof value === "number") return true
+  return Boolean(value.id ?? value.url ?? value.filename)
+}
+
+function validateTestimonialSimpleCentered(block: TestimonialsBlock): ProviderBlockValidationIssue[] {
+  const issues: ProviderBlockValidationIssue[] = []
+  const item = block.items[0]
+  if (!hasMedia(block.logo)) {
+    issues.push({
+      code: "missing_required_slot",
+      message: "Tailwind Plus simple centered testimonial exact variant requires a logo image.",
+      path: ["logo"],
+    })
+  }
+  if (!hasMedia(item?.avatar)) {
+    issues.push({
+      code: "missing_required_slot",
+      message: "Tailwind Plus simple centered testimonial exact variant requires an avatar image.",
+      path: ["items", "0", "avatar"],
+    })
+  }
+  return issues
+}
 
 export const tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock = defineProviderBlock<TestimonialsBlock>({
   provider: "tailwindplus",
@@ -43,7 +69,7 @@ export const tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock = defin
     },
     role: {
       kind: "text",
-      status: "required",
+      status: "optional",
       exposed: true,
       sourceField: "items.role",
     },
@@ -60,6 +86,7 @@ export const tailwindPlusMarketingTestimonialSimpleCenteredProviderBlock = defin
       sourceField: "title",
     },
   },
+  validate: validateTestimonialSimpleCentered,
   source: {
     sourceName: "Tailwind Plus",
     sourceUrl: "https://tailwindcss.com/plus/ui-blocks/marketing/sections/testimonials",

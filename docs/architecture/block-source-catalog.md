@@ -62,7 +62,7 @@ Current verification status:
   catalog lockstep, inactive slot validation, CSS isolation, generation scope,
   and intake mock generation all passed in the focused CMS unit suite.
 - The provider visual parity gate is `pnpm provider:visual-parity`. It must pass
-  without exact-source `sourceTransform` masks for active exact variants. The
+  without source fixture mutation for active exact variants. The
   active hero with-stats and sticky content variants now represent their
   source-visible content slots directly instead of stripping fixture content.
 - The generic intake smoke fixture exercises the broad homepage set plus active
@@ -388,8 +388,8 @@ active source-backed block/chrome/system-template variant against its approved
 source fixture at desktop and mobile widths, and fails if the pixel delta
 exceeds the provider threshold or if any active provider registry entry lacks a
 visual case. This gate is provider-scoped; it is not a broad page-level visual
-regression suite. Exact-source variants must not rely on fixture-stripping
-`sourceTransform` masks to pass this gate.
+regression suite. Exact-source variants must compare directly against the
+approved source fixture without fixture-stripping masks.
 
 ## Current Tailwind Plus Inventory Notes
 

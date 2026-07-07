@@ -64,12 +64,12 @@ export function resolveBlockVariant(
   const requestedVariant = cleanVariant(block.designVariant)
   if (requestedVariant) {
     const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
-      (variant) => variant.variant === requestedVariant,
+      (variant) => variant.variant === requestedVariant || variant.providerVariantId === requestedVariant,
     )
     if (!catalogVariant) return {}
     if (!isRendererVariantAllowed(catalogVariant, context)) return {}
     return {
-      variant: catalogVariant.variant,
+      variant: catalogVariant.providerVariantId ?? catalogVariant.variant,
       rendererClassName: catalogVariant?.rendererClassName,
     }
   }

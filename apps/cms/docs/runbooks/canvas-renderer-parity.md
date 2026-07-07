@@ -47,7 +47,7 @@ Verification gates:
   covers provider runtime/chrome/template registration and fail-closed behavior.
 - `pnpm provider:visual-parity` builds `apps/renderer` and compares active
   provider variants across desktop and mobile. Exact-source variants must not
-  pass by stripping source-visible content through `sourceTransform` masks.
+  pass by stripping source-visible content from the approved source fixture.
 - The Tailwind Plus header chrome is an active source-backed structured chrome
   variant, but upstream Tailwind Plus Elements popover behavior is not fully
   represented by the current SIAB renderer. The supported scope is

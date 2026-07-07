@@ -47,6 +47,7 @@ export type ProviderBlockDefinition<TBlock extends Block = Block> = {
   renderer?: BlockRendererComponent<TBlock>
   slots: Record<string, ProviderBlockSlotManifestEntry>
   source: ProviderBlockSourceMetadata
+  validate?: (block: TBlock) => ProviderBlockValidationIssue[]
 }
 
 type SourceBackedVariantKey = `${Block["blockType"]}:${string}`
@@ -156,6 +157,7 @@ export type ProviderBlockValidationIssue = {
     | "missing_required_slot"
     | "inactive_slot_value"
     | "slot_count_out_of_range"
+    | "invalid_source_slot"
   message: string
   path: string[]
 }
@@ -254,6 +256,10 @@ export function validateProviderBlockInstance(block: Block): ProviderBlockValida
         }
       }
     }
+  }
+
+  if (definition.validate) {
+    issues.push(...definition.validate(block as never))
   }
 
   return issues

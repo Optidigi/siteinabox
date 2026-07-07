@@ -286,14 +286,14 @@ const blockJsonSchemas = [
       submitLabel: stringOrNull,
       fields: {
         type: "array",
-        minItems: 1,
+        minItems: 6,
         maxItems: 6,
         items: {
           type: "object",
           additionalProperties: false,
           required: ["name", "label", "type", "required"],
           properties: {
-            name: { type: "string" },
+            name: { type: "string", enum: ["first-name", "last-name", "company", "email", "phone-number", "message"] },
             label: { type: "string" },
             type: { type: "string", enum: ["text", "email", "tel", "textarea", "select", "checkbox"] },
             required: { type: "boolean" },
@@ -336,7 +336,7 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "items"],
+    required: ["blockType", "designVariant", "anchor", "logo", "items"],
     properties: {
       blockType: { type: "string", const: "testimonials" },
       ...baseBlockProperties,
@@ -349,7 +349,7 @@ const blockJsonSchemas = [
         items: {
           type: "object",
           additionalProperties: false,
-          required: ["quote", "author", "role"],
+          required: ["quote", "author", "avatar"],
           properties: {
             quote: { type: "string" },
             author: { type: "string" },

@@ -26,6 +26,7 @@ import {
 } from "../source-blocks/index.ts"
 import { providerChromeDefinitions } from "../source-chrome/index.ts"
 import { providerSystemTemplateDefinitions } from "../source-templates/index.ts"
+import { SitePageRenderer } from "../SitePageRenderer.tsx"
 import { PUBLIC_RENDERER_THEME_SCOPE, themeToCssVars } from "../theme/css-vars.ts"
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -62,6 +63,15 @@ const tokenizedLightTheme = {
 const tokenizedDarkTheme = {
   ...tokenizedLightTheme,
   appearance: { mode: "dark" },
+}
+
+const tokenizedAlternateTheme = {
+  version: 2,
+  appearance: { mode: "light" },
+  colors: { schemeId: "red-confident" },
+  fonts: { schemeId: "classic-editorial" },
+  shape: { schemeId: "rounded" },
+  density: { schemeId: "spacious" },
 }
 
 const blockCases = [
@@ -266,6 +276,48 @@ function renderSystemTemplate({ id, kind }, theme = null) {
       pathname: "/missing",
     })),
   )
+}
+
+const parityPage = {
+  id: "provider-parity",
+  slug: "index",
+  title: "Provider parity",
+  status: "published",
+  blocks: [
+    tailwindPlusMarketingContactCenteredDemoSlots,
+    tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots,
+  ],
+}
+
+const paritySettings = {
+  siteName: "Provider Parity",
+  contactEmail: null,
+  navHeader: [],
+  navFooter: [],
+  branding: {},
+  chrome: {},
+}
+
+function renderPreviewPublicPage(options) {
+  return renderToStaticMarkup(
+    React.createElement(SitePageRenderer, {
+      page: parityPage,
+      settings: paritySettings,
+      theme: tokenizedAlternateTheme,
+      formAction: options.formAction,
+      includeBehaviorScripts: options.includeBehaviorScripts,
+    }),
+  )
+}
+
+function structuralSignature(html) {
+  return html
+    .replace(/<style[^>]*data-siab-theme-overrides[^>]*>[\s\S]*?<\/style>/g, "")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "")
+    .replace(/\s(?:style|data-success-message|data-error-message)="[^"]*"/g, "")
+    .replace(/\saction="[^"]*"/g, ' action=""')
+    .replace(/\smethod="[^"]*"/g, ' method=""')
+    .replace(/>\s+</g, "><")
 }
 
 function sourceParityHtml(html) {
@@ -545,6 +597,45 @@ async function assertTokenizedThemeSmoke(page, css, testCase, html, viewport, th
   }
 }
 
+async function assertDomAndClassStability(page, css, testCase, html, viewport) {
+  const signatures = []
+  for (const theme of [tokenizedLightTheme, tokenizedAlternateTheme]) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height })
+    await page.setContent(htmlPage(css, html, { theme }), { waitUntil: "networkidle" })
+    await waitForVisualReady(page)
+    signatures.push(await page.evaluate(() => {
+      const providerRoot = document.querySelector("[data-provider-block='tailwindplus'],[data-provider-chrome='tailwindplus'],[data-provider-template='tailwindplus']")
+      if (!providerRoot) return ""
+      const nodes = [providerRoot, ...Array.from(providerRoot.querySelectorAll("*"))]
+      return nodes.map((node) => {
+        const tag = node.tagName.toLowerCase()
+        const className = node.getAttribute("class") || ""
+        const role = node.getAttribute("role") || ""
+        const name = node.getAttribute("name") || ""
+        const type = node.getAttribute("type") || ""
+        return [tag, className, role, name, type].join("|")
+      }).join("\n")
+    }))
+  }
+  if (signatures[0] !== signatures[1]) {
+    throw new Error(`${testCase.id} (${viewport.name}) token changes altered DOM or class strings`)
+  }
+}
+
+async function assertPreviewPublicParity(page, css, viewport) {
+  const previewHtml = renderPreviewPublicPage({ formAction: "#", includeBehaviorScripts: false })
+  const publicHtml = renderPreviewPublicPage({ formAction: "/api/forms", includeBehaviorScripts: true })
+  const previewStructure = structuralSignature(previewHtml)
+  const publicStructure = structuralSignature(publicHtml)
+  if (previewStructure !== publicStructure) {
+    throw new Error(`preview/public structural parity failed before screenshot comparison`)
+  }
+
+  const previewBuffer = await screenshot(page, css, previewHtml, viewport)
+  const publicBuffer = await screenshot(page, css, publicHtml, viewport)
+  comparePngs("preview-public.tailwindplus.contact-testimonial", viewport.name, previewBuffer, publicBuffer)
+}
+
 function comparePngs(caseId, viewportName, sourceBuffer, renderedBuffer) {
   const source = PNG.sync.read(sourceBuffer)
   const rendered = PNG.sync.read(renderedBuffer)
@@ -640,10 +731,20 @@ async function main() {
           await assertDarkThemeSmoke(page, css, testCase, testCase.renderedHtml(darkTheme), viewport)
           await assertTokenizedThemeSmoke(page, css, testCase, testCase.renderedHtml(tokenizedLightTheme), viewport, tokenizedLightTheme)
           await assertTokenizedThemeSmoke(page, css, testCase, testCase.renderedHtml(tokenizedDarkTheme), viewport, tokenizedDarkTheme)
+          await assertDomAndClassStability(page, css, testCase, testCase.renderedHtml(tokenizedAlternateTheme), viewport)
           results.push({ id: testCase.id, viewport: viewport.name, mismatchRatio })
         } catch (error) {
           failures.push(error instanceof Error ? error.message : String(error))
         }
+      }
+    }
+
+    for (const viewport of viewports) {
+      try {
+        await assertPreviewPublicParity(page, css, viewport)
+        results.push({ id: "preview-public.tailwindplus.contact-testimonial", viewport: viewport.name, mismatchRatio: 0 })
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : String(error))
       }
     }
   } finally {

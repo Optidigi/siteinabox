@@ -5,6 +5,17 @@ import { mergeRendererSectionAttributes } from "../../../../../blocks/section-at
 import type { BlockRenderOptions } from "../../../../../blocks/types"
 import { resolveMedia } from "../../../../../media"
 
+function adaptTestimonialSimpleCenteredSlots(block: TestimonialsBlock, options: BlockRenderOptions) {
+  const item = block.items[0]
+  if (!item) return null
+  return {
+    item,
+    logo: resolveMedia(block.logo ?? null, options.mediaResolver),
+    avatar: resolveMedia(item.avatar ?? null, options.mediaResolver),
+    hasRole: Boolean(item.role?.trim()),
+  }
+}
+
 export function TailwindPlusMarketingTestimonialSimpleCenteredRenderer({
   block,
   options,
@@ -12,13 +23,11 @@ export function TailwindPlusMarketingTestimonialSimpleCenteredRenderer({
   block: TestimonialsBlock
   options: BlockRenderOptions
 }) {
-  const item = block.items[0]
-  if (!item) return null
+  const source = adaptTestimonialSimpleCenteredSlots(block, options)
+  if (!source) return null
+  const { item, logo, avatar, hasRole } = source
 
   const slots = options.editSlots
-  const logo = resolveMedia(block.logo ?? null, options.mediaResolver)
-  const avatar = resolveMedia(item.avatar ?? null, options.mediaResolver)
-  const hasRole = Boolean(item.role?.trim())
   const sectionProps = mergeRendererSectionAttributes(
     {
       id: block.anchor || undefined,

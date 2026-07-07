@@ -240,8 +240,8 @@ approved theme edits.
 - Trace preview-token creation, token verification, preview page loading,
   customizer actions, theme persistence, approval, and payment placeholder
   behavior.
-- Confirm which theme controls are expected: color scheme, font scheme, radius,
-  density, and style preset.
+- Confirm which ThemeTokenSpec V2 controls are expected: color scheme, font
+  scheme, shape, and density preset IDs.
 - Audit wrong-tenant, expired-token, invalid-token, and suspended-tenant cases.
 
 ### Implement

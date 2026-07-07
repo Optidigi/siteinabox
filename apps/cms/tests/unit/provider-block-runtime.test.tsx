@@ -361,6 +361,7 @@ describe("provider block runtime", () => {
     expect(issues.map((issue) => issue.code)).toEqual(expect.arrayContaining([
       "inactive_slot_value",
       "slot_count_out_of_range",
+      "invalid_source_slot",
     ]))
     expect(issues.map((issue) => issue.path.join("."))).toEqual(expect.arrayContaining([
       "image",
@@ -417,6 +418,23 @@ describe("provider block runtime", () => {
     expect(sourceFixtureHtml).toContain("group relative inline-flex w-8 shrink-0 rounded-full bg-gray-200")
     expect(sourceFixtureHtml).toContain("absolute inset-0 size-full appearance-none focus:outline-hidden")
     expect(validateProviderBlockInstance(shuffled).map((issue) => issue.path.join("."))).toContain("fields")
+    expect(validateProviderBlockInstance({
+      ...tailwindPlusMarketingContactCenteredDemoSlots,
+      fields: tailwindPlusMarketingContactCenteredDemoSlots.fields.map((field, index) =>
+        index === 3 ? { ...field, type: "text" as const } : field,
+      ),
+    }).map((issue) => issue.path.join("."))).toContain("fields.3.type")
+    expect(validateProviderBlockInstance({
+      ...tailwindPlusMarketingContactCenteredDemoSlots,
+      provider: {
+        ...tailwindPlusMarketingContactCenteredDemoSlots.provider,
+        hiddenFields: [{ name: "email", value: "collision" }],
+        honeypotField: "message",
+      },
+    }).map((issue) => issue.path.join("."))).toEqual(expect.arrayContaining([
+      "provider.hiddenFields.0.name",
+      "provider.honeypotField",
+    ]))
     expect(html.indexOf('name="first-name"')).toBeLessThan(html.indexOf('name="last-name"'))
     expect(html.indexOf('name="last-name"')).toBeLessThan(html.indexOf('name="company"'))
     expect(html.indexOf('name="company"')).toBeLessThan(html.indexOf('name="email"'))
@@ -456,6 +474,14 @@ describe("provider block runtime", () => {
     expect(noMediaOrRoleHtml).not.toContain('class="mx-auto size-10 rounded-full"')
     expect(noMediaOrRoleHtml).not.toContain('class="fill-gray-900"')
     expect(noMediaOrRoleHtml).not.toContain('class="text-gray-600"></div>')
+    expect(validateProviderBlockInstance(noMediaOrRole).map((issue) => issue.path.join("."))).toEqual(expect.arrayContaining([
+      "logo",
+      "items.0.avatar",
+    ]))
+    expect(validateProviderBlockInstance({
+      ...tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots,
+      items: [{ ...tailwindPlusMarketingTestimonialSimpleCenteredDemoSlots.items[0]!, role: "" }],
+    })).toEqual([])
   })
 
   it("keeps fixed Tailwind Plus content slots separate and complete", () => {

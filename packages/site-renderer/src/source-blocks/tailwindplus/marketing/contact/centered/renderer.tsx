@@ -10,6 +10,15 @@ const gradientClipPath =
 
 const sourceFieldOrder = ["first-name", "last-name", "company", "email", "phone-number", "message"] as const
 type SourceFieldName = typeof sourceFieldOrder[number]
+type SourceContactField = ContactSectionBlock["fields"][number] & { name: SourceFieldName }
+type ContactCenteredSlots = {
+  provider: ContactSectionBlock["provider"]
+  formAction: string
+  method: "GET" | "POST"
+  hasSubmitStatus: boolean
+  submitLabel: string
+  fields: SourceContactField[]
+}
 
 function fieldAutocomplete(field: ContactSectionBlock["fields"][number]) {
   if (field.name === "first-name") return "given-name"
@@ -35,6 +44,23 @@ function isSourceFieldName(name: string): name is SourceFieldName {
   return (sourceFieldOrder as readonly string[]).includes(name)
 }
 
+export function adaptContactCenteredSlots(block: ContactSectionBlock, options: BlockRenderOptions): ContactCenteredSlots {
+  const provider = block.provider
+  const formAction = provider?.action ?? provider?.fallbackHref ?? options.formAction ?? "/api/forms"
+  const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
+  const fieldsByName = new Map(
+    block.fields.filter((field): field is SourceContactField => isSourceFieldName(field.name)).map((field) => [field.name, field]),
+  )
+  return {
+    provider,
+    formAction,
+    method: method === "GET" ? "GET" : "POST",
+    hasSubmitStatus: method.toUpperCase() === "POST" && !formAction.startsWith("mailto:"),
+    submitLabel: block.submitLabel ?? "Let's talk",
+    fields: sourceFieldOrder.map((name) => fieldsByName.get(name)).filter((field): field is SourceContactField => Boolean(field)),
+  }
+}
+
 export function TailwindPlusMarketingContactCenteredRenderer({
   block,
   options,
@@ -43,15 +69,8 @@ export function TailwindPlusMarketingContactCenteredRenderer({
   options: BlockRenderOptions
 }) {
   const slots = options.editSlots
-  const provider = block.provider
-  const formAction = provider?.action ?? provider?.fallbackHref ?? options.formAction ?? "/api/forms"
-  const method = provider?.method ?? (provider?.provider === "mailto" ? "GET" : "POST")
-  const hasSubmitStatus = method.toUpperCase() === "POST" && !formAction.startsWith("mailto:")
-  const submitLabel = block.submitLabel ?? "Let's talk"
-  const fieldsByName = new Map(block.fields.filter((field) => isSourceFieldName(field.name)).map((field) => [field.name, field]))
-  const orderedFields = sourceFieldOrder
-    .map((name) => fieldsByName.get(name))
-    .filter((field): field is ContactSectionBlock["fields"][number] => Boolean(field))
+  const source = adaptContactCenteredSlots(block, options)
+  const { provider } = source
   const sectionProps = mergeRendererSectionAttributes(
     {
       id: block.anchor || undefined,
@@ -103,14 +122,14 @@ export function TailwindPlusMarketingContactCenteredRenderer({
         )}
       </div>
       <form
-        action={formAction}
-        method={method}
+        action={source.formAction}
+        method={source.method}
         className="mx-auto mt-16 max-w-xl sm:mt-20"
         name={block.formName}
         data-siab-analytics-form="true"
         data-siab-form-name={block.formName}
         data-siab-form-provider={provider?.provider || undefined}
-        data-siab-form-requires-consent={provider?.requiresConsent ? "true" : undefined}
+        data-siab-form-requires-consent="true"
       >
         <input type="hidden" name="formName" value={block.formName} />
         {provider?.hiddenFields?.map((field) => (
@@ -123,7 +142,7 @@ export function TailwindPlusMarketingContactCenteredRenderer({
           </div>
         )}
         <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-          {orderedFields.map((field, index) => {
+          {source.fields.map((field, index) => {
             const fieldClassName = index < 2 ? undefined : "sm:col-span-2"
             const autoComplete = fieldAutocomplete(field)
             const placeholder = field.placeholder ?? undefined
@@ -156,8 +175,8 @@ export function TailwindPlusMarketingContactCenteredRenderer({
                     <div className="flex rounded-md bg-white outline-1 -outline-offset-1 outline-gray-300 has-[input:focus-within]:outline-2 has-[input:focus-within]:-outline-offset-2 has-[input:focus-within]:outline-indigo-600">
                       <div className="grid shrink-0 grid-cols-1 focus-within:relative">
                         <select
-                          id={`${field.name}-country`}
-                          name={`${field.name}-country`}
+                          id="country"
+                          name="country"
                           autoComplete="country"
                           aria-label="Country"
                           className="col-start-1 row-start-1 w-full appearance-none rounded-md py-2 pr-7 pl-3.5 text-base text-gray-500 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
@@ -207,45 +226,43 @@ export function TailwindPlusMarketingContactCenteredRenderer({
               </div>
             )
           })}
-          {provider?.requiresConsent && (
-            <div className="flex gap-x-4 sm:col-span-2">
-              <div className="flex h-6 items-center">
-                <div className="group relative inline-flex w-8 shrink-0 rounded-full bg-gray-200 p-px inset-ring inset-ring-gray-900/5 outline-offset-2 outline-indigo-600 transition-colors duration-200 ease-in-out has-checked:bg-indigo-600 has-focus-visible:outline-2">
-                  <span className="size-4 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-3.5" />
-                  <input
-                    id={`${block.formName}-agree-to-policies`}
-                    type="checkbox"
-                    name="agree-to-policies"
-                    aria-label="Agree to policies"
-                    required
-                    className="absolute inset-0 size-full appearance-none focus:outline-hidden"
-                  />
-                </div>
+          <div className="flex gap-x-4 sm:col-span-2">
+            <div className="flex h-6 items-center">
+              <div className="group relative inline-flex w-8 shrink-0 rounded-full bg-gray-200 p-px inset-ring inset-ring-gray-900/5 outline-offset-2 outline-indigo-600 transition-colors duration-200 ease-in-out has-checked:bg-indigo-600 has-focus-visible:outline-2">
+                <span className="size-4 rounded-full bg-white shadow-xs ring-1 ring-gray-900/5 transition-transform duration-200 ease-in-out group-has-checked:translate-x-3.5" />
+                <input
+                  id="agree-to-policies"
+                  type="checkbox"
+                  name="agree-to-policies"
+                  aria-label="Agree to policies"
+                  required
+                  className="absolute inset-0 size-full appearance-none focus:outline-hidden"
+                />
               </div>
-              <label htmlFor={`${block.formName}-agree-to-policies`} className="text-sm/6 text-gray-600">
-                By selecting this, you agree to our <a href="#" className="font-semibold whitespace-nowrap text-indigo-600">privacy policy</a>.
-              </label>
             </div>
-          )}
+            <label htmlFor="agree-to-policies" className="text-sm/6 text-gray-600">
+              By selecting this, you agree to our <a href="#" className="font-semibold whitespace-nowrap text-indigo-600">privacy policy</a>.
+            </label>
+          </div>
         </div>
         <div className="mt-10">
           <button
             type="submit"
             className="block w-full rounded-md bg-indigo-600 px-3.5 py-2.5 text-center text-sm font-semibold text-white shadow-xs hover:bg-indigo-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            {...actionAnalyticsAttrs("primary", submitLabel)}
+            {...actionAnalyticsAttrs("primary", source.submitLabel)}
           >
             {slots?.renderText
               ? slots.renderText({
                 name: "contactSection.submitLabel",
-                value: submitLabel,
+                value: source.submitLabel,
                 className: "contents",
                 placeholder: "Submit",
                 elementPath: { blockIndex: options.index, field: "submitLabel" },
               })
-              : submitLabel}
+              : source.submitLabel}
           </button>
         </div>
-        {hasSubmitStatus && (
+        {source.hasSubmitStatus && (
           <p
             className="mt-4 text-sm/6 text-gray-600"
             data-success-message={provider?.successMessage ?? undefined}

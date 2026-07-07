@@ -435,7 +435,7 @@ const relationshipId = (value: unknown): string | number | undefined => {
 }
 
 const themeToCmsTokens = (theme: ThemeTokenSpec): ThemeTokens | null => {
-  const parsed = themeSchema.safeParse(normalizeThemeForSave(theme) ?? {})
+  const parsed = themeSchema.safeParse(theme)
   if (!parsed.success) {
     throw new Error(`Invalid CMS theme tokens: ${parsed.error.issues.map((entry: { message: string }) => entry.message).join("; ")}`)
   }

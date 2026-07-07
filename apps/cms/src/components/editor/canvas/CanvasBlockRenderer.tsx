@@ -118,9 +118,10 @@ export function resolvedCanvasSourceVariant(block: any, context: SourceVariantCo
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
   const resolved = resolveBlockVariant(block, context)
   if (!resolved.variant) return undefined
-  return (catalog.variants as readonly SiteBlockCatalogVariant[]).find((entry) =>
-    entry.variant === resolved.variant
+  const entry = (catalog.variants as readonly SiteBlockCatalogVariant[]).find((candidate) =>
+    candidate.variant === resolved.variant || candidate.providerVariantId === resolved.variant
   )
+  return entry ? { ...entry, variant: resolved.variant } : undefined
 }
 
 export function canvasSourceVariantDataAttribute(block: any, tenantRendererKey?: "amicare" | null) {

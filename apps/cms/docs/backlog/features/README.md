@@ -254,7 +254,8 @@ preview theme edits now preserve mode-only choices, merge rapid toolbar changes,
 and save with a latest-wins queue so stale writes cannot revert the stored
 theme. Generic page saves now reject tenant-exclusive Amicare block variants,
 while official Amicare compatibility remains isolated to tenant-renderer
-slugs/domains. Generic style presets no longer expose `warm-care`. A later
+slugs/domains. Tenant themes now use only approved ThemeTokenSpec V2 preset IDs.
+A later
 2026-07-04 cleanup removed the adapted Tailwind Plus runtime path. Subsequent
 provider passes reintroduced only active exact-source Tailwind Plus Marketing
 surfaces: page sections through the executable source-block registry, header

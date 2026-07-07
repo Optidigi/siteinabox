@@ -53,7 +53,19 @@ describe("canvas source variant resolution", () => {
       designVariant: "tailwindPlusSimpleTiers",
     }
 
-    expect(resolvedCanvasSourceVariant(block)?.variant).toBe("tailwindPlusSimpleTiers")
+    expect(resolvedCanvasSourceVariant(block)?.variant).toBe("tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier")
+    expect(resolveBlockVariant(block).rendererClassName).toBe(
+      "cms-block--source-tailwindplus-pricing-two-tiers-with-emphasized-right-tier",
+    )
+  })
+
+  it("resolves canonical Tailwind Plus provider variant IDs for generic canvas contexts", () => {
+    const block = {
+      blockType: "pricing",
+      designVariant: "tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier",
+    }
+
+    expect(resolvedCanvasSourceVariant(block)?.variant).toBe("tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier")
     expect(resolveBlockVariant(block).rendererClassName).toBe(
       "cms-block--source-tailwindplus-pricing-two-tiers-with-emphasized-right-tier",
     )
