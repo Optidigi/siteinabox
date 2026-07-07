@@ -9,6 +9,11 @@ import { resolveTenantRenderer } from "./tenant-renderers/resolve"
 import type { MediaResolver } from "./media"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
 
+const TAILWIND_PLUS_MARKETING_HEADER_WITH_STACKED_FLYOUT_MENU_ID =
+  "tailwindplus.marketing.header.with-stacked-flyout-menu"
+const TAILWIND_PLUS_MARKETING_HERO_SIMPLE_CENTERED_ID =
+  "tailwindplus.marketing.hero.simple-centered"
+
 export type SiteRenderBlocks = (args: {
   blocks: Page["blocks"]
   defaultRenderBlocks: React.ReactNode[]
@@ -93,6 +98,40 @@ export function SitePageRenderer({
       options={{ mediaResolver, formAction }}
     />
   ))
+  const headerChrome = header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
+  const bannerChrome = <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
+  const maintenanceChrome = <SiteMaintenanceBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
+  const firstBlock = page.blocks[0]
+  const shouldAnchorHeaderToFirstBlock =
+    settings.chrome?.header?.variant === TAILWIND_PLUS_MARKETING_HEADER_WITH_STACKED_FLYOUT_MENU_ID &&
+    firstBlock?.designVariant === TAILWIND_PLUS_MARKETING_HERO_SIMPLE_CENTERED_ID &&
+    !renderBlocks
+  const renderedBody = shouldAnchorHeaderToFirstBlock && defaultRenderBlocks[0]
+    ? (
+      <>
+        {bannerChrome}
+        {maintenanceChrome}
+        <div
+          className="site-top-stack site-top-stack--source-tailwindplus-marketing-header-hero bg-white"
+          data-siab-top-stack="tailwindplus.marketing.header-hero"
+          data-provider-top-stack="tailwindplus"
+          data-source-chrome-variant={TAILWIND_PLUS_MARKETING_HEADER_WITH_STACKED_FLYOUT_MENU_ID}
+          data-anchored-source-variant={TAILWIND_PLUS_MARKETING_HERO_SIMPLE_CENTERED_ID}
+        >
+          {headerChrome}
+          {defaultRenderBlocks[0]}
+        </div>
+        {defaultRenderBlocks.slice(1)}
+      </>
+    )
+    : (
+      <>
+        {headerChrome}
+        {bannerChrome}
+        {maintenanceChrome}
+        {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
+      </>
+    )
 
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
@@ -104,10 +143,7 @@ export function SitePageRenderer({
         data-page-slug={page.slug}
       >
         <div className="site-frame-root">
-          {header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
-          <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-          <SiteMaintenanceBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-          {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
+          {renderedBody}
           {footer ?? <SiteFooter settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
         </div>
       </div>

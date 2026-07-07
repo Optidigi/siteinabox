@@ -44,3 +44,11 @@ its default palette variables. The default SIAB presets (`blue-professional`,
 are applied only through explicit renderer-owned bridge roles such as
 non-default accent schemes, ambient surfaces/ink, borders, fonts, shape,
 non-default density, and reviewed tokenized decoration.
+
+Provider chrome remains structured site chrome, not page content. The shared
+renderer may compose compatible top chrome with the first provider section when
+that is how the Tailwind source is meant to read visually. Today that rule is
+explicit and narrow: the active Tailwind Plus Marketing header is wrapped with
+the first `tailwindplus.marketing.hero.simple-centered` block in a provider
+top stack. Announcement/banner chrome stays a standalone Tailwind element and
+is not exposed as a page block.

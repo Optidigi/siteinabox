@@ -7,9 +7,14 @@ import { describe, expect, it } from "vitest"
 import {
   getProviderChromeDefinition,
   providerChromeDefinitions,
+  SitePageRenderer,
   SiteBanner,
   SiteHeader,
 } from "@siteinabox/site-renderer"
+import {
+  tailwindPlusMarketingHeroSimpleCenteredDemoSlots,
+  tailwindPlusMarketingHeroWithStatsDemoSlots,
+} from "@siteinabox/site-renderer/source-blocks"
 
 const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
 const fromRepoRoot = (relativePath: string) => path.join(repoRoot, relativePath)
@@ -116,6 +121,56 @@ describe("provider chrome runtime", () => {
     for (const className of extractFixtureClassNames(upstream)) {
       expect(html, `banner render missing upstream className: ${className}`).toContain(className)
     }
+  })
+
+  it("anchors the Tailwind Plus marketing header to the compatible top hero without making banner a page block", () => {
+    const html = renderToStaticMarkup(
+      <SitePageRenderer
+        page={{
+          slug: "index",
+          title: "Home",
+          updatedAt: "2026-07-08T00:00:00.000Z",
+          blocks: [tailwindPlusMarketingHeroSimpleCenteredDemoSlots],
+        }}
+        settings={settings}
+        includeThemeStyle={false}
+      />,
+    )
+
+    expect(html).toContain('data-siab-top-stack="tailwindplus.marketing.header-hero"')
+    expect(html).toContain(`data-anchored-source-variant="tailwindplus.marketing.hero.simple-centered"`)
+    expect(html).toContain('data-site-chrome="banner"')
+
+    const bannerIndex = html.indexOf('data-site-chrome="banner"')
+    const stackIndex = html.indexOf('data-siab-top-stack="tailwindplus.marketing.header-hero"')
+    const headerIndex = html.indexOf('data-site-chrome="header"', stackIndex)
+    const heroIndex = html.indexOf('data-provider-variant="tailwindplus.marketing.hero.simple-centered"', stackIndex)
+
+    expect(bannerIndex).toBeGreaterThanOrEqual(0)
+    expect(stackIndex).toBeGreaterThan(bannerIndex)
+    expect(headerIndex).toBeGreaterThan(stackIndex)
+    expect(heroIndex).toBeGreaterThan(headerIndex)
+  })
+
+  it("does not anchor the marketing header to fixed-dark hero variants", () => {
+    const html = renderToStaticMarkup(
+      <SitePageRenderer
+        page={{
+          slug: "careers",
+          title: "Careers",
+          updatedAt: "2026-07-08T00:00:00.000Z",
+          blocks: [tailwindPlusMarketingHeroWithStatsDemoSlots],
+        }}
+        settings={settings}
+        includeThemeStyle={false}
+      />,
+    )
+
+    expect(html).not.toContain("data-siab-top-stack")
+    expect(html.indexOf('data-site-chrome="header"')).toBeLessThan(html.indexOf('data-site-chrome="banner"'))
+    expect(html.indexOf('data-site-chrome="banner"')).toBeLessThan(
+      html.indexOf('data-provider-variant="tailwindplus.marketing.hero.with-stats"'),
+    )
   })
 
   it("fails closed for unresolved provider chrome variants", () => {

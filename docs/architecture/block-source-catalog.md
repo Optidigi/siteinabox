@@ -537,6 +537,15 @@ and header CTA. Banner slots come from `SiteSettings.chrome.banner`: title,
 message, link, visibility, and dismissibility. Mock generation now uses this
 header and banner by default. Footer remains a SIAB-owned chrome variant.
 
+Header chrome can still be visually composed with the first page section when
+the approved Tailwind source expects a single top-of-page reading. This is a
+renderer-owned composition rule, not a generation or CMS block rule. The current
+rule is intentionally narrow: `tailwindplus.marketing.header.with-stacked-flyout-menu`
+anchors to a first `tailwindplus.marketing.hero.simple-centered` block through
+a `data-siab-top-stack="tailwindplus.marketing.header-hero"` wrapper. The banner
+variant remains a standalone Tailwind element; it is not anchored to a page
+section and is not listed in `SITE_BLOCK_SLUGS`.
+
 Inactive provider chrome variants are not active chrome choices, provenance
 entries, renderer fixture requirements, or AI-generation suggestions. Provider
 chrome variants fail closed when unresolved instead of falling back to generic

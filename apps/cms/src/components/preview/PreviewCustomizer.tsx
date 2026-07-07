@@ -10,11 +10,20 @@ import {
   type IframeEditorMessage,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { CheckCircle2, Dices, Rocket, RotateCcw, SquarePen } from "lucide-react"
+import { CheckCircle2, Dices, Palette, Rocket, RotateCcw, SlidersHorizontal, SquarePen, SquareRoundCorner, Type } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@siteinabox/ui/components/popover"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
+import { SegmentedPill } from "@/components/common/segmented-pill"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
+import { FontPicker } from "@/components/editor/theme/font-picker"
+import { PalettePicker } from "@/components/editor/theme/palette-picker"
+import { DensityControl, ShapeControl } from "@/components/editor/theme/radius-control"
 import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
 import type {
   PreviewApprovalState,
@@ -30,6 +39,7 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
 type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
+type PreviewThemeSegment = "colors" | "fonts" | "shape" | "density"
 
 const PREVIEW_RANDOM_MODES: AppearanceMode[] = ["light", "dark"]
 
@@ -297,6 +307,8 @@ export function PreviewCustomizer({
         </main>
 
         <PreviewCommandBar
+          theme={themeState}
+          onThemeChange={handleThemeChange}
           onShuffleTheme={handleShuffleTheme}
           onDefaultTheme={handleDefaultTheme}
           canCompleteOrder={canCompleteOrder}
@@ -464,7 +476,142 @@ function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
   )
 }
 
+function PreviewThemeToolbar({
+  theme,
+  onThemeChange,
+  onShuffleTheme,
+  onDefaultTheme,
+}: {
+  theme: ThemeTokens | null
+  onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
+  onShuffleTheme: () => void
+  onDefaultTheme: () => void
+}) {
+  const t = useTranslations("editor")
+  const previewT = useTranslations("preview")
+  const [openSegment, setOpenSegment] = React.useState<PreviewThemeSegment | null>(null)
+  const lastOpenSegmentRef = React.useRef<PreviewThemeSegment | null>(null)
+  const segmentRefs = React.useRef<Record<PreviewThemeSegment, HTMLButtonElement | null>>({
+    colors: null,
+    fonts: null,
+    shape: null,
+    density: null,
+  })
+
+  React.useEffect(() => {
+    if (openSegment) lastOpenSegmentRef.current = openSegment
+  }, [openSegment])
+
+  function handleUpdate(partial: Partial<ThemeTokens>) {
+    onThemeChange((current) => normalizeThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens))
+  }
+
+  return (
+    <div className="justify-self-center">
+      <div className="md:hidden">
+        <div
+          role="group"
+          aria-label={previewT("themeControls")}
+          className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/30 p-1"
+        >
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11 rounded-sm"
+            onClick={onShuffleTheme}
+            aria-label={previewT("shuffleTheme")}
+            title={previewT("shuffleTheme")}
+          >
+            <Dices className="size-5" aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11 rounded-sm"
+            onClick={onDefaultTheme}
+            aria-label={previewT("defaultTheme")}
+            title={previewT("defaultTheme")}
+          >
+            <RotateCcw className="size-5" aria-hidden />
+          </Button>
+        </div>
+      </div>
+
+      <div className="hidden md:block">
+        <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
+          <PopoverAnchor asChild>
+            <div>
+              <SegmentedPill<PreviewThemeSegment>
+                ariaLabel={previewT("themeControls")}
+                value={openSegment}
+                onValueChange={(next) => setOpenSegment(next)}
+                itemRef={(value, el) => {
+                  segmentRefs.current[value] = el
+                }}
+                items={[
+                  { value: "colors", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
+                  { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
+                  { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
+                  { value: "density", label: t("density"), icon: SlidersHorizontal, ariaLabel: t("spacingDensity") },
+                ]}
+              />
+            </div>
+          </PopoverAnchor>
+          <PopoverContent
+            side="top"
+            align="center"
+            sideOffset={8}
+            className="w-auto max-w-[calc(100vw-2rem)] rounded-md border border-border/40 bg-card/95 p-3 shadow-md backdrop-blur-sm"
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => {
+              const target = lastOpenSegmentRef.current
+              if (target) {
+                e.preventDefault()
+                segmentRefs.current[target]?.focus()
+              }
+            }}
+          >
+            {openSegment === "colors" && (
+              <PalettePicker
+                palettes={PALETTE_PRESETS}
+                value={theme?.colors?.schemeId}
+                mode={theme?.appearance?.mode ?? "light"}
+                onChange={(patch) => handleUpdate(patch)}
+              />
+            )}
+            {openSegment === "fonts" && (
+              <FontPicker
+                fonts={FONT_PRESETS}
+                value={theme?.fonts?.schemeId}
+                onChange={(next) => handleUpdate({ fonts: next })}
+              />
+            )}
+            {openSegment === "shape" && (
+              <ShapeControl
+                shapeId={theme?.shape?.schemeId}
+                radiusLevels={RADIUS_PRESETS}
+                onChange={(next) => handleUpdate({ shape: next })}
+              />
+            )}
+            {openSegment === "density" && (
+              <DensityControl
+                densityId={theme?.density?.schemeId}
+                levels={DENSITY_PRESETS}
+                onChange={(next) => handleUpdate({ density: next })}
+              />
+            )}
+          </PopoverContent>
+        </Popover>
+      </div>
+    </div>
+  )
+}
+
 export function PreviewCommandBar({
+  theme,
+  onThemeChange,
   onShuffleTheme,
   onDefaultTheme,
   canCompleteOrder,
@@ -473,6 +620,8 @@ export function PreviewCommandBar({
   reviewHref,
   customerNavigationBlocked,
 }: {
+  theme: ThemeTokens | null
+  onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
   onShuffleTheme: () => void
   onDefaultTheme: () => void
   canCompleteOrder: boolean
@@ -499,70 +648,55 @@ export function PreviewCommandBar({
   return (
     <div
       data-siab-cms-sticky-chrome
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-3 py-2 shadow-lg"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-4 py-3 shadow-lg"
     >
-      <div className="mx-auto grid w-fit grid-cols-[auto_auto_auto] items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5">
-        <Button asChild variant="default" size="icon" className={`size-9 rounded-sm ${blockedClassName}`}>
+      <div className="mx-auto grid w-full max-w-5xl grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <Button asChild variant="default" size="default" className={`h-11 justify-self-start rounded-md px-3 md:px-4 ${blockedClassName}`}>
           <a
             href={customerNavigationBlocked ? undefined : reviewHref}
             aria-label={t("reviewChanges")}
             title={t("reviewChanges")}
             {...blockedAnchorProps}
           >
-            <SquarePen className="size-4" aria-hidden />
+            <SquarePen className="size-5 md:size-4" aria-hidden />
+            <span className="sr-only md:not-sr-only md:ml-2">{t("reviewChanges")}</span>
           </a>
         </Button>
 
-        <div className="inline-flex items-center gap-1" role="group" aria-label={t("themeControls")}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 rounded-sm"
-            onClick={onShuffleTheme}
-            aria-label={t("shuffleTheme")}
-            title={t("shuffleTheme")}
-          >
-            <Dices className="size-4" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 rounded-sm"
-            onClick={onDefaultTheme}
-            aria-label={t("defaultTheme")}
-            title={t("defaultTheme")}
-          >
-            <RotateCcw className="size-4" aria-hidden />
-          </Button>
-        </div>
+        <PreviewThemeToolbar
+          theme={theme}
+          onThemeChange={onThemeChange}
+          onShuffleTheme={onShuffleTheme}
+          onDefaultTheme={onDefaultTheme}
+        />
 
         {canCompleteOrder ? (
-          <Button asChild variant="success" size="icon" className={`size-9 rounded-sm ${blockedClassName}`}>
+          <Button asChild variant="success" size="default" className={`h-11 justify-self-end rounded-md px-3 md:px-4 ${blockedClassName}`}>
             <a
               href={customerNavigationBlocked ? undefined : checkoutHref}
               aria-label={t("launchWebsite")}
               title={t("launchWebsite")}
               {...blockedAnchorProps}
             >
-              <Rocket className="size-4" aria-hidden />
+              <Rocket className="size-5 md:size-4" aria-hidden />
+              <span className="sr-only md:not-sr-only md:ml-2">{t("launchWebsite")}</span>
             </a>
           </Button>
         ) : paymentSatisfied ? (
           <Button
             type="button"
             variant="secondary"
-            size="icon"
+            size="default"
             disabled
-            className="size-9 rounded-sm"
+            className="h-11 justify-self-end rounded-md px-3 md:px-4"
             aria-label={t("paymentComplete")}
             title={t("paymentComplete")}
           >
-            <CheckCircle2 className="size-4" aria-hidden />
+            <CheckCircle2 className="size-5 md:size-4" aria-hidden />
+            <span className="sr-only md:not-sr-only md:ml-2">{t("paymentComplete")}</span>
           </Button>
         ) : (
-          <span className="size-9" aria-hidden />
+          <span className="size-11 justify-self-end" aria-hidden />
         )}
       </div>
     </div>
