@@ -4,7 +4,6 @@ import { actionAnalyticsAttrs, sectionAnalyticsAttrs } from "../../../../../anal
 import { mergeRendererSectionAttributes } from "../../../../../blocks/section-attributes"
 import type { BlockRenderOptions } from "../../../../../blocks/types"
 import { resolveMedia } from "../../../../../media"
-import { RichTextRenderer } from "../../../../../rich-text"
 import { richTextSlot } from "../../../../../source-blocks/utils"
 
 const gradientClipPath =
@@ -47,7 +46,18 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
 
   return (
     <section {...sectionProps}>
-      {image ? <img src={image.src} alt={image.alt ?? ""} className="absolute inset-0 -z-10 size-full object-cover object-right md:object-center" /> : null}
+      {options.editSlots?.renderImage
+        ? options.editSlots.renderImage({
+          name: "hero.image",
+          value: block.image,
+          alt: image?.alt ?? "",
+          loading: "eager",
+          decoding: "async",
+          className: "absolute inset-0 -z-10 size-full object-cover object-right md:object-center",
+          chrome: "overlay",
+          elementPath: { blockIndex: options.index, field: "image" },
+        })
+        : image ? <img src={image.src} alt={image.alt ?? ""} className="absolute inset-0 -z-10 size-full object-cover object-right md:object-center" /> : null}
       <div aria-hidden="true" className="hidden sm:absolute sm:-top-10 sm:right-1/2 sm:-z-10 sm:mr-10 sm:block sm:transform-gpu sm:blur-3xl">
         <div style={{ clipPath: gradientClipPath }} className="aspect-1097/845 w-274.25 bg-linear-to-tr from-[#ff4694] to-[#776fff] opacity-20" />
       </div>
@@ -85,7 +95,14 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 text-base/7 font-semibold text-white sm:grid-cols-2 md:flex lg:gap-x-10">
               {links.map((link, index) => (
                 <a key={`${link.label}-${index}`} href={link.href} {...actionAnalyticsAttrs(index === 0 ? "primary" : "secondary", link.label)}>
-                  {link.label} <span aria-hidden="true">→</span>
+                  {options.editSlots?.renderText
+                    ? options.editSlots.renderText({
+                      name: "hero.linkLabel",
+                      value: link.label,
+                      placeholder: "Link label",
+                      elementPath: { blockIndex: options.index, field: "links", itemIndex: index, subField: "label" },
+                    })
+                    : link.label} <span aria-hidden="true">→</span>
                 </a>
               ))}
             </div>
@@ -94,8 +111,26 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
             <dl className="mt-16 grid grid-cols-1 gap-8 sm:mt-20 sm:grid-cols-2 lg:grid-cols-4">
               {stats.map((stat, index) => (
                 <div key={index} className="flex flex-col-reverse gap-1">
-                  <dt className="text-base/7 text-gray-300">{stat.label}</dt>
-                  <dd className="text-4xl font-semibold tracking-tight text-white">{stat.value}</dd>
+                  <dt className="text-base/7 text-gray-300">
+                    {options.editSlots?.renderText
+                      ? options.editSlots.renderText({
+                        name: "hero.statLabel",
+                        value: stat.label,
+                        placeholder: "Stat label",
+                        elementPath: { blockIndex: options.index, field: "stats", itemIndex: index, subField: "label" },
+                      })
+                      : stat.label}
+                  </dt>
+                  <dd className="text-4xl font-semibold tracking-tight text-white">
+                    {options.editSlots?.renderText
+                      ? options.editSlots.renderText({
+                        name: "hero.statValue",
+                        value: stat.value,
+                        placeholder: "Stat value",
+                        elementPath: { blockIndex: options.index, field: "stats", itemIndex: index, subField: "value" },
+                      })
+                      : stat.value}
+                  </dd>
                 </div>
               ))}
             </dl>

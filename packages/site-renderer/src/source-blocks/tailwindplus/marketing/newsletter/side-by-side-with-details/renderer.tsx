@@ -3,7 +3,6 @@ import type { NewsletterBlock } from "@siteinabox/contracts"
 import { sectionAnalyticsAttrs } from "../../../../../analytics"
 import { mergeRendererSectionAttributes } from "../../../../../blocks/section-attributes"
 import type { BlockRenderOptions } from "../../../../../blocks/types"
-import { RichTextRenderer } from "../../../../../rich-text"
 import { richTextSlot } from "../../../../../source-blocks/utils"
 
 const gradientClipPath =
@@ -89,7 +88,14 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
               <label htmlFor={inputId} className="sr-only">{emailLabel}</label>
               <input id={inputId} type="email" name="email" required placeholder={block.emailPlaceholder ?? "Enter your email"} autoComplete="email" className="min-w-0 flex-auto rounded-md bg-white/5 px-3.5 py-2 text-base text-white outline-1 -outline-offset-1 outline-white/10 placeholder:text-gray-500 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-500 sm:text-sm/6" />
               <button type="submit" className="flex-none rounded-md bg-indigo-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-indigo-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500">
-                {submitLabel}
+                {options.editSlots?.renderText
+                  ? options.editSlots.renderText({
+                    name: "newsletter.submitLabel",
+                    value: submitLabel,
+                    placeholder: "Subscribe",
+                    elementPath: { blockIndex: options.index, field: "submitLabel" },
+                  })
+                  : submitLabel}
               </button>
             </form>
           </div>
@@ -99,8 +105,29 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
               return (
                 <div key={index} className="flex flex-col items-start">
                   <div className="rounded-md bg-white/5 p-2 ring-1 ring-white/10"><Icon /></div>
-                  <dt className="mt-4 text-base font-semibold text-white"><RichTextRenderer value={benefit.title} blockMode="inline" /></dt>
-                  {benefit.description ? <dd className="mt-2 text-base/7 text-gray-400"><RichTextRenderer value={benefit.description} /></dd> : null}
+                  <dt className="mt-4 text-base font-semibold text-white">
+                    {richTextSlot({
+                      options,
+                      name: "newsletter.benefitTitle",
+                      value: benefit.title,
+                      variant: "inline",
+                      className: "contents",
+                      elementPath: { blockIndex: options.index, field: "benefits", itemIndex: index, subField: "title" },
+                      blockMode: "inline",
+                    })}
+                  </dt>
+                  {(benefit.description || options.editSlots?.renderRichText) ? (
+                    <dd className="mt-2 text-base/7 text-gray-400">
+                      {richTextSlot({
+                        options,
+                        name: "newsletter.benefitDescription",
+                        value: benefit.description,
+                        variant: "block",
+                        className: "contents",
+                        elementPath: { blockIndex: options.index, field: "benefits", itemIndex: index, subField: "description" },
+                      })}
+                    </dd>
+                  ) : null}
                 </div>
               )
             })}

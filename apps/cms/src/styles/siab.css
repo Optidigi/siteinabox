@@ -221,15 +221,15 @@ body { font-family: var(--font-sans); }
 }
 
 /* Canvas-mode active-block selection ring */
-.rt-canvas .cms-block {
+.rt-canvas .cms-block:not([data-provider-block]) {
     position: relative;
     cursor: default;
     transition: outline-color 120ms; }
-.rt-canvas:not([data-rt-view="preview"]) .cms-block[data-active="true"] {
+.rt-canvas:not([data-rt-view="preview"]) .cms-block:not([data-provider-block])[data-active="true"] {
     outline: 2px solid var(--rt-affordance);
     outline-offset: -2px;
 }
-.rt-canvas:not([data-rt-view="preview"]) .cms-block:not([data-active="true"]):not(:has(.rt-slot:hover, .rt-click-edit:hover, [data-rt-selected="true"])):hover {
+.rt-canvas:not([data-rt-view="preview"]) .cms-block:not([data-provider-block]):not([data-active="true"]):not(:has(.rt-slot:hover, .rt-click-edit:hover, [data-rt-selected="true"])):hover {
     outline: 1px dashed var(--border);
     outline-offset: -1px;
 }

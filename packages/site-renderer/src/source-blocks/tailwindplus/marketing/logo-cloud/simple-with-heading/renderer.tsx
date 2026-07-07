@@ -79,7 +79,14 @@ export function TailwindPlusMarketingLogoCloudSimpleWithHeadingRenderer({
                 />
               ) : (
                 <span className={`${className} flex items-center justify-center text-center text-sm font-semibold text-gray-500`}>
-                  {logo.name}
+                  {slots?.renderText
+                    ? slots.renderText({
+                      name: "logoCloud.logoName",
+                      value: logo.name,
+                      placeholder: "Logo name",
+                      elementPath: { blockIndex: options.index, field: "logos", itemIndex: index, subField: "name" },
+                    })
+                    : logo.name}
                 </span>
               )
 

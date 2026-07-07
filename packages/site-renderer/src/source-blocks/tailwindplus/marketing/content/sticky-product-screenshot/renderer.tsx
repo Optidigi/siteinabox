@@ -4,7 +4,6 @@ import { sectionAnalyticsAttrs } from "../../../../../analytics"
 import { mergeRendererSectionAttributes } from "../../../../../blocks/section-attributes"
 import type { BlockRenderOptions } from "../../../../../blocks/types"
 import { resolveMedia } from "../../../../../media"
-import { RichTextRenderer } from "../../../../../rich-text"
 import { richTextSlot } from "../../../../../source-blocks/utils"
 
 const defaultScreenshot: Exclude<MediaRef, null> = {
@@ -160,9 +159,25 @@ export function TailwindPlusMarketingContentStickyProductScreenshotRenderer({
                     <FeatureIcon index={index} />
                     <span>
                       <strong className="font-semibold text-gray-900">
-                        <RichTextRenderer value={feature.title} blockMode="inline" />
+                        {richTextSlot({
+                          options,
+                          name: "contentSection.featureTitle",
+                          value: feature.title,
+                          variant: "inline",
+                          className: "contents",
+                          elementPath: { blockIndex: options.index, field: "features", itemIndex: index, subField: "title" },
+                          blockMode: "inline",
+                        })}
                       </strong>{" "}
-                      {feature.description ? <RichTextRenderer value={feature.description} blockMode="text" /> : null}
+                      {(feature.description || slots?.renderRichText) ? richTextSlot({
+                        options,
+                        name: "contentSection.featureDescription",
+                        value: feature.description,
+                        variant: "inline",
+                        className: "contents",
+                        elementPath: { blockIndex: options.index, field: "features", itemIndex: index, subField: "description" },
+                        blockMode: "text",
+                      }) : null}
                     </span>
                   </li>
                 ))}

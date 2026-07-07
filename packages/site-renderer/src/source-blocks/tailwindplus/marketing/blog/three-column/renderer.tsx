@@ -69,7 +69,18 @@ export function TailwindPlusMarketingBlogThreeColumnRenderer({
             return (
               <article key={index} className="flex max-w-xl flex-col items-start justify-between">
                 <div className="flex items-center gap-x-4 text-xs">
-                  {post.date ? <time className="text-gray-500">{post.date}</time> : null}
+                  {post.date || slots?.renderText ? (
+                    <time className="text-gray-500">
+                      {slots?.renderText
+                        ? slots.renderText({
+                          name: "blogCards.postDate",
+                          value: post.date,
+                          placeholder: "Post date",
+                          elementPath: { blockIndex: options.index, field: "posts", itemIndex: index, subField: "date" },
+                        })
+                        : post.date}
+                    </time>
+                  ) : null}
                   {categoryLabel ? (
                     <a href={categoryHref} className="relative z-10 rounded-full bg-gray-50 px-3 py-1.5 font-medium text-gray-600 hover:bg-gray-100">
                       {categoryLabel}
@@ -80,7 +91,15 @@ export function TailwindPlusMarketingBlogThreeColumnRenderer({
                   <h3 className="mt-3 text-lg/6 font-semibold text-gray-900 group-hover:text-gray-600">
                     <a href={href} {...actionAnalyticsAttrs("inline", categoryLabel ?? "Read article")}>
                       <span className="absolute inset-0" />
-                      <RichTextRenderer value={post.title} blockMode="inline" />
+                      {richTextSlot({
+                        options,
+                        name: "blogCards.postTitle",
+                        value: post.title,
+                        variant: "inline",
+                        className: "contents",
+                        elementPath: { blockIndex: options.index, field: "posts", itemIndex: index, subField: "title" },
+                        blockMode: "inline",
+                      })}
                     </a>
                   </h3>
                   {(post.excerpt || slots?.renderRichText) && (
@@ -109,15 +128,33 @@ export function TailwindPlusMarketingBlogThreeColumnRenderer({
                     })
                     : image ? <img src={image.src} alt={image.alt ?? post.author ?? ""} className="size-10 rounded-full bg-gray-50" loading="lazy" decoding="async" /> : null}
                   <div className="text-sm/6">
-                    {post.author ? (
+                    {post.author || slots?.renderText ? (
                       <p className="font-semibold text-gray-900">
                         <a href={href}>
                           <span className="absolute inset-0" />
-                          {post.author}
+                          {slots?.renderText
+                            ? slots.renderText({
+                              name: "blogCards.postAuthor",
+                              value: post.author,
+                              placeholder: "Author",
+                              elementPath: { blockIndex: options.index, field: "posts", itemIndex: index, subField: "author" },
+                            })
+                            : post.author}
                         </a>
                       </p>
                     ) : null}
-                    {post.authorRole ? <p className="text-gray-600">{post.authorRole}</p> : null}
+                    {post.authorRole || slots?.renderText ? (
+                      <p className="text-gray-600">
+                        {slots?.renderText
+                          ? slots.renderText({
+                            name: "blogCards.postAuthorRole",
+                            value: post.authorRole,
+                            placeholder: "Role",
+                            elementPath: { blockIndex: options.index, field: "posts", itemIndex: index, subField: "authorRole" },
+                          })
+                          : post.authorRole}
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               </article>

@@ -6,6 +6,7 @@ import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contra
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it } from "vitest"
 import { BlockRenderer } from "@siteinabox/site-renderer"
+import type { BlockEditSlots } from "@siteinabox/site-renderer"
 import { themeToCssVars } from "@siteinabox/site-renderer/theme/css-vars"
 import {
   getProviderBlockDefinition,
@@ -557,6 +558,46 @@ describe("provider block runtime", () => {
     expect(editorHtml).toContain("Add CTA")
   })
 
+  it("exposes provider visual subfields through editor edit slots without changing live output", () => {
+    const editSlots: BlockEditSlots = {
+      renderRichText: ({ name, className }) => <span data-edit-slot={name} className={className}>{name}</span>,
+      renderText: ({ name }) => <span data-edit-slot={name}>{name}</span>,
+      renderImage: ({ name, className, alt }) => <img data-edit-slot={name} className={className} alt={alt ?? ""} />,
+    }
+
+    const bentoLive = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots} index={0} />)
+    const bentoEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingBentoThreeColumnBentoGridDemoSlots} index={0} options={{ editSlots }} />)
+    expect(bentoLive).not.toContain("bentoGrid.itemTitle")
+    expect(bentoEditor).toContain('data-edit-slot="bentoGrid.itemTitle"')
+    expect(bentoEditor).toContain('data-edit-slot="bentoGrid.itemDescription"')
+    expect(bentoEditor).toContain('class="contents"')
+
+    const contentEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingContentStickyProductScreenshotDemoSlots} index={0} options={{ editSlots }} />)
+    expect(contentEditor).toContain('data-edit-slot="contentSection.featureTitle"')
+    expect(contentEditor).toContain('data-edit-slot="contentSection.featureDescription"')
+
+    const newsletterEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots} index={0} options={{ editSlots }} />)
+    expect(newsletterEditor).toContain('data-edit-slot="newsletter.benefitTitle"')
+    expect(newsletterEditor).toContain('data-edit-slot="newsletter.benefitDescription"')
+    expect(newsletterEditor).toContain('data-edit-slot="newsletter.submitLabel"')
+
+    const heroEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingHeroWithStatsDemoSlots} index={0} options={{ editSlots }} />)
+    expect(heroEditor).toContain('data-edit-slot="hero.image"')
+    expect(heroEditor).toContain('data-edit-slot="hero.linkLabel"')
+    expect(heroEditor).toContain('data-edit-slot="hero.statLabel"')
+    expect(heroEditor).toContain('data-edit-slot="hero.statValue"')
+
+    const blogEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingBlogThreeColumnDemoSlots} index={0} options={{ editSlots }} />)
+    expect(blogEditor).toContain('data-edit-slot="blogCards.postTitle"')
+    expect(blogEditor).toContain('data-edit-slot="blogCards.postDate"')
+    expect(blogEditor).toContain('data-edit-slot="blogCards.postAuthor"')
+    expect(blogEditor).toContain('data-edit-slot="blogCards.postAuthorRole"')
+
+    const pricingEditor = renderToStaticMarkup(<BlockRenderer block={tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots} index={0} options={{ editSlots }} />)
+    expect(pricingEditor).toContain('data-edit-slot="pricing.planPrice"')
+    expect(pricingEditor).toContain('data-edit-slot="pricing.planPeriod"')
+  })
+
   it("emits provider variant analytics attributes when projected metadata includes them", () => {
     const variant = "tailwindplus.marketing.hero.simple-centered"
     const html = renderToStaticMarkup(
@@ -618,6 +659,7 @@ describe("provider block runtime", () => {
     const rendererCss = readFileSync(fromRepoRoot("packages/site-renderer/src/styles.css"), "utf8")
     const rendererShellCss = readFileSync(fromRepoRoot("apps/renderer/src/styles/site.css"), "utf8")
     const cmsRendererShellCss = readFileSync(fromRepoRoot("apps/cms/src/styles/generated-site-renderer.css"), "utf8")
+    const editorAffordanceCss = readFileSync(fromRepoRoot("apps/cms/src/styles/editor-frame-canvas-affordances.css"), "utf8")
 
     const unsafeSelectors = selectorsFor(rendererCss).filter((selector) =>
       selector.includes(".site-renderer:not([data-tenant-renderer])") &&
@@ -626,6 +668,9 @@ describe("provider block runtime", () => {
     )
 
     expect(unsafeSelectors).toEqual([])
+    expect(editorAffordanceCss).toContain(".cms-block--hero:not([data-provider-block])")
+    expect(editorAffordanceCss).toContain(".cms-block:not([data-provider-block])[data-active=\"true\"]")
+    expect(editorAffordanceCss).toContain(".cms-block:not([data-provider-block]):not([data-active=\"true\"])")
     expect(rendererShellCss).toContain('@import "tailwindcss" source(none);')
     expect(rendererShellCss).toContain('@custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *));')
     expect(rendererShellCss).toContain('@source "../../../../packages/site-renderer/src";')

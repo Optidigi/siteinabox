@@ -7,6 +7,7 @@ import {
 } from "./theme-presets"
 
 import {
+  AMICARE_TENANT_ALIASES,
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG,
   SITE_SELF_SERVE_CHROME_VARIANTS,
@@ -1397,11 +1398,7 @@ export const OfficialTenantPublishedSiteSnapshotSchema: z.ZodType<PublishedSiteS
     OfficialTenantPublishedSnapshotPageSchema,
   ).superRefine(refineOfficialTenantVariantOwnership)
 
-export const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS = [
-  "ami-care",
-  "amicare",
-  "amicare-renderer",
-] as const
+export const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS = AMICARE_TENANT_ALIASES
 
 const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUG_SET = new Set<string>(OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS)
 

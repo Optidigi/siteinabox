@@ -68,6 +68,11 @@ export const RtSlot: React.FC<RtSlotProps> = ({
     : requested === "span" ? "text"
     : INLINE_CONTENT_TAGS.has(requested) ? "inline"
     : "normal"
+  const normalizedClassName = className
+    ?.split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part === "contents" ? (variant === "inline" ? "inline" : "block") : part)
+    .join(" ")
   const hasStaticValue = !!value?.children?.length
   const shouldRenderEmptySlot = !isCustomerPreview && (!!placeholder || elementPath != null || !isReadOnly)
 
@@ -93,7 +98,7 @@ export const RtSlot: React.FC<RtSlotProps> = ({
   return (
     <Tag
       ref={slotRef}
-      className={[isCustomerPreview ? undefined : "rt-slot", isReadOnly && !isCustomerPreview ? "cursor-pointer" : undefined, className].filter(Boolean).join(" ")}
+      className={[isCustomerPreview ? undefined : "rt-slot", isReadOnly && !isCustomerPreview ? "cursor-pointer" : undefined, normalizedClassName].filter(Boolean).join(" ")}
       data-rt-variant={variant}
       data-rt-selected={isSelected ? "true" : undefined}
       onClick={handleClick}

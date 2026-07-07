@@ -198,6 +198,21 @@ describe("SiteSettings collection config", () => {
       .toEqual(["default", "amicareZen", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
   })
 
+  it("keeps Amicare alias tenant slugs eligible for tenant-exclusive chrome", () => {
+    const chrome = findField("chrome")
+    const header = chrome.fields.find((x: any) => x.name === "header")
+    const footer = chrome.fields.find((x: any) => x.name === "footer")
+    const headerOptions = header.fields.find((x: any) => x.name === "variant").options
+    const footerOptions = footer.fields.find((x: any) => x.name === "variant").options
+
+    for (const slug of ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"]) {
+      expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug } }).map((x) => x.value), slug)
+        .toEqual(["default", "amicareZen", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
+      expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug } }).map((x) => x.value), slug)
+        .toEqual(["default", "amicareZen"])
+    }
+  })
+
   it("rejects tenant-exclusive chrome variants for future generated tenants", async () => {
     const req = {
       payload: {
@@ -224,23 +239,25 @@ describe("SiteSettings collection config", () => {
     })
   })
 
-  it("allows the active official tenant renderer to retain its tenant-exclusive chrome variants", async () => {
-    const req = {
-      payload: {
-        findByID: async () => ({ id: 1, slug: "ami-care" }),
-      },
-    }
-
-    await expect(enforceTenantExclusiveChromeVariants({
-      collection: { slug: "site-settings" },
-      data: {
-        tenant: 1,
-        chrome: {
-          header: { variant: "amicareZen" },
-          footer: { variant: "amicareZen" },
+  it("allows Amicare alias tenants to retain tenant-exclusive chrome variants", async () => {
+    for (const slug of ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"]) {
+      const req = {
+        payload: {
+          findByID: async () => ({ id: 1, slug }),
         },
-      },
-      req,
-    } as any)).resolves.toMatchObject({ chrome: { header: { variant: "amicareZen" } } })
+      }
+
+      await expect(enforceTenantExclusiveChromeVariants({
+        collection: { slug: "site-settings" },
+        data: {
+          tenant: 1,
+          chrome: {
+            header: { variant: "amicareZen" },
+            footer: { variant: "amicareZen" },
+          },
+        },
+        req,
+      } as any), slug).resolves.toMatchObject({ chrome: { header: { variant: "amicareZen" } } })
+    }
   })
 })

@@ -1,14 +1,11 @@
+import { AMICARE_TENANT_ALIASES } from "@siteinabox/contracts/block-catalog"
+
 export type OfficialTenantLike = {
   slug?: string | null
   domain?: string | null
 }
 
-const OFFICIAL_SLUGS = new Set([
-  "ami-care",
-  "amicare",
-  "amicare-zorg",
-  "tenant-amicare",
-])
+const OFFICIAL_SLUGS = new Set<string>(AMICARE_TENANT_ALIASES)
 const OFFICIAL_DOMAINS = new Set([
   "ami-care.nl",
   "amicare.nl",

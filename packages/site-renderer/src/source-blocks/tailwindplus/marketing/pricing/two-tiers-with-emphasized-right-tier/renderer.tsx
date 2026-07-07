@@ -116,15 +116,33 @@ export function TailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierRende
                   elementPath: { blockIndex: options.index, field: "plans", itemIndex: index, subField: "title" },
                   blockMode: "inline",
                 })}
-              </h3>
-              <p className="mt-4 flex items-baseline gap-x-2">
-                {plan.price ? (
-                  <span className={emphasized ? "text-5xl font-semibold tracking-tight text-white" : "text-5xl font-semibold tracking-tight text-gray-900"}>
-                    {plan.price}
-                  </span>
-                ) : null}
-                {plan.period ? <span className={emphasized ? "text-base text-gray-400" : "text-base text-gray-500"}>{plan.period}</span> : null}
-              </p>
+                </h3>
+                <p className="mt-4 flex items-baseline gap-x-2">
+                  {plan.price || slots?.renderText ? (
+                    <span className={emphasized ? "text-5xl font-semibold tracking-tight text-white" : "text-5xl font-semibold tracking-tight text-gray-900"}>
+                      {slots?.renderText
+                        ? slots.renderText({
+                          name: "pricing.planPrice",
+                          value: plan.price,
+                          placeholder: "Price",
+                          elementPath: { blockIndex: options.index, field: "plans", itemIndex: index, subField: "price" },
+                        })
+                        : plan.price}
+                    </span>
+                  ) : null}
+                  {plan.period || slots?.renderText ? (
+                    <span className={emphasized ? "text-base text-gray-400" : "text-base text-gray-500"}>
+                      {slots?.renderText
+                        ? slots.renderText({
+                          name: "pricing.planPeriod",
+                          value: plan.period,
+                          placeholder: "Period",
+                          elementPath: { blockIndex: options.index, field: "plans", itemIndex: index, subField: "period" },
+                        })
+                        : plan.period}
+                    </span>
+                  ) : null}
+                </p>
               {(plan.description || slots?.renderRichText) && (
                 <div className={emphasized ? "mt-6 text-base/7 text-gray-300" : "mt-6 text-base/7 text-gray-600"}>
                   {richTextSlot({
