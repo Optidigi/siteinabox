@@ -56,6 +56,23 @@ depended on command-run site generation are no longer current source of truth.
 
 ## Open Follow-Up
 
+- HIGH PRIORITY: close the Tailwind Plus provider parity gap before claiming
+  source-backed blocks are production-ready. The contact section, especially
+  `tailwindplus.marketing.contact.centered`, is the first repro target: verify
+  form layout, field order/count/roles, grid spans, consent placement, button
+  placement, decorative backgrounds, spacing, and max-widths against the
+  Tailwind Plus source. More broadly, current output does not yet have full
+  parity with Tailwind Plus components/blocks even if the automated gate passed
+  in the last deploy cycle; treat this as an active product blocker, not a
+  cosmetic cleanup. Reproduce deltas with screenshots and DOM/class inspection,
+  then update the source shell/slot adapter/renderer wrapper contract until the
+  upstream fixture, CMS preview path, and public renderer path all match for the
+  same block data and `ThemeTokenSpec`. Acceptance requires desktop and mobile
+  source parity, preview/public parity, tokenized smoke proving DOM/class
+  stability, and explicit exact/adapted status for every active provider block.
+  Do not use `sourceTransform`, fixture stripping, broad thresholds, generic
+  renderer fallback, arbitrary CMS layout controls, or new legacy theme
+  compatibility to make the tests pass.
 - Write a new architecture decision before starting any replacement product
   surface.
 - Revisit tenant provisioning, preview, approval, payment handoff, and publish
