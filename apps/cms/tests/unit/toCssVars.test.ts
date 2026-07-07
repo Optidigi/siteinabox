@@ -7,8 +7,8 @@ describe("toCssVars", () => {
     const css = toCssVars(undefined)
 
     expect(css).toContain(".rt-canvas{")
-    expect(css).toContain("--color-accent:#2563eb")
-    expect(css).toContain("--siab-accent-600:#2563eb")
+    expect(css).toContain("--color-accent:#4f46e5")
+    expect(css).toContain("--siab-accent-600:#4f46e5")
     expect(css).toContain("--siab-neutral-900:#111827")
     expect(css).not.toMatch(/--color-indigo-\d+:/)
     expect(css).not.toMatch(/--color-gray-\d+:/)

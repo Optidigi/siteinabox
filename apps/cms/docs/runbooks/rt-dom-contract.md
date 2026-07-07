@@ -133,8 +133,9 @@ theme presets do not globally redefine Tailwind `--color-gray-*` or
 `--color-indigo-*` variables. Active Tailwind Plus provider sources that do not
 include `dark:` utilities may be themed only through renderer-owned bridge rules
 for explicit semantic roles: ambient surfaces, ambient ink, accent affordances,
-borders, shape, density, and reviewed tokenized decoration. `bg-gray-900`
-remains a source-owned dark panel unless an explicit bridge says otherwise.
+borders, shape, non-default density, and reviewed tokenized decoration.
+`bg-gray-900` remains a source-owned dark panel unless an explicit bridge says
+otherwise.
 
 ### Implementation rule
 
@@ -145,10 +146,10 @@ the change.
 
 Do not add arbitrary block-level visual tokens, per-block class names, provider
 token override fields, or one-off color/font/radius/spacing controls. Fonts,
-colors, shape, mode, and section-padding density are global theme-schema
-settings. Block schemas may choose approved design variants, but all visual
-tuning must resolve through global theme tokens and renderer-owned class or
-provider bridge rules.
+colors, shape, mode, and non-default section-padding density are global
+theme-schema settings. Block schemas may choose approved design variants, but
+all visual tuning must resolve through global theme tokens and renderer-owned
+class or provider bridge rules.
 
 For Tailwind classes like `rounded-md`, KEEP them as fallback for the case where
 shape tokens are unavailable, but layer token-driven class rules on top

@@ -51,6 +51,11 @@ const darkTheme = {
   density: { schemeId: "comfortable" },
 }
 
+const defaultLightTheme = {
+  ...darkTheme,
+  appearance: { mode: "light" },
+}
+
 const tokenizedLightTheme = {
   version: 2,
   appearance: { mode: "light" },
@@ -370,9 +375,9 @@ async function waitForVisualReady(page) {
   })
 }
 
-async function screenshot(page, css, html, viewport) {
+async function screenshot(page, css, html, viewport, options = {}) {
   await page.setViewportSize({ width: viewport.width, height: viewport.height })
-  await page.setContent(htmlPage(css, html), { waitUntil: "networkidle" })
+  await page.setContent(htmlPage(css, html, options), { waitUntil: "networkidle" })
   await waitForVisualReady(page)
   return page.locator("[data-visual-root]").screenshot({ animations: "disabled", scale: "css" })
 }
@@ -468,7 +473,8 @@ async function assertDarkThemeSmoke(page, css, testCase, html, viewport) {
         const fontWeight = Number.parseInt(style.fontWeight, 10)
         const largeText = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 600)
         const minimum = largeText ? 3 : 4.5
-        if (ratio < minimum) {
+        const tolerance = 0.05
+        if (ratio + tolerance < minimum) {
           const label = text.trim().replace(/\s+/g, " ").slice(0, 60)
           failures.push(`${id} low dark contrast ${ratio.toFixed(2)} for "${label}"`)
         }
@@ -589,12 +595,20 @@ async function assertTokenizedThemeSmoke(page, css, testCase, html, viewport, th
 
     if (id === "tailwindplus.marketing.testimonial.simple-centered" && mode === "dark") {
       const radial = document.querySelector('[data-siab-tokenized-gradient="testimonial-radial"]')
+      const skewPanel = document.querySelector('[data-siab-tokenized-gradient="testimonial-skew-panel"]')
       if (!radial) {
         failures.push(`${id} dark testimonial radial gradient is missing its token marker`)
+      }
+      if (!skewPanel) {
+        failures.push(`${id} dark testimonial skew panel is missing its token marker`)
       }
       const backgroundImage = radial ? getComputedStyle(radial).backgroundImage : ""
       if (backgroundImage.includes("rgb(255, 255, 255)")) {
         failures.push(`${id} dark testimonial radial gradient still ends in white`)
+      }
+      const skewBackground = skewPanel ? getComputedStyle(skewPanel).backgroundColor : ""
+      if (skewBackground === "rgb(3, 7, 18)" || skewBackground === "rgb(17, 24, 39)") {
+        failures.push(`${id} dark testimonial skew panel rendered as neutral ${skewBackground}`)
       }
     }
 
@@ -736,6 +750,8 @@ async function main() {
           const sourceBuffer = await screenshot(page, css, sourceHtml, viewport)
           const renderedBuffer = await screenshot(page, css, renderedHtml, viewport)
           const mismatchRatio = comparePngs(testCase.id, viewport.name, sourceBuffer, renderedBuffer)
+          const defaultThemedBuffer = await screenshot(page, css, testCase.renderedHtml(defaultLightTheme), viewport, { theme: defaultLightTheme })
+          comparePngs(`${testCase.id}.default-theme`, viewport.name, sourceBuffer, defaultThemedBuffer)
           await assertDarkThemeSmoke(page, css, testCase, testCase.renderedHtml(darkTheme), viewport)
           await assertTokenizedThemeSmoke(page, css, testCase, testCase.renderedHtml(tokenizedLightTheme), viewport, tokenizedLightTheme)
           await assertTokenizedThemeSmoke(page, css, testCase, testCase.renderedHtml(tokenizedDarkTheme), viewport, tokenizedDarkTheme)

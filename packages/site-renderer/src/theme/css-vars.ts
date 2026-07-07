@@ -136,7 +136,7 @@ function providerThemeBridgeRules(
 
   const rules: string[] = []
   if (options.colors) rules.push(
-    `${fixedDarkZoneSelectors}{--color-tailwindplus-surface:#ffffff;--color-tailwindplus-card:#ffffff;--siab-neutral-50:#f9fafb;--siab-neutral-100:#f3f4f6;--siab-neutral-200:#e5e7eb;--siab-neutral-300:#d1d5db;--siab-neutral-400:#9ca3af;--siab-neutral-500:#6b7280;--siab-neutral-600:#4b5563;--siab-neutral-700:#374151;--siab-neutral-800:#1f2937;--siab-neutral-900:#111827;--siab-neutral-950:#030712}`,
+    `${fixedDarkZoneSelectors}{--color-bg:#ffffff;--color-card:#ffffff;--color-ink:#111827;--color-ink-muted:#4b5563;--color-tailwindplus-surface:#ffffff;--color-tailwindplus-card:#ffffff;--siab-neutral-50:#f9fafb;--siab-neutral-100:#f3f4f6;--siab-neutral-200:#e5e7eb;--siab-neutral-300:#d1d5db;--siab-neutral-400:#9ca3af;--siab-neutral-500:#6b7280;--siab-neutral-600:#4b5563;--siab-neutral-700:#374151;--siab-neutral-800:#1f2937;--siab-neutral-900:#111827;--siab-neutral-950:#030712}`,
     `${providerSurfaceRoots}{background-color:var(--color-tailwindplus-surface,var(--color-bg,#ffffff))}`,
     `${providerSurfaceDescendants}{background-color:var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff)))}`,
     `${rootsAndDescendants(["bg-white\\/60"])}{background-color:color-mix(in oklab,var(--color-tailwindplus-card,var(--color-card,var(--color-bg,#ffffff))) 60%,transparent)}`,
@@ -201,7 +201,8 @@ function providerThemeBridgeRules(
     `${classTokens(["fill-gray-900"])}{fill:var(--siab-neutral-900,var(--color-ink,#111827))}`,
     `${classTokens(["from-[#ff80b5]", "from-[#ff4694]"])}{--tw-gradient-from:var(--siab-accent-300,#a5b4fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
     `${classTokens(["to-[#9089fc]", "to-[#776fff]"])}{--tw-gradient-to:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
-    `${dataToken("data-siab-tokenized-gradient", "testimonial-radial")},${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-indigo-100),var(--color-tailwindplus-surface,var(--color-bg,#ffffff)))}`,
+    `${dataToken("data-siab-tokenized-gradient", "testimonial-radial")},${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-tailwindplus-testimonial-radial-from,var(--color-indigo-100)),var(--color-tailwindplus-testimonial-radial-to,var(--color-tailwindplus-surface,var(--color-bg,#ffffff))))}`,
+    `${dataToken("data-siab-tokenized-gradient", "testimonial-skew-panel")}{background-color:var(--color-tailwindplus-testimonial-panel,var(--color-tailwindplus-card,var(--color-bg,#ffffff)))}`,
     `${providerRootSelectors.map((selector) => `${selector}[data-provider-variant="tailwindplus.marketing.logo-cloud.simple-with-heading"] img[src*="-logo-gray-900.svg"]`).join(",")}{filter:var(--tailwindplus-logo-filter,none)}`,
   )
   if (options.fonts) rules.push(
@@ -245,6 +246,9 @@ export function themeToCssVars(
     set(parts, "--color-rule", mode.rule)
     set(parts, "--color-tailwindplus-surface", mode.surface)
     set(parts, "--color-tailwindplus-card", mode.surface)
+    set(parts, "--color-tailwindplus-testimonial-radial-from", mode.accent[100])
+    set(parts, "--color-tailwindplus-testimonial-radial-to", mode.surface)
+    set(parts, "--color-tailwindplus-testimonial-panel", mode.surface)
     for (const shade of ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const) {
       set(parts, `--siab-neutral-${shade}`, mode.neutral[shade])
       set(parts, `--siab-accent-${shade}`, mode.accent[shade])
@@ -253,6 +257,9 @@ export function themeToCssVars(
 
   writeMode(baseParts, resolved.light)
   writeMode(darkParts, resolved.dark)
+  set(darkParts, "--color-tailwindplus-testimonial-radial-from", `color-mix(in oklab,${resolved.dark.accent[300]} 28%,${resolved.dark.surface})`)
+  set(darkParts, "--color-tailwindplus-testimonial-radial-to", `color-mix(in oklab,${resolved.dark.accent[950]} 42%,${resolved.dark.surface})`)
+  set(darkParts, "--color-tailwindplus-testimonial-panel", `color-mix(in oklab,${resolved.dark.accent[950]} 32%,${resolved.dark.surface})`)
   set(darkParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
 
   set(baseParts, "--font-title", resolved.fonts.roles.display ?? resolved.fonts.roles.heading)
@@ -283,7 +290,7 @@ export function themeToCssVars(
   if (baseParts.length > 0) rules.push(`${baseSelector}{${baseParts.join(";")}}`)
   if (darkParts.length > 0) rules.push(`${darkSelector}{${darkParts.join(";")}}`)
   rules.push(`${baseSelector}{background-color:var(--color-bg,#ffffff);color:var(--color-ink,#111827)}`)
-  rules.push(...providerThemeBridgeRules(scope, { colors: true, fonts: true, density: true }))
+  rules.push(...providerThemeBridgeRules(scope, { colors: true, fonts: true, density: resolved.density.id !== "comfortable" }))
   const darkProviderSelectors = [
     `${darkSelector}:where([data-provider-block="tailwindplus"])`,
     `${darkSelector}:where([data-provider-chrome="tailwindplus"])`,

@@ -191,17 +191,21 @@ same renderer through CSS variables only; source/default parity checks verify
 renderer fidelity separately from user-facing tokenized output. The default
 preset set is the Tailwind-identity configuration: with those presets selected,
 provider source should compute like the Tailwind source unless an explicitly
-documented runtime bridge owns that semantic role.
+documented runtime bridge owns that semantic role. The `blue-professional`
+label maps to the Tailwind Plus source indigo ramp for identity parity; it is
+not a rewrite to Tailwind `blue-*` utilities. The default `comfortable` density
+does not rewrite provider section padding, while `compact` and `spacious` apply
+the finite section-padding bridge.
 
 Provider utility classes stay static and detectable. Tailwind owns its default
 palette variables and native `dark:` computation. The Tailwind Plus bridge does
 not globally rewrite Tailwind `--color-gray-*` or `--color-indigo-*` variables;
 it applies SIAB tokens only through explicit semantic role rules such as
 ambient surfaces, ambient ink, brand/accent affordances, borders, provider
-section density, and reviewed tokenized decoration. Provider roots use stable theme zones:
+non-default section density, and reviewed tokenized decoration. Provider roots use stable theme zones:
 `data-theme-zone="ambient"` for normal themeable sections and
 `data-theme-zone="fixed-dark"` for source dark panels that must remain
-coherent. Density is limited to provider section vertical padding in V1. Shape is a
+coherent. Non-default density is limited to provider section vertical padding in V1. Shape is a
 full Tailwind-like radius scale. The theme system does not expose arbitrary
 spacing, breakpoint, grid/flex, CSS, classes, or per-block layout controls.
 
@@ -268,9 +272,12 @@ Current runtime-compatible provider families and blocks:
   are optional editable slots because self-serve intake does not require remote
   generated media ingestion. The decorative radial gradient keeps the literal
   Tailwind arbitrary class from source and carries the stable
-  `data-siab-tokenized-gradient="testimonial-radial"` marker so the dark-mode
-  token bridge can replace the source `white` endpoint with the site surface
-  token.
+  `data-siab-tokenized-gradient="testimonial-radial"` marker. The skewed
+  ambient panel carries `data-siab-tokenized-gradient="testimonial-skew-panel"`.
+  In dark mode these markers use explicit testimonial ambient tokens so the
+  decoration remains accent-tinted instead of becoming a flat neutral surface.
+  Alternate color schemes still remap the accent ramp; the default
+  `blue-professional` preset preserves Tailwind Plus source colors.
 - `tailwindplus.marketing.stats.simple`, with legacy
   `tailwindPlusSimple` aliases still accepted. The active slot is exactly three `items`,
   each with editable `value` and `label`. Section `title`, `intro`, and item
@@ -391,8 +398,9 @@ compares source-visible DOM/classes/content; runtime-only hidden form controls,
 honeypots, analytics metadata, and status nodes are normalized or asserted in
 separate runtime tests. Dark-mode source adaptation is limited to explicit
 site-wide token bridge rules for ambient surfaces. Fixed-dark source islands
-keep source white/dark affordances, while ambient surfaces such as the
-testimonial radial gradient use stable source-scoped markers rather than
+pin source white/dark semantic aliases so ambient dark-mode variables cannot
+alter their rings, borders, or text. Ambient surfaces such as the testimonial
+radial gradient and skew panel use stable source-scoped markers rather than
 tenant-provided classes or per-block style tokens.
 
 ## Current Tailwind Plus Inventory Notes

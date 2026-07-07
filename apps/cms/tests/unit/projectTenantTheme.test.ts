@@ -26,7 +26,7 @@ describe("projectTenantTheme", () => {
 
     const written = await fs.readFile(path.join(tenantDir, "tenant-theme.css"), "utf8")
     expect(written).toContain(":root{")
-    expect(written).toContain("--color-accent:#2563eb")
+    expect(written).toContain("--color-accent:#4f46e5")
   })
 
   it("writes V2 Blue Professional default CSS when theme is null", async () => {
@@ -38,8 +38,8 @@ describe("projectTenantTheme", () => {
 
     const written = await fs.readFile(path.join(tenantDir, "tenant-theme.css"), "utf8")
     expect(written).toContain("html:root{")
-    expect(written).toContain("--color-accent:#2563eb")
-    expect(written).toContain("--siab-accent-600:#2563eb")
+    expect(written).toContain("--color-accent:#4f46e5")
+    expect(written).toContain("--siab-accent-600:#4f46e5")
     expect(written).not.toMatch(/--color-indigo-\d+:/)
   })
 

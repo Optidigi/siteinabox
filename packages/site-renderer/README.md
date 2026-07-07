@@ -39,6 +39,8 @@ Theme rendering is Tailwind-default first. The generated-site CSS wires
 Tailwind's native `dark:` variant to `[data-rt-mode="dark"]`, and Tailwind owns
 its default palette variables. The default SIAB presets (`blue-professional`,
 `clear-modern`, `soft`, `comfortable`) are the Tailwind-identity configuration.
-SIAB token overrides are applied only through explicit renderer-owned bridge
-roles such as accent affordances, ambient surfaces/ink, borders, fonts, shape,
-density, and reviewed tokenized decoration.
+`blue-professional` maps to the Tailwind Plus source indigo ramp, and
+`comfortable` leaves provider section padding untouched. SIAB token overrides
+are applied only through explicit renderer-owned bridge roles such as
+non-default accent schemes, ambient surfaces/ink, borders, fonts, shape,
+non-default density, and reviewed tokenized decoration.

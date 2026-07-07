@@ -688,10 +688,10 @@ describe("provider block runtime", () => {
       density: { schemeId: "comfortable" },
     })
 
-    expect(css).toContain("--color-accent:#2563eb")
-    expect(css).toContain("--siab-accent-600:#2563eb")
-    expect(css).toContain("--siab-accent-500:#3b82f6")
-    expect(css).toContain("--siab-accent-100:#dbeafe")
+    expect(css).toContain("--color-accent:#4f46e5")
+    expect(css).toContain("--siab-accent-600:#4f46e5")
+    expect(css).toContain("--siab-accent-500:#6366f1")
+    expect(css).toContain("--siab-accent-100:#e0e7ff")
     expect(css).toContain("--color-tailwindplus-surface:#ffffff")
     expect(css).not.toContain("--color-white:")
     expect(css).not.toMatch(/--color-gray-\d+:/)

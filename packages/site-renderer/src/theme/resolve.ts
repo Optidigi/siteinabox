@@ -135,8 +135,8 @@ export const colorSchemes = {
     id: "blue-professional",
     label: "Blue Professional",
     source: "tailwind",
-    light: { ...defaultLight, accent: blue },
-    dark: { ...defaultDark, accent: blue },
+    light: { ...defaultLight, accent: indigo },
+    dark: { ...defaultDark, accent: indigo },
   },
   "red-confident": {
     id: "red-confident",
