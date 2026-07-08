@@ -28,6 +28,7 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { PreviewDesktopThemeToolbar } from "@/components/preview/preview-desktop-theme-toolbar"
+import { ShineBorder } from "@/components/ui/shine-border"
 import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
@@ -501,7 +502,12 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6"
     >
-      <div className="pointer-events-auto grid w-full grid-cols-[auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
+      <div className="pointer-events-auto relative grid w-full grid-cols-[auto_1fr] items-center gap-1 overflow-hidden border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
+        <ShineBorder
+          borderWidth={1}
+          duration={10}
+          shineColor={["#2b2e32", "#a8abb2", "#edeef0", "#a8abb2", "#2b2e32"]}
+        />
         <PreviewDesktopThemeToolbar theme={theme} onThemeChange={onThemeChange} />
 
         <Separator orientation="vertical" className="mx-1 hidden h-8 md:block" />
