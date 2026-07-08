@@ -3,8 +3,15 @@ import * as React from "react"
 import type { FontSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { FontPreset } from "@/lib/theme/presets"
+import { MobilePickerOption } from "@/components/common/mobile-picker-option"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
+
+const FONT_GLYPH_PREVIEW: Record<FontSchemeId, { glyph: string; stack: string }> = {
+  "clear-modern": { glyph: "Aa", stack: "Inter, ui-sans-serif, system-ui, sans-serif" },
+  "classic-editorial": { glyph: "Gg", stack: "Georgia, Times New Roman, ui-serif, serif" },
+  "friendly-organic": { glyph: "Rr", stack: "Nunito, Avenir, Segoe UI, ui-sans-serif, sans-serif" },
+}
 
 export const FontPicker: React.FC<{
   fonts: FontPreset[]
@@ -16,26 +23,23 @@ export const FontPicker: React.FC<{
 
   if (layout === "glyph") {
     return (
-      <div className="flex gap-2">
+      <div className="flex justify-center gap-3">
         {fonts.map((preset) => {
           const isActive = activeId === preset.id
+          const preview = FONT_GLYPH_PREVIEW[preset.id]
           return (
-            <button
+            <MobilePickerOption
               key={preset.id}
-              type="button"
+              active={isActive}
               onClick={() => onChange({ schemeId: preset.id })}
-              aria-pressed={isActive}
-              aria-label={`Apply ${preset.label} font preset`}
-              className={cn(
-                "inline-flex size-12 items-center justify-center rounded-full border outline-none transition-all",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                isActive
-                  ? "border-primary bg-background text-foreground ring-2 ring-primary/35"
-                  : "border-border bg-muted/40 text-foreground hover:bg-accent/50",
-              )}
+              ariaLabel={`Apply ${preset.label} font preset`}
             >
-              <FontPresetGlyph font={preset.previewFont} />
-            </button>
+              <FontPresetGlyph
+                fontId={preset.id}
+                glyph={preview?.glyph ?? "Aa"}
+                stack={preview?.stack ?? preset.previewFont}
+              />
+            </MobilePickerOption>
           )
         })}
       </div>
@@ -132,17 +136,25 @@ function FontPresetLabel({
   )
 }
 
-function FontPresetGlyph({ font }: { font: string }) {
-  const fontValue = formatRuntimeCssValue(font)
+function FontPresetGlyph({
+  fontId,
+  glyph,
+  stack,
+}: {
+  fontId: FontSchemeId
+  glyph: string
+  stack: string
+}) {
+  const fontValue = formatRuntimeCssValue(stack)
   const glyphStyle = useCspStyleRule(
-    "font-picker-glyph",
+    `font-picker-glyph-${fontId}`,
     fontValue ? `font-family:${fontValue};` : null,
   )
   return (
     <>
       {glyphStyle.styleElement}
       <span className={cn(glyphStyle.className, "text-lg font-medium leading-none")} aria-hidden>
-        Aa
+        {glyph}
       </span>
     </>
   )

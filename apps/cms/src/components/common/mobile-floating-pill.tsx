@@ -28,6 +28,8 @@ export interface MobileFloatingPillProps {
   offset?: string
   /** Stable test/data attrs (`data-mobile-*`). */
   dataAttrs?: Record<string, string | undefined>
+  /** `theme` follows token background/foreground (for preview chrome wrappers). */
+  surface?: "inverted" | "theme"
 }
 
 /**
@@ -52,6 +54,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   visible = true,
   offset,
   dataAttrs,
+  surface = "inverted",
 }) => {
   const isLoading = variant === "loading"
   const tone = badgeTone ?? (variant === "destructive" ? "destructive" : "warning")
@@ -74,7 +77,9 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   const cspPosition = useCspStyleRule("mobile-floating-pill-position", positionRule)
 
   const variantClasses = cn(
-    "border bg-foreground text-background border-transparent shadow-lg",
+    surface === "theme"
+      ? "border border-border/60 bg-background text-foreground shadow-lg"
+      : "border bg-foreground text-background border-transparent shadow-lg",
     variant === "warning" && "border-2 border-amber-500/70 text-amber-400 dark:text-amber-500",
     variant === "destructive" && "text-destructive",
     variant === "loading" && "opacity-90 cursor-wait border-transparent",

@@ -4,7 +4,9 @@ import * as React from "react"
 import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
 import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
 import { PreviewMobileThemeBar } from "@/components/preview/preview-mobile-theme-bar"
+import { previewMobileChromeWrapperClass } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 function PreviewMobileNavPills({
@@ -26,6 +28,7 @@ function PreviewMobileNavPills({
     <>
       <MobileFloatingPill
         position="top-left"
+        surface="theme"
         icon={<SquarePen className="h-5 w-5" aria-hidden />}
         href={customerNavigationBlocked ? undefined : reviewHref}
         ariaLabel={t("reviewChanges")}
@@ -37,6 +40,7 @@ function PreviewMobileNavPills({
       {canCompleteOrder ? (
         <MobileFloatingPill
           position="top-right"
+          surface="theme"
           icon={<Rocket className="h-5 w-5" aria-hidden />}
           href={customerNavigationBlocked ? undefined : checkoutHref}
           ariaLabel={t("launchWebsite")}
@@ -47,6 +51,7 @@ function PreviewMobileNavPills({
       ) : paymentSatisfied ? (
         <MobileFloatingPill
           position="top-right"
+          surface="theme"
           icon={<CheckCircle2 className="h-5 w-5" aria-hidden />}
           ariaLabel={t("paymentComplete")}
           variant="default"
@@ -76,7 +81,7 @@ export function PreviewMobileChrome({
   customerNavigationBlocked: boolean
 }) {
   return (
-    <div className="md:hidden">
+    <div className={cn("md:hidden", previewMobileChromeWrapperClass(theme))}>
       <PreviewMobileNavPills
         canCompleteOrder={canCompleteOrder}
         paymentSatisfied={paymentSatisfied}

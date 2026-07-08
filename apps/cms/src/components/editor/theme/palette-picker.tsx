@@ -14,46 +14,65 @@ export const PalettePicker: React.FC<{
   value: ColorSchemeId | undefined
   mode: ThemeModeV2
   onChange: (next: { colors?: { schemeId: ColorSchemeId }; appearance?: { mode: ThemeModeV2 } }) => void
-}> = ({ palettes, value, mode, onChange }) => {
+  layout?: "default" | "mobile"
+}> = ({ palettes, value, mode, onChange, layout = "default" }) => {
   const t = useTranslations("editor")
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.colors.schemeId
   const activeMode = mode === "system" ? DEFAULT_THEME_TOKEN_SPEC.appearance.mode : mode
+  const swatchSize = layout === "mobile" ? "size-12" : "size-8"
+
+  const modeToggle = (
+    <div className={cn("flex items-center gap-1.5 text-muted-foreground", layout === "mobile" && "justify-center")}>
+      <Sun className={cn("size-3.5", activeMode === "light" && "text-foreground")} aria-hidden />
+      <Switch
+        checked={activeMode === "dark"}
+        onCheckedChange={(checked) => onChange({ appearance: { mode: checked ? "dark" : "light" } })}
+        aria-label={t("toggleDarkMode")}
+      />
+      <Moon className={cn("size-3.5", activeMode === "dark" && "text-foreground")} aria-hidden />
+    </div>
+  )
+
+  const swatches = (
+    <div className={cn("flex flex-wrap items-center gap-3", layout === "mobile" && "justify-center")}>
+      {palettes.map((preset) => (
+        <button
+          key={preset.id}
+          type="button"
+          onClick={() => onChange({ colors: { schemeId: preset.id } })}
+          aria-label={t("applyPalette", { label: preset.label })}
+          aria-pressed={activeId === preset.id}
+          className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <PaletteSwatch
+            accent={preset.swatch.accent}
+            surface={preset.swatch.surface}
+            className={cn(
+              "block rounded-full shadow-sm transition-all duration-200",
+              swatchSize,
+              activeId === preset.id
+                ? "ring-2 ring-ring ring-offset-2 ring-offset-popover"
+                : "ring-1 ring-inset ring-black/10 hover:shadow-md hover:scale-[1.04]",
+            )}
+          />
+        </button>
+      ))}
+    </div>
+  )
+
+  if (layout === "mobile") {
+    return (
+      <div className="flex w-full flex-col items-center gap-4">
+        {modeToggle}
+        {swatches}
+      </div>
+    )
+  }
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Sun className={cn("size-3.5", activeMode === "light" && "text-foreground")} aria-hidden />
-        <Switch
-          checked={activeMode === "dark"}
-          onCheckedChange={(checked) => onChange({ appearance: { mode: checked ? "dark" : "light" } })}
-          aria-label={t("toggleDarkMode")}
-        />
-        <Moon className={cn("size-3.5", activeMode === "dark" && "text-foreground")} aria-hidden />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        {palettes.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => onChange({ colors: { schemeId: preset.id } })}
-            aria-label={t("applyPalette", { label: preset.label })}
-            aria-pressed={activeId === preset.id}
-            className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <PaletteSwatch
-              accent={preset.swatch.accent}
-              surface={preset.swatch.surface}
-              className={cn(
-                "block size-8 rounded-full shadow-sm transition-all duration-200",
-                activeId === preset.id
-                  ? "ring-2 ring-ring ring-offset-1 ring-offset-popover"
-                  : "ring-1 ring-inset ring-black/10 hover:shadow-md hover:scale-[1.04]",
-              )}
-            />
-          </button>
-        ))}
-      </div>
+      {modeToggle}
+      {swatches}
     </div>
   )
 }

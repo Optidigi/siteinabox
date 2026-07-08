@@ -15,7 +15,7 @@ export interface MobileInlinePillProps {
 
 /**
  * Circular pill control for inline mobile toolbars (theme bar, etc.).
- * Matches the inverted MobileFloatingPill surface; active state rings the pill.
+ * Uses theme tokens so a parent `.dark` wrapper can invert chrome against the site.
  */
 export function MobileInlinePill({
   icon,
@@ -39,7 +39,7 @@ export function MobileInlinePill({
         "h-12 w-12 shrink-0 rounded-full border shadow-lg transition-all duration-200",
         active
           ? "border-primary bg-background text-foreground ring-2 ring-primary/35 hover:bg-background"
-          : "border-transparent bg-foreground text-background hover:bg-foreground/90",
+          : "border-border/60 bg-background text-foreground hover:bg-background/90",
       )}
     >
       {icon}

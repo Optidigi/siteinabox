@@ -1,7 +1,7 @@
 "use client"
 import * as React from "react"
 import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
-import { Button } from "@siteinabox/ui/components/button"
+import { MobilePickerOption } from "@/components/common/mobile-picker-option"
 import { AlignVerticalJustifyCenter, AlignVerticalSpaceAround, Circle, Rows3, Square, Squircle } from "lucide-react"
 import type { DensitySchemeId, ShapeSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
@@ -21,12 +21,41 @@ function densityIconFor(level: DensityPreset): React.ComponentType<{ className?:
   return null
 }
 
+function shapePillRadiusClass(id: ShapeSchemeId): string {
+  if (id === "rounded") return "rounded-full"
+  if (id === "sharp") return "rounded-sm"
+  return "rounded-xl"
+}
+
 export const ShapeControl: React.FC<{
   shapeId: ShapeSchemeId | undefined
   radiusLevels?: ShapePreset[]
   onChange: (next: { schemeId: ShapeSchemeId }) => void
-}> = ({ shapeId, radiusLevels = [], onChange }) => {
+  layout?: "toggle" | "pill"
+}> = ({ shapeId, radiusLevels = [], onChange, layout = "toggle" }) => {
   const activeId = shapeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId
+
+  if (layout === "pill") {
+    return (
+      <div className="flex justify-center gap-3">
+        {radiusLevels.map((level) => {
+          const Icon = iconFor(level)
+          const isActive = activeId === level.id
+          return (
+            <MobilePickerOption
+              key={level.id}
+              active={isActive}
+              onClick={() => onChange({ schemeId: level.id })}
+              ariaLabel={level.label}
+              className={shapePillRadiusClass(level.id)}
+            >
+              <Icon className="size-5" aria-hidden />
+            </MobilePickerOption>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <ToggleGroup
@@ -80,27 +109,18 @@ export const DensityControl: React.FC<{
 
   if (layout === "spacing") {
     return (
-      <div className="flex gap-2">
+      <div className="flex justify-center gap-3">
         {levels.map((level) => {
           const isActive = activeId === level.id
           return (
-            <Button
+            <MobilePickerOption
               key={level.id}
-              type="button"
-              variant="ghost"
-              size="icon"
+              active={isActive}
               onClick={() => onChange({ schemeId: level.id })}
-              aria-pressed={isActive}
-              aria-label={level.label}
-              className={cn(
-                "size-12 rounded-full border text-foreground",
-                isActive
-                  ? "border-primary bg-background ring-2 ring-primary/35 hover:bg-background"
-                  : "border-border bg-muted/40 hover:bg-accent/50",
-              )}
+              ariaLabel={level.label}
             >
               <DensitySpacingGlyph densityId={level.id} />
-            </Button>
+            </MobilePickerOption>
           )
         })}
       </div>
