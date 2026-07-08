@@ -649,10 +649,10 @@ export function PreviewCommandBar({
   return (
     <div
       data-siab-cms-sticky-chrome
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:px-6"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6"
     >
-      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:mx-auto md:max-w-4xl md:rounded-lg md:border-0 md:bg-background/90 md:px-3 md:py-2 md:shadow-2xl md:backdrop-blur-xl">
-        <span aria-hidden />
+      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:justify-center md:gap-2 md:rounded-lg md:border-0 md:bg-background/90 md:px-3 md:py-2 md:shadow-2xl md:backdrop-blur-xl">
+        <span className="md:hidden" aria-hidden />
 
         <PreviewThemeToolbar
           theme={theme}
