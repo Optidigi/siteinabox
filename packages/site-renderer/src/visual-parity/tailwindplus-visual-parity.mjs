@@ -607,8 +607,8 @@ async function assertTokenizedThemeSmoke(page, css, testCase, html, viewport, th
         failures.push(`${id} dark testimonial radial gradient still ends in white`)
       }
       const skewBackground = skewPanel ? getComputedStyle(skewPanel).backgroundColor : ""
-      if (skewBackground === "rgb(3, 7, 18)" || skewBackground === "rgb(17, 24, 39)") {
-        failures.push(`${id} dark testimonial skew panel rendered as neutral ${skewBackground}`)
+      if (skewBackground !== "rgb(17, 24, 39)") {
+        failures.push(`${id} dark testimonial skew panel expected Tailwind gray-900, got ${skewBackground}`)
       }
     }
 

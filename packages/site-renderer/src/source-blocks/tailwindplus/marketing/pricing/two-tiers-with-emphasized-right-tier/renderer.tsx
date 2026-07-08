@@ -52,7 +52,7 @@ export function TailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierRende
       <div aria-hidden="true" className="absolute inset-x-0 -top-3 -z-10 transform-gpu overflow-hidden px-36 blur-3xl">
         <div
           style={{ clipPath: gradientClipPath }}
-          className="mx-auto aspect-1155/678 w-288.75 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-30"
+          className="siab-source-clip-tailwindplus-glow mx-auto aspect-1155/678 w-288.75 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-30"
         />
       </div>
       <div className="mx-auto max-w-4xl text-center">

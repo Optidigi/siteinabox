@@ -40,13 +40,19 @@ Tailwind's native `dark:` variant to `[data-rt-mode="dark"]`, and Tailwind owns
 its default palette variables. The default SIAB presets (`blue-professional`,
 `clear-modern`, `soft`, `comfortable`) are the Tailwind-identity configuration.
 `blue-professional` maps to the Tailwind Plus source indigo ramp, and
-`comfortable` leaves provider section padding untouched. SIAB token overrides
-are applied only through explicit renderer-owned bridge roles such as
+`comfortable` leaves provider section padding untouched. In dark mode, that
+identity preset uses the canonical Tailwind dark counterpart values for source
+marketing surfaces, including `gray-900` surfaces and the native inverted gray
+text ramp. SIAB token overrides are applied only through explicit
+renderer-owned bridge roles such as
 non-default accent schemes, ambient surfaces/ink, borders, fonts, shape,
 non-default density, and reviewed tokenized decoration. Tailwind Plus source
 glow decoration keeps the source pink-to-violet glow pairs for the default
 identity preset, including dark mode, and uses the selected accent ramp only
-for non-default color schemes.
+for non-default color schemes. Source glow shapes keep the upstream inline
+`clip-path` and also use static renderer-owned clip-path classes so strict
+preview/live CSP contexts do not degrade the polygons into large blurred
+rectangles.
 
 Provider chrome remains structured site chrome, not page content. The shared
 renderer may compose compatible top chrome with the first provider section when

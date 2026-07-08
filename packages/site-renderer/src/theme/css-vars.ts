@@ -284,9 +284,9 @@ export function themeToCssVars(
 
   writeMode(baseParts, resolved.light)
   writeMode(darkParts, resolved.dark)
-  set(darkParts, "--color-tailwindplus-testimonial-radial-from", `color-mix(in oklab,${resolved.dark.accent[300]} 28%,${resolved.dark.surface})`)
-  set(darkParts, "--color-tailwindplus-testimonial-radial-to", `color-mix(in oklab,${resolved.dark.accent[950]} 42%,${resolved.dark.surface})`)
-  set(darkParts, "--color-tailwindplus-testimonial-panel", `color-mix(in oklab,${resolved.dark.accent[950]} 32%,${resolved.dark.surface})`)
+  set(darkParts, "--color-tailwindplus-testimonial-radial-from", `color-mix(in oklab,${resolved.dark.accent[500]} 48%,${resolved.dark.surface})`)
+  set(darkParts, "--color-tailwindplus-testimonial-radial-to", "transparent")
+  set(darkParts, "--color-tailwindplus-testimonial-panel", resolved.dark.surface)
   set(darkParts, "--tailwindplus-logo-filter", "invert(1) brightness(1.6) grayscale(1)")
 
   set(baseParts, "--font-title", resolved.fonts.roles.display ?? resolved.fonts.roles.heading)

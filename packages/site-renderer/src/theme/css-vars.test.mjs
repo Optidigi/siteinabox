@@ -44,15 +44,19 @@ test("themeToCssVars keeps Tailwind palette variables literal while bridging pro
 test("themeToCssVars applies dark role tokens without remapping source dark panels", () => {
   const css = themeToCssVars({ ...theme, appearance: { mode: "dark" } })
 
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-bg:#030712/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-bg:#111827/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-ink:#f9fafb/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-ink-muted:#d1d5db/)
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-surface:#030712/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-surface:#111827/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--siab-neutral-50:#111827/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--siab-neutral-100:#1f2937/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-source-glow-soft-from:#ff80b5/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-source-glow-soft-to:#9089fc/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-source-glow-vivid-from:#ff4694/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-source-glow-vivid-to:#776fff/)
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-testimonial-panel:color-mix\(in oklab,#1e1b4b 32%,#030712\)/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-testimonial-radial-from:color-mix\(in oklab,#6366f1 48%,#111827\)/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-testimonial-radial-to:transparent/)
+  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\]\{[^}]*--color-tailwindplus-testimonial-panel:#111827/)
   assert.match(css, /data-theme-zone="fixed-dark"/)
 })
 

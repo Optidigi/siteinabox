@@ -165,7 +165,7 @@ export function TailwindPlusMarketingNewsletterSideBySideWithDetailsRenderer({
         </div>
       </div>
       <div aria-hidden="true" className="absolute top-0 left-1/2 -z-10 -translate-x-1/2 blur-3xl xl:-top-6">
-        <div style={{ clipPath: gradientClipPath }} className="aspect-1155/678 w-288.75 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-30" />
+        <div style={{ clipPath: gradientClipPath }} className="siab-source-clip-tailwindplus-glow aspect-1155/678 w-288.75 bg-linear-to-tr from-[#ff80b5] to-[#9089fc] opacity-30" />
       </div>
     </section>
   )

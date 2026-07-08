@@ -190,19 +190,24 @@ default preset set: `blue-professional` colors, `clear-modern` fonts,
 same renderer through CSS variables only; source/default parity checks verify
 renderer fidelity separately from user-facing tokenized output. The default
 preset set is the Tailwind-identity configuration: with those presets selected,
-provider source should compute like the Tailwind source unless an explicitly
+provider source must compute like the Tailwind source unless an explicitly
 documented runtime bridge owns that semantic role. The `blue-professional`
 label maps to the Tailwind Plus source indigo ramp for identity parity; it is
-not a rewrite to Tailwind `blue-*` utilities. The default `comfortable` density
-does not rewrite provider section padding, while `compact` and `spacious` apply
-the finite section-padding bridge.
+not a rewrite to Tailwind `blue-*` utilities. The default dark identity uses
+the canonical Tailwind dark counterpart values for this source set, including
+`gray-900` ambient surfaces and the native inverted gray text ramp. The default
+`comfortable` density does not rewrite provider section padding, while
+`compact` and `spacious` apply the finite section-padding bridge.
 
 Provider utility classes stay static and detectable. Tailwind owns its default
 palette variables and native `dark:` computation. The Tailwind Plus bridge does
 not globally rewrite Tailwind `--color-gray-*` or `--color-indigo-*` variables;
 it applies SIAB tokens only through explicit semantic role rules such as
 ambient surfaces, ambient ink, brand/accent affordances, borders, provider
-non-default section density, and reviewed tokenized decoration. Provider roots use stable theme zones:
+non-default section density, and reviewed tokenized decoration. Source glow
+polygons are mirrored with static renderer-owned clip-path classes in addition
+to the upstream inline `clip-path`, so preview/live CSP policy cannot change the
+shape into a generic blurred blob. Provider roots use stable theme zones:
 `data-theme-zone="ambient"` for normal themeable sections and
 `data-theme-zone="fixed-dark"` for source dark panels that must remain
 coherent. Non-default density is limited to provider section vertical padding in V1. Shape is a

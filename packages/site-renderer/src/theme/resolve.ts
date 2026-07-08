@@ -23,10 +23,10 @@ const gray: ColorRamp = {
 }
 
 const grayDark: ColorRamp = {
-  50: gray[950] ?? "#030712",
-  100: gray[900],
-  200: gray[800],
-  300: gray[700],
+  50: gray[900],
+  100: gray[800],
+  200: gray[700],
+  300: gray[600],
   400: gray[500],
   500: gray[400],
   600: gray[300],
@@ -123,7 +123,7 @@ const humanistSansStack = "\"Avenir Next\", Avenir, Nunito, \"Segoe UI\", ui-san
 const defaultDark: ProviderColorSchemeMode = {
   neutral: grayDark,
   accent: indigo,
-  surface: gray[950] ?? "#030712",
+  surface: gray[900],
   ink: gray[50],
   muted: gray[300],
   rule: "rgba(255,255,255,0.12)",

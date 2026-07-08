@@ -59,10 +59,10 @@ export function TailwindPlusMarketingHeroWithStatsRenderer({
         })
         : image ? <img src={image.src} alt={image.alt ?? ""} className="absolute inset-0 -z-10 size-full object-cover object-right md:object-center" /> : null}
       <div aria-hidden="true" className="hidden sm:absolute sm:-top-10 sm:right-1/2 sm:-z-10 sm:mr-10 sm:block sm:transform-gpu sm:blur-3xl">
-        <div style={{ clipPath: gradientClipPath }} className="aspect-1097/845 w-274.25 bg-linear-to-tr from-[#ff4694] to-[#776fff] opacity-20" />
+        <div style={{ clipPath: gradientClipPath }} className="siab-source-clip-tailwindplus-glow aspect-1097/845 w-274.25 bg-linear-to-tr from-[#ff4694] to-[#776fff] opacity-20" />
       </div>
       <div aria-hidden="true" className="absolute -top-52 left-1/2 -z-10 -translate-x-1/2 transform-gpu blur-3xl sm:-top-112 sm:ml-16 sm:translate-x-0">
-        <div style={{ clipPath: gradientClipPath }} className="aspect-1097/845 w-274.25 bg-linear-to-tr from-[#ff4694] to-[#776fff] opacity-20" />
+        <div style={{ clipPath: gradientClipPath }} className="siab-source-clip-tailwindplus-glow aspect-1097/845 w-274.25 bg-linear-to-tr from-[#ff4694] to-[#776fff] opacity-20" />
       </div>
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">

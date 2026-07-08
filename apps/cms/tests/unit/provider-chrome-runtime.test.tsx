@@ -117,6 +117,7 @@ describe("provider chrome runtime", () => {
     expect(html).toContain(`data-provider-variant="${bannerVariant}"`)
     expect(html).toContain('data-source-backed-chrome="true"')
     expect(html).toContain(`data-source-variant="${bannerVariant}"`)
+    expect(html).toContain("siab-source-clip-tailwindplus-banner-glow")
 
     for (const className of extractFixtureClassNames(upstream)) {
       expect(html, `banner render missing upstream className: ${className}`).toContain(className)
@@ -202,5 +203,14 @@ describe("provider chrome runtime", () => {
     expect(selectors.length).toBeGreaterThan(0)
     expect(selectors).toContain(".site-chrome:not([data-provider-chrome])")
     expect(selectors.every((selector) => !selector.includes(".site-chrome {"))).toBe(true)
+  })
+
+  it("defines static source glow clip paths for CSP-safe renderer previews", () => {
+    const css = readFileSync(fromRepoRoot(stylesPath), "utf8")
+
+    expect(css).toContain(".siab-source-clip-tailwindplus-glow")
+    expect(css).toContain("clip-path: polygon(74.1% 44.1%")
+    expect(css).toContain(".siab-source-clip-tailwindplus-banner-glow")
+    expect(css).toContain("clip-path: polygon(74.8% 41.9%")
   })
 })

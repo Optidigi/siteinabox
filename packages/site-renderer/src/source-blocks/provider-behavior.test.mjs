@@ -175,8 +175,24 @@ test("hero simple-centered keeps source gradient classes while marking glow for 
   const html = renderDefinition(definition, clone(tailwindPlusMarketingHeroSimpleCenteredDemoSlots))
 
   assert.equal((html.match(/data-siab-tokenized-gradient="hero-glow"/g) ?? []).length, 2)
+  assert.equal((html.match(/siab-source-clip-tailwindplus-glow/g) ?? []).length, 2)
   assert.equal((html.match(/from-\[#ff80b5\]/g) ?? []).length, 2)
   assert.equal((html.match(/to-\[#9089fc\]/g) ?? []).length, 2)
+})
+
+test("source glow blocks carry renderer-owned clip-path classes for CSP-safe preview parity", () => {
+  const cases = [
+    ["tailwindplus.marketing.hero.with-stats", tailwindPlusMarketingHeroWithStatsDemoSlots, 2],
+    ["tailwindplus.marketing.contact.centered", tailwindPlusMarketingContactCenteredDemoSlots, 1],
+    ["tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier", tailwindPlusMarketingPricingTwoTiersWithEmphasizedRightTierDemoSlots, 1],
+    ["tailwindplus.marketing.newsletter.side-by-side-with-details", tailwindPlusMarketingNewsletterSideBySideWithDetailsDemoSlots, 1],
+  ]
+
+  for (const [id, block, expectedCount] of cases) {
+    const definition = providerBlockDefinitions.find((candidate) => candidate.id === id)
+    const html = renderDefinition(definition, clone(block))
+    assert.equal((html.match(/siab-source-clip-tailwindplus-glow/g) ?? []).length, expectedCount, id)
+  }
 })
 
 test("testimonial optional media validates and keeps the dark radial token marker", () => {
