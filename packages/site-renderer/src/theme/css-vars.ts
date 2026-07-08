@@ -203,8 +203,10 @@ function providerThemeBridgeRules(
     `${classToken("focus-visible:outline-gray-900", ":focus-visible")}{outline-color:var(--siab-neutral-900,var(--color-ink,#111827))}`,
     `${classTokens(["fill-gray-50"])}{fill:var(--siab-neutral-50,#f9fafb)}`,
     `${classTokens(["fill-gray-900"])}{fill:var(--siab-neutral-900,var(--color-ink,#111827))}`,
-    `${classTokens(["from-[#ff80b5]", "from-[#ff4694]"])}{--tw-gradient-from:var(--siab-accent-300,#a5b4fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
-    `${classTokens(["to-[#9089fc]", "to-[#776fff]"])}{--tw-gradient-to:var(--siab-accent-600,var(--color-accent,#4f46e5))}`,
+    `${classTokens(["from-[#ff80b5]"])}{--tw-gradient-from:var(--color-tailwindplus-source-glow-soft-from,#ff80b5);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
+    `${classTokens(["to-[#9089fc]"])}{--tw-gradient-to:var(--color-tailwindplus-source-glow-soft-to,#9089fc)}`,
+    `${classTokens(["from-[#ff4694]"])}{--tw-gradient-from:var(--color-tailwindplus-source-glow-vivid-from,#ff4694);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
+    `${classTokens(["to-[#776fff]"])}{--tw-gradient-to:var(--color-tailwindplus-source-glow-vivid-to,#776fff)}`,
     `${dataToken("data-siab-tokenized-gradient", "hero-glow")}{--tw-gradient-from:var(--color-tailwindplus-hero-glow-from,#ff80b5);--tw-gradient-to:var(--color-tailwindplus-hero-glow-to,#9089fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
     `${dataToken("data-siab-tokenized-gradient", "testimonial-radial")},${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-tailwindplus-testimonial-radial-from,var(--color-indigo-100)),var(--color-tailwindplus-testimonial-radial-to,var(--color-tailwindplus-surface,var(--color-bg,#ffffff))))}`,
     `${dataToken("data-siab-tokenized-gradient", "testimonial-skew-panel")}{background-color:var(--color-tailwindplus-testimonial-panel,var(--color-tailwindplus-card,var(--color-bg,#ffffff)))}`,
@@ -240,12 +242,19 @@ export function themeToCssVars(
   const darkParts: string[] = []
   const colorSchemeId = theme?.colors?.schemeId ?? "blue-professional"
   const usesNativeTailwindHeroGlow = colorSchemeId === "blue-professional"
-  const heroGlowFor = (mode: typeof resolved.light) => ({
-    from: usesNativeTailwindHeroGlow ? "#ff80b5" : mode.accent[300],
-    to: usesNativeTailwindHeroGlow ? "#9089fc" : mode.accent[600],
-  })
+  const sourceGlowFor = (mode: typeof resolved.light) => {
+    const soft = {
+      from: usesNativeTailwindHeroGlow ? "#ff80b5" : mode.accent[300],
+      to: usesNativeTailwindHeroGlow ? "#9089fc" : mode.accent[600],
+    }
+    const vivid = {
+      from: usesNativeTailwindHeroGlow ? "#ff4694" : mode.accent[400],
+      to: usesNativeTailwindHeroGlow ? "#776fff" : mode.accent[600],
+    }
+    return { soft, vivid }
+  }
   const writeMode = (parts: string[], mode: typeof resolved.light) => {
-    const heroGlow = heroGlowFor(mode)
+    const sourceGlow = sourceGlowFor(mode)
     set(parts, "--color-accent", mode.accent[600])
     set(parts, "--color-on-accent", mode.onAccent)
     set(parts, "--color-on-accent-500", onAccentColor(undefined, mode.accent[500]))
@@ -261,8 +270,12 @@ export function themeToCssVars(
     set(parts, "--color-tailwindplus-testimonial-radial-from", mode.accent[100])
     set(parts, "--color-tailwindplus-testimonial-radial-to", mode.surface)
     set(parts, "--color-tailwindplus-testimonial-panel", mode.surface)
-    set(parts, "--color-tailwindplus-hero-glow-from", heroGlow.from)
-    set(parts, "--color-tailwindplus-hero-glow-to", heroGlow.to)
+    set(parts, "--color-tailwindplus-source-glow-soft-from", sourceGlow.soft.from)
+    set(parts, "--color-tailwindplus-source-glow-soft-to", sourceGlow.soft.to)
+    set(parts, "--color-tailwindplus-source-glow-vivid-from", sourceGlow.vivid.from)
+    set(parts, "--color-tailwindplus-source-glow-vivid-to", sourceGlow.vivid.to)
+    set(parts, "--color-tailwindplus-hero-glow-from", sourceGlow.soft.from)
+    set(parts, "--color-tailwindplus-hero-glow-to", sourceGlow.soft.to)
     for (const shade of ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const) {
       set(parts, `--siab-neutral-${shade}`, mode.neutral[shade])
       set(parts, `--siab-accent-${shade}`, mode.accent[shade])

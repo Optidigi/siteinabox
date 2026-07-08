@@ -245,8 +245,8 @@ Current runtime-compatible provider families and blocks:
   and are rejected if generated or saved with values. The decorative hero glow
   keeps the literal Tailwind pink-to-violet classes and carries
   `data-siab-tokenized-gradient="hero-glow"`; the default identity preset keeps
-  the source pink-to-violet glow, while non-default color schemes compute the
-  glow from the selected accent ramp.
+  the source pink-to-violet glow in light and dark mode, while non-default color
+  schemes compute the glow from the selected accent ramp.
 - `tailwindplus.marketing.feature.with-product-screenshot`, with legacy
   `tailwindPlusWithProductScreenshot` aliases still accepted. The active slots are
   `title` and exactly three `features` with required title/description;
@@ -404,9 +404,12 @@ separate runtime tests. Dark-mode source adaptation is limited to explicit
 site-wide token bridge rules for ambient surfaces. Fixed-dark source islands
 pin source white/dark semantic aliases so ambient dark-mode variables cannot
 alter their rings, borders, or text. Ambient surfaces such as the testimonial
-radial gradient and skew panel, and reviewed decoration such as the hero glow,
-use stable source-scoped markers rather than tenant-provided classes or
-per-block style tokens.
+radial gradient and skew panel, and reviewed decoration such as source glow
+gradients, use stable source-scoped markers or source-class bridges rather than
+tenant-provided classes or per-block style tokens. Default identity preserves
+Tailwind's source pink-to-violet glow pairs in light and dark mode; non-default
+color schemes compute analogous light-to-strong glow pairs from the selected
+accent ramp.
 
 ## Current Tailwind Plus Inventory Notes
 
