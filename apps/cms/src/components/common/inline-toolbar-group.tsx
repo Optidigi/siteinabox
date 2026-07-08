@@ -14,7 +14,7 @@ export function InlineToolbarGroup({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-1",
+        "inline-flex items-center gap-0.5 rounded-lg border border-border/80 bg-card p-1 shadow-sm",
         className,
       )}
     >
@@ -51,8 +51,8 @@ export function InlineToolbarOption({
       className={cn(
         "size-8 shrink-0 rounded-md",
         active
-          ? "bg-accent text-accent-foreground shadow-sm hover:bg-accent"
-          : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
+          ? "bg-muted text-foreground shadow-sm hover:bg-muted"
+          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
         className,
       )}
     >

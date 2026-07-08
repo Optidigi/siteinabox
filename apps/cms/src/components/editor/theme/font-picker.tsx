@@ -182,8 +182,14 @@ function FontPresetGlyph({
         )}
         aria-hidden
       >
-        <span className="text-[0.72em]">A</span>
-        <span className="text-[0.92em]">a</span>
+        {resolvedSize === "segment" ? (
+          "A"
+        ) : (
+          <>
+            <span className="text-[0.72em]">A</span>
+            <span className="text-[0.92em]">a</span>
+          </>
+        )}
       </span>
     </>
   )
