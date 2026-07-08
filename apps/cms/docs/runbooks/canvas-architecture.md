@@ -50,11 +50,14 @@ same-origin renderer iframe is measured after `renderer.ready` and auto-sized to
 the rendered document height, so customer preview should not introduce a nested
 site scrollbar. Customer preview chrome is a fixed bottom toolbar with
 feedback/change request aligned left, theme controls centered, and launch/payment
-state aligned right. Desktop preview uses the full segmented theme toolbar
-(`Colours | Fonts | Shape | Density`) with popovers opening upward from the
-footer; phone preview keeps only compact Shuffle and Default icon buttons. The
-preview page keeps bottom padding so the footer does not cover the final
-rendered section when the customer scrolls to the end.
+state aligned right. Desktop preview renders that toolbar as a centered floating
+card above the viewport bottom; the review/change request action is icon-only,
+the theme toolbar stays centered, and launch/payment remains right-aligned.
+Desktop preview uses the full segmented theme toolbar (`Colours | Fonts | Shape
+| Density`) with popovers opening upward from the footer; phone preview keeps
+only compact Shuffle and Default icon buttons. The preview page keeps bottom
+padding so the footer does not cover the final rendered section when the
+customer scrolls to the end.
 
 ## Editor error boundary
 
