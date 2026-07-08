@@ -62,6 +62,7 @@ describe("preview customizer source contract", () => {
     expect(desktopToolbarSource).toContain("ShapeControl")
     expect(desktopToolbarSource).not.toContain("DensityControl")
     expect(desktopToolbarSource).toContain('layout="inline"')
+    expect(desktopToolbarSource).toContain('layout="segment"')
     expect(desktopToolbarSource).toContain("radiusLevels={RADIUS_PRESETS}")
     expect(desktopToolbarSource).not.toContain("DENSITY_PRESETS")
     expect(componentSource).not.toContain("<Dices")

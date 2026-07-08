@@ -39,6 +39,7 @@ describe("customer preview UI", () => {
     expect(desktopToolbar).toContain("ShapeControl")
     expect(desktopToolbar).not.toContain("DensityControl")
     expect(desktopToolbar).toContain('layout="inline"')
+    expect(desktopToolbar).toContain('layout="segment"')
     expect(customizer).toContain("grid-cols-[auto_1fr]")
     expect(customizer).toContain("pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6")
     expect(customizer).toContain("pointer-events-auto grid w-full grid-cols-[auto_1fr] items-center gap-1")

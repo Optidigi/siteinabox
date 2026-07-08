@@ -4,6 +4,7 @@ import type { FontSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { FontPreset } from "@/lib/theme/presets"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
+import { InlineToolbarGroup, InlineToolbarOption } from "@/components/common/inline-toolbar-group"
 import { formatFontFamilyCssValue, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 
@@ -17,10 +18,30 @@ export const FontPicker: React.FC<{
   fonts: FontPreset[]
   value: FontSchemeId | undefined
   onChange: (next: { schemeId: FontSchemeId }) => void
-  layout?: "list" | "row" | "glyph"
+  layout?: "list" | "row" | "glyph" | "segment"
   sizeClassName?: string
 }> = ({ fonts, value, onChange, layout = "list", sizeClassName }) => {
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId
+
+  if (layout === "segment") {
+    return (
+      <InlineToolbarGroup>
+        {fonts.map((preset) => {
+          const isActive = activeId === preset.id
+          return (
+            <InlineToolbarOption
+              key={preset.id}
+              active={isActive}
+              onClick={() => onChange({ schemeId: preset.id })}
+              ariaLabel={`Apply ${preset.label} font preset`}
+            >
+              <FontPresetGlyph fontId={preset.id} compact />
+            </InlineToolbarOption>
+          )
+        })}
+      </InlineToolbarGroup>
+    )
+  }
 
   if (layout === "glyph") {
     return (

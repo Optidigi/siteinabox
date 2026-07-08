@@ -9,7 +9,7 @@ import type { ColorPreset } from "@/lib/theme/presets"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { useTranslations } from "next-intl"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
-import { Separator } from "@siteinabox/ui/components/separator"
+import { InlineToolbarDivider, InlineToolbarGroup, InlineToolbarOption } from "@/components/common/inline-toolbar-group"
 
 export const PalettePicker: React.FC<{
   palettes: ColorPreset[]
@@ -108,11 +108,36 @@ export const PalettePicker: React.FC<{
 
   if (layout === "inline") {
     return (
-      <div className="flex items-center gap-1.5">
-        {modeToggle}
-        <Separator orientation="vertical" className="mx-0.5 h-8" />
-        {swatches}
-      </div>
+      <InlineToolbarGroup>
+        <div className="flex items-center gap-1 px-1 text-muted-foreground">
+          <Sun className={cn(iconSize, activeMode === "light" && "text-foreground")} aria-hidden />
+          <Switch
+            checked={activeMode === "dark"}
+            onCheckedChange={(checked) => onChange({ appearance: { mode: checked ? "dark" : "light" } })}
+            aria-label={t("toggleDarkMode")}
+          />
+          <Moon className={cn(iconSize, activeMode === "dark" && "text-foreground")} aria-hidden />
+        </div>
+        <InlineToolbarDivider />
+        <div className="flex items-center gap-1">
+          {palettes.map((preset) => (
+            <InlineToolbarOption
+              key={preset.id}
+              active={activeId === preset.id}
+              onClick={() => onChange({ colors: { schemeId: preset.id } })}
+              ariaLabel={t("applyPalette", { label: preset.label })}
+              className="overflow-hidden p-1"
+            >
+              <PaletteSwatch
+                accent={preset.swatch.accent}
+                surface={preset.swatch.surface}
+                fill="solid"
+                className="size-6 rounded-full"
+              />
+            </InlineToolbarOption>
+          ))}
+        </div>
+      </InlineToolbarGroup>
     )
   }
 

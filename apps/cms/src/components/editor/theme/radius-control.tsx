@@ -2,6 +2,7 @@
 import * as React from "react"
 import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
+import { InlineToolbarGroup, InlineToolbarOption } from "@/components/common/inline-toolbar-group"
 import { AlignVerticalJustifyCenter, AlignVerticalSpaceAround, Circle, Rows3, Square, Squircle } from "lucide-react"
 import type { DensitySchemeId, ShapeSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
@@ -25,10 +26,31 @@ export const ShapeControl: React.FC<{
   shapeId: ShapeSchemeId | undefined
   radiusLevels?: ShapePreset[]
   onChange: (next: { schemeId: ShapeSchemeId }) => void
-  layout?: "toggle" | "pill"
+  layout?: "toggle" | "pill" | "segment"
   sizeClassName?: string
 }> = ({ shapeId, radiusLevels = [], onChange, layout = "toggle", sizeClassName }) => {
   const activeId = shapeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId
+
+  if (layout === "segment") {
+    return (
+      <InlineToolbarGroup>
+        {radiusLevels.map((level) => {
+          const Icon = iconFor(level)
+          const isActive = activeId === level.id
+          return (
+            <InlineToolbarOption
+              key={level.id}
+              active={isActive}
+              onClick={() => onChange({ schemeId: level.id })}
+              ariaLabel={level.label}
+            >
+              <Icon className="size-3.5 stroke-[1.5]" aria-hidden />
+            </InlineToolbarOption>
+          )
+        })}
+      </InlineToolbarGroup>
+    )
+  }
 
   if (layout === "pill") {
     return (
