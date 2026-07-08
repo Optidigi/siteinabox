@@ -40,7 +40,7 @@ describe("customer preview UI", () => {
     expect(customizer).not.toContain("max-w-5xl")
     expect(customizer).toContain("hidden md:block")
     expect(customizer).toContain("md:hidden")
-    expect(customizer).toContain('size="lg"')
+    expect(customizer).not.toContain('size="lg"')
     expect(customizer).toContain("ring-1 ring-white/40")
     expect(customizer).toContain("md:bg-background/90")
     expect(customizer).toContain('ariaLabel={previewT("themeControls")}')

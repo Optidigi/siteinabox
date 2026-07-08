@@ -547,7 +547,6 @@ function PreviewThemeToolbar({
                 ariaLabel={previewT("themeControls")}
                 value={openSegment}
                 onValueChange={(next) => setOpenSegment(next)}
-                size="lg"
                 className="border-white/30 bg-card/95 shadow-sm ring-1 ring-white/40"
                 itemRef={(value, el) => {
                   segmentRefs.current[value] = el
