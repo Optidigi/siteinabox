@@ -5,6 +5,7 @@ import { AlignVerticalJustifyCenter, AlignVerticalSpaceAround, Circle, Rows3, Sq
 import type { DensitySchemeId, ShapeSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { DensityPreset, ShapePreset } from "@/lib/theme/presets"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 function iconFor(level: ShapePreset): React.ComponentType<{ className?: string }> {
   if (level.icon === "circle") return Circle
@@ -53,12 +54,56 @@ export const ShapeControl: React.FC<{
   )
 }
 
+function densitySpacingGapClass(id: DensitySchemeId): string {
+  if (id === "spacious") return "gap-3"
+  if (id === "compact") return "gap-0.5"
+  return "gap-1.5"
+}
+
+function DensitySpacingGlyph({ densityId }: { densityId: DensitySchemeId }) {
+  return (
+    <div className={cn("flex flex-col items-center", densitySpacingGapClass(densityId))} aria-hidden>
+      <span className="h-1.5 w-7 rounded-full bg-current opacity-80" />
+      <span className="h-1.5 w-7 rounded-full bg-current opacity-80" />
+    </div>
+  )
+}
+
 export const DensityControl: React.FC<{
   densityId: DensitySchemeId | undefined
   levels?: DensityPreset[]
   onChange: (next: { schemeId: DensitySchemeId }) => void
-}> = ({ densityId, levels = [], onChange }) => {
+  layout?: "toggle" | "spacing"
+}> = ({ densityId, levels = [], onChange, layout = "toggle" }) => {
   const activeId = densityId ?? DEFAULT_THEME_TOKEN_SPEC.density.schemeId
+
+  if (layout === "spacing") {
+    return (
+      <div className="flex gap-2">
+        {levels.map((level) => {
+          const isActive = activeId === level.id
+          return (
+            <button
+              key={level.id}
+              type="button"
+              onClick={() => onChange({ schemeId: level.id })}
+              aria-pressed={isActive}
+              aria-label={level.label}
+              className={cn(
+                "inline-flex size-12 items-center justify-center rounded-full border text-foreground outline-none transition-all",
+                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                isActive
+                  ? "border-primary bg-background ring-2 ring-primary/35"
+                  : "border-border bg-muted/40 hover:bg-accent/50",
+              )}
+            >
+              <DensitySpacingGlyph densityId={level.id} />
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <ToggleGroup

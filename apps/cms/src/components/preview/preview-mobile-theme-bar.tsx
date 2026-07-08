@@ -8,20 +8,29 @@ import {
   PopoverContent,
 } from "@siteinabox/ui/components/popover"
 import { Palette, SlidersHorizontal, SquareRoundCorner, Type } from "lucide-react"
-import { SegmentedPill } from "@/components/common/segmented-pill"
+import { MobileInlinePill } from "@/components/common/mobile-inline-pill"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
 import { DensityControl, ShapeControl } from "@/components/editor/theme/radius-control"
-import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
-import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 type Segment = "colors" | "fonts" | "shape" | "density"
 
 const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
+
+const THEME_PILL_ITEMS: Array<{
+  value: Segment
+  icon: React.ComponentType<{ className?: string }>
+  labelKey: "colourPalette" | "fontPairings" | "cornerRadius" | "spacingDensity"
+}> = [
+  { value: "colors", icon: Palette, labelKey: "colourPalette" },
+  { value: "fonts", icon: Type, labelKey: "fontPairings" },
+  { value: "shape", icon: SquareRoundCorner, labelKey: "cornerRadius" },
+  { value: "density", icon: SlidersHorizontal, labelKey: "spacingDensity" },
+]
 
 export function PreviewMobileThemeBar({
   theme,
@@ -61,30 +70,30 @@ export function PreviewMobileThemeBar({
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-30 flex justify-center md:hidden">
       <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
         <PopoverAnchor asChild>
-          <div className="pointer-events-auto flex justify-center">
-            <div className={cn(FLOATING_PILL_CLASS)}>
-              <SegmentedPill<Segment>
-                ariaLabel={previewT("themeControls")}
-                value={openSegment}
-                labelBreakpoint="md"
-                onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}
-                itemRef={(value, el) => {
+          <div
+            role="group"
+            aria-label={previewT("themeControls")}
+            className="pointer-events-auto flex items-center gap-2"
+          >
+            {THEME_PILL_ITEMS.map(({ value, icon: Icon, labelKey }) => (
+              <MobileInlinePill
+                key={value}
+                icon={<Icon className="size-5" aria-hidden />}
+                ariaLabel={t(labelKey)}
+                active={openSegment === value}
+                onClick={() => setOpenSegment((current) => (current === value ? null : value))}
+                buttonRef={(el) => {
                   segmentRefs.current[value] = el
                 }}
-                items={[
-                  { value: "colors", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
-                  { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
-                  { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
-                  { value: "density", label: t("density"), icon: SlidersHorizontal, ariaLabel: t("spacingDensity") },
-                ]}
+                dataAttrs={{ "data-mobile-preview-theme-pill": value }}
               />
-            </div>
+            ))}
           </div>
         </PopoverAnchor>
         <PopoverContent
           side="top"
           align="center"
-          sideOffset={8}
+          sideOffset={12}
           className="w-auto max-w-[calc(100vw-2rem)] rounded-md border border-border/40 bg-card/95 p-3 shadow-md backdrop-blur-sm"
           onPointerDownOutside={() => setOpenSegment(null)}
           onFocusOutside={() => setOpenSegment(null)}
@@ -109,7 +118,7 @@ export function PreviewMobileThemeBar({
             <FontPicker
               fonts={FONT_PRESETS}
               value={theme?.fonts?.schemeId}
-              layout="row"
+              layout="glyph"
               onChange={(next) => handleUpdate({ fonts: next })}
             />
           )}
@@ -124,6 +133,7 @@ export function PreviewMobileThemeBar({
             <DensityControl
               densityId={theme?.density?.schemeId}
               levels={DENSITY_PRESETS}
+              layout="spacing"
               onChange={(next) => handleUpdate({ density: next })}
             />
           )}
