@@ -29,7 +29,12 @@ describe("preview mobile chrome", () => {
     expect(tone).toContain("preview-mobile-chrome-light")
 
     expect(themeBar).toContain("MobileInlinePill")
-    expect(themeBar).toContain("justify-between")
+    expect(themeBar).toContain("justify-center gap-3")
+    expect(themeBar).not.toContain("justify-between")
+    expect(themeBar).toContain("pointer-events-none absolute bottom-0 left-1/2 h-px w-px")
+    const popoverAnchorBlock = themeBar.match(/<PopoverAnchor[\s\S]*?<\/PopoverAnchor>/)?.[0] ?? ""
+    expect(popoverAnchorBlock).not.toContain("MobileInlinePill")
+    expect(themeBar).toContain("isThemePillTarget")
     expect(themeBar).toContain("PREVIEW_MOBILE_CHROME_INSET")
     expect(themeBar).toContain("data-mobile-preview-theme-pill")
     expect(themeBar).toContain("PalettePicker")
@@ -46,6 +51,5 @@ describe("preview mobile chrome", () => {
     expect(themeBar).toContain("md:hidden")
     expect(themeBar).toContain("siab:preview-theme-toolbar-close")
     expect(themeBar).toContain("previewMobileChromeToneClass")
-    expect(themeBar).toContain("ignorePopoverCloseRef")
   })
 })

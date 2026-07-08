@@ -48,7 +48,6 @@ export function PreviewMobileThemeBar({
   const t = useTranslations("editor")
   const previewT = useTranslations("preview")
   const [openSegment, setOpenSegment] = React.useState<Segment | null>(null)
-  const ignorePopoverCloseRef = React.useRef(false)
   const lastOpenSegmentRef = React.useRef<Segment | null>(null)
   const segmentRefs = React.useRef<Record<Segment, HTMLButtonElement | null>>({
     colors: null,
@@ -73,6 +72,10 @@ export function PreviewMobileThemeBar({
     )
   }
 
+  function isThemePillTarget(target: EventTarget | null): boolean {
+    return target instanceof Element && target.closest("[data-mobile-preview-theme-pill]") != null
+  }
+
   return (
     <div
       className={cn(
@@ -83,44 +86,37 @@ export function PreviewMobileThemeBar({
       <Popover
         open={openSegment != null}
         onOpenChange={(open) => {
-          if (!open) {
-            if (ignorePopoverCloseRef.current) {
-              ignorePopoverCloseRef.current = false
-              return
-            }
-            setOpenSegment(null)
-          }
+          if (!open) setOpenSegment(null)
         }}
       >
-        <PopoverAnchor asChild>
-          <div
-            role="group"
-            aria-label={previewT("themeControls")}
-            className="pointer-events-auto flex w-full items-center justify-between"
-          >
-            {THEME_PILL_ITEMS.map(({ value, icon: Icon, labelKey }) => (
-              <MobileInlinePill
-                key={value}
-                icon={<Icon className="size-5" aria-hidden />}
-                ariaLabel={t(labelKey)}
-                active={openSegment === value}
-                onClick={() =>
-                  setOpenSegment((current) => {
-                    if (current !== null && current !== value) {
-                      ignorePopoverCloseRef.current = true
-                    }
-                    return current === value ? null : value
-                  })
-                }
-                buttonRef={(el) => {
-                  segmentRefs.current[value] = el
-                }}
-                dataAttrs={{ "data-mobile-preview-theme-pill": value }}
-                sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
-              />
-            ))}
-          </div>
-        </PopoverAnchor>
+        <div
+          role="group"
+          aria-label={previewT("themeControls")}
+          className="pointer-events-auto relative flex items-center justify-center gap-3"
+        >
+          <PopoverAnchor asChild>
+            <div
+              className="pointer-events-none absolute bottom-0 left-1/2 h-px w-px -translate-x-1/2"
+              aria-hidden
+            />
+          </PopoverAnchor>
+          {THEME_PILL_ITEMS.map(({ value, icon: Icon, labelKey }) => (
+            <MobileInlinePill
+              key={value}
+              icon={<Icon className="size-5" aria-hidden />}
+              ariaLabel={t(labelKey)}
+              active={openSegment === value}
+              onClick={() =>
+                setOpenSegment((current) => (current === value ? null : value))
+              }
+              buttonRef={(el) => {
+                segmentRefs.current[value] = el
+              }}
+              dataAttrs={{ "data-mobile-preview-theme-pill": value }}
+              sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
+            />
+          ))}
+        </div>
         <PopoverContent
           side="top"
           align="center"
@@ -130,8 +126,20 @@ export function PreviewMobileThemeBar({
             "w-[calc(100vw-1.5rem)] max-w-none",
             "rounded-2xl border border-border/50 bg-popover p-4 text-popover-foreground shadow-xl",
           )}
-          onPointerDownOutside={() => setOpenSegment(null)}
-          onFocusOutside={() => setOpenSegment(null)}
+          onPointerDownOutside={(e) => {
+            if (isThemePillTarget(e.target)) {
+              e.preventDefault()
+              return
+            }
+            setOpenSegment(null)
+          }}
+          onFocusOutside={(e) => {
+            if (isThemePillTarget(e.target)) {
+              e.preventDefault()
+              return
+            }
+            setOpenSegment(null)
+          }}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onCloseAutoFocus={(e) => {
             const target = lastOpenSegmentRef.current
@@ -141,7 +149,7 @@ export function PreviewMobileThemeBar({
             }
           }}
         >
-          <div className="flex w-full justify-center">
+          <div key={openSegment ?? "closed"} className="flex w-full justify-center">
             {openSegment === "colors" && (
               <PalettePicker
                 palettes={PALETTE_PRESETS}
