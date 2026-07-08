@@ -38,6 +38,7 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
+const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
 type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
 type PreviewThemeSegment = "colors" | "fonts" | "shape" | "density"
 
@@ -298,6 +299,7 @@ export function PreviewCustomizer({
               settings={settings}
               theme={rendererTheme}
               revisionRef={frameRevisionRef}
+              onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}
             />
           ) : (
             <div className="flex min-h-[60dvh] items-center justify-center px-6 text-center text-muted-foreground">
@@ -331,6 +333,7 @@ function PreviewRendererFrame({
   settings,
   theme,
   revisionRef,
+  onFrameInteraction,
 }: {
   src: string
   title: string
@@ -339,6 +342,7 @@ function PreviewRendererFrame({
   settings: SiteSettings
   theme: ReturnType<typeof cmsThemeToRendererTheme>
   revisionRef: React.MutableRefObject<number>
+  onFrameInteraction: () => void
 }) {
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const [ready, setReady] = React.useState(false)
@@ -457,6 +461,8 @@ function PreviewRendererFrame({
         className={cn(iframeAutoHeight.className, "block min-h-dvh w-full border-0 bg-white")}
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-renderer-frame
+        onFocus={onFrameInteraction}
+        onPointerDown={onFrameInteraction}
       />
     </>
   )
@@ -502,6 +508,12 @@ function PreviewThemeToolbar({
     if (openSegment) lastOpenSegmentRef.current = openSegment
   }, [openSegment])
 
+  React.useEffect(() => {
+    const close = () => setOpenSegment(null)
+    window.addEventListener(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT, close)
+    return () => window.removeEventListener(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT, close)
+  }, [])
+
   function handleUpdate(partial: Partial<ThemeTokens>) {
     onThemeChange((current) => normalizeThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens))
   }
@@ -546,7 +558,7 @@ function PreviewThemeToolbar({
               <SegmentedPill<PreviewThemeSegment>
                 ariaLabel={previewT("themeControls")}
                 value={openSegment}
-                onValueChange={(next) => setOpenSegment(next)}
+                onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}
                 className="h-12 border-0 bg-card/95 shadow-none md:h-9"
                 itemRef={(value, el) => {
                   segmentRefs.current[value] = el

@@ -15,6 +15,10 @@ describe("preview customizer source contract", () => {
 
     expect(componentSource).toContain("/renderer-frame/preview/")
     expect(componentSource).toContain("data-siab-renderer-frame")
+    expect(componentSource).toContain('const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"')
+    expect(componentSource).toContain("onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}")
+    expect(componentSource).toContain("onFocus={onFrameInteraction}")
+    expect(componentSource).toContain("onPointerDown={onFrameInteraction}")
     expect(componentSource).toMatch(/<iframe\b/i)
     expect(componentSource.includes("@/components/editor/canvas/CanvasMode")).toBe(false)
     expect(componentSource.includes("<CanvasMode")).toBe(false)
@@ -46,6 +50,7 @@ describe("preview customizer source contract", () => {
     expect(componentSource).not.toContain("md:max-w-4xl")
     expect(componentSource).not.toContain("max-w-5xl")
     expect(componentSource).toContain("<SegmentedPill<PreviewThemeSegment>")
+    expect(componentSource).toContain("onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}")
     expect(componentSource).toContain("PalettePicker")
     expect(componentSource).toContain("FontPicker")
     expect(componentSource).toContain("ShapeControl")

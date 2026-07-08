@@ -143,7 +143,7 @@ export function ThemeBar({
                 <SegmentedPill<Segment>
                   ariaLabel={t("themeControls")}
                   value={openSegment}
-                  onValueChange={(next) => setOpenSegment(next)}
+                  onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}
                   size="lg"
                   itemRef={(value, el) => {
                     segmentRefs.current[value] = el

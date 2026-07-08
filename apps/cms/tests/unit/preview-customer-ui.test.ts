@@ -11,6 +11,10 @@ describe("customer preview UI", () => {
 
     expect(customizer.includes('view: "preview"')).toBe(false)
     expect(customizer).toContain("data-siab-renderer-frame")
+    expect(customizer).toContain('const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"')
+    expect(customizer).toContain("onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}")
+    expect(customizer).toContain("onFocus={onFrameInteraction}")
+    expect(customizer).toContain("onPointerDown={onFrameInteraction}")
     expect(customizer).toContain("/renderer-frame/preview/")
     expect(customizer.includes('view="preview"')).toBe(false)
     expect(customizer.includes("<CanvasMode")).toBe(false)
@@ -58,6 +62,7 @@ describe("customer preview UI", () => {
     expect(customizer).toContain("side=\"top\"")
     expect(customizer).toContain("onPointerDownOutside={() => setOpenSegment(null)}")
     expect(customizer).toContain("onFocusOutside={() => setOpenSegment(null)}")
+    expect(customizer).toContain("onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}")
     expect(customizer).toContain('className="w-full pb-32"')
     expect(customizer).toContain("preview-renderer-frame-auto-height")
     expect(customizer).toContain("measurePreviewFrameDocumentHeight")
