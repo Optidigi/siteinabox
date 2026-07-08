@@ -4,8 +4,14 @@ import type { FontSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { FontPreset } from "@/lib/theme/presets"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
-import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { formatFontFamilyCssValue, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
+
+const FONT_GLYPH_PREVIEW_FAMILIES: Record<FontSchemeId, string> = {
+  "clear-modern": '"Inter Variable", Inter, var(--font-sans), ui-sans-serif, system-ui, sans-serif',
+  "classic-editorial": '"Fraunces Variable", Georgia, ui-serif, serif',
+  "friendly-organic": 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',
+}
 
 export const FontPicker: React.FC<{
   fonts: FontPreset[]
@@ -29,7 +35,7 @@ export const FontPicker: React.FC<{
               ariaLabel={`Apply ${preset.label} font preset`}
               sizeClassName={sizeClassName}
             >
-              <FontPresetGlyph fontId={preset.id} font={preset.previewFont} />
+              <FontPresetGlyph fontId={preset.id} compact={sizeClassName === "size-8"} />
             </MobilePickerOption>
           )
         })}
@@ -106,7 +112,7 @@ function FontPresetLabel({
   label: string
   compact?: boolean
 }) {
-  const fontValue = formatRuntimeCssValue(font)
+  const fontValue = formatFontFamilyCssValue(font) ?? formatRuntimeCssValue(font)
   const labelStyle = useCspStyleRule(
     "font-picker-label",
     fontValue ? `font-family:${fontValue};` : null,
@@ -127,8 +133,8 @@ function FontPresetLabel({
   )
 }
 
-function FontPresetGlyph({ fontId, font }: { fontId: FontSchemeId; font: string }) {
-  const fontValue = formatRuntimeCssValue(font)
+function FontPresetGlyph({ fontId, compact = false }: { fontId: FontSchemeId; compact?: boolean }) {
+  const fontValue = formatFontFamilyCssValue(FONT_GLYPH_PREVIEW_FAMILIES[fontId])
   const glyphStyle = useCspStyleRule(
     `font-picker-glyph-${fontId}`,
     fontValue ? `font-family:${fontValue};` : null,
@@ -136,8 +142,12 @@ function FontPresetGlyph({ fontId, font }: { fontId: FontSchemeId; font: string 
   return (
     <>
       {glyphStyle.styleElement}
-      <span className={cn(glyphStyle.className, "text-lg font-medium leading-none")} aria-hidden>
-        Aa
+      <span
+        className={cn(glyphStyle.className, "inline-flex items-baseline leading-none", compact ? "text-sm" : "text-lg")}
+        aria-hidden
+      >
+        <span className="text-[0.72em]">A</span>
+        <span className="text-[0.92em]">a</span>
       </span>
     </>
   )

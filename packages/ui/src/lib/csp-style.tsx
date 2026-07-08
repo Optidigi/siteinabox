@@ -17,6 +17,13 @@ export function formatRuntimeCssValue(value: string | null | undefined): string 
   return next
 }
 
+export function formatFontFamilyCssValue(value: string | null | undefined): string | null {
+  const next = value?.trim()
+  if (!next || next === "undefined") return null
+  if (!/^[a-zA-Z0-9\s.,()+%_\-'"\\]+$/.test(next)) return null
+  return next
+}
+
 export function formatCssUrl(value: string | null | undefined): string | null {
   const next = value?.trim()
   if (!next) return null

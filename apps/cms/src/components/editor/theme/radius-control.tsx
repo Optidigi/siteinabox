@@ -21,12 +21,6 @@ function densityIconFor(level: DensityPreset): React.ComponentType<{ className?:
   return null
 }
 
-function shapePillRadiusClass(id: ShapeSchemeId): string {
-  if (id === "rounded") return "rounded-full"
-  if (id === "sharp") return "rounded-sm"
-  return "rounded-xl"
-}
-
 export const ShapeControl: React.FC<{
   shapeId: ShapeSchemeId | undefined
   radiusLevels?: ShapePreset[]
@@ -49,9 +43,8 @@ export const ShapeControl: React.FC<{
               onClick={() => onChange({ schemeId: level.id })}
               ariaLabel={level.label}
               sizeClassName={sizeClassName}
-              className={shapePillRadiusClass(level.id)}
             >
-              <Icon className="size-5" aria-hidden />
+              <Icon className={sizeClassName === "size-8" ? "size-3.5 stroke-[1.5]" : "size-5"} aria-hidden />
             </MobilePickerOption>
           )
         })}
@@ -86,21 +79,6 @@ export const ShapeControl: React.FC<{
   )
 }
 
-function densitySpacingGapClass(id: DensitySchemeId): string {
-  if (id === "spacious") return "gap-3"
-  if (id === "compact") return "gap-0.5"
-  return "gap-1.5"
-}
-
-function DensitySpacingGlyph({ densityId }: { densityId: DensitySchemeId }) {
-  return (
-    <div className={cn("flex flex-col items-center", densitySpacingGapClass(densityId))} aria-hidden>
-      <span className="h-1.5 w-7 rounded-full bg-current opacity-80" />
-      <span className="h-1.5 w-7 rounded-full bg-current opacity-80" />
-    </div>
-  )
-}
-
 export const DensityControl: React.FC<{
   densityId: DensitySchemeId | undefined
   levels?: DensityPreset[]
@@ -114,6 +92,7 @@ export const DensityControl: React.FC<{
     return (
       <div className={cn("flex justify-center", sizeClassName === "size-8" ? "gap-1.5" : "gap-3")}>
         {levels.map((level) => {
+          const Icon = densityIconFor(level)
           const isActive = activeId === level.id
           return (
             <MobilePickerOption
@@ -123,7 +102,11 @@ export const DensityControl: React.FC<{
               ariaLabel={level.label}
               sizeClassName={sizeClassName}
             >
-              <DensitySpacingGlyph densityId={level.id} />
+              {Icon ? (
+                <Icon className={sizeClassName === "size-8" ? "size-3.5 stroke-[1.5]" : "size-4"} aria-hidden />
+              ) : (
+                level.label
+              )}
             </MobilePickerOption>
           )
         })}

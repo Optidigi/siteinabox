@@ -3,7 +3,7 @@ import * as React from "react"
 import { render, screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 import { CspNonceProvider } from "@siteinabox/ui/lib/csp-nonce"
-import { formatCssColorValue, formatCssPx, formatCssUrl, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { formatCssColorValue, formatCssPx, formatCssUrl, formatFontFamilyCssValue, formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 
 function StyleProbe({ declarations }: { declarations?: string | null }) {
   const { className, styleElement } = useCspStyleRule("probe", declarations)
@@ -27,6 +27,14 @@ describe("CSP runtime style helper", () => {
     expect(formatRuntimeCssValue("transform 250ms cubic-bezier(0.25, 1, 0.5, 1)")).toBe("transform 250ms cubic-bezier(0.25, 1, 0.5, 1)")
     expect(formatRuntimeCssValue("left:0")).toBeNull()
     expect(formatRuntimeCssValue("translateX(1px);color:red")).toBeNull()
+  })
+
+  it("accepts quoted font-family stacks for picker glyphs", () => {
+    expect(formatFontFamilyCssValue('"Fraunces Variable", Georgia, serif')).toBe('"Fraunces Variable", Georgia, serif')
+    expect(formatFontFamilyCssValue('ui-sans-serif, system-ui, "Segoe UI", sans-serif')).toBe(
+      'ui-sans-serif, system-ui, "Segoe UI", sans-serif',
+    )
+    expect(formatFontFamilyCssValue('font-family:Inter')).toBeNull()
   })
 
   it("escapes urls for generated CSS background rules", () => {

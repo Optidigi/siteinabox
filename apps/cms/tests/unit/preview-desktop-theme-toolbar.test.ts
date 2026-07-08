@@ -12,6 +12,8 @@ describe("preview desktop theme toolbar", () => {
 
     expect(toolbar).toContain("PreviewDesktopThemeToolbar")
     expect(toolbar).toContain('layout="inline"')
+    expect(read("src/components/editor/theme/palette-picker.tsx")).toContain('layout === "inline"')
+    expect(read("src/components/editor/theme/palette-picker.tsx")).toContain('<Separator orientation="vertical"')
     expect(toolbar).toContain('layout="pill"')
     expect(toolbar).toContain('layout="glyph"')
     expect(toolbar).toContain('layout="spacing"')
@@ -22,7 +24,8 @@ describe("preview desktop theme toolbar", () => {
     expect(toolbar).toContain("Separator")
     expect(toolbar).toContain("PREVIEW_DESKTOP_INLINE_CONTROL_SIZE")
     expect(toolbar).toContain("hidden md:inline-flex")
-    expect(toolbar).not.toContain("Popover")
+    expect(read("src/components/editor/theme/radius-control.tsx")).not.toContain("DensitySpacingGlyph")
+    expect(read("src/components/editor/theme/font-picker.tsx")).toContain("FONT_GLYPH_PREVIEW_FAMILIES")
 
     expect(customizer).toContain("PreviewDesktopThemeToolbar")
     expect(customizer).not.toContain("PreviewThemeToolbar")

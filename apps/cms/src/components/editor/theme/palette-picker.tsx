@@ -9,6 +9,7 @@ import type { ColorPreset } from "@/lib/theme/presets"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { useTranslations } from "next-intl"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
+import { Separator } from "@siteinabox/ui/components/separator"
 
 export const PalettePicker: React.FC<{
   palettes: ColorPreset[]
@@ -100,6 +101,16 @@ export const PalettePicker: React.FC<{
     return (
       <div className="flex w-full flex-col items-center gap-4">
         {modeToggle}
+        {swatches}
+      </div>
+    )
+  }
+
+  if (layout === "inline") {
+    return (
+      <div className="flex items-center gap-1.5">
+        {modeToggle}
+        <Separator orientation="vertical" className="mx-0.5 h-8" />
         {swatches}
       </div>
     )
