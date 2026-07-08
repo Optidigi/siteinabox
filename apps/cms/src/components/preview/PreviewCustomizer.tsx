@@ -507,7 +507,7 @@ export function PreviewCommandBar({
         <Separator orientation="vertical" className="mx-1 hidden h-8 md:block" />
 
         <div className="flex justify-self-end items-center gap-2 md:justify-self-auto">
-          <Button asChild variant="default" size="default" className={`h-12 w-12 rounded-md px-0 md:h-9 md:w-auto md:px-5 ${blockedClassName}`}>
+          <Button asChild variant="default" size="default" className={`h-12 w-12 rounded-md px-0 md:h-9 lg:w-auto lg:px-5 ${blockedClassName}`}>
             <a
               href={customerNavigationBlocked ? undefined : reviewHref}
               aria-label={t("reviewChanges")}
@@ -515,7 +515,7 @@ export function PreviewCommandBar({
               {...blockedAnchorProps}
             >
               <SquarePen className="size-5" aria-hidden />
-              <span className="sr-only md:not-sr-only md:ml-2">{t("reviewChanges")}</span>
+              <span className="sr-only lg:not-sr-only lg:ml-2">{t("reviewChanges")}</span>
             </a>
           </Button>
 

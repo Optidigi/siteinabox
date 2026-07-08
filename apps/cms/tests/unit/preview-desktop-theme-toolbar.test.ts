@@ -26,13 +26,13 @@ describe("preview desktop theme toolbar", () => {
 
     expect(inlineGroup).toContain("InlineToolbarGroup")
     expect(inlineGroup).toContain("InlineToolbarOption")
-    expect(inlineGroup).toContain("bg-muted/30")
+    expect(inlineGroup).toContain("bg-muted")
     expect(inlineGroup).toContain("rounded-md")
     expect(palettePicker).toContain("InlineToolbarGroup")
     expect(palettePicker).toContain('layout === "inline"')
     expect(palettePicker).toContain("rounded-full")
-    expect(read("src/components/editor/theme/radius-control.tsx")).toContain('layout === "segment"')
-    expect(read("src/components/editor/theme/font-picker.tsx")).toContain('layout === "segment"')
+    expect(read("src/components/editor/theme/radius-control.tsx")).toContain("ShapeCornerGlyph")
+    expect(read("src/components/editor/theme/font-picker.tsx")).toContain('size="segment"')
     expect(read("src/components/preview/PreviewCustomizer.tsx")).toContain("normalizePreviewThemeForSave")
 
     expect(customizer).toContain("PreviewDesktopThemeToolbar")

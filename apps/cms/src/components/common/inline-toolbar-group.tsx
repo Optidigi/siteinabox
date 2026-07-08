@@ -14,7 +14,7 @@ export function InlineToolbarGroup({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-lg border border-border bg-muted/30 p-1",
+        "inline-flex items-center gap-0.5 rounded-lg border border-border bg-muted p-1",
         className,
       )}
     >
@@ -24,7 +24,7 @@ export function InlineToolbarGroup({
 }
 
 export function InlineToolbarDivider() {
-  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border/80" aria-hidden />
 }
 
 export function InlineToolbarOption({
@@ -49,10 +49,10 @@ export function InlineToolbarOption({
       aria-pressed={active}
       aria-label={ariaLabel}
       className={cn(
-        "size-8 shrink-0 rounded-md text-foreground",
+        "size-8 shrink-0 rounded-md",
         active
-          ? "bg-background shadow-sm hover:bg-background"
-          : "text-muted-foreground hover:bg-background/60 hover:text-foreground",
+          ? "bg-accent text-accent-foreground shadow-sm hover:bg-accent"
+          : "text-muted-foreground hover:bg-accent/70 hover:text-foreground",
         className,
       )}
     >

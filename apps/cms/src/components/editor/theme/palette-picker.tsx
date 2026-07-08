@@ -126,13 +126,13 @@ export const PalettePicker: React.FC<{
               active={activeId === preset.id}
               onClick={() => onChange({ colors: { schemeId: preset.id } })}
               ariaLabel={t("applyPalette", { label: preset.label })}
-              className="overflow-hidden p-1"
+              className="size-7 p-0.5"
             >
               <PaletteSwatch
                 accent={preset.swatch.accent}
                 surface={preset.swatch.surface}
                 fill="solid"
-                className="size-6 rounded-full"
+                className="size-[1.125rem] rounded-full"
               />
             </InlineToolbarOption>
           ))}

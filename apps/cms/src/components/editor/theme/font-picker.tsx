@@ -35,7 +35,7 @@ export const FontPicker: React.FC<{
               onClick={() => onChange({ schemeId: preset.id })}
               ariaLabel={`Apply ${preset.label} font preset`}
             >
-              <FontPresetGlyph fontId={preset.id} compact />
+              <FontPresetGlyph fontId={preset.id} size="segment" />
             </InlineToolbarOption>
           )
         })}
@@ -154,17 +154,32 @@ function FontPresetLabel({
   )
 }
 
-function FontPresetGlyph({ fontId, compact = false }: { fontId: FontSchemeId; compact?: boolean }) {
+function FontPresetGlyph({
+  fontId,
+  compact = false,
+  size = compact ? "compact" : "default",
+}: {
+  fontId: FontSchemeId
+  compact?: boolean
+  size?: "compact" | "segment" | "default"
+}) {
   const fontValue = formatFontFamilyCssValue(FONT_GLYPH_PREVIEW_FAMILIES[fontId])
   const glyphStyle = useCspStyleRule(
     `font-picker-glyph-${fontId}`,
     fontValue ? `font-family:${fontValue};` : null,
   )
+  const resolvedSize = compact ? "compact" : size
   return (
     <>
       {glyphStyle.styleElement}
       <span
-        className={cn(glyphStyle.className, "inline-flex items-baseline leading-none", compact ? "text-sm" : "text-lg")}
+        className={cn(
+          glyphStyle.className,
+          "inline-flex items-baseline leading-none",
+          resolvedSize === "compact" && "text-sm",
+          resolvedSize === "segment" && "text-base",
+          resolvedSize === "default" && "text-lg",
+        )}
         aria-hidden
       >
         <span className="text-[0.72em]">A</span>

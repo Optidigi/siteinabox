@@ -15,6 +15,33 @@ function iconFor(level: ShapePreset): React.ComponentType<{ className?: string }
   return Square
 }
 
+const SHAPE_CORNER_RADIUS: Record<ShapeSchemeId, number> = {
+  sharp: 0,
+  soft: 3,
+  rounded: 6,
+}
+
+function ShapeCornerGlyph({ shapeId, className }: { shapeId: ShapeSchemeId; className?: string }) {
+  const radius = SHAPE_CORNER_RADIUS[shapeId] ?? SHAPE_CORNER_RADIUS.soft
+  const path =
+    radius === 0
+      ? "M4 12V4H12"
+      : `M4 12V${4 + radius}Q4 4 ${4 + radius} 4H12`
+
+  return (
+    <svg viewBox="0 0 16 16" className={cn("size-4 shrink-0", className)} aria-hidden>
+      <path
+        d={path}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 function densityIconFor(level: DensityPreset): React.ComponentType<{ className?: string }> | null {
   if (level.icon === "space-around") return AlignVerticalSpaceAround
   if (level.icon === "rows") return Rows3
@@ -35,7 +62,6 @@ export const ShapeControl: React.FC<{
     return (
       <InlineToolbarGroup>
         {radiusLevels.map((level) => {
-          const Icon = iconFor(level)
           const isActive = activeId === level.id
           return (
             <InlineToolbarOption
@@ -44,7 +70,7 @@ export const ShapeControl: React.FC<{
               onClick={() => onChange({ schemeId: level.id })}
               ariaLabel={level.label}
             >
-              <Icon className="size-3.5 stroke-[1.5]" aria-hidden />
+              <ShapeCornerGlyph shapeId={level.id} />
             </InlineToolbarOption>
           )
         })}
