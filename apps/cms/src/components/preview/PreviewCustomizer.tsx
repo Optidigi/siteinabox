@@ -547,6 +547,8 @@ function PreviewThemeToolbar({
                 ariaLabel={previewT("themeControls")}
                 value={openSegment}
                 onValueChange={(next) => setOpenSegment(next)}
+                size="lg"
+                className="border-white/30 bg-card/95 shadow-sm ring-1 ring-white/40"
                 itemRef={(value, el) => {
                   segmentRefs.current[value] = el
                 }}
@@ -648,7 +650,7 @@ export function PreviewCommandBar({
   return (
     <div
       data-siab-cms-sticky-chrome
-      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-4 py-4 shadow-lg"
+      className="fixed inset-x-0 bottom-0 z-30 border-t bg-background px-4 py-4 shadow-lg md:border-white/20 md:bg-background/90 md:py-5 md:shadow-2xl md:backdrop-blur-xl"
     >
       <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4">
         <Button asChild variant="default" size="default" className={`h-12 justify-self-start rounded-md px-4 md:px-5 ${blockedClassName}`}>

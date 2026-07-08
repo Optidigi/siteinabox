@@ -43,5 +43,15 @@ describe("ThemeBar controls", () => {
     expect(themeBar).toContain('t("shuffle")')
     expect(themeBar).toContain('t("default")')
     expect(themeBar).toContain('className="hidden md:block"')
+    expect(themeBar).toContain('size="lg"')
+  })
+
+  it("mounts the page-editor ThemeBar on desktop only", () => {
+    const pageForm = read("src/components/forms/PageForm.tsx")
+
+    expect(pageForm).toContain("{!readOnly && isDesktop && (")
+    expect(pageForm).toContain("desktop editor only")
+    expect(pageForm).toContain('className="sticky top-[6.5rem] z-20 flex justify-center pointer-events-none"')
+    expect(pageForm).not.toContain('className={`sticky z-20 flex justify-center pointer-events-none ${isDesktop ? "top-[6.5rem]" : "top-0"}`}')
   })
 })

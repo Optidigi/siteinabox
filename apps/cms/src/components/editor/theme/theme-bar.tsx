@@ -144,6 +144,7 @@ export function ThemeBar({
                   ariaLabel={t("themeControls")}
                   value={openSegment}
                   onValueChange={(next) => setOpenSegment(next)}
+                  size="lg"
                   itemRef={(value, el) => {
                     segmentRefs.current[value] = el
                   }}

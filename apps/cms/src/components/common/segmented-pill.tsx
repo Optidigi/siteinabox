@@ -34,6 +34,8 @@ export interface SegmentedPillProps<V extends string> {
   labelBreakpoint?: "always" | "md"
   /** If false, clicking the active item does NOT deselect (keeps one active). */
   allowDeselect?: boolean
+  /** Compact default, or a slightly larger desktop toolbar control. */
+  size?: "default" | "lg"
   /** Positioning utilities only — pill surface treatment is baked in. */
   className?: string
 }
@@ -46,6 +48,7 @@ export function SegmentedPill<V extends string>({
   itemRef,
   labelBreakpoint = "always",
   allowDeselect = true,
+  size = "default",
   className,
 }: SegmentedPillProps<V>) {
   const anyTooltip = items.some((i) => i.tooltip)
@@ -55,7 +58,9 @@ export function SegmentedPill<V extends string>({
       role="group"
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5",
+        size === "lg"
+          ? "inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 p-1"
+          : "inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5",
         className,
       )}
     >
@@ -76,10 +81,12 @@ export function SegmentedPill<V extends string>({
             aria-label={item.ariaLabel ?? item.label}
             ref={itemRef ? (el) => itemRef(item.value, el) : undefined}
             onClick={onClick}
-            className="h-7 rounded-sm px-2"
+            className={cn(
+              size === "lg" ? "h-9 rounded-md px-3 text-sm" : "h-7 rounded-sm px-2",
+            )}
           >
-            <Icon className="size-4" aria-hidden />
-            <span className={cn("ml-1.5", labelBreakpoint === "md" && "hidden md:inline")}>
+            <Icon className={cn(size === "lg" ? "size-5" : "size-4")} aria-hidden />
+            <span className={cn(size === "lg" ? "ml-2" : "ml-1.5", labelBreakpoint === "md" && "hidden md:inline")}>
               {item.label}
             </span>
           </Button>
