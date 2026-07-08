@@ -98,7 +98,7 @@ describe("mobile inspector snap contract", () => {
     expect(floatingPill).toContain("visible = true")
     expect(floatingPill).toContain("const hiddenMotionClass = position.endsWith(\"right\") ? \"translate-x-3\" : \"-translate-x-3\"")
     expect(floatingPill).toContain("visible ? \"pointer-events-auto opacity-100 scale-100 translate-x-0\"")
-    expect(floatingPill).toContain("disabled || !visible")
+    expect(floatingPill).toContain("!isInteractive && \"pointer-events-none opacity-50\"")
     expect(floatingPill).not.toContain("animate-pulse")
     expect(floatingPill).not.toContain("ring-offset-background")
   })

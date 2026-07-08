@@ -1,6 +1,7 @@
 "use client"
 import * as React from "react"
 import { ToggleGroup, ToggleGroupItem } from "@siteinabox/ui/components/toggle-group"
+import { Button } from "@siteinabox/ui/components/button"
 import { AlignVerticalJustifyCenter, AlignVerticalSpaceAround, Circle, Rows3, Square, Squircle } from "lucide-react"
 import type { DensitySchemeId, ShapeSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
@@ -83,22 +84,23 @@ export const DensityControl: React.FC<{
         {levels.map((level) => {
           const isActive = activeId === level.id
           return (
-            <button
+            <Button
               key={level.id}
               type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onChange({ schemeId: level.id })}
               aria-pressed={isActive}
               aria-label={level.label}
               className={cn(
-                "inline-flex size-12 items-center justify-center rounded-full border text-foreground outline-none transition-all",
-                "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                "size-12 rounded-full border text-foreground",
                 isActive
-                  ? "border-primary bg-background ring-2 ring-primary/35"
+                  ? "border-primary bg-background ring-2 ring-primary/35 hover:bg-background"
                   : "border-border bg-muted/40 hover:bg-accent/50",
               )}
             >
               <DensitySpacingGlyph densityId={level.id} />
-            </button>
+            </Button>
           )
         })}
       </div>

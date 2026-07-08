@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 export interface MobileInlinePillProps {
@@ -25,22 +26,23 @@ export function MobileInlinePill({
   dataAttrs,
 }: MobileInlinePillProps) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="icon"
       ref={buttonRef}
       onClick={onClick}
       aria-label={ariaLabel}
       aria-pressed={active}
       {...(dataAttrs ?? {})}
       className={cn(
-        "inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-full border shadow-lg transition-all duration-200",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        "h-12 w-12 shrink-0 rounded-full border shadow-lg transition-all duration-200",
         active
-          ? "border-primary bg-background text-foreground ring-2 ring-primary/35"
-          : "border-transparent bg-foreground text-background",
+          ? "border-primary bg-background text-foreground ring-2 ring-primary/35 hover:bg-background"
+          : "border-transparent bg-foreground text-background hover:bg-foreground/90",
       )}
     >
       {icon}
-    </button>
+    </Button>
   )
 }
