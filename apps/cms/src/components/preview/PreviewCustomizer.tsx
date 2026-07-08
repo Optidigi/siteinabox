@@ -410,6 +410,8 @@ function PreviewRendererFrame({
     frameWindow?.addEventListener("resize", schedule)
     frameWindow?.addEventListener("load", schedule)
     window.addEventListener("resize", schedule)
+    frameDocument.addEventListener("pointerdown", onFrameInteraction, true)
+    frameDocument.addEventListener("focusin", onFrameInteraction, true)
 
     return () => {
       if (raf != null) window.cancelAnimationFrame(raf)
@@ -418,8 +420,18 @@ function PreviewRendererFrame({
       frameWindow?.removeEventListener("resize", schedule)
       frameWindow?.removeEventListener("load", schedule)
       window.removeEventListener("resize", schedule)
+      frameDocument.removeEventListener("pointerdown", onFrameInteraction, true)
+      frameDocument.removeEventListener("focusin", onFrameInteraction, true)
     }
-  }, [ready, src])
+  }, [onFrameInteraction, ready, src])
+
+  React.useEffect(() => {
+    const closeWhenFrameTakesFocus = () => {
+      if (document.activeElement === frameRef.current) onFrameInteraction()
+    }
+    window.addEventListener("blur", closeWhenFrameTakesFocus)
+    return () => window.removeEventListener("blur", closeWhenFrameTakesFocus)
+  }, [onFrameInteraction])
 
   React.useEffect(() => {
     if (!ready) return
