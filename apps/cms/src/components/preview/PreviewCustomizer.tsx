@@ -547,7 +547,7 @@ function PreviewThemeToolbar({
                 ariaLabel={previewT("themeControls")}
                 value={openSegment}
                 onValueChange={(next) => setOpenSegment(next)}
-                className="border-white/30 bg-card/95 shadow-sm ring-1 ring-white/40"
+                className="h-12 border-0 bg-card/95 shadow-none"
                 itemRef={(value, el) => {
                   segmentRefs.current[value] = el
                 }}
@@ -651,7 +651,7 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:px-6"
     >
-      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-4 border-t bg-background px-4 py-4 shadow-lg md:mx-auto md:max-w-4xl md:rounded-lg md:border md:border-white/20 md:bg-background/90 md:px-5 md:py-4 md:shadow-2xl md:backdrop-blur-xl">
+      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 border-t bg-background px-4 py-4 shadow-lg md:mx-auto md:max-w-4xl md:rounded-lg md:border-0 md:bg-background/90 md:px-5 md:py-4 md:shadow-2xl md:backdrop-blur-xl">
         <Button asChild variant="default" size="icon" className={`size-12 justify-self-start rounded-md ${blockedClassName}`}>
           <a
             href={customerNavigationBlocked ? undefined : reviewHref}
