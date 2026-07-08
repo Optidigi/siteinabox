@@ -15,7 +15,7 @@ export const PalettePicker: React.FC<{
   value: ColorSchemeId | undefined
   mode: ThemeModeV2
   onChange: (next: { colors?: { schemeId: ColorSchemeId }; appearance?: { mode: ThemeModeV2 } }) => void
-  layout?: "default" | "mobile"
+  layout?: "default" | "mobile" | "inline"
   swatchSizeClassName?: string
 }> = ({ palettes, value, mode, onChange, layout = "default", swatchSizeClassName }) => {
   const t = useTranslations("editor")
@@ -23,6 +23,8 @@ export const PalettePicker: React.FC<{
   const activeMode = mode === "system" ? DEFAULT_THEME_TOKEN_SPEC.appearance.mode : mode
   const iconSize = layout === "mobile" ? "size-5" : "size-3.5"
   const mobileSwatchSize = swatchSizeClassName ?? "size-12"
+  const inlineSwatchSize = swatchSizeClassName ?? "size-8"
+  const useSolidMobilePickerSwatches = layout === "mobile" || layout === "inline"
 
   const modeToggle = (
     <div className={cn("flex items-center gap-1.5 text-muted-foreground", layout === "mobile" && "justify-center")}>
@@ -42,15 +44,21 @@ export const PalettePicker: React.FC<{
   )
 
   const swatches =
-    layout === "mobile" ? (
-      <div className="flex flex-wrap items-center justify-center gap-3">
+    useSolidMobilePickerSwatches ? (
+      <div
+        className={cn(
+          "flex flex-wrap items-center",
+          layout === "inline" ? "gap-1.5" : "gap-3",
+          layout === "mobile" && "justify-center",
+        )}
+      >
         {palettes.map((preset) => (
           <MobilePickerOption
             key={preset.id}
             active={activeId === preset.id}
             onClick={() => onChange({ colors: { schemeId: preset.id } })}
             ariaLabel={t("applyPalette", { label: preset.label })}
-            sizeClassName={mobileSwatchSize}
+            sizeClassName={layout === "inline" ? inlineSwatchSize : mobileSwatchSize}
             className="overflow-hidden bg-transparent p-0 hover:bg-transparent"
           >
             <PaletteSwatch

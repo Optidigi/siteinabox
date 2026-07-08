@@ -18,7 +18,7 @@ export const FontPicker: React.FC<{
 
   if (layout === "glyph") {
     return (
-      <div className="flex justify-center gap-3">
+      <div className={cn("flex justify-center", sizeClassName === "size-8" ? "gap-1.5" : "gap-3")}>
         {fonts.map((preset) => {
           const isActive = activeId === preset.id
           return (

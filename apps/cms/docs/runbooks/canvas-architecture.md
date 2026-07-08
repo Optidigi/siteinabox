@@ -53,8 +53,9 @@ feedback/change request aligned left, theme controls centered, and launch/paymen
 state aligned right. Desktop preview renders that toolbar as a centered floating
 card above the viewport bottom; the review/change request action is icon-only,
 the theme toolbar stays centered, and launch/payment remains right-aligned.
-Desktop preview uses the full segmented theme toolbar (`Colours | Fonts | Shape
-| Density`) with popovers opening upward from the footer. On phone preview,
+Desktop preview uses an inline theme toolbar (`PreviewDesktopThemeToolbar`):
+solid color swatches with light/dark toggle, then shape, font, and density
+preset controls in one row — no popovers. On phone preview,
 corner nav pills carry review (top-left) and launch/payment (top-right), and a
 fixed bottom-centre segmented theme bar exposes the same four preset controls
 with popovers opening upward. The preview page keeps bottom

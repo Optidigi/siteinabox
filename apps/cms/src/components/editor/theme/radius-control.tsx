@@ -38,7 +38,7 @@ export const ShapeControl: React.FC<{
 
   if (layout === "pill") {
     return (
-      <div className="flex justify-center gap-3">
+      <div className={cn("flex justify-center", sizeClassName === "size-8" ? "gap-1.5" : "gap-3")}>
         {radiusLevels.map((level) => {
           const Icon = iconFor(level)
           const isActive = activeId === level.id
@@ -112,7 +112,7 @@ export const DensityControl: React.FC<{
 
   if (layout === "spacing") {
     return (
-      <div className="flex justify-center gap-3">
+      <div className={cn("flex justify-center", sizeClassName === "size-8" ? "gap-1.5" : "gap-3")}>
         {levels.map((level) => {
           const isActive = activeId === level.id
           return (

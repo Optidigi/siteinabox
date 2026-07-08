@@ -10,20 +10,12 @@ import {
   type IframeEditorMessage,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { CheckCircle2, Palette, Rocket, SlidersHorizontal, SquarePen, SquareRoundCorner, Type } from "lucide-react"
+import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-} from "@siteinabox/ui/components/popover"
+import { Separator } from "@siteinabox/ui/components/separator"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { SegmentedPill } from "@/components/common/segmented-pill"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
-import { FontPicker } from "@/components/editor/theme/font-picker"
-import { PalettePicker } from "@/components/editor/theme/palette-picker"
-import { DensityControl, ShapeControl } from "@/components/editor/theme/radius-control"
 import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
 import type {
   PreviewApprovalState,
@@ -33,17 +25,13 @@ import type {
 } from "@/lib/preview/customizer"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { PreviewDesktopThemeToolbar } from "@/components/preview/preview-desktop-theme-toolbar"
 import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
 export const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
-type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
-type PreviewThemeSegment = "colors" | "fonts" | "shape" | "density"
-
-const PREVIEW_RANDOM_MODES: AppearanceMode[] = ["light", "dark"]
 
 type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
 type QueuedPreviewThemeSave = {
@@ -102,11 +90,6 @@ function measurePreviewFrameDocumentHeight(frameDocument: Document | null | unde
     return Math.max(max, rect.bottom + scrollY - bodyTop)
   }, 0)
   return Number.isFinite(height) && height > 0 ? Math.ceil(height + PREVIEW_FRAME_HEIGHT_GUTTER) : null
-}
-
-function pickRandom<T>(items: T[]): T | null {
-  if (items.length === 0) return null
-  return items[Math.floor(Math.random() * items.length)] ?? null
 }
 
 export function PreviewCustomizer({
@@ -263,30 +246,6 @@ export function PreviewCustomizer({
     return String(rawId)
   }, [page.id, page.slug])
 
-  const handleShuffleTheme = React.useCallback(() => {
-    const palette = pickRandom(PALETTE_PRESETS)
-    const font = pickRandom(FONT_PRESETS)
-    const shape = pickRandom(RADIUS_PRESETS)
-    const density = pickRandom(DENSITY_PRESETS)
-    const mode = pickRandom(PREVIEW_RANDOM_MODES) ?? "light"
-
-    handleThemeChange((current) =>
-      normalizeThemeForSave({
-        ...(current ?? themeStateRef.current ?? DEFAULT_THEME_TOKEN_SPEC),
-        version: 2,
-        appearance: { mode },
-        ...(palette ? { colors: { schemeId: palette.id } } : {}),
-        ...(font ? { fonts: { schemeId: font.id } } : {}),
-        ...(shape ? { shape: { schemeId: shape.id } } : {}),
-        ...(density ? { density: { schemeId: density.id } } : {}),
-      } as ThemeTokens),
-    )
-  }, [handleThemeChange])
-
-  const handleDefaultTheme = React.useCallback(() => {
-    handleThemeChange(normalizeThemeForSave(DEFAULT_THEME_TOKEN_SPEC))
-  }, [handleThemeChange])
-
   return (
     <RtManifestProvider manifest={manifest}>
       <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
@@ -323,8 +282,6 @@ export function PreviewCustomizer({
           <PreviewCommandBar
             theme={themeState}
             onThemeChange={handleThemeChange}
-            onShuffleTheme={handleShuffleTheme}
-            onDefaultTheme={handleDefaultTheme}
             canCompleteOrder={canCompleteOrder}
             paymentSatisfied={paymentSatisfied}
             checkoutHref={checkoutHref}
@@ -507,122 +464,9 @@ function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
   )
 }
 
-function PreviewThemeToolbar({
-  theme,
-  onThemeChange,
-  onShuffleTheme: _onShuffleTheme,
-  onDefaultTheme: _onDefaultTheme,
-}: {
-  theme: ThemeTokens | null
-  onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
-  onShuffleTheme: () => void
-  onDefaultTheme: () => void
-}) {
-  const t = useTranslations("editor")
-  const previewT = useTranslations("preview")
-  const [openSegment, setOpenSegment] = React.useState<PreviewThemeSegment | null>(null)
-  const lastOpenSegmentRef = React.useRef<PreviewThemeSegment | null>(null)
-  const segmentRefs = React.useRef<Record<PreviewThemeSegment, HTMLButtonElement | null>>({
-    colors: null,
-    fonts: null,
-    shape: null,
-    density: null,
-  })
-
-  React.useEffect(() => {
-    if (openSegment) lastOpenSegmentRef.current = openSegment
-  }, [openSegment])
-
-  React.useEffect(() => {
-    const close = () => setOpenSegment(null)
-    window.addEventListener(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT, close)
-    return () => window.removeEventListener(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT, close)
-  }, [])
-
-  function handleUpdate(partial: Partial<ThemeTokens>) {
-    onThemeChange((current) => normalizeThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens))
-  }
-
-  return (
-    <div className="justify-self-center">
-      <div className="hidden md:block">
-        <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
-          <PopoverAnchor asChild>
-            <div>
-              <SegmentedPill<PreviewThemeSegment>
-                ariaLabel={previewT("themeControls")}
-                value={openSegment}
-                onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}
-                className="h-12 border-0 bg-card/95 shadow-none md:h-9"
-                itemRef={(value, el) => {
-                  segmentRefs.current[value] = el
-                }}
-                items={[
-                  { value: "colors", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
-                  { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
-                  { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
-                  { value: "density", label: t("density"), icon: SlidersHorizontal, ariaLabel: t("spacingDensity") },
-                ]}
-              />
-            </div>
-          </PopoverAnchor>
-          <PopoverContent
-            side="top"
-            align="center"
-            sideOffset={8}
-            className="w-auto max-w-[calc(100vw-2rem)] rounded-md border border-border/40 bg-card/95 p-3 shadow-md backdrop-blur-sm"
-            onPointerDownOutside={() => setOpenSegment(null)}
-            onFocusOutside={() => setOpenSegment(null)}
-            onOpenAutoFocus={(e) => e.preventDefault()}
-            onCloseAutoFocus={(e) => {
-              const target = lastOpenSegmentRef.current
-              if (target) {
-                e.preventDefault()
-                segmentRefs.current[target]?.focus()
-              }
-            }}
-          >
-            {openSegment === "colors" && (
-              <PalettePicker
-                palettes={PALETTE_PRESETS}
-                value={theme?.colors?.schemeId}
-                mode={theme?.appearance?.mode ?? "light"}
-                onChange={(patch) => handleUpdate(patch)}
-              />
-            )}
-            {openSegment === "fonts" && (
-              <FontPicker
-                fonts={FONT_PRESETS}
-                value={theme?.fonts?.schemeId}
-                onChange={(next) => handleUpdate({ fonts: next })}
-              />
-            )}
-            {openSegment === "shape" && (
-              <ShapeControl
-                shapeId={theme?.shape?.schemeId}
-                radiusLevels={RADIUS_PRESETS}
-                onChange={(next) => handleUpdate({ shape: next })}
-              />
-            )}
-            {openSegment === "density" && (
-              <DensityControl
-                densityId={theme?.density?.schemeId}
-                levels={DENSITY_PRESETS}
-                onChange={(next) => handleUpdate({ density: next })}
-              />
-            )}
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
-  )
-}
-
 export function PreviewCommandBar({
   theme,
   onThemeChange,
-  onShuffleTheme,
-  onDefaultTheme,
   canCompleteOrder,
   paymentSatisfied,
   checkoutHref,
@@ -631,8 +475,6 @@ export function PreviewCommandBar({
 }: {
   theme: ThemeTokens | null
   onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
-  onShuffleTheme: () => void
-  onDefaultTheme: () => void
   canCompleteOrder: boolean
   paymentSatisfied: boolean
   checkoutHref: string
@@ -659,15 +501,12 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6"
     >
-      <div className="pointer-events-auto grid w-full grid-cols-[auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:justify-center md:gap-2 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
-        <PreviewThemeToolbar
-          theme={theme}
-          onThemeChange={onThemeChange}
-          onShuffleTheme={onShuffleTheme}
-          onDefaultTheme={onDefaultTheme}
-        />
+      <div className="pointer-events-auto grid w-full grid-cols-[auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
+        <PreviewDesktopThemeToolbar theme={theme} onThemeChange={onThemeChange} />
 
-        <div className="flex justify-self-end items-center gap-2">
+        <Separator orientation="vertical" className="mx-1 hidden h-8 md:block" />
+
+        <div className="flex justify-self-end items-center gap-2 md:justify-self-auto">
           <Button asChild variant="default" size="default" className={`h-12 w-12 rounded-md px-0 md:h-9 md:w-auto md:px-5 ${blockedClassName}`}>
             <a
               href={customerNavigationBlocked ? undefined : reviewHref}
