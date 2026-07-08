@@ -5,10 +5,10 @@ import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { Separator } from "@siteinabox/ui/components/separator"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
-import { DensityControl, ShapeControl } from "@/components/editor/theme/radius-control"
+import { ShapeControl } from "@/components/editor/theme/radius-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
-import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
+import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { useTranslations } from "next-intl"
 
 export const PREVIEW_DESKTOP_INLINE_CONTROL_SIZE = "size-8"
@@ -24,7 +24,7 @@ export function PreviewDesktopThemeToolbar({
 
   function handleUpdate(partial: Partial<ThemeTokens>) {
     onThemeChange((current) =>
-      normalizeThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens),
+      normalizePreviewThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens),
     )
   }
 
@@ -57,14 +57,6 @@ export function PreviewDesktopThemeToolbar({
         layout="glyph"
         sizeClassName={PREVIEW_DESKTOP_INLINE_CONTROL_SIZE}
         onChange={(next) => handleUpdate({ fonts: next })}
-      />
-      <Separator orientation="vertical" className="mx-1 h-8" />
-      <DensityControl
-        densityId={theme?.density?.schemeId}
-        levels={DENSITY_PRESETS}
-        layout="spacing"
-        sizeClassName={PREVIEW_DESKTOP_INLINE_CONTROL_SIZE}
-        onChange={(next) => handleUpdate({ density: next })}
       />
     </div>
   )

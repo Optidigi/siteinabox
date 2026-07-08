@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { normalizePreviewThemeForSave, normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 describe("normalizeThemeForSave", () => {
@@ -22,6 +22,24 @@ describe("normalizeThemeForSave", () => {
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
       density: { schemeId: "spacious" },
+    })
+  })
+
+  it("pins preview themes to the comfortable density preset", () => {
+    expect(normalizePreviewThemeForSave({
+      version: 2,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "compact" },
+    })).toEqual({
+      version: 2,
+      appearance: { mode: "dark" },
+      colors: { schemeId: "emerald-calm" },
+      fonts: { schemeId: "classic-editorial" },
+      shape: { schemeId: "soft" },
+      density: { schemeId: "comfortable" },
     })
   })
 })

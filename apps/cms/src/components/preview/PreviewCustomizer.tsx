@@ -25,7 +25,7 @@ import type {
 } from "@/lib/preview/customizer"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { PreviewDesktopThemeToolbar } from "@/components/preview/preview-desktop-theme-toolbar"
 import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
@@ -116,10 +116,10 @@ export function PreviewCustomizer({
   domain?: string | null
 }) {
   const t = useTranslations("preview")
-  const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizeThemeForSave(theme))
+  const [themeState, setThemeState] = React.useState<ThemeTokens | null>(() => normalizePreviewThemeForSave(theme))
   const [paymentState] = React.useState<PreviewPaymentState | null>(payment)
   const themeStateRef = React.useRef(themeState)
-  const persistedThemeRef = React.useRef(JSON.stringify(normalizeThemeForSave(theme) ?? {}))
+  const persistedThemeRef = React.useRef(JSON.stringify(normalizePreviewThemeForSave(theme) ?? {}))
   const latestThemeRef = React.useRef(persistedThemeRef.current)
   const themeVersionRef = React.useRef(0)
   const frameRevisionRef = React.useRef(0)
@@ -132,20 +132,20 @@ export function PreviewCustomizer({
     const resolvedTheme = typeof nextTheme === "function"
       ? (nextTheme as (currentTheme: ThemeTokens | null) => ThemeTokens | null)(themeStateRef.current)
       : nextTheme
-    const normalizedTheme = normalizeThemeForSave(resolvedTheme)
+    const normalizedTheme = normalizePreviewThemeForSave(resolvedTheme)
     const serializedTheme = JSON.stringify(normalizedTheme ?? {})
     const hasUnsavedTheme =
       serializedTheme !== persistedThemeRef.current ||
       (inFlightSaveRef.current != null && inFlightSaveRef.current.serializedTheme !== serializedTheme) ||
       (pendingSaveRef.current != null && pendingSaveRef.current.serializedTheme !== serializedTheme)
 
-    themeStateRef.current = resolvedTheme
+    themeStateRef.current = normalizedTheme
 
     if (hasUnsavedTheme) {
       setThemeSaveStatus("saving")
     }
 
-    setThemeState(resolvedTheme)
+    setThemeState(normalizedTheme)
   }, [])
 
   const flushThemeSaveQueue = React.useCallback(() => {
@@ -167,7 +167,7 @@ export function PreviewCustomizer({
     if (!request.normalizedTheme) return
     void setPreviewTheme(access, request.normalizedTheme)
       .then((saved) => {
-        const savedTheme = normalizeThemeForSave(saved)
+        const savedTheme = normalizePreviewThemeForSave(saved)
         const savedSerializedTheme = JSON.stringify(savedTheme ?? {})
         const isCurrentLocalTheme = shouldApplyPreviewThemeSaveResponse({
           latestSerializedTheme: latestThemeRef.current,
@@ -198,7 +198,7 @@ export function PreviewCustomizer({
   }, [access])
 
   React.useEffect(() => {
-    const normalizedTheme = normalizeThemeForSave(themeState)
+    const normalizedTheme = normalizePreviewThemeForSave(themeState)
     const serializedTheme = JSON.stringify(normalizedTheme ?? {})
     latestThemeRef.current = serializedTheme
     const version = ++themeVersionRef.current

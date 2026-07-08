@@ -7,35 +7,34 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@siteinabox/ui/components/popover"
-import { Palette, SlidersHorizontal, SquareRoundCorner, Type } from "lucide-react"
+import { Palette, SquareRoundCorner, Type } from "lucide-react"
 import { MobileInlinePill } from "@/components/common/mobile-inline-pill"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
-import { DensityControl, ShapeControl } from "@/components/editor/theme/radius-control"
+import { ShapeControl } from "@/components/editor/theme/radius-control"
 import {
   PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
   PREVIEW_MOBILE_CHROME_INSET,
   previewMobileChromeToneClass,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
-import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
+import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
-type Segment = "colors" | "fonts" | "shape" | "density"
+type Segment = "colors" | "fonts" | "shape"
 
 const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
 
 const THEME_PILL_ITEMS: Array<{
   value: Segment
   icon: React.ComponentType<{ className?: string }>
-  labelKey: "colourPalette" | "fontPairings" | "cornerRadius" | "spacingDensity"
+  labelKey: "colourPalette" | "fontPairings" | "cornerRadius"
 }> = [
   { value: "colors", icon: Palette, labelKey: "colourPalette" },
   { value: "fonts", icon: Type, labelKey: "fontPairings" },
   { value: "shape", icon: SquareRoundCorner, labelKey: "cornerRadius" },
-  { value: "density", icon: SlidersHorizontal, labelKey: "spacingDensity" },
 ]
 
 export function PreviewMobileThemeBar({
@@ -53,7 +52,6 @@ export function PreviewMobileThemeBar({
     colors: null,
     fonts: null,
     shape: null,
-    density: null,
   })
 
   React.useEffect(() => {
@@ -68,7 +66,7 @@ export function PreviewMobileThemeBar({
 
   function handleUpdate(partial: Partial<ThemeTokens>) {
     onThemeChange((current) =>
-      normalizeThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens),
+      normalizePreviewThemeForSave({ ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC), ...partial } as ThemeTokens),
     )
   }
 
@@ -176,15 +174,6 @@ export function PreviewMobileThemeBar({
                 layout="pill"
                 sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
                 onChange={(next) => handleUpdate({ shape: next })}
-              />
-            )}
-            {openSegment === "density" && (
-              <DensityControl
-                densityId={theme?.density?.schemeId}
-                levels={DENSITY_PRESETS}
-                layout="spacing"
-                sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
-                onChange={(next) => handleUpdate({ density: next })}
               />
             )}
           </div>

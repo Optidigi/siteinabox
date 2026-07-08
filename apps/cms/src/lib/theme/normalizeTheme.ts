@@ -65,3 +65,12 @@ export const normalizeThemeForSave = (theme: unknown): ThemeTokens | null => {
     density: { schemeId: normalizeDensityScheme(theme) },
   }
 }
+
+export const normalizePreviewThemeForSave = (theme: unknown): ThemeTokens | null => {
+  const normalized = normalizeThemeForSave(theme)
+  if (!normalized) return null
+  return {
+    ...normalized,
+    density: { schemeId: DEFAULT_THEME_TOKEN_SPEC.density.schemeId },
+  }
+}
