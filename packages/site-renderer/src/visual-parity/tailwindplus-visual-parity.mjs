@@ -612,6 +612,23 @@ async function assertTokenizedThemeSmoke(page, css, testCase, html, viewport, th
       }
     }
 
+    if (id === "tailwindplus.marketing.cta.dark-panel-with-app-screenshot") {
+      const radial = document.querySelector('[data-siab-tokenized-gradient="cta-radial"]')
+      const fromStop = radial?.querySelector('[data-siab-gradient-stop="from"]')
+      const toStop = radial?.querySelector('[data-siab-gradient-stop="to"]')
+      if (!radial) {
+        failures.push(`${id} ${mode} CTA radial gradient is missing its token marker`)
+      }
+      if (!fromStop || !toStop) {
+        failures.push(`${id} ${mode} CTA radial gradient is missing tokenized stops`)
+      }
+      const fromColor = fromStop ? getComputedStyle(fromStop).stopColor : ""
+      const toColor = toStop ? getComputedStyle(toStop).stopColor : ""
+      if (fromColor === "rgb(119, 117, 214)" || toColor === "rgb(233, 53, 193)") {
+        failures.push(`${id} ${mode} CTA radial gradient still uses source purple/pink in tokenized theme`)
+      }
+    }
+
     return failures
   }, { id: testCase.id, mode: theme.appearance.mode })
   if (issues.length) {

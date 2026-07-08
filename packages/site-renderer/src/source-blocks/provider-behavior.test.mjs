@@ -180,6 +180,17 @@ test("hero simple-centered keeps source gradient classes while marking glow for 
   assert.equal((html.match(/to-\[#9089fc\]/g) ?? []).length, 2)
 })
 
+test("cta dark-panel keeps source SVG gradient stops while marking radial accent for token bridge", () => {
+  const definition = providerBlockDefinitions.find((candidate) => candidate.id === "tailwindplus.marketing.cta.dark-panel-with-app-screenshot")
+  const html = renderDefinition(definition, clone(tailwindPlusMarketingCtaDarkPanelWithAppScreenshotDemoSlots))
+
+  assert.match(html, /data-siab-tokenized-gradient="cta-radial"/)
+  assert.match(html, /stop-color="#7775D6"/)
+  assert.match(html, /stop-color="#E935C1"/)
+  assert.match(html, /data-siab-gradient-stop="from"/)
+  assert.match(html, /data-siab-gradient-stop="to"/)
+})
+
 test("source glow blocks carry renderer-owned clip-path classes for CSP-safe preview parity", () => {
   const cases = [
     ["tailwindplus.marketing.hero.with-stats", tailwindPlusMarketingHeroWithStatsDemoSlots, 2],

@@ -47,12 +47,12 @@ text ramp. SIAB token overrides are applied only through explicit
 renderer-owned bridge roles such as
 non-default accent schemes, ambient surfaces/ink, borders, fonts, shape,
 non-default density, and reviewed tokenized decoration. Tailwind Plus source
-glow decoration keeps the source pink-to-violet glow pairs for the default
-identity preset, including dark mode, and uses the selected accent ramp only
-for non-default color schemes. Source glow shapes keep the upstream inline
-`clip-path` and also use static renderer-owned clip-path classes so strict
-preview/live CSP contexts do not degrade the polygons into large blurred
-rectangles.
+glow decoration keeps the source pink-to-violet or violet-to-pink glow pairs for
+the default identity preset, including dark mode, and uses the selected accent
+ramp only for non-default color schemes. Source glow shapes keep the upstream
+inline `clip-path` and also use static renderer-owned clip-path classes where
+needed so strict preview/live CSP contexts do not degrade the polygons into
+large blurred rectangles.
 
 Provider chrome remains structured site chrome, not page content. The shared
 renderer may compose compatible top chrome with the first provider section when

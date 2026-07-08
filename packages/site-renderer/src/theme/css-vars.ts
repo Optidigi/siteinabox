@@ -123,6 +123,9 @@ function providerThemeBridgeRules(
   const dataToken = (name: string, value: string, pseudo = "") => providerRootSelectors
     .map((selector) => `${selector} :where([${name}="${value}"])${pseudo}`)
     .join(",")
+  const dataTokenDescendant = (name: string, value: string, descendantSelector: string) => providerRootSelectors
+    .map((selector) => `${selector} :where([${name}="${value}"]) ${descendantSelector}`)
+    .join(",")
   const classToken = (token: string, pseudo = "") => providerRootSelectors
     .map((selector) => `${selector} :where([class~="${token}"])${pseudo}`)
     .join(",")
@@ -208,6 +211,8 @@ function providerThemeBridgeRules(
     `${classTokens(["from-[#ff4694]"])}{--tw-gradient-from:var(--color-tailwindplus-source-glow-vivid-from,#ff4694);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
     `${classTokens(["to-[#776fff]"])}{--tw-gradient-to:var(--color-tailwindplus-source-glow-vivid-to,#776fff)}`,
     `${dataToken("data-siab-tokenized-gradient", "hero-glow")}{--tw-gradient-from:var(--color-tailwindplus-hero-glow-from,#ff80b5);--tw-gradient-to:var(--color-tailwindplus-hero-glow-to,#9089fc);--tw-gradient-stops:var(--tw-gradient-via-stops,var(--tw-gradient-position),var(--tw-gradient-from)var(--tw-gradient-from-position),var(--tw-gradient-to)var(--tw-gradient-to-position))}`,
+    `${dataTokenDescendant("data-siab-tokenized-gradient", "cta-radial", "stop[data-siab-gradient-stop=\"from\"]")}{stop-color:var(--color-tailwindplus-cta-radial-from,#7775D6)}`,
+    `${dataTokenDescendant("data-siab-tokenized-gradient", "cta-radial", "stop[data-siab-gradient-stop=\"to\"]")}{stop-color:var(--color-tailwindplus-cta-radial-to,#E935C1)}`,
     `${dataToken("data-siab-tokenized-gradient", "testimonial-radial")},${classToken("bg-[radial-gradient(45rem_50rem_at_top,var(--color-indigo-100),white)]")}{background-image:radial-gradient(45rem 50rem at top,var(--color-tailwindplus-testimonial-radial-from,var(--color-indigo-100)),var(--color-tailwindplus-testimonial-radial-to,var(--color-tailwindplus-surface,var(--color-bg,#ffffff))))}`,
     `${dataToken("data-siab-tokenized-gradient", "testimonial-skew-panel")}{background-color:var(--color-tailwindplus-testimonial-panel,var(--color-tailwindplus-card,var(--color-bg,#ffffff)))}`,
     `${providerRootSelectors.map((selector) => `${selector}[data-provider-variant="tailwindplus.marketing.logo-cloud.simple-with-heading"] img[src*="-logo-gray-900.svg"]`).join(",")}{filter:var(--tailwindplus-logo-filter,none)}`,
@@ -253,8 +258,13 @@ export function themeToCssVars(
     }
     return { soft, vivid }
   }
+  const ctaRadialFor = (mode: typeof resolved.light) => ({
+    from: usesNativeTailwindHeroGlow ? "#7775D6" : mode.accent[400],
+    to: usesNativeTailwindHeroGlow ? "#E935C1" : mode.accent[600],
+  })
   const writeMode = (parts: string[], mode: typeof resolved.light) => {
     const sourceGlow = sourceGlowFor(mode)
+    const ctaRadial = ctaRadialFor(mode)
     set(parts, "--color-accent", mode.accent[600])
     set(parts, "--color-on-accent", mode.onAccent)
     set(parts, "--color-on-accent-500", onAccentColor(undefined, mode.accent[500]))
@@ -276,6 +286,8 @@ export function themeToCssVars(
     set(parts, "--color-tailwindplus-source-glow-vivid-to", sourceGlow.vivid.to)
     set(parts, "--color-tailwindplus-hero-glow-from", sourceGlow.soft.from)
     set(parts, "--color-tailwindplus-hero-glow-to", sourceGlow.soft.to)
+    set(parts, "--color-tailwindplus-cta-radial-from", ctaRadial.from)
+    set(parts, "--color-tailwindplus-cta-radial-to", ctaRadial.to)
     for (const shade of ["50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950"] as const) {
       set(parts, `--siab-neutral-${shade}`, mode.neutral[shade])
       set(parts, `--siab-accent-${shade}`, mode.accent[shade])

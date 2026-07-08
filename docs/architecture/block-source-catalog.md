@@ -265,7 +265,10 @@ Current runtime-compatible provider families and blocks:
 - `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`, with legacy
   `tailwindPlusDarkPanelWithAppScreenshot` aliases still accepted. `headline` is required;
   `description`, `primary`, `secondary`, and `backgroundImage` are optional.
-  `eyebrow` is inactive.
+  `eyebrow` is inactive. The fixed-dark panel remains source-owned, but its
+  decorative SVG radial accent carries `data-siab-tokenized-gradient="cta-radial"`;
+  the default identity preset keeps the upstream violet-to-pink stops, while
+  non-default color schemes compute the stops from the selected accent ramp.
 - `tailwindplus.marketing.contact.centered`, with legacy
   `tailwindPlusCentered` aliases still accepted. `title`, `formName`,
   `submitLabel`, and exactly six source-role form fields are required:
