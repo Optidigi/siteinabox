@@ -96,7 +96,7 @@ export function PreviewMobileThemeBar({
         >
           <PopoverAnchor asChild>
             <div
-              className="pointer-events-none absolute bottom-0 left-1/2 h-px w-px -translate-x-1/2"
+              className="pointer-events-none absolute top-0 left-1/2 h-px w-px -translate-x-1/2"
               aria-hidden
             />
           </PopoverAnchor>

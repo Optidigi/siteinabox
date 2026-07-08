@@ -31,7 +31,7 @@ describe("preview mobile chrome", () => {
     expect(themeBar).toContain("MobileInlinePill")
     expect(themeBar).toContain("justify-center gap-3")
     expect(themeBar).not.toContain("justify-between")
-    expect(themeBar).toContain("pointer-events-none absolute bottom-0 left-1/2 h-px w-px")
+    expect(themeBar).toContain("pointer-events-none absolute top-0 left-1/2 h-px w-px")
     const popoverAnchorBlock = themeBar.match(/<PopoverAnchor[\s\S]*?<\/PopoverAnchor>/)?.[0] ?? ""
     expect(popoverAnchorBlock).not.toContain("MobileInlinePill")
     expect(themeBar).toContain("isThemePillTarget")
