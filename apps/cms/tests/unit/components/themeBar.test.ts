@@ -44,6 +44,8 @@ describe("ThemeBar controls", () => {
     expect(themeBar).toContain('t("default")')
     expect(themeBar).toContain('className="hidden md:block"')
     expect(themeBar).toContain('size="lg"')
+    expect(themeBar).toContain("onPointerDownOutside={() => setOpenSegment(null)}")
+    expect(themeBar).toContain("onFocusOutside={() => setOpenSegment(null)}")
   })
 
   it("mounts the page-editor ThemeBar on desktop only", () => {

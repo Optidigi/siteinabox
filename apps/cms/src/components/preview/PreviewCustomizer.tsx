@@ -565,6 +565,8 @@ function PreviewThemeToolbar({
             align="center"
             sideOffset={8}
             className="w-auto max-w-[calc(100vw-2rem)] rounded-md border border-border/40 bg-card/95 p-3 shadow-md backdrop-blur-sm"
+            onPointerDownOutside={() => setOpenSegment(null)}
+            onFocusOutside={() => setOpenSegment(null)}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => {
               const target = lastOpenSegmentRef.current
@@ -651,9 +653,7 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6"
     >
-      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:justify-center md:gap-2 md:rounded-lg md:border-0 md:bg-background/90 md:px-3 md:py-2 md:shadow-2xl md:backdrop-blur-xl">
-        <span className="md:hidden" aria-hidden />
-
+      <div className="pointer-events-auto grid w-full grid-cols-[auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:justify-center md:gap-2 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
         <PreviewThemeToolbar
           theme={theme}
           onThemeChange={onThemeChange}

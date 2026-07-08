@@ -163,6 +163,8 @@ export function ThemeBar({
             align="center"
             sideOffset={4}
             className="w-auto max-w-[calc(100vw-2rem)] rounded-md border border-border/40 bg-card/95 shadow-md backdrop-blur-sm p-3"
+            onPointerDownOutside={() => setOpenSegment(null)}
+            onFocusOutside={() => setOpenSegment(null)}
             onOpenAutoFocus={(e) => e.preventDefault()}
             onCloseAutoFocus={(e) => {
               const target = lastOpenSegmentRef.current
