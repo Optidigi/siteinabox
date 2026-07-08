@@ -652,17 +652,7 @@ export function PreviewCommandBar({
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:px-6"
     >
       <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:mx-auto md:max-w-4xl md:rounded-lg md:border-0 md:bg-background/90 md:px-3 md:py-2 md:shadow-2xl md:backdrop-blur-xl">
-        <Button asChild variant="default" size="default" className={`size-12 justify-self-start rounded-md md:h-12 md:w-auto md:px-5 ${blockedClassName}`}>
-          <a
-            href={customerNavigationBlocked ? undefined : reviewHref}
-            aria-label={t("reviewChanges")}
-            title={t("reviewChanges")}
-            {...blockedAnchorProps}
-          >
-            <SquarePen className="size-5" aria-hidden />
-            <span className="sr-only md:not-sr-only md:ml-2">{t("reviewChanges")}</span>
-          </a>
-        </Button>
+        <span aria-hidden />
 
         <PreviewThemeToolbar
           theme={theme}
@@ -671,34 +661,46 @@ export function PreviewCommandBar({
           onDefaultTheme={onDefaultTheme}
         />
 
-        {canCompleteOrder ? (
-          <Button asChild variant="success" size="default" className={`h-12 justify-self-end rounded-md px-4 md:px-5 ${blockedClassName}`}>
+        <div className="flex justify-self-end items-center gap-2">
+          <Button asChild variant="default" size="default" className={`h-12 w-12 rounded-md px-0 md:w-auto md:px-5 ${blockedClassName}`}>
             <a
-              href={customerNavigationBlocked ? undefined : checkoutHref}
-              aria-label={t("launchWebsite")}
-              title={t("launchWebsite")}
+              href={customerNavigationBlocked ? undefined : reviewHref}
+              aria-label={t("reviewChanges")}
+              title={t("reviewChanges")}
               {...blockedAnchorProps}
             >
-              <Rocket className="size-5" aria-hidden />
-              <span className="sr-only md:not-sr-only md:ml-2">{t("launchWebsite")}</span>
+              <SquarePen className="size-5" aria-hidden />
+              <span className="sr-only md:not-sr-only md:ml-2">{t("reviewChanges")}</span>
             </a>
           </Button>
-        ) : paymentSatisfied ? (
-          <Button
-            type="button"
-            variant="secondary"
-            size="default"
-            disabled
-            className="h-12 justify-self-end rounded-md px-4 md:px-5"
-            aria-label={t("paymentComplete")}
-            title={t("paymentComplete")}
-          >
-            <CheckCircle2 className="size-5" aria-hidden />
-            <span className="sr-only md:not-sr-only md:ml-2">{t("paymentComplete")}</span>
-          </Button>
-        ) : (
-          <span className="size-12 justify-self-end" aria-hidden />
-        )}
+
+          {canCompleteOrder ? (
+            <Button asChild variant="success" size="default" className={`h-12 rounded-md px-4 md:px-5 ${blockedClassName}`}>
+              <a
+                href={customerNavigationBlocked ? undefined : checkoutHref}
+                aria-label={t("launchWebsite")}
+                title={t("launchWebsite")}
+                {...blockedAnchorProps}
+              >
+                <Rocket className="size-5" aria-hidden />
+                <span className="sr-only md:not-sr-only md:ml-2">{t("launchWebsite")}</span>
+              </a>
+            </Button>
+          ) : paymentSatisfied ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="default"
+              disabled
+              className="h-12 rounded-md px-4 md:px-5"
+              aria-label={t("paymentComplete")}
+              title={t("paymentComplete")}
+            >
+              <CheckCircle2 className="size-5" aria-hidden />
+              <span className="sr-only md:not-sr-only md:ml-2">{t("paymentComplete")}</span>
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   )
