@@ -651,8 +651,8 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:px-6"
     >
-      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 border-t bg-background px-4 py-4 shadow-lg md:mx-auto md:max-w-4xl md:rounded-lg md:border-0 md:bg-background/90 md:px-5 md:py-4 md:shadow-2xl md:backdrop-blur-xl">
-        <Button asChild variant="default" size="icon" className={`size-12 justify-self-start rounded-md ${blockedClassName}`}>
+      <div className="pointer-events-auto grid w-full grid-cols-[1fr_auto_1fr] items-center gap-1 border-t bg-background px-3 py-2 shadow-lg md:mx-auto md:max-w-4xl md:rounded-lg md:border-0 md:bg-background/90 md:px-3 md:py-2 md:shadow-2xl md:backdrop-blur-xl">
+        <Button asChild variant="default" size="default" className={`size-12 justify-self-start rounded-md md:h-12 md:w-auto md:px-5 ${blockedClassName}`}>
           <a
             href={customerNavigationBlocked ? undefined : reviewHref}
             aria-label={t("reviewChanges")}
@@ -660,7 +660,7 @@ export function PreviewCommandBar({
             {...blockedAnchorProps}
           >
             <SquarePen className="size-5" aria-hidden />
-            <span className="sr-only">{t("reviewChanges")}</span>
+            <span className="sr-only md:not-sr-only md:ml-2">{t("reviewChanges")}</span>
           </a>
         </Button>
 
