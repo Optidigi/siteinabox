@@ -11,7 +11,9 @@ export interface MobileFloatingPillProps {
   position: MobileFloatingPillPosition
   /** Lucide icon (or any node). Ignored when variant="loading". */
   icon: React.ReactNode
-  onClick: () => void
+  onClick?: () => void
+  /** When set (and not disabled/loading), renders an anchor instead of a button. */
+  href?: string
   ariaLabel: string
   variant?: MobileFloatingPillVariant
   /** Counter badge top-right of pill. Suppressed when 0/undefined. */
@@ -41,6 +43,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   position,
   icon,
   onClick,
+  href,
   ariaLabel,
   variant = "default",
   badgeCount,
@@ -78,45 +81,68 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
     variant === "success" && "border-transparent bg-success text-success-foreground shadow-success/25",
   )
   const hiddenMotionClass = position.endsWith("right") ? "translate-x-3" : "-translate-x-3"
+  const isInteractive = !isLoading && !disabled && visible
+  const useLink = Boolean(href && isInteractive)
+  const sharedClassName = cn(
+    cspPosition.className,
+    "md:hidden fixed z-50 inline-flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 ease-out",
+    visible ? "pointer-events-auto opacity-100 scale-100 translate-x-0" : cn("pointer-events-none opacity-0 scale-75", hiddenMotionClass),
+    !isInteractive && "pointer-events-none opacity-50",
+    positionClasses,
+    variantClasses,
+  )
+  const sharedContent = (
+    <>
+      {isLoading ? (
+        <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+      ) : (
+        icon
+      )}
+      {showBadge && (
+        <span
+          className={cn(
+            "absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-medium flex items-center justify-center",
+            tone === "destructive" ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white",
+          )}
+          aria-hidden
+        >
+          {(badgeCount ?? 0) > 9 ? "9+" : badgeCount}
+        </span>
+      )}
+    </>
+  )
+  const pointerDownGuard = (e: React.PointerEvent) => {
+    const tag = document.activeElement?.tagName
+    if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
+  }
 
   return (
     <>
       {cspPosition.styleElement}
-      <button
-        type="button"
-        onPointerDown={(e) => {
-          const tag = document.activeElement?.tagName
-          if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
-        }}
-        onClick={isLoading || disabled || !visible ? undefined : onClick}
-        disabled={isLoading || disabled || !visible}
-        aria-label={ariaLabel}
-        {...(dataAttrs ?? {})}
-        className={cn(
-          cspPosition.className,
-          "md:hidden fixed z-50 inline-flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 ease-out",
-          visible ? "pointer-events-auto opacity-100 scale-100 translate-x-0" : cn("pointer-events-none opacity-0 scale-75", hiddenMotionClass),
-          positionClasses,
-          variantClasses,
-        )}
-      >
-        {isLoading ? (
-          <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
-        ) : (
-          icon
-        )}
-        {showBadge && (
-          <span
-            className={cn(
-              "absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-medium flex items-center justify-center",
-              tone === "destructive" ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white",
-            )}
-            aria-hidden
-          >
-            {(badgeCount ?? 0) > 9 ? "9+" : badgeCount}
-          </span>
-        )}
-      </button>
+      {useLink ? (
+        <a
+          href={href}
+          onPointerDown={pointerDownGuard}
+          onClick={onClick}
+          aria-label={ariaLabel}
+          {...(dataAttrs ?? {})}
+          className={sharedClassName}
+        >
+          {sharedContent}
+        </a>
+      ) : (
+        <button
+          type="button"
+          onPointerDown={pointerDownGuard}
+          onClick={isInteractive ? onClick : undefined}
+          disabled={!isInteractive}
+          aria-label={ariaLabel}
+          {...(dataAttrs ?? {})}
+          className={sharedClassName}
+        >
+          {sharedContent}
+        </button>
+      )}
     </>
   )
 }

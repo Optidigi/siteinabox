@@ -4,13 +4,43 @@ import type { FontSchemeId } from "@siteinabox/contracts"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { FontPreset } from "@/lib/theme/presets"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 export const FontPicker: React.FC<{
   fonts: FontPreset[]
   value: FontSchemeId | undefined
   onChange: (next: { schemeId: FontSchemeId }) => void
-}> = ({ fonts, value, onChange }) => {
+  layout?: "list" | "row"
+}> = ({ fonts, value, onChange, layout = "list" }) => {
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId
+
+  if (layout === "row") {
+    return (
+      <div className="flex max-w-[min(100vw-2rem,20rem)] flex-wrap gap-2">
+        {fonts.map((preset) => {
+          const isActive = activeId === preset.id
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => onChange({ schemeId: preset.id })}
+              aria-pressed={isActive}
+              aria-label={`Apply ${preset.label} font preset`}
+              className={cn(
+                "inline-flex items-center rounded-full border px-3 py-1.5 text-left outline-none transition-colors",
+                "focus-visible:ring-2 focus-visible:ring-ring",
+                isActive
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border bg-background hover:bg-accent/50",
+              )}
+            >
+              <FontPresetLabel font={preset.previewFont} label={preset.label} compact />
+            </button>
+          )
+        })}
+      </div>
+    )
+  }
 
   return (
     <div className="flex w-[14rem] flex-col">
@@ -44,7 +74,15 @@ export const FontPicker: React.FC<{
   )
 }
 
-function FontPresetLabel({ font, label }: { font: string; label: string }) {
+function FontPresetLabel({
+  font,
+  label,
+  compact = false,
+}: {
+  font: string
+  label: string
+  compact?: boolean
+}) {
   const fontValue = formatRuntimeCssValue(font)
   const labelStyle = useCspStyleRule(
     "font-picker-label",
@@ -53,7 +91,13 @@ function FontPresetLabel({ font, label }: { font: string; label: string }) {
   return (
     <>
       {labelStyle.styleElement}
-      <span className={`${labelStyle.className} truncate text-[15px] leading-tight`}>
+      <span
+        className={cn(
+          labelStyle.className,
+          "truncate leading-tight",
+          compact ? "text-sm" : "text-[15px]",
+        )}
+      >
         {label}
       </span>
     </>

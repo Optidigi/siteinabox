@@ -31,6 +31,7 @@ export type ShapePreset = {
 export type DensityPreset = {
   id: DensitySchemeId
   label: string
+  icon?: "space-around" | "rows" | "compact"
 }
 
 export const PALETTE_PRESETS: ColorPreset[] = COLOR_SCHEME_PRESETS.map((preset) => {
@@ -60,4 +61,12 @@ export const RADIUS_PRESETS: ShapePreset[] = SHAPE_SCHEME_PRESETS.map((preset) =
 export const DENSITY_PRESETS: DensityPreset[] = DENSITY_SCHEME_PRESETS.map((preset) => ({
   id: preset.id,
   label: preset.label,
+  icon:
+    preset.id === "spacious"
+      ? "space-around"
+      : preset.id === "comfortable"
+        ? "rows"
+        : preset.id === "compact"
+          ? "compact"
+          : undefined,
 }))

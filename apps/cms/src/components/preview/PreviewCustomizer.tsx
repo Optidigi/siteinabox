@@ -10,7 +10,7 @@ import {
   type IframeEditorMessage,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { CheckCircle2, Dices, Palette, Rocket, RotateCcw, SlidersHorizontal, SquarePen, SquareRoundCorner, Type } from "lucide-react"
+import { CheckCircle2, Palette, Rocket, SlidersHorizontal, SquarePen, SquareRoundCorner, Type } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import {
   Popover,
@@ -36,9 +36,10 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
-const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
+export const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
 type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
 type PreviewThemeSegment = "colors" | "fonts" | "shape" | "density"
 
@@ -289,7 +290,7 @@ export function PreviewCustomizer({
   return (
     <RtManifestProvider manifest={manifest}>
       <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
-        <main className="w-full pb-32">
+        <main className="w-full pb-24 md:pb-32">
           {frameSrc ? (
             <PreviewRendererFrame
               src={frameSrc}
@@ -308,17 +309,29 @@ export function PreviewCustomizer({
           )}
         </main>
 
-        <PreviewCommandBar
+        <PreviewMobileChrome
           theme={themeState}
           onThemeChange={handleThemeChange}
-          onShuffleTheme={handleShuffleTheme}
-          onDefaultTheme={handleDefaultTheme}
           canCompleteOrder={canCompleteOrder}
           paymentSatisfied={paymentSatisfied}
           checkoutHref={checkoutHref}
           reviewHref={reviewHref}
           customerNavigationBlocked={customerNavigationBlocked}
         />
+
+        <div className="hidden md:block">
+          <PreviewCommandBar
+            theme={themeState}
+            onThemeChange={handleThemeChange}
+            onShuffleTheme={handleShuffleTheme}
+            onDefaultTheme={handleDefaultTheme}
+            canCompleteOrder={canCompleteOrder}
+            paymentSatisfied={paymentSatisfied}
+            checkoutHref={checkoutHref}
+            reviewHref={reviewHref}
+            customerNavigationBlocked={customerNavigationBlocked}
+          />
+        </div>
         <ThemeSaveStatus status={themeSaveStatus} />
       </form>
     </RtManifestProvider>
@@ -497,8 +510,8 @@ function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
 function PreviewThemeToolbar({
   theme,
   onThemeChange,
-  onShuffleTheme,
-  onDefaultTheme,
+  onShuffleTheme: _onShuffleTheme,
+  onDefaultTheme: _onDefaultTheme,
 }: {
   theme: ThemeTokens | null
   onThemeChange: React.Dispatch<React.SetStateAction<ThemeTokens | null>>
@@ -532,37 +545,6 @@ function PreviewThemeToolbar({
 
   return (
     <div className="justify-self-center">
-      <div className="md:hidden">
-        <div
-          role="group"
-          aria-label={previewT("themeControls")}
-          className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/30 p-1"
-        >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-11 rounded-sm"
-            onClick={onShuffleTheme}
-            aria-label={previewT("shuffleTheme")}
-            title={previewT("shuffleTheme")}
-          >
-            <Dices className="size-5" aria-hidden />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-11 rounded-sm"
-            onClick={onDefaultTheme}
-            aria-label={previewT("defaultTheme")}
-            title={previewT("defaultTheme")}
-          >
-            <RotateCcw className="size-5" aria-hidden />
-          </Button>
-        </div>
-      </div>
-
       <div className="hidden md:block">
         <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
           <PopoverAnchor asChild>
