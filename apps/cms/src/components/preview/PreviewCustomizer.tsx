@@ -504,8 +504,8 @@ export function PreviewCommandBar({
     >
       <div className="pointer-events-auto relative grid w-full grid-cols-[auto_1fr] items-center gap-1 overflow-hidden border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
         <ShineBorder
-          borderWidth={2}
-          duration={8}
+          borderWidth={1}
+          duration={14}
           shineColor={[
             "rgba(255,255,255,0.08)",
             "rgba(255,255,255,0.45)",
