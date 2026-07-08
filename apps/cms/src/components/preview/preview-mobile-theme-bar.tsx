@@ -12,7 +12,11 @@ import { MobileInlinePill } from "@/components/common/mobile-inline-pill"
 import { FontPicker } from "@/components/editor/theme/font-picker"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
 import { DensityControl, ShapeControl } from "@/components/editor/theme/radius-control"
-import { PREVIEW_MOBILE_CHROME_INSET } from "@/components/preview/preview-mobile-chrome-tone"
+import {
+  PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
+  PREVIEW_MOBILE_CHROME_INSET,
+  previewMobileChromeToneClass,
+} from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
@@ -44,6 +48,7 @@ export function PreviewMobileThemeBar({
   const t = useTranslations("editor")
   const previewT = useTranslations("preview")
   const [openSegment, setOpenSegment] = React.useState<Segment | null>(null)
+  const ignorePopoverCloseRef = React.useRef(false)
   const lastOpenSegmentRef = React.useRef<Segment | null>(null)
   const segmentRefs = React.useRef<Record<Segment, HTMLButtonElement | null>>({
     colors: null,
@@ -75,7 +80,18 @@ export function PreviewMobileThemeBar({
         PREVIEW_MOBILE_CHROME_INSET,
       )}
     >
-      <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
+      <Popover
+        open={openSegment != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (ignorePopoverCloseRef.current) {
+              ignorePopoverCloseRef.current = false
+              return
+            }
+            setOpenSegment(null)
+          }
+        }}
+      >
         <PopoverAnchor asChild>
           <div
             role="group"
@@ -88,11 +104,19 @@ export function PreviewMobileThemeBar({
                 icon={<Icon className="size-5" aria-hidden />}
                 ariaLabel={t(labelKey)}
                 active={openSegment === value}
-                onClick={() => setOpenSegment((current) => (current === value ? null : value))}
+                onClick={() =>
+                  setOpenSegment((current) => {
+                    if (current !== null && current !== value) {
+                      ignorePopoverCloseRef.current = true
+                    }
+                    return current === value ? null : value
+                  })
+                }
                 buttonRef={(el) => {
                   segmentRefs.current[value] = el
                 }}
                 dataAttrs={{ "data-mobile-preview-theme-pill": value }}
+                sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
               />
             ))}
           </div>
@@ -102,6 +126,7 @@ export function PreviewMobileThemeBar({
           align="center"
           sideOffset={12}
           className={cn(
+            previewMobileChromeToneClass(theme),
             "w-[calc(100vw-1.5rem)] max-w-none",
             "rounded-2xl border border-border/50 bg-popover p-4 text-popover-foreground shadow-xl",
           )}
@@ -123,6 +148,7 @@ export function PreviewMobileThemeBar({
                 value={theme?.colors?.schemeId}
                 mode={theme?.appearance?.mode ?? "light"}
                 layout="mobile"
+                swatchSizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
                 onChange={(patch) => handleUpdate(patch)}
               />
             )}
@@ -131,6 +157,7 @@ export function PreviewMobileThemeBar({
                 fonts={FONT_PRESETS}
                 value={theme?.fonts?.schemeId}
                 layout="glyph"
+                sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
                 onChange={(next) => handleUpdate({ fonts: next })}
               />
             )}
@@ -139,6 +166,7 @@ export function PreviewMobileThemeBar({
                 shapeId={theme?.shape?.schemeId}
                 radiusLevels={RADIUS_PRESETS}
                 layout="pill"
+                sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
                 onChange={(next) => handleUpdate({ shape: next })}
               />
             )}
@@ -147,6 +175,7 @@ export function PreviewMobileThemeBar({
                 densityId={theme?.density?.schemeId}
                 levels={DENSITY_PRESETS}
                 layout="spacing"
+                sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
                 onChange={(next) => handleUpdate({ density: next })}
               />
             )}

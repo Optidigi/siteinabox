@@ -9,12 +9,14 @@ export function MobilePickerOption({
   onClick,
   ariaLabel,
   className,
+  sizeClassName = "size-12",
   children,
 }: {
   active?: boolean
   onClick: () => void
   ariaLabel: string
   className?: string
+  sizeClassName?: string
   children: React.ReactNode
 }) {
   return (
@@ -26,7 +28,8 @@ export function MobilePickerOption({
       aria-pressed={active}
       aria-label={ariaLabel}
       className={cn(
-        "size-12 shrink-0 rounded-full border text-foreground shadow-sm",
+        sizeClassName,
+        "shrink-0 rounded-full border text-foreground shadow-sm",
         active
           ? "border-primary bg-background ring-2 ring-primary/35 hover:bg-background"
           : "border-border bg-muted/40 hover:bg-accent/50",

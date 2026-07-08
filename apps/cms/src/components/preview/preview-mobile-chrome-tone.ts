@@ -7,9 +7,18 @@ export function resolvePreviewSiteMode(theme: ThemeTokens | null | undefined): "
   return mode === "dark" ? "dark" : "light"
 }
 
-/** Invert CMS chrome against the previewed site: light site → dark chrome tokens. */
+export const PREVIEW_MOBILE_CHROME_LIGHT_CLASS = "preview-mobile-chrome-light"
+
+/** Invert CMS chrome against the previewed site: light site → dark tokens, dark site → light tokens. */
+export function previewMobileChromeToneClass(theme: ThemeTokens | null | undefined): string {
+  return resolvePreviewSiteMode(theme) === "light" ? "dark" : PREVIEW_MOBILE_CHROME_LIGHT_CLASS
+}
+
 export function previewMobileChromeWrapperClass(theme: ThemeTokens | null | undefined): string {
-  return cn(resolvePreviewSiteMode(theme) === "light" && "dark")
+  return cn(previewMobileChromeToneClass(theme))
 }
 
 export const PREVIEW_MOBILE_CHROME_INSET = "px-[max(env(safe-area-inset-left),0.75rem)]"
+
+/** Shared tap target for preview chrome pills and popover option circles (52px). */
+export const PREVIEW_MOBILE_CHROME_CONTROL_SIZE = "size-[3.25rem]"

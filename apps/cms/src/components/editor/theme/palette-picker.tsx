@@ -15,11 +15,12 @@ export const PalettePicker: React.FC<{
   mode: ThemeModeV2
   onChange: (next: { colors?: { schemeId: ColorSchemeId }; appearance?: { mode: ThemeModeV2 } }) => void
   layout?: "default" | "mobile"
-}> = ({ palettes, value, mode, onChange, layout = "default" }) => {
+  swatchSizeClassName?: string
+}> = ({ palettes, value, mode, onChange, layout = "default", swatchSizeClassName }) => {
   const t = useTranslations("editor")
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.colors.schemeId
   const activeMode = mode === "system" ? DEFAULT_THEME_TOKEN_SPEC.appearance.mode : mode
-  const swatchSize = layout === "mobile" ? "size-12" : "size-8"
+  const swatchSize = layout === "mobile" ? (swatchSizeClassName ?? "size-12") : "size-8"
 
   const modeToggle = (
     <div className={cn("flex items-center gap-1.5 text-muted-foreground", layout === "mobile" && "justify-center")}>

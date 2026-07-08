@@ -7,18 +7,13 @@ import { MobilePickerOption } from "@/components/common/mobile-picker-option"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 
-const FONT_GLYPH_PREVIEW: Record<FontSchemeId, { glyph: string; stack: string }> = {
-  "clear-modern": { glyph: "Aa", stack: "Inter, ui-sans-serif, system-ui, sans-serif" },
-  "classic-editorial": { glyph: "Gg", stack: "Georgia, Times New Roman, ui-serif, serif" },
-  "friendly-organic": { glyph: "Rr", stack: "Nunito, Avenir, Segoe UI, ui-sans-serif, sans-serif" },
-}
-
 export const FontPicker: React.FC<{
   fonts: FontPreset[]
   value: FontSchemeId | undefined
   onChange: (next: { schemeId: FontSchemeId }) => void
   layout?: "list" | "row" | "glyph"
-}> = ({ fonts, value, onChange, layout = "list" }) => {
+  sizeClassName?: string
+}> = ({ fonts, value, onChange, layout = "list", sizeClassName }) => {
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId
 
   if (layout === "glyph") {
@@ -26,19 +21,15 @@ export const FontPicker: React.FC<{
       <div className="flex justify-center gap-3">
         {fonts.map((preset) => {
           const isActive = activeId === preset.id
-          const preview = FONT_GLYPH_PREVIEW[preset.id]
           return (
             <MobilePickerOption
               key={preset.id}
               active={isActive}
               onClick={() => onChange({ schemeId: preset.id })}
               ariaLabel={`Apply ${preset.label} font preset`}
+              sizeClassName={sizeClassName}
             >
-              <FontPresetGlyph
-                fontId={preset.id}
-                glyph={preview?.glyph ?? "Aa"}
-                stack={preview?.stack ?? preset.previewFont}
-              />
+              <FontPresetGlyph fontId={preset.id} font={preset.previewFont} />
             </MobilePickerOption>
           )
         })}
@@ -136,16 +127,8 @@ function FontPresetLabel({
   )
 }
 
-function FontPresetGlyph({
-  fontId,
-  glyph,
-  stack,
-}: {
-  fontId: FontSchemeId
-  glyph: string
-  stack: string
-}) {
-  const fontValue = formatRuntimeCssValue(stack)
+function FontPresetGlyph({ fontId, font }: { fontId: FontSchemeId; font: string }) {
+  const fontValue = formatRuntimeCssValue(font)
   const glyphStyle = useCspStyleRule(
     `font-picker-glyph-${fontId}`,
     fontValue ? `font-family:${fontValue};` : null,
@@ -154,7 +137,7 @@ function FontPresetGlyph({
     <>
       {glyphStyle.styleElement}
       <span className={cn(glyphStyle.className, "text-lg font-medium leading-none")} aria-hidden>
-        {glyph}
+        Aa
       </span>
     </>
   )

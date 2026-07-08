@@ -24,7 +24,9 @@ describe("preview mobile chrome", () => {
     expect(chrome).toContain("PreviewMobileThemeBar")
     expect(chrome).toContain("md:hidden")
 
-    expect(tone).toContain('=== "light" && "dark"')
+    expect(tone).toContain("previewMobileChromeToneClass")
+    expect(tone).toContain('=== "light" ? "dark"')
+    expect(tone).toContain("preview-mobile-chrome-light")
 
     expect(themeBar).toContain("MobileInlinePill")
     expect(themeBar).toContain("justify-between")
@@ -43,5 +45,7 @@ describe("preview mobile chrome", () => {
     expect(themeBar).toContain('side="top"')
     expect(themeBar).toContain("md:hidden")
     expect(themeBar).toContain("siab:preview-theme-toolbar-close")
+    expect(themeBar).toContain("previewMobileChromeToneClass")
+    expect(themeBar).toContain("ignorePopoverCloseRef")
   })
 })

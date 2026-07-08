@@ -32,7 +32,8 @@ export const ShapeControl: React.FC<{
   radiusLevels?: ShapePreset[]
   onChange: (next: { schemeId: ShapeSchemeId }) => void
   layout?: "toggle" | "pill"
-}> = ({ shapeId, radiusLevels = [], onChange, layout = "toggle" }) => {
+  sizeClassName?: string
+}> = ({ shapeId, radiusLevels = [], onChange, layout = "toggle", sizeClassName }) => {
   const activeId = shapeId ?? DEFAULT_THEME_TOKEN_SPEC.shape.schemeId
 
   if (layout === "pill") {
@@ -47,6 +48,7 @@ export const ShapeControl: React.FC<{
               active={isActive}
               onClick={() => onChange({ schemeId: level.id })}
               ariaLabel={level.label}
+              sizeClassName={sizeClassName}
               className={shapePillRadiusClass(level.id)}
             >
               <Icon className="size-5" aria-hidden />
@@ -104,7 +106,8 @@ export const DensityControl: React.FC<{
   levels?: DensityPreset[]
   onChange: (next: { schemeId: DensitySchemeId }) => void
   layout?: "toggle" | "spacing"
-}> = ({ densityId, levels = [], onChange, layout = "toggle" }) => {
+  sizeClassName?: string
+}> = ({ densityId, levels = [], onChange, layout = "toggle", sizeClassName }) => {
   const activeId = densityId ?? DEFAULT_THEME_TOKEN_SPEC.density.schemeId
 
   if (layout === "spacing") {
@@ -118,6 +121,7 @@ export const DensityControl: React.FC<{
               active={isActive}
               onClick={() => onChange({ schemeId: level.id })}
               ariaLabel={level.label}
+              sizeClassName={sizeClassName}
             >
               <DensitySpacingGlyph densityId={level.id} />
             </MobilePickerOption>

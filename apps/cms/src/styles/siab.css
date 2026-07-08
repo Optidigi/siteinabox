@@ -341,3 +341,56 @@ body { font-family: var(--font-sans); }
 .rt-content .rt-font-script, .rt-content-bare .rt-font-script {
     font-family: var(--font-script);
 }
+
+/* Mobile preview chrome tone override: force light shadcn tokens when the CMS
+   root is dark but the previewed site uses dark mode. Mirrors :root in
+   packages/ui/src/styles/shadcn.css. */
+.preview-mobile-chrome-light {
+  --background: #f7f8f9;
+  --foreground: #191b1e;
+  --card: #ffffff;
+  --card-foreground: #191b1e;
+  --popover: #ffffff;
+  --popover-foreground: #191b1e;
+  --primary: #191b1e;
+  --primary-foreground: #f7f8f9;
+  --secondary: #f0f2f3;
+  --secondary-foreground: #35383f;
+  --muted: #edeff1;
+  --muted-foreground: #838a93;
+  --accent: #f0f2f3;
+  --accent-foreground: #35383f;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: oklch(0.7227 0.1920 149.5793);
+  --success-foreground: oklch(1 0 0);
+  --warning: oklch(0.7686 0.1647 70.0804);
+  --warning-foreground: oklch(0.145 0 0);
+  --border: #dfe2e5;
+  --input: #dfe2e5;
+  --ring: #5c6168;
+  --chart-1: #191b1e;
+  --chart-2: #35383f;
+  --chart-3: #5c6168;
+  --chart-4: #838a93;
+  --chart-5: #a8abb2;
+  --sidebar: oklch(0.96 0.0025 228.78);
+  --sidebar-foreground: #191b1e;
+  --sidebar-primary: #191b1e;
+  --sidebar-primary-foreground: #f7f8f9;
+  --sidebar-accent: #dfe2e5;
+  --sidebar-accent-foreground: #191b1e;
+  --sidebar-border: #dfe2e5;
+  --sidebar-ring: #5c6168;
+  --radius: 0.5rem;
+  --brand: oklch(0.902 0.194 99);
+  --brand-foreground: oklch(0.214 0.004 17);
+  --shadow-color: #17171c;
+  --shadow-opacity: 0.1;
+  --shadow-blur: 0.5rem;
+  --shadow-spread: 0rem;
+  --shadow-offset-x: 0rem;
+  --shadow-offset-y: 0.25rem;
+  --letter-spacing: 0em;
+  --spacing: 0.25rem;
+}

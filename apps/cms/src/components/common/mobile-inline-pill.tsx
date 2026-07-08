@@ -11,6 +11,7 @@ export interface MobileInlinePillProps {
   onClick: () => void
   buttonRef?: React.Ref<HTMLButtonElement>
   dataAttrs?: Record<string, string | undefined>
+  sizeClassName?: string
 }
 
 /**
@@ -24,6 +25,7 @@ export function MobileInlinePill({
   onClick,
   buttonRef,
   dataAttrs,
+  sizeClassName = "size-12",
 }: MobileInlinePillProps) {
   return (
     <Button
@@ -36,7 +38,8 @@ export function MobileInlinePill({
       aria-pressed={active}
       {...(dataAttrs ?? {})}
       className={cn(
-        "h-12 w-12 shrink-0 rounded-full border shadow-lg transition-all duration-200",
+        sizeClassName,
+        "shrink-0 rounded-full border shadow-lg transition-all duration-200",
         active
           ? "border-primary bg-background text-foreground ring-2 ring-primary/35 hover:bg-background"
           : "border-border/60 bg-background text-foreground hover:bg-background/90",

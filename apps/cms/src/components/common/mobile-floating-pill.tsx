@@ -30,6 +30,7 @@ export interface MobileFloatingPillProps {
   dataAttrs?: Record<string, string | undefined>
   /** `theme` follows token background/foreground (for preview chrome wrappers). */
   surface?: "inverted" | "theme"
+  sizeClassName?: string
 }
 
 /**
@@ -55,6 +56,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   offset,
   dataAttrs,
   surface = "inverted",
+  sizeClassName = "size-12",
 }) => {
   const isLoading = variant === "loading"
   const tone = badgeTone ?? (variant === "destructive" ? "destructive" : "warning")
@@ -90,7 +92,8 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   const useLink = Boolean(href && isInteractive)
   const sharedClassName = cn(
     cspPosition.className,
-    "md:hidden fixed z-50 inline-flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 ease-out",
+    "md:hidden fixed z-50 inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
+    sizeClassName,
     visible ? "pointer-events-auto opacity-100 scale-100 translate-x-0" : cn("pointer-events-none opacity-0 scale-75", hiddenMotionClass),
     !isInteractive && "pointer-events-none opacity-50",
     positionClasses,
