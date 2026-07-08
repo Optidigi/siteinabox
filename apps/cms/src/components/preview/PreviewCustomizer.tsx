@@ -28,7 +28,7 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { PreviewDesktopThemeToolbar } from "@/components/preview/preview-desktop-theme-toolbar"
-import { ShineBorder } from "@/components/ui/shine-border"
+import { ShineBorder } from "@/components/common/shine-border"
 import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
@@ -504,9 +504,15 @@ export function PreviewCommandBar({
     >
       <div className="pointer-events-auto relative grid w-full grid-cols-[auto_1fr] items-center gap-1 overflow-hidden border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background/90 md:p-3 md:shadow-2xl md:backdrop-blur-xl">
         <ShineBorder
-          borderWidth={1}
-          duration={10}
-          shineColor={["#2b2e32", "#a8abb2", "#edeef0", "#a8abb2", "#2b2e32"]}
+          borderWidth={2}
+          duration={8}
+          shineColor={[
+            "rgba(255,255,255,0.08)",
+            "rgba(255,255,255,0.45)",
+            "rgba(255,255,255,0.95)",
+            "rgba(255,255,255,0.45)",
+            "rgba(255,255,255,0.08)",
+          ]}
         />
         <PreviewDesktopThemeToolbar theme={theme} onThemeChange={onThemeChange} />
 

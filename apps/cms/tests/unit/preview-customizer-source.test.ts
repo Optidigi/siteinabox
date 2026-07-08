@@ -46,7 +46,7 @@ describe("preview customizer source contract", () => {
     expect(componentSource).toContain("md:p-3")
     expect(componentSource).toContain("md:rounded-lg md:border-0 md:bg-background/90")
     expect(componentSource).toContain("ShineBorder")
-    expect(componentSource).toContain("@/components/ui/shine-border")
+    expect(componentSource).toContain("@/components/common/shine-border")
     expect(componentSource).not.toContain('<span className="md:hidden" aria-hidden />')
     expect(componentSource).not.toContain("ring-1 ring-white/40")
     expect(componentSource).not.toContain("border-white/30")
