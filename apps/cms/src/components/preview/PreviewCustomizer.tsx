@@ -547,7 +547,7 @@ function PreviewThemeToolbar({
                 ariaLabel={previewT("themeControls")}
                 value={openSegment}
                 onValueChange={(next) => setOpenSegment(next)}
-                className="h-12 border-0 bg-card/95 shadow-none"
+                className="h-12 border-0 bg-card/95 shadow-none md:h-9"
                 itemRef={(value, el) => {
                   segmentRefs.current[value] = el
                 }}
@@ -662,7 +662,7 @@ export function PreviewCommandBar({
         />
 
         <div className="flex justify-self-end items-center gap-2">
-          <Button asChild variant="default" size="default" className={`h-12 w-12 rounded-md px-0 md:w-auto md:px-5 ${blockedClassName}`}>
+          <Button asChild variant="default" size="default" className={`h-12 w-12 rounded-md px-0 md:h-9 md:w-auto md:px-5 ${blockedClassName}`}>
             <a
               href={customerNavigationBlocked ? undefined : reviewHref}
               aria-label={t("reviewChanges")}
@@ -675,7 +675,7 @@ export function PreviewCommandBar({
           </Button>
 
           {canCompleteOrder ? (
-            <Button asChild variant="success" size="default" className={`h-12 rounded-md px-4 md:px-5 ${blockedClassName}`}>
+            <Button asChild variant="success" size="default" className={`h-12 rounded-md px-4 md:h-9 md:px-5 ${blockedClassName}`}>
               <a
                 href={customerNavigationBlocked ? undefined : checkoutHref}
                 aria-label={t("launchWebsite")}
@@ -692,7 +692,7 @@ export function PreviewCommandBar({
               variant="secondary"
               size="default"
               disabled
-              className="h-12 rounded-md px-4 md:px-5"
+              className="h-12 rounded-md px-4 md:h-9 md:px-5"
               aria-label={t("paymentComplete")}
               title={t("paymentComplete")}
             >
