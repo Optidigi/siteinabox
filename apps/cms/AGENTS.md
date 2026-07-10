@@ -11,10 +11,12 @@ update this file.
 
 ## What This Repo Is
 
-`siab-payload` is a multi-tenant CMS built with Next.js 15 App Router,
-PayloadCMS v3, PostgreSQL, React 19, TypeScript, Tailwind v4, pnpm 11, and
-Node 26 in Docker/CI. UI primitives are local shadcn-style source under
-`src/components/ui/`; app composites live outside that tree.
+`apps/cms` is the SIAB multi-tenant CMS app (formerly `siab-payload`), built with
+Next.js 15 App Router, PayloadCMS v3, PostgreSQL, React 19, TypeScript,
+Tailwind v4, pnpm 11, and Node 26 in Docker/CI. UI primitives are local
+shadcn-style source under `src/components/ui/`; app composites live outside that
+tree. Customer preview chrome lives in `src/components/preview/`; see
+`docs/runbooks/canvas-architecture.md` § Customer preview chrome.
 
 ## Required Workflow
 
@@ -110,10 +112,13 @@ configured.
 
 ## MCP Servers
 
-Project MCP definitions are kept in `.mcp.json`, `.mcp.toml`,
-`.codex/config.toml`, `.codex/mcp.toml`, and `.cursor/mcp.json`. Keep all five
-server lists in sync. `.codex/` is for Codex-specific config, `.cursor/` is for
-Cursor-specific config, and `.agents/` is for generic agent-discovery metadata.
+Project MCP definitions are mirrored in ten files — keep all lists in sync:
+
+- Monorepo root: `.mcp.json`, `.mcp.toml`, `.codex/config.toml`, `.codex/mcp.toml`, `.cursor/mcp.json`
+- `apps/cms/`: the same five filenames
+
+`.codex/` is for Codex-specific config, `.cursor/` is for Cursor-specific config,
+and `.agents/` is for generic agent-discovery metadata.
 
 Configured servers:
 
@@ -211,5 +216,5 @@ Use `context7` for current library documentation when docs are needed. Use
 
 Before touching `src/components/editor/canvas/` or canvas registry items, read
 `docs/runbooks/canvas-architecture.md`. This covers the selection model,
-app-shell layout, theme bar, sidebar drill-down, block renderers, inline-edit
-primitives, and the parent-owned mobile frame editor.
+app-shell layout, theme bar, customer preview chrome, sidebar drill-down, block
+renderers, inline-edit primitives, and the parent-owned mobile frame editor.

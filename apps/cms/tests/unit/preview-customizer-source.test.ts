@@ -20,7 +20,8 @@ describe("preview customizer source contract", () => {
 
     expect(componentSource).toContain("/renderer-frame/preview/")
     expect(componentSource).toContain("data-siab-renderer-frame")
-    expect(componentSource).toContain('const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"')
+    expect(componentSource).toContain('export { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT }')
+    expect(componentSource).toContain("@/lib/preview/preview-theme-events")
     expect(componentSource).toContain("onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}")
     expect(componentSource).toContain("onFocus={onFrameInteraction}")
     expect(componentSource).toContain("onPointerDown={onFrameInteraction}")

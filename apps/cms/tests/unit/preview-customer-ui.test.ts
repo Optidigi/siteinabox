@@ -13,7 +13,8 @@ describe("customer preview UI", () => {
 
     expect(customizer.includes('view: "preview"')).toBe(false)
     expect(customizer).toContain("data-siab-renderer-frame")
-    expect(customizer).toContain('const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"')
+    expect(customizer).toContain('export { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT }')
+    expect(customizer).toContain("@/lib/preview/preview-theme-events")
     expect(customizer).toContain("onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}")
     expect(customizer).toContain("onFocus={onFrameInteraction}")
     expect(customizer).toContain("onPointerDown={onFrameInteraction}")

@@ -1,6 +1,8 @@
 # Local development runbook
 
-Cross-platform setup for running `siab-payload` against a local Docker-based Postgres. Targets a developer who has just cloned the repo and wants `pnpm dev` to come up cleanly.
+Cross-platform setup for running `apps/cms` against a local Docker-based Postgres.
+Targets a developer who has just cloned the monorepo and wants `pnpm dev` in
+`apps/cms` to come up cleanly.
 
 ## Prerequisites
 
@@ -14,10 +16,18 @@ Cross-platform setup for running `siab-payload` against a local Docker-based Pos
 ## Step 1: Clone and install
 
 ```bash
-git clone https://github.com/Optidigi/siab-payload.git
-cd siab-payload
+git clone https://github.com/Optidigi/siteinabox.git
+cd siteinabox
 pnpm install
 ```
+
+CMS app work happens under `apps/cms`. From the monorepo root:
+
+```bash
+cd apps/cms
+```
+
+Or run CMS commands with `pnpm --dir apps/cms <script>`.
 
 ## Step 2: Start local Postgres
 

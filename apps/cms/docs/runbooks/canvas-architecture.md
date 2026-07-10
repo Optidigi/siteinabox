@@ -48,21 +48,51 @@ The customer preview frame is separate: `PreviewCustomizer` hosts
 asset-pick, or chrome-edit messages. The preview page owns scrolling: the
 same-origin renderer iframe is measured after `renderer.ready` and auto-sized to
 the rendered document height, so customer preview should not introduce a nested
-site scrollbar. Customer preview chrome on desktop is a fixed bottom toolbar with
-feedback/change request aligned left, theme controls centered, and launch/payment
-state aligned right. Desktop preview renders that toolbar as a centered floating
-card above the viewport bottom; the review/change request action is icon-only,
-the theme toolbar stays centered, and launch/payment remains right-aligned.
-Desktop preview uses an inline theme toolbar (`PreviewDesktopThemeToolbar`):
-each control group sits in its own muted segmented container (Launch UI-style),
-with square highlighted cells for shape and font options and rounded color swatches
-inside the palette group — no popovers. On phone preview,
-corner nav pills carry review (top-left) and launch/payment (top-right), and a
-fixed bottom-centre three-segment theme bar exposes colour, font, and shape
-preset controls with popovers opening upward. Preview always renders the
-comfortable density preset; density is not customer-editable in preview. The preview page keeps bottom
-padding so the footer does not cover the final rendered section when the
-customer scrolls to the end.
+site scrollbar. Customer preview chrome is owned by `PreviewCustomizer` in
+`src/components/preview/`; see § Customer preview chrome below for layout,
+breakpoints, and the component map. Preview always renders the comfortable
+density preset; density is not customer-editable in preview. The preview page
+keeps bottom padding (`pb-24 md:pb-32`) so the footer does not cover the final
+rendered section when the customer scrolls to the end.
+
+## Customer preview chrome
+
+Preview chrome uses Tailwind **`md` (768px)** for desktop vs phone layout. The
+page editor shell uses a separate **`1280px`** breakpoint (`EDITOR_DESKTOP_BREAKPOINT`);
+do not conflate the two.
+
+| Component | File | Role |
+|-----------|------|------|
+| `PreviewCustomizer` | `preview/PreviewCustomizer.tsx` | Parent shell, iframe host, theme save queue |
+| `PreviewCommandBar` | same file | Desktop sticky footer (`hidden md:block` content path) |
+| `ShineBorder` | `common/shine-border.tsx` | Animated border on command bar (CSP nonced styles) |
+| `PreviewDesktopThemeToolbar` | `preview-desktop-theme-toolbar.tsx` | Inline colour/shape/font controls |
+| `InlineToolbarGroup` | `common/inline-toolbar-group.tsx` | Segmented `bg-card` clusters for desktop pickers |
+| `PreviewMobileChrome` | `preview-mobile-chrome.tsx` | Corner nav pills + bottom theme bar wrapper |
+| `PreviewMobileThemeBar` | `preview-mobile-theme-bar.tsx` | Three-segment popover theme bar |
+| Tone inversion | `preview-mobile-chrome-tone.ts` | Light site → dark CMS chrome (and vice versa) |
+| Close event | `lib/preview/preview-theme-events.ts` | `PREVIEW_THEME_TOOLBAR_CLOSE_EVENT` closes mobile popovers on iframe interaction |
+| Density pin | `lib/theme/normalizeTheme.ts` | `normalizePreviewThemeForSave` forces `comfortable` |
+
+**Desktop (`md+`):** `PreviewCommandBar` is a centered floating card
+(`md:bottom-6`, `md:rounded-lg`, `md:bg-background/90`, `md:backdrop-blur-xl`)
+with `data-siab-cms-sticky-chrome`. Inside the card: `ShineBorder` overlay,
+then **inline theme controls on the left** (`PreviewDesktopThemeToolbar`), a
+vertical separator, and **review + launch/payment on the right**. Review is
+icon-only from `md` through `lg`; the label appears at `lg+`
+(`sr-only lg:not-sr-only`). Desktop theme controls use `InlineToolbarGroup`
+segments with `layout="inline"` palette (includes light/dark `Switch`),
+`layout="segment"` shape/font — **no popovers**.
+
+**Mobile (`<md`):** `PreviewMobileChrome` — corner `MobileFloatingPill` for
+review (top-left) and launch/payment (top-right); fixed bottom-centre
+`PreviewMobileThemeBar` with colour/font/shape popovers opening upward.
+Iframe focus or pointer interaction dispatches `PREVIEW_THEME_TOOLBAR_CLOSE_EVENT`
+to collapse open theme popovers.
+
+Theme changes in preview go through `normalizePreviewThemeForSave` on the client
+and in `persistPreviewTheme*` on the server so density never persists outside
+`comfortable`.
 
 ## Editor error boundary
 
@@ -74,7 +104,7 @@ customer scrolls to the end.
 
 ## Theme control bar
 
-`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill. On desktop it has four segments (`Colours | Fonts | Shape | Density`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`; each segment opens a panel anchored under it. The page editor does not show ThemeBar on phones. Customer preview owns its separate chrome: desktop preview uses the inline footer theme toolbar, while phone preview uses `PreviewMobileChrome` — corner `MobileFloatingPill` nav actions for review/launch/payment plus a bottom-centre three-segment theme bar for colour, font, and shape only. The toolbar exposes only fixed ThemeTokenSpec V2 presets: four color styles (`Blue Professional`, `Red Confident`, `Emerald Calm`, `Amber Warm`), three font styles (`Clear Modern`, `Classic Editorial`, `Friendly Organic`), and three shape styles (`Rounded`, `Soft`, `Sharp`). Preview pins density to `comfortable`; density remains editable only in the page editor `ThemeBar`. Defaults are real preset IDs: `blue-professional`, `clear-modern`, `soft`, `comfortable`, and light mode. The default preset set is Tailwind Plus identity: `blue-professional` maps to the source indigo ramp and `comfortable` does not rewrite provider section padding. The schema supports `appearance.mode: "system"`, but the toolbar does not present System as a selectable mode. The bar edits **tenant-wide** preset IDs only — never CMS shadcn tokens, raw palettes, raw font families, raw radius values, arbitrary classes, AI-created visual themes, or custom CSS. The schema stores ThemeTokenSpec V2 directly: `appearance.mode`, `colors.schemeId`, `fonts.schemeId`, `shape.schemeId`, and `density.schemeId`. `toCssVars` resolves those preset IDs into a base `.rt-canvas { ... }` block and a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay; `CanvasSurface` stamps `data-rt-mode` through the shared renderer `themeMode()` helper. `packages/site-renderer` emits the same contract through `ThemeStyle`, `themeToCssVars`, and `data-rt-mode` on live/preview renderer roots. Tailwind's native `dark:` variant is wired to `[data-rt-mode="dark"]` in the generated-site CSS entrypoints. Tailwind Plus provider DOM, classes, layout, responsive behavior, and Tailwind default palette computation remain renderer/source owned; theme presets affect only explicit bridge roles for non-default accent colors, ambient surfaces/ink, borders, fonts, radius scale, and non-default provider section vertical padding. In the page editor, changes update `PageForm`'s live `theme` state and persist through the normal explicit page save. In customer preview, theme changes go through the preview customizer's queued preview-theme save path. Both paths are validated by `themeSchema`.
+`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill. On desktop it has four segments (`Colours | Fonts | Shape | Density`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`; each segment opens a panel anchored under it. The page editor does not show ThemeBar on phones. Customer preview chrome is separate — see § Customer preview chrome above (`PreviewCommandBar`, `PreviewMobileChrome`). The toolbar exposes only fixed ThemeTokenSpec V2 presets: four color styles (`Blue Professional`, `Red Confident`, `Emerald Calm`, `Amber Warm`), three font styles (`Clear Modern`, `Classic Editorial`, `Friendly Organic`), and three shape styles (`Rounded`, `Soft`, `Sharp`). Preview pins density to `comfortable`; density remains editable only in the page editor `ThemeBar`. Defaults are real preset IDs: `blue-professional`, `clear-modern`, `soft`, `comfortable`, and light mode. The default preset set is Tailwind Plus identity: `blue-professional` maps to the source indigo ramp and `comfortable` does not rewrite provider section padding. The schema supports `appearance.mode: "system"`, but the toolbar does not present System as a selectable mode. The bar edits **tenant-wide** preset IDs only — never CMS shadcn tokens, raw palettes, raw font families, raw radius values, arbitrary classes, AI-created visual themes, or custom CSS. The schema stores ThemeTokenSpec V2 directly: `appearance.mode`, `colors.schemeId`, `fonts.schemeId`, `shape.schemeId`, and `density.schemeId`. `toCssVars` resolves those preset IDs into a base `.rt-canvas { ... }` block and a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay; `CanvasSurface` stamps `data-rt-mode` through the shared renderer `themeMode()` helper. `packages/site-renderer` emits the same contract through `ThemeStyle`, `themeToCssVars`, and `data-rt-mode` on live/preview renderer roots. Tailwind's native `dark:` variant is wired to `[data-rt-mode="dark"]` in the generated-site CSS entrypoints. Tailwind Plus provider DOM, classes, layout, responsive behavior, and Tailwind default palette computation remain renderer/source owned; theme presets affect only explicit bridge roles for non-default accent colors, ambient surfaces/ink, borders, fonts, radius scale, and non-default provider section vertical padding. In the page editor, changes update `PageForm`'s live `theme` state and persist through the normal explicit page save. In customer preview, theme changes go through the preview customizer's queued preview-theme save path. Both paths are validated by `themeSchema`.
 
 Generated blocks must not add their own arbitrary visual token fields, class
 names, provider CSS overrides, or per-block color/font/radius/spacing controls.
@@ -141,7 +171,7 @@ Compiled by the tenant's Astro build and loaded from `DATA_DIR/tenants/<id>/cms-
 
 Tenant renderers (currently Ami-care) do **not** consume `cms-editor.css`. The editor iframe loads bundled site-renderer styles (`generated-site-renderer.css` + scoped `site-renderer-canvas.css` in `(editor-frame)/layout.tsx`) and `loadCanvasTenantCss` skips the tenant artifact when `resolveTenantRenderer` matches. Generic/generated tenants still use `loadCanvasTenantCss` → `loadTenantCss` in the editor-frame route. Ami-care is temporary official-tenant compatibility only and must not become a generation provider or generic fallback.
 
-OBS-62 responsive contract: desktop canvas renders at actual pane width, not a fixed design width. `.rt-canvas` is the named `site-frame` container (`container-type: inline-size; container-name: site-frame; contain: layout`), and `CanvasSurface` wraps the tenant DOM in `.site-frame-root` so tenant CSS can apply container-query-driven global rules without styling the container itself. Generated tenant/site CSS must use named `site-frame` container queries for layout-width responsiveness; `siab-payload` does not runtime-convert `@media`/viewport units into container queries.
+OBS-62 responsive contract: desktop canvas renders at actual pane width, not a fixed design width. `.rt-canvas` is the named `site-frame` container (`container-type: inline-size; container-name: site-frame; contain: layout`), and `CanvasSurface` wraps the tenant DOM in `.site-frame-root` so tenant CSS can apply container-query-driven global rules without styling the container itself. Generated tenant/site CSS must use named `site-frame` container queries for layout-width responsiveness; `apps/cms` does not runtime-convert `@media`/viewport units into container queries.
 
 ## Canvas ↔ sidebar selection sync
 

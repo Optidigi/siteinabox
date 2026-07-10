@@ -316,17 +316,17 @@ inactive.
 
 ## CMS Query Layer
 
-`siab-payload` should use a dedicated server-only analytics module rather than
-ad hoc PostHog calls in pages or components.
+`apps/cms` uses a dedicated server-only analytics module rather than ad hoc
+PostHog calls in pages or components.
 
-Proposed module shape:
+Implemented module (`src/lib/analytics/`):
 
-- `src/lib/analytics/config.ts`
-- `src/lib/analytics/events.ts`
-- `src/lib/analytics/posthogClient.ts`
-- `src/lib/analytics/queries.ts`
-- `src/lib/analytics/access.ts`
-- `src/lib/analytics/redaction.ts`
+- `config.ts` — PostHog environment/configuration and enabled/disabled state
+- `events.ts` — typed event names and property schemas
+- `posthogClient.ts` — server PostHog client
+- `queries.ts` — curated query helpers (see list below)
+- `access.ts` — tenant/site access enforcement before queries
+- `redaction.ts` — property redaction before capture
 
 Responsibilities:
 
@@ -402,7 +402,7 @@ still the right source of truth.
 
 ## Cross-Repo Responsibilities
 
-`siab-payload` owns analytics contract docs, site/page/block analytics metadata
+`apps/cms` owns analytics contract docs, site/page/block analytics metadata
 projection, CMS/server event capture, `site_form_accepted` capture, the
 server-only PostHog query layer, `/analytics`, and dashboard highlights.
 
@@ -428,7 +428,7 @@ in the shared SIAB PostHog project with correct tenant/site metadata.
 Use this order as a default path. If research or code review reveals a better
 sequence, preserve the approved contracts and adjust pragmatically.
 
-1. `siab-payload` contract docs, projection metadata, and server query helper
+1. `apps/cms` contract docs, projection metadata, and server query helper
    skeleton.
 2. `packages/site-renderer` / `apps/renderer` tenant-site runtime.
 3. Existing tenant backport.

@@ -1,5 +1,9 @@
 # Phase D5+D6 Audit Baseline — Style Violations + Layer 2 Composites Inventory
 
+> **Historical — pre-monorepo (2026-05).** This audit describes the old
+> `siab-payload` / `@siab/*` external-registry migration. Current UI policy is
+> root `AGENTS.md` + `packages/ui` + CMS shims. Do not implement from this file.
+
 **Date:** 2026-05-17
 **Run after:** Phase B.3 complete (15 `@siab/*` items extracted), B.4 blocked on OBS-53
 **Purpose:** Concrete inventory of the migration work behind FE-46 "siab-payload as a complete `@siab/*` consumer (zero authored CSS in app)"

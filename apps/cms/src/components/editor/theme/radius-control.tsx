@@ -131,36 +131,8 @@ export const DensityControl: React.FC<{
   densityId: DensitySchemeId | undefined
   levels?: DensityPreset[]
   onChange: (next: { schemeId: DensitySchemeId }) => void
-  layout?: "toggle" | "spacing"
-  sizeClassName?: string
-}> = ({ densityId, levels = [], onChange, layout = "toggle", sizeClassName }) => {
+}> = ({ densityId, levels = [], onChange }) => {
   const activeId = densityId ?? DEFAULT_THEME_TOKEN_SPEC.density.schemeId
-
-  if (layout === "spacing") {
-    return (
-      <div className={cn("flex justify-center", sizeClassName === "size-8" ? "gap-1.5" : "gap-3")}>
-        {levels.map((level) => {
-          const Icon = densityIconFor(level)
-          const isActive = activeId === level.id
-          return (
-            <MobilePickerOption
-              key={level.id}
-              active={isActive}
-              onClick={() => onChange({ schemeId: level.id })}
-              ariaLabel={level.label}
-              sizeClassName={sizeClassName}
-            >
-              {Icon ? (
-                <Icon className={sizeClassName === "size-8" ? "size-3.5 stroke-[1.5]" : "size-4"} aria-hidden />
-              ) : (
-                level.label
-              )}
-            </MobilePickerOption>
-          )
-        })}
-      </div>
-    )
-  }
 
   return (
     <ToggleGroup

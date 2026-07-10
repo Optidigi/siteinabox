@@ -18,7 +18,7 @@ export const FontPicker: React.FC<{
   fonts: FontPreset[]
   value: FontSchemeId | undefined
   onChange: (next: { schemeId: FontSchemeId }) => void
-  layout?: "list" | "row" | "glyph" | "segment"
+  layout?: "list" | "glyph" | "segment"
   sizeClassName?: string
 }> = ({ fonts, value, onChange, layout = "list", sizeClassName }) => {
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId
@@ -58,34 +58,6 @@ export const FontPicker: React.FC<{
             >
               <FontPresetGlyph fontId={preset.id} compact={sizeClassName === "size-8"} />
             </MobilePickerOption>
-          )
-        })}
-      </div>
-    )
-  }
-
-  if (layout === "row") {
-    return (
-      <div className="flex max-w-[min(100vw-2rem,20rem)] flex-wrap gap-2">
-        {fonts.map((preset) => {
-          const isActive = activeId === preset.id
-          return (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => onChange({ schemeId: preset.id })}
-              aria-pressed={isActive}
-              aria-label={`Apply ${preset.label} font preset`}
-              className={cn(
-                "inline-flex items-center rounded-full border px-3 py-1.5 text-left outline-none transition-colors",
-                "focus-visible:ring-2 focus-visible:ring-ring",
-                isActive
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-border bg-background hover:bg-accent/50",
-              )}
-            >
-              <FontPresetLabel font={preset.previewFont} label={preset.label} compact />
-            </button>
           )
         })}
       </div>

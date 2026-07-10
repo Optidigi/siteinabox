@@ -30,9 +30,11 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { PreviewDesktopThemeToolbar } from "@/components/preview/preview-desktop-theme-toolbar"
 import { ShineBorder } from "@/components/common/shine-border"
 import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
+import { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT } from "@/lib/preview/preview-theme-events"
+
+export { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT }
 
 const PREVIEW_FRAME_HEIGHT_GUTTER = 2
-export const PREVIEW_THEME_TOOLBAR_CLOSE_EVENT = "siab:preview-theme-toolbar-close"
 
 type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
 type QueuedPreviewThemeSave = {

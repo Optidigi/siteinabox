@@ -8,7 +8,7 @@ import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { sameRelationshipId } from "@/lib/relationshipId"
 import { loadTenantCss } from "@/lib/editor/loadTenantCss"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { verifyPreviewToken, type PreviewClaims } from "@/lib/preview/sign"
@@ -178,7 +178,7 @@ export async function getPreviewCustomizerData(
   const analyticsContext = tenantAnalyticsContext(tenant)
   const currentPage = pageToJson(selected, analyticsContext) as ContractPage
   const settings = settingsToJson(settingsDoc, navPages, analyticsContext) as SiteSettings
-  const theme = normalizeThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
+  const theme = normalizePreviewThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
   const parsedManifest = manifestSchema.safeParse(tenant.siteManifest)
   const manifest = parsedManifest.success ? parsedManifest.data : DEFAULT_MANIFEST
 
@@ -239,7 +239,7 @@ export async function getPreviewCustomizerDataForGrant(input: {
   const analyticsContext = tenantAnalyticsContext(tenant)
   const currentPage = pageToJson(selected, analyticsContext) as ContractPage
   const settings = settingsToJson(settingsDoc, navPages, analyticsContext) as SiteSettings
-  const theme = normalizeThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
+  const theme = normalizePreviewThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
   const parsedManifest = manifestSchema.safeParse(tenant.siteManifest)
   const manifest = parsedManifest.success ? parsedManifest.data : DEFAULT_MANIFEST
 
@@ -276,7 +276,7 @@ export async function persistPreviewThemeForGrant(input: {
   if (!parsed.success) {
     throw new Error(`Invalid theme data: ${parsed.error.message}`)
   }
-  const normalized = normalizeThemeForSave(parsed.data)
+  const normalized = normalizePreviewThemeForSave(parsed.data)
   await payload.update({
     collection: "tenants",
     id: tenant.id as any,
@@ -293,7 +293,7 @@ export async function persistPreviewTheme(token: string, theme: ThemeTokens): Pr
   if (!parsed.success) {
     throw new Error(`Invalid theme data: ${parsed.error.message}`)
   }
-  const normalized = normalizeThemeForSave(parsed.data)
+  const normalized = normalizePreviewThemeForSave(parsed.data)
   await payload.update({
     collection: "tenants",
     id: tenant.id as any,

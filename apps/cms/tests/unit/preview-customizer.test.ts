@@ -179,7 +179,7 @@ describe("preview customizer service", () => {
       { id: 101, slug: "about", title: "About" },
     ])
     expect(data.currentPage.slug).toBe("about")
-    expect(data.theme).toEqual({ ...DEFAULT_THEME_TOKEN_SPEC, density: { schemeId: "compact" } })
+    expect(data.theme).toEqual(DEFAULT_THEME_TOKEN_SPEC)
     expect(data.approval).toEqual({ status: "pending" })
     expect(data.payment).toEqual({ status: "not_started" })
   })
@@ -224,7 +224,7 @@ describe("preview customizer service", () => {
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "spacious" },
+      density: { schemeId: "comfortable" },
     })
     expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
       collection: "tenants",
