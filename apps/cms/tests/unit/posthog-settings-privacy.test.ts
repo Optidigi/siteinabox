@@ -25,5 +25,7 @@ describe("PostHog privacy settings sync", () => {
     expect(source).toContain('arg === "--check"')
     expect(source).toContain("PostHog privacy drift:")
     expect(source).toContain("process.exit(1)")
+    expect(source).toContain('key === "app_urls"')
+    expect(source).toContain("filter(Boolean).sort()")
   })
 })

@@ -126,8 +126,11 @@ const patch = {
 }
 
 if (checkOnly) {
+  const comparable = (key, value) => key === "app_urls" && Array.isArray(value)
+    ? [...value].filter(Boolean).sort()
+    : value
   const drift = Object.entries(patch).filter(([key, expected]) =>
-    JSON.stringify(current[key]) !== JSON.stringify(expected),
+    JSON.stringify(comparable(key, current[key])) !== JSON.stringify(comparable(key, expected)),
   )
   if (drift.length > 0) {
     for (const [key, expected] of drift) {
