@@ -51,7 +51,7 @@ export function InlineToolbarOption({
       className={cn(
         "size-8 shrink-0 rounded-md",
         active
-          ? "bg-muted text-foreground shadow-sm hover:bg-muted"
+          ? "bg-accent text-accent-foreground shadow-sm ring-1 ring-border hover:bg-accent"
           : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
         className,
       )}
