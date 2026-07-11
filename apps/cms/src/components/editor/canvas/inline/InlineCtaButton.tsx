@@ -133,10 +133,10 @@ export const InlineCtaButton: React.FC<InlineCtaButtonProps> = ({ value, onChang
       >
         <div className="space-y-1.5">
           <Label htmlFor="inline-cta-label">{t("buttonText")}</Label>
-          <Input id="inline-cta-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Contact" />
+          <Input id="inline-cta-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={t("ctaLabelPlaceholder")} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="inline-cta-href">URL</Label>
+          <Label htmlFor="inline-cta-href">{tCommon("url")}</Label>
           <Input id="inline-cta-href" value={href} onChange={(e) => setHref(e.target.value)} placeholder={t("ctaUrlPlaceholder")} />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}

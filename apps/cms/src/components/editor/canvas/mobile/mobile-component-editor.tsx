@@ -128,6 +128,7 @@ const MobileFieldRenderer: React.FC<{
   blockType: string | undefined
 }> = ({ spec, parentSpec, path, manifest, blockType }) => {
   const t = useTranslations("editor")
+  const tCommon = useTranslations("common")
   const { watch, setValue } = useFormContext()
   const { expandTo } = useMobileEditor()
   const name = elementPathToName(path)
@@ -200,7 +201,7 @@ const MobileFieldRenderer: React.FC<{
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="text-xs text-muted-foreground">URL</Label>
+          <Label className="text-xs text-muted-foreground">{tCommon("url")}</Label>
           <Input
             value={cta.href ?? ""}
             onChange={(e) => setValue(name, { ...cta, href: e.target.value }, { shouldDirty: true })}
@@ -261,7 +262,7 @@ const MobileFieldRenderer: React.FC<{
       />
     )
   }
-  return <p className="text-xs text-muted-foreground">Unknown kind</p>
+  return <p className="text-xs text-muted-foreground">{t("unknownFieldKind", { kind: spec.kind })}</p>
 }
 
 const resolveUrl = (v: any): string | null => {

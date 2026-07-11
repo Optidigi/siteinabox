@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@siteinabox/ui/components/collapsible"
 import { ChevronDown } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 export type LegalDetailField = { label: string; value: ReactNode; mono?: boolean }
 
@@ -11,6 +12,7 @@ export function LegalRecordDetail({ title, fields, sensitiveFields = [], footer 
   sensitiveFields?: LegalDetailField[]
   footer?: ReactNode
 }) {
+  const t = useTranslations("legalOperations")
   const list = (items: LegalDetailField[]) => <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
     {items.map((field) => <div key={field.label} className="min-w-0">
       <dt className="text-xs font-medium uppercase text-muted-foreground">{field.label}</dt>
@@ -23,7 +25,7 @@ export function LegalRecordDetail({ title, fields, sensitiveFields = [], footer 
       {list(fields)}
       {sensitiveFields.length > 0 && <Collapsible className="group border-t pt-4">
         <CollapsibleTrigger className="flex min-h-11 w-full items-center justify-between rounded-md px-2 text-sm font-medium hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          Technische bewijsgegevens tonen
+          {t("detail.showTechnicalEvidence")}
           <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" aria-hidden />
         </CollapsibleTrigger>
         <CollapsibleContent className="pt-4">{list(sensitiveFields)}</CollapsibleContent>

@@ -20,15 +20,17 @@ import {
   type OperationsWorkflowState,
 } from "@/lib/queries/generationOperations"
 import { AlertCircle, CheckCircle2, ExternalLink, Globe2, Inbox, Mail, Search, Send } from "lucide-react"
+import { getAdminTranslations } from "@/i18n/admin"
+import { useTranslations } from "next-intl"
 
 const PAGE_SIZE = 10
 
-const filters: Array<{ value: GenerationRunFilter; label: string; icon: ComponentType<{ className?: string }> }> = [
-  { value: "all", label: "All active", icon: Inbox },
-  { value: "preview-ready", label: "Preview ready", icon: Send },
-  { value: "checkout-completed", label: "Checkout completed", icon: CheckCircle2 },
-  { value: "live", label: "Live / published", icon: Globe2 },
-  { value: "needs-attention", label: "Needs attention", icon: AlertCircle },
+const filters: Array<{ value: GenerationRunFilter; key: string; icon: ComponentType<{ className?: string }> }> = [
+  { value: "all", key: "all", icon: Inbox },
+  { value: "preview-ready", key: "previewReady", icon: Send },
+  { value: "checkout-completed", key: "checkoutCompleted", icon: CheckCircle2 },
+  { value: "live", key: "live", icon: Globe2 },
+  { value: "needs-attention", key: "needsAttention", icon: AlertCircle },
 ]
 
 const parseFilter = (value: unknown): GenerationRunFilter => {
@@ -95,6 +97,7 @@ type InboxItem = {
 }
 
 function ClientQueueItem({ item }: { item: InboxItem }) {
+  const t = useTranslations("generationOperations")
   const canSendPreview = item.primaryAction === "Send preview" && item.runId && item.contactEmail
   return (
     <Card className="py-0">
@@ -113,7 +116,7 @@ function ClientQueueItem({ item }: { item: InboxItem }) {
               item.state !== "Live" && item.state !== "Needs attention" && "border-foreground/35 text-foreground",
             )}
           >
-            {item.state}
+            {t(`states.${item.state}`)}
           </Badge>
         </div>
 
@@ -123,12 +126,12 @@ function ClientQueueItem({ item }: { item: InboxItem }) {
             {canSendPreview ? (
               <form action={sendPreviewAccessEmailAction.bind(null, item.runId!)}>
                 <input type="hidden" name="email" value={item.contactEmail!} />
-                <Button type="submit" size="icon" aria-label={`Send preview email to ${item.title}`}>
+                <Button type="submit" size="icon" aria-label={t("sendPreviewTo", { title: item.title })}>
                   <Mail className="size-4" aria-hidden />
                 </Button>
               </form>
             ) : null}
-            <Button asChild variant={canSendPreview ? "outline" : "default"} size="icon" aria-label={`Open ${item.title}`}>
+            <Button asChild variant={canSendPreview ? "outline" : "default"} size="icon" aria-label={t("openItem", { title: item.title })}>
               <Link href={item.href}>
                 <ExternalLink className="size-4" aria-hidden />
               </Link>
@@ -147,7 +150,8 @@ export default async function GenerationRunsPage({
 }: {
   searchParams: Promise<{ page?: string; q?: string; filter?: string }>
 }) {
-  await requireRole(["super-admin"])
+  const { user } = await requireRole(["super-admin"])
+  const t = await getAdminTranslations(user, "generationOperations")
   const sp = await searchParams
   const q = String(sp.q ?? "").trim() || undefined
   const filter = parseFilter(sp.filter)
@@ -183,7 +187,7 @@ export default async function GenerationRunsPage({
       return {
         id: `submission-${submission.id}`,
         title: submission.businessName,
-        subtitle: contactEmail ?? submission.contactName ?? "Client request",
+        subtitle: contactEmail ?? submission.contactName ?? t("clientRequest"),
         state: summary.state,
         label: summary.label,
         helper: summary.helper,
@@ -202,8 +206,8 @@ export default async function GenerationRunsPage({
       const domain = domainForRun(run)
       return {
         id: `run-${run.id}`,
-        title: relationLabel(run.tenant, "Draft site"),
-        subtitle: contactEmail ?? `${pageCount} pages`,
+        title: relationLabel(run.tenant, t("draftSite")),
+        subtitle: contactEmail ?? t("pageCount", { count: pageCount }),
         state: summary.state,
         label: summary.label,
         helper: summary.helper,
@@ -227,15 +231,15 @@ export default async function GenerationRunsPage({
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title="Operations"
-        subtitle="Preview send, checkout completion, live sites, and items that need recovery."
+        title={t("list.title")}
+        subtitle={t("list.subtitle")}
       />
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <ListSearch placeholder="Search business, contact, or site..." />
+        <ListSearch placeholder={t("list.search")} />
         {filter !== "all" && (
           <Button asChild variant="outline" size="sm">
-            <Link href={hrefForFilter("all")}>Clear filter</Link>
+            <Link href={hrefForFilter("all")}>{t("list.clearFilter")}</Link>
           </Button>
         )}
       </div>
@@ -243,9 +247,9 @@ export default async function GenerationRunsPage({
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg font-semibold">Task queue</h2>
+            <h2 className="text-lg font-semibold">{t("list.taskQueue")}</h2>
             <p className="text-sm text-muted-foreground">
-              {filter === "all" ? "Showing active client/site work only." : `Filtered to ${selectedState}.`}
+              {filter === "all" ? t("list.activeOnly") : t("list.filteredTo", { state: t(`states.${selectedState}`) })}
             </p>
           </div>
         </div>
@@ -264,7 +268,7 @@ export default async function GenerationRunsPage({
                 aria-current={active ? "page" : undefined}
               >
                 <Icon className="size-4" aria-hidden />
-                <span>{item.label}</span>
+                <span>{t(`filters.${item.key}`)}</span>
                 <span className="text-xs opacity-70">{count}</span>
               </Link>
             )
@@ -274,14 +278,14 @@ export default async function GenerationRunsPage({
           q ? (
             <EmptyState
               icon={<Search className="h-10 w-10 text-muted-foreground" aria-hidden />}
-              title="No matching tasks"
-              description={`No operations tasks match "${q}".`}
+              title={t("list.noMatchingTasks")}
+              description={t("list.noMatchingDescription", { query: q })}
             />
           ) : (
             <EmptyState
               icon={<Inbox className="h-10 w-10 text-muted-foreground" aria-hidden />}
-              title="No tasks"
-              description="Preview, checkout, live, and recovery items appear here."
+              title={t("list.noTasks")}
+              description={t("list.noTasksDescription")}
             />
           )
         ) : (

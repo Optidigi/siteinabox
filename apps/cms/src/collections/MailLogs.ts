@@ -1,9 +1,11 @@
 import type { CollectionConfig } from "payload"
+import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { mailIntentOptions, mailRetryStateOptions, mailStatusOptions } from "@/lib/email/sendEmail"
 
 export const MailLogs: CollectionConfig = {
   slug: "mail-logs",
+  labels: { singular: { en: "Mail log", nl: "E-maillog" }, plural: { en: "Mail logs", nl: "E-maillogs" } },
   access: {
     create: isSuperAdmin,
     read: isSuperAdmin,
@@ -13,7 +15,7 @@ export const MailLogs: CollectionConfig = {
   admin: {
     useAsTitle: "flow",
     defaultColumns: ["flow", "status", "retryState", "provider", "sender", "recipient", "tenant", "createdAt"],
-    description: "Metadata-only outbound mail delivery log. Rendered subjects, bodies, and secrets are not stored.",
+    description: adminText("Metadata-only outbound mail delivery log. Rendered subjects, bodies, and secrets are not stored.", "Bezorglog voor uitgaande e-mail met alleen metadata. Onderwerpen, inhoud en geheimen worden niet opgeslagen."),
     listSearchableFields: ["sender", "recipient", "provider"],
   },
   fields: [
@@ -23,7 +25,7 @@ export const MailLogs: CollectionConfig = {
       type: "relationship",
       relationTo: "tenants",
       index: true,
-      admin: { description: "Tenant context when the mail belongs to a generated site or tenant operation." },
+      admin: { description: adminText("Tenant context when the mail belongs to a generated site or tenant operation.", "Klantcontext wanneer de e-mail bij een gegenereerde site of klanthandeling hoort.") },
     },
     { name: "sender", type: "text", required: true, index: true },
     { name: "replyTo", type: "text" },

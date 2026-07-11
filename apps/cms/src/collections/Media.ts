@@ -9,6 +9,7 @@ import { forceTenantMediaUploadFilename, rewriteTenantMediaUrl } from "@/hooks/m
 
 export const Media: CollectionConfig = {
   slug: "media",
+  labels: { singular: { en: "Media item", nl: "Mediabestand" }, plural: { en: "Media", nl: "Media" } },
   access: { read: canRead, create: canWrite, update: canWrite, delete: canWrite },
   upload: {
     // Payload still needs a staticDir while generating upload metadata, but

@@ -454,12 +454,13 @@ function PreviewRendererFrame({
 }
 
 function ThemeSaveStatus({ status }: { status: PreviewThemeSaveStatus }) {
+  const t = useTranslations("preview")
   if (status === "idle") return null
   const text = status === "error"
-    ? "Theme changes could not be saved."
+    ? t("themeSaveFailed")
     : status === "saving"
-      ? "Saving theme changes."
-      : "Theme changes saved."
+      ? t("themeSaving")
+      : t("themeSaved")
   return (
     <p className="sr-only" role={status === "error" ? "alert" : "status"} aria-live="polite">
       {text}

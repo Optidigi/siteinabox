@@ -5,6 +5,7 @@ import { Copy, ExternalLink, Link2, Loader2, RotateCcw } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Button } from "@siteinabox/ui/components/button"
 import { Input } from "@siteinabox/ui/components/input"
+import { useLocale, useTranslations } from "next-intl"
 import {
   Select,
   SelectContent,
@@ -25,10 +26,10 @@ type PreviewTokenResponse = {
   message?: string
 }
 
-const formatExpiry = (exp?: number | null) => {
+const formatExpiry = (exp: number | null | undefined, locale: string) => {
   if (!exp) return null
   const date = new Date(exp * 1000)
-  return Number.isNaN(date.getTime()) ? null : date.toLocaleString("nl-NL")
+  return Number.isNaN(date.getTime()) ? null : date.toLocaleString(locale)
 }
 
 export function PreviewLinkShare({
@@ -40,6 +41,8 @@ export function PreviewLinkShare({
   pages: PreviewPageOption[]
   disabledReason?: string | null
 }) {
+  const t = useTranslations("generationOperations.previewLink")
+  const locale = useLocale()
   const [pageId, setPageId] = React.useState(pages[0]?.id ?? "")
   const [previewUrl, setPreviewUrl] = React.useState("")
   const [expiresAt, setExpiresAt] = React.useState<number | null>(null)
@@ -72,7 +75,7 @@ export function PreviewLinkShare({
       })
       const body = (await response.json().catch(() => ({}))) as PreviewTokenResponse
       if (!response.ok || !body.token || !body.exp) {
-        throw new Error(body.message || "Preview link could not be created.")
+        throw new Error(body.message || t("createFailedMessage"))
       }
       const url = new URL(`/preview/${body.token}`, window.location.origin)
       setPreviewUrl(url.toString())
@@ -80,7 +83,7 @@ export function PreviewLinkShare({
       setStatus("ready")
     } catch (error) {
       setStatus("error")
-      setMessage(error instanceof Error ? error.message : "Preview link could not be created.")
+      setMessage(error instanceof Error ? error.message : t("createFailedMessage"))
     }
   }
 
@@ -89,10 +92,10 @@ export function PreviewLinkShare({
     try {
       await navigator.clipboard.writeText(previewUrl)
       setStatus("copied")
-      setMessage("Preview link copied.")
+      setMessage(t("copiedMessage"))
     } catch {
       setStatus("error")
-      setMessage("Copy failed. Select the link and copy it manually.")
+      setMessage(t("copyFailedMessage"))
     }
   }
 
@@ -100,10 +103,10 @@ export function PreviewLinkShare({
     <div className="flex flex-col gap-3 rounded-md border p-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-          <div className="text-sm font-medium">Customer preview link</div>
+          <div className="text-sm font-medium">{t("title")}</div>
           <Select value={pageId} onValueChange={setPageId} disabled={pages.length === 0 || Boolean(disabledReason)}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a page" />
+              <SelectValue placeholder={t("selectPage")} />
             </SelectTrigger>
             <SelectContent>
               {pages.map((page) => (
@@ -122,22 +125,22 @@ export function PreviewLinkShare({
           ) : (
             <Link2 className="size-4" aria-hidden />
           )}
-          {previewUrl ? "Refresh link" : "Create link"}
+          {previewUrl ? t("refreshLink") : t("createLink")}
         </Button>
       </div>
 
       {previewUrl && (
         <div className="flex flex-col gap-2 md:flex-row">
-          <Input value={previewUrl} readOnly aria-label="Preview link" className="font-mono text-xs" />
+          <Input value={previewUrl} readOnly aria-label={t("previewLink")} className="font-mono text-xs" />
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={copyLink}>
               <Copy className="size-4" aria-hidden />
-              Copy
+              {t("copy")}
             </Button>
             <Button asChild variant="outline">
               <a href={previewUrl} target="_blank" rel="noopener noreferrer">
                 <ExternalLink className="size-4" aria-hidden />
-                Open
+                {t("open")}
               </a>
             </Button>
           </div>
@@ -145,12 +148,12 @@ export function PreviewLinkShare({
       )}
 
       <div className="text-xs text-muted-foreground">
-        {disabledReason || (expiresAt ? `Expires ${formatExpiry(expiresAt)}.` : "Links expire 30 minutes after creation.")}
+        {disabledReason || (expiresAt ? t("expires", { date: formatExpiry(expiresAt, locale)! }) : t("expiryHelper"))}
       </div>
 
       {(status === "error" || status === "copied") && message && (
         <Alert variant={status === "error" ? "destructive" : "default"}>
-          <AlertTitle>{status === "error" ? "Preview link failed" : "Ready to share"}</AlertTitle>
+          <AlertTitle>{status === "error" ? t("failedTitle") : t("readyTitle")}</AlertTitle>
           <AlertDescription>{message}</AlertDescription>
         </Alert>
       )}

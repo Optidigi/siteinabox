@@ -12,11 +12,12 @@ import {
 import { relationId, workflowSummaryForIntakeSubmission } from "@/lib/queries/generationOperations"
 import type { IntakeSubmission } from "@/payload-types"
 import { ClipboardCheck } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
 
-const formatDate = (value?: string | null) => {
+const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "-"
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("nl-NL")
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale)
 }
 
 export function IntakeSubmissionsTable({
@@ -26,6 +27,8 @@ export function IntakeSubmissionsTable({
   submissions: IntakeSubmission[]
   emptyState?: React.ReactNode
 }) {
+  const t = useTranslations("generationOperations")
+  const locale = useLocale()
   if (submissions.length === 0) return <>{emptyState}</>
 
   return (
@@ -33,12 +36,12 @@ export function IntakeSubmissionsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Workflow</TableHead>
-            <TableHead>Business</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Next step</TableHead>
-            <TableHead>Received</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t("columns.workflow")}</TableHead>
+            <TableHead>{t("columns.business")}</TableHead>
+            <TableHead>{t("columns.contact")}</TableHead>
+            <TableHead>{t("columns.nextStep")}</TableHead>
+            <TableHead>{t("columns.received")}</TableHead>
+            <TableHead className="text-right">{t("columns.actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -58,7 +61,7 @@ export function IntakeSubmissionsTable({
                   <div className="font-medium">{submission.businessName}</div>
                   {runId && (
                     <Link href={`/generation-runs/${runId}`} className="text-xs text-muted-foreground hover:underline">
-                      Draft site
+                      {t("draftSite")}
                     </Link>
                   )}
                 </TableCell>
@@ -70,7 +73,7 @@ export function IntakeSubmissionsTable({
                   <div className="font-medium">{workflow.label}</div>
                   <div className="text-xs text-muted-foreground">{workflow.helper}</div>
                 </TableCell>
-                <TableCell>{formatDate(submission.createdAt)}</TableCell>
+                <TableCell>{formatDate(submission.createdAt, locale)}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/generation-runs/submissions/${submission.id}`} className="gap-1.5">

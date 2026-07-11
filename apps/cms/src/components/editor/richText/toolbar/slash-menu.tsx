@@ -14,6 +14,7 @@ import { INSERT_ORDERED_LIST_COMMAND, INSERT_UNORDERED_LIST_COMMAND } from "@lex
 import { $createThemedNode } from "@/lib/richText/lexical/ThemedNode"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { ThemedNodeDialog } from "@/components/editor/richText/toolbar/themed-node-dialog"
+import { useTranslations } from "next-intl"
 
 class SlashOption extends MenuOption {
   constructor(
@@ -25,6 +26,7 @@ class SlashOption extends MenuOption {
 }
 
 export const SlashMenu: React.FC<{ manifest: RtManifest }> = ({ manifest }) => {
+  const t = useTranslations("editor")
   const [editor] = useLexicalComposerContext()
   const triggerMatch = useBasicTypeaheadTriggerMatch("/", { minLength: 0 })
   const [pending, setPending] = React.useState<{
@@ -129,7 +131,7 @@ export const SlashMenu: React.FC<{ manifest: RtManifest }> = ({ manifest }) => {
               data-siab-canvas-chrome="rich-text-slash-menu"
             >
               {options.length === 0 ? (
-                <div className="px-2.5 py-1.5 text-xs text-muted-foreground">No matches</div>
+                <div className="px-2.5 py-1.5 text-xs text-muted-foreground">{t("noMatches")}</div>
               ) : (
                 options.map((o, i) => {
                   const active = i === selectedIndex

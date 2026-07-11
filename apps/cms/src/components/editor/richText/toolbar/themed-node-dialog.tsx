@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Button } from "@siteinabox/ui/components/button"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import type { RtManifest } from "@/lib/richText/manifest"
+import { useTranslations } from "next-intl"
 
 type ThemedNodeDef = NonNullable<RtManifest["themedNodes"]>[number]
 
@@ -16,6 +17,7 @@ export interface ThemedNodeDialogProps {
 }
 
 export const ThemedNodeDialog: React.FC<ThemedNodeDialogProps> = ({ def, initial, onSubmit, onCancel }) => {
+  const tCommon = useTranslations("common")
   const methods = useForm({ defaultValues: initial })
   const submit = methods.handleSubmit((values) => onSubmit(values))
   return (
@@ -26,8 +28,8 @@ export const ThemedNodeDialog: React.FC<ThemedNodeDialogProps> = ({ def, initial
           <form onSubmit={submit} className="space-y-3">
             {def.fields.map((f, i) => <FieldRenderer key={i} field={f as any} />)}
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-              <Button type="submit">Save</Button>
+              <Button type="button" variant="ghost" onClick={onCancel}>{tCommon("cancel")}</Button>
+              <Button type="submit">{tCommon("save")}</Button>
             </DialogFooter>
           </form>
         </FormProvider>

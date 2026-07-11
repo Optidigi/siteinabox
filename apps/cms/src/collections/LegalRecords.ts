@@ -1,4 +1,5 @@
 import type { CollectionBeforeChangeHook, CollectionConfig } from "payload"
+import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 import {
   legalChangeCategories,
   legalConsentActions,
@@ -7,7 +8,7 @@ import {
 } from "@siteinabox/contracts/legal"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 
-const selectOptions = (values: readonly string[]) => values.map((value) => ({ label: value, value }))
+const selectOptions = (values: readonly string[]) => values.map(adminEnumOption)
 const appendOnlyAccess = {
   create: isSuperAdmin,
   read: isSuperAdmin,
@@ -24,12 +25,13 @@ const appendOnlyHooks = { beforeChange: [rejectRecordMutation] }
 
 export const LegalDocuments: CollectionConfig = {
   slug: "legal-documents",
+  labels: { singular: { en: "Legal document", nl: "Juridisch document" }, plural: { en: "Legal documents", nl: "Juridische documenten" } },
   access: appendOnlyAccess,
   hooks: appendOnlyHooks,
   admin: {
     useAsTitle: "releaseKey",
     defaultColumns: ["releaseKey", "documentType", "locale", "documentVersion", "effectiveAt"],
-    description: "Immutable copies of reviewed legal releases synchronized from Git.",
+    description: adminText("Immutable copies of reviewed legal releases synchronized from Git.", "Onveranderlijke kopieën van beoordeelde juridische releases die vanuit Git zijn gesynchroniseerd."),
   },
   fields: [
     { name: "releaseKey", type: "text", required: true, unique: true, index: true },
@@ -37,7 +39,7 @@ export const LegalDocuments: CollectionConfig = {
     { name: "locale", type: "text", required: true, index: true },
     { name: "documentVersion", type: "text", required: true, index: true },
     { name: "acceptanceVersion", type: "text", index: true,
-      admin: { description: "Required for contractual documents; privacy publications normally have no acceptance version." } },
+      admin: { description: adminText("Required for contractual documents; privacy publications normally have no acceptance version.", "Verplicht voor contractuele documenten; privacypublicaties hebben normaal geen acceptatieversie.") } },
     { name: "replaces", type: "text" },
     { name: "content", type: "textarea", required: true },
     { name: "contentHash", type: "text", required: true, index: true },
@@ -56,6 +58,7 @@ export const LegalDocuments: CollectionConfig = {
 
 export const LegalPublicationEvents: CollectionConfig = {
   slug: "legal-publication-events",
+  labels: { singular: { en: "Legal publication event", nl: "Juridische publicatiegebeurtenis" }, plural: { en: "Legal publication events", nl: "Juridische publicatiegebeurtenissen" } },
   access: appendOnlyAccess,
   hooks: appendOnlyHooks,
   admin: { useAsTitle: "eventKey", defaultColumns: ["eventKey", "document", "eventType", "occurredAt"] },
@@ -72,6 +75,7 @@ export const LegalPublicationEvents: CollectionConfig = {
 
 export const AgreementAcceptances: CollectionConfig = {
   slug: "agreement-acceptances",
+  labels: { singular: { en: "Agreement acceptance", nl: "Overeenkomstacceptatie" }, plural: { en: "Agreement acceptances", nl: "Overeenkomstacceptaties" } },
   access: appendOnlyAccess,
   hooks: appendOnlyHooks,
   admin: { useAsTitle: "evidenceKey", defaultColumns: ["evidenceKey", "tenant", "document", "acceptedAt", "actorEmail"] },
@@ -89,13 +93,14 @@ export const AgreementAcceptances: CollectionConfig = {
     { name: "actorEmail", type: "email", required: true, index: true },
     { name: "acceptedAt", type: "date", required: true, index: true },
     { name: "requestId", type: "text", required: true, index: true },
-    { name: "ipAddress", type: "text", admin: { description: "Optional proportionate audit signal; apply the retention register." } },
+    { name: "ipAddress", type: "text", admin: { description: adminText("Optional proportionate audit signal; apply the retention register.", "Optioneel proportioneel auditsignaal; pas het bewaartermijnenregister toe.") } },
     { name: "userAgent", type: "textarea" },
   ],
 }
 
 export const SiteReviewRevisions: CollectionConfig = {
   slug: "site-review-revisions",
+  labels: { singular: { en: "Site review revision", nl: "Sitebeoordelingsversie" }, plural: { en: "Site review revisions", nl: "Sitebeoordelingsversies" } },
   access: appendOnlyAccess,
   hooks: appendOnlyHooks,
   admin: { useAsTitle: "revisionKey", defaultColumns: ["revisionKey", "tenant", "generationRun", "domain", "createdAt"] },
@@ -112,6 +117,7 @@ export const SiteReviewRevisions: CollectionConfig = {
 
 export const SiteApprovals: CollectionConfig = {
   slug: "site-approvals",
+  labels: { singular: { en: "Site approval", nl: "Sitegoedkeuring" }, plural: { en: "Site approvals", nl: "Sitegoedkeuringen" } },
   access: appendOnlyAccess,
   hooks: appendOnlyHooks,
   admin: { useAsTitle: "evidenceKey", defaultColumns: ["evidenceKey", "tenant", "reviewRevision", "approvedAt", "actorEmail"] },
@@ -143,6 +149,7 @@ export const protectFrozenOrder: CollectionBeforeChangeHook = ({ data, operation
 
 export const Orders: CollectionConfig = {
   slug: "orders",
+  labels: { singular: { en: "Order", nl: "Bestelling" }, plural: { en: "Orders", nl: "Bestellingen" } },
   access: { create: isSuperAdmin, read: isSuperAdmin, update: () => false, delete: () => false },
   hooks: { beforeChange: [protectFrozenOrder] },
   admin: { useAsTitle: "orderNumber", defaultColumns: ["orderNumber", "tenant", "customerEmail", "totalGross", "paymentStatus", "createdAt"] },
@@ -176,6 +183,7 @@ export const Orders: CollectionConfig = {
 
 export const CommunicationPreferences: CollectionConfig = {
   slug: "communication-preferences",
+  labels: { singular: { en: "Communication preference", nl: "Communicatievoorkeur" }, plural: { en: "Communication preferences", nl: "Communicatievoorkeuren" } },
   access: { create: isSuperAdmin, read: isSuperAdmin, update: isSuperAdmin, delete: () => false },
   admin: { useAsTitle: "subjectKey", defaultColumns: ["subjectKey", "email", "marketing", "directory", "updatedAt"] },
   fields: [
@@ -192,6 +200,7 @@ export const CommunicationPreferences: CollectionConfig = {
 
 export const CommunicationPreferenceEvents: CollectionConfig = {
   slug: "communication-preference-events",
+  labels: { singular: { en: "Communication preference event", nl: "Communicatievoorkeurgebeurtenis" }, plural: { en: "Communication preference events", nl: "Communicatievoorkeurgebeurtenissen" } },
   access: appendOnlyAccess,
   hooks: appendOnlyHooks,
   admin: { useAsTitle: "eventKey", defaultColumns: ["eventKey", "preference", "preferenceType", "action", "occurredAt"] },
@@ -210,6 +219,7 @@ export const CommunicationPreferenceEvents: CollectionConfig = {
 
 export const LegalRequirements: CollectionConfig = {
   slug: "legal-requirements",
+  labels: { singular: { en: "Legal requirement", nl: "Juridische vereiste" }, plural: { en: "Legal requirements", nl: "Juridische vereisten" } },
   access: { create: isSuperAdmin, read: isSuperAdmin, update: () => false, delete: () => false },
   admin: { useAsTitle: "requirementKey", defaultColumns: ["requirementKey", "tenant", "document", "action", "status", "enforceAt"] },
   fields: [

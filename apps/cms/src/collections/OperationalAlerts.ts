@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload"
+import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 
 export const operationalAlertSeverities = ["info", "warning", "error", "critical"] as const
@@ -7,6 +8,7 @@ export const operationalAlertSources = ["mail", "forms", "domains", "payments", 
 
 export const OperationalAlerts: CollectionConfig = {
   slug: "operational-alerts",
+  labels: { singular: { en: "Operational alert", nl: "Operationele melding" }, plural: { en: "Operational alerts", nl: "Operationele meldingen" } },
   access: {
     create: isSuperAdmin,
     read: isSuperAdmin,
@@ -17,7 +19,7 @@ export const OperationalAlerts: CollectionConfig = {
     useAsTitle: "message",
     defaultColumns: ["severity", "status", "source", "message", "tenant", "occurrenceCount", "lastSeenAt"],
     listSearchableFields: ["message", "dedupeKey"],
-    description: "Admin-visible operational alerts. Metadata only; secrets and rendered mail bodies are not stored.",
+    description: adminText("Admin-visible operational alerts. Metadata only; secrets and rendered mail bodies are not stored.", "Voor beheerders zichtbare operationele meldingen. Alleen metadata; geheimen en e-mailinhoud worden niet opgeslagen."),
   },
   fields: [
     {
@@ -26,7 +28,7 @@ export const OperationalAlerts: CollectionConfig = {
       required: true,
       defaultValue: "warning",
       index: true,
-      options: operationalAlertSeverities.map((value) => ({ label: value, value })),
+      options: operationalAlertSeverities.map(adminEnumOption),
     },
     {
       name: "status",
@@ -34,14 +36,14 @@ export const OperationalAlerts: CollectionConfig = {
       required: true,
       defaultValue: "open",
       index: true,
-      options: operationalAlertStatuses.map((value) => ({ label: value, value })),
+      options: operationalAlertStatuses.map(adminEnumOption),
     },
     {
       name: "source",
       type: "select",
       required: true,
       index: true,
-      options: operationalAlertSources.map((value) => ({ label: value, value })),
+      options: operationalAlertSources.map(adminEnumOption),
     },
     { name: "dedupeKey", type: "text", required: true, unique: true, index: true },
     { name: "message", type: "text", required: true },
@@ -50,9 +52,9 @@ export const OperationalAlerts: CollectionConfig = {
       type: "relationship",
       relationTo: "tenants",
       index: true,
-      admin: { description: "Tenant context when the alert belongs to a generated site or tenant operation." },
+      admin: { description: adminText("Tenant context when the alert belongs to a generated site or tenant operation.", "Klantcontext wanneer de melding bij een gegenereerde site of klanthandeling hoort.") },
     },
-    { name: "metadata", type: "json", admin: { description: "Non-secret operational metadata only." } },
+    { name: "metadata", type: "json", admin: { description: adminText("Non-secret operational metadata only.", "Alleen niet-geheime operationele metadata.") } },
     { name: "occurrenceCount", type: "number", required: true, defaultValue: 1, min: 1 },
     { name: "firstSeenAt", type: "date", required: true, index: true },
     { name: "lastSeenAt", type: "date", required: true, index: true },

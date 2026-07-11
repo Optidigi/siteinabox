@@ -157,6 +157,7 @@ function MobileSettingsScreen({
   children: React.ReactNode
   onBack: () => void
 }) {
+  const t = useTranslations("editor")
   return (
     <div className="flex min-h-[calc(100dvh-4.5rem)] flex-col">
       <Button
@@ -165,7 +166,7 @@ function MobileSettingsScreen({
         size="icon"
         className="fixed left-3 top-16 z-40 size-10 rounded-full"
         onClick={onBack}
-        aria-label="Back"
+        aria-label={t("back")}
       >
         <ChevronLeft className="size-5" />
       </Button>

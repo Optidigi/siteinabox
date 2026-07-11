@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload"
+import { adminText } from "@/lib/payloadAdminI18n"
 import {
   formatContractValidationIssues,
   schemaForPublishedSiteSnapshot,
@@ -63,14 +64,15 @@ export const protectImmutableSnapshot = (args: any) => {
 }
 
 export const snapshotStatusOptions = [
-  { label: "Drafted", value: "drafted" },
-  { label: "Active", value: "active" },
-  { label: "Superseded", value: "superseded" },
-  { label: "Rolled back", value: "rolled_back" },
+  { label: { en: "Drafted", nl: "Concept" }, value: "drafted" },
+  { label: { en: "Active", nl: "Actief" }, value: "active" },
+  { label: { en: "Superseded", nl: "Vervangen" }, value: "superseded" },
+  { label: { en: "Rolled back", nl: "Teruggedraaid" }, value: "rolled_back" },
 ]
 
 export const PublishedSiteSnapshots: CollectionConfig = {
   slug: "published-site-snapshots",
+  labels: { singular: { en: "Published site snapshot", nl: "Gepubliceerde siteversie" }, plural: { en: "Published site snapshots", nl: "Gepubliceerde siteversies" } },
   hooks: {
     beforeValidate: [
       (args) => {
@@ -102,7 +104,7 @@ export const PublishedSiteSnapshots: CollectionConfig = {
   admin: {
     useAsTitle: "snapshotKey",
     defaultColumns: ["snapshotKey", "tenant", "status", "version", "domain", "publishedAt"],
-    description: "Immutable published site snapshots consumed by the generic public renderer.",
+    description: adminText("Immutable published site snapshots consumed by the generic public renderer.", "Onveranderlijke gepubliceerde siteversies die door de algemene openbare renderer worden gebruikt."),
   },
   fields: [
     {
@@ -116,7 +118,7 @@ export const PublishedSiteSnapshots: CollectionConfig = {
       name: "sourceGenerationRun",
       type: "relationship",
       relationTo: "site-generation-runs",
-      admin: { description: "Approved generation run used as the publish source, when applicable." },
+      admin: { description: adminText("Approved generation run used as the publish source, when applicable.", "Goedgekeurde generatieronde die waar van toepassing als publicatiebron wordt gebruikt.") },
     },
     { name: "snapshotKey", type: "text", required: true, unique: true },
     { name: "version", type: "number", required: true },

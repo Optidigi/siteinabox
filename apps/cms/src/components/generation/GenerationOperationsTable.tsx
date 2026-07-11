@@ -12,11 +12,12 @@ import {
 import { relationId, relationLabel, relationSlug, workflowSummaryForGenerationRun } from "@/lib/queries/generationOperations"
 import type { SiteGenerationRun } from "@/payload-types"
 import { ExternalLink } from "lucide-react"
+import { useLocale, useTranslations } from "next-intl"
 
-const formatDate = (value?: string | null) => {
+const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "-"
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("nl-NL")
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale)
 }
 
 export function GenerationOperationsTable({
@@ -26,6 +27,8 @@ export function GenerationOperationsTable({
   runs: SiteGenerationRun[]
   emptyState?: React.ReactNode
 }) {
+  const t = useTranslations("generationOperations")
+  const locale = useLocale()
   if (runs.length === 0) return <>{emptyState}</>
 
   return (
@@ -33,11 +36,11 @@ export function GenerationOperationsTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Workflow</TableHead>
-            <TableHead>Site</TableHead>
-            <TableHead>Next step</TableHead>
-            <TableHead>Updated</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t("columns.workflow")}</TableHead>
+            <TableHead>{t("columns.site")}</TableHead>
+            <TableHead>{t("columns.nextStep")}</TableHead>
+            <TableHead>{t("columns.updated")}</TableHead>
+            <TableHead className="text-right">{t("columns.actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -65,13 +68,13 @@ export function GenerationOperationsTable({
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}
-                  <div className="text-xs text-muted-foreground">{pageCount} pages</div>
+                  <div className="text-xs text-muted-foreground">{t("pageCount", { count: pageCount })}</div>
                 </TableCell>
                 <TableCell>
                   <div className="font-medium">{workflow.label}</div>
                   <div className="text-xs text-muted-foreground">{workflow.helper}</div>
                 </TableCell>
-                <TableCell>{formatDate(run.updatedAt)}</TableCell>
+                <TableCell>{formatDate(run.updatedAt, locale)}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">
                     <Link href={`/generation-runs/${run.id}`} className="gap-1.5">

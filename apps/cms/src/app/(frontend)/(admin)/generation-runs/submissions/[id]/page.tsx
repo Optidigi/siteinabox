@@ -14,6 +14,7 @@ import {
 } from "@/lib/actions/reviewIntakeSubmission"
 import { statusVariant } from "@/lib/badge-helpers"
 import { requireRole } from "@/lib/authGate"
+import { getAdminLocale, getAdminTranslations } from "@/i18n/admin"
 import { defaultReviewedGenerationInput } from "@/lib/intake/reviewIntakeSubmission"
 import {
   getIntakeSubmissionForOperations,
@@ -34,10 +35,10 @@ import {
   Trash2,
 } from "lucide-react"
 
-const formatDate = (value?: string | null) => {
+const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "-"
   const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("nl-NL")
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale)
 }
 
 const workflow = (entries: NonNullable<Awaited<ReturnType<typeof getIntakeSubmissionForOperations>>>["statusTransitions"]) =>
@@ -99,7 +100,10 @@ export default async function IntakeSubmissionDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  await requireRole(["super-admin"])
+  const { user } = await requireRole(["super-admin"])
+  const t = await getAdminTranslations(user, "generationOperations.submissionDetail")
+  const operationsT = await getAdminTranslations(user, "generationOperations")
+  const locale = getAdminLocale(user)
   const { id } = await params
   const submission = await getIntakeSubmissionForOperations(id)
   if (!submission) notFound()
@@ -129,21 +133,21 @@ export default async function IntakeSubmissionDetailPage({
   return (
     <div className="flex flex-col gap-4">
       <PageHeader
-        title={`Intake: ${submission.businessName}`}
+        title={t("title", { business: submission.businessName })}
         subtitle={
           <span className="inline-flex flex-wrap items-center gap-2">
             <Badge variant={workflowSummary.state === "Needs attention" ? "destructive" : "secondary"}>
               <span className="size-1.5 rounded-full bg-current" aria-hidden />
-              {workflowSummary.label}
+              {operationsT.has(`workflowText.${workflowSummary.label}`) ? operationsT(`workflowText.${workflowSummary.label}`) : workflowSummary.label}
             </Badge>
-            <span>{workflowSummary.helper}</span>
+            <span>{operationsT.has(`workflowText.${workflowSummary.helper}`) ? operationsT(`workflowText.${workflowSummary.helper}`) : workflowSummary.helper}</span>
           </span>
         }
         action={
           <Button asChild variant="outline">
             <Link href="/generation-runs">
               <ArrowLeft className="mr-1 size-4" aria-hidden />
-              Back
+              {t("back")}
             </Link>
           </Button>
         }
@@ -152,9 +156,9 @@ export default async function IntakeSubmissionDetailPage({
       {submission.status === "failed" && (
         <Alert variant="destructive">
           <AlertCircle className="size-4" aria-hidden />
-          <AlertTitle>Intake failed</AlertTitle>
+          <AlertTitle>{t("failed.title")}</AlertTitle>
           <AlertDescription>
-            Review the error summary in Advanced before continuing. Secret-looking fields are redacted before display.
+            {t("failed.description")}
           </AlertDescription>
         </Alert>
       )}
@@ -163,20 +167,20 @@ export default async function IntakeSubmissionDetailPage({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileCheck className="size-5" aria-hidden />
-            Intake status
+            {t("status.title")}
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-3 text-sm md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <div className="text-lg font-semibold">{workflowSummary.primaryAction}</div>
-            <div className="text-muted-foreground">{workflowSummary.helper}</div>
+            <div className="text-lg font-semibold">{operationsT.has(`workflowText.${workflowSummary.primaryAction}`) ? operationsT(`workflowText.${workflowSummary.primaryAction}`) : workflowSummary.primaryAction}</div>
+            <div className="text-muted-foreground">{operationsT.has(`workflowText.${workflowSummary.helper}`) ? operationsT(`workflowText.${workflowSummary.helper}`) : workflowSummary.helper}</div>
           </div>
           <div className="flex flex-wrap gap-2">
             {runId && (
               <Button asChild>
                 <Link href={`/generation-runs/${runId}`}>
                   <Sparkles className="mr-1 size-4" aria-hidden />
-                  Open draft
+                  {t("status.openDraft")}
                 </Link>
               </Button>
             )}
@@ -184,7 +188,7 @@ export default async function IntakeSubmissionDetailPage({
               <Button asChild variant="outline">
                 <Link href={`/sites/${tenantSlug}`}>
                   <Building2 className="mr-1 size-4" aria-hidden />
-                  Open site
+                  {t("status.openSite")}
                 </Link>
               </Button>
             )}
@@ -197,18 +201,18 @@ export default async function IntakeSubmissionDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="size-5" aria-hidden />
-              Business facts
+              {t("businessFacts.title")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <FieldGrid
               items={[
-                { label: "Business", value: companyFacts.companyName ?? normalized.businessName ?? submission.businessName },
-                { label: "Activity", value: companyFacts.mainActivity ?? normalized.industry },
-                { label: "Area", value: intakeBrief.serviceArea ?? normalized.serviceArea },
-                { label: "Website", value: companyFacts.website ?? normalized.primaryDomain },
-                { label: "Contact", value: contact.name ?? submission.contactName },
-                { label: "Email", value: contact.email ?? submission.contactEmail },
+                { label: t("businessFacts.business"), value: companyFacts.companyName ?? normalized.businessName ?? submission.businessName },
+                { label: t("businessFacts.activity"), value: companyFacts.mainActivity ?? normalized.industry },
+                { label: t("businessFacts.area"), value: intakeBrief.serviceArea ?? normalized.serviceArea },
+                { label: t("businessFacts.website"), value: companyFacts.website ?? normalized.primaryDomain },
+                { label: t("businessFacts.contact"), value: contact.name ?? submission.contactName },
+                { label: t("businessFacts.email"), value: contact.email ?? submission.contactEmail },
               ]}
             />
           </CardContent>
@@ -218,21 +222,21 @@ export default async function IntakeSubmissionDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpenText className="size-5" aria-hidden />
-              Website brief
+              {t("brief.title")}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div>
-              <div className="mb-2 text-sm font-medium">Services and goals</div>
+              <div className="mb-2 text-sm font-medium">{t("brief.servicesGoals")}</div>
               <BulletList values={intakeBrief.services ?? normalized.goals} />
             </div>
             <div>
-              <div className="mb-2 text-sm font-medium">Calls to action</div>
+              <div className="mb-2 text-sm font-medium">{t("brief.callsToAction")}</div>
               <BulletList values={intakeBrief.callsToAction} />
             </div>
             {textValue(intakeBrief.audience) && (
               <div className="text-sm">
-                <div className="font-medium">Audience</div>
+                <div className="font-medium">{t("brief.audience")}</div>
                 <p className="mt-1 text-muted-foreground">{textValue(intakeBrief.audience)}</p>
               </div>
             )}
@@ -245,18 +249,18 @@ export default async function IntakeSubmissionDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Palette className="size-5" aria-hidden />
-              Design preferences
+              {t("design.title")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <FieldGrid
               items={[
-                { label: "Logo", value: visualPreferences.logoText ?? visualPreferences.logoMode },
-                { label: "Color source", value: visualPreferences.colorSourceValue ?? visualPreferences.colorSourceType ?? brandSignals.colors },
-                { label: "Palette", value: visualPreferences.selectedPalette },
-                { label: "Shape", value: visualPreferences.shape },
-                { label: "Typography", value: visualPreferences.typography ?? brandSignals.fonts },
-                { label: "Tone", value: intakeBrief.tone ?? brandSignals.tone },
+                { label: t("design.logo"), value: visualPreferences.logoText ?? visualPreferences.logoMode },
+                { label: t("design.colorSource"), value: visualPreferences.colorSourceValue ?? visualPreferences.colorSourceType ?? brandSignals.colors },
+                { label: t("design.palette"), value: visualPreferences.selectedPalette },
+                { label: t("design.shape"), value: visualPreferences.shape },
+                { label: t("design.typography"), value: visualPreferences.typography ?? brandSignals.fonts },
+                { label: t("design.tone"), value: intakeBrief.tone ?? brandSignals.tone },
               ]}
             />
           </CardContent>
@@ -266,16 +270,16 @@ export default async function IntakeSubmissionDetailPage({
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <StickyNote className="size-5" aria-hidden />
-              Notes
+              {t("notes.title")}
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-4 text-sm">
             <div>
-              <div className="font-medium">Customer notes</div>
+              <div className="font-medium">{t("notes.customer")}</div>
               <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{textValue(intakeBrief.notes) ?? "-"}</p>
             </div>
             <div>
-              <div className="font-medium">Internal notes</div>
+              <div className="font-medium">{t("notes.internal")}</div>
               <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{submission.reviewNotes ?? "-"}</p>
             </div>
           </CardContent>
@@ -284,19 +288,19 @@ export default async function IntakeSubmissionDetailPage({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle>Advanced</CardTitle>
+          <CardTitle>{t("advanced.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <details className="group">
             <summary className="cursor-pointer text-sm font-medium text-muted-foreground group-open:text-foreground">
-              Technical details, raw summaries, and workflow history
+              {t("advanced.summary")}
             </summary>
             <div className="mt-4 grid gap-4">
               <div className="grid gap-3 rounded-md border p-3">
                 <div>
-                  <div className="font-medium">Manual intake recovery</div>
+                  <div className="font-medium">{t("recovery.title")}</div>
                   <div className="text-sm text-muted-foreground">
-                    These controls are for failed or imported requests only. New public intake submissions generate drafts automatically.
+                    {t("recovery.description")}
                   </div>
                 </div>
 
@@ -304,55 +308,55 @@ export default async function IntakeSubmissionDetailPage({
                   <form action={approveIntakeGenerationInputAction.bind(null, submission.id)} className="rounded-md border p-4">
                     <div className="mb-3 flex items-center gap-2 font-medium">
                       <FileCheck className="size-4" aria-hidden />
-                      Approve brief
+                      {t("recovery.approveBrief")}
                     </div>
                     <p className="mb-3 text-sm text-muted-foreground">
-                      Save reviewed input for legacy or failed requests.
+                      {t("recovery.approveDescription")}
                     </p>
                     <Textarea
                       id="reviewNotes"
                       name="reviewNotes"
                       rows={4}
                       defaultValue={submission.reviewNotes ?? ""}
-                      placeholder="Internal notes"
+                      placeholder={t("notes.internal")}
                     />
                     {approvedBriefJson ? (
                       <textarea name="reviewedGenerationInput" defaultValue={approvedBriefJson} hidden readOnly />
                     ) : null}
                     <Button type="submit" variant="outline" className="mt-3 w-full" disabled={!approvedBriefJson || Boolean(runId)}>
-                      Approve brief
+                      {t("recovery.approveBrief")}
                     </Button>
                     {runId && (
-                      <p className="mt-2 text-xs text-muted-foreground">A draft is already linked to this intake.</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{t("recovery.draftLinked")}</p>
                     )}
                   </form>
 
                   <form action={generateReviewedIntakeDraftAction.bind(null, submission.id)} className="rounded-md border p-4">
                     <div className="mb-3 flex items-center gap-2 font-medium">
                       <Sparkles className="size-4" aria-hidden />
-                      Re-run draft generation
+                      {t("recovery.rerun")}
                     </div>
                     <p className="mb-3 text-sm text-muted-foreground">
-                      Recovery only. Normal intake submissions start generation automatically.
+                      {t("recovery.rerunDescription")}
                     </p>
                     <Button type="submit" variant="outline" className="w-full" disabled={!reviewedInputApproved || Boolean(runId)}>
-                      Re-run draft generation
+                      {t("recovery.rerun")}
                     </Button>
                     {!reviewedInputApproved && (
-                      <p className="mt-2 text-xs text-muted-foreground">A reviewed brief is required for recovery.</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{t("recovery.reviewRequired")}</p>
                     )}
                     {runId && (
-                      <p className="mt-2 text-xs text-muted-foreground">A draft is already linked to this intake.</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{t("recovery.draftLinked")}</p>
                     )}
                   </form>
 
                   <form action={deleteSafeIntakeSubmissionAction.bind(null, submission.id)} className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
                     <div className="mb-3 flex items-center gap-2 font-medium text-destructive">
                       <Trash2 className="size-4" aria-hidden />
-                      Delete request if safe
+                      {t("recovery.deleteSafe")}
                     </div>
                     <p className="mb-3 text-sm text-muted-foreground">
-                      Only unused requests can be removed. Type DELETE to confirm.
+                      {t("recovery.deleteDescription")}
                     </p>
                     <input
                       name="confirmDelete"
@@ -361,11 +365,11 @@ export default async function IntakeSubmissionDetailPage({
                       disabled={!canDelete}
                     />
                     <Button type="submit" variant="destructive" className="mt-3 w-full" disabled={!canDelete}>
-                      Delete request
+                      {t("recovery.delete")}
                     </Button>
                     {!canDelete && (
                       <p className="mt-2 text-xs text-muted-foreground">
-                        Deletion is blocked because a draft site or tenant is already linked.
+                        {t("recovery.deleteBlocked")}
                       </p>
                     )}
                   </form>
@@ -374,15 +378,15 @@ export default async function IntakeSubmissionDetailPage({
 
               <div className="grid gap-3 text-sm md:grid-cols-4">
                 <div>
-                  <div className="text-muted-foreground">Received</div>
-                  <div className="font-medium">{formatDate(submission.createdAt)}</div>
+                  <div className="text-muted-foreground">{t("technical.received")}</div>
+                  <div className="font-medium">{formatDate(submission.createdAt, locale)}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Updated</div>
-                  <div className="font-medium">{formatDate(submission.updatedAt)}</div>
+                  <div className="text-muted-foreground">{t("technical.updated")}</div>
+                  <div className="font-medium">{formatDate(submission.updatedAt, locale)}</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Run</div>
+                  <div className="text-muted-foreground">{t("technical.run")}</div>
                   {runId ? (
                     <Link href={`/generation-runs/${runId}`} className="font-medium hover:underline">
                       #{runId}
@@ -390,7 +394,7 @@ export default async function IntakeSubmissionDetailPage({
                   ) : "-"}
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Tenant</div>
+                  <div className="text-muted-foreground">{t("technical.tenant")}</div>
                   {tenantSlug ? (
                     <Link href={`/sites/${tenantSlug}`} className="font-medium hover:underline">
                       {relationLabel(submission.tenant)}
@@ -398,42 +402,42 @@ export default async function IntakeSubmissionDetailPage({
                   ) : tenantId ? relationLabel(submission.tenant) : "-"}
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Request key</div>
+                  <div className="text-muted-foreground">{t("technical.requestKey")}</div>
                   <code className="break-all text-xs">{submission.idempotencyKey}</code>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Data fingerprint</div>
+                  <div className="text-muted-foreground">{t("technical.fingerprint")}</div>
                   <code className="break-all text-xs">{submission.normalizedHash ?? "-"}</code>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Reviewed</div>
-                  <div className="font-medium">{formatDate(submission.reviewedAt)}</div>
+                  <div className="text-muted-foreground">{t("technical.reviewed")}</div>
+                  <div className="font-medium">{formatDate(submission.reviewedAt, locale)}</div>
                   <div>{reviewedByLabel}</div>
                 </div>
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <div>
-                  <div className="mb-2 text-sm font-medium">Error</div>
+                  <div className="mb-2 text-sm font-medium">{t("technical.error")}</div>
                   <JsonSummaryBlock value={submission.error} />
                 </div>
                 <div>
-                  <div className="mb-2 text-sm font-medium">Normalized summary</div>
+                  <div className="mb-2 text-sm font-medium">{t("technical.normalizedSummary")}</div>
                   <JsonSummaryBlock value={submission.normalized} />
                 </div>
                 <div className="lg:col-span-2">
-                  <div className="mb-2 text-sm font-medium">Raw summary</div>
+                  <div className="mb-2 text-sm font-medium">{t("technical.rawSummary")}</div>
                   <JsonSummaryBlock value={submission.raw} />
                 </div>
               </div>
 
               <div>
-                <div className="mb-2 text-sm font-medium">Workflow history</div>
+                <div className="mb-2 text-sm font-medium">{t("technical.workflowHistory")}</div>
                 <div className="flex flex-col gap-2">
                   {workflow(submission.statusTransitions).map((entry, index) => (
                     <div key={entry.id ?? `${entry.status}-${index}`} className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm">
-                      <Badge variant={statusVariant(entry.status)}>{entry.status}</Badge>
-                      <span className="text-muted-foreground">{formatDate(entry.at)}</span>
+                      <Badge variant={statusVariant(entry.status)}>{t.has(`intakeStatuses.${entry.status}`) ? t(`intakeStatuses.${entry.status}`) : entry.status}</Badge>
+                      <span className="text-muted-foreground">{formatDate(entry.at, locale)}</span>
                       {entry.message && <span>{entry.message}</span>}
                     </div>
                   ))}

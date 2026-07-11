@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload"
+import { adminText } from "@/lib/payloadAdminI18n"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { BLOCKS } from "@/blocks/registry"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -32,6 +33,7 @@ import { validateTenantExists } from "@/hooks/validateTenantExists"
  */
 export const BlockPresets: CollectionConfig = {
   slug: "block-presets",
+  labels: { singular: { en: "Block preset", nl: "Blokvoorinstelling" }, plural: { en: "Block presets", nl: "Blokvoorinstellingen" } },
   access: {
     read: canRead,
     create: canWrite,
@@ -41,7 +43,7 @@ export const BlockPresets: CollectionConfig = {
   admin: {
     useAsTitle: "name",
     defaultColumns: ["name", "blockType", "createdBy", "updatedAt"],
-    description: "Reusable block templates. Save a configured block; insert it pre-filled on any page in this tenant."
+    description: adminText("Reusable block templates. Save a configured block; insert it pre-filled on any page in this tenant.", "Herbruikbare bloksjablonen. Sla een ingesteld blok op en voeg het vooraf ingevuld toe aan elke pagina in deze klantomgeving.")
   },
   fields: [
     {
@@ -49,20 +51,20 @@ export const BlockPresets: CollectionConfig = {
       type: "text",
       required: true,
       maxLength: 60,
-      admin: { description: "Operator-facing label, e.g. 'Homepage hero — spring 2026'." }
+      admin: { description: adminText("Operator-facing label, e.g. 'Homepage hero — spring 2026'.", "Label voor beheerders, bijvoorbeeld 'Homepage-hero — voorjaar 2026'.") }
     },
     {
       name: "description",
       type: "textarea",
       maxLength: 200,
-      admin: { description: "Optional short note about when to use this preset." }
+      admin: { description: adminText("Optional short note about when to use this preset.", "Optionele korte notitie over wanneer deze voorinstelling gebruikt moet worden.") }
     },
     {
       name: "blockType",
       type: "select",
       required: true,
       options: BLOCKS.map((b) => ({ label: b.slug, value: b.slug })),
-      admin: { description: "Which block type this preset can be inserted as. Read-only after creation." },
+      admin: { description: adminText("Which block type this preset can be inserted as. Read-only after creation.", "Het bloktype waarmee deze voorinstelling kan worden ingevoegd. Alleen-lezen na aanmaak.") },
       // Block-type compatibility: also enforced structurally by the picker
       // UI (preset rows live under their block-type tile) and by
       // BlockEditor.onAdd, which always trusts the picker's slug, never
@@ -74,7 +76,7 @@ export const BlockPresets: CollectionConfig = {
       type: "json",
       required: true,
       defaultValue: {},
-      admin: { description: "Verbatim block field values captured at save time." },
+      admin: { description: adminText("Verbatim block field values captured at save time.", "Letterlijke blokveldwaarden die bij het opslaan zijn vastgelegd.") },
       // Immutable post-create. Renames/redescribes go through name/description.
       access: { update: () => false }
     },

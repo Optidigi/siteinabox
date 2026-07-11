@@ -15,6 +15,7 @@ import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { findBlockIndexByWireId } from "@/lib/editor/ensureBlockIds"
+import { useTranslations } from "next-intl"
 
 export type PageEditorFrameView = "canvas" | "sidebar"
 export type PageEditorFrameLayout = "desktop" | "mobile"
@@ -126,6 +127,8 @@ export function PageEditorFrameHost({
   onFrameDocument?: (document: Document | null) => void
   mutations?: PageEditorFrameMutationHandlers
 }) {
+  const t = useTranslations("editor")
+  const tCommon = useTranslations("common")
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const revisionRef = React.useRef(0)
   const [ready, setReady] = React.useState(false)
@@ -259,10 +262,10 @@ export function PageEditorFrameHost({
     }
     const timeout = window.setTimeout(() => {
       setLoadState("failed")
-      setFrameError("The editor frame did not finish loading. Retry the frame.")
+      setFrameError(t("editorFrameTimeout"))
     }, 8000)
     return () => window.clearTimeout(timeout)
-  }, [ready, retryKey, src])
+  }, [ready, retryKey, src, t])
 
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
@@ -453,7 +456,7 @@ export function PageEditorFrameHost({
         key={`${src}:${retryKey}`}
         ref={frameRef}
         src={src}
-        title="Page editor"
+        title={t("pageEditorFrameTitle")}
         className={cn(
           iframeChromeInset.className,
           iframeAutoHeight.className,
@@ -469,19 +472,19 @@ export function PageEditorFrameHost({
         }}
         onError={() => {
           setLoadState("failed")
-          setFrameError("The editor frame failed to load.")
+          setFrameError(t("editorFrameLoadFailedDescription"))
         }}
       />
       {loadState !== "ready" && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/85 px-4 text-center">
           <div className="max-w-sm rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
             <p className="text-sm font-medium">
-              {loadState === "failed" ? "Editor frame failed to load" : "Loading editor frame"}
+              {loadState === "failed" ? t("editorFrameLoadFailed") : t("editorFrameLoading")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {loadState === "failed"
-                ? frameError ?? "The iframe did not report readiness."
-                : "Waiting for the renderer to become ready."}
+                ? frameError ?? t("editorFrameNotReady")
+                : t("editorFrameWaiting")}
             </p>
             {loadState === "failed" && (
               <Button
@@ -497,7 +500,7 @@ export function PageEditorFrameHost({
                   setRetryKey((current) => current + 1)
                 }}
               >
-                Retry frame
+                {tCommon("retry")}
               </Button>
             )}
           </div>

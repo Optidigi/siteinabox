@@ -1,18 +1,20 @@
 import Link from "next/link"
 import { cn } from "@siteinabox/ui/lib/utils"
+import { useTranslations } from "next-intl"
 
 const legalRoutes = [
-  { href: "/legal", label: "Overzicht" },
-  { href: "/legal/releases", label: "Publicaties" },
-  { href: "/legal/requirements", label: "Klantacties" },
-  { href: "/legal/deliveries", label: "Verzendingen" },
-  { href: "/legal/acceptances", label: "Acceptatiebewijs" },
-  { href: "/legal/audit", label: "Auditlog" },
+  { href: "/legal", key: "overview" },
+  { href: "/legal/releases", key: "releases" },
+  { href: "/legal/requirements", key: "requirements" },
+  { href: "/legal/deliveries", key: "deliveries" },
+  { href: "/legal/acceptances", key: "acceptances" },
+  { href: "/legal/audit", key: "audit" },
 ] as const
 
 export function LegalRouteTabs({ activePath }: { activePath: string }) {
+  const t = useTranslations("legalOperations")
   return (
-    <nav aria-label="Juridische onderdelen" className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav aria-label={t("tabs.ariaLabel")} className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <ul className="flex min-w-max border-b border-border">
         {legalRoutes.map((route) => {
           const isActive = route.href === "/legal"
@@ -28,7 +30,7 @@ export function LegalRouteTabs({ activePath }: { activePath: string }) {
                   isActive && "border-foreground text-foreground",
                 )}
               >
-                {route.label}
+                {t(`tabs.${route.key}`)}
               </Link>
             </li>
           )

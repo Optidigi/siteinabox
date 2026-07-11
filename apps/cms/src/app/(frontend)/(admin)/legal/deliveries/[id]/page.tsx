@@ -9,34 +9,38 @@ import { PageHeader } from "@/components/page-header"
 import { requireRole } from "@/lib/authGate"
 import { getLegalRecord } from "@/lib/queries/legalOperations"
 import { retryLegalDeliveryAction } from "../actions"
+import { getLocale, getTranslations } from "next-intl/server"
 
 const label = (value: any, keys: string[]) => value && typeof value === "object" ? keys.map((key) => value[key]).find(Boolean) : value
 export const dynamic = "force-dynamic"
 
 export default async function LegalDeliveryDetailPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ retry?: string }> }) {
   await requireRole(["super-admin"])
+  const [t, locale] = await Promise.all([getTranslations("legalOperations"), getLocale()])
   const { id } = await params
   const record = await getLegalRecord("legal-notification-deliveries", id)
   if (!record) notFound()
   const query = await searchParams
   const canRetry = record.status === "failed" && record.retryState !== "permanent"
   return <div className="flex flex-col gap-4">
-    <PageHeader title="Juridische verzending" subtitle={label(record.tenant, ["name", "slug"]) || "Onbekende tenant"} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/deliveries"><ArrowLeft />Terug</Link></Button>} />
+    <PageHeader title={t("deliveryDetail.title")} subtitle={label(record.tenant, ["name", "slug"]) || t("unknownTenant")} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/deliveries"><ArrowLeft />{t("detail.back")}</Link></Button>} />
     <LegalRouteTabs activePath="/legal/deliveries" />
-    {query.retry === "queued" && <Alert><AlertTitle>Opnieuw ingepland</AlertTitle><AlertDescription>De verzending staat opnieuw in de wachtrij. De worker verwerkt de nieuwe poging.</AlertDescription></Alert>}
-    {query.retry === "failed" && <Alert variant="destructive"><AlertTitle>Niet opnieuw ingepland</AlertTitle><AlertDescription>De herstelactie is niet uitgevoerd. Controleer de actuele status en probeer het indien toegestaan opnieuw.</AlertDescription></Alert>}
-    <LegalRecordDetail title="Provider-overdracht" fields={[
-      { label: "Tenant", value: label(record.tenant, ["name", "slug", "domain"]) }, { label: "Ontvanger", value: record.recipient },
-      { label: "Type", value: record.kind }, { label: "Status", value: record.status },
-      { label: "Pogingen", value: record.attemptCount }, { label: "Herstelstatus", value: record.retryState },
-      { label: "Laatste poging", value: record.lastAttemptAt }, { label: "Volgende poging", value: record.nextAttemptAt },
-      { label: "Naar provider verzonden", value: record.sentAt }, { label: "Provider", value: record.provider },
-      { label: "Providerbericht", value: record.providerMessageId, mono: true }, { label: "Laatste fout", value: record.lastError },
-      { label: "Verzendsleutel", value: record.notificationKey, mono: true }, { label: "Sjabloonversie", value: record.templateVersion },
+    {query.retry === "queued" && <Alert><AlertTitle>{t("deliveryDetail.retryQueuedTitle")}</AlertTitle><AlertDescription>{t("deliveryDetail.retryQueuedDescription")}</AlertDescription></Alert>}
+    {query.retry === "failed" && <Alert variant="destructive"><AlertTitle>{t("deliveryDetail.retryFailedTitle")}</AlertTitle><AlertDescription>{t("deliveryDetail.retryFailedDescription")}</AlertDescription></Alert>}
+    <LegalRecordDetail title={t("deliveryDetail.recordTitle")} fields={[
+      { label: t("fields.tenant"), value: label(record.tenant, ["name", "slug", "domain"]) }, { label: t("fields.recipient"), value: record.recipient },
+      { label: t("fields.type"), value: record.kind }, { label: t("fields.status"), value: record.status },
+      { label: t("fields.attempts"), value: record.attemptCount }, { label: t("fields.retryStatus"), value: record.retryState },
+      { label: t("fields.lastAttempt"), value: formatDate(record.lastAttemptAt, locale) }, { label: t("fields.nextAttempt"), value: formatDate(record.nextAttemptAt, locale) },
+      { label: t("fields.sentToProvider"), value: formatDate(record.sentAt, locale) }, { label: t("fields.provider"), value: record.provider },
+      { label: t("fields.providerMessage"), value: record.providerMessageId, mono: true }, { label: t("fields.lastError"), value: record.lastError },
+      { label: t("fields.notificationKey"), value: record.notificationKey, mono: true }, { label: t("fields.templateVersion"), value: record.templateVersion },
     ]} footer={canRetry ? <form action={retryLegalDeliveryAction.bind(null, id)} className="grid gap-3 border-t pt-5">
-      <div><h3 className="font-medium">Opnieuw proberen</h3><p className="text-sm text-muted-foreground">Deze actie wordt onveranderlijk vastgelegd. Definitieve providerweigeringen kunnen niet opnieuw worden ingepland.</p></div>
-      <Textarea name="reason" required minLength={8} maxLength={500} placeholder="Reden voor de handmatige herstelactie" aria-label="Reden voor opnieuw proberen" />
-      <Button type="submit" variant="warning" className="w-fit">Opnieuw inplannen</Button>
+      <div><h3 className="font-medium">{t("deliveryDetail.retryTitle")}</h3><p className="text-sm text-muted-foreground">{t("deliveryDetail.retryDescription")}</p></div>
+      <Textarea name="reason" required minLength={8} maxLength={500} placeholder={t("deliveryDetail.retryReasonPlaceholder")} aria-label={t("deliveryDetail.retryReasonLabel")} />
+      <Button type="submit" variant="warning" className="w-fit">{t("deliveryDetail.retrySubmit")}</Button>
     </form> : undefined} />
   </div>
 }
+
+const formatDate = (value: unknown, locale: string) => value ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(String(value))) : null

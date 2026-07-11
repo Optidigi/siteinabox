@@ -1,9 +1,11 @@
 import type { CollectionConfig } from "payload"
+import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { generationWorkflowStatusOptions } from "@/collections/IntakeSubmissions"
 
 export const SiteGenerationRuns: CollectionConfig = {
   slug: "site-generation-runs",
+  labels: { singular: { en: "Site generation run", nl: "Sitegeneratieronde" }, plural: { en: "Site generation runs", nl: "Sitegeneratierondes" } },
   access: {
     create: isSuperAdmin,
     read: isSuperAdmin,
@@ -13,7 +15,7 @@ export const SiteGenerationRuns: CollectionConfig = {
   admin: {
     useAsTitle: "idempotencyKey",
     defaultColumns: ["status", "provider", "model", "promptVersion", "specHash", "tenant", "createdAt"],
-    description: "Traceable AI generation runs that apply validated SiteGenerationSpec data into draft CMS content.",
+    description: adminText("Traceable AI generation runs that apply validated SiteGenerationSpec data to draft CMS content.", "Traceerbare AI-generatierondes die gevalideerde SiteGenerationSpec-gegevens toepassen op CMS-conceptinhoud."),
   },
   fields: [
     {
@@ -34,7 +36,7 @@ export const SiteGenerationRuns: CollectionConfig = {
       type: "text",
       required: true,
       unique: true,
-      admin: { description: "Stable key for one normalized intake, provider, model, and prompt version." },
+      admin: { description: adminText("Stable key for one normalized intake, provider, model, and prompt version.", "Stabiele sleutel voor één genormaliseerde intake, provider, model en promptversie.") },
     },
     { name: "normalizedIntake", type: "json", required: true },
     { name: "normalizedIntakeHash", type: "text", required: true },
@@ -88,7 +90,7 @@ export const SiteGenerationRuns: CollectionConfig = {
       type: "json",
       admin: {
         readOnly: true,
-        description: "Client preview approval state recorded from the token-backed preview/customizer.",
+        description: adminText("Client preview approval state recorded from the token-backed preview/customizer.", "Goedkeuringsstatus van de klantpreview, vastgelegd vanuit de tokenbeveiligde preview/customizer."),
       },
     },
     {
@@ -96,7 +98,7 @@ export const SiteGenerationRuns: CollectionConfig = {
       type: "json",
       admin: {
         readOnly: true,
-        description: "Provider-neutral operational payment gate with status and audit metadata.",
+        description: adminText("Provider-neutral operational payment gate with status and audit metadata.", "Providerneutrale operationele betalingscontrole met status- en auditmetadata."),
       },
     },
     {
@@ -104,7 +106,7 @@ export const SiteGenerationRuns: CollectionConfig = {
       type: "json",
       admin: {
         readOnly: true,
-        description: "Customer-selected domain order and provisioning state for preview checkout.",
+        description: adminText("Customer-selected domain order and provisioning state for preview checkout.", "Door de klant gekozen domeinbestelling en inrichtingsstatus voor de previewcheckout."),
       },
     },
     { name: "errors", type: "json" },

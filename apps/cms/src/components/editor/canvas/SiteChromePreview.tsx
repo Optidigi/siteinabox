@@ -198,6 +198,7 @@ export function SiteChromePreview({
   onSelect?: (selection: SiteChromeSelection, point?: SiteChromeSelectPoint) => void
   onUpdateFooterTextItem?: (columnIndex: number, patch: { label?: string | null; text?: string | null }) => void
 }) {
+  const t = useTranslations("editor")
   const brandLogo = mediaUrl(settings?.branding?.logo)
   const headerLogo = mediaUrl(settings?.chrome?.header?.logo) ?? brandLogo
   const footerLogo = mediaUrl(settings?.chrome?.footer?.logo) ?? brandLogo
@@ -238,7 +239,7 @@ export function SiteChromePreview({
           <>
             <nav
               {...chromeTargetProps}
-              aria-label="Hoofdnavigatie"
+              aria-label={t("mainNavigation")}
               className="sticky top-0 z-50 flex w-full items-center justify-between border-b border-rule bg-bg px-6 py-5 @min-[48rem]/site-frame:px-12 @min-[64rem]/site-frame:px-20"
               data-site-chrome={zone}
             >
@@ -268,7 +269,7 @@ export function SiteChromePreview({
 
               <button
                 type="button"
-                aria-label="Menu openen"
+                aria-label={t("openMenu")}
                 aria-expanded="false"
                 className="rounded-full bg-accent/10 p-3 text-ink transition-colors hover:bg-accent/20 @min-[48rem]/site-frame:hidden"
               >

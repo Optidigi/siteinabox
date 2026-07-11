@@ -13,6 +13,7 @@ import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
 import { CMS_SESSION_EXPIRES_IN_SECONDS } from "@/lib/auth/sessionDurations"
+import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 import { changePasswordHandler } from "@/lib/auth/changePassword"
@@ -379,19 +380,20 @@ const clearSessionsOnPasswordChange: CollectionBeforeValidateHook = ({ data, ope
 // Domain invariant: super-admins have no tenants; all other roles have
 // exactly one. Multiple users may share the same tenant (clients can add
 // team members), but a single user is always scoped to one tenant.
-const validateTenants: ArrayFieldValidation = (value, { siblingData }: any) => {
+const validateTenants: ArrayFieldValidation = (value, { siblingData, req }: any) => {
   const role = siblingData?.role
   const len = Array.isArray(value) ? value.length : 0
   if (role === "super-admin") {
-    if (len !== 0) return "super-admin users must not have tenants"
+    if (len !== 0) return adminValidationText(req?.i18n?.language, "Super admins must not have tenants", "Superbeheerders mogen geen klantomgevingen hebben")
     return true
   }
-  if (len !== 1) return "exactly one tenant is required for non-super-admin users"
+  if (len !== 1) return adminValidationText(req?.i18n?.language, "Exactly one tenant is required for users who are not super admins", "Voor gebruikers die geen superbeheerder zijn is precies één klantomgeving verplicht")
   return true
 }
 
 export const Users: CollectionConfig = {
   slug: "users",
+  labels: { singular: { en: "User", nl: "Gebruiker" }, plural: { en: "Users", nl: "Gebruikers" } },
   auth: {
     useAPIKey: true,
     tokenExpiration: CMS_SESSION_EXPIRES_IN_SECONDS,
@@ -601,10 +603,10 @@ export const Users: CollectionConfig = {
       // are blocked, closing the P0 #2/#3 family on POST as well.
       access: { create: canCreateUserField, update: canOwnerUpdateRoleTenantField },
       options: [
-        { label: "Super-admin", value: "super-admin" },
-        { label: "Owner", value: "owner" },
-        { label: "Editor", value: "editor" },
-        { label: "Viewer", value: "viewer" }
+        { label: { en: "Super admin", nl: "Superbeheerder" }, value: "super-admin" },
+        { label: { en: "Owner", nl: "Eigenaar" }, value: "owner" },
+        { label: { en: "Editor", nl: "Redacteur" }, value: "editor" },
+        { label: { en: "Viewer", nl: "Lezer" }, value: "viewer" }
       ] },
     // Plugin-native many-to-many shape. We declare it manually (rather than
     // relying on the plugin's `includeDefaultField: true` injection) so we
@@ -624,7 +626,7 @@ export const Users: CollectionConfig = {
       // role gate so neither half of the payload can be assembled in
       // isolation.
       access: { create: canCreateUserField, update: canOwnerUpdateRoleTenantField },
-      admin: { description: "empty for super-admin; exactly one entry otherwise" },
+      admin: { description: { en: "Empty for super admins; exactly one entry otherwise.", nl: "Leeg voor superbeheerders; anders precies één item." } },
       fields: [
         {
           name: "tenant",
@@ -705,11 +707,11 @@ export const Users: CollectionConfig = {
       type: "select",
       required: false,
       options: [
-        { label: "Canvas (continuous-document)", value: "canvas" },
-        { label: "Sidebar (Shopify-style)", value: "sidebar" },
+        { label: { en: "Canvas (continuous document)", nl: "Canvas (doorlopend document)" }, value: "canvas" },
+        { label: { en: "Sidebar (Shopify style)", nl: "Zijbalk (Shopify-stijl)" }, value: "sidebar" },
       ],
       admin: {
-        description: "Preferred page editor mode. Falls back to manifest.defaultMode → \"canvas\".",
+        description: adminText("Preferred page editor mode. Falls back to manifest.defaultMode → \"canvas\".", "Voorkeursmodus van de pagina-editor. Valt terug op manifest.defaultMode → \"canvas\"."),
       },
     },
     {
@@ -718,11 +720,11 @@ export const Users: CollectionConfig = {
       required: false,
       defaultValue: "nl",
       options: [
-        { label: "English", value: "en" },
-        { label: "Nederlands", value: "nl" },
+        { label: { en: "English", nl: "Engels" }, value: "en" },
+        { label: { en: "Dutch", nl: "Nederlands" }, value: "nl" },
       ],
       admin: {
-        description: "Preferred admin UI language.",
+        description: adminText("Preferred admin UI language.", "Voorkeurstaal van de beheerinterface."),
       },
     },
   ]

@@ -1,13 +1,15 @@
 import type { CollectionConfig } from "payload"
+import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 
-const options = (values: readonly string[]) => values.map((value) => ({ label: value, value }))
+const options = (values: readonly string[]) => values.map(adminEnumOption)
 
 export const legalNotificationKinds = ["initial", "reminder", "enforcement"] as const
 export const legalNotificationStatuses = ["queued", "processing", "sent", "failed", "cancelled"] as const
 
 export const LegalNotificationDeliveries: CollectionConfig = {
   slug: "legal-notification-deliveries",
+  labels: { singular: { en: "Legal notification", nl: "Juridische kennisgeving" }, plural: { en: "Legal notifications", nl: "Juridische kennisgevingen" } },
   access: {
     create: () => false,
     read: isSuperAdmin,
@@ -17,7 +19,7 @@ export const LegalNotificationDeliveries: CollectionConfig = {
   admin: {
     useAsTitle: "notificationKey",
     defaultColumns: ["notificationKey", "tenant", "recipient", "kind", "status", "nextAttemptAt", "sentAt"],
-    description: "System-managed outbox for idempotent legal requirement email delivery.",
+    description: adminText("System-managed outbox for idempotent legal requirement email delivery.", "Door het systeem beheerd postvak voor idempotente bezorging van e-mails over juridische vereisten."),
   },
   fields: [
     { name: "notificationKey", type: "text", required: true, unique: true, index: true },

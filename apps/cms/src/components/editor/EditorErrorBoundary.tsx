@@ -1,6 +1,7 @@
 "use client"
 import * as React from "react"
 import { Button } from "@siteinabox/ui/components/button"
+import { useTranslations } from "next-intl"
 
 interface Props {
   children: React.ReactNode
@@ -18,7 +19,13 @@ interface State {
  * ListPlugin registered against an editor lacking ListNode) propagates to the
  * Next.js dev overlay and the user must hard-reload the entire page.
  */
-export class EditorErrorBoundary extends React.Component<Props, State> {
+type BoundaryCopy = {
+  failed: string
+  unknownError: string
+  retry: string
+}
+
+class EditorErrorBoundaryInner extends React.Component<Props & { copy: BoundaryCopy }, State> {
   state: State = { hasError: false, error: null }
 
   static getDerivedStateFromError(error: Error): State {
@@ -37,9 +44,9 @@ export class EditorErrorBoundary extends React.Component<Props, State> {
     if (this.props.fallback) return this.props.fallback
     return (
       <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4 text-sm">
-        <p className="font-medium text-foreground">Editor surface failed to render.</p>
+        <p className="font-medium text-foreground">{this.props.copy.failed}</p>
         <p className="mt-1 text-muted-foreground">
-          {this.state.error?.message ?? "Unknown error"}
+          {this.state.error?.message ?? this.props.copy.unknownError}
         </p>
         <Button
           type="button"
@@ -48,9 +55,24 @@ export class EditorErrorBoundary extends React.Component<Props, State> {
           onClick={this.reset}
           className="mt-3"
         >
-          Retry
+          {this.props.copy.retry}
         </Button>
       </div>
     )
   }
+}
+
+export function EditorErrorBoundary(props: Props) {
+  const t = useTranslations("editor")
+  const tCommon = useTranslations("common")
+  return (
+    <EditorErrorBoundaryInner
+      {...props}
+      copy={{
+        failed: t("editorSurfaceFailed"),
+        unknownError: tCommon("unknownError"),
+        retry: tCommon("retry"),
+      }}
+    />
+  )
 }

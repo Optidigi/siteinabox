@@ -5,6 +5,7 @@ import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
+import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 
 // Audit-p1 #5 sub-fix 2 (T4) — payload-size DoS cap on the public-create
 // surface. The audit's suggested cap is ~32 KB, sized for typical contact-
@@ -21,10 +22,10 @@ import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
 // "read") don't trip the cap.
 const MAX_FORM_DATA_BYTES = 32_768
 
-const validateFormData: JSONFieldValidation = (value) => {
+const validateFormData: JSONFieldValidation = (value, { req }) => {
   const serialised = JSON.stringify(value ?? {})
   if (serialised.length > MAX_FORM_DATA_BYTES) {
-    return `data exceeds ${MAX_FORM_DATA_BYTES}-byte cap (got ${serialised.length} bytes)`
+    return adminValidationText(req?.i18n?.language, `Data exceeds the ${MAX_FORM_DATA_BYTES}-byte limit (${serialised.length} bytes received)`, `Gegevens overschrijden de limiet van ${MAX_FORM_DATA_BYTES} bytes (${serialised.length} bytes ontvangen)`)
   }
   return true
 }
@@ -203,6 +204,7 @@ export function tenantFormNotificationTemplate(doc: FormNotificationDoc) {
 
 export const Forms: CollectionConfig = {
   slug: "forms",
+  labels: { singular: { en: "Form submission", nl: "Formulierinzending" }, plural: { en: "Form submissions", nl: "Formulierinzendingen" } },
   access: {
     read: canRead,
     // Public form posts: any unauthenticated visitor can submit. Three layers
@@ -228,22 +230,22 @@ export const Forms: CollectionConfig = {
   admin: {
     useAsTitle: "email",
     defaultColumns: ["email", "name", "formName", "status", "createdAt"],
-    description: "Submissions inbox. Created by public form posts; managed by tenant editors."
+    description: adminText("Submissions inbox. Created by public form posts; managed by tenant editors.", "Postvak voor inzendingen. Aangemaakt via openbare formulieren en beheerd door klantredacteuren.")
   },
   fields: [
     { name: "formName", type: "text", required: true },
     { name: "pageUrl", type: "text" },
     { name: "data", type: "json", required: true, validate: validateFormData,
-      admin: { description: "Full submission payload as posted (max 32 KB)" } },
+      admin: { description: { en: "Full submitted payload (maximum 32 KB).", nl: "Volledige ingediende gegevens (maximaal 32 KB)." } } },
     { name: "email", type: "text" },
     { name: "name", type: "text" },
     { name: "message", type: "textarea" },
     { name: "status", type: "select", required: true, defaultValue: "new",
       options: [
-        { label: "New", value: "new" },
-        { label: "Read", value: "read" },
-        { label: "Contacted", value: "contacted" },
-        { label: "Spam", value: "spam" }
+        { label: { en: "New", nl: "Nieuw" }, value: "new" },
+        { label: { en: "Read", nl: "Gelezen" }, value: "read" },
+        { label: { en: "Contacted", nl: "Contact opgenomen" }, value: "contacted" },
+        { label: { en: "Spam", nl: "Spam" }, value: "spam" }
       ]},
     { name: "ipAddress", type: "text",
       access: { read: ({ req }) => req.user?.role === "super-admin" || req.user?.role === "owner" } }

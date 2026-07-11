@@ -2,6 +2,7 @@ import Link from "next/link"
 import { buttonVariants } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { ListSearch } from "@/components/list-search"
+import { useTranslations } from "next-intl"
 
 export function LegalListToolbar({ placeholder, activeStatus, statuses, basePath, query }: {
   placeholder: string
@@ -10,9 +11,10 @@ export function LegalListToolbar({ placeholder, activeStatus, statuses, basePath
   basePath: string
   query?: string
 }) {
+  const t = useTranslations("legalOperations")
   return <div className="flex flex-col gap-3">
     <ListSearch placeholder={placeholder} />
-    <div className="flex flex-wrap gap-2" aria-label="Statusfilter">
+    <div className="flex flex-wrap gap-2" aria-label={t("filters.status")}>
       {statuses.map((status) => {
         const active = status.value === activeStatus
         const params = new URLSearchParams()

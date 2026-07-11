@@ -1,6 +1,8 @@
 import { postgresAdapter } from "@payloadcms/db-postgres"
 import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant"
 import { lexicalEditor } from "@payloadcms/richtext-lexical"
+import { en } from "@payloadcms/translations/languages/en"
+import { nl } from "@payloadcms/translations/languages/nl"
 import path from "path"
 import { buildConfig } from "payload"
 import { fileURLToPath } from "url"
@@ -58,6 +60,10 @@ if (!DATABASE_URI) {
 
 export default buildConfig({
   secret: PAYLOAD_SECRET,
+  i18n: {
+    fallbackLanguage: "nl",
+    supportedLanguages: { en, nl },
+  },
   db: postgresAdapter({
     pool: {
       connectionString: DATABASE_URI,

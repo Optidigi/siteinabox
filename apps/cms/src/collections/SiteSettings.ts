@@ -6,15 +6,16 @@ import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { relationshipId } from "@/lib/relationshipId"
 import { validateSafeHref } from "@/lib/security/safeHref"
+import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 
 // HH:MM 24h matcher. Accepts 00:00–23:59.
 const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 
-const validateHHMM = (val: unknown, { siblingData }: any) => {
+const validateHHMM = (val: unknown, { siblingData, req }: any) => {
   // If the row is marked closed, open/close are ignored — empty is fine.
   if (siblingData?.closed) return true
-  if (val == null || val === "") return "Required when the day is not closed"
-  if (typeof val !== "string" || !TIME_HHMM.test(val)) return "Use HH:MM 24h format (e.g. 09:00)"
+  if (val == null || val === "") return adminValidationText(req?.i18n?.language, "Required when the day is not closed", "Verplicht wanneer de dag niet gesloten is")
+  if (typeof val !== "string" || !TIME_HHMM.test(val)) return adminValidationText(req?.i18n?.language, "Use 24-hour HH:MM format (e.g. 09:00)", "Gebruik 24-uursnotatie UU:MM (bijv. 09:00)")
   return true
 }
 
@@ -22,10 +23,10 @@ const validateHHMM = (val: unknown, { siblingData }: any) => {
 // 3- or 6-digit hex color (with leading '#'). Empty is allowed (field is
 // optional — the renderer falls back to a default when unset).
 const HEX_COLOR_REGEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
-const validatePrimaryColor = (val: unknown) => {
+const validatePrimaryColor = (val: unknown, { req }: any) => {
   if (val == null || val === "") return true
   if (typeof val !== "string" || !HEX_COLOR_REGEX.test(val)) {
-    return "Hex color (e.g. #2563eb or #25b)"
+    return adminValidationText(req?.i18n?.language, "Use a hex color (e.g. #2563eb or #25b)", "Gebruik een hexkleur (bijv. #2563eb of #25b)")
   }
   return true
 }
@@ -126,7 +127,7 @@ export const enforceTenantExclusiveChromeVariants: CollectionBeforeValidateHook 
     if (tenantSlug && entry.tenantSlugs.includes(tenantSlug)) return []
     return [{
       path: `chrome.${entry.area}.variant`,
-      message: `${entry.variant} is available only to ${entry.tenantSlugs.join(", ")} tenants.`,
+      message: adminValidationText(req.i18n?.language, `${entry.variant} is available only to these tenants: ${entry.tenantSlugs.join(", ")}.`, `${entry.variant} is alleen beschikbaar voor deze klantomgevingen: ${entry.tenantSlugs.join(", ")}.`),
     }]
   })
 
@@ -160,13 +161,12 @@ const navEntryFields = () => [
     required: true,
     defaultValue: "page",
     options: [
-      { label: "Page link", value: "page" },
-      { label: "Section link", value: "section" },
-      { label: "Custom link", value: "custom" },
+      { label: adminText("Page link", "Paginalink"), value: "page" },
+      { label: adminText("Section link", "Sectielink"), value: "section" },
+      { label: adminText("Custom link", "Aangepaste link"), value: "custom" },
     ],
     admin: {
-      description:
-        "Page = link to a CMS page · Section = #anchor within a page · Custom = any URL.",
+      description: adminText("Page = link to a CMS page · Section = #anchor within a page · Custom = any URL.", "Pagina = link naar een CMS-pagina · Sectie = #anker binnen een pagina · Aangepast = elke URL."),
     },
   },
   {
@@ -175,11 +175,11 @@ const navEntryFields = () => [
     relationTo: "pages" as const,
     admin: {
       condition: (_: unknown, sib: any) => sib?.type === "page" || sib?.type === "section",
-      description: "Target page. For a section link, the page the section lives on (leave blank for the current page).",
+      description: adminText("Target page. For a section link, the page containing the section (leave blank for the current page).", "Doelpagina. Voor een sectielink: de pagina met de sectie (laat leeg voor de huidige pagina)."),
     },
-    validate: (val: unknown, { siblingData }: any) => {
+    validate: (val: unknown, { siblingData, req }: any) => {
       if (siblingData?.type !== "page") return true
-      if (val == null) return "Select a target page for a page link"
+      if (val == null) return adminValidationText(req?.i18n?.language, "Select a target page for a page link", "Selecteer een doelpagina voor een paginalink")
       return true
     },
   },
@@ -188,11 +188,11 @@ const navEntryFields = () => [
     type: "text" as const,
     admin: {
       condition: (_: unknown, sib: any) => sib?.type === "section",
-      description: "Section id without the leading '#' (e.g. 'services').",
+      description: adminText("Section ID without the leading '#' (e.g. 'services').", "Sectie-ID zonder het voorvoegsel '#' (bijv. 'diensten')."),
     },
-    validate: (val: unknown, { siblingData }: any) => {
+    validate: (val: unknown, { siblingData, req }: any) => {
       if (siblingData?.type !== "section") return true
-      return nonEmpty(val) ? true : "Anchor is required for a section link"
+      return nonEmpty(val) ? true : adminValidationText(req?.i18n?.language, "Anchor is required for a section link", "Anker is verplicht voor een sectielink")
     },
   },
   {
@@ -200,25 +200,26 @@ const navEntryFields = () => [
     type: "text" as const,
     admin: {
       condition: (_: unknown, sib: any) => sib?.type === "custom",
-      description: "Full URL (https://…) or a site-relative path.",
+      description: adminText("Full URL (https://…) or a site-relative path.", "Volledige URL (https://…) of een site-relatief pad."),
     },
-    validate: (val: unknown, { siblingData }: any) => {
+    validate: (val: unknown, { siblingData, req }: any) => {
       if (siblingData?.type !== "custom") return true
-      if (!nonEmpty(val)) return "URL is required for a custom link"
-      return validateSafeHref(val)
+      if (!nonEmpty(val)) return adminValidationText(req?.i18n?.language, "URL is required for a custom link", "URL is verplicht voor een aangepaste link")
+      const result = validateSafeHref(val)
+      return result === true ? true : adminValidationText(req?.i18n?.language, result, "Gebruik een veilige geldige URL of een site-relatief pad")
     },
   },
   {
     name: "label",
     type: "text" as const,
     admin: {
-      description: "Display text. For a page link, leave blank to use the page's title.",
+      description: adminText("Display text. For a page link, leave blank to use the page title.", "Weergavetekst. Laat bij een paginalink leeg om de paginatitel te gebruiken."),
     },
-    validate: (val: unknown, { siblingData }: any) => {
+    validate: (val: unknown, { siblingData, req }: any) => {
       // Page links may omit the label — it falls back to the page title at
       // projection time. Section/custom links carry no inherent title.
       if (siblingData?.type === "page") return true
-      return nonEmpty(val) ? true : "Label is required"
+      return nonEmpty(val) ? true : adminValidationText(req?.i18n?.language, "Label is required", "Label is verplicht")
     },
   },
   {
@@ -227,80 +228,81 @@ const navEntryFields = () => [
     defaultValue: false,
     admin: {
       condition: (_: unknown, sib: any) => sib?.type === "custom",
-      description: "Open in a new tab (external site).",
+      description: adminText("Open in a new tab (external site).", "Openen in een nieuw tabblad (externe site)."),
     },
   },
 ]
 
 export const SiteSettings: CollectionConfig = {
   slug: "site-settings",
+  labels: { singular: { en: "Site settings", nl: "Site-instellingen" }, plural: { en: "Site settings", nl: "Site-instellingen" } },
   access: {
     read: canRead,
     create: canUpdateSettings,
     update: canUpdateSettings,
     delete: ({ req }) => req.user?.role === "super-admin"
   },
-  admin: { useAsTitle: "siteName", description: "One record per tenant." },
+  admin: { useAsTitle: "siteName", description: adminText("One record per tenant.", "Eén record per klantomgeving.") },
   fields: [
     { name: "siteName", type: "text", required: true },
     { name: "siteUrl", type: "text", required: true,
-      admin: { description: "Public URL of the SSR site (e.g. https://clientasite.nl)" } },
+      admin: { description: adminText("Public URL of the SSR site (e.g. https://clientasite.nl).", "Openbare URL van de SSR-site (bijv. https://clientasite.nl).") } },
     { name: "description", type: "textarea",
-      admin: { description: "One-paragraph site description (used in <meta name=\"description\"> and footers)." } },
+      admin: { description: adminText("One-paragraph site description (used in metadata and footers).", "Sitebeschrijving van één alinea (gebruikt in metadata en voetteksten).") } },
     { name: "language", type: "text", defaultValue: "nl",
-      admin: { description: "ISO 639-1 lang code, used in <html lang>. Default 'nl'." } },
+      admin: { description: adminText("ISO 639-1 language code, used in <html lang>. Default: 'nl'.", "ISO 639-1-taalcode, gebruikt in <html lang>. Standaard: 'nl'.") } },
     { name: "aliases", type: "array",
-      admin: { description: "Alternative domains that should serve the same site (e.g. www.foo.com aliased to foo.com)." },
+      admin: { description: adminText("Alternative domains that should serve the same site (e.g. www.foo.com aliased to foo.com).", "Alternatieve domeinen die dezelfde site moeten aanbieden (bijv. www.foo.com als alias van foo.com).") },
       fields: [
         { name: "host", type: "text", required: true }
       ]},
     { name: "contactEmail", type: "email",
-      admin: { description: "Tenant contact email for generated-site form notifications. Defaults from intake/generation when available and can be changed here." } },
+      admin: { description: adminText("Tenant contact email for generated-site form notifications. Defaults from intake/generation when available and can be changed here.", "Contact-e-mailadres van de klantomgeving voor formuliermeldingen van de gegenereerde site. Wordt waar mogelijk uit intake/generatie overgenomen en kan hier worden gewijzigd.") } },
     { name: "branding", type: "group", fields: [
       { name: "logo", type: "upload", relationTo: "media" },
       { name: "favicon", type: "upload", relationTo: "media" },
       { name: "primaryColor", type: "text", validate: validatePrimaryColor,
-        admin: { description: "Hex (e.g. #2563eb)" } }
+        admin: { description: adminText("Hex (e.g. #2563eb).", "Hex (bijv. #2563eb).") } }
     ]},
     { name: "chrome", type: "group",
-      admin: { description: "Non-navigation header/footer content edited from the page editor chrome inspector." },
+      admin: { description: adminText("Non-navigation header/footer content edited from the page editor chrome inspector.", "Niet-navigatie-inhoud van kop- en voettekst, bewerkt via de chrome-inspector van de pagina-editor.") },
       fields: [
         { name: "header", type: "group", fields: [
           { name: "variant", type: "select", options: headerChromeVariantOptions,
             filterOptions: ({ options, data, req }) => filterChromeVariantOptions("header", options as any, data, req),
-            admin: { description: "Approved renderer variant for the header." } },
+            admin: { description: adminText("Approved renderer variant for the header.", "Goedgekeurde renderervariant voor de koptekst.") } },
           { name: "logo", type: "upload", relationTo: "media",
-            admin: { description: "Optional header-specific logo. Falls back to Branding logo." } },
+            admin: { description: adminText("Optional header-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de koptekst. Valt terug op het merklogo.") } },
           { name: "behavior", type: "select", options: [
-            { label: "Static", value: "static" },
-            { label: "Sticky", value: "sticky" },
+            { label: adminText("Static", "Statisch"), value: "static" },
+            { label: adminText("Sticky", "Vastgezet"), value: "sticky" },
           ]},
           { name: "activeMode", type: "select", options: [
-            { label: "Path", value: "path" },
-            { label: "Anchor", value: "anchor" },
-            { label: "None", value: "none" },
+            { label: adminText("Path", "Pad"), value: "path" },
+            { label: adminText("Anchor", "Anker"), value: "anchor" },
+            { label: adminText("None", "Geen"), value: "none" },
           ]},
           { name: "mobileMenu", type: "select", options: [
-            { label: "Dropdown", value: "dropdown" },
-            { label: "Drawer", value: "drawer" },
+            { label: adminText("Dropdown", "Uitklapmenu"), value: "dropdown" },
+            { label: adminText("Drawer", "Schuifpaneel"), value: "drawer" },
           ]},
           { name: "cta", type: "group", fields: linkRefFields() },
         ]},
         { name: "footer", type: "group", fields: [
           { name: "variant", type: "select", options: footerChromeVariantOptions,
             filterOptions: ({ options, data, req }) => filterChromeVariantOptions("footer", options as any, data, req),
-            admin: { description: "Approved renderer variant for the footer." } },
+            admin: { description: adminText("Approved renderer variant for the footer.", "Goedgekeurde renderervariant voor de voettekst.") } },
           { name: "logo", type: "upload", relationTo: "media",
-            admin: { description: "Optional footer-specific logo. Falls back to Branding logo." } },
+            admin: { description: adminText("Optional footer-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de voettekst. Valt terug op het merklogo.") } },
           { name: "tagline", type: "textarea" },
           { name: "copyright", type: "text" },
           { name: "legalLinks", type: "array", fields: linkRefFields() },
           { name: "columns", type: "json",
-            admin: { description: "Manifest-driven footer column composition edited from the page editor." } }
+            admin: { description: adminText("Manifest-driven footer column composition edited from the page editor.", "Door het manifest bepaalde kolomindeling van de voettekst, bewerkt vanuit de pagina-editor.") } }
         ]},
         { name: "banner", type: "group", fields: [
           { name: "variant", type: "select", options: bannerChromeVariantOptions,
-            admin: { description: "Approved renderer variant for the announcement banner." } },
+            admin: { description: adminText("Approved renderer variant for the announcement banner.", "Goedgekeurde renderervariant voor de aankondigingsbanner.") } },
           { name: "visible", type: "checkbox", defaultValue: false },
           { name: "title", type: "text" },
           { name: "message", type: "textarea" },
@@ -321,49 +323,49 @@ export const SiteSettings: CollectionConfig = {
       ]}
     ]},
     { name: "nap", type: "group",
-      admin: { description: "Name / Address / Phone — canonical legal-entity contact info used for SEO and footer." },
+      admin: { description: adminText("Name / Address / Phone — canonical legal-entity contact information used for SEO and the footer.", "Naam / Adres / Telefoon — canonieke contactgegevens van de juridische entiteit voor SEO en de voettekst.") },
       fields: [
         { name: "legalName", type: "text",
-          admin: { description: "Legal entity name (may differ from siteName/brand)." } },
+          admin: { description: adminText("Legal entity name (may differ from the site name or brand).", "Naam van de juridische entiteit (kan afwijken van de sitenaam of het merk).") } },
         { name: "kvkNumber", type: "text",
-          admin: { description: "Dutch Chamber of Commerce number, shown in compliant site footers when present." } },
+          admin: { description: adminText("Dutch Chamber of Commerce number, shown in compliant site footers when present.", "KvK-nummer, indien aanwezig getoond in conforme sitevoetteksten.") } },
         { name: "establishmentNumber", type: "text",
-          admin: { description: "Dutch establishment number, shown in compliant site footers when present." } },
+          admin: { description: adminText("Dutch establishment number, shown in compliant site footers when present.", "Nederlands vestigingsnummer, indien aanwezig getoond in conforme sitevoetteksten.") } },
         { name: "streetAddress", type: "text" },
         { name: "city", type: "text" },
-        { name: "region", type: "text", admin: { description: "Province / state." } },
+        { name: "region", type: "text", admin: { description: adminText("Province / state.", "Provincie / staat.") } },
         { name: "postalCode", type: "text" },
         { name: "country", type: "text", defaultValue: "NL",
-          admin: { description: "ISO 3166-1 alpha-2 (default 'NL')." } }
+          admin: { description: adminText("ISO 3166-1 alpha-2 (default: 'NL').", "ISO 3166-1 alpha-2 (standaard: 'NL').") } }
       ]},
     { name: "hours", type: "array",
-      admin: { description: "Opening hours per weekday. Use 'closed' for days the business is closed." },
+      admin: { description: adminText("Opening hours per weekday. Use 'closed' for days the business is closed.", "Openingstijden per weekdag. Gebruik 'gesloten' voor dagen waarop het bedrijf gesloten is.") },
       fields: [
         { name: "day", type: "select", required: true, options: [
-          { label: "Monday", value: "monday" },
-          { label: "Tuesday", value: "tuesday" },
-          { label: "Wednesday", value: "wednesday" },
-          { label: "Thursday", value: "thursday" },
-          { label: "Friday", value: "friday" },
-          { label: "Saturday", value: "saturday" },
-          { label: "Sunday", value: "sunday" }
+          { label: adminText("Monday", "Maandag"), value: "monday" },
+          { label: adminText("Tuesday", "Dinsdag"), value: "tuesday" },
+          { label: adminText("Wednesday", "Woensdag"), value: "wednesday" },
+          { label: adminText("Thursday", "Donderdag"), value: "thursday" },
+          { label: adminText("Friday", "Vrijdag"), value: "friday" },
+          { label: adminText("Saturday", "Zaterdag"), value: "saturday" },
+          { label: adminText("Sunday", "Zondag"), value: "sunday" }
         ]},
         { name: "open", type: "text", validate: validateHHMM,
-          admin: { description: "HH:MM 24h. Required unless the day is closed." } },
+          admin: { description: adminText("HH:MM, 24-hour format. Required unless the day is closed.", "UU:MM, 24-uursnotatie. Verplicht tenzij de dag gesloten is.") } },
         { name: "close", type: "text", validate: validateHHMM,
-          admin: { description: "HH:MM 24h. Required unless the day is closed." } },
+          admin: { description: adminText("HH:MM, 24-hour format. Required unless the day is closed.", "UU:MM, 24-uursnotatie. Verplicht tenzij de dag gesloten is.") } },
         { name: "closed", type: "checkbox", defaultValue: false,
-          admin: { description: "When checked, open/close are ignored." } }
+          admin: { description: adminText("When checked, opening and closing times are ignored.", "Wanneer aangevinkt worden openings- en sluitingstijden genegeerd.") } }
       ]},
     { name: "serviceArea", type: "array",
-      admin: { description: "Geographic regions (cities, postcodes, etc.) the business serves." },
+      admin: { description: adminText("Geographic regions (cities, postal codes, etc.) the business serves.", "Geografische regio's (plaatsen, postcodes enz.) waarin het bedrijf actief is.") },
       fields: [
         { name: "name", type: "text", required: true }
       ]},
     { name: "navHeader", type: "array", fields: navEntryFields(),
-      admin: { description: "Header navigation. Entries render in order; drag to reorder." } },
+      admin: { description: adminText("Header navigation. Entries render in order; drag to reorder.", "Kopnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } },
     { name: "navFooter", type: "array", fields: navEntryFields(),
-      admin: { description: "Footer navigation. Entries render in order; drag to reorder." } }
+      admin: { description: adminText("Footer navigation. Entries render in order; drag to reorder.", "Voettekstnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } }
   ],
   hooks: {
     beforeValidate: [validateTenantExists, enforceTenantExclusiveChromeVariants],

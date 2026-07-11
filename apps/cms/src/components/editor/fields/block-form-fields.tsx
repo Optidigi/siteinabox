@@ -69,6 +69,7 @@ const FieldRenderer: React.FC<{
   theme?: ThemeTokens | null
 }> = ({ spec, block: _block, blockIndex, manifest, theme }) => {
   const t = useTranslations("editor")
+  const tCommon = useTranslations("common")
   const { watch, setValue } = useFormContext()
   const name = `blocks.${blockIndex}.${spec.field}`
   const value = watch(name)
@@ -188,7 +189,7 @@ const FieldRenderer: React.FC<{
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">URL</Label>
+            <Label className="text-xs text-muted-foreground">{tCommon("url")}</Label>
             <Input
               value={cta.href ?? ""}
               onChange={(e) => setShouldDirty({ ...cta, href: e.target.value })}
