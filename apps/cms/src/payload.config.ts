@@ -9,8 +9,21 @@ import { BlockPresets } from "@/collections/BlockPresets"
 import { Forms } from "@/collections/Forms"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
 import { MailLogs } from "@/collections/MailLogs"
+import {
+  AgreementAcceptances,
+  CommunicationPreferenceEvents,
+  CommunicationPreferences,
+  LegalDocuments,
+  LegalPublicationEvents,
+  LegalRequirements,
+  Orders,
+  SiteApprovals,
+  SiteReviewRevisions,
+} from "@/collections/LegalRecords"
 import { Media } from "@/collections/Media"
 import { OperationalAlerts } from "@/collections/OperationalAlerts"
+import { LegalNotificationDeliveries } from "@/collections/LegalNotificationDeliveries"
+import { LegalOperatorEvents } from "@/collections/LegalOperatorEvents"
 import { Pages } from "@/collections/Pages"
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { PreviewAccessGrants } from "@/collections/PreviewAccessGrants"
@@ -19,6 +32,7 @@ import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
+import { sendLegalRequirementNotificationsTask } from "@/lib/jobs/sendLegalRequirementNotificationsTask"
 import type { Config } from "@/payload-types"
 
 const filename = fileURLToPath(import.meta.url)
@@ -75,7 +89,32 @@ export default buildConfig({
       : {})
   }),
   editor: lexicalEditor(),
-  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets, IntakeSubmissions, SiteGenerationRuns, PublishedSiteSnapshots, PreviewAccessGrants, MailLogs, OperationalAlerts],
+  collections: [
+    Tenants,
+    Users,
+    Media,
+    Pages,
+    SiteSettings,
+    Forms,
+    BlockPresets,
+    IntakeSubmissions,
+    SiteGenerationRuns,
+    PublishedSiteSnapshots,
+    PreviewAccessGrants,
+    LegalDocuments,
+    LegalPublicationEvents,
+    Orders,
+    AgreementAcceptances,
+    SiteReviewRevisions,
+    SiteApprovals,
+    CommunicationPreferences,
+    CommunicationPreferenceEvents,
+    LegalRequirements,
+    LegalNotificationDeliveries,
+    LegalOperatorEvents,
+    MailLogs,
+    OperationalAlerts,
+  ],
   // Audit-p2 #10 (T11) — Forms GDPR retention. The purge task auto-schedules
   // a daily job at 02:00 UTC; `autoRun` registers an in-process cron worker
   // that picks up scheduled jobs every minute (default cron: '* * * * *').
@@ -84,7 +123,7 @@ export default buildConfig({
   // `src/lib/jobs/purgeStaleFormsTask.ts` for the handler and
   // `audits/10-fix-batch-9-report.md` for the deployment note.
   jobs: {
-    tasks: [purgeStaleFormSubmissionsTask],
+    tasks: [purgeStaleFormSubmissionsTask, sendLegalRequirementNotificationsTask],
     autoRun: [{ queue: "default", cron: "* * * * *" }],
     shouldAutoRun: () => process.env.PAYLOAD_DISABLE_JOBS_AUTORUN !== "1",
     // FN-2026-0061 — Payload's auto-registered `payload-jobs` collection

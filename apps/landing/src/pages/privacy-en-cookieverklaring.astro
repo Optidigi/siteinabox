@@ -1,0 +1,8 @@
+---
+import { getCurrentLegalDocument } from '../lib/legal';
+import LegalDocumentPage from '../components/legal/LegalDocumentPage.astro';
+
+const document = getCurrentLegalDocument('platform-privacy', 'nl');
+---
+
+<LegalDocumentPage document={document} isCurrentAlias />

@@ -61,11 +61,15 @@ const requireClaims = (token: string): PreviewClaims & { exp: number } =>
 const isDraftPreviewPageId = (pageId: number | string): boolean =>
   typeof pageId === "string" && pageId.startsWith("draft-")
 
-const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain">) => ({
-  tenantId: tenant.id,
-  tenantSlug: tenant.slug ?? null,
-  siteDomain: tenant.domain ?? null,
-})
+const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | "siteManifest">) => {
+  const manifest = tenant.siteManifest as Record<string, any> | null | undefined
+  return {
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug ?? null,
+    siteDomain: tenant.domain ?? null,
+    analyticsConsent: manifest?.analyticsConsent ?? null,
+  }
+}
 
 const findTenantPages = async (payload: Payload, tenantId: string | number): Promise<Page[]> => {
   const result = await payload.find({

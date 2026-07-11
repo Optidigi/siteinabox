@@ -4,6 +4,7 @@ import type { Payload } from "payload"
 import { isOfficialTenant } from "@/lib/officialTenants"
 import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 import { publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
+import { assertTenantPublicationAllowed } from "@/lib/legal/customerRequirements"
 
 type PublishCurrentStateUser = {
   id?: string | number | null
@@ -48,6 +49,7 @@ export async function publishCurrentTenantState(
 ) {
   const allowed = await canPublishCurrentTenantState(payload, options.user, options.tenantId)
   if (!allowed) throw new Error("Forbidden: not authorized to publish current tenant state")
+  if (options.user.role !== "super-admin") await assertTenantPublicationAllowed(payload, options.tenantId)
 
   return publishSiteSnapshot(payload, {
     tenantId: options.tenantId,

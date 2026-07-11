@@ -405,6 +405,42 @@ export type AnalyticsConsentSettings = {
   captureForms?: boolean | null
 }
 
+export type TenantPrivacyDisclosure = {
+  enabled?: boolean | null
+  version: string
+  effectiveAt: string
+  controller: {
+    legalName: string
+    tradeName?: string | null
+    email: string
+    privacyEmail?: string | null
+    kvkNumber?: string | null
+    address?: string | null
+  }
+  contactMethods?: {
+    email?: boolean | null
+    phone?: boolean | null
+    whatsapp?: boolean | null
+    forms?: {
+      enabled: boolean
+      mode: "direct" | "forwarded" | "cms"
+      retention?:
+        | { kind: "days"; days: number }
+        | { kind: "active_agreement" }
+        | null
+    } | null
+  } | null
+  marketingTechnologies?: Array<{
+    name: string
+    purpose: string
+  }> | null
+  additionalProcessors?: Array<{
+    name: string
+    purpose: string
+    location?: string | null
+  }> | null
+}
+
 export type SiteSettings = {
   siteName: string
   siteUrl: string
@@ -452,6 +488,7 @@ export type SiteSettings = {
   navFooter?: NavLink[]
   analytics?: Record<string, unknown> | null
   analyticsConsent?: AnalyticsConsentSettings | null
+  privacyDisclosure?: TenantPrivacyDisclosure | null
   seoJsonLd?: JsonLdSettings | null
   updatedAt?: string
 }

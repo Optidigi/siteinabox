@@ -85,7 +85,8 @@
     "settings": "Instellingen",
     "team": "Team",
     "onboarding": "Inrichting",
-    "operations": "Operaties"
+    "operations": "Operaties",
+    "legal": "Juridisch"
   },
   "account": {
     "menuLabel": "Accountmenu - ingelogd als {name}",
@@ -1070,8 +1071,15 @@
     "checkoutSummaryApproval": "Akkoord",
     "checkoutSummaryPayment": "Betaling",
     "checkoutSummaryTotal": "Totaal",
-    "checkoutTotalBadge": "Totaal {total}",
-    "checkoutPaymentDescription": "Dit totaalbedrag is inclusief website, domeinregistratie en livegang voor het eerste jaar. Daarna geef je toestemming voor maandelijkse automatische verlenging."
+    "checkoutTotalBadge": "Totaal incl. btw {total}",
+    "checkoutPaymentDescription": "Dit totaalbedrag is inclusief btw, website, domeinregistratie en livegang voor het eerste jaar. Daarna geef je toestemming voor maandelijkse automatische verlenging.",
+    "checkoutPreviewApprovalLabel": "Ik heb de website gecontroleerd en keur deze goed voor publicatie.",
+    "checkoutPreviewApprovalHelp": "Controleer onder andere teksten, contactgegevens, diensten, prijzen, claims en formulieren.",
+    "checkoutTermsAcceptanceLabel": "Ik ga akkoord met de <terms>algemene voorwaarden van Site in a Box</terms> (versie {version}).",
+    "checkoutPrivacyDisclosure": "Wij verwerken gegevens zoals beschreven in de <privacy>privacy- en cookieverklaring</privacy>.",
+    "checkoutDirectoryNotice": "We kunnen openbare bedrijfsinformatie van je website tonen in ons portfolio of zakelijke overzicht. Afmelden kan via info@siteinabox.nl.",
+    "checkoutPreviewApprovalRequired": "Bevestig dat je de website hebt gecontroleerd en goedkeurt voor publicatie.",
+    "checkoutTermsAcceptanceRequired": "Accepteer de algemene voorwaarden om verder te gaan met betalen."
   },
   "profile": {
     "profile": "Profiel",

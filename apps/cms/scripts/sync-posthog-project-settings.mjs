@@ -2,9 +2,10 @@
 
 const DEFAULT_HOST = "https://app.posthog.com"
 const DEFAULT_WEB_VITALS = ["CLS", "FCP", "INP", "LCP"]
+const DEFAULT_EVENT_RETENTION_MONTHS = 13
 
 const usage = () => {
-  console.error(`usage: node scripts/sync-posthog-project-settings.mjs [--app-url <url> ...] [--dry-run]
+  console.error(`usage: node scripts/sync-posthog-project-settings.mjs [--app-url <url> ...] [--dry-run | --check]
 
 Required environment:
   POSTHOG_PERSONAL_API_KEY   Personal API key with project settings access.
@@ -14,19 +15,25 @@ Optional environment:
   POSTHOG_HOST               Defaults to ${DEFAULT_HOST}.
   POSTHOG_ORGANIZATION_ID    Enables the organization-scoped project endpoint.
   POSTHOG_APP_URLS           Comma-separated URLs to merge with --app-url.
+  POSTHOG_EVENT_RETENTION_MONTHS
+                             Defaults to ${DEFAULT_EVENT_RETENTION_MONTHS}.
 
-The script enables PostHog-native Web Vitals/performance settings and merges
-authorized URLs for generated SIAB sites. It never stores API keys in the repo.`)
+The script applies the SIAB privacy baseline, enables approved Web Vitals
+settings, and merges authorized URLs for generated sites. It never stores API
+keys in the repo.`)
 }
 
 const args = process.argv.slice(2)
 const cliUrls = []
 let dryRun = false
+let checkOnly = false
 
 for (let i = 0; i < args.length; i += 1) {
   const arg = args[i]
   if (arg === "--dry-run") {
     dryRun = true
+  } else if (arg === "--check") {
+    checkOnly = true
   } else if (arg === "--app-url") {
     const value = args[i + 1]
     if (!value) {
@@ -45,6 +52,8 @@ for (let i = 0; i < args.length; i += 1) {
   }
 }
 
+if (dryRun && checkOnly) throw new Error("Use either --dry-run or --check, not both.")
+
 const apiKey = process.env.POSTHOG_PERSONAL_API_KEY || process.env.POSTHOG_API_KEY
 const projectId = process.env.POSTHOG_PROJECT_ID
 const organizationId = process.env.POSTHOG_ORGANIZATION_ID
@@ -53,10 +62,17 @@ const envUrls = (process.env.POSTHOG_APP_URLS || "")
   .split(",")
   .map((value) => value.trim())
   .filter(Boolean)
+const retentionMonths = Number.parseInt(
+  process.env.POSTHOG_EVENT_RETENTION_MONTHS || String(DEFAULT_EVENT_RETENTION_MONTHS),
+  10,
+)
 
 if (!apiKey || !projectId) {
   usage()
   process.exit(2)
+}
+if (!Number.isInteger(retentionMonths) || retentionMonths < 1 || retentionMonths > 120) {
+  throw new Error("POSTHOG_EVENT_RETENTION_MONTHS must be an integer from 1 through 120.")
 }
 
 const normalizeUrl = (value) => {
@@ -96,20 +112,45 @@ const appUrls = Array.from(new Set([...currentUrls, ...requestedUrls])).sort()
 
 const patch = {
   app_urls: appUrls,
-  autocapture_opt_out: false,
+  anonymize_ips: true,
+  autocapture_opt_out: true,
   autocapture_web_vitals_opt_in: true,
   autocapture_web_vitals_allowed_metrics: DEFAULT_WEB_VITALS,
+  capture_console_log_opt_in: false,
   capture_performance_opt_in: true,
+  session_recording_opt_in: false,
+  heatmaps_opt_in: false,
+  capture_dead_clicks: false,
+  event_retention_months: retentionMonths,
+  events_retention_enforced: true,
 }
 
-if (dryRun) {
+if (checkOnly) {
+  const drift = Object.entries(patch).filter(([key, expected]) =>
+    JSON.stringify(current[key]) !== JSON.stringify(expected),
+  )
+  if (drift.length > 0) {
+    for (const [key, expected] of drift) {
+      console.error(`PostHog privacy drift: ${key} expected=${JSON.stringify(expected)} actual=${JSON.stringify(current[key])}`)
+    }
+    process.exit(1)
+  }
+  console.log(`PostHog privacy baseline verified for project ${projectId}`)
+} else if (dryRun) {
   console.log(JSON.stringify({ endpoint, patch }, null, 2))
 } else {
   const updated = await request("PATCH", patch)
   console.log(`Synced PostHog project settings for project ${projectId}`)
-  console.log(`  Autocapture: ${updated.autocapture_opt_out === false ? "enabled" : "unknown"}`)
+  console.log(`  Autocapture: ${updated.autocapture_opt_out === true ? "disabled" : "unknown"}`)
   console.log(`  Web Vitals: ${updated.autocapture_web_vitals_opt_in ? "enabled" : "unknown"}`)
   console.log(`  Performance capture: ${updated.capture_performance_opt_in ? "enabled" : "unknown"}`)
+  console.log(`  IP anonymization: ${updated.anonymize_ips === true ? "enabled" : "unknown"}`)
+  console.log(`  Session recording: ${updated.session_recording_opt_in === false ? "disabled" : "unknown"}`)
+  console.log(`  Console capture: ${updated.capture_console_log_opt_in === false ? "disabled" : "unknown"}`)
+  console.log(`  Heatmaps: ${updated.heatmaps_opt_in === false ? "disabled" : "unknown"}`)
+  console.log(`  Dead clicks: ${updated.capture_dead_clicks === false ? "disabled" : "unknown"}`)
+  console.log(`  Event retention: ${updated.event_retention_months ?? "unknown"} months`)
+  console.log(`  Retention enforcement: ${updated.events_retention_enforced === true ? "enabled" : "unknown"}`)
   console.log(`  App URLs: ${appUrls.length}`)
   for (const url of appUrls) console.log(`    ${url}`)
 }

@@ -8,6 +8,7 @@ WORKDIR /app/apps/landing
 # Install deps with cache-friendly layering
 COPY apps/landing/package.json apps/landing/pnpm-lock.yaml ./
 COPY packages/contracts /app/packages/contracts
+COPY packages/legal-content /app/packages/legal-content
 RUN corepack enable && pnpm install --frozen-lockfile
 
 # Build

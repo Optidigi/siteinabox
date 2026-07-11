@@ -80,6 +80,13 @@ function publishedSnapshotForHost(host) {
       ...retargeted.settings,
       siteUrl: target.productionOrigin,
       siteName: "Amicare-Zorg",
+      chrome: {
+        ...retargeted.settings.chrome,
+        footer: {
+          ...retargeted.settings.chrome?.footer,
+          legalLinks: [{ label: "Privacy en cookies", href: "/privacy-en-cookieverklaring" }],
+        },
+      },
       analytics: {
         ...retargeted.settings.analytics,
         provider: "posthog",
@@ -87,6 +94,28 @@ function publishedSnapshotForHost(host) {
         posthogHost: "https://eu.posthog.com",
       },
     },
+    pages: [
+      ...retargeted.pages,
+      {
+        id: "amicare-privacy",
+        slug: "privacy-en-cookieverklaring",
+        title: "Privacy- en cookieverklaring",
+        status: "published",
+        updatedAt: "2026-07-10T00:00:00.000Z",
+        blocks: [{
+          blockType: "richText",
+          body: {
+            t: "root",
+            variant: "block",
+            children: [
+              { t: "heading", level: 2, children: [{ t: "text", v: "Privacy- en cookieverklaring" }] },
+              { t: "paragraph", children: [{ t: "text", v: "AMICARE ZORG is verantwoordelijk voor deze website." }] },
+              { t: "paragraph", children: [{ t: "text", v: "Optidigi, handelend onder de naam Site in a Box, levert de technische omgeving." }] },
+            ],
+          },
+        }],
+      },
+    ],
   }
 }
 
@@ -180,12 +209,24 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /--color-accent:#d97706/)
   assert.match(amicareHtml, /--font-title:Fraunces Variable, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif/)
   assert.doesNotMatch(amicareHtml, /--site-style-preset:/)
-  assert.match(amicareHtml, /id="siab-analytics-config"/)
+  assert.doesNotMatch(amicareHtml, /id="siab-analytics-config"/)
   assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)
   assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/bedroom\.jpg/)
   assert.match(amicareHtml, /Jeugdzorg/)
   assert.match(amicareHtml, /Begeleiding/)
   assert.match(amicareHtml, /Vertrouwen/)
+  assert.match(amicareHtml, /href="\/privacy-en-cookieverklaring"/)
+
+  const amicarePrivacy = await fetchWithHost(baseUrl, "ami-care.nl", "/privacy-en-cookieverklaring")
+  const amicarePrivacyHtml = await amicarePrivacy.text()
+  await assertStatus(amicarePrivacy, 200, "ami-care.nl privacy status", amicarePrivacyHtml, failureContext)
+  assert.doesNotMatch(amicarePrivacyHtml, /data-system-page="tenant-privacy"/)
+  assert.match(amicarePrivacyHtml, /cms-block--richtext/)
+  assert.match(amicarePrivacyHtml, /AMICARE ZORG/)
+  assert.match(amicarePrivacyHtml, /Optidigi, handelend onder de naam Site in a Box/)
+
+  const amicarePrivacyAlias = await fetchWithHost(baseUrl, "ami-care.nl", "/privacy")
+  assert.equal(amicarePrivacyAlias.status, 404)
 
   const amicareMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/bedroom.jpg")
   assert.equal(amicareMedia.status, 200)

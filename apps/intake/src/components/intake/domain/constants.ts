@@ -3,6 +3,7 @@ import type {
   ContactDetails,
   FinalDetails,
   IntakeFormValues,
+  IntakeLegalDetails,
   VisualThemeTokens,
   VisualDetails,
 } from "./types";
@@ -85,6 +86,26 @@ export const defaultFinalDetails: FinalDetails = {
   phone: "",
 };
 
+export const intakeLegalStatements = {
+  businessUse: {
+    version: "business-use-2026-07-07.1",
+    text: "Ik vraag dit aan voor een onderneming of bedrijf in oprichting.",
+  },
+  marketing: {
+    version: "marketing-opt-in-2026-07-07.1",
+    text: "Stuur mij tips, updates en aanbiedingen over Site in a Box.",
+  },
+  privacyNotice: {
+    documentVersion: "2026-07-07.1",
+    url: "https://www.siteinabox.nl/privacy-en-cookieverklaring",
+  },
+} as const;
+
+export const defaultIntakeLegalDetails: IntakeLegalDetails = {
+  businessUseAccepted: false,
+  marketingOptIn: false,
+};
+
 export const defaultIntakeValues: IntakeFormValues = {
   company: {
     source: null,
@@ -99,6 +120,7 @@ export const defaultIntakeValues: IntakeFormValues = {
   contact: defaultContactDetails,
   visual: defaultVisualDetails,
   finalDetails: defaultFinalDetails,
+  legal: defaultIntakeLegalDetails,
 };
 
 export const contentFormId = "business-content-form";

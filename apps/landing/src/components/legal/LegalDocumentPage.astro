@@ -1,0 +1,185 @@
+---
+import Footer from '../siab/Footer.astro';
+import Header from '../siab/Header.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+type LegalDocument = {
+  title: string;
+  documentVersion: string;
+  effectiveAt: string;
+  contentHash: string;
+  stablePath: string;
+  permanentPath: string;
+  html: string;
+};
+
+interface Props {
+  document: LegalDocument;
+  isCurrentAlias?: boolean;
+}
+
+const { document, isCurrentAlias = false } = Astro.props;
+const effectiveDate = new Intl.DateTimeFormat('nl-NL', {
+  dateStyle: 'long',
+  timeZone: 'Europe/Amsterdam',
+}).format(new Date(document.effectiveAt));
+const canonicalPath = isCurrentAlias ? document.stablePath : document.permanentPath;
+---
+
+<BaseLayout
+  title={document.title}
+  description={`${document.title}, versie ${document.documentVersion}, geldig vanaf ${effectiveDate}.`}
+  canonical={new URL(canonicalPath, Astro.site).toString()}
+>
+  <Header />
+  <main class="siab-legal-main">
+    <div class="container lg">
+      <div class="siab-legal-meta" aria-label="Documentgegevens">
+        <span>Versie {document.documentVersion}</span>
+        <span aria-hidden="true">&middot;</span>
+        <span>Geldig vanaf {effectiveDate}</span>
+        {!isCurrentAlias && (
+          <>
+            <span aria-hidden="true">&middot;</span>
+            <a href={document.stablePath}>Bekijk de huidige versie</a>
+          </>
+        )}
+      </div>
+      <article class="siab-legal-document" set:html={document.html} />
+      <footer class="siab-legal-proof">
+        <p>Document-ID: {document.documentVersion}</p>
+        <p>SHA-256: <code>{document.contentHash.replace('sha256:', '')}</code></p>
+        {isCurrentAlias && <a href={document.permanentPath}>Permanente link naar deze versie</a>}
+      </footer>
+    </div>
+  </main>
+  <Footer />
+</BaseLayout>
+
+<style>
+  .siab-legal-main {
+    padding: 180px 0 100px;
+    background: var(--siab-bg-page);
+    color: var(--siab-text);
+  }
+
+  .siab-legal-main :global(.container) {
+    max-width: 920px;
+  }
+
+  .siab-legal-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 26px;
+    padding-bottom: 18px;
+    border-bottom: 2px solid var(--siab-border);
+    color: var(--siab-text-muted);
+    font-family: 'Chivo', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .siab-legal-meta a,
+  .siab-legal-proof a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .siab-legal-document :global(h1),
+  .siab-legal-document :global(h2),
+  .siab-legal-document :global(h3) {
+    color: var(--siab-text);
+    letter-spacing: 0;
+  }
+
+  .siab-legal-document :global(h1) {
+    max-width: 820px;
+    margin: 0 0 18px;
+    font-size: clamp(42px, 6vw, 72px);
+    line-height: 1.04;
+  }
+
+  .siab-legal-document :global(h2) {
+    margin: 56px 0 18px;
+    padding-top: 20px;
+    border-top: 1px solid var(--siab-border);
+    font-size: 30px;
+    line-height: 1.2;
+  }
+
+  .siab-legal-document :global(h3) {
+    margin: 34px 0 14px;
+    font-size: 23px;
+    line-height: 1.25;
+  }
+
+  .siab-legal-document :global(p),
+  .siab-legal-document :global(li),
+  .siab-legal-document :global(td),
+  .siab-legal-document :global(th) {
+    font-family: 'Chivo', sans-serif;
+    font-size: 17px;
+    line-height: 1.72;
+  }
+
+  .siab-legal-document :global(p) {
+    margin: 0 0 16px;
+  }
+
+  .siab-legal-document :global(ul) {
+    margin: 0 0 24px;
+    padding-left: 24px;
+  }
+
+  .siab-legal-document :global(table) {
+    display: block;
+    width: 100%;
+    margin: 22px 0 32px;
+    overflow-x: auto;
+    border-collapse: collapse;
+  }
+
+  .siab-legal-document :global(th),
+  .siab-legal-document :global(td) {
+    min-width: 180px;
+    padding: 12px 14px;
+    border: 1px solid var(--siab-border);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .siab-legal-document :global(th) {
+    background: var(--siab-bg-surface);
+  }
+
+  .siab-legal-proof {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 2px solid var(--siab-border);
+    color: var(--siab-text-muted);
+    font-family: 'Chivo', sans-serif;
+    font-size: 13px;
+  }
+
+  .siab-legal-proof p {
+    margin: 0 0 6px;
+  }
+
+  .siab-legal-proof code {
+    overflow-wrap: anywhere;
+    color: inherit;
+  }
+
+  @media (max-width: 991px) {
+    .siab-legal-main {
+      padding: 120px 0 70px;
+    }
+
+    .siab-legal-document :global(h2) {
+      margin-top: 42px;
+      font-size: 26px;
+    }
+  }
+</style>

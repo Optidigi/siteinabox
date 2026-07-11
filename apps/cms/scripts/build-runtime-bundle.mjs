@@ -92,6 +92,18 @@ await build({
   outfile: path.join(outDir, "migrate-on-boot.bundled.mjs"),
 })
 
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/legal-sync-on-boot-entry.ts")],
+  outfile: path.join(outDir, "legal-sync-on-boot.bundled.mjs"),
+})
+
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/retry-legal-notification.ts")],
+  outfile: path.join(outDir, "retry-legal-notification.bundled.mjs"),
+})
+
 // One-off repopulation tool (rt-v2 post-migration recovery). See script
 // header for invocation. Bundled here so it ships in the Docker image's
 // /app/dist-runtime/ and can be invoked via `docker exec siteinabox-cms node

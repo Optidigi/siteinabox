@@ -51,6 +51,9 @@ import * as migration_20260705_120000_add_tailwindplus_header_enum_value from '.
 import * as migration_20260705_162355_add_newsletter_bento_content_blocks from './20260705_162355_add_newsletter_bento_content_blocks';
 import * as migration_20260705_210000_make_logo_cloud_images_optional from './20260705_210000_make_logo_cloud_images_optional';
 import * as migration_20260706_172855_add_tailwindplus_provider_slots from './20260706_172855_add_tailwindplus_provider_slots';
+import * as migration_20260710_142653_legal_governance_foundation from './20260710_142653_legal_governance_foundation';
+import * as migration_20260711_102515_legal_notification_deliveries from './20260711_102515_legal_notification_deliveries';
+import * as migration_20260711_125450_20260711_legal_operator_events from './20260711_125450_20260711_legal_operator_events';
 
 export const migrations = [
   {
@@ -316,6 +319,21 @@ export const migrations = [
   {
     up: migration_20260706_172855_add_tailwindplus_provider_slots.up,
     down: migration_20260706_172855_add_tailwindplus_provider_slots.down,
-    name: '20260706_172855_add_tailwindplus_provider_slots'
+    name: '20260706_172855_add_tailwindplus_provider_slots',
+  },
+  {
+    up: migration_20260710_142653_legal_governance_foundation.up,
+    down: migration_20260710_142653_legal_governance_foundation.down,
+    name: '20260710_142653_legal_governance_foundation',
+  },
+  {
+    up: migration_20260711_102515_legal_notification_deliveries.up,
+    down: migration_20260711_102515_legal_notification_deliveries.down,
+    name: '20260711_102515_legal_notification_deliveries',
+  },
+  {
+    up: migration_20260711_125450_20260711_legal_operator_events.up,
+    down: migration_20260711_125450_20260711_legal_operator_events.down,
+    name: '20260711_125450_20260711_legal_operator_events'
   },
 ];

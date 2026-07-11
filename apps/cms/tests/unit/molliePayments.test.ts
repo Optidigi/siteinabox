@@ -101,10 +101,27 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     language: "nl",
     updatedAt: "2026-06-26T10:00:00.000Z",
   }
+  const orderDomain = (overrides.domainOrder as { domain?: string } | undefined)?.domain ?? tenant.domain
+  const providerPrice = Number((overrides.domainOrder as { providerPriceAmount?: string } | undefined)?.providerPriceAmount ?? "10.00")
+  const order = {
+    id: 600,
+    generationRun: 500,
+    tenant: 1,
+    customerEmail: "client@example.com",
+    domain: orderDomain,
+    totalGross: providerPrice > 10 ? 499 + (providerPrice - 10) : 499,
+    currency: "EUR",
+    paymentStatus: "pending",
+  }
+  const acceptance = { id: 700, order: 600, acceptanceVersion: "platform-terms-2026-07-07" }
   const snapshots: any[] = []
   const update = vi.fn(async ({ collection, id, data }: any) => {
     if (collection === "site-generation-runs") Object.assign(run, data)
     if (collection === "tenants") Object.assign(tenant, data)
+    if (collection === "orders") {
+      Object.assign(order, data)
+      return { ...order }
+    }
     if (collection === "published-site-snapshots") {
       const snapshot = snapshots.find((entry) => String(entry.id) === String(id)) ?? snapshots[0]
       Object.assign(snapshot, data)
@@ -117,6 +134,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     findByID: vi.fn(async ({ collection, id }: any) => {
       if (collection === "site-generation-runs" && String(id) === "500") return run
       if (collection === "tenants" && String(id) === "1") return tenant
+      if (collection === "orders" && String(id) === "600") return order
       if (collection === "published-site-snapshots") {
         const snapshot = snapshots.find((entry) => String(entry.id) === String(id))
         if (snapshot) return snapshot
@@ -136,6 +154,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       }
       if (collection === "pages") return { docs: [page] }
       if (collection === "site-settings") return { docs: [settings] }
+      if (collection === "agreement-acceptances") return { docs: [acceptance] }
       return { docs: [] }
     }),
     create: vi.fn(async ({ collection, data }: any) => {
@@ -176,6 +195,7 @@ describe("Mollie payment flow", () => {
         metadata: {
           generationRunId: 500,
           tenantId: 1,
+          orderId: 600,
           customerEmail: "client@example.com",
           clientSlug: "acme",
         },
@@ -189,6 +209,7 @@ describe("Mollie payment flow", () => {
 
     const result = await createMollieCheckoutForGenerationRun(payload, {
       runId: 500,
+      orderId: 600,
       customerEmail: " Client@Example.com ",
       clientSlug: "acme",
       actor: 42,
@@ -219,6 +240,7 @@ describe("Mollie payment flow", () => {
       metadata: {
         generationRunId: 500,
         tenantId: 1,
+          orderId: 600,
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "acme.test",
@@ -260,6 +282,7 @@ describe("Mollie payment flow", () => {
 
     await createMollieCheckoutForGenerationRun(payload, {
       runId: 500,
+      orderId: 600,
       customerEmail: "client@example.com",
       clientSlug: "acme",
       selectedDomain: "acme.nl",
@@ -285,6 +308,7 @@ describe("Mollie payment flow", () => {
 
     const result = await createMollieCheckoutForGenerationRun(payload, {
       runId: 500,
+      orderId: 600,
       customerEmail: "client@example.com",
       clientSlug: "acme",
     })
@@ -299,6 +323,7 @@ describe("Mollie payment flow", () => {
 
     await expect(createMollieCheckoutForGenerationRun(payload, {
       runId: 500,
+      orderId: 600,
       customerEmail: "client@example.com",
     })).rejects.toThrow("approved preview")
     expect(fetch).not.toHaveBeenCalled()
@@ -322,6 +347,7 @@ describe("Mollie payment flow", () => {
       metadata: {
         generationRunId: 500,
         tenantId: 1,
+          orderId: 600,
         customerEmail: "client@example.com",
         clientSlug: "acme",
       },
@@ -360,7 +386,7 @@ describe("Mollie payment flow", () => {
     const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
       id: "tr_test_123",
       status: "paid",
-      metadata: { generationRunId: 500, tenantId: 1 },
+      metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }))
 
     expect(result).toMatchObject({ ok: true, status: "completed", duplicate: true })
@@ -396,6 +422,7 @@ describe("Mollie payment flow", () => {
       metadata: {
         generationRunId: 500,
         tenantId: 1,
+          orderId: 600,
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "clientsite.nl",
@@ -520,6 +547,7 @@ describe("Mollie payment flow", () => {
       metadata: {
         generationRunId: 500,
         tenantId: 1,
+          orderId: 600,
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "clientsite.nl",
@@ -635,7 +663,7 @@ describe("Mollie payment flow", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       id: "tr_test_123",
       status: "paid",
-      metadata: { generationRunId: 500, tenantId: 1 },
+      metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }), { status: 200 })))
 
     const okResponse = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
@@ -666,7 +694,7 @@ describe("Mollie payment flow", () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
       id: "tr_unknown",
       status: "paid",
-      metadata: { generationRunId: 500, tenantId: 1 },
+      metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }), { status: 200 })))
 
     const response = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {

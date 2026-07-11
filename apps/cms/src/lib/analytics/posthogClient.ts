@@ -2,6 +2,7 @@ import "server-only"
 import { getPostHogAnalyticsConfig } from "./config"
 import { redactAnalyticsProperties } from "./redaction"
 import type { AnalyticsEventProperties, SiabAnalyticsEventName } from "./events"
+import { serverAnalyticsPolicyFor } from "./governance"
 
 type CaptureInput = {
   event: SiabAnalyticsEventName
@@ -10,6 +11,9 @@ type CaptureInput = {
 }
 
 export const captureAnalyticsEvent = async ({ event, distinctId, properties }: CaptureInput): Promise<void> => {
+  if (!serverAnalyticsPolicyFor(event)) {
+    throw new Error(`Analytics event is not approved for server capture: ${event}`)
+  }
   const config = getPostHogAnalyticsConfig()
   if (!config.captureEnabled || !config.projectToken) return
 

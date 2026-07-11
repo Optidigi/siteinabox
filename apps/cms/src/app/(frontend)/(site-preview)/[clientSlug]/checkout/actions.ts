@@ -1,13 +1,19 @@
 "use server"
 
+import crypto from "node:crypto"
+import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import {
   fixedDomainOrderPriceFromEnv,
+  domainCheckoutPrice,
+  normalizeDomainOrderState,
   maxDomainProviderPriceFromEnv,
   normalizeDomainRegistrantDetails,
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
+import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/lib/legal/checkoutEvidence"
+import { satisfyRequirementsFromTransaction } from "@/lib/legal/customerRequirements"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
@@ -250,6 +256,12 @@ export async function startPreviewCheckoutPaymentAction(
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   if (!domain) return { ok: false, message: t("checkoutDomainRequired") }
+  if (formData.get("previewApproval") !== "accepted") {
+    return { ok: false, message: t("checkoutPreviewApprovalRequired") }
+  }
+  if (formData.get("termsAcceptance") !== "accepted") {
+    return { ok: false, message: t("checkoutTermsAcceptanceRequired") }
+  }
   const registrant = registrantFromFormData(formData)
   if (!registrant) return { ok: false, message: t("checkoutRegistrantRequired") }
 
@@ -257,12 +269,75 @@ export async function startPreviewCheckoutPaymentAction(
     const domainStart = startPreviewCheckoutTimer()
     const ready = await requireReadyPreviewDomainOrder(context.payload, context.run, domain, registrant)
     logPreviewCheckoutTiming("payment_domain_check", domainStart, { clientSlug: context.clientSlug, domain: ready.domain })
+    const requestHeaders = await headers()
+    const requestId = requestHeaders.get("x-request-id") ?? crypto.randomUUID()
+    const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || null
+    const approvalEvidence = await createSiteApprovalEvidence({
+      payload: context.payload,
+      run: ready.run as any,
+      tenant: context.tenant as any,
+      pages: context.pages as any[],
+      domain: ready.domain,
+      actorEmail: context.customerEmail,
+      requestId,
+    })
+    const orderState = normalizeDomainOrderState(ready.run.domainOrder)
+    const providerPrice = orderState.providerPriceAmount && orderState.providerPriceCurrency
+      ? { amount: orderState.providerPriceAmount, currency: orderState.providerPriceCurrency }
+      : null
+    const includedPrice = orderState.maxProviderPriceAmount && orderState.maxProviderPriceCurrency
+      ? { amount: orderState.maxProviderPriceAmount, currency: orderState.maxProviderPriceCurrency }
+      : maxDomainProviderPriceFromEnv()
+    const totalPrice = domainCheckoutPrice({
+      basePrice: fixedDomainOrderPriceFromEnv(),
+      providerPrice,
+      includedProviderPrice: includedPrice,
+    })
+    const legalEvidence = await createOrderAndAcceptanceEvidence({
+      payload: context.payload,
+      run: ready.run as any,
+      tenant: context.tenant as any,
+      approval: approvalEvidence.approval,
+      customerEmail: context.customerEmail,
+      customerName: [registrant.firstName, registrant.lastName].filter(Boolean).join(" "),
+      companyName: registrant.companyName || String(context.tenant.name),
+      billingAddress: {
+        street: registrant.street,
+        number: registrant.number,
+        suffix: registrant.suffix,
+        zipcode: registrant.zipcode,
+        city: registrant.city,
+        country: registrant.country,
+      },
+      domainRegistrant: registrant,
+      domain: ready.domain,
+      totalAmount: totalPrice.amount,
+      currency: totalPrice.currency,
+      requestId,
+      ipAddress: forwardedFor,
+      userAgent: requestHeaders.get("user-agent"),
+    })
+    await satisfyRequirementsFromTransaction({
+      payload: context.payload,
+      tenantId: context.tenant.id,
+      actorEmail: context.customerEmail,
+      documentId: legalEvidence.terms.id,
+      acceptanceId: legalEvidence.acceptance.id,
+      acceptedAt: legalEvidence.acceptance.acceptedAt,
+    })
     const approvalStart = startPreviewCheckoutTimer()
     const approved = await context.payload.update({
       collection: "site-generation-runs",
       id: ready.run.id,
       data: {
-        clientApproval: { status: "approved", approvedAt: new Date().toISOString() },
+        clientApproval: {
+          status: "approved",
+          approvedAt: approvalEvidence.approval.approvedAt,
+          approvalEvidenceId: approvalEvidence.approval.id,
+          reviewRevisionId: approvalEvidence.revision.id,
+          snapshotHash: approvalEvidence.snapshotHash,
+          actorEmail: context.customerEmail,
+        },
       } as any,
       depth: 0,
       overrideAccess: true,
@@ -275,6 +350,7 @@ export async function startPreviewCheckoutPaymentAction(
       clientSlug: context.clientSlug,
       selectedDomain: ready.domain,
       actor: context.customerEmail,
+      orderId: legalEvidence.order.id,
     })
     logPreviewCheckoutTiming("payment_mollie_checkout", mollieStart, { clientSlug: context.clientSlug, domain: ready.domain })
     logPreviewCheckoutTiming("payment_total", totalStart, { clientSlug: context.clientSlug, domain: ready.domain }, { ok: true })

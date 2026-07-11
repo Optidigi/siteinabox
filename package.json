@@ -14,6 +14,7 @@
     "intake:test": "pnpm --dir apps/intake --ignore-workspace test",
     "landing:build": "pnpm --dir apps/landing --ignore-workspace build",
     "landing:test": "pnpm --dir apps/landing --ignore-workspace test",
+    "legal:check": "pnpm --dir packages/legal-content check",
     "packages:typecheck": "pnpm contracts:typecheck && pnpm ui:typecheck && pnpm site-renderer:typecheck",
     "renderer:build": "pnpm --dir apps/renderer build",
     "renderer:deploy-contract": "node scripts/check-renderer-deploy-contract.mjs",

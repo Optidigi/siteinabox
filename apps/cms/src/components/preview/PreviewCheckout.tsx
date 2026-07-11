@@ -18,6 +18,7 @@ import { Badge } from "@siteinabox/ui/components/badge"
 import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Input } from "@siteinabox/ui/components/input"
+import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
 import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
@@ -76,6 +77,9 @@ type PreviewCheckoutProps = {
   suggestionsHref: string
   checkDomainAction: PreviewCheckoutAction
   startPaymentAction: PreviewCheckoutAction
+  termsHref: string
+  privacyHref: string
+  termsVersion: string
 }
 
 const initialState: PreviewCheckoutActionState = {
@@ -149,6 +153,9 @@ export function PreviewCheckout({
   suggestionsHref,
   checkDomainAction,
   startPaymentAction,
+  termsHref,
+  privacyHref,
+  termsVersion,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
   const [step, setStep] = React.useState<CheckoutStep>("domain")
@@ -170,6 +177,8 @@ export function PreviewCheckout({
   const paymentFormRef = React.useRef<HTMLFormElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
   const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
+  const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
+  const [termsAccepted, setTermsAccepted] = React.useState(false)
   const suggestionsAbortRef = React.useRef<AbortController | null>(null)
   const lastSuggestionsRequestKeyRef = React.useRef<string | null>(null)
   const normalizedDomainValue = domainValue.trim().toLowerCase()
@@ -504,7 +513,41 @@ export function PreviewCheckout({
                 </div>
                 <form id="checkout-payment-form" ref={paymentFormRef} action={paymentAction} className="hidden">
                   <CheckoutHiddenInputs domain={selectedDomain ?? domainValue} holder={holder} />
+                  <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
+                  <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 </form>
+                <div className="grid gap-4 border-t pt-5">
+                  <label className="flex items-start gap-3 text-sm leading-6">
+                    <Checkbox
+                      checked={previewApprovalAccepted}
+                      onCheckedChange={(checked) => setPreviewApprovalAccepted(checked === true)}
+                      className="mt-1"
+                    />
+                    <span>
+                      {t("checkoutPreviewApprovalLabel")}
+                      <span className="block text-muted-foreground">{t("checkoutPreviewApprovalHelp")}</span>
+                    </span>
+                  </label>
+                  <label className="flex items-start gap-3 text-sm leading-6">
+                    <Checkbox
+                      checked={termsAccepted}
+                      onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+                      className="mt-1"
+                    />
+                    <span>
+                      {t.rich("checkoutTermsAcceptanceLabel", {
+                        terms: (chunks) => <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">{chunks}</a>,
+                        version: termsVersion,
+                      })}
+                      <span className="block text-muted-foreground">
+                        {t.rich("checkoutPrivacyDisclosure", {
+                          privacy: (chunks) => <a href={privacyHref} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">{chunks}</a>,
+                        })}
+                      </span>
+                    </span>
+                  </label>
+                  <p className="text-sm leading-6 text-muted-foreground">{t("checkoutDirectoryNotice")}</p>
+                </div>
                 {paymentSubmitRequested && paymentState.message && (
                   <Alert variant={paymentState.ok || paymentState.status === "payment_complete" ? "default" : "destructive"}>
                     <AlertTitle>{paymentAlertTitle(paymentState, t)}</AlertTitle>
@@ -526,6 +569,7 @@ export function PreviewCheckout({
         paymentPending={paymentPending}
         domainResultKind={domainResultKind}
         paymentStatus={paymentStatus}
+        legalAccepted={previewApprovalAccepted && termsAccepted}
         totalPriceLabel={totalPriceLabel}
         previewHref={previewHref}
         onBack={goBack}
@@ -555,6 +599,7 @@ function CheckoutActionBar({
   paymentPending,
   domainResultKind,
   paymentStatus,
+  legalAccepted,
   totalPriceLabel,
   previewHref,
   onBack,
@@ -570,6 +615,7 @@ function CheckoutActionBar({
   paymentPending: boolean
   domainResultKind: "loading" | "success" | "unavailable" | "error" | null
   paymentStatus: string
+  legalAccepted: boolean
   totalPriceLabel: string
   previewHref: string
   onBack: () => void
@@ -632,7 +678,7 @@ function CheckoutActionBar({
         type="button"
         variant="success"
         className="min-w-0 flex-1 md:flex-none"
-        disabled={paymentPending || !holderComplete || !selectedDomain || complete}
+        disabled={paymentPending || !holderComplete || !selectedDomain || !legalAccepted || complete}
         onClick={onPay}
       >
         {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}

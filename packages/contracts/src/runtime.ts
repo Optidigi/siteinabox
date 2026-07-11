@@ -115,7 +115,6 @@ type RuntimeVariantScope = "generic" | "officialTenant"
 const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET = new Set<string>(
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
 )
-
 const isSelfServeBlockCatalogVariant = (variant: SiteBlockCatalogVariant) =>
   variant.scope.kind === "global" &&
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET.has(variant.provenance.sourceName)
@@ -908,6 +907,41 @@ const createSiteSettingsSchema = (
       captureActions: z.boolean().nullable().optional(),
       captureForms: z.boolean().nullable().optional(),
     }).nullable().optional(),
+    privacyDisclosure: strictObject({
+      enabled: z.boolean().nullable().optional(),
+      version: z.string().min(1),
+      effectiveAt: z.iso.datetime(),
+      controller: strictObject({
+        legalName: z.string().min(1),
+        tradeName: nullableString,
+        email: z.email(),
+        privacyEmail: z.email().nullable().optional(),
+        kvkNumber: nullableString,
+        address: nullableString,
+      }),
+      contactMethods: strictObject({
+        email: z.boolean().nullable().optional(),
+        phone: z.boolean().nullable().optional(),
+        whatsapp: z.boolean().nullable().optional(),
+        forms: strictObject({
+          enabled: z.boolean(),
+          mode: z.enum(["direct", "forwarded", "cms"]),
+          retention: z.discriminatedUnion("kind", [
+            strictObject({ kind: z.literal("days"), days: z.number().int().positive().max(3650) }),
+            strictObject({ kind: z.literal("active_agreement") }),
+          ]).nullable().optional(),
+        }).nullable().optional(),
+      }).nullable().optional(),
+      marketingTechnologies: z.array(strictObject({
+        name: z.string().min(1),
+        purpose: z.string().min(1),
+      })).nullable().optional(),
+      additionalProcessors: z.array(strictObject({
+        name: z.string().min(1),
+        purpose: z.string().min(1),
+        location: nullableString,
+      })).nullable().optional(),
+    }).nullable().optional(),
     seoJsonLd: strictObject({
       organization: strictObject({
         enabled: z.boolean().nullable().optional(),
@@ -1092,6 +1126,22 @@ export const RawIntakeSubmissionSchema: z.ZodType<RawIntakeSubmission> = strictO
     name: z.string(),
     email: z.string(),
     phone: z.string(),
+  }),
+  legal: strictObject({
+    businessUseDeclaration: strictObject({
+      accepted: z.literal(true),
+      statementVersion: z.string().min(1),
+      recordedAt: z.string().min(1),
+    }),
+    marketingConsent: strictObject({
+      granted: z.boolean(),
+      statementVersion: z.string().min(1),
+      recordedAt: z.string().min(1),
+    }),
+    privacyNotice: strictObject({
+      documentVersion: z.string().min(1),
+      url: z.string().url(),
+    }),
   }),
   domain: nullableString,
   email: nullableString,

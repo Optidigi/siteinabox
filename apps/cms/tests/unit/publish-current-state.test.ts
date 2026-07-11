@@ -16,6 +16,7 @@ import {
 
 const payload = (tenant: { id: number; slug: string; domain: string }) => ({
   findByID: vi.fn(async () => tenant),
+  find: vi.fn(async () => ({ docs: [] })),
 })
 
 describe("publish current tenant state", () => {

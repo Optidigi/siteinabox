@@ -57,9 +57,10 @@ describe("captureAcceptedFormAnalytics", () => {
       tenant_slug: "amicare",
       site_domain: "ami-care.nl",
       page_path: "/contact",
-      form_id: "42",
-      form_name: "Contact",
       conversion_source: "accepted_form",
     })
+    expect(bodies[0].distinct_id).toBe("site:7:server-conversions")
+    expect(JSON.stringify(bodies)).not.toContain('"form_id"')
+    expect(JSON.stringify(bodies)).not.toContain('"form_name"')
   })
 })

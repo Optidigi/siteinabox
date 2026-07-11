@@ -170,12 +170,18 @@ export type FinalDetails = {
   phone: string;
 };
 
+export type IntakeLegalDetails = {
+  businessUseAccepted: boolean;
+  marketingOptIn: boolean;
+};
+
 export type IntakeFormValues = {
   company: CompanyDetails;
   content: BusinessContentDetails;
   contact: ContactDetails;
   visual: VisualDetails;
   finalDetails: FinalDetails;
+  legal: IntakeLegalDetails;
 };
 
 export type KvkSearchResult = {

@@ -18,6 +18,7 @@ import {
   type SiteGenerationProviderRequest,
 } from "@/lib/ai-generation/providers"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
+import { materializeTenantPrivacyPage, withDerivedTenantPrivacyDisclosure } from "@/lib/legal/tenantPrivacyPage"
 import type { MockGenerationFixture } from "./mockGeneration"
 
 type WorkflowStatus = (typeof generationWorkflowStatuses)[number]
@@ -199,10 +200,13 @@ const processStoredIntakeGeneration = async (
 
     const generated = await generateWithRetry(input.provider, input.providerRequest, input.maxGenerationAttempts)
     const providerResult = generated.result
-    const spec = providerResult.spec ?? providerResult.parsedOutput
-    if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
+    const providerSpec = providerResult.spec ?? providerResult.parsedOutput
+    if (!providerSpec || typeof providerSpec !== "object" || Array.isArray(providerSpec)) {
       throw new Error("Generation provider returned no SiteGenerationSpec object")
     }
+    const sourceSpec = withDerivedTenantPrivacyDisclosure(providerSpec as any)
+    const sourceValidation = validateSiteGenerationSpecForCms(sourceSpec as any, { variantScope: "self-serve" })
+    const spec = sourceValidation.valid ? materializeTenantPrivacyPage(sourceSpec) : sourceSpec
     const specHash = siteGenerationSpecHash(spec as any)
     run = await setRunStatus(payload, run, "generated", {
       provider: providerResult.provider,
@@ -221,7 +225,9 @@ const processStoredIntakeGeneration = async (
 
     run = await setRunStatus(payload, run, "validating")
     intake = await setIntakeStatus(payload, intake, "validating")
-    const validation = validateSiteGenerationSpecForCms(spec as any, { variantScope: "self-serve" })
+    const validation = sourceValidation.valid
+      ? validateSiteGenerationSpecForCms(spec as any, { variantScope: "self-serve", allowSystemPages: true })
+      : sourceValidation
     if (!validation.valid) {
       const failure = { message: "Generated SiteGenerationSpec failed validation", validation }
       run = await setRunStatus(payload, run, "failed", { validation, errors: failure })
@@ -232,7 +238,7 @@ const processStoredIntakeGeneration = async (
     run = await setRunStatus(payload, run, "applying", { validation })
     intake = await setIntakeStatus(payload, intake, "applying")
     const mediaMode = providerResult.provider === "mock" ? "upload-generated-media" : "skip-generated-placeholders"
-    const applyResult = await applySiteGenerationSpec(payload, spec as any, {
+    const applyResult = await applySiteGenerationSpec(payload, sourceSpec as any, {
       variantScope: "self-serve",
       mediaMode,
     })

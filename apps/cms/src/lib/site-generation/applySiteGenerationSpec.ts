@@ -29,6 +29,7 @@ import type { Payload } from "payload"
 import { assertSafeMediaFilename } from "@/lib/mediaFilename"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
 import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
+import { isMaterializedTenantPrivacyBlock, materializeTenantPrivacyPage } from "@/lib/legal/tenantPrivacyPage"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 
@@ -83,6 +84,7 @@ for (const variant of SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS) {
 
 export type SiteGenerationValidationOptions = {
   variantScope?: "tenant-aware" | "self-serve"
+  allowSystemPages?: boolean
 }
 
 export type SiteGenerationApplyOptions = SiteGenerationValidationOptions & {
@@ -298,6 +300,7 @@ export const validateSiteGenerationSpecForCms = (
         return
       }
       const blockType = (block as Record<string, unknown>).blockType
+      const systemPrivacyBlock = options.allowSystemPages === true && isMaterializedTenantPrivacyBlock(page.slug, block as Record<string, unknown>)
       if (typeof blockType !== "string" || !SUPPORTED_BLOCK_SLUGS.has(blockType)) {
         issues.push(issue(
           "unsupported_block_type",
@@ -306,7 +309,7 @@ export const validateSiteGenerationSpecForCms = (
         ))
         return
       }
-      if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
+      if (validationScope === "self-serve" && !systemPrivacyBlock && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
         issues.push(issue(
           "unsupported_self_serve_block_type",
           `Generated block type "${blockType}" does not have an approved self-serve source-backed design variant.`,
@@ -317,7 +320,7 @@ export const validateSiteGenerationSpecForCms = (
         ? ((originalValue.pages as SiteGenerationSpec["pages"])[index]!.blocks[blockIndex] as Record<string, unknown> | undefined)
         : undefined
       const designVariant = typeof originalBlock?.designVariant === "string" ? originalBlock.designVariant.trim() : ""
-      if (validationScope === "self-serve" && !designVariant) {
+      if (validationScope === "self-serve" && !systemPrivacyBlock && !designVariant) {
         issues.push(issue(
           "missing_approved_design_variant",
           `Generated block type "${blockType}" must include an approved source-backed designVariant.`,
@@ -339,7 +342,7 @@ export const validateSiteGenerationSpecForCms = (
         ))
       }
       const variant = (block as Record<string, unknown>).designVariant
-      if (typeof variant === "string" && variant && !supportsBlockVariant(blockType, variant)) {
+      if (typeof variant === "string" && variant && !systemPrivacyBlock && !supportsBlockVariant(blockType, variant)) {
         issues.push(issue(
           "unsupported_block_variant",
           `Generated block designVariant "${variant}" is not approved for block type "${blockType}".`,
@@ -368,6 +371,22 @@ export const validateSiteGenerationSpecForCms = (
   if (pagesArray && !pagesArray.some((page) => page?.slug === "index")) {
     issues.push(issue("missing_root_page", "Generated specs must include an index page for the root route.", ["pages"]))
   }
+  const hasMaterializedPrivacyPage = options.allowSystemPages === true && (pagesArray?.some((page) =>
+    page?.blocks?.some((block) =>
+      block && typeof block === "object" && isMaterializedTenantPrivacyBlock(page.slug, block as Record<string, unknown>),
+    ),
+  ) ?? false)
+
+  const disclosure = settings && typeof settings === "object" && !Array.isArray(settings)
+    ? (settings as Record<string, any>).privacyDisclosure
+    : null
+  if (Array.isArray(disclosure?.marketingTechnologies) && disclosure.marketingTechnologies.length > 0) {
+    issues.push(issue(
+      "unsupported_optional_tracking_without_consent_ui",
+      "Marketing technologies cannot be activated until an approved consent chrome component is registered.",
+      ["settings", "privacyDisclosure", "marketingTechnologies"],
+    ))
+  }
 
   const chrome = settings && typeof settings === "object" && !Array.isArray(settings)
     ? (settings as Record<string, unknown>).chrome
@@ -393,7 +412,7 @@ export const validateSiteGenerationSpecForCms = (
     if (!SUPPORTED_BLOCK_SLUGS.has(block.slug)) {
       issues.push(issue("unsupported_manifest_block_slug", `Generated manifest block slug "${String(block.slug)}" is not supported.`, ["blocks", index, "slug"]))
     }
-    if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
+    if (validationScope === "self-serve" && !(hasMaterializedPrivacyPage && block.slug === "richText") && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
       issues.push(issue(
         "unsupported_self_serve_manifest_block_slug",
         `Generated manifest block slug "${String(block.slug)}" does not have an approved self-serve source-backed design variant.`,
@@ -992,11 +1011,15 @@ export async function applySiteGenerationSpec(
   spec: SiteGenerationSpec,
   options: SiteGenerationApplyOptions = {},
 ): Promise<CmsGenerationApplyResult> {
-  const validation = validateSiteGenerationSpecForCms(spec, options)
+  const sourceValidation = validateSiteGenerationSpecForCms(spec, options)
+  if (!sourceValidation.valid) {
+    return { ok: false, validation: sourceValidation }
+  }
+  const canonicalSpec = materializeTenantPrivacyPage(canonicalizeSiteGenerationSpecForCms(spec))
+  const validation = validateSiteGenerationSpecForCms(canonicalSpec, { ...options, allowSystemPages: true })
   if (!validation.valid) {
     return { ok: false, validation }
   }
-  const canonicalSpec = canonicalizeSiteGenerationSpecForCms(spec)
   const parsedContractSpec = (options.variantScope === "self-serve"
     ? SiteGenerationSpecSchema
     : OfficialTenantSiteGenerationSpecSchema).parse(canonicalSpec)

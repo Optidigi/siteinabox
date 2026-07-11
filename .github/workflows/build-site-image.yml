@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/landing/**"
       - "packages/contracts/**"
+      - "packages/legal-content/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"

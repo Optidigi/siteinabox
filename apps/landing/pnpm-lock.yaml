@@ -17,6 +17,9 @@ importers:
       '@siteinabox/contracts':
         specifier: file:../../packages/contracts
         version: file:../../packages/contracts
+      '@siteinabox/legal-content':
+        specifier: file:../../packages/legal-content
+        version: file:../../packages/legal-content
       astro:
         specifier: ^6.2.1
         version: 6.2.1(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.32.0)(rollup@4.60.2)(typescript@6.0.3)(yaml@2.8.4)
@@ -780,6 +783,9 @@ packages:
   '@siteinabox/contracts@file:../../packages/contracts':
     resolution: {directory: ../../packages/contracts, type: directory}
 
+  '@siteinabox/legal-content@file:../../packages/legal-content':
+    resolution: {directory: ../../packages/legal-content, type: directory}
+
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
@@ -1516,6 +1522,11 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  marked@14.1.4:
+    resolution: {integrity: sha512-vkVZ8ONmUdPnjCKc5uTRvmkRbx4EAi2OkTOXmfTDhZz3OFqMNBM1oTTWwTr4HY4uAEojhzPf+Fy8F1DWa3Sndg==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   mdast-util-definitions@6.0.0:
     resolution: {integrity: sha512-scTllyX6pnYNZH/AIp/0ePz6s4cZtARxImwoPJ7kS42n+MnVsI4XbnG6d4ibehRIldYMWM2LD7ImQblVhUejVQ==}
@@ -3034,6 +3045,10 @@ snapshots:
     dependencies:
       zod: 4.4.3
 
+  '@siteinabox/legal-content@file:../../packages/legal-content':
+    dependencies:
+      marked: 14.1.4
+
   '@standard-schema/spec@1.1.0': {}
 
   '@tailwindcss/node@4.2.4':
@@ -3841,6 +3856,8 @@ snapshots:
       source-map-js: 1.2.1
 
   markdown-table@3.0.4: {}
+
+  marked@14.1.4: {}
 
   mdast-util-definitions@6.0.0:
     dependencies:

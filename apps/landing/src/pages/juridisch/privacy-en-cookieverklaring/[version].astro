@@ -1,0 +1,15 @@
+---
+import LegalDocumentPage from '../../../components/legal/LegalDocumentPage.astro';
+import { getLegalReleases } from '../../../lib/legal';
+
+export function getStaticPaths() {
+  return getLegalReleases({ documentType: 'platform-privacy', locale: 'nl' }).map((document) => ({
+    params: { version: document.documentVersion },
+    props: { document },
+  }));
+}
+
+const { document } = Astro.props;
+---
+
+<LegalDocumentPage document={document} />

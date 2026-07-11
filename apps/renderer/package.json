@@ -12,12 +12,13 @@
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "astro check",
-    "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/smoke/host-routing.test.mjs src/smoke/iframe-renderer.test.mjs && tsx --test src/lib/media.test.ts",
+    "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/smoke/cookie-consent-contract.test.mjs src/smoke/host-routing.test.mjs src/smoke/iframe-renderer.test.mjs && tsx --test src/lib/media.test.ts",
     "smoke:packaged-image": "node src/smoke/packaged-image-smoke.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.0",
     "@siteinabox/contracts": "workspace:*",
+    "@siteinabox/legal-content": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",
     "astro": "^6.2.1",
     "posthog-js": "^1.386.8",

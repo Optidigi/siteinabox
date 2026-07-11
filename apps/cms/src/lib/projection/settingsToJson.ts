@@ -13,6 +13,7 @@ export type SettingsAnalyticsProjectionContext = {
   siteBuildId?: string | null
   manifestVersion?: string | number | null
   analytics?: PublicAnalyticsConfigInput | null
+  analyticsConsent?: Record<string, unknown> | null
 }
 
 export type SettingsProjectionContext = SettingsProjectionCoreContext & {
@@ -51,5 +52,6 @@ export function settingsToJson(
       siteBuildId: analyticsContext.siteBuildId ?? null,
       manifestVersion: analyticsContext.manifestVersion ?? null,
     } : undefined,
+    analyticsConsent: includeAnalytics ? analyticsContext.analyticsConsent ?? undefined : undefined,
   }
 }

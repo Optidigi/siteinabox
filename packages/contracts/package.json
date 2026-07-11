@@ -24,6 +24,10 @@
       "types": "./src/iframe-editor.ts",
       "default": "./src/iframe-editor.ts"
     },
+    "./legal": {
+      "types": "./src/legal.ts",
+      "default": "./src/legal.ts"
+    },
     "./block-catalog": {
       "types": "./src/block-catalog.ts",
       "default": "./src/block-catalog.ts"

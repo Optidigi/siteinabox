@@ -41,6 +41,10 @@ type CollectionName =
   | "pages"
   | "site-settings"
   | "published-site-snapshots"
+  | "orders"
+  | "agreement-acceptances"
+  | "communication-preferences"
+  | "communication-preference-events"
   | "users"
   | "media"
 
@@ -115,6 +119,22 @@ const richIntake = () => ({
     name: "Demo Contact",
     email: "demo@example.com",
     phone: "0612345678",
+  },
+  legal: {
+    businessUseDeclaration: {
+      accepted: true,
+      statementVersion: "business-use-2026-07-07.1",
+      recordedAt: "2026-07-02T08:00:00.000Z",
+    },
+    marketingConsent: {
+      granted: false,
+      statementVersion: "marketing-opt-in-2026-07-07.1",
+      recordedAt: "2026-07-02T08:00:00.000Z",
+    },
+    privacyNotice: {
+      documentVersion: "2026-07-07.1",
+      url: "https://www.siteinabox.nl/privacy-en-cookieverklaring",
+    },
   },
   domain: "flow-demo.nl",
   email: "demo@example.com",
@@ -192,6 +212,10 @@ const createPayloadStub = () => {
     pages: [],
     "site-settings": [],
     "published-site-snapshots": [],
+    orders: [],
+    "agreement-acceptances": [],
+    "communication-preferences": [],
+    "communication-preference-events": [],
     users: [],
     media: [],
   }
@@ -354,7 +378,8 @@ describe("intake-to-live mocked flow", () => {
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)
-    expect(store.pages).toHaveLength(1)
+    expect(store.pages).toHaveLength(2)
+    expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(true)
 
     const pages = store.pages
     const tenants = store.tenants
@@ -384,12 +409,35 @@ describe("intake-to-live mocked flow", () => {
       overrideAccess: true,
     })
 
+    const order = await payload.create({
+      collection: "orders",
+      data: {
+        generationRun: run.id,
+        tenant: tenants[0]!.id,
+        customerEmail: "demo@example.com",
+        domain: "flow-live.nl",
+        totalGross: 499,
+        currency: "EUR",
+        paymentStatus: "pending",
+      },
+      overrideAccess: true,
+    })
+    await payload.create({
+      collection: "agreement-acceptances",
+      data: {
+        order: order.id,
+        acceptanceVersion: "platform-terms-2026-07-07",
+      },
+      overrideAccess: true,
+    })
+
     const checkout = await createMollieCheckoutForGenerationRun(payload, {
       runId: run.id,
       customerEmail: "demo@example.com",
       clientSlug: "flow-demo",
       selectedDomain: "flow-live.nl",
       actor: "demo@example.com",
+      orderId: order.id,
     })
     expect(checkout.checkoutUrl).toBe("https://www.mollie.com/checkout/flow")
 
@@ -406,6 +454,7 @@ describe("intake-to-live mocked flow", () => {
         mollieCustomerId: "cst_flow_123",
         sequenceType: "first",
         renewalInterval: "1 month",
+        orderId: order.id,
       },
     }))
 

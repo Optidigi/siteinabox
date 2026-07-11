@@ -8,6 +8,9 @@ const SITE_URL = process.env.SITE_URL ?? 'https://example.com';
 export default defineConfig({
   site: SITE_URL,
   output: 'static',
+  redirects: {
+    '/privacy-policy': '/privacy-en-cookieverklaring',
+  },
   integrations: [
     sitemap(),
     // Preact scoped to cms/ and preview/ dirs only. compat:false avoids

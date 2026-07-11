@@ -20,6 +20,7 @@ const UPSTREAM_UI_FILES = new Set([
   "chart.tsx",
   "checkbox.tsx",
   "command.tsx",
+  "collapsible.tsx",
   "dialog.tsx",
   "drawer.tsx",
   "dropdown-menu.tsx",

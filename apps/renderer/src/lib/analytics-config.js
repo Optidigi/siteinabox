@@ -1,3 +1,5 @@
+import { matchesApprovedPublicAnalyticsConsent } from "@siteinabox/legal-content/consent-approval"
+
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -26,6 +28,7 @@ export function buildAnalyticsConfig({ snapshot, page, pathname }) {
   if (!isRecord(analytics)) return null
 
   const consent = isRecord(snapshot?.settings?.analyticsConsent) ? snapshot.settings.analyticsConsent : null
+  if (!matchesApprovedPublicAnalyticsConsent(consent)) return null
   const pageAnalytics = isRecord(page?.analytics) ? page.analytics : null
   const provider = firstString(analytics.provider, consent?.provider) ?? "posthog"
   if (provider !== "posthog") return null
@@ -42,8 +45,8 @@ export function buildAnalyticsConfig({ snapshot, page, pathname }) {
     enabled: booleanValue(analytics.enabled, true),
     provider: "posthog",
     consentMode: "required",
-    consentStorageKey: stringValue(consent?.consentStorageKey) ?? "siab_cookie_consent_v1",
-    consentVersion: stringValue(consent?.consentVersion) ?? "1",
+    consentStorageKey: stringValue(consent.consentStorageKey),
+    consentVersion: stringValue(consent.consentVersion),
     posthogHost,
     posthogUiHost: firstString(analytics.posthogUiHost, analytics.uiHost),
     posthogProjectToken,

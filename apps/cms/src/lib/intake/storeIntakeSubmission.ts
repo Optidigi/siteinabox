@@ -3,6 +3,7 @@ import type { Payload } from "payload"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
+import { recordIntakeMarketingPreference } from "@/lib/legal/communicationPreferences"
 
 type WorkflowStatus = (typeof generationWorkflowStatuses)[number]
 
@@ -172,6 +173,22 @@ export async function storeIntakeSubmission(
       depth: 0,
       overrideAccess: true,
     } as any) as PayloadDoc
+
+    if ("legal" in raw && normalized.contact?.email) {
+      try {
+        await recordIntakeMarketingPreference({
+          payload,
+          intakeId: intake.id,
+          email: normalized.contact.email,
+          legal: raw.legal,
+        })
+      } catch (error) {
+        payload.logger.warn({
+          intakeSubmissionId: intake.id,
+          error: error instanceof Error ? error.message : "Unknown preference error",
+        }, "[intake] marketing preference persistence failed")
+      }
+    }
 
     await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)

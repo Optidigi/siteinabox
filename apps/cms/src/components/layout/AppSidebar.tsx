@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList } from "lucide-react"
+import { BarChart3, LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon, Navigation, ClipboardList, Scale } from "lucide-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
@@ -100,6 +100,7 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
                 <>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/sites")}><Link href="/sites"><Globe /> {t("sites")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/generation-runs")}><Link href="/generation-runs"><ClipboardList /> {t("operations")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/legal")}><Link href="/legal"><Scale /> {t("legal")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/users")}><Link href="/users"><Users /> {t("users")}</Link></SidebarMenuButton></SidebarMenuItem>
                 </>
               )}

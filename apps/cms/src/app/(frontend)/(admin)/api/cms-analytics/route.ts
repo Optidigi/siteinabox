@@ -7,6 +7,7 @@ import { getSiabContext } from "@/lib/context"
 import { evaluateGate } from "@/lib/gateDecision"
 import config from "@/payload.config"
 import type { User } from "@/payload-types"
+import { applyCmsEventPropertyPolicy } from "@/lib/analytics/cmsEventPolicy"
 
 const MAX_TEXT = 96
 
@@ -22,12 +23,6 @@ const cleanRoute = (value: unknown): string | null => {
   if (!text) return null
   if (!text.startsWith("/")) return null
   return text.split("?")[0]?.slice(0, MAX_TEXT) ?? null
-}
-
-const cleanId = (value: unknown): string | null => {
-  if (typeof value !== "string" && typeof value !== "number") return null
-  const cleaned = String(value).replace(/[^a-zA-Z0-9:_-]/g, "").slice(0, 80)
-  return cleaned || null
 }
 
 const cleanNumber = (value: unknown, max: number): number | null => {
@@ -54,12 +49,10 @@ const CLIENT_EVENTS = new Set<CmsEventName>([
 const propertyPayload = (body: Record<string, unknown>): AnalyticsEventProperties => {
   const props: AnalyticsEventProperties = {}
   const route = cleanRoute(body.cms_route)
-  const routePath = cleanRoute(body.cms_route_path)
   const referrerRoute = cleanRoute(body.cms_referrer_route)
   const action = cleanText(body.cms_action)
   const actionTarget = cleanRoute(body.cms_action_target)
   const objectType = cleanText(body.cms_object_type)
-  const objectId = cleanId(body.cms_object_id)
   const errorType = cleanText(body.cms_error_type)
   const blockType = cleanText(body.cms_block_type)
   const fieldType = cleanText(body.cms_field_type)
@@ -67,12 +60,10 @@ const propertyPayload = (body: Record<string, unknown>): AnalyticsEventPropertie
   const durationMs = cleanNumber(body.cms_duration_ms, 1000 * 60 * 60)
 
   if (route) props.cms_route = route
-  if (routePath) props.cms_route_path = routePath
   if (referrerRoute) props.cms_referrer_route = referrerRoute
   if (action) props.cms_action = action
   if (actionTarget) props.cms_action_target = actionTarget
   if (objectType) props.cms_object_type = objectType
-  if (objectId) props.cms_object_id = objectId
   if (errorType) props.cms_error_type = errorType
   if (blockType) props.cms_block_type = blockType
   if (fieldType) props.cms_field_type = fieldType
@@ -110,7 +101,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const props = propertyPayload(body)
+  const props = applyCmsEventPropertyPolicy(event, propertyPayload(body))
   const surface = event === "cms_route_viewed" ? props.cms_route ?? "route" : props.cms_route ?? "action"
   await captureCmsUsageEvent({
     event: event as CmsEventName,

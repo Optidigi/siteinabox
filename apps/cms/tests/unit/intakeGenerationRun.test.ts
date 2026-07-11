@@ -109,6 +109,7 @@ describe("processIntakeSubmission", () => {
     expect(store["site-settings"][0]?.chrome?.banner?.link).toMatchObject({ label: "Contact", href: "/#contact" })
     expect(store.pages.every((page) => page.status === "draft")).toBe(true)
     expect(store["site-generation-runs"][0]?.applyResult?.ok).toBe(true)
+    expect(store["site-generation-runs"][0]?.specHash).toBe(store["site-generation-runs"][0]?.applyResult?.idempotencyKey)
     expect(store["site-generation-runs"][0]?.provider).toBe("mock")
     expect(store["site-generation-runs"][0]?.model).toBe("fixture:generic")
     expect(store["site-generation-runs"][0]?.promptVersion).toBe("site-generation-v1")
@@ -118,9 +119,10 @@ describe("processIntakeSubmission", () => {
     expect(JSON.stringify(store["site-generation-runs"][0]?.parsedOutput).toLowerCase()).not.toMatch(/amicare|ami-care/)
     expect(store["site-generation-runs"][0]?.normalizedIntake?.requestedPages[0]?.slug).toBe("index")
     expect(store["site-generation-runs"][0]?.statusTransitions.map((entry: any) => entry.status)).toContain("applying")
-    expect(store.pages).toHaveLength(1)
-    expect(store.pages[0]?.slug).toBe("index")
-    expect(store.pages[0]?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
+    expect(store.pages).toHaveLength(2)
+    expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(true)
+    const homePage = store.pages.find((page) => page.slug === "index")
+    expect(homePage?.blocks.map((block: any) => `${block.blockType}:${block.designVariant}`)).toEqual([
       "hero:tailwindplus.marketing.hero.simple-centered",
       "logoCloud:tailwindplus.marketing.logo-cloud.simple-with-heading",
       "featureList:tailwindplus.marketing.feature.centered-2x2-grid",
@@ -393,7 +395,7 @@ describe("processStoredIntakeSubmission", () => {
     expect(store["site-generation-runs"][0]?.intakeSubmission).toBe(intake.id)
     expect(store["site-generation-runs"][0]?.idempotencyKey).toContain(`stored:${intake.id}:mock:fixture:generic`)
     expect(store.tenants).toHaveLength(1)
-    expect(store.pages).toHaveLength(1)
+    expect(store.pages).toHaveLength(2)
     expect(store["site-settings"]).toHaveLength(1)
   })
 
@@ -426,7 +428,7 @@ describe("processStoredIntakeSubmission", () => {
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)
-    expect(store.pages).toHaveLength(1)
+    expect(store.pages).toHaveLength(2)
   })
 })
 

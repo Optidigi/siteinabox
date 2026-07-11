@@ -14,5 +14,10 @@ echo "[entrypoint] running migrate-on-boot..."
 # unbundled source script (`scripts/migrate-on-boot.mjs`) cannot run here.
 node /app/dist-runtime/migrate-on-boot.bundled.mjs
 
+echo "[entrypoint] synchronizing legal releases..."
+if ! node /app/dist-runtime/legal-sync-on-boot.bundled.mjs; then
+  echo "[entrypoint] WARNING: legal sync failed; starting with the last synchronized legal state. The scheduled worker will retry."
+fi
+
 echo "[entrypoint] starting next server..."
 exec node /app/apps/cms/server.js

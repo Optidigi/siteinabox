@@ -3,7 +3,7 @@ import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
-import { domainCheckoutPrice, maxDomainProviderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
+import { domainCheckoutPrice, fixedDomainOrderPriceFromEnv, maxDomainProviderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
 import {
   normalizeGenerationRunPaymentState,
   recordGenerationRunPostPaymentAutomationState,
@@ -13,13 +13,13 @@ import {
 import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
+import { verifyCheckoutEvidence } from "@/lib/legal/checkoutEvidence"
 import {
   MollieApiError,
   createMollieCustomer,
   createMolliePayment,
   createMollieSubscription,
   mollieDomainProvisioningEnabled,
-  mollieAmountFromEnv,
   mollieRenewalAmountFromEnv,
   publicCmsOrigin,
   retrieveMolliePayment,
@@ -32,6 +32,7 @@ type CreateCheckoutInput = {
   clientSlug?: string | null
   selectedDomain?: string | null
   actor?: string | number | null
+  orderId?: string | number | null
 }
 
 type CheckoutResult = {
@@ -160,11 +161,18 @@ export async function createMollieCheckoutForGenerationRun(
 
   const { run, tenant } = await loadRunAndTenant(payload, input.runId)
   if (!isApproved(run)) throw new Error("Mollie checkout requires approved preview.")
+  if (input.orderId == null) throw new Error("Mollie checkout requires a frozen legal order.")
+  const { order } = await verifyCheckoutEvidence(payload, {
+    runId: run.id,
+    orderId: input.orderId,
+    customerEmail: email,
+  })
 
   const clientSlug = input.clientSlug || previewClientSlugFromDomain(tenant.domain, String(tenant.slug ?? tenant.name ?? ""))
   if (!clientSlug) throw new Error("Client preview slug is required for Mollie checkout.")
   const selectedDomain = cleanDomain(input.selectedDomain) ?? selectedDomainFromOrder(run.domainOrder) ?? cleanDomain(tenant.domain)
   if (!selectedDomain) throw new Error("Selected domain is required for checkout.")
+  if (cleanDomain(order.domain) !== selectedDomain) throw new Error("Frozen order domain does not match checkout domain.")
 
   const current = normalizeGenerationRunPaymentState(run.payment)
   if (current.status === "completed" || current.status === "waived") {
@@ -189,13 +197,16 @@ export async function createMollieCheckoutForGenerationRun(
   const includedProviderPrice = domainOrder.maxProviderPriceAmount && domainOrder.maxProviderPriceCurrency
     ? { amount: domainOrder.maxProviderPriceAmount, currency: domainOrder.maxProviderPriceCurrency }
     : maxDomainProviderPriceFromEnv()
-  const basePaymentAmount = mollieAmountFromEnv()
+  const basePaymentAmount = fixedDomainOrderPriceFromEnv()
   const checkoutAmount = domainCheckoutPrice({
-    basePrice: { amount: basePaymentAmount.value, currency: basePaymentAmount.currency },
+    basePrice: basePaymentAmount,
     providerPrice,
     includedProviderPrice,
   })
   const amount = { value: checkoutAmount.amount, currency: checkoutAmount.currency }
+  if (Number(order.totalGross).toFixed(2) !== amount.value || order.currency !== amount.currency) {
+    throw new Error("Frozen order amount does not match the Mollie checkout amount.")
+  }
   const origin = publicCmsOrigin()
   const redirectUrl = `https://${PREVIEW_HOST}/${clientSlug}/checkout?payment=return`
   const webhookUrl = `${origin}/api/payments/mollie/webhook`
@@ -210,6 +221,7 @@ export async function createMollieCheckoutForGenerationRun(
       tenantId: tenant.id,
       customerEmail: email,
       clientSlug,
+      orderId: order.id,
     },
   })).id
   const molliePayment = await createMolliePayment({
@@ -230,6 +242,7 @@ export async function createMollieCheckoutForGenerationRun(
       mollieCustomerId,
       sequenceType: "first",
       renewalInterval: "1 month",
+      orderId: order.id,
     },
   })
   const checkoutUrl = molliePayment._links?.checkout?.href
@@ -260,6 +273,14 @@ export async function createMollieCheckoutForGenerationRun(
     overrideAccess: true,
     user: input.actor ? ({ id: input.actor } as any) : undefined,
   })
+  await payload.update({
+    collection: "orders" as any,
+    id: order.id,
+    data: { paymentStatus: "open", providerPaymentId: molliePayment.id },
+    depth: 0,
+    overrideAccess: true,
+    context: { legalOrderLifecycleMutation: true },
+  } as any)
   return { payment, checkoutUrl, reused: false }
 }
 
@@ -280,11 +301,15 @@ export async function applyMollieWebhookPayment(
   const metadata = molliePayment.metadata ?? {}
   const runId = metadata.generationRunId
   const tenantId = metadata.tenantId
+  const orderId = metadata.orderId
   if (typeof runId !== "string" && typeof runId !== "number") {
     throw new IgnorableMollieWebhookError("Mollie payment is missing generation run metadata.")
   }
   if (typeof tenantId !== "string" && typeof tenantId !== "number") {
     throw new IgnorableMollieWebhookError("Mollie payment is missing tenant metadata.")
+  }
+  if (typeof orderId !== "string" && typeof orderId !== "number") {
+    throw new IgnorableMollieWebhookError("Mollie payment is missing frozen order metadata.")
   }
 
   const run = await payload.findByID({
@@ -336,6 +361,35 @@ export async function applyMollieWebhookPayment(
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
+  const order = await payload.findByID({
+    collection: "orders" as any,
+    id: orderId as any,
+    depth: 0,
+    overrideAccess: true,
+  } as any) as any
+  if (!sameRelationshipId(order.generationRun, run.id) || !sameRelationshipId(order.tenant, tenantId)) {
+    throw new IgnorableMollieWebhookError("Mollie order metadata does not match the generation run.")
+  }
+  const orderPaymentStatus = nextStatus === "completed"
+    ? "paid"
+    : nextStatus === "canceled"
+      ? "cancelled"
+      : nextStatus === "pending_provider"
+        ? "open"
+        : nextStatus
+  await payload.update({
+    collection: "orders" as any,
+    id: order.id,
+    data: {
+      paymentStatus: orderPaymentStatus,
+      providerPaymentId: molliePayment.id,
+      paidAt: nextStatus === "completed" ? now : undefined,
+      cancelledAt: nextStatus === "canceled" ? now : undefined,
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { legalOrderLifecycleMutation: true },
+  } as any)
   let canAttemptActivation = next.status === "completed"
   if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
     try {

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   payload: {
     auth: vi.fn(),
     findByID: vi.fn(),
+    find: vi.fn(),
   },
   publishSiteSnapshot: vi.fn(),
   activatePublishedSnapshot: vi.fn(),
@@ -36,6 +37,7 @@ describe("publish route", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.payload.findByID.mockResolvedValue({ id: 7, slug: "ami-care", domain: "ami-care.nl" })
+    mocks.payload.find.mockResolvedValue({ docs: [] })
     mocks.publishSiteSnapshot.mockResolvedValue({
       activated: false,
       snapshot: { id: 10, status: "drafted", version: 1, domain: "example.test" },

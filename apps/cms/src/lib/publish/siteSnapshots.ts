@@ -85,6 +85,21 @@ const publishedSnapshotForServing = (snapshot: unknown): unknown => {
   }
 }
 
+export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifest: unknown): unknown {
+  if (!snapshot || typeof snapshot !== "object" || !siteManifest || typeof siteManifest !== "object") return snapshot
+  const consent = (siteManifest as Record<string, unknown>).analyticsConsent
+  if (!consent || typeof consent !== "object" || Array.isArray(consent)) return snapshot
+  const settings = (snapshot as Record<string, unknown>).settings
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return snapshot
+  return {
+    ...snapshot as Record<string, unknown>,
+    settings: {
+      ...settings as Record<string, unknown>,
+      analyticsConsent: consent,
+    },
+  }
+}
+
 const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | "siteManifest">) => {
   const manifest = tenant.siteManifest as Record<string, any> | null | undefined
   return {
@@ -95,6 +110,7 @@ const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | 
     siteBuildId: process.env.SIAB_SITE_BUILD_ID ?? null,
     manifestVersion: typeof manifest?.version !== "undefined" ? manifest.version : null,
     analytics: manifest?.analytics ?? null,
+    analyticsConsent: manifest?.analyticsConsent ?? null,
   }
 }
 
@@ -547,7 +563,10 @@ export async function resolvePublishedSnapshotByHost(
   const activeSnapshot = await activeSnapshotForTenant(payload, tenant)
   if (!activeSnapshot || activeSnapshot.status !== "active") return null
 
-  const snapshotForServing = publishedSnapshotForServing(activeSnapshot.snapshot)
+  const snapshotForServing = applyTenantAnalyticsConsentPolicy(
+    publishedSnapshotForServing(activeSnapshot.snapshot),
+    tenant.siteManifest,
+  )
   const parsedSnapshot = schemaForPublishedSiteSnapshot(snapshotForServing as PublishedSiteSnapshot).safeParse(snapshotForServing)
   if (!parsedSnapshot.success) {
     throw new Error(`Stored published site snapshot failed contract validation: ${formatContractValidationIssues(parsedSnapshot.error)}`)

@@ -99,6 +99,7 @@ function IntakeShellContent() {
   const contactValues = intakeForm.watch("contact");
   const visualValues = intakeForm.watch("visual");
   const finalDetailsValues = intakeForm.watch("finalDetails");
+  const legalValues = intakeForm.watch("legal");
   const isLoading = submitState === "submitting";
   const isManualEntry = phase === "manual";
   const isConfirmingCompany = phase === "confirm" && selectedCompany;
@@ -119,7 +120,9 @@ function IntakeShellContent() {
   const canContinueVisualLogo = isVisualLogoComplete(visualValues);
   const canContinueVisualColors = isVisualColorComplete(visualValues);
   const canContinueVisualStyle = isVisualStyleComplete(visualValues);
-  const canContinueFinalDetails = isFinalDetailsComplete(finalDetailsValues);
+  const canContinueFinalDetails =
+    isFinalDetailsComplete(finalDetailsValues) &&
+    legalValues.businessUseAccepted;
   const showContentCompletionHint =
     isContentEntry && !canContinueContent && contentContinueAttempted;
   const firstIncompleteContactSection = isContactEntry
@@ -188,7 +191,9 @@ function IntakeShellContent() {
   } as const;
   const finalDetailsCompletionHint = firstIncompleteFinalDetailsField
     ? `Controleer je ${finalDetailsFieldTitles[firstIncompleteFinalDetailsField]}.`
-    : submitError ?? "";
+    : !legalValues.businessUseAccepted
+      ? "Bevestig dat je de aanvraag zakelijk doet."
+      : submitError ?? "";
   const finalDetailsCompletionHintId = "final-details-completion-hint";
   const firstIncompleteContentCard = isContentEntry
     ? getFirstIncompleteContentCard(contentValues)
@@ -253,6 +258,7 @@ function IntakeShellContent() {
     if (phase === "finalDetails") {
       setFinalDetailsContinueAttempted(false);
       intakeForm.clearErrors("finalDetails");
+      intakeForm.clearErrors("legal");
       setSubmitError(null);
     }
   }, [intakeForm, phase]);
@@ -405,13 +411,13 @@ function IntakeShellContent() {
       if (!canContinueFinalDetails) {
         setFinalDetailsContinueAttempted(true);
         void intakeForm
-          .trigger("finalDetails")
+          .trigger(["finalDetails", "legal"])
           .then(() => focusIntakeCard("final-details"));
         return;
       }
 
       setFinalDetailsContinueAttempted(false);
-      void intakeForm.trigger("finalDetails");
+      void intakeForm.trigger(["finalDetails", "legal"]);
       void handleFinalSubmit();
       return;
     }

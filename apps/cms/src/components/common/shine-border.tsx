@@ -34,8 +34,8 @@ function buildShineBorderDeclarations({
     `--duration:${duration}s`,
     `background-image:radial-gradient(transparent,transparent,${colors.join(",")},transparent,transparent)`,
     "background-size:300% 300%",
-    "mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)",
-    "-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0)",
+    "mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0)",
+    "-webkit-mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0)",
     "-webkit-mask-composite:xor",
     "mask-composite:exclude",
     "padding:var(--border-width)",
@@ -46,7 +46,7 @@ function buildShineBorderDeclarations({
 export function ShineBorder({
   borderWidth = 1,
   duration = 14,
-  shineColor = "#000000",
+  shineColor = "black",
   className,
   ...props
 }: ShineBorderProps) {

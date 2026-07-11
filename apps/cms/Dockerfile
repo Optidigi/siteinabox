@@ -9,12 +9,14 @@ RUN npm install -g pnpm@11.5.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/cms/package.json apps/cms/package.json
 COPY packages/contracts/package.json /repo/packages/contracts/package.json
+COPY packages/legal-content/package.json /repo/packages/legal-content/package.json
 COPY packages/site-renderer/package.json /repo/packages/site-renderer/package.json
 COPY packages/ui/package.json /repo/packages/ui/package.json
 RUN pnpm fetch --frozen-lockfile --store-dir=/pnpm/store
 
 COPY apps/cms apps/cms
 COPY packages/contracts /repo/packages/contracts
+COPY packages/legal-content /repo/packages/legal-content
 COPY packages/site-renderer /repo/packages/site-renderer
 COPY packages/ui /repo/packages/ui
 RUN pnpm install --frozen-lockfile --offline \
@@ -22,6 +24,7 @@ RUN pnpm install --frozen-lockfile --offline \
   --filter @siteinabox/site-renderer... \
   --filter @siteinabox/ui... \
   --filter @siteinabox/contracts... \
+  --filter @siteinabox/legal-content... \
   --store-dir=/pnpm/store
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV CI=true
@@ -65,6 +68,8 @@ COPY --from=builder --chown=node:node /repo/apps/cms/public ./apps/cms/public
 # ESM-bundled. See scripts/build-runtime-bundle.mjs (bundler) and
 # scripts/migrate-on-boot-entry.ts (source) for the why.
 COPY --from=builder --chown=node:node /repo/apps/cms/dist-runtime ./dist-runtime
+COPY --from=builder --chown=node:node /repo/packages/legal-content ./packages/legal-content
+ENV SIAB_LEGAL_CONTENT_ROOT=/app/packages/legal-content
 COPY --from=builder --chown=node:node /repo/apps/cms/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 USER node
 EXPOSE 3000

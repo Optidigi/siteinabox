@@ -83,6 +83,24 @@ export type IntakeVisualThemeTokens = {
   destructiveForeground: string
 }
 
+export type IntakeLegalStatementRecord = {
+  statementVersion: string
+  recordedAt: string
+}
+
+export type IntakeLegalMetadata = {
+  businessUseDeclaration: IntakeLegalStatementRecord & {
+    accepted: true
+  }
+  marketingConsent: IntakeLegalStatementRecord & {
+    granted: boolean
+  }
+  privacyNotice: {
+    documentVersion: string
+    url: string
+  }
+}
+
 export type RawIntakeSubmission = {
   submittedAt?: string
   source?: "public-intake" | "cms" | "operator" | "import" | string
@@ -139,6 +157,7 @@ export type RawIntakeSubmission = {
     email: string
     phone: string
   }
+  legal: IntakeLegalMetadata
   domain?: string | null
   email?: string | null
   addOns?: string[] | null

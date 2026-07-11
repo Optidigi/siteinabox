@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 const defaultAllowedDevOrigins = [
   "admin.siteinabox.nl",
+  "admin.legal-visual.localhost",
   "t1.test",
   "*.test",
   "*.localhost",

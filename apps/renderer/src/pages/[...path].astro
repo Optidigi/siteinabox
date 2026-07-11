@@ -7,10 +7,8 @@ import {
   createRendererMediaResolver,
   DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID,
   getProviderSystemTemplateRenderer,
-  resolveTenantRenderer,
 } from "@siteinabox/site-renderer"
 import "../styles/site.css"
-import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
 import { findPublishedPage, loadPublishedSnapshot, normalizeRequestHost, pagePath } from "../lib/snapshot"
 
 const pathname = `/${Astro.params.path ?? ""}`
@@ -68,15 +66,6 @@ const rendererHtml = resolved
         }),
       )
   : ""
-const analyticsJson =
-  resolved ? analyticsConfigJson(buildAnalyticsConfig({ snapshot: resolved.snapshot, page: resolved.page, pathname: resolved.pathname })) : null
-const tenantRendererKey = resolved
-  ? resolveTenantRenderer({
-      tenantSlug: resolved.snapshot.tenantSlug,
-      domain: resolved.snapshot.domain,
-      settings: resolved.snapshot.settings,
-    })
-  : null
 const mediaHref = (value: unknown): string | null => {
   if (!value || !mediaResolver) return null
   const resolvedMedia = mediaResolver(value)
@@ -89,50 +78,6 @@ const faviconHref =
   resolved
     ? mediaHref(resolved.snapshot.settings.branding?.favicon)
     : null
-const showRendererCookieConsent = Boolean(analyticsJson && tenantRendererKey !== "amicare")
-const rendererCookieConsentScript = `(() => {
-  const preferenceKey = "siab_cookie_consent_v1";
-  const banner = document.getElementById("renderer-cookie-consent-banner");
-  const preferences = document.getElementById("renderer-cookie-consent-preferences");
-  if (!banner || !preferences) return;
-  const readPreference = () => {
-    try { return window.localStorage.getItem(preferenceKey); } catch { return null; }
-  };
-  const writePreference = (value) => {
-    try { window.localStorage.setItem(preferenceKey, value); } catch {}
-  };
-  const showBanner = () => {
-    banner.classList.remove("hidden");
-    preferences.classList.add("hidden");
-  };
-  const hideBanner = () => {
-    banner.classList.add("hidden");
-    preferences.classList.remove("hidden");
-  };
-  const applyPreference = (value) => {
-    if (value === "accepted") {
-      window.SIABAnalytics?.grantConsent();
-      hideBanner();
-      return;
-    }
-    if (value === "declined") {
-      window.SIABAnalytics?.revokeConsent();
-      hideBanner();
-      return;
-    }
-    showBanner();
-  };
-  banner.querySelector("[data-cookie-consent-accept]")?.addEventListener("click", () => {
-    writePreference("accepted");
-    applyPreference("accepted");
-  });
-  banner.querySelector("[data-cookie-consent-decline]")?.addEventListener("click", () => {
-    writePreference("declined");
-    applyPreference("declined");
-  });
-  preferences.addEventListener("click", showBanner);
-  applyPreference(readPreference());
-})();`
 ---
 
 <!doctype html>
@@ -169,43 +114,6 @@ const rendererCookieConsentScript = `(() => {
       </head>
       <body data-tenant-slug={resolved.snapshot.tenantSlug}>
         <div set:html={rendererHtml} />
-        {analyticsJson && <script is:inline id="siab-analytics-config" type="application/json" set:html={analyticsJson} />}
-        {showRendererCookieConsent && (
-          <>
-            <div
-              id="renderer-cookie-consent-banner"
-              class="fixed inset-x-4 bottom-4 z-[80] hidden max-w-xl rounded-lg border border-black/10 bg-white p-4 text-slate-900 shadow-2xl sm:left-6 sm:right-auto"
-              role="dialog"
-              aria-live="polite"
-              aria-label="Cookie voorkeuren"
-            >
-              <div class="space-y-4">
-                <div class="space-y-2">
-                  <p class="text-lg font-semibold leading-tight">Cookies</p>
-                  <p class="text-sm leading-6 text-slate-600">
-                    We gebruiken noodzakelijke cookies voor de website. Met uw toestemming meten we hoe de website wordt gebruikt.
-                  </p>
-                </div>
-                <div class="flex flex-col gap-2 sm:flex-row">
-                  <button type="button" class="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white" data-cookie-consent-accept>
-                    Accepteren
-                  </button>
-                  <button type="button" class="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-900" data-cookie-consent-decline>
-                    Weigeren
-                  </button>
-                </div>
-              </div>
-            </div>
-            <button
-              id="renderer-cookie-consent-preferences"
-              type="button"
-              class="fixed bottom-4 right-4 z-[70] hidden rounded-md border border-black/10 bg-white px-3 py-2 text-xs font-medium text-slate-600 shadow-lg"
-            >
-              Cookies
-            </button>
-            <script is:inline set:html={rendererCookieConsentScript} />
-          </>
-        )}
         <script>
           import "../client/site-behavior"
         </script>

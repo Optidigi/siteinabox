@@ -78,6 +78,9 @@ importers:
       '@siteinabox/contracts':
         specifier: file:../../packages/contracts
         version: link:../../packages/contracts
+      '@siteinabox/legal-content':
+        specifier: file:../../packages/legal-content
+        version: link:../../packages/legal-content
       '@siteinabox/site-renderer':
         specifier: link:../../packages/site-renderer
         version: link:../../packages/site-renderer
@@ -362,6 +365,9 @@ importers:
       '@siteinabox/contracts':
         specifier: file:../../packages/contracts
         version: link:../../packages/contracts
+      '@siteinabox/legal-content':
+        specifier: file:../../packages/legal-content
+        version: link:../../packages/legal-content
       astro:
         specifier: ^6.2.1
         version: 6.4.7(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(rollup@4.62.0)(sass@1.77.4)(tsx@4.22.4)(yaml@2.9.0)
@@ -408,6 +414,9 @@ importers:
       '@siteinabox/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@siteinabox/legal-content':
+        specifier: workspace:*
+        version: link:../../packages/legal-content
       '@siteinabox/site-renderer':
         specifier: workspace:*
         version: link:../../packages/site-renderer
@@ -467,6 +476,12 @@ importers:
       vitest:
         specifier: ^4.1.8
         version: 4.1.9(@types/node@25.9.1)(@vitest/ui@4.1.9)(happy-dom@20.10.3)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(sass@1.77.4)(tsx@4.22.4)(yaml@2.9.0))
+
+  packages/legal-content:
+    dependencies:
+      marked:
+        specifier: ^14.0.0
+        version: 14.0.0
 
   packages/site-renderer:
     dependencies:

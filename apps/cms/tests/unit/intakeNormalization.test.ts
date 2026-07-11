@@ -74,6 +74,22 @@ const richIntake = () => ({
     email: "demo@example.com",
     phone: "0612345678",
   },
+  legal: {
+    businessUseDeclaration: {
+      accepted: true,
+      statementVersion: "business-use-2026-07-07.1",
+      recordedAt: "2026-06-29T10:00:00.000Z",
+    },
+    marketingConsent: {
+      granted: false,
+      statementVersion: "marketing-opt-in-2026-07-07.1",
+      recordedAt: "2026-06-29T10:00:00.000Z",
+    },
+    privacyNotice: {
+      documentVersion: "2026-07-07.1",
+      url: "https://www.siteinabox.nl/privacy-en-cookieverklaring",
+    },
+  },
   domain: "demo-studio.nl",
   email: "info@demo-studio.nl",
   addOns: ["email"],

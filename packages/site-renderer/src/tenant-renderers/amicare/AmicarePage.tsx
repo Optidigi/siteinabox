@@ -332,6 +332,10 @@ function AmicareFooter({
   const navLinks = Array.isArray(settings.navFooter)
     ? settings.navFooter.filter((link) => link.label?.trim() && link.href?.trim())
     : []
+  const configuredLegalLinks = Array.isArray(footer?.legalLinks)
+    ? footer.legalLinks.filter((link) => link.label?.trim() && link.href?.trim())
+    : []
+  const legalLinks = configuredLegalLinks
   const gridClass =
     columns.length === 1
       ? "@min-[48rem]/site-frame:grid-cols-1"
@@ -448,9 +452,18 @@ function AmicareFooter({
       )}
 
       <div className="mx-auto my-8 max-w-7xl border-t border-rule" />
-      <p className="mx-auto max-w-7xl text-center text-[12px] tracking-[0.04em] text-ink-muted/70 @min-[48rem]/site-frame:text-left">
-        {copyrightText}
-      </p>
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 text-center text-[12px] text-ink-muted/70 @min-[48rem]/site-frame:flex-row @min-[48rem]/site-frame:text-left">
+        <p className="tracking-[0.04em]">{copyrightText}</p>
+        {legalLinks.length > 0 && (
+          <nav aria-label="Juridisch" className="flex flex-wrap justify-center gap-x-5 gap-y-2 @min-[48rem]/site-frame:justify-end">
+            {legalLinks.map((link, index) => (
+              <a key={linkKey(link, index)} href={link.href ?? undefined} className="transition-colors hover:text-accent">
+                {link.label}
+              </a>
+            ))}
+          </nav>
+        )}
+      </div>
     </footer>
   )
 }
@@ -1368,90 +1381,6 @@ export function AmicareBlock({
   }
 }
 
-function AmicareCookieConsent({ enabled, nonce }: { enabled: boolean; nonce?: string }) {
-  if (!enabled) return null
-  const script = `(() => {
-  const preferenceKey = "siab_cookie_consent_v1";
-  const banner = document.getElementById("cookie-consent-banner");
-  const preferences = document.getElementById("cookie-consent-preferences");
-  if (!banner || !preferences) return;
-  const readPreference = () => {
-    try { return window.localStorage.getItem(preferenceKey); } catch { return null; }
-  };
-  const writePreference = (value) => {
-    try { window.localStorage.setItem(preferenceKey, value); } catch {}
-  };
-  const showBanner = () => {
-    banner.classList.remove("hidden");
-    preferences.classList.add("hidden");
-  };
-  const hideBanner = () => {
-    banner.classList.add("hidden");
-    preferences.classList.remove("hidden");
-  };
-  const applyPreference = (value) => {
-    if (value === "accepted") {
-      window.SIABAnalytics?.grantConsent();
-      hideBanner();
-      return;
-    }
-    if (value === "declined") {
-      window.SIABAnalytics?.revokeConsent();
-      hideBanner();
-      return;
-    }
-    showBanner();
-  };
-  banner.querySelector("[data-cookie-consent-accept]")?.addEventListener("click", () => {
-    writePreference("accepted");
-    applyPreference("accepted");
-  });
-  banner.querySelector("[data-cookie-consent-decline]")?.addEventListener("click", () => {
-    writePreference("declined");
-    applyPreference("declined");
-  });
-  preferences.addEventListener("click", showBanner);
-  applyPreference(readPreference());
-})();`
-
-  return (
-    <>
-      <div
-        id="cookie-consent-banner"
-        className="fixed inset-x-4 bottom-4 z-[80] hidden max-w-xl rounded-lg border border-rule bg-card p-4 shadow-2xl @min-[48rem]/site-frame:left-6 @min-[48rem]/site-frame:right-auto @min-[48rem]/site-frame:p-5"
-        role="dialog"
-        aria-live="polite"
-        aria-label="Cookie voorkeuren"
-      >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="font-serif text-[22px] leading-tight text-ink">Cookies</p>
-            <p className="text-[14px] leading-[1.55] text-ink-muted">
-              We gebruiken noodzakelijke cookies voor de website. Met uw toestemming meten we anoniem hoe de website wordt gebruikt.
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 @min-[30rem]/site-frame:flex-row">
-            <button type="button" className="amicare-button-primary rounded-md bg-accent px-4 py-2.5 text-[14px] font-medium transition-colors hover:bg-accent/90" data-cookie-consent-accept>
-              Accepteren
-            </button>
-            <button type="button" className="rounded-md border border-rule bg-bg px-4 py-2.5 text-[14px] font-medium text-ink transition-colors hover:bg-secondary/40" data-cookie-consent-decline>
-              Weigeren
-            </button>
-          </div>
-        </div>
-      </div>
-      <button
-        id="cookie-consent-preferences"
-        type="button"
-        className="fixed bottom-4 right-4 z-[70] hidden rounded-md border border-rule bg-card px-3 py-2 text-[12px] font-medium text-ink-muted shadow-lg transition-colors hover:text-ink"
-      >
-        Cookies
-      </button>
-      <script nonce={nonce} dangerouslySetInnerHTML={{ __html: script }} />
-    </>
-  )
-}
-
 function AmicareNavBehavior({ nonce }: { nonce?: string }) {
   const script = `(() => {
   const links = Array.from(document.querySelectorAll("[data-amicare-nav-link]"));
@@ -1543,10 +1472,7 @@ export function AmicarePageRenderer({
           {renderFooter ? renderFooter({ defaultChrome: defaultFooter }) : defaultFooter}
         </div>
         {includeBehaviorScripts && (
-          <>
-            <AmicareCookieConsent enabled={Boolean(settings.analytics || page.analytics)} nonce={nonce} />
-            <AmicareNavBehavior nonce={nonce} />
-          </>
+          <AmicareNavBehavior nonce={nonce} />
         )}
       </div>
     </div>

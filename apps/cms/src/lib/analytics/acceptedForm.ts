@@ -20,9 +20,6 @@ const safePathFromUrl = (raw: unknown): string | null => {
   }
 }
 
-const formName = (doc: any): string | null =>
-  typeof doc?.formName === "string" && doc.formName.trim() ? doc.formName.trim() : null
-
 export const captureAcceptedFormAnalytics = async (args: {
   doc: any
   payload: any
@@ -62,20 +59,18 @@ export const captureAcceptedFormAnalytics = async (args: {
 
   const properties = {
     ...base,
-    form_id: args.doc?.id != null ? String(args.doc.id) : null,
-    form_name: formName(args.doc),
     conversion_source: "accepted_form",
   }
 
   try {
     await captureAnalyticsEvent({
       event: "site_form_accepted",
-      distinctId: `form:${tenantId}:${args.doc?.id ?? Date.now()}`,
+      distinctId: `site:${tenantId}:server-conversions`,
       properties,
     })
     await captureAnalyticsEvent({
       event: "site_conversion_completed",
-      distinctId: `form:${tenantId}:${args.doc?.id ?? Date.now()}`,
+      distinctId: `site:${tenantId}:server-conversions`,
       properties,
     })
   } catch (err) {

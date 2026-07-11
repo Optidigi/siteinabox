@@ -9,9 +9,12 @@ type CmsReferrerType = "direct" | "internal" | "external" | "unknown"
 
 const API_PATH = "/api/cms-analytics"
 const MAX_LABEL_LENGTH = 96
-const PII_RX = /(@|mailto:|tel:|\+?\d[\d\s().-]{6,})/i
 
 const routePatterns: Array<[RegExp, string]> = [
+  [/^\/legal\/releases\/[^/]+$/, "/legal/releases/[id]"],
+  [/^\/legal\/requirements\/[^/]+$/, "/legal/requirements/[id]"],
+  [/^\/legal\/deliveries\/[^/]+$/, "/legal/deliveries/[id]"],
+  [/^\/legal\/acceptances\/[^/]+$/, "/legal/acceptances/[id]"],
   [/^\/sites\/[^/]+\/pages\/new$/, "/sites/[slug]/pages/new"],
   [/^\/sites\/[^/]+\/pages\/edit\/[^/]+$/, "/sites/[slug]/pages/edit/[slug]"],
   [/^\/sites\/[^/]+\/pages\/[^/]+$/, "/sites/[slug]/pages/[id]"],
@@ -45,9 +48,9 @@ const deviceType = (): CmsDeviceType => {
   return "desktop"
 }
 
-const cleanLabel = (value: string | null | undefined) => {
+const cleanActionKey = (value: string | null | undefined) => {
   const cleaned = value?.replace(/\s+/g, " ").trim()
-  if (!cleaned || PII_RX.test(cleaned)) return null
+  if (!cleaned || !/^[a-z0-9][a-z0-9._:-]*$/i.test(cleaned)) return null
   return cleaned.slice(0, MAX_LABEL_LENGTH)
 }
 
@@ -63,12 +66,7 @@ const elementRole = (element: Element): CmsElementRole => {
 }
 
 const actionLabel = (element: Element) =>
-  cleanLabel(
-    element.getAttribute("data-cms-action")
-    ?? element.getAttribute("aria-label")
-    ?? element.getAttribute("title")
-    ?? element.textContent
-  )
+  cleanActionKey(element.getAttribute("data-cms-action"))
 
 const actionTarget = (element: Element) => {
   if (element instanceof HTMLAnchorElement) {
@@ -121,7 +119,6 @@ export function CmsUsageTracker() {
     captureCmsBrowserEvent({
       event: "cms_route_viewed",
       cms_route: normalizeRoute(pathname),
-      cms_route_path: pathname,
       cms_referrer_type: source.type,
       ...(source.route ? { cms_referrer_route: source.route } : {}),
       cms_device_type: deviceType(),
@@ -149,7 +146,6 @@ export function CmsUsageTracker() {
       captureCmsBrowserEvent({
         event: "cms_action_clicked",
         cms_route: normalizeRoute(pathname),
-        cms_route_path: pathname,
         cms_action: label,
         cms_element_role: role,
         cms_device_type: deviceType(),

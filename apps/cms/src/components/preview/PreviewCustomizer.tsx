@@ -509,11 +509,11 @@ export function PreviewCommandBar({
           borderWidth={1}
           duration={14}
           shineColor={[
-            "rgba(255,255,255,0.08)",
-            "rgba(255,255,255,0.45)",
-            "rgba(255,255,255,0.95)",
-            "rgba(255,255,255,0.45)",
-            "rgba(255,255,255,0.08)",
+            "transparent",
+            "white",
+            "white",
+            "white",
+            "transparent",
           ]}
         />
         <PreviewDesktopThemeToolbar theme={theme} onThemeChange={onThemeChange} />

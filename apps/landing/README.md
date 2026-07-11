@@ -26,6 +26,9 @@ pnpm astro preview --port 4322   # production server for Lighthouse / audit work
 
 `SITE_URL` defaults to `https://example.com`; pass `SITE_URL=https://siteinabox.nl` for canonical/OG URLs to render correctly during local builds. The CI build-arg is already pinned to `https://siteinabox.nl`.
 
-## Out of scope for this engagement
+## Legal publications
 
-Signup/login, algemene-voorwaarden, and privacy-policy pages are intentionally deferred — CTAs that would point at the signup/login pages currently mailto `info@siteinabox.nl`. The legal-page links in the footer and the contact-form consent text still reference `/algemene-voorwaarden` and `/privacy-policy`; swap them for mailto fallbacks or real routes once a decision is made.
+Versioned legal source lives in `packages/legal-content`. The current aliases,
+permanent historical URLs, and `/.well-known/siab-legal-manifest.json` are built
+from that immutable registry. Run `pnpm legal:check` from the repository root
+before publishing a new legal release.

@@ -12,7 +12,6 @@ export async function publishCurrentTenantStateAction(
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await headers() })
   if (!user) throw new Error("Forbidden: authentication required")
-
   await publishCurrentTenantState(payload, {
     tenantId,
     user,

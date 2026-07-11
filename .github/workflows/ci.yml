@@ -24,6 +24,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Shared package type checks
         run: pnpm packages:typecheck
+      - name: Legal release integrity
+        run: pnpm legal:check
 
   cms-quality:
     runs-on: ubuntu-latest

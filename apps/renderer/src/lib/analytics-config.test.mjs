@@ -2,6 +2,10 @@ import assert from "node:assert/strict"
 import test from "node:test"
 
 import { analyticsConfigJson, buildAnalyticsConfig } from "./analytics-config.js"
+import {
+  matchesApprovedPublicAnalyticsConsent,
+  publicAnalyticsConsentApproval,
+} from "@siteinabox/legal-content/consent-approval"
 
 const baseSnapshot = {
   schemaVersion: 1,
@@ -34,24 +38,29 @@ const page = {
   title: "Home",
 }
 
-test("builds a sanitized PostHog analytics config from snapshot settings", () => {
+test("omits analytics until a public analytics consent version is legally approved", () => {
   const config = buildAnalyticsConfig({ snapshot: baseSnapshot, page, pathname: "/" })
 
-  assert.equal(config.provider, "posthog")
-  assert.equal(config.posthogProjectToken, "phc_public")
-  assert.equal(config.posthogHost, "https://eu.posthog.com/<script>")
-  assert.equal(config.consentMode, "required")
-  assert.equal(config.consentStorageKey, "siab_cookie_consent_v1")
-  assert.equal(config.tenantSlug, "fixture")
-  assert.equal(config.pageSlug, "index")
-  assert.equal(config.unsafe, undefined)
+  assert.equal(publicAnalyticsConsentApproval.consentVersion, null)
+  assert.equal(config, null)
 })
 
 test("escapes JSON for safe inline script embedding", () => {
-  const json = analyticsConfigJson(buildAnalyticsConfig({ snapshot: baseSnapshot, page, pathname: "/" }))
+  const json = analyticsConfigJson({ posthogHost: "https://eu.posthog.com/<script>" })
 
   assert.equal(json.includes("<script>"), false)
   assert.match(json, /\\u003cscript>/)
+})
+
+test("requires enabled PostHog consent with storage and the exact approved version", () => {
+  const consent = baseSnapshot.settings.analyticsConsent
+
+  assert.equal(matchesApprovedPublicAnalyticsConsent(consent, "2026-06"), true)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, enabled: false }, "2026-06"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, provider: "custom" }, "2026-06"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, consentStorageKey: "" }, "2026-06"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, consentVersion: "stale" }, "2026-06"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent(consent, null), false)
 })
 
 test("omits analytics config when snapshot settings have no analytics block", () => {
@@ -65,7 +74,7 @@ test("omits analytics config when snapshot settings have no analytics block", ()
   assert.equal(analyticsConfigJson(config), null)
 })
 
-test("ignores private-looking PostHog token aliases when public token fields exist", () => {
+test("does not bypass legal consent approval when public token fields exist", () => {
   const config = buildAnalyticsConfig({
     snapshot: {
       ...baseSnapshot,
@@ -83,7 +92,7 @@ test("ignores private-looking PostHog token aliases when public token fields exi
     pathname: "/",
   })
 
-  assert.equal(config.posthogProjectToken, "phc_public")
+  assert.equal(config, null)
 })
 
 test("omits analytics config when only private-looking PostHog token aliases exist", () => {

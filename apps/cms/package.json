@@ -18,6 +18,10 @@
     "lint:no-css": "node scripts/check-no-css.mjs",
     "payload:contract": "node scripts/check-payload-contract.mjs",
     "posthog:sync-settings": "node scripts/sync-posthog-project-settings.mjs",
+    "posthog:check-settings": "node scripts/sync-posthog-project-settings.mjs --check",
+    "legal:sync": "tsx scripts/sync-legal-documents.ts",
+    "legal:retry-notification": "tsx scripts/retry-legal-notification.ts",
+    "legal:seed-visual": "tsx scripts/seed-legal-visual-fixture.ts",
     "seed:renderer-staging": "tsx scripts/seed-renderer-staging-tenants.ts",
     "snapshots:repair-official": "tsx scripts/repair-official-tenant-snapshots.ts"
   },
@@ -43,6 +47,7 @@
     "@payloadcms/plugin-multi-tenant": "3.85.0",
     "@payloadcms/richtext-lexical": "3.85.0",
     "@siteinabox/contracts": "file:../../packages/contracts",
+    "@siteinabox/legal-content": "file:../../packages/legal-content",
     "@siteinabox/site-renderer": "link:../../packages/site-renderer",
     "@siteinabox/ui": "file:../../packages/ui",
     "@tanstack/react-table": "^8.21.3",

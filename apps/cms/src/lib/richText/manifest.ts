@@ -166,6 +166,16 @@ const analyticsContractSchema = z.object({
   }).optional(),
 }).optional()
 
+const analyticsConsentSchema = z.object({
+  enabled: z.boolean().optional(),
+  provider: z.enum(["posthog", "custom"]).optional(),
+  consentStorageKey: z.string().optional(),
+  consentVersion: z.string().optional(),
+  captureSections: z.boolean().optional(),
+  captureActions: z.boolean().optional(),
+  captureForms: z.boolean().optional(),
+}).optional()
+
 export const manifestSchema = z.object({
   version: z.literal(1),
   inlineMarks: z.object({
@@ -193,6 +203,7 @@ export const manifestSchema = z.object({
   settings: settingsContractSchema,
   footer: footerContractSchema,
   analytics: analyticsContractSchema,
+  analyticsConsent: analyticsConsentSchema,
 }).superRefine((m, ctx) => {
   if (m.themedNodes) {
     const seen = new Set<string>()

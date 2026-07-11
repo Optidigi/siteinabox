@@ -90,6 +90,26 @@ describe("preview checkout domain suggestion action", () => {
     })
   })
 
+  it("blocks payment before explicit preview approval", async () => {
+    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("termsAcceptance", "accepted")
+
+    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
+    expect(result).toMatchObject({ ok: false, message: "checkoutPreviewApprovalRequired" })
+  })
+
+  it("blocks payment before explicit terms acceptance", async () => {
+    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("previewApproval", "accepted")
+
+    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
+    expect(result).toMatchObject({ ok: false, message: "checkoutTermsAcceptanceRequired" })
+  })
+
   it("checks the primary typed domain without recording auto-check state", async () => {
     const { checkPreviewCheckoutDomainAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
 

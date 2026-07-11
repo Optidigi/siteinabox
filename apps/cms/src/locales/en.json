@@ -85,7 +85,8 @@
     "settings": "Settings",
     "team": "Team",
     "onboarding": "Onboarding",
-    "operations": "Operations"
+    "operations": "Operations",
+    "legal": "Legal"
   },
   "account": {
     "menuLabel": "Account menu - signed in as {name}",
@@ -1070,8 +1071,15 @@
     "checkoutSummaryApproval": "Approval",
     "checkoutSummaryPayment": "Payment",
     "checkoutSummaryTotal": "Total",
-    "checkoutTotalBadge": "Total {total}",
-    "checkoutPaymentDescription": "This total includes the website, domain registration, and launch for the first year. After that you authorize monthly automatic renewal."
+    "checkoutTotalBadge": "Total incl. VAT {total}",
+    "checkoutPaymentDescription": "This total includes VAT, the website, domain registration, and launch for the first year. After that you authorize monthly automatic renewal.",
+    "checkoutPreviewApprovalLabel": "I have reviewed the website and approve it for publication.",
+    "checkoutPreviewApprovalHelp": "Check the text, contact details, services, prices, claims, and forms.",
+    "checkoutTermsAcceptanceLabel": "I agree to the <terms>Site in a Box general terms</terms> (version {version}).",
+    "checkoutPrivacyDisclosure": "We process data as described in the <privacy>privacy and cookie statement</privacy>.",
+    "checkoutDirectoryNotice": "We may show public business information from your website in our portfolio or business directory. You can opt out via info@siteinabox.nl.",
+    "checkoutPreviewApprovalRequired": "Confirm that you reviewed the website and approve it for publication.",
+    "checkoutTermsAcceptanceRequired": "Accept the general terms before continuing to payment."
   },
   "profile": {
     "profile": "Profile",

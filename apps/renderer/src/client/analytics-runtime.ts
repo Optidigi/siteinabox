@@ -868,11 +868,21 @@ window.SIABAnalytics = {
 const storedConsent = (() => {
   const storageKey = state.config?.consentStorageKey || legacyCookieConsentStorageKey
   try {
-    return (
+    const stored = (
       window.localStorage.getItem(storageKey) ??
       window.localStorage.getItem(legacyCookieConsentStorageKey) ??
       window.localStorage.getItem("siab-analytics-consent")
     )
+    if (!stored) return null
+    if (stored === "accepted" || stored === "declined") {
+      return state.config?.consentVersion ? null : stored
+    }
+    const receipt = JSON.parse(stored) as {
+      version?: unknown
+      categories?: { analytics?: unknown }
+    }
+    if (String(receipt.version ?? "") !== String(state.config?.consentVersion ?? "1")) return null
+    return receipt.categories?.analytics === true ? "accepted" : "declined"
   } catch {
     return null
   }

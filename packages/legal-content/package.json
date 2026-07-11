@@ -1,0 +1,23 @@
+{
+  "name": "@siteinabox/legal-content",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./consent-approval": {
+      "types": "./src/consent-approval.d.ts",
+      "default": "./src/consent-approval.js"
+    }
+  },
+  "dependencies": {
+    "marked": "^14.0.0"
+  }
+}

@@ -6,6 +6,7 @@ on:
     paths:
       - "apps/cms/**"
       - "packages/contracts/**"
+      - "packages/legal-content/**"
       - "packages/site-renderer/**"
       - "packages/ui/**"
       - "package.json"

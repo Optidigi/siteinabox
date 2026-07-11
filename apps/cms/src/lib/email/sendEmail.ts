@@ -20,6 +20,7 @@ export const mailIntents = [
   "intake.internal_notification",
   "forms.tenant_notification",
   "site.live_notice",
+  "legal.reacceptance",
 ] as const
 
 export type MailIntent = (typeof mailIntents)[number]

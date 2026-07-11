@@ -107,7 +107,10 @@ SIAB_PUBLIC_POST_RATE_LIMIT_POINTS=10
 SIAB_PUBLIC_POST_RATE_LIMIT_WINDOW_SECONDS=60
 SIAB_FORM_TARGET_RATE_LIMIT_POINTS=50
 SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600
+SIAB_LEGAL_MANIFEST_URL=https://www.siteinabox.nl/.well-known/siab-legal-manifest.json
+SIAB_GIT_SHA=<deployed-git-sha>
 MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
+# Gross customer-facing amounts, including VAT where applicable.
 MOLLIE_SITE_PAYMENT_AMOUNT=228.00
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
 MOLLIE_SITE_RENEWAL_AMOUNT=19.00
@@ -144,6 +147,33 @@ POSTHOG_PROJECT_ID=
 POSTHOG_PERSONAL_API_KEY=
 POSTHOG_ENVIRONMENT=production
 ```
+
+Apply and verify the PostHog privacy baseline after configuring the project:
+
+```bash
+pnpm posthog:sync-settings
+pnpm posthog:check-settings
+```
+
+The sync enforces IP anonymization, disables browser autocapture, console
+capture, session recording, heatmaps and dead-click capture, and enforces
+13-month event retention. `.github/workflows/posthog-privacy-audit.yml` repeats
+the read-only verification daily using repository secrets and fails on drift.
+
+Keep Payload job autorun enabled in the long-lived CMS process. Setting
+`PAYLOAD_DISABLE_JOBS_AUTORUN=1` disables legal re-acceptance email delivery as
+well as other scheduled maintenance and is not valid for the normal VPS
+deployment. Legal notices use `EMAIL_FROM` and the configured Cloudflare Email
+Sending transport, with `info@siteinabox.nl` as reply-to and support contact.
+For a reviewed manual retry after correcting a permanent address/provider
+failure, run the production-shipped command with the delivery id or stable key:
+
+```bash
+docker exec siteinabox-cms node /app/dist-runtime/retry-legal-notification.bundled.mjs <delivery-id-or-notification-key>
+```
+
+The command refuses sent/cancelled deliveries and preserves the attempt count;
+the scheduled worker performs the actual resend and records a new mail-log row.
 
 Leave provider credentials blank until the Google, Microsoft, and Apple apps are
 registered. The login page only renders provider buttons for complete

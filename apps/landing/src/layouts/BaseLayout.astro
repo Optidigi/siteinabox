@@ -30,11 +30,12 @@ interface Props {
   description: string;
   ogImage?: string;
   noindex?: boolean;
+  canonical?: string;
   pageType?: 'WebPage' | 'ContactPage';
   hasFaq?: boolean;
 }
 
-const { title, description, ogImage, noindex, pageType = 'WebPage', hasFaq = false } = Astro.props;
+const { title, description, ogImage, noindex, canonical, pageType = 'WebPage', hasFaq = false } = Astro.props;
 ---
 
 <!doctype html>
@@ -42,16 +43,6 @@ const { title, description, ogImage, noindex, pageType = 'WebPage', hasFaq = fal
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-EM6YQ9893X"></script>
-    <script is:inline>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-EM6YQ9893X');
-    </script>
 
     <!-- No-flash theme init. Runs before CSS parses so data-theme is set at
          first paint. Source of truth for the theme: ALWAYS writes a resolved
@@ -88,7 +79,7 @@ const { title, description, ogImage, noindex, pageType = 'WebPage', hasFaq = fal
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="generator" content={Astro.generator} />
-    <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} />
+    <Seo title={title} description={description} ogImage={ogImage} noindex={noindex} canonical={canonical} />
     <JsonLdGraph
       title={title}
       description={description}

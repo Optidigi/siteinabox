@@ -11,6 +11,7 @@ const importantFailureIntents = new Set<MailIntent>([
   "privacy.data_export",
   "intake.internal_notification",
   "site.live_notice",
+  "legal.reacceptance",
 ])
 
 export type MailAlertPayload = {

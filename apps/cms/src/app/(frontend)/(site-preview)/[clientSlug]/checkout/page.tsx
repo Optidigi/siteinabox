@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
+import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
@@ -69,6 +70,8 @@ export default async function PreviewCheckoutPage({
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
     const selectedDomain = domainOrder.status === "ready_to_register" ? domainOrder.domain : null
     const initialPrice = domainPriceLabels(locale, domainOrder)
+    const terms = getCurrentLegalDocument("platform-terms", "nl")
+    const privacy = getCurrentLegalDocument("platform-privacy", "nl")
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
       run: context.run,
     })
@@ -90,6 +93,9 @@ export default async function PreviewCheckoutPage({
         suggestionsHref={`/${context.clientSlug}/checkout/suggestions`}
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
+        termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
+        privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}
+        termsVersion={terms.documentVersion}
       />
     )
   } catch {

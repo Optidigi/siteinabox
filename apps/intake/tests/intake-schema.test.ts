@@ -5,6 +5,8 @@ import {
   RawIntakeSubmissionSchema,
 } from '@siteinabox/contracts/generation';
 import { serializeIntakeSubmission } from '../src/components/intake/domain/submission';
+import { defaultIntakeValues } from '../src/components/intake/domain/constants';
+import { intakeLegalSchema } from '../src/components/intake/domain/schemas';
 
 describe('intake payload contract', () => {
   it('accepts the scaffold payload shape posted by the public form', () => {
@@ -112,6 +114,22 @@ describe('intake payload contract', () => {
         email: 'demo@example.com',
         phone: '0612345678',
       },
+      legal: {
+        businessUseDeclaration: {
+          accepted: true,
+          statementVersion: 'business-use-2026-07-07.1',
+          recordedAt: '2026-06-29T10:00:00.000Z',
+        },
+        marketingConsent: {
+          granted: false,
+          statementVersion: 'marketing-opt-in-2026-07-07.1',
+          recordedAt: '2026-06-29T10:00:00.000Z',
+        },
+        privacyNotice: {
+          documentVersion: '2026-07-07.1',
+          url: 'https://www.siteinabox.nl/privacy-en-cookieverklaring',
+        },
+      },
       domain: 'demo-studio.nl',
       email: 'info@demo-studio.nl',
       addOns: ['email'],
@@ -191,7 +209,11 @@ describe('intake payload contract', () => {
         email: 'demo@example.com',
         phone: '0612345678',
       },
-    });
+      legal: {
+        businessUseAccepted: true,
+        marketingOptIn: false,
+      },
+    }, '2026-07-10T12:00:00.000Z');
 
     expect(serialized).toMatchObject({
       source: 'public-intake',
@@ -208,8 +230,37 @@ describe('intake payload contract', () => {
           text: 'Wizard Demo',
         },
       },
+      legal: {
+        businessUseDeclaration: {
+          accepted: true,
+          statementVersion: 'business-use-2026-07-07.1',
+          recordedAt: '2026-07-10T12:00:00.000Z',
+        },
+        marketingConsent: {
+          granted: false,
+          statementVersion: 'marketing-opt-in-2026-07-07.1',
+          recordedAt: '2026-07-10T12:00:00.000Z',
+        },
+        privacyNotice: {
+          documentVersion: '2026-07-07.1',
+        },
+      },
     });
     expect(RawIntakeSubmissionSchema.safeParse(serialized).success).toBe(true);
     expect(PublicIntakeSubmissionSchema.safeParse(serialized).success).toBe(true);
+  });
+
+  it('requires the business-use declaration while keeping marketing optional', () => {
+    expect(intakeLegalSchema.safeParse({
+      businessUseAccepted: true,
+      marketingOptIn: false,
+    }).success).toBe(true);
+    expect(intakeLegalSchema.safeParse({
+      businessUseAccepted: false,
+      marketingOptIn: false,
+    }).success).toBe(false);
+    expect(() => serializeIntakeSubmission(defaultIntakeValues)).toThrow(
+      'De zakelijke verklaring is verplicht.',
+    );
   });
 });

@@ -76,6 +76,9 @@ importers:
       '@siteinabox/contracts':
         specifier: file:../../packages/contracts
         version: file:../../packages/contracts
+      '@siteinabox/legal-content':
+        specifier: file:../../packages/legal-content
+        version: file:../../packages/legal-content
       '@siteinabox/site-renderer':
         specifier: link:../../packages/site-renderer
         version: link:../../packages/site-renderer
@@ -2439,6 +2442,9 @@ packages:
 
   '@siteinabox/contracts@file:../../packages/contracts':
     resolution: {directory: ../../packages/contracts, type: directory}
+
+  '@siteinabox/legal-content@file:../../packages/legal-content':
+    resolution: {directory: ../../packages/legal-content, type: directory}
 
   '@siteinabox/ui@file:../../packages/ui':
     resolution: {directory: ../../packages/ui, type: directory}
@@ -7004,6 +7010,10 @@ snapshots:
   '@siteinabox/contracts@file:../../packages/contracts':
     dependencies:
       zod: 4.4.3
+
+  '@siteinabox/legal-content@file:../../packages/legal-content':
+    dependencies:
+      marked: 14.0.0
 
   '@siteinabox/ui@file:../../packages/ui(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(next-intl@4.13.0(next@16.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.77.4))(react@19.2.6)(typescript@6.0.3))(react-dom@19.2.6(react@19.2.6))(react-hook-form@7.77.0(react@19.2.6))(react@19.2.6)(recharts@3.8.1(@types/react@19.2.15)(react-dom@19.2.6(react@19.2.6))(react-is@17.0.2)(react@19.2.6)(redux@5.0.1))':
     dependencies:

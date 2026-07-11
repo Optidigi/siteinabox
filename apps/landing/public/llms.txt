@@ -64,7 +64,7 @@ Site in a Box builds and hosts the website in its own system. Customers can edit
 
 - E-mail: info@siteinabox.nl
 - WhatsApp/phone: +31 6 25052591
-- Company: Site in a Box VOF
+- Company: Site in a Box, a trade name of Optidigi
 - Location: Roermond, the Netherlands
 - KvK: 99460165
 - BTW-id: NL869001073B01

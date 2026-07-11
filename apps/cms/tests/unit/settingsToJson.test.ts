@@ -43,6 +43,18 @@ const fullSettingsContract: SettingsContract = {
 }
 
 describe("settingsToJson", () => {
+  it("projects the versioned analytics consent contract for renderer enforcement", () => {
+    const analyticsConsent = {
+      enabled: true,
+      provider: "posthog",
+      consentStorageKey: "siab-analytics-consent",
+      consentVersion: "legal:platform-privacy:nl:2026-08-01.1",
+    }
+
+    expect(settingsToJson({}, [], { analyticsConsent }, { analytics: true }).analyticsConsent).toEqual(analyticsConsent)
+    expect(settingsToJson({}, [], { analyticsConsent }, { analytics: false }).analyticsConsent).toBeUndefined()
+  })
+
   it("flattens settings with branding/contact + resolves navHeader/navFooter", () => {
     const doc: any = {
       id: "s1", tenant: "t1", siteName: "Client A", siteUrl: "https://clienta.nl",

@@ -29,10 +29,12 @@ const matchesWhere = (doc: any, where: any): boolean => {
 
 const createPayloadStub = () => {
   let nextId = 1
-  type CollectionSlug = "intake-submissions" | "site-generation-runs"
+  type CollectionSlug = "intake-submissions" | "site-generation-runs" | "communication-preferences" | "communication-preference-events"
   const store: Record<CollectionSlug, any[]> = {
     "intake-submissions": [],
     "site-generation-runs": [],
+    "communication-preferences": [],
+    "communication-preference-events": [],
   }
   const payload = {
     find: async (args: any) => {
@@ -42,6 +44,12 @@ const createPayloadStub = () => {
     create: async (args: any) => {
       const doc = { ...args.data, id: nextId++ }
       store[args.collection as CollectionSlug].push(doc)
+      return doc
+    },
+    update: async (args: any) => {
+      const doc = store[args.collection as CollectionSlug].find((entry) => String(entry.id) === String(args.id))
+      if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
+      Object.assign(doc, args.data)
       return doc
     },
     logger: { warn: vi.fn() },
@@ -119,6 +127,22 @@ const rawIntake = (): PublicIntakeSubmission => ({
     email: "demo@example.com",
     phone: "0612345678",
   },
+  legal: {
+    businessUseDeclaration: {
+      accepted: true,
+      statementVersion: "business-use-2026-07-07.1",
+      recordedAt: "2026-06-29T10:00:00.000Z",
+    },
+    marketingConsent: {
+      granted: false,
+      statementVersion: "marketing-opt-in-2026-07-07.1",
+      recordedAt: "2026-06-29T10:00:00.000Z",
+    },
+    privacyNotice: {
+      documentVersion: "2026-07-07.1",
+      url: "https://www.siteinabox.nl/privacy-en-cookieverklaring",
+    },
+  },
   domain: "storage-demo.nl",
   email: "demo@example.com",
   addOns: [],
@@ -141,6 +165,17 @@ describe("storeIntakeSubmission", () => {
     expect(result.intakeSubmissionId).toBe(1)
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(0)
+    expect(store["communication-preferences"]).toHaveLength(1)
+    expect(store["communication-preferences"][0]).toMatchObject({
+      email: "demo@example.com",
+      marketing: false,
+      suppressed: false,
+      statementVersion: "marketing-opt-in-2026-07-07.1",
+    })
+    expect(store["communication-preference-events"][0]).toMatchObject({
+      action: "opt_out",
+      source: "public-intake",
+    })
     expect(store["intake-submissions"][0]).toMatchObject({
       businessName: "Storage Demo",
       contactName: "Demo Contact",

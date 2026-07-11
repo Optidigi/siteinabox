@@ -3,6 +3,7 @@ import { ChevronLeft } from "lucide-react";
 
 import {
   getFinalDetailsError,
+  intakeLegalStatements,
   type IntakeFormValues,
 } from "@/components/intake/model";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { OptionalMarker } from "./shared/field-support";
 
 export function FinalDetailsStep({
@@ -35,6 +37,11 @@ export function FinalDetailsStep({
   const phoneError = showAttemptedErrors
     ? getFinalDetailsError("phone", finalDetails)
     : "";
+  const businessUseAccepted = form.watch("legal.businessUseAccepted");
+  const businessUseError =
+    showAttemptedErrors && !businessUseAccepted
+      ? "Bevestig dat je de aanvraag zakelijk doet."
+      : "";
 
   return (
     <div className="w-full max-w-[780px]">
@@ -119,6 +126,94 @@ export function FinalDetailsStep({
               />
               <FieldError className="text-sm leading-5">{phoneError}</FieldError>
             </Field>
+
+            <div className="border-t border-intake-border pt-6">
+              <Field data-invalid={Boolean(businessUseError)}>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="business-use-declaration"
+                    checked={businessUseAccepted}
+                    onCheckedChange={(checked) =>
+                      form.setValue(
+                        "legal.businessUseAccepted",
+                        checked === true,
+                        {
+                          shouldDirty: true,
+                          shouldTouch: true,
+                          shouldValidate: true,
+                        },
+                      )
+                    }
+                    aria-invalid={Boolean(businessUseError)}
+                    aria-describedby="business-use-helper"
+                    className="mt-1 size-5"
+                  />
+                  <div>
+                    <FieldLabel
+                      htmlFor="business-use-declaration"
+                      className="cursor-pointer text-base font-normal leading-6 text-intake-text"
+                    >
+                      {intakeLegalStatements.businessUse.text}
+                    </FieldLabel>
+                    <p
+                      id="business-use-helper"
+                      className="mt-1 text-sm leading-5 text-intake-muted-text"
+                    >
+                      Site in a Box is bedoeld voor zakelijk gebruik.
+                    </p>
+                  </div>
+                </div>
+                <FieldError className="text-sm leading-5">
+                  {businessUseError}
+                </FieldError>
+              </Field>
+
+              <Field className="mt-6">
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="marketing-opt-in"
+                    checked={form.watch("legal.marketingOptIn")}
+                    onCheckedChange={(checked) =>
+                      form.setValue("legal.marketingOptIn", checked === true, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    aria-describedby="marketing-opt-in-helper"
+                    className="mt-1 size-5"
+                  />
+                  <div>
+                    <FieldLabel
+                      htmlFor="marketing-opt-in"
+                      className="cursor-pointer text-base font-normal leading-6 text-intake-text"
+                    >
+                      {intakeLegalStatements.marketing.text}
+                    </FieldLabel>
+                    <p
+                      id="marketing-opt-in-helper"
+                      className="mt-1 text-sm leading-5 text-intake-muted-text"
+                    >
+                      Je kunt je altijd uitschrijven.
+                    </p>
+                  </div>
+                </div>
+              </Field>
+
+              <p className="mt-6 text-sm leading-5 text-intake-muted-text">
+                Wij gebruiken je gegevens om je aanvraag te behandelen, zoals
+                beschreven in onze{" "}
+                <a
+                  href={intakeLegalStatements.privacyNotice.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-intake-text underline underline-offset-2 hover:text-intake-primary"
+                >
+                  privacy- en cookieverklaring
+                </a>
+                .
+              </p>
+            </div>
           </FieldGroup>
         </CardContent>
       </Card>

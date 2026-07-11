@@ -42,13 +42,10 @@ const SAFE_KEYS = new Set([
   "component_type",
   "component_role",
   "interaction_type",
-  "form_name",
-  "form_id",
   "conversion_source",
   "cms_surface",
   "cms_action",
   "cms_route",
-  "cms_route_path",
   "cms_referrer_route",
   "cms_referrer_type",
   "cms_device_type",
@@ -56,7 +53,6 @@ const SAFE_KEYS = new Set([
   "cms_action_target",
   "cms_result",
   "cms_object_type",
-  "cms_object_id",
   "cms_error_type",
   "cms_dirty_count",
   "cms_duration_ms",
@@ -71,7 +67,7 @@ const safeScalar = (value: unknown): value is string | number | boolean | null =
 
 const sanitizeString = (key: string, value: string): string | null => {
   if (EMAIL_OR_PHONE_SCHEME.test(value)) return null
-  if (key === "target_path" || key === "cms_route_path" || key === "cms_action_target") return value.split("?")[0] ?? ""
+  if (key === "target_path" || key === "cms_action_target") return value.split("?")[0] ?? ""
   return value
 }
 

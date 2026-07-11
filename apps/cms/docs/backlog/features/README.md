@@ -27,8 +27,9 @@ depended on command-run site generation are no longer current source of truth.
 - Mollie is the selected payment provider. Payment-provider-specific code must
   stay behind the CMS Mollie adapter/service boundary and must not publish or
   activate sites by itself.
-- The public `apps/landing` marketing site uses Google Analytics. Do not add
-  PostHog there unless this product decision changes.
+- The public `apps/landing` marketing site does not load optional analytics by
+  default. Any future analytics integration must be disclosed, consent-gated
+  where required, and reflected in the legal release and retention registers.
 - Generic self-serve generated-site generation now starts with active
   exact-source Tailwind Plus Marketing provider page sections:
   `tailwindplus.marketing.hero.simple-centered`,
@@ -56,6 +57,7 @@ depended on command-run site generation are no longer current source of truth.
 
 ## Open Follow-Up
 
+- Production browser-smoke-test the mandatory legal notice after deployment. With the notice present, verify ordinary CMS navigation, settings controls, form edits, and save actions against the same flows with no notice present; record browser, route, and reproduction details if interaction is interrupted. The notice is an in-flow alert with no overlay or global event handler, so close this item only after deployed testing confirms the localhost-reported click interruption does not persist.
 - HIGH PRIORITY: browser-verify CMS Tailwind Plus provider rendering/canvas
   parity before claiming the editor surface is production-ready. Public
   source-backed block parity and the contact/newsletter runtime-form boundary
@@ -95,16 +97,22 @@ depended on command-run site generation are no longer current source of truth.
   combinations, palette/font/theme combinations, CTA/form outcomes, device
   context, consent state, and page/funnel context. Use this data to learn which
   blocks, block sequences, colors, and generated layouts perform best.
+  The privacy foundation is enforced: public tracking fails closed without an
+  approved versioned consent contract, legal consent-renewal actions rotate
+  that version, CMS events use purpose/property allowlists, and PostHog drift is
+  checked daily. This remains open for the approved consent UI and the product
+  intelligence expansion itself.
 - Confirm the generated-site block/UI catalog covers every required site
   surface, including consent/cookie banners, legal/privacy links, forms,
   navigation, footer, error/empty states, and any required conversion or trust
   sections. Add missing surfaces through the same contract/catalog/schema/
   renderer/canvas path instead of one-off code.
-- Confirm and enforce that every generated site receives complete SIAB-owned
-  PostHog analytics configuration by default, with correct consent behavior,
-  public proxy/host config, tenant/site/page/block metadata, and publish-time
-  snapshot config. Site creation should also validate that required generated
-  site config is complete before publish/activation.
+- Approve and register a generated-site consent chrome component before
+  enabling public PostHog analytics. The component must use the shared catalog,
+  render identically in CMS preview and the public renderer, and expose runtime
+  hooks for versioned category consent and withdrawal. Until that approved UI
+  exists, generated-site analytics stays disabled rather than falling back to
+  renderer-authored banner markup.
 - Rework desktop canvas chrome hover behavior with a simpler section-anchored
   model. Current header/footer badges can still flicker, and block badges can
   feel like they shift between sections. Defer further tuning until the canvas
@@ -231,6 +239,25 @@ depended on command-run site generation are no longer current source of truth.
   a one-off overlay workaround.
 
 ## Implemented Foundation
+
+### 2026-07-11 — Tenant legal requirement workflow
+
+**Status:** Implemented.
+
+The tenant CMS shell now surfaces active legal requirements, and owner-only
+`/settings` provides versioned re-acceptance plus compact acceptance history.
+Acceptance is tenant-scoped, idempotent, linked to immutable evidence, and
+converges duplicate per-owner delivery requirements. Checkout acceptance also
+satisfies matching next-transaction requirements. Overdue mandatory
+re-acceptance blocks customer-triggered live publication without blocking CMS
+read/edit access or superadmin recovery. Raw Payload updates to requirement
+state are disabled; lifecycle changes use the legal service.
+
+Automatic owner email notification is delivered through the existing platform
+mail adapter and Payload scheduler. A system-managed outbox prevents normal
+deploy/job retries from duplicating initial, seven-day reminder, or enforcement
+messages. Delivery attempts remain visible in metadata-only mail logs and
+failures use bounded retry backoff plus operational alerts.
 
 ### Phase 6 — Intake and mocked generation runs
 

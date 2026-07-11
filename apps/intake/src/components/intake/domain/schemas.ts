@@ -316,12 +316,20 @@ export const finalDetailsSchema = z
     if (phoneError) addIssue("phone", phoneError);
   });
 
+export const intakeLegalSchema = z.object({
+  businessUseAccepted: z.boolean().refine((accepted) => accepted, {
+    message: "Bevestig dat je de aanvraag zakelijk doet.",
+  }),
+  marketingOptIn: z.boolean(),
+});
+
 export const intakeFormSchema = z.object({
   company: companySchema,
   content: businessContentSchema,
   contact: contactSchema,
   visual: visualSchema,
   finalDetails: finalDetailsSchema,
+  legal: intakeLegalSchema,
 });
 
 export type EditFieldValues = z.infer<typeof editFieldSchema>;

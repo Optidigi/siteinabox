@@ -101,6 +101,7 @@ const analyticsContextForTenant = (tenantId: string, tenant: any) => {
     siteBuildId: process.env.SIAB_SITE_BUILD_ID ?? null,
     manifestVersion: typeof manifest?.version !== "undefined" ? manifest.version : null,
     analytics: manifest?.analytics ?? null,
+    analyticsConsent: manifest?.analyticsConsent ?? null,
   }
 }
 
