@@ -8,11 +8,13 @@ RUN apk add --no-cache libc6-compat \
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/renderer/package.json apps/renderer/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
+COPY packages/legal-content/package.json packages/legal-content/package.json
 COPY packages/site-renderer/package.json packages/site-renderer/package.json
 COPY packages/ui/package.json packages/ui/package.json
 
 COPY apps/renderer apps/renderer
 COPY packages/contracts packages/contracts
+COPY packages/legal-content packages/legal-content
 COPY packages/site-renderer packages/site-renderer
 COPY packages/ui packages/ui
 RUN pnpm install --frozen-lockfile --filter @siteinabox/renderer... --store-dir=/pnpm/store
