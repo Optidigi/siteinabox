@@ -57,6 +57,19 @@ depended on command-run site generation are no longer current source of truth.
 
 ## Open Follow-Up
 
+- POSTHOG RETENTION: production project `193842` currently reports
+  `event_retention_months=84` and `events_retention_enforced=false`, while the
+  SIAB analytics policy requires 13 months with enforcement. This was verified
+  from the production CMS environment and the GitHub privacy audit on
+  2026-07-11. The personal API key has `project:write`; PostHog's live API
+  schema marks both retention fields as plan-derived and read-only, so another
+  key or project PATCH cannot resolve it. Keep the daily
+  `posthog-privacy-audit` failing visibly, do not expand collection or enable
+  generated-site analytics, and do not claim that 13-month deletion is
+  enforced. Resolve through PostHog billing/support, or implement and verify a
+  supported scheduled deletion process for timestamped events older than 13
+  months, including associated person/property data. Reconsider the provider
+  if neither route can provide demonstrable deletion.
 - Production browser-smoke-test the mandatory legal notice after deployment. With the notice present, verify ordinary CMS navigation, settings controls, form edits, and save actions against the same flows with no notice present; record browser, route, and reproduction details if interaction is interrupted. The notice is an in-flow alert with no overlay or global event handler, so close this item only after deployed testing confirms the localhost-reported click interruption does not persist.
 - HIGH PRIORITY: browser-verify CMS Tailwind Plus provider rendering/canvas
   parity before claiming the editor surface is production-ready. Public
