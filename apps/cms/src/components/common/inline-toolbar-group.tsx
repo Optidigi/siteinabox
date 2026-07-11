@@ -51,7 +51,7 @@ export function InlineToolbarOption({
       className={cn(
         "size-8 shrink-0 rounded-md",
         active
-          ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+          ? "bg-primary/10 text-foreground shadow-sm ring-1 ring-primary/20 hover:bg-primary/15"
           : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
         className,
       )}
