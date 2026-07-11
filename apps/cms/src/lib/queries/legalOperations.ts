@@ -53,7 +53,13 @@ export type LegalRequirementRow = {
   action: string
   status: string
   enforceAt: string | null
+  objectionDeadlineAt: string | null
   notifiedAt: string | null
+  noticeDeliveredAt: string | null
+  qualifyingUseAt: string | null
+  deemedAcceptedAt: string | null
+  objectedAt: string | null
+  resolutionBasis: string | null
   satisfiedAt: string | null
   href: string
 }
@@ -195,21 +201,26 @@ export async function getLegalAttentionItems(
     })
   }
   for (const item of requirements.docs as RecordLike[]) {
-    const enforceAt = iso(item.enforceAt)
-    const overdue = Boolean(enforceAt && new Date(enforceAt) <= now)
+    const noticeAndUse = item.action === "notice_and_continued_use"
+    const deadline = noticeAndUse ? iso(item.objectionDeadlineAt) : iso(item.enforceAt)
+    const elapsed = Boolean(deadline && new Date(deadline) <= now)
+    const missingUse = noticeAndUse && elapsed && item.noticeDeliveredAt && !item.qualifyingUseAt
+    const explicitRequired = ["mandatory_reaccept", "reaccept_on_next_transaction"].includes(item.action)
     ranked.push({
       id: `requirement-${item.id}`,
       kind: "requirement",
-      severity: overdue ? "destructive" : "warning",
-      title: overdue ? "Acceptatie te laat" : "Acceptatie binnenkort vereist",
+      severity: missingUse ? "warning" : "warning",
+      title: missingUse
+        ? "Geen kwalificerend gebruik vastgelegd"
+        : explicitRequired ? "Expliciete acceptatie vereist" : "Klantreactie afwachten",
       tenant: tenantLabel(item.tenant),
       subject: maskEmailRecipient(text(item.subjectEmail)),
       detail: documentLabel(item.document),
-      ageOrDeadline: enforceAt,
-      status: overdue ? "overdue" : "upcoming",
+      ageOrDeadline: deadline,
+      status: missingUse ? "no_qualifying_use" : explicitRequired ? "explicit_required" : "awaiting_response",
       href: `/legal/requirements/${item.id}`,
-      rank: overdue ? 1 : 3,
-      time: new Date(enforceAt ?? 0).getTime(),
+      rank: missingUse || explicitRequired ? 1 : 3,
+      time: new Date(deadline ?? 0).getTime(),
     })
   }
   for (const item of scheduled.docs as RecordLike[]) {
@@ -241,10 +252,11 @@ export async function getLegalOperationsOverview(
   const client = await clientFor(payload)
   const now = options.now ?? new Date()
   const actionable = { status: { in: ["pending", "notified", "failed"] } }
-  const [activePublications, openRequirements, overdueRequirements, failedDeliveries, attention] = await Promise.all([
+  const [activePublications, openRequirements, objectedRequirements, deemedAcceptances, failedDeliveries, attention] = await Promise.all([
     count(client, "legal-documents", { effectiveAt: { less_than_equal: now.toISOString() } }),
     count(client, "legal-requirements", actionable),
-    count(client, "legal-requirements", { and: [actionable, { enforceAt: { less_than_equal: now.toISOString() } }] }),
+    count(client, "legal-requirements", { status: { equals: "objected" } }),
+    count(client, "legal-requirements", { deemedAcceptedAt: { exists: true } }),
     count(client, "legal-notification-deliveries", { status: { equals: "failed" } }),
     getLegalAttentionItems(client, { now, limit: options.attentionLimit }),
   ])
@@ -252,7 +264,8 @@ export async function getLegalOperationsOverview(
     metrics: [
       { key: "registered-publications", label: "Geregistreerde publicaties", value: activePublications, tone: "neutral", href: "/legal/releases" },
       { key: "open-requirements", label: "Open klantacties", value: openRequirements, tone: openRequirements ? "warning" : "success", href: "/legal/requirements?status=open" },
-      { key: "overdue-requirements", label: "Te late acceptaties", value: overdueRequirements, tone: overdueRequirements ? "destructive" : "success", href: "/legal/requirements?status=overdue" },
+      { key: "objected-requirements", label: "Bezwaren", value: objectedRequirements, tone: objectedRequirements ? "warning" : "success", href: "/legal/requirements?status=objected" },
+      { key: "deemed-acceptances", label: "Stilzwijgend aanvaard", value: deemedAcceptances, tone: "neutral", href: "/legal/requirements?status=deemed" },
       { key: "failed-deliveries", label: "Mislukte verzendingen", value: failedDeliveries, tone: failedDeliveries ? "destructive" : "success", href: "/legal/deliveries?status=failed" },
     ],
     attention,
@@ -292,8 +305,8 @@ export async function listLegalRequirements(options: LegalListOptions = {}, payl
   const query = options.q?.trim()
   const statusWhere = options.status === "open"
     ? { status: { in: ["pending", "notified", "failed"] } }
-    : options.status === "overdue"
-      ? { and: [{ status: { in: ["pending", "notified", "failed"] } }, { enforceAt: { less_than_equal: new Date().toISOString() } }] }
+    : options.status === "deemed"
+      ? { deemedAcceptedAt: { exists: true } }
       : options.status && options.status !== "all" ? { status: { equals: options.status } } : null
   const result = await client.find({
     collection: "legal-requirements" as any,
@@ -302,7 +315,10 @@ export async function listLegalRequirements(options: LegalListOptions = {}, payl
   } as any) as PayloadFindResult<RecordLike>
   return mapResult(result, (item): LegalRequirementRow => ({
     id: String(item.id), tenant: tenantLabel(item.tenant), subjectEmail: maskEmailRecipient(text(item.subjectEmail)), documentLabel: documentLabel(item.document),
-    action: text(item.action), status: text(item.status), enforceAt: iso(item.enforceAt), notifiedAt: iso(item.notifiedAt), satisfiedAt: iso(item.satisfiedAt), href: `/legal/requirements/${item.id}`,
+    action: text(item.action), status: text(item.status), enforceAt: iso(item.enforceAt), objectionDeadlineAt: iso(item.objectionDeadlineAt),
+    notifiedAt: iso(item.notifiedAt), noticeDeliveredAt: iso(item.noticeDeliveredAt), qualifyingUseAt: iso(item.qualifyingUseAt),
+    deemedAcceptedAt: iso(item.deemedAcceptedAt), objectedAt: iso(item.objectedAt), resolutionBasis: text(item.resolutionBasis) || null,
+    satisfiedAt: iso(item.satisfiedAt), href: `/legal/requirements/${item.id}`,
   }))
 }
 

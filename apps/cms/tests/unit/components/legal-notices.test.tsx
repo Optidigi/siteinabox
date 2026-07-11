@@ -10,6 +10,7 @@ import type {
 
 vi.mock("@/app/(frontend)/(admin)/settings/actions", () => ({
   acceptLegalRequirementAction: vi.fn(),
+  objectLegalRequirementAction: vi.fn(),
 }))
 
 import { LegalAgreementsSection } from "@/components/legal/LegalAgreementsSection"
@@ -21,6 +22,11 @@ const requirement = (overrides: Partial<CustomerLegalRequirement> = {}): Custome
   action: "mandatory_reaccept",
   status: "notified",
   enforceAt: "2026-07-10T00:00:00.000Z",
+  objectionDeadlineAt: null,
+  noticeDeliveredAt: null,
+  qualifyingUseAt: null,
+  resolutionBasis: null,
+  canObject: false,
   documentId: "document-1",
   documentType: "platform-terms",
   documentVersion: "2026-07-11.1",
@@ -48,13 +54,14 @@ describe("customer legal notices", () => {
     document.documentElement.lang = "nl"
   })
 
-  it("uses warning styling for an overdue requirement without destructive actions", () => {
+  it("uses neutral styling with an inline default acceptance action", () => {
     render(<LegalRequirementBanner requirements={[requirement()]} canAccept locale="nl-NL" />)
 
     const alert = screen.getByRole("alert")
-    expect(alert.className).toContain("warning")
+    expect(alert.className).toContain("bg-card")
+    expect(alert.className).not.toContain("warning")
     expect(alert.className).not.toContain("destructive")
-    expect(screen.getByRole("link", { name: "Bekijken in instellingen" }).getAttribute("data-variant")).toBe("warning")
+    expect(screen.getByRole("button", { name: "Akkoord" }).getAttribute("data-variant")).toBe("default")
   })
 
   it("shows a meaningful change summary without exposing the active document version", () => {

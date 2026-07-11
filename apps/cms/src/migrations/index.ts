@@ -54,6 +54,7 @@ import * as migration_20260706_172855_add_tailwindplus_provider_slots from './20
 import * as migration_20260710_142653_legal_governance_foundation from './20260710_142653_legal_governance_foundation';
 import * as migration_20260711_102515_legal_notification_deliveries from './20260711_102515_legal_notification_deliveries';
 import * as migration_20260711_125450_20260711_legal_operator_events from './20260711_125450_20260711_legal_operator_events';
+import * as migration_20260711_183922_20260711_notice_and_continued_use from './20260711_183922_20260711_notice_and_continued_use';
 
 export const migrations = [
   {
@@ -334,6 +335,11 @@ export const migrations = [
   {
     up: migration_20260711_125450_20260711_legal_operator_events.up,
     down: migration_20260711_125450_20260711_legal_operator_events.down,
-    name: '20260711_125450_20260711_legal_operator_events'
+    name: '20260711_125450_20260711_legal_operator_events',
+  },
+  {
+    up: migration_20260711_183922_20260711_notice_and_continued_use.up,
+    down: migration_20260711_183922_20260711_notice_and_continued_use.down,
+    name: '20260711_183922_20260711_notice_and_continued_use'
   },
 ];

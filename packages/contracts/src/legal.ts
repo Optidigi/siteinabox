@@ -17,6 +17,7 @@ export const legalCustomerActions = [
   "none",
   "publish_notice",
   "direct_notice",
+  "notice_and_continued_use",
   "reaccept_on_next_transaction",
   "mandatory_reaccept",
 ] as const
@@ -44,7 +45,7 @@ const policy = {
     consent: ["none", "renew_analytics", "renew_marketing", "renew_all_optional"],
   },
   contract_material: {
-    customer: ["reaccept_on_next_transaction", "mandatory_reaccept"],
+    customer: ["notice_and_continued_use", "reaccept_on_next_transaction", "mandatory_reaccept"],
     consent: ["none"],
   },
   customer_adverse: { customer: ["mandatory_reaccept"], consent: ["none"] },
@@ -84,8 +85,8 @@ export const legalReleaseSchema = z.object({
   if (!(allowed.consent as readonly string[]).includes(release.change.consentAction)) {
     ctx.addIssue({ code: "custom", path: ["change", "consentAction"], message: `Invalid consent action for ${release.change.category}` })
   }
-  if (release.change.customerAction === "mandatory_reaccept" && release.change.noticeDays == null) {
-    ctx.addIssue({ code: "custom", path: ["change", "noticeDays"], message: "Mandatory re-acceptance requires a notice period" })
+  if (["mandatory_reaccept", "notice_and_continued_use"].includes(release.change.customerAction) && release.change.noticeDays == null) {
+    ctx.addIssue({ code: "custom", path: ["change", "noticeDays"], message: "This customer action requires a notice period" })
   }
 })
 
@@ -101,7 +102,8 @@ export const validateLegalReleaseTransition = (release: LegalRelease, previous?:
   if (release.replaces !== previous.documentVersion) issues.push("replaces must identify the previous document version")
 
   const requiresAcceptance = release.change.customerAction === "mandatory_reaccept" ||
-    release.change.customerAction === "reaccept_on_next_transaction"
+    release.change.customerAction === "reaccept_on_next_transaction" ||
+    release.change.customerAction === "notice_and_continued_use"
   if (requiresAcceptance && (!release.acceptanceVersion || release.acceptanceVersion === previous.acceptanceVersion)) {
     issues.push("re-acceptance requires a new acceptanceVersion")
   }

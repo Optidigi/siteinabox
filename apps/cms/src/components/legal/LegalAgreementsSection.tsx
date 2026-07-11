@@ -6,7 +6,7 @@ import { Button } from "@siteinabox/ui/components/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@siteinabox/ui/components/collapsible"
 import type { CustomerLegalAcceptance, CustomerLegalRequirement } from "@/lib/legal/customerRequirements"
-import { acceptLegalRequirementAction } from "@/app/(frontend)/(admin)/settings/actions"
+import { acceptLegalRequirementAction, objectLegalRequirementAction } from "@/app/(frontend)/(admin)/settings/actions"
 
 const formatDate = (value: string, locale: string) =>
   new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(new Date(value))
@@ -22,8 +22,8 @@ export function LegalAgreementsSection({
   locale: string
   result?: string
 }) {
-  const acceptanceRequirements = requirements.filter((item) => item.requiresAcceptance)
-  const notices = requirements.filter((item) => !item.requiresAcceptance)
+  const acceptanceRequirements = requirements.filter((item) => item.requiresAcceptance || item.action === "notice_and_continued_use")
+  const notices = requirements.filter((item) => !item.requiresAcceptance && item.action !== "notice_and_continued_use")
   const en = locale.startsWith("en")
 
   return (
@@ -35,6 +35,9 @@ export function LegalAgreementsSection({
       <CardContent className="grid gap-5">
         {result === "accepted" && (
           <Alert><CheckCircle2 /><AlertTitle>{en ? "Terms accepted" : "Voorwaarden geaccepteerd"}</AlertTitle><AlertDescription>{en ? "Your acceptance has been recorded." : "Je acceptatie is vastgelegd."}</AlertDescription></Alert>
+        )}
+        {result === "objected" && (
+          <Alert><CheckCircle2 /><AlertTitle>{en ? "Objection recorded" : "Bezwaar geregistreerd"}</AlertTitle><AlertDescription>{en ? "Site in a Box will contact you about the next steps." : "Site in a Box neemt contact met je op over de vervolgstappen."}</AlertDescription></Alert>
         )}
         {result === "failed" && (
           <Alert variant="destructive"><AlertTitle>Acceptatie niet opgeslagen</AlertTitle><AlertDescription>Probeer het opnieuw. Neem contact op met Site in a Box als dit blijft gebeuren.</AlertDescription></Alert>
@@ -62,17 +65,17 @@ export function LegalAgreementsSection({
                 </p>
               </div>
               <Badge
-                variant={requirement.overdue ? "warning" : "secondary"}
-                className={requirement.overdue
+                variant="outline"
+                className={requirement.requiresAcceptance
                   ? "rounded-sm border-warning bg-transparent px-2.5 py-1 text-warning"
                   : "rounded-sm px-2.5 py-1"}
               >
-                {requirement.overdue ? "Acceptatie vereist" : "Openstaand"}
+                {requirement.action === "notice_and_continued_use" ? "Kennisgeving" : "Acceptatie vereist"}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
               Van kracht vanaf {formatDate(requirement.effectiveAt, locale)}
-              {requirement.enforceAt ? `; accepteren voor ${formatDate(requirement.enforceAt, locale)}` : ""}.
+              {requirement.objectionDeadlineAt ? `; bezwaar mogelijk tot ${formatDate(requirement.objectionDeadlineAt, locale)}` : requirement.enforceAt ? `; expliciete acceptatie vereist voor ${formatDate(requirement.enforceAt, locale)}` : ""}.
             </p>
             <Button asChild variant="outline" className="w-fit">
               <Link href={requirement.href} target="_blank" rel="noopener noreferrer">
@@ -81,11 +84,18 @@ export function LegalAgreementsSection({
             </Button>
             <form action={acceptLegalRequirementAction} className="grid gap-4 border-t pt-4">
               <input type="hidden" name="requirementId" value={requirement.id} />
-              <label className="flex items-start gap-3 text-sm leading-6">
-                <input name="acceptance" value="accepted" type="checkbox" className="mt-1 size-4 rounded border-input accent-primary" required />
-                <span>Ik ga akkoord met de bijgewerkte algemene voorwaarden van Site in a Box.</span>
-              </label>
-              <Button type="submit" className="w-fit">Voorwaarden accepteren</Button>
+              {requirement.requiresAcceptance ? (
+                <label className="flex items-start gap-3 text-sm leading-6">
+                  <input name="acceptance" value="accepted" type="checkbox" className="mt-1 size-4 rounded border-input accent-primary" required />
+                  <span>Ik ga akkoord met de bijgewerkte algemene voorwaarden van Site in a Box.</span>
+                </label>
+              ) : <input type="hidden" name="acceptance" value="accepted" />}
+              <div className="flex flex-wrap items-center gap-2">
+                <Button type="submit" className="w-fit">Akkoord</Button>
+                {requirement.canObject && (
+                  <Button formAction={objectLegalRequirementAction} name="objection" value="confirmed" type="submit" variant="outline">Bezwaar registreren</Button>
+                )}
+              </div>
             </form>
           </section>
         ))}

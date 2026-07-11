@@ -101,6 +101,9 @@ export async function ensureLegalRequirementsForRelease(
             enforceAt: ["mandatory_reaccept", "reaccept_on_next_transaction"].includes(release.change.customerAction)
               ? release.effectiveAt
               : undefined,
+            objectionDeadlineAt: release.change.customerAction === "notice_and_continued_use"
+              ? release.effectiveAt
+              : undefined,
           },
           depth: 0,
           overrideAccess: true,

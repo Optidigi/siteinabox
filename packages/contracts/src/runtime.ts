@@ -15,6 +15,7 @@ import {
   type SiteBlockCatalogVariant,
 } from "./block-catalog"
 import { SITE_GENERATION_BLOCK_SLUGS } from "./site"
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "./intake-legal"
 import type {
   AnalyticsBlockMetadata,
   BentoGridBlock,
@@ -1132,6 +1133,15 @@ export const RawIntakeSubmissionSchema: z.ZodType<RawIntakeSubmission> = strictO
       accepted: z.literal(true),
       statementVersion: z.string().min(1),
       recordedAt: z.string().min(1),
+    }),
+    termsAcceptance: strictObject({
+      accepted: z.literal(true),
+      documentVersion: z.literal(CURRENT_INTAKE_TERMS_ACCEPTANCE.documentVersion),
+      acceptanceVersion: z.literal(CURRENT_INTAKE_TERMS_ACCEPTANCE.acceptanceVersion),
+      statementVersion: z.literal(CURRENT_INTAKE_TERMS_ACCEPTANCE.statementVersion),
+      contentHash: z.literal(CURRENT_INTAKE_TERMS_ACCEPTANCE.contentHash),
+      url: z.literal(CURRENT_INTAKE_TERMS_ACCEPTANCE.url),
+      recordedAt: z.iso.datetime(),
     }),
     marketingConsent: strictObject({
       granted: z.boolean(),

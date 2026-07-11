@@ -7,6 +7,7 @@ import {
 import { serializeIntakeSubmission } from '../src/components/intake/domain/submission';
 import { defaultIntakeValues } from '../src/components/intake/domain/constants';
 import { intakeLegalSchema } from '../src/components/intake/domain/schemas';
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from '@siteinabox/contracts';
 
 describe('intake payload contract', () => {
   it('accepts the scaffold payload shape posted by the public form', () => {
@@ -120,6 +121,11 @@ describe('intake payload contract', () => {
           statementVersion: 'business-use-2026-07-07.1',
           recordedAt: '2026-06-29T10:00:00.000Z',
         },
+        termsAcceptance: {
+          accepted: true,
+          ...CURRENT_INTAKE_TERMS_ACCEPTANCE,
+          recordedAt: '2026-06-29T10:00:00.000Z',
+        },
         marketingConsent: {
           granted: false,
           statementVersion: 'marketing-opt-in-2026-07-07.1',
@@ -211,6 +217,7 @@ describe('intake payload contract', () => {
       },
       legal: {
         businessUseAccepted: true,
+        termsAccepted: true,
         marketingOptIn: false,
       },
     }, '2026-07-10T12:00:00.000Z');
@@ -236,6 +243,15 @@ describe('intake payload contract', () => {
           statementVersion: 'business-use-2026-07-07.1',
           recordedAt: '2026-07-10T12:00:00.000Z',
         },
+        termsAcceptance: {
+          accepted: true,
+          documentVersion: '2026-07-07.1',
+          acceptanceVersion: 'platform-terms-2026-07-07',
+          statementVersion: 'platform-terms-acceptance-2026-07-07.1',
+          contentHash: 'sha256:69f61bfc1f70a05ae95ff358d0a001b98b8a2ed00fc81fac53e2c3cc98dee8a9',
+          url: 'https://www.siteinabox.nl/juridisch/algemene-voorwaarden/2026-07-07.1',
+          recordedAt: '2026-07-10T12:00:00.000Z',
+        },
         marketingConsent: {
           granted: false,
           statementVersion: 'marketing-opt-in-2026-07-07.1',
@@ -250,17 +266,45 @@ describe('intake payload contract', () => {
     expect(PublicIntakeSubmissionSchema.safeParse(serialized).success).toBe(true);
   });
 
-  it('requires the business-use declaration while keeping marketing optional', () => {
+  it('requires business use and current terms while keeping marketing optional', () => {
     expect(intakeLegalSchema.safeParse({
       businessUseAccepted: true,
+      termsAccepted: true,
       marketingOptIn: false,
     }).success).toBe(true);
     expect(intakeLegalSchema.safeParse({
       businessUseAccepted: false,
+      termsAccepted: true,
       marketingOptIn: false,
     }).success).toBe(false);
     expect(() => serializeIntakeSubmission(defaultIntakeValues)).toThrow(
       'De zakelijke verklaring is verplicht.',
     );
+    expect(intakeLegalSchema.safeParse({
+      businessUseAccepted: true,
+      termsAccepted: false,
+      marketingOptIn: false,
+    }).success).toBe(false);
+    expect(() => serializeIntakeSubmission({
+      ...defaultIntakeValues,
+      legal: { businessUseAccepted: true, termsAccepted: false, marketingOptIn: false },
+    })).toThrow('Acceptatie van de algemene voorwaarden is verplicht.');
+  });
+
+  it('rejects omitted, false, or stale structured terms evidence at the public contract boundary', () => {
+    const serialized = serializeIntakeSubmission({
+      ...defaultIntakeValues,
+      legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
+    }, '2026-07-10T12:00:00.000Z');
+    const withoutTerms = structuredClone(serialized) as Record<string, any>;
+    delete withoutTerms.legal.termsAcceptance;
+    const falseAcceptance = structuredClone(serialized) as Record<string, any>;
+    falseAcceptance.legal.termsAcceptance.accepted = false;
+    const staleAcceptance = structuredClone(serialized) as Record<string, any>;
+    staleAcceptance.legal.termsAcceptance.documentVersion = '2026-01-01.1';
+
+    expect(PublicIntakeSubmissionSchema.safeParse(withoutTerms).success).toBe(false);
+    expect(PublicIntakeSubmissionSchema.safeParse(falseAcceptance).success).toBe(false);
+    expect(PublicIntakeSubmissionSchema.safeParse(staleAcceptance).success).toBe(false);
   });
 });

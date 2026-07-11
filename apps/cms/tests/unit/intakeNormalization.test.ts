@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { GenerationInputSchema, PublicIntakeSubmissionSchema } from "@siteinabox/contracts/generation"
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { buildGenerationInput, normalizeIntakeSubmission } from "@/lib/intake/normalizeIntake"
 
 const themeTokens = {
@@ -78,6 +79,11 @@ const richIntake = () => ({
     businessUseDeclaration: {
       accepted: true,
       statementVersion: "business-use-2026-07-07.1",
+      recordedAt: "2026-06-29T10:00:00.000Z",
+    },
+    termsAcceptance: {
+      accepted: true,
+      ...CURRENT_INTAKE_TERMS_ACCEPTANCE,
       recordedAt: "2026-06-29T10:00:00.000Z",
     },
     marketingConsent: {

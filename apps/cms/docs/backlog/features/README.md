@@ -245,19 +245,31 @@ depended on command-run site generation are no longer current source of truth.
 **Status:** Implemented.
 
 The tenant CMS shell now surfaces active legal requirements, and owner-only
-`/settings` provides versioned re-acceptance plus compact acceptance history.
+`/settings` provides acceptance, objection handling, and compact acceptance history.
 Acceptance is tenant-scoped, idempotent, linked to immutable evidence, and
 converges duplicate per-owner delivery requirements. Checkout acceptance also
-satisfies matching next-transaction requirements. Overdue mandatory
-re-acceptance blocks customer-triggered live publication without blocking CMS
-read/edit access or superadmin recovery. Raw Payload updates to requirement
-state are disabled; lifecycle changes use the legal service.
+satisfies matching next-transaction requirements. Initial terms acceptance is
+required by intake, rechecked at checkout, and required as immutable evidence
+before a tenant CMS owner account or live-handoff magic link can be created.
+Raw Payload updates to requirement state are disabled; lifecycle changes use
+the legal service.
+
+Contract changes eligible for notice plus continued use now have a distinct
+`notice_and_continued_use` lifecycle. Successful delivery starts the full
+configured objection period; late retries extend rather than shorten that
+period. Authenticated tenant publication records qualifying first-party use,
+but deemed acceptance occurs only after the objection deadline and only when
+delivery, qualifying use, and absence of objection are all proven. These
+notices never become overdue and never block CMS use or publication. Material
+changes can still be classified for explicit acceptance.
 
 Automatic owner email notification is delivered through the existing platform
-mail adapter and Payload scheduler. A system-managed outbox prevents normal
-deploy/job retries from duplicating initial, seven-day reminder, or enforcement
-messages. Delivery attempts remain visible in metadata-only mail logs and
-failures use bounded retry backoff plus operational alerts.
+mail adapter and Payload scheduler. Continued-use notices contain the complete
+updated terms, effective and objection dates, consequences of continued use,
+and routes for early acceptance or objection. A system-managed outbox prevents
+normal deploy/job retries from duplicating initial or reminder messages.
+Delivery attempts remain visible in metadata-only mail logs and failures use
+bounded retry backoff, redacted error messages, and operational alerts.
 
 ### Phase 6 — Intake and mocked generation runs
 

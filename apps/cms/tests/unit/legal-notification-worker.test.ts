@@ -21,6 +21,8 @@ const createPayload = () => {
       documentVersion: "2026-08-01.1",
       effectiveAt: "2026-08-08T00:00:00.000Z",
       changeSummary: "De looptijd is aangepast.",
+      noticeDays: 30,
+      markdown: "# Algemene voorwaarden\n\nDit is de volledige tekst.",
     },
     action: "mandatory_reaccept",
     status: "pending",
@@ -96,6 +98,57 @@ describe("legal notification worker", () => {
     expect(message.subject).toContain("Juridische kennisgeving")
     expect(message.html).not.toContain("Bekijk en accepteer")
     expect(requirement.status).toBe("notified")
+  })
+
+  it("starts the continued-use objection clock only after successful delivery", async () => {
+    const { payload, requirement } = createPayload()
+    requirement.action = "notice_and_continued_use"
+    requirement.objectionDeadlineAt = "2026-08-08T00:00:00.000Z"
+    requirement.enforceAt = null
+    await processLegalRequirementNotifications({ payload, now: new Date("2026-07-11T12:00:00.000Z") })
+    expect(requirement).toMatchObject({
+      status: "notified",
+      notifiedAt: "2026-07-11T12:00:00.000Z",
+      noticeDeliveredAt: "2026-07-11T12:00:00.000Z",
+    })
+    const message = mocks.sendEmail.mock.calls[0]?.[0]
+    expect(message.html).toContain("Volledige bijgewerkte voorwaarden")
+    expect(message.text).toContain("Dit is de volledige tekst.")
+    expect(message.text).not.toContain("Versie: 2026-08-01.1")
+    expect(new Date(requirement.objectionDeadlineAt).getTime()).toBeGreaterThanOrEqual(
+      new Date("2026-08-10T12:00:00.000Z").getTime(),
+    )
+  })
+
+  it("sends one reminder before the continued-use objection deadline", async () => {
+    const { payload, requirement, deliveries } = createPayload()
+    requirement.action = "notice_and_continued_use"
+    requirement.objectionDeadlineAt = "2026-08-10T00:00:00.000Z"
+    requirement.enforceAt = null
+    await processLegalRequirementNotifications({ payload, now: new Date("2026-07-11T12:00:00.000Z") })
+    await processLegalRequirementNotifications({ payload, now: new Date("2026-08-05T12:00:00.000Z") })
+    expect(deliveries.map((item) => item.kind)).toEqual(["initial", "reminder"])
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(2)
+    expect(mocks.sendEmail.mock.calls[1]?.[0].subject).toContain("Herinnering")
+  })
+
+  it("redacts recipient data and secrets from persisted provider errors", async () => {
+    const { payload, requirement, deliveries } = createPayload()
+    mocks.sendEmail.mockRejectedValueOnce(new Error("owner@demo.nl Bearer secret-token"))
+    await processLegalRequirementNotifications({ payload, now: new Date("2026-07-11T12:00:00.000Z") })
+    expect(requirement.lastError).toBe("[redacted-email] Bearer [redacted]")
+    expect(deliveries[0].lastError).toBe("[redacted-email] Bearer [redacted]")
+  })
+
+  it("does not start the objection clock after failed delivery", async () => {
+    const { payload, requirement } = createPayload()
+    requirement.action = "notice_and_continued_use"
+    requirement.objectionDeadlineAt = "2026-08-08T00:00:00.000Z"
+    requirement.enforceAt = null
+    mocks.sendEmail.mockRejectedValueOnce(new Error("provider unavailable"))
+    await processLegalRequirementNotifications({ payload, now: new Date("2026-07-11T12:00:00.000Z") })
+    expect(requirement.status).toBe("failed")
+    expect(requirement.noticeDeliveredAt).toBeUndefined()
   })
 
   it("does not send for an active lease", async () => {

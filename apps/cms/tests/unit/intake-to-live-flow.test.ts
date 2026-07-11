@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
 import { POST as intakePOST } from "@/app/(payload)/api/intake/route"
@@ -124,6 +125,11 @@ const richIntake = () => ({
     businessUseDeclaration: {
       accepted: true,
       statementVersion: "business-use-2026-07-07.1",
+      recordedAt: "2026-07-02T08:00:00.000Z",
+    },
+    termsAcceptance: {
+      accepted: true,
+      ...CURRENT_INTAKE_TERMS_ACCEPTANCE,
       recordedAt: "2026-07-02T08:00:00.000Z",
     },
     marketingConsent: {
@@ -426,6 +432,8 @@ describe("intake-to-live mocked flow", () => {
       collection: "agreement-acceptances",
       data: {
         order: order.id,
+        tenant: tenants[0]!.id,
+        actorEmail: "demo@example.com",
         acceptanceVersion: "platform-terms-2026-07-07",
       },
       overrideAccess: true,

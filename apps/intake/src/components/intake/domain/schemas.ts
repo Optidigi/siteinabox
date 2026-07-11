@@ -320,6 +320,9 @@ export const intakeLegalSchema = z.object({
   businessUseAccepted: z.boolean().refine((accepted) => accepted, {
     message: "Bevestig dat je de aanvraag zakelijk doet.",
   }),
+  termsAccepted: z.boolean().refine((accepted) => accepted, {
+    message: "Accepteer de algemene voorwaarden om je aanvraag te versturen.",
+  }),
   marketingOptIn: z.boolean(),
 });
 

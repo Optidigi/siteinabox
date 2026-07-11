@@ -1,12 +1,14 @@
 import type { Payload } from "payload"
 import { MailSendError, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
-import { LEGAL_REACCEPTANCE_TEMPLATE_VERSION, legalDirectNoticeTemplate, legalReacceptanceTemplate } from "@/lib/email/templates/legalReacceptance"
+import { LEGAL_REACCEPTANCE_TEMPLATE_VERSION, legalContinuedUseNoticeTemplate, legalDirectNoticeTemplate, legalReacceptanceTemplate } from "@/lib/email/templates/legalReacceptance"
 import { relationshipId } from "@/lib/relationshipId"
+import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
 
 type RecordLike = Record<string, any>
 const ACTIVE_STATUSES = ["pending", "notified", "failed"]
 const REACCEPT_ACTIONS = ["mandatory_reaccept", "reaccept_on_next_transaction"]
-const NOTIFIABLE_ACTIONS = [...REACCEPT_ACTIONS, "direct_notice"]
+const NOTICE_AND_USE_ACTION = "notice_and_continued_use"
+const NOTIFIABLE_ACTIONS = [...REACCEPT_ACTIONS, "direct_notice", NOTICE_AND_USE_ACTION]
 const LEASE_MS = 15 * 60_000
 const REMINDER_LEAD_MS = 7 * 24 * 60 * 60_000
 const RETRY_DELAYS_MS = [60 * 60_000, 6 * 60 * 60_000, 24 * 60 * 60_000]
@@ -28,7 +30,22 @@ const retryAt = (now: Date, attemptCount: number) =>
 
 type NotificationKind = "initial" | "reminder" | "enforcement"
 
+const promisedObjectionDeadline = (requirement: RecordLike, deliveredAt: string): string | null => {
+  const document = relation(requirement.document)
+  const noticeDays = Number(document?.noticeDays ?? 0)
+  const deliveryDeadline = noticeDays > 0
+    ? new Date(new Date(deliveredAt).getTime() + noticeDays * 24 * 60 * 60_000).toISOString()
+    : null
+  const existingDeadline = typeof requirement.objectionDeadlineAt === "string" ? requirement.objectionDeadlineAt : null
+  return [existingDeadline, deliveryDeadline].filter((value): value is string => Boolean(value)).sort().at(-1) ?? null
+}
+
 export const dueFollowupKindForRequirement = (requirement: RecordLike, now: Date): NotificationKind | null => {
+  if (requirement.action === NOTICE_AND_USE_ACTION && requirement.objectionDeadlineAt) {
+    const remaining = new Date(requirement.objectionDeadlineAt).getTime() - now.getTime()
+    if (remaining <= 0) return null
+    return remaining <= REMINDER_LEAD_MS ? "reminder" : "initial"
+  }
   if (requirement.action !== "mandatory_reaccept" || !requirement.enforceAt) return "initial"
   const remaining = new Date(requirement.enforceAt).getTime() - now.getTime()
   if (remaining <= 0) return "enforcement"
@@ -112,6 +129,9 @@ async function claimDelivery(payload: Payload, delivery: RecordLike, now: Date, 
 }
 
 async function markRequirementNotified(payload: Payload, requirement: RecordLike, sentAt: string) {
+  const objectionDeadlineAt = requirement.action === NOTICE_AND_USE_ACTION
+    ? promisedObjectionDeadline(requirement, sentAt)
+    : undefined
   await payload.update({
     collection: "legal-requirements" as any,
     where: {
@@ -121,7 +141,15 @@ async function markRequirementNotified(payload: Payload, requirement: RecordLike
         { action: { in: NOTIFIABLE_ACTIONS } },
       ],
     },
-    data: { status: "notified", notifiedAt: requirement.notifiedAt ?? sentAt, lastError: null },
+    data: {
+      status: "notified",
+      notifiedAt: requirement.notifiedAt ?? sentAt,
+      noticeDeliveredAt: requirement.action === NOTICE_AND_USE_ACTION
+        ? requirement.noticeDeliveredAt ?? sentAt
+        : undefined,
+      objectionDeadlineAt,
+      lastError: null,
+    },
     depth: 0,
     overrideAccess: true,
   } as any)
@@ -136,6 +164,7 @@ async function loadActionableRequirements(payload: Payload) {
       where: { or: [
         { and: [{ action: { in: REACCEPT_ACTIONS } }, { status: { in: ACTIVE_STATUSES } }] },
         { and: [{ action: { equals: "direct_notice" } }, { status: { in: ["pending", "failed"] } }] },
+        { and: [{ action: { equals: NOTICE_AND_USE_ACTION } }, { status: { in: ACTIVE_STATUSES } }] },
       ] },
       sort: "createdAt",
       page,
@@ -223,8 +252,18 @@ export async function processLegalRequirementNotifications(input: {
       effectiveAt: String(document.effectiveAt),
       documentUrl: documentUrl(document),
     }
-    const message = requirement.action === "direct_notice"
-      ? legalDirectNoticeTemplate(commonMessage)
+    const effectiveObjectionDeadline = promisedObjectionDeadline(requirement, now.toISOString())
+      ?? String(document.effectiveAt)
+    const message = requirement.action === NOTICE_AND_USE_ACTION
+      ? legalContinuedUseNoticeTemplate({
+          ...commonMessage,
+          objectionDeadlineAt: effectiveObjectionDeadline,
+          settingsUrl: `${adminUrl}/settings#agreements`,
+          documentContent: String(document.markdown ?? document.plainText ?? ""),
+          kind: kind === "reminder" ? "reminder" : "initial",
+        })
+      : requirement.action === "direct_notice"
+        ? legalDirectNoticeTemplate(commonMessage)
       : legalReacceptanceTemplate({
           ...commonMessage,
           enforceAt: requirement.enforceAt,
@@ -273,7 +312,7 @@ export async function processLegalRequirementNotifications(input: {
     } catch (error) {
       const normalized = error instanceof MailSendError ? error.normalized : null
       const permanent = normalized?.retryState === "permanent"
-      const message = normalized?.providerErrorMessage ?? (error instanceof Error ? error.message : "Unknown email delivery error")
+      const message = redactOperationalMessage(normalized?.providerErrorMessage ?? (error instanceof Error ? error.message : "Unknown email delivery error"))
       await input.payload.update({
         collection: "legal-notification-deliveries" as any,
         id: delivery.id,

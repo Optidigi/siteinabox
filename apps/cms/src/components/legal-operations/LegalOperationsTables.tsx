@@ -14,7 +14,7 @@ import { LegalTableFrame } from "./LegalTableFrame"
 
 const statusTone = (status: string): LegalStatusTone => {
   const value = status.toLowerCase()
-  if (["failed", "permanent_failure", "overdue", "mislukt", "te laat"].some((item) => value.includes(item))) return "destructive"
+  if (["failed", "permanent_failure", "mislukt"].some((item) => value.includes(item))) return "destructive"
   if (["pending", "queued", "processing", "retry", "open", "required", "warning", "wacht"].some((item) => value.includes(item))) return "warning"
   if (["sent", "satisfied", "published", "active", "accepted", "verzonden", "voldaan"].some((item) => value.includes(item))) return "success"
   return "neutral"
@@ -23,8 +23,9 @@ const statusTone = (status: string): LegalStatusTone => {
 const labels: Record<string, string> = {
   active: "Actief", scheduled: "Gepland", pending: "Openstaand", notified: "Genotificeerd", satisfied: "Voldaan", waived: "Vrijgesteld",
   queued: "In wachtrij", processing: "Bezig", sent: "Naar provider verzonden", failed: "Mislukt", cancelled: "Geannuleerd",
-  permanent: "Definitief mislukt", retryable: "Opnieuw proberen", overdue: "Te laat", upcoming: "Binnenkort vereist",
-  mandatory_reaccept: "Verplichte heracceptatie", reaccept_on_next_transaction: "Heracceptatie bij volgende transactie", direct_notice: "Directe kennisgeving", publish_notice: "Publicatiekennisgeving",
+  permanent: "Definitief mislukt", retryable: "Opnieuw proberen", awaiting_response: "Reactie afwachten", explicit_required: "Expliciet vereist", no_qualifying_use: "Gebruik niet vastgesteld",
+  mandatory_reaccept: "Expliciete acceptatie", reaccept_on_next_transaction: "Acceptatie bij volgende transactie", notice_and_continued_use: "Kennisgeving en voortgezet gebruik", direct_notice: "Directe kennisgeving", publish_notice: "Publicatiekennisgeving",
+  objected: "Bezwaar ontvangen", qualifying_continued_use: "Stilzwijgend aanvaard", explicit_acceptance: "Expliciet aanvaard", transaction_acceptance: "Bij transactie aanvaard",
   administrative: "Administratief", editorial: "Redactioneel", material: "Materieel", initial: "Eerste publicatie", reminder: "Herinnering", enforcement: "Handhaving",
   delivery_retry_requested: "Nieuwe verzendpoging aangevraagd",
 }
@@ -82,10 +83,10 @@ export function LegalRequirementsTable({ rows }: { rows: LegalRequirementRow[] }
   return (
     <LegalTableFrame title="Klantacties" description="Openstaande en afgeronde vereisten per klant en document." isEmpty={rows.length === 0} emptyTitle="Geen klantacties" emptyDescription="Er zijn geen klantacties binnen de huidige selectie.">
       <div className="overflow-x-auto"><Table className="min-w-[900px] [&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
-        <TableHeader><TableRow><TableHead>Klant</TableHead><TableHead>Document</TableHead><TableHead>Actie</TableHead><TableHead>Deadline</TableHead><TableHead>Kennisgeving</TableHead><TableHead>Afgerond</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>Klant</TableHead><TableHead>Document</TableHead><TableHead>Actie</TableHead><TableHead>Reactietermijn</TableHead><TableHead>Geleverd</TableHead><TableHead>Resolutie</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
         <TableBody>{rows.map((row) => <TableRow key={row.id}>
           <TableCell><CellLink href={row.href}>{row.tenant ?? "Onbekende tenant"}</CellLink><div className="text-xs text-muted-foreground">{row.subjectEmail}</div></TableCell>
-          <TableCell>{row.documentLabel}</TableCell><TableCell>{label(row.action)}</TableCell><TableCell>{dateTime(row.enforceAt) ?? <Dash />}</TableCell><TableCell>{dateTime(row.notifiedAt) ?? <Dash />}</TableCell><TableCell>{dateTime(row.satisfiedAt) ?? <Dash />}</TableCell>
+          <TableCell>{row.documentLabel}</TableCell><TableCell>{label(row.action)}</TableCell><TableCell>{dateTime(row.objectionDeadlineAt ?? row.enforceAt) ?? <Dash />}</TableCell><TableCell>{dateTime(row.noticeDeliveredAt ?? row.notifiedAt) ?? <Dash />}</TableCell><TableCell>{row.resolutionBasis ? label(row.resolutionBasis) : <Dash />}</TableCell>
           <TableCell><LegalStatus tone={statusTone(row.status)}>{label(row.status)}</LegalStatus></TableCell>
         </TableRow>)}</TableBody>
       </Table></div>

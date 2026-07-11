@@ -20,6 +20,9 @@ export const serializeIntakeSubmission = (
   if (!values.legal.businessUseAccepted) {
     throw new Error("De zakelijke verklaring is verplicht.");
   }
+  if (!values.legal.termsAccepted) {
+    throw new Error("Acceptatie van de algemene voorwaarden is verplicht.");
+  }
 
   return {
     submittedAt: recordedAt,
@@ -53,6 +56,15 @@ export const serializeIntakeSubmission = (
       businessUseDeclaration: {
         accepted: true,
         statementVersion: intakeLegalStatements.businessUse.version,
+        recordedAt,
+      },
+      termsAcceptance: {
+        accepted: true,
+        documentVersion: intakeLegalStatements.terms.documentVersion,
+        acceptanceVersion: intakeLegalStatements.terms.acceptanceVersion,
+        statementVersion: intakeLegalStatements.terms.statementVersion,
+        contentHash: intakeLegalStatements.terms.contentHash,
+        url: intakeLegalStatements.terms.url,
         recordedAt,
       },
       marketingConsent: {

@@ -14,7 +14,7 @@ const customerActionsByCategory = Object.freeze({
   subprocessor_change: ['direct_notice'],
   privacy_transparency: ['none', 'publish_notice'],
   privacy_material: ['direct_notice'],
-  contract_material: ['reaccept_on_next_transaction', 'mandatory_reaccept'],
+  contract_material: ['notice_and_continued_use', 'reaccept_on_next_transaction', 'mandatory_reaccept'],
   customer_adverse: ['mandatory_reaccept'],
   consent_scope_change: ['publish_notice', 'direct_notice'],
 })
@@ -177,9 +177,9 @@ export function validateLegalReleases() {
 
     if (!release.change.summary.trim()) errors.push(`Missing change summary for ${identity}`)
     if (!release.change.rationale.trim()) errors.push(`Missing change rationale for ${identity}`)
-    if (release.change.customerAction === 'mandatory_reaccept') {
+    if (['mandatory_reaccept', 'notice_and_continued_use'].includes(release.change.customerAction)) {
       if (!Number.isInteger(release.change.noticeDays) || release.change.noticeDays < 0) {
-        errors.push(`mandatory_reaccept requires a non-negative integer noticeDays for ${identity}`)
+        errors.push(`${release.change.customerAction} requires a non-negative integer noticeDays for ${identity}`)
       } else {
         const actualNoticeMs = new Date(release.effectiveAt) - new Date(release.publishedAt)
         if (actualNoticeMs < release.change.noticeDays * 86_400_000) {
@@ -197,7 +197,7 @@ export function validateLegalReleases() {
       if (!previous) {
         errors.push(`Unknown replacement target for ${identity}: ${release.replaces}`)
       } else {
-        const requiresAcceptance = ['reaccept_on_next_transaction', 'mandatory_reaccept']
+        const requiresAcceptance = ['notice_and_continued_use', 'reaccept_on_next_transaction', 'mandatory_reaccept']
           .includes(release.change.customerAction)
         if (requiresAcceptance && release.acceptanceVersion === previous.acceptanceVersion) {
           errors.push(`Re-acceptance requires a new acceptanceVersion for ${identity}`)

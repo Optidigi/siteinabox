@@ -190,6 +190,28 @@ async function ensureLiveHandoffCustomerUser(payload: Payload, input: {
   return user.id
 }
 
+async function assertInitialTermsAcceptance(payload: Payload, input: {
+  email: string
+  tenantId: string | number
+}) {
+  const result = await payload.find({
+    collection: "agreement-acceptances" as any,
+    where: {
+      and: [
+        { tenant: { equals: input.tenantId } },
+        { actorEmail: { equals: input.email } },
+      ],
+    },
+    sort: "-acceptedAt",
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  } as any) as { docs?: Array<{ id?: unknown }> }
+  if (!result.docs?.[0]?.id) {
+    throw new Error("Initial Site in a Box terms acceptance evidence is missing.")
+  }
+}
+
 async function sendLiveHandoffMagicLink(input: {
   email: string
   name?: string | null
@@ -250,6 +272,10 @@ export async function sendLiveHandoffEmailAfterActivation(
   }
 
   try {
+    await assertInitialTermsAcceptance(payload, {
+      email: recipient,
+      tenantId: input.tenant.id,
+    })
     await ensureLiveHandoffCustomerUser(payload, {
       email: recipient,
       name: customerName,

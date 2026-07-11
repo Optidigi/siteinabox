@@ -47,4 +47,44 @@ describe("legal release classification", () => {
     const previous = legalReleaseSchema.parse(release)
     expect(validateLegalReleaseTransition(next, previous)).toContain("re-acceptance requires a new acceptanceVersion")
   })
+
+  it("supports a separately classified notice-and-continued-use track", () => {
+    const next = {
+      ...release,
+      documentVersion: "2026-08-01.1",
+      acceptanceVersion: "terms-2026-08-01",
+      replaces: release.documentVersion,
+      effectiveAt: "2026-08-15T00:00:00.000Z",
+      change: {
+        ...release.change,
+        category: "contract_material" as const,
+        customerAction: "notice_and_continued_use" as const,
+        noticeDays: 30,
+      },
+    }
+
+    expect(legalReleaseSchema.safeParse(next).success).toBe(true)
+    expect(validateLegalReleaseTransition(legalReleaseSchema.parse(next), legalReleaseSchema.parse(release))).toEqual([])
+  })
+
+  it("requires both a notice period and a new acceptance version for the deemed track", () => {
+    const withoutNotice = {
+      ...release,
+      documentVersion: "2026-08-01.1",
+      replaces: release.documentVersion,
+      change: {
+        ...release.change,
+        category: "contract_material" as const,
+        customerAction: "notice_and_continued_use" as const,
+      },
+    }
+
+    expect(legalReleaseSchema.safeParse(withoutNotice).success).toBe(false)
+    const parsed = legalReleaseSchema.parse({
+      ...withoutNotice,
+      change: { ...withoutNotice.change, noticeDays: 30 },
+    })
+    expect(validateLegalReleaseTransition(parsed, legalReleaseSchema.parse(release)))
+      .toContain("re-acceptance requires a new acceptanceVersion")
+  })
 })

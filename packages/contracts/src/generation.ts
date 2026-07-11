@@ -92,6 +92,13 @@ export type IntakeLegalMetadata = {
   businessUseDeclaration: IntakeLegalStatementRecord & {
     accepted: true
   }
+  termsAcceptance: IntakeLegalStatementRecord & {
+    accepted: true
+    documentVersion: string
+    acceptanceVersion: string
+    contentHash: string
+    url: string
+  }
   marketingConsent: IntakeLegalStatementRecord & {
     granted: boolean
   }

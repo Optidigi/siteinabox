@@ -4,7 +4,7 @@ import type { Payload } from "payload"
 import { isOfficialTenant } from "@/lib/officialTenants"
 import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 import { publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
-import { assertTenantPublicationAllowed } from "@/lib/legal/customerRequirements"
+import { assertTenantPublicationAllowed, recordQualifyingContinuedUse } from "@/lib/legal/customerRequirements"
 
 type PublishCurrentStateUser = {
   id?: string | number | null
@@ -51,7 +51,7 @@ export async function publishCurrentTenantState(
   if (!allowed) throw new Error("Forbidden: not authorized to publish current tenant state")
   if (options.user.role !== "super-admin") await assertTenantPublicationAllowed(payload, options.tenantId)
 
-  return publishSiteSnapshot(payload, {
+  const result = await publishSiteSnapshot(payload, {
     tenantId: options.tenantId,
     generationRunId: null,
     includeAllPublishedPages: true,
@@ -60,4 +60,13 @@ export async function publishCurrentTenantState(
     publishedBy: options.user.id ?? null,
     activationReason: options.reason ?? "auto-publish current CMS state",
   })
+  if (options.user.role !== "super-admin" && result.activated) {
+    await recordQualifyingContinuedUse({
+      payload,
+      tenantId: options.tenantId,
+      evidenceType: "tenant_publish",
+      evidenceId: String(result.snapshot.id),
+    })
+  }
+  return result
 }

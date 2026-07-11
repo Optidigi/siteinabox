@@ -4,6 +4,7 @@ export type LegalCustomerAction =
   | 'none'
   | 'publish_notice'
   | 'direct_notice'
+  | 'notice_and_continued_use'
   | 'reaccept_on_next_transaction'
   | 'mandatory_reaccept'
 

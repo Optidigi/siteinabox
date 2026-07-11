@@ -7,6 +7,7 @@ import type {
   VisualThemeTokens,
   VisualDetails,
 } from "./types";
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts";
 
 export const contentLimits = {
   intro: { min: 20, max: 500 },
@@ -91,6 +92,10 @@ export const intakeLegalStatements = {
     version: "business-use-2026-07-07.1",
     text: "Ik vraag dit aan voor een onderneming of bedrijf in oprichting.",
   },
+  terms: {
+    ...CURRENT_INTAKE_TERMS_ACCEPTANCE,
+    text: "Ik ga akkoord met de algemene voorwaarden van Site in a Box.",
+  },
   marketing: {
     version: "marketing-opt-in-2026-07-07.1",
     text: "Stuur mij tips, updates en aanbiedingen over Site in a Box.",
@@ -103,6 +108,7 @@ export const intakeLegalStatements = {
 
 export const defaultIntakeLegalDetails: IntakeLegalDetails = {
   businessUseAccepted: false,
+  termsAccepted: false,
   marketingOptIn: false,
 };
 

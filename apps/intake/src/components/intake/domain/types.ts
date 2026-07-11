@@ -172,6 +172,7 @@ export type FinalDetails = {
 
 export type IntakeLegalDetails = {
   businessUseAccepted: boolean;
+  termsAccepted: boolean;
   marketingOptIn: boolean;
 };
 

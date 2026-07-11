@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/authGate"
 import { listLegalRequirements } from "@/lib/queries/legalOperations"
 
 const PAGE_SIZE = 20
-const statuses = [{ value: "all", label: "Alle" }, { value: "open", label: "Open" }, { value: "pending", label: "Openstaand" }, { value: "notified", label: "Genotificeerd" }, { value: "failed", label: "Mislukt" }, { value: "satisfied", label: "Voldaan" }, { value: "waived", label: "Vrijgesteld" }]
+const statuses = [{ value: "all", label: "Alle" }, { value: "open", label: "Open" }, { value: "pending", label: "Openstaand" }, { value: "notified", label: "Geleverd" }, { value: "objected", label: "Bezwaar" }, { value: "deemed", label: "Stilzwijgend aanvaard" }, { value: "failed", label: "Mislukt" }, { value: "satisfied", label: "Afgerond" }, { value: "waived", label: "Vrijgesteld" }]
 export const dynamic = "force-dynamic"
 
 export default async function LegalRequirementsPage({ searchParams }: { searchParams: Promise<{ page?: string; q?: string; status?: string }> }) {
@@ -14,7 +14,7 @@ export default async function LegalRequirementsPage({ searchParams }: { searchPa
   const status = statuses.some((item) => item.value === sp.status) ? sp.status! : "all"
   const result = await listLegalRequirements({ page: Number(sp.page) || 1, pageSize: PAGE_SIZE, q: sp.q, status })
   return <div className="flex flex-col gap-4">
-    <PageHeader title="Juridische klantacties" subtitle="Vereiste kennisgeving en acceptatie per klantaccount." />
+    <PageHeader title="Juridische klantacties" subtitle="Kennisgeving, reactie en bewijs van aanvaarding per klantaccount." />
     <LegalRouteTabs activePath="/legal/requirements" />
     <LegalListToolbar placeholder="Zoek account of vereiste..." activeStatus={status} statuses={statuses} basePath="/legal/requirements" query={sp.q} />
     <LegalRequirementsTable rows={result.docs} />

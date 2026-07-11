@@ -42,6 +42,11 @@ export function FinalDetailsStep({
     showAttemptedErrors && !businessUseAccepted
       ? "Bevestig dat je de aanvraag zakelijk doet."
       : "";
+  const termsAccepted = form.watch("legal.termsAccepted");
+  const termsError =
+    showAttemptedErrors && !termsAccepted
+      ? "Accepteer de algemene voorwaarden om je aanvraag te versturen."
+      : "";
 
   return (
     <div className="w-full max-w-[780px]">
@@ -166,6 +171,49 @@ export function FinalDetailsStep({
                 <FieldError className="text-sm leading-5">
                   {businessUseError}
                 </FieldError>
+              </Field>
+
+              <Field className="mt-6" data-invalid={Boolean(termsError)}>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="terms-acceptance"
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) =>
+                      form.setValue("legal.termsAccepted", checked === true, {
+                        shouldDirty: true,
+                        shouldTouch: true,
+                        shouldValidate: true,
+                      })
+                    }
+                    aria-invalid={Boolean(termsError)}
+                    aria-labelledby="terms-acceptance-label"
+                    aria-describedby="terms-acceptance-helper"
+                    className="mt-1 size-5"
+                  />
+                  <div>
+                    <p id="terms-acceptance-label" className="text-base font-normal leading-6 text-intake-text">
+                      <FieldLabel
+                        htmlFor="terms-acceptance"
+                        className="inline cursor-pointer text-base font-normal leading-6 text-intake-text"
+                      >
+                        Ik ga akkoord met de
+                      </FieldLabel>{" "}
+                      <a
+                        href={intakeLegalStatements.terms.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="underline underline-offset-2 hover:text-intake-primary"
+                      >
+                        algemene voorwaarden
+                      </a>{" "}
+                      van Site in a Box.
+                    </p>
+                    <p id="terms-acceptance-helper" className="mt-1 text-sm leading-5 text-intake-muted-text">
+                      De voorwaarden openen in een nieuw tabblad.
+                    </p>
+                  </div>
+                </div>
+                <FieldError className="text-sm leading-5">{termsError}</FieldError>
               </Field>
 
               <Field className="mt-6">

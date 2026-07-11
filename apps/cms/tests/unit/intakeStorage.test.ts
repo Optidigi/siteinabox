@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
+import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
@@ -131,6 +132,11 @@ const rawIntake = (): PublicIntakeSubmission => ({
     businessUseDeclaration: {
       accepted: true,
       statementVersion: "business-use-2026-07-07.1",
+      recordedAt: "2026-06-29T10:00:00.000Z",
+    },
+    termsAcceptance: {
+      accepted: true,
+      ...CURRENT_INTAKE_TERMS_ACCEPTANCE,
       recordedAt: "2026-06-29T10:00:00.000Z",
     },
     marketingConsent: {

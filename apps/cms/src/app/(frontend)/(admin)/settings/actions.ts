@@ -7,7 +7,7 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import { getSiabContext } from "@/lib/context"
 import { relationshipId } from "@/lib/relationshipId"
-import { acceptCustomerLegalRequirement } from "@/lib/legal/customerRequirements"
+import { acceptCustomerLegalRequirement, objectToNoticeAndContinuedUse } from "@/lib/legal/customerRequirements"
 
 export async function acceptLegalRequirementAction(formData: FormData) {
   const requestHeaders = await headers()
@@ -41,4 +41,34 @@ export async function acceptLegalRequirementAction(formData: FormData) {
 
   revalidatePath("/", "layout")
   redirect("/settings?legal=accepted")
+}
+
+export async function objectLegalRequirementAction(formData: FormData) {
+  const requestHeaders = await headers()
+  const payload = await getPayload({ config })
+  const { user } = await payload.auth({ headers: requestHeaders })
+  const ctx = await getSiabContext()
+  if (!user || user.role !== "owner" || ctx.mode !== "tenant") redirect("/login")
+
+  const tenantId = relationshipId(user.tenants?.[0]?.tenant)
+  if (!tenantId || tenantId !== String(ctx.tenant.id)) redirect("/?error=forbidden")
+  const requirementId = String(formData.get("requirementId") ?? "").trim()
+  if (!requirementId || formData.get("objection") !== "confirmed") redirect("/settings?legal=failed")
+
+  try {
+    await objectToNoticeAndContinuedUse({
+      payload,
+      requirementId,
+      tenantId,
+      actorUserId: user.id,
+      actorEmail: user.email,
+      requestId: requestHeaders.get("x-request-id"),
+    })
+  } catch (error) {
+    console.error("Legal requirement objection failed", error)
+    redirect("/settings?legal=failed")
+  }
+
+  revalidatePath("/", "layout")
+  redirect("/settings?legal=objected")
 }

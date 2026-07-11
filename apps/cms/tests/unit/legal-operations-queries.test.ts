@@ -113,7 +113,8 @@ describe("legal operations queries", () => {
     expect(metrics).toEqual({
       "registered-publications": 1,
       "open-requirements": 2,
-      "overdue-requirements": 1,
+      "objected-requirements": 2,
+      "deemed-acceptances": 2,
       "failed-deliveries": 2,
     })
   })
@@ -123,11 +124,11 @@ describe("legal operations queries", () => {
 
     expect(rows.map((row) => [row.kind, row.title])).toEqual([
       ["delivery", "Definitieve verzendfout"],
-      ["requirement", "Acceptatie te laat"],
+      ["requirement", "Expliciete acceptatie vereist"],
+      ["requirement", "Expliciete acceptatie vereist"],
       ["delivery", "Verzending opnieuw proberen"],
-      ["requirement", "Acceptatie binnenkort vereist"],
     ])
-    expect(rows.map((row) => row.status)).toEqual(["permanent", "overdue", "retryable", "upcoming"])
+    expect(rows.map((row) => row.status)).toEqual(["permanent", "explicit_required", "explicit_required", "retryable"])
     expect(rows[0]).toMatchObject({ severity: "destructive", tenant: "Voorbeeld BV" })
     expect(rows.every((row) => row.href.startsWith("/legal/"))).toBe(true)
   })

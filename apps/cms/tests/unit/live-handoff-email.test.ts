@@ -79,6 +79,7 @@ const createActivationPayload = (input?: {
     normalized: { contact: { email: "normalized-intake@example.com" } },
   }
   const users = [...(input?.users ?? [])]
+  const acceptances = [{ id: 880, tenant: tenant.id, actorEmail: "customer@example.com" }]
   const updates: any[] = []
   const payload = {
     findByID: vi.fn(async ({ collection, id }: any) => {
@@ -92,6 +93,12 @@ const createActivationPayload = (input?: {
       if (collection === "users") {
         const email = where?.email?.equals
         return { docs: users.filter((user) => user.email === email) }
+      }
+      if (collection === "agreement-acceptances") {
+        const clauses = where?.and ?? []
+        const tenantId = clauses.find((clause: any) => clause.tenant)?.tenant?.equals
+        const actorEmail = clauses.find((clause: any) => clause.actorEmail)?.actorEmail?.equals
+        return { docs: acceptances.filter((item) => String(item.tenant) === String(tenantId) && item.actorEmail === actorEmail) }
       }
       return { docs: [] }
     }),
@@ -304,5 +311,27 @@ describe("CMS live handoff email", () => {
       snapshot: 10,
       error: "auth down",
     }))
+  })
+
+  it("does not create CMS access without initial terms acceptance evidence", async () => {
+    const { payload, tenant, snapshot, run } = createActivationPayload()
+    payload.find.mockImplementation(async ({ collection }: any) => {
+      if (collection === "agreement-acceptances") return { docs: [] }
+      if (collection === "users") return { docs: [] }
+      return { docs: [] }
+    })
+
+    await expect(sendLiveHandoffEmailAfterActivation(payload, {
+      tenant,
+      run,
+      snapshotDoc: snapshot,
+    })).resolves.toBe("failed")
+
+    expect(payload.create).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "users" }))
+    expect(mocks.signInMagicLink).not.toHaveBeenCalled()
+    expect(payload.logger.warn).toHaveBeenCalledWith(
+      "[publish] live handoff email failed after activation",
+      expect.objectContaining({ error: "Initial Site in a Box terms acceptance evidence is missing." }),
+    )
   })
 })

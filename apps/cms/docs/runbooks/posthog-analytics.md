@@ -59,18 +59,27 @@ POSTHOG_PROJECT_ID=12345 \
 pnpm posthog:sync-settings
 ```
 
-The script merges new URLs with existing `app_urls` and enables:
+The script merges new URLs with existing `app_urls` and enforces the mutable
+privacy baseline:
 
 - `autocapture_web_vitals_opt_in`
 - `autocapture_web_vitals_allowed_metrics`: `CLS`, `FCP`, `INP`, `LCP`
 - `capture_performance_opt_in`
-- `autocapture_opt_out: false`
+- `autocapture_opt_out: true`
+
+Event retention is audited by the same command, but current PostHog project and
+environment APIs expose `event_retention_months` and
+`events_retention_enforced` as plan-derived read-only values. A personal API
+key, including one with `project:write`, cannot change them. If the audit shows
+retention drift, change the analytics retention entitlement through PostHog
+billing/support and rerun `pnpm posthog:check-settings`. Do not treat the
+30-day session-recording retention control as event retention.
 
 Run with `--dry-run` to inspect the PATCH payload.
 
 ## Current Project State
 
-PostHog MCP verification on 2026-06-08 confirmed project `SiteinaBox`
+PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
 (`193842`) is configured with:
 
 - `app_urls`: `https://ami-care.nl`, `https://admin.ami-care.nl`,
@@ -79,13 +88,18 @@ PostHog MCP verification on 2026-06-08 confirmed project `SiteinaBox`
   `POSTHOG_PROJECT_TOKEN` / `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set. The
   CMS SDK uses `POSTHOG_PUBLIC_HOST` for browser ingest and `POSTHOG_HOST` as
   `ui_host`.
-- `autocapture_opt_out: false`
+- `autocapture_opt_out: true`
 - `autocapture_web_vitals_opt_in: true`
 - `autocapture_web_vitals_allowed_metrics`: `CLS`, `FCP`, `INP`, `LCP`
 - `capture_performance_opt_in: true`
 - `anonymize_ips: true`
 - `session_recording_opt_in: false`
 - `heatmaps_opt_in: false`
+- `capture_console_log_opt_in: false`
+- `capture_dead_clicks: false`
+- Event retention remains provider-managed at 84 months with enforcement
+  disabled. The daily privacy audit intentionally remains red until PostHog
+  changes the plan-derived values to 13 months with enforcement enabled.
 
 PostHog SDK health reported healthy with no outdated SDKs. Fresh `$pageview`
 events were present for `ami-care.nl`. CMS-native `$pageview`, `$pageleave`,

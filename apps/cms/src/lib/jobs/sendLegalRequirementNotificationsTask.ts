@@ -1,5 +1,6 @@
 import type { TaskConfig } from "payload"
 import { processLegalRequirementNotifications } from "@/lib/jobs/sendLegalRequirementNotifications"
+import { resolveNoticeAndContinuedUseRequirements } from "@/lib/legal/customerRequirements"
 
 export const sendLegalRequirementNotificationsTask: TaskConfig<{
   input: Record<string, never>
@@ -27,6 +28,8 @@ export const sendLegalRequirementNotificationsTask: TaskConfig<{
       req.payload.logger.error(`[legal-notifications] legal release sync retry failed: ${error instanceof Error ? error.message : "unknown error"}`)
     }
     const result = await processLegalRequirementNotifications({ payload: req.payload, limit: 100 })
+    const deemed = await resolveNoticeAndContinuedUseRequirements({ payload: req.payload })
+    if (deemed.length) req.payload.logger.info(`[legal-notifications] resolved ${deemed.length} continued-use requirement(s)`)
     req.payload.logger.info(`[legal-notifications] examined=${result.examined} sent=${result.sent} failed=${result.failed} skipped=${result.skipped}`)
     return { output: result }
   },

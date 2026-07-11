@@ -3,10 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   publishSiteSnapshot: vi.fn(),
+  assertTenantPublicationAllowed: vi.fn(),
+  recordQualifyingContinuedUse: vi.fn(),
 }))
 
 vi.mock("@/lib/publish/siteSnapshots", () => ({
   publishSiteSnapshot: mocks.publishSiteSnapshot,
+}))
+vi.mock("@/lib/legal/customerRequirements", () => ({
+  assertTenantPublicationAllowed: mocks.assertTenantPublicationAllowed,
+  recordQualifyingContinuedUse: mocks.recordQualifyingContinuedUse,
 }))
 
 import {
@@ -48,6 +54,12 @@ describe("publish current tenant state", () => {
       manualActivation: true,
       publishedBy: 2,
       activationReason: "page editor save",
+    })
+    expect(mocks.recordQualifyingContinuedUse).toHaveBeenCalledWith({
+      payload: p,
+      tenantId: 7,
+      evidenceType: "tenant_publish",
+      evidenceId: "12",
     })
   })
 

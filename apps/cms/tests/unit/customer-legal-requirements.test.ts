@@ -3,6 +3,9 @@ import {
   acceptCustomerLegalRequirement,
   assertTenantPublicationAllowed,
   getTenantLegalRequirements,
+  objectToNoticeAndContinuedUse,
+  recordQualifyingContinuedUse,
+  resolveNoticeAndContinuedUseRequirements,
   satisfyRequirementsFromTransaction,
 } from "@/lib/legal/customerRequirements"
 
@@ -110,5 +113,138 @@ describe("customer legal requirements", () => {
       expect.objectContaining({ status: "satisfied", acceptance: 88 }),
       expect.objectContaining({ status: "satisfied", acceptance: 88 }),
     ]))
+  })
+
+  it("keeps notice-and-continued-use visible but never overdue or publication-blocking", async () => {
+    const { payload, requirements } = createPayload()
+    requirements.splice(1)
+    Object.assign(requirements[0], {
+      action: "notice_and_continued_use",
+      status: "notified",
+      enforceAt: null,
+      objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
+      noticeDeliveredAt: "2026-07-01T00:00:00.000Z",
+    })
+
+    const projected = await getTenantLegalRequirements(payload, 7, new Date("2026-08-02T00:00:00.000Z"))
+    expect(projected).toEqual([expect.objectContaining({
+      action: "notice_and_continued_use",
+      requiresAcceptance: false,
+      overdue: false,
+      canObject: true,
+      objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
+    })])
+    await expect(assertTenantPublicationAllowed(payload, 7, new Date("2026-08-02T00:00:00.000Z")))
+      .resolves.toBeUndefined()
+  })
+
+  it("records qualifying use without satisfying before the objection deadline", async () => {
+    const requirement: any = {
+      id: 30,
+      tenant: 7,
+      action: "notice_and_continued_use",
+      status: "notified",
+      noticeDeliveredAt: "2026-07-01T00:00:00.000Z",
+      objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
+    }
+    const payload = {
+      find: vi.fn(async () => ({ docs: [requirement] })),
+      update: vi.fn(async ({ data }: any) => Object.assign(requirement, data)),
+    } as any
+
+    await recordQualifyingContinuedUse({
+      payload,
+      tenantId: 7,
+      occurredAt: new Date("2026-07-15T00:00:00.000Z"),
+      evidenceType: "authenticated_publish",
+      evidenceId: "publish-88",
+    })
+
+    expect(requirement).toMatchObject({
+      status: "notified",
+      qualifyingUseAt: "2026-07-15T00:00:00.000Z",
+      resolutionEvidence: { qualifyingUse: { type: "authenticated_publish", id: "publish-88" } },
+    })
+  })
+
+  it("allows early explicit acceptance on the deemed track with normal evidence", async () => {
+    const { payload, requirements, acceptances } = createPayload()
+    requirements.splice(1)
+    requirements[0].action = "notice_and_continued_use"
+    requirements[0].status = "notified"
+    requirements[0].noticeDeliveredAt = "2026-07-01T00:00:00.000Z"
+
+    await acceptCustomerLegalRequirement({
+      payload,
+      requirementId: 1,
+      tenantId: 7,
+      actorUserId: 20,
+      actorEmail: "owner@example.nl",
+      requestId: "accept-1",
+      now: new Date("2026-07-15T00:00:00.000Z"),
+    })
+
+    expect(acceptances).toHaveLength(1)
+    expect(requirements[0]).toMatchObject({
+      status: "satisfied",
+      resolutionBasis: "explicit_acceptance",
+      resolutionEvidence: { acceptanceId: acceptances[0].id },
+    })
+  })
+
+  it("resolves only delivered, unobjectioned qualifying use after the deadline", async () => {
+    const eligible: any = {
+      id: 30,
+      action: "notice_and_continued_use",
+      status: "notified",
+      noticeDeliveredAt: "2026-07-01T00:00:00.000Z",
+      qualifyingUseAt: "2026-07-15T00:00:00.000Z",
+      objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
+    }
+    const failedDelivery = { ...eligible, id: 31, noticeDeliveredAt: null }
+    const objected = { ...eligible, id: 32, objectedAt: "2026-07-20T00:00:00.000Z" }
+    const updated: any[] = []
+    const payload = {
+      find: vi.fn(async () => ({ docs: [eligible, failedDelivery, objected] })),
+      update: vi.fn(async ({ id, data }: any) => {
+        updated.push(id)
+        return Object.assign([eligible, failedDelivery, objected].find((item) => item.id === id), data)
+      }),
+    } as any
+
+    await resolveNoticeAndContinuedUseRequirements({ payload, now: new Date("2026-08-02T00:00:00.000Z") })
+
+    expect(updated).toEqual([30])
+    expect(eligible).toMatchObject({
+      status: "satisfied",
+      deemedAcceptedAt: "2026-08-02T00:00:00.000Z",
+      resolutionBasis: "qualifying_continued_use",
+    })
+  })
+
+  it("records an objection as terminal evidence", async () => {
+    const requirement: any = { id: 30, tenant: 7, action: "notice_and_continued_use", status: "notified" }
+    const payload = {
+      findByID: vi.fn(async () => requirement),
+      update: vi.fn(async ({ data }: any) => Object.assign(requirement, data)),
+    } as any
+
+    await objectToNoticeAndContinuedUse({
+      payload,
+      requirementId: 30,
+      tenantId: 7,
+      actorUserId: 9,
+      actorEmail: "owner@example.nl",
+      reason: "Niet akkoord",
+      requestId: "req-1",
+      now: new Date("2026-07-20T00:00:00.000Z"),
+    })
+
+    expect(requirement).toMatchObject({
+      status: "objected",
+      objectedAt: "2026-07-20T00:00:00.000Z",
+      resolutionBasis: "objection",
+      resolutionEvidence: { actorUserId: 9, actorEmail: "owner@example.nl", reason: "Niet akkoord", requestId: "req-1" },
+    })
   })
 })

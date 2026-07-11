@@ -121,6 +121,13 @@ const patch = {
   session_recording_opt_in: false,
   heatmaps_opt_in: false,
   capture_dead_clicks: false,
+}
+
+// PostHog exposes these values in project/environment responses, but its
+// current API schema marks both as plan-derived read-only fields. Keep them in
+// the audit contract without pretending a successful project PATCH changed
+// them.
+const retentionBaseline = {
   event_retention_months: retentionMonths,
   events_retention_enforced: true,
 }
@@ -129,7 +136,8 @@ if (checkOnly) {
   const comparable = (key, value) => key === "app_urls" && Array.isArray(value)
     ? [...value].filter(Boolean).sort()
     : value
-  const drift = Object.entries(patch).filter(([key, expected]) =>
+  const expectedSettings = { ...patch, ...retentionBaseline }
+  const drift = Object.entries(expectedSettings).filter(([key, expected]) =>
     JSON.stringify(comparable(key, current[key])) !== JSON.stringify(comparable(key, expected)),
   )
   if (drift.length > 0) {
@@ -140,7 +148,7 @@ if (checkOnly) {
   }
   console.log(`PostHog privacy baseline verified for project ${projectId}`)
 } else if (dryRun) {
-  console.log(JSON.stringify({ endpoint, patch }, null, 2))
+  console.log(JSON.stringify({ endpoint, patch, readOnlyAudit: retentionBaseline }, null, 2))
 } else {
   const updated = await request("PATCH", patch)
   console.log(`Synced PostHog project settings for project ${projectId}`)
@@ -153,7 +161,17 @@ if (checkOnly) {
   console.log(`  Heatmaps: ${updated.heatmaps_opt_in === false ? "disabled" : "unknown"}`)
   console.log(`  Dead clicks: ${updated.capture_dead_clicks === false ? "disabled" : "unknown"}`)
   console.log(`  Event retention: ${updated.event_retention_months ?? "unknown"} months`)
-  console.log(`  Retention enforcement: ${updated.events_retention_enforced === true ? "enabled" : "unknown"}`)
+  console.log(`  Retention enforcement: ${updated.events_retention_enforced === true ? "enabled" : "disabled"}`)
   console.log(`  App URLs: ${appUrls.length}`)
   for (const url of appUrls) console.log(`    ${url}`)
+  const retentionMatches = updated.event_retention_months === retentionMonths
+    && updated.events_retention_enforced === true
+  if (!retentionMatches) {
+    console.error(
+      `PostHog retention remains plan-managed: expected ${retentionMonths} months with enforcement; `
+      + `actual ${updated.event_retention_months ?? "unknown"} months with enforcement `
+      + `${updated.events_retention_enforced === true ? "enabled" : "disabled"}. Contact PostHog support or change the project plan.`,
+    )
+    process.exitCode = 1
+  }
 }

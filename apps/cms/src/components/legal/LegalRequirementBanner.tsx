@@ -1,19 +1,20 @@
 import Link from "next/link"
-import { AlertTriangle, Info } from "lucide-react"
+import { Info } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { Button } from "@siteinabox/ui/components/button"
 import type { CustomerLegalRequirement } from "@/lib/legal/customerRequirements"
+import { acceptLegalRequirementAction } from "@/app/(frontend)/(admin)/settings/actions"
 
 export function LegalRequirementBanner({ requirements, canAccept, locale }: { requirements: CustomerLegalRequirement[]; canAccept: boolean; locale: string }) {
   if (!requirements.length) return null
   const primary = requirements.find((item) => item.requiresAcceptance) ?? requirements[0]!
-  const urgent = primary.action === "mandatory_reaccept" && primary.overdue
   const en = locale.startsWith("en")
+  const canConfirm = canAccept && (primary.requiresAcceptance || primary.action === "notice_and_continued_use")
 
   return (
     <div className="border-b bg-background px-4 py-3 md:px-6">
-      <Alert variant={urgent ? "warning" : "default"}>
-        {urgent ? <AlertTriangle /> : <Info />}
+      <Alert>
+        <Info />
         <AlertTitle className="line-clamp-none">
           {primary.requiresAcceptance
             ? (en ? "Updated terms require your attention" : "Bijgewerkte voorwaarden vragen je aandacht")
@@ -27,13 +28,18 @@ export function LegalRequirementBanner({ requirements, canAccept, locale }: { re
             {requirements.length > 1 ? (en ? ` ${requirements.length} notices are open.` : ` Er staan ${requirements.length} kennisgevingen open.`) : ""}
             {primary.requiresAcceptance && !canAccept ? (en ? " A site owner must accept the terms." : " Een eigenaar van deze website moet de voorwaarden accepteren.") : ""}
           </p>
-          <Button asChild size="sm" variant={urgent ? "warning" : "outline"} className="mt-1 sm:mt-0 sm:self-end">
-            <Link href={primary.requiresAcceptance && canAccept ? "/settings#agreements" : primary.href}>
-              {primary.requiresAcceptance && canAccept
-                ? (en ? "Review in settings" : "Bekijken in instellingen")
-                : (en ? "View document" : "Document bekijken")}
-            </Link>
-          </Button>
+          {canConfirm ? (
+            <form action={acceptLegalRequirementAction} className="mt-2 flex items-center justify-end gap-2 sm:mt-0 sm:self-end">
+              <input type="hidden" name="requirementId" value={primary.id} />
+              <input type="hidden" name="acceptance" value="accepted" />
+              <Button asChild size="sm" variant="ghost"><Link href="/settings#agreements">{en ? "View" : "Bekijken"}</Link></Button>
+              <Button type="submit" size="sm">{en ? "Accept" : "Akkoord"}</Button>
+            </form>
+          ) : (
+            <Button asChild size="sm" variant="outline" className="mt-1 sm:mt-0 sm:self-end">
+              <Link href={primary.href}>{en ? "View document" : "Document bekijken"}</Link>
+            </Button>
+          )}
         </AlertDescription>
       </Alert>
     </div>

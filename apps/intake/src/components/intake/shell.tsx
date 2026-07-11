@@ -122,7 +122,8 @@ function IntakeShellContent() {
   const canContinueVisualStyle = isVisualStyleComplete(visualValues);
   const canContinueFinalDetails =
     isFinalDetailsComplete(finalDetailsValues) &&
-    legalValues.businessUseAccepted;
+    legalValues.businessUseAccepted &&
+    legalValues.termsAccepted;
   const showContentCompletionHint =
     isContentEntry && !canContinueContent && contentContinueAttempted;
   const firstIncompleteContactSection = isContactEntry
@@ -193,6 +194,8 @@ function IntakeShellContent() {
     ? `Controleer je ${finalDetailsFieldTitles[firstIncompleteFinalDetailsField]}.`
     : !legalValues.businessUseAccepted
       ? "Bevestig dat je de aanvraag zakelijk doet."
+      : !legalValues.termsAccepted
+        ? "Accepteer de algemene voorwaarden om je aanvraag te versturen."
       : submitError ?? "";
   const finalDetailsCompletionHintId = "final-details-completion-hint";
   const firstIncompleteContentCard = isContentEntry

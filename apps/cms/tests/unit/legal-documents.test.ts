@@ -143,6 +143,28 @@ describe("legal document synchronization", () => {
     })
   })
 
+  it("materializes deemed acceptance with an objection deadline but no enforcement deadline", async () => {
+    const created: any[] = []
+    const payload = {
+      find: vi.fn(async ({ collection }: any) => collection === "users"
+        ? { docs: [{ id: 9, email: "owner@example.test", tenants: [{ tenant: 7 }] }], hasNextPage: false }
+        : { docs: [] }),
+      create: vi.fn(async ({ data }: any) => {
+        const row = { id: 20, ...data }
+        created.push(row)
+        return row
+      }),
+    } as any
+
+    await ensureLegalRequirementsForRelease(payload, { id: 10 }, release("notice_and_continued_use"))
+
+    expect(created[0]).toMatchObject({
+      action: "notice_and_continued_use",
+      enforceAt: undefined,
+      objectionDeadlineAt: "2026-08-01T00:00:00.000Z",
+    })
+  })
+
   it("renews configured analytics consent once when the scoped release becomes effective", async () => {
     const tenant = {
       id: 7,

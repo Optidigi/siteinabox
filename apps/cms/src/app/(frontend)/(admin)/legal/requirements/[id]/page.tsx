@@ -21,8 +21,11 @@ export default async function LegalRequirementDetailPage({ params }: { params: P
     <LegalRecordDetail title="Vereiste" fields={[
       { label: "Tenant", value: label(record.tenant, ["name", "slug", "domain"]) }, { label: "Account", value: record.subjectEmail },
       { label: "Document", value: label(record.document, ["title", "releaseKey"]) }, { label: "Actie", value: record.action },
-      { label: "Status", value: record.status }, { label: "Handhaven vanaf", value: record.enforceAt },
-      { label: "Genotificeerd", value: record.notifiedAt }, { label: "Voldaan", value: record.satisfiedAt },
+      { label: "Status", value: record.status }, { label: "Expliciete deadline", value: record.enforceAt },
+      { label: "Reactietermijn", value: record.objectionDeadlineAt }, { label: "Genotificeerd", value: record.notifiedAt },
+      { label: "Kennisgeving geleverd", value: record.noticeDeliveredAt }, { label: "Bezwaar ontvangen", value: record.objectedAt },
+      { label: "Kwalificerend gebruik", value: record.qualifyingUseAt }, { label: "Stilzwijgend aanvaard", value: record.deemedAcceptedAt },
+      { label: "Resolutie", value: record.resolutionBasis }, { label: "Afgerond", value: record.satisfiedAt },
       { label: "Acceptatiebewijs", value: label(record.acceptance, ["evidenceKey", "id"]) }, { label: "Vereistesleutel", value: record.requirementKey, mono: true },
       { label: "Laatste fout", value: record.lastError },
     ]} />
