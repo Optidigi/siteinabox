@@ -14,6 +14,7 @@ export interface MobileInlinePillProps {
   dataAttrs?: Record<string, string | undefined>
   sizeClassName?: string
   shine?: boolean
+  shineColor?: "black" | "white"
 }
 
 /**
@@ -29,6 +30,7 @@ export function MobileInlinePill({
   dataAttrs,
   sizeClassName = "size-12",
   shine = false,
+  shineColor = "white",
 }: MobileInlinePillProps) {
   return (
     <Button
@@ -50,9 +52,9 @@ export function MobileInlinePill({
     >
       {shine && (
         <ShineBorder
-          borderWidth={1}
-          duration={14}
-          shineColor={["transparent", "white", "white", "white", "transparent"]}
+          borderWidth={2}
+          duration={10}
+          shineColor={["transparent", shineColor, shineColor, shineColor, "transparent"]}
         />
       )}
       {icon}

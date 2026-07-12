@@ -7,18 +7,21 @@ import { PreviewMobileThemeBar } from "@/components/preview/preview-mobile-theme
 import {
   PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
   previewMobileChromeWrapperClass,
+  previewMobileChromeShineColor,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 function PreviewMobileNavPills({
+  theme,
   canCompleteOrder,
   paymentSatisfied,
   checkoutHref,
   reviewHref,
   customerNavigationBlocked,
 }: {
+  theme: ThemeTokens | null
   canCompleteOrder: boolean
   paymentSatisfied: boolean
   checkoutHref: string
@@ -26,6 +29,7 @@ function PreviewMobileNavPills({
   customerNavigationBlocked: boolean
 }) {
   const t = useTranslations("preview")
+  const shineColor = previewMobileChromeShineColor(theme)
 
   return (
     <>
@@ -40,6 +44,7 @@ function PreviewMobileNavPills({
         disabled={customerNavigationBlocked}
         dataAttrs={{ "data-mobile-preview-review": "" }}
         shine
+        shineColor={shineColor}
       />
 
       {canCompleteOrder ? (
@@ -54,6 +59,7 @@ function PreviewMobileNavPills({
           disabled={customerNavigationBlocked}
           dataAttrs={{ "data-mobile-preview-launch": "" }}
           shine
+          shineColor={shineColor}
         />
       ) : paymentSatisfied ? (
         <MobileFloatingPill
@@ -66,6 +72,7 @@ function PreviewMobileNavPills({
           disabled
           dataAttrs={{ "data-mobile-preview-payment-complete": "" }}
           shine
+          shineColor={shineColor}
         />
       ) : null}
     </>
@@ -92,6 +99,7 @@ export function PreviewMobileChrome({
   return (
     <div className={cn("md:hidden", previewMobileChromeWrapperClass(theme))}>
       <PreviewMobileNavPills
+        theme={theme}
         canCompleteOrder={canCompleteOrder}
         paymentSatisfied={paymentSatisfied}
         checkoutHref={checkoutHref}

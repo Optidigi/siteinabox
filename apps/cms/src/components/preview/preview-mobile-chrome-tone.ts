@@ -18,6 +18,11 @@ export function previewMobileChromeWrapperClass(theme: ThemeTokens | null | unde
   return cn(previewMobileChromeToneClass(theme))
 }
 
+/** The chrome is inverted against the site, so the shine contrasts with the pill itself. */
+export function previewMobileChromeShineColor(theme: ThemeTokens | null | undefined): "black" | "white" {
+  return resolvePreviewSiteMode(theme) === "dark" ? "black" : "white"
+}
+
 export const PREVIEW_MOBILE_CHROME_INSET = "px-[max(env(safe-area-inset-left),0.75rem)]"
 
 /** Shared tap target for preview chrome pills and popover option circles (52px). */

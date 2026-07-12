@@ -34,6 +34,7 @@ export interface MobileFloatingPillProps {
   sizeClassName?: string
   /** Adds the preview toolbar's animated Magic UI shine border. */
   shine?: boolean
+  shineColor?: "black" | "white"
 }
 
 /**
@@ -61,6 +62,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   surface = "inverted",
   sizeClassName = "size-12",
   shine = false,
+  shineColor = "white",
 }) => {
   const isLoading = variant === "loading"
   const tone = badgeTone ?? (variant === "destructive" ? "destructive" : "warning")
@@ -107,9 +109,9 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
     <>
       {shine && (
         <ShineBorder
-          borderWidth={1}
-          duration={14}
-          shineColor={["transparent", "white", "white", "white", "transparent"]}
+          borderWidth={2}
+          duration={10}
+          shineColor={["transparent", shineColor, shineColor, shineColor, "transparent"]}
         />
       )}
       {isLoading ? (
