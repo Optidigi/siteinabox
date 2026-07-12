@@ -21,26 +21,23 @@ describe("preview mobile chrome", () => {
     expect(chrome).toContain("Rocket")
     expect(chrome).toContain("CheckCircle2")
     expect(chrome).toContain('variant="success"')
-    expect(chrome.match(/\bshine\b/g)?.length).toBeGreaterThanOrEqual(3)
+    expect(chrome.match(/\bcontrastBorder\b/g)?.length).toBeGreaterThanOrEqual(3)
     expect(chrome).toContain("PreviewMobileThemeBar")
     expect(chrome).toContain("md:hidden")
 
     expect(tone).toContain("previewMobileChromeToneClass")
-    expect(tone).toContain("previewMobileChromeShineColor")
-    expect(tone).toContain('=== "dark" ? "black" : "white"')
+    expect(tone).not.toContain("previewMobileChromeShineColor")
     expect(tone).toContain('=== "light" ? "dark"')
     expect(tone).toContain("preview-mobile-chrome-light")
 
     expect(themeBar).toContain("MobileInlinePill")
-    expect(themeBar).toContain("shine")
-    expect(themeBar).toContain("shineColor={shineColor}")
+    expect(themeBar).toContain("contrastBorder")
 
     const floatingPill = read("src/components/common/mobile-floating-pill.tsx")
     const inlinePill = read("src/components/common/mobile-inline-pill.tsx")
     for (const pill of [floatingPill, inlinePill]) {
-      expect(pill).toContain("borderWidth={2}")
-      expect(pill).toContain("duration={10}")
-      expect(pill).toContain("shineColor, shineColor, shineColor")
+      expect(pill).toContain('contrastBorder && "border-foreground"')
+      expect(pill).not.toContain("ShineBorder")
     }
     expect(themeBar).toContain("justify-center gap-3")
     expect(themeBar).not.toContain("justify-between")

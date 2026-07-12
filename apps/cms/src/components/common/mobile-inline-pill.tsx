@@ -3,7 +3,6 @@
 import * as React from "react"
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { ShineBorder } from "@/components/common/shine-border"
 
 export interface MobileInlinePillProps {
   icon: React.ReactNode
@@ -13,8 +12,7 @@ export interface MobileInlinePillProps {
   buttonRef?: React.Ref<HTMLButtonElement>
   dataAttrs?: Record<string, string | undefined>
   sizeClassName?: string
-  shine?: boolean
-  shineColor?: "black" | "white"
+  contrastBorder?: boolean
 }
 
 /**
@@ -29,8 +27,7 @@ export function MobileInlinePill({
   buttonRef,
   dataAttrs,
   sizeClassName = "size-12",
-  shine = false,
-  shineColor = "white",
+  contrastBorder = false,
 }: MobileInlinePillProps) {
   return (
     <Button
@@ -44,19 +41,13 @@ export function MobileInlinePill({
       {...(dataAttrs ?? {})}
       className={cn(
         sizeClassName,
-        "relative shrink-0 overflow-hidden rounded-full border shadow-lg transition-all duration-200",
+        "shrink-0 rounded-full border shadow-lg transition-all duration-200",
         active
           ? "border-primary bg-background text-foreground ring-2 ring-primary/35 hover:bg-background"
           : "border-border/60 bg-background text-foreground hover:bg-background/90",
+        contrastBorder && "border-foreground",
       )}
     >
-      {shine && (
-        <ShineBorder
-          borderWidth={2}
-          duration={10}
-          shineColor={["transparent", shineColor, shineColor, shineColor, "transparent"]}
-        />
-      )}
       {icon}
     </Button>
   )

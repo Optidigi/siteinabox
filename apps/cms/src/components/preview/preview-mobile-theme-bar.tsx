@@ -16,7 +16,6 @@ import {
   PREVIEW_MOBILE_CHROME_CONTROL_SIZE,
   PREVIEW_MOBILE_CHROME_INSET,
   previewMobileChromeToneClass,
-  previewMobileChromeShineColor,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -46,7 +45,6 @@ export function PreviewMobileThemeBar({
 }) {
   const t = useTranslations("editor")
   const previewT = useTranslations("preview")
-  const shineColor = previewMobileChromeShineColor(theme)
   const [openSegment, setOpenSegment] = React.useState<Segment | null>(null)
   const lastOpenSegmentRef = React.useRef<Segment | null>(null)
   const segmentRefs = React.useRef<Record<Segment, HTMLButtonElement | null>>({
@@ -113,8 +111,7 @@ export function PreviewMobileThemeBar({
               }}
               dataAttrs={{ "data-mobile-preview-theme-pill": value }}
               sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
-              shine
-              shineColor={shineColor}
+              contrastBorder
             />
           ))}
         </div>

@@ -3,7 +3,6 @@ import * as React from "react"
 import { Loader2 } from "lucide-react"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { ShineBorder } from "@/components/common/shine-border"
 
 export type MobileFloatingPillVariant = "default" | "warning" | "destructive" | "loading" | "success"
 export type MobileFloatingPillPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right"
@@ -32,9 +31,8 @@ export interface MobileFloatingPillProps {
   /** `theme` follows token background/foreground (for preview chrome wrappers). */
   surface?: "inverted" | "theme"
   sizeClassName?: string
-  /** Adds the preview toolbar's animated Magic UI shine border. */
-  shine?: boolean
-  shineColor?: "black" | "white"
+  /** Uses the foreground colour as a high-contrast border. */
+  contrastBorder?: boolean
 }
 
 /**
@@ -61,8 +59,7 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   dataAttrs,
   surface = "inverted",
   sizeClassName = "size-12",
-  shine = false,
-  shineColor = "white",
+  contrastBorder = false,
 }) => {
   const isLoading = variant === "loading"
   const tone = badgeTone ?? (variant === "destructive" ? "destructive" : "warning")
@@ -92,13 +89,14 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
     variant === "destructive" && "text-destructive",
     variant === "loading" && "opacity-90 cursor-wait border-transparent",
     variant === "success" && "border-transparent bg-success text-success-foreground shadow-success/25",
+    contrastBorder && "border-foreground",
   )
   const hiddenMotionClass = position.endsWith("right") ? "translate-x-3" : "-translate-x-3"
   const isInteractive = !isLoading && !disabled && visible
   const useLink = Boolean(href && isInteractive)
   const sharedClassName = cn(
     cspPosition.className,
-    "md:hidden fixed z-50 inline-flex items-center justify-center overflow-hidden rounded-full transition-all duration-200 ease-out",
+    "md:hidden fixed z-50 inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
     sizeClassName,
     visible ? "pointer-events-auto opacity-100 scale-100 translate-x-0" : cn("pointer-events-none opacity-0 scale-75", hiddenMotionClass),
     !isInteractive && "pointer-events-none opacity-50",
@@ -107,13 +105,6 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
   )
   const sharedContent = (
     <>
-      {shine && (
-        <ShineBorder
-          borderWidth={2}
-          duration={10}
-          shineColor={["transparent", shineColor, shineColor, shineColor, "transparent"]}
-        />
-      )}
       {isLoading ? (
         <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
       ) : (
