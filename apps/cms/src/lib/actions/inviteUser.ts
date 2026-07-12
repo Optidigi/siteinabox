@@ -5,6 +5,7 @@ import config from "@/payload.config"
 import crypto from "node:crypto"
 import { auth } from "@/lib/betterAuth"
 import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
+import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
 
 // fn-batch-6 follow-up — return shape now distinguishes auth/permission
 // failures (still throw — they're system-level) from validation failures
@@ -95,6 +96,17 @@ export async function inviteUser(input: {
       return { ok: false as const, error: String(e.message) }
     }
     throw err
+  }
+  try {
+    await provisionDefaultTenantEmailPreferences({
+      payload,
+      tenantId: input.tenantId,
+      userId: created.id,
+      email: input.email,
+      role: input.role,
+    })
+  } catch (err) {
+    payload.logger.warn({ err, userId: created.id }, "[invite] default email preference provisioning failed")
   }
   // Normal onboarding is passwordless: create the Payload user, then ask
   // Better Auth to send the same magic-link flow used by CMS login.

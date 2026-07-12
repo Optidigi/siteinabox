@@ -38,6 +38,11 @@ const createPayloadStub = () => {
     "communication-preference-events": [],
   }
   const payload = {
+    db: {
+      beginTransaction: async () => "tx-intake",
+      commitTransaction: async () => undefined,
+      rollbackTransaction: async () => undefined,
+    },
     find: async (args: any) => {
       const docs = store[args.collection as CollectionSlug].filter((doc) => matchesWhere(doc, args.where))
       return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }

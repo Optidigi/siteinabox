@@ -257,7 +257,7 @@ export const SiteSettings: CollectionConfig = {
         { name: "host", type: "text", required: true }
       ]},
     { name: "contactEmail", type: "email",
-      admin: { description: adminText("Tenant contact email for generated-site form notifications. Defaults from intake/generation when available and can be changed here.", "Contact-e-mailadres van de klantomgeving voor formuliermeldingen van de gegenereerde site. Wordt waar mogelijk uit intake/generatie overgenomen en kan hier worden gewijzigd.") } },
+      admin: { description: adminText("Public contact address shown on the generated site. Operational form notifications are configured in Email preferences.", "Openbaar contactadres op de gegenereerde site. Operationele formuliermeldingen stel je in bij E-mailvoorkeuren.") } },
     { name: "branding", type: "group", fields: [
       { name: "logo", type: "upload", relationTo: "media" },
       { name: "favicon", type: "upload", relationTo: "media" },

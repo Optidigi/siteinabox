@@ -41,7 +41,7 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain("rect.top + message.point.y")
     expect(host).toContain('message.type === "edit.start" && message.mode === "settings"')
     expect(host).toContain("findBlockIndexByWireId")
-    expect(host).toContain("Retry frame")
+    expect(host).toContain('tCommon("retry")')
     expect(host).toContain("setRetryKey")
     expect(host).toContain("data-siab-editor-frame-layout")
     expect(host).toContain("measureFrameDocumentHeight")

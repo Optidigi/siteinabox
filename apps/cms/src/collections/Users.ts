@@ -384,7 +384,7 @@ const validateTenants: ArrayFieldValidation = (value, { siblingData, req }: any)
   const role = siblingData?.role
   const len = Array.isArray(value) ? value.length : 0
   if (role === "super-admin") {
-    if (len !== 0) return adminValidationText(req?.i18n?.language, "Super admins must not have tenants", "Superbeheerders mogen geen klantomgevingen hebben")
+    if (len !== 0) return adminValidationText(req?.i18n?.language, "A super-admin must not have tenant memberships", "Een superbeheerder mag geen klantomgevingen hebben")
     return true
   }
   if (len !== 1) return adminValidationText(req?.i18n?.language, "Exactly one tenant is required for users who are not super admins", "Voor gebruikers die geen superbeheerder zijn is precies één klantomgeving verplicht")

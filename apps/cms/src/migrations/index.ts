@@ -55,6 +55,7 @@ import * as migration_20260710_142653_legal_governance_foundation from './202607
 import * as migration_20260711_102515_legal_notification_deliveries from './20260711_102515_legal_notification_deliveries';
 import * as migration_20260711_125450_20260711_legal_operator_events from './20260711_125450_20260711_legal_operator_events';
 import * as migration_20260711_183922_20260711_notice_and_continued_use from './20260711_183922_20260711_notice_and_continued_use';
+import * as migration_20260712_083723_communication_preferences_and_email_policy from './20260712_083723_communication_preferences_and_email_policy';
 
 export const migrations = [
   {
@@ -340,6 +341,11 @@ export const migrations = [
   {
     up: migration_20260711_183922_20260711_notice_and_continued_use.up,
     down: migration_20260711_183922_20260711_notice_and_continued_use.down,
-    name: '20260711_183922_20260711_notice_and_continued_use'
+    name: '20260711_183922_20260711_notice_and_continued_use',
+  },
+  {
+    up: migration_20260712_083723_communication_preferences_and_email_policy.up,
+    down: migration_20260712_083723_communication_preferences_and_email_policy.down,
+    name: '20260712_083723_communication_preferences_and_email_policy'
   },
 ];

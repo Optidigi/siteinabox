@@ -590,6 +590,34 @@
     "openUsers": "Open users page",
     "verifyAccess": "Verify access"
   },
+  "emailPreferences": {
+    "personalTitle": "My email preferences",
+    "personalDescription": "Choose which optional email you receive. These choices belong to you and cannot be enabled by a site owner.",
+    "marketing": "Marketing email",
+    "marketingDescription": "Tips, updates and offers from Site in a Box. Off unless you explicitly opt in.",
+    "productNotifications": "Product notifications",
+    "productNotificationsDescription": "Optional non-promotional updates about product features and workflows.",
+    "language": "Email language",
+    "mandatoryDescription": "Security, requested transactional and required legal messages cannot be disabled here.",
+    "savePersonal": "Save my preferences",
+    "tenantTitle": "Site notifications",
+    "tenantDescription": "Choose which team members receive operational messages. This does not change anyone's marketing consent.",
+    "saveMember": "Save notifications for {name}",
+    "savedTitle": "Saved",
+    "savedDescription": "The email preferences were updated.",
+    "failedTitle": "Could not save",
+    "failedDescription": "The email preferences could not be updated. Please try again.",
+    "criticalDescription": "Keep at least one recipient enabled for every critical operational category.",
+    "lastUpdated": "Last updated: {date}",
+    "roles": { "owner": "Owner", "editor": "Editor", "viewer": "Viewer" },
+    "categories": {
+      "formSubmissions": "Form submissions",
+      "publishingAndSiteStatus": "Publishing and site status",
+      "domainAndDns": "Domain, DNS and email provisioning",
+      "billingAndPayments": "Billing and payments",
+      "teamAndAccess": "Team and access changes"
+    }
+  },
   "settings": {
     "sectionLabel": "Settings section",
     "general": "General",
@@ -602,7 +630,7 @@
     "description": "Site description",
     "language": "Language",
     "contactEmail": "Contact email",
-    "contactEmailDescription": "Receives generated-site form notifications. Defaults to the signup email and can be changed here.",
+    "contactEmailDescription": "Public contact address shown on the website. Operational form notifications are configured under Email preferences.",
     "branding": "Branding",
     "logo": "Logo",
     "favicon": "Favicon",

@@ -237,8 +237,8 @@ describe("audit-p2 #10 — re-arm guards", () => {
     expect(typeof dataField.validate).toBe("function")
     // Call with oversized payload — must reject (preserves the 32 KB cap).
     const oversized = { x: "a".repeat(40_000) }
-    const result = dataField.validate(oversized)
-    expect(result).toMatch(/exceeds .*-byte cap/)
+    const result = dataField.validate(oversized, { req: { i18n: { language: "en" } } })
+    expect(result).toMatch(/exceeds the .*byte limit/)
   })
 
   it("R2 — Forms.access.create is still the layer-2 bogus-auth gate (P1 #5 sub-fix 1)", () => {

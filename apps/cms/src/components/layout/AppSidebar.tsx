@@ -59,7 +59,9 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   const analyticsHref = inTenantView ? `${base}/analytics` : "/analytics"
   const settingsHref = `${base}/settings`
   const teamHref = `${base}/users`
-  const showSettings = showContent && (role === "super-admin" || role === "owner")
+  // Every tenant member can manage their own email preferences on Settings.
+  // Website/legal controls on that page remain owner-only.
+  const showSettings = showContent
   const showTeam = showContent && (inTenantView || role === "owner")
 
   return (

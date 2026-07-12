@@ -21,6 +21,7 @@ import {
   Orders,
   SiteApprovals,
   SiteReviewRevisions,
+  TenantNotificationSubscriptions,
 } from "@/collections/LegalRecords"
 import { Media } from "@/collections/Media"
 import { OperationalAlerts } from "@/collections/OperationalAlerts"
@@ -115,6 +116,7 @@ export default buildConfig({
     SiteApprovals,
     CommunicationPreferences,
     CommunicationPreferenceEvents,
+    TenantNotificationSubscriptions,
     LegalRequirements,
     LegalNotificationDeliveries,
     LegalOperatorEvents,

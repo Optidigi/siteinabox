@@ -50,13 +50,11 @@ describe("OBS-103 route and navigation parity source checks", () => {
   it("does not expose selected-site team links to editor/viewer sidebar roles", () => {
     const sidebar = read("src/components/layout/AppSidebar.tsx")
     expect(sidebar).toContain('const showTeam = showContent && (inTenantView || role === "owner")')
-    expect(sidebar).toContain('const showSettings = showContent && (role === "super-admin" || role === "owner")')
+    expect(sidebar).toContain("const showSettings = showContent")
   })
 
-  it("blocks slugless tenant settings and team direct URLs for editor/viewer", () => {
-    expect(read("src/app/(frontend)/(admin)/settings/page.tsx")).toContain(
-      'if (user.role !== "owner") redirect("/?error=forbidden")'
-    )
+  it("keeps team owner-only while tenant settings expose personal preferences", () => {
+    expect(read("src/app/(frontend)/(admin)/settings/page.tsx")).toContain("canManageTenantNotifications={isOwner}")
     expect(read("src/app/(frontend)/(admin)/users/page.tsx")).toContain(
       'if (user.role !== "owner") redirect("/?error=forbidden")'
     )

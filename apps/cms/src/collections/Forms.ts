@@ -22,7 +22,7 @@ import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 // "read") don't trip the cap.
 const MAX_FORM_DATA_BYTES = 32_768
 
-const validateFormData: JSONFieldValidation = (value, { req }) => {
+const validateFormData: JSONFieldValidation = (value, { req } = {} as any) => {
   const serialised = JSON.stringify(value ?? {})
   if (serialised.length > MAX_FORM_DATA_BYTES) {
     return adminValidationText(req?.i18n?.language, `Data exceeds the ${MAX_FORM_DATA_BYTES}-byte limit (${serialised.length} bytes received)`, `Gegevens overschrijden de limiet van ${MAX_FORM_DATA_BYTES} bytes (${serialised.length} bytes ontvangen)`)
@@ -65,10 +65,10 @@ const firstStringFromRecord = (value: unknown, keys: string[]) => {
 
 type FormNotificationPayload = {
   find(args: {
-    collection: "site-settings"
+    collection: "site-settings" | "tenant-notification-subscriptions"
     where: Record<string, unknown>
-    limit: 1
-    depth: 0
+    limit: number
+    depth: number
     overrideAccess: true
   }): Promise<{ docs: unknown[] }>
   findByID(args: {
@@ -111,12 +111,12 @@ export async function notifyTenantOfFormSubmission({
   }
 
   try {
-    const [settingsResult, tenant] = await Promise.all([
+    const [subscriptionResult, tenant] = await Promise.all([
       payload.find({
-        collection: "site-settings",
-        where: { tenant: { equals: tenantId } },
-        limit: 1,
-        depth: 0,
+        collection: "tenant-notification-subscriptions",
+        where: { and: [{ tenant: { equals: tenantId } }, { formSubmissions: { equals: true } }] },
+        limit: 100,
+        depth: 1,
         overrideAccess: true,
       }),
       payload.findByID({
@@ -126,11 +126,19 @@ export async function notifyTenantOfFormSubmission({
         overrideAccess: true,
       }),
     ])
-    const settings = settingsResult.docs[0] as { contactEmail?: unknown } | undefined
-    const recipient = safeEmail(settings?.contactEmail)
-    if (!recipient) {
+    const recipients = Array.from(new Set(subscriptionResult.docs
+      .map((subscription) => {
+        const record = subscription as { email?: unknown; user?: unknown }
+        const member = record.user && typeof record.user === "object" ? record.user as { email?: unknown; tenants?: Array<{ tenant?: unknown }> } : null
+        const memberTenant = relationshipId(member?.tenants?.[0]?.tenant as Parameters<typeof relationshipId>[0])
+        const currentEmail = safeEmail(member?.email)
+        const routedEmail = safeEmail(record.email)
+        return memberTenant === String(tenantId) && currentEmail === routedEmail ? currentEmail : null
+      })
+      .filter((email): email is string => Boolean(email))))
+    if (recipients.length === 0) {
       payload.logger?.warn?.("[forms] tenant notification skipped", {
-        reason: "missing_contact_email",
+        reason: "missing_subscription",
         tenantId,
         formId: doc.id,
       })
@@ -148,17 +156,29 @@ export async function notifyTenantOfFormSubmission({
     }
 
     const message = tenantFormNotificationTemplate(doc)
-    await sendEmail({
-      to: recipient,
-      from: sender.senderEmail,
-      replyTo: safeEmail(doc.email ?? firstStringFromRecord(doc.data, ["email", "contactEmail"])) ?? undefined,
-      subject: message.subject,
-      html: message.html,
-      text: message.text,
-      intent: "forms.tenant_notification",
-      tenant: tenantId,
-      payload: payload as unknown as Parameters<typeof sendEmail>[0]["payload"],
-    })
+    const deliveries = await Promise.allSettled(recipients.map((recipient) => sendEmail({
+        to: recipient,
+        from: sender.senderEmail,
+        replyTo: safeEmail(doc.email ?? firstStringFromRecord(doc.data, ["email", "contactEmail"])) ?? undefined,
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
+        intent: "forms.tenant_notification",
+        category: "tenant_operational",
+        tenantSubscriptionCategory: "formSubmissions",
+        preferenceSubject: recipient,
+        tenant: tenantId,
+        payload: payload as unknown as Parameters<typeof sendEmail>[0]["payload"],
+      })))
+    const failures = deliveries.filter((delivery) => delivery.status === "rejected")
+    if (failures.length > 0) {
+      payload.logger?.warn?.("[forms] tenant notification delivery partially failed", {
+        tenantId,
+        formId: doc.id,
+        failed: failures.length,
+        attempted: deliveries.length,
+      })
+    }
   } catch (error) {
     payload.logger?.warn?.("[forms] tenant notification failed", {
       tenantId,

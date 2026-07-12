@@ -5,6 +5,7 @@ import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { auth } from "@/lib/betterAuth"
 import { relationshipId } from "@/lib/relationshipId"
+import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
 
 type SnapshotDoc = {
   id?: string | number | null
@@ -276,11 +277,28 @@ export async function sendLiveHandoffEmailAfterActivation(
       email: recipient,
       tenantId: input.tenant.id,
     })
-    await ensureLiveHandoffCustomerUser(payload, {
+    const customerUserId = await ensureLiveHandoffCustomerUser(payload, {
       email: recipient,
       name: customerName,
       tenantId: input.tenant.id,
     })
+    if ((payload as any).db?.beginTransaction) {
+      try {
+        await provisionDefaultTenantEmailPreferences({
+          payload,
+          tenantId: input.tenant.id,
+          userId: customerUserId,
+          email: recipient,
+          role: "owner",
+        })
+      } catch (error) {
+        ;(payload as any).logger?.warn?.("[publish] default email preference provisioning failed", {
+          tenant: input.tenant.id,
+          user: customerUserId,
+          error: error instanceof Error ? error.message : "unknown",
+        })
+      }
+    }
     await sendLiveHandoffMagicLink({
       email: recipient,
       name: customerName,

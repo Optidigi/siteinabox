@@ -11,34 +11,81 @@ import config from "@/payload.config"
 import { getTenantLegalAcceptanceHistory, getTenantLegalRequirements } from "@/lib/legal/customerRequirements"
 import { LegalAgreementsSection } from "@/components/legal/LegalAgreementsSection"
 import { resolveLocale } from "@/i18n/config"
+import {
+  findCommunicationPreference,
+  findTenantNotificationSubscription,
+} from "@/lib/legal/communicationPreferences"
+import { EmailPreferencesSection, type TenantNotificationMemberView } from "@/components/email/EmailPreferencesSection"
 
 export default async function TenantSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ legal?: string }>
+  searchParams: Promise<{ legal?: string; emailPreferences?: string }>
 }) {
   const { user, ctx } = await requireAuth()
   if (ctx.mode === "super-admin") redirect("/sites")
-  if (user.role !== "owner") redirect("/?error=forbidden")
   const t = await getAdminTranslations(user, "app")
   const payloadPromise = getPayload({ config })
-  const [settings, legalRequirements, acceptanceHistory, query] = await Promise.all([
-    getOrCreateSiteSettings(ctx.tenant.id),
-    payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id)),
-    payloadPromise.then((payload) => getTenantLegalAcceptanceHistory(payload, ctx.tenant.id)),
+  const isOwner = user.role === "owner"
+  const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers] = await Promise.all([
+    isOwner ? getOrCreateSiteSettings(ctx.tenant.id) : Promise.resolve(null),
+    isOwner ? payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id)) : Promise.resolve([]),
+    isOwner ? payloadPromise.then((payload) => getTenantLegalAcceptanceHistory(payload, ctx.tenant.id)) : Promise.resolve([]),
     searchParams,
+    payloadPromise.then((payload) => findCommunicationPreference(payload, user.email)),
+    isOwner
+      ? payloadPromise.then((payload) => payload.find({
+          collection: "users",
+          where: { "tenants.tenant": { equals: ctx.tenant.id } },
+          limit: 100,
+          sort: "name",
+          depth: 0,
+          user,
+        }))
+      : Promise.resolve({ docs: [] }),
   ])
+
+  const payload = await payloadPromise
+  const members: TenantNotificationMemberView[] = await Promise.all(tenantMembers.docs.map(async (member: any) => {
+    const subscription = await findTenantNotificationSubscription(payload, ctx.tenant.id, member.id)
+    return {
+      userId: String(member.id),
+      name: member.name || member.email,
+      email: member.email,
+      role: member.role,
+      categories: {
+        formSubmissions: subscription?.formSubmissions === true,
+        publishingAndSiteStatus: subscription?.publishingAndSiteStatus === true,
+        domainAndDns: subscription?.domainAndDns === true,
+        billingAndPayments: subscription?.billingAndPayments === true,
+        teamAndAccess: subscription?.teamAndAccess === true,
+      },
+    }
+  }))
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title={t("settings")} />
-      <SettingsForm
-        initial={settings}
-        canEdit
-        settingsContract={resolveSettingsContract(ctx.tenant.siteManifest as any)}
-        tenantId={ctx.tenant.id}
-        autoPublishLive={isOfficialTenant(ctx.tenant)}
+      <EmailPreferencesSection
+        personal={{
+          marketing: personalPreference?.marketing === true,
+          productNotifications: personalPreference?.productNotifications === true,
+          locale: personalPreference?.locale === "en" ? "en" : resolveLocale(user.language),
+          updatedAt: personalPreference?.updatedAt,
+        }}
+        members={members}
+        canManageTenantNotifications={isOwner}
+        result={query.emailPreferences}
       />
-      <LegalAgreementsSection requirements={legalRequirements} acceptanceHistory={acceptanceHistory} locale={resolveLocale(user.language)} result={query.legal} />
+      {isOwner && settings && (
+        <SettingsForm
+          initial={settings}
+          canEdit
+          settingsContract={resolveSettingsContract(ctx.tenant.siteManifest as any)}
+          tenantId={ctx.tenant.id}
+          autoPublishLive={isOfficialTenant(ctx.tenant)}
+        />
+      )}
+      {isOwner && <LegalAgreementsSection requirements={legalRequirements} acceptanceHistory={acceptanceHistory} locale={resolveLocale(user.language)} result={query.legal} />}
     </div>
   )
 }

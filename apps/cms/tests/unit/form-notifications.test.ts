@@ -42,13 +42,21 @@ const formDoc = {
 }
 
 const payloadStub = (overrides: {
-  contactEmail?: string | null
+  subscriptionEmail?: string | null
   tenant?: any
   sendRejects?: boolean
 } = {}) => {
   const payload = {
     find: vi.fn(async () => ({
-      docs: [{ contactEmail: overrides.contactEmail === undefined ? "owner@client.nl" : overrides.contactEmail }],
+      docs: overrides.subscriptionEmail === null
+        ? []
+        : [{
+            email: overrides.subscriptionEmail === undefined ? "owner@client.nl" : overrides.subscriptionEmail,
+            user: {
+              email: overrides.subscriptionEmail === undefined ? "owner@client.nl" : overrides.subscriptionEmail,
+              tenants: [{ tenant: 7 }],
+            },
+          }],
     })),
     findByID: vi.fn(async () => overrides.tenant === undefined ? verifiedTenant : overrides.tenant),
     create: vi.fn(),
@@ -98,14 +106,14 @@ describe("generated-site form tenant notifications", () => {
     }))
   })
 
-  it("skips when tenant contact email is missing", async () => {
-    const payload = payloadStub({ contactEmail: null })
+  it("skips when no tenant member subscribes to form notifications", async () => {
+    const payload = payloadStub({ subscriptionEmail: null })
 
     await notifyTenantOfFormSubmission({ doc: formDoc, payload })
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(payload.logger.warn).toHaveBeenCalledWith("[forms] tenant notification skipped", expect.objectContaining({
-      reason: "missing_contact_email",
+      reason: "missing_subscription",
       tenantId: "7",
       formId: 99,
     }))
@@ -117,10 +125,11 @@ describe("generated-site form tenant notifications", () => {
     await expect(notifyTenantOfFormSubmission({ doc: formDoc, payload })).resolves.toBeUndefined()
 
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1)
-    expect(payload.logger.warn).toHaveBeenCalledWith("[forms] tenant notification failed", expect.objectContaining({
+    expect(payload.logger.warn).toHaveBeenCalledWith("[forms] tenant notification delivery partially failed", expect.objectContaining({
       tenantId: "7",
       formId: 99,
-      error: "provider unavailable",
+      failed: 1,
+      attempted: 1,
     }))
   })
 })

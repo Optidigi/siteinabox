@@ -253,6 +253,24 @@ depended on command-run site generation are no longer current source of truth.
 
 ## Implemented Foundation
 
+### 2026-07-12 — Communication preferences and email policy
+
+**Status:** Implemented.
+
+The CMS now records personal marketing consent with source, statement version,
+and immutable preference events, including intake assertions without allowing a
+delayed intake request to overwrite a newer decision. Authenticated users can
+manage personal product and marketing mail choices in Settings. Tenant owners
+can manage per-member operational notification routing while database-level
+guards preserve at least one recipient for critical publishing, domain,
+billing, and team events.
+
+Optional delivery is enforced centrally: the mail sender validates the current
+preference subject and tenant subscription, rejects mismatched or batched
+optional recipients, and emits browser-safe preference links plus RFC one-click
+unsubscribe headers. Signed public preference and unsubscribe routes allow
+future marketing templates to provide an opt-out without requiring a session.
+
 ### 2026-07-11 — Tenant legal requirement workflow
 
 **Status:** Implemented.

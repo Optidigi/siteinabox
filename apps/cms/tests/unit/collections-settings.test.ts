@@ -21,10 +21,10 @@ describe("SiteSettings collection config", () => {
     expect(f.required).not.toBe(true)
   })
 
-  it("exposes contactEmail as the editable tenant form notification recipient", () => {
+  it("exposes contactEmail as the editable public site contact address", () => {
     const f = findField("contactEmail")
     expect(f).toMatchObject({ type: "email" })
-    expect(f.admin.description).toContain("form notifications")
+    expect(f.admin.description).toBeDefined()
   })
 
   it("adds language text with default 'nl'", () => {

@@ -1,7 +1,7 @@
 import type { CollectionConfig } from "payload"
 import { adminText } from "@/lib/payloadAdminI18n"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
-import { mailIntentOptions, mailRetryStateOptions, mailStatusOptions } from "@/lib/email/sendEmail"
+import { mailCategoryOptions, mailIntentOptions, mailRetryStateOptions, mailStatusOptions } from "@/lib/email/sendEmail"
 
 export const MailLogs: CollectionConfig = {
   slug: "mail-logs",
@@ -20,6 +20,7 @@ export const MailLogs: CollectionConfig = {
   },
   fields: [
     { name: "flow", type: "select", required: true, options: mailIntentOptions, index: true },
+    { name: "category", type: "select", required: true, defaultValue: "tenant_operational", options: mailCategoryOptions, index: true },
     {
       name: "tenant",
       type: "relationship",

@@ -13,6 +13,28 @@ vi.mock("@/app/(frontend)/(admin)/settings/actions", () => ({
   objectLegalRequirementAction: vi.fn(),
 }))
 
+vi.mock("next-intl/server", () => ({
+  getTranslations: async () => (key: string, values?: Record<string, unknown>) => ({
+    title: "Juridische afspraken",
+    description: "Beheer juridische afspraken.",
+    termsTitle: "Algemene voorwaarden",
+    initialTermsDescription: "Deze voorwaarden gelden voor je gebruik van Site in a Box. Bekijk en accepteer ze om de dienstverlening te blijven gebruiken.",
+    acceptanceRequiredBadge: "Acceptatie vereist",
+    noticeBadge: "Kennisgeving",
+    effectiveFrom: `Van kracht vanaf ${values?.date ?? ""}`,
+    objectionUntil: ` · bezwaar tot ${values?.date ?? ""}`,
+    acceptanceBefore: ` · accepteren voor ${values?.date ?? ""}`,
+    viewDocument: "Document bekijken",
+    acceptanceConfirmation: "Ik accepteer de voorwaarden.",
+    accept: "Accepteren",
+    recordObjection: "Bezwaar registreren",
+    legalNotice: "Juridische kennisgeving",
+    view: "Bekijken",
+    history: "Acceptatiegeschiedenis",
+    termsVersion: `Voorwaarden ${values?.version ?? ""}`,
+  }[key] ?? key),
+}))
+
 import { LegalAgreementsSection } from "@/components/legal/LegalAgreementsSection"
 import { LegalRequirementBanner } from "@/components/legal/LegalRequirementBanner"
 
@@ -64,11 +86,9 @@ describe("customer legal notices", () => {
     expect(screen.getByRole("button", { name: "Akkoord" }).getAttribute("data-variant")).toBe("default")
   })
 
-  it("shows a meaningful change summary without exposing the active document version", () => {
+  it("shows a meaningful change summary without exposing the active document version", async () => {
     const item = requirement()
-    const { container } = render(
-      <LegalAgreementsSection requirements={[item]} acceptanceHistory={[]} locale="nl-NL" />,
-    )
+    const { container } = render(await LegalAgreementsSection({ requirements: [item], acceptanceHistory: [], locale: "nl-NL" }))
 
     expect(screen.getByText(item.changeSummary)).toBeTruthy()
     expect(screen.getByRole("heading", { name: "Algemene voorwaarden" })).toBeTruthy()
@@ -80,27 +100,23 @@ describe("customer legal notices", () => {
     expect(container.textContent).not.toMatch(/eerste versie/i)
   })
 
-  it("explains an initial release in terms of the customer's required action", () => {
-    render(
-      <LegalAgreementsSection
-        requirements={[requirement({ isInitialRelease: true, changeSummary: "Eerste versie van de algemene voorwaarden voor Site in a Box." })]}
-        acceptanceHistory={[]}
-        locale="nl-NL"
-      />,
-    )
+  it("explains an initial release in terms of the customer's required action", async () => {
+    render(await LegalAgreementsSection({
+      requirements: [requirement({ isInitialRelease: true, changeSummary: "Eerste versie van de algemene voorwaarden voor Site in a Box." })],
+      acceptanceHistory: [],
+      locale: "nl-NL",
+    }))
 
     expect(screen.getByText("Deze voorwaarden gelden voor je gebruik van Site in a Box. Bekijk en accepteer ze om de dienstverlening te blijven gebruiken.")).toBeTruthy()
     expect(screen.queryByText(/eerste versie/i)).toBeNull()
   })
 
-  it("keeps document versions inside collapsed acceptance history", () => {
-    render(
-      <LegalAgreementsSection
-        requirements={[requirement()]}
-        acceptanceHistory={[acceptance]}
-        locale="nl-NL"
-      />,
-    )
+  it("keeps document versions inside collapsed acceptance history", async () => {
+    render(await LegalAgreementsSection({
+      requirements: [requirement()],
+      acceptanceHistory: [acceptance],
+      locale: "nl-NL",
+    }))
 
     const disclosure = screen.getByRole("button", { name: /Acceptatiegeschiedenis/ })
     expect(disclosure.getAttribute("aria-expanded")).toBe("false")

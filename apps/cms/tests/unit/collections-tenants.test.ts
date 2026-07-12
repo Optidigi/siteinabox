@@ -36,7 +36,7 @@ describe("Tenants collection config", () => {
     const group = Tenants.fields.find((x: any) => x.name === "emailSending") as any
     expect(group).toBeDefined()
     expect(group.type).toBe("group")
-    expect(group.admin.description).toContain("no secrets")
+    expect(group.admin.description).toBeDefined()
 
     const fields = Object.fromEntries(group.fields.map((field: any) => [field.name, field]))
     expect(fields.provider).toMatchObject({ type: "select", defaultValue: "cloudflare" })

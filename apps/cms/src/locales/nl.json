@@ -590,6 +590,34 @@
     "openUsers": "Gebruikerspagina openen",
     "verifyAccess": "Toegang controleren"
   },
+  "emailPreferences": {
+    "personalTitle": "Mijn e-mailvoorkeuren",
+    "personalDescription": "Kies welke optionele e-mails je ontvangt. Deze keuzes zijn persoonlijk en kunnen niet door een site-eigenaar worden ingeschakeld.",
+    "marketing": "Marketingmails",
+    "marketingDescription": "Tips, updates en aanbiedingen van Site in a Box. Uitgeschakeld tenzij je hier uitdrukkelijk voor kiest.",
+    "productNotifications": "Productmeldingen",
+    "productNotificationsDescription": "Optionele, niet-promotionele updates over productfuncties en werkprocessen.",
+    "language": "Taal van e-mails",
+    "mandatoryDescription": "Beveiligingsmails, aangevraagde transactionele berichten en verplichte juridische berichten kunnen hier niet worden uitgeschakeld.",
+    "savePersonal": "Mijn voorkeuren opslaan",
+    "tenantTitle": "Sitemeldingen",
+    "tenantDescription": "Kies welke teamleden operationele berichten ontvangen. Dit wijzigt niemands marketingtoestemming.",
+    "saveMember": "Meldingen voor {name} opslaan",
+    "savedTitle": "Opgeslagen",
+    "savedDescription": "De e-mailvoorkeuren zijn bijgewerkt.",
+    "failedTitle": "Opslaan mislukt",
+    "failedDescription": "De e-mailvoorkeuren konden niet worden bijgewerkt. Probeer het opnieuw.",
+    "criticalDescription": "Houd voor iedere kritieke operationele categorie minimaal één ontvanger ingeschakeld.",
+    "lastUpdated": "Laatst bijgewerkt: {date}",
+    "roles": { "owner": "Eigenaar", "editor": "Redacteur", "viewer": "Lezer" },
+    "categories": {
+      "formSubmissions": "Formulierinzendingen",
+      "publishingAndSiteStatus": "Publicatie- en sitestatus",
+      "domainAndDns": "Domein-, DNS- en e-mailinrichting",
+      "billingAndPayments": "Facturatie en betalingen",
+      "teamAndAccess": "Team- en toegangswijzigingen"
+    }
+  },
   "settings": {
     "sectionLabel": "Instellingensectie",
     "general": "Algemeen",
@@ -602,7 +630,7 @@
     "description": "Sitebeschrijving",
     "language": "Taal",
     "contactEmail": "Contact-e-mail",
-    "contactEmailDescription": "Ontvangt formuliermeldingen van de gegenereerde site. Staat standaard op het aanmeld-e-mailadres en kan hier worden aangepast.",
+    "contactEmailDescription": "Openbaar contactadres dat op de website wordt getoond. Operationele formuliermeldingen stel je in bij E-mailvoorkeuren.",
     "branding": "Uitstraling",
     "logo": "Logo",
     "favicon": "Favicon",

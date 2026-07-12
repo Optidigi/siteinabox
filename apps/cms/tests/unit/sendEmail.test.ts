@@ -273,12 +273,14 @@ describe("sendEmail", () => {
       html: "<p>Secret login body</p>",
       text: undefined,
       replyTo: undefined,
+      headers: undefined,
     })
     expect(payload.create).toHaveBeenCalledWith({
       collection: "mail-logs",
       overrideAccess: true,
       data: {
         flow: "auth.magic_link",
+        category: "security",
         sender: "noreply@siteinabox.nl",
         recipient: "customer@example.com",
         status: "sent",
@@ -324,6 +326,7 @@ describe("sendEmail", () => {
       overrideAccess: true,
       data: expect.objectContaining({
         flow: "forms.tenant_notification",
+        category: "tenant_operational",
         tenant: 42,
         status: "sent",
         providerMessageId: "tenant-message",
@@ -365,6 +368,7 @@ describe("sendEmail", () => {
       overrideAccess: true,
       data: {
         flow: "forms.tenant_notification",
+        category: "tenant_operational",
         tenant: 42,
         sender: "noreply@mail.tenant.example",
         recipient: "owner@example.com",
@@ -519,6 +523,65 @@ describe("sendEmail", () => {
       providerErrorCode: "ETIMEDOUT",
       retryState: "retryable",
     })
+  })
+
+  it("adds one-click unsubscribe headers to SMTP and Cloudflare REST sends", async () => {
+    const { sendEmail } = await import("@/lib/email/sendEmail")
+    const links = {
+      unsubscribeUrl: "https://cms.siteinabox.nl/email/preferences?token=opaque",
+      preferencesUrl: "https://cms.siteinabox.nl/email/preferences?token=opaque",
+      oneClickUrl: "https://cms.siteinabox.nl/api/email/unsubscribe?token=opaque",
+    }
+    await sendEmail({ to: "customer@example.com", subject: "Mail", html: "<p>Mail</p>", listUnsubscribe: links }, { provider: mockProvider() })
+    expect(mockProvider).toBeDefined()
+
+    process.env.CLOUDFLARE_EMAIL_SMTP_TOKEN = "smtp-token"
+    delete process.env.CLOUDFLARE_ACCOUNT_ID
+    await sendEmail({ to: "customer@example.com", subject: "Mail", html: "<p>Mail</p>", listUnsubscribe: links })
+    expect(mocks.sendMail).toHaveBeenLastCalledWith(expect.objectContaining({ headers: {
+      "List-Unsubscribe": "<https://cms.siteinabox.nl/api/email/unsubscribe?token=opaque>",
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      "X-SIAB-Email-Preferences": "https://cms.siteinabox.nl/email/preferences?token=opaque",
+    } }))
+
+    process.env.CLOUDFLARE_ACCOUNT_ID = "account"
+    process.env.CLOUDFLARE_API_TOKEN = "api-token"
+    await sendEmail({ to: "customer@example.com", subject: "Mail", html: "<p>Mail</p>", listUnsubscribe: links })
+    const request = mocks.fetch.mock.calls.at(-1)?.[1]
+    expect(JSON.parse(request.body).headers).toMatchObject({
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    })
+  })
+
+  it("fails closed before provider delivery when marketing consent is absent", async () => {
+    const payload = mockPayload()
+    const provider = mockProvider()
+    const { sendEmail, MailPolicyBlockedError } = await import("@/lib/email/sendEmail")
+    await expect(sendEmail({
+      to: "customer@example.com", preferenceSubject: "customer@example.com", intent: "marketing.campaign", category: "marketing",
+      subject: "Campaign", html: "<p>Campaign</p>", payload,
+    }, { provider })).rejects.toBeInstanceOf(MailPolicyBlockedError)
+    expect(provider.send).not.toHaveBeenCalled()
+    expect(payload.create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "mail-logs",
+      data: expect.objectContaining({ status: "preference_blocked", category: "marketing", provider: "policy" }),
+    }))
+  })
+
+  it("rejects optional mail when consent subject differs or recipients are batched", async () => {
+    const provider = mockProvider()
+    const { sendEmail, MailPolicyBlockedError } = await import("@/lib/email/sendEmail")
+    const base = {
+      intent: "marketing.campaign" as const,
+      subject: "Campaign",
+      html: "<p>Campaign</p>",
+      text: "Campaign",
+    }
+    await expect(sendEmail({ ...base, to: "victim@example.com", preferenceSubject: "consented@example.com" }, { provider }))
+      .rejects.toBeInstanceOf(MailPolicyBlockedError)
+    await expect(sendEmail({ ...base, to: ["one@example.com", "two@example.com"], preferenceSubject: "one@example.com" }, { provider }))
+      .rejects.toBeInstanceOf(MailPolicyBlockedError)
+    expect(provider.send).not.toHaveBeenCalled()
   })
 
   it("redacts secret-shaped provider error text before logging", async () => {

@@ -32,6 +32,9 @@ describe("OperationalAlerts collection config", () => {
     for (const fieldName of ["dedupeKey", "tenant", "firstSeenAt", "lastSeenAt"]) {
       expect(findField(fieldName), fieldName).toMatchObject({ index: true })
     }
-    expect(findField("metadata").admin.description).toContain("Non-secret")
+    expect(findField("metadata").admin.description).toEqual({
+      en: "Non-secret operational metadata only.",
+      nl: "Alleen niet-geheime operationele metadata.",
+    })
   })
 })
