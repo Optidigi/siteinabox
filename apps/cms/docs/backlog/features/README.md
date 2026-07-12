@@ -270,6 +270,11 @@ preference subject and tenant subscription, rejects mismatched or batched
 optional recipients, and emits browser-safe preference links plus RFC one-click
 unsubscribe headers. Signed public preference and unsubscribe routes allow
 future marketing templates to provide an opt-out without requiring a session.
+The super-admin Legal workspace exposes a read-only Communications view with
+masked preference lists, consent filters, immutable per-person event history,
+and tenant notification routing. Direct Payload editing of preference and
+routing state is disabled; audited intake, settings, unsubscribe, and provider
+workflows remain authoritative.
 
 ### 2026-07-11 — Tenant legal requirement workflow
 

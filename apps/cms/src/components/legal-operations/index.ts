@@ -10,4 +10,7 @@ export {
   LegalDeliveriesTable,
   LegalReleasesTable,
   LegalRequirementsTable,
+  CommunicationPreferencesTable,
+  TenantNotificationsTable,
+  CommunicationPreferenceEventsTable,
 } from "./LegalOperationsTables"

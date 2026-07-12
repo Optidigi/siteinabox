@@ -184,7 +184,7 @@ export const Orders: CollectionConfig = {
 export const CommunicationPreferences: CollectionConfig = {
   slug: "communication-preferences",
   labels: { singular: { en: "Communication preference", nl: "Communicatievoorkeur" }, plural: { en: "Communication preferences", nl: "Communicatievoorkeuren" } },
-  access: { create: isSuperAdmin, read: isSuperAdmin, update: isSuperAdmin, delete: () => false },
+  access: { create: () => false, read: isSuperAdmin, update: () => false, delete: () => false },
   admin: { useAsTitle: "subjectKey", defaultColumns: ["subjectKey", "email", "marketing", "productNotifications", "suppressed", "updatedAt"] },
   fields: [
     { name: "subjectKey", type: "text", required: true, unique: true, index: true },
@@ -235,7 +235,7 @@ export const CommunicationPreferenceEvents: CollectionConfig = {
 export const TenantNotificationSubscriptions: CollectionConfig = {
   slug: "tenant-notification-subscriptions",
   labels: { singular: { en: "Tenant notification subscription", nl: "Tenantmeldingsabonnement" }, plural: { en: "Tenant notification subscriptions", nl: "Tenantmeldingsabonnementen" } },
-  access: { create: isSuperAdmin, read: isSuperAdmin, update: isSuperAdmin, delete: () => false },
+  access: { create: () => false, read: isSuperAdmin, update: () => false, delete: () => false },
   admin: { useAsTitle: "subscriptionKey", defaultColumns: ["tenant", "user", "email", "formSubmissions", "updatedAt"] },
   fields: [
     { name: "subscriptionKey", type: "text", required: true, unique: true, index: true },

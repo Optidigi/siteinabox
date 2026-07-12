@@ -1125,7 +1125,18 @@
     "checkoutTermsAcceptanceRequired": "Accept the general terms before continuing to payment."
   },
   "legalOperations": {
-    "tabs": { "ariaLabel": "Legal sections", "overview": "Overview", "releases": "Releases", "requirements": "Customer actions", "deliveries": "Deliveries", "acceptances": "Acceptance evidence", "audit": "Audit log" },
+    "tabs": { "ariaLabel": "Legal sections", "overview": "Overview", "releases": "Releases", "requirements": "Customer actions", "deliveries": "Deliveries", "acceptances": "Acceptance evidence", "communications": "Communications", "audit": "Audit log" },
+    "communicationsUi": {
+      "pageTitle": "Communication preferences", "pageSubtitle": "Current consent, immutable preference history, and site notification routing.", "search": "Search email, subject, or consent source...",
+      "filters": { "all": "All", "opted_in": "Marketing opt-in", "opted_out": "Marketing opt-out", "suppressed": "Suppressed" },
+      "detailTitle": "Communication preference", "recordTitle": "Current effective preference",
+      "fields": { "account": "Account", "tenant": "Site", "marketing": "Marketing email", "productNotifications": "Product notifications", "suppressed": "Suppressed", "suppressionReason": "Suppression reason", "consentSource": "Consent source", "consentVersion": "Consent version", "consentAt": "Consent recorded", "language": "Language", "updated": "Last updated" },
+      "columns": { "account": "Account", "tenant": "Site", "marketing": "Marketing", "productNotifications": "Product notifications", "source": "Source", "consentAt": "Consent recorded", "updated": "Last updated", "notificationCategories": "Notification categories", "type": "Type", "action": "Action", "category": "Category", "statement": "Statement version", "asserted": "Asserted", "time": "Recorded" },
+      "states": { "opted_in": "Opted in", "opted_out": "Opted out", "subscribed": "Subscribed", "unsubscribed": "Unsubscribed", "suppressed": "Suppressed", "none": "None" },
+      "preferences": { "title": "Communication preferences", "description": "Effective personal email choices and consent provenance.", "emptyTitle": "No preference records", "emptyDescription": "Records appear after intake consent or a user saves email preferences." },
+      "notifications": { "title": "Site notification routing", "description": "Current operational email recipients per site and category.", "emptyTitle": "No notification routing", "emptyDescription": "No site notification subscriptions match this selection." },
+      "events": { "title": "Immutable preference history", "description": "Chronological opt-in, opt-out, subscription, locale, and suppression evidence.", "emptyTitle": "No preference history", "emptyDescription": "No immutable events are linked to this preference." }
+    },
     "detail": { "showTechnicalEvidence": "Show technical evidence", "back": "Back", "days": "{count, plural, one {# day} other {# days}}" },
     "acceptanceDetail": { "title": "Acceptance evidence", "recordTitle": "Immutable evidence" },
     "releaseDetail": { "title": "Legal release", "recordTitle": "Release registry" },

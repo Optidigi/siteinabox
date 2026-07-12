@@ -4,7 +4,7 @@ const MAX_TEXT = 96
 const CONTACT_DATA = /(?:@|\b(?:mailto|tel):|\+?\d[\d\s().-]{6,})/i
 
 const ROUTE_PATTERNS: Array<[RegExp, string]> = [
-  [/^\/legal\/(releases|requirements|deliveries|acceptances)\/[^/]+$/, "/legal/$1/[id]"],
+  [/^\/legal\/(releases|requirements|deliveries|acceptances|communications)\/[^/]+$/, "/legal/$1/[id]"],
   [/^\/sites\/[^/]+\/pages\/new$/, "/sites/[slug]/pages/new"],
   [/^\/sites\/[^/]+\/pages\/edit\/[^/]+$/, "/sites/[slug]/pages/edit/[slug]"],
   [/^\/sites\/[^/]+\/pages\/[^/]+$/, "/sites/[slug]/pages/[id]"],

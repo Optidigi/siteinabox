@@ -101,6 +101,40 @@ export type LegalAuditRow = {
   href: string
 }
 
+export type CommunicationPreferenceRow = {
+  id: string
+  emailMasked: string
+  tenant: string | null
+  marketing: boolean
+  productNotifications: boolean
+  suppressed: boolean
+  consentSource: string | null
+  consentAt: string | null
+  updatedAt: string
+  href: string
+}
+
+export type TenantNotificationRow = {
+  id: string
+  tenant: string | null
+  member: string
+  emailMasked: string
+  categories: string[]
+  updatedAt: string
+  href: string
+}
+
+export type CommunicationPreferenceEventRow = {
+  id: string
+  preferenceType: string
+  action: string
+  category: string | null
+  source: string
+  statementVersion: string
+  assertedAt: string | null
+  occurredAt: string
+}
+
 export type LegalListResult<T> = PayloadFindResult<T>
 export type LegalListOptions = { page?: number; pageSize?: number; q?: string; status?: string }
 
@@ -367,6 +401,59 @@ export async function listLegalAuditEvents(options: LegalListOptions = {}, paylo
     actorEmailMasked: maskEmailRecipient(text(item.actorEmail)), reason: text(item.reason), occurredAt: text(item.occurredAt),
     requestId: text(item.requestId), href: `/admin/collections/legal-operator-events/${item.id}`,
   }))
+}
+
+export async function listCommunicationPreferences(options: LegalListOptions = {}, payload?: LegalPayload): Promise<LegalListResult<CommunicationPreferenceRow>> {
+  const client = await clientFor(payload)
+  const { page, limit } = normalisePagination(options)
+  const query = options.q?.trim()
+  const statusWhere = options.status === "opted_in" ? { marketing: { equals: true } }
+    : options.status === "opted_out" ? { marketing: { equals: false } }
+      : options.status === "suppressed" ? { suppressed: { equals: true } } : null
+  const result = await client.find({
+    collection: "communication-preferences" as any,
+    where: clauses(statusWhere, query ? { or: [{ email: { like: query } }, { subjectKey: { like: query } }, { marketingConsentSource: { like: query } }] } : null),
+    sort: "-updatedAt", page, limit, depth: 1, overrideAccess: true,
+  } as any) as PayloadFindResult<RecordLike>
+  return mapResult(result, (item): CommunicationPreferenceRow => ({
+    id: String(item.id), emailMasked: maskEmailRecipient(text(item.email)), tenant: tenantLabel(item.tenant),
+    marketing: item.marketing === true, productNotifications: item.productNotifications === true, suppressed: item.suppressed === true,
+    consentSource: text(item.marketingConsentSource) || null, consentAt: iso(item.marketingConsentAt), updatedAt: text(item.updatedAt),
+    href: `/legal/communications/${item.id}`,
+  }))
+}
+
+export async function listTenantNotificationSubscriptions(options: LegalListOptions = {}, payload?: LegalPayload): Promise<LegalListResult<TenantNotificationRow>> {
+  const client = await clientFor(payload)
+  const { page, limit } = normalisePagination(options)
+  const query = options.q?.trim()
+  const result = await client.find({
+    collection: "tenant-notification-subscriptions" as any,
+    where: clauses(query ? { or: [{ email: { like: query } }, { subscriptionKey: { like: query } }] } : null),
+    sort: "tenant", page, limit, depth: 1, overrideAccess: true,
+  } as any) as PayloadFindResult<RecordLike>
+  const categoryFields = ["formSubmissions", "publishingAndSiteStatus", "domainAndDns", "billingAndPayments", "teamAndAccess", "operationalDigest"]
+  return mapResult(result, (item): TenantNotificationRow => ({
+    id: String(item.id), tenant: tenantLabel(item.tenant), member: relationLabel(item.user, ["name", "email"]) ?? maskEmailRecipient(text(item.email)),
+    emailMasked: maskEmailRecipient(text(item.email)), categories: categoryFields.filter((field) => item[field] === true), updatedAt: text(item.updatedAt),
+    href: `/admin/collections/tenant-notification-subscriptions/${item.id}`,
+  }))
+}
+
+export async function getCommunicationPreferenceRecord(id: string | number): Promise<{ preference: RecordLike; events: CommunicationPreferenceEventRow[] } | null> {
+  const payload = await getPayload({ config })
+  try {
+    const preference = await payload.findByID({ collection: "communication-preferences", id, depth: 1, overrideAccess: true } as any) as RecordLike
+    const events = await payload.find({ collection: "communication-preference-events" as any, where: { preference: { equals: id } }, sort: "-occurredAt", limit: 100, depth: 0, overrideAccess: true } as any)
+    return { preference, events: (events.docs as RecordLike[]).map((event) => ({
+      id: String(event.id), preferenceType: text(event.preferenceType), action: text(event.action), category: text(event.category) || null,
+      source: text(event.source), statementVersion: text(event.statementVersion), assertedAt: iso(event.assertedAt), occurredAt: text(event.occurredAt),
+    })) }
+  } catch (error) {
+    const status = (error as { status?: unknown })?.status
+    if (status === 404 || (error as { name?: unknown })?.name === "NotFound") return null
+    throw error
+  }
 }
 
 export async function getLegalRecord(collection: "legal-documents" | "legal-requirements" | "legal-notification-deliveries" | "agreement-acceptances", id: string | number): Promise<RecordLike | null> {

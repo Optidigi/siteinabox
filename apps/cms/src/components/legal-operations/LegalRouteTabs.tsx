@@ -8,6 +8,7 @@ const legalRoutes = [
   { href: "/legal/requirements", key: "requirements" },
   { href: "/legal/deliveries", key: "deliveries" },
   { href: "/legal/acceptances", key: "acceptances" },
+  { href: "/legal/communications", key: "communications" },
   { href: "/legal/audit", key: "audit" },
 ] as const
 

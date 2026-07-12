@@ -8,6 +8,9 @@ import type {
   LegalDeliveryRow,
   LegalReleaseRow,
   LegalRequirementRow,
+  CommunicationPreferenceRow,
+  TenantNotificationRow,
+  CommunicationPreferenceEventRow,
 } from "@/lib/queries/legalOperations"
 import { LegalStatus, type LegalStatusTone } from "./LegalStatus"
 import { LegalTableFrame } from "./LegalTableFrame"
@@ -136,6 +139,42 @@ export function LegalAuditTable({ rows }: { rows: LegalAuditRow[] }) {
         <TableCell><LegalStatus tone="warning">{label(row.action)}</LegalStatus></TableCell><TableCell className="font-mono text-xs">{row.target}</TableCell><TableCell>{row.actorEmailMasked}</TableCell>
         <TableCell className="max-w-80 whitespace-normal">{row.reason}</TableCell><TableCell>{dateTime(row.occurredAt)}</TableCell><TableCell className="font-mono text-xs">{row.requestId}</TableCell>
       </TableRow>)}</TableBody>
+    </Table></div>
+  </LegalTableFrame>
+}
+
+export function CommunicationPreferencesTable({ rows }: { rows: CommunicationPreferenceRow[] }) {
+  const { t, label, dateTime } = useLegalFormatting()
+  const state = (value: string) => t(`communicationsUi.states.${value}`)
+  return <LegalTableFrame title={t("communicationsUi.preferences.title")} description={t("communicationsUi.preferences.description")} isEmpty={rows.length === 0} emptyTitle={t("communicationsUi.preferences.emptyTitle")} emptyDescription={t("communicationsUi.preferences.emptyDescription")}>
+    <div className="overflow-x-auto"><Table className="min-w-[900px] [&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
+      <TableHeader><TableRow>{["account", "tenant", "marketing", "productNotifications", "source", "consentAt", "updated"].map(key => <TableHead key={key}>{t(`communicationsUi.columns.${key}`)}</TableHead>)}</TableRow></TableHeader>
+      <TableBody>{rows.map((row) => <TableRow key={row.id}>
+        <TableCell><CellLink href={row.href}>{row.emailMasked}</CellLink>{row.suppressed && <div className="mt-1"><LegalStatus tone="destructive">{state("suppressed")}</LegalStatus></div>}</TableCell>
+        <TableCell>{row.tenant ?? <Dash />}</TableCell><TableCell><LegalStatus tone={row.marketing ? "success" : "neutral"}>{state(row.marketing ? "opted_in" : "opted_out")}</LegalStatus></TableCell>
+        <TableCell><LegalStatus tone={row.productNotifications ? "success" : "neutral"}>{state(row.productNotifications ? "subscribed" : "unsubscribed")}</LegalStatus></TableCell>
+        <TableCell>{row.consentSource ?? <Dash />}</TableCell><TableCell>{dateTime(row.consentAt) ?? <Dash />}</TableCell><TableCell>{dateTime(row.updatedAt) ?? <Dash />}</TableCell>
+      </TableRow>)}</TableBody>
+    </Table></div>
+  </LegalTableFrame>
+}
+
+export function TenantNotificationsTable({ rows }: { rows: TenantNotificationRow[] }) {
+  const { t, label, dateTime } = useLegalFormatting()
+  return <LegalTableFrame title={t("communicationsUi.notifications.title")} description={t("communicationsUi.notifications.description")} isEmpty={rows.length === 0} emptyTitle={t("communicationsUi.notifications.emptyTitle")} emptyDescription={t("communicationsUi.notifications.emptyDescription")}>
+    <div className="overflow-x-auto"><Table className="min-w-[760px] [&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
+      <TableHeader><TableRow>{["tenant", "account", "notificationCategories", "updated"].map(key => <TableHead key={key}>{t(`communicationsUi.columns.${key}`)}</TableHead>)}</TableRow></TableHeader>
+      <TableBody>{rows.map((row) => <TableRow key={row.id}><TableCell><span className="font-medium">{row.tenant ?? t("unknownTenant")}</span></TableCell><TableCell>{row.member}<div className="text-xs text-muted-foreground">{row.emailMasked}</div></TableCell><TableCell className="max-w-md whitespace-normal">{row.categories.length ? row.categories.map(label).join(", ") : t("communicationsUi.states.none")}</TableCell><TableCell>{dateTime(row.updatedAt) ?? <Dash />}</TableCell></TableRow>)}</TableBody>
+    </Table></div>
+  </LegalTableFrame>
+}
+
+export function CommunicationPreferenceEventsTable({ rows }: { rows: CommunicationPreferenceEventRow[] }) {
+  const { t, label, dateTime } = useLegalFormatting()
+  return <LegalTableFrame title={t("communicationsUi.events.title")} description={t("communicationsUi.events.description")} isEmpty={rows.length === 0} emptyTitle={t("communicationsUi.events.emptyTitle")} emptyDescription={t("communicationsUi.events.emptyDescription")}>
+    <div className="overflow-x-auto"><Table className="min-w-[760px] [&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
+      <TableHeader><TableRow>{["type", "action", "category", "source", "statement", "asserted", "time"].map(key => <TableHead key={key}>{t(`communicationsUi.columns.${key}`)}</TableHead>)}</TableRow></TableHeader>
+      <TableBody>{rows.map((row) => <TableRow key={row.id}><TableCell>{label(row.preferenceType)}</TableCell><TableCell><LegalStatus tone={row.action === "opt_in" || row.action === "subscribe" ? "success" : "neutral"}>{label(row.action)}</LegalStatus></TableCell><TableCell>{row.category ? label(row.category) : <Dash />}</TableCell><TableCell>{row.source}</TableCell><TableCell>{row.statementVersion}</TableCell><TableCell>{dateTime(row.assertedAt) ?? <Dash />}</TableCell><TableCell>{dateTime(row.occurredAt) ?? <Dash />}</TableCell></TableRow>)}</TableBody>
     </Table></div>
   </LegalTableFrame>
 }

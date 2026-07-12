@@ -1125,7 +1125,18 @@
     "checkoutTermsAcceptanceRequired": "Accepteer de algemene voorwaarden om verder te gaan met betalen."
   },
   "legalOperations": {
-    "tabs": { "ariaLabel": "Juridische onderdelen", "overview": "Overzicht", "releases": "Publicaties", "requirements": "Klantacties", "deliveries": "Verzendingen", "acceptances": "Acceptatiebewijs", "audit": "Auditlog" },
+    "tabs": { "ariaLabel": "Juridische onderdelen", "overview": "Overzicht", "releases": "Publicaties", "requirements": "Klantacties", "deliveries": "Verzendingen", "acceptances": "Acceptatiebewijs", "communications": "Communicatie", "audit": "Auditlog" },
+    "communicationsUi": {
+      "pageTitle": "Communicatievoorkeuren", "pageSubtitle": "Actuele toestemming, onveranderlijke voorkeurgeschiedenis en routering van klantmeldingen.", "search": "Zoek e-mail, onderwerp of toestemmingsbron...",
+      "filters": { "all": "Alle", "opted_in": "Marketing opt-in", "opted_out": "Marketing opt-out", "suppressed": "Onderdrukt" },
+      "detailTitle": "Communicatievoorkeur", "recordTitle": "Actuele effectieve voorkeur",
+      "fields": { "account": "Account", "tenant": "Site", "marketing": "Marketingmail", "productNotifications": "Productmeldingen", "suppressed": "Onderdrukt", "suppressionReason": "Reden onderdrukking", "consentSource": "Toestemmingsbron", "consentVersion": "Toestemmingsversie", "consentAt": "Toestemming vastgelegd", "language": "Taal", "updated": "Laatst bijgewerkt" },
+      "columns": { "account": "Account", "tenant": "Site", "marketing": "Marketing", "productNotifications": "Productmeldingen", "source": "Bron", "consentAt": "Toestemming vastgelegd", "updated": "Laatst bijgewerkt", "notificationCategories": "Meldingscategorieën", "type": "Type", "action": "Actie", "category": "Categorie", "statement": "Verklaringsversie", "asserted": "Verklaard", "time": "Vastgelegd" },
+      "states": { "opted_in": "Aangemeld", "opted_out": "Afgemeld", "subscribed": "Geabonneerd", "unsubscribed": "Niet geabonneerd", "suppressed": "Onderdrukt", "none": "Geen" },
+      "preferences": { "title": "Communicatievoorkeuren", "description": "Effectieve persoonlijke e-mailkeuzes en herkomst van toestemming.", "emptyTitle": "Geen voorkeurrecords", "emptyDescription": "Records verschijnen na intaketoestemming of wanneer een gebruiker e-mailvoorkeuren opslaat." },
+      "notifications": { "title": "Routering van klantmeldingen", "description": "Actuele ontvangers van operationele e-mail per site en categorie.", "emptyTitle": "Geen meldingsroutering", "emptyDescription": "Er komen geen meldingsabonnementen overeen met deze selectie." },
+      "events": { "title": "Onveranderlijke voorkeurgeschiedenis", "description": "Chronologisch bewijs van opt-in, opt-out, abonnementen, taal en onderdrukking.", "emptyTitle": "Geen voorkeurgeschiedenis", "emptyDescription": "Er zijn geen onveranderlijke gebeurtenissen aan deze voorkeur gekoppeld." }
+    },
     "detail": { "showTechnicalEvidence": "Technische bewijsgegevens tonen", "back": "Terug", "days": "{count, plural, one {# dag} other {# dagen}}" },
     "acceptanceDetail": { "title": "Acceptatiebewijs", "recordTitle": "Onveranderlijk bewijs" },
     "releaseDetail": { "title": "Juridische publicatie", "recordTitle": "Publicatieregister" },
