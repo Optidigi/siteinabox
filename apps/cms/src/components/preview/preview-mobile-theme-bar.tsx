@@ -111,6 +111,7 @@ export function PreviewMobileThemeBar({
               }}
               dataAttrs={{ "data-mobile-preview-theme-pill": value }}
               sizeClassName={PREVIEW_MOBILE_CHROME_CONTROL_SIZE}
+              shine
             />
           ))}
         </div>

@@ -39,6 +39,7 @@ function PreviewMobileNavPills({
         variant="default"
         disabled={customerNavigationBlocked}
         dataAttrs={{ "data-mobile-preview-review": "" }}
+        shine
       />
 
       {canCompleteOrder ? (
@@ -52,6 +53,7 @@ function PreviewMobileNavPills({
           variant="success"
           disabled={customerNavigationBlocked}
           dataAttrs={{ "data-mobile-preview-launch": "" }}
+          shine
         />
       ) : paymentSatisfied ? (
         <MobileFloatingPill
@@ -63,6 +65,7 @@ function PreviewMobileNavPills({
           variant="default"
           disabled
           dataAttrs={{ "data-mobile-preview-payment-complete": "" }}
+          shine
         />
       ) : null}
     </>

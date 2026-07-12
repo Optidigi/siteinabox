@@ -21,6 +21,7 @@ describe("preview mobile chrome", () => {
     expect(chrome).toContain("Rocket")
     expect(chrome).toContain("CheckCircle2")
     expect(chrome).toContain('variant="success"')
+    expect(chrome.match(/\bshine\b/g)?.length).toBeGreaterThanOrEqual(3)
     expect(chrome).toContain("PreviewMobileThemeBar")
     expect(chrome).toContain("md:hidden")
 
@@ -29,6 +30,7 @@ describe("preview mobile chrome", () => {
     expect(tone).toContain("preview-mobile-chrome-light")
 
     expect(themeBar).toContain("MobileInlinePill")
+    expect(themeBar).toContain("shine")
     expect(themeBar).toContain("justify-center gap-3")
     expect(themeBar).not.toContain("justify-between")
     expect(themeBar).toContain("pointer-events-none absolute top-0 left-1/2 h-px w-px")
