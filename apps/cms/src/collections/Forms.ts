@@ -3,6 +3,7 @@ import { canRead, canWrite } from "@/access/roleHelpers"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
+import { renderEmailLayout } from "@/lib/email/emailLayout"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
@@ -216,9 +217,10 @@ export function tenantFormNotificationTemplate(doc: FormNotificationDoc) {
     ...(message ? ["", "Message:", message] : []),
   ].join("\n")
 
+  const html = `<p>A new generated-site form submission was stored in the CMS.</p>${htmlRows}${htmlMessage}`
   return {
     subject: `New form submission: ${cleanEmailHeaderText(formName) || "Website form"}`,
-    html: `<p>A new generated-site form submission was stored in the CMS.</p>${htmlRows}${htmlMessage}`,
+    html: renderEmailLayout({ eyebrow: "Form submission", title: `New form submission: ${formName}`, body: html, footer: "internal" }),
     text,
   }
 }

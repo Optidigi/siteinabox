@@ -1,4 +1,5 @@
 import { sendEmail } from "@/lib/email/sendEmail"
+import { renderEmailLayout } from "@/lib/email/emailLayout"
 
 const tenantIdOf = (value: unknown): number | string | null => {
   if (value == null) return null
@@ -118,14 +119,18 @@ export async function emailUserDataExport(payload: any, user: any) {
   await sendEmail({
     to: data.user.email,
     subject: "Your SiteInABox data export",
-    html: [
-      "<p>Your requested SiteInABox data export is below.</p>",
+    html: renderEmailLayout({
+      eyebrow: "Privacy",
+      title: "Your data export",
+      intro: "Your requested Site in a Box data export is included below.",
+      body: [
       "<p>If you did not request this, contact support immediately.</p>",
-      `<pre>${json
+      `<pre style="overflow:auto;padding:16px;background:#fef3f4;border:2px solid #000;font-family:monospace;font-size:12px;line-height:1.5">${json
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")}</pre>`,
-    ].join(""),
+      ].join(""),
+    }),
     text: [
       "Your requested SiteInABox data export is below.",
       "If you did not request this, contact support immediately.",

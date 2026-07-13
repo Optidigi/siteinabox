@@ -1,5 +1,6 @@
 import type { Payload } from "payload"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
+import { renderEmailLayout } from "@/lib/email/emailLayout"
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
 export const PLATFORM_CONTACT_RECIPIENT = "admin@siteinabox.nl"
@@ -72,9 +73,10 @@ function platformContactTemplate(input: Required<Pick<PlatformContactInput, "nam
   const htmlRows = rows
     .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
     .join("")
+  const body = `<p>A contact form message was submitted on siteinabox.nl.</p>${htmlRows}<h2>Message</h2><p>${nl2br(message)}</p>`
   return {
     subject,
-    html: `<p>A contact form message was submitted on siteinabox.nl.</p>${htmlRows}<h2>Message</h2><p>${nl2br(message)}</p>`,
+    html: renderEmailLayout({ eyebrow: "Internal notification", title: "New contact message", body, footer: "internal" }),
     text: [
       subject,
       `Name: ${name}`,

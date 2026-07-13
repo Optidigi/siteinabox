@@ -1,26 +1,17 @@
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;")
+import { renderEmailButton, renderEmailFallbackLink, renderEmailLayout } from "@/lib/email/emailLayout"
+import { escapeEmailHtml } from "@/lib/email/templateUtils"
 
 export function siteLiveNoticeTemplate(opts: { siteUrl: string; adminUrl: string; magicLoginUrl?: string | null }) {
-  const siteUrl = escapeHtml(opts.siteUrl)
-  const adminUrl = escapeHtml(opts.adminUrl)
-  const magicLoginUrl = opts.magicLoginUrl ? escapeHtml(opts.magicLoginUrl) : null
-
+  const magicLoginUrl = opts.magicLoginUrl
   return {
     subject: "Your Site in a Box site is live",
-    html: `
-      <p>Your Site in a Box site is live.</p>
-      <p><strong>Live site:</strong> <a href="${siteUrl}">${siteUrl}</a></p>
-      <p><strong>CMS admin:</strong> <a href="${adminUrl}">${adminUrl}</a></p>
-      ${magicLoginUrl
-        ? `<p><strong>Magic login:</strong> <a href="${magicLoginUrl}">${magicLoginUrl}</a></p>`
-        : "<p>Your magic login link has been sent to this email address. Use it to open the CMS admin without a password.</p>"}
-    `,
+    html: renderEmailLayout({
+      preheader: "Your Site in a Box site is live",
+      eyebrow: "Je website",
+      title: "Your site is live",
+      intro: "Your Site in a Box website is now live.",
+      body: `${renderEmailButton("Visit live site", opts.siteUrl)}${renderEmailFallbackLink(opts.siteUrl)}<p style="margin:24px 0 0;font-family:Arial,sans-serif;font-size:15px;line-height:1.6"><strong>CMS admin:</strong> <a href="${escapeEmailHtml(opts.adminUrl)}" style="color:#000">Open your admin</a></p>${magicLoginUrl ? `<p style="margin:8px 0 0;font-family:Arial,sans-serif;font-size:15px;line-height:1.6"><strong>Magic login:</strong> <a href="${escapeEmailHtml(magicLoginUrl)}" style="color:#000">Sign in without a password</a></p>` : "<p style=\"margin:24px 0 0;font-family:Arial,sans-serif;font-size:15px;line-height:1.6\">Your magic login link has been sent to this email address.</p>"}`,
+    }),
     text: [
       "Your Site in a Box site is live.",
       `Live site: ${opts.siteUrl}`,

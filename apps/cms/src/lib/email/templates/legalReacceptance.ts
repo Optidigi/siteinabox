@@ -1,3 +1,5 @@
+import { renderEmailLayout } from "@/lib/email/emailLayout"
+
 const escapeHtml = (value: string) => value
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -34,7 +36,10 @@ export function legalReacceptanceTemplate(input: {
 
   return {
     subject: `${subjectPrefix}: accepteer de bijgewerkte voorwaarden voor ${headerText(input.tenantName)}`,
-    html: [
+    html: renderEmailLayout({
+      eyebrow: "Juridische kennisgeving",
+      title: subjectPrefix,
+      body: [
       `<p>Hallo,</p>`,
       `<p>De algemene voorwaarden van Site in a Box zijn bijgewerkt voor <strong>${tenantName}</strong>.</p>`,
       `<p>${summary}</p>`,
@@ -44,7 +49,9 @@ export function legalReacceptanceTemplate(input: {
       `<p><a href="${documentUrl}">Bekijk de exacte versie van de voorwaarden</a></p>`,
       `<p>Vragen? Neem contact op via <a href="mailto:info@siteinabox.nl">info@siteinabox.nl</a>.</p>`,
       `<p>Site in a Box</p>`,
-    ].join("\n"),
+      ].join("\n"),
+      footer: "legal",
+    }),
     text: [
       "Hallo,",
       "",
@@ -75,7 +82,10 @@ export function legalDirectNoticeTemplate(input: {
   const effectiveAt = new Intl.DateTimeFormat("nl-NL", { dateStyle: "long", timeZone: "Europe/Amsterdam" }).format(new Date(input.effectiveAt))
   return {
     subject: `Juridische kennisgeving voor ${headerText(input.tenantName)}`,
-    html: [
+    html: renderEmailLayout({
+      eyebrow: "Juridische kennisgeving",
+      title: "Juridische kennisgeving",
+      body: [
       "<p>Hallo,</p>",
       `<p>We informeren je over een juridische wijziging voor <strong>${tenantName}</strong>.</p>`,
       `<p>${escapeHtml(input.changeSummary)}</p>`,
@@ -83,7 +93,9 @@ export function legalDirectNoticeTemplate(input: {
       `<p><a href="${documentUrl}">Bekijk de exacte documentversie</a></p>`,
       `<p>Vragen? Neem contact op via <a href="mailto:info@siteinabox.nl">info@siteinabox.nl</a>.</p>`,
       "<p>Site in a Box</p>",
-    ].join("\n"),
+      ].join("\n"),
+      footer: "legal",
+    }),
     text: [
       "Hallo,",
       "",
@@ -116,7 +128,10 @@ export function legalContinuedUseNoticeTemplate(input: {
   const subjectPrefix = input.kind === "reminder" ? "Herinnering" : "Onze algemene voorwaarden worden bijgewerkt"
   return {
     subject: `${subjectPrefix} voor ${headerText(input.tenantName)}`,
-    html: [
+    html: renderEmailLayout({
+      eyebrow: "Juridische kennisgeving",
+      title: subjectPrefix,
+      body: [
       "<p>Hallo,</p>",
       `<p>De algemene voorwaarden van Site in a Box voor <strong>${tenantName}</strong> worden bijgewerkt.</p>`,
       `<p>${escapeHtml(input.changeSummary)}</p>`,
@@ -128,7 +143,9 @@ export function legalContinuedUseNoticeTemplate(input: {
       `<div style="white-space:normal">${contentHtml}</div>`,
       `<p>Vragen of bezwaar maken kan ook via <a href="mailto:info@siteinabox.nl">info@siteinabox.nl</a>.</p>`,
       "<p>Site in a Box</p>",
-    ].join("\n"),
+      ].join("\n"),
+      footer: "legal",
+    }),
     text: [
       "Hallo,", "",
       `De algemene voorwaarden van Site in a Box voor ${input.tenantName} worden bijgewerkt.`,

@@ -2,6 +2,7 @@ import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import type { Payload } from "payload"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
+import { renderEmailLayout } from "@/lib/email/emailLayout"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
 import { recordIntakeMarketingPreference } from "@/lib/legal/communicationPreferences"
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
@@ -107,9 +108,10 @@ const intakeInternalNotificationTemplate = (doc: PayloadDoc) => {
   const errorMessage = doc.error && typeof doc.error === "object"
     ? cleanText((doc.error as Record<string, unknown>).message)
     : null
+  const body = `<p>A public intake submission was stored in the CMS.</p>${htmlRows}${errorMessage ? `<p><strong>Error:</strong> ${escapeHtml(errorMessage)}</p>` : ""}`
   return {
     subject,
-    html: `<p>A public intake submission was stored in the CMS.</p>${htmlRows}${errorMessage ? `<p><strong>Error:</strong> ${escapeHtml(errorMessage)}</p>` : ""}`,
+    html: renderEmailLayout({ eyebrow: "Internal notification", title: status === "failed" ? "Intake storage failed" : "New intake stored", body, footer: "internal" }),
     text: [
       subject,
       `Status: ${status}`,
