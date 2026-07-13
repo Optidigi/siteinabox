@@ -4,6 +4,15 @@ import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
 
 describe("shared email template safety", () => {
+  it("uses the real SIAB logo and keeps customer-facing shell copy in Dutch", () => {
+    const message = magicLinkTemplate({ loginUrl: "https://admin.example.nl/login" })
+
+    expect(message.html).toContain('src="https://admin.siteinabox.nl/logos/email-logo.png"')
+    expect(message.html).toContain('alt="Site in a Box"')
+    expect(message.html).toContain("Log in bij Site in a Box")
+    expect(message.html).not.toContain("Sign in")
+  })
+
   it("escapes magic-link URLs in HTML and keeps the original URL in plain text", () => {
     const url = 'https://admin.example.nl/verify?a=1&next="unsafe"'
     const message = magicLinkTemplate({ loginUrl: url })

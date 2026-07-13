@@ -2,20 +2,20 @@ import { renderEmailButton, renderEmailFallbackLink, renderEmailLayout } from "@
 
 export function magicLinkTemplate(opts: { loginUrl: string }) {
   const text = [
-    "Click to sign in to SiteInABox:",
+    "Log in bij Site in a Box:",
     opts.loginUrl,
     "",
-    "This link expires soon. If you didn't request this, ignore this email.",
+    "Deze link verloopt binnenkort. Heb je dit niet aangevraagd? Dan kun je deze e-mail negeren.",
   ].join("\n")
   return {
-    subject: "Sign in to SiteInABox",
+    subject: "Log in bij Site in a Box",
     html: renderEmailLayout({
-      preheader: "Secure sign-in link for Site in a Box",
+      preheader: "Je beveiligde inloglink voor Site in a Box",
       eyebrow: "Beveiliging",
-      title: "Sign in to Site in a Box",
-      intro: "Use the secure link below to continue to your account.",
-      body: `${renderEmailButton("Sign in", opts.loginUrl)}${renderEmailFallbackLink(opts.loginUrl)}`,
-      notice: "This link expires soon. If you didn't request this, ignore this email.",
+      title: "Log in bij Site in a Box",
+      intro: "Gebruik de beveiligde link hieronder om verder te gaan naar je account.",
+      body: `${renderEmailButton("Inloggen", opts.loginUrl)}${renderEmailFallbackLink(opts.loginUrl)}`,
+      notice: "Deze link verloopt binnenkort. Heb je dit niet aangevraagd? Dan kun je deze e-mail negeren.",
       footer: "security",
     }),
     text,

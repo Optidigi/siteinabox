@@ -1,6 +1,6 @@
 import type { Payload } from "payload"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
-import { renderEmailLayout } from "@/lib/email/emailLayout"
+import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
 export const PLATFORM_CONTACT_RECIPIENT = "admin@siteinabox.nl"
@@ -62,30 +62,27 @@ function platformContactTemplate(input: Required<Pick<PlatformContactInput, "nam
   const subjectTopic = cleanText(input.subjectTopic) ?? "-"
   const source = cleanText(input.source) ?? "siteinabox.nl/contact"
   const message = cleanText(input.message) ?? "-"
-  const subject = `New siteinabox.nl contact: ${cleanEmailHeaderText(name) || "Unknown"}`
+  const subject = `Nieuw contact via siteinabox.nl: ${cleanEmailHeaderText(name) || "Onbekend"}`
   const rows: Array<[string, string]> = [
-    ["Name", name],
-    ["Email", email],
-    ["Phone", phone],
-    ["Topic", subjectTopic],
-    ["Source", source],
+    ["Naam", name],
+    ["E-mail", email],
+    ["Telefoon", phone],
+    ["Onderwerp", subjectTopic],
+    ["Bron", source],
   ]
-  const htmlRows = rows
-    .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
-    .join("")
-  const body = `<p>A contact form message was submitted on siteinabox.nl.</p>${htmlRows}<h2>Message</h2><p>${nl2br(message)}</p>`
+  const body = `${renderEmailInfoTable(rows)}<p style="margin:18px 0 6px;font-weight:700">Bericht</p><p style="margin:0">${nl2br(message)}</p>`
   return {
     subject,
-    html: renderEmailLayout({ eyebrow: "Internal notification", title: "New contact message", body, footer: "internal" }),
+    html: renderEmailLayout({ eyebrow: "Interne melding", title: "Nieuw contactbericht", intro: "Er is een contactformulier ingevuld op siteinabox.nl.", body, footer: "internal" }),
     text: [
       subject,
-      `Name: ${name}`,
-      `Email: ${email}`,
-      `Phone: ${phone}`,
-      `Topic: ${subjectTopic}`,
-      `Source: ${source}`,
+      `Naam: ${name}`,
+      `E-mail: ${email}`,
+      `Telefoon: ${phone}`,
+      `Onderwerp: ${subjectTopic}`,
+      `Bron: ${source}`,
       "",
-      "Message:",
+      "Bericht:",
       message,
     ].join("\n"),
   }

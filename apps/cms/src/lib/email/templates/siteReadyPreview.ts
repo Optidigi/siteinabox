@@ -2,19 +2,19 @@ import { renderEmailButton, renderEmailFallbackLink, renderEmailLayout } from "@
 
 export function siteReadyPreviewTemplate({ loginUrl }: { loginUrl: string }) {
   return {
-    subject: "Your Site in a Box preview is ready",
+    subject: "Je Site in a Box-voorbeeld is klaar",
     html: renderEmailLayout({
-      preheader: "Your Site in a Box preview is ready",
+      preheader: "Je Site in a Box-voorbeeld is klaar om te bekijken",
       eyebrow: "Je website",
-      title: "Your preview is ready",
-      intro: "Your Site in a Box preview is ready to review.",
-      body: `${renderEmailButton("Open preview", loginUrl)}${renderEmailFallbackLink(loginUrl)}`,
-      notice: "This magic link signs you in to your customer preview.",
+      title: "Je voorbeeld is klaar",
+      intro: "Je website staat klaar om te bekijken en te beoordelen.",
+      body: `${renderEmailButton("Voorbeeld bekijken", loginUrl)}${renderEmailFallbackLink(loginUrl)}`,
+      notice: "Met deze persoonlijke link word je direct ingelogd in je websitevoorbeeld.",
     }),
     text: [
-      "Your Site in a Box preview is ready.",
-      `Open your preview: ${loginUrl}`,
-      "This magic link signs you in to your customer preview.",
+      "Je Site in a Box-voorbeeld is klaar.",
+      `Voorbeeld bekijken: ${loginUrl}`,
+      "Met deze persoonlijke link word je direct ingelogd in je websitevoorbeeld.",
     ].join("\n"),
   }
 }

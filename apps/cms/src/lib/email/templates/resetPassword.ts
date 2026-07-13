@@ -2,23 +2,23 @@ import { renderEmailButton, renderEmailFallbackLink, renderEmailLayout } from "@
 
 export function resetPasswordTemplate(opts: { resetUrl: string }) {
   return {
-    subject: "Reset your Site in a Box password",
+    subject: "Stel je wachtwoord voor Site in a Box opnieuw in",
     html: renderEmailLayout({
-      preheader: "Reset your Site in a Box password",
+      preheader: "Stel je wachtwoord voor Site in a Box opnieuw in",
       eyebrow: "Beveiliging",
-      title: "Reset your password",
-      intro: "A password reset was requested for your Site in a Box administrator account.",
-      body: `${renderEmailButton("Reset password", opts.resetUrl)}${renderEmailFallbackLink(opts.resetUrl)}`,
-      notice: "This link expires in one hour. If you did not request this, you can safely ignore this email.",
+      title: "Wachtwoord opnieuw instellen",
+      intro: "Er is een nieuw wachtwoord aangevraagd voor je Site in a Box-beheerdersaccount.",
+      body: `${renderEmailButton("Wachtwoord instellen", opts.resetUrl)}${renderEmailFallbackLink(opts.resetUrl)}`,
+      notice: "Deze link is één uur geldig. Heb je dit niet aangevraagd? Dan kun je deze e-mail negeren.",
       footer: "security",
     }),
     text: [
-      "A password reset was requested for your Site in a Box administrator account.",
+      "Er is een nieuw wachtwoord aangevraagd voor je Site in a Box-beheerdersaccount.",
       "",
-      `Reset your password: ${opts.resetUrl}`,
+      `Wachtwoord opnieuw instellen: ${opts.resetUrl}`,
       "",
-      "This link expires in one hour.",
-      "If you did not request this, you can safely ignore this email.",
+      "Deze link is één uur geldig.",
+      "Heb je dit niet aangevraagd? Dan kun je deze e-mail negeren.",
     ].join("\n"),
   }
 }

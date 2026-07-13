@@ -147,6 +147,6 @@ describe("super-admin password recovery", () => {
     const message = resetPasswordTemplate({ resetUrl: url })
     expect(message.html).toContain(url)
     expect(message.text).toContain(url)
-    expect(message.html).toContain("one hour")
+    expect(message.html).toContain("één uur")
   })
 })

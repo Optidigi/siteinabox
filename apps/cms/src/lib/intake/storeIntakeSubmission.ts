@@ -2,7 +2,7 @@ import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import type { Payload } from "payload"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
-import { renderEmailLayout } from "@/lib/email/emailLayout"
+import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
 import { recordIntakeMarketingPreference } from "@/lib/legal/communicationPreferences"
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
@@ -85,42 +85,39 @@ const escapeHtml = (value: string) =>
     .replace(/'/g, "&#39;")
 
 const intakeInternalNotificationTemplate = (doc: PayloadDoc) => {
-  const status = cleanText(doc.status) ?? "unknown"
-  const businessName = cleanText(doc.businessName) ?? "Unknown business"
+  const status = cleanText(doc.status) ?? "onbekend"
+  const businessName = cleanText(doc.businessName) ?? "Onbekend bedrijf"
   const contactName = cleanText(doc.contactName) ?? "-"
   const contactEmail = cleanText(doc.contactEmail) ?? "-"
   const source = cleanText(doc.source) ?? "-"
-  const subjectBusinessName = cleanEmailHeaderText(businessName) || "Unknown business"
+  const subjectBusinessName = cleanEmailHeaderText(businessName) || "Onbekend bedrijf"
   const subject = status === "failed"
-    ? `Intake storage failed: ${subjectBusinessName}`
-    : `New intake stored: ${subjectBusinessName}`
+    ? `Opslaan intake mislukt: ${subjectBusinessName}`
+    : `Nieuwe intake opgeslagen: ${subjectBusinessName}`
   const rows: Array<[string, string]> = [
     ["Status", status],
-    ["Business", businessName],
-    ["Contact", contactName],
-    ["Email", contactEmail],
-    ["Source", source],
+    ["Bedrijf", businessName],
+    ["Contactpersoon", contactName],
+    ["E-mail", contactEmail],
+    ["Bron", source],
     ["Intake ID", String(doc.id ?? "-")],
   ]
-  const htmlRows = rows
-    .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
-    .join("")
   const errorMessage = doc.error && typeof doc.error === "object"
     ? cleanText((doc.error as Record<string, unknown>).message)
     : null
-  const body = `<p>A public intake submission was stored in the CMS.</p>${htmlRows}${errorMessage ? `<p><strong>Error:</strong> ${escapeHtml(errorMessage)}</p>` : ""}`
+  const body = `${renderEmailInfoTable(rows)}${errorMessage ? `<p><strong>Fout:</strong> ${escapeHtml(errorMessage)}</p>` : ""}`
   return {
     subject,
-    html: renderEmailLayout({ eyebrow: "Internal notification", title: status === "failed" ? "Intake storage failed" : "New intake stored", body, footer: "internal" }),
+    html: renderEmailLayout({ eyebrow: "Interne melding", title: status === "failed" ? "Opslaan intake mislukt" : "Nieuwe intake opgeslagen", intro: "Een openbare intake is verwerkt in het CMS.", body, footer: "internal" }),
     text: [
       subject,
       `Status: ${status}`,
-      `Business: ${businessName}`,
-      `Contact: ${contactName}`,
-      `Email: ${contactEmail}`,
-      `Source: ${source}`,
+      `Bedrijf: ${businessName}`,
+      `Contactpersoon: ${contactName}`,
+      `E-mail: ${contactEmail}`,
+      `Bron: ${source}`,
       `Intake ID: ${String(doc.id ?? "-")}`,
-      ...(errorMessage ? [`Error: ${errorMessage}`] : []),
+      ...(errorMessage ? [`Fout: ${errorMessage}`] : []),
     ].join("\n"),
   }
 }

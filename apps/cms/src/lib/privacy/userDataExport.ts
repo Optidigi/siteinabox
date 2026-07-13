@@ -118,13 +118,13 @@ export async function emailUserDataExport(payload: any, user: any) {
   const json = JSON.stringify(data, null, 2)
   await sendEmail({
     to: data.user.email,
-    subject: "Your SiteInABox data export",
+    subject: "Je gegevensexport van Site in a Box",
     html: renderEmailLayout({
       eyebrow: "Privacy",
-      title: "Your data export",
-      intro: "Your requested Site in a Box data export is included below.",
+      title: "Je gegevensexport",
+      intro: "Hieronder staat de gegevensexport die je bij Site in a Box hebt aangevraagd.",
       body: [
-      "<p>If you did not request this, contact support immediately.</p>",
+      "<p>Heb je dit niet aangevraagd? Neem dan direct contact met ons op.</p>",
       `<pre style="overflow:auto;padding:16px;background:#fef3f4;border:2px solid #000;font-family:monospace;font-size:12px;line-height:1.5">${json
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
@@ -132,8 +132,8 @@ export async function emailUserDataExport(payload: any, user: any) {
       ].join(""),
     }),
     text: [
-      "Your requested SiteInABox data export is below.",
-      "If you did not request this, contact support immediately.",
+      "Hieronder staat de gegevensexport die je bij Site in a Box hebt aangevraagd.",
+      "Heb je dit niet aangevraagd? Neem dan direct contact met ons op.",
       "",
       json,
     ].join("\n"),

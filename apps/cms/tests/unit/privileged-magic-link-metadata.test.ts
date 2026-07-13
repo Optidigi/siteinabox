@@ -75,7 +75,7 @@ describe("privileged CMS magic-link metadata", () => {
 
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: "member@example.com",
-      subject: "You've been invited to Example",
+      subject: "Je bent uitgenodigd voor Example",
       intent: "auth.magic_link",
       tenant: 1,
     }))
@@ -97,7 +97,7 @@ describe("privileged CMS magic-link metadata", () => {
 
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: "owner@example.com",
-      subject: "Your Site in a Box site is live",
+      subject: "Je Site in a Box-website staat live",
       intent: "site.live_notice",
       tenant: 2,
     }))
@@ -160,7 +160,7 @@ describe("privileged CMS magic-link metadata", () => {
     })
     expect(mocks.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: "member@example.com",
-      subject: "Sign in to SiteInABox",
+      subject: "Log in bij Site in a Box",
       intent: "auth.magic_link",
     }))
   })

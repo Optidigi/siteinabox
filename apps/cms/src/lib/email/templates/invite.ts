@@ -10,28 +10,29 @@ export function inviteTemplate(opts: {
   role: "owner" | "editor" | "viewer"
 }) {
   const tenantNameText = cleanText(opts.tenantName) || "Site in a Box"
-  const recipientNameText = cleanText(opts.recipientName) || "there"
+  const recipientNameText = cleanText(opts.recipientName) || "daar"
   const roleText = cleanText(opts.role)
+  const roleLabel = { owner: "eigenaar", editor: "redacteur", viewer: "lezer" }[opts.role]
   return {
-    subject: `You've been invited to ${tenantNameText}`,
+    subject: `Je bent uitgenodigd voor ${tenantNameText}`,
     html: renderEmailLayout({
-      preheader: `Invitation to ${tenantNameText}`,
+      preheader: `Je uitnodiging voor ${tenantNameText}`,
       eyebrow: "Team & toegang",
-      title: `You're invited to ${tenantNameText}`,
-      intro: `Hi ${recipientNameText}, you've been invited with the ${roleText} role. Site in a Box uses secure passwordless login.`,
-      body: `<p style="margin:0 0 18px;font-family:Arial,sans-serif;font-size:15px;line-height:1.6">Your access role: <strong>${escapeEmailHtml(roleText)}</strong></p>${renderEmailButton("Accept invitation", opts.inviteUrl)}${renderEmailFallbackLink(opts.inviteUrl)}`,
-      notice: "This link expires in 5 minutes. If you weren't expecting this invitation, you can ignore this email.",
+      title: `Je bent uitgenodigd voor ${tenantNameText}`,
+      intro: `Hallo ${recipientNameText}, je bent toegevoegd aan ${tenantNameText}. Site in a Box gebruikt beveiligd inloggen zonder wachtwoord.`,
+      body: `<p style="margin:0 0 14px;font-family:Arial,sans-serif;font-size:14px;line-height:1.55">Je rol: <strong>${escapeEmailHtml(roleLabel)}</strong></p>${renderEmailButton("Uitnodiging accepteren", opts.inviteUrl)}${renderEmailFallbackLink(opts.inviteUrl)}`,
+      notice: "Deze link is 5 minuten geldig. Verwachtte je deze uitnodiging niet? Dan kun je deze e-mail negeren.",
       footer: "security",
     }),
     text: [
-      `Hi ${recipientNameText},`,
+      `Hallo ${recipientNameText},`,
       "",
-      `You've been invited to ${tenantNameText} with the ${roleText} role.`,
-      "Site in a Box uses secure passwordless login.",
+      `Je bent uitgenodigd voor ${tenantNameText} met de rol ${roleLabel} (${roleText}).`,
+      "Site in a Box gebruikt beveiligd inloggen zonder wachtwoord.",
       "",
-      `Accept invitation: ${opts.inviteUrl}`,
+      `Uitnodiging accepteren: ${opts.inviteUrl}`,
       "",
-      "This link expires in 5 minutes. If you weren't expecting this invitation, you can ignore this email.",
+      "Deze link is 5 minuten geldig. Verwachtte je deze uitnodiging niet? Dan kun je deze e-mail negeren.",
     ].join("\n"),
   }
 }

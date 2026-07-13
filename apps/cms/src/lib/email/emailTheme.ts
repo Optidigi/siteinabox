@@ -8,7 +8,8 @@ export const emailTheme = {
   yellowStrong: "#ffd80b",
   border: "#000000",
   footer: "#000000",
-  shadow: "4px 4px #000000",
+  shadow: "3px 3px #000000",
   bodyFont: "Chivo,Arial,sans-serif",
   headingFont: "Familjen Grotesk,Arial,sans-serif",
+  logoUrl: "https://admin.siteinabox.nl/logos/email-logo.png",
 } as const

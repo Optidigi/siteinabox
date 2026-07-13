@@ -76,7 +76,7 @@ describe("user data export", () => {
 
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
       to: "owner@example.com",
-      subject: expect.stringContaining("data export"),
+      subject: expect.stringContaining("gegevensexport"),
       html: expect.stringContaining("owner@example.com"),
     }))
   })

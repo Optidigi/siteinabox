@@ -3,7 +3,7 @@ import { canRead, canWrite } from "@/access/roleHelpers"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
-import { renderEmailLayout } from "@/lib/email/emailLayout"
+import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
@@ -191,36 +191,33 @@ export async function notifyTenantOfFormSubmission({
 }
 
 export function tenantFormNotificationTemplate(doc: FormNotificationDoc) {
-  const formName = cleanText(doc.formName) ?? "Website form"
-  const submitterName = cleanText(doc.name ?? firstStringFromRecord(doc.data, ["name", "naam"])) ?? "Unknown"
+  const formName = cleanText(doc.formName) ?? "Websiteformulier"
+  const submitterName = cleanText(doc.name ?? firstStringFromRecord(doc.data, ["name", "naam"])) ?? "Onbekend"
   const submitterEmail = safeEmail(doc.email ?? firstStringFromRecord(doc.data, ["email", "contactEmail"]))
   const pageUrl = cleanText(doc.pageUrl)
   const message = cleanText(doc.message ?? firstStringFromRecord(doc.data, ["message", "bericht", "notes"]))
 
-  const rows = [
-    ["Form", formName],
-    ["Name", submitterName],
-    ["Email", submitterEmail ?? "-"],
-    ...(pageUrl ? [["Page", pageUrl] as const] : []),
+  const rows: Array<[string, string]> = [
+    ["Formulier", formName],
+    ["Naam", submitterName],
+    ["E-mail", submitterEmail ?? "-"],
+    ...(pageUrl ? [["Pagina", pageUrl] as [string, string]] : []),
   ]
-  const htmlRows = rows
-    .map(([label, value]) => `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</p>`)
-    .join("")
   const htmlMessage = message
-    ? `<h2>Message</h2><p>${nl2br(message)}</p>`
+    ? `<p style="margin:18px 0 6px;font-weight:700">Bericht</p><p style="margin:0">${nl2br(message)}</p>`
     : ""
   const text = [
-    `New form submission: ${formName}`,
-    `Name: ${submitterName}`,
-    `Email: ${submitterEmail ?? "-"}`,
-    ...(pageUrl ? [`Page: ${pageUrl}`] : []),
-    ...(message ? ["", "Message:", message] : []),
+    `Nieuwe formulierinzending: ${formName}`,
+    `Naam: ${submitterName}`,
+    `E-mail: ${submitterEmail ?? "-"}`,
+    ...(pageUrl ? [`Pagina: ${pageUrl}`] : []),
+    ...(message ? ["", "Bericht:", message] : []),
   ].join("\n")
 
-  const html = `<p>A new generated-site form submission was stored in the CMS.</p>${htmlRows}${htmlMessage}`
+  const html = `${renderEmailInfoTable(rows)}${htmlMessage}`
   return {
-    subject: `New form submission: ${cleanEmailHeaderText(formName) || "Website form"}`,
-    html: renderEmailLayout({ eyebrow: "Form submission", title: `New form submission: ${formName}`, body: html, footer: "internal" }),
+    subject: `Nieuwe formulierinzending: ${cleanEmailHeaderText(formName) || "Websiteformulier"}`,
+    html: renderEmailLayout({ eyebrow: "Formulierinzending", title: `Nieuwe inzending: ${formName}`, intro: "Er is een nieuw formulier op een website ingevuld.", body: html, footer: "internal" }),
     text,
   }
 }
