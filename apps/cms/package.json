@@ -42,7 +42,6 @@
     "@lexical/selection": "0.41.0",
     "@lexical/utils": "0.41.0",
     "@payloadcms/db-postgres": "3.85.0",
-    "@payloadcms/email-nodemailer": "3.85.0",
     "@payloadcms/next": "3.85.0",
     "@payloadcms/plugin-multi-tenant": "3.85.0",
     "@payloadcms/richtext-lexical": "3.85.0",

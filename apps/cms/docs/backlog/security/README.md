@@ -4,7 +4,7 @@ Canonical source of truth for security findings, vulnerability observations, and
 
 ## How this file is used
 
-- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-126 across all backlog files — next OBS = OBS-127).
+- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-128 across all backlog files — next OBS = OBS-129).
 - **Status tiers:** Active (real, deferred), Latent (not exploitable today — trigger documented), Audit-deferred (explicitly punted per audit text), Closed (resolved).
 - **When a trigger condition fires**, promote the item immediately to a fix batch. Do not defer further.
 - **When a PR touches a Payload auth feature** (`useAPIKey`, `verify`, `loginWithUsername`, etc.), check the Doctrine section below and audit auto-injected fields the same day.
@@ -16,6 +16,61 @@ The full audit cycle's working artifacts (threat model, batch reports, adversari
 ---
 
 ## Active
+
+### OBS-128 — Public CMS magic-link metadata selected privileged mail templates
+
+**Status:** Closed 2026-07-13.
+**Discovered in:** production mail-route invocation review
+**Files:** `src/lib/betterAuth.ts`, `src/lib/auth/privilegedMagicLinkMetadata.ts`, `src/lib/auth/sendCmsMagicLinkEmail.ts`
+
+#### Description
+The public Better Auth magic-link endpoint forwarded caller-controlled metadata
+to the CMS mail dispatcher. An anonymous caller could name `user_invite` or
+`site_live_handoff` and select privileged message content for an existing CMS
+user without going through the authorized invitation or activation workflows.
+
+#### Resolution
+Privileged CMS magic-link metadata is now signed server-side with a
+domain-separated HMAC derived from the configured Better Auth/Payload secret.
+The envelope is purpose- and claim-bound, expires after 60 seconds, and binds
+the normalized recipient plus target admin origin. The dispatcher uses a
+timing-safe signature comparison and rejects unsigned, expired, tampered,
+cross-recipient, or cross-origin privileged metadata before rendering or
+sending privileged content. Ordinary unsigned login metadata continues through
+the generic `auth.magic_link` template. The signed envelope is a short-lived
+internal bearer between the server action and Better Auth; it is not returned
+to the browser or written to mail logs.
+
+#### Validation
+Execution tests cover valid internal invitation and live-handoff delivery,
+unsigned public metadata, claim and purpose tampering, expiry, recipient/origin
+rebinding, and the ordinary public magic-link fallback.
+
+### OBS-127 — Public preview metadata could select privileged site-ready mail
+
+**Status:** Closed 2026-07-13.
+**Discovered in:** outbound mail route audit
+**Files:** `src/lib/preview/betterAuth.ts`, `src/lib/actions/previewAccess.ts`
+
+#### Description
+Preview Better Auth selected the operator-only `preview.site_ready` template
+from a caller-controlled `metadata.previewSiteReady` boolean. A public caller
+with an active preview grant could forge that metadata through the Better Auth
+endpoint and receive the privileged site-ready message instead of the ordinary
+preview login message.
+
+#### Resolution
+The super-admin preview-send action now attaches a five-minute HMAC
+authorization bound to the normalized recipient email, preview client slug,
+expiry, and intent version. Preview Better Auth selects the site-ready template
+and `preview.site_ready` intent only when that authorization verifies with the
+server-held preview/auth secret. Missing, forged, expired, or recipient- or
+preview-rebound metadata falls back to the ordinary `preview.magic_link`
+template after the existing active-grant check. Cloudflare `sendEmail` remains
+the only delivery path.
+
+Focused tests cover the authorized operator path plus unsigned, forged,
+expired, recipient-rebound, and preview-rebound metadata.
 
 ### OBS-126 — Untrusted mail template/header interpolation
 

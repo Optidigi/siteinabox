@@ -38,11 +38,12 @@ describe("invitation email template", () => {
   })
 
   it("is selected by invitation metadata and logged against the target tenant", () => {
-    const auth = readFileSync(resolve(process.cwd(), "src/lib/betterAuth.ts"), "utf8")
-    expect(auth).toContain('intent === "user_invite"')
-    expect(auth).toContain("inviteTemplate({")
-    expect(auth).toContain("recipientName")
-    expect(auth).toContain('intent: "auth.magic_link"')
-    expect(auth).toContain("tenant: tenantId")
+    const dispatcher = readFileSync(resolve(process.cwd(), "src/lib/auth/sendCmsMagicLinkEmail.ts"), "utf8")
+    expect(dispatcher).toContain('intent === "user_invite"')
+    expect(dispatcher).toContain("verifyPrivilegedMagicLinkMetadata")
+    expect(dispatcher).toContain("inviteTemplate({")
+    expect(dispatcher).toContain("recipientName")
+    expect(dispatcher).toContain('intent: "auth.magic_link"')
+    expect(dispatcher).toContain("tenant: tenantId")
   })
 })

@@ -4,22 +4,11 @@ import { nextCookies } from "better-auth/next-js"
 import { magicLink } from "better-auth/plugins"
 import { getBetterAuthInfraPlugins } from "@/lib/betterAuthInfra"
 import { getEnabledSocialAuthProviders } from "@/lib/socialAuth/providers"
-import { resolvePayloadUserForMagicLink, resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
+import { resolvePayloadUserForSocialSignup } from "@/lib/socialAuth/payloadUser"
 import { getBetterAuthBaseURL, getTrustedSocialAuthOrigins } from "@/lib/socialAuth/hosts"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
-import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
-import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
-import { inviteTemplate } from "@/lib/email/templates/invite"
-import { siteLiveNoticeTemplate } from "@/lib/email/templates/siteLiveNotice"
+import { sendCmsMagicLinkEmail } from "@/lib/auth/sendCmsMagicLinkEmail"
 import { CMS_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
-
-async function getMailPayload() {
-  const [{ getPayload }, configModule] = await Promise.all([
-    import("payload"),
-    import("@/payload.config"),
-  ])
-  return getPayload({ config: configModule.default })
-}
 
 const DATABASE_URI = process.env.DATABASE_URI
 if (!DATABASE_URI) {
@@ -84,19 +73,6 @@ const providerConfig = {
     : {}),
 }
 
-const metadataText = (metadata: unknown, key: string): string | null => {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null
-  const value = (metadata as Record<string, unknown>)[key]
-  return typeof value === "string" && value.trim() ? value.trim() : null
-}
-
-const metadataTenant = (metadata: unknown): string | number | null => {
-  const value = metadataText(metadata, "tenantId")
-  if (!value) return null
-  const numeric = Number(value)
-  return Number.isSafeInteger(numeric) && String(numeric) === value ? numeric : value
-}
-
 export const auth = betterAuth({
   appName: "SiteInABox",
   baseURL: getBetterAuthBaseURL(),
@@ -157,62 +133,7 @@ export const auth = betterAuth({
       expiresIn: 300,
       rateLimit: getMagicLinkRateLimit(),
       sendMagicLink: async ({ email, url, metadata }) => {
-        await resolvePayloadUserForMagicLink(email)
-        const payload = await getMailPayload()
-        const intent = metadataText(metadata, "intent")
-        if (intent === "user_invite") {
-          const tenantId = metadataTenant(metadata)
-          const tenantName = metadataText(metadata, "tenantName")
-          const recipientName = metadataText(metadata, "recipientName")
-          const role = metadataText(metadata, "role")
-          if (tenantId == null || !tenantName || !recipientName || !role || !["owner", "editor", "viewer"].includes(role)) {
-            throw new Error("Invitation magic-link metadata is incomplete or invalid.")
-          }
-          const message = inviteTemplate({
-            tenantName,
-            recipientName,
-            role: role as "owner" | "editor" | "viewer",
-            inviteUrl: url,
-          })
-          await sendEmail({
-            to: email,
-            subject: message.subject,
-            html: message.html,
-            text: message.text,
-            intent: "auth.magic_link",
-            tenant: tenantId,
-            payload: payload as any,
-          })
-          return
-        }
-        if (intent === "site_live_handoff") {
-          const siteUrl = metadataText(metadata, "siteUrl")
-          const adminUrl = metadataText(metadata, "adminUrl")
-          if (!siteUrl || !adminUrl) {
-            throw new Error("Live handoff magic-link metadata is missing siteUrl or adminUrl.")
-          }
-          const message = siteLiveNoticeTemplate({ siteUrl, adminUrl, magicLoginUrl: url })
-          await sendEmail({
-            to: email,
-            from: getPlatformMailSender(),
-            subject: message.subject,
-            html: message.html,
-            text: message.text,
-            intent: "site.live_notice",
-            tenant: metadataTenant(metadata),
-            payload: payload as any,
-          })
-          return
-        }
-        const message = magicLinkTemplate({ loginUrl: url })
-        await sendEmail({
-          to: email,
-          subject: message.subject,
-          html: message.html,
-          text: message.text,
-          intent: "auth.magic_link",
-          payload: payload as any,
-        })
+        await sendCmsMagicLinkEmail({ email, url, metadata })
       },
     }),
     nextCookies(),

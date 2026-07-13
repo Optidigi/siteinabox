@@ -142,13 +142,16 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
         name: "New User",
         callbackURL: "https://admin.example.nl",
         errorCallbackURL: "https://admin.example.nl/login",
-        metadata: {
+        metadata: expect.objectContaining({
           intent: "user_invite",
+          recipientEmail: "new@example.com",
           tenantId: "1",
           tenantName: "Example tenant",
           recipientName: "New User",
           role: "editor",
-        },
+          adminUrl: "https://admin.example.nl",
+          _siabPrivilegedSignature: expect.any(String),
+        }),
       }),
       headers: expect.any(Headers),
     }))

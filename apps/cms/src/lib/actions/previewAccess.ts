@@ -7,6 +7,7 @@ import config from "@/payload.config"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { createOrRefreshPreviewGrant } from "@/lib/preview/previewAccess"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { createPreviewSiteReadyAuthorization } from "@/lib/preview/trustedSiteReadyIntent"
 
 export type PreviewAccessActionState = {
   ok: boolean
@@ -48,6 +49,10 @@ export async function sendPreviewAccessAction(
       sendEmail: true,
     })
     const previewUrl = `https://${PREVIEW_HOST}/${grant.clientSlug}`
+    const previewSiteReadyAuthorization = createPreviewSiteReadyAuthorization({
+      email,
+      clientSlug: grant.clientSlug,
+    })
     await (previewAuth.api as any).signInMagicLink({
       body: {
         email,
@@ -56,6 +61,7 @@ export async function sendPreviewAccessAction(
         metadata: {
           previewClientSlug: grant.clientSlug,
           previewSiteReady: true,
+          previewSiteReadyAuthorization,
         },
       },
       headers: await previewAuthHeaders(),

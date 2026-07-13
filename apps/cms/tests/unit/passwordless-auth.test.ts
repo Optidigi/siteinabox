@@ -57,13 +57,14 @@ describe("passwordless auth surface", () => {
   })
 
   it("sends live handoff magic links through the final site.live_notice email", () => {
-    const auth = src("src/lib/betterAuth.ts")
+    const dispatcher = src("src/lib/auth/sendCmsMagicLinkEmail.ts")
     const template = src("src/lib/email/templates/siteLiveNotice.ts")
 
-    expect(auth).toContain('intent === "site_live_handoff"')
-    expect(auth).toContain("siteLiveNoticeTemplate({ siteUrl, adminUrl, magicLoginUrl: url })")
-    expect(auth).toContain('intent: "site.live_notice"')
-    expect(auth).toContain("tenant: metadataTenant(metadata)")
+    expect(dispatcher).toContain('intent === "site_live_handoff"')
+    expect(dispatcher).toContain("verifyPrivilegedMagicLinkMetadata")
+    expect(dispatcher).toContain("siteLiveNoticeTemplate({ siteUrl, adminUrl, magicLoginUrl: input.url })")
+    expect(dispatcher).toContain('intent: "site.live_notice"')
+    expect(dispatcher).toContain("tenant: metadataTenant(input.metadata)")
     expect(template).toContain("Magic login:")
   })
 

@@ -8,6 +8,7 @@ import { sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
 import { PREVIEW_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
+import { isPrivilegedPreviewSiteReadyMetadata } from "@/lib/preview/trustedSiteReadyIntent"
 
 async function getMailPayload() {
   const [{ getPayload }, configModule] = await Promise.all([
@@ -117,7 +118,8 @@ export const previewAuth = betterAuth({
             message: "No active preview access grant matches this email.",
           })
         }
-        const message = metadata?.previewSiteReady === true
+        const siteReady = isPrivilegedPreviewSiteReadyMetadata({ email, clientSlug, metadata })
+        const message = siteReady
           ? siteReadyPreviewTemplate({ loginUrl: url })
           : magicLinkTemplate({ loginUrl: url })
         const payload = await getMailPayload()
@@ -126,7 +128,7 @@ export const previewAuth = betterAuth({
           subject: message.subject,
           html: message.html,
           text: message.text,
-          intent: metadata?.previewSiteReady === true ? "preview.site_ready" : "preview.magic_link",
+          intent: siteReady ? "preview.site_ready" : "preview.magic_link",
           payload: payload as any,
         })
       },

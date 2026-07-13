@@ -6,6 +6,7 @@ import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { auth } from "@/lib/betterAuth"
 import { relationshipId } from "@/lib/relationshipId"
 import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
+import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
 
 type SnapshotDoc = {
   id?: string | number | null
@@ -226,12 +227,12 @@ async function sendLiveHandoffMagicLink(input: {
       ...(input.name ? { name: input.name } : {}),
       callbackURL: input.adminUrl,
       errorCallbackURL: `${input.adminUrl}/login`,
-      metadata: {
-        intent: "site_live_handoff",
+      metadata: signPrivilegedMagicLinkMetadata("site_live_handoff", {
+        recipientEmail: input.email.trim().toLowerCase(),
         siteUrl: input.siteUrl,
         adminUrl: input.adminUrl,
         tenantId: String(input.tenantId),
-      },
+      }),
     },
     headers: authHeadersForAdminUrl(input.adminUrl),
   })

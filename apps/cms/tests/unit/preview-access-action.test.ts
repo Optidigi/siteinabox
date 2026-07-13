@@ -81,10 +81,14 @@ describe("sendPreviewAccessAction", () => {
       body: expect.objectContaining({
         email: "customer@example.com",
         callbackURL: "https://preview.siteinabox.nl/preview-studio",
-        metadata: {
+        metadata: expect.objectContaining({
           previewClientSlug: "preview-studio",
           previewSiteReady: true,
-        },
+          previewSiteReadyAuthorization: expect.objectContaining({
+            expiresAt: expect.any(String),
+            signature: expect.stringMatching(/^[a-f0-9]{64}$/),
+          }),
+        }),
       }),
       headers: expect.any(Headers),
     }))

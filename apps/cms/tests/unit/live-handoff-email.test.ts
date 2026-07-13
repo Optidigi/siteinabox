@@ -170,12 +170,14 @@ describe("CMS live handoff email", () => {
         email: "customer@example.com",
         callbackURL: "https://admin.clientsite.nl",
         errorCallbackURL: "https://admin.clientsite.nl/login",
-        metadata: {
+        metadata: expect.objectContaining({
           intent: "site_live_handoff",
+          recipientEmail: "customer@example.com",
           siteUrl: "https://clientsite.nl",
           adminUrl: "https://admin.clientsite.nl",
           tenantId: "1",
-        },
+          _siabPrivilegedSignature: expect.any(String),
+        }),
       }),
       headers: expect.any(Headers),
     }))

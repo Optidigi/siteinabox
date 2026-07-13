@@ -6,6 +6,7 @@ import crypto from "node:crypto"
 import { auth } from "@/lib/betterAuth"
 import { buildCmsAuthHeaders } from "@/lib/socialAuth/hosts"
 import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
+import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
 
 // fn-batch-6 follow-up — return shape now distinguishes auth/permission
 // failures (still throw — they're system-level) from validation failures
@@ -68,13 +69,14 @@ export async function sendInviteMagicLink(input: {
       name: input.name,
       callbackURL: input.adminUrl,
       errorCallbackURL: `${input.adminUrl}/login`,
-      metadata: {
-        intent: "user_invite",
+      metadata: signPrivilegedMagicLinkMetadata("user_invite", {
+        recipientEmail: input.email.trim().toLowerCase(),
         tenantId: String(input.tenant.id),
         tenantName: input.tenant.name?.trim() || input.tenant.domain?.trim() || "Site in a Box",
         recipientName: input.name,
         role: input.role,
-      },
+        adminUrl: input.adminUrl,
+      }),
     },
     headers: buildCmsAuthHeaders(new Headers({
       host: url.host,
