@@ -4,7 +4,7 @@ Canonical source of truth for security findings, vulnerability observations, and
 
 ## How this file is used
 
-- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-125 across all backlog files — next OBS = OBS-126).
+- IDs use the `OBS-N` scheme inherited from the 2026-05 audit cycle. New security items continue the same sequence (current high water mark: OBS-126 across all backlog files — next OBS = OBS-127).
 - **Status tiers:** Active (real, deferred), Latent (not exploitable today — trigger documented), Audit-deferred (explicitly punted per audit text), Closed (resolved).
 - **When a trigger condition fires**, promote the item immediately to a fix batch. Do not defer further.
 - **When a PR touches a Payload auth feature** (`useAPIKey`, `verify`, `loginWithUsername`, etc.), check the Doctrine section below and audit auto-injected fields the same day.
@@ -16,6 +16,27 @@ The full audit cycle's working artifacts (threat model, batch reports, adversari
 ---
 
 ## Active
+
+### OBS-126 — Untrusted mail template/header interpolation
+
+**Status:** Closed 2026-07-13.
+**Discovered in:** outbound mail route audit
+**Files:** `src/lib/email/templates/*`, `src/lib/contact/platformContact.ts`,
+`src/lib/intake/storeIntakeSubmission.ts`, `src/collections/Forms.ts`
+
+#### Description
+Magic-link and preview-ready URLs were interpolated into HTML without escaping,
+and dynamic contact, intake, and generated-form subject fragments could retain
+line/control characters. Several active transactional templates also lacked a
+plain-text alternative.
+
+#### Resolution
+Shared helpers now escape email HTML and normalize dynamic header fragments to
+one control-character-free line. Active magic-link and preview-ready templates
+emit escaped HTML plus plain text; privacy exports now include plain text; and
+contact, intake, and form-notification subjects normalize untrusted fragments.
+Focused tests cover HTML metacharacters, query-string ampersands, header control
+characters, and HTML/text parity.
 
 ### OBS-124 — Auth completion leaked internal redirect origins
 
@@ -790,6 +811,22 @@ Added a Payload `beforeOperation` hook for `forgotPassword` that rate-limits by 
 #### Validation
 Focused tests cover authenticated caller blocking on the fourth reset for the same target email, target isolation, operation scoping, and missing-email no-op behavior.
 
+#### Passwordless-boundary follow-up — 2026-07-13
+Password recovery is now a super-admin-only capability. Tenant hosts receive a
+404 for the forgot/reset pages and APIs, and the exact API handlers filter both
+forgot-password targets and reset tokens to users whose role is
+`super-admin`. Submitting a tenant user's address on the platform admin host
+returns the same generic response as an unknown address without creating a
+token or sending mail. Payload's reset/session-rotation machinery remains in
+use for valid super-admin requests.
+
+Payload's email adapter now delegates lazily to the centralized Cloudflare
+REST/SMTP `sendEmail` transport with the `auth.password_reset` intent, HTML and
+plain-text content, metadata logging, and operational failure alerts. Reset
+links are pinned to the configured platform admin origin and expire after one
+hour. Focused tests cover the host matrix, tenant-target no-op, provider
+failure, reset-token role gate, trusted URL, and lazy adapter wiring.
+
 ---
 
 ### OBS-6 — Owner-invite to typo'd email creates account at wrong address — RESOLVED
@@ -806,6 +843,15 @@ This takes the lightweight UX mitigation path from the suggested fixes. Full ema
 
 #### Validation
 Source-level unit guard verifies the invite form includes `confirmEmail`, the mismatch message, and the caution copy.
+
+#### Delivery follow-up — 2026-07-13
+Invitation delivery now uses a dedicated passwordless template selected by
+Better Auth metadata. The message includes the actual tenant, recipient, role,
+target tenant admin host, and five-minute magic-link lifetime in escaped HTML
+and plain text. The create action no longer reports success when delivery
+fails after the user was created; the UI exposes that partial outcome and lets
+an authorized owner or super-admin resend from the tenant-scoped team menu.
+Resend authorization rechecks both the caller tenant and recipient membership.
 
 ---
 

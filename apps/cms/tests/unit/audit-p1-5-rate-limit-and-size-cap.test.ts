@@ -84,13 +84,13 @@ type ReqOpts = {
 
 const reqAt = (opts: ReqOpts) => {
   const headers: Record<string, string> = {
-    host: opts.host ?? "admin.example.com",
+    host: opts.host ?? "admin.siteinabox.nl",
   }
   if (opts.ip) headers["x-forwarded-for"] = opts.ip
   if (opts.authorization) headers["authorization"] = opts.authorization
   if (opts.cookie) headers["cookie"] = opts.cookie
   if (opts.contentType) headers["content-type"] = opts.contentType
-  return new NextRequest(`https://${opts.host ?? "admin.example.com"}${opts.path}`, {
+  return new NextRequest(`https://${opts.host ?? "admin.siteinabox.nl"}${opts.path}`, {
     method: opts.method ?? "POST",
     headers,
     body: opts.body,

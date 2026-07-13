@@ -71,7 +71,10 @@ export function UserInviteForm({
         // the server returned a path. Today inviteUser returns { ok, error?, field? } shape.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const r = res as any
-        if (r.field === "email" || r.field === "name") {
+        if (r.code === "delivery_failed" && r.userCreated) {
+          status.error(t("inviteDeliveryFailedCreated"))
+          router.refresh()
+        } else if (r.field === "email" || r.field === "name") {
           form.setError(r.field as "email" | "name", { message: r.error || "Invalid" })
           status.error(`${r.field}: ${r.error || "Invalid"}`)
         } else {

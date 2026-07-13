@@ -321,7 +321,7 @@ export function normalizeProviderError(error: unknown, provider = "cloudflare-sm
     provider,
     ...(providerErrorCode ? { providerErrorCode } : {}),
     providerErrorMessage,
-    retryState: classifyRetryState({ responseCode, code: rawCode, message: providerErrorMessage }),
+    retryState: classifyRetryState({ provider, responseCode, code: rawCode, message: providerErrorMessage }),
   }
 }
 
@@ -561,10 +561,12 @@ function trimProviderErrorMessage(message: string) {
 }
 
 function classifyRetryState({
+  provider,
   responseCode,
   code,
   message,
 }: {
+  provider: string
   responseCode?: number
   code?: string
   message: string
@@ -573,6 +575,17 @@ function classifyRetryState({
     return "permanent"
   }
   if (responseCode) {
+    // Cloudflare REST exposes HTTP status codes, where server errors are
+    // transient and most client errors require configuration/input changes.
+    // SMTP uses the opposite first-digit convention: 4xx is transient and
+    // 5xx is a permanent rejection. Keep the two protocols explicit here so
+    // legal-notification retries do not stop on a temporary REST outage or
+    // repeatedly retry a rejected REST request.
+    if (provider === "cloudflare-rest") {
+      if (responseCode === 408 || responseCode === 429) return "retryable"
+      if (responseCode >= 500) return "retryable"
+      if (responseCode >= 400) return "permanent"
+    }
     if (responseCode >= 500) return "permanent"
     if (responseCode >= 400) return "retryable"
   }

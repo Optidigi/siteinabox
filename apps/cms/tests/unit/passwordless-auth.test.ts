@@ -38,13 +38,13 @@ describe("passwordless auth surface", () => {
     expect(src("src/collections/Users.ts")).toMatch(/tokenExpiration:\s*CMS_SESSION_EXPIRES_IN_SECONDS/)
   })
 
-  it("keeps SMTP provider setup out of Payload boot", () => {
+  it("uses the lazy shared email adapter without constructing SMTP at Payload boot", () => {
     const payloadConfig = src("src/payload.config.ts")
 
     expect(payloadConfig).not.toContain("@payloadcms/email-nodemailer")
     expect(payloadConfig).not.toContain("nodemailerAdapter")
-    expect(payloadConfig).not.toMatch(/\bemail:\s*emailAdapter\b/)
-    expect(payloadConfig).toContain("src/lib/email/sendEmail.ts")
+    expect(payloadConfig).toMatch(/\bemail:\s*payloadEmailAdapter\b/)
+    expect(src("src/lib/email/payloadEmailAdapter.ts")).toContain('intent: "auth.password_reset"')
   })
 
   it("uses a configurable magic-link rate limit for CMS and preview auth", () => {
@@ -66,4 +66,5 @@ describe("passwordless auth surface", () => {
     expect(auth).toContain("tenant: metadataTenant(metadata)")
     expect(template).toContain("Magic login:")
   })
+
 })

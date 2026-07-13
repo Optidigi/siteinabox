@@ -4,6 +4,7 @@ import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { hashStableValue, normalizeIntakeSubmission } from "./normalizeIntake"
 import { recordIntakeMarketingPreference } from "@/lib/legal/communicationPreferences"
+import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
 type WorkflowStatus = (typeof generationWorkflowStatuses)[number]
 
@@ -88,9 +89,10 @@ const intakeInternalNotificationTemplate = (doc: PayloadDoc) => {
   const contactName = cleanText(doc.contactName) ?? "-"
   const contactEmail = cleanText(doc.contactEmail) ?? "-"
   const source = cleanText(doc.source) ?? "-"
+  const subjectBusinessName = cleanEmailHeaderText(businessName) || "Unknown business"
   const subject = status === "failed"
-    ? `Intake storage failed: ${businessName}`
-    : `New intake stored: ${businessName}`
+    ? `Intake storage failed: ${subjectBusinessName}`
+    : `New intake stored: ${subjectBusinessName}`
   const rows: Array<[string, string]> = [
     ["Status", status],
     ["Business", businessName],

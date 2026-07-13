@@ -6,6 +6,7 @@ import { sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
 import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
+import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
 // Audit-p1 #5 sub-fix 2 (T4) — payload-size DoS cap on the public-create
 // surface. The audit's suggested cap is ~32 KB, sized for typical contact-
@@ -216,7 +217,7 @@ export function tenantFormNotificationTemplate(doc: FormNotificationDoc) {
   ].join("\n")
 
   return {
-    subject: `New form submission: ${formName}`,
+    subject: `New form submission: ${cleanEmailHeaderText(formName) || "Website form"}`,
     html: `<p>A new generated-site form submission was stored in the CMS.</p>${htmlRows}${htmlMessage}`,
     text,
   }

@@ -36,6 +36,7 @@ import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import { sendLegalRequirementNotificationsTask } from "@/lib/jobs/sendLegalRequirementNotificationsTask"
+import { payloadEmailAdapter } from "@/lib/email/payloadEmailAdapter"
 import type { Config } from "@/payload-types"
 
 const filename = fileURLToPath(import.meta.url)
@@ -52,15 +53,15 @@ if (!DATABASE_URI) {
   throw new Error("DATABASE_URI is required (set in .env or environment)")
 }
 
-// Outbound mail is sent through `src/lib/email/sendEmail.ts`. Keep SMTP
-// provider setup out of Payload config so boot, migrations, and health checks
-// do not depend on provider connectivity.
+// The adapter is lazy: Cloudflare REST/SMTP provider construction happens only
+// when Payload actually sends mail, not during boot, migrations, or health checks.
 
 // TODO(phase-1.3): add `cors` + `csrf` allowlists if API-key clients become
 // non-same-origin callers, or confirm same-origin and document.
 
 export default buildConfig({
   secret: PAYLOAD_SECRET,
+  email: payloadEmailAdapter,
   i18n: {
     fallbackLanguage: "nl",
     supportedLanguages: { en, nl },

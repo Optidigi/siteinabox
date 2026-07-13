@@ -126,6 +126,12 @@ export async function emailUserDataExport(payload: any, user: any) {
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")}</pre>`,
     ].join(""),
+    text: [
+      "Your requested SiteInABox data export is below.",
+      "If you did not request this, contact support immediately.",
+      "",
+      json,
+    ].join("\n"),
     intent: "privacy.data_export",
     payload,
   })

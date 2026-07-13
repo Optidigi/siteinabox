@@ -1,5 +1,6 @@
 import type { Payload } from "payload"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
+import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
 export const PLATFORM_CONTACT_RECIPIENT = "admin@siteinabox.nl"
 const MAX_CONTACT_MESSAGE_BYTES = 16 * 1024
@@ -60,7 +61,7 @@ function platformContactTemplate(input: Required<Pick<PlatformContactInput, "nam
   const subjectTopic = cleanText(input.subjectTopic) ?? "-"
   const source = cleanText(input.source) ?? "siteinabox.nl/contact"
   const message = cleanText(input.message) ?? "-"
-  const subject = `New siteinabox.nl contact: ${name}`
+  const subject = `New siteinabox.nl contact: ${cleanEmailHeaderText(name) || "Unknown"}`
   const rows: Array<[string, string]> = [
     ["Name", name],
     ["Email", email],

@@ -352,6 +352,15 @@ const buildMalformedApiKeyResponse = (pathname: string, nonce: string): NextResp
 const isPasswordLoginRequest = (req: NextRequest): boolean =>
   req.method === "POST" && normalizePath(req.nextUrl.pathname) === "/api/users/login"
 
+const isPasswordRecoveryPath = (pathname: string): boolean => {
+  const path = normalizePath(pathname)
+  return path === "/forgot-password" || path.startsWith("/reset-password/") ||
+    path === "/api/users/forgot-password" || path === "/api/users/reset-password"
+}
+
+const buildPasswordRecoveryNotFoundResponse = (pathname: string, nonce: string): NextResponse =>
+  applySecurityHeaders(new NextResponse(null, { status: 404 }), pathname, nonce)
+
 const buildPasswordLoginUnavailableResponse = (pathname: string, nonce: string): NextResponse => {
   const res = NextResponse.json({ error: "Password login is only available on the SIAB admin host" }, { status: 403 })
   return applySecurityHeaders(res, pathname, nonce)
@@ -391,6 +400,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const host = req.headers.get("host") || ""
   const domain = stripAdminPrefix(host)
   const superAdminDomain = process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN
+
+  if (isPasswordRecoveryPath(req.nextUrl.pathname) && !isSuperAdminDomain(domain, superAdminDomain)) {
+    return buildPasswordRecoveryNotFoundResponse(req.nextUrl.pathname, nonce)
+  }
 
   if (isPasswordLoginRequest(req) && !isSuperAdminDomain(domain, superAdminDomain)) {
     return buildPasswordLoginUnavailableResponse(req.nextUrl.pathname, nonce)

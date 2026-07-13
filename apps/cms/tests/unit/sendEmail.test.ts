@@ -382,6 +382,39 @@ describe("sendEmail", () => {
     })
   })
 
+  it("uses HTTP retry semantics for Cloudflare REST failures", async () => {
+    const { normalizeProviderError } = await import("@/lib/email/sendEmail")
+
+    expect(normalizeProviderError(Object.assign(new Error("temporary outage"), {
+      responseCode: 503,
+    }), "cloudflare-rest")).toMatchObject({
+      provider: "cloudflare-rest",
+      retryState: "retryable",
+    })
+    expect(normalizeProviderError(Object.assign(new Error("invalid request"), {
+      responseCode: 400,
+    }), "cloudflare-rest")).toMatchObject({
+      provider: "cloudflare-rest",
+      retryState: "permanent",
+    })
+    for (const responseCode of [408, 429]) {
+      expect(normalizeProviderError(Object.assign(new Error("retry later"), {
+        responseCode,
+      }), "cloudflare-rest")).toMatchObject({ retryState: "retryable" })
+    }
+  })
+
+  it("keeps SMTP retry semantics distinct from HTTP status semantics", async () => {
+    const { normalizeProviderError } = await import("@/lib/email/sendEmail")
+
+    expect(normalizeProviderError(Object.assign(new Error("temporary SMTP rejection"), {
+      responseCode: 421,
+    }), "cloudflare-smtp")).toMatchObject({ retryState: "retryable" })
+    expect(normalizeProviderError(Object.assign(new Error("permanent SMTP rejection"), {
+      responseCode: 550,
+    }), "cloudflare-smtp")).toMatchObject({ retryState: "permanent" })
+  })
+
   it("raises metadata-only alerts for important mail failures without sending recursive email", async () => {
     const error = Object.assign(new Error("550 5.7.1 Sender denied"), {
       responseCode: 550,

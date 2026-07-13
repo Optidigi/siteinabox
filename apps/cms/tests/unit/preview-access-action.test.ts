@@ -106,4 +106,15 @@ describe("sendPreviewAccessAction", () => {
     expect(mocks.createOrRefreshPreviewGrant).not.toHaveBeenCalled()
     expect(mocks.signInMagicLink).not.toHaveBeenCalled()
   })
+
+  it("returns a truthful failure when preview mail delivery is rejected", async () => {
+    mocks.signInMagicLink.mockRejectedValueOnce(new Error("Cloudflare unavailable"))
+    const { sendPreviewAccessAction } = await import("@/lib/actions/previewAccess")
+    const formData = new FormData()
+    formData.set("email", "customer@example.com")
+
+    const result = await sendPreviewAccessAction(500, { ok: false, message: "" }, formData)
+
+    expect(result).toEqual({ ok: false, message: "Cloudflare unavailable" })
+  })
 })

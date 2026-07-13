@@ -27,6 +27,7 @@ vi.mock("next/headers", () => ({
 const fakePayload = {
   auth: vi.fn(),
   create: vi.fn(),
+  findByID: vi.fn(),
   forgotPassword: vi.fn(),
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() }
 }
@@ -47,14 +48,21 @@ vi.mock("@/lib/betterAuth", () => ({
 }))
 
 // Import AFTER the mocks above (vi.mock is hoisted, so this is safe).
-import { inviteUser } from "@/lib/actions/inviteUser"
+import { inviteUser, resendUserInvitation } from "@/lib/actions/inviteUser"
 
 beforeEach(() => {
   fakePayload.auth.mockReset()
   fakePayload.create.mockReset()
+  fakePayload.findByID.mockReset()
   fakePayload.forgotPassword.mockReset()
   mocks.signInMagicLink.mockReset()
   fakePayload.create.mockResolvedValue({ id: 42 })
+  fakePayload.findByID.mockResolvedValue({
+    id: 1,
+    name: "Example tenant",
+    domain: "example.nl",
+    status: "active",
+  })
   fakePayload.forgotPassword.mockResolvedValue(undefined)
   mocks.signInMagicLink.mockResolvedValue({ ok: true })
 })
@@ -132,14 +140,44 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
       body: expect.objectContaining({
         email: "new@example.com",
         name: "New User",
-        callbackURL: "/",
-        errorCallbackURL: "/login",
+        callbackURL: "https://admin.example.nl",
+        errorCallbackURL: "https://admin.example.nl/login",
+        metadata: {
+          intent: "user_invite",
+          tenantId: "1",
+          tenantName: "Example tenant",
+          recipientName: "New User",
+          role: "editor",
+        },
       }),
       headers: expect.any(Headers),
     }))
     const callHeaders = mocks.signInMagicLink.mock.calls[0]![0].headers as Headers
-    expect(callHeaders.get("host")).toBe("admin.siteinabox.nl")
-    expect(callHeaders.get("x-forwarded-host")).toBe("admin.siteinabox.nl")
+    expect(callHeaders.get("host")).toBe("admin.example.nl")
+    expect(callHeaders.get("x-forwarded-host")).toBe("admin.example.nl")
+  })
+
+  it("reports when the user was created but Cloudflare-backed invitation delivery failed", async () => {
+    fakePayload.auth.mockResolvedValue({ user: { id: 1, role: "super-admin", tenants: [] } })
+    mocks.signInMagicLink.mockRejectedValueOnce(new Error("provider unavailable"))
+
+    await expect(inviteUser({ email: "new@example.com", name: "New User", role: "viewer", tenantId: 1 }))
+      .resolves.toEqual({
+        ok: false,
+        code: "delivery_failed",
+        id: 42,
+        userCreated: true,
+        error: "User created, but invitation delivery failed.",
+      })
+  })
+
+  it("does not create a user for suspended invitation tenants", async () => {
+    fakePayload.auth.mockResolvedValue({ user: { id: 1, role: "super-admin", tenants: [] } })
+    fakePayload.findByID.mockResolvedValueOnce({ id: 1, name: "Suspended", domain: "example.nl", status: "suspended" })
+
+    await expect(inviteUser({ email: "new@example.com", name: "New User", role: "viewer", tenantId: 1 }))
+      .rejects.toThrow("Invitation target tenant is unavailable")
+    expect(fakePayload.create).not.toHaveBeenCalled()
   })
 
   it("owner with numeric-id tenant relationship (un-populated FK) still gates correctly", async () => {
@@ -160,5 +198,56 @@ describe("audit-p0 #1 — inviteUser server action must authenticate the caller"
     expect(src).toContain("confirmEmail")
     expect(src).toContain('t("validation.emailMatch")')
     expect(src).toContain('t("inviteDescription")')
+  })
+
+  it("resends an invitation only to a member of the caller's own tenant", async () => {
+    fakePayload.auth.mockResolvedValue({
+      user: { id: 20, role: "owner", tenants: [{ tenant: { id: 1 } }] },
+    })
+    fakePayload.findByID
+      .mockResolvedValueOnce({ id: 1, name: "Example tenant", domain: "example.nl", status: "active" })
+      .mockResolvedValueOnce({
+        id: 55,
+        email: "member@example.com",
+        name: "Member",
+        role: "viewer",
+        tenants: [{ tenant: 1 }],
+      })
+
+    await expect(resendUserInvitation({ userId: 55, tenantId: 1 })).resolves.toEqual({ ok: true })
+    expect(mocks.signInMagicLink).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        email: "member@example.com",
+        callbackURL: "https://admin.example.nl",
+        metadata: expect.objectContaining({ role: "viewer", tenantId: "1" }),
+      }),
+    }))
+  })
+
+  it("blocks cross-tenant invitation resend before recipient lookup or delivery", async () => {
+    fakePayload.auth.mockResolvedValue({
+      user: { id: 20, role: "owner", tenants: [{ tenant: 1 }] },
+    })
+
+    await expect(resendUserInvitation({ userId: 55, tenantId: 2 }))
+      .rejects.toThrow("owner may only resend invitations in their own tenant")
+    expect(fakePayload.findByID).not.toHaveBeenCalled()
+    expect(mocks.signInMagicLink).not.toHaveBeenCalled()
+  })
+
+  it("blocks resend when the selected user does not belong to the selected tenant", async () => {
+    fakePayload.auth.mockResolvedValue({ user: { id: 1, role: "super-admin", tenants: [] } })
+    fakePayload.findByID
+      .mockResolvedValueOnce({ id: 1, name: "Example tenant", domain: "example.nl", status: "active" })
+      .mockResolvedValueOnce({
+        id: 55,
+        email: "member@example.com",
+        role: "viewer",
+        tenants: [{ tenant: 2 }],
+      })
+
+    await expect(resendUserInvitation({ userId: 55, tenantId: 1 }))
+      .rejects.toThrow("recipient does not belong to this tenant")
+    expect(mocks.signInMagicLink).not.toHaveBeenCalled()
   })
 })

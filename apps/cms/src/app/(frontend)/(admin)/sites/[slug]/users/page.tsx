@@ -43,6 +43,7 @@ export default async function TenantUsersPage({
         data={result.docs as any}
         canManage={canManage}
         currentUserId={user.id}
+        tenantId={tenant.id}
         emptyState={
           q ? (
             <EmptyState

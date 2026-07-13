@@ -38,6 +38,17 @@ No current open infra follow-up.
 
 ## Implemented Foundation
 
+### 2026-07-13 — Outbound mail transport correctness
+
+Cloudflare REST and SMTP failures now use provider-specific retry semantics:
+HTTP 5xx, 408, and 429 are retryable; ordinary REST 4xx responses are
+permanent; SMTP retains transient 4xx and permanent 5xx handling. This keeps
+the legal-notification worker from abandoning temporary REST outages or
+repeatedly retrying rejected REST requests. Regression tests cover both
+protocols. The generation-run quick-send control also consumes the existing
+delivery-aware preview action state, showing provider failures instead of
+discarding them.
+
 ### Phase 9 — Generic renderer activation
 
 **Status:** Foundation added 2026-06-25.

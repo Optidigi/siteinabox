@@ -125,6 +125,7 @@ export const previewAuth = betterAuth({
           to: email,
           subject: message.subject,
           html: message.html,
+          text: message.text,
           intent: metadata?.previewSiteReady === true ? "preview.site_ready" : "preview.magic_link",
           payload: payload as any,
         })

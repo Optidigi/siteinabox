@@ -76,6 +76,7 @@ export default async function UsersPage({
         data={result.docs as any}
         canManage
         currentUserId={user.id}
+        tenantId={tenantId}
         emptyState={
           q ? (
             <EmptyState

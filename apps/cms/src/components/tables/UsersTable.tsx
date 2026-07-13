@@ -15,21 +15,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@siteinabox/ui/components/dropdown-menu"
-import { MoreVertical, Pencil, Trash2 } from "lucide-react"
+import { Mail, MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { roleLabel } from "@/lib/i18nLabels"
 import type { User } from "@/payload-types"
 import { useStatusFeedback } from "@/components/status-feedback"
+import { resendUserInvitation } from "@/lib/actions/inviteUser"
 
 export function UsersTable({
   data,
   canManage,
   currentUserId,
+  tenantId,
   emptyState,
 }: {
   data: User[]
   canManage: boolean
   currentUserId?: number | string
+  tenantId?: number | string
   emptyState?: React.ReactNode
 }) {
   const t = useTranslations("users")
@@ -50,6 +53,16 @@ export function UsersTable({
     }
     status.success(t("removed", { email: target.email }))
     router.refresh()
+  }
+
+  const resend = async (user: User) => {
+    if (tenantId == null) return
+    const result = await resendUserInvitation({ userId: user.id, tenantId })
+    if (!result.ok) {
+      status.error(result.error || t("resendInviteFailed"))
+      return
+    }
+    status.success(t("resendInviteSent", { email: user.email }))
   }
 
   const cols: ColumnDef<User, any>[] = [
@@ -110,6 +123,16 @@ export function UsersTable({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
+                  {tenantId != null && (
+                    <DropdownMenuItem
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        void resend(u)
+                      }}
+                    >
+                      <Mail className="mr-2 h-4 w-4" /> {t("resendInvite")}
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem asChild>
                     <Link href={`/users/${u.id}/edit`}>
                       <Pencil className="mr-2 h-4 w-4" /> {tCommon("edit")}

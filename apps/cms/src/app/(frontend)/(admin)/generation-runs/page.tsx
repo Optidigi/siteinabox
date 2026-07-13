@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/empty-state"
 import { ListPagination } from "@/components/list-pagination"
 import { ListSearch } from "@/components/list-search"
 import { PageHeader } from "@/components/page-header"
-import { sendPreviewAccessEmailAction } from "@/lib/actions/previewAccess"
+import { PreviewAccessQuickSend } from "@/components/generation/PreviewAccessQuickSend"
 import { requireRole } from "@/lib/authGate"
 import {
   listGenerationOperations,
@@ -19,7 +19,7 @@ import {
   type GenerationRunFilter,
   type OperationsWorkflowState,
 } from "@/lib/queries/generationOperations"
-import { AlertCircle, CheckCircle2, ExternalLink, Globe2, Inbox, Mail, Search, Send } from "lucide-react"
+import { AlertCircle, CheckCircle2, ExternalLink, Globe2, Inbox, Search, Send } from "lucide-react"
 import { getAdminTranslations } from "@/i18n/admin"
 import { useTranslations } from "next-intl"
 
@@ -124,12 +124,11 @@ function ClientQueueItem({ item }: { item: InboxItem }) {
           <div aria-hidden />
           <div className="flex shrink-0 gap-2">
             {canSendPreview ? (
-              <form action={sendPreviewAccessEmailAction.bind(null, item.runId!)}>
-                <input type="hidden" name="email" value={item.contactEmail!} />
-                <Button type="submit" size="icon" aria-label={t("sendPreviewTo", { title: item.title })}>
-                  <Mail className="size-4" aria-hidden />
-                </Button>
-              </form>
+              <PreviewAccessQuickSend
+                generationRunId={item.runId!}
+                email={item.contactEmail!}
+                label={t("sendPreviewTo", { title: item.title })}
+              />
             ) : null}
             <Button asChild variant={canSendPreview ? "outline" : "default"} size="icon" aria-label={t("openItem", { title: item.title })}>
               <Link href={item.href}>
