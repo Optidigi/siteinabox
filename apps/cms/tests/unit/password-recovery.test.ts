@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 const mocks = vi.hoisted(() => ({
@@ -39,7 +39,11 @@ describe("super-admin password recovery", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.auth.mockResolvedValue({ user: null })
-    process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN = "siteinabox.nl"
+    vi.stubEnv("NEXT_PUBLIC_SUPER_ADMIN_DOMAIN", "siteinabox.nl")
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it.each([

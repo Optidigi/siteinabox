@@ -125,8 +125,13 @@ const expectBlocked = (res: Response, label: string) => {
 }
 
 beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_SUPER_ADMIN_DOMAIN", "siteinabox.nl")
   __resetRateLimitersForTests()
   __resetForgotPasswordLimiterForTests()
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 // -----------------------------------------------------------------------------
@@ -146,7 +151,7 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
   it("Case 2: /api/users/forgot-password anon — 10 permitted, 11th returns 429 + Retry-After", async () => {
     for (let i = 1; i <= 10; i++) {
       const res = await middleware(reqAt({ path: "/api/users/forgot-password", ip: "203.0.113.20" }))
-      expectAllowed(res, `req #${i}`)
+      expect(res.status, `req #${i}: expected the configured admin host to pass through`).toBe(200)
     }
     const res = await middleware(reqAt({ path: "/api/users/forgot-password", ip: "203.0.113.20" }))
     expectBlocked(res, "req #11")
