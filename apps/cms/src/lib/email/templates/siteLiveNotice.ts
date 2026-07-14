@@ -1,4 +1,5 @@
 import { renderEmailButton, renderEmailFallbackLink, renderEmailLayout } from "@/lib/email/emailLayout"
+import { emailTheme } from "@/lib/email/emailTheme"
 import { escapeEmailHtml } from "@/lib/email/templateUtils"
 
 export function siteLiveNoticeTemplate(opts: { siteUrl: string; adminUrl: string; magicLoginUrl?: string | null }) {
@@ -10,7 +11,7 @@ export function siteLiveNoticeTemplate(opts: { siteUrl: string; adminUrl: string
       eyebrow: "Je website",
       title: "Je website staat live",
       intro: "Je Site in a Box-website is gepubliceerd en bereikbaar voor bezoekers.",
-      body: `${renderEmailButton("Website bekijken", opts.siteUrl)}${renderEmailFallbackLink(opts.siteUrl)}<p style="margin:18px 0 0;font-family:Arial,sans-serif;font-size:14px;line-height:1.55"><strong>Beheeromgeving:</strong> <a href="${escapeEmailHtml(opts.adminUrl)}" style="color:#000">Open je beheeromgeving</a></p>${magicLoginUrl ? `<p style="margin:6px 0 0;font-family:Arial,sans-serif;font-size:14px;line-height:1.55"><strong>Direct inloggen:</strong> <a href="${escapeEmailHtml(magicLoginUrl)}" style="color:#000">Log in zonder wachtwoord</a></p>` : "<p style=\"margin:18px 0 0;font-family:Arial,sans-serif;font-size:14px;line-height:1.55\">Je persoonlijke inloglink is naar dit e-mailadres verzonden.</p>"}`,
+      body: `${renderEmailButton("Website bekijken", opts.siteUrl)}${renderEmailFallbackLink(opts.siteUrl)}<p style="margin:18px 0 0;font-family:${emailTheme.bodyFont};font-size:14px;line-height:1.55"><strong>Beheeromgeving:</strong> <a href="${escapeEmailHtml(opts.adminUrl)}" style="color:#000">Open je beheeromgeving</a></p>${magicLoginUrl ? `<p style="margin:6px 0 0;font-family:${emailTheme.bodyFont};font-size:14px;line-height:1.55"><strong>Direct inloggen:</strong> <a href="${escapeEmailHtml(magicLoginUrl)}" style="color:#000">Log in zonder wachtwoord</a></p>` : `<p style="margin:18px 0 0;font-family:${emailTheme.bodyFont};font-size:14px;line-height:1.55">Je persoonlijke inloglink is naar dit e-mailadres verzonden.</p>`}`,
     }),
     text: [
       "Je Site in a Box-website staat live.",

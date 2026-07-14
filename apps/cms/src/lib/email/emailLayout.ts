@@ -15,9 +15,9 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
   const preheader = options.preheader ? escapeEmailHtml(options.preheader) : ""
   const eyebrow = options.eyebrow ? escapeEmailHtml(options.eyebrow) : ""
   const title = escapeEmailHtml(options.title)
-  const intro = options.intro ? `<p style="margin:0 0 18px;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:15px;line-height:1.55">${escapeEmailHtml(options.intro)}</p>` : ""
+  const intro = options.intro ? `<p style="margin:0 0 18px;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:15px;font-weight:${emailTheme.bodyWeight};line-height:1.55">${escapeEmailHtml(options.intro)}</p>` : ""
   const notice = options.notice
-    ? `<div style="margin:20px 0 0;border-left:3px solid ${emailTheme.yellowStrong};padding:10px 12px;background:#fffbea;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:12px;line-height:1.5">${escapeEmailHtml(options.notice)}</div>`
+    ? `<div style="margin:20px 0 0;border-left:3px solid ${emailTheme.yellowStrong};padding:10px 12px;background:#fffbea;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:12px;font-weight:${emailTheme.bodyWeight};line-height:1.5">${escapeEmailHtml(options.notice)}</div>`
     : ""
   const footerCopy = options.footer === "security"
     ? "Je hebt deze beveiligingsmail ontvangen vanwege een accountactie."
@@ -28,8 +28,8 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
         : "Site in a Box helpt je om professioneel online zichtbaar te zijn."
 
   return `<!doctype html>
-<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
-<body style="margin:0;padding:0;background:${emailTheme.pageBackground};color:${emailTheme.text};font-family:${emailTheme.bodyFont};-webkit-text-size-adjust:100%">
+<html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style type="text/css">@import url('${emailTheme.fontStylesheetUrl}');${emailTheme.headingFontFace}body,table,td,p,a,div,span,pre{font-family:${emailTheme.bodyFont}}h1,h2,h3,h4,h5,h6{font-family:${emailTheme.headingFont};font-weight:${emailTheme.headingWeight}}</style></head>
+<body style="margin:0;padding:0;background:${emailTheme.pageBackground};color:${emailTheme.text};font-family:${emailTheme.bodyFont};font-weight:${emailTheme.bodyWeight};-webkit-text-size-adjust:100%">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${preheader}</div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:${emailTheme.pageBackground};width:100%">
     <tr><td align="center" style="padding:24px 12px">
@@ -39,8 +39,8 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
         </td></tr>
         <tr><td style="padding:26px 24px;background:${emailTheme.surface};border:2px solid ${emailTheme.border};box-shadow:${emailTheme.shadow}">
           ${eyebrow ? `<p style="margin:0 0 8px;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase">${eyebrow}</p>` : ""}
-          <h1 style="margin:0 0 14px;color:${emailTheme.text};font-family:${emailTheme.headingFont};font-size:26px;font-weight:700;letter-spacing:-.025em;line-height:1.15">${title}</h1>
-          ${intro}<div style="color:${emailTheme.text};font-family:${emailTheme.bodyFont};font-size:14px;line-height:1.55">${options.body}</div>${notice}
+          <h1 style="margin:0 0 14px;color:${emailTheme.text};font-family:${emailTheme.headingFont};font-size:26px;font-weight:${emailTheme.headingWeight};letter-spacing:-.01em;line-height:1.15">${title}</h1>
+          ${intro}<div style="color:${emailTheme.text};font-family:${emailTheme.bodyFont};font-size:14px;font-weight:${emailTheme.bodyWeight};line-height:1.55">${options.body}</div>${notice}
         </td></tr>
         <tr><td style="padding:18px 8px 4px;color:${emailTheme.mutedText};font-family:${emailTheme.bodyFont};font-size:11px;line-height:1.55;text-align:center">
           ${footerCopy}<br><a href="https://www.siteinabox.nl/contact" style="color:${emailTheme.text};text-decoration:underline">Hulp nodig? Neem contact op</a>
@@ -52,7 +52,7 @@ export function renderEmailLayout(options: EmailLayoutOptions): string {
 }
 
 export function renderEmailButton(label: string, url: string): string {
-  return `<p style="margin:20px 0 14px"><a href="${escapeEmailHtml(url)}" style="display:inline-block;padding:12px 18px;background:${emailTheme.yellow};border:2px solid ${emailTheme.border};box-shadow:${emailTheme.shadow};color:${emailTheme.text};font-family:${emailTheme.bodyFont};font-size:14px;font-weight:700;line-height:1.2;text-decoration:none">${escapeEmailHtml(label)}</a></p>`
+  return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0 19px;border-collapse:collapse"><tr><td colspan="2"><table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate"><tr><td bgcolor="${emailTheme.yellow}" style="background:${emailTheme.yellow};border:2px solid ${emailTheme.border};border-radius:0;mso-padding-alt:10px 20px"><a class="btn-eighteen" href="${escapeEmailHtml(url)}" style="display:block;padding:10px 20px;color:${emailTheme.text};font-family:${emailTheme.buttonFont};font-size:15px;font-weight:700;line-height:18px;text-align:center;text-decoration:none;white-space:nowrap">${escapeEmailHtml(label)}</a></td></tr></table></td><td width="5" height="42" valign="bottom" style="width:5px;height:42px;vertical-align:bottom"><table role="presentation" width="5" height="37" cellspacing="0" cellpadding="0" border="0" style="width:5px;height:37px;border-collapse:collapse"><tr><td bgcolor="${emailTheme.border}" style="background:${emailTheme.border};font-size:0;line-height:0">&nbsp;</td></tr></table></td></tr><tr><td width="5" height="5" style="width:5px;height:5px;font-size:0;line-height:0">&nbsp;</td><td height="5" bgcolor="${emailTheme.border}" style="height:5px;background:${emailTheme.border};font-size:0;line-height:0">&nbsp;</td><td width="5" height="5" bgcolor="${emailTheme.border}" style="width:5px;height:5px;background:${emailTheme.border};font-size:0;line-height:0">&nbsp;</td></tr></table>`
 }
 
 export function renderEmailFallbackLink(url: string): string {

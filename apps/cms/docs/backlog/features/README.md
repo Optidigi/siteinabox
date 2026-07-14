@@ -253,6 +253,31 @@ depended on command-run site generation are no longer current source of truth.
 
 ## Implemented Foundation
 
+### 2026-07-14 — Transactional email visual alignment
+
+**Status:** Applied.
+
+The shared transactional email shell now loads the same Chivo body font and
+Familjen Grotesk heading font used by `www.siteinabox.nl`. Its primary CTA uses
+the compact rendered `.btn-eighteen` contract from the public header: the same
+anchor class, 15px bold Chivo typography, square yellow surface, two-pixel black
+border, and spacing. The five-pixel black right/bottom backdrop is structural
+table markup rather than CSS-only `box-shadow`, including the source component's
+true five-pixel x/y offset before each visible shadow strip, so restrictive
+email clients do not silently remove it. The same system and generic sans-serif
+fallbacks as the public site remain for clients that block web fonts.
+
+All shared email typography roles now mirror the public-site contract: Chivo
+400 for body/UI copy, Chivo 700 for CTA and emphasized UI labels, and Familjen
+Grotesk 500 with `-.01em` tracking for headings. The heading face is exposed to
+supporting clients through a direct 500-weight font file mapped onto a 600
+CSS-weight slot. Clients such as TransIP's Roundcube-derived webmail that strip
+the webfont therefore fall back to system sans at 600, which visually matches
+Familjen 500 more closely than the generic 500 fallback. The privacy-export
+JSON block also uses Chivo instead of introducing a separate monospace family,
+and a source-level test prevents outbound email producers from adding unrelated
+font families.
+
 ### 2026-07-12 — Communication preferences and email policy
 
 **Status:** Implemented.

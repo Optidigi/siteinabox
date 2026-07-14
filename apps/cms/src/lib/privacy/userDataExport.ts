@@ -1,5 +1,6 @@
 import { sendEmail } from "@/lib/email/sendEmail"
 import { renderEmailLayout } from "@/lib/email/emailLayout"
+import { emailTheme } from "@/lib/email/emailTheme"
 
 const tenantIdOf = (value: unknown): number | string | null => {
   if (value == null) return null
@@ -125,7 +126,7 @@ export async function emailUserDataExport(payload: any, user: any) {
       intro: "Hieronder staat de gegevensexport die je bij Site in a Box hebt aangevraagd.",
       body: [
       "<p>Heb je dit niet aangevraagd? Neem dan direct contact met ons op.</p>",
-      `<pre style="overflow:auto;padding:16px;background:#fef3f4;border:2px solid #000;font-family:monospace;font-size:12px;line-height:1.5">${json
+      `<pre style="overflow:auto;padding:16px;background:#fef3f4;border:2px solid #000;font-family:${emailTheme.bodyFont};font-size:12px;font-weight:${emailTheme.bodyWeight};line-height:1.5">${json
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")}</pre>`,
