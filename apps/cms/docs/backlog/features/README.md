@@ -268,12 +268,12 @@ email clients do not silently remove it. The same system and generic sans-serif
 fallbacks as the public site remain for clients that block web fonts.
 
 All shared email typography roles now mirror the public-site contract: Chivo
-400 for body/UI copy, Chivo 700 for CTA and emphasized UI labels, and Familjen
-Grotesk 500 with `-.01em` tracking for headings. The heading face is exposed to
-supporting clients through a direct 500-weight font file mapped onto a 600
-CSS-weight slot. Clients such as TransIP's Roundcube-derived webmail that strip
-the webfont therefore fall back to system sans at 600, which visually matches
-Familjen 500 more closely than the generic 500 fallback. The privacy-export
+400 for body/UI copy, Chivo 700 for CTA and emphasized UI labels, and thick
+Familjen Grotesk 700 with `-.01em` tracking for email headings. The heading face
+is exposed to supporting clients through a direct 700-weight font file. Clients
+such as TransIP's Roundcube-derived webmail that strip the webfont fall back to
+system sans at a true 700 weight instead of presenting a visibly light title.
+The privacy-export
 JSON block also uses Chivo instead of introducing a separate monospace family,
 and a source-level test prevents outbound email producers from adding unrelated
 font families.

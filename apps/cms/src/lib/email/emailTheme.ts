@@ -13,8 +13,8 @@ export const emailTheme = {
   bodyWeight: 400,
   buttonFont: "Chivo,sans-serif",
   headingFont: "'Familjen Grotesk Email','Familjen Grotesk',system-ui,-apple-system,sans-serif",
-  headingWeight: 600,
-  headingFontFace: "@font-face{font-family:'Familjen Grotesk Email';font-style:normal;font-weight:600;font-display:swap;src:url(https://fonts.gstatic.com/s/familjengrotesk/v11/Qw3LZR9ZHiDnImG6-NEMQ41wby8WRnYsfkunR_eGfMG7aRzqeVk.woff2) format('woff2')}",
+  headingWeight: 700,
+  headingFontFace: "@font-face{font-family:'Familjen Grotesk Email';font-style:normal;font-weight:700;font-display:swap;src:url(https://fonts.gstatic.com/s/familjengrotesk/v11/Qw3LZR9ZHiDnImG6-NEMQ41wby8WRnYsfkunR_eGfMFubhzqeVk.woff2) format('woff2')}",
   fontStylesheetUrl: "https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700;900&family=Familjen+Grotesk:wght@400;500;600;700&display=swap",
   logoUrl: "https://admin.siteinabox.nl/logos/email-logo.png",
 } as const
