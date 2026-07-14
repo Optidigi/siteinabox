@@ -13,11 +13,18 @@ import { relationId, relationLabel, relationSlug, workflowSummaryForGenerationRu
 import type { SiteGenerationRun } from "@/payload-types"
 import { ExternalLink } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
+import { PreviewAccessQuickSend } from "./PreviewAccessQuickSend"
 
 const formatDate = (value: string | null | undefined, locale: string) => {
   if (!value) return "-"
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString(locale)
+}
+
+const textField = (value: unknown, key: string): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  const candidate = (value as Record<string, unknown>)[key]
+  return typeof candidate === "string" && candidate.trim() ? candidate.trim() : null
 }
 
 export function GenerationOperationsTable({
@@ -32,8 +39,8 @@ export function GenerationOperationsTable({
   if (runs.length === 0) return <>{emptyState}</>
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="overflow-x-auto">
+      <Table className="min-w-[840px] [&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
         <TableHeader>
           <TableRow>
             <TableHead>{t("columns.workflow")}</TableHead>
@@ -49,13 +56,16 @@ export function GenerationOperationsTable({
             const tenantSlug = relationSlug(run.tenant)
             const pageCount = Array.isArray(run.pages) ? run.pages.length : 0
             const workflow = workflowSummaryForGenerationRun(run)
+            const email = textField(run.intakeSubmission, "contactEmail") ?? textField(run.payment, "customerEmail")
+            const canSendPreview = workflow.primaryAction === "Send preview" && Boolean(email)
+            const workflowText = (value: string) => t.has(`workflowText.${value}`) ? t(`workflowText.${value}`) : value
 
             return (
               <TableRow key={run.id}>
                 <TableCell>
                   <Badge variant={workflow.state === "Needs attention" ? "destructive" : workflow.state === "Live" || workflow.state === "Checkout completed" ? "success" : "secondary"}>
                     <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                    {workflow.state}
+                    {t(`states.${workflow.state}`)}
                   </Badge>
                 </TableCell>
                 <TableCell>
@@ -71,17 +81,20 @@ export function GenerationOperationsTable({
                   <div className="text-xs text-muted-foreground">{t("pageCount", { count: pageCount })}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{workflow.label}</div>
-                  <div className="text-xs text-muted-foreground">{workflow.helper}</div>
+                  <div className="font-medium">{workflowText(workflow.label)}</div>
+                  <div className="text-xs text-muted-foreground">{workflowText(workflow.helper)}</div>
                 </TableCell>
                 <TableCell>{formatDate(run.updatedAt, locale)}</TableCell>
-                <TableCell className="text-right">
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={`/generation-runs/${run.id}`} className="gap-1.5">
-                      <ExternalLink className="size-3.5" aria-hidden />
-                      {workflow.primaryAction}
-                    </Link>
-                  </Button>
+                <TableCell>
+                  <div className="flex justify-end gap-2">
+                    {canSendPreview && <PreviewAccessQuickSend generationRunId={run.id} email={email!} label={t("sendPreviewTo", { title: relationLabel(run.tenant) })} />}
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/operations/runs/${run.id}`} className="gap-1.5">
+                        <ExternalLink className="size-3.5" aria-hidden />
+                        {workflowText(workflow.primaryAction)}
+                      </Link>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )

@@ -101,7 +101,7 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
               {mode === "super-admin" && !inTenantView && (
                 <>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/sites")}><Link href="/sites"><Globe /> {t("sites")}</Link></SidebarMenuButton></SidebarMenuItem>
-                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/generation-runs")}><Link href="/generation-runs"><ClipboardList /> {t("operations")}</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/operations")}><Link href="/operations"><ClipboardList /> {t("operations")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/legal")}><Link href="/legal"><Scale /> {t("legal")}</Link></SidebarMenuButton></SidebarMenuItem>
                   <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/users")}><Link href="/users"><Users /> {t("users")}</Link></SidebarMenuButton></SidebarMenuItem>
                 </>

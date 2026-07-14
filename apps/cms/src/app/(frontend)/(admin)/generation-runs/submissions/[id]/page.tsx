@@ -7,6 +7,7 @@ import { Textarea } from "@siteinabox/ui/components/textarea"
 import { Alert, AlertDescription, AlertTitle } from "@siteinabox/ui/components/alert"
 import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PageHeader } from "@/components/page-header"
+import { OperationsRouteTabs } from "@/components/generation/OperationsRouteTabs"
 import {
   approveIntakeGenerationInputAction,
   deleteSafeIntakeSubmissionAction,
@@ -145,13 +146,15 @@ export default async function IntakeSubmissionDetailPage({
         }
         action={
           <Button asChild variant="outline">
-            <Link href="/generation-runs">
+            <Link href="/operations/intakes">
               <ArrowLeft className="mr-1 size-4" aria-hidden />
               {t("back")}
             </Link>
           </Button>
         }
       />
+
+      <OperationsRouteTabs activePath="/operations/intakes" />
 
       {submission.status === "failed" && (
         <Alert variant="destructive">
@@ -178,7 +181,7 @@ export default async function IntakeSubmissionDetailPage({
           <div className="flex flex-wrap gap-2">
             {runId && (
               <Button asChild>
-                <Link href={`/generation-runs/${runId}`}>
+                <Link href={`/operations/runs/${runId}`}>
                   <Sparkles className="mr-1 size-4" aria-hidden />
                   {t("status.openDraft")}
                 </Link>
@@ -388,7 +391,7 @@ export default async function IntakeSubmissionDetailPage({
                 <div>
                   <div className="text-muted-foreground">{t("technical.run")}</div>
                   {runId ? (
-                    <Link href={`/generation-runs/${runId}`} className="font-medium hover:underline">
+                    <Link href={`/operations/runs/${runId}`} className="font-medium hover:underline">
                       #{runId}
                     </Link>
                   ) : "-"}

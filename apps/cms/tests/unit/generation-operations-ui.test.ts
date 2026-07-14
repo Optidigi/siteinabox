@@ -3,8 +3,10 @@ import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   generationRunWhere,
+  getGenerationOperationsOverview,
   intakeSubmissionWhere,
   listGenerationOperations,
+  listOperationRuns,
   relationId,
   relationLabel,
   relationSlug,
@@ -230,7 +232,9 @@ describe("generation operations UI helpers", () => {
 describe("generation operations route access", () => {
   it("gates custom operations routes to super-admins", () => {
     for (const path of [
-      "src/app/(frontend)/(admin)/generation-runs/page.tsx",
+      "src/app/(frontend)/(admin)/operations/page.tsx",
+      "src/app/(frontend)/(admin)/operations/intakes/page.tsx",
+      "src/app/(frontend)/(admin)/operations/runs/page.tsx",
       "src/app/(frontend)/(admin)/generation-runs/[id]/page.tsx",
       "src/app/(frontend)/(admin)/generation-runs/submissions/[id]/page.tsx",
     ]) {
@@ -429,27 +433,59 @@ describe("generation operations route access", () => {
     expect(detail.indexOf('t("snapshots.rollback")')).toBeGreaterThan(advanced)
   })
 
-  it("presents the operations overview as one task inbox", () => {
-    const list = read("src/app/(frontend)/(admin)/generation-runs/page.tsx")
+  it("presents operations as a legal-style overview plus resource registers", () => {
+    const overview = read("src/app/(frontend)/(admin)/operations/page.tsx")
+    const intakes = read("src/app/(frontend)/(admin)/operations/intakes/page.tsx")
+    const runs = read("src/app/(frontend)/(admin)/operations/runs/page.tsx")
 
-    expect(list).toContain('t("list.subtitle")')
-    expect(list).toContain('t("list.taskQueue")')
-    expect(list).toContain('t("list.activeOnly")')
-    expect(list).toContain('t(`states.${selectedState}`)')
-    expect(list).toContain("<Card")
-    expect(list).not.toContain("Client / site")
-    expect(list).not.toContain("Advanced filters")
-    expect(list).not.toContain("Waiting for checkout")
-    expect(list).not.toContain("Launch needed")
-    expect(list).not.toContain("Review intake")
-    expect(list).not.toContain("Site workflow")
-    expect(list).not.toContain("<h2 className=\"text-lg font-semibold\">New requests</h2>")
+    expect(overview).toContain("<OperationsRouteTabs")
+    expect(overview).toContain("<OperationsStatusStrip")
+    expect(overview).toContain("<OperationsAttentionTable")
+    expect(intakes).toContain('activePath="/operations/intakes"')
+    expect(intakes).toContain("<OperationsListToolbar")
+    expect(intakes).toContain("<OperationsTableFrame")
+    expect(runs).toContain('activePath="/operations/runs"')
+    expect(runs).toContain("<OperationsListToolbar")
+    expect(runs).toContain("<OperationsTableFrame")
   })
 
-  it("paginates across both runs and intake-only submissions", () => {
-    const list = read("src/app/(frontend)/(admin)/generation-runs/page.tsx")
+  it("redirects legacy generation-run URLs to canonical operations routes", () => {
+    const config = read("next.config.mjs")
+    expect(config).toContain('source: "/generation-runs"')
+    expect(config).toContain('destination: "/operations"')
+    expect(config).toContain('destination: "/operations/intakes/:id"')
+    expect(config).toContain('destination: "/operations/runs/:id"')
+  })
+})
 
-    expect(list).toContain("Math.max(result.runs.totalPages, result.intakes.totalPages)")
-    expect(list).toContain("Math.max(result.runs.totalDocs, result.intakes.totalDocs)")
+describe("operations overview and registers", () => {
+  const result = (docs: any[]) => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 250, hasNextPage: false, hasPrevPage: false, nextPage: null, prevPage: null })
+
+  it("computes overview metrics from the complete active data set", async () => {
+    const client = {
+      async find(args: any) {
+        if (args.collection === "site-generation-runs") return result([
+          { id: 1, status: "draft_ready", updatedAt: "2026-07-14T10:00:00Z", tenant: { name: "Preview site" } },
+          { id: 2, status: "failed", updatedAt: "2026-07-14T11:00:00Z", tenant: { name: "Broken site" } },
+        ])
+        return result([{ id: 3, status: "failed", businessName: "Broken intake", updatedAt: "2026-07-14T12:00:00Z" }])
+      },
+    }
+    const overview = await getGenerationOperationsOverview(client)
+    expect(overview.metrics.map((metric) => [metric.key, metric.value])).toEqual([
+      ["preview-ready", 1], ["checkout-completed", 0], ["live", 0], ["needs-attention", 2],
+    ])
+    expect(overview.attention.map((row) => row.title)).toEqual(["Broken intake", "Broken site"])
+  })
+
+  it("filters site runs by derived workflow state before paginating", async () => {
+    const client = { async find() { return result([
+      { id: 1, status: "preview_ready", tenant: { activeSnapshot: 5 } },
+      { id: 2, status: "failed", tenant: { name: "Broken" } },
+      { id: 3, status: "draft_ready", tenant: { name: "Preview" } },
+    ]) } }
+    const runs = await listOperationRuns({ filter: "needs-attention", page: 1, pageSize: 1 }, client)
+    expect(runs.totalDocs).toBe(1)
+    expect(runs.docs[0]?.id).toBe(2)
   })
 })

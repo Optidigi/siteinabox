@@ -28,5 +28,5 @@ export async function retryPostPaymentAutomationAction(
 
   const payload = await getPayload({ config })
   await retryPostPaymentAutomation(payload, generationRunId, step)
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }

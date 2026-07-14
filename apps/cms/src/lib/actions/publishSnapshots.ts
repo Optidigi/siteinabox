@@ -27,7 +27,7 @@ export async function publishGenerationRunSnapshotAction(
     publishedBy: user.id,
     activationReason: text(formData.get("reason")),
   })
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }
 
 export async function activateSnapshotAction(
@@ -43,7 +43,7 @@ export async function activateSnapshotAction(
     activatedBy: user.id,
     activationReason: text(formData.get("reason")),
   })
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }
 
 export async function rollbackSnapshotAction(
@@ -60,5 +60,5 @@ export async function rollbackSnapshotAction(
     activationReason: text(formData.get("reason")) ?? "manual rollback",
     rollback: true,
   })
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }

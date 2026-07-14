@@ -40,5 +40,5 @@ export async function updateTenantDomainVerificationAction(
     user,
   } as any)
 
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }

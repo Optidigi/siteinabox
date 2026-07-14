@@ -38,8 +38,8 @@ export async function approveIntakeGenerationInputAction(
     depth: 0,
   })
 
-  revalidatePath(`/generation-runs/submissions/${intakeSubmissionId}`)
-  revalidatePath("/generation-runs")
+  revalidatePath(`/operations/intakes/${intakeSubmissionId}`)
+  revalidatePath("/operations")
 }
 
 export async function generateReviewedIntakeDraftAction(
@@ -51,8 +51,8 @@ export async function generateReviewedIntakeDraftAction(
 
   await processReviewedIntakeSubmission(payload, intakeSubmissionId)
 
-  revalidatePath(`/generation-runs/submissions/${intakeSubmissionId}`)
-  revalidatePath("/generation-runs")
+  revalidatePath(`/operations/intakes/${intakeSubmissionId}`)
+  revalidatePath("/operations")
 }
 
 export async function deleteSafeIntakeSubmissionAction(
@@ -99,6 +99,6 @@ export async function deleteSafeIntakeSubmissionAction(
     depth: 0,
   })
 
-  revalidatePath("/generation-runs")
-  redirect("/generation-runs")
+  revalidatePath("/operations")
+  redirect("/operations/intakes")
 }

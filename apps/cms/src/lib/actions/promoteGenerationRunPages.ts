@@ -12,5 +12,5 @@ export async function promoteGenerationRunPagesAction(generationRunId: string | 
   if (!user || user.role !== "super-admin") throw new Error("Forbidden: super-admin access required")
 
   await promoteGenerationRunPages(payload, generationRunId, { promotedBy: user.id })
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }

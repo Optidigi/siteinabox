@@ -2,6 +2,7 @@ import "server-only"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import {
+  findAllPaginated,
   normalisePagination,
   type PayloadFindResult,
   type PayloadLikeFindClient,
@@ -38,6 +39,28 @@ export interface ListGenerationOperationsOpts {
 export type GenerationOperationsResult = {
   runs: PayloadFindResult<SiteGenerationRun>
   intakes: PayloadFindResult<IntakeSubmission>
+}
+
+export type OperationsStatusMetric = {
+  key: "preview-ready" | "checkout-completed" | "live" | "needs-attention"
+  value: number
+  tone: "neutral" | "success" | "warning"
+  href: string
+}
+
+export type OperationsAttentionRow = {
+  id: string
+  kind: "intake" | "run"
+  title: string
+  subject: string
+  detail: string
+  updatedAt: string | null
+  href: string
+}
+
+export type GenerationOperationsOverview = {
+  metrics: OperationsStatusMetric[]
+  attention: OperationsAttentionRow[]
 }
 
 const failedWhere = { status: { equals: "failed" } }
@@ -126,6 +149,154 @@ export async function listGenerationOperations(
   ])
 
   return { runs, intakes }
+}
+
+const operationsStateForFilter = (filter: GenerationRunFilter): OperationsWorkflowState | null => {
+  if (filter === "preview-ready") return "Preview ready"
+  if (filter === "checkout-completed") return "Checkout completed"
+  if (filter === "live") return "Live"
+  if (filter === "needs-attention") return "Needs attention"
+  return null
+}
+
+const paginatedResult = <T>(docs: T[], page: number, limit: number): PayloadFindResult<T> => {
+  const totalDocs = docs.length
+  const totalPages = Math.max(1, Math.ceil(totalDocs / limit))
+  const currentPage = Math.min(page, totalPages)
+  const start = (currentPage - 1) * limit
+  return {
+    docs: docs.slice(start, start + limit),
+    totalDocs,
+    totalPages,
+    page: currentPage,
+    limit,
+    hasNextPage: currentPage < totalPages,
+    hasPrevPage: currentPage > 1,
+    nextPage: currentPage < totalPages ? currentPage + 1 : null,
+    prevPage: currentPage > 1 ? currentPage - 1 : null,
+  }
+}
+
+export async function listOperationRuns(
+  opts?: ListGenerationOperationsOpts,
+  payload?: PayloadLikeFindClient,
+): Promise<PayloadFindResult<SiteGenerationRun>> {
+  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const { page, limit } = normalisePagination(opts)
+  const runs = await findAllPaginated<SiteGenerationRun>(client, {
+    collection: "site-generation-runs",
+    overrideAccess: true,
+    where: generationRunWhere("all"),
+    sort: "-updatedAt",
+    depth: 2,
+    pageSize: 250,
+  })
+  const query = opts?.q?.trim().toLocaleLowerCase()
+  const searched = query
+    ? runs.filter((run) => [
+      relationLabel(run.tenant, ""),
+      run.idempotencyKey,
+      run.provider,
+      run.model,
+      run.promptVersion,
+      run.specHash,
+    ].some((value) => typeof value === "string" && value.toLocaleLowerCase().includes(query)))
+    : runs
+  const state = operationsStateForFilter(opts?.filter ?? "all")
+  return paginatedResult(state ? searched.filter((run) => workflowSummaryForGenerationRun(run).state === state) : searched, page, limit)
+}
+
+export async function listOperationIntakes(
+  opts?: ListGenerationOperationsOpts,
+  payload?: PayloadLikeFindClient,
+): Promise<PayloadFindResult<IntakeSubmission>> {
+  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const { page, limit } = normalisePagination(opts)
+  const submissions = await findAllPaginated<IntakeSubmission>(client, {
+    collection: "intake-submissions",
+    overrideAccess: true,
+    where: intakeSubmissionWhere("all", opts?.q),
+    sort: "-updatedAt",
+    depth: 2,
+    pageSize: 250,
+  })
+  return paginatedResult(submissions, page, limit)
+}
+
+export async function getGenerationOperationsOverview(
+  payload?: PayloadLikeFindClient,
+): Promise<GenerationOperationsOverview> {
+  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const [runs, intakes] = await Promise.all([
+    findAllPaginated<SiteGenerationRun>(client, {
+      collection: "site-generation-runs",
+      overrideAccess: true,
+      where: generationRunWhere("all"),
+      sort: "-updatedAt",
+      depth: 2,
+      pageSize: 250,
+    }),
+    findAllPaginated<IntakeSubmission>(client, {
+      collection: "intake-submissions",
+      overrideAccess: true,
+      where: intakeSubmissionWhere("all"),
+      sort: "-updatedAt",
+      depth: 2,
+      pageSize: 250,
+    }),
+  ])
+
+  const counts = new Map<OperationsWorkflowState, number>([
+    ["Preview ready", 0],
+    ["Checkout completed", 0],
+    ["Live", 0],
+    ["Needs attention", 0],
+  ])
+  for (const run of runs) {
+    const state = workflowSummaryForGenerationRun(run).state
+    counts.set(state, (counts.get(state) ?? 0) + 1)
+  }
+  for (const submission of intakes) {
+    const state = workflowSummaryForIntakeSubmission(submission).state
+    counts.set(state, (counts.get(state) ?? 0) + 1)
+  }
+
+  const attention: OperationsAttentionRow[] = [
+    ...intakes.map((submission) => {
+      const summary = workflowSummaryForIntakeSubmission(submission)
+      return {
+        id: `intake-${submission.id}`,
+        kind: "intake" as const,
+        title: submission.businessName,
+        subject: summary.label,
+        detail: summary.helper,
+        updatedAt: submission.updatedAt ?? submission.createdAt ?? null,
+        href: `/operations/intakes/${submission.id}`,
+      }
+    }),
+    ...runs.flatMap((run) => {
+      const summary = workflowSummaryForGenerationRun(run)
+      return summary.state === "Needs attention" ? [{
+        id: `run-${run.id}`,
+        kind: "run" as const,
+        title: relationLabel(run.tenant, "Draft site"),
+        subject: summary.label,
+        detail: summary.helper,
+        updatedAt: run.updatedAt ?? null,
+        href: `/operations/runs/${run.id}`,
+      }] : []
+    }),
+  ].sort((a, b) => new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime())
+
+  return {
+    metrics: [
+      { key: "preview-ready", value: counts.get("Preview ready") ?? 0, tone: "neutral", href: "/operations/runs?status=preview-ready" },
+      { key: "checkout-completed", value: counts.get("Checkout completed") ?? 0, tone: "neutral", href: "/operations/runs?status=checkout-completed" },
+      { key: "live", value: counts.get("Live") ?? 0, tone: "success", href: "/operations/runs?status=live" },
+      { key: "needs-attention", value: counts.get("Needs attention") ?? 0, tone: "warning", href: "/operations" },
+    ],
+    attention,
+  }
 }
 
 export async function getGenerationRunForOperations(id: string | number): Promise<SiteGenerationRun | null> {

@@ -30,7 +30,14 @@ const nextConfig = {
   outputFileTracingRoot: path.resolve(__dirname, "../.."),
   reactCompiler: false,
   allowedDevOrigins,
-  transpilePackages: ["@siteinabox/ui", "@siteinabox/contracts", "@siteinabox/site-renderer"]
+  transpilePackages: ["@siteinabox/ui", "@siteinabox/contracts", "@siteinabox/site-renderer"],
+  async redirects() {
+    return [
+      { source: "/generation-runs/submissions/:id", destination: "/operations/intakes/:id", permanent: true },
+      { source: "/generation-runs/:id", destination: "/operations/runs/:id", permanent: true },
+      { source: "/generation-runs", destination: "/operations", permanent: true },
+    ]
+  },
 }
 
 export default withPayload(withNextIntl(nextConfig))

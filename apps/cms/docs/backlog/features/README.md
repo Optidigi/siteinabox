@@ -210,11 +210,6 @@ depended on command-run site generation are no longer current source of truth.
   compact and spacious may adjust only through explicit renderer-owned bridge
   rules for known source classes. Generation and CMS must not output spacing
   classes, layout spans, breakpoints, or per-block spacing overrides.
-- Improve CMS generation-run operations UI beyond the 2026-07-02 task-queue
-  simplification. `/generation-runs` and run detail should help operators
-  understand what needs attention next, why a run is blocked, and which
-  recovery or handoff step to take without digging through Advanced panels.
-  This is distinct from the analytics dashboard follow-up above.
 - Add consistent skeleton or loading affordances on slow customer and operator
   surfaces. Priority gaps today include preview checkout, alternative-domain
   suggestion loading, and generation-run list/detail routes that currently rely
@@ -252,6 +247,24 @@ depended on command-run site generation are no longer current source of truth.
   a one-off overlay workaround.
 
 ## Implemented Foundation
+
+### 2026-07-14 — Operations workspace aligned with Legal
+
+**Status:** Applied.
+
+The former `/generation-runs` task-card page is now the canonical
+`/operations` workspace. It follows the Legal workspace information
+architecture with an overview, real resource tabs for intake requests and site
+runs, global workflow metrics, an attention-first exceptions table, and
+searchable/filterable framed registers. Run status filtering is applied to the
+derived workflow state before pagination, and overview counts cover the full
+active data set instead of only the current result page.
+
+Intake and run detail views retain their existing workflow and recovery logic
+while showing the Operations tabs and using canonical `/operations` links.
+Preview quick-send remains available from the run register. Legacy
+`/generation-runs` list and detail URLs redirect permanently to the matching
+Operations routes.
 
 ### 2026-07-14 — Transactional email visual alignment
 

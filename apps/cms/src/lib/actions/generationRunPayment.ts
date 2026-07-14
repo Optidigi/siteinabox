@@ -32,7 +32,7 @@ export async function recordGenerationRunPaymentAction(
     note: String(formData.get("note") ?? ""),
   })
 
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
 }
 
 export async function createGenerationRunMollieCheckoutAction(
@@ -47,6 +47,6 @@ export async function createGenerationRunMollieCheckoutAction(
     actor: user.id,
   })
 
-  revalidatePath(`/generation-runs/${generationRunId}`)
+  revalidatePath(`/operations/runs/${generationRunId}`)
   redirect(result.checkoutUrl)
 }

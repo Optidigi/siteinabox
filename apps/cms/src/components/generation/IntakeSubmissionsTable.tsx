@@ -32,8 +32,8 @@ export function IntakeSubmissionsTable({
   if (submissions.length === 0) return <>{emptyState}</>
 
   return (
-    <div className="rounded-lg border">
-      <Table>
+    <div className="overflow-x-auto">
+      <Table className="min-w-[900px] [&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
         <TableHeader>
           <TableRow>
             <TableHead>{t("columns.workflow")}</TableHead>
@@ -48,19 +48,20 @@ export function IntakeSubmissionsTable({
           {submissions.map((submission) => {
             const runId = relationId(submission.generationRun)
             const workflow = workflowSummaryForIntakeSubmission(submission)
+            const workflowText = (value: string) => t.has(`workflowText.${value}`) ? t(`workflowText.${value}`) : value
 
             return (
               <TableRow key={submission.id}>
                 <TableCell>
                   <Badge variant={workflow.state === "Needs attention" ? "destructive" : "secondary"}>
                     <span className="size-1.5 rounded-full bg-current" aria-hidden />
-                    {workflow.state}
+                    {t(`states.${workflow.state}`)}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <div className="font-medium">{submission.businessName}</div>
                   {runId && (
-                    <Link href={`/generation-runs/${runId}`} className="text-xs text-muted-foreground hover:underline">
+                    <Link href={`/operations/runs/${runId}`} className="text-xs text-muted-foreground hover:underline">
                       {t("draftSite")}
                     </Link>
                   )}
@@ -70,15 +71,15 @@ export function IntakeSubmissionsTable({
                   <div className="text-xs text-muted-foreground">{submission.contactEmail ?? "-"}</div>
                 </TableCell>
                 <TableCell>
-                  <div className="font-medium">{workflow.label}</div>
-                  <div className="text-xs text-muted-foreground">{workflow.helper}</div>
+                  <div className="font-medium">{workflowText(workflow.label)}</div>
+                  <div className="text-xs text-muted-foreground">{workflowText(workflow.helper)}</div>
                 </TableCell>
                 <TableCell>{formatDate(submission.createdAt, locale)}</TableCell>
                 <TableCell className="text-right">
                   <Button asChild variant="outline" size="sm">
-                    <Link href={`/generation-runs/submissions/${submission.id}`} className="gap-1.5">
+                    <Link href={`/operations/intakes/${submission.id}`} className="gap-1.5">
                       <ClipboardCheck className="size-3.5" aria-hidden />
-                      {workflow.primaryAction}
+                      {workflowText(workflow.primaryAction)}
                     </Link>
                   </Button>
                 </TableCell>

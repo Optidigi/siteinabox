@@ -54,7 +54,7 @@ describe("domain verification action", () => {
       overrideAccess: false,
       user: { id: 42, role: "super-admin" },
     }))
-    expect(revalidatePath).toHaveBeenCalledWith("/generation-runs/500")
+    expect(revalidatePath).toHaveBeenCalledWith("/operations/runs/500")
   })
 
   it("does not mutate when status is unsupported", async () => {

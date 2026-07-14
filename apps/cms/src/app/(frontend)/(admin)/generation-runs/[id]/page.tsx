@@ -11,6 +11,7 @@ import { Textarea } from "@siteinabox/ui/components/textarea"
 import { JsonSummaryBlock } from "@/components/generation/JsonSummaryBlock"
 import { PreviewAccessShare } from "@/components/generation/PreviewAccessShare"
 import { ResponsiveOperationsCard } from "@/components/generation/ResponsiveOperationsCard"
+import { OperationsRouteTabs } from "@/components/generation/OperationsRouteTabs"
 import { PageHeader } from "@/components/page-header"
 import { CheckoutStepper } from "@/components/preview/CheckoutStepper"
 import { updateTenantDomainVerificationAction } from "@/lib/actions/domainVerification"
@@ -249,13 +250,15 @@ export default async function GenerationRunDetailPage({
         }
         action={
           <Button asChild variant="outline">
-            <Link href="/generation-runs">
+            <Link href="/operations/runs">
               <ArrowLeft className="mr-1 size-4" aria-hidden />
               {t("actions.back")}
             </Link>
           </Button>
         }
       />
+
+      <OperationsRouteTabs activePath="/operations/runs" />
 
       {run.status === "failed" && (
         <Alert variant="destructive">

@@ -54,7 +54,7 @@ describe("generation run payment action", () => {
       overrideAccess: true,
       user: { id: 42 },
     }))
-    expect(revalidatePath).toHaveBeenCalledWith("/generation-runs/500")
+    expect(revalidatePath).toHaveBeenCalledWith("/operations/runs/500")
   })
 
   it("does not mutate payment when the super-admin gate rejects", async () => {
