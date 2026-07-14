@@ -1,1 +1,3 @@
-export { default, dynamic } from "../../../generation-runs/[id]/page"
+export { default } from "../../../generation-runs/[id]/page"
+
+export const dynamic = "force-dynamic"
