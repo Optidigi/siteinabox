@@ -65,7 +65,7 @@ describe("passwordless auth surface", () => {
     expect(dispatcher).toContain("siteLiveNoticeTemplate({ siteUrl, adminUrl, magicLoginUrl: input.url })")
     expect(dispatcher).toContain('intent: "site.live_notice"')
     expect(dispatcher).toContain("tenant: metadataTenant(input.metadata)")
-    expect(template).toContain("Magic login:")
+    expect(template).toContain("Direct inloggen:")
   })
 
 })
