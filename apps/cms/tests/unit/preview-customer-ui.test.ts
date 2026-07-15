@@ -74,10 +74,19 @@ describe("customer preview UI", () => {
     expect(customizer).toContain("measurePreviewFrameDocumentHeight")
     expect(customizer).toContain("ResizeObserver")
     expect(customizer).toContain("MutationObserver")
+    expect(customizer).toContain('scrolling="no"')
     expect(customizer).not.toContain("h-[calc(100dvh-9rem)]")
     expect(customizer).not.toContain("sticky top-0 z-20 flex items-center justify-center border-b")
     expect(customizer).not.toContain("stylesReady")
     expect(customizer).not.toContain("pagesNav")
+
+    const frameRuntime = read("src/components/renderer-frame/RendererFrameRuntime.tsx")
+    const rendererStyles = read("src/styles/generated-site-renderer.css")
+    expect(frameRuntime).toContain("renderer-frame-preview-viewport")
+    expect(frameRuntime).toContain("window.parent")
+    expect(frameRuntime).toContain("data-siab-preview-viewport")
+    expect(rendererStyles).toContain('[data-siab-preview-viewport="true"] .min-h-screen')
+    expect(rendererStyles).toContain("--siab-preview-viewport-height")
   })
 
   it("guards customer preview media with preview grants instead of making tenant media public", () => {

@@ -34,8 +34,6 @@ import { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT } from "@/lib/preview/preview-theme-e
 
 export { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT }
 
-const PREVIEW_FRAME_HEIGHT_GUTTER = 2
-
 type PreviewThemeSaveStatus = "idle" | "saving" | "saved" | "error"
 type QueuedPreviewThemeSave = {
   normalizedTheme: ThemeTokens | null
@@ -92,7 +90,7 @@ function measurePreviewFrameDocumentHeight(frameDocument: Document | null | unde
     if (rect.width <= 0 && rect.height <= 0) return max
     return Math.max(max, rect.bottom + scrollY - bodyTop)
   }, 0)
-  return Number.isFinite(height) && height > 0 ? Math.ceil(height + PREVIEW_FRAME_HEIGHT_GUTTER) : null
+  return Number.isFinite(height) && height > 0 ? Math.ceil(height) : null
 }
 
 export function PreviewCustomizer({
@@ -444,6 +442,7 @@ function PreviewRendererFrame({
         src={src}
         title={title}
         className={cn(iframeAutoHeight.className, "block min-h-dvh w-full border-0 bg-white")}
+        scrolling="no"
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-renderer-frame
         onFocus={onFrameInteraction}

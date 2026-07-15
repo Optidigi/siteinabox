@@ -11,3 +11,34 @@
   outline: 2px solid color-mix(in oklab, var(--color-accent, #2563eb) 70%, transparent);
   outline-offset: 2px;
 }
+
+/*
+ * Customer preview frames auto-size to their document. Keep upstream viewport
+ * utilities relative to the actual browser viewport so min-h-screen blocks do
+ * not create a frame-height feedback loop. This scope never affects live sites.
+ */
+[data-siab-preview-viewport="true"] .min-h-screen {
+  min-height: var(--siab-preview-viewport-height);
+}
+
+[data-siab-preview-viewport="true"] .h-screen {
+  height: var(--siab-preview-viewport-height);
+}
+
+[data-siab-preview-viewport="true"] .h-\[calc\(100svh-4rem\)\] {
+  height: calc(var(--siab-preview-viewport-height) - 4rem);
+}
+
+[data-siab-preview-viewport="true"] .max-h-\[calc\(100vh-7rem\)\] {
+  max-height: calc(var(--siab-preview-viewport-height) - 7rem);
+}
+
+@media (min-width: 64rem) {
+  [data-siab-preview-viewport="true"] .lg\:h-screen {
+    height: var(--siab-preview-viewport-height);
+  }
+
+  [data-siab-preview-viewport="true"] .lg\:h-\[calc\(100vh-4rem\)\] {
+    height: calc(var(--siab-preview-viewport-height) - 4rem);
+  }
+}

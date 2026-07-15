@@ -11,6 +11,7 @@ import {
 } from "@siteinabox/contracts/iframe-editor"
 import { SitePageRenderer, createRendererMediaResolver } from "@siteinabox/site-renderer"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
+import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 
 export function RendererFrameRuntime({
   page,
@@ -35,6 +36,30 @@ export function RendererFrameRuntime({
   const cspNonce = useCspNonce()
   const revisionRef = React.useRef(0)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
+  const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
+  const previewViewportRule = useCspStyleRule(
+    "renderer-frame-preview-viewport",
+    mode === "preview" && hostViewportHeight != null
+      ? `--siab-preview-viewport-height:${formatCssPx(hostViewportHeight)};`
+      : null,
+  )
+
+  React.useLayoutEffect(() => {
+    if (mode !== "preview") return
+    let hostWindow: Window = window
+    try {
+      if (window.parent && window.parent !== window) hostWindow = window.parent
+    } catch {
+      hostWindow = window
+    }
+    const update = () => {
+      const next = hostWindow.innerHeight
+      setHostViewportHeight((current) => current === next ? current : next)
+    }
+    update()
+    hostWindow.addEventListener("resize", update)
+    return () => hostWindow.removeEventListener("resize", update)
+  }, [mode])
 
   React.useEffect(() => {
     const emit = (payload: IframeEditorMessage) => {
@@ -96,16 +121,24 @@ export function RendererFrameRuntime({
   }, [mode])
 
   return (
-    <SitePageRenderer
-      page={framePage}
-      settings={frameSettings}
-      theme={frameTheme}
-      tenantSlug={tenantSlug}
-      domain={domain}
-      mediaResolver={mediaResolver}
-      nonce={cspNonce}
-      includeBehaviorScripts={false}
-      formAction="#"
-    />
+    <>
+      {previewViewportRule.styleElement}
+      <div
+        className={previewViewportRule.className}
+        data-siab-preview-viewport={mode === "preview" ? "true" : undefined}
+      >
+        <SitePageRenderer
+          page={framePage}
+          settings={frameSettings}
+          theme={frameTheme}
+          tenantSlug={tenantSlug}
+          domain={domain}
+          mediaResolver={mediaResolver}
+          nonce={cspNonce}
+          includeBehaviorScripts={false}
+          formAction="#"
+        />
+      </div>
+    </>
   )
 }
