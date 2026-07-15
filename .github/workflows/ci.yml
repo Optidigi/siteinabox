@@ -24,6 +24,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Shared package type checks
         run: pnpm packages:typecheck
+      - name: Provider contract and catalog tests
+        run: |
+          pnpm --dir packages/contracts test
+          pnpm --dir packages/site-renderer test
+      - name: Reject obsolete generated-site providers
+        run: pnpm run audit:provider-cutover
       - name: Legal release integrity
         run: pnpm legal:check
 
@@ -121,3 +127,9 @@ jobs:
       - run: pnpm renderer:typecheck
       - run: pnpm renderer:test
       - run: pnpm renderer:build
+      - name: Install provider parity browser
+        run: pnpm --dir apps/renderer exec playwright install --with-deps chromium
+      - name: Hydrate and exercise provider catalog
+        run: pnpm --dir apps/renderer test:provider-browser
+      - name: Compare pinned provider pixels
+        run: pnpm --dir packages/site-renderer visual:provider-parity

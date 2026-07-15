@@ -77,7 +77,7 @@ intake app for both apex and `www`.
 | `/siab-media/[tenantId]/[...path]` | `siab-media/[tenantId]/[...path].ts` | Public snapshot media route guarded by active host snapshot. |
 | `/_renderer/editor` | `_renderer/editor.astro` | Intentional renderer smoke/dev iframe route documented in `apps/renderer/README.md`; not the CMS editor frame. |
 | `/404` | `404.astro` | Platform/default renderer 404 page for direct/static fallback. |
-| `/[...path]` | `[...path].astro` | Public snapshot renderer for tenant domains; known-host missing paths render the provider-backed Tailwind Plus 404 system fallback, unknown hosts use the platform/default fallback. |
+| `/[...path]` | `[...path].astro` | Public snapshot renderer for tenant domains; known-host missing paths render the explicit imported `shadcnui-blocks.not-found-01` system template, while unknown hosts use the platform 404. |
 
 ## Legacy Route Decisions
 

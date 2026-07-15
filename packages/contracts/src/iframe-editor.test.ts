@@ -20,7 +20,13 @@ const revisioned = {
 
 const sampleBlock = {
   id: "block_1",
-  blockType: "richText",
+  blockType: "contentSection",
+  designVariant: "shadcnui-blocks.timeline-01",
+  title: {
+    t: "root",
+    variant: "inline",
+    children: [{ t: "text", v: "About" }],
+  },
   body: {
     t: "root",
     variant: "block",

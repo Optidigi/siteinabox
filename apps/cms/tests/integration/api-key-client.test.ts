@@ -34,6 +34,7 @@ describe("API-key client flow", () => {
         tenant: tenant.id, title: "Home", slug: "home", status: "published",
         blocks: [{
           blockType: "hero",
+          designVariant: "shadcnui-blocks.hero-01",
           headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Welcome", marks: [] }] },
         }]
       }

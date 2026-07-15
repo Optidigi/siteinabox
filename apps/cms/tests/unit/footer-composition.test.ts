@@ -52,13 +52,17 @@ describe("footer composition", () => {
     expect(columns).toEqual([{ id: null, items: [{ id: null, type: "brand", label: null, text: null, links: [] }] }])
   })
 
-  it("normalizes each footer column to one content item", () => {
+  it("preserves every supported content item in a footer column", () => {
     const columns = normalizeFooterColumns([
       { items: [{ type: "brand" }, { type: "business" }, { type: "contact" }] },
     ], resolveFooterContract(manifest))
 
-    expect(columns[0]?.items).toHaveLength(1)
-    expect(columns[0]?.items[0]?.type).toBe("brand")
+    expect(columns[0]?.items.map((item) => item.type)).toEqual(["brand", "business", "contact"])
+  })
+
+  it("preserves external-link intent in explicit link sections", () => {
+    const columns = normalizeFooterColumns([{ items: [{ type: "links", label: "Partners", links: [{ label: "Partner", href: "https://partner.invalid", external: true }] }] }])
+    expect(columns[0]?.items[0]?.links?.[0]).toEqual({ label: "Partner", href: "https://partner.invalid", external: true })
   })
 
   it("materializes visible text placeholders as saved text-column content", () => {

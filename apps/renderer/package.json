@@ -13,16 +13,17 @@
     "astro": "astro",
     "typecheck": "astro check",
     "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/smoke/cookie-consent-contract.test.mjs src/smoke/host-routing.test.mjs src/smoke/iframe-renderer.test.mjs && tsx --test src/lib/media.test.ts",
-    "smoke:packaged-image": "node src/smoke/packaged-image-smoke.mjs"
+    "smoke:packaged-image": "node src/smoke/packaged-image-smoke.mjs",
+    "test:provider-browser": "node src/smoke/provider-catalog-browser.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^10.1.0",
+    "@astrojs/react": "^5.0.7",
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/legal-content": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",
     "astro": "^6.2.1",
     "posthog-js": "^1.386.8",
-    "preline": "^4.2.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "web-vitals": "^5.3.0"
@@ -33,6 +34,7 @@
     "@tailwindcss/vite": "^4.3.1",
     "@types/react": "19.2.15",
     "@types/react-dom": "19.2.3",
+    "playwright": "1.61.0",
     "tailwindcss": "^4.3.1",
     "tsx": "^4.22.4",
     "typescript": "6.0.3"

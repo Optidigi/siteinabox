@@ -32,14 +32,14 @@ export const v1FixtureSettings: SiteSettings = {
   },
   chrome: {
     header: {
-      variant: "default",
+      variant: "shadcnui-blocks.navbar-01",
       behavior: "sticky",
       activeMode: "path",
       mobileMenu: "dropdown",
       cta: { label: "Contact", href: "#contact" },
     },
     footer: {
-      variant: "default",
+      variant: "shadcnui-blocks.footer-01",
       tagline: "Typed fixture data for the shared renderer.",
       copyright: "Copyright 2026 Example Site",
       legalLinks: [{ label: "Privacy", href: "/privacy" }],
@@ -61,7 +61,7 @@ export const v1FixtureSettings: SiteSettings = {
       ],
     },
     banner: {
-      variant: "default",
+      variant: "shadcnui-blocks.banner-01",
       title: "New",
       message: "Reusable chrome variants are available for generated sites.",
       link: { label: "View catalog", href: "#catalog" },
@@ -280,7 +280,7 @@ export const v1FixturePage: Page = {
     {
       blockType: "contactSection",
       title: inlineText("Sign up to our newsletter"),
-      formName: "preline-newsletter",
+      formName: "site-newsletter",
       submitLabel: "Subscribe",
       fields: [
         { name: "email", label: "Email", type: "email", required: true },

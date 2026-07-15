@@ -78,7 +78,8 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
       const issue = scopedVariantIssue(blockType, "designVariant", designVariant, tenant)
       if (issue) violations.push({ path: `blocks.${index}.designVariant`, message: issue.message })
     }
-    for (const issue of validateProviderBlockInstance(record as any)) {
+    const tenantOwnedVariant = designVariant.startsWith("amicare") && isOfficialTenant(tenant)
+    for (const issue of tenantOwnedVariant ? [] : validateProviderBlockInstance(record as any)) {
       violations.push({
         path: `blocks.${index}.${issue.path.join(".")}`,
         message: issue.message,

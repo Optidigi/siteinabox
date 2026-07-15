@@ -2,6 +2,85 @@ import "./analytics-runtime"
 
 const managedFormSelector = "form[data-siab-analytics-form='true']"
 
+type ConsentConfig = { consentStorageKey?: string; consentVersion?: string }
+
+function readConsentConfig(): ConsentConfig {
+  const node = document.querySelector<HTMLScriptElement>("#siab-analytics-config")
+  if (!node?.textContent) return {}
+  try {
+    return JSON.parse(node.textContent) as ConsentConfig
+  } catch {
+    return {}
+  }
+}
+
+function hasCurrentConsent(config: ConsentConfig) {
+  if (!config.consentStorageKey) return false
+  try {
+    const stored = window.localStorage.getItem(config.consentStorageKey)
+    if (!stored) return false
+    const receipt = JSON.parse(stored) as { version?: unknown; categories?: { analytics?: unknown } }
+    return String(receipt.version ?? "") === String(config.consentVersion ?? "1") && typeof receipt.categories?.analytics === "boolean"
+  } catch {
+    return false
+  }
+}
+
+const consentBanner = document.querySelector<HTMLElement>("[data-siab-cookie-consent='true']")
+const consentConfig = readConsentConfig()
+if (consentBanner && hasCurrentConsent(consentConfig)) consentBanner.hidden = true
+
+document.addEventListener("click", (event) => {
+  const navigationToggle = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-navbar-toggle]")
+  if (navigationToggle) {
+    const root = navigationToggle.closest<HTMLElement>("[data-provider-mobile-navigation]")
+    const panel = root?.querySelector<HTMLElement>("[data-navbar-panel]")
+    const expanded = navigationToggle.getAttribute("aria-expanded") !== "true"
+    navigationToggle.setAttribute("aria-expanded", String(expanded))
+    panel?.classList.toggle("hidden", !expanded)
+    root?.querySelector<HTMLElement>("[data-navbar-open-icon]")?.classList.toggle("hidden", expanded)
+    root?.querySelector<HTMLElement>("[data-navbar-close-icon]")?.classList.toggle("hidden", !expanded)
+    return
+  }
+
+  const themeToggle = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-theme-toggle]")
+  if (themeToggle) {
+    const dark = !document.documentElement.classList.contains("dark")
+    document.documentElement.classList.toggle("dark", dark)
+    window.localStorage.setItem("siab-color-mode", dark ? "dark" : "light")
+    return
+  }
+
+  const dismiss = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-banner-dismiss]")
+  if (dismiss) {
+    const banner = dismiss.closest<HTMLElement>("[data-provider-variant^='shadcnui-blocks.banner-']")
+    if (banner) banner.hidden = true
+    return
+  }
+
+  const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-siab-cookie-consent='true'] [data-consent-action]")
+  if (!button) return
+  const accepted = button.dataset.consentAction === "accept"
+  const banner = button.closest<HTMLElement>("[data-siab-cookie-consent='true']")
+  const storageKey = consentConfig.consentStorageKey || "siab_cookie_consent_v1"
+  const receipt = { version: consentConfig.consentVersion || "1", categories: { necessary: true, analytics: accepted } }
+  window.localStorage.setItem(storageKey, JSON.stringify(receipt))
+  if (accepted) window.SIABAnalytics?.grantConsent()
+  else window.SIABAnalytics?.revokeConsent()
+  if (banner) banner.hidden = true
+})
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return
+  document.querySelectorAll<HTMLElement>("[data-provider-mobile-navigation]").forEach((root) => {
+    root.querySelector<HTMLElement>("[data-navbar-panel]")?.classList.add("hidden")
+    const toggle = root.querySelector<HTMLButtonElement>("[data-navbar-toggle]")
+    toggle?.setAttribute("aria-expanded", "false")
+    root.querySelector<HTMLElement>("[data-navbar-open-icon]")?.classList.remove("hidden")
+    root.querySelector<HTMLElement>("[data-navbar-close-icon]")?.classList.add("hidden")
+  })
+})
+
 function findMessage(form: HTMLFormElement) {
   return form.querySelector<HTMLElement>(".cms-block__form-message")
 }

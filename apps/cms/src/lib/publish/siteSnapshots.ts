@@ -91,11 +91,33 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
   if (!consent || typeof consent !== "object" || Array.isArray(consent)) return snapshot
   const settings = (snapshot as Record<string, unknown>).settings
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return snapshot
+  const settingsRecord = settings as Record<string, any>
+  const chrome = settingsRecord.chrome && typeof settingsRecord.chrome === "object" && !Array.isArray(settingsRecord.chrome)
+    ? settingsRecord.chrome as Record<string, any>
+    : undefined
+  const banner = chrome?.banner && typeof chrome.banner === "object" && !Array.isArray(chrome.banner)
+    ? chrome.banner as Record<string, unknown>
+    : undefined
+  const consentEnabled = (consent as Record<string, unknown>).enabled === true
+  const consentBanner = consentEnabled
+    ? {
+        visible: true,
+        title: "Cookies en privacy",
+        message: "Wij gebruiken alleen met uw toestemming optionele analytics om de website te verbeteren.",
+        dismissible: false,
+        ...(banner ?? {}),
+        variant: "shadcnui-blocks.banner-04",
+      }
+    : banner
   return {
     ...snapshot as Record<string, unknown>,
     settings: {
-      ...settings as Record<string, unknown>,
+      ...settingsRecord,
       analyticsConsent: consent,
+      chrome: chrome || consentBanner ? {
+        ...(chrome ?? {}),
+        banner: consentBanner,
+      } : settingsRecord.chrome,
     },
   }
 }

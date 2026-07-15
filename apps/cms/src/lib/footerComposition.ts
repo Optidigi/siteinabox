@@ -6,6 +6,7 @@ export type FooterItemType = (typeof FOOTER_ITEM_TYPES)[number]
 export type FooterLink = {
   label: string
   href: string
+  external?: boolean
 }
 
 export type FooterCompositionItem = {
@@ -106,8 +107,8 @@ export const ensureFooterColumnItems = (
   contract: FooterCompositionContract,
 ): FooterCompositionColumn[] => columns.map((column, index) => ({
   ...column,
-  items: column.items[0]
-    ? [column.items[0]]
+  items: column.items.length
+    ? column.items
     : [createFooterItem(defaultFooterTypeForColumn(index, contract))],
 }))
 
@@ -134,11 +135,11 @@ export const normalizeFooterColumns = (
                   .map((link: any) => ({
                     label: stringOrNull(link?.label) ?? "",
                     href: stringOrNull(link?.href) ?? "",
+                    external: !!link?.external,
                   }))
                   .filter((link: FooterLink) => link.label || link.href)
               : [],
-          }))
-          .slice(0, 1),
+          })),
       }
     })
 }

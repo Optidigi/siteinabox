@@ -30,6 +30,14 @@ const normaliseEntry = (row: any): NavEntry => ({
   url: typeof row?.url === "string" ? row.url : null,
   label: typeof row?.label === "string" ? row.label : null,
   external: !!row?.external,
+  description: typeof row?.description === "string" ? row.description : null,
+  children: Array.isArray(row?.children) ? row.children.map((child: any) => ({
+    label: typeof child?.label === "string" ? child.label : "",
+    href: typeof child?.href === "string" ? child.href : "",
+    description: typeof child?.description === "string" ? child.description : null,
+    icon: typeof child?.icon === "string" ? child.icon : null,
+    external: !!child?.external,
+  })) : [],
 })
 
 export default async function NavigationPage({

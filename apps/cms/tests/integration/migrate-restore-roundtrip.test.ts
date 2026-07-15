@@ -21,7 +21,7 @@ beforeAll(async () => {
   const t = await payload.create({
     collection: "tenants",
     data: {
-      name: "RT Restore Test", slug: `rtr-${uniq}`, domain: `rtr-${uniq}.test`,
+      name: "RT Restore Test", slug: "tenant-amicare", domain: `rtr-${uniq}.test`,
       siteManifest: manifest,
     } as any,
     overrideAccess: true,
@@ -34,6 +34,7 @@ beforeAll(async () => {
       title: "Original", slug: `roundtrip-${uniq}`, status: "draft", tenant: tenantId,
       blocks: [{
         blockType: "richText",
+        designVariant: "amicareEditorial",
         body: { t: "root", variant: "block",
           children: [{ t: "paragraph", children: [{ t: "text", v: "original content" }] }] },
       }],
@@ -71,6 +72,7 @@ describe("migrate-richtext-v2 backup + restore round-trip", () => {
       collection: "pages", id: pageId as any,
       data: { blocks: [{
         blockType: "richText",
+        designVariant: "amicareEditorial",
         body: { t: "root", variant: "block",
           children: [{ t: "paragraph", children: [{ t: "text", v: "MUTATED" }] }] },
       }] } as any,

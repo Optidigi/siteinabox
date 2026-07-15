@@ -8,26 +8,8 @@ import {
 } from "@siteinabox/contracts"
 import { getSourceBackedVariantRenderer, isProviderVariantIdentifier, resolveBlockVariant } from "@siteinabox/site-renderer"
 import type { RtManifest } from "@/lib/richText/manifest"
-import { HeroCanvas as HeroLazy } from "@/components/editor/canvas/blocks/Hero"
-import { FeatureListCanvas as FeatureListLazy } from "@/components/editor/canvas/blocks/FeatureList"
-import { CTACanvas as CTALazy } from "@/components/editor/canvas/blocks/CTA"
-import { RichTextCanvas as RichTextLazy } from "@/components/editor/canvas/blocks/RichText"
-import { ContactSectionCanvas } from "@/components/editor/canvas/blocks/ContactSection"
-import { FAQCanvas } from "@/components/editor/canvas/blocks/FAQ"
-import { TestimonialsCanvas } from "@/components/editor/canvas/blocks/Testimonials"
 import { AmicareCanvasBlockRenderer } from "@/components/editor/canvas/AmicareCanvasBlockRenderer"
 import { RendererCanvasBlockRenderer } from "@/components/editor/canvas/RendererCanvasBlockRenderer"
-import {
-  BentoGridCanvas,
-  BlogCardsCanvas,
-  ContentSectionCanvas,
-  GalleryCanvas,
-  LogoCloudCanvas,
-  NewsletterCanvas,
-  PricingCanvas,
-  StatsCanvas,
-  TeamCanvas,
-} from "@/components/editor/canvas/blocks/GenerationBlocks"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 type DataAttributes = {
@@ -192,12 +174,6 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
   ) {
     return <AmicareCanvasBlockRenderer {...augmented} />
   }
-  if (
-    props.tenantRendererKey !== "amicare" &&
-    (block?.blockType === "hero" || block?.blockType === "featureList" || block?.blockType === "richText" || block?.blockType === "cta")
-  ) {
-    return <RendererCanvasBlockRenderer {...augmented} />
-  }
   const unknownSectionProps = mergeCanvasSectionProps(
     {
       className: "cms-block cms-block--unknown rounded-md border border-destructive bg-destructive/5 p-4 text-sm text-destructive my-2",
@@ -208,28 +184,9 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     props.sectionChromeProps,
   )
 
-  switch (block?.blockType) {
-    case "hero":           return <HeroLazy {...augmented} />
-    case "featureList":    return <FeatureListLazy {...augmented} />
-    case "cta":            return <CTALazy {...augmented} />
-    case "richText":       return <RichTextLazy {...augmented} />
-    case "contactSection": return <ContactSectionCanvas {...augmented} />
-    case "faq":            return <FAQCanvas {...augmented} />
-    case "testimonials":   return <TestimonialsCanvas {...augmented} />
-    case "pricing":        return <PricingCanvas {...augmented} />
-    case "stats":          return <StatsCanvas {...augmented} />
-    case "logoCloud":      return <LogoCloudCanvas {...augmented} />
-    case "gallery":        return <GalleryCanvas {...augmented} />
-    case "newsletter":     return <NewsletterCanvas {...augmented} />
-    case "bentoGrid":      return <BentoGridCanvas {...augmented} />
-    case "contentSection": return <ContentSectionCanvas {...augmented} />
-    case "team":           return <TeamCanvas {...augmented} />
-    case "blogCards":      return <BlogCardsCanvas {...augmented} />
-    default:
-      return (
-        <section {...unknownSectionProps}>
-          Unknown block type: <code>{String(block?.blockType ?? "?")}</code>
-        </section>
-      )
-  }
+  return (
+    <section {...unknownSectionProps} data-provider-error="missing-explicit-variant">
+      Missing or unsupported explicit provider variant for block type: <code>{String(block?.blockType ?? "?")}</code>
+    </section>
+  )
 }

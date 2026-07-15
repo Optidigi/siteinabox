@@ -17,6 +17,8 @@ export type SiteChromeDraft = {
     activeMode?: unknown
     mobileMenu?: unknown
     cta?: unknown
+    secondaryAction?: unknown
+    search?: unknown
   }
   footer: {
     variant?: unknown
@@ -25,6 +27,7 @@ export type SiteChromeDraft = {
     copyright: string | null
     legalLinks?: unknown
     columns: FooterCompositionColumn[]
+    newsletter?: unknown
   }
   banner?: unknown
 }
@@ -40,6 +43,8 @@ export const chromeDraftFromSettings = (
     activeMode: settings?.chrome?.header?.activeMode ?? null,
     mobileMenu: settings?.chrome?.header?.mobileMenu ?? null,
     cta: settings?.chrome?.header?.cta ?? undefined,
+    secondaryAction: settings?.chrome?.header?.secondaryAction ?? undefined,
+    search: settings?.chrome?.header?.search ?? undefined,
   },
   footer: {
     variant: settings?.chrome?.footer?.variant ?? null,
@@ -48,6 +53,7 @@ export const chromeDraftFromSettings = (
     copyright: settings?.chrome?.footer?.copyright ?? null,
     legalLinks: settings?.chrome?.footer?.legalLinks ?? undefined,
     columns: defaultFooterColumns(settings, footerContract),
+    newsletter: settings?.chrome?.footer?.newsletter ?? undefined,
   },
   banner: settings?.chrome?.banner ?? undefined,
 })
@@ -63,6 +69,8 @@ export const chromeComparable = (
     activeMode: draft.header.activeMode ?? null,
     mobileMenu: draft.header.mobileMenu ?? null,
     cta: draft.header.cta ?? null,
+    secondaryAction: draft.header.secondaryAction ?? null,
+    search: draft.header.search ?? null,
   },
   footer: {
     variant: draft.footer.variant ?? null,
@@ -71,6 +79,7 @@ export const chromeComparable = (
     copyright: draft.footer.copyright ?? null,
     legalLinks: draft.footer.legalLinks ?? [],
     columns: comparableFooterColumns(draft.footer.columns, footerContract),
+    newsletter: draft.footer.newsletter ?? null,
   },
   banner: draft.banner ?? null,
 })
@@ -86,6 +95,8 @@ export const chromePatchFromDraft = (
     activeMode: draft.header.activeMode ?? null,
     mobileMenu: draft.header.mobileMenu ?? null,
     cta: draft.header.cta ?? undefined,
+    secondaryAction: draft.header.secondaryAction ?? undefined,
+    search: draft.header.search ?? undefined,
   },
   footer: {
     variant: draft.footer.variant ?? null,
@@ -94,6 +105,7 @@ export const chromePatchFromDraft = (
     copyright: draft.footer.copyright ?? null,
     legalLinks: draft.footer.legalLinks ?? undefined,
     columns: normalizeFooterColumns(draft.footer.columns, footerContract),
+    newsletter: draft.footer.newsletter ?? undefined,
   },
   banner: draft.banner ?? undefined,
 })
@@ -110,6 +122,8 @@ export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
       activeMode: draft.header.activeMode,
       mobileMenu: draft.header.mobileMenu,
       cta: draft.header.cta,
+      secondaryAction: draft.header.secondaryAction,
+      search: draft.header.search,
     },
     footer: {
       ...(settings?.chrome?.footer ?? {}),
@@ -119,6 +133,7 @@ export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
       copyright: draft.footer.copyright,
       legalLinks: draft.footer.legalLinks,
       columns: draft.footer.columns,
+      newsletter: draft.footer.newsletter,
     },
     banner: draft.banner,
   },

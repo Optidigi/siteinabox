@@ -18,6 +18,7 @@ const linkRefToJson = (link: any) => {
   return {
     label: link.label,
     href: link.href,
+    external: !!link.external,
   }
 }
 
@@ -71,6 +72,12 @@ export function settingsToJsonWithoutAnalytics(
         activeMode: doc.chrome.header.activeMode,
         mobileMenu: doc.chrome.header.mobileMenu,
         cta: linkRefToJson(doc.chrome.header.cta),
+        secondaryAction: linkRefToJson(doc.chrome.header.secondaryAction),
+        search: doc.chrome.header.search ? {
+          enabled: !!doc.chrome.header.search.enabled,
+          action: doc.chrome.header.search.action,
+          placeholder: doc.chrome.header.search.placeholder,
+        } : undefined,
       } : undefined,
       footer: doc.chrome.footer ? {
         variant: doc.chrome.footer.variant,
@@ -78,7 +85,14 @@ export function settingsToJsonWithoutAnalytics(
         tagline: doc.chrome.footer.tagline,
         copyright: doc.chrome.footer.copyright,
         legalLinks: (doc.chrome.footer.legalLinks ?? []).map(linkRefToJson).filter(Boolean),
-        columns: normalizeFooterColumns(doc.chrome.footer.columns)
+        columns: normalizeFooterColumns(doc.chrome.footer.columns),
+        newsletter: doc.chrome.footer.newsletter ? {
+          title: doc.chrome.footer.newsletter.title,
+          placeholder: doc.chrome.footer.newsletter.placeholder,
+          submitLabel: doc.chrome.footer.newsletter.submitLabel,
+          action: doc.chrome.footer.newsletter.action,
+          method: doc.chrome.footer.newsletter.method,
+        } : undefined,
       } : undefined,
       banner: bannerToJson(doc.chrome.banner)
     } : undefined,

@@ -83,6 +83,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     status: "published",
     blocks: [{
       blockType: "hero",
+      designVariant: "shadcnui-blocks.hero-01",
       anchor: "top",
       eyebrow: null,
       headline: inlineText("Acme Studio"),

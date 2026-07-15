@@ -36,7 +36,7 @@ function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
   if (variant.scope.kind !== "global") return false
 
   const sourceName = variant.provenance.sourceName.toLowerCase()
-  return sourceName === "tailwind plus"
+  return sourceName === "akash3444/shadcn-ui-blocks"
 }
 
 function isTenantExclusiveRendererVariantAllowed(variant: SiteBlockCatalogVariant, context: BlockVariantResolveContext) {

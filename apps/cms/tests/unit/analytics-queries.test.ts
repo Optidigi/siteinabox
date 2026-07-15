@@ -127,7 +127,7 @@ describe("analytics queries", () => {
         results: [[
           "top",
           "hero",
-          "tailwindplus.marketing.hero.simple-centered",
+          "shadcnui-blocks.hero-01",
           "/",
           14,
           9,
@@ -139,7 +139,7 @@ describe("analytics queries", () => {
     await expect(getSectionPerformance({ tenantId: 7 })).resolves.toEqual([{
       sectionId: "top",
       sectionType: "hero",
-      providerVariant: "tailwindplus.marketing.hero.simple-centered",
+      providerVariant: "shadcnui-blocks.hero-01",
       pagePath: "/",
       views: 14,
       engagements: 9,

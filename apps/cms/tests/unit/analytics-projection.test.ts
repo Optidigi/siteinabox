@@ -14,7 +14,7 @@ describe("analytics projection", () => {
           {
             id: "row-1",
             blockType: "hero",
-            designVariant: "tailwindplus.marketing.hero.simple-centered",
+            designVariant: "shadcnui-blocks.hero-01",
             anchor: "top",
             headline: "Welkom",
           },
@@ -46,7 +46,7 @@ describe("analytics projection", () => {
       sectionType: "hero",
       sectionPosition: 0,
       sectionAnchor: "top",
-      providerVariant: "tailwindplus.marketing.hero.simple-centered",
+      providerVariant: "shadcnui-blocks.hero-01",
     })
     expect(json.blocks[0].analytics.contentSignature).toMatch(/^[a-f0-9]{24}$/)
     expect(json.blocks[1].analytics).toMatchObject({

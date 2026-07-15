@@ -96,6 +96,23 @@ describe("resolveNav", () => {
     })
   })
 
+  describe("flyout groups", () => {
+    it("preserves ordered rich children and external intent while rejecting unsafe children", () => {
+      expect(resolveNav([{ type: "group", label: "Services", description: "What we do", children: [
+        { label: "Care", href: "/care", description: "At home", icon: "smile" },
+        { label: "Partner", href: "https://partner.invalid", external: true },
+        { label: "Unsafe", href: "javascript:alert(1)" },
+      ] }], pages)).toEqual([{ label: "Services", external: false, description: "What we do", children: [
+        { label: "Care", href: "/care", external: false, description: "At home", icon: "smile" },
+        { label: "Partner", href: "https://partner.invalid", external: true },
+      ] }])
+    })
+
+    it("omits empty groups rather than publishing an unusable trigger", () => {
+      expect(resolveNav([{ type: "group", label: "Empty", children: [] }], pages)).toEqual([])
+    })
+  })
+
   describe("list behaviour", () => {
     it("preserves entry order and drops only the unresolvable ones", () => {
       const result = resolveNav(

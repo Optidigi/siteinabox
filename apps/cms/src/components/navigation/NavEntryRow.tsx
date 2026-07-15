@@ -44,6 +44,13 @@ export function describeEntry(
       warn: entry.page != null && !page,
     }
   }
+  if (entry.type === "group") {
+    return {
+      label: entry.label?.trim() || labels?.untitledLink || "Untitled flyout group",
+      detail: `${entry.children.length} ${entry.children.length === 1 ? "link" : "links"}`,
+      warn: entry.children.length === 0,
+    }
+  }
   return {
     label: entry.label?.trim() || labels?.untitledLink || "Untitled link",
     detail: entry.url ?? "",

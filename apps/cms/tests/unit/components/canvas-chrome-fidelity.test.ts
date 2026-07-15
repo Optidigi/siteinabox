@@ -179,15 +179,20 @@ describe("canvas chrome fidelity", () => {
 
   it("uses stable renderer chrome markers before legacy structural fallbacks", () => {
     const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
-    const genericChrome = read("../../packages/site-renderer/src/chrome.tsx")
+    const providerChrome = [
+      read("../../packages/site-renderer/src/providers/shadcnui-blocks/views.tsx"),
+      read("../../packages/site-renderer/src/providers/shadcnui-blocks/navbar-views.tsx"),
+      read("../../packages/site-renderer/src/providers/shadcnui-blocks/footer-views.tsx"),
+    ].join("\n")
     const amicareRenderer = read("../../packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx")
 
     expect(runtime).toContain('[data-site-chrome="header"]')
     expect(runtime).toContain('[data-site-chrome="footer"]')
     expect(runtime.indexOf('[data-site-chrome="header"]')).toBeLessThan(runtime.indexOf("[data-siab-site-header]"))
     expect(runtime.indexOf('[data-site-chrome="footer"]')).toBeLessThan(runtime.indexOf("[data-siab-site-footer]"))
-    expect(genericChrome).toContain('data-site-chrome="header"')
-    expect(genericChrome).toContain('data-site-chrome="footer"')
+    expect(providerChrome).toContain('area === "header"')
+    expect(providerChrome).toContain('data-provider-variant={variant}')
+    expect(providerChrome).toContain('data-provider-token-mode="reference"')
     expect(amicareRenderer).toContain('data-site-chrome="header"')
     expect(amicareRenderer).toContain('data-site-chrome="footer"')
   })
@@ -230,7 +235,7 @@ describe("canvas chrome fidelity", () => {
 
     expect(blockRenderer).toContain("sectionChromeProps?: CanvasSectionChromeProps")
     expect(blockRenderer).toContain("export function mergeCanvasSectionProps")
-    expect(blockRenderer).toContain("<section {...unknownSectionProps}>")
+    expect(blockRenderer).toContain('<section {...unknownSectionProps} data-provider-error="missing-explicit-variant">')
 
     expect(renderedItem).toContain("children: (sectionChromeProps: CanvasSectionChromeProps) => React.ReactNode")
     expect(renderedItem).toContain("const anchorRef = React.useRef<HTMLElement | null>(null)")

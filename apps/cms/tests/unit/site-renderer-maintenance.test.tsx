@@ -22,7 +22,7 @@ describe("generic site renderer maintenance banner", () => {
       },
     })
 
-    expect(html).toContain('data-siab-site-banner="true"')
+    expect(html).toContain('data-provider-variant="shadcnui-blocks.banner-01"')
     expect(html).toContain("Reusable chrome variants are available for generated sites.")
     expect(html).toContain('data-siab-site-maintenance-banner="true"')
     expect(html).toContain("We are updating this site tonight.")
@@ -39,6 +39,6 @@ describe("generic site renderer maintenance banner", () => {
 
     expect(html).not.toContain("data-siab-site-maintenance-banner")
     expect(html).not.toContain("Hidden maintenance message.")
-    expect(html).toContain('data-siab-site-banner="true"')
+    expect(html).toContain('data-provider-variant="shadcnui-blocks.banner-01"')
   })
 })

@@ -225,7 +225,8 @@ function AmicareNav({
 }) {
   const brand = settings.siteName?.trim() || DEFAULT_BRAND
   const logo = media(settings.chrome?.header?.logo ?? settings.branding?.logo ?? null, mediaResolver)
-  const links = settings.navHeader && settings.navHeader.length > 0 ? settings.navHeader : DEFAULT_NAV_LINKS
+  const links = (settings.navHeader && settings.navHeader.length > 0 ? settings.navHeader : DEFAULT_NAV_LINKS)
+    .filter((link): link is typeof link & { href: string } => Boolean(link.href?.trim()))
   const toggleId = "amicare-mobile-menu-toggle"
 
   return (
@@ -330,10 +331,10 @@ function AmicareFooter({
     ? footer.columns.filter((column): column is FooterCompositionColumn => Array.isArray(column?.items))
     : []
   const navLinks = Array.isArray(settings.navFooter)
-    ? settings.navFooter.filter((link) => link.label?.trim() && link.href?.trim())
+    ? settings.navFooter.filter((link): link is typeof link & { href: string } => Boolean(link.label?.trim() && link.href?.trim()))
     : []
   const configuredLegalLinks = Array.isArray(footer?.legalLinks)
-    ? footer.legalLinks.filter((link) => link.label?.trim() && link.href?.trim())
+    ? footer.legalLinks.filter((link): link is typeof link & { href: string } => Boolean(link.label?.trim() && link.href?.trim()))
     : []
   const legalLinks = configuredLegalLinks
   const gridClass =

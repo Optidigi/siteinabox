@@ -56,6 +56,8 @@ import * as migration_20260711_102515_legal_notification_deliveries from './2026
 import * as migration_20260711_125450_20260711_legal_operator_events from './20260711_125450_20260711_legal_operator_events';
 import * as migration_20260711_183922_20260711_notice_and_continued_use from './20260711_183922_20260711_notice_and_continued_use';
 import * as migration_20260712_083723_communication_preferences_and_email_policy from './20260712_083723_communication_preferences_and_email_policy';
+import * as migration_20260715_120000_migrate_shadcnui_blocks_provider from './20260715_120000_migrate_shadcnui_blocks_provider';
+import * as migration_20260715_131919_shadcnui_chrome_capabilities from './20260715_131919_shadcnui_chrome_capabilities';
 
 export const migrations = [
   {
@@ -346,6 +348,16 @@ export const migrations = [
   {
     up: migration_20260712_083723_communication_preferences_and_email_policy.up,
     down: migration_20260712_083723_communication_preferences_and_email_policy.down,
-    name: '20260712_083723_communication_preferences_and_email_policy'
+    name: '20260712_083723_communication_preferences_and_email_policy',
+  },
+  {
+    up: migration_20260715_120000_migrate_shadcnui_blocks_provider.up,
+    down: migration_20260715_120000_migrate_shadcnui_blocks_provider.down,
+    name: '20260715_120000_migrate_shadcnui_blocks_provider',
+  },
+  {
+    up: migration_20260715_131919_shadcnui_chrome_capabilities.up,
+    down: migration_20260715_131919_shadcnui_chrome_capabilities.down,
+    name: '20260715_131919_shadcnui_chrome_capabilities'
   },
 ];

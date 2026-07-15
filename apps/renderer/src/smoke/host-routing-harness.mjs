@@ -104,6 +104,7 @@ function publishedSnapshotForHost(host) {
         updatedAt: "2026-07-10T00:00:00.000Z",
         blocks: [{
           blockType: "richText",
+          designVariant: "amicareEditorial",
           body: {
             t: "root",
             variant: "block",
@@ -240,7 +241,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const unknownHostHtml = await unknownHostNotFound.text()
   await assertStatus(unknownHostNotFound, 404, "unknown.example/ status", unknownHostHtml, failureContext)
   assert.match(unknownHostHtml, /Page not found/)
-  assert.doesNotMatch(unknownHostHtml, /data-system-template="tailwindplus\.marketing\.feedback\.404-simple"/)
+  assert.doesNotMatch(unknownHostHtml, /data-system-template="shadcnui-blocks\.not-found-/)
   assertNoAnalyticsLeakage(unknownHostHtml)
 
   const tenantNotFoundChecks = [
@@ -254,10 +255,11 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
     const html = await response.text()
     await assertStatus(response, 404, `${host}${pathname} status`, html, failureContext)
     assert.match(html, /Page not found/)
-    assert.match(html, /data-system-template="tailwindplus\.marketing\.feedback\.404-simple"/)
+    assert.match(html, /data-system-template="shadcnui-blocks\.not-found-01"/)
     assert.match(html, /data-system-template-kind="not-found"/)
     assert.match(html, /data-siab-theme-overrides/)
-    assert.match(html, /--color-accent:#d97706/)
+    assert.match(html, /data-provider-token-mode="reference"/)
+    assert.doesNotMatch(html, /data-system-template="shadcnui-blocks\.not-found-01"[^>]*style=/)
     assertNoAnalyticsLeakage(html)
   }
 

@@ -104,7 +104,7 @@ and in `persistPreviewTheme*` on the server so density never persists outside
 
 ## Theme control bar
 
-`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating glass pill. On desktop it has four segments (`Colours | Fonts | Shape | Density`) controlled by a Radix `ToggleGroup type="single"` + `Popover` + `PopoverAnchor`; each segment opens a panel anchored under it. The page editor does not show ThemeBar on phones. Customer preview chrome is separate — see § Customer preview chrome above (`PreviewCommandBar`, `PreviewMobileChrome`). The toolbar exposes only fixed ThemeTokenSpec V2 presets: four color styles (`Blue Professional`, `Red Confident`, `Emerald Calm`, `Amber Warm`), three font styles (`Clear Modern`, `Classic Editorial`, `Friendly Organic`), and three shape styles (`Rounded`, `Soft`, `Sharp`). Preview pins density to `comfortable`; density remains editable only in the page editor `ThemeBar`. Defaults are real preset IDs: `blue-professional`, `clear-modern`, `soft`, `comfortable`, and light mode. The default preset set is Tailwind Plus identity: `blue-professional` maps to the source indigo ramp and `comfortable` does not rewrite provider section padding. The schema supports `appearance.mode: "system"`, but the toolbar does not present System as a selectable mode. The bar edits **tenant-wide** preset IDs only — never CMS shadcn tokens, raw palettes, raw font families, raw radius values, arbitrary classes, AI-created visual themes, or custom CSS. The schema stores ThemeTokenSpec V2 directly: `appearance.mode`, `colors.schemeId`, `fonts.schemeId`, `shape.schemeId`, and `density.schemeId`. `toCssVars` resolves those preset IDs into a base `.rt-canvas { ... }` block and a `.rt-canvas[data-rt-mode="dark"] { ... }` overlay; `CanvasSurface` stamps `data-rt-mode` through the shared renderer `themeMode()` helper. `packages/site-renderer` emits the same contract through `ThemeStyle`, `themeToCssVars`, and `data-rt-mode` on live/preview renderer roots. Tailwind's native `dark:` variant is wired to `[data-rt-mode="dark"]` in the generated-site CSS entrypoints. Tailwind Plus provider DOM, classes, layout, responsive behavior, and Tailwind default palette computation remain renderer/source owned; theme presets affect only explicit bridge roles for non-default accent colors, ambient surfaces/ink, borders, fonts, radius scale, and non-default provider section vertical padding. In the page editor, changes update `PageForm`'s live `theme` state and persist through the normal explicit page save. In customer preview, theme changes go through the preview customizer's queued preview-theme save path. Both paths are validated by `themeSchema`.
+`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating desktop control for the approved `ThemeTokenSpec` V2 color, font, shape, density, and appearance presets. It edits tenant-wide preset IDs only—never CMS tokens, raw palettes, arbitrary classes, or custom CSS. `toCssVars`, `ThemeStyle`, and `themeToCssVars` apply the same scoped variables in canvas, preview, and public rendering. Provider surfaces use exact upstream reference tokens under `data-provider-token-mode="reference"`; tenant overrides stay outside that scope and do not rewrite literal provider classes. Changes persist through the normal page or preview-theme save path.
 
 Generated blocks must not add their own arbitrary visual token fields, class
 names, provider CSS overrides, or per-block color/font/radius/spacing controls.
@@ -135,12 +135,11 @@ for the same structured fields. If a block lacks a `BlockFormFields` mapping,
 canvas inline/select behavior, or renderer parity coverage, keep it out of
 generation until those surfaces are complete.
 
-Self-serve generation currently uses only approved exact-source Tailwind Plus
-Marketing provider-backed `designVariant` values backed by
-`packages/site-renderer/src/source-blocks`. Generation must not rely on
-analytics metadata for visual selection. Inactive provider families, SIAB-owned
-generic visual variants, and temporary Ami-care compatibility variants are
-unavailable to generation.
+Self-serve generation uses only approved explicit `shadcnui-blocks.*`
+`designVariant` values derived from the canonical generated manifest. Missing
+or unknown variants render the canvas fail-closed error surface. Generation
+must not rely on analytics metadata for visual selection. Tenant-exclusive
+Amicare compatibility variants are unavailable to self-serve generation.
 
 ## Inline-edit primitives
 

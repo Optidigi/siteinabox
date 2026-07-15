@@ -2,7 +2,15 @@
 // mirrors a SiteSettings.navHeader / navFooter row, flattened (page
 // relationship normalised to a bare id) for the client components.
 
-export type NavEntryType = "page" | "section" | "custom"
+export type NavEntryType = "page" | "section" | "custom" | "group"
+
+export type NavGroupChild = {
+  label: string
+  href: string
+  description: string | null
+  icon: "backpack" | "cake-slice" | "coffee" | "grape" | "hotel" | "ice-cream" | "map-pin" | "package" | "pizza" | "plane" | "sandwich" | "smile" | null
+  external: boolean
+}
 
 export type NavEntry = {
   type: NavEntryType
@@ -16,6 +24,8 @@ export type NavEntry = {
   label: string | null
   /** Open in a new tab — `custom` entries. */
   external: boolean
+  description: string | null
+  children: NavGroupChild[]
 }
 
 export type NavPageOption = {
@@ -36,4 +46,6 @@ export const emptyEntry = (type: NavEntryType): NavEntry => ({
   url: null,
   label: null,
   external: false,
+  description: null,
+  children: [],
 })

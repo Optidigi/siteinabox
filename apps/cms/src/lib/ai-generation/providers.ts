@@ -150,8 +150,8 @@ const mediaRefJsonSchema = {
 const linkJsonSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["label", "href"],
-  properties: { label: stringOrNull, href: stringOrNull },
+  required: ["label", "href", "external"],
+  properties: { label: stringOrNull, href: stringOrNull, external: { type: ["boolean", "null"] } },
 } as const
 
 const nullableLinkJsonSchema = { anyOf: [linkJsonSchema, { type: "null" }] } as const
@@ -245,17 +245,6 @@ const blockJsonSchemas = [
           },
         },
       },
-    },
-  },
-  {
-    type: "object",
-    additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "body"],
-    properties: {
-      blockType: { type: "string", const: "richText" },
-      ...baseBlockProperties,
-      designVariant: designVariantJsonSchemaFor("richText"),
-      body: richTextBlockJsonSchema,
     },
   },
   {
@@ -501,62 +490,6 @@ const blockJsonSchemas = [
   {
     type: "object",
     additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "description", "emailLabel", "emailPlaceholder", "submitLabel", "benefits"],
-    properties: {
-      blockType: { type: "string", const: "newsletter" },
-      ...baseBlockProperties,
-      designVariant: designVariantJsonSchemaFor("newsletter"),
-      title: richTextInlineJsonSchema,
-      description: richTextBlockJsonSchema,
-      emailLabel: stringOrNull,
-      emailPlaceholder: stringOrNull,
-      submitLabel: { type: "string" },
-      benefits: {
-        type: "array",
-        minItems: 2,
-        maxItems: 2,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["title", "description"],
-          properties: {
-            title: richTextInlineJsonSchema,
-            description: richTextBlockJsonSchema,
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "object",
-    additionalProperties: false,
-    required: ["blockType", "designVariant", "anchor", "title", "intro", "items"],
-    properties: {
-      blockType: { type: "string", const: "bentoGrid" },
-      ...baseBlockProperties,
-      designVariant: designVariantJsonSchemaFor("bentoGrid"),
-      title: richTextInlineJsonSchema,
-      intro: richTextBlockJsonSchema,
-      items: {
-        type: "array",
-        minItems: 4,
-        maxItems: 4,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["title", "description", "image"],
-          properties: {
-            title: richTextInlineJsonSchema,
-            description: richTextBlockJsonSchema,
-            image: mediaRefJsonSchema,
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "object",
-    additionalProperties: false,
     required: ["blockType", "designVariant", "anchor", "eyebrow", "title", "intro", "body", "image", "features", "bridge", "secondaryTitle", "secondaryBody"],
     properties: {
       blockType: { type: "string", const: "contentSection" },
@@ -764,19 +697,21 @@ export const siteGenerationJsonSchema = {
             header: {
               type: "object",
               additionalProperties: false,
-              required: ["variant", "behavior", "activeMode", "mobileMenu", "cta"],
+              required: ["variant", "behavior", "activeMode", "mobileMenu", "cta", "secondaryAction", "search"],
               properties: {
                 variant: { type: ["string", "null"], enum: approvedChromeVariantsFor("header") },
                 behavior: { type: ["string", "null"], enum: ["static", "sticky", null] },
                 activeMode: { type: ["string", "null"], enum: ["path", "anchor", "none", null] },
                 mobileMenu: { type: ["string", "null"], enum: ["dropdown", "drawer", null] },
                 cta: nullableLinkJsonSchema,
+                secondaryAction: nullableLinkJsonSchema,
+                search: { anyOf: [{ type: "object", additionalProperties: false, required: ["enabled", "action", "placeholder"], properties: { enabled: { type: ["boolean", "null"] }, action: stringOrNull, placeholder: stringOrNull } }, { type: "null" }] },
               },
             },
             footer: {
               type: "object",
               additionalProperties: false,
-              required: ["variant", "tagline", "copyright", "legalLinks", "columns"],
+              required: ["variant", "tagline", "copyright", "legalLinks", "columns", "newsletter"],
               properties: {
                 variant: { type: ["string", "null"], enum: approvedChromeVariantsFor("footer") },
                 tagline: stringOrNull,
@@ -808,6 +743,7 @@ export const siteGenerationJsonSchema = {
                     },
                   },
                 },
+                newsletter: { anyOf: [{ type: "object", additionalProperties: false, required: ["title", "placeholder", "submitLabel", "action", "method"], properties: { title: stringOrNull, placeholder: stringOrNull, submitLabel: stringOrNull, action: stringOrNull, method: { type: ["string", "null"], enum: ["GET", "POST", null] } } }, { type: "null" }] },
               },
             },
             banner: {

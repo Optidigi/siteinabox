@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   AMICARE_TENANT_ALIASES,
+  SITE_BLOCK_CATALOG,
   SITE_CHROME_CATALOG,
-  SITE_GENERATION_BLOCK_CATALOG,
   type BlockVariantScope,
 } from "@siteinabox/contracts/block-catalog"
 import {
@@ -36,7 +36,7 @@ describe("Amicare save compatibility", () => {
     ])
 
     const blockScopes: BlockVariantScope[] = []
-    for (const entry of SITE_GENERATION_BLOCK_CATALOG) {
+    for (const entry of SITE_BLOCK_CATALOG) {
       for (const variant of entry.variants) {
         if (amicareBlockVariantNames.has(variant.variant)) blockScopes.push(variant.scope)
       }

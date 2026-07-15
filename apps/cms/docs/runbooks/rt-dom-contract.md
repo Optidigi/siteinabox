@@ -38,8 +38,8 @@ in lockstep.
 
 Canonical reference implementations:
 
-- Public/preview renderer: `packages/site-renderer/src/blocks/*`.
-- Source-backed class maps: `packages/site-renderer/src/blocks/native-classes.ts`.
+- Public/preview renderer: `packages/site-renderer/src/providers/shadcnui-blocks/*`.
+- Canonical generated provider dispatch: `packages/site-renderer/src/providers/shadcnui-blocks/block-views.generated.tsx`.
 - Editable CMS dispatch: `src/components/editor/canvas/CanvasBlockRenderer.tsx`.
 - Editable source-backed canvas blocks: `src/components/editor/canvas/blocks/GenerationBlocks.tsx`.
 - Renderer-native editable wrappers: `src/components/editor/canvas/RendererCanvasBlockRenderer.tsx`.
@@ -52,7 +52,7 @@ and blogCards. Each block must preserve:
 - `cms-block cms-block--<slug>` on the outer section;
 - `data-source-variant="<designVariant>"` where variant identity is available;
 - renderer-owned `cms-block--source-*` classes only on DOM that follows the
-  native `cms-block__*` contract;
+  provider `cms-block__*` contract;
 - `cms-block__*` inner structural classes for source-backed generated blocks;
 - global theme token consumption through class rules, not inline per-block
   style overrides.
@@ -71,8 +71,8 @@ Notes:
   stay out of generation until both editing surfaces and parity tests exist.
 - Visual variants for generation are selected by the approved block
   `designVariant` field. Generic self-serve generation currently exposes only
-  active exact-source Tailwind Plus Marketing provider-backed variants from the
-  executable source-block registry. Analytics metadata is not a visual-selection
+  approved explicit `shadcnui-blocks.*` variants from the canonical generated
+  registry. Analytics metadata is not a visual-selection
   API. Inactive provider families, SIAB-owned generic visual variants, and
   temporary Ami-care tenant-compatibility variants are not generation inputs.
 
@@ -130,8 +130,8 @@ Generated-site CSS wires Tailwind's native `dark:` variant to
 `[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use
 that native path and should compute from Tailwind's default palette values. SIAB
 theme presets do not globally redefine Tailwind `--color-gray-*` or
-`--color-indigo-*` variables. Active Tailwind Plus provider sources that do not
-include `dark:` utilities may be themed only through renderer-owned bridge rules
+`--color-indigo-*` variables. Provider sources that do not include `dark:`
+utilities may be themed only through renderer-owned bridge rules
 for explicit semantic roles: ambient surfaces, ambient ink, accent affordances,
 borders, shape, non-default density, and reviewed tokenized decoration.
 `bg-gray-900` remains a source-owned dark panel unless an explicit bridge says

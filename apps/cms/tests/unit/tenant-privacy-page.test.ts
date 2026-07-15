@@ -43,10 +43,10 @@ const spec = () => ({
   theme: {
     version: 2,
     appearance: { mode: "light" },
-    colors: { schemeId: "tailwind-zinc-indigo" },
-    fonts: { schemeId: "tailwind-sans" },
+    colors: { schemeId: "blue-professional" },
+    fonts: { schemeId: "clear-modern" },
     density: { schemeId: "comfortable" },
-    shape: { schemeId: "slightly-rounded" },
+    shape: { schemeId: "soft" },
   },
   settings: {
     siteName: "Voorbeeldbedrijf",
@@ -54,14 +54,14 @@ const spec = () => ({
     language: "nl",
     contactEmail: "info@voorbeeldbedrijf.nl",
     nap: { legalName: "Voorbeeldbedrijf B.V.", kvkNumber: "12345678" },
-    chrome: { footer: { variant: "default", legalLinks: [] } },
+    chrome: { footer: { variant: "shadcnui-blocks.footer-01", legalLinks: [] } },
   },
   pages: [{
     slug: "index",
     title: "Home",
     blocks: [{
       blockType: "hero",
-      designVariant: "tailwindplus.marketing.hero.simple-centered",
+      designVariant: "shadcnui-blocks.hero-01",
       headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Voorbeeldbedrijf" }] },
     }],
   }],
@@ -81,15 +81,15 @@ describe("tenant privacy page materialization", () => {
     })
   })
 
-  it("creates a normal editable Page from existing hero and rich-text blocks", () => {
+  it("creates a normal editable Page from explicit provider blocks", () => {
     const result = materializeTenantPrivacyPage(withDerivedTenantPrivacyDisclosure(spec()))
     const page = result.pages.find((candidate) => candidate.slug === TENANT_PRIVACY_PAGE_SLUG)
     expect(page).toMatchObject({
       title: "Privacy- en cookieverklaring",
       status: "draft",
       blocks: [
-        { blockType: "hero", designVariant: null, metadata: { systemRole: "tenant-privacy" } },
-        { blockType: "richText", designVariant: null, metadata: { systemRole: "tenant-privacy" } },
+        { blockType: "hero", designVariant: "shadcnui-blocks.hero-01", metadata: { systemRole: "tenant-privacy" } },
+        { blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", metadata: { systemRole: "tenant-privacy" } },
       ],
     })
     expect(result.settings.chrome?.footer?.legalLinks).toContainEqual({

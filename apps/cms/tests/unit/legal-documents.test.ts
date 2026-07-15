@@ -208,12 +208,29 @@ describe("legal document synchronization", () => {
   })
 
   it("overlays renewed consent policy without mutating the active snapshot", () => {
-    const snapshot = { settings: { siteName: "Demo", analyticsConsent: { consentVersion: "old" } } }
+    const snapshot = { settings: { siteName: "Demo", analyticsConsent: { consentVersion: "old" }, chrome: { banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Cookies" } } } }
     const consent = { enabled: true, provider: "posthog", consentVersion: "legal:platform-privacy:nl:2026-08-01.1" }
 
     const served = applyTenantAnalyticsConsentPolicy(snapshot, { analyticsConsent: consent }) as any
 
     expect(served.settings.analyticsConsent).toEqual(consent)
+    expect(served.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-04")
     expect(snapshot.settings.analyticsConsent.consentVersion).toBe("old")
+    expect(snapshot.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-01")
+  })
+
+  it("materializes the approved consent banner when consent is enabled without chrome content", () => {
+    const snapshot = { settings: { siteName: "Demo" } }
+    const consent = { enabled: true, provider: "posthog", consentVersion: "v2" }
+
+    const served = applyTenantAnalyticsConsentPolicy(snapshot, { analyticsConsent: consent }) as any
+
+    expect(served.settings.chrome.banner).toMatchObject({
+      variant: "shadcnui-blocks.banner-04",
+      visible: true,
+      dismissible: false,
+    })
+    expect(served.settings.chrome.banner.message).toMatch(/toestemming/)
+    expect(snapshot).toEqual({ settings: { siteName: "Demo" } })
   })
 })

@@ -1,100 +1,38 @@
 import type * as React from "react"
+import { SHADCNUI_CHROME_VARIANTS } from "@siteinabox/contracts"
 import type { SiteSettings } from "@siteinabox/contracts"
 import type { SiteChromeCatalogArea } from "@siteinabox/contracts/block-catalog"
 import type { MediaResolver } from "../media"
-import { tailwindPlusMarketingBannerWithButtonProviderChrome } from "./tailwindplus/marketing/banner/with-button"
-import { tailwindPlusMarketingHeaderWithStackedFlyoutMenuProviderChrome } from "./tailwindplus/marketing/header/with-stacked-flyout-menu"
+import { ShadcnUiChromeView } from "../providers/shadcnui-blocks/views"
 
-export type ProviderChromeSlotKind = "text" | "cta" | "image" | "repeater" | "checkbox"
+export type ProviderChromeSlotKind = "text" | "cta" | "image" | "repeater" | "runtime" | "inactive"
 export type ProviderChromeSlotStatus = "required" | "optional" | "inactive"
-
-export type ProviderChromeSlotManifestEntry = {
-  kind: ProviderChromeSlotKind
-  status: ProviderChromeSlotStatus
-  exposed: boolean
-  sourceField: string
-  minItems?: number
-  maxItems?: number
-}
-
-export type ProviderChromeSourceMetadata = {
-  sourceName: string
-  sourceUrl: string
-  sourceComponent: string
-  sourceHash: string
-  capturedAt: string
-  license: string
-}
-
-export type ProviderChromeRendererProps = {
-  settings: SiteSettings
-  currentSlug?: string
-  mediaResolver?: MediaResolver
-}
-
+export type ProviderChromeSlotManifestEntry = { kind: ProviderChromeSlotKind; status: ProviderChromeSlotStatus; exposed: boolean; sourceField: string; repeated: boolean }
+export type ProviderChromeRendererProps = { settings: SiteSettings; currentSlug?: string; mediaResolver?: MediaResolver }
 export type ProviderChromeDefinition = {
-  provider: "tailwindplus"
-  role: "chrome"
-  area: SiteChromeCatalogArea
-  namespace: string
-  id: string
-  rendererClassName?: string
-  renderer?: (props: ProviderChromeRendererProps) => React.ReactNode
-  slots: Record<string, ProviderChromeSlotManifestEntry>
-  source: ProviderChromeSourceMetadata
+  provider: "shadcnui-blocks"; role: "chrome"; area: SiteChromeCatalogArea; namespace: string; id: string; rendererClassName: string
+  renderer: (props: ProviderChromeRendererProps) => React.ReactNode; slots: Record<string, ProviderChromeSlotManifestEntry>
+  source: { sourceName: string; sourceUrl: string; sourceComponent: string; sourceHash: string; capturedAt: string; license: string }
 }
-
-export function defineProviderChrome(definition: ProviderChromeDefinition) {
-  return definition
-}
-
-export const providerChromeDefinitions = [
-  tailwindPlusMarketingHeaderWithStackedFlyoutMenuProviderChrome,
-  tailwindPlusMarketingBannerWithButtonProviderChrome,
-] as const satisfies readonly ProviderChromeDefinition[]
-
-export type ProviderChromeId = typeof providerChromeDefinitions[number]["id"]
-
-const providerChromeDefinitionsByVariant: Partial<Record<string, ProviderChromeDefinition>> = {}
-
-for (const definition of providerChromeDefinitions) {
-  providerChromeDefinitionsByVariant[definition.id] = definition
-}
-
-function cleanVariant(value: string | null | undefined) {
-  const variant = value?.trim()
-  return variant ? variant : undefined
-}
-
-export function isProviderChromeVariantIdentifier(value: string | null | undefined) {
-  const variant = cleanVariant(value)
-  if (!variant) return false
-  return (
-    variant.startsWith("tailwindplus.") ||
-    variant.startsWith("preline.") ||
-    variant.startsWith("tailblocks.")
-  )
-}
-
+export const defineProviderChrome = (definition: ProviderChromeDefinition) => definition
+export const providerChromeDefinitions: ProviderChromeDefinition[] = SHADCNUI_CHROME_VARIANTS.map((variant) => ({
+  provider: "shadcnui-blocks", role: "chrome", area: variant.area, namespace: `shadcnui-blocks.${variant.area}`, id: variant.id,
+  rendererClassName: `site-${variant.area}--source-shadcnui-blocks-${variant.upstreamName}`,
+  renderer: (props) => ShadcnUiChromeView({ area: variant.area, variant: variant.id, ...props }),
+  slots: Object.fromEntries(Object.entries(variant.slots).map(([field, slot]) => [field, { ...slot, exposed: slot.status !== "inactive", sourceField: field }])),
+  source: { sourceName: "akash3444/shadcn-ui-blocks", sourceUrl: "https://github.com/akash3444/shadcn-ui-blocks", sourceComponent: variant.upstreamName, sourceHash: variant.sourceHash, capturedAt: "2026-07-15", license: "MIT" },
+}))
+export type ProviderChromeId = (typeof SHADCNUI_CHROME_VARIANTS)[number]["id"]
+const byId = new Map(providerChromeDefinitions.map((definition) => [definition.id, definition]))
+const clean = (value: string | null | undefined) => value?.trim() || undefined
+export const isProviderChromeVariantIdentifier = (value: string | null | undefined) => clean(value)?.startsWith("shadcnui-blocks.") ?? false
 export function getProviderChromeDefinition(area: SiteChromeCatalogArea, variant: string | null | undefined) {
-  const clean = cleanVariant(variant)
-  if (!clean) return null
-  const definition = providerChromeDefinitionsByVariant[clean] ?? null
+  const definition = clean(variant) ? byId.get(clean(variant)!) ?? null : null
   return definition?.area === area ? definition : null
 }
-
-export function getProviderChromeRenderer(area: SiteChromeCatalogArea, variant: string | null | undefined) {
-  return getProviderChromeDefinition(area, variant)?.renderer ?? null
-}
-
+export const getProviderChromeRenderer = (area: SiteChromeCatalogArea, variant: string | null | undefined) => getProviderChromeDefinition(area, variant)?.renderer ?? null
 export function assertProviderChromeRenderer(area: SiteChromeCatalogArea, variant: string | null | undefined) {
-  const clean = cleanVariant(variant)
-  if (!clean || !isProviderChromeVariantIdentifier(clean)) return
-  const definition = getProviderChromeDefinition(area, clean)
-  if (!definition) {
-    throw new Error(`Unresolved provider chrome variant "${clean}" for ${area}.`)
-  }
-  if (!definition.renderer) {
-    throw new Error(`Provider chrome variant "${clean}" for ${area} has no renderer.`)
-  }
+  const value = clean(variant)
+  if (!value) return
+  if (!isProviderChromeVariantIdentifier(value) || !getProviderChromeDefinition(area, value)) throw new Error(`Unresolved provider chrome variant "${value}" for ${area}.`)
 }

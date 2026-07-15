@@ -5,6 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@11.5.0",
   "scripts": {
+    "audit:provider-cutover": "node scripts/check-generated-site-provider-cutover.mjs",
     "cms:typecheck": "pnpm --dir apps/cms --ignore-workspace typecheck",
     "cms:test": "pnpm --dir apps/cms --ignore-workspace test",
     "cms:build": "pnpm --dir apps/cms --ignore-workspace build",

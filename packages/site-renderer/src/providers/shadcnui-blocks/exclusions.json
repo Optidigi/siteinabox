@@ -1,0 +1,1937 @@
+{
+  "schemaVersion": 1,
+  "provider": "shadcnui-blocks",
+  "commit": "46c2e50bb538c9bc7a8927979d38bae178ae4452",
+  "exclusions": [
+    {
+      "upstreamName": "dot-pattern",
+      "type": "registry:ui",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "particles",
+      "type": "registry:ui",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "animated-grid-pattern",
+      "type": "registry:ui",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "marquee",
+      "type": "registry:ui",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "accordion-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-dialog-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-dialog-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-dialog-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-dialog-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-dialog-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "alert-dialog-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "avatar-16",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-16",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "badge-17",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-17",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-18",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-19",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-22",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-16",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-20",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-23",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "button-21",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "card-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "checkbox-16",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "dropdown-menu-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "breadcrumb-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "carousel-01",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-02",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-03",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-04",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-05",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-06",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-07",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-08",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-09",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-10",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "carousel-11",
+      "type": "registry:component",
+      "reason": "component_primitive_not_public_block"
+    },
+    {
+      "upstreamName": "collapsible-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "collapsible-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "collapsible-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "collapsible-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "input-otp-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "navigation-menu-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "pagination-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "progress-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "radio-group-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "select-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "separator-with-label-vertical",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "slider-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "spinner-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "switch-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "table-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-08",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-09",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-10",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-11",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-12",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-13",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-14",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-15",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-16",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-17",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tabs-18",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "textarea-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-01",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-02",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-07",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-03",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-05",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-06",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "tooltip-04",
+      "type": "registry:component",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-01",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-02",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-03",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-04",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-05",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-06",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-07",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-08",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-09",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-10",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-11",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-12",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-13",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-14",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-15",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-16",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-17",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-18",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-19",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-20",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-21",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-22",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-23",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-24",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-25",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-26",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-27",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-28",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-29",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-30",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-31",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "og-32",
+      "type": "registry:item",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-04",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-05",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-04",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-05",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "changelog-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "changelog-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "changelog-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "code-block-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "code-block-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "code-block-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "empty-state-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "empty-state-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "empty-state-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "empty-state-04",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "invite-member-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "invite-member-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "invite-member-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "keyboard-shortcuts-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "keyboard-shortcuts-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "keyboard-shortcuts-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "keyboard-shortcuts-04",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "members-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "members-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "members-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "order-confirmation-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "order-confirmation-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "profile-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "profile-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "profile-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "profile-04",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "setup-guide-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "setup-guide-02",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "setup-guide-03",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "setup-guide-04",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "verification-01",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-06",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-07",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "login-08",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-06",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-07",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    },
+    {
+      "upstreamName": "signup-08",
+      "type": "registry:block",
+      "reason": "category_not_approved_for_generated_sites"
+    }
+  ]
+}

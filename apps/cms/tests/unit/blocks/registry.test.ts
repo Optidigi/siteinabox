@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest"
 import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
-import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
+import { SITE_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import { ALL_BLOCKS, BLOCKS, resolveAllowedBlocks } from "@/blocks/registry"
 
 describe("resolveAllowedBlocks", () => {
   it("keeps every structured block schema available for Payload and existing content", () => {
-    expect(ALL_BLOCKS.map((block) => block.slug)).toEqual([...SITE_GENERATION_BLOCK_SLUGS])
+    expect(ALL_BLOCKS.map((block) => block.slug)).toEqual([...SITE_BLOCK_SLUGS])
   })
 
   it("exposes only approved source-backed block slugs in the active picker registry", () => {

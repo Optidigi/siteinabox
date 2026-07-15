@@ -1,104 +1,29 @@
 import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
-import { BentoGridBlockRenderer } from "./BentoGrid"
-import { BlogCardsBlockRenderer } from "./BlogCards"
-import { ContentSectionBlockRenderer } from "./ContentSection"
-import { CTABlockRenderer } from "./CTA"
-import { ContactSectionBlockRenderer } from "./ContactSection"
-import { FAQBlockRenderer } from "./FAQ"
-import { FeatureListBlockRenderer } from "./FeatureList"
-import { GalleryBlockRenderer } from "./Gallery"
-import { HeroBlockRenderer } from "./Hero"
-import { LogoCloudBlockRenderer } from "./LogoCloud"
-import { NewsletterBlockRenderer } from "./Newsletter"
-import { PricingBlockRenderer } from "./Pricing"
-import { RichTextBlockRenderer } from "./RichText"
-import { StatsBlockRenderer } from "./Stats"
-import { TeamBlockRenderer } from "./Team"
-import { TestimonialsBlockRenderer } from "./Testimonials"
-import { getProviderBlockDefinition, getSourceBackedVariantRenderer, isProviderVariantIdentifier } from "../source-blocks/registry"
+import { getSourceBackedVariantRenderer, isProviderVariantIdentifier } from "../source-blocks/registry"
 import type { BlockRegistry, BlockRenderOptions } from "./types"
 
 export * from "./types"
 export * from "./anchors"
 export * from "./variants"
 
-export const defaultBlockRegistry: Required<BlockRegistry> = {
-  hero: HeroBlockRenderer,
-  featureList: FeatureListBlockRenderer,
-  testimonials: TestimonialsBlockRenderer,
-  faq: FAQBlockRenderer,
-  cta: CTABlockRenderer,
-  richText: RichTextBlockRenderer,
-  contactSection: ContactSectionBlockRenderer,
-  pricing: PricingBlockRenderer,
-  stats: StatsBlockRenderer,
-  logoCloud: LogoCloudBlockRenderer,
-  gallery: GalleryBlockRenderer,
-  newsletter: NewsletterBlockRenderer,
-  bentoGrid: BentoGridBlockRenderer,
-  contentSection: ContentSectionBlockRenderer,
-  team: TeamBlockRenderer,
-  blogCards: BlogCardsBlockRenderer,
-}
-
-export function BlockRenderer({
-  block,
-  index,
-  registry,
-  options,
-}: {
+export function BlockRenderer({ block, index, registry, options }: {
   block: Block
   index: number
   registry?: BlockRegistry
   options?: Partial<Omit<BlockRenderOptions, "index">>
 }) {
-  const renderers = { ...defaultBlockRegistry, ...registry }
+  const variant = block.designVariant?.trim()
   const sourceRenderer = getSourceBackedVariantRenderer(block)
-  const providerVariant = isProviderVariantIdentifier(block.designVariant)
-  const providerDefinition = providerVariant ? getProviderBlockDefinition(block) : null
+  const explicitRenderer = registry?.[block.blockType]
 
-  if (providerVariant && (!providerDefinition || !sourceRenderer)) {
-    return (
-      <section
-        className="cms-block cms-block--provider-error rounded-md border border-red-300 bg-red-50 p-6 text-sm text-red-900"
-        data-block-index={index}
-        data-source-variant={block.designVariant ?? undefined}
-        data-provider-error="unresolved"
-      >
-        Unresolved provider block variant: <code>{String(block.designVariant)}</code>
-      </section>
-    )
+  if (!variant && !explicitRenderer) {
+    throw new Error(`Block type "${block.blockType}" requires an approved explicit provider variant.`)
   }
-
-  const Renderer = sourceRenderer ?? renderers[block.blockType]
-
-  if (!Renderer) {
-    return (
-      <section className="cms-block cms-block--unknown" data-block-index={index}>
-        Unknown block type: <code>{String(block.blockType)}</code>
-      </section>
-    )
+  if (variant && isProviderVariantIdentifier(variant) && !sourceRenderer) {
+    throw new Error(`Unresolved provider block variant "${variant}" for block type "${block.blockType}".`)
   }
-
+  const Renderer = sourceRenderer ?? explicitRenderer
+  if (!Renderer) throw new Error(`Unsupported block variant "${variant ?? "missing"}" for block type "${block.blockType}".`)
   return <Renderer block={block} options={{ ...options, index }} />
-}
-
-export {
-  BlogCardsBlockRenderer,
-  BentoGridBlockRenderer,
-  ContentSectionBlockRenderer,
-  CTABlockRenderer,
-  ContactSectionBlockRenderer,
-  FAQBlockRenderer,
-  FeatureListBlockRenderer,
-  GalleryBlockRenderer,
-  HeroBlockRenderer,
-  LogoCloudBlockRenderer,
-  NewsletterBlockRenderer,
-  PricingBlockRenderer,
-  RichTextBlockRenderer,
-  StatsBlockRenderer,
-  TeamBlockRenderer,
-  TestimonialsBlockRenderer,
 }

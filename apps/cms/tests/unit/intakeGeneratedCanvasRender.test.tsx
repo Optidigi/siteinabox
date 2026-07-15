@@ -109,7 +109,8 @@ describe("generated intake canvas render smoke", () => {
       </CanvasSelectionProvider>,
     )
 
-    expect(html).toContain("cms-block")
+    expect(html).toContain('data-provider-block="shadcnui-blocks"')
+    expect(html).toContain('data-provider-variant="shadcnui-blocks.hero-01"')
     expect(html).not.toContain("cms-block--unknown")
     expect(html).not.toContain("Unknown block type")
     expect(html.length).toBeGreaterThan(2_000)
@@ -119,14 +120,15 @@ describe("generated intake canvas render smoke", () => {
     const blocks = [
       {
         blockType: "pricing",
+        designVariant: "shadcnui-blocks.pricing-01",
         title: rtInline("Pricing"),
         plans: [{ title: rtInline("Starter"), description: rtBlock("A starter plan."), price: "€499", features: [{ label: rtInline("One page"), included: true }] }],
       },
-      { blockType: "stats", title: rtInline("Stats"), items: [{ value: "24", label: "Projects", description: rtBlock("Delivered.") }] },
-      { blockType: "logoCloud", title: rtInline("Partners"), logos: [{ name: "Partner", image: 1 }] },
-      { blockType: "gallery", title: rtInline("Gallery"), images: [{ image: 1, caption: rtBlock("Work.") }] },
-      { blockType: "team", title: rtInline("Team"), members: [{ name: "Alex", role: "Founder", bio: rtBlock("Builds sites."), image: 1 }] },
-      { blockType: "blogCards", title: rtInline("Updates"), posts: [{ title: rtInline("Launch"), excerpt: rtBlock("New site."), image: 1, href: "/blog/launch" }] },
+      { blockType: "stats", designVariant: "shadcnui-blocks.stats-01", title: rtInline("Stats"), items: [{ value: "24", label: "Projects", description: rtBlock("Delivered.") }] },
+      { blockType: "logoCloud", designVariant: "shadcnui-blocks.logo-cloud-01", title: rtInline("Partners"), logos: [{ name: "Partner", image: 1 }] },
+      { blockType: "gallery", designVariant: "shadcnui-blocks.carousel-block-01", title: rtInline("Gallery"), images: [{ image: 1, caption: rtBlock("Work.") }] },
+      { blockType: "team", designVariant: "shadcnui-blocks.team-01", title: rtInline("Team"), members: [{ name: "Alex", role: "Founder", bio: rtBlock("Builds sites."), image: 1 }] },
+      { blockType: "blogCards", designVariant: "shadcnui-blocks.blog-01", title: rtInline("Updates"), posts: [{ title: rtInline("Launch"), excerpt: rtBlock("New site."), image: 1, href: "/blog/launch" }] },
     ]
 
     const html = renderToStaticMarkup(
@@ -147,7 +149,8 @@ describe("generated intake canvas render smoke", () => {
       </CanvasSelectionProvider>,
     )
 
-    expect(html).toContain("cms-block--pricing")
+    expect(html).toContain('data-provider-variant="shadcnui-blocks.pricing-01"')
+    expect(html).toContain('data-provider-variant="shadcnui-blocks.blog-01"')
     expect(html).not.toContain("cms-block--unknown")
     expect(html).not.toContain("Unknown block type")
   })

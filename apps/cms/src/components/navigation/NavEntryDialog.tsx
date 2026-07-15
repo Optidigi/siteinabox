@@ -19,6 +19,7 @@ import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { Switch } from "@siteinabox/ui/components/switch"
 import { Button } from "@siteinabox/ui/components/button"
+import { Plus, Trash2 } from "lucide-react"
 import { emptyEntry, type NavEntry, type NavEntryType, type NavPageOption } from "./navTypes"
 import { useTranslations } from "next-intl"
 
@@ -26,6 +27,7 @@ import { useTranslations } from "next-intl"
 function isComplete(e: NavEntry): boolean {
   if (e.type === "page") return e.page != null
   if (e.type === "section") return e.page != null && !!e.anchor?.trim() && !!e.label?.trim()
+  if (e.type === "group") return !!e.label?.trim() && e.children.length > 0 && e.children.length <= 6 && e.children.every((child) => !!child.label.trim() && !!child.href.trim())
   return !!e.url?.trim() && !!e.label?.trim()
 }
 
@@ -49,6 +51,7 @@ export function NavEntryDialog({
     { value: "page", label: t("pageLink"), hint: t("pageHint") },
     { value: "section", label: t("sectionLink"), hint: t("sectionHint") },
     { value: "custom", label: t("customLink"), hint: t("customHint") },
+    { value: "group", label: t("groupLink"), hint: t("groupHint") },
   ]
 
   // Re-seed the form each time the dialog opens (add → blank, edit → entry).
@@ -179,6 +182,42 @@ export function NavEntryDialog({
             </>
           )}
 
+          {draft.type === "group" && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="nav-description">{t("description")}</Label>
+                <Input id="nav-description" maxLength={90} value={draft.description ?? ""} onChange={(event) => patch({ description: event.target.value || null })} />
+              </div>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <Label>{t("groupLinks")}</Label>
+                  <span className="text-xs text-muted-foreground">{draft.children.length}/6</span>
+                </div>
+                {draft.children.map((child, index) => (
+                  <div className="rounded-md border p-3" key={`${index}-${child.href}`}>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <Input aria-label={t("label")} maxLength={32} placeholder={t("label")} value={child.label} onChange={(event) => patch({ children: draft.children.map((item, childIndex) => childIndex === index ? { ...item, label: event.target.value } : item) })} />
+                      <Input aria-label={t("url")} placeholder={t("urlPlaceholder")} value={child.href} onChange={(event) => patch({ children: draft.children.map((item, childIndex) => childIndex === index ? { ...item, href: event.target.value } : item) })} />
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Input className="flex-1" maxLength={90} placeholder={t("description")} value={child.description ?? ""} onChange={(event) => patch({ children: draft.children.map((item, childIndex) => childIndex === index ? { ...item, description: event.target.value || null } : item) })} />
+                      <Select value={child.icon ?? "none"} onValueChange={(value) => patch({ children: draft.children.map((item, childIndex) => childIndex === index ? { ...item, icon: value === "none" ? null : value as typeof item.icon } : item) })}>
+                        <SelectTrigger className="w-32" aria-label={t("icon")}><SelectValue /></SelectTrigger>
+                        <SelectContent>{["none", "backpack", "cake-slice", "coffee", "grape", "hotel", "ice-cream", "map-pin", "package", "pizza", "plane", "sandwich", "smile"].map((icon) => <SelectItem key={icon} value={icon}>{icon}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <Button type="button" variant="ghost" size="icon-sm" aria-label={t("delete")} onClick={() => patch({ children: draft.children.filter((_, childIndex) => childIndex !== index) })}><Trash2 className="size-4" /></Button>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <Label htmlFor={`nav-child-external-${index}`}>{t("openNewTab")}</Label>
+                      <Switch id={`nav-child-external-${index}`} checked={child.external} onCheckedChange={(checked) => patch({ children: draft.children.map((item, childIndex) => childIndex === index ? { ...item, external: checked } : item) })} />
+                    </div>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" disabled={draft.children.length >= 6} onClick={() => patch({ children: [...draft.children, { label: "", href: "", description: null, icon: null, external: false }] })}><Plus className="size-4" />{t("addGroupLink")}</Button>
+              </div>
+            </>
+          )}
+
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="nav-label">
               {t("label")}{draft.type === "page" ? ` (${tCommon("optional")})` : ""}
@@ -192,6 +231,7 @@ export function NavEntryDialog({
                   : t("displayText")
               }
               onChange={(e) => patch({ label: e.target.value })}
+              maxLength={32}
             />
           </div>
         </div>

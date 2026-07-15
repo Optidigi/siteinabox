@@ -6,6 +6,7 @@ import type {
   CmsApplyResult,
   GeneratedPageSpec,
   GeneratedSiteSettings,
+  OfficialTenantSiteGenerationSpec,
   SiteGenerationSpec,
   ThemeTokenSpec,
   ValidationIssue,
@@ -20,21 +21,23 @@ import {
 import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
 import {
   SITE_CHROME_CATALOG,
+  SITE_BLOCK_CATALOG_BY_SLUG,
   SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
 } from "@siteinabox/contracts/block-catalog"
-import { SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
+import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import type { MediaRef } from "@siteinabox/contracts/site"
 import type { Payload } from "payload"
 import { assertSafeMediaFilename } from "@/lib/mediaFilename"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
 import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
-import { isMaterializedTenantPrivacyBlock, materializeTenantPrivacyPage } from "@/lib/legal/tenantPrivacyPage"
+import { materializeTenantPrivacyPage } from "@/lib/legal/tenantPrivacyPage"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 
 type ApplyOperation = "created" | "updated"
 type RetainedPage = { id: string | number; slug: string; status?: string }
+type CmsSiteGenerationSpec = SiteGenerationSpec | OfficialTenantSiteGenerationSpec
 
 export type CmsGenerationApplyResult = CmsApplyResult & {
   idempotencyKey?: string
@@ -47,12 +50,14 @@ export type CmsGenerationApplyResult = CmsApplyResult & {
 }
 
 type NavEntry = {
-  type: "page" | "section" | "custom"
+  type: "page" | "section" | "custom" | "group"
   page?: string | number
   anchor?: string
   url?: string
   label?: string
   external?: boolean
+  description?: string | null
+  children?: Array<{ label: string; href?: string | null; external?: boolean; description?: string | null; icon?: string | null }>
 }
 
 type ExistingPage = {
@@ -71,6 +76,7 @@ const TENANT_SLUG_REGEX = /^[a-z0-9-]+$/
 const DOMAIN_REGEX =
   /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
+const SUPPORTED_OFFICIAL_BLOCK_SLUGS = new Set<string>(SITE_BLOCK_SLUGS)
 const SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS = new Set<string>(
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug),
 )
@@ -117,7 +123,7 @@ const issue = (
 })
 
 const variantAllowedForTenant = (
-  scope: { kind: "global" } | { kind: "tenant-exclusive"; tenantSlugs: string[] },
+  scope: { kind: "global" } | { kind: "tenant-exclusive"; tenantSlugs: readonly string[] },
   tenantSlug: string | null,
   validationScope: SiteGenerationValidationOptions["variantScope"],
 ): boolean => {
@@ -132,8 +138,10 @@ const blockVariantScopeIssue = (
   tenantSlug: string | null,
   validationScope: SiteGenerationValidationOptions["variantScope"],
 ): string | null => {
-  if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as any)) return null
-  const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
+  if (!SITE_BLOCK_SLUGS.includes(blockType as any)) return null
+  const catalog = validationScope === "self-serve"
+    ? SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
+    : SITE_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_BLOCK_CATALOG_BY_SLUG]
   const variant = catalog?.variants.find(
     (entry) => entry.variant === value || ("providerVariantId" in entry && entry.providerVariantId === value),
   )
@@ -163,9 +171,9 @@ const canonicalizeGeneratedBlock = (
 }
 
 export const canonicalizeSiteGenerationSpecForCms = (
-  spec: SiteGenerationSpec,
-): SiteGenerationSpec => {
-  const next = clonePlain(spec) as SiteGenerationSpec
+  spec: CmsSiteGenerationSpec,
+): CmsSiteGenerationSpec => {
+  const next = clonePlain(spec) as CmsSiteGenerationSpec
   if (Array.isArray(next.pages)) {
     next.pages = next.pages.map((page) => ({
       ...page,
@@ -197,11 +205,12 @@ const isSupportedSelfServeSourceBackedBlockVariant = (
 ): boolean => typeof variant === "string" && (SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(blockType)?.has(variant) ?? false)
 
 export const validateSiteGenerationSpecForCms = (
-  spec: SiteGenerationSpec,
+  spec: CmsSiteGenerationSpec,
   options: SiteGenerationValidationOptions = {},
 ): ValidationReport => {
   const issues: ValidationIssue[] = []
   const validationScope = options.variantScope ?? "tenant-aware"
+  const supportedBlockSlugs = validationScope === "self-serve" ? SUPPORTED_BLOCK_SLUGS : SUPPORTED_OFFICIAL_BLOCK_SLUGS
   const supportsBlockVariant = validationScope === "tenant-aware"
     ? isSupportedOfficialTenantBlockVariant
     : isSupportedSelfServeSourceBackedBlockVariant
@@ -300,8 +309,7 @@ export const validateSiteGenerationSpecForCms = (
         return
       }
       const blockType = (block as Record<string, unknown>).blockType
-      const systemPrivacyBlock = options.allowSystemPages === true && isMaterializedTenantPrivacyBlock(page.slug, block as Record<string, unknown>)
-      if (typeof blockType !== "string" || !SUPPORTED_BLOCK_SLUGS.has(blockType)) {
+      if (typeof blockType !== "string" || !supportedBlockSlugs.has(blockType)) {
         issues.push(issue(
           "unsupported_block_type",
           `Generated block type "${String(blockType)}" is not supported.`,
@@ -309,7 +317,7 @@ export const validateSiteGenerationSpecForCms = (
         ))
         return
       }
-      if (validationScope === "self-serve" && !systemPrivacyBlock && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
+      if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
         issues.push(issue(
           "unsupported_self_serve_block_type",
           `Generated block type "${blockType}" does not have an approved self-serve source-backed design variant.`,
@@ -320,7 +328,7 @@ export const validateSiteGenerationSpecForCms = (
         ? ((originalValue.pages as SiteGenerationSpec["pages"])[index]!.blocks[blockIndex] as Record<string, unknown> | undefined)
         : undefined
       const designVariant = typeof originalBlock?.designVariant === "string" ? originalBlock.designVariant.trim() : ""
-      if (validationScope === "self-serve" && !systemPrivacyBlock && !designVariant) {
+      if (validationScope === "self-serve" && !designVariant) {
         issues.push(issue(
           "missing_approved_design_variant",
           `Generated block type "${blockType}" must include an approved source-backed designVariant.`,
@@ -342,7 +350,7 @@ export const validateSiteGenerationSpecForCms = (
         ))
       }
       const variant = (block as Record<string, unknown>).designVariant
-      if (typeof variant === "string" && variant && !systemPrivacyBlock && !supportsBlockVariant(blockType, variant)) {
+      if (typeof variant === "string" && variant && !supportsBlockVariant(blockType, variant)) {
         issues.push(issue(
           "unsupported_block_variant",
           `Generated block designVariant "${variant}" is not approved for block type "${blockType}".`,
@@ -359,24 +367,20 @@ export const validateSiteGenerationSpecForCms = (
           ))
         }
       }
-      for (const providerIssue of validateProviderBlockInstance(block as any)) {
-        issues.push(issue(
-          providerIssue.code,
-          providerIssue.message,
-          ["pages", index, "blocks", blockIndex, ...providerIssue.path],
-        ))
+      if (typeof variant === "string" && variant.startsWith("shadcnui-blocks.")) {
+        for (const providerIssue of validateProviderBlockInstance(block as any)) {
+          issues.push(issue(
+            providerIssue.code,
+            providerIssue.message,
+            ["pages", index, "blocks", blockIndex, ...providerIssue.path],
+          ))
+        }
       }
     })
   })
   if (pagesArray && !pagesArray.some((page) => page?.slug === "index")) {
     issues.push(issue("missing_root_page", "Generated specs must include an index page for the root route.", ["pages"]))
   }
-  const hasMaterializedPrivacyPage = options.allowSystemPages === true && (pagesArray?.some((page) =>
-    page?.blocks?.some((block) =>
-      block && typeof block === "object" && isMaterializedTenantPrivacyBlock(page.slug, block as Record<string, unknown>),
-    ),
-  ) ?? false)
-
   const disclosure = settings && typeof settings === "object" && !Array.isArray(settings)
     ? (settings as Record<string, any>).privacyDisclosure
     : null
@@ -409,10 +413,10 @@ export const validateSiteGenerationSpecForCms = (
       issues.push(issue("invalid_manifest_block_shape", "Manifest block entries must be objects.", ["blocks", index]))
       return
     }
-    if (!SUPPORTED_BLOCK_SLUGS.has(block.slug)) {
+    if (!supportedBlockSlugs.has(block.slug)) {
       issues.push(issue("unsupported_manifest_block_slug", `Generated manifest block slug "${String(block.slug)}" is not supported.`, ["blocks", index, "slug"]))
     }
-    if (validationScope === "self-serve" && !(hasMaterializedPrivacyPage && block.slug === "richText") && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
+    if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
       issues.push(issue(
         "unsupported_self_serve_manifest_block_slug",
         `Generated manifest block slug "${String(block.slug)}" does not have an approved self-serve source-backed design variant.`,
@@ -829,7 +833,20 @@ const normalizeNav = (
   pageBySlug: Map<string, ExistingPage>,
 ): NavEntry[] | undefined => {
   if (!entries) return undefined
-  return entries.map((entry) => hrefToNavEntry(entry.href, entry.label, entry.external, pageBySlug))
+  return entries.map((entry) => entry.children?.length
+    ? {
+        type: "group",
+        label: entry.label,
+        description: entry.description,
+        children: entry.children.map((child) => ({
+          label: child.label,
+          href: child.href,
+          external: child.external,
+          description: child.description,
+          icon: child.icon,
+        })),
+      }
+    : hrefToNavEntry(entry.href ?? "", entry.label, entry.external, pageBySlug))
 }
 
 const normalizeSettingsData = (
@@ -1008,7 +1025,7 @@ const retainedPagesForTenant = async (
 
 export async function applySiteGenerationSpec(
   payload: Payload,
-  spec: SiteGenerationSpec,
+  spec: CmsSiteGenerationSpec,
   options: SiteGenerationApplyOptions = {},
 ): Promise<CmsGenerationApplyResult> {
   const sourceValidation = validateSiteGenerationSpecForCms(spec, options)
@@ -1023,11 +1040,11 @@ export async function applySiteGenerationSpec(
   const parsedContractSpec = (options.variantScope === "self-serve"
     ? SiteGenerationSpecSchema
     : OfficialTenantSiteGenerationSpecSchema).parse(canonicalSpec)
-  const parsedSpec = parsedContractSpec as SiteGenerationSpec
+  const parsedSpec = parsedContractSpec as unknown as SiteGenerationSpec
 
   const idempotencyKey = siteGenerationSpecHash(parsedContractSpec)
   const theme = themeToCmsTokens(parsedContractSpec.theme)
-  const siteManifest = siteManifestForSpec(parsedContractSpec, idempotencyKey)
+  const siteManifest = siteManifestForSpec(parsedSpec, idempotencyKey)
   const tenant = await upsertTenant(payload, parsedSpec, siteManifest, theme)
   const tenantId = tenant.doc.id as string | number
   const mediaIds = await upsertGeneratedMediaRefs(payload, tenantId, parsedSpec, {

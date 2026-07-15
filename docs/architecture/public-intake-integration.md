@@ -58,18 +58,13 @@ matches must leave manual intake submission possible.
 fields, stores the raw body, normalizes it into `CompanyFacts` and
 `IntakeBrief`, records a stable normalized hash, and calls
 `processStoredIntakeSubmission`. Normal intake submissions therefore start a
-draft generation run automatically. Generic self-serve generation currently uses
-only active exact-source Tailwind Plus Marketing provider surfaces: simple
-centered hero, simple logo cloud with heading, product screenshot feature
-section, centered 2x2 feature grid, simple stats, simple centered testimonial,
-two-tier pricing, team with small images, three-column blog/cards, dark panel
-CTA with app screenshot, newsletter side-by-side with details, sticky product
-screenshot content section, three-column bento grid, centered contact form, the
-active provider-backed header chrome, and the active provider-backed banner
-chrome. Header with stats is available as an alternate hero provider variant.
-Known-tenant missing paths use the provider-backed
-Tailwind Plus 404 fallback in the renderer; that fallback is not generated page
-content. The CMS review UI remains available for inspection, recovery, and
+draft generation run automatically. Generic self-serve generation may use only
+explicit variants from the pinned `akash3444/shadcn-ui-blocks` Radix catalog.
+The canonical generated manifest supplies the structured slots for all 148
+public variants, 16 chrome variants, and eight not-found system templates.
+Known-tenant missing paths use the explicit imported not-found template in the
+renderer; that fallback is not generated page content. The CMS review UI
+remains available for inspection, recovery, and
 operator decisions before preview, payment, publish, or activation.
 
 Generation provider output is accepted only as structured

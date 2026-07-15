@@ -1,9 +1,9 @@
-import type { GeneratedPageSpec, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { GeneratedPageSpec, OfficialTenantSiteGenerationSpec, SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import type { RtBlock, RtInline, RtRoot } from "@siteinabox/contracts/rich-text"
 import type { TenantPrivacyDisclosure } from "@siteinabox/contracts/site"
 
 export const TENANT_PRIVACY_PAGE_SLUG = "privacy-en-cookieverklaring"
-export const TENANT_PRIVACY_TEMPLATE_VERSION = "tenant-privacy-2026-07-10.1"
+export const TENANT_PRIVACY_TEMPLATE_VERSION = "tenant-privacy-shadcnui-blocks-2026-07-15.1"
 
 const text = (value: string, marks?: Array<"bold">): RtInline => ({
   t: "text",
@@ -136,22 +136,22 @@ const privacyPage = (disclosure: TenantPrivacyDisclosure, siteName: string): Gen
   blocks: [
     {
       blockType: "hero",
-      designVariant: null,
+      designVariant: "shadcnui-blocks.hero-01",
       metadata: { source: "system", systemRole: "tenant-privacy", templateVersion: TENANT_PRIVACY_TEMPLATE_VERSION },
       eyebrow: blockRoot([paragraph(text("Privacy en cookies"))]),
       headline: inlineRoot("Privacy- en cookieverklaring"),
       subheadline: blockRoot([paragraph(text(`Informatie over de verwerking van persoonsgegevens via ${siteName}.`))]),
     },
     {
-      blockType: "richText",
-      designVariant: null,
+      blockType: "contentSection",
+      designVariant: "shadcnui-blocks.timeline-01",
       metadata: { source: "system", systemRole: "tenant-privacy", templateVersion: TENANT_PRIVACY_TEMPLATE_VERSION },
       body: disclosureBody(disclosure),
     },
   ],
 })
 
-export function materializeTenantPrivacyPage(spec: SiteGenerationSpec): SiteGenerationSpec {
+export function materializeTenantPrivacyPage<T extends SiteGenerationSpec | OfficialTenantSiteGenerationSpec>(spec: T): T {
   if (!spec.settings || typeof spec.settings !== "object" || !Array.isArray(spec.pages)) return spec
   const disclosure = spec.settings.privacyDisclosure
   if (!disclosure || disclosure.enabled === false) return spec
@@ -165,7 +165,7 @@ export function materializeTenantPrivacyPage(spec: SiteGenerationSpec): SiteGene
   const blocks = [...(spec.blocks ?? [])]
   for (const entry of [
     { slug: "hero" as const, label: "Hero" },
-    { slug: "richText" as const, label: "Rich text" },
+    { slug: "contentSection" as const, label: "Legal content" },
   ]) {
     if (!blocks.some((block) => block.slug === entry.slug)) blocks.push(entry)
   }
@@ -187,7 +187,7 @@ export function materializeTenantPrivacyPage(spec: SiteGenerationSpec): SiteGene
     },
     pages,
     blocks,
-  }
+  } as T
 }
 
 export function isMaterializedTenantPrivacyBlock(pageSlug: string, block: Record<string, unknown>): boolean {
@@ -196,7 +196,7 @@ export function isMaterializedTenantPrivacyBlock(pageSlug: string, block: Record
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return false
   if ((metadata as Record<string, unknown>).source !== "system" || (metadata as Record<string, unknown>).systemRole !== "tenant-privacy") return false
   return (
-    (block.blockType === "hero" || block.blockType === "richText") &&
-    (block.designVariant == null || block.designVariant === "")
+    (block.blockType === "hero" && block.designVariant === "shadcnui-blocks.hero-01") ||
+    (block.blockType === "contentSection" && block.designVariant === "shadcnui-blocks.timeline-01")
   )
 }

@@ -60,7 +60,7 @@ describe("CMS integration smoke", () => {
         blocks: [
           {
             blockType: "hero",
-            designVariant: "tailwindplus.marketing.hero.simple-centered",
+            designVariant: "shadcnui-blocks.hero-01",
             eyebrow: inlineRoot("Smoke ready"),
             headline: inlineRoot("Renderer-backed CMS smoke"),
             subheadline: blockRoot("A published page can carry source-backed content without layout fields."),
@@ -69,7 +69,7 @@ describe("CMS integration smoke", () => {
           },
           {
             blockType: "contactSection",
-            designVariant: "tailwindplus.marketing.contact.centered",
+            designVariant: "shadcnui-blocks.contact-01",
             anchor: "contact",
             title: inlineRoot("Contact"),
             description: blockRoot("The form contract remains structured CMS data."),
@@ -106,14 +106,14 @@ describe("CMS integration smoke", () => {
         language: "nl",
         chrome: {
           header: {
-            variant: "tailwindplus.marketing.header.with-stacked-flyout-menu",
+            variant: "shadcnui-blocks.navbar-01",
             behavior: "static",
             activeMode: "path",
             mobileMenu: "dropdown",
             cta: { label: "Contact", href: "#contact" },
           },
           footer: {
-            variant: "default",
+            variant: "shadcnui-blocks.footer-01",
             tagline: "Structured content, renderer-owned layout.",
           },
         },
@@ -154,8 +154,8 @@ describe("CMS integration smoke", () => {
       status: "published",
     })
     expect((storedPages.docs[0] as any).blocks.map((block: any) => block.designVariant)).toEqual([
-      "tailwindplus.marketing.hero.simple-centered",
-      "tailwindplus.marketing.contact.centered",
+      "shadcnui-blocks.hero-01",
+      "shadcnui-blocks.contact-01",
     ])
 
     expect(storedSettings.docs).toHaveLength(1)

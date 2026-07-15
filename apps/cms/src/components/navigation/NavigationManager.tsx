@@ -226,6 +226,7 @@ export function NavigationManager({
                       page: t("page"),
                       section: t("section"),
                       custom: t("link"),
+                      group: t("group"),
                     },
                     untitledPage: t("untitledPage"),
                     pageNotFound: t("pageNotFound"),

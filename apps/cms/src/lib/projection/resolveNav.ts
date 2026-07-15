@@ -6,20 +6,35 @@ import { isSafeHref } from "@/lib/security/safeHref"
 
 /** A navigation entry as stored on `SiteSettings.navHeader` / `navFooter`. */
 export type NavEntry = {
-  type: "page" | "section" | "custom"
+  type: "page" | "section" | "custom" | "group"
   /** Relationship value — bare id (depth 0) or populated object (depth 1+). */
   page?: { id: number | string } | number | string | null
   anchor?: string | null
   url?: string | null
   label?: string | null
   external?: boolean | null
+  description?: string | null
+  children?: Array<{
+    label?: string | null
+    href?: string | null
+    description?: string | null
+    icon?: "backpack" | "cake-slice" | "coffee" | "grape" | "hotel" | "ice-cream" | "map-pin" | "package" | "pizza" | "plane" | "sandwich" | "smile" | null
+    external?: boolean | null
+  }> | null
 }
 
 /** Minimal page shape `resolveNav` needs to resolve page / section entries. */
 export type NavPage = { id: number | string; slug: string; title: string }
 
 /** A nav link as emitted into `site.json` — flat, type-erased. */
-export type ResolvedNavLink = { label: string; href: string; external: boolean }
+export type ResolvedNavLink = {
+  label: string
+  href?: string
+  external: boolean
+  description?: string
+  icon?: NonNullable<NonNullable<NavEntry["children"]>[number]["icon"]>
+  children?: ResolvedNavLink[]
+}
 
 const pageIdOf = (ref: NavEntry["page"]): string | null => {
   if (ref == null) return null
@@ -72,6 +87,22 @@ export function resolveNav(
       if (!url || !label) continue
       if (!isSafeHref(url)) continue
       out.push({ label, href: url, external: !!e.external })
+    } else if (e.type === "group") {
+      const label = e.label?.trim()
+      const children = (e.children ?? []).flatMap((child) => {
+        const childLabel = child.label?.trim()
+        const href = child.href?.trim()
+        if (!childLabel || !href || !isSafeHref(href)) return []
+        return [{
+          label: childLabel,
+          href,
+          external: !!child.external,
+          ...(child.description?.trim() ? { description: child.description.trim() } : {}),
+          ...(child.icon ? { icon: child.icon } : {}),
+        }]
+      })
+      if (!label || children.length === 0) continue
+      out.push({ label, external: false, ...(e.description?.trim() ? { description: e.description.trim() } : {}), children })
     }
   }
   return out

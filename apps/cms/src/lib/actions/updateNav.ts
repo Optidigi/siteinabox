@@ -15,12 +15,20 @@ import config from "@/payload.config"
 // An editor/viewer (or a wrong-tenant owner) is rejected by Payload itself.
 
 const navEntrySchema = z.object({
-  type: z.enum(["page", "section", "custom"]),
+  type: z.enum(["page", "section", "custom", "group"]),
   page: z.union([z.number(), z.string()]).nullish(),
   anchor: z.string().nullish(),
   url: z.string().nullish(),
   label: z.string().nullish(),
   external: z.boolean().nullish(),
+  description: z.string().trim().max(90).nullish(),
+  children: z.array(z.object({
+    label: z.string().trim().min(1).max(32),
+    href: z.string().trim().min(1),
+    description: z.string().trim().max(90).nullish(),
+    icon: z.enum(["backpack", "cake-slice", "coffee", "grape", "hotel", "ice-cream", "map-pin", "package", "pizza", "plane", "sandwich", "smile"]).nullish(),
+    external: z.boolean(),
+  })).max(6).optional(),
 })
 // Coarse shape check only — the per-type required-field rules (page link
 // needs `page`, section needs `anchor`+`label`, etc.) are enforced by the

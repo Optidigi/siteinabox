@@ -26,8 +26,19 @@ export const SITE_DEFERRED_MARKETING_BLOCK_SLUGS = [
 
 export type SiteDeferredMarketingBlockSlug = (typeof SITE_DEFERRED_MARKETING_BLOCK_SLUGS)[number]
 export const SITE_GENERATION_BLOCK_SLUGS = [
-  ...SITE_BLOCK_SLUGS,
-  ...SITE_DEFERRED_MARKETING_BLOCK_SLUGS,
+  "hero",
+  "featureList",
+  "testimonials",
+  "faq",
+  "cta",
+  "contactSection",
+  "pricing",
+  "stats",
+  "logoCloud",
+  "gallery",
+  "contentSection",
+  "team",
+  "blogCards",
 ] as const
 
 export type SiteGenerationBlockSlug = (typeof SITE_GENERATION_BLOCK_SLUGS)[number]
@@ -66,7 +77,7 @@ export type BlockInstanceBase = {
   anchor?: string | null
 }
 
-export type LinkRef = { label?: string | null; href?: string | null }
+export type LinkRef = { label?: string | null; href?: string | null; external?: boolean | null }
 
 export type FormProviderConfig = {
   provider?: "siab" | "web3forms" | "custom" | "mailto" | null
@@ -353,16 +364,23 @@ export type OpeningHours = {
 }
 
 export type SocialLink = { platform: string; url: string }
-export type NavLink = { label: string; href: string; external?: boolean }
+export type NavigationIcon = "backpack" | "cake-slice" | "coffee" | "grape" | "hotel" | "ice-cream" | "map-pin" | "package" | "pizza" | "plane" | "sandwich" | "smile"
+export type NavLink = {
+  label: string
+  href?: string | null
+  external?: boolean
+  description?: string | null
+  icon?: NavigationIcon | null
+  children?: NavLink[] | null
+}
 export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
 
 export type SiteHeaderChromeVariant =
-  | "default"
   | "amicareZen"
-  | "tailwindplus.marketing.header.with-stacked-flyout-menu"
-export type SiteFooterChromeVariant = "default" | "amicareZen"
-export type SiteBannerChromeVariant = "default" | "tailwindplus.marketing.banner.with-button"
+  | `shadcnui-blocks.navbar-${"01" | "02" | "03" | "04" | "05"}`
+export type SiteFooterChromeVariant = "amicareZen" | `shadcnui-blocks.footer-${"01" | "02" | "03" | "04" | "05" | "06" | "07"}`
+export type SiteBannerChromeVariant = `shadcnui-blocks.banner-${"01" | "02" | "03" | "04"}`
 export type SiteChromeVariant = SiteHeaderChromeVariant | SiteFooterChromeVariant | SiteBannerChromeVariant
 
 export type SiteChromeBanner = {
@@ -461,6 +479,12 @@ export type SiteSettings = {
       activeMode?: "path" | "anchor" | "none" | null
       mobileMenu?: "dropdown" | "drawer" | null
       cta?: LinkRef | null
+      secondaryAction?: LinkRef | null
+      search?: {
+        enabled?: boolean | null
+        action?: string | null
+        placeholder?: string | null
+      } | null
     } | null
     footer?: {
       variant?: SiteFooterChromeVariant | null
@@ -469,6 +493,13 @@ export type SiteSettings = {
       copyright?: string | null
       legalLinks?: LinkRef[] | null
       columns?: FooterCompositionColumn[] | null
+      newsletter?: {
+        title?: string | null
+        placeholder?: string | null
+        submitLabel?: string | null
+        action?: string | null
+        method?: "GET" | "POST" | null
+      } | null
     } | null
     banner?: SiteChromeBanner | null
   } | null

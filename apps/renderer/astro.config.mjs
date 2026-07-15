@@ -1,10 +1,12 @@
 import { defineConfig } from 'astro/config';
 import node from '@astrojs/node';
+import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 
 const SITE_URL = process.env.SITE_URL ?? 'https://renderer.example.test';
 
 export default defineConfig({
+  integrations: [react()],
   site: SITE_URL,
   output: 'server',
   security: {
@@ -17,6 +19,7 @@ export default defineConfig({
     mode: 'standalone',
   }),
   vite: {
+    cacheDir: process.env.SIAB_VITE_CACHE_DIR,
     plugins: [tailwindcss()],
   },
   build: {

@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest"
-import { SiteSettings, enforceTenantExclusiveChromeVariants, filterChromeVariantOptions } from "@/collections/SiteSettings"
+import { SiteSettings, enforceChromeCapabilities, enforceTenantExclusiveChromeVariants, filterChromeVariantOptions } from "@/collections/SiteSettings"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
+import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
 
 const findField = (name: string): any => SiteSettings.fields.find((f: any) => f.name === name)
+const globalVariants = (area: "header" | "footer" | "banner") => SITE_CHROME_CATALOG.filter((entry) => entry.area === area && entry.scope.kind === "global").map((entry) => entry.variant)
+const officialVariants = (area: "header" | "footer") => SITE_CHROME_CATALOG.filter((entry) => entry.area === area).map((entry) => entry.variant)
 
 describe("SiteSettings collection config", () => {
   it("uses 'site-settings' slug", () => {
@@ -123,22 +126,15 @@ describe("SiteSettings collection config", () => {
     const footer = chrome.fields.find((x: any) => x.name === "footer")
     const banner = chrome.fields.find((x: any) => x.name === "banner")
     expect(chrome.fields.map((x: any) => x.name)).toEqual(["header", "footer", "banner"])
-    expect(header.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "behavior", "activeMode", "mobileMenu", "cta"])
+    expect(header.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "behavior", "activeMode", "mobileMenu", "cta", "secondaryAction", "search"])
     expect(header.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual([
-      "default",
-      "amicareZen",
-      "tailwindplus.marketing.header.with-stacked-flyout-menu",
-    ])
-    expect(footer.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "tagline", "copyright", "legalLinks", "columns"])
+    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(officialVariants("header"))
+    expect(footer.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "tagline", "copyright", "legalLinks", "columns", "newsletter"])
     expect(footer.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(["default", "amicareZen"])
+    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(officialVariants("footer"))
     expect(footer.fields.find((x: any) => x.name === "columns")).toMatchObject({ type: "json" })
     expect(banner.fields.map((x: any) => x.name)).toEqual(["variant", "visible", "title", "message", "link", "dismissible"])
-    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual([
-      "default",
-      "tailwindplus.marketing.banner.with-button",
-    ])
+    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(globalVariants("banner"))
     expect(banner.fields.find((x: any) => x.name === "link")).toMatchObject({ type: "group" })
 
     const maintenance = findField("maintenance")
@@ -153,6 +149,21 @@ describe("SiteSettings collection config", () => {
   it("registers server-side tenant-exclusive chrome variant validation", () => {
     expect(SiteSettings.hooks?.beforeValidate).toContain(validateTenantExists)
     expect(SiteSettings.hooks?.beforeValidate).toContain(enforceTenantExclusiveChromeVariants)
+    expect(SiteSettings.hooks?.beforeValidate).toContain(enforceChromeCapabilities)
+  })
+
+  it("rejects settings that the selected literal chrome cannot render", async () => {
+    const validate = async (data: any) => enforceChromeCapabilities({
+      collection: { slug: "site-settings" },
+      data,
+      originalDoc: undefined,
+      req: { i18n: { language: "en" } },
+    } as any)
+
+    await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-01" } }, navHeader: [{ type: "group", children: [{ label: "A", href: "/a" }] }] })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "navHeader" })]) } })
+    await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-05", mobileMenu: "drawer" } } })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "chrome.header.mobileMenu" })]) } })
+    await expect(validate({ chrome: { footer: { variant: "shadcnui-blocks.footer-01", newsletter: { action: "/subscribe" } } } })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "chrome.footer.newsletter" })]) } })
+    await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-03" } }, navHeader: [{ type: "group", children: [{ label: "A", href: "/a" }] }] })).resolves.toBeTruthy()
   })
 
   it("filters tenant-exclusive chrome variants out of generic tenant admin options", () => {
@@ -165,9 +176,9 @@ describe("SiteSettings collection config", () => {
     expect(headerVariant.filterOptions).toBeTypeOf("function")
     expect(footerVariant.filterOptions).toBeTypeOf("function")
     expect(filterChromeVariantOptions("header", headerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
-      .toEqual(["default", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
+      .toEqual(globalVariants("header"))
     expect(filterChromeVariantOptions("footer", footerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
-      .toEqual(["default"])
+      .toEqual(globalVariants("footer"))
   })
 
   it("does not let admin option filtering reject internal writes without tenant context", () => {
@@ -178,9 +189,9 @@ describe("SiteSettings collection config", () => {
     const footerVariant = footer.fields.find((x: any) => x.name === "variant")
 
     expect(filterChromeVariantOptions("header", headerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "amicareZen", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
+      .toEqual(officialVariants("header"))
     expect(filterChromeVariantOptions("footer", footerVariant.options, {}).map((x) => x.value))
-      .toEqual(["default", "amicareZen"])
+      .toEqual(officialVariants("footer"))
   })
 
   it("keeps the active official tenant renderer chrome variants available in admin options", () => {
@@ -191,11 +202,11 @@ describe("SiteSettings collection config", () => {
     const footerOptions = footer.fields.find((x: any) => x.name === "variant").options
 
     expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug: "ami-care" } }).map((x) => x.value))
-      .toEqual(["default", "amicareZen", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
+      .toEqual(officialVariants("header"))
     expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "amicare" } }).map((x) => x.value))
-      .toEqual(["default", "amicareZen"])
+      .toEqual(officialVariants("footer"))
     expect(filterChromeVariantOptions("header", headerOptions, { tenant: 1 }, { user: { tenants: [{ tenant: { slug: "ami-care" } }] } }).map((x) => x.value))
-      .toEqual(["default", "amicareZen", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
+      .toEqual(officialVariants("header"))
   })
 
   it("keeps Amicare alias tenant slugs eligible for tenant-exclusive chrome", () => {
@@ -207,9 +218,9 @@ describe("SiteSettings collection config", () => {
 
     for (const slug of ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"]) {
       expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug } }).map((x) => x.value), slug)
-        .toEqual(["default", "amicareZen", "tailwindplus.marketing.header.with-stacked-flyout-menu"])
+        .toEqual(officialVariants("header"))
       expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug } }).map((x) => x.value), slug)
-        .toEqual(["default", "amicareZen"])
+        .toEqual(officialVariants("footer"))
     }
   })
 

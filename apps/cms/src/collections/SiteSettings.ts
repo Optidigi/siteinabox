@@ -1,6 +1,7 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from "payload"
 import { ValidationError } from "payload"
 import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
+import { SHADCNUI_CHROME_VARIANTS } from "@siteinabox/contracts"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -141,9 +142,45 @@ export const enforceTenantExclusiveChromeVariants: CollectionBeforeValidateHook 
   return data
 }
 
+export const enforceChromeCapabilities: CollectionBeforeValidateHook = ({ collection, data, originalDoc, req }) => {
+  const merged = { ...originalDoc, ...data, chrome: { ...(originalDoc?.chrome ?? {}), ...(data?.chrome ?? {}), header: { ...(originalDoc?.chrome?.header ?? {}), ...(data?.chrome?.header ?? {}) }, footer: { ...(originalDoc?.chrome?.footer ?? {}), ...(data?.chrome?.footer ?? {}) } } } as any
+  const errors: Array<{ path: string; message: string }> = []
+  const header = merged.chrome?.header
+  const headerCapability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === header?.variant)?.capabilities
+  const navigation = Array.isArray(merged.navHeader) ? merged.navHeader : []
+  if (headerCapability) {
+    const groups = navigation.filter((entry: any) => entry?.type === "group")
+    if (navigation.length > headerCapability.primaryItems.max) errors.push({ path: "navHeader", message: `${header.variant} allows at most ${headerCapability.primaryItems.max} primary items.` })
+    if (headerCapability.navigation === "none" && navigation.length) errors.push({ path: "navHeader", message: `${header.variant} has no primary-navigation region.` })
+    if (headerCapability.navigation === "flat" && groups.length) errors.push({ path: "navHeader", message: `${header.variant} does not support flyout groups.` })
+    if (groups.length > headerCapability.groupItems.max) errors.push({ path: "navHeader", message: `${header.variant} allows at most ${headerCapability.groupItems.max} flyout groups.` })
+    groups.forEach((group: any, index: number) => {
+      const childCount = Array.isArray(group.children) ? group.children.length : 0
+      if (childCount < headerCapability.childItems.min || childCount > headerCapability.childItems.max) errors.push({ path: `navHeader.${index}.children`, message: `Flyouts require ${headerCapability.childItems.min}-${headerCapability.childItems.max} links.` })
+    })
+    if (!headerCapability.secondaryAction && nonEmpty(header.secondaryAction?.href)) errors.push({ path: "chrome.header.secondaryAction", message: `${header.variant} has no secondary-action region.` })
+    if (!headerCapability.search && header.search?.enabled) errors.push({ path: "chrome.header.search", message: `${header.variant} has no search region.` })
+    if (header.mobileMenu && !headerCapability.mobileMenu.includes(header.mobileMenu)) errors.push({ path: "chrome.header.mobileMenu", message: `${header.variant} does not support the ${header.mobileMenu} mobile-menu behavior.` })
+  }
+  const footer = merged.chrome?.footer
+  const footerCapability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === footer?.variant)?.capabilities
+  if (footerCapability) {
+    const columns = Array.isArray(footer.columns) ? footer.columns : []
+    if (columns.length > footerCapability.columns.max) errors.push({ path: "chrome.footer.columns", message: `${footer.variant} allows at most ${footerCapability.columns.max} columns.` })
+    columns.forEach((column: any, index: number) => {
+      const links = (Array.isArray(column?.items) ? column.items : []).reduce((count: number, item: any) => count + (Array.isArray(item?.links) ? item.links.length : 0), 0)
+      if (links > footerCapability.linksPerColumn.max) errors.push({ path: `chrome.footer.columns.${index}`, message: `${footer.variant} allows at most ${footerCapability.linksPerColumn.max} links per column.` })
+    })
+    if (!footerCapability.newsletter && nonEmpty(footer.newsletter?.action)) errors.push({ path: "chrome.footer.newsletter", message: `${footer.variant} has no newsletter region.` })
+  }
+  if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors: errors.map((error) => ({ ...error, message: adminValidationText(req.i18n?.language, error.message, error.message) })) })
+  return data
+}
+
 const linkRefFields = () => [
-  { name: "label", type: "text" as const },
+  { name: "label", type: "text" as const, maxLength: 32 },
   { name: "href", type: "text" as const, validate: validateSafeHref },
+  { name: "external", type: "checkbox" as const, defaultValue: false },
 ]
 
 // OBS-20 — a navigation entry is a discriminated union over `type`:
@@ -164,9 +201,10 @@ const navEntryFields = () => [
       { label: adminText("Page link", "Paginalink"), value: "page" },
       { label: adminText("Section link", "Sectielink"), value: "section" },
       { label: adminText("Custom link", "Aangepaste link"), value: "custom" },
+      { label: adminText("Flyout group", "Uitklapgroep"), value: "group" },
     ],
     admin: {
-      description: adminText("Page = link to a CMS page · Section = #anchor within a page · Custom = any URL.", "Pagina = link naar een CMS-pagina · Sectie = #anker binnen een pagina · Aangepast = elke URL."),
+      description: adminText("Page, section or custom create a link. Flyout group contains its own links and is supported by compatible navbar variants.", "Pagina, sectie of aangepast maakt een link. Een uitklapgroep bevat eigen links en werkt met compatibele navigatievarianten."),
     },
   },
   {
@@ -212,6 +250,7 @@ const navEntryFields = () => [
   {
     name: "label",
     type: "text" as const,
+    maxLength: 32,
     admin: {
       description: adminText("Display text. For a page link, leave blank to use the page title.", "Weergavetekst. Laat bij een paginalink leeg om de paginatitel te gebruiken."),
     },
@@ -230,6 +269,32 @@ const navEntryFields = () => [
       condition: (_: unknown, sib: any) => sib?.type === "custom",
       description: adminText("Open in a new tab (external site).", "Openen in een nieuw tabblad (externe site)."),
     },
+  },
+  {
+    name: "description",
+    type: "textarea" as const,
+    maxLength: 90,
+    admin: {
+      condition: (_: unknown, sib: any) => sib?.type === "group",
+      description: adminText("Optional flyout introduction.", "Optionele introductie van het uitklapmenu."),
+    },
+  },
+  {
+    name: "children",
+    type: "array" as const,
+    minRows: 1,
+    maxRows: 6,
+    admin: {
+      condition: (_: unknown, sib: any) => sib?.type === "group",
+      description: adminText("Flyout links. The selected navbar capability determines whether groups are allowed.", "Links in het uitklapmenu. De gekozen navigatievariant bepaalt of groepen zijn toegestaan."),
+    },
+    fields: [
+      { name: "label", type: "text" as const, required: true, maxLength: 32 },
+      { name: "href", type: "text" as const, required: true, validate: validateSafeHref },
+      { name: "description", type: "textarea" as const, maxLength: 90 },
+      { name: "icon", type: "select" as const, options: ["backpack", "cake-slice", "coffee", "grape", "hotel", "ice-cream", "map-pin", "package", "pizza", "plane", "sandwich", "smile"] },
+      { name: "external", type: "checkbox" as const, defaultValue: false },
+    ],
   },
 ]
 
@@ -287,6 +352,13 @@ export const SiteSettings: CollectionConfig = {
             { label: adminText("Drawer", "Schuifpaneel"), value: "drawer" },
           ]},
           { name: "cta", type: "group", fields: linkRefFields() },
+          { name: "secondaryAction", type: "group", fields: linkRefFields(),
+            admin: { description: adminText("Secondary account/action link for navbar variants that expose one.", "Secundaire account-/actielink voor navigatievarianten die deze tonen.") } },
+          { name: "search", type: "group", fields: [
+            { name: "enabled", type: "checkbox", defaultValue: false },
+            { name: "action", type: "text", defaultValue: "/search", validate: validateSafeHref },
+            { name: "placeholder", type: "text", maxLength: 48, defaultValue: "Search" },
+          ]},
         ]},
         { name: "footer", type: "group", fields: [
           { name: "variant", type: "select", options: footerChromeVariantOptions,
@@ -299,6 +371,13 @@ export const SiteSettings: CollectionConfig = {
           { name: "legalLinks", type: "array", fields: linkRefFields() },
           { name: "columns", type: "json",
             admin: { description: adminText("Manifest-driven footer column composition edited from the page editor.", "Door het manifest bepaalde kolomindeling van de voettekst, bewerkt vanuit de pagina-editor.") } }
+          ,{ name: "newsletter", type: "group", fields: [
+            { name: "title", type: "text", maxLength: 64 },
+            { name: "placeholder", type: "text", maxLength: 64 },
+            { name: "submitLabel", type: "text", maxLength: 32 },
+            { name: "action", type: "text", validate: validateSafeHref },
+            { name: "method", type: "select", options: ["GET", "POST"] },
+          ]}
         ]},
         { name: "banner", type: "group", fields: [
           { name: "variant", type: "select", options: bannerChromeVariantOptions,
@@ -368,7 +447,7 @@ export const SiteSettings: CollectionConfig = {
       admin: { description: adminText("Footer navigation. Entries render in order; drag to reorder.", "Voettekstnavigatie. Items worden op volgorde weergegeven; sleep om te herschikken.") } }
   ],
   hooks: {
-    beforeValidate: [validateTenantExists, enforceTenantExclusiveChromeVariants],
+    beforeValidate: [validateTenantExists, enforceTenantExclusiveChromeVariants, enforceChromeCapabilities],
     afterChange: [projectSettingsToDisk]
   }
 }

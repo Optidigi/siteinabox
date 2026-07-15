@@ -60,13 +60,14 @@ const fixtureSpec = (): SiteGenerationSpec => ({
       blocks: [
         {
           blockType: "hero",
-          designVariant: "tailwindPlusSimpleCentered",
+          designVariant: "shadcnui-blocks.hero-01",
           headline: rtInline("Fixture Care"),
           subheadline: rtBlock("Editable CMS draft content."),
           cta: { label: "Contact", href: "#contact" },
         },
         {
           blockType: "contactSection",
+          designVariant: "shadcnui-blocks.contact-01",
           anchor: "contact",
           title: rtInline("Contact"),
           formName: "Contact form",
@@ -188,7 +189,9 @@ describe("applySiteGenerationSpec", () => {
           blocks: [
             ...spec.pages[0]!.blocks,
             {
-              blockType: "richText",
+              blockType: "contentSection",
+              designVariant: "shadcnui-blocks.timeline-01",
+              title: rtInline("Privacy"),
               body: {
                 t: "root",
                 variant: "block",
@@ -241,7 +244,7 @@ describe("applySiteGenerationSpec", () => {
           blocks: [
             {
               ...spec.pages[0]!.blocks[0]!,
-              designVariant: null,
+              designVariant: "shadcnui-blocks.hero-01",
               image: { id: "generated-hero", url: "/hero.jpg", filename: "hero.jpg", alt: "Hero" },
             } as any,
           ],
@@ -290,7 +293,7 @@ describe("applySiteGenerationSpec", () => {
             blocks: [
               {
                 ...spec.pages[0]!.blocks[0]!,
-                designVariant: null,
+                designVariant: "shadcnui-blocks.hero-01",
                 image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
               } as any,
             ],
@@ -322,8 +325,8 @@ describe("applySiteGenerationSpec", () => {
           ...spec.pages[0]!,
           blocks: [
             {
-              ...spec.pages[0]!.blocks[0]!,
-              image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
+              ...spec.pages[0]!.blocks[1]!,
+              backgroundImage: { id: "generated-contact", url: "https://assets.example/contact.jpg", filename: "contact.jpg", alt: "Contact" },
             } as any,
           ],
         },
@@ -343,7 +346,7 @@ describe("applySiteGenerationSpec", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      designVariant: "tailwindplus.marketing.hero.with-stats",
+      designVariant: "shadcnui-blocks.hero-02",
       eyebrow: undefined,
       subheadline: rtBlock("Editable CMS draft content."),
       cta: undefined,
@@ -369,7 +372,7 @@ describe("applySiteGenerationSpec", () => {
 
     expect(result.ok).toBe(true)
     expect(store.pages[0]!.blocks[0]).toMatchObject({
-      designVariant: "tailwindplus.marketing.hero.with-stats",
+      designVariant: "shadcnui-blocks.hero-02",
     })
     expect(store.pages[0]!.blocks[0]).not.toHaveProperty("variant")
     expect(store.pages[0]!.blocks[0].analytics ?? {}).toEqual({})
@@ -547,7 +550,7 @@ describe("applySiteGenerationSpec", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      designVariant: "tailblocksCtaA",
+      designVariant: "unknown-provider.cta-01",
     } as any
 
     const result = await applySiteGenerationSpec(payload, spec)
@@ -563,7 +566,7 @@ describe("applySiteGenerationSpec", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      analytics: { legacyVisualIdentity: "tailwindPlusSimpleCentered" },
+      analytics: { legacyVisualIdentity: "retired-provider-alias" },
     } as any
 
     const report = validateSiteGenerationSpecForCms(spec)
@@ -584,11 +587,11 @@ describe("applySiteGenerationSpec", () => {
     expect(report.valid).toBe(true)
   })
 
-  it("requires canonical provider IDs for new self-serve generation while keeping legacy aliases compatible outside generation", () => {
+  it("requires canonical provider IDs in every generation scope", () => {
     const canonicalSpec = fixtureSpec()
     canonicalSpec.pages[0]!.blocks[0] = {
       ...canonicalSpec.pages[0]!.blocks[0]!,
-      designVariant: "tailwindplus.marketing.hero.with-stats",
+      designVariant: "shadcnui-blocks.hero-02",
       eyebrow: undefined,
       subheadline: rtBlock("Editable CMS draft content."),
       cta: undefined,
@@ -613,7 +616,7 @@ describe("applySiteGenerationSpec", () => {
     const legacySpec = fixtureSpec()
     legacySpec.pages[0]!.blocks[0] = {
       ...canonicalSpec.pages[0]!.blocks[0]!,
-      designVariant: "tailwindPlusHeroWithStats",
+      designVariant: "retired-provider.hero",
     } as any
     legacySpec.pages[0]!.blocks = [legacySpec.pages[0]!.blocks[0]!]
     legacySpec.blocks = [{ slug: "hero", label: "Hero" }]
@@ -621,7 +624,7 @@ describe("applySiteGenerationSpec", () => {
     const canonicalReport = validateSiteGenerationSpecForCms(canonicalSpec, { variantScope: "self-serve" })
     expect(canonicalReport.issues).toEqual([])
     expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "self-serve" }).valid).toBe(false)
-    expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "tenant-aware" }).valid).toBe(true)
+    expect(validateSiteGenerationSpecForCms(legacySpec, { variantScope: "tenant-aware" }).valid).toBe(false)
   })
 
   it("preserves generated chrome variants and banner settings during apply", async () => {
@@ -631,21 +634,21 @@ describe("applySiteGenerationSpec", () => {
       ...spec.settings,
       chrome: {
         header: {
-          variant: "default",
+          variant: "shadcnui-blocks.navbar-01",
           behavior: "sticky",
           activeMode: "path",
           mobileMenu: "drawer",
           cta: { label: "Plan intake", href: "/intake" },
         },
         footer: {
-          variant: "default",
+          variant: "shadcnui-blocks.footer-01",
           tagline: "Structured draft footer",
           copyright: "© Fixture Care",
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [{ id: "main", items: [{ type: "links", label: "Explore", links: [{ label: "Home", href: "/" }] }] }],
         },
         banner: {
-          variant: "default",
+          variant: "shadcnui-blocks.banner-01",
           visible: true,
           title: "Launch offer",
           message: "Book a free intake this month.",
@@ -660,19 +663,19 @@ describe("applySiteGenerationSpec", () => {
     expect(result.ok).toBe(true)
     expect(store["site-settings"][0]!.chrome).toMatchObject({
       header: {
-        variant: "default",
+        variant: "shadcnui-blocks.navbar-01",
         behavior: "sticky",
         activeMode: "path",
         mobileMenu: "drawer",
         cta: { label: "Plan intake", href: "/intake" },
       },
       footer: {
-        variant: "default",
+        variant: "shadcnui-blocks.footer-01",
         tagline: "Structured draft footer",
         legalLinks: [{ label: "Privacy", href: "/privacy" }],
       },
       banner: {
-        variant: "default",
+        variant: "shadcnui-blocks.banner-01",
         visible: true,
         title: "Launch offer",
         message: "Book a free intake this month.",
@@ -688,7 +691,7 @@ describe("applySiteGenerationSpec", () => {
     spec.pages[0]!.blocks = [
       {
         blockType: "pricing",
-        designVariant: "tailwindPlusSimpleTiers",
+        designVariant: "shadcnui-blocks.pricing-01",
         title: rtInline("Pakketten"),
         intro: rtBlock("Kies een passend pakket."),
         plans: [{
@@ -704,26 +707,26 @@ describe("applySiteGenerationSpec", () => {
       } as any,
       {
         blockType: "stats",
-        designVariant: "tailwindPlusSimple",
+        designVariant: "shadcnui-blocks.stats-01",
         title: rtInline("Resultaten"),
         intro: rtBlock("Meetbare impact."),
         items: [{ value: "24", label: "Projecten", description: rtBlock("Opgeleverd dit jaar.") }],
       } as any,
       {
         blockType: "logoCloud",
-        designVariant: "tailwindPlusSimple",
+        designVariant: "shadcnui-blocks.testimonials-01",
         title: rtInline("Partners"),
         logos: [{ name: "Partner", image: 12, href: "https://example.com" }],
       } as any,
       {
         blockType: "team",
-        designVariant: "tailwindPlusGrid",
+        designVariant: "shadcnui-blocks.team-01",
         title: rtInline("Team"),
         members: [{ name: "Alex", role: "Founder", bio: rtBlock("Helpt klanten groeien."), image: 14, links: [{ label: "LinkedIn", href: "https://example.com" }] }],
       } as any,
       {
         blockType: "blogCards",
-        designVariant: "tailwindPlusThreeColumn",
+        designVariant: "shadcnui-blocks.blog-01",
         title: rtInline("Updates"),
         posts: [{ title: rtInline("Nieuwe site"), excerpt: rtBlock("Wat er verbeterde."), image: 15, href: "/blog/nieuwe-site", date: "2026-06-27", author: "Alex", cta: { label: "Lees", href: "/blog/nieuwe-site" } }],
       } as any,
@@ -756,7 +759,7 @@ describe("applySiteGenerationSpec", () => {
       chrome: {
         header: { variant: "amicareZen" },
         footer: { variant: "amicareZen" },
-        banner: { variant: "default", visible: false, message: "Preview ready" },
+        banner: { variant: "shadcnui-blocks.banner-01", visible: false, message: "Preview ready" },
       },
     } as any
     spec.pages[0]!.blocks[0] = {

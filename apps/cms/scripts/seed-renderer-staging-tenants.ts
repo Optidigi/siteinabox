@@ -6,7 +6,7 @@ import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
-import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { OfficialTenantSiteGenerationSpec, PublishedSiteSnapshot } from "@siteinabox/contracts/generation"
 import { OfficialTenantSiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
 
 type TenantKey = "amicare"
@@ -35,7 +35,7 @@ export type RendererSeedFixture = {
   sourceMediaBaseUrl: string
   importMediaBaseUrl?: string
   mediaBaseNote: string
-  sourceSpec: SiteGenerationSpec
+  sourceSpec: OfficialTenantSiteGenerationSpec
   publishedSnapshot: PublishedSiteSnapshot
 }
 
@@ -54,7 +54,7 @@ const GENERATED_AT = "2026-06-26T00:00:00.000Z"
 
 const fixture = (
   input: Omit<RendererSeedFixture, "siteUrl" | "sourceSpec" | "publishedSnapshot"> & {
-    sourceSpec: SiteGenerationSpec
+    sourceSpec: OfficialTenantSiteGenerationSpec
     publishedSnapshot: PublishedSiteSnapshot
     siteUrl?: string
   },
@@ -298,7 +298,7 @@ const importMediaBaseUrl = (fixture: RendererSeedFixture) => fixture.importMedia
 export const cloneForRendererSeedProfile = (
   fixture: RendererSeedFixture,
   options: { mediaBaseUrl?: string } = {},
-): SiteGenerationSpec => {
+): OfficialTenantSiteGenerationSpec => {
   const source = structuredClone(fixture.sourceSpec)
   const spec = {
     ...source,
@@ -330,7 +330,7 @@ export const cloneForRendererSeedProfile = (
       version: fixture.profile === "production" ? "live-cutover-v1" : "phase-4",
     },
   }
-  return absolutizeGeneratedMediaUrls(spec, options.mediaBaseUrl ?? fixture.sourceMediaBaseUrl) as SiteGenerationSpec
+  return absolutizeGeneratedMediaUrls(spec, options.mediaBaseUrl ?? fixture.sourceMediaBaseUrl) as OfficialTenantSiteGenerationSpec
 }
 
 export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" | "tenants">): RendererSeedFixture[] =>
@@ -338,10 +338,10 @@ export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" |
 
 export const parseRendererSeedSpecForCms = (
   fixture: RendererSeedFixture,
-  spec: SiteGenerationSpec,
+  spec: OfficialTenantSiteGenerationSpec,
   helpers: Pick<SiteGenerationHelpers, "validateSiteGenerationSpecForCms">,
   label = "spec",
-): SiteGenerationSpec => {
+): OfficialTenantSiteGenerationSpec => {
   const validation = helpers.validateSiteGenerationSpecForCms(spec)
   if (!validation.valid) {
     throw new Error(`${fixture.key} ${fixture.profile} ${label} failed CMS validation: ${JSON.stringify(validation.issues, null, 2)}`)
@@ -375,7 +375,7 @@ const transition = (status: string, message: string, at: string) => ({ status, m
 const upsertIntakeSubmission = async (
   payload: Payload,
   fixture: RendererSeedFixture,
-  spec: SiteGenerationSpec,
+  spec: OfficialTenantSiteGenerationSpec,
   now: string,
 ) => {
   const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:intake:v1`
@@ -428,7 +428,7 @@ const upsertGenerationRun = async (
   payload: Payload,
   fixture: RendererSeedFixture,
   intakeId: string | number,
-  spec: SiteGenerationSpec,
+  spec: OfficialTenantSiteGenerationSpec,
   applyResult: ApplySuccessResult,
   specHash: string,
   now: string,

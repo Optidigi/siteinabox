@@ -52,7 +52,7 @@ describe("enforceTenantBlockMenu — integration", () => {
       collection: "pages",
       data: {
         title: "p1", slug: "p1", tenant: tenantWithMenu,
-        blocks: [{ blockType: "hero", headline: minimalInlineHeadline }],
+        blocks: [{ blockType: "hero", designVariant: "shadcnui-blocks.hero-01", headline: minimalInlineHeadline }],
       } as any,
       overrideAccess: true,
     })
@@ -83,6 +83,7 @@ describe("enforceTenantBlockMenu — integration", () => {
         title: "p3", slug: "p3", tenant: tenantWithDefaultMenu,
         blocks: [{
           blockType: "cta",
+          designVariant: "shadcnui-blocks.cta-01",
           headline: minimalInlineHeadline,
           primary: { label: "Go", href: "/" },
         }],

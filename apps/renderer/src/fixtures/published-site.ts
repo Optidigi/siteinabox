@@ -36,6 +36,7 @@ const pages: Page[] = [
     blocks: [
       {
         blockType: "hero",
+        designVariant: "shadcnui-blocks.hero-01",
         eyebrow: inlineText("Renderer MVP"),
         headline: inlineText("A published snapshot rendered at the edge"),
         subheadline: blockText("This page is contract data, resolved by pathname, and rendered through the shared SIAB site renderer."),
@@ -48,6 +49,7 @@ const pages: Page[] = [
       },
       {
         blockType: "featureList",
+        designVariant: "shadcnui-blocks.features-01",
         title: inlineText("Runtime shape"),
         intro: blockText("The renderer stays generic while snapshot data supplies the content, theme, navigation, and metadata."),
         features: [
@@ -70,6 +72,7 @@ const pages: Page[] = [
       },
       {
         blockType: "cta",
+        designVariant: "shadcnui-blocks.cta-01",
         headline: inlineText("Fixture data today, published snapshots next"),
         description: blockText("Host resolution and latest-published snapshot loading are intentionally mocked for this phase."),
         primary: { label: "Read about this MVP", href: "/about" },
@@ -89,16 +92,19 @@ const pages: Page[] = [
     blocks: [
       {
         blockType: "hero",
+        designVariant: "shadcnui-blocks.hero-02",
         headline: inlineText("Services from contract data"),
         subheadline: blockText("This second page proves the renderer can build and serve multiple published paths from one snapshot."),
         cta: { label: "Back home", href: "/" },
       },
       {
-        blockType: "richText",
+        blockType: "contentSection",
+        designVariant: "shadcnui-blocks.timeline-01",
         body: blockText("The services page uses the same fixture snapshot, the same theme tokens, and the same shared block renderers."),
       },
       {
         blockType: "faq",
+        designVariant: "shadcnui-blocks.faq-01",
         title: inlineText("Runtime questions"),
         items: [
           {
@@ -125,11 +131,13 @@ const pages: Page[] = [
     blocks: [
       {
         blockType: "hero",
+        designVariant: "shadcnui-blocks.hero-04",
         headline: inlineText("About this renderer"),
         subheadline: blockText("The MVP keeps app code generic and lets shared contracts define the published site shape."),
       },
       {
         blockType: "testimonials",
+        designVariant: "shadcnui-blocks.testimonials-01",
         title: "Fixture signal",
         items: [
           {
@@ -158,6 +166,17 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
     contactEmail: "hello@renderer.example.test",
     branding: {
       primaryColor: "#0f766e",
+    },
+    chrome: {
+      header: { variant: "shadcnui-blocks.navbar-01", behavior: "sticky", activeMode: "path", mobileMenu: "drawer" },
+      footer: { variant: "shadcnui-blocks.footer-01", tagline: "Published from structured SIAB data." },
+      banner: {
+        variant: "shadcnui-blocks.banner-04",
+        visible: true,
+        title: "Privacy",
+        message: "Choose whether anonymous analytics may be used.",
+        link: { label: "Privacy policy", href: "/privacy" },
+      },
     },
     navHeader: [
       { label: "Home", href: "/" },

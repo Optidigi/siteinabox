@@ -26,6 +26,7 @@ import { scrollToFirstError } from "@/lib/formScroll"
 import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, SlidersHorizontal } from "lucide-react"
 import type { Page } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
+import { SHADCNUI_CHROME_VARIANTS, SITE_CHROME_CATALOG } from "@siteinabox/contracts"
 import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -210,19 +211,20 @@ function FooterCompositionEditor({
   }
   const updateItem = (
     columnIndex: number,
+    itemIndex: number,
     patch: Partial<FooterCompositionColumn["items"][number]>,
   ) => {
     setColumns(columns.map((column, cIndex) => cIndex !== columnIndex
       ? column
       : {
           ...column,
-          items: [{ ...column.items[0]!, ...patch }],
+          items: column.items.map((item, iIndex) => iIndex === itemIndex ? { ...item, ...patch } : item),
         }))
   }
-  const setColumnType = (columnIndex: number, type: FooterItemType) => {
+  const setColumnType = (columnIndex: number, itemIndex: number, type: FooterItemType) => {
     setColumns(columns.map((column, cIndex) => cIndex !== columnIndex
       ? column
-      : { ...column, items: [{ ...createFooterItem(type), id: column.items[0]?.id ?? undefined }] }))
+      : { ...column, items: column.items.map((item, iIndex) => iIndex === itemIndex ? { ...createFooterItem(type), id: item.id ?? undefined } : item) }))
   }
 
   return (
@@ -251,20 +253,17 @@ function FooterCompositionEditor({
         </Select>
       </div>
       <div className="space-y-3">
-        {columns.map((column, columnIndex) => {
-          const item = column.items[0]!
-          return (
+        {columns.map((column, columnIndex) => (
           <div key={column.id ?? columnIndex} className="space-y-3 rounded-md border border-border bg-background p-3">
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-foreground">
-                {t("footerColumn", { index: columnIndex + 1 })}
-              </h3>
+            <h3 className="text-sm font-medium text-foreground">{t("footerColumn", { index: columnIndex + 1 })}</h3>
+            {column.items.map((item, itemIndex) => <div className="space-y-3 rounded-md border border-border bg-card p-3" key={item.id ?? itemIndex}>
+              <div className="flex items-center gap-2">
               <Select
                 value={item.type}
                 disabled={!canEditSettings}
-                onValueChange={(type) => setColumnType(columnIndex, type as FooterItemType)}
+                onValueChange={(type) => setColumnType(columnIndex, itemIndex, type as FooterItemType)}
               >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="flex-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -273,16 +272,17 @@ function FooterCompositionEditor({
                     ))}
                   </SelectContent>
                 </Select>
-            </div>
+                <Button type="button" variant="ghost" size="icon" disabled={!canEditSettings || column.items.length === 1} aria-label={t("removeFooterItem")} onClick={() => setColumns(columns.map((candidate, index) => index === columnIndex ? { ...candidate, items: candidate.items.filter((_, removeIndex) => removeIndex !== itemIndex) } : candidate))}><X className="size-4" /></Button>
+              </div>
             {(item.type === "text" || item.type === "links") && (
-            <div className="space-y-3 rounded-md border border-border bg-card p-3">
+            <div className="space-y-3">
                       <div className="space-y-2">
                         <Label>{t("footerItemLabel")}</Label>
                         <Input
                           value={item.label ?? ""}
                           placeholder={itemLabel(item.type)}
                           disabled={!canEditSettings}
-                          onChange={(event) => updateItem(columnIndex, { label: event.target.value || null })}
+                          onChange={(event) => updateItem(columnIndex, itemIndex, { label: event.target.value || null })}
                         />
                       </div>
 
@@ -292,7 +292,7 @@ function FooterCompositionEditor({
                         <Textarea
                           value={item.text ?? ""}
                           disabled={!canEditSettings}
-                          onChange={(event) => updateItem(columnIndex, { text: event.target.value || null })}
+                          onChange={(event) => updateItem(columnIndex, itemIndex, { text: event.target.value || null })}
                         />
                       </div>
                     )}
@@ -301,8 +301,8 @@ function FooterCompositionEditor({
                       <div className="space-y-2">
                         <Label>{t("footerLinks")}</Label>
                         <div className="space-y-2">
-                          {(item.links?.length ? item.links : [{ label: "", href: "" }]).map((link, linkIndex) => (
-                            <div key={linkIndex} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                          {(item.links?.length ? item.links : [{ label: "", href: "", external: false }]).map((link, linkIndex) => (
+                            <div key={linkIndex} className="grid grid-cols-[1fr_1fr_auto_auto] items-center gap-2">
                               <Input
                                 value={link.label}
                                 placeholder={t("footerLinkLabel")}
@@ -310,9 +310,10 @@ function FooterCompositionEditor({
                                 onChange={(event) => {
                                   const links = [...(item.links ?? [])]
                                   links[linkIndex] = { ...(links[linkIndex] ?? { label: "", href: "" }), label: event.target.value }
-                                  updateItem(columnIndex, { links })
+                                  updateItem(columnIndex, itemIndex, { links })
                                 }}
                               />
+                              <Switch aria-label={t("externalLink")} checked={!!link.external} disabled={!canEditSettings} onCheckedChange={(external) => { const links = [...(item.links ?? [])]; links[linkIndex] = { ...(links[linkIndex] ?? { label: "", href: "" }), external }; updateItem(columnIndex, itemIndex, { links }) }} />
                               <Input
                                 value={link.href}
                                 placeholder="/"
@@ -320,7 +321,7 @@ function FooterCompositionEditor({
                                 onChange={(event) => {
                                   const links = [...(item.links ?? [])]
                                   links[linkIndex] = { ...(links[linkIndex] ?? { label: "", href: "" }), href: event.target.value }
-                                  updateItem(columnIndex, { links })
+                                  updateItem(columnIndex, itemIndex, { links })
                                 }}
                               />
                               <Button
@@ -331,7 +332,7 @@ function FooterCompositionEditor({
                                 aria-label={t("removeFooterLink")}
                                 onClick={() => {
                                   const links = (item.links ?? []).filter((_, index) => index !== linkIndex)
-                                  updateItem(columnIndex, { links })
+                                  updateItem(columnIndex, itemIndex, { links })
                                 }}
                               >
                                 <X className="size-4" aria-hidden />
@@ -345,8 +346,9 @@ function FooterCompositionEditor({
                             variant="outline"
                             size="sm"
                             className="gap-1.5"
-                            onClick={() => updateItem(columnIndex, {
-                              links: [...(item.links ?? []), { label: "Link", href: "/" }],
+                            disabled={(item.links?.length ?? 0) >= 8}
+                            onClick={() => updateItem(columnIndex, itemIndex, {
+                              links: [...(item.links ?? []), { label: "Link", href: "/", external: false }],
                             })}
                           >
                             <Plus className="size-3.5" aria-hidden />
@@ -357,8 +359,10 @@ function FooterCompositionEditor({
                     )}
                   </div>
             )}
+            </div>)}
+            <Button type="button" variant="outline" size="sm" disabled={!canEditSettings || column.items.length >= 4} onClick={() => setColumns(columns.map((candidate, index) => index === columnIndex ? { ...candidate, items: [...candidate.items, createFooterItem(contract.items[0]!.type)] } : candidate))}><Plus className="size-3.5" />{t("addFooterItem")}</Button>
           </div>
-        )})}
+        ))}
       </div>
     </section>
   )
@@ -386,15 +390,48 @@ function SiteChromeInspectorFields({
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const logo = zone === "header" ? draft.header.logo : draft.footer.logo
+  const variant = String(zone === "header" ? draft.header.variant ?? "" : draft.footer.variant ?? "")
+  const capability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === variant)?.capabilities
+  const variantOptions = SITE_CHROME_CATALOG.filter((entry) => entry.area === zone && (entry.scope.kind === "global" || entry.variant === variant))
   const setLogo = (logoValue: unknown) => {
     if (!canEditSettings) return
     setDraft((current) => zone === "header"
       ? { ...current, header: { ...current.header, logo: logoValue } }
       : { ...current, footer: { ...current.footer, logo: logoValue } })
   }
+  const setVariant = (value: string) => {
+    const nextCapability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === value)?.capabilities
+    setDraft((current) => zone === "header"
+      ? {
+          ...current,
+          header: {
+            ...current.header,
+            variant: value,
+            mobileMenu: nextCapability?.mobileMenu?.includes(current.header.mobileMenu) ? current.header.mobileMenu : null,
+            secondaryAction: nextCapability?.secondaryAction ? current.header.secondaryAction : undefined,
+            search: nextCapability?.search ? current.header.search : undefined,
+          },
+        }
+      : {
+          ...current,
+          footer: {
+            ...current.footer,
+            variant: value,
+            newsletter: nextCapability?.newsletter ? current.footer.newsletter : undefined,
+          },
+        })
+  }
 
   return (
     <div className="space-y-4">
+      <section className="space-y-2 rounded-md border border-border bg-card p-4">
+        <Label htmlFor={`site-chrome-${zone}-variant`}>{t("layoutVariant")}</Label>
+        <Select value={variant} disabled={!canEditSettings} onValueChange={setVariant}>
+          <SelectTrigger id={`site-chrome-${zone}-variant`}><SelectValue /></SelectTrigger>
+          <SelectContent>{variantOptions.map((option) => <SelectItem key={option.variant} value={option.variant}>{option.label}</SelectItem>)}</SelectContent>
+        </Select>
+        {capability ? <p className="text-xs text-muted-foreground">{zone === "header" ? `${capability.navigation} navigation · ${capability.primaryItems.min}-${capability.primaryItems.max} primary items` : `${capability.columns.min}-${capability.columns.max} columns · 0-${capability.linksPerColumn.max} links per section`}</p> : null}
+      </section>
       <section className="space-y-3 rounded-md border border-border bg-card p-4">
         <div>
           <h2 className="text-base font-semibold text-foreground">{t("brand")}</h2>
@@ -453,8 +490,29 @@ function SiteChromeInspectorFields({
               />
             </div>
           </section>
+          {capability?.newsletter && <section className="space-y-3 rounded-md border border-border bg-card p-4">
+            <h2 className="text-base font-semibold text-foreground">{t("newsletter")}</h2>
+            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.title ?? ""} placeholder={t("newsletterTitle")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), title: event.target.value || null } } }))} />
+            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.placeholder ?? ""} placeholder={t("newsletterPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), placeholder: event.target.value || null } } }))} />
+            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.submitLabel ?? ""} placeholder={t("newsletterSubmit")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), submitLabel: event.target.value || null } } }))} />
+            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.action ?? ""} placeholder="/newsletter" onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), action: event.target.value || null, method: (current.footer.newsletter as any)?.method ?? "POST" } } }))} />
+          </section>}
         </>
       )}
+
+      {zone === "header" && <section className="space-y-3 rounded-md border border-border bg-card p-4">
+        <h2 className="text-base font-semibold text-foreground">{t("headerActions")}</h2>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div className="space-y-1"><Label>{t("headerBehavior")}</Label><Select disabled={!canEditSettings} value={String(draft.header.behavior ?? "sticky")} onValueChange={(behavior) => setDraft((current) => ({ ...current, header: { ...current.header, behavior } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sticky">{t("sticky")}</SelectItem><SelectItem value="static">{t("static")}</SelectItem></SelectContent></Select></div>
+          <div className="space-y-1"><Label>{t("activeLinkMode")}</Label><Select disabled={!canEditSettings} value={String(draft.header.activeMode ?? "path")} onValueChange={(activeMode) => setDraft((current) => ({ ...current, header: { ...current.header, activeMode } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="path">{t("activePath")}</SelectItem><SelectItem value="anchor">{t("activeAnchor")}</SelectItem><SelectItem value="none">{t("activeNone")}</SelectItem></SelectContent></Select></div>
+          {capability?.mobileMenu?.length ? <div className="space-y-1"><Label>{t("mobileMenu")}</Label><Select disabled={!canEditSettings} value={String(draft.header.mobileMenu ?? capability.mobileMenu[0])} onValueChange={(mobileMenu) => setDraft((current) => ({ ...current, header: { ...current.header, mobileMenu } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{capability.mobileMenu.map((mode: string) => <SelectItem key={mode} value={mode}>{mode === "drawer" ? t("mobileDrawer") : t("mobileDropdown")}</SelectItem>)}</SelectContent></Select></div> : null}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={(draft.header.cta as any)?.label ?? ""} placeholder={t("primaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: { ...((current.header.cta as any) ?? {}), label: event.target.value || null } } }))} /><Input disabled={!canEditSettings} value={(draft.header.cta as any)?.href ?? ""} placeholder="/contact" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: { ...((current.header.cta as any) ?? {}), href: event.target.value || null } } }))} /></div>
+        <div className="flex items-center justify-between"><Label htmlFor="header-cta-external">{t("externalLink")}</Label><Switch id="header-cta-external" disabled={!canEditSettings} checked={!!(draft.header.cta as any)?.external} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, cta: { ...((current.header.cta as any) ?? {}), external } } }))} /></div>
+        {capability?.secondaryAction && <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={(draft.header.secondaryAction as any)?.label ?? ""} placeholder={t("secondaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: { ...((current.header.secondaryAction as any) ?? {}), label: event.target.value || null } } }))} /><Input disabled={!canEditSettings} value={(draft.header.secondaryAction as any)?.href ?? ""} placeholder="/login" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: { ...((current.header.secondaryAction as any) ?? {}), href: event.target.value || null } } }))} /></div>}
+        {capability?.secondaryAction && <div className="flex items-center justify-between"><Label htmlFor="header-secondary-external">{t("externalLink")}</Label><Switch id="header-secondary-external" disabled={!canEditSettings} checked={!!(draft.header.secondaryAction as any)?.external} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: { ...((current.header.secondaryAction as any) ?? {}), external } } }))} /></div>}
+        {capability?.search && <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="header-search-enabled">{t("siteSearch")}</Label><Switch id="header-search-enabled" disabled={!canEditSettings} checked={!!(draft.header.search as any)?.enabled} onCheckedChange={(enabled) => setDraft((current) => ({ ...current, header: { ...current.header, search: { ...((current.header.search as any) ?? {}), enabled } } }))} /></div><div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} value={(draft.header.search as any)?.action ?? ""} placeholder="/search" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: { ...((current.header.search as any) ?? {}), action: event.target.value || null } } }))} /><Input disabled={!canEditSettings} maxLength={48} value={(draft.header.search as any)?.placeholder ?? ""} placeholder={t("searchPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: { ...((current.header.search as any) ?? {}), placeholder: event.target.value || null } } }))} /></div></div>}
+      </section>}
 
       <section className="rounded-md border border-border bg-card p-4">
         <h2 className="text-base font-semibold text-foreground">{t("navigation")}</h2>

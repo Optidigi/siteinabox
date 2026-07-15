@@ -66,7 +66,7 @@ describe("settingsToJson", () => {
       },
       chrome: {
         header: {
-          variant: "default",
+          variant: "shadcnui-blocks.navbar-01",
           logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
           behavior: "sticky",
           activeMode: "path",
@@ -74,7 +74,7 @@ describe("settingsToJson", () => {
           cta: { label: "Start", href: "/intake" },
         },
         footer: {
-          variant: "default",
+          variant: "shadcnui-blocks.footer-01",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
@@ -85,7 +85,7 @@ describe("settingsToJson", () => {
           ],
         },
         banner: {
-          variant: "default",
+          variant: "shadcnui-blocks.banner-01",
           visible: true,
           title: "Update",
           message: "Now booking",
@@ -115,7 +115,7 @@ describe("settingsToJson", () => {
       branding: { primaryColor: "#2563eb" },
       chrome: {
         header: {
-          variant: "default",
+          variant: "shadcnui-blocks.navbar-01",
           logo: { url: "/uploads/header-logo.png", filename: "header-logo.png" },
           behavior: "sticky",
           activeMode: "path",
@@ -123,7 +123,7 @@ describe("settingsToJson", () => {
           cta: { label: "Start", href: "/intake" },
         },
         footer: {
-          variant: "default",
+          variant: "shadcnui-blocks.footer-01",
           logo: { url: "/uploads/footer-logo.png", filename: "footer-logo.png" },
           tagline: "Local support",
           copyright: "© Client A",
@@ -134,7 +134,7 @@ describe("settingsToJson", () => {
           ],
         },
         banner: {
-          variant: "default",
+          variant: "shadcnui-blocks.banner-01",
           visible: true,
           title: "Update",
           message: "Now booking",
@@ -252,8 +252,8 @@ describe("settingsToJson", () => {
       siteName: "Banner Site",
       siteUrl: "https://banner.test",
       chrome: {
-        header: { variant: "default" },
-        footer: { variant: "default" },
+        header: { variant: "shadcnui-blocks.navbar-01" },
+        footer: { variant: "shadcnui-blocks.footer-01" },
       },
     }
 
@@ -261,7 +261,7 @@ describe("settingsToJson", () => {
       ...base,
       chrome: {
         ...base.chrome,
-        banner: { variant: "default", visible: false, title: "Draft", message: "Not live" },
+        banner: { variant: "shadcnui-blocks.banner-01", visible: false, title: "Draft", message: "Not live" },
       },
     }).chrome?.banner).toBeUndefined()
 
@@ -269,7 +269,7 @@ describe("settingsToJson", () => {
       ...base,
       chrome: {
         ...base.chrome,
-        banner: { variant: "default", visible: true, title: "", message: "", link: { label: "Bad", href: "javascript:alert(1)" } },
+        banner: { variant: "shadcnui-blocks.banner-01", visible: true, title: "", message: "", link: { label: "Bad", href: "javascript:alert(1)" } },
       },
     }).chrome?.banner).toBeUndefined()
 
@@ -277,9 +277,9 @@ describe("settingsToJson", () => {
       ...base,
       chrome: {
         ...base.chrome,
-        banner: { variant: "default", visible: true, message: "Published notice" },
+        banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Published notice" },
       },
-    }).chrome?.banner).toMatchObject({ variant: "default", visible: true, message: "Published notice" })
+    }).chrome?.banner).toMatchObject({ variant: "shadcnui-blocks.banner-01", visible: true, message: "Published notice" })
   })
 
   it("projects public renderer analytics metadata from publish context", () => {

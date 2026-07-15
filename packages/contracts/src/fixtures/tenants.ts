@@ -4,6 +4,8 @@ import type {
   GeneratedPageSpec,
   GeneratedSiteSettings,
   PublishedSiteSnapshot,
+  OfficialTenantSiteGenerationSpec,
+  OfficialTenantGeneratedPageSpec,
   SiteBlockManifestItem,
   SiteGenerationSpec,
   ThemeTokenSpec,
@@ -85,7 +87,7 @@ const amicareEditorialBody = (): RtBlockRoot => ({
   ],
 })
 
-const manifestEntries = (tenantId: string, settings: GeneratedSiteSettings, pages: GeneratedPageSpec[]) => ({
+const manifestEntries = (tenantId: string, settings: GeneratedSiteSettings, pages: Array<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>) => ({
   tenantId,
   version: 1,
   updatedAt: GENERATED_AT,
@@ -106,10 +108,10 @@ const mediaManifestKey = (media: MediaRef): string | null => {
 }
 
 const toSnapshot = (
-  spec: SiteGenerationSpec,
+  spec: SiteGenerationSpec | OfficialTenantSiteGenerationSpec,
   tenantId: string,
   overrides?: {
-    pages?: GeneratedPageSpec[]
+    pages?: Array<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>
     blocks?: SiteBlockManifestItem[]
     assets?: MediaRef[]
   },
@@ -249,7 +251,7 @@ const amicareSettings: GeneratedSiteSettings = {
   updatedAt: GENERATED_AT,
 }
 
-const amicarePages: GeneratedPageSpec[] = [
+const amicarePages: OfficialTenantGeneratedPageSpec[] = [
   {
     id: "amicare-index",
     slug: "index",
@@ -325,7 +327,7 @@ const amicarePages: GeneratedPageSpec[] = [
   },
 ]
 
-const amicareRendererPages: GeneratedPageSpec[] = amicarePages.map((page) => ({
+const amicareRendererPages: OfficialTenantGeneratedPageSpec[] = amicarePages.map((page) => ({
   ...page,
   blocks: page.blocks.map((block) => {
     if (block.blockType !== "contactSection") return block
@@ -349,7 +351,7 @@ const amicareRendererPages: GeneratedPageSpec[] = amicarePages.map((page) => ({
   }),
 }))
 
-export const amicareSiteGenerationSpec: SiteGenerationSpec = {
+export const amicareSiteGenerationSpec: OfficialTenantSiteGenerationSpec = {
   schemaVersion: 1,
   intake: {
     businessName: "Amicare-Zorg",

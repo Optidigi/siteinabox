@@ -30,30 +30,12 @@ depended on command-run site generation are no longer current source of truth.
 - The public `apps/landing` marketing site does not load optional analytics by
   default. Any future analytics integration must be disclosed, consent-gated
   where required, and reflected in the legal release and retention registers.
-- Generic self-serve generated-site generation now starts with active
-  exact-source Tailwind Plus Marketing provider page sections:
-  `tailwindplus.marketing.hero.simple-centered`,
-  `tailwindplus.marketing.feature.with-product-screenshot`,
-  `tailwindplus.marketing.feature.centered-2x2-grid`,
-  `tailwindplus.marketing.cta.dark-panel-with-app-screenshot`,
-  `tailwindplus.marketing.contact.centered`,
-  `tailwindplus.marketing.testimonial.simple-centered`,
-  `tailwindplus.marketing.stats.simple`, and
-  `tailwindplus.marketing.logo-cloud.simple-with-heading`,
-  `tailwindplus.marketing.pricing.two-tiers-with-emphasized-right-tier`,
-  `tailwindplus.marketing.team.with-small-images`, and
-  `tailwindplus.marketing.blog.three-column`,
-  `tailwindplus.marketing.newsletter.side-by-side-with-details`, and
-  `tailwindplus.marketing.bento.three-column-bento-grid`,
-  `tailwindplus.marketing.content.sticky-product-screenshot`, and
-  `tailwindplus.marketing.hero.with-stats`; active header chrome
-  `tailwindplus.marketing.header.with-stacked-flyout-menu`; active banner
-  chrome `tailwindplus.marketing.banner.with-button`; and active known-tenant
-  404 fallback `tailwindplus.marketing.feedback.404-simple`.
-  Tailwind Plus FAQ and Footer variants are present upstream but remain inactive
-  because their current public payload variants are locked/non-downloadable.
-  Other Tailwind Plus candidates, Preline, Tailblocks, SIAB-owned generic visual
-  variants, and shadcn blocks are not active generated public-site inputs.
+- Generic self-serve generation uses the pinned MIT-licensed
+  `akash3444/shadcn-ui-blocks` Radix catalog: 148 explicit public variants and
+  eight explicit not-found system templates. The generated canonical manifest
+  drives contracts, CMS choices, AI input, canvas/preview, and public runtime.
+  Missing or unknown variants fail closed; native generic defaults and the
+  retired provider are not generated public-site inputs.
 
 ## Open Follow-Up
 
@@ -71,30 +53,6 @@ depended on command-run site generation are no longer current source of truth.
   months, including associated person/property data. Reconsider the provider
   if neither route can provide demonstrable deletion.
 - Production browser-smoke-test the mandatory legal notice after deployment. With the notice present, verify ordinary CMS navigation, settings controls, form edits, and save actions against the same flows with no notice present; record browser, route, and reproduction details if interaction is interrupted. The notice is an in-flow alert with no overlay or global event handler, so close this item only after deployed testing confirms the localhost-reported click interruption does not persist.
-- HIGH PRIORITY: browser-verify CMS Tailwind Plus provider rendering/canvas
-  parity before claiming the editor surface is production-ready. Public
-  source-backed block parity and the contact/newsletter runtime-form boundary
-  are now covered by package/CMS tests and the provider visual gate, but the CMS
-  editor-frame surface still needs browser-level evidence for every active
-  Tailwind Plus block and chrome. Verify DOM/classes, computed styles,
-  source-visible slot wrappers, hover/select/edit states, and `ThemeTokenSpec`
-  behavior against the shared renderer path. Do not use fixture stripping,
-  broad thresholds, generic renderer fallback, arbitrary CMS layout controls, or
-  new legacy theme compatibility to make the tests pass.
-- HIGH PRIORITY: fix CMS Tailwind Plus provider rendering/canvas parity as its
-  own product blocker. As of 2026-07-07, Amicare save/auto-publish is fixed and
-  should not be conflated with this issue, but Tailwind-based provider rendering
-  in the CMS still does not match the expected live/source behavior closely
-  enough for real smoke testing. Audit the actual editor-frame and page-editor
-  surfaces with screenshots, DOM/class inspection, computed styles, and slot
-  hover/edit state checks for every active Tailwind Plus block and chrome.
-  Specifically verify that provider DOM keeps literal Tailwind classes such as
-  `contents`, that renderer-owned `blockMode` and slot wrappers do not alter
-  layout, that CMS editor affordances do not change provider grid/flex/text
-  flow, and that all intended editable slots have stable hover/select/edit
-  behavior. Acceptance requires a browser-level CMS canvas/preview parity gate
-  in addition to public/source visual parity; unit tests alone and the current
-  `provider:visual-parity` pass are not sufficient evidence.
 - Write a new architecture decision before starting any replacement product
   surface.
 - Revisit tenant provisioning, preview, approval, payment handoff, and publish
@@ -153,44 +111,6 @@ depended on command-run site generation are no longer current source of truth.
   before trusting unattended production activation. Capture provider ids, DNS
   records, sender status, active snapshot, renderer response, and final handoff
   mail log. `.nl` is the only offered TLD for now.
-- Continue expanding generic self-serve generation around exact-source Tailwind
-  Plus provider surfaces. Tailwind Plus source is the UI source of truth; CMS
-  owns editable content/chrome slots; site-wide tokens may configure only
-  approved color, font, shape/radius, mode, and coarse density/rhythm behavior.
-  Do not reintroduce adapted
-  Tailwind Plus renderers, Preline, Tailblocks, SIAB-owned generic visual
-  variants, raw AI HTML/classes, or any Amicare changes. A provider surface
-  becomes generation-eligible only after exact source, renderer, CMS/sidebar or
-  settings editing where applicable, canvas/preview/public behavior, token
-  behavior, structural/runtime/source-integrity tests, and provider visual
-  parity coverage are complete. Tailwind Plus provider parity is now gated by
-  `pnpm provider:visual-parity`; broader page-level or Chromatic-style visual
-  regression remains separate follow-up work.
-- Maintain Tailwind Plus provider visual parity as the active source-backed
-  inventory evolves. On 2026-07-06, `pnpm provider:visual-parity` passed all 18
-  active provider block/chrome/template variants across desktop and mobile. The
-  earlier mobile height deltas for
-  `tailwindplus.marketing.content.sticky-product-screenshot` and
-  `tailwindplus.marketing.bento.three-column-bento-grid` were traced to
-  non-upstream fallback/demo image `alt` text affecting failed remote-image
-  layout in the deterministic fixture environment, with adjacent plain-text
-  slots aligned to text-mode rendering where the Tailwind Plus source uses text
-  nodes.
-- Keep the Tailwind Plus header chrome interaction gap explicitly scoped. The active
-  `tailwindplus.marketing.header.with-stacked-flyout-menu` renderer is a
-  structured CSS-only adaptation fed by site settings and `navHeader`, while the
-  upstream source uses Tailwind Plus Elements popover behavior. This is not
-  necessary for the current generated-site focus: mostly one-pagers, or at most
-  small sites with roughly 5-6 flat pages. Revisit full stacked-flyout behavior
-  only if SIAB product scope expands to larger multi-level sites with grouped
-  navigation, nested menu data, keyboard/a11y open-state requirements, and a
-  tested hydration/runtime interaction model.
-- Broaden Tailwind Plus provider visual parity coverage so it verifies both
-  light and dark rendered output for every active component/block/chrome
-  surface. This should remain provider-focused and deterministic: source
-  fixtures, active registry coverage, theme-token smoke checks, and visual
-  comparisons for the supported theme modes. Do not use visual tests to bless
-  arbitrary CMS layout output or generation-created classes.
 - Improve CMS editing affordances per active provider component. Every editable
   slot that exists in a block/chrome manifest should have a clear sidebar or
   canvas editing path, visible hover/select cues, empty-state affordances that
@@ -200,8 +120,8 @@ depended on command-run site generation are no longer current source of truth.
   banner copy/action, and other provider-owned slots as they are activated.
 - Expand the density theme control from outer section padding into a finite
   provider-aware page-rhythm system. Density must still be tenant-wide and
-  token-driven, not arbitrary spacing/class editing. For each active Tailwind
-  Plus provider variant, map the source's known spacing utilities to approved
+  token-driven, not arbitrary spacing/class editing. For each active
+  `shadcnui-blocks` provider variant, map the source's known spacing utilities to approved
   compact/comfortable/spacious values across the whole component: hero inner
   padding such as `py-32 sm:py-48 lg:py-56`, section padding, vertical stacks,
   card/list gaps, grid gaps, media margins, CTA spacing, form spacing, and
@@ -370,35 +290,6 @@ hooks, and made draft import writes skip projection/source-file hooks.
 Follow-up on 2026-07-02 connected the public `apps/intake` form UI to CMS
 `POST /api/intake` through the intake app submission client and CMS route.
 
-Same-day follow-up made CMS `POST /api/intake` store the normalized intake and
-start provider-backed draft generation from that stored intake automatically.
-The generated output remains validated CMS data only. As of 2026-07-05, generic
-self-serve generation is limited to active exact-source Tailwind Plus Marketing
-provider surfaces: page sections backed by the executable source-block registry
-and header/banner chrome backed by the executable source-chrome registry. The active
-page-section set is hero, feature sections, CTA, contact, testimonial, stats,
-logo-cloud, pricing, team, newsletter, bento grid, content section, and blog/cards blocks.
-The generic mock homepage now
-exercises that active page-section set with canonical provider IDs, including
-pricing, team, newsletter, bento grid, content section, and blog/cards. The provider-backed known-tenant 404 fallback is
-renderer system behavior, not generated page content.
-Preview access and customer email sending remain gated from the generation-run
-detail flow. Existing operational preview-ready records may remain from earlier
-deployments.
-
-Same-day hardening tightened generated-site preview and rendering reliability:
-preview theme edits now preserve mode-only choices, merge rapid toolbar changes,
-and save with a latest-wins queue so stale writes cannot revert the stored
-theme. Generic page saves now reject tenant-exclusive Amicare block variants,
-while official Amicare compatibility remains isolated to tenant-renderer
-slugs/domains. Tenant themes now use only approved ThemeTokenSpec V2 preset IDs.
-A later
-2026-07-04 cleanup removed the adapted Tailwind Plus runtime path. Subsequent
-provider passes reintroduced only active exact-source Tailwind Plus Marketing
-surfaces: page sections through the executable source-block registry, header
-chrome through the executable source-chrome registry, and the known-tenant 404
-fallback through the executable source-template registry.
-
 Same-day iframe editor follow-up completed the desktop iframe shape for the CMS
 page editor and customer preview surfaces. `PageForm` remains the RHF/save/
 ThemeBar/sidebar source of truth, while the authenticated `/editor-frame` iframe
@@ -424,22 +315,6 @@ layout.
 ### Phase 7 — AI generation service
 
 **Status:** Foundation added 2026-06-25.
-
-The intake workflow uses a provider-backed AI generation service instead of
-calling the fixture loader directly. Generic self-serve provider-backed
-generation is currently limited to active exact-source Tailwind Plus Marketing
-page sections backed by the executable source-block registry: hero, feature
-sections, CTA, contact, testimonial, stats, logo-cloud, pricing, team, and
-newsletter, bento grid, content section, and blog/cards. It may also select the active Tailwind Plus
-Marketing header and banner chrome through structured
-`SiteSettings.chrome.header.variant` and `SiteSettings.chrome.banner.variant`
-data. The known-tenant 404 fallback is provider-backed in the renderer and is
-not generated as page content. The
-default provider remains `mock` for local development and tests, while
-`SITE_GENERATION_PROVIDER=openai` enables the OpenAI Responses API path.
-Generation runs record provider, model,
-prompt version, input/output hashes, raw/parsed output where available,
-validation, apply results, attempts, and errors.
 
 Generated output is still only accepted as structured `SiteGenerationSpec` data.
 CMS validation rejects malformed specs, tenant/domain mismatches, duplicate or
@@ -557,3 +432,42 @@ subscription creation, domain provisioning, sender/provisioning refresh, and
 publish/activation. Provider-step failures remain recorded until that step is
 retried successfully, and publish/activation retries reuse existing drafted or
 active snapshots for the generation run.
+
+### 2026-07-15 — Generated-site provider cutover
+
+**Status:** Complete; provider cutover and production verification gates pass.
+
+The pinned `akash3444/shadcn-ui-blocks` Radix inventory, MIT provenance,
+namespaced compatibility primitives, fail-closed contracts, runtime/editor
+catalogs, consent-banner materialization, and forward data migration are
+present. Read-only inspection of the local legacy PostgreSQL database found 31
+applied migrations, four tenants, ten pages, four hero rows, and one
+feature-list row; snapshot and generation-run tables are not present at that
+schema point. The migration was separately rehearsed on a disposable current
+schema and the audited legacy JSON privacy-page shape. CI rejects obsolete
+generated-site provider references outside immutable evidence and historical
+Payload migrations.
+
+Header/footer settings are now bidirectional with the literal provider views:
+tenant page/section/custom links feed flat navigation, `navbar-03` additionally
+supports authored flyout groups with described/iconed children, and
+`navbar-05` exposes its search and two action regions instead of accepting
+links it cannot render. Each layout's item, group, child, column and link limits
+are generated once and enforced by contracts, Payload hooks and the editor.
+Footer composition preserves every authored item and resolves semantic
+contact/business sections from tenant settings; newsletter regions exist only
+on `footer-03`/`footer-04`. External-link, sticky/static, active-link and mobile
+menu behavior persist through CMS projection and snapshots. Incompatible or
+overflowing data fails with a field-specific error rather than truncating or
+falling back.
+
+All 132 content variants, 16 chrome variants, and eight system templates now
+have explicit literal entries and typed adapters. A canonical importer rerun
+reproduces the 542-item audit as 148 public variants, eight system templates,
+and 386 explained exclusions. The structured browser suite hydrates all 156
+content, chrome and system variants without console/page/network failures and
+checks accessibility and available interactions. The self-contained pixel suite matches all 156
+imported variants at fixed desktop/mobile viewports in light/dark mode with only
+a 0.001% antialias tolerance and no intentional layout deviations. The complete
+Payload migration chain also applies successfully to an isolated fresh local
+database; the read-only audited legacy database remains untouched.

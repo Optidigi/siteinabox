@@ -1,5 +1,5 @@
 import type * as React from "react"
-import type { Block, MediaRef, RtRoot } from "@siteinabox/contracts"
+import type { Block, MediaRef, RtRoot, SiteSettings } from "@siteinabox/contracts"
 import type { MediaResolver } from "../media"
 
 export type RendererElementPath = {
@@ -85,6 +85,7 @@ export type BlockRenderOptions = {
   formAction?: string
   editSlots?: BlockEditSlots
   sectionAttributes?: RendererSectionAttributes
+  siteSettings?: SiteSettings
 }
 
 export type BlockRendererComponent<TBlock extends Block = Block> = (props: {

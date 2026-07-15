@@ -8,11 +8,7 @@ import { AmicarePageRenderer, type AmicareRenderBlock, type AmicareRenderChrome 
 import { resolveTenantRenderer } from "./tenant-renderers/resolve"
 import type { MediaResolver } from "./media"
 import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
-
-const TAILWIND_PLUS_MARKETING_HEADER_WITH_STACKED_FLYOUT_MENU_ID =
-  "tailwindplus.marketing.header.with-stacked-flyout-menu"
-const TAILWIND_PLUS_MARKETING_HERO_SIMPLE_CENTERED_ID =
-  "tailwindplus.marketing.hero.simple-centered"
+import { getProviderBlockDefinition } from "./source-blocks/registry"
 
 export type SiteRenderBlocks = (args: {
   blocks: Page["blocks"]
@@ -95,43 +91,16 @@ export function SitePageRenderer({
       block={block}
       index={index}
       registry={registry}
-      options={{ mediaResolver, formAction }}
+      options={{ mediaResolver, formAction, siteSettings: settings }}
     />
   ))
-  const headerChrome = header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
+  const firstBlock = page.blocks[0]
+  const firstDefinition = firstBlock ? getProviderBlockDefinition(firstBlock) : null
+  const embedsNavigation = firstDefinition?.composition.suppressesChromeAreas.includes("header") ?? false
+  const headerChrome = embedsNavigation ? null : (header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />)
   const bannerChrome = <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
   const maintenanceChrome = <SiteMaintenanceBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-  const firstBlock = page.blocks[0]
-  const shouldAnchorHeaderToFirstBlock =
-    settings.chrome?.header?.variant === TAILWIND_PLUS_MARKETING_HEADER_WITH_STACKED_FLYOUT_MENU_ID &&
-    firstBlock?.designVariant === TAILWIND_PLUS_MARKETING_HERO_SIMPLE_CENTERED_ID &&
-    !renderBlocks
-  const renderedBody = shouldAnchorHeaderToFirstBlock && defaultRenderBlocks[0]
-    ? (
-      <>
-        {bannerChrome}
-        {maintenanceChrome}
-        <div
-          className="site-top-stack site-top-stack--source-tailwindplus-marketing-header-hero bg-white"
-          data-siab-top-stack="tailwindplus.marketing.header-hero"
-          data-provider-top-stack="tailwindplus"
-          data-source-chrome-variant={TAILWIND_PLUS_MARKETING_HEADER_WITH_STACKED_FLYOUT_MENU_ID}
-          data-anchored-source-variant={TAILWIND_PLUS_MARKETING_HERO_SIMPLE_CENTERED_ID}
-        >
-          {headerChrome}
-          {defaultRenderBlocks[0]}
-        </div>
-        {defaultRenderBlocks.slice(1)}
-      </>
-    )
-    : (
-      <>
-        {headerChrome}
-        {bannerChrome}
-        {maintenanceChrome}
-        {renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}
-      </>
-    )
+  const renderedBody = <>{headerChrome}{bannerChrome}{maintenanceChrome}{renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}</>
 
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
