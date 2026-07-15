@@ -245,7 +245,7 @@ export type GalleryBlock = BlockInstanceBase & {
   title?: RtRoot | null
   intro?: RtRoot | null
   images: Array<{
-    image: MediaRef
+    image?: MediaRef
     caption?: RtRoot | null
     link?: LinkRef | null
   }>

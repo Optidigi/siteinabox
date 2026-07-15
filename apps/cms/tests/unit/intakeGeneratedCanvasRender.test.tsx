@@ -74,7 +74,7 @@ const rtBlock = (text: string) =>
   }) as any
 
 describe("generated intake canvas render smoke", () => {
-  it("renders generated draft page blocks through the CMS canvas block components", async () => {
+  it("renders all five generated smoke-site pages through the CMS canvas block components", async () => {
     const { payload, store } = createPayloadStub()
     const result = await processIntakeSubmission(payload, {
       source: "public-intake",
@@ -88,32 +88,43 @@ describe("generated intake canvas render smoke", () => {
 
     expect(result.status).toBe("preview_ready")
     const tenant = store.tenants[0]
-    const page = store.pages[0]
-    expect(page?.blocks?.length).toBeGreaterThan(0)
+    const pages = store.pages.filter((page) => page.slug !== "privacy-en-cookieverklaring")
+    expect(pages).toHaveLength(5)
+    expect(pages.every((page) => page.blocks?.length > 0)).toBe(true)
 
     const html = renderToStaticMarkup(
       <CanvasSelectionProvider value={{ view: "sidebar", selected: null, select: () => {} }}>
         <main>
-          {page.blocks.map((block: any, index: number) => (
-            <CanvasBlockRenderer
-              key={index}
-              block={block}
-              index={index}
-              isActive={false}
-              manifest={tenant.siteManifest}
-              onActivate={() => {}}
-              onUpdate={() => {}}
-            />
+          {pages.map((page) => (
+            <article key={page.slug} data-smoke-page={page.slug}>
+              {page.blocks.map((block: any, index: number) => (
+                <CanvasBlockRenderer
+                  key={`${page.slug}-${index}`}
+                  block={block}
+                  index={index}
+                  isActive={false}
+                  manifest={tenant.siteManifest}
+                  onActivate={() => {}}
+                  onUpdate={() => {}}
+                />
+              ))}
+            </article>
           ))}
         </main>
       </CanvasSelectionProvider>,
     )
 
+    const renderedVariants = [...html.matchAll(/data-provider-variant="([^"]+)"/g)]
+      .map((match) => match[1])
+      .filter((variant) => variant?.startsWith("shadcnui-blocks."))
+
     expect(html).toContain('data-provider-block="shadcnui-blocks"')
     expect(html).toContain('data-provider-variant="shadcnui-blocks.hero-01"')
+    expect(renderedVariants).toHaveLength(35)
+    expect(new Set(renderedVariants).size).toBe(35)
     expect(html).not.toContain("cms-block--unknown")
     expect(html).not.toContain("Unknown block type")
-    expect(html.length).toBeGreaterThan(2_000)
+    expect(html.length).toBeGreaterThan(10_000)
   })
 
   it("renders every reusable catalog block through the CMS canvas dispatcher", () => {

@@ -290,6 +290,18 @@ hooks, and made draft import writes skip projection/source-file hooks.
 Follow-up on 2026-07-02 connected the public `apps/intake` form UI to CMS
 `POST /api/intake` through the intake app submission client and CMS route.
 
+Follow-up on 2026-07-15 expanded the internal generic mock fixture into a
+realistic five-page shadcnui-blocks smoke site. Each page contains seven normal
+landing-page sections and every section uses a different explicit variant,
+covering all 13 semantic content block families without turning the fixture
+into an exhaustive catalog page. Variant selections are resolved against the
+canonical provider manifest. The fixture also exercises system theme mode,
+responsive navigation, footer composition, newsletter and announcement
+chrome. The normal privacy-page materializer still adds the required legal
+system page when the fixture is applied. Contract, CMS validation and canvas
+tests pin the five pages, unique approved variants and deliberate invalid-
+fixture behavior; no public fixture selector or test bypass was added.
+
 Same-day iframe editor follow-up completed the desktop iframe shape for the CMS
 page editor and customer preview surfaces. `PageForm` remains the RHF/save/
 ThemeBar/sidebar source of truth, while the authenticated `/editor-frame` iframe

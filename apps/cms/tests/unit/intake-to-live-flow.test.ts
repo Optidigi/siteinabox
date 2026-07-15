@@ -384,7 +384,7 @@ describe("intake-to-live mocked flow", () => {
     expect(store["intake-submissions"]).toHaveLength(1)
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)
-    expect(store.pages).toHaveLength(2)
+    expect(store.pages).toHaveLength(6)
     expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(true)
 
     const pages = store.pages

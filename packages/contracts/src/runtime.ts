@@ -578,7 +578,7 @@ export const GalleryBlockSchema: z.ZodType<GalleryBlock> = strictObject({
   intro: RtFieldSchema.optional(),
   images: z
     .array(strictObject({
-      image: MediaRefSchema,
+      image: MediaRefSchema.optional(),
       caption: RtFieldSchema.optional(),
       link: LinkRefSchema.nullable().optional(),
     }))
@@ -608,11 +608,13 @@ export const ContentSectionBlockSchema: z.ZodType<ContentSectionBlock> = strictO
   features: z.array(strictObject({
     title: RtRootSchema,
     description: RtFieldSchema.optional(),
+    icon: nullableString,
   })).nullable().optional(),
   bridge: RtFieldSchema.optional(),
   secondaryTitle: RtFieldSchema.optional(),
   secondaryBody: RtFieldSchema.optional(),
   image: MediaRefSchema.optional(),
+  cta: LinkRefSchema.nullable().optional(),
 })
 
 export const TeamBlockSchema: z.ZodType<TeamBlock> = strictObject({
