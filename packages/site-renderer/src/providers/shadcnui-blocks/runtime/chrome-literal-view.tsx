@@ -1,5 +1,4 @@
 import * as React from "react"
-import { TooltipProvider } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import type { BannerViewModel } from "./banner"
 import type { FooterViewModel } from "./footer"
 import type { NavbarViewModel } from "./navbar"
@@ -176,7 +175,7 @@ function LiteralChromeView({ Literal, model }: { Literal: LiteralComponent; mode
   const withBehavior = model.kind === "navbar" && model.value.behavior === "sticky"
     ? React.cloneElement(projected as React.ReactElement<Record<string, unknown>>, { className: [String((projected.props as any).className ?? ""), "sticky top-0 z-50"].filter(Boolean).join(" "), "data-header-behavior": "sticky" })
     : projected
-  return <TooltipProvider>{withBehavior}</TooltipProvider>
+  return withBehavior
 }
 
 export function LiteralProviderBannerView({ Literal, model, variant }: { Literal: LiteralComponent; model: BannerViewModel; variant: string }) {

@@ -25,11 +25,6 @@ export default defineConfig({
     testTimeout: 30000
   },
   resolve: {
-    // Shared workspace packages render through the CMS React runtime. Keep
-    // Radix/provider hooks on that same instance even after tests which reset
-    // Vitest's module registry; otherwise full-suite ordering can load a
-    // second React instance and fail SSR with an invalid hook dispatcher.
-    dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(__dirname, "src"),
       // Stub Next.js' `server-only` marker — not installed in this repo

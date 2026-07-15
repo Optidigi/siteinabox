@@ -481,7 +481,10 @@ async function main() {
       "export function ShadcnUiPinnedLiteralReference({ adapted, variant }: { adapted: boolean; variant: string }) {",
       "  const Literal = literals[variant as keyof typeof literals]",
       "  if (!Literal) throw new Error(`Unresolved pinned literal provider variant \"${variant}\".`)",
-      "  return adapted ? <LiteralProviderReferenceView Literal={Literal} variant={variant} /> : <TooltipProvider><Literal /></TooltipProvider>",
+      "  if (adapted) return <LiteralProviderReferenceView Literal={Literal} variant={variant} />",
+      '  return variant === "shadcnui-blocks.pricing-03" || variant === "shadcnui-blocks.pricing-04"',
+      "    ? <TooltipProvider><Literal /></TooltipProvider>",
+      "    : <Literal />",
       "}",
       "",
     ].join("\n"))

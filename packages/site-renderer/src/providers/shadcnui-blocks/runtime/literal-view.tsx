@@ -8,6 +8,11 @@ import type { BlockRenderOptions } from "../../../blocks/types"
 export type ProviderBlockViewModel = { block: Block; options: BlockRenderOptions }
 
 type LiteralComponent = (props: Record<string, never>) => React.ReactNode
+const tooltipVariants = new Set(["shadcnui-blocks.pricing-03", "shadcnui-blocks.pricing-04"])
+
+const withTooltipProvider = (variant: string, children: React.ReactNode) =>
+  tooltipVariants.has(variant) ? <TooltipProvider>{children}</TooltipProvider> : children
+
 type SlotPath = { field: string; itemIndex?: number; subField?: string }
 type TextProjection = SlotPath & { text: string; rich?: RtRoot | null; inline?: boolean }
 type LinkProjection = SlotPath & { value: LinkRef }
@@ -295,11 +300,11 @@ export function LiteralProviderVariantView({ Literal, model, variant }: { Litera
     "data-source-variant": variant,
     id: model.block.anchor || undefined,
   }
-  return <TooltipProvider>{React.cloneElement(projected as React.ReactElement<Record<string, unknown>>, attrs)}</TooltipProvider>
+  return withTooltipProvider(variant, React.cloneElement(projected as React.ReactElement<Record<string, unknown>>, attrs))
 }
 
 export function LiteralProviderReferenceView({ Literal, variant }: { Literal: LiteralComponent; variant: string }) {
   const tree = Literal({})
   if (!React.isValidElement(tree)) throw new Error(`Literal provider reference "${variant}" did not return a React element.`)
-  return <TooltipProvider>{React.cloneElement(tree as React.ReactElement<Record<string, unknown>>, { "data-provider-reference": variant })}</TooltipProvider>
+  return withTooltipProvider(variant, React.cloneElement(tree as React.ReactElement<Record<string, unknown>>, { "data-provider-reference": variant }))
 }
