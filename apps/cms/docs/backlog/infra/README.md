@@ -41,11 +41,13 @@ No current open infra follow-up.
 ### 2026-07-15 — Status-monitor tenant inventory
 
 The CMS now exposes a bearer-protected, read-only active-tenant inventory for
-the Site in a Box status Worker. Every active tenant produces its canonical
-public hostname and paired `admin.<domain>` CMS health endpoint. The Worker
-reconciles this full snapshot every five minutes; inactive, suspended,
+the Site in a Box status monitor. Every active tenant produces its canonical
+public hostname and paired `admin.<domain>` CMS health endpoint. The monitor
+reconciles this full snapshot every minute; inactive, suspended,
 archived, deleted, and renamed tenants therefore age out through the status
 monitor's two-generation removal safety instead of being reported as outages.
+The production VPS inventory timer transports this snapshot every minute; this
+avoids ambiguous same-zone Worker subrequests while keeping the CMS authoritative.
 
 ### 2026-07-13 — Outbound mail transport correctness
 
