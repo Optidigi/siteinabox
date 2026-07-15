@@ -16,12 +16,10 @@ const callRoute = async (tenantId: string, segments: string[]) => {
 beforeEach(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "siab-tenant-assets-"))
   process.env.DATA_DIR = tmpDir
-  vi.resetModules()
 })
 
 afterEach(async () => {
   delete process.env.DATA_DIR
-  vi.resetModules()
   await fs.rm(tmpDir, { recursive: true, force: true })
 })
 

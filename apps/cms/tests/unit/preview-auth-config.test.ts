@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { resolveBaseURL } from "better-auth"
 
 vi.mock("@/lib/email/sendEmail", () => ({
@@ -13,13 +13,17 @@ describe("preview Better Auth host configuration", () => {
   const originalEnv = process.env
 
   beforeEach(() => {
-    vi.resetModules()
     process.env = {
       ...originalEnv,
       DATABASE_URI: "postgres://payload:payload@localhost:5432/payload",
       PAYLOAD_SECRET: "test-secret",
       NODE_ENV: "production",
     }
+  })
+
+  afterEach(() => {
+    process.env = originalEnv
+    vi.unstubAllEnvs()
   })
 
   it("uses only the public preview host in production", async () => {

@@ -1,10 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest"
 import { NextRequest } from "next/server"
 
-// Reset middleware module between tests so the NODE_ENV gate is re-evaluated
-// at import time (it's read once at module-eval, then captured in scriptSrcDev).
 const importMiddleware = async () => {
-  vi.resetModules()
   return (await import("@/proxy")).proxy
 }
 

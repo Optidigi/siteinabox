@@ -372,7 +372,6 @@ describe("AMD-3 — /api-key page renders ApiKeyManager only for super-admin; no
   let requireRoleMock: any
 
   beforeEach(async () => {
-    vi.resetModules()
     vi.clearAllMocks()
     const auth = await import("@/lib/authGate")
     requireAuthMock = auth.requireAuth as any

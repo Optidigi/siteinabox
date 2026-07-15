@@ -64,10 +64,8 @@ const buildNonce = (): string => {
 // the exception to NODE_ENV === "development" only — `test` and any other
 // runtime still get the strict policy so the audit posture and CI tests
 // reflect what ships to prod.
-const isDev = process.env.NODE_ENV === "development"
-const scriptSrcDev = isDev ? " 'unsafe-eval'" : ""
 const styleSrc = (nonce: string) =>
-  isDev ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`
+  process.env.NODE_ENV === "development" ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`
 
 const normalizeOrigin = (value: string | undefined, fallback: string): string => {
   const raw = (value || fallback).replace(/\/+$/, "")
@@ -78,22 +76,23 @@ const normalizeOrigin = (value: string | undefined, fallback: string): string =>
   }
 }
 
-const posthogPublicOrigin = normalizeOrigin(process.env.POSTHOG_PUBLIC_HOST, "https://r.siteinabox.nl")
-const posthogUiOrigin = normalizeOrigin(process.env.POSTHOG_HOST, "https://app.posthog.com")
-const posthogConnectOrigins = Array.from(new Set([posthogPublicOrigin, posthogUiOrigin])).join(" ")
-
-const buildAdminCsp = (nonce: string, options: { allowSameOriginFrameAncestor?: boolean } = {}) => [
-  "default-src 'self'",
-  `script-src 'self' 'nonce-${nonce}' ${posthogPublicOrigin}${scriptSrcDev}`,
-  styleSrc(nonce),
-  "img-src 'self' data: https:",
-  "font-src 'self' data:",
-  `connect-src 'self' ${posthogConnectOrigins}`,
-  "frame-src 'self' https:",
-  options.allowSameOriginFrameAncestor ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ")
+const buildAdminCsp = (nonce: string, options: { allowSameOriginFrameAncestor?: boolean } = {}) => {
+  const posthogPublicOrigin = normalizeOrigin(process.env.POSTHOG_PUBLIC_HOST, "https://r.siteinabox.nl")
+  const posthogUiOrigin = normalizeOrigin(process.env.POSTHOG_HOST, "https://app.posthog.com")
+  const posthogConnectOrigins = Array.from(new Set([posthogPublicOrigin, posthogUiOrigin])).join(" ")
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' ${posthogPublicOrigin}${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+    styleSrc(nonce),
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    `connect-src 'self' ${posthogConnectOrigins}`,
+    "frame-src 'self' https:",
+    options.allowSameOriginFrameAncestor ? "frame-ancestors 'self'" : "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ")
+}
 
 const HSTS = "max-age=63072000; includeSubDomains; preload"
 

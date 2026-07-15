@@ -5,7 +5,6 @@ import { fixturePublishedSiteSnapshot } from "../../../renderer/src/fixtures/pub
 const ORIGINAL_ENV = { ...process.env }
 
 async function importSnapshotLib() {
-  vi.resetModules()
   return import("../../../renderer/src/lib/snapshot")
 }
 

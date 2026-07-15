@@ -11,7 +11,7 @@ import { resolve, join } from "node:path"
  * Read-only. Unknown tenant-root files are blocked before disk read; path
  * traversal is blocked both by segment validation and resolved containment.
  */
-const DATA_DIR = process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
+const dataDir = () => process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
 
 const CONTENT_TYPES: Record<string, string> = {
   woff2: "font/woff2",
@@ -63,7 +63,7 @@ export const GET = async (
   if (!isAllowedTenantAsset(path)) {
     return new NextResponse("not found", { status: 404 })
   }
-  const tenantRoot = resolve(DATA_DIR, "tenants", tenantId)
+  const tenantRoot = resolve(dataDir(), "tenants", tenantId)
   const relPath = path.join("/")
   const fullPath = resolve(tenantRoot, relPath)
   // Path-traversal guard: resolved path must stay inside tenantRoot.
