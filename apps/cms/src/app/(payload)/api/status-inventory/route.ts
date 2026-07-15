@@ -21,5 +21,7 @@ export async function GET(req: NextRequest) {
     depth: 0,
     overrideAccess: true,
   })
-  return NextResponse.json(buildStatusInventory(tenants.docs))
+  return NextResponse.json(buildStatusInventory(tenants.docs), {
+    headers: { "Cache-Control": "private, no-store" },
+  })
 }
