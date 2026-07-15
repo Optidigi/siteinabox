@@ -28,6 +28,14 @@ const PAGE_SECTION_VARIANTS = [
   ["hero-05", "features-04", "pricing-02", "faq-02", "team-03", "contact-01", "cta-05"],
 ] as const
 
+const SMOKE_GALLERY_MEDIA = [
+  { url: "https://www.siteinabox.nl/theme/images/assets/example-desktop.webp", filename: "smoke-example-desktop.webp", alt: "Voorbeeldwebsite op desktop", width: 1600, height: 1000 },
+  { url: "https://www.siteinabox.nl/theme/images/assets/example-mobile.webp", filename: "smoke-example-mobile.webp", alt: "Voorbeeldwebsite op mobiel", width: 780, height: 1688 },
+  { url: "https://www.siteinabox.nl/theme/images/assets/avatar_4.webp", filename: "smoke-avatar.webp", alt: "Voorbeeld van een klantprofiel", width: 480, height: 520 },
+  { url: "https://www.siteinabox.nl/og-default.png", filename: "smoke-social-preview.png", alt: "Site in a Box social preview", width: 1200, height: 630 },
+  { url: "https://www.siteinabox.nl/theme/images/logo/clients/kbkc.png", filename: "smoke-client-logo.png", alt: "Voorbeeld van een klantlogo", width: 1024, height: 334 },
+] as const
+
 const inline = (value: string): RtInlineRoot => ({
   t: "root",
   variant: "inline",
@@ -202,14 +210,14 @@ function blockForVariant(
         ...base,
         blockType: "gallery",
         images: [
-          { image: null, caption: prose("Brede projectweergave 16:9"), link: { label: "Bekijk project", href: "/ervaringen" } },
-          { image: null, caption: prose("Portretweergave 4:5") },
-          { image: null, caption: prose("Detailweergave met langere toelichting") },
-          { image: null, caption: prose("Mobiele uitsnede") },
-          { image: null, caption: prose("Donkere modus") },
+          { image: SMOKE_GALLERY_MEDIA[0], caption: prose("Brede projectweergave 16:9"), link: { label: "Bekijk project", href: "/ervaringen" } },
+          { image: SMOKE_GALLERY_MEDIA[1], caption: prose("Portretweergave voor mobiele controle") },
+          { image: SMOKE_GALLERY_MEDIA[2], caption: prose("Detailweergave met transparantie") },
+          { image: SMOKE_GALLERY_MEDIA[3], caption: prose("Social-previewverhouding") },
+          { image: SMOKE_GALLERY_MEDIA[4], caption: prose("Breed klantlogo") },
         ],
         ...optional(variant, "title", inline(`Projectgalerij · ${label}`)),
-        ...optional(variant, "intro", prose("De lege CMS-mediareferenties houden de vaste bronverhoudingen zichtbaar zonder externe afbeeldingen te laden.")),
+        ...optional(variant, "intro", prose("SIAB-eigen testassets worden door de normale importer als tenantmedia opgeslagen en behouden hun bronafmetingen.")),
         ...optional(variant, "cta", { label: "Bekijk ervaringen", href: "/ervaringen" }),
       } as GeneratedBlockSpec
 
@@ -363,7 +371,7 @@ export function loadMockSiteGenerationSpec(
     },
     pages: smokeTestPages(normalized),
     blocks: SITE_BLOCK_MANIFEST_FROM_CATALOG,
-    assets: [],
+    assets: [...SMOKE_GALLERY_MEDIA],
     generatedAt: new Date().toISOString(),
     generator: {
       name: "mock-site-generation",

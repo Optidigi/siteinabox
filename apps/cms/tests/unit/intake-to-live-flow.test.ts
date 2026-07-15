@@ -385,7 +385,13 @@ describe("intake-to-live mocked flow", () => {
     expect(store["site-generation-runs"]).toHaveLength(1)
     expect(store.tenants).toHaveLength(1)
     expect(store.pages).toHaveLength(6)
-    expect(store.media).toHaveLength(0)
+    expect(store.media.map((entry) => entry.filename).sort()).toEqual([
+      "smoke-avatar.webp",
+      "smoke-client-logo.png",
+      "smoke-example-desktop.webp",
+      "smoke-example-mobile.webp",
+      "smoke-social-preview.png",
+    ])
     expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(true)
 
     const pages = store.pages
