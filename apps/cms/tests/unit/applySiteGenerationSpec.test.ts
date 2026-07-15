@@ -224,50 +224,61 @@ describe("applySiteGenerationSpec", () => {
   it("upserts generated media refs with filenames and keeps bare paths omitted", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
+    )
 
-    const result = await applySiteGenerationSpec(payload, {
-      ...spec,
-      settings: {
-        ...spec.settings,
-        branding: {
-          logo: { id: "generated-logo", url: "/logo.png", filename: "logo.png", alt: "Logo" },
-          favicon: "/favicon.ico",
-        } as any,
-      },
-      pages: [
-        {
-          ...spec.pages[0]!,
-          seo: {
-            ...spec.pages[0]!.seo,
-            ogImage: "/og-default.png" as any,
-          },
-          blocks: [
-            {
-              ...spec.pages[0]!.blocks[0]!,
-              designVariant: "shadcnui-blocks.hero-01",
-              image: { id: "generated-hero", url: "/hero.jpg", filename: "hero.jpg", alt: "Hero" },
-            } as any,
-          ],
+    try {
+      const result = await applySiteGenerationSpec(payload, {
+        ...spec,
+        settings: {
+          ...spec.settings,
+          branding: {
+            logo: { id: "generated-logo", url: "https://assets.example/logo.png", filename: "logo.png", alt: "Logo" },
+            favicon: "/favicon.ico",
+          } as any,
         },
-      ],
-    })
+        pages: [
+          {
+            ...spec.pages[0]!,
+            seo: {
+              ...spec.pages[0]!.seo,
+              ogImage: "/og-default.png" as any,
+            },
+            blocks: [
+              {
+                ...spec.pages[0]!.blocks[0]!,
+                designVariant: "shadcnui-blocks.hero-01",
+                image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
+              } as any,
+            ],
+          },
+        ],
+      })
 
-    expect(result.ok).toBe(true)
-    expect(store.media).toHaveLength(2)
-    const heroMedia = store.media.find((media) => media.filename === "hero.jpg")!
-    const logoMedia = store.media.find((media) => media.filename === "logo.png")!
-    expect(heroMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "hero.jpg", alt: "Hero", mimeType: "image/jpeg" })
-    expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
-    expect(store.pages[0]!.seo.ogImage).toBeUndefined()
-    expect(store.pages[0]!.blocks[0].image).toBe(heroMedia.id)
-    expect(store["site-settings"][0]!.branding.logo).toBe(logoMedia.id)
-    expect(store["site-settings"][0]!.branding.favicon).toBeUndefined()
+      expect(result.ok).toBe(true)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(store.media).toHaveLength(2)
+      const heroMedia = store.media.find((media) => media.filename === "hero.jpg")!
+      const logoMedia = store.media.find((media) => media.filename === "logo.png")!
+      expect(heroMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "hero.jpg", alt: "Hero", mimeType: "image/jpeg" })
+      expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
+      expect(store.pages[0]!.seo.ogImage).toBeUndefined()
+      expect(store.pages[0]!.blocks[0].image).toBe(heroMedia.id)
+      expect(store["site-settings"][0]!.branding.logo).toBe(logoMedia.id)
+      expect(store["site-settings"][0]!.branding.favicon).toBeUndefined()
+    } finally {
+      fetchMock.mockRestore()
+    }
   })
 
   it("downloads generated media and retries upload when Payload requires a file", async () => {
     const { payload, store, calls } = createPayloadStub()
     const originalCreate = payload.create
-    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
         status: 200,
         headers: { "content-type": "image/jpeg" },

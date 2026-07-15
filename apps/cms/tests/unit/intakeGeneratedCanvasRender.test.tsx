@@ -76,6 +76,12 @@ const rtBlock = (text: string) =>
 describe("generated intake canvas render smoke", () => {
   it("renders all five generated smoke-site pages through the CMS canvas block components", async () => {
     const { payload, store } = createPayloadStub()
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      new Response(new Uint8Array([0x89, 0x50, 0x4e, 0x47]), {
+        status: 200,
+        headers: { "content-type": "image/png" },
+      }),
+    )
     const result = await processIntakeSubmission(payload, {
       source: "public-intake",
       businessName: "Visual Smoke Studio",
@@ -84,7 +90,7 @@ describe("generated intake canvas render smoke", () => {
       language: "nl",
       goals: ["Verify generated draft rendering"],
       pages: [{ slug: "home", title: "Home" }],
-    })
+    }).finally(() => fetchMock.mockRestore())
 
     expect(result.status).toBe("preview_ready")
     const tenant = store.tenants[0]
