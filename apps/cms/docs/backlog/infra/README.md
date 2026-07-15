@@ -38,6 +38,15 @@ No current open infra follow-up.
 
 ## Implemented Foundation
 
+### 2026-07-15 — Status-monitor tenant inventory
+
+The CMS now exposes a bearer-protected, read-only active-tenant inventory for
+the Site in a Box status Worker. Every active tenant produces its canonical
+public hostname and paired `admin.<domain>` CMS health endpoint. The Worker
+reconciles this full snapshot every five minutes; inactive, suspended,
+archived, deleted, and renamed tenants therefore age out through the status
+monitor's two-generation removal safety instead of being reported as outages.
+
 ### 2026-07-13 — Outbound mail transport correctness
 
 Cloudflare REST and SMTP failures now use provider-specific retry semantics:
