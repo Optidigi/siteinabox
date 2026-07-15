@@ -20,6 +20,10 @@ export default defineConfig({
   }),
   vite: {
     cacheDir: process.env.SIAB_VITE_CACHE_DIR,
+    // The provider parity client reaches this dependency through the linked
+    // site-renderer workspace. Pre-bundle it before the first browser request
+    // so Vite never invalidates that request with "Outdated Optimize Dep".
+    optimizeDeps: { include: ['@number-flow/react'] },
     plugins: [tailwindcss()],
   },
   build: {

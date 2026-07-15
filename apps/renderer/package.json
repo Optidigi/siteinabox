@@ -19,6 +19,7 @@
   "dependencies": {
     "@astrojs/node": "^10.1.0",
     "@astrojs/react": "^5.0.7",
+    "@number-flow/react": "^0.6.0",
     "@siteinabox/contracts": "workspace:*",
     "@siteinabox/legal-content": "workspace:*",
     "@siteinabox/site-renderer": "workspace:*",

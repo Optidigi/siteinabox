@@ -25,6 +25,9 @@ export default defineConfig({
     testTimeout: 30000
   },
   resolve: {
+    // Shared renderer/UI packages are workspace source dependencies. Force
+    // their JSX and the CMS test renderer onto one React module identity.
+    dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(__dirname, "src"),
       // Stub Next.js' `server-only` marker — not installed in this repo
