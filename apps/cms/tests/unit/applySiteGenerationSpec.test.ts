@@ -254,6 +254,14 @@ describe("applySiteGenerationSpec", () => {
                 designVariant: "shadcnui-blocks.hero-01",
                 image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
               } as any,
+              {
+                blockType: "gallery",
+                designVariant: "shadcnui-blocks.carousel-block-01",
+                images: [
+                  { image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" } },
+                  { image: { id: "generated-logo", url: "https://assets.example/logo.png", filename: "logo.png", alt: "Logo" } },
+                ],
+              } as any,
             ],
           },
         ],
@@ -268,6 +276,10 @@ describe("applySiteGenerationSpec", () => {
       expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
       expect(store.pages[0]!.seo.ogImage).toBeUndefined()
       expect(store.pages[0]!.blocks[0].image).toBe(heroMedia.id)
+      expect(store.pages[0]!.blocks[1].images).toEqual([
+        { image: heroMedia.id },
+        { image: logoMedia.id },
+      ])
       expect(store["site-settings"][0]!.branding.logo).toBe(logoMedia.id)
       expect(store["site-settings"][0]!.branding.favicon).toBeUndefined()
     } finally {
