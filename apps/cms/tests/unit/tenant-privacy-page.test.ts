@@ -88,7 +88,12 @@ describe("tenant privacy page materialization", () => {
       title: "Privacy- en cookieverklaring",
       status: "draft",
       blocks: [
-        { blockType: "hero", designVariant: "shadcnui-blocks.hero-01", metadata: { systemRole: "tenant-privacy" } },
+        {
+          blockType: "hero",
+          designVariant: "shadcnui-blocks.hero-01",
+          metadata: { systemRole: "tenant-privacy" },
+          eyebrow: { variant: "inline" },
+        },
         { blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", metadata: { systemRole: "tenant-privacy" } },
       ],
     })

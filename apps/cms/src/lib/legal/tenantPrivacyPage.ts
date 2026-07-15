@@ -138,7 +138,7 @@ const privacyPage = (disclosure: TenantPrivacyDisclosure, siteName: string): Gen
       blockType: "hero",
       designVariant: "shadcnui-blocks.hero-01",
       metadata: { source: "system", systemRole: "tenant-privacy", templateVersion: TENANT_PRIVACY_TEMPLATE_VERSION },
-      eyebrow: blockRoot([paragraph(text("Privacy en cookies"))]),
+      eyebrow: inlineRoot("Privacy en cookies"),
       headline: inlineRoot("Privacy- en cookieverklaring"),
       subheadline: blockRoot([paragraph(text(`Informatie over de verwerking van persoonsgegevens via ${siteName}.`))]),
     },

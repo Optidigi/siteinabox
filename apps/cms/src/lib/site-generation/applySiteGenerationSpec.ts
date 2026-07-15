@@ -473,7 +473,13 @@ const DEFAULT_GENERATION_MANIFEST: RtManifest = {
   typeStyles: [],
 }
 
-const scanRichTextCapabilities = (value: unknown, result = { blockquote: false, themedNodeIds: new Set<string>() }) => {
+const scanRichTextCapabilities = (value: unknown, result = {
+  blockquote: false,
+  bulletList: false,
+  orderedList: false,
+  divider: false,
+  themedNodeIds: new Set<string>(),
+}) => {
   if (!value || typeof value !== "object") return result
   if (Array.isArray(value)) {
     for (const item of value) scanRichTextCapabilities(item, result)
@@ -482,6 +488,9 @@ const scanRichTextCapabilities = (value: unknown, result = { blockquote: false, 
 
   const record = value as Record<string, unknown>
   if (record.t === "blockquote") result.blockquote = true
+  if (record.t === "list" && record.ordered === false) result.bulletList = true
+  if (record.t === "list" && record.ordered === true) result.orderedList = true
+  if (record.t === "divider") result.divider = true
   if (record.t === "themed" && typeof record.id === "string") result.themedNodeIds.add(record.id)
 
   for (const entry of Object.values(record)) scanRichTextCapabilities(entry, result)
@@ -494,6 +503,9 @@ const manifestCapabilitiesForSpec = (spec: SiteGenerationSpec): Pick<RtManifest,
     blockTypes: {
       ...DEFAULT_GENERATION_MANIFEST.blockTypes,
       ...(capabilities.blockquote ? { blockquote: true } : {}),
+      ...(capabilities.bulletList ? { bulletList: true } : {}),
+      ...(capabilities.orderedList ? { orderedList: true } : {}),
+      ...(capabilities.divider ? { divider: true } : {}),
     },
     ...(capabilities.themedNodeIds.size > 0
       ? {

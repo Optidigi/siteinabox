@@ -206,6 +206,17 @@ describe("applySiteGenerationSpec", () => {
                       },
                     ],
                   },
+                  {
+                    t: "list",
+                    ordered: false,
+                    items: [{ t: "listItem", children: [{ t: "paragraph", children: [{ t: "text", v: "Bullet" }] }] }],
+                  },
+                  {
+                    t: "list",
+                    ordered: true,
+                    items: [{ t: "listItem", children: [{ t: "paragraph", children: [{ t: "text", v: "Ordered" }] }] }],
+                  },
+                  { t: "divider" },
                 ],
               },
             },
@@ -216,6 +227,9 @@ describe("applySiteGenerationSpec", () => {
 
     expect(result.ok).toBe(true)
     expect(store.tenants[0]!.siteManifest.blockTypes.blockquote).toBe(true)
+    expect(store.tenants[0]!.siteManifest.blockTypes.bulletList).toBe(true)
+    expect(store.tenants[0]!.siteManifest.blockTypes.orderedList).toBe(true)
+    expect(store.tenants[0]!.siteManifest.blockTypes.divider).toBe(true)
     expect(store.tenants[0]!.siteManifest.themedNodes).toEqual([
       { id: "eyebrow", label: "Eyebrow", fields: [{ name: "text", type: "text", required: true }] },
     ])
