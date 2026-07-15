@@ -538,9 +538,11 @@ const isPayloadMediaId = (value: unknown): value is string | number =>
 
 type GeneratedMediaObject = Exclude<MediaRef, string | number | null>
 type MediaIdMap = Map<string, string | number>
+const MEDIA_REF_OBJECT_KEYS = new Set(["id", "url", "filename", "alt", "width", "height"])
 
 const mediaFilename = (value: unknown): string | undefined => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
+  if (Object.keys(value as Record<string, unknown>).some((key) => !MEDIA_REF_OBJECT_KEYS.has(key))) return undefined
   const filename = (value as { filename?: unknown }).filename
   if (typeof filename === "string" && filename.length > 0) return assertSafeMediaFilename(filename)
 
