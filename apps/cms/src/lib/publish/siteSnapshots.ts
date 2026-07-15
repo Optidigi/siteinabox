@@ -11,6 +11,7 @@ import {
   formatContractValidationIssues,
   schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
+import { resolveBlockVariant } from "@siteinabox/site-renderer"
 import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 import { pageToJson } from "@/lib/projection/pageToJson"
@@ -311,10 +312,15 @@ function buildManifest(
   }
 }
 
-function validatePublishedPageProviderBlocks(pages: Array<{ blocks: ContractPage["blocks"] }>) {
+export function validatePublishedPageBlockVariants(
+  pages: Array<{ blocks: ContractPage["blocks"] }>,
+  tenantSlug: string,
+) {
   const errors: string[] = []
   pages.forEach((page, pageIndex) => {
     page.blocks.forEach((block, blockIndex) => {
+      const resolved = resolveBlockVariant(block, { tenantSlug })
+      if (resolved.variant && !resolved.variant.startsWith("shadcnui-blocks.")) return
       for (const issue of validateProviderBlockInstance(block)) {
         errors.push(`pages.${pageIndex}.blocks.${blockIndex}.${issue.path.join(".")}: ${issue.message}`)
       }
@@ -350,7 +356,7 @@ export async function buildPublishedSiteSnapshot(
     status: "published" as const,
     updatedAt: page.updatedAt,
   }))
-  validatePublishedPageProviderBlocks(publishedPages)
+  validatePublishedPageBlockVariants(publishedPages, tenant.slug)
   const navPages = publishedPages.map((page) => ({ id: page.id ?? page.slug, slug: page.slug, title: page.title }))
   const projectedSettings = settingsToJson(
     settingsDoc,
@@ -594,7 +600,7 @@ export async function resolvePublishedSnapshotByHost(
     throw new Error(`Stored published site snapshot failed contract validation: ${formatContractValidationIssues(parsedSnapshot.error)}`)
   }
   const snapshot = parsedSnapshot.data
-  validatePublishedPageProviderBlocks(snapshot.pages)
+  validatePublishedPageBlockVariants(snapshot.pages, tenant.slug)
   if (normalizeRequestHost(snapshot.domain) !== normalizeRequestHost(tenant.domain)) return null
 
   return {

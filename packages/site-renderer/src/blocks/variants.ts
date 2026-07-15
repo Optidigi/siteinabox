@@ -1,8 +1,8 @@
 import {
-  SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
-  SITE_GENERATION_BLOCK_SLUGS,
+  SITE_BLOCK_CATALOG_BY_SLUG,
+  SITE_BLOCK_SLUGS,
   type SiteBlockCatalogVariant,
-  type SiteGenerationBlockSlug,
+  type SiteBlockSlug,
 } from "@siteinabox/contracts"
 
 type VariantResolvedBlock = {
@@ -20,15 +20,15 @@ export type BlockVariantResolveContext = {
   tenantSlug?: string | null
 }
 
-const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
+const blockSlugs = new Set<string>(SITE_BLOCK_SLUGS)
 
 function cleanVariant(value: string | null | undefined) {
   const variant = value?.trim()
   return variant ? variant : undefined
 }
 
-function isGenerationBlockSlug(blockType: string): blockType is SiteGenerationBlockSlug {
-  return generationBlockSlugs.has(blockType)
+function isBlockSlug(blockType: string): blockType is SiteBlockSlug {
+  return blockSlugs.has(blockType)
 }
 
 function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
@@ -58,9 +58,9 @@ export function resolveBlockVariant(
   block: VariantResolvedBlock,
   context: BlockVariantResolveContext = {},
 ): ResolvedBlockVariant {
-  if (!isGenerationBlockSlug(block.blockType)) return {}
+  if (!isBlockSlug(block.blockType)) return {}
 
-  const catalogEntry = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType]
+  const catalogEntry = SITE_BLOCK_CATALOG_BY_SLUG[block.blockType]
   const requestedVariant = cleanVariant(block.designVariant)
   if (requestedVariant) {
     const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
