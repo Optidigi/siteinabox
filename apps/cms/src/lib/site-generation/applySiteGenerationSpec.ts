@@ -602,15 +602,6 @@ const absoluteMediaUrl = (ref: GeneratedMediaObject): string | undefined => {
   return ref.url
 }
 
-const isMissingUploadFileError = (error: unknown): boolean => {
-  const value = error as { name?: unknown; message?: unknown; status?: unknown } | null
-  return (
-    value?.name === "MissingFile" ||
-    value?.message === "No files were uploaded." ||
-    (value?.status === 400 && typeof value?.message === "string" && value.message.includes("No files were uploaded"))
-  )
-}
-
 const withDownloadedMediaFile = async <T>(
   ref: GeneratedMediaObject,
   filename: string,
@@ -683,19 +674,13 @@ const upsertGeneratedMediaRefs = async (
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
       } as const
-      let created: unknown
-      try {
-        created = await payload.create(createArgs as any)
-      } catch (error) {
-        if (!isMissingUploadFileError(error)) throw error
-        created = await withDownloadedMediaFile(ref, filename, (filePath) =>
-          payload.create({
-            ...createArgs,
-            filePath,
-            overwriteExistingFiles: true,
-          } as any),
-        )
-      }
+      const created = await withDownloadedMediaFile(ref, filename, (filePath) =>
+        payload.create({
+          ...createArgs,
+          filePath,
+          overwriteExistingFiles: true,
+        } as any),
+      )
       ids.set(filename, (created as any).id)
     }
   }

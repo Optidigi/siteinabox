@@ -258,6 +258,9 @@ const createPayloadStub = () => {
 
 const installProviderFetch = () => {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    if (url.startsWith("https://www.siteinabox.nl/theme/images/") || url === "https://www.siteinabox.nl/og-default.png") {
+      return new Response(new Uint8Array([0x53, 0x49, 0x41, 0x42]), { status: 200 })
+    }
     if (url === "https://api.mollie.com/v2/customers") {
       return new Response(JSON.stringify({ id: "cst_flow_123", name: "Flow Demo", email: "demo@example.com" }), { status: 201 })
     }
