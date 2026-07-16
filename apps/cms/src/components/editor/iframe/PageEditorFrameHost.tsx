@@ -13,7 +13,7 @@ import {
 import { Button } from "@siteinabox/ui/components/button"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
-import type { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import type { ThemeTokenSpec } from "@siteinabox/contracts"
 import { findBlockIndexByWireId } from "@/lib/editor/ensureBlockIds"
 import { useTranslations } from "next-intl"
 
@@ -112,7 +112,7 @@ export function PageEditorFrameHost({
   pageId: string | number
   page: Page
   settings: SiteSettings
-  theme: ReturnType<typeof cmsThemeToRendererTheme>
+  theme: ThemeTokenSpec | null
   view: PageEditorFrameView
   layout?: PageEditorFrameLayout
   mobileMode?: PageEditorFrameMobileMode

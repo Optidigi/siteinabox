@@ -1,6 +1,5 @@
 import {
   SHADCNUI_BLOCK_VARIANTS,
-  SITE_BLOCK_MANIFEST_FROM_CATALOG,
   type GeneratedBlockSpec,
   type NormalizedIntake,
   type RtBlockRoot,
@@ -25,7 +24,7 @@ const PAGE_SECTION_VARIANTS = [
   ["hero-02", "features-02", "pricing-01", "timeline-01", "stats-02", "faq-01", "cta-02"],
   ["hero-03", "features-03", "timeline-02", "stats-03", "team-01", "testimonials-02", "cta-03"],
   ["hero-04", "logo-cloud-02", "carousel-block-01", "testimonials-03", "team-02", "blog-02", "cta-04"],
-  ["hero-05", "features-04", "pricing-02", "faq-02", "team-03", "contact-01", "cta-05"],
+  ["hero-05", "features-04", "pricing-02", "faq-02", "team-03", "contact-02", "cta-05"],
 ] as const
 
 const SMOKE_GALLERY_MEDIA = [
@@ -53,6 +52,13 @@ const active = (variant: ProviderBlockVariant, field: string) =>
 
 const optional = <T>(variant: ProviderBlockVariant, field: string, value: T) =>
   active(variant, field) ? { [field]: value } : {}
+
+const fitRepeated = <T>(variant: ProviderBlockVariant, field: string, values: T[]) => {
+  const slot = (variant.slots as Record<string, { minItems?: number; maxItems?: number }>)[field]
+  const fitted = values.slice(0, slot?.maxItems ?? values.length)
+  if (fitted.length < (slot?.minItems ?? 0)) throw new Error(`${variant.id} requires more ${field} fixture items.`)
+  return fitted
+}
 
 const variantLabel = (variant: ProviderBlockVariant) => variant.id.replace("shadcnui-blocks.", "")
 const pageHref = (pageIndex: number) => pageIndex === 0 ? "/" : `/${LANDING_PAGES[pageIndex]!.slug}`
@@ -98,12 +104,12 @@ function blockForVariant(
       return {
         ...base,
         blockType: "featureList",
-        features: [
+        features: fitRepeated(variant, "features", [
           { title: inline("Snel te scannen"), description: prose("Heldere hiërarchie op desktop en mobiel."), icon: "sparkles" },
           { title: inline("Tokenbewust"), description: prose("Semantische kleuren blijven leesbaar in licht en donker."), icon: "palette" },
           { title: inline("Contractgestuurd"), description: prose("Alle inhoud komt uit gevalideerde velden."), icon: "shield-check" },
           { title: inline("Responsief"), description: prose("Rasters, kaarten en tekst lopen gecontroleerd om."), icon: "panels-top-left" },
-        ],
+        ]),
         ...optional(variant, "eyebrow", inline(`Mogelijkheden · ${label}`)),
         ...optional(variant, "title", inline("Een complete basis voor iedere landingspagina")),
         ...optional(variant, "intro", prose("Vergelijk ritme, contrast, typografie en responsief gedrag binnen dezelfde tenantscope.")),
@@ -114,12 +120,12 @@ function blockForVariant(
         ...base,
         blockType: "testimonials",
         title: active(variant, "title") ? `Ervaringen met ${label}` : null,
-        items: [
+        items: fitRepeated(variant, "items", [
           { quote: "De pagina voelt rustig en blijft op ieder scherm overzichtelijk.", author: "Noor de Vries", role: "Product lead" },
           { quote: "De visuele hiërarchie maakt de belangrijkste actie direct duidelijk.", author: "Sam Jansen", role: "Ondernemer" },
           { quote: "Licht en donker sluiten zichtbaar op elkaar aan.", author: "Mila Smit", role: "Designer" },
           { quote: "Ook lange Nederlandse tekst blijft goed leesbaar.", author: "Daan Bakker", role: "Contentstrateeg" },
-        ],
+        ]),
       }
 
     case "faq":
@@ -165,6 +171,19 @@ function blockForVariant(
         ...optional(variant, "provider", { provider: "siab", action: "/api/forms", method: "POST" as const }),
       } as GeneratedBlockSpec
 
+    case "contactDetails":
+      return {
+        ...base,
+        blockType: "contactDetails",
+        items: [
+          { title: "E-mail", description: "Reactie binnen één werkdag", value: normalized.contact?.email ?? "hello@example.com", href: contactHref, icon: "mail" },
+          { title: "Telefoon", description: "Bereikbaar tijdens kantooruren", value: normalized.contact?.phone ?? "+31 20 000 0000", href: normalized.contact?.phone ? `tel:${normalized.contact.phone}` : null, icon: "phone" },
+          { title: "Werkgebied", description: "Op locatie en op afstand", value: normalized.serviceArea.join(", ") || "Nederland", icon: "map-pin" },
+        ],
+        ...optional(variant, "title", inline(`Contactmogelijkheden · ${label}`)),
+        ...optional(variant, "description", prose("Alle contactgegevens komen uit de normale tenantinstellingen en gevalideerde blokinhoud.")),
+      } as GeneratedBlockSpec
+
     case "pricing":
       return {
         ...base,
@@ -183,21 +202,22 @@ function blockForVariant(
       return {
         ...base,
         blockType: "stats",
-        items: [
+        items: fitRepeated(variant, "items", [
           { value: "148", label: "varianten", description: prose("Uit de vastgepinde publieke catalogus.") },
           { value: "132", label: "catalogusblokken", description: prose("Beschikbaar in de vastgepinde provider.") },
           { value: "16", label: "chromevarianten", description: prose("Voor banner, navigatie en footer.") },
           { value: "4×", label: "visuele modi", description: prose("Desktop en mobiel, licht en donker.") },
-        ],
+        ]),
         ...optional(variant, "title", inline(`Meetbare dekking · ${label}`)),
         ...optional(variant, "intro", prose("Getallen met verschillende lengtes maken uitlijning en tekstomloop zichtbaar.")),
       } as GeneratedBlockSpec
 
     case "logoCloud":
+      const logoSlot = (variant.slots as Record<string, { maxItems?: number }>).logos
       return {
         ...base,
         blockType: "logoCloud",
-        logos: ["Acme", "Northstar", "Lumen", "Vertex", "Harbor", "Orbit", "Pioneer", "Summit"].map((name, index) => ({
+        logos: ["Acme", "Northstar", "Lumen", "Vertex", "Harbor", "Orbit", "Pioneer", "Summit"].slice(0, logoSlot?.maxItems ?? 8).map((name, index) => ({
           name,
           href: index % 2 === 0 ? `/partners/${name.toLowerCase()}` : null,
         })),
@@ -221,24 +241,18 @@ function blockForVariant(
         ...optional(variant, "cta", { label: "Bekijk ervaringen", href: "/ervaringen" }),
       } as GeneratedBlockSpec
 
-    case "contentSection":
+    case "timeline":
       return {
         ...base,
-        blockType: "contentSection",
-        body: prose("Iedere stap gebruikt dezelfde semantische contracten, terwijl de letterlijke providerstructuur, bronklassen en responsieve regels behouden blijven."),
-        ...optional(variant, "eyebrow", inline(`Werkwijze · ${label}`)),
-        ...optional(variant, "title", inline("Van gevalideerde intake naar een controleerbare pagina")),
+        blockType: "timeline",
+        items: [
+          { title: "Intake", description: "Gestructureerde bedrijfs- en inhoudsgegevens.", label: "Stap 1", date: "Dag 1", tags: [{ value: "Content" }] },
+          { title: "Validatie", description: "Alleen goedgekeurde varianten en actieve slots.", label: "Stap 2", date: "Dag 2", tags: [{ value: "Contract" }] },
+          { title: "Voorbeeld", description: "Dezelfde renderer in canvas, preview en publiek.", label: "Stap 3", date: "Dag 3", tags: [{ value: "UI" }] },
+          { title: "Publicatie", description: "Een expliciet gecontroleerde snapshot.", label: "Stap 4", date: "Dag 4", tags: [{ value: "Live" }] },
+        ],
+        ...optional(variant, "title", inline(`Werkwijze · ${label}`)),
         ...optional(variant, "intro", prose("Deze tijdlijn controleert lange tekst, herhaalde stappen en de verticale pagina-opbouw.")),
-        ...optional(variant, "features", [
-          { title: inline("Intake"), description: prose("Gestructureerde bedrijfs- en inhoudsgegevens.") },
-          { title: inline("Validatie"), description: prose("Alleen goedgekeurde varianten en slots.") },
-          { title: inline("Voorbeeld"), description: prose("Dezelfde renderer in canvas, preview en publiek.") },
-          { title: inline("Publicatie"), description: prose("Een expliciet gecontroleerde snapshot.") },
-        ]),
-        ...optional(variant, "bridge", prose("Eén manifest verbindt de catalogus met ieder runtime-oppervlak.")),
-        ...optional(variant, "secondaryTitle", inline("Waarom dit betrouwbaar blijft")),
-        ...optional(variant, "secondaryBody", prose("Onbekende varianten falen gesloten en de fixture gebruikt geen willekeurige broncode.")),
-        ...optional(variant, "cta", { label: "Bekijk de werkwijze", href: "/werkwijze" }),
       } as GeneratedBlockSpec
 
     case "team":
@@ -299,6 +313,8 @@ export function loadMockSiteGenerationSpec(
     ? normalized.goals.join(". ")
     : `Een heldere website voor ${normalized.businessName}.`
   const nav = LANDING_PAGES.map((page, index) => ({ label: page.title, href: pageHref(index) }))
+  const pages = smokeTestPages(normalized)
+  const blocks = [...new Set(pages.flatMap((page) => page.blocks.map((block) => block.blockType)))].map((slug) => ({ slug, label: slug }))
 
   return {
     schemaVersion: 1,
@@ -310,11 +326,10 @@ export function loadMockSiteGenerationSpec(
       status: "provisioning",
     },
     theme: {
-      version: 2,
+      version: 3,
       appearance: { mode: "system" },
       colors: { schemeId: "blue-professional" },
       fonts: { schemeId: "clear-modern" },
-      density: { schemeId: "comfortable" },
       shape: { schemeId: "soft" },
     },
     settings: {
@@ -358,6 +373,7 @@ export function loadMockSiteGenerationSpec(
           dismissible: true,
         },
       },
+      systemTemplates: { notFound: { variant: "shadcnui-blocks.not-found-08" } },
       navHeader: nav,
       navFooter: nav,
       contact: {
@@ -369,8 +385,8 @@ export function loadMockSiteGenerationSpec(
       },
       serviceArea: normalized.serviceArea.map((name) => ({ name })),
     },
-    pages: smokeTestPages(normalized),
-    blocks: SITE_BLOCK_MANIFEST_FROM_CATALOG,
+    pages,
+    blocks,
     assets: [...SMOKE_GALLERY_MEDIA],
     generatedAt: new Date().toISOString(),
     generator: {

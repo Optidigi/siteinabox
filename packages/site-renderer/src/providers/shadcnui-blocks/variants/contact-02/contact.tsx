@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { MailIcon, MapPinIcon, MessageCircle, PhoneIcon } from "lucide-react";
 import Link from "../../runtime/link";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -20,13 +21,13 @@ const Contact = () => (
       <b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
         Contact Us
       </b>
-      <h2 className="mt-3 font-medium text-4xl tracking-[-0.035em]">
+      <h2 className="mt-3 font-medium text-4xl tracking-[-0.035em]"><ProviderField field="title" fallback={<>
         Chat with our friendly team!
-      </h2>
-      <p className="mt-3 text-lg text-muted-foreground md:text-xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-lg text-muted-foreground md:text-xl"><ProviderField field="description" fallback={<>
         We&apos;d love to hear from you. Please fill out this form or shoot us
         an email.
-      </p>
+      </>} inline /></p>
       <div className="mt-16 flex flex-col gap-16 md:gap-10 lg:flex-row">
         <div className="grid w-full max-w-3xl grid-cols-1 gap-1 rounded-xl border bg-muted p-1 *:rounded-lg *:border *:bg-background *:p-6 sm:grid-cols-2 lg:col-span-2 dark:*:border-foreground/20">
           <div>
@@ -146,9 +147,9 @@ const Contact = () => (
                     </Label>
                   </div>
                 </div>
-                <Button className="mt-6 w-full" size="lg">
+                <ProviderDemoOnly fallback={<><Button className="mt-6 w-full" size="lg">
                   Submit
-                </Button>
+                </Button></>} />
               </form>
             </CardContent>
           </Card>

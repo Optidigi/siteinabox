@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 
 describe("theme presets", () => {
   it("exposes exactly the fixed toolbar presets", () => {
@@ -19,11 +19,6 @@ describe("theme presets", () => {
       ["soft", "Soft"],
       ["sharp", "Sharp"],
     ])
-    expect(DENSITY_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
-      ["spacious", "Spacious"],
-      ["comfortable", "Comfortable"],
-      ["compact", "Compact"],
-    ])
   })
 
   it("does not expose generated or custom presets", () => {
@@ -31,7 +26,6 @@ describe("theme presets", () => {
       ...FONT_PRESETS,
       ...PALETTE_PRESETS,
       ...RADIUS_PRESETS,
-      ...DENSITY_PRESETS,
     ].map((preset) => preset.label)
     expect(labels).not.toContain("Generated Style")
     expect(labels.join(" ").toLowerCase()).not.toContain("generated")

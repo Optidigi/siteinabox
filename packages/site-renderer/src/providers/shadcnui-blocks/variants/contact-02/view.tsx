@@ -1,4 +1,6 @@
 import * as React from "react"
-import Literal from "./literal"
-import { LiteralProviderVariantView, type ProviderBlockViewModel } from "../../runtime/literal-view"
-export default function View({ model }: { model: ProviderBlockViewModel }) { return <LiteralProviderVariantView Literal={Literal} model={model} variant="shadcnui-blocks.contact-02" /> }
+import type { Block } from "@siteinabox/contracts"
+import type { BlockRenderOptions } from "../../../../blocks/types"
+import { ShadcnUiContactView } from "../../contact-views"
+type VariantBlock = Extract<Block, { blockType: "contactSection" }>
+export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiContactView block={block} options={options} variant="shadcnui-blocks.contact-02" /> }

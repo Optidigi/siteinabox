@@ -1,11 +1,10 @@
 import {
   COLOR_SCHEME_PRESETS,
-  DENSITY_SCHEME_PRESETS,
   FONT_SCHEME_PRESETS,
   SHAPE_SCHEME_PRESETS,
 } from "@siteinabox/contracts"
 import { colorSchemes, fontSchemes } from "@siteinabox/site-renderer/theme/resolve"
-import type { ColorSchemeId, DensitySchemeId, FontSchemeId, ShapeSchemeId } from "@siteinabox/contracts"
+import type { ColorSchemeId, FontSchemeId, ShapeSchemeId } from "@siteinabox/contracts"
 
 export type ColorPreset = {
   id: ColorSchemeId
@@ -26,12 +25,6 @@ export type ShapePreset = {
   id: ShapeSchemeId
   label: string
   icon: "square" | "squircle" | "circle"
-}
-
-export type DensityPreset = {
-  id: DensitySchemeId
-  label: string
-  icon?: "space-around" | "rows" | "compact"
 }
 
 export const PALETTE_PRESETS: ColorPreset[] = COLOR_SCHEME_PRESETS.map((preset) => {
@@ -56,17 +49,4 @@ export const RADIUS_PRESETS: ShapePreset[] = SHAPE_SCHEME_PRESETS.map((preset) =
   id: preset.id,
   label: preset.label,
   icon: preset.id === "sharp" ? "square" : preset.id === "rounded" ? "circle" : "squircle",
-}))
-
-export const DENSITY_PRESETS: DensityPreset[] = DENSITY_SCHEME_PRESETS.map((preset) => ({
-  id: preset.id,
-  label: preset.label,
-  icon:
-    preset.id === "spacious"
-      ? "space-around"
-      : preset.id === "comfortable"
-        ? "rows"
-        : preset.id === "compact"
-          ? "compact"
-          : undefined,
 }))

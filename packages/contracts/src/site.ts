@@ -1,4 +1,5 @@
 import type { RtRoot } from "./rich-text"
+import type { ShadcnUiSystemTemplateId } from "./generated/shadcnui-blocks"
 
 export const SITE_BLOCK_SLUGS = [
   "hero",
@@ -8,6 +9,7 @@ export const SITE_BLOCK_SLUGS = [
   "cta",
   "richText",
   "contactSection",
+  "contactDetails",
   "pricing",
   "stats",
   "logoCloud",
@@ -16,6 +18,7 @@ export const SITE_BLOCK_SLUGS = [
   "newsletter",
   "bentoGrid",
   "contentSection",
+  "timeline",
   "blogCards",
 ] as const
 
@@ -32,11 +35,13 @@ export const SITE_GENERATION_BLOCK_SLUGS = [
   "faq",
   "cta",
   "contactSection",
+  "contactDetails",
   "pricing",
   "stats",
   "logoCloud",
   "gallery",
   "contentSection",
+  "timeline",
   "team",
   "blogCards",
 ] as const
@@ -119,6 +124,8 @@ export type HeroBlock = BlockInstanceBase & {
     value: string
     label: string
   }> | null
+  trustLabel?: string | null
+  logos?: Array<{ name: string; image?: MediaRef; href?: string | null }> | null
 }
 
 export type FeatureListBlock = BlockInstanceBase & {
@@ -131,12 +138,17 @@ export type FeatureListBlock = BlockInstanceBase & {
     title: RtRoot
     description?: RtRoot | null
     icon?: string | null
+    image?: MediaRef
+    cta?: LinkRef | null
+    metricValue?: string | null
+    metricLabel?: string | null
   }>
 }
 
 export type TestimonialsBlock = BlockInstanceBase & {
   blockType: "testimonials"
   title?: string | null
+  intro?: string | null
   logo?: MediaRef
   items: Array<{
     quote: string
@@ -149,6 +161,7 @@ export type TestimonialsBlock = BlockInstanceBase & {
 export type FAQBlock = BlockInstanceBase & {
   blockType: "faq"
   title?: RtRoot | null
+  intro?: RtRoot | null
   items: Array<{ question: RtRoot; answer: RtRoot }>
 }
 
@@ -183,6 +196,19 @@ export type ContactSectionBlock = BlockInstanceBase & {
     options?: Array<{ label: string; value: string }> | null
   }>
   provider?: FormProviderConfig | null
+}
+
+export type ContactDetailsBlock = BlockInstanceBase & {
+  blockType: "contactDetails"
+  title?: RtRoot | null
+  description?: RtRoot | null
+  items: Array<{
+    title: string
+    description?: string | null
+    value: string
+    href?: string | null
+    icon?: string | null
+  }>
 }
 
 export type NewsletterBlock = BlockInstanceBase & {
@@ -235,9 +261,11 @@ export type LogoCloudBlock = BlockInstanceBase & {
   intro?: RtRoot | null
   logos: Array<{
     name: string
+    description?: string | null
     image?: MediaRef
     href?: string | null
   }>
+  cta?: LinkRef | null
 }
 
 export type GalleryBlock = BlockInstanceBase & {
@@ -283,6 +311,19 @@ export type ContentSectionBlock = BlockInstanceBase & {
   cta?: LinkRef | null
 }
 
+export type TimelineBlock = BlockInstanceBase & {
+  blockType: "timeline"
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: Array<{
+    title: string
+    description?: string | null
+    label?: string | null
+    date?: string | null
+    tags?: Array<{ value: string }> | null
+  }>
+}
+
 export type TeamBlock = BlockInstanceBase & {
   blockType: "team"
   title?: RtRoot | null
@@ -310,6 +351,8 @@ export type BlogCardsBlock = BlockInstanceBase & {
     authorRole?: string | null
     cta?: LinkRef | null
   }>
+  cta?: LinkRef | null
+  secondary?: LinkRef | null
 }
 
 export type Block =
@@ -320,6 +363,7 @@ export type Block =
   | CTABlock
   | RichTextBlock
   | ContactSectionBlock
+  | ContactDetailsBlock
   | NewsletterBlock
   | PricingBlock
   | StatsBlock
@@ -327,6 +371,7 @@ export type Block =
   | GalleryBlock
   | BentoGridBlock
   | ContentSectionBlock
+  | TimelineBlock
   | TeamBlock
   | BlogCardsBlock
 
@@ -503,9 +548,13 @@ export type SiteSettings = {
     } | null
     banner?: SiteChromeBanner | null
   } | null
+  systemTemplates?: {
+    notFound?: { variant?: ShadcnUiSystemTemplateId | null } | null
+  } | null
   maintenance?: {
     enabled?: boolean | null
     message?: string | null
+    variant?: SiteBannerChromeVariant | null
   } | null
   contact?: {
     phone?: string | null

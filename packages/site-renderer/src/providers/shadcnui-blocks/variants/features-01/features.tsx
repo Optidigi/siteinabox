@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Blocks,
   Bot,
@@ -50,14 +51,14 @@ const features = [
 const Features = () => {
   return (
     <div className="px-6 py-20">
-      <h2 className="mx-auto max-w-3xl text-center font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem]">
+      <h2 className="mx-auto max-w-3xl text-center font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Ready out of the box
-      </h2>
-      <p className="mt-3 text-pretty text-center text-lg text-muted-foreground tracking-[-0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-pretty text-center text-lg text-muted-foreground tracking-[-0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         Simple, customizable, and easy to drop into your workflow
-      </p>
+      </>} inline /></p>
       <div className="mx-auto mt-10 grid max-w-(--breakpoint-lg) gap-6 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature) => (
+        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature) => (
           <div
             className="flex flex-col rounded-xl border bg-card p-6"
             key={feature.title}
@@ -70,7 +71,7 @@ const Features = () => {
               {feature.description}
             </p>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

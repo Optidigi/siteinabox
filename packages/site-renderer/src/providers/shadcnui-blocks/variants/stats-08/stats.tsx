@@ -1,43 +1,44 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 const Stats = () => {
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="mx-auto max-w-(--breakpoint-xl) py-12 text-center">
-        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
           Why Should You Choose Us?
-        </h2>
-        <p className="mt-3.5 text-muted-foreground text-xl md:text-2xl">
+        </>} inline /></h2>
+        <p className="mt-3.5 text-muted-foreground text-xl md:text-2xl"><ProviderField field="intro" fallback={<>
           Because after switching to us...
-        </p>
+        </>} inline /></p>
 
         <div className="px-6">
           <div className="mx-auto mt-16 grid max-w-5xl justify-center gap-x-8 gap-y-8 sm:mt-24 sm:grid-cols-2 lg:grid-cols-3">
             <div className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5">
               <Shape1 className="size-14" />
-              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground">
+              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground"><ProviderItemField field="items" index={0} subField="value" fallback={<>
                 96%
-              </span>
-              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80">
+              </>} /></span>
+              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80"><ProviderItemField field="items" index={0} subField="label" fallback={<>
                 of customers say they have a better brand experience
-              </p>
+              </>} /></p>
             </div>
             <div className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5">
               <Shape2 className="size-14" />
-              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground">
+              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground"><ProviderItemField field="items" index={1} subField="value" fallback={<>
                 95%
-              </span>
-              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80">
+              </>} /></span>
+              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80"><ProviderItemField field="items" index={1} subField="label" fallback={<>
                 of customers say they gather more data, more easily
-              </p>
+              </>} /></p>
             </div>
             <div className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5">
               <Shape3 className="size-14" />
-              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground">
+              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground"><ProviderItemField field="items" index={2} subField="value" fallback={<>
                 87%
-              </span>
-              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80">
+              </>} /></span>
+              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80"><ProviderItemField field="items" index={2} subField="label" fallback={<>
                 of customers say they reveal deeper insights from data
-              </p>
+              </>} /></p>
             </div>
           </div>
         </div>

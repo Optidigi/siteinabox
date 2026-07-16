@@ -180,7 +180,6 @@ const buildIntakeBriefFromRich = (raw: RawIntakeSubmission): IntakeBrief => {
       colorSchemeId: themeColorHint(cleanText(raw.visual.color.sourceValue)),
       fontSchemeId: themeFontHint(raw.visual.typography),
       shapeSchemeId: themeShapeHint(raw.visual.shape),
-      densitySchemeId: "comfortable",
       ...(raw.visual.shape ? { shape: raw.visual.shape } : {}),
       ...(raw.visual.typography ? { typography: raw.visual.typography } : {}),
     },

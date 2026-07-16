@@ -1,16 +1,17 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import Image from "../../runtime/image";
 export default function Integrations() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col px-6 py-12 sm:py-14">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Easy integrations
-      </h2>
-      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         Connect your favorite tools and services to your account
-      </p>
+      </>} inline /></p>
       <div className="mt-12 grid grid-cols-1 gap-6 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
-        {integrations.map((integration) => (
+        {<ProviderItems field="logos" templates={integrations}>{(providerItems) => providerItems.map((integration) => (
           <div
             className="relative flex flex-col items-start border bg-card p-8"
             key={integration.title}
@@ -31,7 +32,7 @@ export default function Integrations() {
               {integration.description}
             </p>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

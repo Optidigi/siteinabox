@@ -1,5 +1,6 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { NeuroNoise } from "@paper-design/shaders-react";
 import { ArrowUpRight } from "lucide-react";
 import { useTheme } from "../../runtime/theme";
@@ -33,20 +34,16 @@ const CTA = () => {
         />
 
         <div className="relative isolate">
-          <h2 className="text-balance font-medium text-4xl text-foreground tracking-[-0.04em] md:leading-tight lg:text-[2.75rem]">
+          <h2 className="text-balance font-medium text-4xl text-foreground tracking-[-0.04em] md:leading-tight lg:text-[2.75rem]"><ProviderField field="headline" fallback={<>
             Experience the difference
-          </h2>
-          <p className="mt-4 text-balance text-muted-foreground text-xl/normal md:mt-2.5 lg:text-[1.4rem]/normal">
+          </>} inline /></h2>
+          <p className="mt-4 text-balance text-muted-foreground text-xl/normal md:mt-2.5 lg:text-[1.4rem]/normal"><ProviderField field="description" fallback={<>
             Join thousands of developers using our premium component library to
             ship beautiful UIs in minutes, not hours.
-          </p>
+          </>} inline /></p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <Button size="lg">
-              Get Started <ArrowUpRight />
-            </Button>
-            <Button size="lg" variant="outline">
-              View Components
-            </Button>
+            <Button size="lg" asChild><ProviderAction field="primary" fallback={"Get Started"} decoration="after"><ArrowUpRight /></ProviderAction></Button>
+            <Button size="lg" variant="outline" asChild><ProviderAction field="secondary" fallback={"View Components"} decoration="after"></ProviderAction></Button>
           </div>
         </div>
       </div>

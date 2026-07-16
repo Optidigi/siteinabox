@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Logo01,
   Logo02,
@@ -12,9 +13,9 @@ import { cn } from "@siteinabox/ui/lib/utils";
 const LogoCloud = () => {
   return (
     <div className="px-6 py-12 sm:px-12">
-      <p className="text-balance text-center font-medium text-foreground/80 text-lg">
+      <p className="text-balance text-center font-medium text-foreground/80 text-lg"><ProviderField field="title" fallback={<>
         Trusted by teams and companies around the world
-      </p>
+      </>} inline /></p>
       <div className="relative mx-auto mt-10 max-w-4xl">
         <div
           className={cn(
@@ -23,22 +24,22 @@ const LogoCloud = () => {
           )}
         >
           <div className="flex w-full items-center justify-center px-3 py-7">
-            <Logo01 className="h-7 sm:h-8" />
+            <ProviderLogo field="logos" index={0} fallback={<Logo01 className="h-7 sm:h-8" />} />
           </div>
           <div className="flex w-full items-center justify-center px-3 py-7">
-            <Logo02 className="h-7 sm:h-8" />
+            <ProviderLogo field="logos" index={1} fallback={<Logo02 className="h-7 sm:h-8" />} />
           </div>
           <div className="flex w-full items-center justify-center px-3 py-7">
-            <Logo03 className="h-7 sm:h-8" />
+            <ProviderLogo field="logos" index={2} fallback={<Logo03 className="h-7 sm:h-8" />} />
           </div>
           <div className="flex w-full items-center justify-center px-3 py-7">
-            <Logo04 className="h-7 sm:h-8" />
+            <ProviderLogo field="logos" index={3} fallback={<Logo04 className="h-7 sm:h-8" />} />
           </div>
           <div className="flex w-full items-center justify-center px-3 py-7">
-            <Logo05 className="h-7 sm:h-8" />
+            <ProviderLogo field="logos" index={4} fallback={<Logo05 className="h-7 sm:h-8" />} />
           </div>
           <div className="flex w-full items-center justify-center px-3 py-7">
-            <Logo06 className="h-7 sm:h-8" />
+            <ProviderLogo field="logos" index={5} fallback={<Logo06 className="h-7 sm:h-8" />} />
           </div>
         </div>
 

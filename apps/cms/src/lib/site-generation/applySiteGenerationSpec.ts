@@ -18,7 +18,7 @@ import {
   OfficialTenantSiteGenerationSpecSchema,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
-import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
+import { validateProviderBlockInstance } from "@siteinabox/contracts"
 import {
   SITE_CHROME_CATALOG,
   SITE_BLOCK_CATALOG_BY_SLUG,
@@ -317,7 +317,15 @@ export const validateSiteGenerationSpecForCms = (
         ))
         return
       }
-      if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
+      const rawBlock = block as Record<string, unknown>
+      const rawMetadata = rawBlock.metadata && typeof rawBlock.metadata === "object" && !Array.isArray(rawBlock.metadata)
+        ? rawBlock.metadata as Record<string, unknown>
+        : null
+      const approvedSystemBlock = options.allowSystemPages === true
+        && blockType === "contentSection"
+        && rawBlock.designVariant === "shadcnui-blocks.legal-content-01"
+        && rawMetadata?.systemRole === "tenant-privacy"
+      if (validationScope === "self-serve" && !approvedSystemBlock && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(blockType)) {
         issues.push(issue(
           "unsupported_self_serve_block_type",
           `Generated block type "${blockType}" does not have an approved self-serve source-backed design variant.`,
@@ -350,7 +358,7 @@ export const validateSiteGenerationSpecForCms = (
         ))
       }
       const variant = (block as Record<string, unknown>).designVariant
-      if (typeof variant === "string" && variant && !supportsBlockVariant(blockType, variant)) {
+      if (typeof variant === "string" && variant && !approvedSystemBlock && !supportsBlockVariant(blockType, variant)) {
         issues.push(issue(
           "unsupported_block_variant",
           `Generated block designVariant "${variant}" is not approved for block type "${blockType}".`,
@@ -416,7 +424,14 @@ export const validateSiteGenerationSpecForCms = (
     if (!supportedBlockSlugs.has(block.slug)) {
       issues.push(issue("unsupported_manifest_block_slug", `Generated manifest block slug "${String(block.slug)}" is not supported.`, ["blocks", index, "slug"]))
     }
-    if (validationScope === "self-serve" && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
+    const approvedSystemManifestBlock = options.allowSystemPages === true
+      && block.slug === "contentSection"
+      && pagesArray?.some((page) => page?.blocks?.some((pageBlock) =>
+        pageBlock.blockType === "contentSection"
+        && pageBlock.designVariant === "shadcnui-blocks.legal-content-01"
+        && pageBlock.metadata?.systemRole === "tenant-privacy",
+      ))
+    if (validationScope === "self-serve" && !approvedSystemManifestBlock && !SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS.has(block.slug)) {
       issues.push(issue(
         "unsupported_self_serve_manifest_block_slug",
         `Generated manifest block slug "${String(block.slug)}" does not have an approved self-serve source-backed design variant.`,
@@ -895,6 +910,7 @@ const normalizeSettingsData = (
           : undefined,
       }
     : undefined,
+  systemTemplates: settings.systemTemplates,
   maintenance: settings.maintenance,
   contact: settings.contact,
   nap: settings.nap,

@@ -10,7 +10,7 @@ import { sameRelationshipId } from "@/lib/relationshipId"
 import { loadTenantCss } from "@/lib/editor/loadTenantCss"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { verifyPreviewToken, type PreviewClaims } from "@/lib/preview/sign"
 import { loadPreviewGrantContext } from "@/lib/preview/previewAccess"
 import { DEFAULT_MANIFEST } from "@/lib/richText/loadManifest"
@@ -201,7 +201,7 @@ export async function getPreviewCustomizerData(
     settings,
     manifest,
     theme,
-    rendererTheme: cmsThemeToRendererTheme(theme),
+    rendererTheme: normalizeThemeForSave(theme),
     tenantCss,
     approval: (run?.clientApproval as PreviewApprovalState | null | undefined) ?? null,
     payment: (run?.payment as PreviewPaymentState | null | undefined) ?? null,
@@ -260,7 +260,7 @@ export async function getPreviewCustomizerDataForGrant(input: {
     settings,
     manifest,
     theme,
-    rendererTheme: cmsThemeToRendererTheme(theme),
+    rendererTheme: normalizeThemeForSave(theme),
     tenantCss,
     approval: (run.clientApproval as PreviewApprovalState | null | undefined) ?? null,
     payment: (run.payment as PreviewPaymentState | null | undefined) ?? null,

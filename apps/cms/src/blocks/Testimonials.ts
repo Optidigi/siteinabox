@@ -9,6 +9,7 @@ export const Testimonials: BlockWithMeta = {
   interfaceName: "TestimonialsBlock",
   fields: [
     { name: "title", type: "text" },
+    { name: "intro", type: "textarea" },
     {
       name: "logo",
       type: "upload",

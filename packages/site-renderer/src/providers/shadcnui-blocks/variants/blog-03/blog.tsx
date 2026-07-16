@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   BadgeDollarSign,
   Bike,
@@ -24,7 +25,7 @@ const blogPosts = [
     readTime: "5 min read",
     date: "Nov 20, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:3bf03",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:3bf03",
   },
   {
     category: "Business",
@@ -34,7 +35,7 @@ const blogPosts = [
     readTime: "8 min read",
     date: "Nov 18, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:2fa0b",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2fa0b",
   },
   {
     category: "Finance",
@@ -44,7 +45,7 @@ const blogPosts = [
     readTime: "6 min read",
     date: "Nov 15, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:5b9d1",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5b9d1",
   },
   {
     category: "Health",
@@ -54,7 +55,7 @@ const blogPosts = [
     readTime: "10 min read",
     date: "Nov 12, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:5f7e8",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5f7e8",
   },
   {
     category: "Lifestyle",
@@ -64,7 +65,7 @@ const blogPosts = [
     readTime: "12 min read",
     date: "Nov 10, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:d11ce",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:d11ce",
   },
   {
     category: "Politics",
@@ -74,7 +75,7 @@ const blogPosts = [
     readTime: "7 min read",
     date: "Nov 8, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:2dcd5",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2dcd5",
   },
   {
     category: "Science",
@@ -84,7 +85,7 @@ const blogPosts = [
     readTime: "9 min read",
     date: "Nov 5, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:0ac53",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:0ac53",
   },
   {
     category: "Sports",
@@ -94,7 +95,7 @@ const blogPosts = [
     readTime: "11 min read",
     date: "Nov 2, 2024",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:dfcf6",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:dfcf6",
   },
 ];
 
@@ -146,7 +147,7 @@ const Blog = () => {
     <div className="mx-auto flex max-w-(--breakpoint-xl) flex-col items-start gap-12 px-6 py-10 lg:flex-row lg:py-16 xl:px-0">
       <div>
         <div className="space-y-12">
-          {blogPosts.map((post) => (
+          {<ProviderItems field="posts" templates={blogPosts}>{(providerItems) => providerItems.map((post) => (
             <Card
               className="flex flex-col overflow-hidden rounded-md border-none bg-background py-0 shadow-none sm:flex-row sm:items-center"
               key={post.title}
@@ -183,11 +184,11 @@ const Blog = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          ))}</ProviderItems>}
         </div>
       </div>
       <aside className="sticky top-8 w-full shrink-0 lg:max-w-sm">
-        <h3 className="font-medium text-xl tracking-tight">Categories</h3>
+        <h3 className="font-medium text-xl tracking-tight"><ProviderField field="title" fallback={<>Categories</>} inline /></h3>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
           {categories.map((category) => (
             <div

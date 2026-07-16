@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   CircleDollarSign,
   Clock,
@@ -83,15 +84,15 @@ export default function FAQ() {
   return (
     <div>
       <div className="px-6 py-20 text-center">
-        <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+        <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
           Frequently Asked Questions
-        </h2>
-        <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+        </>} inline /></h2>
+        <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]"><ProviderField field="intro" fallback={<>
           Find answers to common questions about our products and services
-        </p>
+        </>} inline /></p>
 
         <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 sm:mt-16 md:grid-cols-2">
-          {faqs.map((faq, index) => (
+          {<ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
             <div
               className={cn(
                 "relative -ms-px -mt-px overflow-hidden border bg-card p-6 text-start",
@@ -157,7 +158,7 @@ export default function FAQ() {
                 }}
               />
             </div>
-          ))}
+          ))}</ProviderItems>}
         </div>
       </div>
     </div>

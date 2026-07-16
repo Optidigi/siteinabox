@@ -7,8 +7,8 @@ import { SiteBanner, SiteFooter, SiteHeader, SiteMaintenanceBanner } from "./chr
 import { AmicarePageRenderer, type AmicareRenderBlock, type AmicareRenderChrome } from "./tenant-renderers/amicare/AmicarePage"
 import { resolveTenantRenderer } from "./tenant-renderers/resolve"
 import type { MediaResolver } from "./media"
-import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "./theme"
-import { getProviderBlockDefinition } from "./source-blocks/registry"
+import { PUBLIC_RENDERER_THEME_SCOPE, ThemeCanvas, ThemeStyle } from "./theme"
+import { getProviderBlockVariant } from "@siteinabox/contracts"
 
 export type SiteRenderBlocks = (args: {
   blocks: Page["blocks"]
@@ -95,8 +95,8 @@ export function SitePageRenderer({
     />
   ))
   const firstBlock = page.blocks[0]
-  const firstDefinition = firstBlock ? getProviderBlockDefinition(firstBlock) : null
-  const embedsNavigation = firstDefinition?.composition.suppressesChromeAreas.includes("header") ?? false
+  const firstVariant = firstBlock ? getProviderBlockVariant(firstBlock) : null
+  const embedsNavigation = firstVariant?.composition.suppressesChromeAreas.some((area) => area === "header") ?? false
   const headerChrome = embedsNavigation ? null : (header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />)
   const bannerChrome = <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
   const maintenanceChrome = <SiteMaintenanceBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
@@ -105,17 +105,17 @@ export function SitePageRenderer({
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
-      <div
+      <ThemeCanvas
+        theme={theme}
         {...canvasAttributes}
         className={cn("rt-canvas w-full", canvasClassName)}
-        data-rt-mode={themeMode(theme)}
         data-page-slug={page.slug}
       >
         <div className="site-frame-root">
           {renderedBody}
           {footer ?? <SiteFooter settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />}
         </div>
-      </div>
+      </ThemeCanvas>
     </div>
   )
 }

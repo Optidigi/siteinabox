@@ -1,5 +1,5 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
 import { useTheme } from "../../runtime/theme";
 import DotPattern from "./dot-pattern";
 import Particles from "./particles";

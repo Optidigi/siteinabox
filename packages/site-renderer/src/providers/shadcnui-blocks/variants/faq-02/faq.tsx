@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Accordion,
   AccordionContent,
@@ -38,12 +39,12 @@ const FAQ = () => {
   return (
     <div className="px-6 py-20">
       <div className="flex flex-col items-start justify-center gap-x-12 gap-y-6 md:flex-row">
-        <h2 className="font-medium text-4xl/snug tracking-[-0.04em] lg:text-[2.75rem]/snug">
+        <h2 className="font-medium text-4xl/snug tracking-[-0.04em] lg:text-[2.75rem]/snug"><ProviderField field="title" fallback={<>
           Frequently Asked <br /> Questions
-        </h2>
+        </>} inline /></h2>
 
         <Accordion className="max-w-xl" defaultValue="question-0" type="single">
-          {faq.map(({ question, answer }, index) => (
+          {<ProviderItems field="items" templates={faq}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
             <AccordionItem key={question} value={`question-${index}`}>
               <AccordionTrigger className="text-left text-lg">
                 {question}
@@ -52,7 +53,7 @@ const FAQ = () => {
                 {answer}
               </AccordionContent>
             </AccordionItem>
-          ))}
+          ))}</ProviderItems>}
         </Accordion>
       </div>
     </div>

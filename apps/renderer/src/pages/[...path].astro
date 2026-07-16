@@ -4,9 +4,12 @@ import { renderToStaticMarkup } from "react-dom/server"
 import {
   SitePageRenderer,
   buildPageSeoMetadata,
+  COLOR_MODE_BOOTSTRAP_SCRIPT,
   createRendererMediaResolver,
   DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID,
   getProviderSystemTemplateRenderer,
+  themeMode,
+  themePreference,
 } from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { findPublishedPage, loadPublishedSnapshot, normalizeRequestHost, pagePath } from "../lib/snapshot"
@@ -23,12 +26,13 @@ const resolved = snapshot && page
       pathname: pagePath(page),
     }
   : null
+const notFoundTemplateId = snapshot?.settings.systemTemplates?.notFound?.variant ?? DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID
 const SystemNotFoundTemplate = snapshot && !page
-  ? getProviderSystemTemplateRenderer("notFound", DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID)
+  ? getProviderSystemTemplateRenderer("notFound", notFoundTemplateId)
   : null
 
 if (snapshot && !page && !SystemNotFoundTemplate) {
-  throw new Error(`Unresolved provider system template "${DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID}" for notFound.`)
+  throw new Error(`Unresolved provider system template "${notFoundTemplateId}" for notFound.`)
 }
 
 if (!resolved) {
@@ -78,15 +82,19 @@ const faviconHref =
   resolved
     ? mediaHref(resolved.snapshot.settings.branding?.favicon)
     : null
+const configuredThemeMode = themePreference(snapshot?.theme)
+const initialColorMode = themeMode(snapshot?.theme)
 ---
 
 <!doctype html>
 {
   resolved && seo ? (
-    <html lang={resolved.snapshot.settings.language} data-renderer-schema={resolved.snapshot.schemaVersion}>
+    <html lang={resolved.snapshot.settings.language} data-renderer-schema={resolved.snapshot.schemaVersion} data-siab-theme-mode={configuredThemeMode} data-siab-color-mode={initialColorMode} data-rt-mode={initialColorMode}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
+        <script is:inline set:html={COLOR_MODE_BOOTSTRAP_SCRIPT} />
         <meta name="generator" content={Astro.generator} />
         <style is:global>
           html,
@@ -120,10 +128,12 @@ const faviconHref =
       </body>
     </html>
   ) : SystemNotFoundTemplate && snapshot ? (
-    <html lang={snapshot.settings.language} data-renderer-schema={snapshot.schemaVersion}>
+    <html lang={snapshot.settings.language} data-renderer-schema={snapshot.schemaVersion} data-siab-theme-mode={configuredThemeMode} data-siab-color-mode={initialColorMode} data-rt-mode={initialColorMode}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="color-scheme" content="light dark" />
+        <script is:inline set:html={COLOR_MODE_BOOTSTRAP_SCRIPT} />
         <meta name="generator" content={Astro.generator} />
         <meta name="robots" content="noindex" />
         <style is:global>
@@ -137,6 +147,9 @@ const faviconHref =
       </head>
       <body data-tenant-slug={snapshot.tenantSlug}>
         <div set:html={rendererHtml} />
+        <script>
+          import "../client/site-behavior"
+        </script>
       </body>
     </html>
   ) : (

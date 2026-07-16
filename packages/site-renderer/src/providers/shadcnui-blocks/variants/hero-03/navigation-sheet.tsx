@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Menu } from "lucide-react";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -19,9 +20,9 @@ export const NavigationSheet = () => {
       </VisuallyHidden>
 
       <SheetTrigger asChild>
-        <Button className="rounded-full" size="icon" variant="outline">
+        <ProviderDemoOnly fallback={<><Button className="rounded-full" size="icon" variant="outline">
           <Menu />
-        </Button>
+        </Button></>} />
       </SheetTrigger>
       <SheetContent className="px-6 py-3">
         <Logo />

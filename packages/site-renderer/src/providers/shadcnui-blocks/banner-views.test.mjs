@@ -3,6 +3,7 @@ import test from "node:test"
 import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { ShadcnUiBannerView } from "./banner-views.tsx"
+import { SiteMaintenanceBanner } from "../../chrome.tsx"
 
 globalThis.React = React
 
@@ -27,4 +28,18 @@ test("approved banner-04 exposes accept and reject consent actions", () => {
   assert.match(html, /data-siab-cookie-consent="true"/)
   assert.match(html, /data-consent-action="accept"/)
   assert.match(html, /data-consent-action="reject"/)
+})
+
+test("maintenance uses an approved provider banner without consent controls", () => {
+  const html = renderToStaticMarkup(React.createElement(SiteMaintenanceBanner, {
+    settings: { ...settings, maintenance: { enabled: true, message: "Planned maintenance", variant: "shadcnui-blocks.banner-02" } },
+  }))
+  assert.match(html, /Planned maintenance/)
+  assert.match(html, /data-provider-variant="shadcnui-blocks.banner-02"/)
+  assert.doesNotMatch(html, /data-siab-cookie-consent/)
+})
+
+test("enabled maintenance fails closed without provider variant or content", () => {
+  assert.throws(() => renderToStaticMarkup(React.createElement(SiteMaintenanceBanner, { settings: { ...settings, maintenance: { enabled: true, message: "Planned maintenance" } } })), /approved explicit provider banner variant/)
+  assert.throws(() => renderToStaticMarkup(React.createElement(SiteMaintenanceBanner, { settings: { ...settings, maintenance: { enabled: true, variant: "shadcnui-blocks.banner-01" } } })), /requires message content/)
 })

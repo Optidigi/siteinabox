@@ -7,13 +7,14 @@ const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\
 export const onRequest = defineMiddleware(async (context, next) => {
   if (!import.meta.env.DEV || context.url.pathname !== "/provider-parity") return next()
 
-  const [{ v1FixturePage }, { ShadcnUiExplicitBlockView }, { ShadcnUiChromeView }, { ShadcnUiNotFoundView }, { ShadcnUiPinnedLiteralReference }, { default: inventory }] = await Promise.all([
+  const [{ v1FixturePage }, { ShadcnUiExplicitBlockView }, { ShadcnUiChromeView }, { ShadcnUiNotFoundView }, { ShadcnUiPinnedLiteralReference }, { default: inventory }, { themeToCssVars }] = await Promise.all([
     import("../../../packages/site-renderer/src/fixtures/v1"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/block-views.generated"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/views"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/system-views"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/literal-references.generated"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/inventory.json"),
+    import("../../../packages/site-renderer/src/theme/css-vars"),
   ])
   const variantId = context.url.searchParams.get("variant") ?? ""
   const reference = context.url.searchParams.get("reference")
@@ -22,7 +23,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (!variant || (!reference && variant.role === "block" && !block)) return new Response("Unknown provider block variant", { status: 404 })
 
   const replaceFixtureMedia = (value: unknown): unknown => {
-    if (typeof value === "string") return value.startsWith("/media/") ? "data:image/gif;base64,R0lGODlhAQABAAAAACw=" : value
+    if (typeof value === "string") return value.startsWith("/media/") ? "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E" : value
     if (Array.isArray(value)) return value.map(replaceFixtureMedia)
     if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, replaceFixtureMedia(child)]))
     return value
@@ -42,7 +43,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     },
     analyticsConsent: { enabled: variant.id === "shadcnui-blocks.banner-04" },
   }
-  const props = reference ? { adapted: reference === "adapter", variant: variant.id }
+  const props = reference ? { kind: "reference", variant: variant.id }
     : variant.role === "chrome" ? { kind: "chrome", area: variant.area, variant: variant.id, settings }
     : variant.role === "systemTemplate" ? { kind: "system", variant: variant.id, settings, pathname: "/missing" }
     : { kind: "block", block: browserBlock, options: { index: 0, formAction: "/api/forms" }, variant: variant.id }
@@ -51,8 +52,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
     : variant.role === "systemTemplate" ? React.createElement(ShadcnUiNotFoundView, props as any)
     : React.createElement(ShadcnUiExplicitBlockView, props as any))
   const mode = context.url.searchParams.get("mode") === "dark" ? "dark" : "light"
-  const hydration = reference ? "" : `<script id="provider-parity-props" type="application/json">${jsonForHtml(props)}</script><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true</script><script type="module" src="/src/smoke/provider-parity-client.tsx"></script><script type="module" src="/src/client/site-behavior.ts"></script>`
-  return new Response(`<!doctype html><html lang="en" data-rt-mode="${mode}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"><link rel="stylesheet" href="/src/styles/site.css"><title>${variant.id}</title></head><body class="m-0 min-w-80 bg-background text-foreground"><div id="provider-parity-root">${body}</div>${hydration}</body></html>`, {
+  const preference = context.url.searchParams.get("preference") === "system" ? "system" : mode
+  const hydration = `<script id="provider-parity-props" type="application/json">${jsonForHtml(props)}</script><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true</script><script type="module" src="/src/smoke/provider-parity-client.tsx"></script><script type="module" src="/src/client/site-behavior.ts"></script>`
+  return new Response(`<!doctype html><html lang="en" data-siab-theme-mode="${preference}" data-siab-color-mode="${mode}" data-rt-mode="${mode}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"><link rel="stylesheet" href="/src/styles/site.css"><style>${themeToCssVars(undefined, ":root")}</style><title>${variant.id}</title></head><body class="m-0 min-w-80 bg-background text-foreground"><div id="provider-parity-root" class="site-frame-root">${body}</div>${hydration}</body></html>`, {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   })
 })

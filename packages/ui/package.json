@@ -39,6 +39,7 @@
       "types": "./src/providers/shadcnui-blocks/radix-nova/index.ts",
       "default": "./src/providers/shadcnui-blocks/radix-nova/index.ts"
     },
+    "./providers/shadcnui-blocks/radix-nova/tailwind.css": "./src/providers/shadcnui-blocks/radix-nova/tailwind.css",
     "./styles/shadcn.css": "./src/styles/shadcn.css"
   },
   "dependencies": {

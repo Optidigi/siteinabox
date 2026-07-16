@@ -1,14 +1,12 @@
 import {
   COLOR_SCHEME_IDS,
   DEFAULT_THEME_TOKEN_SPEC,
-  DENSITY_SCHEME_IDS,
   FONT_SCHEME_IDS,
   SHAPE_SCHEME_IDS,
   type ColorSchemeId,
-  type DensitySchemeId,
   type FontSchemeId,
   type ShapeSchemeId,
-  type ThemeModeV2,
+  type ThemeMode,
 } from "@siteinabox/contracts"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
@@ -18,7 +16,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
   typeof value === "string" && (allowed as readonly string[]).includes(value) ? value as T : fallback
 
-const normalizeMode = (theme: Record<string, unknown>): ThemeModeV2 => {
+const normalizeMode = (theme: Record<string, unknown>): ThemeMode => {
   const appearance = isRecord(theme.appearance) ? theme.appearance : null
   return oneOf(appearance?.mode ?? theme.mode, ["light", "dark", "system"] as const, DEFAULT_THEME_TOKEN_SPEC.appearance.mode)
 }
@@ -33,11 +31,6 @@ const normalizeColorScheme = (theme: Record<string, unknown>): ColorSchemeId => 
 const normalizeFontScheme = (theme: Record<string, unknown>): FontSchemeId => {
   const fonts = isRecord(theme.fonts) ? theme.fonts : null
   return oneOf(fonts?.schemeId, FONT_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId)
-}
-
-const normalizeDensityScheme = (theme: Record<string, unknown>): DensitySchemeId => {
-  const density = isRecord(theme.density) ? theme.density : null
-  return oneOf(density?.schemeId ?? theme.density, DENSITY_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.density.schemeId)
 }
 
 const normalizeShapeScheme = (theme: Record<string, unknown>): ShapeSchemeId => {
@@ -57,20 +50,12 @@ export const normalizeThemeForSave = (theme: unknown): ThemeTokens | null => {
   if (!theme) return null
   if (!isRecord(theme)) return null
   return {
-    version: 2,
+    version: 3,
     appearance: { mode: normalizeMode(theme) },
     colors: { schemeId: normalizeColorScheme(theme) },
     fonts: { schemeId: normalizeFontScheme(theme) },
     shape: { schemeId: normalizeShapeScheme(theme) },
-    density: { schemeId: normalizeDensityScheme(theme) },
   }
 }
 
-export const normalizePreviewThemeForSave = (theme: unknown): ThemeTokens | null => {
-  const normalized = normalizeThemeForSave(theme)
-  if (!normalized) return null
-  return {
-    ...normalized,
-    density: { schemeId: DEFAULT_THEME_TOKEN_SPEC.density.schemeId },
-  }
-}
+export const normalizePreviewThemeForSave = normalizeThemeForSave

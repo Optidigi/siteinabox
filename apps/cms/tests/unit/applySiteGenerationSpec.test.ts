@@ -36,12 +36,11 @@ const fixtureSpec = (): SiteGenerationSpec => ({
     status: "provisioning",
   },
   theme: {
-    version: 2,
+    version: 3,
     appearance: { mode: "light" },
     colors: { schemeId: "blue-professional" },
     fonts: { schemeId: "clear-modern" },
     shape: { schemeId: "soft" },
-    density: { schemeId: "comfortable" },
   },
   settings: {
     siteName: "Fixture Care",
@@ -67,7 +66,7 @@ const fixtureSpec = (): SiteGenerationSpec => ({
         },
         {
           blockType: "contactSection",
-          designVariant: "shadcnui-blocks.contact-01",
+          designVariant: "shadcnui-blocks.contact-02",
           anchor: "contact",
           title: rtInline("Contact"),
           formName: "Contact form",
@@ -151,7 +150,6 @@ describe("applySiteGenerationSpec", () => {
     const { payload, store, calls } = createPayloadStub()
 
     const result = await applySiteGenerationSpec(payload, fixtureSpec())
-
     expect(result.ok).toBe(true)
     expect(result.tenantSlug).toBe("fixture-care")
     expect(result.pageIds).toHaveLength(1)
@@ -164,12 +162,11 @@ describe("applySiteGenerationSpec", () => {
     expect(tenant.status).toBe("provisioning")
     expect(page.status).toBe("draft")
     expect(tenant.theme).toEqual({
-      version: 2,
+      version: 3,
       appearance: { mode: "light" },
       colors: { schemeId: "blue-professional" },
       fonts: { schemeId: "clear-modern" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "comfortable" },
     })
     expect(tenant.siteManifest.generation.hash).toBe(result.idempotencyKey)
     expect(settings.navHeader[0]).toMatchObject({ type: "page", page: page.id })
@@ -190,8 +187,7 @@ describe("applySiteGenerationSpec", () => {
             ...spec.pages[0]!.blocks,
             {
               blockType: "contentSection",
-              designVariant: "shadcnui-blocks.timeline-01",
-              title: rtInline("Privacy"),
+              designVariant: "shadcnui-blocks.legal-content-01",
               body: {
                 t: "root",
                 variant: "block",
@@ -263,11 +259,7 @@ describe("applySiteGenerationSpec", () => {
               ogImage: "/og-default.png" as any,
             },
             blocks: [
-              {
-                ...spec.pages[0]!.blocks[0]!,
-                designVariant: "shadcnui-blocks.hero-01",
-                image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
-              } as any,
+              spec.pages[0]!.blocks[0]!,
               {
                 blockType: "gallery",
                 designVariant: "shadcnui-blocks.carousel-block-01",
@@ -289,7 +281,6 @@ describe("applySiteGenerationSpec", () => {
       expect(heroMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "hero.jpg", alt: "Hero", mimeType: "image/jpeg" })
       expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
       expect(store.pages[0]!.seo.ogImage).toBeUndefined()
-      expect(store.pages[0]!.blocks[0].image).toBe(heroMedia.id)
       expect(store.pages[0]!.blocks[1].images).toEqual([
         { image: heroMedia.id },
         { image: logoMedia.id },
@@ -329,9 +320,9 @@ describe("applySiteGenerationSpec", () => {
             ...spec.pages[0]!,
             blocks: [
               {
-                ...spec.pages[0]!.blocks[0]!,
-                designVariant: "shadcnui-blocks.hero-01",
-                image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" },
+                blockType: "gallery",
+                designVariant: "shadcnui-blocks.carousel-block-01",
+                images: [{ image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" } }],
               } as any,
             ],
           },
@@ -341,7 +332,7 @@ describe("applySiteGenerationSpec", () => {
       expect(result.ok).toBe(true)
       expect(fetchMock).toHaveBeenCalledWith("https://assets.example/hero.jpg")
       expect(store.media).toHaveLength(1)
-      expect(store.pages[0]!.blocks[0].image).toBe(store.media[0]!.id)
+      expect(store.pages[0]!.blocks[0].images).toEqual([{ image: store.media[0]!.id }])
       const mediaCreate = calls.create.find((call) => call.collection === "media")
       expect(mediaCreate?.filePath).toContain("hero.jpg")
       expect(mediaCreate?.overwriteExistingFiles).toBe(true)
@@ -388,19 +379,6 @@ describe("applySiteGenerationSpec", () => {
       subheadline: rtBlock("Editable CMS draft content."),
       cta: undefined,
       secondary: undefined,
-      links: [
-        { label: "Workflow", href: "/#workflow" },
-        { label: "Platform", href: "/#platform" },
-        { label: "Updates", href: "/#updates" },
-        { label: "Contact", href: "mailto:hello@example.com" },
-      ],
-      image: null,
-      stats: [
-        { value: "4", label: "Variants" },
-        { value: "0", label: "Generated files" },
-        { value: "1", label: "Renderer" },
-        { value: "100%", label: "Structured" },
-      ],
     } as any
     spec.pages[0]!.blocks = [spec.pages[0]!.blocks[0]!]
     spec.blocks = [{ slug: "hero", label: "Hero" }]
@@ -633,19 +611,6 @@ describe("applySiteGenerationSpec", () => {
       subheadline: rtBlock("Editable CMS draft content."),
       cta: undefined,
       secondary: undefined,
-      links: [
-        { label: "Workflow", href: "/#workflow" },
-        { label: "Platform", href: "/#platform" },
-        { label: "Updates", href: "/#updates" },
-        { label: "Contact", href: "mailto:hello@example.com" },
-      ],
-      image: null,
-      stats: [
-        { value: "4", label: "Variants" },
-        { value: "0", label: "Generated files" },
-        { value: "1", label: "Renderer" },
-        { value: "100%", label: "Structured" },
-      ],
     } as any
     canonicalSpec.pages[0]!.blocks = [canonicalSpec.pages[0]!.blocks[0]!]
     canonicalSpec.blocks = [{ slug: "hero", label: "Hero" }]

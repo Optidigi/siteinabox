@@ -46,7 +46,7 @@ describe("Pages rich-text save validation", () => {
       collection: "pages",
       data: {
         title: "Valid", slug: `valid-${uniq}`, status: "draft", tenant: tenantId,
-        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: {
+        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: {
           t: "root", variant: "block",
           children: [{ t: "paragraph", children: [{ t: "text", v: "hi" }] }],
         }}],
@@ -62,7 +62,7 @@ describe("Pages rich-text save validation", () => {
       collection: "pages",
       data: {
         title: "Bad", slug: `bad-shape-${uniq}`, status: "draft", tenant: tenantId,
-        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: { arbitrary: "jsonb" } }],
+        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: { arbitrary: "jsonb" } }],
       } as any,
       overrideAccess: true,
     })).rejects.toThrow(/rich text/i)
@@ -87,7 +87,7 @@ describe("Pages rich-text save validation", () => {
       collection: "pages",
       data: {
         title: "Bad", slug: `bad-themed-${uniq}`, status: "draft", tenant: tenantId,
-        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: {
+        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: {
           t: "root", variant: "block",
           children: [{ t: "themed", id: "notInManifest", props: {} }],
         }}],
@@ -101,7 +101,7 @@ describe("Pages rich-text save validation", () => {
       collection: "pages",
       data: {
         title: "Bad", slug: `bad-h-${uniq}`, status: "draft", tenant: tenantId,
-        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: {
+        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: {
           t: "root", variant: "block",
           children: [{ t: "heading", level: 3, children: [{ t: "text", v: "h" }] }],
         }}],
@@ -116,7 +116,7 @@ describe("Pages rich-text save validation", () => {
       collection: "pages",
       data: {
         title: "Valid for PATCH", slug: `valid-patch-${uniq}`, status: "draft", tenant: tenantId,
-        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: {
+        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: {
           t: "root", variant: "block",
           children: [{ t: "paragraph", children: [{ t: "text", v: "hi" }] }],
         }}],
@@ -129,7 +129,7 @@ describe("Pages rich-text save validation", () => {
     await expect(payload.update({
       collection: "pages",
       id: validId as any,
-      data: { blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: { arbitrary: "jsonb" } }] } as any,
+      data: { blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: { arbitrary: "jsonb" } }] } as any,
       overrideAccess: true,
     })).rejects.toThrow(/rich text/i)
 
@@ -142,7 +142,7 @@ describe("Pages rich-text save validation", () => {
       collection: "pages",
       data: {
         title: "Valid for themed PATCH", slug: `valid-themed-patch-${uniq}`, status: "draft", tenant: tenantId,
-        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: {
+        blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: {
           t: "root", variant: "block",
           children: [{ t: "paragraph", children: [{ t: "text", v: "hi" }] }],
         }}],
@@ -154,7 +154,7 @@ describe("Pages rich-text save validation", () => {
     await expect(payload.update({
       collection: "pages",
       id: validId as any,
-      data: { blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", body: {
+      data: { blocks: [{ blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", body: {
         t: "root", variant: "block",
         children: [{ t: "themed", id: "notInManifest", props: {} }],
       }}] } as any,

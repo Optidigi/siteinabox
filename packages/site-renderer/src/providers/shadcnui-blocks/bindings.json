@@ -1,0 +1,2479 @@
+{
+  "schemaVersion": 1,
+  "provider": "shadcnui-blocks",
+  "commit": "46c2e50bb538c9bc7a8927979d38bae178ae4452",
+  "direct": {
+    "contact-02": ["title", "description", "formName", "submitLabel", "fields", "provider"],
+    "features-03": ["eyebrow", "title", "intro", "features"]
+  },
+  "variants": {
+    "blog-01": {
+      "blog.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Today's Posts"
+        },
+        {
+          "field": "posts",
+          "kind": "items",
+          "source": "blogPosts"
+        }
+      ]
+    },
+    "blog-02": {
+      "blog.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Recommended Posts"
+        },
+        {
+          "field": "posts",
+          "kind": "items",
+          "source": "blogPosts"
+        }
+      ]
+    },
+    "blog-03": {
+      "blog.tsx": [
+        {
+          "field": "posts",
+          "kind": "items",
+          "source": "blogPosts"
+        },
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Categories"
+        }
+      ]
+    },
+    "contact-01": {
+      "contact.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Get In Touch"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Our friendly team is always here to chat"
+        },
+        {
+          "field": "items",
+          "kind": "static-contact-items"
+        }
+      ]
+    },
+    "contact-02": {
+      "contact.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Chat with our friendly team!"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "We'd love to hear from you. Please fill out this form or shoot us an email."
+        }
+      ]
+    },
+    "contact-03": {
+      "contact.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "We'd love to hear from you"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Our friendly team is always here to chat."
+        },
+        {
+          "field": "items",
+          "kind": "static-contact-items"
+        }
+      ]
+    },
+    "faq-01": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Questions & Answers"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "faq-02": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "faq-03": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "faq-04": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Quick answers to common questions about our products and services."
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "faq-05": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Quick answers to common questions about our products and services."
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "faq-06": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Quick answers to common questions about our products and services."
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "faq-07": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Quick answers to common questions about our products and services."
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faq"
+        }
+      ]
+    },
+    "features-01": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Ready out of the box"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Simple, customizable, and easy to drop into your workflow"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-02": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Where ideas take shape"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "No complex configs. Just copy, paste, and start building"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-03": {
+      "features.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Design and engage: Build smarter spaces and strategies"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Design your space with drag-and-drop simplicity—create grids, lists, or galleries in seconds."
+        }
+      ]
+    },
+    "features-04": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Build scalable interfaces with minimal effort"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-05": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "What makes it different"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Minimal setup, clean structure, and easy customization"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-06": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Less setup, more building"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Simple, customizable, and easy to drop into your workflow"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-07": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Strengthen your strategy"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "No complex configs. Just copy, paste, and start building"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "hero-01": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Ship better UI without the hassle"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Instead of starting from scratch every time, use thoughtfully designed blocks that give you a solid foundation for any UI."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "hero-02": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Your complete UI building toolkit"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Explore a collection of Shadcn UI blocks and components, ready to preview and copy. Streamline your development workflow with easy-to-implement examples."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "hero-03": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Ship better UI without the hassle"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Instead of starting from scratch every time, use thoughtfully designed blocks that give you a solid foundation for any UI."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "hero-04": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "A better way to build clean interfaces"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Explore a collection of Shadcn UI blocks and components, ready to preview and copy. Streamline your development workflow with easy-to-implement examples."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "hero-05": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Your complete UI building toolkit"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Explore a collection of Shadcn UI blocks and components, ready to preview and copy. Streamline your development workflow with easy-to-implement examples."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "hero-06": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Ship better UI without the hassle"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Instead of starting from scratch every time, use thoughtfully designed blocks that give you a solid foundation for any UI."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "hero-07": {
+      "hero.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Just released v1.0.0"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Ship better UI without the hassle"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "Instead of starting from scratch every time, use thoughtfully designed blocks that give you a solid foundation for any UI."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Watch Demo"
+        }
+      ]
+    },
+    "logo-cloud-01": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "More than 2.2 million companies worldwide already trust us"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "logo-cloud-02": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "More than 2.2 million companies worldwide already trust us"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "logo-cloud-03": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Trusted by 1000+ companies"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by industry leaders and visionaries who are shaping the future, solving global challenges, and driving innovation forward."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "View all companies"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "logo-cloud-04": {
+      "logo-cloud.tsx": [
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "More than 2.2 million companies worldwide already trust us"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        }
+      ]
+    },
+    "logo-cloud-05": {
+      "logo-cloud.tsx": [
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "More than 2.2 million companies worldwide already trust us"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        }
+      ]
+    },
+    "logo-cloud-06": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "More than 2.2 million companies worldwide already trust us"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "logo-cloud-07": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "More than 2.2 million companies worldwide already trust us"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "pricing-01": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Plans"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose the plan that fits your needs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "plans"
+        }
+      ]
+    },
+    "pricing-02": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Plans"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose the plan that fits your needs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "plans"
+        }
+      ]
+    },
+    "pricing-03": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Plans"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose the plan that fits your needs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "plans"
+        }
+      ]
+    },
+    "pricing-04": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Plans"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose the plan that fits your needs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "plans"
+        }
+      ]
+    },
+    "pricing-05": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Plans"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose the plan that fits your needs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "plans"
+        }
+      ]
+    },
+    "pricing-06": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Plans"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose the plan that fits your needs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "plans"
+        }
+      ]
+    },
+    "stats-01": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Why Should You Choose Us?"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Because after switching to us..."
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-02": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "The impact we've made so far"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "The world's most advanced UI kit for Figma. Meticulously crafted with 100% Auto Layout 5.0, variables, smart variants, and WCAG accessibility."
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "team-01": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Meet Our Team"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Our philosophy is simple — hire a team of passionate people and foster a culture that empowers you to do you best work."
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-02": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Meet the people behind the product"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "We're a 100% remote team spread all across the world. Join us!"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-03": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Leadership Team"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "We're a cross-disciplinary team that loves to create great experiences for our customers."
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-04": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Team behind the product"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-05": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "A team of creators"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "testimonials-01": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "What developers are saying"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Feedback from developers building real products with our components"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-02": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Trusted by many"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "See how people are using it in their everyday work"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-03": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "What our customers say"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Discover what our valued customers think about our innovative products"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-04": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Success Stories"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Real stories from people who use and love our product every day"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-05": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Loved by developers"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "See how developers and teams are achieving more with us"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-06": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "People love using it"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Real feedback from those who've made it part of their workflow"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "timeline-01": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "experiences"
+        }
+      ]
+    },
+    "timeline-02": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "experiences"
+        }
+      ]
+    },
+    "timeline-03": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "experiences"
+        }
+      ]
+    },
+    "timeline-04": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "experiences"
+        }
+      ]
+    },
+    "timeline-05": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "steps"
+        }
+      ]
+    },
+    "timeline-06": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "steps"
+        }
+      ]
+    },
+    "timeline-07": {
+      "timeline.tsx": [
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "changelog"
+        }
+      ]
+    },
+    "cta-01": {
+      "cta.tsx": [
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Ready to Build Faster?"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Join thousands of developers using our premium component library to ship beautiful UIs in minutes, not hours."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Get Started"
+        }
+      ]
+    },
+    "cta-02": {
+      "cta.tsx": [
+        {
+          "field": "backgroundImage",
+          "kind": "image"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Step Into Something Better"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Get seamless access to everything you need, right from your phone."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Download Now"
+        }
+      ]
+    },
+    "cta-03": {
+      "cta.tsx": [
+        {
+          "field": "backgroundImage",
+          "kind": "image"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Step Into Something Better"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Get seamless access to everything you need, right from your phone."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Download Now"
+        }
+      ]
+    },
+    "cta-04": {
+      "cta.tsx": [
+        {
+          "field": "backgroundImage",
+          "kind": "image"
+        },
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Build something you're proud of today"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Join thousands of developers using our tools."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Get Started Today"
+        }
+      ]
+    },
+    "cta-05": {
+      "cta.tsx": [
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Turn your vision into reality"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Join thousands of developers using our premium component library to ship beautiful UIs in minutes, not hours."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "View Components"
+        }
+      ]
+    },
+    "cta-06": {
+      "cta.tsx": [
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Experience the difference"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Join thousands of developers using our premium component library to ship beautiful UIs in minutes, not hours."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "View Components"
+        }
+      ]
+    },
+    "cta-07": {
+      "cta.tsx": [
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Ready to Build Faster?"
+        },
+        {
+          "field": "description",
+          "kind": "field",
+          "fallback": "Join thousands of developers using our premium component library to ship beautiful UIs in minutes, not hours."
+        },
+        {
+          "field": "primary",
+          "kind": "action",
+          "fallback": "Get Started"
+        }
+      ]
+    },
+    "carousel-block-01": {
+      "carousel.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "dddepth"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A Curated Collection of AI-generated Abstract 3D Shapes"
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "View all"
+        },
+        {
+          "field": "images",
+          "kind": "items",
+          "source": "images"
+        }
+      ]
+    },
+    "carousel-block-02": {
+      "carousel.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "dddepth"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A Curated Collection of AI-generated Abstract 3D Shapes"
+        },
+        {
+          "field": "images",
+          "kind": "items",
+          "source": "images"
+        }
+      ]
+    },
+    "hero-08": {
+      "hero.tsx": [
+        {
+          "field": "headline",
+          "kind": "field",
+          "fallback": "Beautifully Designed Premium Shadcn Blocks"
+        },
+        {
+          "field": "subheadline",
+          "kind": "field",
+          "fallback": "A collection of beautifully designed components that you can use to build your next project."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Get Started"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Learn More"
+        },
+        {
+          "field": "trustLabel",
+          "kind": "field",
+          "fallback": "Trusted by engineers at"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "features-08": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Everything in one place"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Designed for speed, flexibility, and ease of use"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-09": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Ship with confidence"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Designed for speed, flexibility, and ease of use"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-10": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "All the right tools"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Practical components designed for production"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-11": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built to just work"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Designed for speed, flexibility, and ease of use"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-12": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Designed to scale"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Spend less time configuring and more time creating"
+        },
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Features that make you happy"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-13": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Engineered for speed"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Designed for speed, flexibility, and ease of use"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-14": {
+      "features.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Why Choose Us"
+        },
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "We are Leading in Smart Assistants with Nearly 20 Years of Experience"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "We are constantly always keep pace with the time."
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "plusPoints"
+        }
+      ]
+    },
+    "features-15": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built with intention"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Carefully structured blocks that feel right in projects"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-16": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Consistency first"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Maintain a clean and consistent UI across your app"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-17": {
+      "features.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Simplify your stack"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Reduce dependencies and keep things easy"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "features"
+        }
+      ]
+    },
+    "features-18": {
+      "features.tsx": [
+        {
+          "field": "eyebrow",
+          "kind": "field",
+          "fallback": "Why Choose Us"
+        },
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Advanced Home Security Solutions Built for Modern Living"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "We are constantly always keep pace with the time"
+        },
+        {
+          "field": "features",
+          "kind": "items",
+          "source": "plusPoints"
+        }
+      ]
+    },
+    "faq-08": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Find answers to common questions about our products and services"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "faq-09": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Find answers to common questions about our services"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "faq-10": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Find answers to common questions about our products and services"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "faq-11": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Find answers to common questions about our products and services"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "faq-12": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Find answers to common questions about our products and services"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "faq-13": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Frequently Asked Questions"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Find answers to common questions about our products and services."
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "faq-14": {
+      "faq.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Got Questions? We've Got Answers"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Everything you need to know about ordering, shipping, and returns."
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "faqs"
+        }
+      ]
+    },
+    "logo-cloud-08": {
+      "logo-cloud.tsx": [
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        }
+      ]
+    },
+    "logo-cloud-09": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "logo-cloud-10": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "logo-cloud-11": {
+      "logo-cloud.tsx": [
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        }
+      ]
+    },
+    "logo-cloud-12": {
+      "logo-cloud.tsx": [
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        },
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "and 1000+ more companies"
+        }
+      ]
+    },
+    "logo-cloud-13": {
+      "logo-cloud.tsx": [
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        }
+      ]
+    },
+    "logo-cloud-14": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Trusted by teams and companies around the world"
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "View companies"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "logos"
+        }
+      ]
+    },
+    "logo-cloud-15": {
+      "logo-cloud.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Trusted by 1000+ companies around the world"
+        },
+        {
+          "field": "logos",
+          "kind": "static-items"
+        }
+      ]
+    },
+    "pricing-07": {
+      "pricing.tsx": [
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "pricingPlans"
+        }
+      ]
+    },
+    "pricing-08": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Pricing that makes sense"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Choose a plan that fits your needs with no hidden costs"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "pricingPlans"
+        }
+      ]
+    },
+    "pricing-09": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Pick your plan"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Flexible pricing designed to grow with you ready"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "pricingPlans"
+        }
+      ]
+    },
+    "pricing-10": {
+      "pricing.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Plans & Pricing"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Flexible pricing designed to grow with you ready"
+        },
+        {
+          "field": "plans",
+          "kind": "items",
+          "source": "pricingPlans"
+        }
+      ]
+    },
+    "stats-03": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Backed by real usage"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by thousands to build modern UIs faster"
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-04": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Impact"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by thousands to build modern UIs faster"
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-05": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built with scale in mind"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by thousands to build modern UIs faster"
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-06": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Numbers that matter"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A quick look at the impact and adoption of our UI components"
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-07": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built with scale in mind"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A quick look at the impact and adoption of our UI components"
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-08": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Why Should You Choose Us?"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Because after switching to us..."
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-09": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Why Should You Choose Us?"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Because after switching to us..."
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-10": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Numbers that matter"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Continuously improving with feedback from developers building modern applications."
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "stats-11": {
+      "stats.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Reliable by Design"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Trusted by thousands to build modern UIs faster"
+        },
+        {
+          "field": "items",
+          "kind": "static-stat-items"
+        }
+      ]
+    },
+    "team-06": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our core team"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Passionate people building great products"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-07": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built by makers"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A team that values simplicity and speed"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-08": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our core team"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Passionate people building great products"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-09": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built by makers"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A team that values simplicity and speed"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-10": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our core team"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Passionate people building great products"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-11": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built by makers"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A team that values simplicity and speed"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-12": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our core team"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Passionate people building great products"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "team-13": {
+      "team.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Built by makers"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "A team that values simplicity and speed"
+        },
+        {
+          "field": "members",
+          "kind": "items",
+          "source": "teamMembers"
+        }
+      ]
+    },
+    "testimonials-07": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Testimonials"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "What our customers say about us"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-08": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Testimonials"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "What our customers say about us"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-09": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Loved by Our Users"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Their experiences speak louder than words"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-10": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Loved by Our Users"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Their experiences speak louder than words"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-11": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "What others think"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Real stories from real users who've seen real results"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-12": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "What Our Customers Say"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Real feedback from real users who trust our platform"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "testimonials-13": {
+      "testimonials.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Success Stories"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Real stories from people who use and love our product every day"
+        },
+        {
+          "field": "items",
+          "kind": "items",
+          "source": "testimonials"
+        }
+      ]
+    },
+    "blog-04": {
+      "blog.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Welcome to our blog!"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Stay updated with the latest news and insights."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Subscribe to our newsletter Subscribe"
+        },
+        {
+          "field": "posts",
+          "kind": "items",
+          "source": "blogPosts"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Load more articles"
+        }
+      ]
+    },
+    "blog-05": {
+      "blog.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Welcome to our blog!"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Stay updated with the latest news and insights."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Subscribe to our newsletter Subscribe"
+        },
+        {
+          "field": "posts",
+          "kind": "items",
+          "source": "blogPosts"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Load more articles"
+        }
+      ]
+    },
+    "blog-06": {
+      "blog.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Welcome to our blog!"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Stay updated with the latest news and insights."
+        },
+        {
+          "field": "cta",
+          "kind": "action",
+          "fallback": "Subscribe to our newsletter Subscribe"
+        },
+        {
+          "field": "posts",
+          "kind": "items",
+          "source": "blogPosts"
+        },
+        {
+          "field": "secondary",
+          "kind": "action",
+          "fallback": "Load more articles"
+        }
+      ]
+    },
+    "integrations-01": {
+      "integrations.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Integrations"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Connect your favorite tools and services"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "integrations"
+        }
+      ]
+    },
+    "integrations-02": {
+      "integrations.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Our Integrations"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Connect your favorite tools and services to your account and start using them in your app."
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "integrations"
+        }
+      ]
+    },
+    "integrations-03": {
+      "integrations.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Connect your tools"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Connect your favorite tools and services to your account"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "integrations"
+        }
+      ]
+    },
+    "integrations-04": {
+      "integrations.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Easy integrations"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Connect your favorite tools and services to your account"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "integrations"
+        }
+      ]
+    },
+    "integrations-05": {
+      "integrations.tsx": [
+        {
+          "field": "title",
+          "kind": "field",
+          "fallback": "Plug into your stack"
+        },
+        {
+          "field": "intro",
+          "kind": "field",
+          "fallback": "Connect your favorite tools and services to your account"
+        },
+        {
+          "field": "logos",
+          "kind": "items",
+          "source": "integrations"
+        }
+      ]
+    }
+  }
+}

@@ -4,7 +4,7 @@ import { Moon, Sun } from "lucide-react"
 import { Switch } from "@siteinabox/ui/components/switch"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
-import type { ColorSchemeId, ThemeModeV2 } from "@siteinabox/contracts"
+import type { ColorSchemeId, ThemeMode } from "@siteinabox/contracts"
 import type { ColorPreset } from "@/lib/theme/presets"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { useTranslations } from "next-intl"
@@ -14,8 +14,8 @@ import { InlineToolbarDivider, InlineToolbarGroup, InlineToolbarOption } from "@
 export const PalettePicker: React.FC<{
   palettes: ColorPreset[]
   value: ColorSchemeId | undefined
-  mode: ThemeModeV2
-  onChange: (next: { colors?: { schemeId: ColorSchemeId }; appearance?: { mode: ThemeModeV2 } }) => void
+  mode: ThemeMode
+  onChange: (next: { colors?: { schemeId: ColorSchemeId }; appearance?: { mode: ThemeMode } }) => void
   layout?: "default" | "mobile" | "inline"
   swatchSizeClassName?: string
 }> = ({ palettes, value, mode, onChange, layout = "default", swatchSizeClassName }) => {

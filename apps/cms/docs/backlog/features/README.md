@@ -1,5 +1,25 @@
 # Feature Backlog
 
+## 2026-07-16 — Generated-site provider binding correction
+
+**Status:** Implemented and locally verified; deployment is a separate operator action.
+
+The first shadcnui-blocks migration incorrectly treated pass-through adapter
+files and runtime React-tree traversal as typed variant adapters. Production
+smoke rendering proved that semantic CMS values could land in unrelated DOM
+nodes and that function-name inspection changed after minification. Those
+claims and tests are not accepted as completion evidence.
+
+The replacement contract is deliberately small: CMS stores validated semantic
+content, imported provider snippets bind that content explicitly, and the tenant
+theme owns tokens. Pass-through content adapters and the recursive React-tree
+projector have been removed. Header, footer and banner consume tenant settings
+directly; live provider output inherits tenant theme tokens while exact reference
+tokens are limited to the parity harness. One generated manifest owns runtime,
+editor and generation catalogs, and every public variant has an explicit rendered
+binding assertion. No command-driven or tenant-source generation path is part of
+this architecture.
+
 This backlog was reset after the platform cleanup that removed obsolete
 generation flows and the provisional product app shell. Historical entries that
 depended on command-run site generation are no longer current source of truth.
@@ -118,18 +138,14 @@ depended on command-run site generation are no longer current source of truth.
   respect the provider's fixed layout contract. This includes repeaters, media
   fields, optional CTAs, logo-cloud items, bento cells, newsletter form copy,
   banner copy/action, and other provider-owned slots as they are activated.
-- Expand the density theme control from outer section padding into a finite
-  provider-aware page-rhythm system. Density must still be tenant-wide and
-  token-driven, not arbitrary spacing/class editing. For each active
-  `shadcnui-blocks` provider variant, map the source's known spacing utilities to approved
-  compact/comfortable/spacious values across the whole component: hero inner
-  padding such as `py-32 sm:py-48 lg:py-56`, section padding, vertical stacks,
-  card/list gaps, grid gaps, media margins, CTA spacing, form spacing, and
-  header/banner chrome spacing where appropriate. Keep default/comfortable equal
-  to the upstream source values so exact-source parity remains the baseline;
-  compact and spacious may adjust only through explicit renderer-owned bridge
-  rules for known source classes. Generation and CMS must not output spacing
-  classes, layout spans, breakpoints, or per-block spacing overrides.
+- Migrate the official Amicare tenant from its isolated compatibility renderer
+  to the generic shadcn-ui provider architecture. Map its content, navigation,
+  footer, forms, legal pages and media to semantic contracts with approved
+  explicit provider variants; preserve its visual identity through the normal
+  tenant theme and CMS content only. Publish and visually verify a replacement
+  snapshot before removing Amicare renderer code, tenant-exclusive variants,
+  catalog exceptions or compatibility tests. No new tenant may use the Amicare
+  renderer while this migration remains pending.
 - Add consistent skeleton or loading affordances on slow customer and operator
   surfaces. Priority gaps today include preview checkout, alternative-domain
   suggestion loading, and generation-run list/detail routes that currently rely
@@ -483,3 +499,10 @@ imported variants at fixed desktop/mobile viewports in light/dark mode with only
 a 0.001% antialias tolerance and no intentional layout deviations. The complete
 Payload migration chain also applies successfully to an isolated fresh local
 database; the read-only audited legacy database remains untouched.
+
+Color-mode resolution is now one shared path: tenant preference, optional
+visitor override, then native `prefers-color-scheme` resolution. Public pages
+apply the resolved mode before first paint, CMS canvases follow system changes,
+navbar toggles update computed provider tokens (not a parallel root class), and
+tenant 404 templates load the same behavior. Storage denial degrades to the
+configured/system mode without blocking rendering.

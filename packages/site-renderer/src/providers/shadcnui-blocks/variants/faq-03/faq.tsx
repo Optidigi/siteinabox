@@ -1,7 +1,8 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { PlusIcon } from "lucide-react";
-import { Accordion as AccordionPrimitive } from "radix-ui";
+import { AccordionPrimitive } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { useState } from "react";
 import {
   Accordion,
@@ -69,9 +70,9 @@ const FAQ = () => {
   return (
     <div className="px-6 py-20">
       <div className="mx-auto w-full max-w-(--breakpoint-lg)">
-        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
           Frequently Asked Questions
-        </h2>
+        </>} inline /></h2>
 
         <div className="mt-6 grid w-full gap-x-10 md:grid-cols-2">
           <Accordion
@@ -81,7 +82,7 @@ const FAQ = () => {
             type="single"
             value={value}
           >
-            {faq.slice(0, 5).map(({ question, answer }, index) => (
+            {<ProviderItems field="items" templates={faq.slice(0, 5)}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
               <AccordionItem key={question} value={`question-${index}`}>
                 <AccordionPrimitive.Header className="flex">
                   <AccordionPrimitive.Trigger
@@ -98,7 +99,7 @@ const FAQ = () => {
                   {answer}
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            ))}</ProviderItems>}
           </Accordion>
 
           <Accordion
@@ -108,7 +109,7 @@ const FAQ = () => {
             type="single"
             value={value}
           >
-            {faq.slice(5).map(({ question, answer }, index) => (
+            {<ProviderItems field="items" templates={faq.slice(5)}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
               <AccordionItem key={question} value={`question-${index + 5}`}>
                 <AccordionPrimitive.Header className="flex">
                   <AccordionPrimitive.Trigger
@@ -125,7 +126,7 @@ const FAQ = () => {
                   {answer}
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            ))}</ProviderItems>}
           </Accordion>
         </div>
       </div>

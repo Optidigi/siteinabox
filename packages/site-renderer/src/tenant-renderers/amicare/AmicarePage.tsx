@@ -29,7 +29,7 @@ import type { MediaResolver, ResolvedMedia } from "../../media"
 import { resolveMedia } from "../../media"
 import { RichTextRenderer, extractRichText } from "../../rich-text"
 import { isRtRoot } from "@siteinabox/contracts/rich-text"
-import { PUBLIC_RENDERER_THEME_SCOPE, ThemeStyle, themeMode } from "../../theme"
+import { PUBLIC_RENDERER_THEME_SCOPE, ThemeCanvas, ThemeStyle } from "../../theme"
 import type {
   BlockEditSlots,
   BlockRenderOptions,
@@ -1458,10 +1458,10 @@ export function AmicarePageRenderer({
       data-tenant-renderer="amicare"
     >
       {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
-      <div
+      <ThemeCanvas
+        theme={theme}
         {...canvasAttributes}
         className={cn("rt-canvas w-full [container-name:site-frame] [container-type:inline-size]", canvasClassName)}
-        data-rt-mode={themeMode(theme)}
         data-page-slug={page.slug}
       >
         <div className="site-frame-root">
@@ -1475,7 +1475,7 @@ export function AmicarePageRenderer({
         {includeBehaviorScripts && (
           <AmicareNavBehavior nonce={nonce} />
         )}
-      </div>
+      </ThemeCanvas>
     </div>
   )
 }

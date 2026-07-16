@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   CircleDollarSign,
   Clock,
@@ -56,16 +57,16 @@ const faqs = [
 const FAQ = () => {
   return (
     <div className="mx-auto max-w-2xl px-6 py-12 sm:py-14">
-      <h2 className="text-balance font-medium text-4xl/[1.3] tracking-[-0.04em]">
+      <h2 className="text-balance font-medium text-4xl/[1.3] tracking-[-0.04em]"><ProviderField field="title" fallback={<>
         Got Questions? We've Got Answers
-      </h2>
-      <p className="mt-2.5 text-balance text-lg text-muted-foreground tracking-normal">
+      </>} inline /></h2>
+      <p className="mt-2.5 text-balance text-lg text-muted-foreground tracking-normal"><ProviderField field="intro" fallback={<>
         Everything you need to know about ordering, shipping, and returns.
-      </p>
+      </>} inline /></p>
 
       <div className="mx-auto mt-8 max-w-2xl">
         <Accordion collapsible defaultValue={faqs[0].question} type="single">
-          {faqs.map((faq, index) => (
+          {<ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
             <AccordionItem
               className="border not-last:border-b-0 bg-muted/35 last:border-b"
               key={`${faq.question}-${index}`}
@@ -94,7 +95,7 @@ const FAQ = () => {
                 <div className="absolute inset-y-0 left-13 border-foreground/10 border-s border-dashed" />
               </AccordionContent>
             </AccordionItem>
-          ))}
+          ))}</ProviderItems>}
         </Accordion>
       </div>
     </div>

@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import Image from "../../runtime/image";
 import { ArrowUpRight } from "lucide-react";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -7,14 +8,14 @@ import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 export default function Integrations() {
   return (
     <div className="mx-auto flex max-w-7xl flex-col px-6 py-12 sm:py-14">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Connect your tools
-      </h2>
-      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         Connect your favorite tools and services to your account
-      </p>
+      </>} inline /></p>
       <div className="mt-12 grid grid-cols-1 gap-5 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
-        {integrations.map((integration) => (
+        {<ProviderItems field="logos" templates={integrations}>{(providerItems) => providerItems.map((integration) => (
           <div
             className="flex items-center gap-4 rounded-lg border border-border/85 bg-card pe-4 shadow-xs/2"
             key={integration.title}
@@ -38,7 +39,7 @@ export default function Integrations() {
               </Button>
             )}
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

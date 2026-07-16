@@ -1,6 +1,9 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import type { ComponentProps } from "react";
+import type { LinkRef } from "@siteinabox/contracts";
+import { useProviderBlockModel } from "../../runtime/content";
 import { Area, AreaChart } from "recharts";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import {
@@ -62,8 +65,12 @@ const chartConfig = {
 
 export function StatsCard({
   className,
+  value,
+  label,
+  action,
   ...props
-}: ComponentProps<typeof Card>) {
+}: ComponentProps<typeof Card> & { value?: string; label?: string; action?: LinkRef }) {
+  const model = useProviderBlockModel();
   return (
     <Card
       className={cn(
@@ -73,13 +80,9 @@ export function StatsCard({
       {...props}
     >
       <CardHeader>
-        <CardTitle className="font-satoshi text-3xl">+2,350</CardTitle>
-        <CardDescription>+180.1% from last month</CardDescription>
-        <CardAction>
-          <Button size="sm" variant="ghost">
-            View More
-          </Button>
-        </CardAction>
+        <CardTitle className="font-satoshi text-3xl">{model ? value : "+2,350"}</CardTitle>
+        <CardDescription>{model ? label : "+180.1% from last month"}</CardDescription>
+        {model ? action?.href && action.label ? <CardAction><ProviderDemoOnly fallback={<><Button size="sm" variant="ghost" asChild><a href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? "noreferrer" : undefined}>{action.label}</a></Button></>} /></CardAction> : null : <CardAction><ProviderDemoOnly fallback={<><Button size="sm" variant="ghost">View More</Button></>} /></CardAction>}
       </CardHeader>
       <CardContent className="mt-auto flex-1 p-0">
         <ChartContainer className="size-full max-h-28" config={chartConfig}>

@@ -1,9 +1,11 @@
 import type {
   ContactSectionBlock,
+  ContactDetailsBlock,
   CTABlock,
   BentoGridBlock,
   BlogCardsBlock,
   ContentSectionBlock,
+  TimelineBlock,
   FAQBlock,
   FeatureListBlock,
   GalleryBlock,
@@ -21,7 +23,7 @@ import type {
   TeamBlock,
   TestimonialsBlock,
 } from "./site"
-import type { ColorSchemeId, DensitySchemeId, FontSchemeId, ShapeSchemeId } from "./theme-presets"
+import type { ColorSchemeId, FontSchemeId, ShapeSchemeId } from "./theme-presets"
 
 export type IntakeSubmission = {
   submittedAt?: string
@@ -216,7 +218,6 @@ export type IntakeBrief = {
     colorSchemeId?: ColorSchemeId | null
     fontSchemeId?: FontSchemeId | null
     shapeSchemeId?: ShapeSchemeId | null
-    densitySchemeId?: DensitySchemeId | null
     shape?: Exclude<IntakeVisualShape, ""> | null
     typography?: Exclude<IntakeVisualTypography, ""> | null
   }
@@ -271,9 +272,9 @@ export type NormalizedIntake = {
   raw?: Record<string, unknown> | null
 }
 
-export type ThemeModeV2 = "light" | "dark" | "system"
-export type ThemeSchemeSource = "tailwind" | "siab" | "custom"
-export type FontSchemeSource = "tailwind" | "system" | "custom"
+export type ThemeMode = "light" | "dark" | "system"
+export type ThemeSchemeSource = "builtin" | "custom"
+export type FontSchemeSource = "builtin" | "custom"
 
 export type ColorRamp = {
   50: string
@@ -319,16 +320,6 @@ export type FontScheme = {
   }
 }
 
-export type DensityScheme = {
-  id: string
-  label: string
-  sectionPaddingY: {
-    base: string
-    sm?: string
-    lg?: string
-  }
-}
-
 export type ShapeScheme = {
   id: string
   label: string
@@ -345,10 +336,10 @@ export type ShapeScheme = {
   }
 }
 
-export type ThemeTokenSpecV2 = {
-  version: 2
+export type ThemeTokenSpecV3 = {
+  version: 3
   appearance: {
-    mode: ThemeModeV2
+    mode: ThemeMode
   }
   colors: {
     schemeId: ColorSchemeId
@@ -356,15 +347,12 @@ export type ThemeTokenSpecV2 = {
   fonts: {
     schemeId: FontSchemeId
   }
-  density: {
-    schemeId: DensitySchemeId
-  }
   shape: {
     schemeId: ShapeSchemeId
   }
 }
 
-export type ThemeTokenSpec = ThemeTokenSpecV2
+export type ThemeTokenSpec = ThemeTokenSpecV3
 
 export type SiteBlockEditorField = {
   name: string
@@ -396,6 +384,7 @@ export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
 export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
 export type OfficialTenantGeneratedRichTextBlockSpec = RichTextBlock & GeneratedBlockMetadata
 export type GeneratedContactSectionBlockSpec = ContactSectionBlock & GeneratedBlockMetadata
+export type GeneratedContactDetailsBlockSpec = ContactDetailsBlock & GeneratedBlockMetadata
 export type OfficialTenantGeneratedNewsletterBlockSpec = NewsletterBlock & GeneratedBlockMetadata
 export type GeneratedPricingBlockSpec = PricingBlock & GeneratedBlockMetadata
 export type GeneratedStatsBlockSpec = StatsBlock & GeneratedBlockMetadata
@@ -403,6 +392,7 @@ export type GeneratedLogoCloudBlockSpec = LogoCloudBlock & GeneratedBlockMetadat
 export type GeneratedGalleryBlockSpec = GalleryBlock & GeneratedBlockMetadata
 export type OfficialTenantGeneratedBentoGridBlockSpec = BentoGridBlock & GeneratedBlockMetadata
 export type GeneratedContentSectionBlockSpec = ContentSectionBlock & GeneratedBlockMetadata
+export type GeneratedTimelineBlockSpec = TimelineBlock & GeneratedBlockMetadata
 export type GeneratedTeamBlockSpec = TeamBlock & GeneratedBlockMetadata
 export type GeneratedBlogCardsBlockSpec = BlogCardsBlock & GeneratedBlockMetadata
 
@@ -413,11 +403,13 @@ export type GeneratedBlockSpec =
   | GeneratedFAQBlockSpec
   | GeneratedCTABlockSpec
   | GeneratedContactSectionBlockSpec
+  | GeneratedContactDetailsBlockSpec
   | GeneratedPricingBlockSpec
   | GeneratedStatsBlockSpec
   | GeneratedLogoCloudBlockSpec
   | GeneratedGalleryBlockSpec
   | GeneratedContentSectionBlockSpec
+  | GeneratedTimelineBlockSpec
   | GeneratedTeamBlockSpec
   | GeneratedBlogCardsBlockSpec
 

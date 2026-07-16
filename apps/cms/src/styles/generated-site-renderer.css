@@ -1,11 +1,13 @@
 @import "tailwindcss" source(none);
+@import "@siteinabox/ui/providers/shadcnui-blocks/radix-nova/tailwind.css";
 @import "@siteinabox/site-renderer/styles.css";
 
 @plugin "@tailwindcss/forms";
 
-@custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *));
+@custom-variant dark (&:where([data-rt-mode="dark"], [data-rt-mode="dark"] *, [data-siab-color-mode="dark"], [data-siab-color-mode="dark"] *));
 
 @source "../../../../packages/site-renderer/src";
+@source "../../../../packages/ui/src/providers/shadcnui-blocks";
 
 [data-siab-editor-selected="true"] {
   outline: 2px solid color-mix(in oklab, var(--color-accent, #2563eb) 70%, transparent);

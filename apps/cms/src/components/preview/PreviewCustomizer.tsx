@@ -26,7 +26,7 @@ import type {
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { PreviewDesktopThemeToolbar } from "@/components/preview/preview-desktop-theme-toolbar"
 import { ShineBorder } from "@/components/common/shine-border"
 import { PreviewMobileChrome } from "@/components/preview/preview-mobile-chrome"
@@ -230,7 +230,7 @@ export function PreviewCustomizer({
   const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"
   const reviewHref = access.type === "grant" ? `/${access.clientSlug}/review` : "#"
   const customerNavigationBlocked = shouldBlockPreviewCustomerNavigation(themeSaveStatus)
-  const rendererTheme = React.useMemo(() => cmsThemeToRendererTheme(themeState), [themeState])
+  const rendererTheme = React.useMemo(() => normalizeThemeForSave(themeState), [themeState])
   const frameSrc = React.useMemo(() => {
     const slug = page.slug && page.slug !== "index" ? `/pages/${encodeURIComponent(page.slug)}` : ""
     if (access.type === "grant") {
@@ -311,7 +311,7 @@ function PreviewRendererFrame({
   pageId: string
   page: Page
   settings: SiteSettings
-  theme: ReturnType<typeof cmsThemeToRendererTheme>
+  theme: ReturnType<typeof normalizeThemeForSave>
   revisionRef: React.MutableRefObject<number>
   onFrameInteraction: () => void
 }) {

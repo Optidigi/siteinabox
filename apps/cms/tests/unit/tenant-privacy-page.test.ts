@@ -41,11 +41,10 @@ const spec = () => ({
   },
   tenant: { name: "Voorbeeldbedrijf B.V.", slug: "voorbeeldbedrijf", domain: "voorbeeldbedrijf.nl" },
   theme: {
-    version: 2,
+    version: 3,
     appearance: { mode: "light" },
     colors: { schemeId: "blue-professional" },
     fonts: { schemeId: "clear-modern" },
-    density: { schemeId: "comfortable" },
     shape: { schemeId: "soft" },
   },
   settings: {
@@ -94,7 +93,7 @@ describe("tenant privacy page materialization", () => {
           metadata: { systemRole: "tenant-privacy" },
           eyebrow: { variant: "inline" },
         },
-        { blockType: "contentSection", designVariant: "shadcnui-blocks.timeline-01", metadata: { systemRole: "tenant-privacy" } },
+        { blockType: "contentSection", designVariant: "shadcnui-blocks.legal-content-01", metadata: { systemRole: "tenant-privacy" } },
       ],
     })
     expect(result.settings.chrome?.footer?.legalLinks).toContainEqual({

@@ -1,6 +1,7 @@
 import { ListChecks } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { validateSafeHref } from "@/lib/security/safeHref"
 
 export const FeatureList: BlockWithMeta = {
   slug: "featureList",
@@ -47,7 +48,14 @@ export const FeatureList: BlockWithMeta = {
           description: "Feature description."
         } as any
       },
-      { name: "icon", type: "text", admin: { description: "kebab-case lucide-preact icon name (e.g. \"map-pin\", \"check-circle\"). See the allowlist in the deployed Astro template's src/components/cms/icons.ts for what's available." } }
+      { name: "icon", type: "text", admin: { description: "Approved icon name." } },
+      { name: "image", type: "upload", relationTo: "media" },
+      { name: "cta", type: "group", fields: [
+        { name: "label", type: "text" },
+        { name: "href", type: "text", validate: validateSafeHref },
+      ]},
+      { name: "metricValue", type: "text" },
+      { name: "metricLabel", type: "text" },
     ]},
     ...blockBaseFields("services"),
   ],

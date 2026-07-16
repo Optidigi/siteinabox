@@ -1,7 +1,7 @@
 import "server-only"
 import crypto from "node:crypto"
 import type { Payload } from "payload"
-import type { Page as ContractPage, SiteSettings } from "@siteinabox/contracts"
+import { validateProviderBlockInstance, type Page as ContractPage, type SiteSettings } from "@siteinabox/contracts"
 import type {
   PublishedSiteSnapshot,
   PublishedSnapshotManifest,
@@ -11,15 +11,13 @@ import {
   formatContractValidationIssues,
   schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
-import { resolveBlockVariant } from "@siteinabox/site-renderer"
-import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
+import { resolveBlockVariant } from "@siteinabox/site-renderer/blocks/variants"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { isActivationPaymentSatisfied } from "@/lib/payments/generationRunPayment"
 import { hasVerifiedTenantSender } from "@/lib/tenants/emailSending"
@@ -67,15 +65,14 @@ const snapshotThemeForTenant = (
   tenant: Pick<Tenant, "theme">,
 ): ThemeTokenSpec | null => {
   const theme = normalizeThemeForSave((tenant.theme as any) ?? null)
-  return cmsThemeToRendererTheme(theme) as ThemeTokenSpec | null
+  return theme as ThemeTokenSpec | null
 }
 
 const snapshotThemeForServing = (snapshot: unknown): unknown => {
   const record = snapshot && typeof snapshot === "object" ? snapshot as Record<string, any> : null
   const theme = record?.theme
   if (!theme || typeof theme !== "object") return theme
-  if (theme.version === 2) return normalizeThemeForSave(theme as any)
-  return null
+  return normalizeThemeForSave(theme as any)
 }
 
 const publishedSnapshotForServing = (snapshot: unknown): unknown => {

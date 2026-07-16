@@ -1,17 +1,17 @@
 import type { ThemeTokens } from "./schema"
 import { themeToCssVars, type ThemeCssVarScope } from "@siteinabox/site-renderer/theme/css-vars"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 /**
  * Converts a ThemeTokens object to a CSS rule string scoped to `.rt-canvas`.
  *
- * Emits base and dark-mode rules from ThemeTokenSpec V2 preset selections:
+ * Emits base and dark-mode rules from ThemeTokenSpec V3 preset selections:
  *   .rt-canvas { ... }
  *   .rt-canvas[data-rt-mode="dark"] { ...dark palette overrides... }
  *
- * The iframe editor frame (`FrameCanvasSurface` / `CanvasSurface`) stamps
- * `data-rt-mode="dark"` on the canvas surface when `theme.appearance.mode === "dark"`, so
- * the overlay rule wins.
+ * Shared renderer canvases stamp the configured preference separately from
+ * the resolved `data-rt-mode`. System mode follows `prefers-color-scheme`;
+ * public pages additionally resolve a safe visitor override before paint.
  *
  * Returns "" if there is nothing to emit.
  *
@@ -25,13 +25,12 @@ import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
  * via inline style props (`var(--font-title)` etc.).
  *   colors.schemeId    → provider color ramp variables
  *   fonts.schemeId     → role font variables
- *   shape.schemeId     → Tailwind radius-scale variables
- *   density.schemeId   → coarse section rhythm variables
+ *   shape.schemeId     → shared radius-scale variables
  */
 
 export function toCssVars(
   theme: ThemeTokens | null | undefined,
   scope: Extract<ThemeCssVarScope, ".rt-canvas" | ":root"> = ".rt-canvas"
 ): string {
-  return themeToCssVars(cmsThemeToRendererTheme(theme), scope)
+  return themeToCssVars(normalizeThemeForSave(theme), scope)
 }

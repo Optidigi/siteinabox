@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   ArrowUpRight,
   Cable,
@@ -53,15 +54,15 @@ const features = [
 const Features = () => {
   return (
     <div className="mx-auto flex max-w-7xl flex-col px-6 py-20">
-      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Built to just work
-      </h2>
-      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         Designed for speed, flexibility, and ease of use
-      </p>
+      </>} inline /></p>
 
       <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature, index) => (
+        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
           <div
             className="rounded-xl border border-border/45 bg-muted/75 p-1 shadow-xs/3 dark:border-border/65"
             key={index}
@@ -89,7 +90,7 @@ const Features = () => {
               </Button>
             </div>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

@@ -12,11 +12,13 @@ const allowedEvidence = [
   "scripts/check-generated-site-provider-cutover.mjs",
 ]
 
-const forbidden = /tailwindplus|tailwind-plus|tailwind plus|tailblocks|preline|defaultBlockRegistry/i
+const obsoleteProvider = /tailwindplus|tailwind-plus|tailwind plus|tailblocks|preline|defaultBlockRegistry/i
+const forbiddenRuntimeInference = /projectNode|projectionFor|carriesDemoRecord|\.type\.name|chrome-literal-view/
 const result = spawnSync("git", ["ls-files", "-co", "--exclude-standard"], { encoding: "utf8" })
 if (result.status !== 0) throw new Error(result.stderr || "git ls-files failed")
 
 const findings = []
+const existingPaths = new Set()
 for (const path of result.stdout.trim().split("\n").filter(Boolean)) {
   if (allowedEvidence.some((entry) => path === entry || path.startsWith(entry))) continue
   let contents
@@ -25,10 +27,17 @@ for (const path of result.stdout.trim().split("\n").filter(Boolean)) {
   } catch {
     continue
   }
+  existingPaths.add(path)
   contents.split("\n").forEach((line, index) => {
-    if (forbidden.test(line)) findings.push(`${path}:${index + 1}:${line.trim()}`)
+    if (obsoleteProvider.test(line) || forbiddenRuntimeInference.test(line)) findings.push(`${path}:${index + 1}:${line.trim()}`)
   })
 }
+
+const forbiddenPaths = [...existingPaths].filter((path) =>
+  /packages\/site-renderer\/src\/providers\/shadcnui-blocks\/variants\/[^/]+\/(?:adapter|literal)\.(?:ts|tsx)$/.test(path) ||
+  /packages\/site-renderer\/src\/source-(?:blocks|chrome)\//.test(path),
+)
+findings.push(...forbiddenPaths.map((path) => `${path}: obsolete generated-site provider layer`))
 
 if (findings.length) {
   console.error("Obsolete generated-site provider references remain outside immutable evidence/history:\n")

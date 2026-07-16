@@ -1,6 +1,5 @@
 import type {
   ColorRamp,
-  DensityScheme,
   FontScheme,
   ProviderColorScheme,
   ProviderColorSchemeMode,
@@ -116,7 +115,7 @@ const defaultLight: ProviderColorSchemeMode = {
   onAccent: "#ffffff",
 }
 
-const tailwindSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
+const modernSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
 const editorialSerifStack = "Fraunces Variable, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
 const humanistSansStack = "\"Avenir Next\", Avenir, Nunito, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
 
@@ -134,28 +133,28 @@ export const colorSchemes = {
   "blue-professional": {
     id: "blue-professional",
     label: "Blue Professional",
-    source: "tailwind",
+    source: "builtin",
     light: { ...defaultLight, accent: indigo },
     dark: { ...defaultDark, accent: indigo },
   },
   "red-confident": {
     id: "red-confident",
     label: "Red Confident",
-    source: "tailwind",
+    source: "builtin",
     light: { ...defaultLight, accent: red },
     dark: { ...defaultDark, accent: red },
   },
   "emerald-calm": {
     id: "emerald-calm",
     label: "Emerald Calm",
-    source: "tailwind",
+    source: "builtin",
     light: { ...defaultLight, accent: emerald },
     dark: { ...defaultDark, accent: emerald },
   },
   "amber-warm": {
     id: "amber-warm",
     label: "Amber Warm",
-    source: "tailwind",
+    source: "builtin",
     light: { ...defaultLight, accent: amber },
     dark: { ...defaultDark, accent: amber },
   },
@@ -165,28 +164,22 @@ export const fontSchemes = {
   "clear-modern": {
     id: "clear-modern",
     label: "Clear Modern",
-    source: "tailwind",
-    roles: { body: tailwindSansStack, heading: tailwindSansStack, display: tailwindSansStack, mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
+    source: "builtin",
+    roles: { body: modernSansStack, heading: modernSansStack, display: modernSansStack, mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
   },
   "classic-editorial": {
     id: "classic-editorial",
     label: "Classic Editorial",
-    source: "system",
+    source: "builtin",
     roles: { body: editorialSerifStack, heading: editorialSerifStack, display: editorialSerifStack, mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
   },
   "friendly-organic": {
     id: "friendly-organic",
     label: "Friendly Organic",
-    source: "system",
+    source: "builtin",
     roles: { body: humanistSansStack, heading: humanistSansStack, display: humanistSansStack, mono: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
   },
 } as const satisfies Record<string, FontScheme>
-
-export const densitySchemes = {
-  spacious: { id: "spacious", label: "Spacious", sectionPaddingY: { base: "8rem", sm: "10rem", lg: "12rem" } },
-  comfortable: { id: "comfortable", label: "Comfortable", sectionPaddingY: { base: "6rem", sm: "8rem", lg: "8rem" } },
-  compact: { id: "compact", label: "Compact", sectionPaddingY: { base: "4rem", sm: "5rem", lg: "5rem" } },
-} as const satisfies Record<string, DensityScheme>
 
 export const shapeSchemes = {
   rounded: { id: "rounded", label: "Rounded", radius: { none: "0", sm: "0.75rem", md: "1rem", lg: "1.25rem", xl: "1.75rem", "2xl": "2.25rem", "3xl": "3rem", "4xl": "3.5rem", full: "9999px" } },
@@ -195,13 +188,12 @@ export const shapeSchemes = {
 } as const satisfies Record<string, ShapeScheme>
 
 export type ResolvedTheme = {
-  version: 2
+  version: 3
   mode: "light" | "dark" | "system"
   systemFallbackMode: "light" | "dark"
   light: ProviderColorSchemeMode
   dark: ProviderColorSchemeMode
   fonts: FontScheme
-  density: DensityScheme
   shape: ShapeScheme
 }
 
@@ -209,13 +201,12 @@ export function resolveThemeTokens(theme: ThemeTokenSpec | null | undefined): Re
   const scheme = colorSchemes[theme?.colors?.schemeId as keyof typeof colorSchemes] ?? colorSchemes["blue-professional"]
   const fonts = fontSchemes[theme?.fonts?.schemeId as keyof typeof fontSchemes] ?? fontSchemes["clear-modern"]
   return {
-    version: 2,
+    version: 3,
     mode: theme?.appearance?.mode ?? "light",
     systemFallbackMode: "light",
     light: scheme.light,
     dark: scheme.dark,
     fonts,
-    density: densitySchemes[theme?.density?.schemeId as keyof typeof densitySchemes] ?? densitySchemes.comfortable,
     shape: shapeSchemes[theme?.shape?.schemeId as keyof typeof shapeSchemes] ?? shapeSchemes.soft,
   }
 }

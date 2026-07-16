@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import type { SVGProps } from "react";
 
 const features = [
@@ -40,14 +41,14 @@ const Features = () => {
   return (
     <div className="px-6 py-20">
       <div className="mx-auto w-full max-w-(--breakpoint-lg)">
-        <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+        <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
           Less setup, more building
-        </h2>
-        <p className="mt-3 text-pretty text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl">
+        </>} inline /></h2>
+        <p className="mt-3 text-pretty text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl"><ProviderField field="intro" fallback={<>
           Simple, customizable, and easy to drop into your workflow
-        </p>
+        </>} inline /></p>
         <div className="mx-auto mt-12 grid w-full gap-x-8 gap-y-12 md:mt-18 lg:grid-cols-2">
-          {features.map((feature) => (
+          {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature) => (
             <div
               className="flex flex-col items-center gap-x-12 gap-y-6"
               key={feature.category}
@@ -116,7 +117,7 @@ const Features = () => {
                 </p>
               </div>
             </div>
-          ))}
+          ))}</ProviderItems>}
         </div>
       </div>
     </div>

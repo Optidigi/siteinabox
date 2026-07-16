@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   ArrowUpRight,
   ComponentIcon,
@@ -70,27 +71,23 @@ const CTA = () => {
         </div>
 
         <div className="relative isolate">
-          <h2 className="text-balance font-medium text-4xl text-black/85 tracking-[-0.04em] md:leading-tight lg:text-[2.75rem]">
+          <h2 className="text-balance font-medium text-4xl text-black/85 tracking-[-0.04em] md:leading-tight lg:text-[2.75rem]"><ProviderField field="headline" fallback={<>
             Turn your vision into reality
-          </h2>
-          <p className="mt-4 text-balance text-black/70 text-xl/normal md:mt-2.5 lg:text-[1.4rem]/normal">
+          </>} inline /></h2>
+          <p className="mt-4 text-balance text-black/70 text-xl/normal md:mt-2.5 lg:text-[1.4rem]/normal"><ProviderField field="description" fallback={<>
             Join thousands of developers using our premium component library to
             ship beautiful UIs in minutes, not hours.
-          </p>
+          </>} inline /></p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Button
               className="bg-neutral-950 text-white hover:bg-neutral-950/90"
               size="lg"
-            >
-              Get Started <ArrowUpRight />
-            </Button>
+             asChild><ProviderAction field="primary" fallback={"Get Started"} decoration="after"><ArrowUpRight /></ProviderAction></Button>
             <Button
               className="border-white/60 bg-white/50 text-black hover:bg-white/80 dark:border-white/60 dark:bg-white/50 dark:text-black dark:hover:bg-white/80"
               size="lg"
               variant="outline"
-            >
-              View Components
-            </Button>
+             asChild><ProviderAction field="secondary" fallback={"View Components"} decoration="after"></ProviderAction></Button>
           </div>
         </div>
       </div>

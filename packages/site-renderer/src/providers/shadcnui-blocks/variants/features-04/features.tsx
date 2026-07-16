@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   BookCheck,
   ChartPie,
@@ -56,13 +57,13 @@ const features = [
 const Features = () => {
   return (
     <div className="mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20">
-      <h2 className="max-w-lg text-pretty font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem] md:leading-14">
+      <h2 className="max-w-lg text-pretty font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem] md:leading-14"><ProviderField field="title" fallback={<>
         Build scalable interfaces with minimal effort
-      </h2>
+      </>} inline /></h2>
       <div className="mx-auto mt-8 grid w-full gap-12 md:mt-12 md:grid-cols-2">
         <div>
           <Accordion className="w-full" defaultValue="item-0" type="single">
-            {features.map(({ title, description, icon: Icon }, index) => (
+            {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map(({ title, description, icon: Icon }, index) => (
               <AccordionItem
                 className="group/accordion-item data-[state=open]:border-primary data-[state=open]:border-b-2"
                 key={index}
@@ -79,7 +80,7 @@ const Features = () => {
                   <div className="mt-6 mb-2 aspect-video w-full rounded-xl bg-muted md:hidden" />
                 </AccordionContent>
               </AccordionItem>
-            ))}
+            ))}</ProviderItems>}
           </Accordion>
         </div>
 

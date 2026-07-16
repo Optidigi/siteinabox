@@ -3,10 +3,10 @@ import { ValidationError } from "payload"
 import {
   SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
   SITE_GENERATION_BLOCK_SLUGS,
+  validateProviderBlockInstance,
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
-import { validateProviderBlockInstance } from "@siteinabox/site-renderer/source-blocks"
 import { isOfficialTenant } from "@/lib/officialTenants"
 import { relationshipId } from "@/lib/relationshipId"
 

@@ -17,7 +17,7 @@ import { useFrameCanvasBlocks } from "@/components/editor-frame/useFrameCanvasBl
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import type { ElementPath } from "@/components/editor/canvas/elementPath"
 import type { RtManifest } from "@/lib/richText/manifest"
-import { rendererThemeToCmsTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
 
 export interface FrameCanvasSurfaceProps {
@@ -101,7 +101,7 @@ export function FrameCanvasSurface({
     [emit, blocksApi.blocks, pageId],
   )
 
-  const cmsTheme = React.useMemo(() => rendererThemeToCmsTheme(theme), [theme])
+  const cmsTheme = React.useMemo(() => normalizeThemeForSave(theme), [theme])
   const canvasSelectionView = mobileMode.allowInlineEditing === false ? "sidebar" : view
   const selectedChrome = React.useMemo<SiteChromeSelection | null>(() => {
     const zone = selection?.fieldPath?.[1]

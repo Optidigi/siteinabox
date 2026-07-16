@@ -165,7 +165,7 @@ describe("preview customizer service", () => {
 
   it("loads preview data with page navigation, token expiry, persisted theme, approval, and payment state", async () => {
     const { tenant, runs } = createState()
-    tenant.theme = { ...DEFAULT_THEME_TOKEN_SPEC, density: { schemeId: "compact" } } as any
+    tenant.theme = DEFAULT_THEME_TOKEN_SPEC as any
     runs[0]!.clientApproval = { status: "pending" } as any
     runs[0]!.payment = { status: "not_started" } as any
     const { getPreviewCustomizerData } = await import("@/lib/preview/customizer")
@@ -210,21 +210,19 @@ describe("preview customizer service", () => {
     const { persistPreviewTheme } = await import("@/lib/preview/customizer")
 
     const saved = await persistPreviewTheme(tokenFor(1, 100), {
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "spacious" },
     })
 
     expect(saved).toEqual({
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "comfortable" },
     })
     expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
       collection: "tenants",

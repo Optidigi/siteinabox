@@ -150,12 +150,11 @@ const toSnapshot = (
 }
 
 export const amicareTheme: ThemeTokenSpec = {
-  version: 2,
+  version: 3,
   appearance: { mode: "light" },
   colors: { schemeId: "amber-warm" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "soft" },
-  density: { schemeId: "comfortable" },
 }
 
 const canonicalBlocks: SiteBlockManifestItem[] = [

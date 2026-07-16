@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Logo01,
   Logo02,
@@ -16,9 +17,9 @@ const logos = [Logo01, Logo02, Logo03, Logo07, Logo05, Logo06, Logo04, Logo08];
 const LogoCloud = () => {
   return (
     <section className="mx-auto max-w-5xl px-12 py-12">
-      <p className="text-balance text-center font-medium text-muted-foreground text-sm uppercase">
+      <p className="text-balance text-center font-medium text-muted-foreground text-sm uppercase"><ProviderField field="intro" fallback={<>
         Trusted by teams and companies around the world
-      </p>
+      </>} inline /></p>
       <div className="relative mt-14 flex flex-col grayscale-100">
         <div className="absolute inset-x-0 top-0 w-[calc(100%+4rem)] -translate-x-8 border-t" />
         <div className="absolute inset-x-0 bottom-0 w-[calc(100%+4rem)] -translate-x-8 border-b" />
@@ -32,14 +33,14 @@ const LogoCloud = () => {
 
         <div className="flex flex-col">
           <Marquee className="p-0 [--gap:0px]">
-            {logos.map((Logo, index) => (
+            {<ProviderItems field="logos" templates={logos}>{(providerItems) => providerItems.map((Logo, index) => (
               <div
                 className="flex w-full items-center justify-center border-e px-10 py-6 even:bg-muted/60 dark:even:bg-muted/30"
                 key={index}
               >
                 <Logo className="h-6 sm:h-8" />
               </div>
-            ))}
+            ))}</ProviderItems>}
           </Marquee>
         </div>
       </div>

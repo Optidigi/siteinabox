@@ -1,9 +1,8 @@
 import type { GenerationInput, NormalizedIntake } from "@siteinabox/contracts/generation"
 import {
-  SITE_SELF_SERVE_CHROME_VARIANTS,
-  SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS,
-} from "@siteinabox/contracts/block-catalog"
-import { providerBlockDefinitions } from "@siteinabox/site-renderer/source-blocks"
+  SHADCNUI_BLOCK_VARIANTS,
+  SHADCNUI_CHROME_VARIANTS,
+} from "@siteinabox/contracts"
 import { buildGenerationInput } from "@/lib/intake/normalizeIntake"
 import { SUPPORTED_SITE_GENERATION_BLOCKS } from "./prompts/siteGenerationPrompt"
 
@@ -44,42 +43,30 @@ export const buildSiteGenerationModelInput = (
   intake,
   generationInput,
   supportedBlocks: SUPPORTED_SITE_GENERATION_BLOCKS,
-  approvedDesignVariants: SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => {
-    const providerDefinition = providerBlockDefinitions.find((definition) =>
-      definition.blockType === variant.slug &&
-      (
-        definition.id === variant.providerVariantId ||
-        definition.id === variant.variant ||
-        definition.legacyDesignVariant === variant.legacyDesignVariant ||
-        definition.legacyDesignVariant === variant.variant
-      )
-    )
-    return {
-      blockType: variant.slug,
-      designVariant: variant.providerVariantId ?? variant.variant,
-      legacyDesignVariant: variant.legacyDesignVariant,
-      sourceName: variant.provenance.sourceName,
-      variantId: variant.variantId,
-      providerVariantId: providerDefinition?.id,
+  approvedDesignVariants: SHADCNUI_BLOCK_VARIANTS.map((variant) => ({
+      blockType: variant.blockType,
+      designVariant: variant.id,
+      sourceName: "akash3444/shadcn-ui-blocks",
+      variantId: variant.id,
+      providerVariantId: variant.id,
       slots: Object.fromEntries(
-        Object.entries(providerDefinition?.slots ?? {})
+        Object.entries(variant.slots)
           .map(([name, slot]) => [
             name,
             {
               kind: slot.kind,
               status: slot.status,
-              exposed: slot.exposed,
-              ...(slot.minItems != null ? { minItems: slot.minItems } : {}),
-              ...(slot.maxItems != null ? { maxItems: slot.maxItems } : {}),
+              exposed: slot.status !== "inactive",
+              ...("minItems" in slot && slot.minItems != null ? { minItems: slot.minItems } : {}),
+              ...("maxItems" in slot && slot.maxItems != null ? { maxItems: slot.maxItems } : {}),
             },
           ]),
       ),
-    }
-  }),
-  approvedChromeVariants: SITE_SELF_SERVE_CHROME_VARIANTS.map((variant) => ({
+    })),
+  approvedChromeVariants: SHADCNUI_CHROME_VARIANTS.map((variant) => ({
     area: variant.area,
-    variant: variant.variant,
-    sourceName: variant.provenance.sourceName,
+    variant: variant.id,
+    sourceName: "akash3444/shadcn-ui-blocks",
     variantId: variant.id,
   })),
   requirements: [
@@ -89,7 +76,7 @@ export const buildSiteGenerationModelInput = (
     "Fill only exposed slots from the selected approvedDesignVariants slot manifest; do not include inactive slots.",
     "Do not set legacy page-block visual identity fields; designVariant is the only page-block visual identity field.",
     "Set settings.chrome.header.variant, settings.chrome.footer.variant, and settings.chrome.banner.variant only to null or to approvedChromeVariants values for the matching area.",
-    "Set theme only to approved ThemeTokenSpec V2 preset IDs: colors blue-professional/red-confident/emerald-calm/amber-warm; fonts clear-modern/classic-editorial/friendly-organic; shape rounded/soft/sharp; density spacious/comfortable/compact; mode light/dark/system.",
+    "Set theme only to approved ThemeTokenSpec V3 preset IDs: colors blue-professional/red-confident/emerald-calm/amber-warm; fonts clear-modern/classic-editorial/friendly-organic; shape rounded/soft/sharp; mode light/dark/system.",
     "Map intake visual preferences to the nearest approved theme preset and use defaults when the intake is unclear.",
     "Never use tenant-exclusive tenant renderer variants, chrome variants, classes, content fixtures, domains, or variants for self-serve generated sites.",
     "Do not emit raw HTML, className/classes, arbitrary Tailwind classes, component source, sourceCode, source paths, imports, file paths, block tokens, style objects, or inline styles.",

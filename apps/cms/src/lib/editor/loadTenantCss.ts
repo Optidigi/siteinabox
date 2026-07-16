@@ -1,7 +1,7 @@
 import "server-only"
 import { promises as fs } from "node:fs"
 import { resolve } from "node:path"
-import { resolveTenantRenderer } from "@siteinabox/site-renderer"
+import { resolveTenantRenderer } from "@siteinabox/site-renderer/tenant-renderers/resolve"
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
 

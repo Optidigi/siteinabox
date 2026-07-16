@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import Link from "../../runtime/link";
 import type { ComponentProps } from "react";
 import {
@@ -23,7 +24,7 @@ const testimonials = [
     testimonial:
       "This product has completely transformed the way we work. The efficiency and ease of use are unmatched!",
     avatar:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:1bf22",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1bf22",
     logo: Logo01,
   },
   {
@@ -34,7 +35,7 @@ const testimonials = [
     testimonial:
       "This tool has saved me hours of work! The analytics and reporting features are incredibly powerful.",
     avatar:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:488d6",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:488d6",
     logo: Logo02,
   },
   {
@@ -45,7 +46,7 @@ const testimonials = [
     testimonial:
       "An amazing tool that simplifies complex tasks. Highly recommended for professionals in the industry.",
     avatar:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:41bea",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:41bea",
     logo: Logo03,
   },
   {
@@ -56,7 +57,7 @@ const testimonials = [
     testimonial:
       "I've seen a significant improvement in our team's productivity since we started using this service.",
     avatar:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:b20ed",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:b20ed",
     logo: Logo04,
   },
   {
@@ -67,7 +68,7 @@ const testimonials = [
     testimonial:
       "The best investment we've made! The support team is also super responsive and helpful.",
     avatar:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:61bb8",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:61bb8",
     logo: Logo05,
   },
   {
@@ -78,19 +79,19 @@ const testimonials = [
     testimonial:
       "The user experience is top-notch! The interface is clean, intuitive, and easy to navigate.",
     avatar:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:02613",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:02613",
     logo: Logo06,
   },
 ];
 
 const Testimonials = () => (
   <div className="px-6 py-20">
-    <h2 className="text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+    <h2 className="text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
       Success Stories
-    </h2>
-    <p className="mt-3.5 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl">
+    </>} inline /></h2>
+    <p className="mt-3.5 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl"><ProviderField field="intro" fallback={<>
       Real stories from people who use and love our product every day
-    </p>
+    </>} inline /></p>
     <div className="mask-x-from-80% mt-14 space-y-px border bg-muted">
       <Marquee className="py-0 [--duration:60s] [--gap:0px]" pauseOnHover>
         <TestimonialList />
@@ -100,7 +101,7 @@ const Testimonials = () => (
 );
 
 const TestimonialList = ({ className, ...props }: ComponentProps<"div">) =>
-  testimonials.map((testimonial) => (
+  <ProviderItems field="items" templates={testimonials}>{(providerItems) => providerItems.map((testimonial) => (
     <div
       className="-mx-1 flex w-full max-w-sm flex-col odd:flex-col-reverse"
       key={testimonial.id}
@@ -187,7 +188,7 @@ const TestimonialList = ({ className, ...props }: ComponentProps<"div">) =>
         />
       </div>
     </div>
-  ));
+  ))}</ProviderItems>;
 
 const TwitterLogo = (props: ComponentProps<"svg">) => (
   <svg

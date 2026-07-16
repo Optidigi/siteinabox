@@ -2,6 +2,7 @@
 @import "@fontsource-variable/caveat/index.css";
 @import "@fontsource-variable/inter/index.css";
 @source "../../../../packages/site-renderer/src";
+@source "../../../../packages/ui/src/providers/shadcnui-blocks";
 
 /* SIAB-owned app/editor CSS. Do not point components.json at this file. */
 
@@ -170,7 +171,7 @@ body { font-family: var(--font-sans); }
  * (`.rt-canvas[data-rt-mode="dark"]` vs `.rt-canvas`) lets it win.
  *
  * Fires when the canvas stamps `data-rt-mode="dark"` (driven by
- * `theme.appearance.mode === "dark"`). ThemeTokenSpec V2 preset overrides are
+ * `theme.appearance.mode === "dark"`). ThemeTokenSpec V3 preset overrides are
  * injected later via the data-rt-theme-overrides style tag and naturally
  * override this baseline (same selector, later in document order).
  */

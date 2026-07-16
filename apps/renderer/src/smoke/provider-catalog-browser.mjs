@@ -22,6 +22,28 @@ child.stderr.on("data", (chunk) => { output += chunk })
 
 try {
   await waitForRenderer(origin, child, () => output)
+  {
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const context = await browser.newContext({ colorScheme: "dark", viewport: { width: 1440, height: 1200 } })
+      const page = await context.newPage()
+      await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.navbar-02&mode=light&preference=system`, { waitUntil: "load", timeout: 60_000 })
+      await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "dark")
+      const darkBackground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background"))
+      await page.emulateMedia({ colorScheme: "light" })
+      await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "light")
+      const lightBackground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background"))
+      assert.notEqual(lightBackground, darkBackground, "system preference changes computed theme tokens")
+      await page.locator("[data-theme-toggle]:visible").first().click()
+      assert.equal(await page.evaluate(() => document.documentElement.dataset.siabColorMode), "dark", "navbar writes resolved color mode")
+      assert.equal(await page.evaluate(() => localStorage.getItem("siab-color-mode")), "dark", "navbar persists visitor override")
+      await page.reload({ waitUntil: "load" })
+      await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "dark")
+      assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background")), darkBackground, "visitor override survives reload")
+    } finally {
+      await browser.close()
+    }
+  }
   const catalogVariants = inventory.variants
   assert.equal(catalogVariants.length, 156)
   const requestedVariant = process.env.SIAB_PROVIDER_VARIANT
@@ -68,6 +90,12 @@ try {
           if (unnamedLink) failures.push(`link without accessible name: ${unnamedLink.outerHTML.slice(0, 160)}`)
           const unnamedControl = document.querySelector("form input:not([type='hidden']):not([disabled]):not([name]), form textarea:not([disabled]):not([name]), form select:not([disabled]):not([name])")
           if (unnamedControl) failures.push(`form control without name: ${unnamedControl.outerHTML.slice(0, 160)}`)
+          if (document.documentElement.scrollWidth > document.documentElement.clientWidth) failures.push(`horizontal document overflow: ${document.documentElement.scrollWidth}px > ${document.documentElement.clientWidth}px`)
+          const nestedPageScroller = [...document.querySelectorAll(".site-frame-root, [data-provider-variant]")].find((element) => {
+            const overflow = getComputedStyle(element).overflowY
+            return (overflow === "auto" || overflow === "scroll") && element.scrollHeight > element.clientHeight
+          })
+          if (nestedPageScroller) failures.push(`nested page scrollbar: ${nestedPageScroller.outerHTML.slice(0, 160)}`)
           return failures
         })
         assert.deepEqual(accessibilityFailures, [], `${variant.id} accessibility smoke`)
@@ -92,10 +120,20 @@ try {
         }
         const themeToggle = page.locator("[data-theme-toggle]:visible").first()
         if (await themeToggle.count()) {
-          const before = await page.evaluate(() => document.documentElement.classList.contains("dark"))
+          const before = await page.evaluate(() => ({
+            mode: document.documentElement.dataset.siabColorMode,
+            background: getComputedStyle(document.documentElement).getPropertyValue("--background"),
+          }))
           await themeToggle.click()
-          assert.equal(await page.evaluate(() => document.documentElement.classList.contains("dark")), !before, `${variant.id} toggles color mode`)
-          assert.equal(await page.evaluate(() => localStorage.getItem("siab-color-mode")), before ? "light" : "dark", `${variant.id} persists color mode`)
+          const after = await page.evaluate(() => ({
+            mode: document.documentElement.dataset.siabColorMode,
+            background: getComputedStyle(document.documentElement).getPropertyValue("--background"),
+            stored: localStorage.getItem("siab-color-mode"),
+          }))
+          assert.equal(after.mode, before.mode === "dark" ? "light" : "dark", `${variant.id} toggles color mode`)
+          assert.equal(after.stored, after.mode, `${variant.id} persists color mode`)
+          assert.notEqual(after.background, before.background, `${variant.id} changes computed theme tokens`)
+          await page.evaluate(() => localStorage.removeItem("siab-color-mode"))
         }
         const consent = page.locator('[data-consent-action="accept"]:visible').first()
         if (await consent.count()) await consent.click()

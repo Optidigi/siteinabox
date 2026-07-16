@@ -1,5 +1,5 @@
 import type { SiteBlockEditorField } from "./generation"
-import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_CHROME_VARIANTS } from "./generated/shadcnui-blocks"
+import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_BLOCK_VARIANTS } from "./generated/shadcnui-blocks"
 import type { SiteSettings } from "./site"
 import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "./site"
 import type { SiteBlockSlug, SiteChromeVariant, SiteGenerationBlockSlug } from "./site"
@@ -117,25 +117,28 @@ const text = (name: string, label = name): SiteBlockEditorField => ({ name, labe
 const rich = (name: string, label = name): SiteBlockEditorField => ({ name, label, kind: "richtext", variant: "block" })
 const cta = (name: string, label = name): SiteBlockEditorField => ({ name, label, kind: "cta" })
 const image = (name: string, label = name): SiteBlockEditorField => ({ name, label, kind: "image" })
+const checkbox = (name: string, label = name): SiteBlockEditorField => ({ name, label, kind: "checkbox" })
 const array = (name: string, fields: SiteBlockEditorField[], label = name): SiteBlockEditorField => ({ name, label, kind: "array", itemFields: fields })
 
 const fieldsBySlug: Record<SiteBlockSlug, SiteBlockEditorField[]> = {
-  hero: [rich("eyebrow"), rich("headline"), rich("subheadline"), array("links", [text("label"), text("href")]), cta("cta"), cta("secondary"), image("image"), array("stats", [text("value"), text("label")])],
-  featureList: [rich("eyebrow"), rich("title"), rich("intro"), image("image"), array("features", [rich("title"), rich("description"), text("icon")])],
-  testimonials: [text("title"), image("logo"), array("items", [text("quote"), text("author"), text("role"), image("avatar")])],
-  faq: [rich("title"), array("items", [rich("question"), rich("answer")])],
+  hero: [rich("eyebrow"), rich("headline"), rich("subheadline"), array("links", [text("label"), text("href")]), cta("cta"), cta("secondary"), image("image"), array("stats", [text("value"), text("label")]), text("trustLabel"), array("logos", [text("name"), image("image"), text("href")])],
+  featureList: [rich("eyebrow"), rich("title"), rich("intro"), image("image"), array("features", [rich("title"), rich("description"), text("icon"), image("image"), cta("cta"), text("metricValue"), text("metricLabel")])],
+  testimonials: [text("title"), text("intro"), image("logo"), array("items", [text("quote"), text("author"), text("role"), image("avatar")])],
+  faq: [rich("title"), rich("intro"), array("items", [rich("question"), rich("answer")])],
   cta: [rich("eyebrow"), rich("headline"), rich("description"), cta("primary"), cta("secondary"), image("backgroundImage")],
   richText: [rich("body")],
   contactSection: [rich("title"), rich("description"), text("formName"), text("submitLabel"), array("fields", [text("name"), text("label"), text("type")])],
-  pricing: [rich("eyebrow"), rich("title"), rich("intro"), array("plans", [rich("title"), rich("description"), text("price"), text("period"), cta("cta")])],
+  contactDetails: [rich("title"), rich("description"), array("items", [text("title"), text("description"), text("value"), text("href"), text("icon")])],
+  pricing: [rich("eyebrow"), rich("title"), rich("intro"), array("plans", [rich("title"), rich("description"), text("price"), text("period"), array("features", [rich("label"), checkbox("included")]), cta("cta"), text("badge"), checkbox("highlighted")])],
   stats: [rich("title"), rich("intro"), array("items", [text("value"), text("label"), rich("description")])],
-  logoCloud: [rich("title"), rich("intro"), array("logos", [text("name"), image("image"), text("href")])],
+  logoCloud: [rich("title"), rich("intro"), array("logos", [text("name"), text("description"), image("image"), text("href")]), cta("cta")],
   gallery: [rich("title"), rich("intro"), array("images", [image("image"), rich("caption"), cta("link")]), cta("cta")],
-  team: [rich("title"), rich("intro"), array("members", [text("name"), text("role"), rich("bio"), image("image")])],
+  team: [rich("title"), rich("intro"), array("members", [text("name"), text("role"), rich("bio"), image("image"), array("links", [text("label"), text("href")])])],
   newsletter: [rich("title"), rich("description"), text("emailLabel"), text("emailPlaceholder"), text("submitLabel")],
   bentoGrid: [rich("title"), rich("intro"), array("items", [rich("title"), rich("description"), image("image"), text("icon"), cta("cta")])],
   contentSection: [rich("eyebrow"), rich("title"), rich("intro"), rich("body"), array("features", [rich("title"), rich("description"), text("icon")]), rich("bridge"), rich("secondaryTitle"), rich("secondaryBody"), image("image"), cta("cta")],
-  blogCards: [rich("title"), rich("intro"), array("posts", [rich("title"), rich("excerpt"), image("image"), text("href"), text("date"), text("author")])],
+  timeline: [rich("title"), rich("intro"), array("items", [text("title"), text("description"), text("label"), text("date"), array("tags", [text("value")])])],
+  blogCards: [rich("title"), rich("intro"), array("posts", [rich("title"), rich("excerpt"), image("image"), text("href"), text("date"), text("author")]), cta("cta"), cta("secondary")],
 }
 
 const providerRuntime: BlockSourceRuntimeRequirement = {
@@ -149,15 +152,17 @@ const tenantRuntime: BlockSourceRuntimeRequirement = {
   kind: "tenant-renderer-source", supportedAstroPath: "Render through the isolated Amicare tenant renderer.", interactive: true,
   docs: ["packages/site-renderer/src/tenant-renderers/amicare"], notes: "Official tenant compatibility only.",
 }
-const provenanceFor = (variant: (typeof SHADCNUI_BLOCK_VARIANTS)[number]): BlockVariantProvenance => ({
+type ProviderCatalogSource = { id: string; upstreamName: string; entryFile: string; sourceHash: string }
+const provenanceFor = (variant: ProviderCatalogSource): BlockVariantProvenance => ({
   sourceName: "akash3444/shadcn-ui-blocks", url: "https://github.com/akash3444/shadcn-ui-blocks",
   licenseStatus: "MIT", licenseCompatibility: "compatible", approvalStatus: "approved", sourceAvailability: "free-public",
   upstreamBlockName: variant.upstreamName, upstreamId: variant.id, sourceAccessType: "public-github-source",
   sourceAccess: `Pinned commit 46c2e50bb538c9bc7a8927979d38bae178ae4452 / registry-radix.json / ${variant.upstreamName}`,
-  implementation: "adapted-exact-style", sourcePath: variant.sourceFiles[0]?.path,
+  implementation: variant.upstreamName === "legal-content-01" ? "siab-owned" : "adapted-exact-style",
+  sourcePath: variant.upstreamName === "legal-content-01" ? "packages/site-renderer/src/providers/shadcnui-blocks/system-views.tsx" : `packages/site-renderer/src/providers/shadcnui-blocks/upstream/${variant.upstreamName}/${variant.entryFile}`,
   retrieval: "scripts/import-shadcnui-blocks.mjs verifies the commit, copies sources, and records SHA-256 hashes.",
-  verifiedAt: "2026-07-15", visualExactnessStatus: "reviewed-exact-source",
-  visualSourceNotes: "Literal upstream source and adapted reference matched in isolated desktop/mobile light/dark pixel gates.",
+  verifiedAt: "2026-07-15", visualExactnessStatus: variant.upstreamName === "legal-content-01" ? "reviewed-adapted-exact-style" : "needs-browser-comparison",
+  visualSourceNotes: variant.upstreamName === "legal-content-01" ? "Provider-token long-form system layout for generated legal content." : "Pinned literal source; true upstream browser comparison is required before exact parity can be claimed.",
   runtime: providerRuntime, notes: `Aggregate source hash ${variant.sourceHash}.`,
 })
 const amicareProvenance = (name: string): BlockVariantProvenance => ({
@@ -169,7 +174,7 @@ const amicareProvenance = (name: string): BlockVariantProvenance => ({
 })
 
 const grouped = new Map<string, SiteBlockCatalogVariant[]>()
-for (const source of SHADCNUI_BLOCK_VARIANTS) {
+for (const source of [...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_SYSTEM_BLOCK_VARIANTS]) {
   const variants = grouped.get(source.blockType) ?? []
   variants.push({
     id: `${source.blockType}:${source.id}`, variant: source.id, providerVariantId: source.id, label: source.title,
@@ -285,7 +290,9 @@ export const SITE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_BLOCK_CATALOG.flatMap((ent
   designVariant: variant.providerVariantId ?? variant.variant, variant: variant.providerVariantId ?? variant.variant,
   label: variant.label, rendererClassName: variant.rendererClassName, provenance: variant.provenance,
 })))
-export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_SOURCE_BACKED_BLOCK_VARIANTS
+export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS = SITE_SOURCE_BACKED_BLOCK_VARIANTS.filter(
+  (variant) => variant.providerVariantId !== "shadcnui-blocks.legal-content-01",
+)
 export const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES = ["akash3444/shadcn-ui-blocks"] as const
 export const SITE_SOURCE_BACKED_CHROME_VARIANTS = SITE_CHROME_CATALOG.filter(isApprovedSourceBackedVariant).map((variant) => ({
   area: variant.area, variantId: variant.id, variant: variant.variant, label: variant.label, rendererClassName: variant.rendererClassName, provenance: variant.provenance,

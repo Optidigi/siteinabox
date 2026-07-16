@@ -14,12 +14,11 @@ const blockText = (text: string) => ({
 })
 
 export const v1FixtureTheme: ThemeTokenSpec = {
-  version: 2,
+  version: 3,
   appearance: { mode: "light" },
   colors: { schemeId: "emerald-calm" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "soft" },
-  density: { schemeId: "comfortable" },
 }
 
 export const v1FixtureSettings: SiteSettings = {
@@ -284,6 +283,25 @@ export const v1FixturePage: Page = {
       submitLabel: "Subscribe",
       fields: [
         { name: "email", label: "Email", type: "email", required: true },
+      ],
+    },
+    {
+      blockType: "contactDetails",
+      title: inlineText("Contact us"),
+      description: blockText("Choose the contact method that suits you."),
+      items: [
+        { title: "Email", description: "We reply within one business day.", value: "hello@example.test", href: "mailto:hello@example.test", icon: "mail" },
+        { title: "Phone", description: "Available during office hours.", value: "+31 20 000 0000", href: "tel:+31200000000", icon: "phone" },
+        { title: "Office", value: "Example Street 1, Amsterdam", icon: "map-pin" },
+      ],
+    },
+    {
+      blockType: "timeline",
+      title: inlineText("Our journey"),
+      intro: blockText("A short history of the company."),
+      items: [
+        { title: "Founded", description: "The company started.", label: "Company", date: "2024", tags: [{ value: "Launch" }] },
+        { title: "Expanded", description: "The team grew.", label: "Growth", date: "2025", tags: [{ value: "Team" }, { value: "Product" }] },
       ],
     },
   ],

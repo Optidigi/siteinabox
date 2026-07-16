@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { Box, CircleCheck, Gem, type LucideIcon, Users } from "lucide-react";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -60,17 +61,17 @@ const pricingPlans: PricingPlan[] = [
 const Pricing = () => {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
-      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Plans & Pricing
-      </h2>
-      <p className="mt-2 text-balance text-center text-lg text-muted-foreground -tracking-[0.01em] sm:mt-4 sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-2 text-balance text-center text-lg text-muted-foreground -tracking-[0.01em] sm:mt-4 sm:text-2xl"><ProviderField field="intro" fallback={<>
         Flexible pricing designed to grow with you ready
-      </p>
+      </>} inline /></p>
 
       <div className="mt-12 grid grid-cols-1 gap-1 rounded-xl border bg-muted/40 p-1 sm:mt-16 sm:mt-16 sm:grid-cols-2 md:mt-15 md:grid-cols-3">
-        {pricingPlans.map((plan) => (
+        {<ProviderItems field="plans" templates={pricingPlans}>{(providerItems) => providerItems.map((plan) => (
           <PlanCard key={plan.name} plan={plan} />
-        ))}
+        ))}</ProviderItems>}
       </div>
     </section>
   );
@@ -96,13 +97,13 @@ const PlanCard = ({ plan }: { plan: PricingPlan }) => {
         <p className="mt-1 text-muted-foreground text-sm tracking-normal">
           one-time payment
         </p>
-        <Button
+        <ProviderDemoOnly fallback={<><Button
           className="my-6 w-full"
           size="lg"
           variant={plan.isRecommended ? "default" : "outline"}
         >
           Get Started
-        </Button>
+        </Button></>} />
         <ul className="mt-4 space-y-2">
           {plan.features.map((feature) => (
             <li className="flex items-center gap-2" key={feature}>

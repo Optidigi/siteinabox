@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { CircleCheck } from "lucide-react";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { Separator } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -53,14 +54,14 @@ const plans = [
 const Pricing = () => {
   return (
     <div className="px-6 py-20">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Our Plans
-      </h2>
-      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl"><ProviderField field="intro" fallback={<>
         Choose the plan that fits your needs
-      </p>
+      </>} inline /></p>
       <div className="mx-auto mt-12 grid max-w-(--breakpoint-lg) grid-cols-1 gap-8 sm:mt-16 lg:grid-cols-3">
-        {plans.map((plan) => (
+        {<ProviderItems field="plans" templates={plans}>{(providerItems) => providerItems.map((plan) => (
           <div
             className="rounded-lg border border-border/85 bg-card p-6 shadow-xs/3"
             key={plan.name}
@@ -89,7 +90,7 @@ const Pricing = () => {
               {plan.buttonText}
             </Button>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

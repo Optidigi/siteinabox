@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   BadgeDollarSign,
   Route,
@@ -51,15 +52,15 @@ const FAQ = () => {
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-20">
       <div className="max-w-(--breakpoint-lg)">
-        <h2 className="text-center font-medium text-4xl/snug tracking-[-0.05em] md:text-[2.75rem]">
+        <h2 className="text-center font-medium text-4xl/snug tracking-[-0.05em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
           Frequently Asked Questions
-        </h2>
-        <p className="mt-3 text-center text-muted-foreground text-xl md:text-2xl md:tracking-[-0.015em]">
+        </>} inline /></h2>
+        <p className="mt-3 text-center text-muted-foreground text-xl md:text-2xl md:tracking-[-0.015em]"><ProviderField field="intro" fallback={<>
           Quick answers to common questions about our products and services.
-        </p>
+        </>} inline /></p>
 
         <div className="mt-12 grid gap-px overflow-hidden rounded-xl border border-border/85 bg-border/85 shadow-xs/3 sm:mt-16 md:grid-cols-2">
-          {faq.map(({ question, answer, icon: Icon }) => (
+          {<ProviderItems field="items" templates={faq}>{(providerItems) => providerItems.map(({ question, answer, icon: Icon }) => (
             <div className="flex items-start gap-4 bg-card p-6" key={question}>
               <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-foreground/5">
                 <Icon className="size-5" />
@@ -71,7 +72,7 @@ const FAQ = () => {
                 <p className="text-foreground/70">{answer}</p>
               </div>
             </div>
-          ))}
+          ))}</ProviderItems>}
         </div>
       </div>
     </div>

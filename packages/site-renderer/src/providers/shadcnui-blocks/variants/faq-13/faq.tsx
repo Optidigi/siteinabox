@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { cn } from "@siteinabox/ui/lib/utils";
 
 const faqs = [
@@ -55,15 +56,15 @@ const faqs = [
 export default function FAQ() {
   return (
     <div className="mx-auto max-w-(--breakpoint-lg) px-6 py-14">
-      <h2 className="mt-5 max-w-4xl text-balance font-medium text-4xl leading-[1.1] tracking-[-0.04em]">
+      <h2 className="mt-5 max-w-4xl text-balance font-medium text-4xl leading-[1.1] tracking-[-0.04em]"><ProviderField field="title" fallback={<>
         Frequently Asked Questions
-      </h2>
-      <p className="mt-2 text-lg text-muted-foreground sm:text-xl">
+      </>} inline /></h2>
+      <p className="mt-2 text-lg text-muted-foreground sm:text-xl"><ProviderField field="intro" fallback={<>
         Find answers to common questions about our products and services.
-      </p>
+      </>} inline /></p>
 
       <div className="mt-8 grid grid-cols-1 gap-1 rounded-lg border border-border/75 bg-muted p-0.75 md:grid-cols-2">
-        {faqs.map((faq, index) => (
+        {<ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
           <div
             className={cn(
               "relative overflow-hidden border border-border/90 bg-background text-start",
@@ -83,7 +84,7 @@ export default function FAQ() {
               </div>
             </div>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

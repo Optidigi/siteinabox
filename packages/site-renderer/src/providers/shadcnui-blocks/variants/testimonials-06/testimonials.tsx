@@ -1,5 +1,6 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { StarIcon } from "lucide-react";
 import Image from "../../runtime/image";
 import { useEffect, useState } from "react";
@@ -24,7 +25,7 @@ const testimonials = [
       "This product has completely transformed the way we work. The efficiency and ease of use are unmatched! " +
       "We were struggling with productivity before, but this tool has streamlined our entire process. ",
     portraitImage:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:1bf22",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1bf22",
   },
   {
     id: 2,
@@ -35,7 +36,7 @@ const testimonials = [
       "An amazing tool that simplifies complex tasks. Highly recommended for professionals in the industry. " +
       "The intuitive interface makes it easy to onboard new team members, and the automation features save us countless hours every week. ",
     portraitImage:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:488d6",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:488d6",
   },
   {
     id: 3,
@@ -47,7 +48,7 @@ const testimonials = [
       "As a designer, I appreciate the attention to detail and well-thought-out UI components. " +
       "It makes designing and prototyping so much more efficient.",
     portraitImage:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:41bea",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:41bea",
   },
   {
     id: 4,
@@ -58,7 +59,7 @@ const testimonials = [
       "I've seen a significant improvement in our team's productivity since we started using this service. " +
       "The ability to track performance, analyze data, and collaborate across teams has been a game-changer.",
     portraitImage:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:4855b",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4855b",
   },
   {
     id: 5,
@@ -69,7 +70,7 @@ const testimonials = [
       "The best investment we've made! The support team is also super responsive and helpful. " +
       "As a developer, I appreciate the well-documented API, the flexibility of integrations, and the robust security features.",
     portraitImage:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:af976",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:af976",
   },
   {
     id: 6,
@@ -81,7 +82,7 @@ const testimonials = [
       "I can now generate detailed reports in minutes, which previously took days to compile. " +
       "helping us make smarter, data-backed decisions.",
     portraitImage:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:b20ed",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:b20ed",
   },
 ];
 
@@ -105,20 +106,20 @@ const Testimonials = () => {
 
   return (
     <div className="px-6 py-20">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
         People love using it
-      </h2>
-      <p className="mt-4 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-4 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl"><ProviderField field="intro" fallback={<>
         Real feedback from those who've made it part of their workflow
-      </p>
+      </>} inline /></p>
       <div className="container mx-auto mt-14 w-full px-12 lg:mt-16 lg:max-w-(--breakpoint-lg) xl:max-w-(--breakpoint-xl)">
         <Carousel setApi={setApi}>
           <CarouselContent>
-            {testimonials.map((testimonial) => (
+            {<ProviderItems field="items" templates={testimonials}>{(providerItems) => providerItems.map((testimonial) => (
               <CarouselItem key={testimonial.id}>
                 <TestimonialCard testimonial={testimonial} />
               </CarouselItem>
-            ))}
+            ))}</ProviderItems>}
           </CarouselContent>
           <CarouselPrevious />
           <CarouselNext />
@@ -126,6 +127,7 @@ const Testimonials = () => {
         <div className="flex items-center justify-center gap-2">
           {Array.from({ length: count }).map((_, index) => (
             <button
+              aria-label={`Go to slide ${index + 1}`}
               className={cn("h-3.5 w-3.5 rounded-full border-2", {
                 "border-primary bg-primary": current === index + 1,
               })}

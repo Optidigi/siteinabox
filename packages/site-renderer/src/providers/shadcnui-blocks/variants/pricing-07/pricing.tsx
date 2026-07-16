@@ -1,5 +1,6 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import NumberFlow from "@number-flow/react";
 import { Box, CircleCheck, Gem, type LucideIcon, Users } from "lucide-react";
 import { useState } from "react";
@@ -90,9 +91,9 @@ const Pricing = () => {
       </Tabs>
 
       <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3">
-        {pricingPlans.map((plan) => (
+        {<ProviderItems field="plans" templates={pricingPlans}>{(providerItems) => providerItems.map((plan) => (
           <PlanCard billingPeriod={billingPeriod} key={plan.name} plan={plan} />
-        ))}
+        ))}</ProviderItems>}
       </div>
     </section>
   );
@@ -134,9 +135,9 @@ const PlanCard = ({
           /month
         </span>
       </p>
-      <Button className="mt-6 mb-8 h-10 w-full" size="lg">
+      <ProviderDemoOnly fallback={<><Button className="mt-6 mb-8 h-10 w-full" size="lg">
         Get Started
-      </Button>
+      </Button></>} />
       <ul className="space-y-2">
         {plan.features.map((feature) => (
           <li className="flex items-center gap-2" key={feature}>

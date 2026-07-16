@@ -144,7 +144,7 @@ const privacyPage = (disclosure: TenantPrivacyDisclosure, siteName: string): Gen
     },
     {
       blockType: "contentSection",
-      designVariant: "shadcnui-blocks.timeline-01",
+      designVariant: "shadcnui-blocks.legal-content-01",
       metadata: { source: "system", systemRole: "tenant-privacy", templateVersion: TENANT_PRIVACY_TEMPLATE_VERSION },
       body: disclosureBody(disclosure),
     },
@@ -197,6 +197,6 @@ export function isMaterializedTenantPrivacyBlock(pageSlug: string, block: Record
   if ((metadata as Record<string, unknown>).source !== "system" || (metadata as Record<string, unknown>).systemRole !== "tenant-privacy") return false
   return (
     (block.blockType === "hero" && block.designVariant === "shadcnui-blocks.hero-01") ||
-    (block.blockType === "contentSection" && block.designVariant === "shadcnui-blocks.timeline-01")
+    (block.blockType === "contentSection" && block.designVariant === "shadcnui-blocks.legal-content-01")
   )
 }

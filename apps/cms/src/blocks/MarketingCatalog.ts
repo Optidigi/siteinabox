@@ -6,7 +6,9 @@ import {
   Images,
   LayoutGrid,
   Mail,
+  MapPin,
   Newspaper,
+  ListTree,
   Users,
 } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
@@ -90,9 +92,11 @@ export const LogoCloud: BlockWithMeta = {
     richBlock("intro", "Introductory text above logos."),
     { name: "logos", type: "array", required: true, fields: [
       { name: "name", type: "text", required: true },
+      { name: "description", type: "textarea" },
       { name: "image", type: "upload", relationTo: "media" },
       { name: "href", type: "text", validate: validateSafeHref },
     ]},
+    { name: "cta", type: "group", fields: linkFields() },
     ...blockBaseFields("partners"),
   ],
   summary: titleSummary(),
@@ -187,6 +191,46 @@ export const ContentSection: BlockWithMeta = {
   summary: titleSummary(),
 }
 
+export const ContactDetails: BlockWithMeta = {
+  slug: "contactDetails",
+  icon: MapPin,
+  description: "Contact methods and locations",
+  interfaceName: "ContactDetailsBlock",
+  fields: [
+    richInline("title", "Section heading for contact details."),
+    richBlock("description", "Supporting contact text."),
+    { name: "items", type: "array", required: true, fields: [
+      { name: "title", type: "text", required: true },
+      { name: "description", type: "text" },
+      { name: "value", type: "text", required: true },
+      { name: "href", type: "text", validate: validateSafeHref },
+      { name: "icon", type: "text" },
+    ]},
+    ...blockBaseFields("contact-details"),
+  ],
+  summary: titleSummary(),
+}
+
+export const Timeline: BlockWithMeta = {
+  slug: "timeline",
+  icon: ListTree,
+  description: "Chronological events or milestones",
+  interfaceName: "TimelineBlock",
+  fields: [
+    richInline("title", "Timeline heading."),
+    richBlock("intro", "Timeline introduction."),
+    { name: "items", type: "array", required: true, fields: [
+      { name: "title", type: "text", required: true },
+      { name: "description", type: "text" },
+      { name: "label", type: "text" },
+      { name: "date", type: "text" },
+      { name: "tags", type: "array", fields: [{ name: "value", type: "text", required: true }] },
+    ]},
+    ...blockBaseFields("timeline"),
+  ],
+  summary: titleSummary(),
+}
+
 export const Team: BlockWithMeta = {
   slug: "team",
   icon: Users,
@@ -198,7 +242,9 @@ export const Team: BlockWithMeta = {
     { name: "members", type: "array", required: true, fields: [
       { name: "name", type: "text", required: true },
       { name: "role", type: "text" },
+      richBlock("bio", "Short team member biography."),
       { name: "image", type: "upload", relationTo: "media" },
+      { name: "links", type: "array", fields: linkFields() },
     ]},
     ...blockBaseFields("team"),
   ],
@@ -223,6 +269,8 @@ export const BlogCards: BlockWithMeta = {
       { name: "authorRole", type: "text" },
       { name: "cta", type: "group", fields: linkFields() },
     ]},
+    { name: "cta", type: "group", fields: linkFields() },
+    { name: "secondary", type: "group", fields: linkFields() },
     ...blockBaseFields("updates"),
   ],
   summary: titleSummary(),

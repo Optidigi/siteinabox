@@ -14,12 +14,11 @@ const blockText = (text: string) => ({
 })
 
 const fixtureTheme: ThemeTokenSpec = {
-  version: 2,
+  version: 3,
   appearance: { mode: "light" },
   colors: { schemeId: "emerald-calm" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "soft" },
-  density: { schemeId: "comfortable" },
 }
 
 const pages: Page[] = [
@@ -40,11 +39,6 @@ const pages: Page[] = [
         eyebrow: inlineText("Renderer MVP"),
         headline: inlineText("A published snapshot rendered at the edge"),
         subheadline: blockText("This page is contract data, resolved by pathname, and rendered through the shared SIAB site renderer."),
-        pills: [
-          { label: "No tenant source branches" },
-          { label: "SEO-ready HTML" },
-          { label: "Theme tokens applied" },
-        ],
         cta: { label: "View services", href: "/services" },
       },
       {
@@ -98,9 +92,9 @@ const pages: Page[] = [
         cta: { label: "Back home", href: "/" },
       },
       {
-        blockType: "contentSection",
+        blockType: "timeline",
         designVariant: "shadcnui-blocks.timeline-01",
-        body: blockText("The services page uses the same fixture snapshot, the same theme tokens, and the same shared block renderers."),
+        items: [{ title: "Published snapshot", description: "The services page uses the same fixture snapshot, theme tokens, and shared renderer.", label: "Runtime" }],
       },
       {
         blockType: "faq",

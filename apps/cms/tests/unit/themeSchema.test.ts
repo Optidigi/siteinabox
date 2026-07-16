@@ -4,7 +4,7 @@ import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 describe("themeSchema", () => {
-  it("accepts ThemeTokenSpec V2 preset selections", () => {
+  it("accepts ThemeTokenSpec V3 preset selections", () => {
     expect(themeSchema.safeParse(DEFAULT_THEME_TOKEN_SPEC).success).toBe(true)
   })
 
@@ -16,6 +16,8 @@ describe("themeSchema", () => {
       { radius: "0.5rem" },
       { stylePreset: "catalog-clean" },
       { borderStyle: "solid" },
+      { ...DEFAULT_THEME_TOKEN_SPEC, density: { schemeId: "comfortable" } },
+      { ...DEFAULT_THEME_TOKEN_SPEC, version: 2 },
       { generatedStyle: true },
       { "generated-style": true },
       { css: ".x{}" },
@@ -48,7 +50,7 @@ describe("themeSchema", () => {
     }).success).toBe(false)
   })
 
-  it("normalizes legacy Amicare theme fields to approved V2 presets", () => {
+  it("normalizes legacy Amicare theme fields to approved V3 presets without density", () => {
     expect(normalizeThemeForSave({
       mode: "dark",
       radius: "1.5rem",
@@ -56,12 +58,11 @@ describe("themeSchema", () => {
       borderStyle: "solid",
       stylePreset: "warm-care",
     })).toEqual({
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "clear-modern" },
       shape: { schemeId: "rounded" },
-      density: { schemeId: "comfortable" },
     })
   })
 })

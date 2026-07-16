@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 const steps = [
   {
     title: "Research",
@@ -44,7 +45,7 @@ export default function Timeline() {
         {/* Timeline line */}
         <div className="absolute inset-y-0 left-0 border-l" />
 
-        {steps.map(({ title, description }, index) => (
+        {<ProviderItems field="items" templates={steps}>{(providerItems) => providerItems.map(({ title, description }, index) => (
           <div className="relative pb-10 pl-10 last:pb-0" key={index}>
             {/* Timeline Icon */}
             <div className="absolute left-px flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-muted-foreground/40 bg-accent ring-8 ring-background">
@@ -59,7 +60,7 @@ export default function Timeline() {
               <p className="text-lg text-muted-foreground">{description}</p>
             </div>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

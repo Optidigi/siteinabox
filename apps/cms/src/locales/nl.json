@@ -760,8 +760,6 @@
     "fontPairings": "Lettertypecombinaties",
     "shape": "Vorm",
     "cornerRadius": "Hoekafronding",
-    "density": "Dichtheid",
-    "spacingDensity": "Ruimtedichtheid",
     "shuffle": "Shuffle",
     "default": "Standaard",
     "light": "Licht",

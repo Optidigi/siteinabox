@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import Image from "../../runtime/image";
 import {
   Carousel,
@@ -9,11 +10,11 @@ import {
 } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 
 const images = [
-  "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:6eb8f",
-  "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:83463",
-  "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:78241",
-  "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:c8511",
-  "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:1b495",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:6eb8f",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:83463",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:78241",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:c8511",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1b495",
 ];
 
 export default function CarouselDemo() {
@@ -30,10 +31,10 @@ export default function CarouselDemo() {
         <div className="rounded-xl bg-card p-6 shadow-xl/3 ring ring-border/80">
           <div className="mb-5 flex items-end justify-between">
             <div>
-              <h2 className="font-medium text-3xl tracking-tight">dddepth</h2>
-              <p className="mt-2 text-lg text-muted-foreground leading-snug">
+              <h2 className="font-medium text-3xl tracking-tight"><ProviderField field="title" fallback={<>dddepth</>} inline /></h2>
+              <p className="mt-2 text-lg text-muted-foreground leading-snug"><ProviderField field="intro" fallback={<>
                 A Curated Collection of AI-generated Abstract 3D Shapes
-              </p>
+              </>} inline /></p>
             </div>
 
             <div className="hidden space-x-2 md:block">
@@ -43,7 +44,7 @@ export default function CarouselDemo() {
           </div>
 
           <CarouselContent>
-            {images.map((image, index) => (
+            {<ProviderItems field="images" templates={images}>{(providerItems) => providerItems.map((image, index) => (
               <CarouselItem
                 className="basis-1/2 md:basis-1/3 lg:basis-1/4"
                 key={index}
@@ -54,7 +55,7 @@ export default function CarouselDemo() {
                   </div>
                 </div>
               </CarouselItem>
-            ))}
+            ))}</ProviderItems>}
           </CarouselContent>
         </div>
       </Carousel>

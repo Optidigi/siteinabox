@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   ArrowUpRight,
   Cable,
@@ -54,19 +55,19 @@ const features = [
 const Features = () => {
   return (
     <div className="mx-auto flex max-w-7xl flex-col px-6 py-20">
-      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Designed to scale
-      </h2>
-      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         Spend less time configuring and more time creating
-      </p>
+      </>} inline /></p>
 
       <div className="mt-20 grid grid-cols-1 bg-card sm:grid-cols-2 lg:grid-cols-3">
-        <div className="-mr-px flex h-16 items-center border px-6 font-medium text-lg sm:col-span-2 md:col-span-1">
+        <div className="-mr-px flex h-16 items-center border px-6 font-medium text-lg sm:col-span-2 md:col-span-1"><ProviderField field="eyebrow" fallback={<>
           <Smile className="mr-4 text-primary" /> Features that make you happy
-        </div>
+        </>} inline /></div>
         <div className="-mr-px hidden h-16 border bg-[repeating-linear-gradient(315deg,var(--muted)_0,var(--muted)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] bg-fixed md:block lg:col-span-2" />
-        {features.map((feature, index) => (
+        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
           <div
             className="-mt-px -mr-px border border-border/75 px-5 pt-7 pb-5"
             key={index}
@@ -87,7 +88,7 @@ const Features = () => {
               </Link>
             </Button>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

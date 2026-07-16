@@ -4,21 +4,21 @@ import { describe, expect, it } from "vitest"
 const read = (path: string) => readFileSync(path, "utf8")
 
 describe("ThemeBar controls", () => {
-  it("keeps shape focused on radius and exposes density as its own theme control", () => {
+  it("exposes only color, font and shape controls", () => {
     const themeBar = read("src/components/editor/theme/theme-bar.tsx")
     const radiusControl = read("src/components/editor/theme/radius-control.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
 
-    expect(themeBar).toContain('type Segment = "colors" | "fonts" | "shape" | "density"')
-    expect(themeBar).toContain("DensityControl")
-    expect(themeBar).toContain("densityLevels")
+    expect(themeBar).toContain('type Segment = "colors" | "fonts" | "shape"')
+    expect(themeBar).not.toContain("DensityControl")
+    expect(themeBar).not.toContain("densityLevels")
     expect(themeBar).not.toContain("stylePresetLevels")
-    expect(pageForm).toContain("densityLevels={DENSITY_PRESETS}")
+    expect(pageForm).not.toContain("DENSITY_PRESETS")
     expect(pageForm).not.toContain("stylePresetLevels={STYLE_PRESETS}")
     expect(radiusControl).toContain("export const ShapeControl")
-    expect(radiusControl).toContain("export const DensityControl")
+    expect(radiusControl).not.toContain("export const DensityControl")
     expect(radiusControl).toContain("shapeId")
-    expect(radiusControl).toContain("densityId")
+    expect(radiusControl).not.toContain("densityId")
   })
 
   it("uses functional theme updates so quick toolbar patches merge with the latest state", () => {
@@ -36,7 +36,7 @@ describe("ThemeBar controls", () => {
     expect(themeBar).toContain("pickRandom(palettes)")
     expect(themeBar).toContain("pickRandom(fonts)")
     expect(themeBar).toContain("pickRandom(radiusLevels ?? [])")
-    expect(themeBar).toContain("pickRandom(densityLevels ?? [])")
+    expect(themeBar).not.toContain("densityLevels")
     expect(themeBar).toContain('className="flex justify-center py-2 md:hidden"')
     expect(themeBar).toContain("<Dices")
     expect(themeBar).toContain("<RotateCcw")

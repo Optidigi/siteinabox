@@ -50,9 +50,8 @@ same-origin renderer iframe is measured after `renderer.ready` and auto-sized to
 the rendered document height, so customer preview should not introduce a nested
 site scrollbar. Customer preview chrome is owned by `PreviewCustomizer` in
 `src/components/preview/`; see § Customer preview chrome below for layout,
-breakpoints, and the component map. Preview always renders the comfortable
-density preset; density is not customer-editable in preview. The preview page
-keeps bottom padding (`pb-24 md:pb-32`) so the footer does not cover the final
+breakpoints, and the component map. The preview page keeps bottom padding
+(`pb-24 md:pb-32`) so the footer does not cover the final
 rendered section when the customer scrolls to the end.
 
 ## Customer preview chrome
@@ -72,7 +71,6 @@ do not conflate the two.
 | `PreviewMobileThemeBar` | `preview-mobile-theme-bar.tsx` | Three-segment popover theme bar |
 | Tone inversion | `preview-mobile-chrome-tone.ts` | Light site → dark CMS chrome (and vice versa) |
 | Close event | `lib/preview/preview-theme-events.ts` | `PREVIEW_THEME_TOOLBAR_CLOSE_EVENT` closes mobile popovers on iframe interaction |
-| Density pin | `lib/theme/normalizeTheme.ts` | `normalizePreviewThemeForSave` forces `comfortable` |
 
 **Desktop (`md+`):** `PreviewCommandBar` is a centered floating card
 (`md:bottom-6`, `md:rounded-lg`, `md:bg-background/90`, `md:backdrop-blur-xl`)
@@ -91,8 +89,8 @@ Iframe focus or pointer interaction dispatches `PREVIEW_THEME_TOOLBAR_CLOSE_EVEN
 to collapse open theme popovers.
 
 Theme changes in preview go through `normalizePreviewThemeForSave` on the client
-and in `persistPreviewTheme*` on the server so density never persists outside
-`comfortable`.
+and in `persistPreviewTheme*` on the server so only the canonical theme shape
+is persisted.
 
 ## Editor error boundary
 
@@ -104,12 +102,11 @@ and in `persistPreviewTheme*` on the server so density never persists outside
 
 ## Theme control bar
 
-`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating desktop control for the approved `ThemeTokenSpec` V2 color, font, shape, density, and appearance presets. It edits tenant-wide preset IDs only—never CMS tokens, raw palettes, arbitrary classes, or custom CSS. `toCssVars`, `ThemeStyle`, and `themeToCssVars` apply the same scoped variables in canvas, preview, and public rendering. Provider surfaces use exact upstream reference tokens under `data-provider-token-mode="reference"`; tenant overrides stay outside that scope and do not rewrite literal provider classes. Changes persist through the normal page or preview-theme save path.
+`ThemeBar` (`src/components/editor/theme/theme-bar.tsx`) is a floating desktop control for the approved `ThemeTokenSpec` V3 color, font, shape, and appearance presets. It edits tenant-wide preset IDs only—never CMS tokens, raw palettes, arbitrary classes, or custom CSS. `toCssVars`, `ThemeStyle`, and `themeToCssVars` apply the same scoped variables in canvas, preview, and public rendering. `ThemeCanvas` keeps the configured preference (`light`, `dark`, or `system`) separate from its single resolved `data-rt-mode`; system mode follows the operating-system media query. Public pages use the same resolver plus the optional `siab-color-mode` visitor override, applied by an inline head bootstrap before CSS paints. Live provider surfaces inherit those tenant tokens under `data-provider-token-mode="theme"`; exact upstream reference tokens exist only in the isolated parity harness. Changes persist through the normal page or preview-theme save path.
 
 Generated blocks must not add their own arbitrary visual token fields, class
 names, provider CSS overrides, or per-block color/font/radius/spacing controls.
-Fonts, colors, shape, mode, and non-default section-padding density are
-global theme-schema responsibilities; block renderers consume those values
+Fonts, colors, shape, and mode are global theme-schema responsibilities; block renderers consume those values
 through approved token classes or renderer-owned provider bridge rules.
 
 ## Block renderers

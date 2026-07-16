@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import Image from "../../runtime/image";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -23,21 +24,19 @@ const CTA = () => {
           />
 
           <div className="relative isolate pt-12 pb-0 md:pb-12">
-            <h2 className="font-medium text-4xl tracking-[-0.04em] lg:text-5xl/[1.2]">
+            <h2 className="font-medium text-4xl tracking-[-0.04em] lg:text-5xl/[1.2]"><ProviderField field="headline" fallback={<>
               Build something you're proud of today
-            </h2>
-            <p className="mt-2 text-muted-foreground text-xl tracking-[-0.015em] sm:mt-4 lg:text-2xl">
+            </>} inline /></h2>
+            <p className="mt-2 text-muted-foreground text-xl tracking-[-0.015em] sm:mt-4 lg:text-2xl"><ProviderField field="description" fallback={<>
               Join thousands of developers using our tools.
-            </p>
-            <Button className="mt-5 sm:mt-10" size="lg">
-              Get Started Today <ArrowUpRight />
-            </Button>
+            </>} inline /></p>
+            <Button className="mt-5 sm:mt-10" size="lg" asChild><ProviderAction field="primary" fallback={"Get Started Today"} decoration="after"><ArrowUpRight /></ProviderAction></Button>
           </div>
-          <Image
+          <ProviderImage field="backgroundImage" fallback={<Image
             alt=""
             className="mask-b-from-75% relative isolate mt-auto aspect-square w-full max-w-xs md:h-76 md:w-auto md:max-w-none"
             src="/images/cta-mobile.png"
-          />
+          />} />
         </div>
       </div>
     </div>

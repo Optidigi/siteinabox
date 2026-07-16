@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { ChevronRight } from "lucide-react";
 import Image from "../../runtime/image";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -20,7 +21,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "5 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:3bf03",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:3bf03",
   },
   {
     category: "Business",
@@ -29,7 +30,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "8 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:2fa0b",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2fa0b",
   },
   {
     category: "Finance",
@@ -38,7 +39,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "6 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:5b9d1",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5b9d1",
   },
   {
     category: "Health",
@@ -47,7 +48,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "10 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:5f7e8",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5f7e8",
   },
   {
     category: "Lifestyle",
@@ -56,7 +57,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "12 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:d11ce",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:d11ce",
   },
   {
     category: "Politics",
@@ -65,7 +66,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "7 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:2dcd5",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2dcd5",
   },
   {
     category: "Science",
@@ -74,7 +75,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "9 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:0ac53",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:0ac53",
   },
   {
     category: "Sports",
@@ -83,7 +84,7 @@ const blogPosts = [
       "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
     readTime: "11 min read",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:dfcf6",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:dfcf6",
   },
 ];
 
@@ -91,9 +92,9 @@ const Blog = () => {
   return (
     <div className="mx-auto max-w-(--breakpoint-xl) px-6 py-16 xl:px-0">
       <div className="flex items-end justify-between">
-        <h2 className="font-medium text-[1.5rem] tracking-tight">
+        <h2 className="font-medium text-[1.5rem] tracking-tight"><ProviderField field="title" fallback={<>
           Recommended Posts
-        </h2>
+        </>} inline /></h2>
         <Select defaultValue="recommended">
           <SelectTrigger className="w-[180px]">
             <SelectValue />
@@ -107,7 +108,7 @@ const Blog = () => {
       </div>
 
       <div className="mt-4 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-        {blogPosts.map((post) => (
+        {<ProviderItems field="posts" templates={blogPosts}>{(providerItems) => providerItems.map((post) => (
           <Card
             className="gap-0 overflow-hidden rounded-lg py-0 shadow-none"
             key={post.title}
@@ -143,7 +144,7 @@ const Blog = () => {
               </Button>
             </CardContent>
           </Card>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

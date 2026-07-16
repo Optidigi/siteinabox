@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   ArrowUpRightIcon,
   BinocularsIcon,
@@ -53,15 +54,15 @@ export default function Features() {
       className="mx-auto max-w-(--breakpoint-xl) overflow-clip px-8 py-24 text-center"
       id="why-choose-us"
     >
-      <strong className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+      <strong className="font-medium text-muted-foreground text-sm uppercase tracking-wide"><ProviderField field="eyebrow" fallback={<>
         Why Choose Us
-      </strong>
-      <h2 className="mx-auto mt-5 max-w-4xl text-balance font-medium text-4xl leading-[1.3] tracking-[-0.04em] sm:text-[2.75rem]">
+      </>} inline /></strong>
+      <h2 className="mx-auto mt-5 max-w-4xl text-balance font-medium text-4xl leading-[1.3] tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Advanced Home Security Solutions Built for Modern Living
-      </h2>
-      <p className="mt-4 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-4 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         We are constantly always keep pace with the time
-      </p>
+      </>} inline /></p>
 
       <div className="relative mx-auto mt-16 grid max-w-5xl grid-cols-1 border nth-3:border sm:grid-cols-2 lg:grid-cols-3">
         <div className="mask-y-from-95% absolute -inset-y-14 left-0 -translate-x-px border-s border-dashed" />
@@ -69,7 +70,7 @@ export default function Features() {
         <div className="mask-x-from-95% absolute -inset-x-14 top-0 -translate-y-px border-t border-dashed" />
         <div className="mask-x-from-95% absolute -inset-x-14 bottom-0 translate-y-px border-b border-dashed" />
 
-        {plusPoints.map((plusPoint, index) => (
+        {<ProviderItems field="features" templates={plusPoints}>{(providerItems) => providerItems.map((plusPoint, index) => (
           <div
             className={cn(
               "relative -mt-px flex w-full flex-col items-center gap-2 border-t p-6 pt-9 odd:bg-muted/40",
@@ -89,7 +90,7 @@ export default function Features() {
               Learn More <ArrowUpRightIcon />
             </Button>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

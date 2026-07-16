@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { ArrowUpRight, CirclePlay } from "lucide-react";
 import Link from "../../runtime/link";
 import type { SVGProps } from "react";
@@ -16,28 +17,22 @@ export default function Hero() {
           className="rounded-full bg-background/30 py-1 backdrop-blur-lg"
           variant="secondary"
         >
-          <Link href="#">
-            Just released v1.0.0 <ArrowUpRight className="ml-1 size-4" />
-          </Link>
+          <span><ProviderField field="eyebrow" fallback={"Just released v1.0.0"} inline /><ArrowUpRight className="ml-1 size-4" /></span>
         </Badge>
-        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-tighter sm:text-[2.75rem] md:text-6xl/[1.2]">
+        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-tighter sm:text-[2.75rem] md:text-6xl/[1.2]"><ProviderField field="headline" fallback={<>
           Ship better UI without&nbsp;the&nbsp;hassle
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-foreground/70 text-xl md:text-2xl/normal">
+        </>} inline /></h1>
+        <p className="mx-auto mt-6 max-w-2xl text-foreground/70 text-xl md:text-2xl/normal"><ProviderField field="subheadline" fallback={<>
           Instead of starting from scratch every time, use thoughtfully designed
           blocks that give you a solid foundation for any UI.
-        </p>
+        </>} inline /></p>
         <div className="mt-12 flex items-center justify-center gap-4">
-          <Button className="rounded-full" size="lg">
-            Get Started <ArrowUpRight className="size-5" />
-          </Button>
+          <Button className="rounded-full" size="lg" asChild><ProviderAction field="cta" fallback={"Get Started"} decoration="after"><ArrowUpRight className="size-5" /></ProviderAction></Button>
           <Button
             className="rounded-full shadow-none"
             size="lg"
             variant="outline"
-          >
-            <CirclePlay className="size-5" /> Watch Demo
-          </Button>
+           asChild><ProviderAction field="secondary" fallback={"Watch Demo"} decoration="before"><CirclePlay className="size-5" /></ProviderAction></Button>
         </div>
       </div>
     </div>

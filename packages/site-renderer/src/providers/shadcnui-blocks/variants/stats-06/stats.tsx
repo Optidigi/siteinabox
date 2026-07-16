@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   FastForward,
   HeartHandshake,
@@ -10,47 +11,47 @@ import {
 function Stats() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-20">
-      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Numbers that matter
-      </h2>
-      <p className="mt-3.5 text-pretty text-center text-muted-foreground text-xl tracking-[-0.015em] sm:text-lg md:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3.5 text-pretty text-center text-muted-foreground text-xl tracking-[-0.015em] sm:text-lg md:text-2xl"><ProviderField field="intro" fallback={<>
         A quick look at the impact and adoption of our UI components
-      </p>
+      </>} inline /></p>
 
       <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 py-7 dark:border-blue-400/30 dark:bg-blue-500/15">
           <MonitorSmartphone className="mb-7 h-10 w-10 stroke-[1.75px] text-blue-500" />
-          <span className="font-medium text-5xl">70%</span>
-          <p className="mt-4 text-foreground/80 text-xl">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={0} subField="value" fallback={<>70%</>} /></span>
+          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={0} subField="label" fallback={<>
             Faster UI development
-          </p>
+          </>} /></p>
         </div>
         <div className="rounded-xl border border-green-600/30 bg-green-50 p-6 py-7 dark:border-green-500/30 dark:bg-green-500/15">
           <FastForward className="mb-7 h-10 w-10 stroke-[1.75px] text-green-600" />
-          <span className="font-medium text-5xl">5x</span>
-          <p className="mt-4 text-foreground/80 text-xl">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={1} subField="value" fallback={<>5x</>} /></span>
+          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={1} subField="label" fallback={<>
             Increase in productivity
-          </p>
+          </>} /></p>
         </div>
         <div className="row-span-2 flex flex-col overflow-hidden rounded-xl border border-red-200 bg-red-50 p-6 py-7 pb-0 dark:border-red-400/30 dark:bg-red-400/15">
           <HeartHandshake className="mb-7 h-10 w-10 stroke-[1.75px] text-red-500" />
-          <span className="font-medium text-5xl">98%</span>
-          <p className="mt-4 mb-2 text-foreground/80 text-xl">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={2} subField="value" fallback={<>98%</>} /></span>
+          <p className="mt-4 mb-2 text-foreground/80 text-xl"><ProviderItemField field="items" index={2} subField="label" fallback={<>
             Customer satisfaction
-          </p>
+          </>} /></p>
           <PersonalGoalsIllustration className="mt-auto -mb-2 h-auto w-full" />
         </div>
         <div className="rounded-xl border border-amber-600/30 bg-amber-50 p-6 py-7 dark:border-amber-500/30 dark:bg-amber-500/15">
           <TrendingUp className="mb-7 h-10 w-10 stroke-[1.75px] text-amber-600" />
-          <span className="font-medium text-5xl">300%</span>
-          <p className="mt-4 text-foreground/80 text-xl">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={3} subField="value" fallback={<>300%</>} /></span>
+          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={3} subField="label" fallback={<>
             Growth in last 6 months
-          </p>
+          </>} /></p>
         </div>
         <div className="rounded-xl border border-purple-200 bg-purple-50 p-6 py-7 dark:border-purple-400/30 dark:bg-purple-400/15">
           <Users className="mb-7 h-10 w-10 stroke-[1.75px] text-purple-500" />
-          <span className="font-medium text-5xl">120K+</span>
-          <p className="mt-4 text-foreground/80 text-xl">Daily active users</p>
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={4} subField="value" fallback={<>120K+</>} /></span>
+          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={4} subField="label" fallback={<>Daily active users</>} /></p>
         </div>
       </div>
     </div>

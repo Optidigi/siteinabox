@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { Bot, Bug, Building2, Calendar, Database } from "lucide-react";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 
@@ -39,8 +40,7 @@ export default function Timeline() {
         {/* Timeline line */}
         <div className="absolute inset-y-0 left-0 border-l-2" />
 
-        {experiences.map(
-          (
+        {<ProviderItems field="items" templates={experiences}>{(providerItems) => providerItems.map((
             { company, description, period, technologies, title, icon: Icon },
             index
           ) => (
@@ -83,8 +83,7 @@ export default function Timeline() {
                 </div>
               </div>
             </div>
-          )
-        )}
+          ))}</ProviderItems>}
       </div>
     </div>
   );

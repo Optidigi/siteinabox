@@ -3,6 +3,7 @@ import {
   activatePublishedSnapshot,
   canActivatePublishedSnapshot,
   prunePublishedSnapshotsForTenant,
+  resolvePublishedSnapshotByHost,
 } from "@/lib/publish/siteSnapshots"
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
@@ -280,12 +281,11 @@ describe("published snapshot activation gate", () => {
     } as any) as any
 
     expect(result.snapshot.theme).toEqual({
-      version: 2,
+      version: 3,
       appearance: { mode: "light" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "clear-modern" },
       shape: { schemeId: "rounded" },
-      density: { schemeId: "comfortable" },
     })
   })
 
@@ -351,5 +351,34 @@ describe("published snapshot activation gate", () => {
     }))
     expect(payload.delete.mock.calls.map(([call]) => call.id)).toEqual([2, 1])
     expect(payload.delete.mock.calls.map(([call]) => call.id)).not.toContain(3)
+  })
+})
+
+describe("published snapshot theme serving", () => {
+  it("preserves a canonical V3 theme when resolving an active snapshot", async () => {
+    const tenant = {
+      id: 1,
+      slug: amicarePublishedSiteSnapshot.tenantSlug,
+      domain: amicarePublishedSiteSnapshot.domain,
+      status: "active",
+      activeSnapshot: 10,
+      siteManifest: null,
+    }
+    const payload = {
+      find: vi.fn(async ({ collection }: any) => ({
+        docs: collection === "tenants" ? [tenant] : [],
+      })),
+      findByID: vi.fn(async ({ collection, id }: any) => {
+        if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
+        if (collection === "published-site-snapshots" && String(id) === "10") {
+          return { id: 10, status: "active", snapshot: amicarePublishedSiteSnapshot }
+        }
+        throw new Error(`Missing ${collection} ${id}`)
+      }),
+    }
+
+    const result = await resolvePublishedSnapshotByHost(payload as any, tenant.domain)
+
+    expect(result?.snapshot.theme).toEqual(amicarePublishedSiteSnapshot.theme)
   })
 })

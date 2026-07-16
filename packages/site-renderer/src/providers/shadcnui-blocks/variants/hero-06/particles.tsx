@@ -1,5 +1,5 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@siteinabox/ui/lib/utils";

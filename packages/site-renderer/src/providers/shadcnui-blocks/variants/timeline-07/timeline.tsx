@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 const changelog = [
   {
     title: "Initial Release",
@@ -58,9 +59,7 @@ export default function Timeline() {
         {/* Timeline line */}
         {/* <div className="absolute left-0 top-3 bottom-0 border-l-2" /> */}
 
-        {changelog
-          .reverse()
-          .map(({ title, description, date, version }, index) => (
+        {<ProviderItems field="items" templates={[...changelog].reverse()}>{(providerItems) => providerItems.map(({ title, description, date, version }, index) => (
             <div className="group relative" key={index}>
               {/* Content */}
               <div className="flex items-start">
@@ -85,7 +84,7 @@ export default function Timeline() {
                 </div>
               </div>
             </div>
-          ))}
+          ))}</ProviderItems>}
       </div>
     </div>
   );

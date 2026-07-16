@@ -1,7 +1,7 @@
 import type { CollectionBeforeValidateHook, CollectionConfig } from "payload"
 import { ValidationError } from "payload"
 import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
-import { SHADCNUI_CHROME_VARIANTS } from "@siteinabox/contracts"
+import { SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_TEMPLATES } from "@siteinabox/contracts"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -42,6 +42,7 @@ const chromeVariantOptionsFor = (area: "header" | "footer" | "banner") =>
 const headerChromeVariantOptions = chromeVariantOptionsFor("header")
 const footerChromeVariantOptions = chromeVariantOptionsFor("footer")
 const bannerChromeVariantOptions = chromeVariantOptionsFor("banner")
+const notFoundTemplateOptions = SHADCNUI_SYSTEM_TEMPLATES.map((entry) => ({ label: entry.title, value: entry.id }))
 
 const tenantExclusiveChromeVariants = SITE_CHROME_CATALOG
   .filter((entry) => entry.scope.kind === "tenant-exclusive")
@@ -173,6 +174,9 @@ export const enforceChromeCapabilities: CollectionBeforeValidateHook = ({ collec
     })
     if (!footerCapability.newsletter && nonEmpty(footer.newsletter?.action)) errors.push({ path: "chrome.footer.newsletter", message: `${footer.variant} has no newsletter region.` })
   }
+  const maintenance = merged.maintenance
+  if (maintenance?.enabled && !nonEmpty(maintenance.variant)) errors.push({ path: "maintenance.variant", message: "Enabled maintenance mode requires an approved banner variant." })
+  if (maintenance?.enabled && !nonEmpty(maintenance.message)) errors.push({ path: "maintenance.message", message: "Enabled maintenance mode requires a message." })
   if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors: errors.map((error) => ({ ...error, message: adminValidationText(req.i18n?.language, error.message, error.message) })) })
   return data
 }
@@ -389,9 +393,17 @@ export const SiteSettings: CollectionConfig = {
           { name: "dismissible", type: "checkbox", defaultValue: true },
         ]},
       ]},
+    { name: "systemTemplates", type: "group", fields: [
+      { name: "notFound", type: "group", fields: [
+        { name: "variant", type: "select", options: notFoundTemplateOptions, defaultValue: "shadcnui-blocks.not-found-01", required: true,
+          admin: { description: adminText("Approved 404 page template.", "Goedgekeurde 404-paginasjabloon.") } },
+      ]},
+    ]},
     { name: "maintenance", type: "group", fields: [
       { name: "enabled", type: "checkbox", defaultValue: false },
-      { name: "message", type: "textarea" }
+      { name: "message", type: "textarea" },
+      { name: "variant", type: "select", options: bannerChromeVariantOptions,
+        admin: { description: adminText("Approved banner used when maintenance mode is enabled.", "Goedgekeurde banner die wordt gebruikt wanneer de onderhoudsmodus actief is.") } }
     ]},
     { name: "contact", type: "group", fields: [
       { name: "phone", type: "text" },

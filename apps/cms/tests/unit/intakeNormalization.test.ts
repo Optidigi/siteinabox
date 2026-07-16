@@ -143,7 +143,6 @@ describe("normalizeIntakeSubmission", () => {
       colorSchemeId: "emerald-calm",
       fontSchemeId: "clear-modern",
       shapeSchemeId: "soft",
-      densitySchemeId: "comfortable",
     })
     expect(JSON.stringify(normalized.intakeBrief?.visualPreferences)).not.toContain("primary")
     expect(normalized.raw).toBeNull()
@@ -160,7 +159,6 @@ describe("normalizeIntakeSubmission", () => {
       colorSchemeId: "red-confident",
       fontSchemeId: "classic-editorial",
       shapeSchemeId: "rounded",
-      densitySchemeId: "comfortable",
     })
   })
 

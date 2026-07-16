@@ -1,8 +1,7 @@
 import {
+  getProviderBlockVariant,
   SITE_BLOCK_CATALOG_BY_SLUG,
-  SITE_BLOCK_SLUGS,
   type SiteBlockCatalogVariant,
-  type SiteBlockSlug,
 } from "@siteinabox/contracts"
 
 type VariantResolvedBlock = {
@@ -20,23 +19,9 @@ export type BlockVariantResolveContext = {
   tenantSlug?: string | null
 }
 
-const blockSlugs = new Set<string>(SITE_BLOCK_SLUGS)
-
 function cleanVariant(value: string | null | undefined) {
   const variant = value?.trim()
   return variant ? variant : undefined
-}
-
-function isBlockSlug(blockType: string): blockType is SiteBlockSlug {
-  return blockSlugs.has(blockType)
-}
-
-function isGenericRendererVariant(variant: SiteBlockCatalogVariant) {
-  if (variant.rendererSupportStatus !== "supported") return false
-  if (variant.scope.kind !== "global") return false
-
-  const sourceName = variant.provenance.sourceName.toLowerCase()
-  return sourceName === "akash3444/shadcn-ui-blocks"
 }
 
 function isTenantExclusiveRendererVariantAllowed(variant: SiteBlockCatalogVariant, context: BlockVariantResolveContext) {
@@ -50,30 +35,30 @@ function isTenantExclusiveRendererVariantAllowed(variant: SiteBlockCatalogVarian
   )
 }
 
-function isRendererVariantAllowed(variant: SiteBlockCatalogVariant, context: BlockVariantResolveContext) {
-  return isGenericRendererVariant(variant) || isTenantExclusiveRendererVariantAllowed(variant, context)
-}
-
 export function resolveBlockVariant(
   block: VariantResolvedBlock,
   context: BlockVariantResolveContext = {},
 ): ResolvedBlockVariant {
-  if (!isBlockSlug(block.blockType)) return {}
-
-  const catalogEntry = SITE_BLOCK_CATALOG_BY_SLUG[block.blockType]
   const requestedVariant = cleanVariant(block.designVariant)
-  if (requestedVariant) {
-    const catalogVariant = (catalogEntry.variants as readonly SiteBlockCatalogVariant[]).find(
-      (variant) => variant.variant === requestedVariant || variant.providerVariantId === requestedVariant,
-    )
-    if (!catalogVariant) return {}
-    if (!isRendererVariantAllowed(catalogVariant, context)) return {}
+  if (!requestedVariant) return {}
+
+  const providerVariant = getProviderBlockVariant({ blockType: block.blockType as never, designVariant: requestedVariant })
+  if (providerVariant) {
     return {
-      variant: catalogVariant.providerVariantId ?? catalogVariant.variant,
-      rendererClassName: catalogVariant?.rendererClassName,
+      variant: providerVariant.id,
+      rendererClassName: `cms-block--source-shadcnui-blocks-${providerVariant.upstreamName}`,
     }
   }
-  return {}
+
+  // Amicare is the sole tenant-specific renderer. Keep that compatibility
+  // isolated instead of routing every generated-site block through the CMS
+  // editor catalog.
+  const catalogEntry = SITE_BLOCK_CATALOG_BY_SLUG[block.blockType as keyof typeof SITE_BLOCK_CATALOG_BY_SLUG]
+  const tenantVariant = catalogEntry?.variants.find(
+    (variant) => variant.variant === requestedVariant && variant.scope.kind === "tenant-exclusive",
+  )
+  if (!tenantVariant || !isTenantExclusiveRendererVariantAllowed(tenantVariant, context)) return {}
+  return { variant: tenantVariant.variant, rendererClassName: tenantVariant.rendererClassName }
 }
 
 export function rendererVariantClassName(block: VariantResolvedBlock, context?: BlockVariantResolveContext) {

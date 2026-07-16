@@ -3,43 +3,39 @@ import { normalizePreviewThemeForSave, normalizeThemeForSave } from "@/lib/theme
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 describe("normalizeThemeForSave", () => {
-  it("fills missing V2 preset selections with defaults", () => {
+  it("fills missing preset selections with V3 defaults", () => {
     expect(normalizeThemeForSave({ version: 2 } as any)).toEqual(DEFAULT_THEME_TOKEN_SPEC)
   })
 
   it("preserves selected preset IDs only", () => {
     expect(normalizeThemeForSave({
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "spacious" },
     })).toEqual({
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "spacious" },
     })
   })
 
-  it("pins preview themes to the comfortable density preset", () => {
+  it("uses the same canonical theme shape for preview", () => {
     expect(normalizePreviewThemeForSave({
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "compact" },
     })).toEqual({
-      version: 2,
+      version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
-      density: { schemeId: "comfortable" },
     })
   })
 })

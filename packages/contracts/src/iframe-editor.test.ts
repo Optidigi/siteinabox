@@ -21,7 +21,7 @@ const revisioned = {
 const sampleBlock = {
   id: "block_1",
   blockType: "contentSection",
-  designVariant: "shadcnui-blocks.timeline-01",
+  designVariant: "shadcnui-blocks.legal-content-01",
   title: {
     t: "root",
     variant: "inline",
@@ -343,12 +343,11 @@ describe("iframe editor message protocol", () => {
       type: "theme.patch",
       expectedRevision: 2,
       theme: {
-        version: 2,
+        version: 3,
         appearance: { mode: "light" },
         colors: { schemeId: "blue-professional" },
         fonts: { schemeId: "clear-modern" },
         shape: { schemeId: "soft" },
-        density: { schemeId: "comfortable" },
       },
     }, { currentRevision: 9 })
 

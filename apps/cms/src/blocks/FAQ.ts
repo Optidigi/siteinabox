@@ -14,6 +14,12 @@ export const FAQ: BlockWithMeta = {
         description: "Section heading for the FAQ."
       } as any
     },
+    { name: "intro", type: "json",
+      admin: {
+        editor: "richTextBlock",
+        description: "Supporting text below the FAQ heading."
+      } as any
+    },
     { name: "items", type: "array", required: true, fields: [
       { name: "question", type: "json",
         admin: {

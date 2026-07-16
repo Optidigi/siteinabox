@@ -381,7 +381,6 @@ describe("intake-to-live mocked flow", () => {
       body: JSON.stringify(richIntake()),
     }) as any)
     const body = await response.json()
-
     expect(response.status).toBe(202)
     expect(body.status).toBe("preview_ready")
     expect(store["intake-submissions"]).toHaveLength(1)

@@ -7,11 +7,7 @@ const runtimeSource = await readFile(new URL("../client/analytics-runtime.ts", i
 const behaviorSource = await readFile(new URL("../client/site-behavior.ts", import.meta.url), "utf8")
 const amicareSource = await readFile(new URL("../../../../packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx", import.meta.url), "utf8")
 const chromeSource = await readFile(new URL("../../../../packages/site-renderer/src/chrome.tsx", import.meta.url), "utf8")
-const providerChromeSource = [
-  await readFile(new URL("../../../../packages/site-renderer/src/providers/shadcnui-blocks/banner-views.tsx", import.meta.url), "utf8"),
-  await readFile(new URL("../../../../packages/site-renderer/src/providers/shadcnui-blocks/variants/banner-04/view.tsx", import.meta.url), "utf8"),
-  await readFile(new URL("../../../../packages/site-renderer/src/providers/shadcnui-blocks/runtime/chrome-literal-view.tsx", import.meta.url), "utf8"),
-].join("\n")
+const providerChromeSource = await readFile(new URL("../../../../packages/site-renderer/src/providers/shadcnui-blocks/banner-views.tsx", import.meta.url), "utf8")
 
 test("consent presentation is owned only by the approved cloned banner variant", () => {
   assert.doesNotMatch(pageSource, /renderer-cookie-consent|Cookievoorkeuren|Alles accepteren/)

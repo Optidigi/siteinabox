@@ -1,4 +1,45 @@
 import "./analytics-runtime"
+import {
+  COLOR_MODE_STORAGE_KEY,
+  normalizeColorMode,
+  readStoredColorMode,
+  resolveColorMode,
+  SYSTEM_DARK_QUERY,
+  writeStoredColorMode,
+  type ThemePreference,
+} from "@siteinabox/site-renderer/theme"
+
+const root = document.documentElement
+const systemColorMode = window.matchMedia(SYSTEM_DARK_QUERY)
+
+function storage() {
+  try {
+    return window.localStorage
+  } catch {
+    return null
+  }
+}
+
+function normalizeThemePreference(value: unknown): ThemePreference {
+  return value === "dark" || value === "system" ? value : "light"
+}
+
+function applyColorMode() {
+  const stored = readStoredColorMode(storage())
+  const resolve = (preference: ThemePreference) => resolveColorMode(preference, stored, systemColorMode.matches)
+  const pageMode = resolve(normalizeThemePreference(root.dataset.siabThemeMode))
+  root.dataset.siabColorMode = pageMode
+  root.dataset.rtMode = pageMode
+  document.querySelectorAll<HTMLElement>("[data-siab-theme-mode]").forEach((canvas) => {
+    canvas.dataset.rtMode = resolve(normalizeThemePreference(canvas.dataset.siabThemeMode))
+  })
+}
+
+applyColorMode()
+systemColorMode.addEventListener("change", applyColorMode)
+window.addEventListener("storage", (event) => {
+  if (event.key === null || event.key === COLOR_MODE_STORAGE_KEY) applyColorMode()
+})
 
 const managedFormSelector = "form[data-siab-analytics-form='true']"
 
@@ -45,9 +86,9 @@ document.addEventListener("click", (event) => {
 
   const themeToggle = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-theme-toggle]")
   if (themeToggle) {
-    const dark = !document.documentElement.classList.contains("dark")
-    document.documentElement.classList.toggle("dark", dark)
-    window.localStorage.setItem("siab-color-mode", dark ? "dark" : "light")
+    const current = normalizeColorMode(root.dataset.siabColorMode) ?? "light"
+    writeStoredColorMode(storage(), current === "dark" ? "light" : "dark")
+    applyColorMode()
     return
   }
 

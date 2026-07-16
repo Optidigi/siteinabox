@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Accordion,
   AccordionContent,
@@ -41,16 +42,16 @@ const faqs = [
 const FAQ = () => {
   return (
     <div className="mx-auto max-w-7xl px-6 py-12 sm:py-20">
-      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Frequently Asked Questions
-      </h2>
-      <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+      </>} inline /></h2>
+      <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]"><ProviderField field="intro" fallback={<>
         Find answers to common questions about our products and services
-      </p>
+      </>} inline /></p>
 
       <div className="mx-auto mt-16 max-w-3xl">
         <Accordion className="space-y-4" collapsible type="single">
-          {faqs.map((faq, index) => (
+          {<ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
             <AccordionItem
               className="rounded-lg not-last:border-b-0 bg-muted px-5"
               key={index}
@@ -68,7 +69,7 @@ const FAQ = () => {
                 {faq.answer}
               </AccordionContent>
             </AccordionItem>
-          ))}
+          ))}</ProviderItems>}
         </Accordion>
       </div>
     </div>

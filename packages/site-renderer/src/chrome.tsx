@@ -1,7 +1,7 @@
 import * as React from "react"
-import type { SiteSettings } from "@siteinabox/contracts"
+import { getProviderChromeVariant, type SiteBannerChromeVariant, type SiteSettings } from "@siteinabox/contracts"
 import type { MediaResolver } from "./media"
-import { getProviderChromeRenderer } from "./source-chrome/registry"
+import { ShadcnUiChromeView } from "./providers/shadcnui-blocks/views"
 
 export type SiteChromeProps = { settings: SiteSettings; currentSlug?: string; mediaResolver?: MediaResolver }
 
@@ -14,9 +14,8 @@ function renderChrome(area: "header" | "footer" | "banner", props: SiteChromePro
   }
   const variant = config.variant?.trim()
   if (!variant) throw new Error(`Configured ${area} chrome requires an approved explicit provider variant.`)
-  const Renderer = getProviderChromeRenderer(area, variant)
-  if (!Renderer) throw new Error(`Unresolved provider chrome variant "${variant}" for ${area}.`)
-  return <>{Renderer(props)}</>
+  if (!getProviderChromeVariant(area, variant)) throw new Error(`Unresolved provider chrome variant "${variant}" for ${area}.`)
+  return <ShadcnUiChromeView area={area} variant={variant} {...props} />
 }
 
 export const SiteHeader = (props: SiteChromeProps) => renderChrome("header", props)
@@ -25,5 +24,19 @@ export const SiteBanner = (props: SiteChromeProps) => renderChrome("banner", pro
 
 export function SiteMaintenanceBanner({ settings }: SiteChromeProps) {
   if (!settings.maintenance?.enabled) return null
-  return <aside className="border-b border-border bg-muted px-6 py-3 text-center text-sm text-muted-foreground" role="status" data-siab-site-maintenance-banner>{settings.maintenance.message?.trim() || "Deze website is tijdelijk in onderhoud."}</aside>
+  const variant = settings.maintenance.variant?.trim()
+  const message = settings.maintenance.message?.trim()
+  const approvedVariant = variant ? getProviderChromeVariant("banner", variant) : null
+  if (!approvedVariant) throw new Error("Enabled maintenance mode requires an approved explicit provider banner variant.")
+  const approvedVariantId = approvedVariant.id as SiteBannerChromeVariant
+  if (!message) throw new Error("Enabled maintenance mode requires message content.")
+  const maintenanceSettings: SiteSettings = {
+    ...settings,
+    analyticsConsent: { ...settings.analyticsConsent, enabled: false },
+    chrome: {
+      ...settings.chrome,
+      banner: { variant: approvedVariantId, visible: true, message, dismissible: false },
+    },
+  }
+  return <ShadcnUiChromeView area="banner" variant={approvedVariantId} settings={maintenanceSettings} />
 }

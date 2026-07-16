@@ -47,7 +47,7 @@ import {
 } from "@/components/editor/canvas/elementPath"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { toCssVars } from "@/lib/theme/toCssVars"
 import { isCustomerPreviewView, isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -856,7 +856,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
     return blockEntries
   }, [blockEntries, focusedBlockId, focusedBlockIndex])
   const sortableIds = visibleBlockEntries.map((entry) => String(entry.index))
-  const rendererTheme = React.useMemo(() => cmsThemeToRendererTheme(theme), [theme])
+  const rendererTheme = React.useMemo(() => normalizeThemeForSave(theme), [theme])
   const mediaResolver = React.useMemo(
     () => tenantId != null ? createRendererMediaResolver(String(tenantId)) : undefined,
     [tenantId],

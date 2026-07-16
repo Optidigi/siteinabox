@@ -37,6 +37,7 @@ function AvatarImage({
         className
       )}
       {...props}
+      src={typeof props.src === "string" && props.src.startsWith("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024'") ? undefined : props.src}
     />
   )
 }

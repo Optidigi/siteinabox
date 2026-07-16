@@ -192,7 +192,7 @@ describe("canvas chrome fidelity", () => {
     expect(runtime.indexOf('[data-site-chrome="footer"]')).toBeLessThan(runtime.indexOf("[data-siab-site-footer]"))
     expect(providerChrome).toContain('area === "header"')
     expect(providerChrome).toContain('data-provider-variant={variant}')
-    expect(providerChrome).toContain('data-provider-token-mode="reference"')
+    expect(providerChrome).toContain('data-provider-token-mode="theme"')
     expect(amicareRenderer).toContain('data-site-chrome="header"')
     expect(amicareRenderer).toContain('data-site-chrome="footer"')
   })

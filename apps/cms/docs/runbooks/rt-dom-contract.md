@@ -100,30 +100,21 @@ Radius variables are resolved by `toCssVars` from the user's selected shape
 preset (`soft`, `sharp`, or `rounded`). CMS and generation never store raw
 radius values.
 
-### Density / rhythm tokens
-
-| Token | Where to use |
-|---|---|
-| `var(--site-density)` | metadata only; do not branch layout directly from arbitrary values |
-| `var(--site-section-padding-y)` | coarse section vertical rhythm on mobile/default breakpoints |
-| `var(--site-section-padding-y-sm)` | coarse section vertical rhythm from the Tailwind `sm` breakpoint upward |
-
-Density is a tenant-wide coarse rhythm setting (`compact`, `comfortable`,
-`spacious`). In V1 it affects provider section vertical padding only. It is not
-an arbitrary spacing API. Generation and CMS editing must not supply per-block
-spacing values, breakpoint choices, grid spans, or layout instructions.
 ### Dark mode overlay
 
 When the resolved renderer theme mode is dark, `data-rt-mode="dark"` is set on
-the editor canvas root by `CanvasSurface` and on public/preview renderer roots
-by `packages/site-renderer` (`SitePageRenderer` / tenant renderers). SIAB
+the shared `ThemeCanvas`. The configured `light` / `dark` / `system` preference
+is retained separately as `data-siab-theme-mode`; system mode follows
+`prefers-color-scheme`. Public pages also stamp the resolved value on
+`html[data-siab-color-mode]` before paint and may use the visitor's safe
+`siab-color-mode` override. SIAB
 semantic color vars MUST be defined in BOTH:
 
 - a base block: `.rt-canvas { --color-accent: …; --color-bg: …; … }` for the canvas, or `html { --color-accent: …; … }` for the live site.
-- a dark overlay block: `.rt-canvas[data-rt-mode="dark"] { … }` for the canvas, or `html[data-rt-mode="dark"] { … }` for the live site.
+- a dark overlay block: `.rt-canvas[data-rt-mode="dark"] { … }` for the canvas, or `html[data-siab-color-mode="dark"] { … }` for the live site.
 
-The base block and dark overlay are resolved from ThemeTokenSpec V2 preset IDs.
-`toCssVars` emits both blocks from the selected color, font, shape, density, and
+The base block and dark overlay are resolved from ThemeTokenSpec V3 preset IDs.
+`toCssVars` emits both blocks from the selected color, font, shape, and
 appearance presets; CMS/generation do not store raw palettes.
 
 Generated-site CSS wires Tailwind's native `dark:` variant to
@@ -133,7 +124,7 @@ theme presets do not globally redefine Tailwind `--color-gray-*` or
 `--color-indigo-*` variables. Provider sources that do not include `dark:`
 utilities may be themed only through renderer-owned bridge rules
 for explicit semantic roles: ambient surfaces, ambient ink, accent affordances,
-borders, shape, non-default density, and reviewed tokenized decoration.
+borders, shape, and reviewed tokenized decoration.
 `bg-gray-900` remains a source-owned dark panel unless an explicit bridge says
 otherwise.
 
@@ -146,7 +137,7 @@ the change.
 
 Do not add arbitrary block-level visual tokens, per-block class names, provider
 token override fields, or one-off color/font/radius/spacing controls. Fonts,
-colors, shape, mode, and non-default section-padding density are global
+colors, shape, and mode are global
 theme-schema settings. Block schemas may choose approved design variants, but
 all visual tuning must resolve through global theme tokens and renderer-owned
 class or provider bridge rules.

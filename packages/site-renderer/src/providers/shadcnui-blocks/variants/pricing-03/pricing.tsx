@@ -1,5 +1,6 @@
-"use client";
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+"use client";
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import NumberFlow from "@number-flow/react";
 import { CircleCheck, CircleHelp } from "lucide-react";
 import { useState } from "react";
@@ -73,12 +74,12 @@ const Pricing = () => {
 
   return (
     <div className="px-6 py-20">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Our Plans
-      </h2>
-      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl"><ProviderField field="intro" fallback={<>
         Choose the plan that fits your needs
-      </p>
+      </>} inline /></p>
 
       <Tabs
         className="mx-auto mt-8 max-w-max"
@@ -101,7 +102,7 @@ const Pricing = () => {
         </TabsList>
       </Tabs>
       <div className="mx-auto mt-12 grid max-w-(--breakpoint-lg) grid-cols-1 items-center gap-8 lg:grid-cols-3">
-        {plans.map((plan) => (
+        {<ProviderItems field="plans" templates={plans}>{(providerItems) => providerItems.map((plan) => (
           <div
             className={cn("relative rounded-xl border p-6", {
               "border-2 border-primary py-10": plan.isPopular,
@@ -147,7 +148,7 @@ const Pricing = () => {
                   {feature.title}
                   {feature.tooltip && (
                     <Tooltip>
-                      <TooltipTrigger className="cursor-help">
+                      <TooltipTrigger aria-label="More information" className="cursor-help">
                         <CircleHelp className="mt-1 h-4 w-4 text-gray-500" />
                       </TooltipTrigger>
                       <TooltipContent>{feature.tooltip}</TooltipContent>
@@ -157,7 +158,7 @@ const Pricing = () => {
               ))}
             </ul>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

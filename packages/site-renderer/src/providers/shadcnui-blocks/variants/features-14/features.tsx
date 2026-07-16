@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   ArrowUpRightIcon,
   BinocularsIcon,
@@ -32,18 +33,18 @@ export default function Features() {
       className="mx-auto max-w-(--breakpoint-xl) px-6 py-24 text-center"
       id="why-choose-us"
     >
-      <strong className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+      <strong className="font-medium text-muted-foreground text-sm uppercase tracking-wide"><ProviderField field="eyebrow" fallback={<>
         Why Choose Us
-      </strong>
-      <h2 className="mx-auto mt-5 max-w-4xl text-balance font-medium text-4xl/tight tracking-[-0.04em] sm:text-[2.75rem]">
+      </>} inline /></strong>
+      <h2 className="mx-auto mt-5 max-w-4xl text-balance font-medium text-4xl/tight tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         We are Leading in Smart Assistants with Nearly 20 Years of Experience
-      </h2>
-      <p className="mt-5 text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-5 text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         We are constantly always keep pace with the time.
-      </p>
+      </>} inline /></p>
 
       <div className="mt-16 flex flex-wrap justify-center gap-4">
-        {plusPoints.map((plusPoint) => (
+        {<ProviderItems field="features" templates={plusPoints}>{(providerItems) => providerItems.map((plusPoint) => (
           <div
             className="relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-foreground/3 px-6 py-10 sm:max-w-xs"
             key={plusPoint.title}
@@ -63,7 +64,7 @@ export default function Features() {
               </Button>
             </div>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

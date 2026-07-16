@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   CircleDollarSign,
   Clock,
@@ -80,12 +81,12 @@ const FAQ = () => {
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12 sm:py-20">
-      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Frequently Asked Questions
-      </h2>
-      <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+      </>} inline /></h2>
+      <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]"><ProviderField field="intro" fallback={<>
         Find answers to common questions about our products and services
-      </p>
+      </>} inline /></p>
 
       <div className="mx-auto mt-12 max-w-5xl sm:mt-16">
         <Accordion
@@ -106,7 +107,7 @@ const FAQ = () => {
 };
 
 function AccordionItemList({ faqs }: { faqs: FrequentlyAskedQuestion[] }) {
-  return faqs.map((faq, index) => (
+  return <ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
     <AccordionItem
       className="rounded-lg border border-primary/20 bg-primary/10 px-5 last:border-b dark:border-primary/30 dark:bg-primary/15"
       key={index}
@@ -122,7 +123,7 @@ function AccordionItemList({ faqs }: { faqs: FrequentlyAskedQuestion[] }) {
         {faq.answer}
       </AccordionContent>
     </AccordionItem>
-  ));
+  ))}</ProviderItems>;
 }
 
 export default FAQ;

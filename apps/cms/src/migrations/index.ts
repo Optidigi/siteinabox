@@ -58,6 +58,9 @@ import * as migration_20260711_183922_20260711_notice_and_continued_use from './
 import * as migration_20260712_083723_communication_preferences_and_email_policy from './20260712_083723_communication_preferences_and_email_policy';
 import * as migration_20260715_120000_migrate_shadcnui_blocks_provider from './20260715_120000_migrate_shadcnui_blocks_provider';
 import * as migration_20260715_131919_shadcnui_chrome_capabilities from './20260715_131919_shadcnui_chrome_capabilities';
+import * as migration_20260715_224720_provider_semantic_contracts from './20260715_224720_provider_semantic_contracts';
+import * as migration_20260715_233924_provider_system_settings from './20260715_233924_provider_system_settings';
+import * as migration_20260716_120000_remove_theme_density from './20260716_120000_remove_theme_density';
 
 export const migrations = [
   {
@@ -358,6 +361,21 @@ export const migrations = [
   {
     up: migration_20260715_131919_shadcnui_chrome_capabilities.up,
     down: migration_20260715_131919_shadcnui_chrome_capabilities.down,
-    name: '20260715_131919_shadcnui_chrome_capabilities'
+    name: '20260715_131919_shadcnui_chrome_capabilities',
+  },
+  {
+    up: migration_20260715_224720_provider_semantic_contracts.up,
+    down: migration_20260715_224720_provider_semantic_contracts.down,
+    name: '20260715_224720_provider_semantic_contracts',
+  },
+  {
+    up: migration_20260715_233924_provider_system_settings.up,
+    down: migration_20260715_233924_provider_system_settings.down,
+    name: '20260715_233924_provider_system_settings'
+  },
+  {
+    up: migration_20260716_120000_remove_theme_density.up,
+    down: migration_20260716_120000_remove_theme_density.down,
+    name: '20260716_120000_remove_theme_density'
   },
 ];

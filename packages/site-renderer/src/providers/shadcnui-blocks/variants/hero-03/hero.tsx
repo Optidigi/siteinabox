@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { ArrowUpRight, CirclePlay } from "lucide-react";
 import Link from "../../runtime/link";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -9,7 +10,7 @@ import Navbar from "./navbar";
 export default function Hero() {
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center px-6 pt-8 pb-16">
-      <Navbar />
+      <ProviderDemoOnly fallback={<Navbar />} />
 
       <div className="mt-16 max-w-3xl text-center">
         <Badge
@@ -17,11 +18,9 @@ export default function Hero() {
           className="rounded-full border-border py-1"
           variant="secondary"
         >
-          <Link href="#">
-            Just released v1.0.0 <ArrowUpRight className="ml-1 size-4" />
-          </Link>
+          <span><ProviderField field="eyebrow" fallback={"Just released v1.0.0"} inline /><ArrowUpRight className="ml-1 size-4" /></span>
         </Badge>
-        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem] md:text-6xl/[1.2]">
+        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem] md:text-6xl/[1.2]"><ProviderField field="headline" fallback={<>
           Ship{" "}
           <GradientText
             animationSpeed={2}
@@ -36,22 +35,18 @@ export default function Hero() {
             better UI
           </GradientText>{" "}
           without&nbsp;the&nbsp;hassle
-        </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal">
+        </>} inline /></h1>
+        <p className="mx-auto mt-6 max-w-2xl text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal"><ProviderField field="subheadline" fallback={<>
           Instead of starting from scratch every time, use thoughtfully designed
           blocks that give you a solid foundation for any UI.
-        </p>
+        </>} inline /></p>
         <div className="mt-10 flex items-center justify-center gap-4">
-          <Button className="rounded-full" size="lg">
-            Get Started <ArrowUpRight className="h-5! w-5!" />
-          </Button>
+          <Button className="rounded-full" size="lg" asChild><ProviderAction field="cta" fallback={"Get Started"} decoration="after"><ArrowUpRight className="h-5! w-5!" /></ProviderAction></Button>
           <Button
             className="rounded-full shadow-none"
             size="lg"
             variant="outline"
-          >
-            <CirclePlay className="h-5! w-5!" /> Watch Demo
-          </Button>
+           asChild><ProviderAction field="secondary" fallback={"Watch Demo"} decoration="before"><CirclePlay className="h-5! w-5!" /></ProviderAction></Button>
         </div>
       </div>
       <div className="relative mx-auto mt-20 aspect-video w-full max-w-(--breakpoint-xl) rounded-xl bg-linear-to-br from-indigo-400/90 via-indigo-300 to-sky-400/80 p-2">

@@ -8,23 +8,20 @@ import {
   PopoverAnchor,
   PopoverContent,
 } from "@siteinabox/ui/components/popover"
-import { Dices, Palette, RotateCcw, SlidersHorizontal, SquareRoundCorner, Type } from "lucide-react"
+import { Dices, Palette, RotateCcw, SquareRoundCorner, Type } from "lucide-react"
 import { PalettePicker } from "@/components/editor/theme/palette-picker"
 import { FontPicker } from "@/components/editor/theme/font-picker"
-import {
-  DensityControl,
-  ShapeControl,
-} from "@/components/editor/theme/radius-control"
+import { ShapeControl } from "@/components/editor/theme/radius-control"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { RtManifest } from "@/lib/richText/manifest"
-import type { ColorPreset, DensityPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
+import type { ColorPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
 import { SegmentedPill } from "@/components/common/segmented-pill"
 import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
-type Segment = "colors" | "fonts" | "shape" | "density"
+type Segment = "colors" | "fonts" | "shape"
 type AppearanceMode = NonNullable<ThemeTokens["appearance"]>["mode"]
 
 const MOBILE_RANDOM_MODES: AppearanceMode[] = ["light", "dark"]
@@ -41,7 +38,6 @@ export function ThemeBar({
   palettes,
   fonts,
   radiusLevels,
-  densityLevels,
 }: {
   theme: ThemeTokens | null
   manifest: RtManifest
@@ -49,7 +45,6 @@ export function ThemeBar({
   palettes: ColorPreset[]
   fonts: FontPreset[]
   radiusLevels?: ShapePreset[]
-  densityLevels?: DensityPreset[]
 }) {
   const t = useTranslations("editor")
   // Theme edits are *not* autosaved — they flow up via onThemeChange so the
@@ -65,18 +60,16 @@ export function ThemeBar({
     const palette = pickRandom(palettes)
     const font = pickRandom(fonts)
     const shape = pickRandom(radiusLevels ?? [])
-    const density = pickRandom(densityLevels ?? [])
     const mode = pickRandom(MOBILE_RANDOM_MODES) ?? "light"
 
     onThemeChange((current) =>
       normalizeThemeForSave({
         ...(current ?? theme ?? DEFAULT_THEME_TOKEN_SPEC),
-        version: 2,
+        version: 3,
         appearance: { mode },
         ...(palette ? { colors: { schemeId: palette.id } } : {}),
         ...(font ? { fonts: { schemeId: font.id } } : {}),
         ...(shape ? { shape: { schemeId: shape.id } } : {}),
-        ...(density ? { density: { schemeId: density.id } } : {}),
       } as ThemeTokens),
     )
   }
@@ -99,7 +92,6 @@ export function ThemeBar({
     colors: null,
     fonts: null,
     shape: null,
-    density: null,
   })
 
   return (
@@ -151,7 +143,6 @@ export function ThemeBar({
                     { value: "colors", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
                     { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
                     { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
-                    { value: "density", label: t("density"), icon: SlidersHorizontal, ariaLabel: t("spacingDensity") },
                   ]}
                 />
               </div>
@@ -193,13 +184,6 @@ export function ThemeBar({
                 shapeId={theme?.shape?.schemeId}
                 radiusLevels={radiusLevels}
                 onChange={(next) => handleUpdate({ shape: next })}
-              />
-            )}
-            {openSegment === "density" && (
-              <DensityControl
-                densityId={theme?.density?.schemeId}
-                levels={densityLevels}
-                onChange={(next) => handleUpdate({ density: next })}
               />
             )}
           </PopoverContent>

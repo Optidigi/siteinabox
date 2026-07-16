@@ -17,16 +17,9 @@ export const SHAPE_SCHEME_IDS = [
   "sharp",
 ] as const
 
-export const DENSITY_SCHEME_IDS = [
-  "spacious",
-  "comfortable",
-  "compact",
-] as const
-
 export type ColorSchemeId = (typeof COLOR_SCHEME_IDS)[number]
 export type FontSchemeId = (typeof FONT_SCHEME_IDS)[number]
 export type ShapeSchemeId = (typeof SHAPE_SCHEME_IDS)[number]
-export type DensitySchemeId = (typeof DENSITY_SCHEME_IDS)[number]
 
 export type ThemePresetOption<TId extends string> = {
   id: TId
@@ -52,17 +45,10 @@ export const SHAPE_SCHEME_PRESETS = [
   { id: "sharp", label: "Sharp" },
 ] as const satisfies readonly ThemePresetOption<ShapeSchemeId>[]
 
-export const DENSITY_SCHEME_PRESETS = [
-  { id: "spacious", label: "Spacious" },
-  { id: "comfortable", label: "Comfortable" },
-  { id: "compact", label: "Compact" },
-] as const satisfies readonly ThemePresetOption<DensitySchemeId>[]
-
 export const DEFAULT_THEME_TOKEN_SPEC = {
-  version: 2,
+  version: 3,
   appearance: { mode: "light" },
   colors: { schemeId: "blue-professional" },
   fonts: { schemeId: "clear-modern" },
   shape: { schemeId: "soft" },
-  density: { schemeId: "comfortable" },
 } as const

@@ -34,15 +34,15 @@
       "import": "./src/theme/resolve.ts",
       "default": "./src/theme/resolve.ts"
     },
-    "./source-blocks": {
-      "types": "./src/source-blocks/index.ts",
-      "import": "./src/source-blocks/index.ts",
-      "default": "./src/source-blocks/index.ts"
+    "./blocks/variants": {
+      "types": "./src/blocks/variants.ts",
+      "import": "./src/blocks/variants.ts",
+      "default": "./src/blocks/variants.ts"
     },
-    "./source-chrome": {
-      "types": "./src/source-chrome/index.ts",
-      "import": "./src/source-chrome/index.ts",
-      "default": "./src/source-chrome/index.ts"
+    "./tenant-renderers/resolve": {
+      "types": "./src/tenant-renderers/resolve.ts",
+      "import": "./src/tenant-renderers/resolve.ts",
+      "default": "./src/tenant-renderers/resolve.ts"
     },
     "./source-templates": {
       "types": "./src/source-templates/index.ts",
@@ -55,6 +55,7 @@
   "dependencies": {
     "@fontsource-variable/caveat": "^5.2.8",
     "@fontsource-variable/fraunces": "^5.2.9",
+    "@fontsource-variable/geist": "5.2.9",
     "@fontsource-variable/inter": "^5.2.8",
     "@number-flow/react": "^0.6.0",
     "@paper-design/shaders-react": "^0.0.71",

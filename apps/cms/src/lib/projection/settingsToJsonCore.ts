@@ -96,9 +96,13 @@ export function settingsToJsonWithoutAnalytics(
       } : undefined,
       banner: bannerToJson(doc.chrome.banner)
     } : undefined,
+    systemTemplates: doc.systemTemplates?.notFound?.variant ? {
+      notFound: { variant: doc.systemTemplates.notFound.variant },
+    } : undefined,
     maintenance: contract.operations.maintenance && doc.maintenance ? {
       enabled: !!doc.maintenance.enabled,
-      message: doc.maintenance.message
+      message: doc.maintenance.message,
+      variant: doc.maintenance.variant,
     } : undefined,
     contact: contact && (
       contract.details.contact.phone ||

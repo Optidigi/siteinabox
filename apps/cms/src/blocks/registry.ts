@@ -9,12 +9,14 @@ import {
   BentoGrid,
   BlogCards,
   ContentSection,
+  ContactDetails,
   Gallery,
   LogoCloud,
   Newsletter,
   Pricing,
   Stats,
   Team,
+  Timeline,
 } from "./MarketingCatalog"
 import type { BlockWithMeta } from "./_summary"
 import { SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
@@ -27,6 +29,7 @@ export const ALL_BLOCKS = [
   CTA,
   RichText,
   ContactSection,
+  ContactDetails,
   Pricing,
   Stats,
   LogoCloud,
@@ -35,6 +38,7 @@ export const ALL_BLOCKS = [
   Newsletter,
   BentoGrid,
   ContentSection,
+  Timeline,
   BlogCards,
 ] as const
 

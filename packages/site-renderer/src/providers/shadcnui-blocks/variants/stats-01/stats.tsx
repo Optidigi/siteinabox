@@ -1,32 +1,33 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 const Stats = () => {
   return (
     <div className="mx-auto max-w-(--breakpoint-lg) px-6 py-20 text-center">
-      <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+      <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Why Should You Choose Us?
-      </h2>
-      <p className="mt-4 text-muted-foreground text-xl md:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-4 text-muted-foreground text-xl md:text-2xl"><ProviderField field="intro" fallback={<>
         Because after switching to us...
-      </p>
+      </>} inline /></p>
 
       <div className="mt-16 grid justify-center gap-x-12 gap-y-16 sm:mt-24 sm:grid-cols-2 lg:grid-cols-3">
         <div className="max-w-3xs">
-          <span className="font-medium text-5xl">96%</span>
-          <p className="mt-6 text-lg">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={0} subField="value" fallback={<>96%</>} /></span>
+          <p className="mt-6 text-lg"><ProviderItemField field="items" index={0} subField="label" fallback={<>
             of customers say they have a better brand experience
-          </p>
+          </>} /></p>
         </div>
         <div className="max-w-3xs">
-          <span className="font-medium text-5xl">95%</span>
-          <p className="mt-6 text-lg">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={1} subField="value" fallback={<>95%</>} /></span>
+          <p className="mt-6 text-lg"><ProviderItemField field="items" index={1} subField="label" fallback={<>
             of customers say they gather more data, more easily
-          </p>
+          </>} /></p>
         </div>
         <div className="max-w-3xs">
-          <span className="font-medium text-5xl">87%</span>
-          <p className="mt-6 text-lg">
+          <span className="font-medium text-5xl"><ProviderItemField field="items" index={2} subField="value" fallback={<>87%</>} /></span>
+          <p className="mt-6 text-lg"><ProviderItemField field="items" index={2} subField="label" fallback={<>
             of customers say they reveal deeper insights from data
-          </p>
+          </>} /></p>
         </div>
       </div>
     </div>

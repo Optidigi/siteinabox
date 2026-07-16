@@ -57,6 +57,12 @@ export const Hero: BlockWithMeta = {
         { name: "label", type: "text", required: true },
       ]
     },
+    { name: "trustLabel", type: "text" },
+    { name: "logos", type: "array", fields: [
+      { name: "name", type: "text", required: true },
+      { name: "image", type: "upload", relationTo: "media" },
+      { name: "href", type: "text", validate: validateSafeHref },
+    ]},
     ...blockBaseFields("services"),
   ],
   summary: (v) => {

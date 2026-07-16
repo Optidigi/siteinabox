@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Cable,
   Code,
@@ -51,15 +52,15 @@ const features = [
 const Features = () => {
   return (
     <div className="mx-auto flex max-w-7xl flex-col px-6 py-20">
-      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         All the right tools
-      </h2>
-      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+      </>} inline /></h2>
+      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
         Practical components designed for production
-      </p>
+      </>} inline /></p>
 
       <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature, index) => (
+        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
           <div
             className="rounded-xl border border-border/80 bg-card px-5 pt-7 pb-0 shadow-xs/3"
             key={index}
@@ -76,10 +77,10 @@ const Features = () => {
               {feature.description}
             </p>
             <div className="mt-8 -mr-5">
-              <StatsCard className="rounded-br-lg" />
+              <StatsCard className="rounded-br-lg" value={feature.metricValue} label={feature.metricLabel} action={feature.cta} />
             </div>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

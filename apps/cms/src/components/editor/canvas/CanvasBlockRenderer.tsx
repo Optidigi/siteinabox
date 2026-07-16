@@ -3,10 +3,12 @@ import * as React from "react"
 import {
   SITE_GENERATION_BLOCK_CATALOG_BY_SLUG,
   SITE_GENERATION_BLOCK_SLUGS,
+  getProviderBlockVariant,
+  isProviderVariantIdentifier,
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
-import { getSourceBackedVariantRenderer, isProviderVariantIdentifier, resolveBlockVariant } from "@siteinabox/site-renderer"
+import { resolveBlockVariant } from "@siteinabox/site-renderer"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { AmicareCanvasBlockRenderer } from "@/components/editor/canvas/AmicareCanvasBlockRenderer"
 import { RendererCanvasBlockRenderer } from "@/components/editor/canvas/RendererCanvasBlockRenderer"
@@ -96,7 +98,7 @@ export function mergeCanvasSectionProps(
 
 export function resolvedCanvasSourceVariant(block: any, context: SourceVariantContext = {}): SiteBlockCatalogVariant | undefined {
   if (!generationBlockSlugs.has(block?.blockType)) return undefined
-  if (isProviderVariantIdentifier(block?.designVariant) && !getSourceBackedVariantRenderer(block)) return undefined
+  if (isProviderVariantIdentifier(block?.designVariant) && !getProviderBlockVariant(block)) return undefined
   const catalog = SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[block.blockType as SiteGenerationBlockSlug]
   const resolved = resolveBlockVariant(block, context)
   if (!resolved.variant) return undefined
@@ -135,7 +137,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
   const augmented = { ...props, block: blockWithIndex }
   if (
     isProviderVariantIdentifier(block?.designVariant) &&
-    !getSourceBackedVariantRenderer(blockWithIndex)
+    !getProviderBlockVariant(blockWithIndex)
   ) {
     const providerErrorSectionProps = mergeCanvasSectionProps(
       {
@@ -156,7 +158,7 @@ export const CanvasBlockRenderer: React.FC<CanvasBlockRendererProps> = (props) =
     )
   }
 
-  if (getSourceBackedVariantRenderer(blockWithIndex)) {
+  if (getProviderBlockVariant(blockWithIndex)) {
     return <RendererCanvasBlockRenderer {...augmented} />
   }
 

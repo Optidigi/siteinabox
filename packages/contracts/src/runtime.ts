@@ -1,7 +1,6 @@
 import { z } from "zod"
 import {
   COLOR_SCHEME_IDS,
-  DENSITY_SCHEME_IDS,
   FONT_SCHEME_IDS,
   SHAPE_SCHEME_IDS,
 } from "./theme-presets"
@@ -17,7 +16,7 @@ import {
   type SiteBlockCatalogVariant,
 } from "./block-catalog"
 import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "./site"
-import { SHADCNUI_BLOCK_VARIANTS } from "./generated/shadcnui-blocks"
+import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_SYSTEM_TEMPLATES, type ShadcnUiSystemTemplateId } from "./generated/shadcnui-blocks"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "./intake-legal"
 import type {
   AnalyticsBlockMetadata,
@@ -25,7 +24,9 @@ import type {
   Block,
   BlogCardsBlock,
   ContactSectionBlock,
+  ContactDetailsBlock,
   ContentSectionBlock,
+  TimelineBlock,
   CTABlock,
   FAQBlock,
   FeatureListBlock,
@@ -417,6 +418,8 @@ export const HeroBlockSchema: z.ZodType<HeroBlock> = strictObject({
     value: z.string().min(1),
     label: z.string().min(1),
   })).nullable().optional(),
+  trustLabel: nullableString,
+  logos: z.array(strictObject({ name: z.string().min(1), image: MediaRefSchema.optional(), href: nullableString })).nullable().optional(),
 })
 
 export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject({
@@ -431,6 +434,10 @@ export const FeatureListBlockSchema: z.ZodType<FeatureListBlock> = strictObject(
       title: RtRootSchema,
       description: RtFieldSchema.optional(),
       icon: nullableString,
+      image: MediaRefSchema.optional(),
+      cta: LinkRefSchema.nullable().optional(),
+      metricValue: nullableString,
+      metricLabel: nullableString,
     }))
     .min(1),
 })
@@ -439,6 +446,7 @@ export const TestimonialsBlockSchema: z.ZodType<TestimonialsBlock> = strictObjec
   blockType: z.literal("testimonials"),
   ...baseBlockShape,
   title: nullableString,
+  intro: nullableString,
   logo: MediaRefSchema.optional(),
   items: z
     .array(strictObject({
@@ -454,6 +462,7 @@ export const FAQBlockSchema: z.ZodType<FAQBlock> = strictObject({
   blockType: z.literal("faq"),
   ...baseBlockShape,
   title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
   items: z
     .array(strictObject({
       question: RtRootSchema,
@@ -501,6 +510,20 @@ export const ContactSectionBlockSchema: z.ZodType<ContactSectionBlock> = strictO
     }))
     .min(1),
   provider: FormProviderConfigSchema.nullable().optional(),
+})
+
+export const ContactDetailsBlockSchema: z.ZodType<ContactDetailsBlock> = strictObject({
+  blockType: z.literal("contactDetails"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  description: RtFieldSchema.optional(),
+  items: z.array(strictObject({
+    title: z.string().min(1),
+    description: nullableString,
+    value: z.string().min(1),
+    href: nullableString,
+    icon: nullableString,
+  })).min(1),
 })
 
 export const NewsletterBlockSchema: z.ZodType<NewsletterBlock> = strictObject({
@@ -565,10 +588,12 @@ export const LogoCloudBlockSchema: z.ZodType<LogoCloudBlock> = strictObject({
   logos: z
     .array(strictObject({
       name: z.string().min(1),
+      description: nullableString,
       image: MediaRefSchema.optional(),
       href: nullableString,
     }))
     .min(1),
+  cta: LinkRefSchema.nullable().optional(),
 })
 
 export const GalleryBlockSchema: z.ZodType<GalleryBlock> = strictObject({
@@ -617,6 +642,20 @@ export const ContentSectionBlockSchema: z.ZodType<ContentSectionBlock> = strictO
   cta: LinkRefSchema.nullable().optional(),
 })
 
+export const TimelineBlockSchema: z.ZodType<TimelineBlock> = strictObject({
+  blockType: z.literal("timeline"),
+  ...baseBlockShape,
+  title: RtFieldSchema.optional(),
+  intro: RtFieldSchema.optional(),
+  items: z.array(strictObject({
+    title: z.string().min(1),
+    description: nullableString,
+    label: nullableString,
+    date: nullableString,
+    tags: z.array(strictObject({ value: z.string().min(1) })).nullable().optional(),
+  })).min(1),
+})
+
 export const TeamBlockSchema: z.ZodType<TeamBlock> = strictObject({
   blockType: z.literal("team"),
   ...baseBlockShape,
@@ -650,6 +689,8 @@ export const BlogCardsBlockSchema: z.ZodType<BlogCardsBlock> = strictObject({
       cta: LinkRefSchema.nullable().optional(),
     }))
     .min(1),
+  cta: LinkRefSchema.nullable().optional(),
+  secondary: LinkRefSchema.nullable().optional(),
 })
 
 const BlockSchemaBase = z.union([
@@ -660,6 +701,7 @@ const BlockSchemaBase = z.union([
   CTABlockSchema,
   RichTextBlockSchema,
   ContactSectionBlockSchema,
+  ContactDetailsBlockSchema,
   NewsletterBlockSchema,
   PricingBlockSchema,
   StatsBlockSchema,
@@ -667,6 +709,7 @@ const BlockSchemaBase = z.union([
   GalleryBlockSchema,
   BentoGridBlockSchema,
   ContentSectionBlockSchema,
+  TimelineBlockSchema,
   TeamBlockSchema,
   BlogCardsBlockSchema,
 ])
@@ -678,11 +721,13 @@ const GeneratedBlockSchemaBase = z.union([
   FAQBlockSchema,
   CTABlockSchema,
   ContactSectionBlockSchema,
+  ContactDetailsBlockSchema,
   PricingBlockSchema,
   StatsBlockSchema,
   LogoCloudBlockSchema,
   GalleryBlockSchema,
   ContentSectionBlockSchema,
+  TimelineBlockSchema,
   TeamBlockSchema,
   BlogCardsBlockSchema,
 ])
@@ -790,8 +835,8 @@ function addForbiddenGeneratedPayloadIssues(
   }
 }
 
-const ThemeTokenSpecV2Schema = strictObject({
-  version: z.literal(2),
+const ThemeTokenSpecV3Schema = strictObject({
+  version: z.literal(3),
   appearance: strictObject({
     mode: z.enum(["light", "dark", "system"]),
   }),
@@ -801,15 +846,12 @@ const ThemeTokenSpecV2Schema = strictObject({
   fonts: strictObject({
     schemeId: z.enum(FONT_SCHEME_IDS),
   }),
-  density: strictObject({
-    schemeId: z.enum(DENSITY_SCHEME_IDS),
-  }),
   shape: strictObject({
     schemeId: z.enum(SHAPE_SCHEME_IDS),
   }),
 })
 
-export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = ThemeTokenSpecV2Schema
+export const ThemeTokenSpecSchema: z.ZodType<ThemeTokenSpec> = ThemeTokenSpecV3Schema
 
 const FooterCompositionLinkSchema = LinkRefSchema
 const FooterCompositionItemSchema = strictObject({
@@ -886,9 +928,15 @@ const createSiteSettingsSchema = (
         dismissible: z.boolean().nullable().optional(),
       }).nullable().optional(),
     }).nullable().optional(),
+    systemTemplates: strictObject({
+      notFound: strictObject({
+        variant: z.custom<ShadcnUiSystemTemplateId>((value) => typeof value === "string" && SHADCNUI_SYSTEM_TEMPLATES.some((template) => template.id === value), "Unknown provider not-found template").nullable().optional(),
+      }).nullable().optional(),
+    }).nullable().optional(),
     maintenance: strictObject({
       enabled: z.boolean().nullable().optional(),
       message: nullableString,
+      variant: chromeVariantSchema(chromeVariants.banner).nullable().optional(),
     }).nullable().optional(),
     contact: strictObject({
       phone: nullableString,
@@ -1250,7 +1298,6 @@ export const IntakeBriefSchema: z.ZodType<IntakeBrief> = strictObject({
     colorSchemeId: z.enum(COLOR_SCHEME_IDS).nullable().optional(),
     fontSchemeId: z.enum(FONT_SCHEME_IDS).nullable().optional(),
     shapeSchemeId: z.enum(SHAPE_SCHEME_IDS).nullable().optional(),
-    densitySchemeId: z.enum(DENSITY_SCHEME_IDS).nullable().optional(),
     shape: z.enum(["straight", "slightly_rounded", "rounded"]).nullable().optional(),
     typography: z.enum(["clear", "soft", "classic", "strong"]).nullable().optional(),
   }),

@@ -83,4 +83,4 @@ function AccordionContent({
   );
 }
 
-export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };
+export { AccordionPrimitive, Accordion, AccordionItem, AccordionTrigger, AccordionContent };

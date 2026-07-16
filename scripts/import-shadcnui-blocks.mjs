@@ -1,11 +1,15 @@
 #!/usr/bin/env node
 
 import { createHash } from "node:crypto"
-import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
+import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
+
+const require = createRequire(new URL("../packages/site-renderer/package.json", import.meta.url))
+const ts = require("typescript")
 
 const REPOSITORY = "https://github.com/akash3444/shadcn-ui-blocks.git"
 const COMMIT = "46c2e50bb538c9bc7a8927979d38bae178ae4452"
@@ -17,6 +21,7 @@ const providerRoot = join(root, "packages/site-renderer/src/providers/shadcnui-b
 const variantsRoot = join(providerRoot, "variants")
 const uiProviderRoot = join(root, "packages/ui/src/providers/shadcnui-blocks/radix-nova")
 const generatedRoot = join(root, "packages/contracts/src/generated")
+const bindingManifestPath = join(providerRoot, "bindings.json")
 
 const compatibilityPrimitives = [
   "accordion", "animated-grid-pattern", "avatar", "badge", "button", "card", "carousel", "chart",
@@ -34,6 +39,7 @@ const categoryFor = (name) => name.replace(/-\d+$/, "")
 const isPublic = (name) => publicCategories.has(categoryFor(name)) || /^carousel-block-\d+$/.test(name)
 const isSystem = (name) => /^not-found-\d+$/.test(name)
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`
+const transparentSquare = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E"
 
 async function fileInventory(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -55,7 +61,8 @@ function adaptLiteralImports(contents) {
   const nativeImageImport = contents.includes("<img") && !/from ["']next\/image["']/.test(contents)
     ? 'import Image from "../../runtime/image";\n'
     : ""
-  return `${clientDirective ? `${clientDirective[1]}\n` : ""}// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations\n${nativeImageImport}${literalBody.replaceAll("<img", "<Image")}`
+  return `// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations\n${clientDirective ? `${clientDirective[1]}\n` : ""}${nativeImageImport}${literalBody.replaceAll("<img", "<Image")}`
+    .replaceAll('import { Accordion as AccordionPrimitive } from "radix-ui";', 'import { AccordionPrimitive } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";')
     .replaceAll('import {\n  DribbbleIcon,\n  GithubIcon,\n  TwitchIcon,\n  TwitterIcon,\n} from "lucide-react";', 'import { DribbbleIcon, GithubIcon, TwitchIcon, TwitterIcon } from "../../runtime/social-icons";')
     .replaceAll('import { Dribbble, Github, Twitter, Wheat } from "lucide-react";', 'import { Wheat } from "lucide-react";\nimport { Dribbble, Github, Twitter } from "../../runtime/social-icons";')
     .replaceAll(/import \{ (Dribbble(?:Icon)?), (Github|TwitchIcon), (Twitter(?:Icon)?) \} from ["']lucide-react["'];?/g, 'import { $1, $2, $3 } from "../../runtime/social-icons";')
@@ -64,7 +71,7 @@ function adaptLiteralImports(contents) {
     .replaceAll(/from ["']@\/lib\/utils["']/g, 'from "@siteinabox/ui/lib/utils"')
     .replaceAll(/import (\w+) from ["']@\/registry\/bases\/radix\/ui\/([^"']+)["']/g, 'import $1 from "./$2"')
     .replaceAll(/from ["']@\/registry\/bases\/radix\/ui\/[^"']+["']/g, 'from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"')
-    .replaceAll(/from ["']@\/registry\/ui\/button["']/g, 'from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"')
+    .replaceAll(/import \{ Button \} from ["']@\/registry\/ui\/button["'];?/g, 'import { SharedButton as Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";')
     .replaceAll(/from ["']@\/components\/logos["']/g, 'from "../../runtime/logos"')
     .replaceAll(/from ["']@\/components\/[^"']*\/([^/"']+)["']/g, 'from "./$1"')
     .replaceAll(/from ["']@\/registry\/[^"']+\/([^/"']+)["']/g, 'from "./$1"')
@@ -76,15 +83,280 @@ function adaptLiteralImports(contents) {
     .replaceAll("fill-rule=", "fillRule=")
     .replaceAll("flood-opacity=", "floodOpacity=")
     .replaceAll("stop-color=", "stopColor=")
+    .replaceAll('<TooltipTrigger className="cursor-help">', '<TooltipTrigger aria-label="More information" className="cursor-help">')
+    .replace(/(<button\s*\n)(\s*)(className=\{cn\("h-3\.5 w-3\.5)/g, '$1$2aria-label={`Go to slide ${index + 1}`}\n$2$3')
     .replaceAll("categorizedFaqs[0].category", "categorizedFaqs[0]?.category ?? null")
     .replaceAll(/x=\{x \* width \+ 1\}/g, "x={(x ?? 0) * width + 1}")
     .replaceAll(/y=\{y \* height \+ 1\}/g, "y={(y ?? 0) * height + 1}")
-    .replaceAll(/https?:\/\/[^"'`\s]+\.(?:avif|gif|jpe?g|png|webp)(?:\?[^"'`\s]*)?/gi, (url) => `data:image/gif;base64,R0lGODlhAQABAAAAACw=#${sha256(url).slice(0, 12)}`)
+    .replaceAll(/https?:\/\/[^"'`\s]+\.(?:avif|gif|jpe?g|png|webp)(?:\?[^"'`\s]*)?/gi, (url) => `${transparentSquare}#${sha256(url).slice(0, 12)}`)
     .replaceAll(/https?:\/\/(?!www\.w3\.org\/2000\/svg)[^"'`\s]+/g, (url) => `about:blank#upstream-${sha256(url).slice(0, 12)}`)
 }
 
 function referenceRootClassName(contents) {
   return contents.match(/return\s*\(\s*<(?:section|main|div)[^>]*className=["']([^"']+)["']/s)?.[1]
+}
+
+const decodedText = (value) => value
+  .replaceAll("&apos;", "'").replaceAll("&#39;", "'").replaceAll("&quot;", '"')
+  .replaceAll("&amp;", "&").replaceAll("&nbsp;", "\u00a0").replace(/\s+/g, " ").trim()
+
+function compileBlockBindings(contents, blockType, declaredBindings, label = blockType) {
+  const source = ts.createSourceFile("literal.tsx", contents, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)
+  const remaining = (declaredBindings ?? []).map((binding, index) => ({ ...binding, index }))
+  const edits = []
+  const bindings = []
+  let needsRuntime = false
+  const staticItemsBinding = remaining.find((binding) => binding.kind === "static-items")
+  const staticStatsBinding = remaining.find((binding) => binding.kind === "static-stat-items")
+  const staticContactBinding = remaining.find((binding) => binding.kind === "static-contact-items")
+  let staticItemsCount = 0
+  let staticStatIndex = -1
+  let staticStatTextIndex = 0
+  let staticContactIndex = -1
+
+  const insideMap = (node) => {
+    let current = node.parent
+    while (current) {
+      if (ts.isCallExpression(current) && ts.isPropertyAccessExpression(current.expression) && current.expression.name.text === "map") return true
+      current = current.parent
+    }
+    return false
+  }
+  const insideElement = (node, tagName) => {
+    let current = node.parent
+    while (current) {
+      if (ts.isJsxElement(current) && current.openingElement.tagName.getText(source) === tagName) return true
+      current = current.parent
+    }
+    return false
+  }
+  const elementText = (node) => {
+    const parts = []
+    let dynamic = false
+    const collect = (child) => {
+      if (ts.isJsxText(child)) parts.push(child.getText(source))
+      else if (ts.isStringLiteral(child)) parts.push(child.text)
+      else if (ts.isJsxExpression(child)) {
+        if (child.expression && ts.isStringLiteral(child.expression)) parts.push(child.expression.text)
+        else dynamic = true
+      } else if (ts.isJsxElement(child) || ts.isJsxFragment(child)) child.children.forEach(collect)
+      else if (!ts.isJsxSelfClosingElement(child)) dynamic = true
+    }
+    node.children.forEach(collect)
+    return dynamic ? null : decodedText(parts.join(" "))
+  }
+  const visit = (node) => {
+    if (staticItemsBinding && ts.isJsxSelfClosingElement(node) && /^Logo\d+$/.test(node.tagName.getText(source))) {
+      const fallback = node.getText(source)
+      const itemIndex = Number(node.tagName.getText(source).match(/\d+$/)?.[0] ?? 1) - 1
+      edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderLogo field=${JSON.stringify(staticItemsBinding.field)} index={${itemIndex}} fallback={${fallback}} />` })
+      staticItemsCount = Math.max(staticItemsCount, itemIndex + 1)
+      needsRuntime = true
+      return
+    }
+    if (blockType === "hero" && ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "Link" && insideElement(node, "Badge") && !insideMap(node)) {
+      const fallback = elementText(node)
+      const declared = fallback ? remaining.find((binding) => binding.kind === "field" && binding.fallback === fallback) : null
+      const field = declared?.field
+      if (fallback && field) {
+        const decorations = node.children.filter((child) => ts.isJsxSelfClosingElement(child)).map((child) => child.getText(source)).join("")
+        const href = node.openingElement.attributes.properties.find((attribute) => ts.isJsxAttribute(attribute) && attribute.name.text === "href")
+        edits.push({ start: node.openingElement.tagName.getStart(source), end: node.openingElement.tagName.end, text: "span" })
+        edits.push({ start: node.closingElement.tagName.getStart(source), end: node.closingElement.tagName.end, text: "span" })
+        if (href) edits.push({ start: href.getFullStart(), end: href.end, text: "" })
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderField field=${JSON.stringify(field)} fallback={${JSON.stringify(fallback)}} inline />${decorations}` })
+        bindings.push({ field, kind: "field", fallback })
+        needsRuntime = true
+        if (declared) remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(source) === "Image" && !insideMap(node)) {
+      const declared = remaining.find((binding) => binding.kind === "image")
+      if (declared?.field) {
+        const literal = node.getText(source)
+        edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderImage field=${JSON.stringify(declared.field)} fallback={${literal}} />` })
+        bindings.push({ field: declared.field, kind: "image" })
+        needsRuntime = true
+        remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (blockType === "featureList" && ts.isJsxElement(node) && !insideMap(node) && node.children.some((child) => ts.isJsxSelfClosingElement(child))) {
+      const fallback = elementText(node)
+      const declared = fallback ? remaining.find((binding) => binding.kind === "field" && binding.fallback === fallback) : null
+      const field = declared?.field
+      if (fallback && field) {
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderField field=${JSON.stringify(field)} fallback={<>${literalChildren}</>} inline />` })
+        bindings.push({ field, kind: "field", fallback })
+        needsRuntime = true
+        if (declared) remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (ts.isJsxElement(node) && !insideMap(node) && node.children.every((child) => ts.isJsxText(child) || ts.isJsxExpression(child))) {
+      const fallback = elementText(node)
+      const declared = fallback ? remaining.find((binding) => binding.kind === "field" && binding.fallback === fallback) : null
+      if (fallback && declared?.field) {
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderField field=${JSON.stringify(declared.field)} fallback={<>${literalChildren}</>} inline />` })
+        bindings.push({ field: declared.field, kind: "field", fallback })
+        needsRuntime = true
+        remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (ts.isJsxElement(node) && !insideMap(node) && node.openingElement.tagName.getText(source) === "Button") {
+      const fallback = elementText(node)
+      const declared = fallback ? remaining.find((binding) => binding.kind === "action" && binding.fallback === fallback) : null
+      const field = declared?.field
+      if (fallback && field) {
+        const meaningfulChildren = node.children.filter((child) => !ts.isJsxText(child) || child.getText(source).trim())
+        const decoration = meaningfulChildren[0] && ts.isJsxSelfClosingElement(meaningfulChildren[0]) ? "before" : "after"
+        const decorations = node.children.filter((child) => ts.isJsxSelfClosingElement(child)).map((child) => child.getText(source)).join("")
+        const labelNodes = node.children.filter((child) => !ts.isJsxSelfClosingElement(child))
+        const hasLabelMarkup = labelNodes.some((child) => ts.isJsxElement(child) && child.openingElement.tagName.getText(source) !== "Link")
+        const labelChildren = labelNodes.map((child) => ts.isJsxElement(child) && child.openingElement.tagName.getText(source) === "Link"
+          ? contents.slice(child.openingElement.end, child.closingElement.pos)
+          : child.getText(source)).join("")
+        const fallbackExpression = hasLabelMarkup ? `<>${labelChildren}</>` : JSON.stringify(fallback)
+        if (!node.openingElement.attributes.properties.some((attribute) => ts.isJsxAttribute(attribute) && attribute.name.text === "asChild")) {
+          edits.push({ start: node.openingElement.end - 1, end: node.openingElement.end - 1, text: " asChild" })
+        }
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderAction field=${JSON.stringify(field)} fallback={${fallbackExpression}} decoration=${JSON.stringify(decoration)}>${decorations}</ProviderAction>` })
+        bindings.push({ field, kind: "action", fallback })
+        needsRuntime = true
+        if (declared) remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "Button") {
+      const literal = node.getText(source)
+      if (!insideMap(node) || /href=["'](?:#|about:blank)/.test(literal)) {
+        edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderDemoOnly fallback={<>${literal}</>} />` })
+        needsRuntime = true
+        return
+      }
+    }
+    if (ts.isJsxElement(node) && !insideMap(node)) {
+      const tag = node.openingElement.tagName.getText(source).toLowerCase()
+      const kind = /^h[1-6]$/.test(tag) ? "heading" : tag === "p" ? "paragraph" : /^(b|strong|small)$/.test(tag) ? "eyebrow" : null
+      const fallback = kind ? elementText(node) : null
+      const declared = fallback ? remaining.find((binding) => binding.kind === "field" && binding.fallback === fallback) : null
+      const field = declared?.field
+      if (fallback && field) {
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderField field=${JSON.stringify(field)} fallback={<>${literalChildren}</>} inline />` })
+        bindings.push({ field, kind: "field", fallback })
+        needsRuntime = true
+        if (declared) remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (staticStatsBinding && ts.isJsxElement(node) && !insideMap(node)) {
+      const tag = node.openingElement.tagName.getText(source).toLowerCase()
+      const fallback = elementText(node)
+      const leafText = node.children.every((child) => ts.isJsxText(child) || ts.isJsxExpression(child))
+      const startsItem = leafText && fallback && tag !== "p" && /\d/.test(fallback)
+      const continuesItem = leafText && fallback && tag === "p" && staticStatIndex >= 0
+      if (startsItem || continuesItem) {
+        if (startsItem) {
+          staticStatIndex += 1
+          staticStatTextIndex = 0
+        }
+        const subField = startsItem ? "value" : staticStatTextIndex++ === 0 ? "label" : "description"
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderItemField field=${JSON.stringify(staticStatsBinding.field)} index={${staticStatIndex}} subField=${JSON.stringify(subField)} fallback={<>${literalChildren}</>} />` })
+        needsRuntime = true
+        return
+      }
+    }
+    if (staticContactBinding && ts.isJsxElement(node) && !insideMap(node)) {
+      const tag = node.openingElement.tagName.getText(source)
+      const fallback = elementText(node)
+      const leafText = node.children.every((child) => ts.isJsxText(child) || ts.isJsxExpression(child))
+      if (leafText && fallback && tag === "h3") {
+        staticContactIndex += 1
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderItemField field=${JSON.stringify(staticContactBinding.field)} index={${staticContactIndex}} subField="title" fallback={<>${literalChildren}</>} />` })
+        needsRuntime = true
+        return
+      }
+      if (leafText && fallback && tag === "p" && staticContactIndex >= 0) {
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderItemField field=${JSON.stringify(staticContactBinding.field)} index={${staticContactIndex}} subField="description" fallback={<>${literalChildren}</>} />` })
+        needsRuntime = true
+        return
+      }
+      if (fallback && tag === "Link" && staticContactIndex >= 0) {
+        const attributes = node.openingElement.attributes.properties
+          .filter((attribute) => !(ts.isJsxAttribute(attribute) && attribute.name.text === "href"))
+          .map((attribute) => attribute.getText(source)).join(" ")
+        const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
+        edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderContactLink field=${JSON.stringify(staticContactBinding.field)} index={${staticContactIndex}} fallback={<>${literalChildren}</>} ${attributes} />` })
+        needsRuntime = true
+        return
+      }
+    }
+    if (ts.isCallExpression(node)) {
+      const call = node
+      if (ts.isPropertyAccessExpression(call.expression) && call.expression.name.text === "map" && call.arguments.length === 1) {
+        const receiver = call.expression.expression
+        const name = ts.isIdentifier(receiver)
+          ? receiver.text
+          : ts.isCallExpression(receiver) && ts.isPropertyAccessExpression(receiver.expression) && ts.isIdentifier(receiver.expression.expression)
+            ? receiver.expression.expression.text
+            : null
+        if (!name) return ts.forEachChild(node, visit)
+        const declared = remaining.find((binding) => binding.kind === "items" && binding.source === name)
+        const field = declared?.field
+        if (field) {
+          let callback = call.arguments[0].getText(source)
+          if (blockType === "team") {
+            let linkIndex = 0
+            const wrap = (literal) => `<ProviderItemLink value={member.links?.[${linkIndex++}]} fallback={<>${literal}</>} />`
+            const buttons = []
+            callback = callback.replace(/<Button\b[^>]*>[\s\S]*?<Link\s+href=["']#["'][^>]*>[\s\S]*?<\/Link>\s*<\/Button>/g, (literal) => {
+              const marker = `__SIAB_TEAM_LINK_${buttons.length}__`
+              buttons.push(wrap(literal))
+              return marker
+            })
+            callback = callback.replace(/<Link\s+href=["']#["'][^>]*>[\s\S]*?<\/Link>/g, wrap)
+            buttons.forEach((button, index) => { callback = callback.replace(`__SIAB_TEAM_LINK_${index}__`, button) })
+          }
+          const receiverText = receiver.getText(source)
+          const templates = receiverText.replaceAll(/\s/g, "") === `${name}.reverse()` ? `[...${name}].reverse()` : receiverText
+          edits.push({ start: call.getStart(source), end: call.end, text: `<ProviderItems field=${JSON.stringify(field)} templates={${templates}}>{(providerItems) => providerItems.map(${callback})}</ProviderItems>` })
+          bindings.push({ field, kind: "items", source: name })
+          needsRuntime = true
+          if (declared) remaining.splice(remaining.indexOf(declared), 1)
+          return
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  if (staticItemsBinding && staticItemsCount > 0) {
+    bindings.push({ field: staticItemsBinding.field, kind: "static-items", maxItems: staticItemsCount })
+    remaining.splice(remaining.indexOf(staticItemsBinding), 1)
+  }
+  if (staticStatsBinding && staticStatIndex >= 0) {
+    bindings.push({ field: staticStatsBinding.field, kind: "static-stat-items", maxItems: staticStatIndex + 1 })
+    remaining.splice(remaining.indexOf(staticStatsBinding), 1)
+  }
+  if (staticContactBinding && staticContactIndex >= 0) {
+    bindings.push({ field: staticContactBinding.field, kind: "static-contact-items", maxItems: staticContactIndex + 1 })
+    remaining.splice(remaining.indexOf(staticContactBinding), 1)
+  }
+  if (remaining.length) throw new Error(`Declared provider bindings were not found in ${label}: ${remaining.map((binding) => `${binding.kind}:${binding.field}:${binding.fallback ?? binding.source}`).join(", ")}`)
+  if (!needsRuntime) return { contents, bindings }
+  const prologue = contents.match(/^\/\/ @ts-nocheck[^\n]*\n(?:\s*["']use client["'];?\s*\n)?/)
+  const insertAt = prologue?.[0].length ?? contents.indexOf("\n") + 1
+  edits.push({ start: insertAt, end: insertAt, text: 'import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";\n' })
+  const adapted = edits.sort((a, b) => b.start - a.start).reduce((value, edit) => value.slice(0, edit.start) + edit.text + value.slice(edit.end), contents)
+  return { contents: adapted, bindings }
 }
 
 const semanticKind = {
@@ -113,13 +385,14 @@ const fieldSets = {
     eyebrow: ["richtext", "optional"], headline: ["richtext", "required"], subheadline: ["richtext", "optional"],
     pills: ["repeater", "optional", true], links: ["repeater", "optional", true], cta: ["cta", "optional"],
     secondary: ["cta", "optional"], image: ["image", "optional"], stats: ["repeater", "optional", true],
+    trustLabel: ["text", "optional"], logos: ["repeater", "optional", true],
   },
   featureList: {
     eyebrow: ["richtext", "optional"], title: ["richtext", "optional"], intro: ["richtext", "optional"],
     image: ["image", "optional"], features: ["repeater", "required", true],
   },
-  testimonials: { title: ["text", "optional"], logo: ["image", "optional"], items: ["repeater", "required", true] },
-  faq: { title: ["richtext", "optional"], items: ["repeater", "required", true] },
+  testimonials: { title: ["text", "optional"], intro: ["text", "optional"], logo: ["image", "optional"], items: ["repeater", "required", true] },
+  faq: { title: ["richtext", "optional"], intro: ["richtext", "optional"], items: ["repeater", "required", true] },
   cta: {
     eyebrow: ["richtext", "optional"], headline: ["richtext", "required"], description: ["richtext", "optional"],
     primary: ["cta", "optional"], secondary: ["cta", "optional"], backgroundImage: ["image", "optional"],
@@ -133,15 +406,17 @@ const fieldSets = {
     plans: ["repeater", "required", true],
   },
   stats: { title: ["richtext", "optional"], intro: ["richtext", "optional"], items: ["repeater", "required", true] },
-  logoCloud: { title: ["richtext", "optional"], intro: ["richtext", "optional"], logos: ["repeater", "required", true] },
+  logoCloud: { title: ["richtext", "optional"], intro: ["richtext", "optional"], logos: ["repeater", "required", true], cta: ["cta", "optional"] },
   gallery: { title: ["richtext", "optional"], intro: ["richtext", "optional"], images: ["repeater", "required", true], cta: ["cta", "optional"] },
   team: { title: ["richtext", "optional"], intro: ["richtext", "optional"], members: ["repeater", "required", true] },
-  blogCards: { title: ["richtext", "optional"], intro: ["richtext", "optional"], posts: ["repeater", "required", true] },
+  blogCards: { title: ["richtext", "optional"], intro: ["richtext", "optional"], posts: ["repeater", "required", true], cta: ["cta", "optional"], secondary: ["cta", "optional"] },
   contentSection: {
     eyebrow: ["richtext", "optional"], title: ["richtext", "optional"], intro: ["richtext", "optional"],
     body: ["richtext", "required"], features: ["repeater", "optional", true], bridge: ["richtext", "optional"],
     secondaryTitle: ["richtext", "optional"], secondaryBody: ["richtext", "optional"], image: ["image", "optional"], cta: ["cta", "optional"],
   },
+  timeline: { title: ["richtext", "optional"], intro: ["richtext", "optional"], items: ["repeater", "required", true] },
+  contactDetails: { title: ["richtext", "optional"], description: ["richtext", "optional"], items: ["repeater", "required", true] },
 }
 const allStructuredFields = [...new Set(Object.values(fieldSets).flatMap((fields) => Object.keys(fields)))]
 
@@ -210,7 +485,7 @@ function scopeNotFound03SvgIds(contents) {
   return adapted
 }
 
-function slotsFor(kind, upstreamName) {
+function slotsFor(kind, upstreamName, activeFields = []) {
   if (kind.role === "chrome") {
     return chromeSlots(kind.area, upstreamName)
   }
@@ -220,11 +495,13 @@ function slotsFor(kind, upstreamName) {
     actions: { kind: "repeater", status: "optional", repeated: true },
   }
   const fields = fieldSets[kind.blockType]
+  const active = new Set(activeFields)
   return Object.fromEntries(allStructuredFields.map((field) => {
     const definition = fields[field]
     if (!definition) return [field, { kind: "inactive", status: "inactive", repeated: false, reason: `The ${kind.blockType} semantic contract does not expose this field.` }]
+    if (!active.has(field)) return [field, { kind: definition[0], status: "inactive", repeated: definition[2] ?? false, reason: `The pinned ${upstreamName} view has no region for this field.` }]
     const [slotKind, status, repeated = false] = definition
-    return [field, { kind: slotKind, status, repeated }]
+    return [field, { kind: slotKind, status, repeated, ...(repeated && status === "required" ? { minItems: 1 } : {}) }]
   }))
 }
 
@@ -248,6 +525,10 @@ async function checkoutSource() {
 }
 
 async function main() {
+  const bindingManifest = JSON.parse(await readFile(bindingManifestPath, "utf8"))
+  if (bindingManifest && (bindingManifest.provider !== PROVIDER || bindingManifest.commit !== COMMIT)) {
+    throw new Error(`Binding manifest must target ${PROVIDER} at ${COMMIT}.`)
+  }
   const { source, cleanup } = await checkoutSource()
   try {
     const registryBuffer = await readFile(join(source, REGISTRY_FILE))
@@ -272,22 +553,48 @@ async function main() {
     const primitiveFiles = []
     for (const primitive of compatibilityPrimitives) {
       const upstreamPath = join(source, `src/registry/bases/radix/ui/${primitive}.tsx`)
-      const contents = (await readFile(upstreamPath, "utf8"))
+      let contents = (await readFile(upstreamPath, "utf8"))
         .replaceAll('"@/lib/utils"', '"../../../lib/utils"')
         .replaceAll(/"@\/registry\/bases\/radix\/ui\/([^"/]+)"/g, '"./$1"')
         .replace("x={x * width + 1}", "x={(x ?? 0) * width + 1}")
         .replace("y={y * height + 1}", "y={(y ?? 0) * height + 1}")
+      if (primitive === "accordion") contents = contents.replace(
+        "export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };",
+        "export { AccordionPrimitive, Accordion, AccordionItem, AccordionTrigger, AccordionContent };",
+      )
+      if (primitive === "avatar") contents = contents.replace(
+        "      {...props}\n    />\n  )\n}\n\nfunction AvatarFallback",
+        "      {...props}\n      src={typeof props.src === \"string\" && props.src.startsWith(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024'\") ? undefined : props.src}\n    />\n  )\n}\n\nfunction AvatarFallback",
+      )
       const destination = join(uiProviderRoot, `${primitive}.tsx`)
       await writeFile(destination, contents)
       primitiveFiles.push({ name: primitive, path: relative(root, destination), sha256: sha256(contents) })
     }
-    await writeFile(join(uiProviderRoot, "index.ts"), `${compatibilityPrimitives.map((name) => `export * from "./${name}"`).join("\n")}\n`)
+    const sharedButtonSource = join(source, "src/registry/ui/button.tsx")
+    const sharedButton = (await readFile(sharedButtonSource, "utf8"))
+      .replaceAll('"@/lib/utils"', '"../../../lib/utils"')
+      .replaceAll("buttonVariants", "sharedButtonVariants")
+      .replace("function Button(", "function SharedButton(")
+      .replace("export { Button, sharedButtonVariants };", "export { SharedButton };")
+    const sharedButtonDestination = join(uiProviderRoot, "shared-button.tsx")
+    await writeFile(sharedButtonDestination, sharedButton)
+    primitiveFiles.push({ name: "shared-button", path: relative(root, sharedButtonDestination), sha256: sha256(sharedButton) })
+    const providerTailwind = `/* Radix Nova state aliases required by the pinned provider primitives. */
+@custom-variant data-open { &:where([data-state="open"]), &:where([data-open]:not([data-open="false"])) { @slot; } }
+@custom-variant data-closed { &:where([data-state="closed"]), &:where([data-closed]:not([data-closed="false"])) { @slot; } }
+@custom-variant data-checked { &:where([data-state="checked"]), &:where([data-checked]:not([data-checked="false"])) { @slot; } }
+@custom-variant data-disabled { &:where([data-disabled="true"]), &:where([data-disabled]:not([data-disabled="false"])) { @slot; } }
+@custom-variant data-active { &:where([data-state="active"]), &:where([data-active]:not([data-active="false"])) { @slot; } }
+@custom-variant data-horizontal { &:where([data-orientation="horizontal"]) { @slot; } }
+@custom-variant data-vertical { &:where([data-orientation="vertical"]) { @slot; } }
+`
+    const providerTailwindDestination = join(uiProviderRoot, "tailwind.css")
+    await writeFile(providerTailwindDestination, providerTailwind)
+    primitiveFiles.push({ name: "tailwind-state-variants", path: relative(root, providerTailwindDestination), sha256: sha256(providerTailwind) })
+    await writeFile(join(uiProviderRoot, "index.ts"), `${[...compatibilityPrimitives, "shared-button"].map((name) => `export * from "./${name}"`).join("\n")}\n`)
 
-    const sharedLogosSource = join(source, "src/registry/blocks/shared/logo-cloud-01/components/logos.tsx")
+    const sharedLogosSource = join(source, "src/components/logos.tsx")
     const sharedLogos = adaptLiteralImports(await readFile(sharedLogosSource, "utf8"))
-      // The upstream decorative logo SVG ids are unreferenced and Marquee repeats
-      // each logo, which would otherwise create invalid duplicate document ids.
-      .replaceAll(/\s+id="logo-\d+"/g, "")
     await writeFile(join(providerRoot, "runtime/logos.tsx"), sharedLogos)
     const providerRuntimeFiles = [{
       path: relative(root, join(providerRoot, "runtime/logos.tsx")),
@@ -297,11 +604,17 @@ async function main() {
     const variants = []
     for (const item of approved) {
       const category = /^carousel-block-/.test(item.name) ? "carousel-block" : categoryFor(item.name)
+      const semantic = category === "contact" && item.name !== "contact-02"
+        ? { role: "block", blockType: "contactDetails" }
+        : category === "timeline"
+          ? { role: "block", blockType: "timeline" }
+          : semanticKind[category]
       const mainStem = category === "carousel-block" ? "carousel" : category
       const literalEntryPath = (item.files ?? []).find((file) => file.path.endsWith(`/${mainStem}.tsx`))?.path
       if (!literalEntryPath) throw new Error(`No literal entry component found for ${item.name}.`)
       const sourceFiles = []
       const sourceTexts = []
+      const explicitBindings = []
       let rootClassName
       for (const file of item.files ?? []) {
         const contents = await readFile(join(source, file.path))
@@ -317,16 +630,45 @@ async function main() {
         await mkdir(dirname(literalDestination), { recursive: true })
         let adaptedLiteral = adaptLiteralImports(contents.toString("utf8"))
           .replaceAll(item.name === "navbar-03" ? 'from "./navbar"' : "\0", 'from "./navbar-data"')
-        if (item.name === "not-found-03") adaptedLiteral = scopeNotFound03SvgIds(adaptedLiteral)
-        await writeFile(literalDestination, adaptedLiteral)
-        if (file.path === literalEntryPath) {
-          await writeFile(join(variantsRoot, item.name, "literal.tsx"), adaptedLiteral)
+        if ((item.name === "hero-03" || item.name === "hero-08") && file.path === literalEntryPath) {
+          adaptedLiteral = adaptedLiteral.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
         }
+        if (item.name === "features-10" && literalFilename === "stats-card.tsx") {
+          adaptedLiteral = adaptedLiteral
+            .replace('import type { ComponentProps } from "react";', 'import type { ComponentProps } from "react";\nimport type { LinkRef } from "@siteinabox/contracts";\nimport { useProviderBlockModel } from "../../runtime/content";')
+            .replace("  className,\n  ...props\n}: ComponentProps<typeof Card>) {", "  className,\n  value,\n  label,\n  action,\n  ...props\n}: ComponentProps<typeof Card> & { value?: string; label?: string; action?: LinkRef }) {\n  const model = useProviderBlockModel();")
+            .replace('<CardTitle className="font-satoshi text-3xl">+2,350</CardTitle>', '<CardTitle className="font-satoshi text-3xl">{model ? value : "+2,350"}</CardTitle>')
+            .replace('<CardDescription>+180.1% from last month</CardDescription>', '<CardDescription>{model ? label : "+180.1% from last month"}</CardDescription>')
+            .replace(/<CardAction>\s*<Button size="sm" variant="ghost">\s*View More\s*<\/Button>\s*<\/CardAction>/, '{model ? action?.href && action.label ? <CardAction><Button size="sm" variant="ghost" asChild><a href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? "noreferrer" : undefined}>{action.label}</a></Button></CardAction> : null : <CardAction><Button size="sm" variant="ghost">View More</Button></CardAction>}')
+        }
+        if (item.name === "features-10" && file.path === literalEntryPath) {
+          adaptedLiteral = adaptedLiteral.replace('<StatsCard className="rounded-br-lg" />', '<StatsCard className="rounded-br-lg" value={feature.metricValue} label={feature.metricLabel} action={feature.cta} />')
+        }
+        if (item.name === "not-found-03") adaptedLiteral = scopeNotFound03SvgIds(adaptedLiteral)
+        const unusedEmbeddedNavbar = (item.name === "hero-03" || item.name === "hero-08") && /^navbar\.(?:ts|tsx)$/.test(literalFilename)
+        if (semantic.role === "block" && !unusedEmbeddedNavbar) {
+          const declarations = bindingManifest?.variants?.[item.name]?.[literalFilename] ?? []
+          const compiled = compileBlockBindings(adaptedLiteral, semantic.blockType, declarations, `${item.name}/${literalFilename}`)
+          adaptedLiteral = compiled.contents
+          explicitBindings.push(...compiled.bindings.map((binding) => ({ file: literalFilename, ...binding })))
+        }
+        await writeFile(literalDestination, adaptedLiteral)
         rootClassName ??= referenceRootClassName(contents.toString("utf8"))
       }
-      const semantic = semanticKind[category]
       const sourceText = sourceTexts.join("\n")
-      const activeSlots = Object.entries(slotsFor(semantic, item.name)).filter(([, slot]) => slot.status !== "inactive").map(([name]) => name)
+      const declaredFields = semantic.role === "block"
+        ? [...new Set([...explicitBindings.map((binding) => binding.field), ...(bindingManifest?.direct?.[item.name] ?? [])])]
+        : []
+      const variantSlots = slotsFor(semantic, item.name, declaredFields)
+      for (const binding of explicitBindings) {
+        if ((binding.kind === "static-items" || binding.kind === "static-stat-items" || binding.kind === "static-contact-items") && variantSlots[binding.field]) {
+          variantSlots[binding.field] = { ...variantSlots[binding.field], minItems: 1, maxItems: binding.maxItems }
+        }
+      }
+      if (item.name === "features-03" && variantSlots.features) {
+        variantSlots.features = { ...variantSlots.features, minItems: 1, maxItems: 2 }
+      }
+      const activeSlots = Object.entries(variantSlots).filter(([, slot]) => slot.status !== "inactive").map(([name]) => name)
       const featureAudit = [
         { feature: "dom-and-classes", disposition: "literal-preserved", evidence: "Vendored pinned literal view" },
         { feature: "responsive-layout", disposition: "literal-preserved", evidence: "Upstream responsive class names" },
@@ -334,17 +676,19 @@ async function main() {
         ...(/(?:<Image|<img|imageUrl|\.jpg|\.png|\.webp|unsplash)/i.test(sourceText) ? [{ feature: "media", disposition: activeSlots.some((slot) => /image|logo|avatar|media/i.test(slot)) ? "structured-adapter" : "inactive", evidence: activeSlots.some((slot) => /image|logo|avatar|media/i.test(slot)) ? "CMS media slot with preserved literal dimensions" : "Decorative/demo media is removed because this semantic contract has no media field" }] : []),
         ...(/(?:<form|type=["']email|type=["']submit)/i.test(sourceText) ? [{ feature: "form", disposition: semantic.blockType === "contactSection" || ["footer-03", "footer-04"].includes(item.name) ? "structured-adapter" : "inactive", evidence: semantic.blockType === "contactSection" ? "Validated SIAB form provider contract" : ["footer-03", "footer-04"].includes(item.name) ? "Capability-gated footer newsletter contract" : "Upstream demo capture form is inactive; no arbitrary external submission is retained" }] : []),
         ...(/(?:href=|<Link|<a\s)/i.test(sourceText) ? [{ feature: "links-and-actions", disposition: activeSlots.some((slot) => /link|cta|action|legal/i.test(slot)) ? "structured-adapter" : "runtime-derived", evidence: activeSlots.some((slot) => /link|cta|action|legal/i.test(slot)) ? "Validated link/action slots" : "Safe tenant/runtime navigation" }] : []),
-        ...(/(?:\.map\(|Carousel|Accordion|Tabs)/.test(sourceText) ? [{ feature: "repeated-or-interactive-content", disposition: activeSlots.some((slot) => slotsFor(semantic, item.name)[slot]?.repeated) ? "structured-adapter" : "literal-preserved", evidence: activeSlots.some((slot) => slotsFor(semantic, item.name)[slot]?.repeated) ? "Typed repeated slot" : "Pinned literal interaction without demo data" }] : []),
+        ...(/(?:\.map\(|Carousel|Accordion|Tabs)/.test(sourceText) ? [{ feature: "repeated-or-interactive-content", disposition: activeSlots.some((slot) => variantSlots[slot]?.repeated) ? "structured-adapter" : "literal-preserved", evidence: activeSlots.some((slot) => variantSlots[slot]?.repeated) ? "Typed repeated slot" : "Pinned literal interaction without demo data" }] : []),
         ...(item.name === "navbar-02" ? [{ feature: "theme-toggle", disposition: "runtime-derived", evidence: "Accessible provider control backed by the shared persisted color-mode runtime" }] : []),
       ]
       const dependencies = [...new Set([...(item.dependencies ?? []), ...(item.registryDependencies ?? [])])].sort()
       variants.push({
         id: `${NAMESPACE}.${item.name}`,
         upstreamName: item.name,
+        entryFile: `${mainStem}.tsx`,
         title: item.title,
         description: item.description,
         ...semantic,
-        slots: slotsFor(semantic, item.name),
+        slots: variantSlots,
+        bindings: explicitBindings,
         capabilities: chromeCapabilities[item.name],
         featureAudit,
         composition: {
@@ -357,93 +701,45 @@ async function main() {
         sourceHash: sha256(sourceFiles.map((file) => `${file.path}:${file.sha256}`).join("\n")),
       })
 
-      const adapterDestination = join(variantsRoot, item.name, "adapter.ts")
       if (semantic.role === "block") {
-        const adapter = [
+        const view = item.name === "features-03" ? [
+          'import * as React from "react"',
           'import type { Block } from "@siteinabox/contracts"',
           'import type { BlockRenderOptions } from "../../../../blocks/types"',
+          'import { ShadcnUiStaticFeaturesView } from "../../feature-views"',
+          'type VariantBlock = Extract<Block, { blockType: "featureList" }>',
+          `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiStaticFeaturesView block={block} options={options} variant="${NAMESPACE}.${item.name}" /> }`,
           '',
-          `export const variantId = "${NAMESPACE}.${item.name}" as const`,
-          `export type VariantAdapterInput = { block: Extract<Block, { blockType: "${semantic.blockType}" }>; options: BlockRenderOptions }`,
-          'export function adaptVariant(input: VariantAdapterInput) {',
-          '  return { block: input.block, options: input.options }',
-          '}',
-          '',
-        ].join("\n")
-        await writeFile(adapterDestination, adapter)
-        const view = [
+        ].join("\n") : item.name === "contact-02" ? [
           'import * as React from "react"',
-          'import Literal from "./literal"',
-          'import { LiteralProviderVariantView, type ProviderBlockViewModel } from "../../runtime/literal-view"',
-          `export default function View({ model }: { model: ProviderBlockViewModel }) { return <LiteralProviderVariantView Literal={Literal} model={model} variant="${NAMESPACE}.${item.name}" /> }`,
+          'import type { Block } from "@siteinabox/contracts"',
+          'import type { BlockRenderOptions } from "../../../../blocks/types"',
+          'import { ShadcnUiContactView } from "../../contact-views"',
+          `type VariantBlock = Extract<Block, { blockType: "${semantic.blockType}" }>`,
+          `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiContactView block={block} options={options} variant="${NAMESPACE}.${item.name}" /> }`,
+          '',
+        ].join("\n") : [
+          'import * as React from "react"',
+          'import type { Block } from "@siteinabox/contracts"',
+          'import type { BlockRenderOptions } from "../../../../blocks/types"',
+          `import Literal from "./${mainStem}"`,
+          'import { LiteralProviderVariantView } from "../../runtime/literal-view"',
+          `type VariantBlock = Extract<Block, { blockType: "${semantic.blockType}" }>`,
+          `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <LiteralProviderVariantView Literal={Literal} model={{ block, options }} variant="${NAMESPACE}.${item.name}" /> }`,
           '',
         ].join("\n")
         await writeFile(join(variantsRoot, item.name, "view.tsx"), view)
-      } else if (semantic.role === "chrome") {
-        const runtimeName = semantic.area === "banner" ? "Banner" : semantic.area === "footer" ? "Footer" : "Navbar"
-        const runtimeFile = semantic.area === "banner" ? "banner" : semantic.area === "footer" ? "footer" : "navbar"
-        const adapterArguments = semantic.area === "banner"
-          ? "settings: SiteSettings"
-          : semantic.area === "footer"
-            ? "settings: SiteSettings, mediaResolver?: MediaResolver"
-            : "settings: SiteSettings, currentSlug?: string, mediaResolver?: MediaResolver"
-        const adapterCall = semantic.area === "banner"
-          ? "settings"
-          : semantic.area === "footer"
-            ? "settings, mediaResolver"
-            : "settings, currentSlug, mediaResolver"
-        const adapter = [
-          'import type { SiteSettings } from "@siteinabox/contracts"',
-          ...(semantic.area === "banner" ? [] : ['import type { MediaResolver } from "../../../../media"']),
-          `import { adapt${runtimeName} } from "../../runtime/${runtimeFile}"`,
-          '',
-          `export const variantId = "${NAMESPACE}.${item.name}" as const`,
-          `export function adaptVariant(${adapterArguments}) {`,
-          `  return adapt${runtimeName}(${adapterCall})`,
-          '}',
-          '',
-        ].join("\n")
-        await writeFile(adapterDestination, adapter)
-        const view = [
-          'import * as React from "react"',
-          'import Literal from "./literal"',
-          `import { LiteralProvider${runtimeName}View } from "../../runtime/chrome-literal-view"`,
-          `import type { ${runtimeName}ViewModel } from "../../runtime/${runtimeFile}"`,
-          `export default function View({ model }: { model: ${runtimeName}ViewModel }) { return <LiteralProvider${runtimeName}View Literal={Literal} model={model} variant="${NAMESPACE}.${item.name}" /> }`,
-          '',
-        ].join("\n")
-        await writeFile(join(variantsRoot, item.name, "view.tsx"), view)
-      } else {
-        const adapterScaffold = [
-          'import type { Block } from "@siteinabox/contracts"',
-          'import type { BlockRenderOptions } from "../../../../blocks/types"',
-          '',
-          `export const variantId = "${NAMESPACE}.${item.name}" as const`,
-          'export type VariantAdapterInput = { block: never; options: BlockRenderOptions }',
-          'export function adaptVariant(input: VariantAdapterInput) {',
-          '  return { block: input.block as Block, options: input.options }',
-          '}',
-          '',
-        ].join("\n")
-        try {
-          await access(adapterDestination)
-        } catch {
-          await writeFile(adapterDestination, adapterScaffold)
-        }
       }
     }
 
     const blockVariants = variants.filter((variant) => variant.role === "block")
-    const registryImports = blockVariants.flatMap((variant, index) => {
+    const registryImports = blockVariants.map((variant, index) => {
       const suffix = String(index + 1).padStart(3, "0")
-      return [
-        `import View${suffix} from "./variants/${variant.upstreamName}/view"`,
-        `import { adaptVariant as adapt${suffix} } from "./variants/${variant.upstreamName}/adapter"`,
-      ]
+      return `import View${suffix} from "./variants/${variant.upstreamName}/view"`
     })
     const registryEntries = blockVariants.map((variant, index) => {
       const suffix = String(index + 1).padStart(3, "0")
-      return `  "${variant.id}": { blockType: "${variant.blockType}", adapt: adapt${suffix}, View: View${suffix} },`
+      return `  "${variant.id}": { blockType: "${variant.blockType}", View: View${suffix} },`
     })
     await writeFile(join(providerRoot, "block-views.generated.tsx"), [
       "// Generated by scripts/import-shadcnui-blocks.mjs. Do not edit by hand.",
@@ -457,34 +753,29 @@ async function main() {
       "export function ShadcnUiExplicitBlockView({ block, options, variant }: { block: Block; options: BlockRenderOptions; variant: string }) {",
       "  const definition = definitions[variant as keyof typeof definitions]",
       "  if (!definition || definition.blockType !== block.blockType) throw new Error(`Unresolved provider block variant \"${variant}\" for block type \"${block.blockType}\".`)",
-      "  const model = (definition.adapt as (input: { block: Block; options: BlockRenderOptions }) => { block: Block; options: BlockRenderOptions })({ block, options })",
       "  const { View } = definition",
-      "  return <View model={model} />",
+      "  return <View block={block as never} options={options} />",
       "}",
       "",
     ].join("\n"))
 
     const literalImports = variants.map((variant, index) => {
       const suffix = String(index + 1).padStart(3, "0")
-      return `import Literal${suffix} from "./variants/${variant.upstreamName}/literal"`
+      return `import Literal${suffix} from "./variants/${variant.upstreamName}/${variant.entryFile.replace(/\.tsx$/, "")}"`
     })
     const literalEntries = variants.map((variant, index) => `  "${variant.id}": Literal${String(index + 1).padStart(3, "0")},`)
     await writeFile(join(providerRoot, "literal-references.generated.tsx"), [
       "// Generated by scripts/import-shadcnui-blocks.mjs. Do not edit by hand.",
       'import * as React from "react"',
-      'import { TooltipProvider } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"',
       'import { LiteralProviderReferenceView } from "./runtime/literal-view"',
       ...literalImports,
       "const literals = {",
       ...literalEntries,
       "} as const",
-      "export function ShadcnUiPinnedLiteralReference({ adapted, variant }: { adapted: boolean; variant: string }) {",
+      "export function ShadcnUiPinnedLiteralReference({ variant }: { variant: string }) {",
       "  const Literal = literals[variant as keyof typeof literals]",
       "  if (!Literal) throw new Error(`Unresolved pinned literal provider variant \"${variant}\".`)",
-      "  if (adapted) return <LiteralProviderReferenceView Literal={Literal} variant={variant} />",
-      '  return variant === "shadcnui-blocks.pricing-03" || variant === "shadcnui-blocks.pricing-04"',
-      "    ? <TooltipProvider><Literal /></TooltipProvider>",
-      "    : <Literal />",
+      "  return <LiteralProviderReferenceView Literal={Literal} variant={variant} />",
       "}",
       "",
     ].join("\n"))
@@ -513,18 +804,32 @@ async function main() {
       counts: { upstream: registry.items.length, public: publicItems.length, systemTemplates: systemItems.length, excluded: exclusions.length },
       compatibilityPrimitives: primitiveFiles,
       providerRuntimeFiles,
+      derivedSystemBlocks: [{
+        id: `${NAMESPACE}.legal-content-01`,
+        blockType: "contentSection",
+        reason: "Tenant privacy pages require a structured long-form legal layout; this provider-styled system block is not counted as an upstream public variant.",
+      }],
       variants,
       exclusions,
     }
     await writeFile(join(providerRoot, "inventory.json"), `${JSON.stringify(inventory, null, 2)}\n`)
     await writeFile(join(providerRoot, "exclusions.json"), `${JSON.stringify({ schemaVersion: 1, provider: PROVIDER, commit: COMMIT, exclusions }, null, 2)}\n`)
+    const compactVariant = (variant) => Object.fromEntries(Object.entries(variant).filter(([key]) => ![
+      "sourceFiles", "adaptedFiles", "featureAudit", "dependencies",
+    ].includes(key)))
     await writeFile(join(generatedRoot, "shadcnui-blocks.ts"), [
       "// Generated by scripts/import-shadcnui-blocks.mjs. Do not edit by hand.",
-      `export const SHADCNUI_BLOCKS_INVENTORY = ${JSON.stringify(inventory, null, 2)} as const`,
-      "export const SHADCNUI_BLOCK_VARIANTS = SHADCNUI_BLOCKS_INVENTORY.variants.filter((variant) => variant.role === \"block\")",
-      "export const SHADCNUI_CHROME_VARIANTS = SHADCNUI_BLOCKS_INVENTORY.variants.filter((variant) => variant.role === \"chrome\")",
-      "export const SHADCNUI_SYSTEM_TEMPLATES = SHADCNUI_BLOCKS_INVENTORY.variants.filter((variant) => variant.role === \"systemTemplate\")",
-      "export type ShadcnUiBlocksVariant = (typeof SHADCNUI_BLOCKS_INVENTORY.variants)[number]",
+      `export const SHADCNUI_PROVIDER = ${JSON.stringify({ provider: PROVIDER, namespace: NAMESPACE, repository: REPOSITORY, commit: COMMIT, registry: REGISTRY_FILE, registryHash: sha256(registryBuffer), license: "MIT", counts: inventory.counts }, null, 2)} as const`,
+      `export const SHADCNUI_BLOCK_VARIANTS = ${JSON.stringify(blockVariants.map(compactVariant), null, 2)} as const`,
+      `export const SHADCNUI_CHROME_VARIANTS = ${JSON.stringify(variants.filter((variant) => variant.role === "chrome").map(compactVariant), null, 2)} as const`,
+      `export const SHADCNUI_SYSTEM_TEMPLATES = ${JSON.stringify(variants.filter((variant) => variant.role === "systemTemplate").map(compactVariant), null, 2)} as const`,
+      `export const SHADCNUI_SYSTEM_BLOCK_VARIANTS = ${JSON.stringify([{
+        id: `${NAMESPACE}.legal-content-01`, upstreamName: "legal-content-01", entryFile: "system-views.tsx", title: "Legal content", description: "Provider-styled structured long-form legal content.", role: "block", blockType: "contentSection",
+        slots: Object.fromEntries(allStructuredFields.map((field) => [field, field === "body" ? { kind: "richtext", status: "required", repeated: false } : { kind: fieldSets.contentSection[field]?.[0] ?? "inactive", status: "inactive", repeated: fieldSets.contentSection[field]?.[2] ?? false, reason: "The legal content system layout exposes only the body field." }])),
+        bindings: [{ file: "system-views.tsx", field: "body", kind: "direct" }], composition: { embedsNavigation: false, suppressesChromeAreas: [] }, referenceRootClassName: "bg-background py-16 text-foreground sm:py-24", sourceHash: sha256("provider-styled-legal-content-v1"),
+      }], null, 2)} as const`,
+      "export type ShadcnUiSystemTemplateId = (typeof SHADCNUI_SYSTEM_TEMPLATES)[number][\"id\"]",
+      "export type ShadcnUiBlocksVariant = (typeof SHADCNUI_BLOCK_VARIANTS)[number] | (typeof SHADCNUI_CHROME_VARIANTS)[number] | (typeof SHADCNUI_SYSTEM_TEMPLATES)[number] | (typeof SHADCNUI_SYSTEM_BLOCK_VARIANTS)[number]",
       "",
     ].join("\n"))
     console.log(`Imported ${publicItems.length} public variants, ${systemItems.length} system templates, and ${exclusions.length} exclusions from ${COMMIT}.`)

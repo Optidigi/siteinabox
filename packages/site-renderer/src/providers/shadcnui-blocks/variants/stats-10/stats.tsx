@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { ArrowUpRightIcon } from "lucide-react";
 import { cn } from "@siteinabox/ui/lib/utils";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -7,16 +8,16 @@ const Stats = () => {
   return (
     <div className="mx-auto flex max-w-5xl flex-col items-start gap-14 px-6 py-20 sm:gap-10 md:flex-row">
       <div className="max-w-md lg:max-w-lg">
-        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
           Numbers that matter
-        </h2>
-        <p className="mt-3.5 text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal">
+        </>} inline /></h2>
+        <p className="mt-3.5 text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal"><ProviderField field="intro" fallback={<>
           Continuously improving with feedback from developers building modern
           applications.
-        </p>
-        <Button className="mt-8 sm:mt-10" size="lg">
+        </>} inline /></p>
+        <ProviderDemoOnly fallback={<><Button className="mt-8 sm:mt-10" size="lg">
           View all stats <ArrowUpRightIcon />
-        </Button>
+        </Button></>} />
       </div>
 
       <div
@@ -26,22 +27,22 @@ const Stats = () => {
         )}
       >
         <div className="">
-          <div className="font-medium text-5xl">96%</div>
-          <p className="text-foreground/80 text-lg">
+          <div className="font-medium text-5xl"><ProviderItemField field="items" index={0} subField="value" fallback={<>96%</>} /></div>
+          <p className="text-foreground/80 text-lg"><ProviderItemField field="items" index={0} subField="label" fallback={<>
             of customers say they have a better brand experience
-          </p>
+          </>} /></p>
         </div>
         <div className="">
-          <div className="font-medium text-5xl">95%</div>
-          <p className="text-foreground/80 text-lg">
+          <div className="font-medium text-5xl"><ProviderItemField field="items" index={1} subField="value" fallback={<>95%</>} /></div>
+          <p className="text-foreground/80 text-lg"><ProviderItemField field="items" index={1} subField="label" fallback={<>
             of customers say they gather more data, more easily
-          </p>
+          </>} /></p>
         </div>
         <div className="">
-          <div className="font-medium text-5xl">87%</div>
-          <p className="text-foreground/80 text-lg">
+          <div className="font-medium text-5xl"><ProviderItemField field="items" index={2} subField="value" fallback={<>87%</>} /></div>
+          <p className="text-foreground/80 text-lg"><ProviderItemField field="items" index={2} subField="label" fallback={<>
             of customers say they reveal deeper insights from data
-          </p>
+          </>} /></p>
         </div>
       </div>
     </div>

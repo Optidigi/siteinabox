@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   Cable,
   Code,
@@ -51,15 +52,15 @@ const features = [
 const Features = () => {
   return (
     <div className="mx-auto flex max-w-7xl flex-col px-6 py-20">
-      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
         Simplify your stack
-      </h2>
-      <p className="-tracking[0.01em] mt-3 text-pretty text-center text-muted-foreground text-xl sm:text-2xl">
+      </>} inline /></h2>
+      <p className="-tracking[0.01em] mt-3 text-pretty text-center text-muted-foreground text-xl sm:text-2xl"><ProviderField field="intro" fallback={<>
         Reduce dependencies and keep things easy
-      </p>
+      </>} inline /></p>
 
       <div className="mt-16 grid grid-cols-1 gap-1.5 border bg-muted p-1.5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature, index) => (
+        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
           <div className="relative -m-px border bg-card px-5 py-7" key={index}>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/10">
               <feature.icon />
@@ -75,7 +76,7 @@ const Features = () => {
               {(index + 1).toString().padStart(2, "0")}
             </Badge>
           </div>
-        ))}
+        ))}</ProviderItems>}
       </div>
     </div>
   );

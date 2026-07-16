@@ -1,4 +1,7 @@
 import * as React from "react"
-import Literal from "./literal"
-import { LiteralProviderVariantView, type ProviderBlockViewModel } from "../../runtime/literal-view"
-export default function View({ model }: { model: ProviderBlockViewModel }) { return <LiteralProviderVariantView Literal={Literal} model={model} variant="shadcnui-blocks.blog-05" /> }
+import type { Block } from "@siteinabox/contracts"
+import type { BlockRenderOptions } from "../../../../blocks/types"
+import Literal from "./blog"
+import { LiteralProviderVariantView } from "../../runtime/literal-view"
+type VariantBlock = Extract<Block, { blockType: "blogCards" }>
+export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <LiteralProviderVariantView Literal={Literal} model={{ block, options }} variant="shadcnui-blocks.blog-05" /> }

@@ -30,7 +30,7 @@ import { SHADCNUI_CHROME_VARIANTS, SITE_CHROME_CATALOG } from "@siteinabox/contr
 import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { DENSITY_PRESETS, FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
+import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { type EditorMode, resolveDefaultMode } from "@/lib/editor/editorMode"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { ModeBar } from "@/components/editor/mode/mode-bar"
@@ -40,7 +40,7 @@ import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
 import { ensureBlockId, ensurePageBlockIds, findBlockIndexByWireId, blockWireId } from "@/lib/editor/ensureBlockIds"
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import { pageToJson } from "@/lib/projection/pageToJson"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { BlockPresetsProvider } from "@/components/editor/canvas/BlockPresetsContext"
 import { MobileMediaSheetProvider } from "@/components/editor/canvas/MobileMediaSheetContext"
 import {
@@ -77,7 +77,6 @@ import {
 } from "@/lib/editor/pageDraftStore"
 import { useTranslations } from "next-intl"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
-import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
 import type { NavPage } from "@/lib/projection/resolveNav"
@@ -1839,7 +1838,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [initial?.id, initial?.updatedAt, pageTitle, watchedSlug, watchedBlocks, watchedSeo, iframeAnalyticsContext],
   )
   const frameSettings = rendererSettingsState as ContractSiteSettings | null
-  const frameTheme = useMemo(() => cmsThemeToRendererTheme(themeState), [themeState])
+  const frameTheme = useMemo(() => normalizeThemeForSave(themeState), [themeState])
   const frameEditorLayout = isDesktop ? "desktop" : "mobile"
   const frameEditorView: PageEditorFrameView = readOnly ? "sidebar" : isDesktop ? mode : "canvas"
   const canRenderEditorFrame = frameSettings != null
@@ -2024,7 +2023,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                   palettes={PALETTE_PRESETS}
                   fonts={FONT_PRESETS}
                   radiusLevels={RADIUS_PRESETS}
-                  densityLevels={DENSITY_PRESETS}
                 />
               </div>
             </div>

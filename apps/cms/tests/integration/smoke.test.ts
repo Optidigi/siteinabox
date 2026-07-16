@@ -2,7 +2,6 @@ import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import { describe, it, expect, beforeAll, beforeEach } from "vitest"
 import type { Payload } from "payload"
 import { getTestPayload, resetTestData } from "./_helpers"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
 
 let payload: Payload
 
@@ -19,12 +18,11 @@ const blockRoot = (text: string) => ({
 })
 
 const smokeTheme = {
-  version: 2,
+  version: 3,
   appearance: { mode: "light" },
   colors: { schemeId: "red-confident" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "rounded" },
-  density: { schemeId: "spacious" },
 } as const
 
 beforeAll(async () => {
@@ -69,7 +67,7 @@ describe("CMS integration smoke", () => {
           },
           {
             blockType: "contactSection",
-            designVariant: "shadcnui-blocks.contact-01",
+            designVariant: "shadcnui-blocks.contact-02",
             anchor: "contact",
             title: inlineRoot("Contact"),
             description: blockRoot("The form contract remains structured CMS data."),
@@ -143,8 +141,7 @@ describe("CMS integration smoke", () => {
     })
 
     expect(storedTenant.theme).toEqual(smokeTheme)
-    expect(cmsThemeToRendererTheme(storedTenant.theme as any)).toEqual(smokeTheme)
-    expect(cmsThemeToRendererTheme(null)).toBeNull()
+    expect(storedTenant.theme).toEqual(smokeTheme)
     expect(DEFAULT_THEME_TOKEN_SPEC.colors.schemeId).toBe("blue-professional")
 
     expect(storedPages.docs).toHaveLength(1)
@@ -155,7 +152,7 @@ describe("CMS integration smoke", () => {
     })
     expect((storedPages.docs[0] as any).blocks.map((block: any) => block.designVariant)).toEqual([
       "shadcnui-blocks.hero-01",
-      "shadcnui-blocks.contact-01",
+      "shadcnui-blocks.contact-02",
     ])
 
     expect(storedSettings.docs).toHaveLength(1)

@@ -15,7 +15,7 @@ import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { cmsThemeToRendererTheme } from "@/lib/theme/rendererTheme"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { Tenant } from "@/payload-types"
 
 type RouteParams = {
@@ -136,7 +136,7 @@ export default async function EditorFramePage({
       <EditorFrameRuntime
         page={framePage}
         settings={settingsToJson(settingsDoc, navPages, analyticsContext) as ContractSiteSettings}
-        theme={cmsThemeToRendererTheme(tenant.theme as ThemeTokens | null | undefined)}
+        theme={normalizeThemeForSave(tenant.theme as ThemeTokens | null | undefined)}
         tenantId={tenant.id}
         tenantSlug={tenant.slug}
         domain={tenant.domain}

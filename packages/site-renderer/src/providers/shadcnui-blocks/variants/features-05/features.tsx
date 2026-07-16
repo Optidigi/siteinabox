@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import {
   BookCheck,
   ChartPie,
@@ -52,14 +53,14 @@ const Features = () => {
   return (
     <div className="px-6 py-20">
       <div className="mx-auto w-full max-w-(--breakpoint-lg)">
-        <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+        <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
           What makes it different
-        </h2>
-        <p className="mt-3 text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl">
+        </>} inline /></h2>
+        <p className="mt-3 text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl"><ProviderField field="intro" fallback={<>
           Minimal setup, clean structure, and easy customization
-        </p>
+        </>} inline /></p>
         <div className="mx-auto mt-18 grid w-full gap-x-6 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
-          {features.map((feature) => (
+          {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature) => (
             <Card
               className="flex flex-col overflow-hidden rounded-xl pb-0 shadow-none"
               key={feature.title}
@@ -77,7 +78,7 @@ const Features = () => {
                 <div className="ml-6 h-40 rounded-tl-xl bg-muted" />
               </CardContent>
             </Card>
-          ))}
+          ))}</ProviderItems>}
         </div>
       </div>
     </div>

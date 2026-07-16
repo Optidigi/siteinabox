@@ -1,4 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import Image from "../../runtime/image";
 import { ArrowRight, CalendarDays, Mails } from "lucide-react";
 import Link from "../../runtime/link";
@@ -13,7 +14,7 @@ const blogPosts = [
     publishedDate: "2025-06-18",
     author: "Jane Doe",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:3bf03",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:3bf03",
     tags: ["React", "Server Components", "Performance"],
   },
   {
@@ -22,7 +23,7 @@ const blogPosts = [
     publishedDate: "2025-05-30",
     author: "Akash Moradiya",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:2fa0b",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2fa0b",
     tags: ["Shadcn UI", "Components", "Design"],
   },
   {
@@ -31,7 +32,7 @@ const blogPosts = [
     publishedDate: "2025-05-15",
     author: "Chris Moore",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:5b9d1",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5b9d1",
     tags: ["Next.js", "Contentlayer", "Blog"],
   },
   {
@@ -40,7 +41,7 @@ const blogPosts = [
     publishedDate: "2025-04-25",
     author: "Emily Johnson",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:5f7e8",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5f7e8",
     tags: ["TypeScript", "Guide"],
   },
   {
@@ -49,7 +50,7 @@ const blogPosts = [
     publishedDate: "2025-04-10",
     author: "Akash Moradiya",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:d11ce",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:d11ce",
     tags: ["Next.js", "Performance", "Optimization"],
   },
   {
@@ -58,7 +59,7 @@ const blogPosts = [
     publishedDate: "2025-03-28",
     author: "John Smith",
     image:
-      "data:image/gif;base64,R0lGODlhAQABAAAAACw=#sha256:2dcd5",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2dcd5",
     tags: ["Supabase", "Deployment", "Full-Stack"],
   },
 ];
@@ -77,28 +78,24 @@ export default function Blog() {
       {/* Header */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-balance font-medium text-2xl tracking-tight">
+          <h2 className="text-balance font-medium text-2xl tracking-tight"><ProviderField field="title" fallback={<>
             Welcome to our blog!
-          </h2>
-          <p className="mt-0.5 text-pretty text-lg text-muted-foreground tracking-normal">
+          </>} inline /></h2>
+          <p className="mt-0.5 text-pretty text-lg text-muted-foreground tracking-normal"><ProviderField field="intro" fallback={<>
             Stay updated with the latest news and insights.
-          </p>
+          </>} inline /></p>
         </div>
         <Button
           className="hidden gap-3 sm:inline-flex"
           size="lg"
           variant="secondary"
-        >
-          <Mails />
-          <span className="hidden lg:inline">Subscribe to our newsletter</span>
-          <span className="hidden md:inline lg:hidden">Subscribe</span>
-        </Button>
+         asChild><ProviderAction field="cta" fallback={<><span className="hidden lg:inline">Subscribe to our newsletter</span><span className="hidden md:inline lg:hidden">Subscribe</span></>} decoration="before"><Mails /></ProviderAction></Button>
       </div>
 
       <Separator className="mt-7 mb-10" />
 
       <div className="grid grid-cols-1 gap-x-8 gap-y-14 md:grid-cols-2 lg:grid-cols-3">
-        {blogPosts.map((post, index) => (
+        {<ProviderItems field="posts" templates={blogPosts}>{(providerItems) => providerItems.map((post, index) => (
           <Link href={post.link} key={`${post.link}-${index}`}>
             <div>
               <Image
@@ -127,12 +124,10 @@ export default function Blog() {
               </div>
             </div>
           </Link>
-        ))}
+        ))}</ProviderItems>}
       </div>
 
-      <Button className="mx-auto mt-16 flex" size="lg" variant="secondary">
-        Load more articles
-      </Button>
+      <Button className="mx-auto mt-16 flex" size="lg" variant="secondary" asChild><ProviderAction field="secondary" fallback={"Load more articles"} decoration="after"></ProviderAction></Button>
     </section>
   );
 }

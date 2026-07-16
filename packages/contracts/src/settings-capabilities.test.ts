@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { SHADCNUI_BLOCKS_INVENTORY, SHADCNUI_CHROME_VARIANTS } from "./generated/shadcnui-blocks"
+import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_TEMPLATES } from "./generated/shadcnui-blocks"
 import { SITE_SETTING_DISPOSITIONS } from "./settings-capabilities"
 import { NavLinkSchema, SiteSettingsSchema } from "./runtime"
 import { validateSiteChromeCapabilities } from "./block-catalog"
@@ -16,7 +16,7 @@ describe("canonical settings and provider capabilities", () => {
   it("accounts for every public settings domain exactly once", () => {
     const paths = SITE_SETTING_DISPOSITIONS.map((entry) => entry.path)
     expect(new Set(paths).size).toBe(paths.length)
-    expect(paths).toEqual(expect.arrayContaining(["navHeader", "navFooter", "chrome.header.search", "chrome.footer.newsletter", "analyticsConsent", "privacyDisclosure", "seoJsonLd"]))
+    expect(paths).toEqual(expect.arrayContaining(["navHeader", "navFooter", "chrome.header.search", "chrome.footer.newsletter", "systemTemplates.notFound.variant", "analyticsConsent", "privacyDisclosure", "seoJsonLd"]))
     expect(SITE_SETTING_DISPOSITIONS.every((entry) => entry.consumer.trim().length > 4)).toBe(true)
   })
 
@@ -30,11 +30,10 @@ describe("canonical settings and provider capabilities", () => {
     }
   })
 
-  it("audits every imported variant feature and explains every inactive structured slot", () => {
-    expect(SHADCNUI_BLOCKS_INVENTORY.variants).toHaveLength(156)
-    for (const variant of SHADCNUI_BLOCKS_INVENTORY.variants) {
-      expect(variant.featureAudit.length, variant.id).toBeGreaterThan(1)
-      expect(new Set(variant.featureAudit.map((feature) => feature.feature)).size, variant.id).toBe(variant.featureAudit.length)
+  it("publishes every imported variant and explains every inactive structured slot", () => {
+    const variants = [...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_CHROME_VARIANTS, ...SHADCNUI_SYSTEM_TEMPLATES]
+    expect(variants).toHaveLength(156)
+    for (const variant of variants) {
       for (const [name, slot] of Object.entries(variant.slots)) {
         if (slot.status === "inactive") expect("reason" in slot && slot.reason?.trim(), `${variant.id}.${name}`).toBeTruthy()
       }
@@ -55,5 +54,11 @@ describe("canonical settings and provider capabilities", () => {
     const supported = { ...base("shadcnui-blocks.navbar-05", "shadcnui-blocks.footer-03"), chrome: { header: { variant: "shadcnui-blocks.navbar-05", search: { enabled: true, action: "/search" } }, footer: { variant: "shadcnui-blocks.footer-03", newsletter: { action: "/subscribe", method: "POST" as const } } } } satisfies SiteSettings
     expect(validateSiteChromeCapabilities(supported)).toEqual([])
     expect(SiteSettingsSchema.safeParse(supported).success).toBe(true)
+  })
+
+  it("accepts only imported system and maintenance variants", () => {
+    expect(SiteSettingsSchema.safeParse({ ...base("shadcnui-blocks.navbar-01"), systemTemplates: { notFound: { variant: "shadcnui-blocks.not-found-08" } }, maintenance: { enabled: true, message: "Planned maintenance", variant: "shadcnui-blocks.banner-02" } }).success).toBe(true)
+    expect(SiteSettingsSchema.safeParse({ ...base("shadcnui-blocks.navbar-01"), systemTemplates: { notFound: { variant: "shadcnui-blocks.not-found-99" } } }).success).toBe(false)
+    expect(SiteSettingsSchema.safeParse({ ...base("shadcnui-blocks.navbar-01"), maintenance: { enabled: true, message: "Planned maintenance", variant: "shadcnui-blocks.hero-01" } }).success).toBe(false)
   })
 })

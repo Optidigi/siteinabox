@@ -34,7 +34,7 @@ test("structured content variants do not retain multi-word upstream demo copy", 
     .replaceAll("&quot;", '"').replaceAll("&nbsp;", " ").replaceAll(/\s+/g, " ").trim()
   for (const variant of inventory.variants.filter((candidate) => candidate.role === "block")) {
     const block = fixtures.get(variant.blockType)
-    const upstream = renderToStaticMarkup(React.createElement(ShadcnUiPinnedLiteralReference, { adapted: false, variant: variant.id }))
+    const upstream = renderToStaticMarkup(React.createElement(ShadcnUiPinnedLiteralReference, { variant: variant.id }))
     const structured = decode(renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, { block, options: { index: 0, formAction: "/forms/provider-test" }, variant: variant.id })))
     const structuredData = decode(JSON.stringify(block))
     const phrases = [...upstream.matchAll(/>([^<>]+)</g)]
@@ -76,6 +76,35 @@ test("literal views preserve CMS edit-slot boundaries", () => {
     },
   }))
   assert.match(teamHtml, /data-edit-image="members"/)
+})
+
+test("team profile links fill only native provider social-link positions", () => {
+  const team = fixtures.get("team")
+  const block = {
+    ...team,
+    members: team.members.map((member) => ({
+      ...member,
+      links: [
+        { label: "Profile", href: "/team/profile" },
+        { label: "External profile", href: "https://example.com/profile", external: true },
+      ],
+    })),
+  }
+  const withSocials = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+    block,
+    variant: "shadcnui-blocks.team-03",
+    options: { index: 0 },
+  }))
+  assert.match(withSocials, /href="\/team\/profile"/)
+  assert.match(withSocials, /href="https:\/\/example\.com\/profile" target="_blank" rel="noreferrer"/)
+  assert.doesNotMatch(withSocials, /href="#"/)
+
+  const withoutSocials = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+    block,
+    variant: "shadcnui-blocks.team-01",
+    options: { index: 0 },
+  }))
+  assert.doesNotMatch(withoutSocials, /team\/profile|example\.com\/profile/)
 })
 
 test("contact variants use only structured SIAB form actions, fields, and submit labels", () => {

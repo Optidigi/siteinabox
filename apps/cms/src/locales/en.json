@@ -760,8 +760,6 @@
     "fontPairings": "Font pairings",
     "shape": "Shape",
     "cornerRadius": "Corner radius",
-    "density": "Density",
-    "spacingDensity": "Spacing density",
     "shuffle": "Shuffle",
     "default": "Default",
     "light": "Light",

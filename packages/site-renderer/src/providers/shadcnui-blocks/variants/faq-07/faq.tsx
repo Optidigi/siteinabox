@@ -1,6 +1,7 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
+import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
 import { PlusIcon } from "lucide-react";
-import { Accordion as AccordionPrimitive } from "radix-ui";
+import { AccordionPrimitive } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { cn } from "@siteinabox/ui/lib/utils";
 import {
   Accordion,
@@ -40,12 +41,12 @@ const FAQ = () => {
   return (
     <div className="px-6 py-20">
       <div className="mx-auto w-full max-w-2xl">
-        <h2 className="font-medium text-4xl/snug tracking-[-0.04em]">
+        <h2 className="font-medium text-4xl/snug tracking-[-0.04em]"><ProviderField field="title" fallback={<>
           Frequently Asked Questions
-        </h2>
-        <p className="mt-2 text-muted-foreground text-xl">
+        </>} inline /></h2>
+        <p className="mt-2 text-muted-foreground text-xl"><ProviderField field="intro" fallback={<>
           Quick answers to common questions about our products and services.
-        </p>
+        </>} inline /></p>
 
         <Accordion
           className="mt-8 space-y-4 sm:mt-10"
@@ -53,7 +54,7 @@ const FAQ = () => {
           defaultValue="question-0"
           type="single"
         >
-          {faq.map(({ question, answer }, index) => (
+          {<ProviderItems field="items" templates={faq}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
             <AccordionItem
               className="rounded-xl border-none bg-muted px-4"
               key={question}
@@ -74,7 +75,7 @@ const FAQ = () => {
                 {answer}
               </AccordionContent>
             </AccordionItem>
-          ))}
+          ))}</ProviderItems>}
         </Accordion>
       </div>
     </div>
