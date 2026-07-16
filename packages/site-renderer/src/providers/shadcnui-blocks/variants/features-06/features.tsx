@@ -53,7 +53,7 @@ const Features = () => {
               className="flex flex-col items-center gap-x-12 gap-y-6"
               key={feature.category}
             >
-              <div className="relative aspect-video w-full rounded-xl bg-linear-to-r from-primary to-accent p-2">
+              <div className="relative aspect-video w-full rounded-xl bg-linear-to-r from-indigo-400 to-orange-300 p-2">
                 <div className="size-full rounded-lg bg-card" />
 
                 <div
@@ -153,20 +153,20 @@ function Star_1(props: SVGProps<SVGSVGElement>) {
           <path d="M200 0H0v200h200V0z" fill="#fff" />
           <path
             d="M200 0H0v200h200V0z"
-            fill="var(--siab-accent-300)"
+            fill="var(--color-orange-400)"
             fillOpacity="0.44"
           />
           <g filter="url(#filter0_f_748_4325)">
             <path
               d="M158 22H15v108h143V22z"
-              fill="var(--siab-accent-400)"
+              fill="var(--color-orange-500)"
               fillOpacity="0.85"
             />
-            <path d="M209 101H52v116h157V101z" fill="var(--siab-accent-500)" />
+            <path d="M209 101H52v116h157V101z" fill="var(--color-indigo-400)" />
             <ellipse
               cx="156"
               cy="80"
-              fill="var(--siab-accent-300)"
+              fill="var(--color-indigo-300)"
               fillOpacity="0.79"
               rx="83"
               ry="57"
@@ -253,13 +253,13 @@ function Flower_10(props: SVGProps<SVGSVGElement>) {
           <path d="M200 0H0v200h200V0z" fill="#fff" />
           <path
             d="M200 0H0v200h200V0z"
-            fill="var(--siab-accent-600)"
+            fill="var(--color-indigo-500)"
             fillOpacity="0.19"
           />
           <g filter="url(#filter0_f_748_4624)">
-            <path d="M152 84H13v105h139V84z" fill="var(--siab-accent-600)" />
-            <path d="M163-10H42v89h121v-89z" fill="var(--siab-accent-300)" />
-            <path d="M204 77H100v129h104V77z" fill="var(--siab-accent-300)" />
+            <path d="M152 84H13v105h139V84z" fill="var(--color-indigo-500)" />
+            <path d="M163-10H42v89h121v-89z" fill="var(--color-orange-400)" />
+            <path d="M204 77H100v129h104V77z" fill="var(--color-indigo-300)" />
           </g>
         </g>
       </g>
@@ -359,8 +359,8 @@ function Moon_12(props: SVGProps<SVGSVGElement>) {
           id="paint0_radial_748_4454"
           r="1"
         >
-          <stop stopColor="var(--siab-accent-500)" />
-          <stop offset="0.423" stopColor="var(--siab-accent-500)" />
+          <stop stopColor="var(--color-indigo-400)" />
+          <stop offset="0.423" stopColor="var(--color-indigo-400)" />
           <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </radialGradient>
         <radialGradient
@@ -371,10 +371,10 @@ function Moon_12(props: SVGProps<SVGSVGElement>) {
           id="paint1_radial_748_4454"
           r="1"
         >
-          <stop stopColor="var(--siab-accent-500)" />
+          <stop stopColor="var(--color-indigo-400)" />
           <stop
             offset="1"
-            stopColor="var(--siab-accent-500)"
+            stopColor="var(--color-indigo-400)"
             stopOpacity="0"
           />
         </radialGradient>
@@ -386,10 +386,10 @@ function Moon_12(props: SVGProps<SVGSVGElement>) {
           id="paint2_radial_748_4454"
           r="1"
         >
-          <stop offset="0.276" stopColor="var(--siab-accent-300)" />
+          <stop offset="0.276" stopColor="var(--color-orange-400)" />
           <stop
             offset="1"
-            stopColor="var(--siab-accent-300)"
+            stopColor="var(--color-orange-400)"
             stopOpacity="0"
           />
         </radialGradient>
@@ -443,14 +443,14 @@ function Triangle_14(props: SVGProps<SVGSVGElement>) {
           <path d="M200 0H0v200h200V0z" fill="#fff" />
           <path
             d="M200 0H0v200h200V0z"
-            fill="var(--siab-accent-300)"
+            fill="var(--color-orange-400)"
             fillOpacity="0.13"
           />
           <g filter="url(#filter0_f_748_4873)">
             <ellipse
               cx="30.742"
               cy="171.544"
-              fill="var(--siab-accent-300)"
+              fill="var(--color-orange-400)"
               rx="79.5"
               ry="64.116"
               transform="rotate(-33.875 30.742 171.544)"
@@ -458,14 +458,14 @@ function Triangle_14(props: SVGProps<SVGSVGElement>) {
             <ellipse
               cx="37"
               cy="55"
-              fill="var(--siab-accent-300)"
+              fill="var(--color-orange-400)"
               rx="60"
               ry="45"
             />
-            <path d="M232-15H121v121h111V-15z" fill="var(--siab-accent-500)" />
+            <path d="M232-15H121v121h111V-15z" fill="var(--color-indigo-400)" />
             <path
               d="M234 121H100v121h134V121z"
-              fill="var(--siab-accent-600)"
+              fill="var(--color-indigo-500)"
             />
           </g>
         </g>

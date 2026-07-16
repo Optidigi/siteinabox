@@ -112,9 +112,22 @@ export function RendererFrameRuntime({
     if (mode !== "preview") return
 
     const onClick = (event: MouseEvent) => {
-      const target = event.target instanceof Element ? event.target.closest("a[href]") : null
-      if (!target) return
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const target = event.target instanceof Element ? event.target.closest<HTMLAnchorElement>("a[href]") : null
+      if (!target || target.hasAttribute("download")) return
+      const rawHref = target.getAttribute("href")?.trim()
+      if (!rawHref || rawHref.startsWith("#") || /^(?:mailto|tel):/i.test(rawHref)) return
+      const destination = new URL(rawHref, window.location.href)
+      if (destination.origin !== window.location.origin) return
       event.preventDefault()
+      window.parent?.postMessage({
+        protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+        schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+        type: "navigation.requested",
+        messageId: `navigation-${Date.now()}`,
+        href: `${destination.pathname}${destination.search}${destination.hash}`,
+        reason: "linkClick",
+      } satisfies IframeEditorMessage, window.location.origin)
     }
     document.addEventListener("click", onClick)
     return () => document.removeEventListener("click", onClick)

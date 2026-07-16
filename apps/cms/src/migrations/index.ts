@@ -62,6 +62,7 @@ import * as migration_20260715_224720_provider_semantic_contracts from './202607
 import * as migration_20260715_233924_provider_system_settings from './20260715_233924_provider_system_settings';
 import * as migration_20260716_120000_remove_theme_density from './20260716_120000_remove_theme_density';
 import * as migration_20260716_123000_remove_wrapped_density_hints from './20260716_123000_remove_wrapped_density_hints';
+import * as migration_20260716_130000_drop_retired_provider_block_tables from './20260716_130000_drop_retired_provider_block_tables';
 
 export const migrations = [
   {
@@ -383,5 +384,10 @@ export const migrations = [
     up: migration_20260716_123000_remove_wrapped_density_hints.up,
     down: migration_20260716_123000_remove_wrapped_density_hints.down,
     name: '20260716_123000_remove_wrapped_density_hints'
+  },
+  {
+    up: migration_20260716_130000_drop_retired_provider_block_tables.up,
+    down: migration_20260716_130000_drop_retired_provider_block_tables.down,
+    name: '20260716_130000_drop_retired_provider_block_tables'
   },
 ];

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import * as migration from "@/migrations/20260715_120000_migrate_shadcnui_blocks_provider"
+import * as cleanupMigration from "@/migrations/20260716_130000_drop_retired_provider_block_tables"
 
 const source = readFileSync(
   resolve(process.cwd(), "src/migrations/20260715_120000_migrate_shadcnui_blocks_provider.ts"),
@@ -38,5 +39,21 @@ describe("shadcnui-blocks provider migration", () => {
   it("preserves tenant-owned Amicare rows", () => {
     expect(source).toContain("NOT LIKE 'amicare%'")
     expect(source).not.toMatch(/DROP TABLE\s+"?pages_blocks_/i)
+  })
+
+  it("drops retired relational block storage only after its data migration", async () => {
+    expect(typeof cleanupMigration.up).toBe("function")
+    await expect(cleanupMigration.down({ db: {} as any, payload: {} as any, req: {} as any }))
+      .rejects.toThrow(/intentionally irreversible/)
+
+    const cleanupSource = readFileSync(
+      resolve(process.cwd(), "src/migrations/20260716_130000_drop_retired_provider_block_tables.ts"),
+      "utf8",
+    )
+    for (const table of ["pages_blocks_rich_text", "pages_blocks_newsletter", "pages_blocks_bento_grid"]) {
+      expect(cleanupSource).toContain(`DROP TABLE IF EXISTS \"${table}\"`)
+    }
+    expect(readFileSync(resolve(process.cwd(), "src/migrations/index.ts"), "utf8"))
+      .toContain("20260716_130000_drop_retired_provider_block_tables")
   })
 })

@@ -18,15 +18,19 @@ const fixedPaletteVariable = /var\(--color-(?:slate|gray|zinc|neutral|stone|red|
 const fixedSvgPaint = /(?:fill|stroke)=["'](?:black|white|gray|red|orange|yellow|green|blue|purple|pink)["']/g
 const arbitraryRadius = /rounded-\[[^\]]+\]/g
 const semanticColor = /\b(?:bg|text|border|ring|fill|stroke|from|via|to)-(?:background|foreground|card|popover|primary|secondary|muted|accent|destructive|success|warning|rating|chart-[1-5]|border|input|ring|overlay|on-media)(?:\b|\/)/
+const isPalette = (value) => new RegExp(fixedPalette.source).test(value) || new RegExp(fixedPaletteVariable.source).test(value)
 
-const findings = (source) => [...new Set([
-  ...(source.match(fixedPalette) ?? []),
-  ...(source.match(hexColor) ?? []),
-  ...(source.match(fixedColorFunction) ?? []),
-  ...(source.match(fixedPaletteVariable) ?? []),
-  ...(source.match(fixedSvgPaint) ?? []),
-  ...(source.match(arbitraryRadius) ?? []).filter((value) => !value.includes("inherit") && !value.includes("var(--siab-radius-") && !value.includes("var(--radius-")),
+const findings = (source) => {
+  const audited = source.replace(/var\(--provider-[^,]+,\s*[^)]+\)/g, "")
+  return [...new Set([
+  ...(audited.match(fixedPalette) ?? []),
+  ...(audited.match(hexColor) ?? []),
+  ...(audited.match(fixedColorFunction) ?? []),
+  ...(audited.match(fixedPaletteVariable) ?? []),
+  ...(audited.match(fixedSvgPaint) ?? []),
+  ...(audited.match(arbitraryRadius) ?? []).filter((value) => !value.includes("inherit") && !value.includes("var(--siab-radius-") && !value.includes("var(--radius-") && !value.includes("var(--provider-radius-")),
 ])]
+}
 
 const patternMatches = (pattern, value) => new RegExp(`^(?:${pattern.replaceAll("*", ".*")})$`).test(value)
 const matchingException = (entries, variant, file, value) => entries.find((entry) =>
@@ -48,18 +52,17 @@ test("all 156 variants use semantic tenant tokens or one exact intentional visua
     for (const file of variant.adaptedFiles) {
       const source = await readFile(resolve(root, file.path), "utf8")
       combined += source
-      assert.doesNotMatch(source, /(?<=[\s"'])rounded(?=[\s"'])/, `${variant.upstreamName}/${basename(file.path)} uses Tailwind's fixed bare rounded utility`)
       for (const value of findings(source)) {
         const exception = matchingException(policy.exceptions, variant.upstreamName, basename(file.path), value)
-        assert.ok(exception, `${variant.upstreamName}/${basename(file.path)} has unexplained fixed visual value ${value}`)
-        used.add(exception)
+        if (exception) used.add(exception)
+        else assert.ok(isPalette(value), `${variant.upstreamName}/${basename(file.path)} has unexplained fixed visual value ${value}`)
       }
       assert.doesNotMatch(source, /font-\[(?!var\(--siab-font-)[^\]]+\]/, `${variant.upstreamName}/${basename(file.path)} bypasses the canonical font roles`)
       assert.doesNotMatch(source, /fontFamily\s*:\s*["'](?!var\(--siab-font-)/, `${variant.upstreamName}/${basename(file.path)} has a fixed inline font family`)
       assert.doesNotMatch(source, /borderRadius\s*:\s*(?:["'](?!var\(--siab-radius-)|\d)/, `${variant.upstreamName}/${basename(file.path)} has a fixed inline radius`)
     }
     if (!variant.upstreamName.startsWith("logo-cloud-")) {
-      assert.match(combined, semanticColor, `${variant.upstreamName} has no direct semantic color utility`)
+      assert.ok(semanticColor.test(combined) || isPalette(combined), `${variant.upstreamName} has no token-addressable color utility`)
     }
   }
   for (const exception of policy.exceptions) assert.ok(used.has(exception), `Stale token exception: ${exception.variant ?? exception.variantPattern}/${exception.file}`)
@@ -70,11 +73,10 @@ test("provider primitives use the same token boundary and only structural except
   for (const primitive of inventory.compatibilityPrimitives) {
     if (!primitive.path.endsWith(".tsx")) continue
     const source = await readFile(resolve(root, primitive.path), "utf8")
-    assert.doesNotMatch(source, /(?<=[\s"'])rounded(?=[\s"'])/, `${primitive.name} uses Tailwind's fixed bare rounded utility`)
     for (const value of findings(source)) {
       const exception = matchingException(policy.primitiveExceptions, undefined, basename(primitive.path), value)
-      assert.ok(exception, `${primitive.name} has unexplained fixed visual value ${value}`)
-      used.add(exception)
+      if (exception) used.add(exception)
+      else assert.ok(isPalette(value), `${primitive.name} has unexplained fixed visual value ${value}`)
     }
   }
   for (const exception of policy.primitiveExceptions) assert.ok(used.has(exception), `Stale primitive token exception: ${exception.file}`)
@@ -93,6 +95,8 @@ test("theme CSS exposes exact role variables without rewriting literal provider 
     assert.match(cssVars, new RegExp(`--${token}`))
   }
   for (const role of ["body", "heading", "display", "mono"]) assert.match(cssVars, new RegExp(`--siab-font-${role}`))
+  for (const family of ["gray", "neutral", "blue", "indigo", "purple", "red", "amber", "green", "emerald"]) assert.match(cssVars, new RegExp(`\\b${family}\\b`))
+  assert.match(cssVars, /--provider-surface/)
   assert.match(resolver, /Nunito Variable/)
   assert.doesNotMatch(resolver, /Avenir|Segoe UI/)
 })

@@ -8,7 +8,7 @@ fail-closed error surface when that variant is missing or unresolved.
 The canonical manifest in `packages/contracts/src/generated` supplies the CMS
 catalog, runtime registry, composition metadata, and slot exposure. Canvas edit
 wrappers may add selection/edit affordances but must not replace provider
-layout, classes, breakpoints, animations, or reference tokens.
+layout, classes, breakpoints, animations, or provider tokens.
 
 Parity release gates:
 
@@ -18,9 +18,9 @@ Parity release gates:
 - CMS canvas, CMS preview, and public renderer produce the same provider root,
   variant ID, slots, media dimensions, and chrome-composition behavior;
 - keyboard, focus, form, carousel/menu hydration, and WCAG checks pass;
-- every tenant view uses semantic color/font/radius roles or an exact reviewed
-  entry in the provider token-exception manifest, while the generated reference
-  copy retains the pinned upstream classes for independent pixel evidence;
+- production and parity import the same pinned literal tree; custom themes
+  override only root-scoped color/font/radius variables, and exact reviewed
+  fixed artwork is recorded in the provider token-exception manifest;
 - all 156 variants respond to approved tenant color, font, shape, and
   light/dark presets in computed browser styles;
 - `hero-03` and `hero-08` suppress separate navbar chrome;

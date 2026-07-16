@@ -71,7 +71,7 @@ const Team = () => {
             })}
             key={index}
           >
-            <div className="aspect-square w-20 shrink-0 overflow-hidden rounded-sm bg-foreground/10 dark:bg-muted/75">
+            <div className="aspect-square w-20 shrink-0 overflow-hidden rounded bg-foreground/10 dark:bg-muted/75">
               {member.isPlaceholder ? null : (
                 <Image
                   alt={member.name}

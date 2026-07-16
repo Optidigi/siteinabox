@@ -269,7 +269,7 @@ export function ProviderLogo({ field, index, fallback }: { field: string; index:
   const className = React.isValidElement<{ className?: string }>(fallback) ? fallback.props.className : undefined
   const content = model.options.editSlots?.renderImage
     ? model.options.editSlots.renderImage({ name: `${model.block.blockType}.${field}.image`, value, alt: name, className, elementPath: path(model, field, index, "image") })
-    : resolved?.src ? <img className={className} src={resolved.src} alt={name} /> : <span className={className}>{name}</span>
+    : resolved?.src ? <img className={className} src={resolved.src} alt={name} /> : null
   const href = typeof item.href === "string" ? item.href.trim() : ""
   const external = /^(?:https?:)?\/\//.test(href)
   return href ? <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined}>{content}</a> : content

@@ -106,7 +106,7 @@ export default function Blog() {
                 />
                 <Image
                   alt={post.title}
-                  className="absolute inset-0 -z-10 aspect-17/9 scale-y-110 rounded-sm bg-muted blur-2xl"
+                  className="absolute inset-0 -z-10 aspect-17/9 scale-y-110 rounded bg-muted blur-2xl"
                   src={post.image}
                 />
               </div>
@@ -114,7 +114,7 @@ export default function Blog() {
                 <div className="-ms-0.5 mt-4 flex flex-wrap items-center gap-2">
                   {post.tags.map((tag) => (
                     <Badge
-                      className="bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
+                      className="bg-indigo-600/10 text-indigo-500 dark:bg-indigo-500/35 dark:text-indigo-300"
                       key={tag}
                       variant="secondary"
                     >

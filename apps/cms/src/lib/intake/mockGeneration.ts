@@ -219,6 +219,7 @@ function blockForVariant(
         blockType: "logoCloud",
         logos: ["Acme", "Northstar", "Lumen", "Vertex", "Harbor", "Orbit", "Pioneer", "Summit"].slice(0, logoSlot?.maxItems ?? 8).map((name, index) => ({
           name,
+          image: { ...SMOKE_GALLERY_MEDIA[4], alt: `${name} testlogo` },
           href: index % 2 === 0 ? `/partners/${name.toLowerCase()}` : null,
         })),
         ...optional(variant, "title", inline(`Partners en integraties · ${label}`)),
@@ -328,9 +329,9 @@ export function loadMockSiteGenerationSpec(
     theme: {
       version: 3,
       appearance: { mode: "system" },
-      colors: { schemeId: "blue-professional" },
-      fonts: { schemeId: "clear-modern" },
-      shape: { schemeId: "soft" },
+      colors: { schemeId: "shadcn-neutral" },
+      fonts: { schemeId: "shadcn-geist" },
+      shape: { schemeId: "shadcn-default" },
     },
     settings: {
       siteName: normalized.businessName,
@@ -344,6 +345,7 @@ export function loadMockSiteGenerationSpec(
           behavior: "sticky",
           activeMode: "path",
           mobileMenu: "drawer",
+          secondaryAction: { label: "Over ons", href: "/werkwijze" },
           cta: { label: "Contact", href: "/contact" },
         },
         footer: {

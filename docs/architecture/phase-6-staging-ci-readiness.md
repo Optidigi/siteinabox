@@ -147,21 +147,21 @@ pnpm intake:build
 pnpm intake:test
 pnpm site:build
 pnpm renderer:build
-pnpm --dir apps/cms --ignore-workspace lint:ui-boundary
-pnpm --dir apps/cms --ignore-workspace lint:ui-composition
-pnpm --dir apps/cms --ignore-workspace lint:no-css
+pnpm --dir apps/cms lint:ui-boundary
+pnpm --dir apps/cms lint:ui-composition
+pnpm --dir apps/cms lint:no-css
 git diff --check
 ```
 
 Focused deterministic checks for the end-to-end staging surface:
 
 ```bash
-pnpm --dir apps/cms --ignore-workspace test tests/unit/intakeGenerationRun.test.ts
-pnpm --dir apps/cms --ignore-workspace test tests/unit/publicIntakeValidation.test.ts
-pnpm --dir apps/cms --ignore-workspace test tests/unit/preview-access.test.ts tests/unit/preview-route.test.tsx tests/unit/request-preview-magic-link.test.ts
-pnpm --dir apps/cms --ignore-workspace test tests/unit/molliePayments.test.ts tests/unit/generationRunPayment.test.ts tests/unit/generationRunPaymentAction.test.ts
-pnpm --dir apps/cms --ignore-workspace test tests/unit/publish-current-state.test.ts tests/unit/publish-route.test.ts tests/unit/publishOperations.test.ts
-pnpm --dir apps/cms --ignore-workspace test tests/unit/renderer-snapshot-route.test.ts tests/unit/renderer-snapshot-loader.test.ts
+pnpm --dir apps/cms test tests/unit/intakeGenerationRun.test.ts
+pnpm --dir apps/cms test tests/unit/publicIntakeValidation.test.ts
+pnpm --dir apps/cms test tests/unit/preview-access.test.ts tests/unit/preview-route.test.tsx tests/unit/request-preview-magic-link.test.ts
+pnpm --dir apps/cms test tests/unit/molliePayments.test.ts tests/unit/generationRunPayment.test.ts tests/unit/generationRunPaymentAction.test.ts
+pnpm --dir apps/cms test tests/unit/publish-current-state.test.ts tests/unit/publish-route.test.ts tests/unit/publishOperations.test.ts
+pnpm --dir apps/cms test tests/unit/renderer-snapshot-route.test.ts tests/unit/renderer-snapshot-loader.test.ts
 ```
 
 Staging smoke checks after deploy:

@@ -159,9 +159,9 @@ const provenanceFor = (variant: ProviderCatalogSource): BlockVariantProvenance =
   upstreamBlockName: variant.upstreamName, upstreamId: variant.id, sourceAccessType: "public-github-source",
   sourceAccess: `Pinned commit 46c2e50bb538c9bc7a8927979d38bae178ae4452 / registry-radix.json / ${variant.upstreamName}`,
   implementation: variant.upstreamName === "legal-content-01" ? "siab-owned" : "adapted-exact-style",
-  sourcePath: variant.upstreamName === "legal-content-01" ? "packages/site-renderer/src/providers/shadcnui-blocks/system-views.tsx" : `packages/site-renderer/src/providers/shadcnui-blocks/upstream/${variant.upstreamName}/${variant.entryFile}`,
-  retrieval: "scripts/import-shadcnui-blocks.mjs verifies the commit, copies sources, and records SHA-256 hashes.",
-  verifiedAt: "2026-07-15", visualExactnessStatus: variant.upstreamName === "legal-content-01" ? "reviewed-adapted-exact-style" : "needs-browser-comparison",
+  sourcePath: variant.upstreamName === "legal-content-01" ? "packages/site-renderer/src/providers/shadcnui-blocks/system-views.tsx" : `packages/site-renderer/src/providers/shadcnui-blocks/variants/${variant.upstreamName}/${variant.entryFile}`,
+  retrieval: "scripts/import-shadcnui-blocks.mjs verifies the pinned commit, records original SHA-256 hashes, and generates one runtime literal tree.",
+  verifiedAt: "2026-07-16", visualExactnessStatus: variant.upstreamName === "legal-content-01" ? "reviewed-adapted-exact-style" : "needs-browser-comparison",
   visualSourceNotes: variant.upstreamName === "legal-content-01" ? "Provider-token long-form system layout for generated legal content." : "Pinned literal source; true upstream browser comparison is required before exact parity can be claimed.",
   runtime: providerRuntime, notes: `Aggregate source hash ${variant.sourceHash}.`,
 })

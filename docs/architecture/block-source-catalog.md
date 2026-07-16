@@ -25,8 +25,8 @@ chrome registries, and system templates. Missing or unknown variants fail
 validation and rendering. `hero-03` and `hero-08` declare embedded-navigation
 composition metadata so standalone navbar chrome is suppressed.
 
-Immutable upstream files, hashes, registry capture, inventory, exclusions,
-license, and provenance are stored in
+Original upstream paths and hashes, the pinned registry capture, inventory,
+exclusions, license, and provenance are stored in
 `packages/site-renderer/src/providers/shadcnui-blocks`. Namespaced Radix Nova
 compatibility primitives live in `packages/ui`; the CMS/shared primitives and
 the single CMS `components.json` are untouched.
@@ -48,17 +48,27 @@ settings. External-link intent survives storage, snapshots and safe runtime
 attributes. `navbar-02`'s icon control is an accessible theme toggle backed by
 the existing persisted color-mode runtime and localized from the site language.
 
-The self-contained parity gate compares all 156 variants in isolated renderer
+The importer maintains one literal provider tree, used by production content
+views and by the self-contained parity gate. It compares all 156 variants in isolated renderer
 processes at fixed desktop/mobile viewports in light/dark mode. The structured
 browser gate separately hydrates all 156 content, chrome and system variants
 and checks demo-copy removal, basic accessibility, forms, mobile navigation,
 flyouts, consent, and available accordion/carousel interactions.
-Reference pixels allow only a 0.001% antialias tolerance; there are no
-intentional layout, responsive, class, or animation deviations.
+Reference pixels allow only a 0.01% antialias tolerance. `contact-02` and
+`features-03` have audited behavior adapters for real forms and CMS media;
+navbar, footer and banner have settings adapters for tenant chrome. Those
+adapters preserve the provider layout while replacing demo constants and are
+covered as the complete explicit alternate production-render set.
+The parity harness normalizes one pinned dependency defect: React 19.2.0 leaves
+the Radix 1.4.3 default Select label empty, while SIAB's React patch renders the
+authored selected item. SIAB keeps that accessible label instead of cloning the
+blank output; layout and styling remain pixel-gated.
 
 The forward Payload migrations have been applied through the complete migration
-chain against an isolated fresh local database and tested against the audited
-legacy JSON-draft shape. It maps null-variant privacy-page hero
+chain against an isolated fresh local database. Migration tests cover the audited
+legacy JSON-draft shape. The migration maps null-variant privacy-page hero
 and rich-text content to explicit provider variants without changing historical
-migration files. `banner-04` remains the only approved cookie-consent variant,
+migration files. A final forward-only cleanup migration removes the retired
+rich-text, newsletter, and bento relational tables after their rows have been
+copied into canonical semantic blocks. `banner-04` remains the only approved cookie-consent variant,
 and known-tenant 404s select explicit imported not-found templates.

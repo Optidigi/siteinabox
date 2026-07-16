@@ -6,9 +6,9 @@
   "packageManager": "pnpm@11.5.0",
   "scripts": {
     "audit:provider-cutover": "node scripts/check-generated-site-provider-cutover.mjs",
-    "cms:typecheck": "pnpm --dir apps/cms --ignore-workspace typecheck",
-    "cms:test": "pnpm --dir apps/cms --ignore-workspace test",
-    "cms:build": "pnpm --dir apps/cms --ignore-workspace build",
+    "cms:typecheck": "pnpm --dir apps/cms typecheck",
+    "cms:test": "pnpm --dir apps/cms test",
+    "cms:build": "pnpm --dir apps/cms build",
     "contracts:typecheck": "pnpm --dir packages/contracts typecheck",
     "frontend:verify": "pnpm packages:typecheck && pnpm --dir apps/cms lint:ui-boundary && pnpm --dir apps/cms lint:ui-composition && pnpm --dir apps/cms lint:no-css",
     "intake:build": "pnpm --dir apps/intake --ignore-workspace build",

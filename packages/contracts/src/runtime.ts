@@ -779,6 +779,13 @@ function refineProviderContentSlots(
     if (slot.status === "required" && !present) ctx.addIssue({ code: "custom", path: [field], message: `Provider variant "${designVariant}" requires slot "${field}"` })
     if (slot.status === "inactive" && present) ctx.addIssue({ code: "custom", path: [field], message: `Provider variant "${designVariant}" does not expose slot "${field}"` })
   }
+  if (block.blockType === "logoCloud" && Array.isArray(record.logos)) {
+    record.logos.forEach((logo, index) => {
+      if (!logo || typeof logo !== "object" || !(logo as Record<string, unknown>).image) {
+        ctx.addIssue({ code: "custom", path: ["logos", index, "image"], message: `Provider variant "${designVariant}" requires an image for every logo` })
+      }
+    })
+  }
 }
 
 const refineGeneratedBlock = (

@@ -142,7 +142,7 @@ describe("CMS integration smoke", () => {
 
     expect(storedTenant.theme).toEqual(smokeTheme)
     expect(storedTenant.theme).toEqual(smokeTheme)
-    expect(DEFAULT_THEME_TOKEN_SPEC.colors.schemeId).toBe("blue-professional")
+    expect(DEFAULT_THEME_TOKEN_SPEC.colors.schemeId).toBe("shadcn-neutral")
 
     expect(storedPages.docs).toHaveLength(1)
     expect(storedPages.docs[0]).toMatchObject({

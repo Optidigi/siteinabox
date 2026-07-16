@@ -30,7 +30,10 @@ const normalizeColorScheme = (theme: Record<string, unknown>): ColorSchemeId => 
 
 const normalizeFontScheme = (theme: Record<string, unknown>): FontSchemeId => {
   const fonts = isRecord(theme.fonts) ? theme.fonts : null
-  return oneOf(fonts?.schemeId, FONT_SCHEME_IDS, DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId)
+  const legacyFallback = ["stylePreset", "radius", "borderStyle", "density", "mode"].some((field) => field in theme)
+    ? "clear-modern"
+    : DEFAULT_THEME_TOKEN_SPEC.fonts.schemeId
+  return oneOf(fonts?.schemeId, FONT_SCHEME_IDS, legacyFallback)
 }
 
 const normalizeShapeScheme = (theme: Record<string, unknown>): ShapeSchemeId => {

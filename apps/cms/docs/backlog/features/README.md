@@ -5,7 +5,7 @@
 **Status:** Implemented and locally verified; deployment is a separate operator action.
 
 The first shadcnui-blocks migration incorrectly treated pass-through adapter
-files and runtime React-tree traversal as typed variant adapters. Production
+files, duplicated reference trees, and runtime React-tree traversal as typed variant adapters. Production
 smoke rendering proved that semantic CMS values could land in unrelated DOM
 nodes and that function-name inspection changed after minification. Those
 claims and tests are not accepted as completion evidence.
@@ -14,8 +14,9 @@ The replacement contract is deliberately small: CMS stores validated semantic
 content, imported provider snippets bind that content explicitly, and the tenant
 theme owns tokens. Pass-through content adapters and the recursive React-tree
 projector have been removed. Header, footer and banner consume tenant settings
-directly; live provider output inherits tenant theme tokens while exact reference
-tokens are limited to the parity harness. One generated manifest owns runtime,
+directly. One imported literal tree serves both production and parity. Its default
+light/dark theme is the exact upstream shadcn theme; custom tenant themes override
+only root-scoped token variables. One generated manifest owns runtime,
 editor and generation catalogs, and every public variant has an explicit rendered
 binding assertion. No command-driven or tenant-source generation path is part of
 this architecture.
@@ -30,12 +31,12 @@ depended on command-run site generation are no longer current source of truth.
 
 The provider theme boundary remains intentionally preset-only: blocks own UI,
 the CMS owns structured content, and the tenant theme owns appearance, semantic
-colors, deterministic self-hosted fonts, and exact component radii. The shared
-resolver now exposes status, rating, chart, overlay, on-media, font-role, and
-radius-role variables as well as the existing surface/accent roles. Imported
-tenant views replace ordinary upstream fixed palettes and radii with those
-roles. The independently generated reference views retain the pinned upstream
-classes so visual-parity evidence is not weakened by tenant adaptations.
+colors, deterministic self-hosted fonts, and exact component radii. The upstream
+default is `shadcn-neutral` + Geist + the shadcn radius. The shared resolver
+exposes status, rating, chart, overlay, on-media, font-role, radius-role and
+Tailwind palette variables. Imported literal classes stay unchanged; a custom
+tenant preset changes the variables they resolve, while default mode remains
+pixel-equivalent to the pinned provider.
 
 All 156 imported variants and all namespaced provider primitives are covered by
 a source audit. Only exact reviewed brand artwork, authored illustrations,
@@ -43,9 +44,12 @@ non-visible masks, structural micro-details, and on-media contrast values may
 remain fixed, and each is recorded in the hashed machine-readable
 `token-exceptions.json`. Browser coverage verifies two contrasting approved
 themes, all light/dark desktop/mobile viewports, hydration, interactions,
-overflow, and accessibility smoke rules. No density setting, arbitrary token
+overflow, and accessibility smoke rules. The former duplicated `upstream/` and
+`references/` trees have been removed. No density setting, arbitrary token
 map, per-variant theme schema, runtime React-tree rewrite, or new CMS theme
-control was introduced.
+control was introduced. The complete Payload migration chain also removes the
+retired rich-text, newsletter, and bento storage tables after forward-copying
+their data; historical migration files remain intact.
 
 ## Current State
 

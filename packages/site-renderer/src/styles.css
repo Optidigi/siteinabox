@@ -140,11 +140,6 @@ body {
   }
 }
 
-:where([data-provider-token-mode="reference"]) {
-  font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  font-feature-settings: "ss03" on;
-}
-
 :where([data-provider-token-mode="theme"]) {
   font-family: var(--siab-font-body);
 }

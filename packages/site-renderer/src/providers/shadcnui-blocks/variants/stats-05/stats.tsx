@@ -14,21 +14,21 @@ function Stats() {
 
       <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         <div className="rounded-xl border bg-muted p-6 py-7">
-          <MonitorSmartphone className="mb-8 h-10 w-10 stroke-[1.75px] text-chart-1" />
+          <MonitorSmartphone className="mb-8 h-10 w-10 stroke-[1.75px] text-blue-500" />
           <span className="font-medium text-5xl tracking-[-0.01em]"><ProviderItemField field="items" index={0} subField="value" fallback={<>70%</>} /></span>
           <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={0} subField="label" fallback={<>
             Faster UI development
           </>} /></p>
         </div>
         <div className="rounded-xl border bg-muted p-6 py-7">
-          <FastForward className="mb-8 h-10 w-10 stroke-[1.75px] text-chart-2" />
+          <FastForward className="mb-8 h-10 w-10 stroke-[1.75px] text-green-600" />
           <span className="font-medium text-5xl tracking-[-0.01em]"><ProviderItemField field="items" index={1} subField="value" fallback={<>5x</>} /></span>
           <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={1} subField="label" fallback={<>
             Increase in productivity
           </>} /></p>
         </div>
         <div className="rounded-xl border bg-muted p-6 py-7">
-          <HeartHandshake className="mb-8 h-10 w-10 stroke-[1.75px] text-chart-4" />
+          <HeartHandshake className="mb-8 h-10 w-10 stroke-[1.75px] text-red-500" />
           <span className="font-medium text-5xl tracking-[-0.01em]"><ProviderItemField field="items" index={2} subField="value" fallback={<>98%</>} /></span>
           <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={2} subField="label" fallback={<>
             Customer satisfaction

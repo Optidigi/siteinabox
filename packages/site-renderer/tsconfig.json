@@ -11,6 +11,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["src/providers/shadcnui-blocks/upstream/**/*"]
+  "include": ["src/**/*"]
 }

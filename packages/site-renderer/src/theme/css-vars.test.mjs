@@ -2,9 +2,9 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { themeToCssVars } from "./css-vars.ts"
 
-test("reference-token mode preserves the exact upstream light and dark tokens", () => {
+test("the runtime default preserves the exact upstream light and dark tokens", () => {
   const css = themeToCssVars(undefined)
-  assert.match(css, /\[data-provider-token-mode="reference"\]/)
+  assert.doesNotMatch(css, /data-provider-token-mode="reference"/)
   assert.match(css, /--background:oklch\(1 0 0\);--foreground:oklch\(0\.145 0 0\)/)
   assert.match(css, /--primary:oklch\(0\.205 0 0\);--primary-foreground:oklch\(0\.985 0 0\)/)
   assert.match(css, /data-rt-mode="dark"[^}]*--background:oklch\(0\.145 0 0\);--foreground:oklch\(0\.985 0 0\)/)
@@ -20,15 +20,28 @@ test("tenant tokens remain root-scoped and do not rewrite literal provider class
   }
   assert.doesNotMatch(css, /class~/)
   assert.doesNotMatch(css, /data-provider-variant/)
+  assert.match(css, /--color-indigo-500:#ef4444/)
+  assert.match(css, /--color-gray-900:#111827/)
+  assert.match(css, /--provider-surface:var\(--background\)/)
+  assert.match(css, /--provider-grid-line:color-mix/)
+})
+
+test("upstream defaults leave literal Tailwind palette values untouched", () => {
+  const css = themeToCssVars(undefined)
+  assert.doesNotMatch(css, /--color-indigo-500:/)
+  assert.doesNotMatch(css, /--provider-surface:/)
+  assert.match(css, /--radius:0.625rem/)
 })
 
 test("every approved font and shape preset emits deterministic role variables", () => {
   const fonts = [
+    ["shadcn-geist", "Geist Variable"],
     ["clear-modern", "Inter Variable"],
     ["classic-editorial", "Fraunces Variable"],
     ["friendly-organic", "Nunito Variable"],
   ]
   const shapes = [
+    ["shadcn-default", "--siab-radius-lg:0.625rem"],
     ["rounded", "--siab-radius-lg:1.25rem"],
     ["soft", "--siab-radius-lg:0.5rem"],
     ["sharp", "--siab-radius-lg:0"],
@@ -49,5 +62,5 @@ test("resolved mode drives tenant, public-root and native browser colors", () =>
   assert.match(css, /color-scheme:light/)
   assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\],html\[data-siab-color-mode="dark"\] \.rt-canvas\{/)
   assert.match(css, /color-scheme:dark/)
-  assert.match(css, /\.rt-canvas\[data-rt-mode="dark"\] :where\(\[data-provider-token-mode="reference"\]\),html\[data-siab-color-mode="dark"\] \.rt-canvas :where\(\[data-provider-token-mode="reference"\]\)/)
+  assert.doesNotMatch(css, /data-provider-token-mode="reference"/)
 })

@@ -1,6 +1,6 @@
 import * as React from "react"
 import { validateSiteChromeCapabilities, type SiteSettings } from "@siteinabox/contracts"
-import { Button, Input } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Button, Input, Separator } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import type { MediaResolver } from "../../media"
 import { adaptFooter, FooterBrand, FooterColumns, FooterFlatLinks, FooterSocial, type FooterViewModel } from "./runtime/footer"
 
@@ -15,14 +15,17 @@ function Newsletter({ model, variant }: { model: FooterViewModel; variant: strin
 
 function Footer({ model, variant }: { model: FooterViewModel; variant: string }) {
   const number = Number(variant.slice(-2))
-  const brand = <div className="space-y-4"><FooterBrand model={model} />{model.tagline ? <p className="max-w-sm text-muted-foreground">{model.tagline}</p> : null}</div>
-  const bottom = <div className="flex flex-col gap-4 border-t pt-6 text-sm md:flex-row md:items-center md:justify-between"><p className="text-muted-foreground">{model.copyright ?? model.siteName}</p><FooterFlatLinks model={model} /><FooterSocial model={model} /></div>
+  const brand = <div>{<FooterBrand model={model} />}{model.tagline ? <p className="mt-4 text-muted-foreground">{model.tagline}</p> : null}</div>
+  const copyright = <span className="text-muted-foreground">{model.copyright ?? model.siteName}</span>
+  const social = <FooterSocial model={model} />
+  const bottom = <div className="flex flex-col-reverse items-center justify-between gap-x-2 gap-y-5 px-6 py-8 sm:flex-row xl:px-0">{copyright}{social}</div>
 
-  if (number === 2 || number === 5) return <div className="mx-auto max-w-(--breakpoint-xl) space-y-10 px-6 py-12"><div className="flex flex-col items-center gap-6 text-center">{brand}<FooterFlatLinks className="flex flex-wrap items-center justify-center gap-6" model={model} /><FooterSocial model={model} /></div>{bottom}</div>
-  if (number === 3 || number === 4) return <div className="mx-auto max-w-(--breakpoint-xl) space-y-12 px-6 py-14"><div className="grid gap-10 lg:grid-cols-[1.2fr_2fr_1.2fr]">{brand}<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"><FooterColumns model={model} /></div><Newsletter model={model} variant={variant} /></div>{bottom}</div>
-  if (number === 6) return <div className="mx-auto max-w-(--breakpoint-xl) space-y-12 px-6 py-16"><div className="flex flex-col gap-8 border-b pb-10 md:flex-row md:items-end md:justify-between">{brand}<FooterSocial model={model} /></div><div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4"><FooterColumns model={model} /></div>{bottom}</div>
-  if (number === 7) return <div className="mx-auto max-w-(--breakpoint-xl) space-y-10 px-6 py-12"><div className="grid gap-10 md:grid-cols-[1fr_2fr]">{brand}<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"><FooterColumns model={model} /></div></div>{bottom}</div>
-  return <div className="mx-auto max-w-(--breakpoint-xl) space-y-12 px-6 py-14"><div className="grid gap-10 lg:grid-cols-[1fr_2fr]">{brand}<div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3"><FooterColumns model={model} /></div></div>{bottom}</div>
+  if (number === 1) return <div className="mx-auto max-w-(--breakpoint-xl)"><div className="grid grid-cols-2 gap-x-8 gap-y-10 px-6 py-12 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 xl:px-0"><FooterColumns model={model} /></div><Separator /><div className="flex flex-col items-center justify-between gap-x-2 gap-y-4 px-6 py-8 sm:flex-row xl:px-0"><FooterBrand model={model} /><div className="flex flex-wrap items-center gap-4">{copyright}<FooterFlatLinks model={model} /></div></div></div>
+  if (number === 2 || number === 3) return <div className="mx-auto max-w-(--breakpoint-xl)"><div className="grid grid-cols-2 gap-x-8 gap-y-10 px-6 py-12 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 xl:px-0"><div className="col-span-full xl:col-span-2">{brand}</div><FooterColumns model={model} />{number === 3 ? <div className="col-span-2"><Newsletter model={model} variant={variant} /></div> : null}</div><Separator />{bottom}</div>
+  if (number === 4) return <div className="mx-auto max-w-(--breakpoint-xl)"><div className="flex flex-col items-start justify-between gap-x-8 gap-y-10 px-6 py-12 sm:flex-row xl:px-0"><div>{brand}<FooterFlatLinks className="mt-6 flex flex-wrap items-center gap-4" model={model} /></div><div className="w-full max-w-xs"><Newsletter model={model} variant={variant} /></div></div><Separator />{bottom}</div>
+  if (number === 5) return <div className="mx-auto max-w-(--breakpoint-xl)"><div className="flex flex-col items-center justify-start py-12">{brand}<FooterFlatLinks className="mt-6 flex flex-wrap items-center gap-4" model={model} /></div><Separator />{bottom}</div>
+  if (number === 6) return <div className="flex items-center justify-between bg-background px-6 py-4"><FooterBrand className="flex items-center gap-2" model={model} /><p className="font-medium text-muted-foreground text-sm">{model.copyright ?? model.siteName}</p></div>
+  return <div className="mx-auto w-full max-w-screen-2xl divide-y"><div className="flex flex-col items-center justify-between gap-4 px-2 pt-3 pb-5 sm:flex-row"><FooterBrand className="flex items-center gap-2" model={model} /><FooterFlatLinks className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 font-medium text-sm" model={model} /></div><div className="flex flex-col-reverse items-center justify-between gap-4 px-2 pt-4 pb-2 sm:flex-row"><p className="font-medium text-muted-foreground text-sm">{model.copyright ?? model.siteName}</p>{social}</div></div>
 }
 
 export function ShadcnUiFooterView({ variant, settings, mediaResolver }: { variant: string; settings: SiteSettings; mediaResolver?: MediaResolver }) {

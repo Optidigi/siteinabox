@@ -23,11 +23,11 @@ export function LiteralProviderVariantView({ Literal, model, variant }: { Litera
   return tooltips(variant, <ProviderBlockContent model={model}>{bound}</ProviderBlockContent>)
 }
 
-export function LiteralProviderReferenceView({ Literal, variant }: { Literal: LiteralComponent; variant: string }) {
+export function LiteralProviderPreviewView({ Literal, variant }: { Literal: LiteralComponent; variant: string }) {
   const root = Literal({})
   if (!React.isValidElement(root)) throw new Error(`Literal provider reference "${variant}" did not return a React element.`)
   return tooltips(variant, React.cloneElement(root as React.ReactElement<Record<string, unknown>>, {
-    "data-provider-reference": variant,
-    "data-provider-token-mode": "reference",
+    "data-provider-literal-preview": variant,
+    "data-provider-token-mode": "theme",
   }))
 }

@@ -11,7 +11,7 @@ describe("FontPicker", () => {
     const onChange = vi.fn()
     render(<FontPicker fonts={FONT_PRESETS} value={undefined} onChange={onChange} />)
 
-    expect(screen.getAllByRole("button")).toHaveLength(3)
+    expect(screen.getAllByRole("button")).toHaveLength(4)
     expect(screen.queryByText("Generated Style")).toBeNull()
 
     fireEvent.click(screen.getByRole("button", { name: "Apply Classic Editorial font preset" }))

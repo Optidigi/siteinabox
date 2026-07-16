@@ -2,7 +2,7 @@ import { SHADCNUI_BLOCK_VARIANTS, SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_BLOC
 import type { Block } from "./site"
 
 export type ProviderBlockValidationIssue = {
-  code: "missing_provider_variant" | "unresolved_provider_variant" | "missing_required_slot" | "inactive_slot_value" | "slot_count_out_of_range"
+  code: "missing_provider_variant" | "unresolved_provider_variant" | "missing_required_slot" | "inactive_slot_value" | "slot_count_out_of_range" | "missing_required_media"
   message: string
   path: string[]
 }
@@ -41,6 +41,11 @@ export function validateProviderBlockInstance(block: Block): ProviderBlockValida
     if (slot.status === "inactive" && hasValue(value)) issues.push({ code: "inactive_slot_value", message: `Provider variant "${id}" does not expose slot "${field}".`, path: [field] })
     if (Array.isArray(value) && "minItems" in slot && typeof slot.minItems === "number" && value.length < slot.minItems) issues.push({ code: "slot_count_out_of_range", message: `Provider variant "${id}" requires at least ${slot.minItems} items in "${field}".`, path: [field] })
     if (Array.isArray(value) && "maxItems" in slot && typeof slot.maxItems === "number" && value.length > slot.maxItems) issues.push({ code: "slot_count_out_of_range", message: `Provider variant "${id}" allows at most ${slot.maxItems} items in "${field}".`, path: [field] })
+  }
+  if (block.blockType === "logoCloud") {
+    block.logos.forEach((logo, index) => {
+      if (!logo.image) issues.push({ code: "missing_required_media", message: `Provider variant "${id}" requires an image for every logo.`, path: ["logos", String(index), "image"] })
+    })
   }
   return issues
 }

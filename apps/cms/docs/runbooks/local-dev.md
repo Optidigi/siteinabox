@@ -21,6 +21,10 @@ cd siteinabox
 pnpm install
 ```
 
+The root `pnpm-lock.yaml` is the only dependency lock for CMS and shared
+packages. Do not create an app-local CMS workspace or lockfile; doing so can
+give linked UI packages a second React instance.
+
 CMS app work happens under `apps/cms`. From the monorepo root:
 
 ```bash

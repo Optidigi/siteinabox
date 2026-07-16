@@ -49,9 +49,9 @@ export function ShadcnUiContactView({ block, options, variant }: { block: FormBl
                     {block.fields.map((field, index) => <div key={field.name} className={field.type === "textarea" || field.type === "select" || field.type === "checkbox" ? "col-span-2" : "col-span-2 sm:col-span-1"}>
                       {field.type === "checkbox" ? <div className="flex items-center gap-2"><Checkbox className="bg-background" id={field.name} name={field.name} required={field.required} /><Label className="gap-0" htmlFor={field.name}>{editText(model, "fields", field.label, index, "label")}</Label></div> : <>
                         <Label htmlFor={field.name}>{editText(model, "fields", field.label, index, "label")}</Label>
-                        {field.type === "textarea" ? <Textarea className="mt-2 bg-white shadow-none" id={field.name} name={field.name} placeholder={field.placeholder ?? undefined} required={field.required} rows={6} maxLength={field.maxLength ?? undefined} />
-                          : field.type === "select" ? <select className="mt-2 h-10 w-full rounded-md border bg-white px-3 shadow-none" id={field.name} name={field.name} required={field.required}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
-                            : <Input className="mt-2 bg-white shadow-none" id={field.name} name={field.name} placeholder={field.placeholder ?? undefined} required={field.required} type={field.type} maxLength={field.maxLength ?? undefined} />}
+                        {field.type === "textarea" ? <Textarea className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none" id={field.name} name={field.name} placeholder={field.placeholder ?? undefined} required={field.required} rows={6} maxLength={field.maxLength ?? undefined} />
+                          : field.type === "select" ? <select className="mt-2 h-10 w-full rounded-md border bg-[var(--provider-surface,#fff)] px-3 shadow-none" id={field.name} name={field.name} required={field.required}>{field.options?.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+                            : <Input className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none" id={field.name} name={field.name} placeholder={field.placeholder ?? undefined} required={field.required} type={field.type} maxLength={field.maxLength ?? undefined} />}
                       </>}
                     </div>)}
                   </div>

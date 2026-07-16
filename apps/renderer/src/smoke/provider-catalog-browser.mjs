@@ -21,7 +21,7 @@ child.stdout.on("data", (chunk) => { output += chunk })
 child.stderr.on("data", (chunk) => { output += chunk })
 
 try {
-  await waitForRenderer(origin, child, () => output)
+  await waitForRenderer(origin, () => output)
   {
     const browser = await chromium.launch({ headless: true })
     try {
@@ -151,7 +151,16 @@ try {
         const response = await page.goto(`${origin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=${viewport.mode}`, { waitUntil: "load", timeout: 60_000 })
         const status = response?.status()
         assert.equal(status, 200, `${variant.id}: ${status === 200 ? "" : await response?.text()}\n${output}`)
-        await page.locator(`[data-provider-variant="${variant.id}"]`).waitFor()
+        const providerRoot = page.locator(`[data-provider-variant="${variant.id}"]`)
+        await providerRoot.waitFor({ state: "attached" })
+        assert.equal(await providerRoot.evaluate((root) => {
+          const candidates = [root, ...root.querySelectorAll("*")]
+          return candidates.some((element) => {
+            const bounds = element.getBoundingClientRect()
+            const style = getComputedStyle(element)
+            return bounds.width > 0 && bounds.height > 0 && style.display !== "none" && style.visibility !== "hidden"
+          })
+        }), true, `${variant.id} has visible rendered content`)
         await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 30_000 })
         const accessibilityFailures = await page.evaluate(() => {
           const failures = []

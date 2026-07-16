@@ -56,7 +56,7 @@ const themeColorHint = (value: string | null | undefined) => {
     if (g > r + 20 && g > b + 20) return "emerald-calm"
     if (r > 160 && g > 100 && b < 100) return "amber-warm"
   }
-  return "blue-professional"
+  return "shadcn-neutral"
 }
 
 const themeFontHint = (value: RawIntakeSubmission["visual"]["typography"]) => {

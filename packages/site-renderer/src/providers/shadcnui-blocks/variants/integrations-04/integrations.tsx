@@ -24,7 +24,7 @@ export default function Integrations() {
 
             <Image
               alt={integration.title}
-              className="size-10 rounded-sm"
+              className="size-10 rounded"
               src={`about:blank#upstream-sha256:af5ee`}
             />
             <h3 className="mt-5 font-medium text-xl">{integration.title}</h3>

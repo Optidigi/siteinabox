@@ -20,6 +20,10 @@ export default defineConfig({
   }),
   vite: {
     cacheDir: process.env.SIAB_VITE_CACHE_DIR,
+    // Shared workspace packages declare React as a peer. Always resolve that
+    // peer from this application so SSR and hydrated provider dependencies
+    // cannot load a second React instance from another workspace consumer.
+    resolve: { dedupe: ['react', 'react-dom'] },
     // The provider parity client reaches these dependencies through linked
     // workspaces and the shared site behavior entry. Pre-bundle them before
     // the first browser request so Vite cannot invalidate an in-flight catalog

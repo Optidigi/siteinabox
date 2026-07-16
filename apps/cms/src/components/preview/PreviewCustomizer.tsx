@@ -78,6 +78,20 @@ export function shouldBlockPreviewCustomerNavigation(themeSaveStatus: PreviewThe
   return themeSaveStatus === "saving"
 }
 
+export function resolvePreviewNavigationTarget({ access, pages, href, origin }: {
+  access: PreviewCustomizerAccess
+  pages: PreviewPageSummary[]
+  href: string
+  origin: string
+}): string | null {
+  const pathname = new URL(href, origin).pathname.replace(/^\/+|\/+$/g, "")
+  const requestedSlug = pathname === "" ? "index" : pathname.split("/").at(-1) ?? "index"
+  const target = pages.find((candidate) => candidate.slug === requestedSlug || (requestedSlug === "home" && candidate.slug === "index"))
+  if (!target) return null
+  if (access.type === "grant") return target.slug === "index" ? `/${access.clientSlug}` : `/${access.clientSlug}/pages/${encodeURIComponent(target.slug)}`
+  return `/preview/${encodeURIComponent(access.token)}?page=${encodeURIComponent(target.slug)}`
+}
+
 function measurePreviewFrameDocumentHeight(frameDocument: Document | null | undefined): number | null {
   if (!frameDocument) return null
   const body = frameDocument.body
@@ -95,6 +109,7 @@ function measurePreviewFrameDocumentHeight(frameDocument: Document | null | unde
 
 export function PreviewCustomizer({
   access,
+  pages,
   page,
   settings,
   manifest,
@@ -246,6 +261,10 @@ export function PreviewCustomizer({
     const rawId = page.id ?? page.slug ?? "page"
     return String(rawId)
   }, [page.id, page.slug])
+  const navigatePreview = React.useCallback((href: string) => {
+    const targetHref = resolvePreviewNavigationTarget({ access, pages, href, origin: window.location.origin })
+    if (targetHref) window.location.assign(targetHref)
+  }, [access, pages])
 
   return (
     <RtManifestProvider manifest={manifest}>
@@ -260,6 +279,7 @@ export function PreviewCustomizer({
               settings={settings}
               theme={rendererTheme}
               revisionRef={frameRevisionRef}
+              onNavigationRequested={navigatePreview}
               onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}
             />
           ) : (
@@ -304,6 +324,7 @@ function PreviewRendererFrame({
   settings,
   theme,
   revisionRef,
+  onNavigationRequested,
   onFrameInteraction,
 }: {
   src: string
@@ -313,6 +334,7 @@ function PreviewRendererFrame({
   settings: SiteSettings
   theme: ReturnType<typeof normalizeThemeForSave>
   revisionRef: React.MutableRefObject<number>
+  onNavigationRequested: (href: string) => void
   onFrameInteraction: () => void
 }) {
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
@@ -342,11 +364,13 @@ function PreviewRendererFrame({
       const parsed = validateIframeEditorMessage(event.data)
       if (parsed.ok && parsed.message.type === "renderer.ready") {
         setReady(true)
+        return
       }
+      if (parsed.ok && parsed.message.type === "navigation.requested" && parsed.message.href) onNavigationRequested(parsed.message.href)
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [])
+  }, [onNavigationRequested])
 
   React.useLayoutEffect(() => {
     if (!ready) {

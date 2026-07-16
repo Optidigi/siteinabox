@@ -8,8 +8,8 @@ block, chrome, and system-template registries derive from it. Every page block
 must carry an approved `shadcnui-blocks.*` variant and unresolved variants fail
 closed. Official Amicare variants remain tenant-exclusive compatibility paths.
 
-Provider provenance, source hashes, the vendored MIT license, immutable upstream
-sources, dependency inventory, and machine-readable exclusions live under
+Provider provenance, original source hashes, the vendored MIT license, pinned
+registry capture, dependency inventory, and machine-readable exclusions live under
 `src/providers/shadcnui-blocks`. Recreate them with:
 
 ```bash
@@ -28,19 +28,27 @@ root-scoped semantic color/status/chart roles, deterministic self-hosted font
 roles, and exact radius roles. Imported tenant views use those roles directly.
 There is no arbitrary CSS map or per-block theme schema.
 
-Literal comparison surfaces use `data-provider-token-mode="reference"` and a
-generated reference copy with the exact pinned upstream classes/tokens. The
-importer therefore keeps tenant adaptations separate from reference evidence.
-Intentional fixed artwork, logo, mask, and on-media values are exhaustively
-listed in `token-exceptions.json`; a fixed visual value outside that manifest
-fails the catalog tests.
+There is one imported literal component tree. Production views and the parity
+surface import that same tree, so parity cannot drift into a second reference
+implementation. The upstream default theme emits the exact pinned shadcn token
+values. A custom tenant theme changes root-scoped Tailwind and semantic variables;
+it never rewrites literal classes. Intentional fixed artwork, logo, mask, and
+on-media values are exhaustively listed in `token-exceptions.json`; a fixed visual
+value outside that manifest fails the catalog tests.
 
 Run `pnpm test` for type, catalog-count, exclusion, slot, token, source-hash,
 demo-copy, contact-form, and fail-closed checks. All imported variants have
 explicit literal entries and typed adapters. `pnpm visual:provider-parity`
-starts two isolated local renderer processes and compares all 156 variants at
+builds and starts the pinned upstream in production mode, then compares all 156 variants at
 fixed desktop/mobile light/dark viewports with a 0.01% antialias tolerance.
-`pnpm --dir apps/renderer test:provider-browser` hydrates all 156 provider
+CI or multi-core local runs may divide the canonical inventory with
+`SIAB_PROVIDER_PARITY_SHARD_COUNT` and `SIAB_PROVIDER_PARITY_SHARD_INDEX`;
+the modulo-based shards are disjoint and together retain the same 624 cases.
+Two behavior-bearing content layouts (`contact-02` and `features-03`) and the
+16 settings-backed chrome layouts are explicit audited adapters because they
+must bind forms/navigation/settings rather than demo constants. Their complete
+alternate render set is asserted by tests. `pnpm --dir apps/renderer
+test:provider-browser` hydrates all 156 provider
 variants at all four viewports, verifies two deliberately different tenant
 themes through computed styles, and checks browser errors, overflow,
 accessibility smoke rules, and available interactions.

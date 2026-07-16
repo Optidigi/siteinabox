@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { once } from "node:events"
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -80,10 +80,12 @@ if (startsLocalServers) {
   assert.equal(pin.status, 0, "checkout pinned upstream")
   const install = spawnSync("corepack", ["pnpm@10.28.2", "install", "--frozen-lockfile"], { cwd: checkout, stdio: "inherit" })
   assert.equal(install.status, 0, "install pinned upstream")
+  const build = spawnSync("corepack", ["pnpm@10.28.2", "build"], { cwd: checkout, stdio: "inherit" })
+  assert.equal(build.status, 0, "build pinned upstream")
 
   const upstreamPort = await openPort()
   upstreamOrigin = `http://127.0.0.1:${upstreamPort}`
-  await start({ command: "corepack", args: ["pnpm@10.28.2", "dev", "--hostname", "127.0.0.1", "--port", String(upstreamPort)], cwd: checkout, ready: `${upstreamOrigin}/blocks/hero-01/preview?primitive=radix` })
+  await start({ command: "corepack", args: ["pnpm@10.28.2", "start", "--hostname", "127.0.0.1", "--port", String(upstreamPort)], cwd: checkout, ready: `${upstreamOrigin}/blocks/hero-01/preview?primitive=radix` })
 
   const runtimePort = await openPort()
   runtimeOrigin = `http://127.0.0.1:${runtimePort}`
@@ -94,7 +96,7 @@ if (startsLocalServers) {
     args: ["--dir", "apps/renderer", "exec", "astro", "dev", "--force", "--host", "127.0.0.1", "--port", String(runtimePort)],
     cwd: root,
     env: { SIAB_ENABLE_PROVIDER_PARITY: "1", SIAB_RENDERER_FIXTURE_MODE: "1", SIAB_VITE_CACHE_DIR: viteCacheDir },
-    ready: `${runtimeOrigin}/provider-parity?variant=shadcnui-blocks.hero-01&reference=raw`,
+    ready: `${runtimeOrigin}/provider-parity?variant=shadcnui-blocks.hero-01&literal=1`,
   })
 }
 
@@ -108,9 +110,14 @@ const requestedCase = process.env.SIAB_PROVIDER_PARITY_CASE
 const cases = requestedCase ? allCases.filter((candidate) => candidate.name === requestedCase) : allCases
 assert.ok(cases.length > 0, `Unknown parity case: ${requestedCase}`)
 const requestedVariant = process.env.SIAB_PROVIDER_PARITY_VARIANT
+const shardCount = Number(process.env.SIAB_PROVIDER_PARITY_SHARD_COUNT ?? "1")
+const shardIndex = Number(process.env.SIAB_PROVIDER_PARITY_SHARD_INDEX ?? "0")
+assert.ok(Number.isInteger(shardCount) && shardCount > 0, "Parity shard count must be a positive integer")
+assert.ok(Number.isInteger(shardIndex) && shardIndex >= 0 && shardIndex < shardCount, "Parity shard index must be within the shard count")
+assert.ok(!requestedVariant || shardCount === 1, "A requested variant cannot be combined with parity sharding")
 const variants = requestedVariant
   ? inventory.variants.filter((variant) => variant.id === requestedVariant || variant.upstreamName === requestedVariant)
-  : inventory.variants
+  : inventory.variants.filter((_, index) => index % shardCount === shardIndex)
 assert.ok(variants.length > 0, `Unknown parity variant: ${requestedVariant}`)
 const output = await mkdtemp(join(tmpdir(), "siab-provider-parity-"))
 temporaryDirectories.push(output)
@@ -123,7 +130,7 @@ try {
     // cycle before screenshots so it cannot navigate a page mid-capture.
     const warmup = await browser.newPage()
     try {
-      await warmup.goto(`${runtimeOrigin}/provider-parity?variant=shadcnui-blocks.hero-01&mode=light&reference=raw`, { waitUntil: "domcontentloaded", timeout: 60_000 })
+      await warmup.goto(`${runtimeOrigin}/provider-parity?variant=shadcnui-blocks.hero-01&mode=light&literal=1`, { waitUntil: "domcontentloaded", timeout: 60_000 })
       await warmup.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true")
       await warmup.waitForTimeout(1_000)
       await warmup.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true")
@@ -145,24 +152,29 @@ try {
         }
       })
       for (const variant of variants) {
+        const variantStartedAt = Date.now()
+        const progress = (phase) => {
+          if (process.env.SIAB_PROVIDER_PARITY_PROGRESS === "1") console.log(`${variant.id} ${viewport.name} ${phase} ${Date.now() - variantStartedAt}ms`)
+        }
         const reference = await context.newPage()
         const runtime = await context.newPage()
         try {
           const referenceUrl = `${upstreamOrigin}/blocks/${encodeURIComponent(variant.upstreamName)}/preview?primitive=radix`
-          const runtimeUrl = `${runtimeOrigin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=${viewport.mode}&reference=raw`
+          const runtimeUrl = `${runtimeOrigin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=${viewport.mode}&literal=1`
           const responses = await Promise.all([reference.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 60_000 }), runtime.goto(runtimeUrl, { waitUntil: "domcontentloaded", timeout: 60_000 })])
+          progress("navigated")
           assert.deepEqual(responses.map((response) => response?.status()), [200, 200], `${variant.id} ${viewport.name} responses`)
           if (viewport.mode === "dark") await reference.evaluate(() => document.documentElement.classList.add("dark"))
         // The upstream Next preview downloads Geist independently while SIAB
         // self-hosts its pinned package. Normalize glyph rasterization here so
         // pixel diffs measure block DOM/classes/layout rather than font files.
-          const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[style*='background-position']{background-position:0 0!important}img[class*='blur-']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
+          const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[style*='background-position']{background-position:0 0!important}img,[data-slot='avatar-fallback']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
           await Promise.all([
             addStyleAfterNavigation(reference, `nextjs-portal,.block-preview-wrapper .grow.bg-muted\\/50{display:none!important}.block-preview-wrapper{min-height:0!important;background:var(--background)!important}${deterministicFont}`),
             addStyleAfterNavigation(runtime, deterministicFont),
           ])
           await runtime.evaluate(() => {
-            const referenceRoot = document.querySelector("[data-provider-reference]")
+            const referenceRoot = document.querySelector("[data-provider-literal-preview]")
             if (!referenceRoot) return
             const styles = getComputedStyle(referenceRoot)
             document.body.style.backgroundColor = styles.getPropertyValue("--background")
@@ -172,6 +184,7 @@ try {
             throw new Error(`${variant.id} ${viewport.name} did not hydrate`, { cause: error })
           })
           await Promise.all([reference.evaluate(() => document.fonts.ready), runtime.evaluate(() => document.fonts.ready)])
+          progress("hydrated-and-fonts-ready")
           await reference.waitForFunction(() => [...document.images].every((image) => {
             if (!/^https?:/.test(image.currentSrc || image.src) || image.offsetParent === null) return true
             const bounds = image.getBoundingClientRect()
@@ -182,6 +195,7 @@ try {
               .map((image) => image.currentSrc || image.src))
             throw new Error(`${variant.id} ${viewport.name} upstream images did not establish layout: ${pending.join(", ")}`, { cause: error })
           })
+          progress("media-ready")
           if (await reference.locator('[data-slot="carousel"]').count() || await runtime.locator('[data-slot="carousel"]').count()) {
             // Embla publishes button/dot state from a post-hydration effect.
             await Promise.all([reference.waitForTimeout(250), runtime.waitForTimeout(250)])
@@ -194,6 +208,18 @@ try {
           }
           if (await reference.locator("number-flow-react").count() || await runtime.locator("number-flow-react").count()) {
             await Promise.all([reference.waitForTimeout(1_000), runtime.waitForTimeout(1_000)])
+          }
+          const runtimeSelect = runtime.locator('[data-slot="select-value"]').first()
+          const referenceSelect = reference.locator('[data-slot="select-value"]').first()
+          const [runtimeHasSelect, referenceHasSelect] = await Promise.all([runtimeSelect.count(), referenceSelect.count()])
+          const runtimeSelectValue = runtimeHasSelect ? await runtimeSelect.textContent() : null
+          const referenceSelectValue = referenceHasSelect ? await referenceSelect.textContent() : null
+          if (runtimeSelectValue?.trim() && !referenceSelectValue?.trim()) {
+            // The pin's React 19.2.0 SSR leaves Radix 1.4.3's default Select
+            // value empty. SIAB's compatible React patch renders the intended
+            // selected item. Normalize that upstream dependency defect so the
+            // gate still compares the authored provider layout and styling.
+            await referenceSelect.evaluate((element, value) => { element.textContent = value }, runtimeSelectValue)
           }
           if (variant.upstreamName === "timeline-07") {
             // The pinned demo mutates its module-level array with reverse(), so
@@ -213,9 +239,13 @@ try {
               })
             }, intendedOrder)
           }
+          // next-themes may finish its client effect after DOMContentLoaded.
+          // Reassert the requested reference mode at capture time so a
+          // hydration race cannot compare one light frame with one dark frame.
+          await reference.evaluate((mode) => document.documentElement.classList.toggle("dark", mode === "dark"), viewport.mode)
           if (process.env.SIAB_PROVIDER_PARITY_DEBUG === "1") {
           const readStyles = (page) => page.evaluate(() => {
-            const root = document.querySelector("[data-provider-reference]") ?? document.body.firstElementChild
+            const root = document.querySelector("[data-provider-literal-preview]") ?? document.body.firstElementChild
             const card = document.querySelector("[data-slot=card]")
             const image = document.querySelector("img")
             const values = (element) => element ? Object.fromEntries(["backgroundColor", "color", "borderColor", "boxShadow", "fontFamily", "fontSize", "lineHeight", "width", "height", "position"].map((name) => [name, getComputedStyle(element)[name]])) : null
@@ -226,12 +256,19 @@ try {
           const prefix = `${variant.upstreamName}-${viewport.name}`
           const referencePath = join(output, `${prefix}-upstream.png`)
           const runtimePath = join(output, `${prefix}-vendored.png`)
-          await Promise.all([
-            reference.screenshot({ path: referencePath, fullPage: true, animations: "disabled", mask: [reference.locator("img"), reference.locator('[data-slot="avatar"]')] }),
-            runtime.screenshot({ path: runtimePath, fullPage: true, animations: "disabled", mask: [runtime.locator("img"), runtime.locator('[data-slot="avatar"]')] }),
-          ])
-          let a = PNG.sync.read(await readFile(referencePath))
-          const b = PNG.sync.read(await readFile(runtimePath))
+          // Chromium serializes full-page capture internally. Explicitly
+          // sequence the two pages instead of making competing CDP captures.
+          let referencePng
+          let runtimePng
+          try {
+            referencePng = await reference.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
+            runtimePng = await runtime.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
+          } catch (error) {
+            throw new Error(`${variant.id} ${viewport.name} screenshot failed`, { cause: error })
+          }
+          progress("captured")
+          let a = PNG.sync.read(referencePng)
+          const b = PNG.sync.read(runtimePng)
           if (a.width > b.width && b.width === viewport.width && a.height === b.height) {
             const visibleReference = new PNG({ width: b.width, height: a.height })
             PNG.bitblt(a, visibleReference, 0, 0, b.width, a.height, 0, 0)
@@ -244,7 +281,13 @@ try {
           // larger capture). This absorbs Chromium's subpixel edge jitter
           // without permitting a visible layout, color, or content delta.
           const tolerance = Math.max(128, Math.ceil(a.width * a.height * 0.0001))
-          if (different > tolerance) await writeFile(join(output, `${prefix}-diff.png`), PNG.sync.write(diff))
+          if (different > tolerance || process.env.SIAB_KEEP_PROVIDER_PARITY === "1") {
+            await Promise.all([
+              writeFile(referencePath, referencePng),
+              writeFile(runtimePath, runtimePng),
+              writeFile(join(output, `${prefix}-diff.png`), PNG.sync.write(diff)),
+            ])
+          }
           assert.ok(different <= tolerance, `${variant.id} ${viewport.name} differs by ${different} pixels (tolerance ${tolerance})`)
         } finally {
           await Promise.all([reference.close(), runtime.close()])

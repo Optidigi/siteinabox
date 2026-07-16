@@ -97,7 +97,7 @@ const LogoCloud = () => {
                 // The JS drives position 95%→5% while the beam crosses, sweeping the
                 // wave left→right with no flash at the boundaries.
                 backgroundImage:
-                  "linear-gradient(90deg, currentColor 0%, currentColor 45%, var(--siab-accent-400) 47%, var(--siab-accent-700) 50%, var(--siab-accent-400) 53%, currentColor 55%, currentColor 100%)",
+                  "linear-gradient(90deg, currentColor 0%, currentColor 45%, var(--provider-accent-400, #ffaa40) 47%, var(--provider-accent-700, #9c40ff) 50%, var(--provider-accent-400, #ffaa40) 53%, currentColor 55%, currentColor 100%)",
                 backgroundSize: "250% 100%",
                 backgroundRepeat: "no-repeat",
                 backgroundClip: "text",

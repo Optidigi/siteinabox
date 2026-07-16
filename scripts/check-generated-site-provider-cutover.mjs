@@ -5,7 +5,6 @@ import { spawnSync } from "node:child_process"
 
 const allowedEvidence = [
   "apps/cms/src/migrations/",
-  "packages/site-renderer/src/providers/shadcnui-blocks/upstream/",
   "packages/site-renderer/src/providers/shadcnui-blocks/registry-radix.json",
   "packages/site-renderer/src/providers/shadcnui-blocks/inventory.json",
   "packages/site-renderer/src/providers/shadcnui-blocks/exclusions.json",
@@ -28,6 +27,7 @@ for (const path of result.stdout.trim().split("\n").filter(Boolean)) {
     continue
   }
   existingPaths.add(path)
+  if (obsoleteProvider.test(path)) findings.push(`${path}: obsolete provider path`)
   contents.split("\n").forEach((line, index) => {
     if (obsoleteProvider.test(line) || forbiddenRuntimeInference.test(line)) findings.push(`${path}:${index + 1}:${line.trim()}`)
   })

@@ -4,7 +4,7 @@ import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { v1FixturePage } from "../../fixtures/v1.ts"
 import { ShadcnUiExplicitBlockView } from "./block-views.generated.tsx"
-import { ShadcnUiPinnedLiteralReference } from "./literal-references.generated.tsx"
+import { ShadcnUiPinnedLiteralPreview } from "./literal-previews.generated.tsx"
 import inventory from "./inventory.json" with { type: "json" }
 globalThis.React = React
 
@@ -34,7 +34,7 @@ test("structured content variants do not retain multi-word upstream demo copy", 
     .replaceAll("&quot;", '"').replaceAll("&nbsp;", " ").replaceAll(/\s+/g, " ").trim()
   for (const variant of inventory.variants.filter((candidate) => candidate.role === "block")) {
     const block = fixtures.get(variant.blockType)
-    const upstream = renderToStaticMarkup(React.createElement(ShadcnUiPinnedLiteralReference, { variant: variant.id }))
+    const upstream = renderToStaticMarkup(React.createElement(ShadcnUiPinnedLiteralPreview, { variant: variant.id }))
     const structured = decode(renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, { block, options: { index: 0, formAction: "/forms/provider-test" }, variant: variant.id })))
     const structuredData = decode(JSON.stringify(block))
     const phrases = [...upstream.matchAll(/>([^<>]+)</g)]

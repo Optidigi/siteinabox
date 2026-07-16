@@ -20,6 +20,13 @@ test("pinned catalog is complete and every non-imported registry item is explain
   assert.equal(new Set([...inventory.variants.map((entry) => entry.upstreamName), ...exclusions.exclusions.map((entry) => entry.upstreamName)]).size, 542)
 })
 
+test("provider interaction dependencies stay pinned to the upstream-compatible release", async () => {
+  for (const path of ["packages/ui/package.json", "packages/site-renderer/package.json", "apps/cms/package.json", "apps/intake/package.json"]) {
+    const manifest = JSON.parse(await readFile(new URL(path, root), "utf8"))
+    assert.equal(manifest.dependencies?.["radix-ui"], "1.4.3", path)
+  }
+})
+
 test("every active structured slot has one explicit literal or direct binding", () => {
   for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
     const declared = new Set([
@@ -42,20 +49,44 @@ test("the generated browser loader covers each structured variant exactly once",
   assert.deepEqual(ids, expected)
 })
 
+test("every production content view renders the pinned literal or an audited behavior adapter", async () => {
+  const behaviorAdapters = new Set([
+    "shadcnui-blocks.contact-02",
+    "shadcnui-blocks.features-03",
+  ])
+  for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
+    const source = await readFile(new URL(`packages/site-renderer/src/providers/shadcnui-blocks/variants/${variant.upstreamName}/view.tsx`, root), "utf8")
+    if (behaviorAdapters.has(variant.id)) {
+      assert.doesNotMatch(source, /LiteralProviderVariantView/, `${variant.id} uses its audited behavior adapter`)
+      continue
+    }
+    assert.match(source, /LiteralProviderVariantView/, `${variant.id} production renders its pinned literal`)
+  }
+  assert.deepEqual(
+    [...behaviorAdapters].sort(),
+    inventory.variants.filter((entry) => entry.role === "block").map((entry) => entry.id).filter((id) => behaviorAdapters.has(id)).sort(),
+    "the complete alternate production path is explicit",
+  )
+})
+
 test("vendored registry, license, primitives and literal provider files retain recorded hashes", async () => {
   const registry = await readFile(new URL("packages/site-renderer/src/providers/shadcnui-blocks/registry-radix.json", root))
   assert.equal(sha256(registry), inventory.registryHash)
   const license = await readFile(new URL("packages/site-renderer/src/providers/shadcnui-blocks/LICENSE", root), "utf8")
   assert.match(license, /MIT License/)
-  for (const entry of [...inventory.compatibilityPrimitives, ...(inventory.providerRuntimeFiles ?? []), ...inventory.variants.flatMap((variant) => [...variant.sourceFiles, ...(variant.adaptedFiles ?? []), ...(variant.referenceFiles ?? [])])]) {
+  for (const entry of [...inventory.compatibilityPrimitives, ...(inventory.providerRuntimeFiles ?? []), ...inventory.variants.flatMap((variant) => variant.adaptedFiles ?? [])]) {
     const source = await readFile(new URL(entry.path, root))
     assert.equal(sha256(source), entry.sha256, entry.path)
+  }
+  for (const variant of inventory.variants) {
+    assert.ok(variant.sourceFiles.length > 0, `${variant.id} records original source hashes`)
+    assert.ok(variant.sourceFiles.every((entry) => entry.path.startsWith("src/registry/")), `${variant.id} source provenance points into the pinned repository`)
   }
   for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
     assert.ok(variant.adaptedFiles.some((entry) => entry.path.endsWith("/view.tsx")), `${variant.id} view`)
     assert.equal(variant.adaptedFiles.some((entry) => entry.path.endsWith("/adapter.ts")), false, `${variant.id} has no pass-through adapter`)
   }
-  for (const variant of inventory.variants) assert.ok(variant.referenceFiles?.length, `${variant.id} reference files`)
+  assert.equal(inventory.variants.some((variant) => "referenceFiles" in variant), false, "there is no second reference component tree")
 })
 
 test("adapted literal copies cannot load upstream demo data or assets", async () => {

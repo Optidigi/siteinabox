@@ -9,6 +9,7 @@ import { formatFontFamilyCssValue, formatRuntimeCssValue, useCspStyleRule } from
 import { cn } from "@siteinabox/ui/lib/utils"
 
 const FONT_GLYPH_PREVIEW_FAMILIES: Record<FontSchemeId, string> = {
+  "shadcn-geist": '"Geist Variable", Geist, ui-sans-serif, system-ui, sans-serif',
   "clear-modern": '"Inter Variable", Inter, var(--font-sans), ui-sans-serif, system-ui, sans-serif',
   "classic-editorial": '"Fraunces Variable", Georgia, ui-serif, serif',
   "friendly-organic": 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif',

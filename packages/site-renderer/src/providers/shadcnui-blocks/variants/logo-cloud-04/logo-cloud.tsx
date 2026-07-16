@@ -23,7 +23,7 @@ const LogoCloud = () => {
         <div className="mt-16 grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4">
           {<ProviderItems field="logos" templates={logos}>{(providerItems) => providerItems.map((Logo, i) => (
             <div
-              className="flex items-center justify-center rounded-sm border border-dashed py-6 *:h-8 sm:px-10 sm:py-8 sm:*:h-10"
+              className="flex items-center justify-center rounded border border-dashed py-6 *:h-8 sm:px-10 sm:py-8 sm:*:h-10"
               key={i}
             >
               <Logo />

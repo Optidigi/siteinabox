@@ -229,7 +229,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-xl) px-6 py-16 xl:px-0",
-    "sourceHash": "sha256:4a8fc065fb26f2cfb5490423b86e739b6bb6b18820b6c9dc87244bb3d59cd097"
+    "sourceHash": "sha256:4e19fe7768d7ec170323aaadfb5a3294397e9f82ec8235ee6184fc3ae567fff8"
   },
   {
     "id": "shadcnui-blocks.blog-02",
@@ -445,7 +445,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-xl) px-6 py-16 xl:px-0",
-    "sourceHash": "sha256:8015c73c28618477a7b3b6f8f7135523bec479f139c5a5211fd64437eeb6e17e"
+    "sourceHash": "sha256:ec6d3e67922d8bab0b8340810849b049535f265e72b3b94c45efae409ab17e06"
   },
   {
     "id": "shadcnui-blocks.blog-03",
@@ -661,7 +661,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-(--breakpoint-xl) flex-col items-start gap-12 px-6 py-10 lg:flex-row lg:py-16 xl:px-0",
-    "sourceHash": "sha256:c7a00edb955bca069980713fd3a3026ce3ae3d0523e63864af06461c78988a7d"
+    "sourceHash": "sha256:748ff1c4d96de4db2ae0d4ff9f3b23ebfd0ee1f2945d22b2a029e63fd3861e1a"
   },
   {
     "id": "shadcnui-blocks.contact-01",
@@ -882,7 +882,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:144d2ea7b0ce5a21b62d06824a109cee73c7d4ab0486ff92ee87fa3c89e02243"
+    "sourceHash": "sha256:667bb1982576dae473ceadf9c719893b635c32c802c2258ed25c773e0738cb6e"
   },
   {
     "id": "shadcnui-blocks.contact-02",
@@ -1093,7 +1093,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:b7841d64aa15198cf75f6bcc2713d8d451667ce7eab674c316149e94f8921a0b"
+    "sourceHash": "sha256:ebd802285fed24037357de79850c8ba67500c9a88282cf2851ba886714d1b1ee"
   },
   {
     "id": "shadcnui-blocks.contact-03",
@@ -1314,7 +1314,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:ff6a7ea58c0678debc9d7a2ce2edc55918259fd218a07d3e250b111938601c4e"
+    "sourceHash": "sha256:4416bd5b35493b0d2c0a89902eadde85fa3dee8c43b7cb0c8689f55d18d2ebb4"
   },
   {
     "id": "shadcnui-blocks.faq-01",
@@ -1530,7 +1530,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:dd326982e439f18e996bb36365e44d58e24485f684813c047f61e893312da224"
+    "sourceHash": "sha256:9b582abdbfc9dea23ecb8d2fe8382bb4e567de1316cb3956cb104b194c0a50f1"
   },
   {
     "id": "shadcnui-blocks.faq-02",
@@ -1746,7 +1746,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:dece63c8612c5e8ff263315ba22550ce1d775b0191e67fe49380f080b7d5b7c5"
+    "sourceHash": "sha256:66c53bc00abc4169b8afa6ab996fc4e674039f11db6e6713fb1797844b1038f9"
   },
   {
     "id": "shadcnui-blocks.faq-03",
@@ -1968,7 +1968,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:bb232564178b87c35b4b8dff8b6f54812497d77a0b3444e34f94a142751fbdb8"
+    "sourceHash": "sha256:9ebdf0fc32ba47a0d168a92e1884ab6b47e6116569ebac86e29837ca33ce0d69"
   },
   {
     "id": "shadcnui-blocks.faq-04",
@@ -2189,7 +2189,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6 py-20",
-    "sourceHash": "sha256:2f2d2277bfba44eab4b030db1a7fd13744d4f7bc5e1a3ab59aafe2930c493b53"
+    "sourceHash": "sha256:7edcdca0faec7d0102181d658599a3619108e55f8c94f89d974e6cd3faee22ec"
   },
   {
     "id": "shadcnui-blocks.faq-05",
@@ -2410,7 +2410,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6 py-20",
-    "sourceHash": "sha256:c787a74db6e367f6c70ec0e8ec7771da20c5f0437639ca6321b91060fe833459"
+    "sourceHash": "sha256:27dc64790287d3adc0240cbe47ba57ee87228b9ce9d8b876476b375cfc496faf"
   },
   {
     "id": "shadcnui-blocks.faq-06",
@@ -2631,7 +2631,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:97938438005a0846fb83fb451713ff4fe0dc38a39ec381cc265f8cced48922c3"
+    "sourceHash": "sha256:594b1ccec373c53b9df8695b517d006141a570f08029da0f936097a41a084e40"
   },
   {
     "id": "shadcnui-blocks.faq-07",
@@ -2852,7 +2852,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:a9da30686df67b652d58e2f2f985953f40ef6ca657c70b5dfa50f30dd2240902"
+    "sourceHash": "sha256:f8b1a7b9b4bbb80c61255ef813e3467bf6628e3d3f1ffcfb7607fc638722351f"
   },
   {
     "id": "shadcnui-blocks.features-01",
@@ -3073,7 +3073,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:facbeb6c3d3f2906da1a33eaf99608c1195b928ee6e8469e2703ea7190d61852"
+    "sourceHash": "sha256:f0048098aaaab914e6a80bfade59c3c5a3c48805bbe858ff845aa133847fd166"
   },
   {
     "id": "shadcnui-blocks.features-02",
@@ -3294,7 +3294,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6 py-20",
-    "sourceHash": "sha256:f253f0ea4085966f58f17640273474ebdfb4b8b1e91a0d550026e4ae0741d80d"
+    "sourceHash": "sha256:b3b7cbd6b4860c7f529e3f6eeaea3d7fe3338a2ecc719dfedd8e9c7364212d8c"
   },
   {
     "id": "shadcnui-blocks.features-03",
@@ -3509,7 +3509,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20",
-    "sourceHash": "sha256:0e74aa546398ba28bc17ce63b6f81f494e41a3881819647b8ee10e8d0394bf47"
+    "sourceHash": "sha256:12a20fb45a5e4e3d62383e01b8007a7757345acc10c173383c9803e2627a39b0"
   },
   {
     "id": "shadcnui-blocks.features-04",
@@ -3725,7 +3725,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20",
-    "sourceHash": "sha256:4accac0b47ff557db2b6371bf2d6c604bffff5c2ddee81b46623f0116f37476d"
+    "sourceHash": "sha256:1b482d8adf460e926c63db223ebf659241ea652152852231bcbea6c4fa375900"
   },
   {
     "id": "shadcnui-blocks.features-05",
@@ -3946,7 +3946,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:9fb0c0cddb63b63ceedea5f4306c87f4c2888949be7177024fd39b4431215c84"
+    "sourceHash": "sha256:191c2016058c5c9e52b5a80c0a8aff917ef5a566a30ef2ca82bb495054272a50"
   },
   {
     "id": "shadcnui-blocks.features-06",
@@ -4167,7 +4167,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:d55ecebd8c8df0d94d20fa9d2967d387d86a40eef2eea0cd9188456c188d4f3f"
+    "sourceHash": "sha256:b0754ecbfe19a558eb4469a795273bcc5cf1edd54f8952d4636099950345c094"
   },
   {
     "id": "shadcnui-blocks.features-07",
@@ -4388,7 +4388,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:14628bb6496289017eddeeb56eb9188634ec0edb30cbc1f72af4c8e4aff56e88"
+    "sourceHash": "sha256:0f511ce415dfda84cc20b069ac3f42596ac21f7a00ff738102068c39b8957870"
   },
   {
     "id": "shadcnui-blocks.hero-01",
@@ -4618,7 +4618,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "relative flex min-h-screen items-center justify-center overflow-hidden px-6",
-    "sourceHash": "sha256:d46003a500815f84d55438de1b75d1804b4ef61c0eb54e3bd596fde3f30c9873"
+    "sourceHash": "sha256:4e2c393554f0c95f498c211d5e1e5ffd46438c7718d8829dfbe5f8a732e70617"
   },
   {
     "id": "shadcnui-blocks.hero-02",
@@ -4848,7 +4848,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6 py-12",
-    "sourceHash": "sha256:f0e81c9559bcd9b1f7bb600e6a55494ff2db2af5fc064f68d1113a97aa610234"
+    "sourceHash": "sha256:623afcd5f08bb9c17cc681c86243f33a7ace42f77f4e96e76826e8cf410cb786"
   },
   {
     "id": "shadcnui-blocks.hero-03",
@@ -5080,7 +5080,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       ]
     },
     "referenceRootClassName": "flex min-h-screen w-full flex-col items-center justify-center px-6 pt-8 pb-16",
-    "sourceHash": "sha256:4b2da1bf3a163aba204e0ca431ac1b364982d15b397388f2fa7a7685cd3260d5"
+    "sourceHash": "sha256:1d7390ebf517ec8d4bb180127bf4a5984588546f5a51a6f9f5cd0467c61d690e"
   },
   {
     "id": "shadcnui-blocks.hero-04",
@@ -5310,7 +5310,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center overflow-hidden",
-    "sourceHash": "sha256:d64109afd33663a898942435e5db8ffe51e8fac30da49af3ea85821108ea1db1"
+    "sourceHash": "sha256:d453e68c519f6e780b1b565d3dcc88afeb398cb01b488ee48ca1a6fa3e037a89"
   },
   {
     "id": "shadcnui-blocks.hero-05",
@@ -5540,7 +5540,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center overflow-hidden",
-    "sourceHash": "sha256:db22c221f6c3deed634fa75f22c81198f9ccc0130683804d9caf5040d3f546b4"
+    "sourceHash": "sha256:3f6a5a029c1e3e05b107fb96f75ba4e7c5086a9d33933347c89fe2663590cef3"
   },
   {
     "id": "shadcnui-blocks.hero-06",
@@ -5770,7 +5770,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6",
-    "sourceHash": "sha256:898590aa16ee932d8856d7d760989cf5f178aad79c093346d6c3f98121217390"
+    "sourceHash": "sha256:28455523dcc108aed29dad689445b7e68086653515650e4bdc1528bb75c67d73"
   },
   {
     "id": "shadcnui-blocks.hero-07",
@@ -6000,7 +6000,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "relative flex min-h-screen items-center justify-center overflow-hidden px-6",
-    "sourceHash": "sha256:63438d404fac79ef7ed503cb59a0cda8fb45813fc47c745f564a9db7c2e319e1"
+    "sourceHash": "sha256:01192b95d374e35f82b13c7a0ad798ab617944bfb66b7bbdfb71e721c2bb769f"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-01",
@@ -6217,7 +6217,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6",
-    "sourceHash": "sha256:7edd55751f7e387be567afc3aefab2fe64c546d064b6a8fcd91df762d517727d"
+    "sourceHash": "sha256:7566ae116fe076d9d8c549eb526b2565ce60f819dfaa0cd6805effe643e8c413"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-02",
@@ -6434,7 +6434,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6",
-    "sourceHash": "sha256:ca9236576757503a5f0ea70caabd83c126b9c44d0f7f63bc109c62bda5dbd792"
+    "sourceHash": "sha256:2369b5d9b8b72c17baeace967b0e56dedd339802e9f8c5ca240c3bfef8a82bd8"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-03",
@@ -6661,7 +6661,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col",
-    "sourceHash": "sha256:c05d06ab7ffe4e34f3cb20411be9f39a6b110f1392799bfd5c46754700ee0e76"
+    "sourceHash": "sha256:032e311a636ec21fa32f936947ee10a72a1472f8da9aaaf7d1b273150819af41"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-04",
@@ -6877,7 +6877,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6 py-16",
-    "sourceHash": "sha256:8f95c0b989c4bd92706e3272d33147439a1c45c675e5e5c55ce7d2de61cd5353"
+    "sourceHash": "sha256:53583c1a26e339ca8894c915ce2c910df7d9a170ffdc958387002e7c36306c75"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-05",
@@ -7093,7 +7093,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6 py-16",
-    "sourceHash": "sha256:4e55bdb841803e76a74c9020e71a8beefed197e865b1ce1b2edaf1b7d0d1780f"
+    "sourceHash": "sha256:5bed1554b35f0ab30765a3b531631bf3a212351deb1fc8f4aa4735b169d11b13"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-06",
@@ -7310,7 +7310,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6",
-    "sourceHash": "sha256:8447fd313dd32f2b784023ff027643f6374c67d97ca5393cb7f113b063c4e2f3"
+    "sourceHash": "sha256:7a1761b54889f9b062aa74c56eb6b62bf78302144fb0f7fb6427182c7afe6e7f"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-07",
@@ -7527,7 +7527,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6",
-    "sourceHash": "sha256:ffd3fe9f806873dae9ac04070c92d9f3c3c9119e8a5330b3fd11ef05160cbc75"
+    "sourceHash": "sha256:2b97dc041e41e15c64f3e9521193a203cc9cc38bf8056f60607a16221c0a2a2b"
   },
   {
     "id": "shadcnui-blocks.pricing-01",
@@ -7748,7 +7748,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:9a9a7c689d81a8e9719ba362ec094e4184d55b22e544a6b7cdaaeea37a2f9c20"
+    "sourceHash": "sha256:8c7d395956f0b9696542951a44602b540cc63cdbe5ba11dd01c90031a60c449f"
   },
   {
     "id": "shadcnui-blocks.pricing-02",
@@ -7969,7 +7969,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:7ed546bd85bf51d39ac5e49ae6e68861e66137d4be43ee8831e80aaea6362a95"
+    "sourceHash": "sha256:ea7a5a33fa3a13ddfeff720f9f42818cb4fc7a221c951cb008f7b5742f6ef889"
   },
   {
     "id": "shadcnui-blocks.pricing-03",
@@ -8190,7 +8190,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:07469f43adf78f09430fe81466c3b23b595ddc34dc8e355bb6fac0796aff1dba"
+    "sourceHash": "sha256:af69f3da651f65c04ab654d50b177a20dc40260857393dbe9d177581f4de0f38"
   },
   {
     "id": "shadcnui-blocks.pricing-04",
@@ -8411,7 +8411,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:e45566c04b9d44329da732abf348843b6d6001f42fb47fde9816f0fdd337a0b0"
+    "sourceHash": "sha256:b4ac9f95b68fe7257631f2f70f81230ee0ecb9a91895f9ddaef7b1ee375d6765"
   },
   {
     "id": "shadcnui-blocks.pricing-05",
@@ -8632,7 +8632,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:b2293b95d6c11593081580b1cf369fe0ff83d8d6d7bbb28a04f3e549a3000f3a"
+    "sourceHash": "sha256:4f34daa9d1d8a8bcb7efafcfeaf0c64a453dfcd4d3e0a9575427771f37cff754"
   },
   {
     "id": "shadcnui-blocks.pricing-06",
@@ -8853,7 +8853,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:70c129b3459a07a2abbe4cc105d2c195eb61d760e5ff4dbaabf9457a75a75be8"
+    "sourceHash": "sha256:caf12f85ed6aaa87e400d388364f56fdc616d5e232bf052d1c72133ff5cb8867"
   },
   {
     "id": "shadcnui-blocks.stats-01",
@@ -9075,7 +9075,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-lg) px-6 py-20 text-center",
-    "sourceHash": "sha256:8131e6a77e490a48f9166db5ccbb77caed2d1bd01614d7c9524d5e278f2ad861"
+    "sourceHash": "sha256:9573e1334af454903241b87b3a6de88125d2e09a412748139c93461c5be0ddcd"
   },
   {
     "id": "shadcnui-blocks.stats-02",
@@ -9297,7 +9297,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "py-20",
-    "sourceHash": "sha256:2a16777058902fedc7cddeb81d80ec377f07f55469d2620b002481e4ff61d814"
+    "sourceHash": "sha256:5183e566cc68add234bbd83a31dd442bf690d2ed2865ca23687112b348a5f1dc"
   },
   {
     "id": "shadcnui-blocks.team-01",
@@ -9518,7 +9518,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex flex-col items-center justify-center px-4 py-20 sm:px-6 lg:px-8",
-    "sourceHash": "sha256:af29d5e7fe3d5fd19c84b217e3a5f155762129e3d6124783e19adfc357f1be42"
+    "sourceHash": "sha256:6843ea6d5e7984772b909e90c5a0fa198edfe7362597bf3a912c2164db59cbb0"
   },
   {
     "id": "shadcnui-blocks.team-02",
@@ -9739,7 +9739,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-(--breakpoint-xl) flex-col justify-center px-6 py-8 sm:py-20 lg:px-8",
-    "sourceHash": "sha256:c5d81440152b96eaefa8912969e3b3b0e9c19d15eb96dfe3fbce2352db93886c"
+    "sourceHash": "sha256:0be4eb02a89ec69f90f5212d3a9fa0a97ffa3eef94c4b84916c92908bfb48d2e"
   },
   {
     "id": "shadcnui-blocks.team-03",
@@ -9960,7 +9960,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-(--breakpoint-xl) flex-col justify-center gap-14 px-6 py-20 lg:flex-row lg:px-8",
-    "sourceHash": "sha256:d3454240064954d4933e7775ce6fc5ce396f37ca9aa4edfecc23eff851976e6b"
+    "sourceHash": "sha256:e9a451cdf99f9870cd22521889a4632229905461492aff07c88fbef269af2298"
   },
   {
     "id": "shadcnui-blocks.team-04",
@@ -10181,7 +10181,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-(--breakpoint-xl) flex-col justify-center gap-16 px-6 py-20 lg:px-8",
-    "sourceHash": "sha256:06d9ee30b1a89b1f310e13154dc786cc35ee23b09452d4580c240e613a332213"
+    "sourceHash": "sha256:c81fdba27d723f7975134d386d59a28ef99e3e3e3ddabc6d4f0e382a1e999ded"
   },
   {
     "id": "shadcnui-blocks.team-05",
@@ -10402,7 +10402,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-(--breakpoint-xl) flex-col justify-center gap-16 px-6 py-20 lg:px-8",
-    "sourceHash": "sha256:157c499c5002d9284bd6ced6641a8b45e783ecac1141ba475ef98a33284d5a9d"
+    "sourceHash": "sha256:af6281c7f863bd385e00aeba5fe4305ee444529e459612fd9a7f70a903bf9ebf"
   },
   {
     "id": "shadcnui-blocks.testimonials-01",
@@ -10622,7 +10622,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:1b7fcdcc0e974a90ba7c9e9cfa6b6bc3983a3f5646a023dee1e625a65cfd34cd"
+    "sourceHash": "sha256:86699108ca16d7a1b506fb0bbab79c057dc86fc0a59f43dc411db09524714f6a"
   },
   {
     "id": "shadcnui-blocks.testimonials-02",
@@ -10842,7 +10842,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:177748884dc5db282264b2d774a27ec7086086f04cc533fa40ed518c36021f0f"
+    "sourceHash": "sha256:edc51158bf90f9a2c8b1a2f6e9dd457695a3f999cf2a91ef364285a38ba6059d"
   },
   {
     "id": "shadcnui-blocks.testimonials-03",
@@ -11062,7 +11062,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:417d35eabc70606028b409cd0bed7d55c472f68e2ab59a927a66c7ee7e689f29"
+    "sourceHash": "sha256:f9403971832e3a6e96ae3a520956224aa4fdba42c1802539451a0c913663560f"
   },
   {
     "id": "shadcnui-blocks.testimonials-04",
@@ -11282,7 +11282,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:3b77e668aebbd8a7f63cf6a272cab40b3ec44bc20fd482775fd4fde006fdba70"
+    "sourceHash": "sha256:0fa1739dd769b41430b390efd76e9177544921d6e5bee81482e90d6237fdfa05"
   },
   {
     "id": "shadcnui-blocks.testimonials-05",
@@ -11502,7 +11502,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:e129df92b6710f85c58ae66530d46fed621b6f4b1b003a5c2f8dc2e0e5147a9d"
+    "sourceHash": "sha256:871fc999bb4cd5c41d014a46211b8befb0ce0a1da8f612eb57c746f0f5217f76"
   },
   {
     "id": "shadcnui-blocks.testimonials-06",
@@ -11723,7 +11723,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:f2bb76ac61ffa5649614d86bc489d774133c59e426831c6b262a27fc32414ec5"
+    "sourceHash": "sha256:3e9991b1ec592f7ca95db070fcc8810e70991d56bf8d0318b14c492ccbc3944a"
   },
   {
     "id": "shadcnui-blocks.timeline-01",
@@ -11934,7 +11934,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20",
-    "sourceHash": "sha256:838b7c4fdecbec1638fdb26d328b1c19f00fa78ca2db3354131883b543db2d5f"
+    "sourceHash": "sha256:dab495e8b43a3e7a7bc08df3bc2bb74af169291a1719828caa090384d20c1a8a"
   },
   {
     "id": "shadcnui-blocks.timeline-02",
@@ -12145,7 +12145,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20",
-    "sourceHash": "sha256:a42187077bf2dce169b233c63c246ef0ac78acbd60a8d0a27c9a69ae9743ae9f"
+    "sourceHash": "sha256:eccca991261929967da6f4f56b5516c02ea5f5f98f5d674341de5513f850de13"
   },
   {
     "id": "shadcnui-blocks.timeline-03",
@@ -12356,7 +12356,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20",
-    "sourceHash": "sha256:87c21fdb6e1ac8d908636d50c91756a9596ff8a422b0cbda59469ad56673cdd3"
+    "sourceHash": "sha256:8ba585ae447f859784405aa5d6672da4154f56c40fb4c3f1968446f7bbf29010"
   },
   {
     "id": "shadcnui-blocks.timeline-04",
@@ -12567,7 +12567,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20",
-    "sourceHash": "sha256:efb28db652feb01aec769472b7e1df0eb5f49605e294d194efa4f33e89197dba"
+    "sourceHash": "sha256:ee36d71fd4270f465c6a8f7a5c4bf4f7421ab8c44c03cdb0b63c258f8dbd4b1a"
   },
   {
     "id": "shadcnui-blocks.timeline-05",
@@ -12778,7 +12778,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20",
-    "sourceHash": "sha256:cd7426b0bd13c50a6318a2a6f50bf2ee01db9be2c9166f877c723f6e1db1fb5e"
+    "sourceHash": "sha256:bcdc601ba8d08c1b5dea15d255a27ff6876106e419655c1b613c2efe0db64cc3"
   },
   {
     "id": "shadcnui-blocks.timeline-06",
@@ -12989,7 +12989,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20",
-    "sourceHash": "sha256:1bf8e44ae8496026882300a38c05fb28b3a6f0cd47d89930213a8b3842733fba"
+    "sourceHash": "sha256:ec226e607bc5e2bc111c09af3832bba0158cbc926284e8a6c668101485c300dc"
   },
   {
     "id": "shadcnui-blocks.timeline-07",
@@ -13200,7 +13200,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "max-w-(--breakpoint-sm) px-6 py-12 md:mx-auto md:py-20",
-    "sourceHash": "sha256:afb97e85591d810c53df619d19a5ccbea01418a2530517cc98203b4589a3e328"
+    "sourceHash": "sha256:be16002683a21abe89d813d20d19221f3b40977b5f9a995bf5b4722456681d7d"
   },
   {
     "id": "shadcnui-blocks.cta-01",
@@ -13420,7 +13420,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-20 sm:px-6",
-    "sourceHash": "sha256:ecd2268943760aa0aa926fa136e67c55a58f17a199d4c9c7cdfa085a355b41db"
+    "sourceHash": "sha256:8b0fa00cde97b4eb6f74c396fc7299f1a1e3272c5b5cb83266f68bdd5901c9b8"
   },
   {
     "id": "shadcnui-blocks.cta-02",
@@ -13644,7 +13644,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-20 sm:px-6",
-    "sourceHash": "sha256:51ea31e5c94303a1e560e56453082236c58b204092844d9679550922e8781344"
+    "sourceHash": "sha256:0c4ae0c02cade4a4d2bba176b5ec188bfb205ae5307b8332eaee1b281c2af770"
   },
   {
     "id": "shadcnui-blocks.cta-03",
@@ -13868,7 +13868,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-16 sm:px-6",
-    "sourceHash": "sha256:197e2d1d9e1a1d9b0533cca694631259427648fc8abc79ba5c0f59a6825e6aeb"
+    "sourceHash": "sha256:207adb1dfa22b58b4ae56b9082db842635acb00c0a1c57f5560a7fa77f193547"
   },
   {
     "id": "shadcnui-blocks.cta-04",
@@ -14092,7 +14092,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-16 sm:px-6",
-    "sourceHash": "sha256:e812104af18cd974c769d5d86f86d232c8b6f9c9148d6ee3348f54121af9eaf9"
+    "sourceHash": "sha256:72444f478810f710c597bf2cecfea657621f46f4f5b0bf11c2c47da06e50ce5e"
   },
   {
     "id": "shadcnui-blocks.cta-05",
@@ -14317,7 +14317,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-16 sm:px-6",
-    "sourceHash": "sha256:8a4e7e0b48cfaad8027d257517210404cef9d89138bcd79e984374b392c45c0d"
+    "sourceHash": "sha256:3d2f27af00c634c3697b4f72ae19d65f43b748fc9c03c593c01ef46d586472ca"
   },
   {
     "id": "shadcnui-blocks.cta-06",
@@ -14542,7 +14542,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-16 sm:px-6",
-    "sourceHash": "sha256:2d5b6071d713ed3010207d402ed6245f38c18ec5872cffa3fd7fd0fe5155f218"
+    "sourceHash": "sha256:31118208347d1492914c9681c52bc918beb9dc6e6fd7b67a0ecb8dcc6113a16b"
   },
   {
     "id": "shadcnui-blocks.cta-07",
@@ -14762,7 +14762,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-0 py-16 sm:px-6",
-    "sourceHash": "sha256:3e3965d418dc1cd7b69ed1779815ae3f3ed716359da48628b0159a9fa7f92bbd"
+    "sourceHash": "sha256:b69addb9b2be9d43f1a96f0d97f4d2a4912f21de02f70175b3b398519afcd449"
   },
   {
     "id": "shadcnui-blocks.carousel-block-01",
@@ -14988,7 +14988,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-14 py-20",
-    "sourceHash": "sha256:34348409194af6a8ebe61212712c664899a76c60947afcb037df334a86d95194"
+    "sourceHash": "sha256:361c70e84e9341817a16a7309ce9761d4bbccf000d1b03984363cfa574b3dc9b"
   },
   {
     "id": "shadcnui-blocks.carousel-block-02",
@@ -15209,7 +15209,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-20",
-    "sourceHash": "sha256:5193af9fe008023a505741c955b6e87314ffc60373c42e6b19a34c16b4963368"
+    "sourceHash": "sha256:fdf564b6820f874b96b058343c05567d4e7714f7684733730fe3d2bcb911b398"
   },
   {
     "id": "shadcnui-blocks.hero-08",
@@ -15448,7 +15448,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       ]
     },
     "referenceRootClassName": "h-16 border-b bg-background px-6",
-    "sourceHash": "sha256:3aa1f27eec0481e0739b2bf1b289770f01411291219756fd1728faed0eb7db32"
+    "sourceHash": "sha256:f8ec15c30a88176e2704464684c61afeb5dab544d675008b10fcec557e0b1bcc"
   },
   {
     "id": "shadcnui-blocks.features-08",
@@ -15669,7 +15669,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:b2131d638a64f39db035214b5f64e8714d3e12740ee4519adf574557df1b965e"
+    "sourceHash": "sha256:4727bfae43cdd75ab3a04068980b3a0e13bb1ee3d0f8b3af4982ad74c8e94662"
   },
   {
     "id": "shadcnui-blocks.features-09",
@@ -15890,7 +15890,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:8ce9ffcc99e1bcbd5a17795f5d03fed0ec8d4ce95bac5f6a3a00729c45ec6489"
+    "sourceHash": "sha256:81b7b10f39a90f93065434465f6a2175417b162e1760beef79b75ef5d94a5c2b"
   },
   {
     "id": "shadcnui-blocks.features-10",
@@ -16111,7 +16111,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:d61029010ad6a783f278b6d6e9c755d2624410745c3fec995ee64d9e882b3b68"
+    "sourceHash": "sha256:b491c92b012daba76468ee1d08d575f995758d139649fe12e180d0ea9c332907"
   },
   {
     "id": "shadcnui-blocks.features-11",
@@ -16332,7 +16332,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:26b54d7b466b2351a19d77a95de223ec1dfebee495bf5a54650e0761012018ca"
+    "sourceHash": "sha256:3c65198e4a5492dbd88ed41ad301ff2114fd3c0eef50f020b1cc71f6ab34db34"
   },
   {
     "id": "shadcnui-blocks.features-12",
@@ -16558,7 +16558,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:95e3a17c3b31f5d534dc0f61a5ee6cdecca9ea780c97695583ba7f4f02456937"
+    "sourceHash": "sha256:b704de16965488e52cf3dc4d6811b59699b896704fa073ee934e4d23b539932f"
   },
   {
     "id": "shadcnui-blocks.features-13",
@@ -16779,7 +16779,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:0b737e8dd145864ad236ed2229420d12b6ff0ce6881fc9a190b816785a7d7529"
+    "sourceHash": "sha256:17c34b892ef20e374df58d22ba9af580de22927afe1383dd63df7597f6988cd2"
   },
   {
     "id": "shadcnui-blocks.features-14",
@@ -17005,7 +17005,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-xl) px-6 py-24 text-center",
-    "sourceHash": "sha256:f617da86c5ba1ef7c8375bf5308ca4080d73c20a74601c59cd1127a73c34e2b6"
+    "sourceHash": "sha256:3f83ed38c5f8a75c1d50ea4bf354ec5f33d5224a6de71bf2ed2966b8483777ab"
   },
   {
     "id": "shadcnui-blocks.features-15",
@@ -17226,7 +17226,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:edd297e8fd57fa53c33519dcf55e06956d253c1de48d35a2461808f130451059"
+    "sourceHash": "sha256:4e2e6e8804aeab2e188372d55223afb2285d24648ccce1895a13e569a2e6164e"
   },
   {
     "id": "shadcnui-blocks.features-16",
@@ -17447,7 +17447,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:bde2a368acfe932759ca01aa4cb66371a814c853ee63791c8188499c603015f0"
+    "sourceHash": "sha256:582be818f3d3cc2aa473b52e4ff0259d2f037eaef3411fe360db3aa4756cb1af"
   },
   {
     "id": "shadcnui-blocks.features-17",
@@ -17668,7 +17668,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:5efb03dabe04d3d5af8bd905e7fc2fb075c227db518a5b15c4e5bdefc3aa701a"
+    "sourceHash": "sha256:6c1855c4f6eafb3223b07cdfce05b93593a0c3b474811968cbbb15a1ae2a6acd"
   },
   {
     "id": "shadcnui-blocks.features-18",
@@ -17894,7 +17894,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-xl) overflow-clip px-8 py-24 text-center",
-    "sourceHash": "sha256:1e74ed86ddb8a82d0417476487fd0aae6c7a4dc2b3ee518ceaf027cd301894f5"
+    "sourceHash": "sha256:96fef58d3ca081160aaad7696ca2fb736eac5439d9df7dc3e8cc196b960aee46"
   },
   {
     "id": "shadcnui-blocks.faq-08",
@@ -18115,7 +18115,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:e7a82879ee7de01329f2fb00893d55da7732350b597d3a153ad0db5547a42432"
+    "sourceHash": "sha256:b172ea06471b0a56ee67bb1dda6fc78426501e1ca0431e4a1c9390c680071aa4"
   },
   {
     "id": "shadcnui-blocks.faq-09",
@@ -18336,7 +18336,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:396114f31237b6018b12960ec57769faf82e07a2d0681861b83499b698df618f"
+    "sourceHash": "sha256:b2350bb3f354641e0ef5810a35bfca60071df6868af39276896e3f5c81079ff4"
   },
   {
     "id": "shadcnui-blocks.faq-10",
@@ -18557,7 +18557,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:e06c3ddb0e24141f9a203a1c01e133aeffb2dbef69c032338e2fe9c5a2e58ed0"
+    "sourceHash": "sha256:05b48d23e796c57f077ec9e0bc111ac0f696de8a252427f84ad8e298b59e4138"
   },
   {
     "id": "shadcnui-blocks.faq-11",
@@ -18778,7 +18778,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:b1e272fec9d434084a0e8c8c08b7daad60cf26a0693604f1be31b82264c1f613"
+    "sourceHash": "sha256:2d221cb10772c46aeabf442b7ed4e0a17f99bba354f2df09f5734b8b779bdec3"
   },
   {
     "id": "shadcnui-blocks.faq-12",
@@ -18998,7 +18998,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:96094753daef6aaa53c37417a071e13843da96da88d02d6a1bd7e1c21290ec16"
+    "sourceHash": "sha256:f0988a8bf7f1b3dce1ea34132cbc35179a432b97e9a261fcab5ee0ee3cb129a4"
   },
   {
     "id": "shadcnui-blocks.faq-13",
@@ -19219,7 +19219,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-(--breakpoint-lg) px-6 py-14",
-    "sourceHash": "sha256:4d46c257c1cb0a893e1c3e6dfd36ed863a516be559fe1047e59fbe9a3b4a3d69"
+    "sourceHash": "sha256:a1460884787470d80a823649c1f1e92a0ab31425151e7e4e797ba800f4ef9ee3"
   },
   {
     "id": "shadcnui-blocks.faq-14",
@@ -19440,7 +19440,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-2xl px-6 py-12 sm:py-14",
-    "sourceHash": "sha256:a943d7d2a18cc4a6483e606d3e391c688e02f0bed0c98c432040d9105a904768"
+    "sourceHash": "sha256:68c9d38122150d4144f2de918e528fb8163a07778ad9479a7b9f4e0225099d34"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-08",
@@ -19656,7 +19656,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-12",
-    "sourceHash": "sha256:737c7d244981285af8a247869e64f39d98277d0d6fbe409a7bd7adbf3e8fee9b"
+    "sourceHash": "sha256:4630b8a6a1c8839699782b8e6dd9e6174d601192b8749758776db658572d0101"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-09",
@@ -19873,7 +19873,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-12",
-    "sourceHash": "sha256:09035e6a840852943c700dc663758a2ada9dbe08fa75ef9a6305f80064d227f3"
+    "sourceHash": "sha256:d555bd9386f8a0812f2dc2f90501b504938a26d7409e96726e50e0298ae80bc1"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-10",
@@ -20090,7 +20090,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-12 sm:px-12",
-    "sourceHash": "sha256:c68ac4e1910c29584c3dbcc4eb029bc314eca3af18337d5a9f05d50c2fdd6d4e"
+    "sourceHash": "sha256:bc6d0a8e43338c99d501d9007973d91b15b4166932a34236c8908f2bd6b53e3c"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-11",
@@ -20306,7 +20306,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-12",
-    "sourceHash": "sha256:fc43e88933f416d74a086b9382d8dab240056cba631ff213a0c5c4539c6ee0be"
+    "sourceHash": "sha256:be2e4447133a0fc61fcb61cc02acd976b0aab9a37dbc6ca12500e478e633eaec"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-12",
@@ -20527,7 +20527,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-12 py-12",
-    "sourceHash": "sha256:0b3bf27eaf468cec1c72ab7e949e41ccc0e97cf8e5a3406099f80d82856be3bc"
+    "sourceHash": "sha256:f0fdc4b857caffa69670c2a4dff5459453d805657e728ee7151f8450cd267514"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-13",
@@ -20743,7 +20743,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-12 py-12",
-    "sourceHash": "sha256:aa3e12298a3d58dd16d7b24bec69054251fa08d860a08960986459feac6374e5"
+    "sourceHash": "sha256:b3f65f3ad59a30c2745af04285542af93be2007757bad6b955352dabc606da97"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-14",
@@ -20964,7 +20964,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-12",
-    "sourceHash": "sha256:84f03336195ae02843a320af0acf3e2a76f294d5ec7f5f750cfdd546197608d7"
+    "sourceHash": "sha256:439373b257699afcf7ab7f246471d883ea8e2aa84f7c4d2b672d91d95f6e7aee"
   },
   {
     "id": "shadcnui-blocks.logo-cloud-15",
@@ -21181,7 +21181,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center px-6",
-    "sourceHash": "sha256:c90d731cb804a2aa42caea03f597651188913deb73fe2c3ad84f3fe9fee1c323"
+    "sourceHash": "sha256:4da523ab9efe84f5949e09ff69ea0b3a05bbe96211411e42766d2cb983a29684"
   },
   {
     "id": "shadcnui-blocks.pricing-07",
@@ -21392,7 +21392,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-6xl flex-col gap-12 px-6 py-16",
-    "sourceHash": "sha256:d4a1664c74d5a0e1f8a11ecfba2b8dc2c80697338d66e68c0d8964ec06086b22"
+    "sourceHash": "sha256:df3600c4381ac07cf26186a13566e96ca8d9799589ff37856ce8f92d7c796dc7"
   },
   {
     "id": "shadcnui-blocks.pricing-08",
@@ -21613,7 +21613,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-20",
-    "sourceHash": "sha256:addb456ea56b4b4fe3665eb00e8d4a6f431d53fd72c18ccd80d59c7a4f2e5f45"
+    "sourceHash": "sha256:9778484617eee7bf0f7521fcda505cc4c7a92bd860f7e06cbfc7dc333193142b"
   },
   {
     "id": "shadcnui-blocks.pricing-09",
@@ -21834,7 +21834,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-6xl px-6 py-20",
-    "sourceHash": "sha256:c673f6dbfc4538b2c7c6d4daf6053e53a070a7a15b7f6a72bc63f7a41f5888c2"
+    "sourceHash": "sha256:9a84d2c28a30905a781d1477c4a7678dc6d2fc3c73d9307193c082f7ebdbd3da"
   },
   {
     "id": "shadcnui-blocks.pricing-10",
@@ -22055,7 +22055,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-6xl px-6 py-20",
-    "sourceHash": "sha256:33b749d90a21e86169021e35b630f8075d5ee7c97a6e02da4aa24e1e8f0c6e5a"
+    "sourceHash": "sha256:2ec4ca5972ab24ff2252b86eb0eaeea53cffe2741d4ae45cc620468c5ca86d54"
   },
   {
     "id": "shadcnui-blocks.stats-03",
@@ -22277,7 +22277,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-20",
-    "sourceHash": "sha256:e2463db3a31c1043990b4418e2d7be9b05a06349c02225b81b884e392fefa519"
+    "sourceHash": "sha256:1bf56f7163185b09a745ec19360eea59d95241c91f246f6321bd6124e679da72"
   },
   {
     "id": "shadcnui-blocks.stats-04",
@@ -22499,7 +22499,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-20",
-    "sourceHash": "sha256:d9518f4469b63bff9f16d59c74f850f06b917c1e896039a3338347fa8ba2687d"
+    "sourceHash": "sha256:0166a9b68b30ff063f6a6e7517ff640c72e5c504a50939cd4f7815ebc8ae07fd"
   },
   {
     "id": "shadcnui-blocks.stats-05",
@@ -22721,7 +22721,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-20",
-    "sourceHash": "sha256:7ad1a3af39a867700f613281b612b6477cf1bce5228dbb58ef2c93209781b582"
+    "sourceHash": "sha256:2c247f9e98af51ea9d514d1d3a8364dbdb90ee564ed8e4d197bf7e6d761307f9"
   },
   {
     "id": "shadcnui-blocks.stats-06",
@@ -22943,7 +22943,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-20",
-    "sourceHash": "sha256:a7d206445d4cbe85b6417e83ae9e3545f1b4cf469be79360af5fc0b7ad6adc5c"
+    "sourceHash": "sha256:dac5e3a29aec47379cf2d56194293863e080133c0247c8987564fb71c1c3d73c"
   },
   {
     "id": "shadcnui-blocks.stats-07",
@@ -23165,7 +23165,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-5xl px-6 py-20",
-    "sourceHash": "sha256:0d3630373824e3b08cbeacd4b471a4f730d2e8e1bc3e02b117e34f929b9c668c"
+    "sourceHash": "sha256:67dc459af438b429501dca77256bfe4938a6f9710cd3989cae939a5f0ef8c903"
   },
   {
     "id": "shadcnui-blocks.stats-08",
@@ -23387,7 +23387,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center",
-    "sourceHash": "sha256:ba16e7fdc89189448b3f35159ba2ba578d7285f5c8a5f602f9ebbc2df7c21324"
+    "sourceHash": "sha256:5d1e53cafae3717d5fca4b23be592aa94bf43427ba42b75668088299bed00013"
   },
   {
     "id": "shadcnui-blocks.stats-09",
@@ -23609,7 +23609,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen items-center justify-center",
-    "sourceHash": "sha256:59749b8ca38f8ef8f5d7e5e7fa8472d8f54c4bdc875161f323ebdc99f50e782f"
+    "sourceHash": "sha256:7b1c1fcb21dd439cc57fadaf7be11aea0c0af1c9e481eb2b0cab28bd5e54bdbc"
   },
   {
     "id": "shadcnui-blocks.stats-10",
@@ -23831,7 +23831,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-5xl flex-col items-start gap-14 px-6 py-20 sm:gap-10 md:flex-row",
-    "sourceHash": "sha256:dd264ce6586bc55d01e0e53c29bebf19c9679032bf881858d0fe91db0273ec73"
+    "sourceHash": "sha256:329ffd5886ef7f54c4c548a18f92d403d4b7ca64323dbf56494077fc28ef33cc"
   },
   {
     "id": "shadcnui-blocks.stats-11",
@@ -24053,7 +24053,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "w-full px-6",
-    "sourceHash": "sha256:697a88019f93ed2cdeb290490526b7220c6cadaa1ee085690f55c67b4df5f9c8"
+    "sourceHash": "sha256:a475642e4a50b365556379808a0b3dfefc4a68fee7f1382129a9afdca9d29a08"
   },
   {
     "id": "shadcnui-blocks.team-06",
@@ -24274,7 +24274,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:92558ec4b385f6a66aeb9ba62f06679a28fe0446c36c0dd2fc7282f1080650b3"
+    "sourceHash": "sha256:78cb6eef1a2f94b1dfeb4781730902ea1508ffd1a807ebb11b3eaddc4d0af2d8"
   },
   {
     "id": "shadcnui-blocks.team-07",
@@ -24495,7 +24495,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:1c1871143c20e20cd86be07caa90c5faae0cf2cfe45f09be272c3b5a91595ffa"
+    "sourceHash": "sha256:f8f09e70ec05411e371f756d708c7b5bfbaca7814a52225600b95a0b5f71067a"
   },
   {
     "id": "shadcnui-blocks.team-08",
@@ -24716,7 +24716,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:751eaeb28a9d9430258f293679a5d08be3b809726637e96596b2e2d8f47de747"
+    "sourceHash": "sha256:df31abe32ea85625bd6655987c935252a20032b6163df26fd257b5dab20f94a6"
   },
   {
     "id": "shadcnui-blocks.team-09",
@@ -24937,7 +24937,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:ca23d097332a8ef859d8aadfd3f59e519e7b96f4fdc1b2b129a8c609d5551231"
+    "sourceHash": "sha256:6b23ab18e7a52814946d75438a03f3a97407ad346168cb46ae18c5032ba72272"
   },
   {
     "id": "shadcnui-blocks.team-10",
@@ -25158,7 +25158,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:1b5f2b19b7bbb6157582a7f7f715031966a0e2d5f622c39bdd7749412ef8f33c"
+    "sourceHash": "sha256:0e6159b50196a42c500da7993f5e918e2cc537cc553d801f9b3d01e413826f1e"
   },
   {
     "id": "shadcnui-blocks.team-11",
@@ -25379,7 +25379,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:b9fce18e84e07d54cf639ad9ddbee36be869cf79f513ca61097c786a07945d4b"
+    "sourceHash": "sha256:967bce26f47840408f54760f9c305587b6fcbbdf9f6f252be978a9a6a2b0ef30"
   },
   {
     "id": "shadcnui-blocks.team-12",
@@ -25600,7 +25600,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:8cf0341ba1540e546cfd1fd12dac901a295d70106c7091e04d301bdb592e70ef"
+    "sourceHash": "sha256:b79b6c3c698404b97511c72df9dab935413700eca1c465e314a6e93721aff901"
   },
   {
     "id": "shadcnui-blocks.team-13",
@@ -25821,7 +25821,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-20",
-    "sourceHash": "sha256:4fc192cc3f19630e1a154d5c3b724f99a8007b6c2974fd38a513e7a9c87c583e"
+    "sourceHash": "sha256:64851c34cdd1053ce3c394048cee09bfb1f6a88a68f056423a60830cf50afad0"
   },
   {
     "id": "shadcnui-blocks.testimonials-07",
@@ -26042,7 +26042,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:4e503fb3ec1f41d99d34c598ee7d632b05c9fcc49488966014d3b255bab3e15b"
+    "sourceHash": "sha256:fc97d82043d807f593ef75d719119f7438b3cc167c4fdc0d3081f0cc360c293d"
   },
   {
     "id": "shadcnui-blocks.testimonials-08",
@@ -26263,7 +26263,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:285496723f08646b3feeeed96dbdd58d29000c47c3c97d8efd2bf100e34bcaf2"
+    "sourceHash": "sha256:7b3f320e0110e2cee32fbb4e0fb78bdfa933f175b4a384536078e34e94df7204"
   },
   {
     "id": "shadcnui-blocks.testimonials-09",
@@ -26484,7 +26484,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:33f14f0f0b527a731afecfaabad58795d72253cd4cdb493c409d1a628b9b5bc2"
+    "sourceHash": "sha256:c401dd10f3a906b12dd1b0ac265aceb4f73cc73c53813f22c079496505e75d9b"
   },
   {
     "id": "shadcnui-blocks.testimonials-10",
@@ -26705,7 +26705,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:4aa26ccee99a5a69101a029acb86079c5d2d66bd56d8a410d3b868f08f4d7a4e"
+    "sourceHash": "sha256:f5609e7403bf56d63725b3f3502c9b9df325df7eedecf6e609dc0200e88ae29e"
   },
   {
     "id": "shadcnui-blocks.testimonials-11",
@@ -26926,7 +26926,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:13ba8cfa0253c2e6c2c6656f7525332924d4c98f87570c55f2892d69a206c8d2"
+    "sourceHash": "sha256:622f7773b82a9261e7686a5a71b9f1bb2827c447b7e96f0d6535c16060e0307f"
   },
   {
     "id": "shadcnui-blocks.testimonials-12",
@@ -27147,7 +27147,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-12 sm:py-20",
-    "sourceHash": "sha256:85fabfcb6bddc2b402ec957cfa059e67c797168f538b1e6cfaabbdbbecabd83b"
+    "sourceHash": "sha256:d812ac2bab13ea029445a667c0c6913adacf0fbcb03a5fbebc1b8d35ac7c776e"
   },
   {
     "id": "shadcnui-blocks.testimonials-13",
@@ -27367,7 +27367,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:92d07c75ef16882fbf15475a09089c91a56d1a41faa6b94727652229752ba39e"
+    "sourceHash": "sha256:82be890d2032e2824b491f6a63624c00e9d624f5cabad71d47175bf8851a46a5"
   },
   {
     "id": "shadcnui-blocks.blog-04",
@@ -27598,7 +27598,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-16",
-    "sourceHash": "sha256:9f1c8bcbddc9ec26ac307f85de7d76edd3bff50e7f528424d4e77933e3f86430"
+    "sourceHash": "sha256:e7a9ed69c4b9c45f5461b8082c62ea99033ad9e16c441ca03efc5d5cb8cdc55c"
   },
   {
     "id": "shadcnui-blocks.blog-05",
@@ -27829,7 +27829,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-16",
-    "sourceHash": "sha256:10d63a25a8ff2379baf2608d6bf90a08b560302b3519a2e3055c6d379b4f6dc6"
+    "sourceHash": "sha256:edaef62f64526c4afe0af916d30c03b3dae08424b90011194e38138384d8676a"
   },
   {
     "id": "shadcnui-blocks.blog-06",
@@ -28060,7 +28060,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto max-w-7xl px-6 py-16",
-    "sourceHash": "sha256:1de321b940db56b53f0420f87f325da96783725cea10ae8e5a18cbcd2af1777b"
+    "sourceHash": "sha256:0c574082f0b338433bd1986b3d6de19044b460cfdd2af9f2e3be4c49aade8dcf"
   },
   {
     "id": "shadcnui-blocks.integrations-01",
@@ -28281,7 +28281,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-20",
-    "sourceHash": "sha256:05f4f646002e52dbcc8b732ac30f55a96686f6ecc9b6efb8b3111490bc655a4b"
+    "sourceHash": "sha256:c98539d718857451bd2037f5dd84b9f230bf39ab7cfa69bf25a424a42b1a7ab5"
   },
   {
     "id": "shadcnui-blocks.integrations-02",
@@ -28502,7 +28502,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "my-12 px-6 sm:my-14",
-    "sourceHash": "sha256:0f3b67a6120bbbfb4fb5474a42a4a6ce81c8f7aed46575266c0a950861d3db57"
+    "sourceHash": "sha256:90f2fd4a36a33ae0cf86dc260cc7c98404e5bfccb0c81610159adb77dffac2ad"
   },
   {
     "id": "shadcnui-blocks.integrations-03",
@@ -28723,7 +28723,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-12 sm:py-14",
-    "sourceHash": "sha256:8fbb81af3c65ff6dd0b1b41dcd3c99d87cddb17e974f87fe8108f06c09af0cd5"
+    "sourceHash": "sha256:b015ed2fccff8c836d5ba53e2d358d14be3ab7326b9dd31638752d29fd1eedaf"
   },
   {
     "id": "shadcnui-blocks.integrations-04",
@@ -28944,7 +28944,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-12 sm:py-14",
-    "sourceHash": "sha256:a836deef51f463eb1554b05d467d2d90652964c6e981595ceea0a55c967d5db4"
+    "sourceHash": "sha256:5be65a0308de234eb00682cdcff2e7eb69a6f0323a9702530c2b92a93dccaddc"
   },
   {
     "id": "shadcnui-blocks.integrations-05",
@@ -29165,7 +29165,7 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "mx-auto flex max-w-7xl flex-col px-6 py-12 sm:py-14",
-    "sourceHash": "sha256:b4ef54e9560d2fa999887a1c4b5dd63455bb9066d5c412c5aa40478f315a0ad0"
+    "sourceHash": "sha256:62c94157fd0d3a0e5b33b700181bf21522162cbebc6e52519ea204e36c8cc0d2"
   }
 ] as const
 export const SHADCNUI_CHROME_VARIANTS = [
@@ -29238,7 +29238,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:f6a64d879d3a9250b684628197a12505e8f885b1139e0c60b7640aa94dd352c1"
+    "sourceHash": "sha256:03eec9f6b764bb976d9eea5f94be081e57dfbb8fd1f0105a42a2ca7662861847"
   },
   {
     "id": "shadcnui-blocks.footer-02",
@@ -29309,7 +29309,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:bbd7447f8ef200e73606175100ecb1c61233b933d8f7bbd188c01ec5b70e0470"
+    "sourceHash": "sha256:196f53c113677f094715f150fa5198f1845bf3d97dae059eb5f97d3fc79a7245"
   },
   {
     "id": "shadcnui-blocks.footer-03",
@@ -29379,7 +29379,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:786d08622f9e70267880b4073b7940eac12a5784c66cd7a07d5bf0b5a23c6caf"
+    "sourceHash": "sha256:5771d83859b4cc8d4abccda71ea89b3fb60fa04636d0884550e9c74d130d3ff5"
   },
   {
     "id": "shadcnui-blocks.footer-04",
@@ -29449,7 +29449,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:f3346ea12966e0e78f9e9c23011fec8af15781ff09b79745c90767dd5edbbb36"
+    "sourceHash": "sha256:d0253a09c9d07cf5b0ec7e97d704a68b0342d2bed4beee439c8500727d1a4ca3"
   },
   {
     "id": "shadcnui-blocks.footer-05",
@@ -29520,7 +29520,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:2cc0861a7d51d9a598f79ec7c34b9987bb294ab0f994fd862f213d829ac3a5de"
+    "sourceHash": "sha256:6b38282fa2cfadec12261d55ba09aee498b7ee3ab853b5168b40bea12708d981"
   },
   {
     "id": "shadcnui-blocks.navbar-01",
@@ -29554,9 +29554,8 @@ export const SHADCNUI_CHROME_VARIANTS = [
       },
       "secondaryAction": {
         "kind": "cta",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned navbar exposes one primary action only."
+        "status": "optional",
+        "repeated": false
       },
       "search": {
         "kind": "runtime",
@@ -29602,7 +29601,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
         "max": 0
       },
       "cta": true,
-      "secondaryAction": false,
+      "secondaryAction": true,
       "search": false,
       "themeToggle": false,
       "mobileMenu": [
@@ -29616,7 +29615,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:b46c6fce96d734e472d52bbde8869c38f97ae300ab8a683f6a8b4e1693c6ad8e"
+    "sourceHash": "sha256:8934c4485261776c474a7a7e94b4793175a089d543e272fa2ac60a3b8cd965bf"
   },
   {
     "id": "shadcnui-blocks.navbar-02",
@@ -29650,9 +29649,8 @@ export const SHADCNUI_CHROME_VARIANTS = [
       },
       "secondaryAction": {
         "kind": "cta",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned navbar exposes one primary action only."
+        "status": "optional",
+        "repeated": false
       },
       "search": {
         "kind": "runtime",
@@ -29697,7 +29695,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
         "max": 0
       },
       "cta": true,
-      "secondaryAction": false,
+      "secondaryAction": true,
       "search": false,
       "themeToggle": true,
       "mobileMenu": [
@@ -29711,7 +29709,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:0f0c178e24f0e17f59c9254f49d336e77505d7e5b97b6f852e4a26f2e24c9908"
+    "sourceHash": "sha256:f3b873d79af400b5df0155bbeab14aa4089113b4f6bcfba7c7bed22705add615"
   },
   {
     "id": "shadcnui-blocks.navbar-03",
@@ -29806,7 +29804,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:220bdbfb4f0ebc38821e55d7af43d5cb21ba1d7bd515bc45d0786cc68a091096"
+    "sourceHash": "sha256:c9abe4ba35523e94fa5d4021c343e2ea11647d8f39a57bf47b7ba16789943f8a"
   },
   {
     "id": "shadcnui-blocks.navbar-04",
@@ -29840,9 +29838,8 @@ export const SHADCNUI_CHROME_VARIANTS = [
       },
       "secondaryAction": {
         "kind": "cta",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned navbar exposes one primary action only."
+        "status": "optional",
+        "repeated": false
       },
       "search": {
         "kind": "runtime",
@@ -29888,7 +29885,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
         "max": 0
       },
       "cta": true,
-      "secondaryAction": false,
+      "secondaryAction": true,
       "search": false,
       "themeToggle": false,
       "mobileMenu": [
@@ -29902,7 +29899,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:056ed1e2a4837720423054b42142ba3e269d0d9475b2523d4980aa54a28b3f20"
+    "sourceHash": "sha256:7bbe9d8f69af878b5a9b47c07c816c3413adbd758da10bdd0fd5a10dc89eed11"
   },
   {
     "id": "shadcnui-blocks.navbar-05",
@@ -29996,7 +29993,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:38cc53efdc0f1543fb79d942f1b5474592bcc95e11517e5f37e34d804c64756d"
+    "sourceHash": "sha256:4e46848916736f8b24c433aa7f23b111b524e57d73990aa9003ba343745d29ee"
   },
   {
     "id": "shadcnui-blocks.banner-01",
@@ -30034,7 +30031,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-10 flex-wrap items-center justify-center bg-primary px-3 py-2 text-center text-primary-foreground text-sm",
-    "sourceHash": "sha256:dab86974f749e1f2864e23c54dc0377eb1eb64e51cd3d1a89ae9b6a21335ae5d"
+    "sourceHash": "sha256:84ffcb6233581b689c7c76fa363e552b0596826cd0c16e1bca478b37d1000aaf"
   },
   {
     "id": "shadcnui-blocks.banner-02",
@@ -30072,7 +30069,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-10",
-    "sourceHash": "sha256:8af5c6d403b2a5cee0e9ea40a2d499d6b9709a15f75ca399a323813537ff1c55"
+    "sourceHash": "sha256:285a165040d74fb2ff1f75ca9314eab3da490c497c1b29e226538cc616de80fc"
   },
   {
     "id": "shadcnui-blocks.banner-03",
@@ -30110,7 +30107,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-10",
-    "sourceHash": "sha256:8fa7d848df2152220891dbe2ab30bec86d5616ff95648cfb0a201d1c1c76aeb1"
+    "sourceHash": "sha256:ababb6582b8bf770dc393dda58f323a5b32d7b76548854ed81f72aeb9f86ed8f"
   },
   {
     "id": "shadcnui-blocks.banner-04",
@@ -30148,7 +30145,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "px-6 py-10",
-    "sourceHash": "sha256:19c87f06eeb688a7c32a273ce6c6c4ebe764d231218addfd74e2b1eb1c7b57da"
+    "sourceHash": "sha256:089f725fb7a1dd55391c385e27d0a5202b2aa9535976891e7d876374213ebd4d"
   },
   {
     "id": "shadcnui-blocks.footer-06",
@@ -30219,7 +30216,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:20cffe2639cc4b9da14911eae3c90e1b504a4ef1c45b91a72d82bc85726185b5"
+    "sourceHash": "sha256:bf97ae9df184ca305e1293be30a9987aa5c7e6adcedbf862cd2317b03b8f3a3c"
   },
   {
     "id": "shadcnui-blocks.footer-07",
@@ -30290,7 +30287,7 @@ export const SHADCNUI_CHROME_VARIANTS = [
       "embedsNavigation": false,
       "suppressesChromeAreas": []
     },
-    "sourceHash": "sha256:8e4631e5d3fac62c8051cfa3b01a4f2610e5844df7ca453a5de023696999bf11"
+    "sourceHash": "sha256:6fb1fce15439ea3e962a4760f5dc1534207869e37e158dad8456c1eddaa73acc"
   }
 ] as const
 export const SHADCNUI_SYSTEM_TEMPLATES = [
@@ -30325,7 +30322,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col items-center justify-center px-6 text-center",
-    "sourceHash": "sha256:58b8fb4fa1add02e9f00a812bd4df6b5307d6fb9ffd7e33ffe4e09c1c0679f23"
+    "sourceHash": "sha256:51aae75e331df4304a5004174ba1b8b2d68b567dca5c1974df6db037d4823c73"
   },
   {
     "id": "shadcnui-blocks.not-found-02",
@@ -30358,7 +30355,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col items-center justify-center px-6",
-    "sourceHash": "sha256:a89f4af90ce6c1be79593cae671c320aa700448ec0e4c37fbb9f69b897c8a465"
+    "sourceHash": "sha256:428715227232de1fac6b498ce55a243c9b8f5610682bd86c85daab8e664c6ec2"
   },
   {
     "id": "shadcnui-blocks.not-found-03",
@@ -30391,7 +30388,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "grid min-h-screen lg:grid-cols-2",
-    "sourceHash": "sha256:5c973fe57d307f4ebc9456e610defa551c9bbbc12d3c55125bf8d70b91d5148f"
+    "sourceHash": "sha256:1c7aeabff1b26b87b82464bee9d70bcfdfebe4cebc711f279f207ad605c30cd8"
   },
   {
     "id": "shadcnui-blocks.not-found-04",
@@ -30424,7 +30421,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col items-center justify-center px-6 text-center",
-    "sourceHash": "sha256:e2dbd884174a48d519636c8df13dbf7e43a2f292b9b2f7084984fbb646d03efe"
+    "sourceHash": "sha256:57ac7d42317243cde3511b4a79e610ab1d43ee69865f70243cf64d04a053aacd"
   },
   {
     "id": "shadcnui-blocks.not-found-05",
@@ -30457,7 +30454,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col items-center justify-center gap-5 px-6 text-center",
-    "sourceHash": "sha256:0d35e6a9174051d4315a6a5c4238eda4392b7cc5571ca37134897a58e348a633"
+    "sourceHash": "sha256:af3cfa3eefbb2fa98af321844c873fc2b9966c9e687655575249ff2aa4307e28"
   },
   {
     "id": "shadcnui-blocks.not-found-06",
@@ -30490,7 +30487,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col items-center justify-center px-6 text-center",
-    "sourceHash": "sha256:db87a4018473736a87d59dee5cd0ee671746995b0897842bcee273a427d56c9d"
+    "sourceHash": "sha256:353e39121e264a37ab9864dbd2e574fdb470f507fdaafbee3304f81544c649a6"
   },
   {
     "id": "shadcnui-blocks.not-found-07",
@@ -30523,7 +30520,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "flex min-h-screen flex-col items-center justify-center px-6 text-center",
-    "sourceHash": "sha256:21a1f92c15b0bc6f8d22ef887b64a698e026c4415a14a4193897a33c617729d4"
+    "sourceHash": "sha256:fa82dd62de4308637cae5af09cc0a6441a0f517d82883dd9466a38fb98239e3f"
   },
   {
     "id": "shadcnui-blocks.not-found-08",
@@ -30556,7 +30553,7 @@ export const SHADCNUI_SYSTEM_TEMPLATES = [
       "suppressesChromeAreas": []
     },
     "referenceRootClassName": "relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center",
-    "sourceHash": "sha256:6d39639ef9b7ef5aa66502c37e29a0ef3a81b6a3aa684834f4791e3405bed139"
+    "sourceHash": "sha256:85a081a721636fc7475e534305014956e91c46fea26a31ab0549fbeda64ba39b"
   }
 ] as const
 export const SHADCNUI_SYSTEM_BLOCK_VARIANTS = [

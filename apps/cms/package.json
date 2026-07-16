@@ -68,7 +68,7 @@
     "payload": "3.85.0",
     "pg": "^8.21.0",
     "posthog-js": "^1.382.0",
-    "radix-ui": "^1.4.3",
+    "radix-ui": "1.4.3",
     "rate-limiter-flexible": "^11.1.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",

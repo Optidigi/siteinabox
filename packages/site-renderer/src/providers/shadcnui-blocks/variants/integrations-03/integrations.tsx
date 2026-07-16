@@ -23,14 +23,14 @@ export default function Integrations() {
             <div className="border-e border-dashed p-4">
               <Image
                 alt={integration.title}
-                className="size-8 rounded-sm"
+                className="size-8 rounded"
                 src={`about:blank#upstream-sha256:af5ee`}
               />
             </div>
             <h3 className="font-medium text-lg">{integration.title}</h3>
 
             {integration.status === "connected" ? (
-              <Badge className="ms-auto h-7 min-w-26 rounded-lg bg-success/10 px-3 text-success text-sm">
+              <Badge className="ms-auto h-7 min-w-26 rounded-lg bg-emerald-600/10 px-3 text-emerald-600 text-sm">
                 Connected
               </Badge>
             ) : (

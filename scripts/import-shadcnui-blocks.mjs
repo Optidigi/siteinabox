@@ -19,7 +19,6 @@ const NAMESPACE = "shadcnui-blocks"
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const providerRoot = join(root, "packages/site-renderer/src/providers/shadcnui-blocks")
 const variantsRoot = join(providerRoot, "variants")
-const referencesRoot = join(providerRoot, "references")
 const uiProviderRoot = join(root, "packages/ui/src/providers/shadcnui-blocks/radix-nova")
 const generatedRoot = join(root, "packages/contracts/src/generated")
 const bindingManifestPath = join(providerRoot, "bindings.json")
@@ -94,94 +93,31 @@ function adaptLiteralImports(contents) {
     .replaceAll(/https?:\/\/(?!www\.w3\.org\/2000\/svg)[^"'`\s]+/g, (url) => `about:blank#upstream-${sha256(url).slice(0, 12)}`)
 }
 
-const replaceClassToken = (contents, from, to) => contents.replace(
-  new RegExp(`(?<=[\\s\"'])${from.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}(?=[\\s\"'])`, "g"),
-  to,
-)
-
-function adaptTenantTokens(name, filename, contents) {
-  let adapted = replaceClassToken(contents, "rounded", "rounded-sm")
+function adaptThemeHooks(name, filename, contents) {
+  let adapted = contents
   const replace = (from, to) => { adapted = adapted.replaceAll(from, to) }
-
-  if (name === "contact-02") replace("bg-white shadow-none", "bg-background shadow-none")
-  if (name === "blog-05" || name === "blog-06") {
-    adapted = adapted
-      .replace(/bg-indigo-500\/10 text-indigo-500 dark:bg-indigo-500\/15 dark:text-indigo-400/g, "bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary")
-      .replace(/bg-indigo-600\/10 text-indigo-500 dark:bg-indigo-500\/35 dark:text-indigo-300/g, "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary")
-  }
-  if (/^pricing-0[1-6]$/.test(name)) {
-    replace("text-green-600", "text-success")
-    replace("text-gray-500", "text-muted-foreground")
-  }
-  if (name === "testimonials-05") {
-    replace("fill-yellow-500", "fill-rating")
-    replace("stroke-yellow-500", "stroke-rating")
-  }
-  if (name === "integrations-02" || name === "integrations-03") {
-    replace("bg-emerald-600/10", "bg-success/10")
-    replace("text-emerald-600", "text-success")
-  }
-  if (name === "stats-05") {
-    replace("text-blue-500", "text-chart-1")
-    replace("text-green-600", "text-chart-2")
-    replace("text-red-500", "text-chart-4")
-  }
-  if (name === "stats-06") {
-    const chartClasses = [
-      ["blue", "1"], ["green", "2"], ["amber", "3"], ["red", "4"], ["purple", "5"],
-    ]
-    for (const [color, chart] of chartClasses) {
-      adapted = adapted
-        .replace(new RegExp(`border-${color}-(?:200|600)`, "g"), `border-chart-${chart}/30`)
-        .replace(new RegExp(`dark:border-${color}-(?:400|500)/30`, "g"), `dark:border-chart-${chart}/35`)
-        .replace(new RegExp(`bg-${color}-50`, "g"), `bg-chart-${chart}/10`)
-        .replace(new RegExp(`dark:bg-${color}-(?:400|500)/15`, "g"), `dark:bg-chart-${chart}/15`)
-        .replace(new RegExp(`text-${color}-(?:500|600)`, "g"), `text-chart-${chart}`)
-    }
-  }
-  if (name === "hero-06") {
-    replace("dark:fill-slate-700", "dark:fill-muted-foreground/50")
-    replace("fill-neutral-400/80", "fill-muted-foreground/80")
-  }
-  if (name === "hero-07") {
-    replace("fill-gray-400/30", "fill-muted-foreground/30")
-    replace("stroke-gray-400/30", "stroke-muted-foreground/30")
-  }
+  if (name === "contact-02") replace("bg-white shadow-none", "bg-[var(--provider-surface,#fff)] shadow-none")
   if (name === "hero-01") {
-    replace("#5E8778", "var(--siab-accent-600)")
-    replace("#78FF86", "var(--siab-accent-300)")
-    replace("#575EFF", "var(--siab-accent-700)")
-    replace("#E478FF", "var(--siab-accent-400)")
-  }
-  if (name === "features-06") {
-    replace("from-indigo-400 to-orange-300", "from-primary to-accent")
-    replace("var(--color-orange-400)", "var(--siab-accent-300)")
-    replace("var(--color-orange-500)", "var(--siab-accent-400)")
-    replace("var(--color-indigo-300)", "var(--siab-accent-300)")
-    replace("var(--color-indigo-400)", "var(--siab-accent-500)")
-    replace("var(--color-indigo-500)", "var(--siab-accent-600)")
+    replace("#5E8778", "var(--provider-accent-600, #5E8778)")
+    replace("#78FF86", "var(--provider-accent-300, #78FF86)")
+    replace("#575EFF", "var(--provider-accent-700, #575EFF)")
+    replace("#E478FF", "var(--provider-accent-400, #E478FF)")
   }
   if (name === "hero-03") {
-    replace('colors = ["#5227FF", "#FF9FFC", "#B497CF"]', 'colors = ["var(--siab-accent-700)", "var(--siab-accent-400)", "var(--siab-accent-200)"]')
-    replace("var(--color-purple-500)", "var(--siab-accent-700)")
-    replace("var(--color-indigo-400)", "var(--siab-accent-400)")
-    replace("var(--color-sky-500)", "var(--siab-accent-200)")
-    replace("var(--color-indigo-600)", "var(--siab-accent-700)")
-    replace("var(--color-indigo-500)", "var(--siab-accent-600)")
-    replace("rounded-[1.25rem]", "rounded-xl")
-    replace("from-indigo-400/90 via-indigo-300 to-sky-400/80", "from-primary/90 via-primary/60 to-accent")
+    replace('colors = ["#5227FF", "#FF9FFC", "#B497CF"]', 'colors = ["var(--provider-accent-700, #5227FF)", "var(--provider-accent-400, #FF9FFC)", "var(--provider-accent-200, #B497CF)"]')
+    replace("rounded-[1.25rem]", "rounded-[var(--provider-radius-hero-gradient,1.25rem)]")
   }
   if ((name === "pricing-09" || name === "logo-cloud-15") && filename === "border-beam.tsx") {
-    replace('colorFrom = "#ffaa40"', 'colorFrom = "var(--siab-accent-400)"')
-    replace('colorTo = "#9c40ff"', 'colorTo = "var(--siab-accent-700)"')
+    replace('colorFrom = "#ffaa40"', 'colorFrom = "var(--provider-accent-400, #ffaa40)"')
+    replace('colorTo = "#9c40ff"', 'colorTo = "var(--provider-accent-700, #9c40ff)"')
   }
   if (name === "logo-cloud-15" && filename === "logo-cloud.tsx") {
-    replace("#ffaa40", "var(--siab-accent-400)")
-    replace("#9c40ff", "var(--siab-accent-700)")
+    replace("#ffaa40", "var(--provider-accent-400, #ffaa40)")
+    replace("#9c40ff", "var(--provider-accent-700, #9c40ff)")
   }
   if (["cta-04", "cta-05", "pricing-09"].includes(name)) {
-    replace("rgba(75, 85, 99, 0.08)", "color-mix(in srgb, var(--border) 45%, transparent)")
-    replace("rgba(55, 65, 81, 0.12)", "color-mix(in srgb, var(--border) 60%, transparent)")
+    replace("rgba(75, 85, 99, 0.08)", "var(--provider-grid-line, rgba(75, 85, 99, 0.08))")
+    replace("rgba(55, 65, 81, 0.12)", "var(--provider-grid-dot, rgba(55, 65, 81, 0.12))")
   }
   return adapted
 }
@@ -515,10 +451,10 @@ const fieldSets = {
 const allStructuredFields = [...new Set(Object.values(fieldSets).flatMap((fields) => Object.keys(fields)))]
 
 const chromeCapabilities = {
-  "navbar-01": { navigation: "flat", primaryItems: { min: 0, max: 6 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: false, search: false, themeToggle: false, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 0 },
-  "navbar-02": { navigation: "flat", primaryItems: { min: 0, max: 6 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: false, search: false, themeToggle: true, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 0 },
+  "navbar-01": { navigation: "flat", primaryItems: { min: 0, max: 6 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: true, search: false, themeToggle: false, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 0 },
+  "navbar-02": { navigation: "flat", primaryItems: { min: 0, max: 6 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: true, search: false, themeToggle: true, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 0 },
   "navbar-03": { navigation: "mixed", primaryItems: { min: 0, max: 4 }, groupItems: { min: 0, max: 3 }, childItems: { min: 1, max: 6 }, cta: true, secondaryAction: false, search: false, themeToggle: false, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 90 },
-  "navbar-04": { navigation: "flat", primaryItems: { min: 0, max: 6 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: false, search: false, themeToggle: false, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 0 },
+  "navbar-04": { navigation: "flat", primaryItems: { min: 0, max: 6 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: true, search: false, themeToggle: false, mobileMenu: ["dropdown", "drawer"], labelMaxLength: 32, descriptionMaxLength: 0 },
   "navbar-05": { navigation: "none", primaryItems: { min: 0, max: 0 }, groupItems: { min: 0, max: 0 }, childItems: { min: 0, max: 0 }, cta: true, secondaryAction: true, search: true, themeToggle: false, mobileMenu: [], labelMaxLength: 32, descriptionMaxLength: 0 },
   "footer-01": { columns: { min: 0, max: 6 }, linksPerColumn: { min: 0, max: 8 }, flatLinks: { min: 0, max: 8 }, newsletter: false, social: true, labelMaxLength: 40, textMaxLength: 240 },
   "footer-02": { columns: { min: 0, max: 6 }, linksPerColumn: { min: 0, max: 8 }, flatLinks: { min: 0, max: 8 }, newsletter: false, social: true, labelMaxLength: 40, textMaxLength: 240 },
@@ -637,13 +573,11 @@ async function main() {
       throw new Error(`Pinned inventory mismatch: expected 148 public + 8 system; found ${publicItems.length} + ${systemItems.length}.`)
     }
 
-    await rm(join(providerRoot, "upstream"), { recursive: true, force: true })
     await rm(variantsRoot, { recursive: true, force: true })
-    await rm(referencesRoot, { recursive: true, force: true })
+    await rm(join(providerRoot, "upstream"), { recursive: true, force: true })
+    await rm(join(providerRoot, "references"), { recursive: true, force: true })
     await rm(uiProviderRoot, { recursive: true, force: true })
-    await mkdir(join(providerRoot, "upstream"), { recursive: true })
     await mkdir(variantsRoot, { recursive: true })
-    await mkdir(referencesRoot, { recursive: true })
     await mkdir(uiProviderRoot, { recursive: true })
     await mkdir(generatedRoot, { recursive: true })
     await cp(join(source, "LICENSE"), join(providerRoot, "LICENSE"))
@@ -730,22 +664,13 @@ async function main() {
       for (const file of item.files ?? []) {
         const contents = await readFile(join(source, file.path))
         sourceTexts.push(contents.toString("utf8"))
-        const destination = join(providerRoot, "upstream", item.name, file.path.split("/").at(-1))
-        await mkdir(dirname(destination), { recursive: true })
-        await writeFile(destination, contents)
-        sourceFiles.push({ path: relative(root, destination), sha256: sha256(contents) })
+        sourceFiles.push({ path: file.path, sha256: sha256(contents) })
 
         const upstreamFilename = file.path.split("/").at(-1)
         const literalFilename = item.name === "navbar-03" && upstreamFilename === "navbar.ts" ? "navbar-data.ts" : upstreamFilename
         const literalDestination = join(variantsRoot, item.name, literalFilename)
-        const referenceDestination = join(referencesRoot, item.name, literalFilename)
         await mkdir(dirname(literalDestination), { recursive: true })
-        await mkdir(dirname(referenceDestination), { recursive: true })
-        let adaptedReference = adaptLiteralImports(contents.toString("utf8"))
-          .replaceAll(item.name === "navbar-03" ? 'from "./navbar"' : "\0", 'from "./navbar-data"')
-        if (item.name === "not-found-03") adaptedReference = scopeNotFound03SvgIds(adaptedReference)
-        await writeFile(referenceDestination, adaptedReference)
-        let adaptedLiteral = adaptTenantTokens(item.name, literalFilename, adaptLiteralImports(contents.toString("utf8")))
+        let adaptedLiteral = adaptThemeHooks(item.name, literalFilename, adaptLiteralImports(contents.toString("utf8")))
           .replaceAll(item.name === "navbar-03" ? 'from "./navbar"' : "\0", 'from "./navbar-data"')
         if ((item.name === "hero-03" || item.name === "hero-08") && file.path === literalEntryPath) {
           adaptedLiteral = adaptedLiteral.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
@@ -893,21 +818,21 @@ async function main() {
 
     const literalImports = variants.map((variant, index) => {
       const suffix = String(index + 1).padStart(3, "0")
-      return `import Literal${suffix} from "./references/${variant.upstreamName}/${variant.entryFile.replace(/\.tsx$/, "")}"`
+      return `import Literal${suffix} from "./variants/${variant.upstreamName}/${variant.entryFile.replace(/\.tsx$/, "")}"`
     })
     const literalEntries = variants.map((variant, index) => `  "${variant.id}": Literal${String(index + 1).padStart(3, "0")},`)
-    await writeFile(join(providerRoot, "literal-references.generated.tsx"), [
+    await writeFile(join(providerRoot, "literal-previews.generated.tsx"), [
       "// Generated by scripts/import-shadcnui-blocks.mjs. Do not edit by hand.",
       'import * as React from "react"',
-      'import { LiteralProviderReferenceView } from "./runtime/literal-view"',
+      'import { LiteralProviderPreviewView } from "./runtime/literal-view"',
       ...literalImports,
       "const literals = {",
       ...literalEntries,
       "} as const",
-      "export function ShadcnUiPinnedLiteralReference({ variant }: { variant: string }) {",
+      "export function ShadcnUiPinnedLiteralPreview({ variant }: { variant: string }) {",
       "  const Literal = literals[variant as keyof typeof literals]",
       "  if (!Literal) throw new Error(`Unresolved pinned literal provider variant \"${variant}\".`)",
-      "  return <LiteralProviderReferenceView Literal={Literal} variant={variant} />",
+      "  return <LiteralProviderPreviewView Literal={Literal} variant={variant} />",
       "}",
       "",
     ].join("\n"))
@@ -915,7 +840,6 @@ async function main() {
     const approvedNames = new Set(approved.map((item) => item.name))
     for (const variant of variants) {
       variant.adaptedFiles = await fileInventory(join(variantsRoot, variant.upstreamName))
-      variant.referenceFiles = await fileInventory(join(referencesRoot, variant.upstreamName))
     }
     const exclusions = registry.items.filter((item) => !approvedNames.has(item.name)).map((item) => ({
       upstreamName: item.name,

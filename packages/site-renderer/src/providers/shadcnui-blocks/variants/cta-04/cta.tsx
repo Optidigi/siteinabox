@@ -14,10 +14,10 @@ const CTA = () => {
             className="max-sm:mask-b-from-75% pointer-events-none absolute inset-0 -top-0.5 -left-1 z-0 not-dark:opacity-60"
             style={{
               backgroundImage: `
-        repeating-linear-gradient(0deg, transparent, transparent 19px, color-mix(in srgb, var(--border) 45%, transparent) 19px, color-mix(in srgb, var(--border) 45%, transparent) 20px, transparent 20px, transparent 39px, color-mix(in srgb, var(--border) 45%, transparent) 39px, color-mix(in srgb, var(--border) 45%, transparent) 40px),
-        repeating-linear-gradient(90deg, transparent, transparent 19px, color-mix(in srgb, var(--border) 45%, transparent) 19px, color-mix(in srgb, var(--border) 45%, transparent) 20px, transparent 20px, transparent 39px, color-mix(in srgb, var(--border) 45%, transparent) 39px, color-mix(in srgb, var(--border) 45%, transparent) 40px),
-        radial-gradient(circle at 20px 20px, color-mix(in srgb, var(--border) 60%, transparent) 2px, transparent 2px),
-        radial-gradient(circle at 40px 40px, color-mix(in srgb, var(--border) 60%, transparent) 2px, transparent 2px)
+        repeating-linear-gradient(0deg, transparent, transparent 19px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 19px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 20px, transparent 20px, transparent 39px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 39px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 19px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 19px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 20px, transparent 20px, transparent 39px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 39px, var(--provider-grid-line, rgba(75, 85, 99, 0.08)) 40px),
+        radial-gradient(circle at 20px 20px, var(--provider-grid-dot, rgba(55, 65, 81, 0.12)) 2px, transparent 2px),
+        radial-gradient(circle at 40px 40px, var(--provider-grid-dot, rgba(55, 65, 81, 0.12)) 2px, transparent 2px)
       `,
               backgroundSize: "40px 40px, 40px 40px, 40px 40px, 40px 40px",
             }}
