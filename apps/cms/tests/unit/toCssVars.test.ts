@@ -3,7 +3,7 @@ import { toCssVars } from "@/lib/theme/toCssVars"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 describe("toCssVars", () => {
-  it("resolves missing themes to product V2 defaults", () => {
+  it("resolves missing themes to canonical product defaults", () => {
     const css = toCssVars(undefined)
 
     expect(css).toContain(".rt-canvas{")
@@ -12,8 +12,9 @@ describe("toCssVars", () => {
     expect(css).toContain("--siab-neutral-900:#111827")
     expect(css).not.toMatch(/--color-indigo-\d+:/)
     expect(css).not.toMatch(/--color-gray-\d+:/)
-    expect(css).toContain("--font-sans:Inter Variable")
-    expect(css).toContain("--radius-3xl:1.5rem")
+    expect(css).toContain("--siab-font-body:Inter Variable")
+    expect(css).toContain("--font-sans:var(--siab-font-body)")
+    expect(css).toContain("--siab-radius-3xl:1.5rem")
     expect(css).not.toContain("--site-density")
     expect(css).not.toContain("--site-section-padding")
     expect(css).not.toContain("--site-style-preset")
@@ -31,8 +32,9 @@ describe("toCssVars", () => {
     expect(css).toContain("--color-accent:#059669")
     expect(css).toContain("--siab-accent-600:#059669")
     expect(css).not.toMatch(/--color-indigo-\d+:/)
-    expect(css).toContain("--font-heading:Fraunces Variable")
-    expect(css).toContain("--radius-md:0.375rem")
+    expect(css).toContain("--siab-font-heading:Fraunces Variable")
+    expect(css).toContain("--font-heading:var(--siab-font-heading)")
+    expect(css).toContain("--siab-radius-md:0.375rem")
     expect(css).toContain('.rt-canvas[data-rt-mode="dark"],html[data-siab-color-mode="dark"] .rt-canvas{')
   })
 
