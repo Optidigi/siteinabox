@@ -13,6 +13,7 @@ import inventory from "../providers/shadcnui-blocks/inventory.json" with { type:
 const root = new URL("../../../../", import.meta.url)
 const children = []
 const temporaryDirectories = []
+const supportsProcessGroups = process.platform !== "win32"
 const openPort = () => new Promise((resolve, reject) => {
   const server = createServer()
   server.unref()
@@ -24,13 +25,24 @@ const openPort = () => new Promise((resolve, reject) => {
 })
 const stopChild = async (child) => {
   if (child.exitCode !== null) return
-  child.kill("SIGTERM")
+  const signal = (name) => {
+    try {
+      if (supportsProcessGroups && child.pid) process.kill(-child.pid, name)
+      else child.kill(name)
+    } catch (error) {
+      if (error?.code !== "ESRCH") throw error
+    }
+  }
+  signal("SIGTERM")
   await Promise.race([once(child, "exit"), new Promise((resolve) => setTimeout(resolve, 5_000))])
-  if (child.exitCode === null) child.kill("SIGKILL")
+  if (child.exitCode === null) {
+    signal("SIGKILL")
+    await Promise.race([once(child, "exit"), new Promise((resolve) => setTimeout(resolve, 5_000))])
+  }
 }
 const start = async ({ command, args, cwd, env, ready }) => {
   let output = ""
-  const child = spawn(command, args, { cwd, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] })
+  const child = spawn(command, args, { cwd, detached: supportsProcessGroups, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] })
   child.stdout.on("data", (chunk) => { output += chunk })
   child.stderr.on("data", (chunk) => { output += chunk })
   children.push(child)
@@ -43,6 +55,16 @@ const start = async ({ command, args, cwd, env, ready }) => {
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   throw new Error(`Timed out starting parity server.\n${output}`)
+}
+const addStyleAfterNavigation = async (page, content) => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await page.addStyleTag({ content })
+    } catch (error) {
+      if (!/execution context was destroyed|navigation/i.test(String(error)) || attempt === 2) throw error
+      await page.waitForLoadState("domcontentloaded")
+    }
+  }
 }
 
 let upstreamOrigin = process.env.SHADCNUI_BLOCKS_REFERENCE_ORIGIN
@@ -121,8 +143,8 @@ try {
         // pixel diffs measure block DOM/classes/layout rather than font files.
           const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[style*='background-position']{background-position:0 0!important}img[class*='blur-']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
           await Promise.all([
-            reference.addStyleTag({ content: `nextjs-portal,.block-preview-wrapper .grow.bg-muted\\/50{display:none!important}.block-preview-wrapper{min-height:0!important;background:var(--background)!important}${deterministicFont}` }),
-            runtime.addStyleTag({ content: deterministicFont }),
+            addStyleAfterNavigation(reference, `nextjs-portal,.block-preview-wrapper .grow.bg-muted\\/50{display:none!important}.block-preview-wrapper{min-height:0!important;background:var(--background)!important}${deterministicFont}`),
+            addStyleAfterNavigation(runtime, deterministicFont),
           ])
           await runtime.evaluate(() => {
             const referenceRoot = document.querySelector("[data-provider-reference]")
@@ -221,5 +243,7 @@ try {
 } finally {
   await browser.close()
   await Promise.all(children.map(stopChild))
-  if (process.env.SIAB_KEEP_PROVIDER_PARITY !== "1") await Promise.all(temporaryDirectories.map((directory) => rm(directory, { recursive: true, force: true })))
+  if (process.env.SIAB_KEEP_PROVIDER_PARITY !== "1") {
+    await Promise.all(temporaryDirectories.map((directory) => rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })))
+  }
 }
