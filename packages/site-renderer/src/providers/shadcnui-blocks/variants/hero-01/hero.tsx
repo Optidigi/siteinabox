@@ -110,8 +110,8 @@ function DreamyBackground(props: SVGProps<SVGSVGElement>) {
           y1="200.271"
           y2="696.271"
         >
-          <stop stopColor="#5E8778" />
-          <stop offset="1" stopColor="#78FF86" />
+          <stop stopColor="var(--siab-accent-600)" />
+          <stop offset="1" stopColor="var(--siab-accent-300)" />
         </linearGradient>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -121,8 +121,8 @@ function DreamyBackground(props: SVGProps<SVGSVGElement>) {
           y1="288.346"
           y2="764.853"
         >
-          <stop stopColor="#575EFF" />
-          <stop offset="1" stopColor="#E478FF" />
+          <stop stopColor="var(--siab-accent-700)" />
+          <stop offset="1" stopColor="var(--siab-accent-400)" />
         </linearGradient>
       </defs>
     </svg>

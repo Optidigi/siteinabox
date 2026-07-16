@@ -197,7 +197,7 @@ for (const [slug, variant] of Object.entries(amicareVariants)) {
 export const SITE_BLOCK_CATALOG = SITE_BLOCK_SLUGS.map((slug): SiteBlockCatalogEntry => ({
   slug, label: slug, status: "approved", contractType: `${slug}Block`, runtimeValidationTarget: "SiteGenerationSpecSchema + provider slot validation",
   cmsEditableFields: fieldsBySlug[slug], renderer: { package: "@siteinabox/site-renderer", component: "ProviderBlockRenderer", output: "Pinned provider view" },
-  themeBehavior: ["reference-tokens", "scoped-custom-token-overrides"], fixtureCoverage: ["packages/site-renderer/src/providers/shadcnui-blocks/inventory.json"],
+  themeBehavior: ["reference-tokens", "scoped-semantic-preset-tokens"], fixtureCoverage: ["packages/site-renderer/src/providers/shadcnui-blocks/inventory.json"],
   variants: grouped.get(slug) ?? [], referenceSources: [SITE_BLOCK_REFERENCE_SOURCES.shadcnUiBlocks],
 }))
 export const SITE_GENERATION_BLOCK_CATALOG = SITE_BLOCK_CATALOG.filter((entry): entry is SiteBlockCatalogEntry & { slug: SiteGenerationBlockSlug } =>

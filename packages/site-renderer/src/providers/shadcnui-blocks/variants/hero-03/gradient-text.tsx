@@ -28,7 +28,7 @@ interface GradientTextProps {
 export default function GradientText({
   children,
   className = "",
-  colors = ["#5227FF", "#FF9FFC", "#B497CF"],
+  colors = ["var(--siab-accent-700)", "var(--siab-accent-400)", "var(--siab-accent-200)"],
   animationSpeed = 8,
   showBorder = false,
   direction = "horizontal",
@@ -126,11 +126,11 @@ export default function GradientText({
     >
       {showBorder && (
         <motion.div
-          className="pointer-events-none absolute inset-0 z-0 rounded-[1.25rem]"
+          className="pointer-events-none absolute inset-0 z-0 rounded-xl"
           style={{ ...gradientStyle, backgroundPosition }}
         >
           <div
-            className="absolute z-[-1] rounded-[1.25rem] bg-black"
+            className="absolute z-[-1] rounded-xl bg-black"
             style={{
               width: "calc(100% - 2px)",
               height: "calc(100% - 2px)",

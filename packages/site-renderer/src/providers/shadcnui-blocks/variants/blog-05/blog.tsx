@@ -110,7 +110,7 @@ export default function Blog() {
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {post.tags.map((tag) => (
                     <Badge
-                      className="bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/15 dark:text-indigo-400"
+                      className="bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary"
                       key={tag}
                     >
                       {tag}

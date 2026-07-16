@@ -24,6 +24,29 @@ This backlog was reset after the platform cleanup that removed obsolete
 generation flows and the provisional product app shell. Historical entries that
 depended on command-run site generation are no longer current source of truth.
 
+### 2026-07-16 token-completeness follow-up
+
+**Status:** Implemented and locally verified; deployment is a separate operator action.
+
+The provider theme boundary remains intentionally preset-only: blocks own UI,
+the CMS owns structured content, and the tenant theme owns appearance, semantic
+colors, deterministic self-hosted fonts, and exact component radii. The shared
+resolver now exposes status, rating, chart, overlay, on-media, font-role, and
+radius-role variables as well as the existing surface/accent roles. Imported
+tenant views replace ordinary upstream fixed palettes and radii with those
+roles. The independently generated reference views retain the pinned upstream
+classes so visual-parity evidence is not weakened by tenant adaptations.
+
+All 156 imported variants and all namespaced provider primitives are covered by
+a source audit. Only exact reviewed brand artwork, authored illustrations,
+non-visible masks, structural micro-details, and on-media contrast values may
+remain fixed, and each is recorded in the hashed machine-readable
+`token-exceptions.json`. Browser coverage verifies two contrasting approved
+themes, all light/dark desktop/mobile viewports, hydration, interactions,
+overflow, and accessibility smoke rules. No density setting, arbitrary token
+map, per-variant theme schema, runtime React-tree rewrite, or new CMS theme
+control was introduced.
+
 ## Current State
 
 - The CMS remains the tenant/content authority.
@@ -496,7 +519,7 @@ and 386 explained exclusions. The structured browser suite hydrates all 156
 content, chrome and system variants without console/page/network failures and
 checks accessibility and available interactions. The self-contained pixel suite matches all 156
 imported variants at fixed desktop/mobile viewports in light/dark mode with only
-a 0.001% antialias tolerance and no intentional layout deviations. The complete
+a 0.01% antialias tolerance and no intentional layout deviations. The complete
 Payload migration chain also applies successfully to an isolated fresh local
 database; the read-only audited legacy database remains untouched.
 

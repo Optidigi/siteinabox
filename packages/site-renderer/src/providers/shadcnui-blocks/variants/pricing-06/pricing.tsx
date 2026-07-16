@@ -89,7 +89,7 @@ const Pricing = () => {
             <ul className="space-y-2">
               {plan.features.map((feature) => (
                 <li className="flex items-start gap-2" key={feature}>
-                  <CircleCheck className="mt-1 h-4 w-4 text-green-600" />
+                  <CircleCheck className="mt-1 h-4 w-4 text-success" />
                   {feature}
                 </li>
               ))}

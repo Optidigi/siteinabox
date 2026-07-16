@@ -35,12 +35,19 @@ test("every active structured slot has one explicit literal or direct binding", 
   }
 })
 
+test("the generated browser loader covers each structured variant exactly once", async () => {
+  const source = await readFile(new URL("packages/site-renderer/src/providers/shadcnui-blocks/block-client-loaders.generated.ts", root), "utf8")
+  const ids = [...source.matchAll(/^  "([^"]+)": \(\) => import\(/gm)].map((match) => match[1]).sort()
+  const expected = inventory.variants.filter((entry) => entry.role === "block").map((entry) => entry.id).sort()
+  assert.deepEqual(ids, expected)
+})
+
 test("vendored registry, license, primitives and literal provider files retain recorded hashes", async () => {
   const registry = await readFile(new URL("packages/site-renderer/src/providers/shadcnui-blocks/registry-radix.json", root))
   assert.equal(sha256(registry), inventory.registryHash)
   const license = await readFile(new URL("packages/site-renderer/src/providers/shadcnui-blocks/LICENSE", root), "utf8")
   assert.match(license, /MIT License/)
-  for (const entry of [...inventory.compatibilityPrimitives, ...(inventory.providerRuntimeFiles ?? []), ...inventory.variants.flatMap((variant) => [...variant.sourceFiles, ...(variant.adaptedFiles ?? [])])]) {
+  for (const entry of [...inventory.compatibilityPrimitives, ...(inventory.providerRuntimeFiles ?? []), ...inventory.variants.flatMap((variant) => [...variant.sourceFiles, ...(variant.adaptedFiles ?? []), ...(variant.referenceFiles ?? [])])]) {
     const source = await readFile(new URL(entry.path, root))
     assert.equal(sha256(source), entry.sha256, entry.path)
   }
@@ -48,6 +55,7 @@ test("vendored registry, license, primitives and literal provider files retain r
     assert.ok(variant.adaptedFiles.some((entry) => entry.path.endsWith("/view.tsx")), `${variant.id} view`)
     assert.equal(variant.adaptedFiles.some((entry) => entry.path.endsWith("/adapter.ts")), false, `${variant.id} has no pass-through adapter`)
   }
+  for (const variant of inventory.variants) assert.ok(variant.referenceFiles?.length, `${variant.id} reference files`)
 })
 
 test("adapted literal copies cannot load upstream demo data or assets", async () => {

@@ -81,11 +81,11 @@ const Testimonials = () => (
               key={testimonial.id}
             >
               <div className="flex items-center justify-center gap-1">
-                <StarIcon className="h-6 w-6 fill-yellow-500 stroke-yellow-500" />
-                <StarIcon className="h-6 w-6 fill-yellow-500 stroke-yellow-500" />
-                <StarIcon className="h-6 w-6 fill-yellow-500 stroke-yellow-500" />
-                <StarIcon className="h-6 w-6 fill-yellow-500 stroke-yellow-500" />
-                <StarIcon className="h-6 w-6 fill-yellow-500 stroke-yellow-500" />
+                <StarIcon className="h-6 w-6 fill-rating stroke-rating" />
+                <StarIcon className="h-6 w-6 fill-rating stroke-rating" />
+                <StarIcon className="h-6 w-6 fill-rating stroke-rating" />
+                <StarIcon className="h-6 w-6 fill-rating stroke-rating" />
+                <StarIcon className="h-6 w-6 fill-rating stroke-rating" />
               </div>
               <p className="my-6 max-w-md text-pretty text-center text-[17px]">
                 {testimonial.testimonial}

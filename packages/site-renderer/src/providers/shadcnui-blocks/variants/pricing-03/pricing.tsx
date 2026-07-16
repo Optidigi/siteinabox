@@ -144,12 +144,12 @@ const Pricing = () => {
             <ul className="space-y-2">
               {plan.features.map((feature) => (
                 <li className="flex items-start gap-1.5" key={feature.title}>
-                  <CircleCheck className="mt-1 h-4 w-4 text-green-600" />
+                  <CircleCheck className="mt-1 h-4 w-4 text-success" />
                   {feature.title}
                   {feature.tooltip && (
                     <Tooltip>
                       <TooltipTrigger aria-label="More information" className="cursor-help">
-                        <CircleHelp className="mt-1 h-4 w-4 text-gray-500" />
+                        <CircleHelp className="mt-1 h-4 w-4 text-muted-foreground" />
                       </TooltipTrigger>
                       <TooltipContent>{feature.tooltip}</TooltipContent>
                     </Tooltip>

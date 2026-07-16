@@ -26,9 +26,9 @@ export default function Hero() {
             animationSpeed={2}
             className="border-b-2 border-dotted sm:border-b-3"
             colors={[
-              "var(--color-purple-500)",
-              "var(--color-indigo-400)",
-              "var(--color-sky-500)",
+              "var(--siab-accent-700)",
+              "var(--siab-accent-400)",
+              "var(--siab-accent-200)",
             ]}
             direction="diagonal"
           >
@@ -49,7 +49,7 @@ export default function Hero() {
            asChild><ProviderAction field="secondary" fallback={"Watch Demo"} decoration="before"><CirclePlay className="h-5! w-5!" /></ProviderAction></Button>
         </div>
       </div>
-      <div className="relative mx-auto mt-20 aspect-video w-full max-w-(--breakpoint-xl) rounded-xl bg-linear-to-br from-indigo-400/90 via-indigo-300 to-sky-400/80 p-2">
+      <div className="relative mx-auto mt-20 aspect-video w-full max-w-(--breakpoint-xl) rounded-xl bg-linear-to-br from-primary/90 via-primary/60 to-accent p-2">
         <div className="size-full rounded-lg bg-background" />
         <div
           className="absolute inset-0 isolate z-0"
@@ -101,7 +101,7 @@ export default function Hero() {
       </div>
 
       <div
-        className="fixed inset-0 isolate -z-1 h-screen [--color-hero-bg:var(--color-indigo-600)] dark:[--color-hero-bg:var(--color-indigo-500)]"
+        className="fixed inset-0 isolate -z-1 h-screen [--color-hero-bg:var(--siab-accent-700)] dark:[--color-hero-bg:var(--siab-accent-600)]"
         style={{
           background:
             "radial-gradient(125% 125% at 50% 10%, var(--color-background) 40%, var(--color-hero-bg) 100%)",

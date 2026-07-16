@@ -1,8 +1,16 @@
 import * as React from "react"
 import { renderToString } from "react-dom/server"
 import { defineMiddleware } from "astro:middleware"
+import {
+  COLOR_SCHEME_IDS,
+  FONT_SCHEME_IDS,
+  SHAPE_SCHEME_IDS,
+  type ThemeTokenSpec,
+} from "@siteinabox/contracts"
 
 const jsonForHtml = (value: unknown) => JSON.stringify(value).replaceAll("<", "\\u003c")
+const approvedValue = <T extends readonly string[]>(values: T, value: string, fallback: T[number]): T[number] =>
+  values.includes(value as T[number]) ? value as T[number] : fallback
 
 export const onRequest = defineMiddleware(async (context, next) => {
   if (!import.meta.env.DEV || context.url.pathname !== "/provider-parity") return next()
@@ -53,8 +61,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
     : React.createElement(ShadcnUiExplicitBlockView, props as any))
   const mode = context.url.searchParams.get("mode") === "dark" ? "dark" : "light"
   const preference = context.url.searchParams.get("preference") === "system" ? "system" : mode
-  const hydration = `<script id="provider-parity-props" type="application/json">${jsonForHtml(props)}</script><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true</script><script type="module" src="/src/smoke/provider-parity-client.tsx"></script><script type="module" src="/src/client/site-behavior.ts"></script>`
-  return new Response(`<!doctype html><html lang="en" data-siab-theme-mode="${preference}" data-siab-color-mode="${mode}" data-rt-mode="${mode}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"><link rel="stylesheet" href="/src/styles/site.css"><style>${themeToCssVars(undefined, ":root")}</style><title>${variant.id}</title></head><body class="m-0 min-w-80 bg-background text-foreground"><div id="provider-parity-root" class="site-frame-root">${body}</div>${hydration}</body></html>`, {
+  const requestedColors = context.url.searchParams.get("colors") ?? "blue-professional"
+  const requestedFonts = context.url.searchParams.get("fonts") ?? "clear-modern"
+  const requestedShape = context.url.searchParams.get("shape") ?? "soft"
+  const theme = {
+    version: 3 as const,
+    appearance: { mode: preference },
+    colors: { schemeId: approvedValue(COLOR_SCHEME_IDS, requestedColors, "blue-professional") },
+    fonts: { schemeId: approvedValue(FONT_SCHEME_IDS, requestedFonts, "clear-modern") },
+    shape: { schemeId: approvedValue(SHAPE_SCHEME_IDS, requestedShape, "soft") },
+  } satisfies ThemeTokenSpec
+  const hydrationClient = reference ? "/src/smoke/provider-reference-client.tsx" : "/src/smoke/provider-parity-client.tsx"
+  const hydration = `<script id="provider-parity-props" type="application/json">${jsonForHtml(props)}</script><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true</script><script type="module" src="${hydrationClient}"></script><script type="module" src="/src/client/site-behavior.ts"></script>`
+  return new Response(`<!doctype html><html lang="en" data-siab-theme-mode="${preference}" data-siab-color-mode="${mode}" data-rt-mode="${mode}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"><link rel="stylesheet" href="/src/styles/site.css"><style>${themeToCssVars(theme, ":root")}</style><title>${variant.id}</title></head><body class="m-0 min-w-80 bg-background text-foreground"><div id="provider-parity-root" class="site-frame-root">${body}</div>${hydration}</body></html>`, {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   })
 })

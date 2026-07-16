@@ -20,10 +20,11 @@ export default defineConfig({
   }),
   vite: {
     cacheDir: process.env.SIAB_VITE_CACHE_DIR,
-    // The provider parity client reaches this dependency through the linked
-    // site-renderer workspace. Pre-bundle it before the first browser request
-    // so Vite never invalidates that request with "Outdated Optimize Dep".
-    optimizeDeps: { include: ['@number-flow/react'] },
+    // The provider parity client reaches these dependencies through linked
+    // workspaces and the shared site behavior entry. Pre-bundle them before
+    // the first browser request so Vite cannot invalidate an in-flight catalog
+    // check when it discovers the analytics or animated-number imports.
+    optimizeDeps: { include: ['@number-flow/react', 'posthog-js', 'web-vitals'] },
     plugins: [tailwindcss()],
   },
   build: {

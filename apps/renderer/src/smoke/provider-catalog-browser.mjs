@@ -28,7 +28,15 @@ try {
       const context = await browser.newContext({ colorScheme: "dark", viewport: { width: 1440, height: 1200 } })
       const page = await context.newPage()
       await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.navbar-02&mode=light&preference=system`, { waitUntil: "load", timeout: 60_000 })
-      await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "dark")
+      // The first browser request triggers Vite's one-time dependency
+      // optimization/HMR cycle. Let that replacement document hydrate before
+      // asserting pre-paint and media-query state.
+      await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 }).catch((error) => {
+        throw new Error(`Provider browser warm-up did not hydrate.\n${output}`, { cause: error })
+      })
+      await page.waitForTimeout(1_000)
+      await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 })
+      await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "dark", undefined, { timeout: 60_000 })
       const darkBackground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background"))
       await page.emulateMedia({ colorScheme: "light" })
       await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "light")
@@ -49,6 +57,77 @@ try {
   const requestedVariant = process.env.SIAB_PROVIDER_VARIANT
   const variants = requestedVariant ? catalogVariants.filter((variant) => variant.id === requestedVariant) : catalogVariants
   assert.ok(variants.length, `Unknown SIAB_PROVIDER_VARIANT ${requestedVariant}`)
+  for (let offset = 0; offset < variants.length; offset += 8) {
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 1440, height: 1200 }, colorScheme: "light" })
+      const tokenFailures = []
+      page.on("console", (message) => {
+        if (message.type() === "error") tokenFailures.push(`console: ${message.text()}`)
+      })
+      page.on("pageerror", (error) => tokenFailures.push(`page: ${error.message}`))
+      page.on("response", (response) => {
+        if (response.status() >= 400) tokenFailures.push(`response: ${response.status()} ${response.url()}`)
+      })
+      page.on("requestfailed", (request) => tokenFailures.push(`request: ${request.failure()?.errorText ?? "failed"} ${request.url()}`))
+      const readTokens = () => page.evaluate(() => {
+        const root = document.querySelector("[data-provider-variant]")
+        if (!root) throw new Error("Missing provider token root")
+        const style = getComputedStyle(root)
+        const heading = root.querySelector("h1, h2, h3, h4, h5, h6")
+        const shaped = [...new Set([...root.querySelectorAll("*")].flatMap((element) => {
+          const classes = typeof element.className === "string" ? element.className : ""
+          if (/\*:[^\s]*rounded-(?:sm|md|lg|xl|2xl|3xl|4xl)\b/.test(classes)) return [...element.children]
+          if (/\brounded-(?:full|none)\b/.test(classes)) return []
+          return /\brounded-(?:sm|md|lg|xl|2xl|3xl|4xl)\b/.test(classes) || /rounded-\[[^\]]*var\(--(?:siab-)?radius-/.test(classes) ? [element] : []
+        }))]
+        return {
+          primary: style.getPropertyValue("--primary").trim(),
+          success: style.getPropertyValue("--success").trim(),
+          chart1: style.getPropertyValue("--chart-1").trim(),
+          radius: style.getPropertyValue("--siab-radius-lg").trim(),
+          bodyFont: style.fontFamily,
+          headingFont: heading ? getComputedStyle(heading).fontFamily : null,
+          shapedRadii: shaped.map((element) => {
+            const style = getComputedStyle(element)
+            return [style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomRightRadius, style.borderBottomLeftRadius]
+          }),
+        }
+      })
+      for (const variant of variants.slice(offset, offset + 8)) {
+        tokenFailures.length = 0
+        await page.goto(`${origin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=light&colors=emerald-calm&fonts=friendly-organic&shape=rounded`, { waitUntil: "load", timeout: 60_000 })
+        await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 }).catch(async (error) => {
+          const state = await page.evaluate(() => ({ url: location.href, body: document.body.innerText.slice(0, 500) })).catch(() => null)
+          throw new Error(`${variant.id} did not hydrate under the rounded token preset.\n${JSON.stringify(state)}\n${tokenFailures.join("\n")}\n${output}`, { cause: error })
+        })
+        const rounded = await readTokens()
+        await page.goto(`${origin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=light&colors=red-confident&fonts=classic-editorial&shape=sharp`, { waitUntil: "load", timeout: 60_000 })
+        await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 }).catch(async (error) => {
+          const state = await page.evaluate(() => ({ url: location.href, body: document.body.innerText.slice(0, 500) })).catch(() => null)
+          throw new Error(`${variant.id} did not hydrate under the sharp token preset.\n${JSON.stringify(state)}\n${tokenFailures.join("\n")}\n${output}`, { cause: error })
+        })
+        const sharp = await readTokens()
+        assert.notEqual(rounded.primary, sharp.primary, `${variant.id} resolves tenant accent colors`)
+        assert.notEqual(rounded.chart1, sharp.chart1, `${variant.id} resolves tenant chart colors`)
+        assert.ok(rounded.success && sharp.success, `${variant.id} resolves semantic status colors`)
+        assert.notEqual(rounded.radius, sharp.radius, `${variant.id} resolves tenant shape`)
+        assert.match(rounded.bodyFont, /Nunito/i, `${variant.id} applies the deterministic body font`)
+        assert.match(sharp.bodyFont, /Fraunces/i, `${variant.id} applies the selected body font`)
+        if (rounded.headingFont && sharp.headingFont) {
+          assert.match(rounded.headingFont, /Nunito/i, `${variant.id} applies the deterministic heading font`)
+          assert.match(sharp.headingFont, /Fraunces/i, `${variant.id} applies the selected heading font`)
+        }
+        if (rounded.shapedRadii.length) {
+          assert.ok(rounded.shapedRadii.flat().some((radius) => radius !== "0px"), `${variant.id} renders its rounded shape preset`)
+          assert.ok(sharp.shapedRadii.flat().every((radius) => radius === "0px"), `${variant.id} renders non-circular UI square under the sharp preset`)
+        }
+        assert.deepEqual(tokenFailures, [], `${variant.id} token response browser errors`)
+      }
+    } finally {
+      await browser.close()
+    }
+  }
   const viewports = [
     { name: "desktop-light", width: 1440, height: 1200, mode: "light" },
     { name: "desktop-dark", width: 1440, height: 1200, mode: "dark" },
@@ -144,7 +223,7 @@ try {
       await browser.close()
     }
   }
-  console.log(`Browser-rendered, hydrated and interaction-checked ${variants.length} provider variants at four desktop/mobile light/dark viewports.`)
+  console.log(`Browser-rendered, token-switched, hydrated and interaction-checked ${variants.length} provider variants at four desktop/mobile light/dark viewports.`)
 } finally {
   if (child.exitCode === null) {
     child.kill("SIGTERM")

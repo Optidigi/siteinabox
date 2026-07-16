@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "provider": "shadcnui-blocks",
+  "policy": "Tenant UI must use semantic tokens. Only brand assets, non-visible masks, on-media contrast, structural shadows, and authored illustrations may retain literal visual values.",
+  "exceptions": [
+    {
+      "variantPattern": "logo-cloud-*",
+      "file": "logos.tsx",
+      "category": "brand-asset",
+      "values": "*",
+      "reason": "Company marks retain their official brand colors and are not tenant-theme artwork."
+    },
+    {
+      "variant": "hero-08",
+      "file": "logos.tsx",
+      "category": "brand-asset",
+      "values": ["fill=\"white\""],
+      "reason": "The white rectangle is part of the embedded customer logo artwork, not provider UI chrome."
+    },
+    {
+      "variant": "features-06",
+      "file": "features.tsx",
+      "category": "authored-illustration",
+      "values": ["#000", "#fff", "fill=\"gray\""],
+      "reason": "Black masks and white vector layers define the pinned abstract illustration; its surrounding gradient is tenant-tokenized."
+    },
+    {
+      "variant": "hero-03",
+      "file": "gradient-text.tsx",
+      "category": "on-media-contrast",
+      "values": ["bg-black"],
+      "reason": "The black backing layer is required by the animated gradient-text effect; the visible gradient uses tenant accent tokens."
+    },
+    {
+      "variant": "hero-03",
+      "file": "hero.tsx",
+      "category": "non-visible-mask",
+      "values": ["#000"],
+      "reason": "Black is used only in the radial mask."
+    },
+    {
+      "variant": "hero-06",
+      "file": "background-pattern.tsx",
+      "category": "authored-illustration",
+      "values": ["#000", "#fff", "rgba(0,0,0,0.3)"],
+      "reason": "The canvas particle effect requires concrete RGB colors and the rgba value is a non-visible mask."
+    },
+    {
+      "variant": "hero-06",
+      "file": "particles.tsx",
+      "category": "authored-illustration",
+      "values": ["#ffffff"],
+      "reason": "The canvas implementation requires a parseable concrete fallback; the caller selects light/dark contrast."
+    },
+    {
+      "variant": "pricing-04",
+      "file": "pricing.tsx",
+      "category": "structural-shadow",
+      "values": ["rgba(0,0,0,0.07)"],
+      "reason": "The subtle elevation shadow is structural rather than a tenant palette color."
+    },
+    {
+      "variant": "cta-02",
+      "file": "cta.tsx",
+      "category": "on-media-contrast",
+      "values": ["from-black", "to-black/50", "text-white", "text-white/85", "bg-white", "text-black", "ring-white/30", "bg-white/90"],
+      "reason": "The CTA overlays arbitrary CMS media and requires invariant readable foreground and controls."
+    },
+    {
+      "variant": "cta-05",
+      "file": "cta.tsx",
+      "category": "authored-illustration",
+      "values": ["border-white/40", "bg-white/10", "fill-white/10", "text-white/80", "border-white/60", "border-white/80", "text-black/85", "text-black/70", "bg-neutral-950", "text-white", "bg-neutral-950/90", "bg-white/50", "text-black", "bg-white/80", "#FFAB91", "#FFCDD2", "#FCE4EC", "#e2daf1", "#b39ddb", "#8b6ac8"],
+      "reason": "The pastel panel and its invariant contrast system are the authored visual identity of this variant; its grid rules are tenant-tokenized."
+    },
+    {
+      "variant": "cta-06",
+      "file": "cta.tsx",
+      "category": "authored-illustration",
+      "values": ["rgba(0, 0, 0, 0.08)", "rgba(0, 0, 0, 0.5)", "rgba(255, 255, 255, 0.85)"],
+      "reason": "The shader library requires concrete light/dark RGB inputs and cannot consume CSS variables."
+    },
+    {
+      "variant": "cta-07",
+      "file": "cta.tsx",
+      "category": "authored-illustration",
+      "values": ["fill-indigo-500", "fill-purple-300", "fill-indigo-400", "#fff", "#FF6C02", "fill=\"gray\""],
+      "reason": "These values belong to the pinned multicolor vector illustration, not ordinary CTA controls."
+    },
+    {
+      "variantPattern": "features-1[34]",
+      "file": "features.tsx",
+      "category": "non-visible-mask",
+      "values": ["#000"],
+      "reason": "Black is used only as a CSS radial mask."
+    },
+    {
+      "variant": "faq-12",
+      "file": "faq.tsx",
+      "category": "non-visible-mask",
+      "values": ["#000"],
+      "reason": "Black is used only as a CSS radial mask."
+    },
+    {
+      "variantPattern": "(logo-cloud-15|pricing-09)",
+      "file": "border-beam.tsx",
+      "category": "non-visible-mask",
+      "values": ["#000"],
+      "reason": "Black exists only in the border-beam mask; the visible beam colors use tenant accent tokens."
+    },
+    {
+      "variant": "stats-06",
+      "file": "stats.tsx",
+      "category": "authored-illustration",
+      "values": ["fill-red-400/20", "fill-red-400", "#e0e0e0", "#FF725E", "#263238", "#455a64", "#ffbe9d", "#fff", "fill=\"gray\""],
+      "reason": "The statistic cards use chart tokens; these remaining values belong only to the embedded character illustration."
+    },
+    {
+      "variant": "stats-08",
+      "file": "stats.tsx",
+      "category": "authored-illustration",
+      "values": ["#fff", "#FF6C02", "#FFC700", "#07FFE1", "#06F", "#FF37BB", "#0E6FFF", "#8F5BFF", "#00F0FF", "#FF3216", "#FF58E4", "#FFE500", "fill=\"gray\""],
+      "reason": "The values define the pinned multicolor animated vector artwork."
+    },
+    {
+      "variant": "not-found-03",
+      "file": "not-found.tsx",
+      "category": "authored-illustration",
+      "values": ["bg-neutral-950", "bg-pink-500/20", "bg-cyan-500/20", "#fff", "#FFF500", "#FF00D6", "#07FFE1", "#06F", "#FFD749", "#FF1F00", "#FFD600", "oklch(0.145_0_0/0.6)", "fill=\"gray\""],
+      "reason": "The neon 404 artwork deliberately retains its authored palette; surrounding text and actions remain semantic."
+    },
+    {
+      "variant": "not-found-07",
+      "file": "glitch-text.tsx",
+      "category": "on-media-contrast",
+      "values": ["text-white"],
+      "reason": "The white pseudo-element is an invariant glitch highlight over the dark effect layer."
+    }
+  ],
+  "primitiveExceptions": [
+    {
+      "file": "particles.tsx",
+      "category": "authored-illustration",
+      "values": ["#ffffff"],
+      "reason": "Canvas RGB parsing requires a concrete default color."
+    },
+    {
+      "file": "tooltip.tsx",
+      "category": "structural-radius",
+      "values": ["rounded-[2px]"],
+      "reason": "The rotated tooltip arrow needs a fixed micro-radius independent of site component shape."
+    },
+    {
+      "file": "chart.tsx",
+      "category": "structural-marker",
+      "values": ["#ccc", "#fff", "rounded-[2px]"],
+      "reason": "Hex values occur only in Recharts selector matching and the fixed radius belongs to tiny legend markers."
+    }
+  ]
+}

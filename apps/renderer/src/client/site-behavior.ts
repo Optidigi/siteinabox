@@ -72,7 +72,8 @@ const consentConfig = readConsentConfig()
 if (consentBanner && hasCurrentConsent(consentConfig)) consentBanner.hidden = true
 
 document.addEventListener("click", (event) => {
-  const navigationToggle = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-navbar-toggle]")
+  const target = event.target instanceof Element ? event.target : null
+  const navigationToggle = target?.closest<HTMLButtonElement>("[data-navbar-toggle]")
   if (navigationToggle) {
     const root = navigationToggle.closest<HTMLElement>("[data-provider-mobile-navigation]")
     const panel = root?.querySelector<HTMLElement>("[data-navbar-panel]")
@@ -84,7 +85,7 @@ document.addEventListener("click", (event) => {
     return
   }
 
-  const themeToggle = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-theme-toggle]")
+  const themeToggle = target?.closest<HTMLButtonElement>("[data-theme-toggle]")
   if (themeToggle) {
     const current = normalizeColorMode(root.dataset.siabColorMode) ?? "light"
     writeStoredColorMode(storage(), current === "dark" ? "light" : "dark")
@@ -92,14 +93,14 @@ document.addEventListener("click", (event) => {
     return
   }
 
-  const dismiss = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-banner-dismiss]")
+  const dismiss = target?.closest<HTMLButtonElement>("[data-banner-dismiss]")
   if (dismiss) {
     const banner = dismiss.closest<HTMLElement>("[data-provider-variant^='shadcnui-blocks.banner-']")
     if (banner) banner.hidden = true
     return
   }
 
-  const button = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-siab-cookie-consent='true'] [data-consent-action]")
+  const button = target?.closest<HTMLButtonElement>("[data-siab-cookie-consent='true'] [data-consent-action]")
   if (!button) return
   const accepted = button.dataset.consentAction === "accept"
   const banner = button.closest<HTMLElement>("[data-siab-cookie-consent='true']")
@@ -147,7 +148,9 @@ function isManagedPostForm(form: HTMLFormElement) {
 }
 
 document.addEventListener("submit", async (event) => {
-  const form = (event.target as Element | null)?.closest(managedFormSelector) as HTMLFormElement | null
+  const form = event.target instanceof Element
+    ? event.target.closest<HTMLFormElement>(managedFormSelector)
+    : null
   if (!form || !isManagedPostForm(form)) return
   event.preventDefault()
 

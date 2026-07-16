@@ -117,7 +117,35 @@ const defaultLight: ProviderColorSchemeMode = {
 
 const modernSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
 const editorialSerifStack = "Fraunces Variable, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
-const humanistSansStack = "\"Avenir Next\", Avenir, Nunito, \"Segoe UI\", ui-sans-serif, system-ui, sans-serif"
+const humanistSansStack = "\"Nunito Variable\", Nunito, ui-sans-serif, system-ui, sans-serif"
+
+type SemanticColors = {
+  destructive: string
+  destructiveForeground: string
+  success: string
+  successForeground: string
+  warning: string
+  warningForeground: string
+  rating: string
+  charts: readonly [string, string, string, string, string]
+  overlay: string
+  onMedia: string
+}
+
+const semanticColors = (accent: ColorRamp, dark: boolean): SemanticColors => ({
+  destructive: dark ? "#f87171" : "#dc2626",
+  destructiveForeground: "#ffffff",
+  success: dark ? "#34d399" : "#059669",
+  successForeground: dark ? (gray[950] ?? "#030712") : "#ffffff",
+  warning: dark ? "#fbbf24" : "#d97706",
+  warningForeground: gray[950] ?? "#030712",
+  rating: dark ? "#fcd34d" : "#eab308",
+  charts: dark
+    ? [accent[400], "#34d399", "#fbbf24", "#f87171", "#a78bfa"]
+    : [accent[600], "#059669", "#d97706", "#dc2626", "#7c3aed"],
+  overlay: dark ? "rgba(0,0,0,0.64)" : "rgba(0,0,0,0.56)",
+  onMedia: "#ffffff",
+})
 
 const defaultDark: ProviderColorSchemeMode = {
   neutral: grayDark,
@@ -195,6 +223,7 @@ export type ResolvedTheme = {
   dark: ProviderColorSchemeMode
   fonts: FontScheme
   shape: ShapeScheme
+  semantic: { light: SemanticColors; dark: SemanticColors }
 }
 
 export function resolveThemeTokens(theme: ThemeTokenSpec | null | undefined): ResolvedTheme {
@@ -208,5 +237,6 @@ export function resolveThemeTokens(theme: ThemeTokenSpec | null | undefined): Re
     dark: scheme.dark,
     fonts,
     shape: shapeSchemes[theme?.shape?.schemeId as keyof typeof shapeSchemes] ?? shapeSchemes.soft,
+    semantic: { light: semanticColors(scheme.light.accent, false), dark: semanticColors(scheme.dark.accent, true) },
   }
 }

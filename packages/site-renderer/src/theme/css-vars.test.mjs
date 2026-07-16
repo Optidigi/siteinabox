@@ -12,11 +12,36 @@ test("reference-token mode preserves the exact upstream light and dark tokens", 
 })
 
 test("tenant tokens remain root-scoped and do not rewrite literal provider classes", () => {
-  const css = themeToCssVars({ version: 3, colors: { schemeId: "red-bold" } })
+  const css = themeToCssVars({ version: 3, appearance: { mode: "light" }, colors: { schemeId: "red-confident" }, fonts: { schemeId: "clear-modern" }, shape: { schemeId: "soft" } })
   assert.match(css, /^\.rt-canvas\{/)
-  assert.match(css, /--color-accent:#4f46e5/)
+  assert.match(css, /--color-accent:#dc2626/)
+  for (const token of ["destructive", "success", "warning", "rating", "chart-1", "chart-2", "chart-3", "chart-4", "chart-5", "overlay", "on-media"]) {
+    assert.match(css, new RegExp(`--${token}:`))
+  }
   assert.doesNotMatch(css, /class~/)
   assert.doesNotMatch(css, /data-provider-variant/)
+})
+
+test("every approved font and shape preset emits deterministic role variables", () => {
+  const fonts = [
+    ["clear-modern", "Inter Variable"],
+    ["classic-editorial", "Fraunces Variable"],
+    ["friendly-organic", "Nunito Variable"],
+  ]
+  const shapes = [
+    ["rounded", "--siab-radius-lg:1.25rem"],
+    ["soft", "--siab-radius-lg:0.5rem"],
+    ["sharp", "--siab-radius-lg:0"],
+  ]
+  for (const [font, expected] of fonts) for (const [shape, radius] of shapes) {
+    const css = themeToCssVars({ version: 3, appearance: { mode: "light" }, colors: { schemeId: "emerald-calm" }, fonts: { schemeId: font }, shape: { schemeId: shape } })
+    assert.ok(css.includes(expected), `${font} emits ${expected}`)
+    assert.ok(css.includes(radius), `${shape} emits ${radius}`)
+    assert.match(css, /--siab-font-body:/)
+    assert.match(css, /--siab-font-heading:/)
+    assert.match(css, /--siab-font-display:/)
+    assert.match(css, /--siab-font-mono:/)
+  }
 })
 
 test("resolved mode drives tenant, public-root and native browser colors", () => {

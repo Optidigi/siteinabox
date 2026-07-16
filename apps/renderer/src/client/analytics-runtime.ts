@@ -458,8 +458,8 @@ const captureJourneyStep = (step: string, properties: Record<string, unknown> = 
   })
 }
 
-const closestSection = (target: Element | null) =>
-  target?.closest("[data-siab-analytics-section='true']") ?? null
+const closestSection = (target: EventTarget | null) =>
+  target instanceof Element ? target.closest("[data-siab-analytics-section='true']") : null
 
 const captureSectionEngaged = (section: Element) => {
   if (state.engagedSections.has(section)) return
@@ -511,8 +511,8 @@ const componentRole = (element: Element) => {
   return element.getAttribute("data-siab-action-role") || "unknown"
 }
 
-const trackedAction = (target: Element | null) =>
-  target?.closest("a,button") as HTMLAnchorElement | HTMLButtonElement | null
+const trackedAction = (target: EventTarget | null) =>
+  target instanceof Element ? target.closest<HTMLAnchorElement | HTMLButtonElement>("a,button") : null
 
 const actionKey = (
   action: HTMLAnchorElement | HTMLButtonElement,
@@ -646,7 +646,7 @@ const observeComponents = () => {
 const setupDelegatedListeners = () => {
   document.addEventListener("pointerenter", (event) => {
     if ((event as PointerEvent).pointerType === "touch") return
-    const action = trackedAction(event.target as Element | null)
+    const action = trackedAction(event.target)
     if (!action) return
     const stats = componentStats(action)
     if (stats.hoverStartedAt == null) stats.hoverStartedAt = performance.now()
@@ -654,7 +654,7 @@ const setupDelegatedListeners = () => {
 
   document.addEventListener("pointerleave", (event) => {
     if ((event as PointerEvent).pointerType === "touch") return
-    const action = trackedAction(event.target as Element | null)
+    const action = trackedAction(event.target)
     if (!action) return
     const stats = componentStats(action)
     if (stats.hoverStartedAt == null) return
@@ -663,14 +663,14 @@ const setupDelegatedListeners = () => {
   }, { capture: true })
 
   document.addEventListener("focusin", (event) => {
-    const action = trackedAction(event.target as Element | null)
+    const action = trackedAction(event.target)
     if (!action) return
     const stats = componentStats(action)
     if (stats.hoverStartedAt == null) stats.hoverStartedAt = performance.now()
   })
 
   document.addEventListener("focusout", (event) => {
-    const action = trackedAction(event.target as Element | null)
+    const action = trackedAction(event.target)
     if (!action) return
     const stats = componentStats(action)
     if (stats.hoverStartedAt == null) return
@@ -679,7 +679,7 @@ const setupDelegatedListeners = () => {
   })
 
   document.addEventListener("click", (event) => {
-    const target = event.target as Element | null
+    const target = event.target
     const action = trackedAction(target)
     const section = closestSection(target)
     if (section) captureSectionEngaged(section)
@@ -714,7 +714,7 @@ const setupDelegatedListeners = () => {
   }, { capture: true })
 
   document.addEventListener("focusin", (event) => {
-    const form = (event.target as Element | null)?.closest("form[data-siab-analytics-form='true']") as HTMLFormElement | null
+    const form = event.target instanceof Element ? event.target.closest<HTMLFormElement>("form[data-siab-analytics-form='true']") : null
     if (!form || state.startedForms.has(form)) return
     state.startedForms.add(form)
     const section = closestSection(form)
@@ -730,7 +730,7 @@ const setupDelegatedListeners = () => {
   })
 
   document.addEventListener("submit", (event) => {
-    const form = (event.target as Element | null)?.closest("form[data-siab-analytics-form='true']") as HTMLFormElement | null
+    const form = event.target instanceof Element ? event.target.closest<HTMLFormElement>("form[data-siab-analytics-form='true']") : null
     if (!form) return
     const section = closestSection(form)
     capture("site_form_submitted", {
@@ -744,7 +744,7 @@ const setupDelegatedListeners = () => {
   }, { capture: true })
 
   document.addEventListener("change", (event) => {
-    const field = (event.target as Element | null)?.closest("input,select,textarea") as HTMLElement | null
+    const field = event.target instanceof Element ? event.target.closest<HTMLElement>("input,select,textarea") : null
     if (!field) return
     const section = closestSection(field)
     const pseudoAction = field.closest("form")?.querySelector("button,[type='submit']") as HTMLAnchorElement | HTMLButtonElement | null

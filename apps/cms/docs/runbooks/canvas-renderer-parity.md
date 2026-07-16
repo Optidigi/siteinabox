@@ -18,6 +18,11 @@ Parity release gates:
 - CMS canvas, CMS preview, and public renderer produce the same provider root,
   variant ID, slots, media dimensions, and chrome-composition behavior;
 - keyboard, focus, form, carousel/menu hydration, and WCAG checks pass;
+- every tenant view uses semantic color/font/radius roles or an exact reviewed
+  entry in the provider token-exception manifest, while the generated reference
+  copy retains the pinned upstream classes for independent pixel evidence;
+- all 156 variants respond to approved tenant color, font, shape, and
+  light/dark presets in computed browser styles;
 - `hero-03` and `hero-08` suppress separate navbar chrome;
 - absent optional chrome emits no markup and missing variants never fall back.
 

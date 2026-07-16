@@ -19,9 +19,11 @@ const NAMESPACE = "shadcnui-blocks"
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const providerRoot = join(root, "packages/site-renderer/src/providers/shadcnui-blocks")
 const variantsRoot = join(providerRoot, "variants")
+const referencesRoot = join(providerRoot, "references")
 const uiProviderRoot = join(root, "packages/ui/src/providers/shadcnui-blocks/radix-nova")
 const generatedRoot = join(root, "packages/contracts/src/generated")
 const bindingManifestPath = join(providerRoot, "bindings.json")
+const tokenExceptionManifestPath = join(providerRoot, "token-exceptions.json")
 
 const compatibilityPrimitives = [
   "accordion", "animated-grid-pattern", "avatar", "badge", "button", "card", "carousel", "chart",
@@ -90,6 +92,98 @@ function adaptLiteralImports(contents) {
     .replaceAll(/y=\{y \* height \+ 1\}/g, "y={(y ?? 0) * height + 1}")
     .replaceAll(/https?:\/\/[^"'`\s]+\.(?:avif|gif|jpe?g|png|webp)(?:\?[^"'`\s]*)?/gi, (url) => `${transparentSquare}#${sha256(url).slice(0, 12)}`)
     .replaceAll(/https?:\/\/(?!www\.w3\.org\/2000\/svg)[^"'`\s]+/g, (url) => `about:blank#upstream-${sha256(url).slice(0, 12)}`)
+}
+
+const replaceClassToken = (contents, from, to) => contents.replace(
+  new RegExp(`(?<=[\\s\"'])${from.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}(?=[\\s\"'])`, "g"),
+  to,
+)
+
+function adaptTenantTokens(name, filename, contents) {
+  let adapted = replaceClassToken(contents, "rounded", "rounded-sm")
+  const replace = (from, to) => { adapted = adapted.replaceAll(from, to) }
+
+  if (name === "contact-02") replace("bg-white shadow-none", "bg-background shadow-none")
+  if (name === "blog-05" || name === "blog-06") {
+    adapted = adapted
+      .replace(/bg-indigo-500\/10 text-indigo-500 dark:bg-indigo-500\/15 dark:text-indigo-400/g, "bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary")
+      .replace(/bg-indigo-600\/10 text-indigo-500 dark:bg-indigo-500\/35 dark:text-indigo-300/g, "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary")
+  }
+  if (/^pricing-0[1-6]$/.test(name)) {
+    replace("text-green-600", "text-success")
+    replace("text-gray-500", "text-muted-foreground")
+  }
+  if (name === "testimonials-05") {
+    replace("fill-yellow-500", "fill-rating")
+    replace("stroke-yellow-500", "stroke-rating")
+  }
+  if (name === "integrations-02" || name === "integrations-03") {
+    replace("bg-emerald-600/10", "bg-success/10")
+    replace("text-emerald-600", "text-success")
+  }
+  if (name === "stats-05") {
+    replace("text-blue-500", "text-chart-1")
+    replace("text-green-600", "text-chart-2")
+    replace("text-red-500", "text-chart-4")
+  }
+  if (name === "stats-06") {
+    const chartClasses = [
+      ["blue", "1"], ["green", "2"], ["amber", "3"], ["red", "4"], ["purple", "5"],
+    ]
+    for (const [color, chart] of chartClasses) {
+      adapted = adapted
+        .replace(new RegExp(`border-${color}-(?:200|600)`, "g"), `border-chart-${chart}/30`)
+        .replace(new RegExp(`dark:border-${color}-(?:400|500)/30`, "g"), `dark:border-chart-${chart}/35`)
+        .replace(new RegExp(`bg-${color}-50`, "g"), `bg-chart-${chart}/10`)
+        .replace(new RegExp(`dark:bg-${color}-(?:400|500)/15`, "g"), `dark:bg-chart-${chart}/15`)
+        .replace(new RegExp(`text-${color}-(?:500|600)`, "g"), `text-chart-${chart}`)
+    }
+  }
+  if (name === "hero-06") {
+    replace("dark:fill-slate-700", "dark:fill-muted-foreground/50")
+    replace("fill-neutral-400/80", "fill-muted-foreground/80")
+  }
+  if (name === "hero-07") {
+    replace("fill-gray-400/30", "fill-muted-foreground/30")
+    replace("stroke-gray-400/30", "stroke-muted-foreground/30")
+  }
+  if (name === "hero-01") {
+    replace("#5E8778", "var(--siab-accent-600)")
+    replace("#78FF86", "var(--siab-accent-300)")
+    replace("#575EFF", "var(--siab-accent-700)")
+    replace("#E478FF", "var(--siab-accent-400)")
+  }
+  if (name === "features-06") {
+    replace("from-indigo-400 to-orange-300", "from-primary to-accent")
+    replace("var(--color-orange-400)", "var(--siab-accent-300)")
+    replace("var(--color-orange-500)", "var(--siab-accent-400)")
+    replace("var(--color-indigo-300)", "var(--siab-accent-300)")
+    replace("var(--color-indigo-400)", "var(--siab-accent-500)")
+    replace("var(--color-indigo-500)", "var(--siab-accent-600)")
+  }
+  if (name === "hero-03") {
+    replace('colors = ["#5227FF", "#FF9FFC", "#B497CF"]', 'colors = ["var(--siab-accent-700)", "var(--siab-accent-400)", "var(--siab-accent-200)"]')
+    replace("var(--color-purple-500)", "var(--siab-accent-700)")
+    replace("var(--color-indigo-400)", "var(--siab-accent-400)")
+    replace("var(--color-sky-500)", "var(--siab-accent-200)")
+    replace("var(--color-indigo-600)", "var(--siab-accent-700)")
+    replace("var(--color-indigo-500)", "var(--siab-accent-600)")
+    replace("rounded-[1.25rem]", "rounded-xl")
+    replace("from-indigo-400/90 via-indigo-300 to-sky-400/80", "from-primary/90 via-primary/60 to-accent")
+  }
+  if ((name === "pricing-09" || name === "logo-cloud-15") && filename === "border-beam.tsx") {
+    replace('colorFrom = "#ffaa40"', 'colorFrom = "var(--siab-accent-400)"')
+    replace('colorTo = "#9c40ff"', 'colorTo = "var(--siab-accent-700)"')
+  }
+  if (name === "logo-cloud-15" && filename === "logo-cloud.tsx") {
+    replace("#ffaa40", "var(--siab-accent-400)")
+    replace("#9c40ff", "var(--siab-accent-700)")
+  }
+  if (["cta-04", "cta-05", "pricing-09"].includes(name)) {
+    replace("rgba(75, 85, 99, 0.08)", "color-mix(in srgb, var(--border) 45%, transparent)")
+    replace("rgba(55, 65, 81, 0.12)", "color-mix(in srgb, var(--border) 60%, transparent)")
+  }
+  return adapted
 }
 
 function referenceRootClassName(contents) {
@@ -526,9 +620,12 @@ async function checkoutSource() {
 
 async function main() {
   const bindingManifest = JSON.parse(await readFile(bindingManifestPath, "utf8"))
+  const tokenExceptionManifestBuffer = await readFile(tokenExceptionManifestPath)
+  const tokenExceptionManifest = JSON.parse(tokenExceptionManifestBuffer.toString("utf8"))
   if (bindingManifest && (bindingManifest.provider !== PROVIDER || bindingManifest.commit !== COMMIT)) {
     throw new Error(`Binding manifest must target ${PROVIDER} at ${COMMIT}.`)
   }
+  if (tokenExceptionManifest.provider !== PROVIDER) throw new Error(`Token exception manifest must target ${PROVIDER}.`)
   const { source, cleanup } = await checkoutSource()
   try {
     const registryBuffer = await readFile(join(source, REGISTRY_FILE))
@@ -542,9 +639,11 @@ async function main() {
 
     await rm(join(providerRoot, "upstream"), { recursive: true, force: true })
     await rm(variantsRoot, { recursive: true, force: true })
+    await rm(referencesRoot, { recursive: true, force: true })
     await rm(uiProviderRoot, { recursive: true, force: true })
     await mkdir(join(providerRoot, "upstream"), { recursive: true })
     await mkdir(variantsRoot, { recursive: true })
+    await mkdir(referencesRoot, { recursive: true })
     await mkdir(uiProviderRoot, { recursive: true })
     await mkdir(generatedRoot, { recursive: true })
     await cp(join(source, "LICENSE"), join(providerRoot, "LICENSE"))
@@ -566,6 +665,18 @@ async function main() {
         "      {...props}\n    />\n  )\n}\n\nfunction AvatarFallback",
         "      {...props}\n      src={typeof props.src === \"string\" && props.src.startsWith(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024'\") ? undefined : props.src}\n    />\n  )\n}\n\nfunction AvatarFallback",
       )
+      if (primitive === "checkbox") contents = contents.replace(
+        "rounded-[4px]",
+        "rounded-[min(var(--siab-radius-sm),4px)]",
+      )
+      if (primitive === "dot-pattern") contents = contents.replace(
+        "fill-neutral-400/80",
+        "fill-muted-foreground/80",
+      )
+      if (primitive === "animated-grid-pattern") contents = contents
+        .replace("fill-gray-400/30", "fill-muted-foreground/30")
+        .replace("stroke-gray-400/30", "stroke-muted-foreground/30")
+      if (primitive === "sheet") contents = contents.replace("bg-black/10", "bg-foreground/10")
       const destination = join(uiProviderRoot, `${primitive}.tsx`)
       await writeFile(destination, contents)
       primitiveFiles.push({ name: primitive, path: relative(root, destination), sha256: sha256(contents) })
@@ -627,8 +738,14 @@ async function main() {
         const upstreamFilename = file.path.split("/").at(-1)
         const literalFilename = item.name === "navbar-03" && upstreamFilename === "navbar.ts" ? "navbar-data.ts" : upstreamFilename
         const literalDestination = join(variantsRoot, item.name, literalFilename)
+        const referenceDestination = join(referencesRoot, item.name, literalFilename)
         await mkdir(dirname(literalDestination), { recursive: true })
-        let adaptedLiteral = adaptLiteralImports(contents.toString("utf8"))
+        await mkdir(dirname(referenceDestination), { recursive: true })
+        let adaptedReference = adaptLiteralImports(contents.toString("utf8"))
+          .replaceAll(item.name === "navbar-03" ? 'from "./navbar"' : "\0", 'from "./navbar-data"')
+        if (item.name === "not-found-03") adaptedReference = scopeNotFound03SvgIds(adaptedReference)
+        await writeFile(referenceDestination, adaptedReference)
+        let adaptedLiteral = adaptTenantTokens(item.name, literalFilename, adaptLiteralImports(contents.toString("utf8")))
           .replaceAll(item.name === "navbar-03" ? 'from "./navbar"' : "\0", 'from "./navbar-data"')
         if ((item.name === "hero-03" || item.name === "hero-08") && file.path === literalEntryPath) {
           adaptedLiteral = adaptedLiteral.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
@@ -759,9 +876,24 @@ async function main() {
       "",
     ].join("\n"))
 
+    const clientLoaderEntries = blockVariants.map((variant) =>
+      `  "${variant.id}": () => import("./variants/${variant.upstreamName}/view"),`)
+    await writeFile(join(providerRoot, "block-client-loaders.generated.ts"), [
+      "// Generated by scripts/import-shadcnui-blocks.mjs. Do not edit by hand.",
+      "const loaders = {",
+      ...clientLoaderEntries,
+      "} as const",
+      "export async function loadShadcnUiExplicitBlockView(variant: string) {",
+      "  const load = loaders[variant as keyof typeof loaders]",
+      "  if (!load) throw new Error(`Unresolved provider block variant \"${variant}\".`)",
+      "  return (await load()).default",
+      "}",
+      "",
+    ].join("\n"))
+
     const literalImports = variants.map((variant, index) => {
       const suffix = String(index + 1).padStart(3, "0")
-      return `import Literal${suffix} from "./variants/${variant.upstreamName}/${variant.entryFile.replace(/\.tsx$/, "")}"`
+      return `import Literal${suffix} from "./references/${variant.upstreamName}/${variant.entryFile.replace(/\.tsx$/, "")}"`
     })
     const literalEntries = variants.map((variant, index) => `  "${variant.id}": Literal${String(index + 1).padStart(3, "0")},`)
     await writeFile(join(providerRoot, "literal-references.generated.tsx"), [
@@ -783,6 +915,7 @@ async function main() {
     const approvedNames = new Set(approved.map((item) => item.name))
     for (const variant of variants) {
       variant.adaptedFiles = await fileInventory(join(variantsRoot, variant.upstreamName))
+      variant.referenceFiles = await fileInventory(join(referencesRoot, variant.upstreamName))
     }
     const exclusions = registry.items.filter((item) => !approvedNames.has(item.name)).map((item) => ({
       upstreamName: item.name,
@@ -804,6 +937,10 @@ async function main() {
       counts: { upstream: registry.items.length, public: publicItems.length, systemTemplates: systemItems.length, excluded: exclusions.length },
       compatibilityPrimitives: primitiveFiles,
       providerRuntimeFiles,
+      tokenExceptions: {
+        path: relative(root, tokenExceptionManifestPath),
+        sha256: sha256(tokenExceptionManifestBuffer),
+      },
       derivedSystemBlocks: [{
         id: `${NAMESPACE}.legal-content-01`,
         blockType: "contentSection",
@@ -815,7 +952,7 @@ async function main() {
     await writeFile(join(providerRoot, "inventory.json"), `${JSON.stringify(inventory, null, 2)}\n`)
     await writeFile(join(providerRoot, "exclusions.json"), `${JSON.stringify({ schemaVersion: 1, provider: PROVIDER, commit: COMMIT, exclusions }, null, 2)}\n`)
     const compactVariant = (variant) => Object.fromEntries(Object.entries(variant).filter(([key]) => ![
-      "sourceFiles", "adaptedFiles", "featureAudit", "dependencies",
+      "sourceFiles", "adaptedFiles", "referenceFiles", "featureAudit", "dependencies",
     ].includes(key)))
     await writeFile(join(generatedRoot, "shadcnui-blocks.ts"), [
       "// Generated by scripts/import-shadcnui-blocks.mjs. Do not edit by hand.",
