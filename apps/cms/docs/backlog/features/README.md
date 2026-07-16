@@ -47,9 +47,9 @@ themes, all light/dark desktop/mobile viewports, hydration, interactions,
 overflow, and accessibility smoke rules. The former duplicated `upstream/` and
 `references/` trees have been removed. No density setting, arbitrary token
 map, per-variant theme schema, runtime React-tree rewrite, or new CMS theme
-control was introduced. The complete Payload migration chain also removes the
-retired rich-text, newsletter, and bento storage tables after forward-copying
-their data; historical migration files remain intact.
+control was introduced. Semantic rich-text, newsletter, and bento storage stays
+available to Payload and tenant-owned compatibility content; their retired
+generic generation and default-renderer paths are not exposed.
 
 ## Current State
 

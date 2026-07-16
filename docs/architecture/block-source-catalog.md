@@ -68,7 +68,7 @@ The forward Payload migrations have been applied through the complete migration
 chain against an isolated fresh local database. Migration tests cover the audited
 legacy JSON-draft shape. The migration maps null-variant privacy-page hero
 and rich-text content to explicit provider variants without changing historical
-migration files. A final forward-only cleanup migration removes the retired
-rich-text, newsletter, and bento relational tables after their rows have been
-copied into canonical semantic blocks. `banner-04` remains the only approved cookie-consent variant,
+migration files. The semantic rich-text, newsletter, and bento storage remains
+available for Payload compatibility and tenant-owned content, but generic
+generation and rendering do not expose their retired default paths. `banner-04` remains the only approved cookie-consent variant,
 and known-tenant 404s select explicit imported not-found templates.
