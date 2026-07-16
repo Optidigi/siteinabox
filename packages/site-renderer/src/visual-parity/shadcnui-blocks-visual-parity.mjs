@@ -70,7 +70,8 @@ const addStyleAfterNavigation = async (page, content) => {
 let upstreamOrigin = process.env.SHADCNUI_BLOCKS_REFERENCE_ORIGIN
 let runtimeOrigin = process.env.SIAB_PROVIDER_PARITY_ORIGIN
 assert.equal(Boolean(upstreamOrigin), Boolean(runtimeOrigin), "Set both parity origins or neither")
-if (!upstreamOrigin) {
+const startsLocalServers = !upstreamOrigin
+if (startsLocalServers) {
   const checkout = await mkdtemp(join(tmpdir(), "siab-shadcnui-upstream-"))
   temporaryDirectories.push(checkout)
   const clone = spawnSync("git", ["clone", "--filter=blob:none", "--no-checkout", inventory.repository, checkout], { cwd: root, stdio: "inherit" })
@@ -116,6 +117,20 @@ temporaryDirectories.push(output)
 await mkdir(output, { recursive: true })
 const browser = await chromium.launch({ headless: true })
 try {
+  if (startsLocalServers) {
+    // The first real browser request lets the dev servers discover and
+    // optimize their client dependency graphs. Complete that one-time HMR
+    // cycle before screenshots so it cannot navigate a page mid-capture.
+    const warmup = await browser.newPage()
+    try {
+      await warmup.goto(`${runtimeOrigin}/provider-parity?variant=shadcnui-blocks.hero-01&mode=light&reference=raw`, { waitUntil: "domcontentloaded", timeout: 60_000 })
+      await warmup.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true")
+      await warmup.waitForTimeout(1_000)
+      await warmup.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true")
+    } finally {
+      await warmup.close()
+    }
+  }
   for (const viewport of cases) {
     const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, colorScheme: viewport.mode })
     try {
