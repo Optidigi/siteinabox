@@ -8,6 +8,7 @@ const { RENDERER_DEPLOY_TARGETS, RENDERER_PRODUCTION_HOSTS } = await import(
 )
 const rendererComposePath = resolve(repoRoot, "apps/renderer/compose.yml")
 const rendererDockerfilePath = resolve(repoRoot, "apps/renderer/Dockerfile")
+const rendererPackagePath = resolve(repoRoot, "apps/renderer/package.json")
 const buildRendererWorkflowPath = resolve(repoRoot, ".github/workflows/build-renderer-image.yml")
 const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 
@@ -63,6 +64,28 @@ function assertEqualList(errors, label, actual, expected) {
 
 const errors = []
 
+const rendererPackage = JSON.parse(await readFile(rendererPackagePath, "utf8"))
+const buildRendererWorkflow = await readFile(buildRendererWorkflowPath, "utf8")
+if (rendererPackage.dependencies?.["@siteinabox/legal-content"]?.startsWith("workspace:")) {
+  const legalContentWorkflowPath = "packages/legal-content/**"
+  const legalContentOnlyFixture = "packages/legal-content/src/documents/privacy.md"
+  const workflowPaths = buildRendererWorkflow
+    .split("\n")
+    .map((line) => line.trim().match(/^- "([^"]+)"$/)?.[1])
+    .filter(Boolean)
+  const selectsLegalContentFixture = workflowPaths.some((pattern) =>
+    pattern.endsWith("/**")
+      ? legalContentOnlyFixture.startsWith(pattern.slice(0, -2))
+      : legalContentOnlyFixture === pattern,
+  )
+
+  if (!workflowPaths.includes(legalContentWorkflowPath) || !selectsLegalContentFixture) {
+    errors.push(
+      `${formatPath(buildRendererWorkflowPath)} must select ${legalContentOnlyFixture} because ${formatPath(rendererPackagePath)} directly depends on @siteinabox/legal-content`,
+    )
+  }
+}
+
 const rendererCompose = await readFile(rendererComposePath, "utf8")
 assertEqualList(errors, `${formatPath(rendererComposePath)} Traefik hosts`, extractTraefikHosts(rendererCompose), expectedHosts)
 
@@ -78,8 +101,10 @@ for (const composePath of composePaths) {
   }
 }
 
-for (const filePath of [rendererDockerfilePath, buildRendererWorkflowPath]) {
-  const text = await readFile(filePath, "utf8")
+for (const [filePath, text] of [
+  [rendererDockerfilePath, await readFile(rendererDockerfilePath, "utf8")],
+  [buildRendererWorkflowPath, buildRendererWorkflow],
+]) {
   const values = extractBuildArgValues(text)
   for (const [buildArg, expectedOrigin] of expectedOriginsByBuildArg) {
     const actualOrigin = values.get(buildArg)
