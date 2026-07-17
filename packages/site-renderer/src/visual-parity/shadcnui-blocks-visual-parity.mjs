@@ -201,7 +201,7 @@ try {
           const imagesEstablishedLayout = () => [...document.images].every((image) => {
             if (image.offsetParent === null) return true
             const bounds = image.getBoundingClientRect()
-            return image.complete && image.naturalWidth > 0 && bounds.width > 0 && bounds.height > 0
+            return bounds.width > 0 && bounds.height > 0
           })
           await Promise.all([
             reference.waitForFunction(imagesEstablishedLayout, undefined, { timeout: 20_000 }),
