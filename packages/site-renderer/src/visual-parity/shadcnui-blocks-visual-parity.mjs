@@ -168,7 +168,7 @@ try {
         // The upstream Next preview downloads Geist independently while SIAB
         // self-hosts its pinned package. Normalize glyph rasterization here so
         // pixel diffs measure block DOM/classes/layout rather than font files.
-          const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[style*='background-position']{background-position:0 0!important}img,[data-slot='avatar-fallback']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
+          const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[data-slot='accordion-content']{animation:none!important}[style*='background-position']{background-position:0 0!important}img,[data-slot='avatar-fallback']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
           await Promise.all([
             addStyleAfterNavigation(reference, `nextjs-portal,.block-preview-wrapper .grow.bg-muted\\/50{display:none!important}.block-preview-wrapper{min-height:0!important;background:var(--background)!important}${deterministicFont}`),
             addStyleAfterNavigation(runtime, deterministicFont),
@@ -186,6 +186,22 @@ try {
             throw new Error(`${variant.id} ${viewport.name} did not hydrate`, { cause: error })
           })
           await Promise.all([reference.evaluate(() => document.fonts.ready), runtime.evaluate(() => document.fonts.ready)])
+          const accordionIsSettled = () => {
+            const openContent = [...document.querySelectorAll('[data-slot="accordion-content"][data-state="open"]')]
+            return openContent.every((content) => {
+              const height = Number.parseFloat(getComputedStyle(content).getPropertyValue("--radix-accordion-content-height"))
+              return Number.isFinite(height) && height > 0 && content.firstElementChild?.getBoundingClientRect().height > 0
+            })
+          }
+          if (await reference.locator('[data-slot="accordion"]').count() || await runtime.locator('[data-slot="accordion"]').count()) {
+            // Radix measures default-open content after hydration. Wait for
+            // both isolated implementations to publish that measurement so a
+            // fast runner cannot capture one side in its zero-height frame.
+            await Promise.all([
+              reference.waitForFunction(accordionIsSettled),
+              runtime.waitForFunction(accordionIsSettled),
+            ])
+          }
           progress("hydrated-and-fonts-ready")
           await reference.waitForFunction(() => [...document.images].every((image) => {
             if (!/^https?:/.test(image.currentSrc || image.src) || image.offsetParent === null) return true
