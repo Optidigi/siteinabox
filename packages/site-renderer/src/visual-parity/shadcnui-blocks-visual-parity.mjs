@@ -2,9 +2,10 @@ import assert from "node:assert/strict"
 import { spawn, spawnSync } from "node:child_process"
 import { once } from "node:events"
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
 import { createServer } from "node:net"
 import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import pixelmatch from "pixelmatch"
 import { PNG } from "pngjs"
 import { chromium } from "playwright"
@@ -119,8 +120,11 @@ const variants = requestedVariant
   ? inventory.variants.filter((variant) => variant.id === requestedVariant || variant.upstreamName === requestedVariant)
   : inventory.variants.filter((_, index) => index % shardCount === shardIndex)
 assert.ok(variants.length > 0, `Unknown parity variant: ${requestedVariant}`)
-const output = await mkdtemp(join(tmpdir(), "siab-provider-parity-"))
-temporaryDirectories.push(output)
+const configuredOutput = process.env.SIAB_PROVIDER_PARITY_OUTPUT
+const output = configuredOutput
+  ? resolve(fileURLToPath(root), configuredOutput)
+  : await mkdtemp(join(tmpdir(), "siab-provider-parity-"))
+if (!configuredOutput) temporaryDirectories.push(output)
 await mkdir(output, { recursive: true })
 const browser = await chromium.launch({ headless: true })
 try {

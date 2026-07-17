@@ -133,3 +133,12 @@ jobs:
         run: pnpm --dir apps/renderer test:provider-browser
       - name: Compare pinned provider pixels
         run: pnpm --dir packages/site-renderer visual:provider-parity
+        env:
+          SIAB_PROVIDER_PARITY_OUTPUT: artifacts/provider-parity
+      - name: Upload provider parity failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: provider-parity-failure
+          path: artifacts/provider-parity
+          if-no-files-found: ignore
