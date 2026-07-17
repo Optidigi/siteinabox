@@ -23,7 +23,8 @@ lives in `packages/ui`; the CMS app keeps compatibility re-export shims.
 - `src/styles/shadcn.css` imports `@siteinabox/ui/styles/shadcn.css`.
 - `src/styles/siab.css` is protected SIAB app/editor CSS.
 
-`pnpm lint:ui-boundary` enforces the app path split. `pnpm lint:ui-composition`
+`pnpm --dir apps/cms lint:ui-boundary` enforces the app path split.
+`pnpm --dir apps/cms lint:ui-composition`
 adds drift checks for composition style: direct Radix imports stay inside
 reviewed primitives, inline style objects are blocked, and new files with
 native `<button>` elements fail unless they are deliberately added to the
@@ -77,11 +78,11 @@ frontend gates.
 After UI boundary or primitive work, run:
 
 ```bash
-pnpm lint:ui-boundary
-pnpm lint:ui-composition
-pnpm lint:no-css
-pnpm check:responsive
-pnpm typecheck
+pnpm --dir apps/cms lint:ui-boundary
+pnpm --dir apps/cms lint:ui-composition
+pnpm --dir apps/cms lint:no-css
+pnpm --dir apps/cms check:responsive
+pnpm --dir apps/cms typecheck
 ```
 
 Run focused unit or integration coverage for the touched surface.

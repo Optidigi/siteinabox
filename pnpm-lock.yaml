@@ -263,7 +263,7 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0
       '@siteinabox/contracts':
-        specifier: file:../../packages/contracts
+        specifier: workspace:*
         version: link:../../packages/contracts
       '@tanstack/react-query':
         specifier: ^5.101.2
@@ -360,10 +360,10 @@ importers:
         specifier: ^3.7.2
         version: 3.7.3
       '@siteinabox/contracts':
-        specifier: file:../../packages/contracts
+        specifier: workspace:*
         version: link:../../packages/contracts
       '@siteinabox/legal-content':
-        specifier: file:../../packages/legal-content
+        specifier: workspace:*
         version: link:../../packages/legal-content
       astro:
         specifier: ^6.2.1

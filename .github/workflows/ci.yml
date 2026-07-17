@@ -22,6 +22,10 @@ jobs:
           node-version: 26
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Repository configuration contracts
+        run: |
+          pnpm mcp:check
+          pnpm docs:check
       - name: Shared package type checks
         run: pnpm packages:typecheck
       - name: Provider contract and catalog tests

@@ -104,9 +104,5 @@
     "typescript": "6.0.3",
     "vite": "^8.0.14",
     "vitest": "4.1.9"
-  },
-  "engines": {
-    "node": ">=26.0.0 <27.0.0"
-  },
-  "packageManager": "pnpm@11.5.0"
+  }
 }

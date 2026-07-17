@@ -67,7 +67,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
-  // Migration safety doctrine (docs/backlog/security/README.md § Doctrine #2):
+  // Migration safety doctrine (docs/runbooks/deployment.md):
   // down() MUST throw, never reverse. This migration is a destructive table
   // restructure — it drops `site_settings_navigation` after backfilling its
   // rows. Restore from a pre-migration database snapshot rather than rolling

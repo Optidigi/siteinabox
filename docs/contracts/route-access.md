@@ -9,7 +9,8 @@ one place.
 
 This file is intentionally scoped to CMS role/context access. The broader
 source-defined route and production host inventory lives at
-`../../../../../docs/architecture/route-surface-inventory.md`.
+Route ownership is summarized in `docs/architecture.md`; application source and
+route tests are canonical for the exact current surface.
 
 ## Result Meanings
 

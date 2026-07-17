@@ -2,7 +2,7 @@
 # Run on the developer machine (any platform with a Docker engine):
 #   docker compose -f docker-compose.local.yml up -d
 # DATABASE_URI in .env.example targets localhost:5432 so this works out of the box.
-# See docs/runbooks/local-dev.md for the full workflow.
+# See ../../docs/runbooks/local-development.md for the full workflow.
 #
 # If port 5432 is already in use locally (e.g. a system Postgres), override:
 #   POSTGRES_HOST_PORT=5433 docker compose -f docker-compose.local.yml up -d

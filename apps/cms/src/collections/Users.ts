@@ -525,7 +525,7 @@ export const Users: CollectionConfig = {
     //   4. users table is still empty
     // Operator workflow: deploy with BOOTSTRAP_TOKEN set, run the seed curl
     // ONCE, then unset BOOTSTRAP_TOKEN and redeploy. Documented in
-    // .env.example and docs/runbooks/deploy.md.
+    // .env.example and docs/runbooks/deployment.md.
     create: async ({ req, data }) => {
       if (req.user?.role === "super-admin") return true
 

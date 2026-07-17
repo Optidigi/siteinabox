@@ -8,10 +8,11 @@ Targets a developer who has just cloned the monorepo and wants `pnpm dev` in
 
 - **Node 26** — verify with `node -v`; `.nvmrc` pins the current local target
 - **pnpm 11** — install with `npm install -g pnpm@11.5.0`
-- **Container runtime** — Docker or Podman (this machine uses Podman; see note below)
+- **Container runtime** — Docker or Podman
 - **Git** — for `git clone`
 
-> **This machine (Shimmy's Linux dev box):** Docker is not installed — use `podman` directly. `docker-compose` / `podman-compose` are also unavailable, so run the container with `podman run` or `podman start` (see Step 2 below).
+> If Docker Compose is unavailable, use the documented Podman commands in
+> Step 2 to run PostgreSQL directly.
 
 ## Step 1: Clone and install
 
@@ -41,7 +42,7 @@ docker compose -f docker-compose.local.yml up -d
 docker compose -f docker-compose.local.yml ps   # status should be "healthy"
 ```
 
-**This machine (Podman, no compose plugin):**
+**Podman without a Compose plugin:**
 
 Use the named container `siteinabox-cms-postgres-dev` for local development. If this machine still has the pre-rename `siab-payload-postgres-dev` container, rename it once with `podman rename siab-payload-postgres-dev siteinabox-cms-postgres-dev`, then start it:
 ```bash

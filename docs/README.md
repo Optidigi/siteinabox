@@ -1,25 +1,23 @@
-# SIAB Platform Docs
+# Documentation
 
-This directory is for monorepo-level docs that cut across apps, packages, and
-infra.
+All human engineering documentation for this monorepo lives here. Manifests,
+schemas, migrations, scripts, compose files, Dockerfiles, tests, and CI remain
+canonical for executable facts.
 
-App-local docs stay with the app that owns them:
+## Current sources
 
-- `apps/cms/docs/` for Payload/CMS internals and backlog history.
-- `packages/site-renderer/` for shared CMS/public rendering behavior.
+- [`architecture.md`](architecture.md) — applications, packages, data flow, and
+  operational ownership.
+- [`engineering.md`](engineering.md) — evidence, risk, implementation, review,
+  and handoff workflow.
+- [`tooling.md`](tooling.md) — root toolchain and repository MCP configuration.
+- [`findings.md`](findings.md) — active defects, risks, accepted constraints,
+  and unresolved unknowns.
+- [`contracts/`](contracts/) — durable cross-cutting CMS, rendering, UI,
+  authentication, analytics, and legal contracts.
+- [`runbooks/`](runbooks/) — current local-development and operator procedures.
+- [`compliance/`](compliance/) — current retention and supplier registers.
 
-Monorepo-level policies:
-
-- Future platform architecture decisions should be added under `decisions/`
-  once approved.
-- Current platform architecture lives under `architecture/`, especially
-  `architecture/data-driven-site-generation.md` and
-  `architecture/block-source-catalog.md`.
-- Historical phase and subagent plans under `architecture/` are retained as
-  implementation history. They must not override current root `AGENTS.md`,
-  this README, or the current architecture docs.
-- Staging and CI verification notes live in
-  `architecture/phase-6-staging-ci-readiness.md` and
-  `architecture/phase-10-e2e-readiness-report.md`.
-- Root `AGENTS.md` is the canonical monorepo operating policy, including MCP and
-  agent-tooling state.
+Historical reports and completed implementation diaries are kept in Git
+history, not alongside current guidance. Runtime content such as versioned legal
+documents and landing-page Markdown remains beside the code that consumes it.

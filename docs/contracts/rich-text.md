@@ -24,7 +24,8 @@ This file specifies the DOM shape both the CMS editor (Lexical) and the downstre
 
 Each tenant's site CSS styles these class names. The CMS does not own the visual presentation — only the class contract.
 
-A fixture corpus of RtNode trees lives at `docs/runbooks/rt-fixtures.json`. The
+A fixture corpus of RtNode trees lives at
+`docs/contracts/rich-text-fixtures.json`. The
 shared renderer's CI should run its renderer against each fixture and assert the
 emitted DOM matches this contract.
 

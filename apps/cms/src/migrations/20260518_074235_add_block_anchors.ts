@@ -13,5 +13,5 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
 }
 
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
-  throw new Error("down() not implemented — restore from snapshot per migration safety doctrine (see docs/backlog/security/README.md § Doctrine #2)")
+  throw new Error("down() not implemented — restore from snapshot per migration safety doctrine (see docs/runbooks/deployment.md)")
 }

@@ -44,7 +44,7 @@ Use the sync script after adding or generating a site domain:
 ```bash
 POSTHOG_PERSONAL_API_KEY=phx_... \
 POSTHOG_PROJECT_ID=12345 \
-pnpm posthog:sync-settings -- --app-url https://ami-care.nl --app-url https://admin.ami-care.nl
+pnpm --dir apps/cms posthog:sync-settings -- --app-url https://ami-care.nl --app-url https://admin.ami-care.nl
 ```
 
 For organization-scoped PostHog API deployments, also set
@@ -56,7 +56,7 @@ Multiple domains can be passed in one run:
 POSTHOG_APP_URLS="https://ami-care.nl,https://admin.ami-care.nl,https://example.nl,https://admin.example.nl" \
 POSTHOG_PERSONAL_API_KEY=phx_... \
 POSTHOG_PROJECT_ID=12345 \
-pnpm posthog:sync-settings
+pnpm --dir apps/cms posthog:sync-settings
 ```
 
 The script merges new URLs with existing `app_urls` and enforces the mutable
@@ -72,7 +72,7 @@ environment APIs expose `event_retention_months` and
 `events_retention_enforced` as plan-derived read-only values. A personal API
 key, including one with `project:write`, cannot change them. If the audit shows
 retention drift, change the analytics retention entitlement through PostHog
-billing/support and rerun `pnpm posthog:check-settings`. Do not treat the
+billing/support and rerun `pnpm --dir apps/cms posthog:check-settings`. Do not treat the
 30-day session-recording retention control as event retention.
 
 Run with `--dry-run` to inspect the PATCH payload.

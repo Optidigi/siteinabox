@@ -139,7 +139,7 @@ those to generate the JWT before deployment.
 
 ## Validation Checklist
 
-1. Run `pnpm payload migrate` so Better Auth tables exist.
+1. Run `pnpm --dir apps/cms payload migrate` so Better Auth tables exist.
 2. Start the app with provider env vars present.
 3. Confirm `/login` shows the email-link option and only OAuth providers with
    complete env pairs.

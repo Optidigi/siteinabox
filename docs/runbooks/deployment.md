@@ -152,8 +152,8 @@ POSTHOG_ENVIRONMENT=production
 Apply and verify the PostHog privacy baseline after configuring the project:
 
 ```bash
-pnpm posthog:sync-settings
-pnpm posthog:check-settings
+pnpm --dir apps/cms posthog:sync-settings
+pnpm --dir apps/cms posthog:check-settings
 ```
 
 The sync enforces IP anonymization, disables browser autocapture, console
@@ -348,7 +348,7 @@ What this means in practice:
 Future schema changes flow:
 
 1. Edit collection config in `src/`.
-2. `pnpm payload migrate:create <name>` (locally, against any throwaway
+2. `pnpm --dir apps/cms payload migrate:create <name>` (locally, against any throwaway
    Postgres — the CLI just diffs config vs the DB to emit SQL).
 3. Commit the new file in `src/migrations/`.
 4. Deploy the new image. `docker compose up -d` applies it on container
@@ -559,8 +559,8 @@ will not contain them, so `pnpm build` fails before Next.js's compile step.
 **Fix:** The Dockerfile must run
 
 ```
-pnpm payload generate:types
-pnpm payload generate:importmap
+pnpm --dir apps/cms payload generate:types
+pnpm --dir apps/cms payload generate:importmap
 ```
 
 before `pnpm build`. If you're building locally for debugging, run those two
@@ -636,6 +636,7 @@ HOST=0.0.0.0
 PORT=4321
 SIAB_CMS_URL=https://admin.siteinabox.nl
 SIAB_RENDERER_API_TOKEN=<same value as CMS>
+DATA_DIR=/data
 SITE_URL=https://<renderer-host-or-default-public-origin>
 SIAB_RENDERER_FIXTURE_MODE=
 ```
@@ -643,6 +644,10 @@ SIAB_RENDERER_FIXTURE_MODE=
 - `SIAB_CMS_URL` must be the reachable CMS origin. The renderer calls
   `/api/renderer/snapshot?host=<public-host>`.
 - `SIAB_RENDERER_API_TOKEN` must match the CMS value.
+- `DATA_DIR` is the tenant data root mounted read-only. Public snapshot media is
+  served through `/siab-media/<tenantId>/<filename>` only after host/snapshot
+  authorization; missing files fall back to the authenticated CMS renderer
+  media endpoint.
 - `SIAB_RENDERER_FIXTURE_MODE=1` is local-development only and is ignored when
   `NODE_ENV=production`.
 - `SITE_URL` is Astro's canonical site origin for renderer metadata/build
@@ -695,6 +700,11 @@ were handled outside this automated checkout path. Manual activation bypasses
 approval/payment only; run-linked generated-site activation still requires a
 verified domain, verified tenant Email Sending, and a tenant that is not
 suspended or archived.
+
+Before recording manual domain verification, confirm primary domains and
+aliases resolve through Traefik to the renderer and preserve the public `Host`
+or `X-Forwarded-Host`. Record `failed` with notes when DNS/proxy checks are not
+ready; do not mark a domain verified merely to bypass activation gates.
 
 ## Form-submission retention (GDPR)
 
