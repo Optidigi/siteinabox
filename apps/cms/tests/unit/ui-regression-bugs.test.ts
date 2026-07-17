@@ -21,17 +21,6 @@ describe("observed UI bug regressions", () => {
     expect(nl).toContain('"typeToConfirm": "Typ <phrase></phrase> om te bevestigen:"')
   })
 
-  it("routes desktop canvas section deletes through a confirmation dialog", () => {
-    const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
-
-    expect(canvasSurface).toContain("const [deleteTargetIndex, setDeleteTargetIndex]")
-    expect(canvasSurface).toContain("const requestDeleteBlock = (i: number) => {")
-    expect(canvasSurface).toContain("onDelete={() => requestDeleteBlock(index)}")
-    expect(canvasSurface).toContain("onDelete={requestDeleteBlock}")
-    expect(canvasSurface).toContain("<ConfirmDialog")
-    expect(canvasSurface).toContain('title={t("deleteBlockTitle")}')
-    expect(canvasSurface).toContain('description={t("deleteBlockDescription", { label: deleteTargetLabel })}')
-  })
 
   it("resets pending state when API key fetches throw before a response exists", () => {
     const manager = read("src/components/forms/ApiKeyManager.tsx")

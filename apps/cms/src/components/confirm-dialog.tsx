@@ -26,7 +26,6 @@ export type ConfirmDialogProps = {
   description: React.ReactNode
   confirmLabel?: string
   variant?: "default" | "destructive"
-  canvasChrome?: string
   onConfirm: () => Promise<void>
 }
 
@@ -37,7 +36,6 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   variant = "destructive",
-  canvasChrome,
   onConfirm,
 }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false)
@@ -65,10 +63,7 @@ export function ConfirmDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent
-        data-siab-editor-ui={canvasChrome ? "true" : undefined}
-        data-siab-canvas-chrome={canvasChrome}
-      >
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription asChild>

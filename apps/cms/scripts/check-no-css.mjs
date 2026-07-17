@@ -17,12 +17,9 @@ const PLATFORM_ROOT = resolve(ROOT, "../..")
 const UI_PACKAGE_SRC = join(PLATFORM_ROOT, "packages/ui/src")
 
 const ALLOWED_CSS_FILES = new Set([
-  "src/styles/editor-frame-canvas-affordances.css",
-  "src/styles/editor-frame-ui.css",
   "src/styles/generated-site-renderer.css",
   "src/styles/globals.css",
   "src/styles/shadcn.css",
-  "src/styles/site-renderer-canvas.css",
   "src/styles/site-renderer-preview.css",
   "src/styles/siab.css",
   "packages/ui/src/providers/shadcnui-blocks/radix-nova/tailwind.css",

@@ -59,6 +59,23 @@ control was introduced. Semantic rich-text, newsletter, and bento storage stays
 available to Payload and tenant-owned compatibility content; their retired
 generic generation and default-renderer paths are not exposed.
 
+### 2026-07-17 — Single-renderer editor and active-variant frames
+
+**Status:** Implemented and locally verified; deployment is a separate operator action.
+
+The desktop canvas/sidebar split, user editor-mode preference, iframe mutation
+bridge, CMS-native block renderers, gutter/portal chrome, canvas CSS, tenant CSS
+projection, and continuous geometry observers were removed. The editor now has
+one exact site renderer beside the parent-owned sidebar. Customer preview and
+editor frames load only variants present on the current page and reveal the
+frame after modules, load, fonts, React commit, and two paint frames are ready.
+The public renderer remains static HTML and does not use a loading shell. The
+unused public renderer editor route, iframe block-mutation protocol, projected
+tenant editor CSS loader/asset route, duplicate image picker, inline canvas
+rich-text mode, and remaining canvas-only state wrappers were deleted. Server
+and client rendering share one site shell; Amicare styling remains isolated in
+the shared renderer pending its already-backlogged migration.
+
 ## Current State
 
 - The CMS remains the tenant/content authority.
@@ -139,17 +156,6 @@ generic generation and default-renderer paths are not exposed.
   hooks for versioned category consent and withdrawal. Until that approved UI
   exists, generated-site analytics stays disabled rather than falling back to
   renderer-authored banner markup.
-- Rework desktop canvas chrome hover behavior with a simpler section-anchored
-  model. Current header/footer badges can still flicker, and block badges can
-  feel like they shift between sections. Defer further tuning until the canvas
-  chrome model is simplified around one rule: hovering a section/header/footer
-  shows only that section's badge, leaving that area hides it, and badge
-  placement remains visually anchored to its owner.
-- Re-evaluate editor iframe chrome isolation after the canonical site-rendering
-  and generation flow work settles. The remaining issue to verify is whether
-  iframe-mounted editor chrome can still inherit tenant/site styling instead of
-  CMS editor chrome tokens; resolve through the canonical editor chrome boundary,
-  not Ami-care-specific overrides.
 - Re-evaluate Ami-care `featureList` / `amicareCareCards` parity after the
   canonical site-rendering and generation flow work settles. The known visual
   delta is in the "drie dingen" / "wat voor mij centraal staat" section:
@@ -210,12 +216,6 @@ generic generation and default-renderer paths are not exposed.
   rules for discounts, launch actions, included-domain surcharges, and renewal
   timing must be explicit in contracts and reflected in checkout/payment state
   rather than only in environment variables.
-- Fix canvas block right-click behavior in the page editor. Right-clicking a
-  block currently opens the block context menu through a full-viewport overlay
-  that greys out or visually obscures the canvas; header/footer chrome does not
-  show the same regression because it uses the separate site-chrome context-menu
-  path. Resolve through the canonical canvas editor chrome boundary rather than
-  a one-off overlay workaround.
 
 ## Implemented Foundation
 

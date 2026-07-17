@@ -12,7 +12,7 @@ update this file.
 ## What This Repo Is
 
 `apps/cms` is the SIAB multi-tenant CMS app (formerly `siab-payload`), built with
-Next.js 15 App Router, PayloadCMS v3, PostgreSQL, React 19, TypeScript,
+Next.js 16 App Router, PayloadCMS v3, PostgreSQL, React 19, TypeScript,
 Tailwind v4, pnpm 11, and Node 26 in Docker/CI. UI primitives are local
 shadcn-style source under `src/components/ui/`; app composites live outside that
 tree. Customer preview chrome lives in `src/components/preview/`; see
@@ -212,9 +212,10 @@ Use `context7` for current library documentation when docs are needed. Use
   `migrateFresh`.
 - Test setup reads `.env` and overrides `DATABASE_URI` to `payload_test`.
 
-## Canvas Work
+## Page Editor Work
 
-Before touching `src/components/editor/canvas/` or canvas registry items, read
-`docs/runbooks/canvas-architecture.md`. This covers the selection model,
-app-shell layout, theme bar, customer preview chrome, sidebar drill-down, block
-renderers, inline-edit primitives, and the parent-owned mobile frame editor.
+Before touching the page editor or preview renderer, read
+`docs/runbooks/canvas-architecture.md`. It documents the single shared renderer,
+parent-owned sidebar/mobile forms, theme bar, customer preview chrome, selection
+events, and frame readiness contract. Do not add a second CMS block renderer or
+iframe mutation/geometry bridge.

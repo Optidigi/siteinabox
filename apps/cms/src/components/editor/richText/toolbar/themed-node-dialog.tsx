@@ -22,7 +22,7 @@ export const ThemedNodeDialog: React.FC<ThemedNodeDialogProps> = ({ def, initial
   const submit = methods.handleSubmit((values) => onSubmit(values))
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel() }}>
-      <DialogContent data-siab-editor-ui data-siab-canvas-chrome="rich-text-dialog">
+      <DialogContent data-siab-editor-ui>
         <DialogHeader><DialogTitle>{def.label}</DialogTitle></DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={submit} className="space-y-3">

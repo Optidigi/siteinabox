@@ -1,31 +1,25 @@
-# Canvas / renderer parity
+# Editor / preview / public renderer parity
 
-CMS canvas, customer preview, and `apps/renderer` must use the same
-`packages/site-renderer` provider registry. Generated blocks are selected only
-by an explicit approved `shadcnui-blocks.*` variant; the CMS canvas shows a
-fail-closed error surface when that variant is missing or unresolved.
+All surfaces use `packages/site-renderer` and validated explicit
+`shadcnui-blocks.*` variants. Public pages use the static server entrypoint;
+preview and editor use the generated active-variant client entrypoint. They
+differ only in module loading, not markup, adapters, chrome, theme, or media.
 
-The canonical manifest in `packages/contracts/src/generated` supplies the CMS
-catalog, runtime registry, composition metadata, and slot exposure. Canvas edit
-wrappers may add selection/edit affordances but must not replace provider
-layout, classes, breakpoints, animations, or provider tokens.
+Release gates:
 
-Parity release gates:
-
-- 148 public variants and eight not-found templates match the pinned upstream
-  capture at desktop/mobile fixed viewports in light/dark modes;
-- source hashes and the 542-item included/excluded partition pass;
-- CMS canvas, CMS preview, and public renderer produce the same provider root,
-  variant ID, slots, media dimensions, and chrome-composition behavior;
-- keyboard, focus, form, carousel/menu hydration, and WCAG checks pass;
-- production and parity import the same pinned literal tree; custom themes
-  override only root-scoped color/font/radius variables, and exact reviewed
-  fixed artwork is recorded in the provider token-exception manifest;
-- all 156 variants respond to approved tenant color, font, shape, and
-  light/dark presets in computed browser styles;
-- `hero-03` and `hero-08` suppress separate navbar chrome;
-- absent optional chrome emits no markup and missing variants never fall back.
+- 148 public variants and eight not-found templates match pinned upstream
+  captures at fixed desktop/mobile viewports in light/dark modes;
+- the 542-item included/excluded partition and source hashes pass;
+- preview/editor load only variants present on the page;
+- frames stay behind a skeleton until modules, load, fonts, commit, and two
+  paint frames are ready;
+- editor selection never replaces provider DOM;
+- keyboard, focus, form, carousel/menu hydration, overflow, and WCAG checks
+  pass;
+- all 156 variants respond to approved color, font, shape, and mode presets;
+- navigation-embedding heroes suppress duplicate header chrome;
+- absent optional chrome renders nothing and invalid variants fail closed.
 
 Run package tests plus `pnpm --dir packages/site-renderer
-visual:provider-parity` with pinned-upstream and SIAB harness origins. A green
-unit suite alone is not visual-parity evidence.
+visual:provider-parity` with pinned-upstream and SIAB harness origins. Unit tests
+alone are not visual-parity evidence.

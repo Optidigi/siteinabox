@@ -2,19 +2,18 @@
 import * as React from "react"
 import { useFormContext } from "react-hook-form"
 import { LexicalField } from "@/components/editor/richText/LexicalField"
-import { InlineImage } from "@/components/editor/canvas/inline/InlineImage"
+import { MediaPicker } from "@/components/media/MediaPicker"
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { IconPicker, resolveLucideIcon } from "@/components/editor/icon-picker"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
-import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/canvas/blockElements"
+import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/blockElements"
 import { ArrayItemCard } from "@/components/editor/fields/array-item-card"
-import { CanvasSelectionProvider } from "@/components/editor/canvas/CanvasSelectionContext"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
-import { resolveThemeTokens } from "@siteinabox/site-renderer/theme/resolve"
+import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { inspectorThemeDeclarations } from "@/lib/theme/inspectorFonts"
 import { useTranslations } from "next-intl"
 
 export interface BlockFormFieldsProps {
@@ -29,11 +28,11 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
   const specs: ElementSpec[] = getBlockElementSpecs(blockType, manifest)
   const inspectorFonts = useCspStyleRule(
     "block-form-inspector-fonts",
-    inspectorFontDeclarations(theme),
+    inspectorThemeDeclarations(theme),
   )
 
   return (
-    <CanvasSelectionProvider value={{ view: "canvas", selected: null, select: () => {} }}>
+    <>
       {inspectorFonts.styleElement}
       <div className={`${inspectorFonts.className} space-y-4`}>
         {specs.map((spec) =>
@@ -57,7 +56,7 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
           ),
         )}
       </div>
-    </CanvasSelectionProvider>
+    </>
   )
 }
 
@@ -82,13 +81,13 @@ const FieldRenderer: React.FC<{
         <div className={roleBodyFontClass(spec.role)}>
           <LexicalField
             key={`${blockIndex}.${spec.field}`}
-            chrome="full"
             variant={spec.variant ?? "inline"}
             value={value}
             onChange={setShouldDirty}
             manifest={manifest}
             placeholder={spec.label}
             allowFontFamily={_block?.blockType === "richText"}
+            theme={theme}
           />
         </div>
       </div>
@@ -112,7 +111,7 @@ const FieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
-        <InlineImage value={value} onChange={setShouldDirty} />
+        <MediaPicker value={value} onChange={setShouldDirty} />
       </div>
     )
   }
@@ -125,7 +124,7 @@ const FieldRenderer: React.FC<{
           <SelectTrigger className="w-full">
             <SelectValue placeholder={spec.label} />
           </SelectTrigger>
-          <SelectContent data-siab-editor-ui data-siab-canvas-chrome="block-field-select">
+          <SelectContent data-siab-editor-ui>
             {(spec.options ?? []).map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -252,14 +251,6 @@ const ArraySection: React.FC<{
       </div>
     </section>
   )
-}
-
-function inspectorFontDeclarations(theme: ThemeTokens | null | undefined): string {
-  const resolved = resolveThemeTokens(theme)
-  const title = formatRuntimeCssValue(resolved.fonts.roles.display ?? resolved.fonts.roles.heading) ?? "var(--rt-tenant-font-title, inherit)"
-  const heading = formatRuntimeCssValue(resolved.fonts.roles.heading) ?? "var(--rt-tenant-font-heading, inherit)"
-  const text = formatRuntimeCssValue(resolved.fonts.roles.body) ?? "var(--rt-tenant-font-text, inherit)"
-  return `--rt-inspector-font-title:${title};--rt-inspector-font-heading:${heading};--rt-inspector-font-text:${text};`
 }
 
 function roleFontClass(role: ElementSpec["role"]): string {

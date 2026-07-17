@@ -147,7 +147,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
             <FormLabel>{field.label ?? field.name}</FormLabel>
             <Select value={f.value ?? ""} onValueChange={f.onChange}>
               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-              <SelectContent data-siab-editor-ui data-siab-canvas-chrome="rich-text-field-select">
+              <SelectContent data-siab-editor-ui>
                 {field.options.map((opt: any) => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
@@ -179,9 +179,9 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
     case "array":
       return <ArrayFieldRenderer field={field} namePrefix={fieldName} />
     case "json": {
-      const editorMode = (field.admin as any)?.editor
-      if (editorMode === "richTextBlock" || editorMode === "richTextInline") {
-        const variant = editorMode === "richTextBlock" ? "block" : "inline"
+      const fieldEditor = (field.admin as any)?.editor
+      if (fieldEditor === "richTextBlock" || fieldEditor === "richTextInline") {
+        const variant = fieldEditor === "richTextBlock" ? "block" : "inline"
         return (
           <RichTextFormField
             field={field}

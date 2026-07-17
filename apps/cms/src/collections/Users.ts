@@ -682,18 +682,6 @@ export const Users: CollectionConfig = {
     { name: "apiKey",       type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField, read: () => false } },
     { name: "apiKeyIndex",  type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField, read: () => false } },
     {
-      name: "editorMode",
-      type: "select",
-      required: false,
-      options: [
-        { label: { en: "Canvas (continuous document)", nl: "Canvas (doorlopend document)" }, value: "canvas" },
-        { label: { en: "Sidebar (Shopify style)", nl: "Zijbalk (Shopify-stijl)" }, value: "sidebar" },
-      ],
-      admin: {
-        description: adminText("Preferred page editor mode. Falls back to manifest.defaultMode → \"canvas\".", "Voorkeursmodus van de pagina-editor. Valt terug op manifest.defaultMode → \"canvas\"."),
-      },
-    },
-    {
       name: "language",
       type: "select",
       required: false,

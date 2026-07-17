@@ -15,8 +15,7 @@ const fontFamilyForId = (id: string, manifest?: RtManifest): string => {
 
 const colorForId = (id: string, manifest?: RtManifest): string => {
   const cssVar = manifest?.colorTokens?.find((c) => c.id === id)?.cssVar ?? `--color-${id}`
-  const adminMirror = cssVar.replace(/^--color-/, "--rt-tenant-color-")
-  return `var(${adminMirror}, var(${cssVar}))`
+  return `var(${cssVar})`
 }
 
 const inlineToLexical = (n: RtInline, manifest?: RtManifest): any => {

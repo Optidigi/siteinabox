@@ -45,8 +45,7 @@
       "import": "./src/source-templates/index.ts",
       "default": "./src/source-templates/index.ts"
     },
-    "./styles.css": "./src/styles.css",
-    "./canvas.css": "./src/canvas.css"
+    "./styles.css": "./src/styles.css"
   },
   "dependencies": {
     "@fontsource-variable/caveat": "^5.2.8",

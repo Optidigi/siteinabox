@@ -71,11 +71,10 @@ source-defined route and production host inventory lives at
 
 ## Viewer Page Detail
 
-Viewer page detail is a read-only editor/canvas view. It reuses `PageForm` with
+Viewer page detail is a read-only renderer view. It reuses `PageForm` with
 role-level `readOnly` chrome: no save, draft recovery, theme bar, sidebar block
 forms, add/reorder/duplicate/delete controls, page settings, page delete, or
-site-chrome mutation menus. Inline canvas primitives receive read-only selection
-context and no-op update handlers.
+site-chrome mutation controls.
 
 ## Verification Coverage
 

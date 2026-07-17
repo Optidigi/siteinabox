@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import type { Block, Page, SiteSettings } from "@siteinabox/contracts"
+import type { Page, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
   IFRAME_EDITOR_PROTOCOL_VERSION,
@@ -11,361 +11,108 @@ import {
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
 import { Button } from "@siteinabox/ui/components/button"
-import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
-import type { ThemeTokenSpec } from "@siteinabox/contracts"
-import { findBlockIndexByWireId } from "@/lib/editor/ensureBlockIds"
 import { useTranslations } from "next-intl"
 
-export type PageEditorFrameView = "canvas" | "sidebar"
 export type PageEditorFrameLayout = "desktop" | "mobile"
-export type PageEditorFrameMobileMode = IframeEditorMobileMode
-
-const PARENT_CHROME_BOTTOM_VAR = "--siab-parent-chrome-bottom"
-const CHROME_VIEWPORT_GAP = 8
-const DESKTOP_CANVAS_VIEWPORT_OFFSET = 144
-const MOBILE_CANVAS_VIEWPORT_OFFSET = 72
-const DESKTOP_CANVAS_MIN_VIEWPORT_HEIGHT = 640
-const FRAME_HEIGHT_GUTTER = 2
-const FRAME_VIEWPORT_STYLE_ID = "siab-editor-frame-viewport-height"
-
-function measureParentChromeBottom(): number {
-  if (typeof document === "undefined" || typeof window === "undefined") return CHROME_VIEWPORT_GAP
-  let bottom = CHROME_VIEWPORT_GAP
-  document.body.querySelectorAll<HTMLElement>("[data-siab-cms-sticky-chrome]").forEach((element) => {
-    const style = window.getComputedStyle(element)
-    if (style.position !== "fixed" && style.position !== "sticky") return
-    const zIndex = Number.parseInt(style.zIndex, 10)
-    if (!Number.isFinite(zIndex) || zIndex < 15) return
-    const rect = element.getBoundingClientRect()
-    if (rect.width <= 0 || rect.height <= 0) return
-    if (rect.top > window.innerHeight / 2) return
-    bottom = Math.max(bottom, rect.bottom + CHROME_VIEWPORT_GAP)
-  })
-  return bottom
-}
-
-function measureFrameDocumentHeight(frameDocument: Document | null | undefined): number | null {
-  if (!frameDocument) return null
-  const body = frameDocument.body
-  if (!body) return null
-  const frameWindow = frameDocument.defaultView
-  const scrollY = frameWindow?.scrollY ?? 0
-  const bodyTop = body.getBoundingClientRect().top + scrollY
-  const height = Array.from(body.children).reduce((max, child) => {
-    const rect = child.getBoundingClientRect()
-    if (rect.width <= 0 && rect.height <= 0) return max
-    return Math.max(max, rect.bottom + scrollY - bodyTop)
-  }, 0)
-  return Number.isFinite(height) && height > 0 ? Math.ceil(height + FRAME_HEIGHT_GUTTER) : null
-}
-
-function measureEditorFrameViewportHeight(layout: PageEditorFrameLayout): number {
-  const viewportHeight = window.visualViewport?.height ?? window.innerHeight
-  const offset = layout === "mobile" ? MOBILE_CANVAS_VIEWPORT_OFFSET : DESKTOP_CANVAS_VIEWPORT_OFFSET
-  const minimum = layout === "mobile" ? 0 : DESKTOP_CANVAS_MIN_VIEWPORT_HEIGHT
-  return Math.max(minimum, Math.round(viewportHeight - offset))
-}
-
-function writeFrameViewportHeight(frameDocument: Document | null | undefined, height: number) {
-  if (!frameDocument) return
-  if (!frameDocument.head) return
-  let styleElement = frameDocument.getElementById(FRAME_VIEWPORT_STYLE_ID) as HTMLStyleElement | null
-  if (!styleElement) {
-    styleElement = frameDocument.createElement("style")
-    styleElement.id = FRAME_VIEWPORT_STYLE_ID
-    styleElement.dataset.siabEditorFrameViewport = "true"
-    const nonceElement = frameDocument.querySelector<HTMLStyleElement | HTMLScriptElement>("style[nonce],script[nonce]")
-    const nonce = nonceElement?.nonce || nonceElement?.getAttribute("nonce")
-    if (nonce) styleElement.nonce = nonce
-    frameDocument.head.append(styleElement)
-  }
-  styleElement.textContent = `:root{--siab-editor-frame-viewport-height:${formatCssPx(height)};}`
-}
-
-export type PageEditorFrameMutationHandlers = {
-  onBlockPatch?: (args: { blockId: string; patch: Record<string, unknown> }) => void
-  onBlocksInsert?: (args: { block: Block; index?: number; beforeBlockId?: string; afterBlockId?: string }) => void
-  onBlocksDelete?: (args: { blockId: string }) => void
-  onBlocksReorder?: (args: { blockIds: string[] }) => void
-  onFieldCommit?: (args: { blockId: string; fieldPath: readonly string[]; value: unknown }) => void
-}
 
 export function PageEditorFrameHost({
   pageId,
   page,
   settings,
   theme,
-  view,
   layout = "desktop",
   mobileMode,
   tenantId,
   tenantSlug,
   selection,
   onSelectionChanged,
-  onOpenBlockInspector,
   onChromeSelect,
-  onChromeGeometry,
-  onFrameDocument,
-  mutations,
 }: {
   pageId: string | number
   page: Page
   settings: SiteSettings
   theme: ThemeTokenSpec | null
-  view: PageEditorFrameView
   layout?: PageEditorFrameLayout
-  mobileMode?: PageEditorFrameMobileMode
+  mobileMode?: IframeEditorMobileMode
   tenantId: string | number
-  /** Required on super-admin host so the frame route can resolve the selected site. */
   tenantSlug?: string | null
   selection?: IframeEditorSelection | null
   onSelectionChanged?: (selection: IframeEditorSelection | null) => void
-  onOpenBlockInspector?: (index: number) => void
-  onChromeSelect?: (zone: "header" | "footer", point?: { x: number; y: number }) => void
-  onChromeGeometry?: (zone: "header" | "footer", rect: { x: number; y: number; width: number; height: number }) => void
-  onFrameDocument?: (document: Document | null) => void
-  mutations?: PageEditorFrameMutationHandlers
+  onChromeSelect?: (zone: "header" | "footer") => void
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const revisionRef = React.useRef(0)
   const [ready, setReady] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
-  const [loadState, setLoadState] = React.useState<"loading" | "ready" | "failed">("loading")
   const [retryKey, setRetryKey] = React.useState(0)
-  const [parentChromeBottom, setParentChromeBottom] = React.useState(CHROME_VIEWPORT_GAP)
-  const [frameContentHeight, setFrameContentHeight] = React.useState<number | null>(null)
-  const iframeChromeInset = useCspStyleRule(
-    "editor-frame-chrome-inset",
-    `${PARENT_CHROME_BOTTOM_VAR}:${formatCssPx(parentChromeBottom)};`,
-  )
-  const shouldAutoSizeFrame = view === "canvas"
-  const iframeAutoHeight = useCspStyleRule(
-    "editor-frame-auto-height",
-    shouldAutoSizeFrame && frameContentHeight != null ? `height:${formatCssPx(frameContentHeight)};` : null,
-  )
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
-  onSelectionChangedRef.current = onSelectionChanged
-  const onOpenBlockInspectorRef = React.useRef(onOpenBlockInspector)
-  onOpenBlockInspectorRef.current = onOpenBlockInspector
   const onChromeSelectRef = React.useRef(onChromeSelect)
+  onSelectionChangedRef.current = onSelectionChanged
   onChromeSelectRef.current = onChromeSelect
-  const onChromeGeometryRef = React.useRef(onChromeGeometry)
-  onChromeGeometryRef.current = onChromeGeometry
-  const mutationsRef = React.useRef(mutations)
-  mutationsRef.current = mutations
-  const pageRef = React.useRef(page)
-  pageRef.current = page
 
   const src = React.useMemo(() => {
     const base = `/editor-frame/pages/${encodeURIComponent(String(pageId))}`
     const query = new URLSearchParams()
     if (tenantSlug) query.set("tenantSlug", tenantSlug)
     if (mobileMode) {
-      query.set("view", view)
       query.set("mobileMode", mobileMode.mode)
       if (mobileMode.focusedBlockId) query.set("focusedBlockId", mobileMode.focusedBlockId)
       if (mobileMode.focusedBlockIndex != null) query.set("focusedBlockIndex", String(mobileMode.focusedBlockIndex))
       if (mobileMode.showChrome != null) query.set("showChrome", String(mobileMode.showChrome))
-      if (mobileMode.showGutters != null) query.set("showGutters", String(mobileMode.showGutters))
-      if (mobileMode.allowInlineEditing != null) query.set("allowInlineEditing", String(mobileMode.allowInlineEditing))
     }
-    if (Array.from(query).length === 0) return base
-    return `${base}?${query.toString()}`
-  }, [mobileMode, pageId, tenantSlug, view])
+    return query.size ? `${base}?${query.toString()}` : base
+  }, [mobileMode, pageId, tenantSlug])
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
-    const target = frameRef.current?.contentWindow
-    if (!target) return
-    target.postMessage(payload, window.location.origin)
+    frameRef.current?.contentWindow?.postMessage(payload, window.location.origin)
   }, [])
 
   React.useEffect(() => {
     setReady(false)
+    setFailed(false)
     setFrameError(null)
-    setLoadState("loading")
     revisionRef.current = 0
-    onFrameDocument?.(null)
-  }, [onFrameDocument, src, retryKey])
-
-  React.useLayoutEffect(() => {
-    const measure = () => setParentChromeBottom(measureParentChromeBottom())
-    measure()
-    window.addEventListener("resize", measure)
-    window.addEventListener("scroll", measure, true)
-    return () => {
-      window.removeEventListener("resize", measure)
-      window.removeEventListener("scroll", measure, true)
-    }
-  }, [])
+  }, [retryKey, src])
 
   React.useEffect(() => {
-    if (!ready) {
-      onFrameDocument?.(null)
-      return
-    }
-    onFrameDocument?.(frameRef.current?.contentDocument ?? null)
-    return () => onFrameDocument?.(null)
-  }, [onFrameDocument, ready, retryKey, src])
-
-  React.useLayoutEffect(() => {
-    if (!ready || !shouldAutoSizeFrame) {
-      setFrameContentHeight(null)
-      return
-    }
-    const frameDocument = frameRef.current?.contentDocument
-    const frameWindow = frameRef.current?.contentWindow
-    if (!frameDocument) return
-
-    let raf: number | null = null
-    const measure = () => {
-      raf = null
-      writeFrameViewportHeight(frameDocument, measureEditorFrameViewportHeight(layout))
-      const next = measureFrameDocumentHeight(frameDocument)
-      setFrameContentHeight((current) => (current === next ? current : next))
-    }
-    const schedule = () => {
-      if (raf != null) return
-      raf = window.requestAnimationFrame(measure)
-    }
-
-    measure()
-    const resizeObserver = new ResizeObserver(schedule)
-    if (frameDocument.documentElement) resizeObserver.observe(frameDocument.documentElement)
-    if (frameDocument.body) resizeObserver.observe(frameDocument.body)
-    const mutationObserver = new MutationObserver(schedule)
-    mutationObserver.observe(frameDocument.documentElement, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-    })
-    frameWindow?.addEventListener("resize", schedule)
-    frameWindow?.addEventListener("load", schedule)
-    window.addEventListener("resize", schedule)
-
-    return () => {
-      if (raf != null) window.cancelAnimationFrame(raf)
-      resizeObserver.disconnect()
-      mutationObserver.disconnect()
-      frameWindow?.removeEventListener("resize", schedule)
-      frameWindow?.removeEventListener("load", schedule)
-      window.removeEventListener("resize", schedule)
-    }
-  }, [layout, ready, shouldAutoSizeFrame, retryKey, src])
-
-  React.useEffect(() => {
-    if (ready) {
-      setLoadState("ready")
-      return
-    }
+    if (ready) return
     const timeout = window.setTimeout(() => {
-      setLoadState("failed")
+      setFailed(true)
       setFrameError(t("editorFrameTimeout"))
-    }, 8000)
+    }, 12_000)
     return () => window.clearTimeout(timeout)
   }, [ready, retryKey, src, t])
 
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
-
+      if (event.source !== frameRef.current?.contentWindow) return
       const parsed = validateIframeEditorMessage(event.data)
       if (!parsed.ok) return
       const message = parsed.message
 
-      if (message.type === "chrome.select") {
-        const zone = message.selection?.fieldPath?.[1]
-        if (zone === "header" || zone === "footer") {
-          const iframeEl = frameRef.current
-          const point = iframeEl
-            ? (() => {
-                const rect = iframeEl.getBoundingClientRect()
-                if (message.point) {
-                  return { x: rect.left + message.point.x, y: rect.top + message.point.y }
-                }
-                return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-              })()
-            : undefined
-          onChromeSelectRef.current?.(zone, point)
-        }
-        return
-      }
-
-      if (message.type === "geometry.changed") {
-        const iframeEl = frameRef.current
-        if (!iframeEl) return
-        const iframeRect = iframeEl.getBoundingClientRect()
-        for (const block of message.blocks) {
-          if (block.blockId === "chrome:header" || block.blockId === "chrome:footer") {
-            const zone = block.blockId === "chrome:header" ? "header" : "footer"
-            onChromeGeometryRef.current?.(zone, {
-              x: iframeRect.left + block.rect.x,
-              y: iframeRect.top + block.rect.y,
-              width: block.rect.width,
-              height: block.rect.height,
-            })
-          }
-        }
-        return
-      }
-
       if (message.type === "renderer.ready") {
         setReady(true)
-        setLoadState("ready")
+        setFailed(false)
         setFrameError(null)
         return
       }
-
       if (message.type === "selection.changed") {
         onSelectionChangedRef.current?.(message.selection)
         return
       }
-
-      if (message.type === "block.patch" && mutationsRef.current?.onBlockPatch) {
-        mutationsRef.current.onBlockPatch({ blockId: message.blockId, patch: message.patch })
+      if (message.type === "chrome.select") {
+        const zone = message.selection?.fieldPath?.[1]
+        if (zone === "header" || zone === "footer") onChromeSelectRef.current?.(zone)
         return
       }
-
-      if (message.type === "blocks.insert" && mutationsRef.current?.onBlocksInsert) {
-        mutationsRef.current.onBlocksInsert({
-          block: message.block,
-          index: message.index,
-          beforeBlockId: message.beforeBlockId,
-          afterBlockId: message.afterBlockId,
-        })
-        return
-      }
-
-      if (message.type === "blocks.delete" && mutationsRef.current?.onBlocksDelete) {
-        mutationsRef.current.onBlocksDelete({ blockId: message.blockId })
-        return
-      }
-
-      if (message.type === "blocks.reorder" && mutationsRef.current?.onBlocksReorder) {
-        mutationsRef.current.onBlocksReorder({ blockIds: message.blockIds })
-        return
-      }
-
-      if (message.type === "field.commit" && mutationsRef.current?.onFieldCommit) {
-        mutationsRef.current.onFieldCommit({
-          blockId: message.blockId,
-          fieldPath: message.fieldPath,
-          value: message.value,
-        })
-        return
-      }
-
-      if (message.type === "edit.start" && message.mode === "settings") {
-        const index = findBlockIndexByWireId(pageRef.current.blocks ?? [], message.blockId)
-        if (index >= 0) onOpenBlockInspectorRef.current?.(index)
-        return
-      }
-
       if (message.type === "error") {
         setFrameError(message.message)
-        if (message.recoverable !== false) setLoadState("failed")
+        setFailed(true)
       }
     }
     window.addEventListener("message", onMessage)
@@ -394,8 +141,7 @@ export function PageEditorFrameHost({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "theme.patch",
-      messageId: `theme-${revisionRef.current}-${Date.now()}`,
-      expectedRevision: revisionRef.current,
+      messageId: `theme-${revisionRef.current}`,
       theme,
     })
   }, [postToFrame, ready, theme])
@@ -406,110 +152,75 @@ export function PageEditorFrameHost({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "selection.set",
-      messageId: `selection-set-${String(pageId)}-${selection?.blockId ?? selection?.fieldPath?.join(".") ?? "none"}`,
+      messageId: `selection-${selection?.blockId ?? selection?.fieldPath?.join(".") ?? "none"}`,
       selection: selection ?? null,
     })
-  }, [pageId, postToFrame, ready, selection])
+  }, [postToFrame, ready, selection])
 
   React.useEffect(() => {
     if (!ready) return
-    postToFrame({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "editor.view.set",
-      messageId: `editor-view-${view}`,
-      view,
-    })
-  }, [postToFrame, ready, view])
-
-  React.useEffect(() => {
-    if (!ready) return
-    const effectiveMobileMode: PageEditorFrameMobileMode = mobileMode ?? { mode: "fullPage" }
+    const nextMode = mobileMode ?? { mode: "fullPage" as const }
     postToFrame({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "editor.mobileMode.set",
-      messageId: [
-        "editor-mobile-mode",
-        effectiveMobileMode.mode,
-        effectiveMobileMode.focusedBlockId ?? "none",
-        effectiveMobileMode.focusedBlockIndex ?? "none",
-        effectiveMobileMode.showChrome ?? "default",
-        effectiveMobileMode.showGutters ?? "default",
-        effectiveMobileMode.allowInlineEditing ?? "default",
-      ].join("-"),
-      ...effectiveMobileMode,
+      messageId: `mobile-${nextMode.mode}-${nextMode.focusedBlockId ?? nextMode.focusedBlockIndex ?? "all"}`,
+      ...nextMode,
     })
   }, [mobileMode, postToFrame, ready])
 
   return (
-    <div
-      className="relative w-full"
-      data-siab-editor-frame-host
-      data-siab-editor-frame-view={view}
-      data-siab-editor-frame-layout={layout}
-    >
-      {iframeChromeInset.styleElement}
-      {iframeAutoHeight.styleElement}
+    <div className="relative w-full overflow-hidden bg-background" data-siab-editor-frame-host data-siab-editor-frame-layout={layout}>
       <iframe
         key={`${src}:${retryKey}`}
         ref={frameRef}
         src={src}
         title={t("pageEditorFrameTitle")}
         className={cn(
-          iframeChromeInset.className,
-          iframeAutoHeight.className,
-          "block w-full border-0 bg-transparent",
-          layout === "mobile"
-            ? cn("min-h-[calc(100dvh-4.5rem)]", !shouldAutoSizeFrame && "h-[calc(100dvh-4.5rem)]")
-            : cn("min-h-[640px]", view === "sidebar" && "h-[calc(100dvh-6.5rem)]"),
+          "block w-full border-0 bg-transparent transition-opacity duration-150",
+          ready ? "opacity-100" : "pointer-events-none opacity-0",
+          layout === "mobile" ? "h-[calc(100dvh-4.5rem)] min-h-[32rem]" : "h-[calc(100dvh-6.5rem)] min-h-[640px]",
         )}
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}
-        onLoad={() => {
-          if (!ready) setLoadState("loading")
-        }}
         onError={() => {
-          setLoadState("failed")
+          setFailed(true)
           setFrameError(t("editorFrameLoadFailedDescription"))
         }}
       />
-      {loadState !== "ready" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/85 px-4 text-center">
-          <div className="max-w-sm rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
-            <p className="text-sm font-medium">
-              {loadState === "failed" ? t("editorFrameLoadFailed") : t("editorFrameLoading")}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {loadState === "failed"
-                ? frameError ?? t("editorFrameNotReady")
-                : t("editorFrameWaiting")}
-            </p>
-            {loadState === "failed" && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 h-8 text-xs"
-                onClick={() => {
-                  setFrameError(null)
-                  setReady(false)
-                  setLoadState("loading")
-                  revisionRef.current = 0
-                  setRetryKey((current) => current + 1)
-                }}
-              >
-                {tCommon("retry")}
-              </Button>
-            )}
-          </div>
+      {!ready && (
+        <div className="absolute inset-0 bg-background p-4" aria-live="polite">
+          {!failed ? (
+            <div className="space-y-4 animate-pulse" aria-label={t("editorFrameLoading")}>
+              <div className="h-16 rounded-lg bg-muted" />
+              <div className="h-72 rounded-lg bg-muted" />
+              <div className="grid grid-cols-3 gap-4">
+                <div className="h-40 rounded-lg bg-muted" />
+                <div className="h-40 rounded-lg bg-muted" />
+                <div className="h-40 rounded-lg bg-muted" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex h-full items-center justify-center text-center">
+              <div className="max-w-sm rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
+                <p className="text-sm font-medium">{t("editorFrameLoadFailed")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{frameError ?? t("editorFrameNotReady")}</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 h-8 text-xs"
+                  onClick={() => setRetryKey((current) => current + 1)}
+                >
+                  {tCommon("retry")}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-      {frameError && loadState === "ready" && (
-        <div
-          role="alert"
-          className="pointer-events-none absolute inset-x-0 bottom-2 mx-auto w-fit rounded-md border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
-        >
+      {frameError && ready && (
+        <div role="alert" className="pointer-events-none absolute inset-x-0 bottom-2 mx-auto w-fit rounded-md border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
           {frameError}
         </div>
       )}

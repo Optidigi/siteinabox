@@ -96,7 +96,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
             // 640px panel as before.
             className="w-full sm:w-[640px] sm:max-w-[640px] overflow-y-auto p-0"
             data-siab-editor-ui
-            data-siab-canvas-chrome="media-picker"
+
           >
             {/* Header: title only. Default shadcn close-X sits absolute top-4 right-4
                 — its 16px right inset gives the Upload toolbar room to breathe
@@ -110,7 +110,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
                 so the uploader never visually collides with it. */}
             {resolvedTenantId != null && (
               <div className="flex items-center gap-2 border-y border-border bg-muted/30 px-6 py-3 pr-14">
-                <MediaUploader tenantId={resolvedTenantId} onUploaded={() => reload()} />
+                <MediaUploader tenantId={resolvedTenantId} onUploaded={(media) => { void reload(); onChange(media); setOpen(false) }} />
               </div>
             )}
 

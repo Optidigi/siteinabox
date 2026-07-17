@@ -8,7 +8,6 @@ import { TenantPill } from "@/components/layout/TenantPill"
 import { captureCmsUsageEvent } from "@/lib/analytics/cms"
 import { notFound } from "next/navigation"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
-import { loadTenantCss } from "@/lib/editor/loadTenantCss"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { pageNavMembership } from "@/lib/nav/membership"
 import { sameRelationshipId } from "@/lib/relationshipId"
@@ -29,10 +28,9 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
   const { slug, pageSlug } = await params
   const { user, ctx, tenant } = await requireSuperAdminSelectedSite(slug)
   const tenantOrigin = process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
-  const [page, manifest, tenantCss, settings, rendererNavPages] = await Promise.all([
+  const [page, manifest, settings, rendererNavPages] = await Promise.all([
     getPageBySlug(tenant.id, decodeURIComponent(pageSlug)).catch(() => null),
     loadTenantManifest(tenant.id),
-    loadTenantCss(tenant.id),
     getOrCreateSiteSettings(tenant.id),
     listPages(tenant.id),
   ])
@@ -56,8 +54,6 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         baseHref={`/sites/${slug}/pages`}
         tenantOrigin={tenantOrigin}
         manifest={manifest}
-        tenantCss={tenantCss}
-        userEditorMode={user.editorMode ?? null}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}

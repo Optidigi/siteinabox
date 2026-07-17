@@ -17,7 +17,7 @@ import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ColorPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
 import { SegmentedPill } from "@/components/common/segmented-pill"
-import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
+import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 

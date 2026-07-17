@@ -21,18 +21,18 @@ body { font-family: var(--font-sans); }
   }
 }
 
-/* Rich text editor canvas — visual hierarchy in form-mode.
+/* Rich text form editor — admin-neutral visual hierarchy.
    The editor renders with admin-neutral typography (not the tenant theme),
    so an h2 looks identical to a p by default. These rules add enough
    hierarchy that editors can tell at a glance what node type each line is.
-   Pixel-perfect tenant-CSS preview is a Phase-2 (canvas-mode) feature. */
+   Exact site styling stays in the adjacent shared renderer. */
 .rt-content {
     font-size: 16px;
     line-height: 1.55;
     color: var(--foreground);
   /* Parent wrapper rebinds --rt-inspector-font-body per field role (title /
    * heading / text / script) so the editable's body text mirrors what the
-   * canvas would render for that field. Default = text so untyped editors
+   * rendered content uses for that field. Default = text so untyped editors
    * read like prose. */
     font-family: var(--rt-inspector-font-body, var(--rt-inspector-font-text, inherit));
 }
@@ -99,21 +99,8 @@ body { font-family: var(--font-sans); }
 .rt-content .rt-themed {
     margin: 0.4em 0; }
 
-/* Canvas-mode editable surface — the ContentEditable. styling-transparent:
-   all typography is inherited from the .rt-slot wrapper + tenant CSS. The
-   .rt-content form-mode rules above never match this class — the different
-   class name is the guard. */
-.rt-content-bare {
-    outline: none;
-    min-height: 1em; }
-.rt-content-bare:focus-visible {
-    outline: none; }
-
 /* RichTextPlugin placeholder — overlays the empty editable rather than
-   taking layout space. Both the bare canvas slot (.rt-slot) and the full
-   form-mode wrapper (.rt-field) are position:relative so it anchors there.
-   The .rt-content-bare:empty::before / .rt-p:only-child:empty::after rule
-   lives at the bottom of this file. */
+   taking layout space inside the form-mode wrapper. */
 .rt-field {
     position: relative; }
 .rt-placeholder {
@@ -123,199 +110,16 @@ body { font-family: var(--font-sans); }
     user-select: none;
 }
 
-@layer base {
-  .rt-canvas {
-    /* Re-bind admin shadcn tokens to tenant tokens. ThemeBar's runtime overlay
-     * (`toCssVars`) supplies --color-bg, --color-ink, --color-ink-muted,
-     * --color-accent. The tenant's compiled CSS (after @theme→:root expansion in
-     * loadTenantCss) supplies --color-card, --color-secondary, --color-rule and
-     * other tokens. All are chained through with hard-coded light-mode fallbacks
-     * so the canvas degrades gracefully when no tenant CSS is loaded. */
-    --background: var(--color-bg, #fff);
-    --foreground: var(--color-ink, #000);
-    --card: var(--color-card, #fff);
-    --card-foreground: var(--color-ink, #000);
-    --popover: var(--color-card, #fff);
-    --popover-foreground: var(--color-ink, #000);
-    --primary: var(--color-accent, currentColor);
-    --primary-foreground: #fff;
-    --secondary: var(--color-secondary, transparent);
-    --secondary-foreground: var(--color-ink, currentColor);
-    --muted: transparent;
-    --muted-foreground: var(--color-ink-muted, currentColor);
-    --accent: var(--color-accent, currentColor);
-    --accent-foreground: #fff;
-    --border: var(--color-rule, rgba(0, 0, 0, 0.1));
-    --input: rgba(0, 0, 0, 0.1);
-    --ring: var(--color-accent, currentColor);
-    /* Defense-in-depth against the canvas painting transparent — and
-     * showing the admin .dark body through — if the tenant style tag is
-     * ever unmounted, late to load, or render-blocked by a failed @import.
-     * Tenant CSS (also @layer base, but body-injected → later cascade) sets
-     * a richer background-color using the same chain; both resolve to the
-     * same color in steady state. */
-    background-color: var(--color-bg, #fff);
-    color-scheme: light;
-    container-type: inline-size;
-    container-name: site-frame;
-    contain: layout;
-  }
-}
-
-/* Editor-affordance accent. The tenant CSS (scoped under .rt-canvas) defines
-   `--color-accent`; the CMS does not. So inside the canvas this resolves to
-   the *tenant's* accent and the selection / hover rings match the site theme;
-   it falls back to the CMS `--ring` if a tenant ships no accent token. */
-.rt-canvas {
-    --rt-affordance: var(--color-accent, var(--ring)); }
-
-/* Shared renderer surfaces inside the CMS must keep the same base typography
-   as the public renderer. Admin layout defaults otherwise win by cascade order
-   and make canvas-only text wrap differently from preview/live. */
-.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .rt-canvas {
-    font-family: var(--font-text);
-    font-size: 17px;
-    line-height: 1.6;
-}
-
-@container site-frame (width >= 48rem) {
-  .site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root {
-      font-size: 18px;
-  }
-}
-
-/* Text-selection highlight in the canvas — derive from the canvas's own
-   `--foreground` so it inverts with the theme: a dark wash on light mode
-   (foreground is dark) and a light wash on dark mode (foreground is light).
-   The native browser default doesn't follow the tenant palette, so it
-   often reads as either invisible or fluorescent against tenant surfaces. */
-.rt-canvas ::selection {
-    background-color: color-mix(in oklab, var(--foreground) 28%, transparent);
-    color: inherit;
-}
-.rt-canvas[data-rt-mode="dark"] ::selection {
-    background-color: color-mix(in oklab, var(--foreground) 35%, transparent);
-}
-
-/* Canvas-mode active-block selection ring */
-.rt-canvas .cms-block:not([data-provider-block]) {
-    position: relative;
-    cursor: default;
-    transition: outline-color 120ms; }
-.rt-canvas:not([data-rt-view="preview"]) .cms-block:not([data-provider-block])[data-active="true"] {
-    outline: 2px solid var(--rt-affordance);
-    outline-offset: -2px;
-}
-.rt-canvas:not([data-rt-view="preview"]) .cms-block:not([data-provider-block]):not([data-active="true"]):not(:has(.rt-slot:hover, .rt-click-edit:hover, [data-rt-selected="true"])):hover {
-    outline: 1px dashed var(--border);
-    outline-offset: -1px;
-}
-
-/* Canvas-mode inline-edit affordance.
-   Every editable element carries `.rt-slot` (rich text) or `.rt-click-edit`
-   (image / icon / CTA button). The affordance is an `outline` — NOT a
-   box-shadow + background wash: an outline never reflows, never fights an
-   element's own background or border (a solid-bg CTA button no longer gets an
-   odd accent-on-accent tint), follows the element's border-radius, and reads
-   identically on text, images, solid buttons and icons — one element-agnostic
-   treatment, no per-type logic. `.rt-slot` is `position: relative` so the
-   bare LexicalField's absolutely-positioned placeholder anchors to it. The
-   full formatting toolbar appears on caret/selection via the portalled,
-   position:fixed FloatingToolbar — it never shifts the canvas. */
-.rt-canvas .rt-slot {
-    position: relative;
-    cursor: text;
-}
-.rt-canvas .rt-click-edit {
-    cursor: pointer; }
-
-.rt-canvas .rt-slot:focus-within {
-    outline: 2px solid var(--rt-affordance);
-    outline-offset: 2px;
-}
-/* When a nested click-to-edit element (e.g. a themed eyebrow inside a rich
-   text slot) is hovered, suppress the ancestor slot's outline — the
-   affordance reads as ONE element, not two nested rings. */
-.rt-canvas .rt-slot:has(.rt-click-edit:hover) {
-    outline: none;
-}
-
-/* Inline-variant slots (eyebrow, headline, …) hold exactly one injected
-   paragraph — strip the rich-text paragraph margin so the slot is a tight
-   single line; block-variant slots keep the tenant's `.rt-p` spacing. */
-.rt-canvas .rt-slot[data-rt-variant="inline"] .rt-p {
-    margin: 0; }
-
-/* An empty inline slot (e.g. an unfilled eyebrow) collapses to ~zero width
-   because the absolutely-positioned placeholder contributes no layout width.
-   Give every inline slot a comfortable hit target; a filled slot's natural
-   width exceeds this so it is a no-op there. */
-.rt-canvas .rt-slot[data-rt-variant="inline"] {
-    min-width: 6ch; }
-
-/* Sidebar select-mode: selected element ring.
-   Each primitive sets data-rt-selected="true" on its root element when it is
-   the currently-selected ElementPath. The cursor rules below are applied
-   directly by the primitives (via a Tailwind cursor-pointer class) when
-   view === "sidebar", so cursor affordance stays primitive-local.
-   `CanvasSurface` (iframe editor frame via `FrameCanvasSurface`) stamps
-   data-rt-view on `.rt-canvas`; the hover/selected ring selectors below use
-   :not([data-rt-view="preview"]) so canvas, sidebar, and mobile editing views
-   share the same affordance rules. A view-only shortcut such as
-     .rt-canvas[data-rt-view="sidebar"] .rt-slot { cursor: pointer; }
-   would be redundant because primitives already apply cursor-pointer in sidebar.
-   Specificity note: [data-rt-selected="true"] is (0,2,0) while :hover is
-   (0,3,0) — selected must override hover so it is lifted to (0,3,0) by
-   qualifying with .rt-slot (most selections are on rt-slot; non-slot
-   selected elements like .rt-click-edit pick up the rule via the extra
-   selector below). */
-/* Arrival pulse — Task 10's useScrollToSelection stamps data-rt-pulse on the
-   element it just scrolled into view; the attribute is removed after the
-   animation so re-selecting the same element re-triggers it. Layered over the
-   persistent [data-rt-selected] ring. */
-@keyframes rt-arrival-pulse {
-  0%   { box-shadow: 0 0 0 0 var(--rt-affordance, currentColor); }
-  100% { box-shadow: 0 0 0 12px transparent; }
-}
-.rt-canvas:not([data-rt-view="preview"]) [data-rt-pulse="true"] {
-    animation: rt-arrival-pulse 1.6s ease-out 1;
-}
-@media (prefers-reduced-motion: reduce) {
-  .rt-canvas [data-rt-pulse="true"] {
-    animation: none;
-  }
-}
-
-/* These rules used to be emitted by the private SIAB registry CSS merger.
-   They are now local app/editor CSS and should move with this file if the
-   SIAB UI layer later becomes a monorepo package. */
-.rt-content-bare:empty::before, .rt-content-bare .rt-p:only-child:empty::after {
-    content: "";
-}
-.rt-canvas:not([data-rt-view="preview"]) .rt-slot:hover, .rt-canvas:not([data-rt-view="preview"]) .rt-click-edit:hover {
-    outline: 2px solid color-mix(in oklab, var(--rt-affordance) 60%, transparent);
-    outline-offset: 2px;
-}
-.rt-canvas:not([data-rt-view="preview"]) .rt-slot[data-rt-selected="true"], .rt-canvas:not([data-rt-view="preview"]) [data-rt-selected="true"] {
-    outline: 2px solid var(--rt-affordance);
-    outline-offset: 2px;
-}
-.rt-canvas[data-rt-view="mobile"] .rt-slot, .rt-canvas[data-rt-view="mobile"] .rt-click-edit {
-    outline: 1px dashed color-mix(in oklch, var(--foreground) 15%, transparent);
-    outline-offset: 2px;
-    min-height: 44px;
-}
-
-.rt-content .rt-font-title, .rt-content-bare .rt-font-title {
+.rt-content .rt-font-title {
     font-family: var(--font-title);
 }
-.rt-content .rt-font-heading, .rt-content-bare .rt-font-heading {
+.rt-content .rt-font-heading {
     font-family: var(--font-heading);
 }
-.rt-content .rt-font-text, .rt-content-bare .rt-font-text {
+.rt-content .rt-font-text {
     font-family: var(--font-text);
 }
-.rt-content .rt-font-script, .rt-content-bare .rt-font-script {
+.rt-content .rt-font-script {
     font-family: var(--font-script);
 }
 

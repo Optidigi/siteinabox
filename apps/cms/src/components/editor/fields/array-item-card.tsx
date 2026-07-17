@@ -2,13 +2,13 @@
 import * as React from "react"
 import { ChevronRight, X } from "lucide-react"
 import { LexicalField } from "@/components/editor/richText/LexicalField"
-import { InlineImage } from "@/components/editor/canvas/inline/InlineImage"
+import { MediaPicker } from "@/components/media/MediaPicker"
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
 import { Input } from "@siteinabox/ui/components/input"
 import { Label } from "@siteinabox/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { IconPicker, resolveLucideIcon } from "@/components/editor/icon-picker"
-import type { ElementSpec } from "@/components/editor/canvas/blockElements"
+import type { ElementSpec } from "@/components/editor/blockElements"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
@@ -91,7 +91,6 @@ const SubFieldRenderer: React.FC<{
         <Label className="text-xs text-muted-foreground">{sub.label}</Label>
         <LexicalField
           key={`${blockIndex}.${itemIndex}.${sub.field}`}
-          chrome="full"
           variant={sub.variant ?? "inline"}
           value={value}
           onChange={onChange}
@@ -113,7 +112,7 @@ const SubFieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{sub.label}</Label>
-        <InlineImage value={value} onChange={onChange} />
+        <MediaPicker value={value} onChange={onChange} />
       </div>
     )
   }
@@ -125,7 +124,7 @@ const SubFieldRenderer: React.FC<{
           <SelectTrigger className="w-full">
             <SelectValue placeholder={sub.label} />
           </SelectTrigger>
-          <SelectContent data-siab-editor-ui data-siab-canvas-chrome="array-field-select">
+          <SelectContent data-siab-editor-ui>
             {(sub.options ?? []).map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}

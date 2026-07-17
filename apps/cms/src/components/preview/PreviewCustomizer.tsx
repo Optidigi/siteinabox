@@ -339,6 +339,7 @@ function PreviewRendererFrame({
 }) {
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const [ready, setReady] = React.useState(false)
+  const [frameError, setFrameError] = React.useState<string | null>(null)
   const [frameContentHeight, setFrameContentHeight] = React.useState<number | null>(null)
   const iframeAutoHeight = useCspStyleRule(
     "preview-renderer-frame-auto-height",
@@ -353,6 +354,7 @@ function PreviewRendererFrame({
 
   React.useEffect(() => {
     setReady(false)
+    setFrameError(null)
     setFrameContentHeight(null)
     revisionRef.current = 0
   }, [revisionRef, src])
@@ -364,6 +366,11 @@ function PreviewRendererFrame({
       const parsed = validateIframeEditorMessage(event.data)
       if (parsed.ok && parsed.message.type === "renderer.ready") {
         setReady(true)
+        setFrameError(null)
+        return
+      }
+      if (parsed.ok && parsed.message.type === "error") {
+        setFrameError(parsed.message.message)
         return
       }
       if (parsed.ok && parsed.message.type === "navigation.requested" && parsed.message.href) onNavigationRequested(parsed.message.href)
@@ -371,6 +378,12 @@ function PreviewRendererFrame({
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
   }, [onNavigationRequested])
+
+  React.useEffect(() => {
+    if (ready || frameError) return
+    const timeout = window.setTimeout(() => setFrameError("De preview kon niet op tijd worden geladen."), 12_000)
+    return () => window.clearTimeout(timeout)
+  }, [frameError, ready, src])
 
   React.useLayoutEffect(() => {
     if (!ready) {
@@ -396,12 +409,6 @@ function PreviewRendererFrame({
     const resizeObserver = new ResizeObserver(schedule)
     if (frameDocument.documentElement) resizeObserver.observe(frameDocument.documentElement)
     if (frameDocument.body) resizeObserver.observe(frameDocument.body)
-    const mutationObserver = new MutationObserver(schedule)
-    mutationObserver.observe(frameDocument.documentElement, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-    })
     frameWindow?.addEventListener("resize", schedule)
     frameWindow?.addEventListener("load", schedule)
     window.addEventListener("resize", schedule)
@@ -411,7 +418,6 @@ function PreviewRendererFrame({
     return () => {
       if (raf != null) window.cancelAnimationFrame(raf)
       resizeObserver.disconnect()
-      mutationObserver.disconnect()
       frameWindow?.removeEventListener("resize", schedule)
       frameWindow?.removeEventListener("load", schedule)
       window.removeEventListener("resize", schedule)
@@ -446,33 +452,57 @@ function PreviewRendererFrame({
 
   React.useEffect(() => {
     if (!ready) return
-    const expectedRevision = revisionRef.current
     postToFrame({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "theme.patch",
-      messageId: `theme-${expectedRevision}`,
-      expectedRevision,
+      messageId: `theme-${revisionRef.current}`,
       theme,
     })
-    revisionRef.current = expectedRevision + 1
   }, [postToFrame, ready, revisionRef, theme])
 
+  const visible = ready && frameContentHeight != null
+
   return (
-    <>
+    <div className="relative min-h-dvh w-full overflow-hidden bg-background">
       {iframeAutoHeight.styleElement}
       <iframe
         ref={frameRef}
         src={src}
         title={title}
-        className={cn(iframeAutoHeight.className, "block min-h-dvh w-full border-0 bg-white")}
+        className={cn(
+          iframeAutoHeight.className,
+          "block min-h-dvh w-full border-0 bg-transparent transition-opacity duration-150",
+          visible ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
         scrolling="no"
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-renderer-frame
         onFocus={onFrameInteraction}
         onPointerDown={onFrameInteraction}
       />
-    </>
+      {!visible && (
+        <div className="absolute inset-0 bg-background p-4" aria-live="polite">
+          {frameError ? (
+            <div className="flex min-h-96 items-center justify-center text-center">
+              <p role="alert" className="max-w-md rounded-lg border border-border bg-card p-4 text-sm text-card-foreground">
+                {frameError}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 animate-pulse" aria-label="Preview laden">
+              <div className="h-16 rounded-lg bg-muted" />
+              <div className="h-96 rounded-lg bg-muted" />
+              <div className="grid grid-cols-3 gap-4">
+                <div className="h-48 rounded-lg bg-muted" />
+                <div className="h-48 rounded-lg bg-muted" />
+                <div className="h-48 rounded-lg bg-muted" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -17,7 +17,6 @@ const safeUser = (user: any) => ({
   name: user.name ?? null,
   role: user.role,
   language: user.language ?? null,
-  editorMode: user.editorMode ?? null,
   createdAt: user.createdAt ?? null,
   updatedAt: user.updatedAt ?? null,
   tenants: ((user.tenants ?? []) as any[]).map((row) => ({

@@ -264,6 +264,13 @@ nonce-bearing component `<style data-mobile-inspector-vaul-css>` tag instead of
 depending on Vaul's blocked runtime injection. No `style-src 'unsafe-inline'`
 exception was restored.
 
+#### Superseded editor details — 2026-07-17
+The single-renderer editor deletion removed the old canvas, projected tenant
+CSS loader, `siteManifest.cssEntry` consumption, color chip, and canvas-specific
+Vaul stylesheet described in the historical implementation notes above. The
+current editor uses nonce-backed generated rules and the shared site renderer;
+the production nonce-only CSP conclusion remains unchanged.
+
 #### Follow-up — 2026-06-07
 Production analytics reload testing exposed a second CSP compatibility gap:
 Recharts `ResponsiveContainer` server-renders inline `style=""` attributes for
@@ -507,6 +514,11 @@ missing allowed files return 404, and non-numeric tenant ids return 400.
 #### Notes
 This is related to infra OBS-35 and closed security OBS-17, but neither item
 tracks the over-broad public tenant-root serving behavior.
+
+#### Superseded — 2026-07-17
+The single-renderer editor no longer loads projected tenant CSS or font assets.
+The allowlisted route and its tests were therefore deleted entirely; published
+media continues through the authenticated renderer/tenant-media boundaries.
 
 ---
 

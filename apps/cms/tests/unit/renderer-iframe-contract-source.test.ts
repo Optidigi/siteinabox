@@ -45,7 +45,7 @@ function findRendererHostSource() {
 }
 
 describe("renderer iframe source contract", () => {
-  it("keeps customer preview on an iframe renderer host instead of same-DOM CanvasMode", () => {
+  it("keeps customer preview on the shared iframe renderer host", () => {
     const previewCustomizer = read(sourcePath("src/components/preview/PreviewCustomizer.tsx"))
 
     expect(previewCustomizer).toContain("/renderer-frame/preview/")
@@ -117,14 +117,14 @@ describe("renderer iframe source contract", () => {
     expect(frameRuntime).toContain('mode === "preview" && message.type !== "page.replace" && message.type !== "theme.patch"')
     expect(frameRuntime).toContain("if (mode !== \"preview\") return")
     expect(frameRuntime).toContain('type: "renderer.ready"')
-    expect(frameRuntime).toContain("selection: false")
-    expect(frameRuntime).toContain("fieldEditing: false")
-    expect(frameRuntime).toContain("assetPicking: false")
-    expect(frameRuntime).toContain("viewportResize: false")
+    expect(frameRuntime).not.toContain("capabilities:")
+    expect(contracts).not.toContain("fieldEditing")
+    expect(contracts).not.toContain("assetPicking")
+    expect(contracts).not.toContain("viewportResize")
     expect(frameRuntime).not.toContain("siab.renderer.")
   })
 
-  it("passes the request CSP nonce through the renderer-frame shell into SitePageRenderer", () => {
+  it("passes the request CSP nonce through the renderer-frame shell into the active-variant renderer", () => {
     const layout = read("apps/cms/src/app/(renderer-frame)/layout.tsx")
     const frameRuntime = read(sourcePath("src/components/renderer-frame/RendererFrameRuntime.tsx"))
 
@@ -140,7 +140,7 @@ describe("renderer iframe source contract", () => {
     expect(frameRuntime).toContain("const cspNonce = useCspNonce()")
     expect(frameRuntime).toContain("nonce={cspNonce}")
     expect(frameRuntime.indexOf("const cspNonce = useCspNonce()")).toBeLessThan(
-      frameRuntime.indexOf("<SitePageRenderer"),
+      frameRuntime.indexOf("<ClientSitePageRenderer"),
     )
     expect(frameRuntime.indexOf("nonce={cspNonce}")).toBeGreaterThan(
       frameRuntime.indexOf("<SitePageRenderer"),

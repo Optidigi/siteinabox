@@ -6,7 +6,7 @@ import {
   remapSelectionAfterDelete,
   remapSelectionAfterInsert,
   type ElementPath,
-} from "@/components/editor/canvas/elementPath"
+} from "@/components/editor/elementPath"
 
 describe("elementPath", () => {
   it("eq matches identical paths incl. optional fields", () => {

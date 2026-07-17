@@ -12,6 +12,4 @@ export const CHROME_STACK_HEIGHT = "6.5rem"
  */
 export const EDITOR_DESKTOP_BREAKPOINT = 1280
 
-// FLOATING_PILL_CLASS canonical home is the local ModeBar. Re-exported here
-// so existing consumers keep working through their current import path.
-export { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
+export { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"

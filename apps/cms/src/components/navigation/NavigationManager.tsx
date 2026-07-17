@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable"
 import { ArrowLeft, Plus, ListTree, PanelTop, PanelBottom } from "lucide-react"
 import { SegmentedPill } from "@/components/common/segmented-pill"
-import { FLOATING_PILL_CLASS } from "@/components/editor/mode/mode-bar"
+import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
 import { Button } from "@siteinabox/ui/components/button"
 import { SaveButton } from "@/components/save-ui/save-button"
 import { SaveStatusBar, type SaveStatus } from "@/components/save-ui/save-status-bar"

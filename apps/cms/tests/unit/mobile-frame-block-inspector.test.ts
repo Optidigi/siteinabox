@@ -56,21 +56,21 @@ describe("mobile iframe native editor source contract", () => {
     expect(pageForm).toContain("frameMobileMode")
     expect(pageForm).toContain("focusedBlockIndex: mobileFocusedSectionIndex")
     expect(pageForm).toContain("showChrome: false")
-    expect(pageForm).toContain("showGutters: false")
-    expect(pageForm).toContain("allowInlineEditing: false")
+    expect(pageForm).not.toContain("showGutters")
+    expect(pageForm).not.toContain("allowInlineEditing")
     expect(pageForm).toContain("<MobileFrameEditor")
-    expect(pageForm).toContain("onOpenBlockInspector={openBlockInSidebar}")
-    expect(pageForm).toContain("if (!isDesktop) {")
+    expect(pageForm).not.toContain("onOpenBlockInspector")
+    expect(pageForm).not.toContain("frameMutations")
     expect(pageForm).toContain("<MobileMediaSheetProvider>")
   })
 
   it("keeps nonce-bearing vaul snap css on the two-detent mobile field inspector", () => {
-    const sharedCss = read("apps/cms/src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
-    const inspector = read("apps/cms/src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+    const sharedCss = read("apps/cms/src/components/editor/mobile/vaulBottomSnapCss.ts")
+    const inspector = read("apps/cms/src/components/editor/mobile/mobile-inspector-bar.tsx")
 
     expect(sharedCss).toContain("export const VAUL_BOTTOM_SNAP_CSS")
     expect(sharedCss).toContain("[data-vaul-handle]")
-    expect(inspector).toContain('from "@/components/editor/canvas/mobile/vaulBottomSnapCss"')
+    expect(inspector).toContain('from "@/components/editor/mobile/vaulBottomSnapCss"')
     expect(inspector).toContain("data-mobile-inspector-vaul-css")
     expect(inspector).toContain("const SNAP_POINTS: MobileSnap[] = [MOBILE_INSPECTOR_COLLAPSED_SNAP, 0.42, 0.92]")
     expect(inspector).toContain("dismissible={false}")
@@ -82,7 +82,7 @@ describe("mobile iframe native editor source contract", () => {
   })
 
   it("keeps mobile editor context actions idempotent to avoid section-open render loops", () => {
-    const context = read("apps/cms/src/components/editor/canvas/mobile/MobileEditorContext.tsx")
+    const context = read("apps/cms/src/components/editor/mobile/MobileEditorContext.tsx")
 
     expect(context).toContain("function sameElementPath")
     expect(context).toContain("if (sameElementPath(state.selected, p)) return state")

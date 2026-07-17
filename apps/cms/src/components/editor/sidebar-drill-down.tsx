@@ -26,8 +26,8 @@ import {
   DropdownMenuTrigger,
 } from "@siteinabox/ui/components/dropdown-menu"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import { BlockTypePicker } from "@/components/editor/canvas/chrome/block-type-picker"
-import { useBlockPresets } from "@/components/editor/canvas/BlockPresetsContext"
+import { BlockTypePicker } from "@/components/editor/block-type-picker"
+import { useBlockPresets } from "@/components/editor/BlockPresetsContext"
 import { blockBySlug } from "@/blocks/registry"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -272,9 +272,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
             against the existing blocks rather than floating at the bottom
             of the sidebar pane. */}
         {addBlockButton}
-        {/* Controlled BlockTypePicker — no trigger of its own; the button
-            above drives it. Mirrors CanvasGapButton's add-block flow so the
-            sidebar view can insert blocks without bouncing to the canvas. */}
+        {/* Controlled BlockTypePicker — the list's add button owns its trigger. */}
         {blockTypePicker}
       </>
     )
@@ -455,7 +453,7 @@ const BlockListRow: React.FC<{
         <DropdownMenuContent
           align="end"
           data-siab-editor-ui
-          data-siab-canvas-chrome="sidebar-block-menu"
+
         >
           <DropdownMenuItem
             onClick={(e) => {
@@ -554,7 +552,6 @@ const BlockFormState: React.FC<{
       description={t("deleteBlockDescription", { label })}
       confirmLabel={t("deleteBlock")}
       variant="destructive"
-      canvasChrome="block-delete-dialog"
       onConfirm={async () => {
         onDelete()
       }}

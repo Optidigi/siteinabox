@@ -50,16 +50,8 @@ export const ThemedPill: React.FC<ThemedPillProps> = ({ id, props, nodeKey }) =>
     firstField.type === "text" &&
     typeof props[firstField.name] === "string"
 
-  // Per-id visual treatment for known text-only themed types. This MUST mirror
-  // the shared renderer's themed rich-text handlers so the canvas is visually
-  // identical to the site —
-  // the eyebrow there is `class="inline-block -rotate-2 text-[20px] text-accent"`
-  // + `font-family: var(--font-script)`. Using class names (not an inline
-  // `color`) is load-bearing: inside `.rt-canvas` the scoped tenant CSS
-  // resolves `text-accent` / `--font-script` to the *tenant* theme, so the
-  // eyebrow renders in the site accent — not the CMS admin's `--brand` yellow.
-  // (Drift risk between this map and the site handlers is tracked in the
-  // backlog — the long-term fix is a shared themed-node rendering contract.)
+  // Compact editor-only treatment for known text-only themed nodes. Exact site
+  // typography remains visible in the adjacent shared renderer.
   const themedTextClass: Record<string, string> = {
     eyebrow: "inline-block -rotate-2 text-[20px] text-accent [font-family:var(--font-script,ui-serif,Georgia,serif)]",
   }
@@ -165,12 +157,6 @@ const InlineTextPill: React.FC<InlineTextPillProps> = ({
   }
 
   return (
-    // `rt-click-edit` gives the themed node the SAME hover affordance as the
-    // other click-to-edit primitives (image / icon / CTA / pill) — the unified
-    // outline, not a bespoke treatment. The canvas CSS
-    // (`.rt-slot:has(.rt-click-edit:hover)`) suppresses the parent slot's
-    // outline while the element itself is hovered, so the affordance reads as
-    // one element, not two nested rings.
     <span
       ref={spanRef}
       contentEditable
@@ -178,7 +164,7 @@ const InlineTextPill: React.FC<InlineTextPillProps> = ({
       spellCheck={false}
       role="textbox"
       aria-label={defLabel}
-      className={`${className} rt-click-edit`}
+      className={className}
       data-rt-id={id}
       onInput={handleInput}
       // Stop pointer/keyboard events from bubbling into the Lexical editor

@@ -6,7 +6,8 @@ import { $patchStyleText } from "@lexical/selection"
 import { Type } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@siteinabox/ui/components/popover"
 import type { RtManifest } from "@/lib/richText/manifest"
-import { useAnchorRtCanvas } from "@/components/editor/hooks/use-rt-canvas-anchor"
+import type { ThemeTokens } from "@/lib/theme/schema"
+import { inspectorFontValue } from "@/lib/theme/inspectorFonts"
 import { useActiveTextStyle } from "@/components/editor/richText/toolbar/use-active-text-style"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -14,41 +15,14 @@ import { useTranslations } from "next-intl"
 
 export interface FontChipProps {
   manifest: RtManifest
+  theme?: ThemeTokens | null
 }
 
 const ACTIVE_CHIP_CLASS = "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
 
-interface ResolvedFonts {
-  tokens: Record<string, string>
-  defaultFont: string
-}
-
-const useResolvedFonts = (manifest: RtManifest): ResolvedFonts => {
-  const anchor = useAnchorRtCanvas()
-  const [resolved, setResolved] = React.useState<ResolvedFonts>({ tokens: {}, defaultFont: "" })
-
-  React.useEffect(() => {
-    if (!anchor) return
-    const tokens: Record<string, string> = {}
-    const cs = getComputedStyle(anchor)
-    for (const f of manifest.fontFamilies ?? []) {
-      const v = cs.getPropertyValue(f.cssVar).trim()
-      if (v) tokens[f.id] = v
-      else {
-        const mirror = cs.getPropertyValue(f.cssVar.replace(/^--font-/, "--rt-tenant-font-")).trim()
-        if (mirror) tokens[f.id] = mirror
-      }
-    }
-    setResolved({ tokens, defaultFont: cs.fontFamily || "" })
-  }, [anchor, manifest])
-
-  return resolved
-}
-
-export const FontChip: React.FC<FontChipProps> = ({ manifest }) => {
+export const FontChip: React.FC<FontChipProps> = ({ manifest, theme }) => {
   const t = useTranslations("editor")
   const [editor] = useLexicalComposerContext()
-  const { tokens: resolved, defaultFont } = useResolvedFonts(manifest)
   const { font: activeFont } = useActiveTextStyle()
   const tokens = manifest.fontFamilies ?? []
   if (tokens.length === 0) return null
@@ -88,7 +62,7 @@ export const FontChip: React.FC<FontChipProps> = ({ manifest }) => {
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         data-siab-editor-ui
-        data-siab-canvas-chrome="rich-text-popover"
+
       >
         <button
           type="button"
@@ -100,7 +74,7 @@ export const FontChip: React.FC<FontChipProps> = ({ manifest }) => {
             activeFont === null && "bg-accent text-accent-foreground",
           )}
         >
-          <FontSample font={defaultFont} />
+          <FontSample font={inspectorFontValue(theme, "--font-text")} />
           <span className="text-muted-foreground">{t("defaultFont")}</span>
         </button>
         <div className="my-1 border-t border-border" />
@@ -116,7 +90,7 @@ export const FontChip: React.FC<FontChipProps> = ({ manifest }) => {
               activeFont === token.id && "bg-accent text-accent-foreground",
             )}
           >
-            <FontSample font={resolved[token.id] || `var(${token.cssVar})`} />
+            <FontSample font={inspectorFontValue(theme, token.cssVar)} />
             <span className="text-muted-foreground">{token.label}</span>
           </button>
         ))}

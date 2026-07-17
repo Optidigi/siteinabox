@@ -15,13 +15,13 @@ lives in `packages/ui`; the CMS app keeps compatibility re-export shims.
   and `sidebar.tsx`, but those files should re-export from `@siteinabox/ui`.
 - App/editor composites live outside `src/components/ui/`:
   - `src/components/editor/`
-  - `src/components/editor/canvas/`
+  - `src/components/editor/` form, inspector, and mobile editing state
   - `src/components/editor/richText/toolbar/`
   - `src/components/editor/theme/`
   - `src/components/save-ui/`
   - `src/components/common/`
 - `src/styles/shadcn.css` imports `@siteinabox/ui/styles/shadcn.css`.
-- `src/styles/siab.css` is protected SIAB app/editor/canvas CSS.
+- `src/styles/siab.css` is protected SIAB app/editor CSS.
 
 `pnpm lint:ui-boundary` enforces the app path split. `pnpm lint:ui-composition`
 adds drift checks for composition style: direct Radix imports stay inside

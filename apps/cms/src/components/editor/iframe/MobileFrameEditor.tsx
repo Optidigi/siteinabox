@@ -13,16 +13,16 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
 import { MobileBackPill } from "@/components/common/mobile-back-pill"
 import { blockBySlug } from "@/blocks/registry"
-import type { CanvasBlocksApi } from "@/components/editor/canvas/CanvasBlocksApi"
-import type { ElementPath } from "@/components/editor/canvas/elementPath"
+import type { MobileBlocksApi } from "@/components/editor/mobile/MobileBlocksApi"
+import type { ElementPath } from "@/components/editor/elementPath"
 import {
   MobileEditorProvider,
   useMobileEditor,
-} from "@/components/editor/canvas/mobile/MobileEditorContext"
-import { MobileSectionList } from "@/components/editor/canvas/mobile/mobile-section-list"
-import { MobileInspectorBar } from "@/components/editor/canvas/mobile/mobile-inspector-bar"
-import { MobilePageSettings } from "@/components/editor/canvas/mobile/mobile-page-settings"
-import { MobileSeoSettings } from "@/components/editor/canvas/mobile/mobile-seo-settings"
+} from "@/components/editor/mobile/MobileEditorContext"
+import { MobileSectionList } from "@/components/editor/mobile/mobile-section-list"
+import { MobileInspectorBar } from "@/components/editor/mobile/mobile-inspector-bar"
+import { MobilePageSettings } from "@/components/editor/mobile/mobile-page-settings"
+import { MobileSeoSettings } from "@/components/editor/mobile/mobile-seo-settings"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useTranslations } from "next-intl"
@@ -34,7 +34,7 @@ type MobileEditorScreen =
   | { type: "seo" }
 
 export interface MobileFrameEditorProps {
-  api: Pick<CanvasBlocksApi, "blocks" | "reorderBlocks" | "insertBlockAt" | "deleteBlock" | "duplicateBlock">
+  api: Pick<MobileBlocksApi, "blocks" | "reorderBlocks" | "insertBlockAt" | "deleteBlock" | "duplicateBlock">
   manifest: RtManifest
   theme?: ThemeTokens | null
   pageTitle: string
@@ -187,7 +187,7 @@ function MobileFocusedSection({
   onNext,
   onJumpToSection,
 }: {
-  api: Pick<CanvasBlocksApi, "blocks" | "deleteBlock" | "duplicateBlock">
+  api: Pick<MobileBlocksApi, "blocks" | "deleteBlock" | "duplicateBlock">
   index: number
   block: Record<string, unknown>
   manifest: RtManifest
@@ -257,7 +257,7 @@ function MobileFocusedSection({
               align="center"
               className="min-w-[14rem]"
               data-siab-editor-ui
-              data-siab-canvas-chrome="mobile-section-menu"
+
             >
               {api.blocks.map((entry, i) => {
                 const config = blockBySlug[String(entry?.blockType)]
@@ -316,7 +316,6 @@ function MobileFocusedSection({
         description={t("deleteBlockDescription", { label })}
         confirmLabel={t("deleteSection")}
         variant="destructive"
-        canvasChrome="block-delete-dialog"
         onConfirm={async () => {
           api.deleteBlock(index)
           onBack()

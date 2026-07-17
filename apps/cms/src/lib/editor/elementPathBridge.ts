@@ -1,5 +1,5 @@
 import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
-import type { ElementPath } from "@/components/editor/canvas/elementPath"
+import type { ElementPath } from "@/components/editor/elementPath"
 import { blockWireId } from "@/lib/editor/ensureBlockIds"
 
 export function iframeSelectionToElementPath(

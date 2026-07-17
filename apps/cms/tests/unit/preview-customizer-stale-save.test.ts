@@ -19,21 +19,12 @@ vi.mock("@siteinabox/ui/components/form", () => ({
   Form: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock("@/components/editor/canvas/BlockPresetsContext", () => ({
+vi.mock("@/components/editor/BlockPresetsContext", () => ({
   BlockPresetsProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
 vi.mock("@/components/editor/iframe/PageEditorFrameHost", () => ({
   PageEditorFrameHost: () => null,
-}))
-
-vi.mock("@/components/editor/canvas/CanvasSelectionContext", () => ({
-  CanvasSelectionProvider: ({ children }: { children: React.ReactNode }) => children,
-}))
-
-vi.mock("@/components/editor/canvas/SiteChromePreview", () => ({
-  SiteChromeActionFrame: ({ children }: { children: React.ReactNode }) => children,
-  SiteChromePreview: () => null,
 }))
 
 vi.mock("@/components/editor/RtManifestContext", () => ({

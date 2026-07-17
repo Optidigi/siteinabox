@@ -33,7 +33,7 @@ export const LinkPopover: React.FC<{ open: boolean; onClose: () => void }> = ({ 
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose() }}>
-      <DialogContent data-siab-editor-ui data-siab-canvas-chrome="rich-text-dialog">
+      <DialogContent data-siab-editor-ui>
         <DialogHeader><DialogTitle>{t("linkTo")}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <Input value={href} onChange={(e) => setHref(e.target.value)} placeholder={t("linkHrefPlaceholder")} />

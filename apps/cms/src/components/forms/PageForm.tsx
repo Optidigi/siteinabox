@@ -1,6 +1,5 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
-import { createPortal } from "react-dom"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -23,7 +22,7 @@ import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
-import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, SlidersHorizontal } from "lucide-react"
+import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X } from "lucide-react"
 import type { Page } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
 import { SHADCNUI_CHROME_VARIANTS, SITE_CHROME_CATALOG } from "@siteinabox/contracts"
@@ -31,18 +30,15 @@ import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
-import { type EditorMode, resolveDefaultMode } from "@/lib/editor/editorMode"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
-import { ModeBar } from "@/components/editor/mode/mode-bar"
-import { PageEditorFrameHost, type PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
-import { EditorFrameDocumentContext } from "@/components/editor/iframe/EditorFrameDocumentContext"
+import { PageEditorFrameHost } from "@/components/editor/iframe/PageEditorFrameHost"
 import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
-import { ensureBlockId, ensurePageBlockIds, findBlockIndexByWireId, blockWireId } from "@/lib/editor/ensureBlockIds"
+import { ensureBlockId, ensurePageBlockIds, blockWireId } from "@/lib/editor/ensureBlockIds"
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
-import { BlockPresetsProvider } from "@/components/editor/canvas/BlockPresetsContext"
-import { MobileMediaSheetProvider } from "@/components/editor/canvas/MobileMediaSheetContext"
+import { BlockPresetsProvider } from "@/components/editor/BlockPresetsContext"
+import { MobileMediaSheetProvider } from "@/components/editor/mobile/MobileMediaSheetContext"
 import {
   SidebarBlockFormLayout,
   SidebarDrillDown,
@@ -52,15 +48,13 @@ import {
   SidebarPageSettingsLayout,
   type SidebarPageSettingsSlotContext,
 } from "@/components/editor/sidebar-drill-down"
-import { CanvasSelectionProvider } from "@/components/editor/canvas/CanvasSelectionContext"
-import type { ElementPath } from "@/components/editor/canvas/elementPath"
+import type { ElementPath } from "@/components/editor/elementPath"
 import {
   remapSelectionAfterDelete,
   remapSelectionAfterInsert,
   remapSelectionAfterReorder,
-} from "@/components/editor/canvas/elementPath"
+} from "@/components/editor/elementPath"
 import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
-import { setUserEditorMode } from "@/lib/actions/setUserEditorMode"
 import { ThemeBar } from "@/components/editor/theme/theme-bar"
 import { togglePageInNav } from "@/lib/actions/togglePageInNav"
 import { publishCurrentTenantStateAction } from "@/lib/actions/publishCurrentTenantState"
@@ -68,7 +62,6 @@ import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { countLeafDirty } from "@/lib/countLeafDirty"
 import { countLeafErrors } from "@/lib/countLeafErrors"
 import { useStatusFeedback } from "@/components/status-feedback"
-import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import {
   deletePageEditorDraft,
   readPageEditorDraft,
@@ -80,7 +73,7 @@ import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValu
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
 import type { NavPage } from "@/lib/projection/resolveNav"
-import { SiteChromeRow, type SiteChromeSelection, type SiteChromeSelectPoint, type SiteChromeZone } from "@/components/editor/canvas/SiteChromePreview"
+import { SiteChromeRow, type SiteChromeSelection, type SiteChromeZone } from "@/components/editor/sidebar/SiteChromeRow"
 import { MediaPicker } from "@/components/media/MediaPicker"
 import {
   createFooterItem,
@@ -125,10 +118,7 @@ function useIsDesktop() {
   return isDesktop
 }
 
-const pageEditorStyleCache = new Map<string, {
-  tenantCss: string | null
-  theme: ThemeTokens | null
-}>()
+const pageEditorThemeCache = new Map<string, ThemeTokens | null>()
 
 /**
  * Payload upload fields accept either a numeric id or null. The form may
@@ -599,252 +589,7 @@ function SiteChromeDrillDown({
   )
 }
 
-function SiteChromeQuickMenu({
-  menu,
-  draft,
-  setDraft,
-  tenantId,
-  canEditSettings,
-  navigationHref,
-  onNavigate,
-  footerContract,
-  onOpenInspector,
-  onClose,
-}: {
-  menu: { selection: SiteChromeSelection; point: SiteChromeSelectPoint } | null
-  draft: SiteChromeDraft
-  setDraft: Dispatch<SetStateAction<SiteChromeDraft>>
-  tenantId: number | string
-  canEditSettings?: boolean
-  navigationHref?: string | null
-  onNavigate?: (href: string) => void
-  footerContract?: FooterCompositionContract | null
-  onOpenInspector: (selection: SiteChromeSelection) => void
-  onClose: () => void
-}) {
-  const t = useTranslations("editor")
-  const [panel, setPanel] = useState<"main" | "columns" | "items" | "logo">("main")
-
-  useEffect(() => {
-    if (!menu) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose()
-    }
-    window.addEventListener("keydown", onKeyDown)
-    return () => window.removeEventListener("keydown", onKeyDown)
-  }, [menu, onClose])
-
-  useEffect(() => {
-    setPanel("main")
-  }, [menu?.selection.zone, menu?.point.x, menu?.point.y])
-
-  const hasDocument = typeof document !== "undefined"
-  // siab-responsive-ignore-next-line -- CMS quick menu is positioned against the browser viewport.
-  const left = menu && hasDocument ? Math.max(8, Math.min(menu.point.x, window.innerWidth - 368)) : 0
-  // siab-responsive-ignore-next-line -- CMS quick menu is positioned against the browser viewport.
-  const top = menu && hasDocument ? Math.max(8, Math.min(menu.point.y, window.innerHeight - 320)) : 0
-  const menuPosition = useCspStyleRule(
-    "site-chrome-quick-menu",
-    menu && hasDocument ? `left:${formatCssPx(left)};top:${formatCssPx(top)};` : null,
-  )
-
-  if (!menu || !hasDocument) return null
-
-  const zone = menu.selection.zone
-  const logo = zone === "header" ? draft.header.logo : draft.footer.logo
-  const setLogo = (logoValue: unknown) => {
-    if (!canEditSettings) return
-    setDraft((current) => zone === "header"
-      ? { ...current, header: { ...current.header, logo: logoValue } }
-      : { ...current, footer: { ...current.footer, logo: logoValue } })
-  }
-  const columns = footerContract
-    ? ensureFooterColumnItems(
-        setFooterColumnCount(draft.footer.columns, draft.footer.columns.length || footerContract.defaultColumnCount, footerContract),
-        footerContract,
-      )
-    : []
-  const setColumns = (nextColumns: FooterCompositionColumn[]) => {
-    if (!canEditSettings || !footerContract) return
-    setDraft((current) => ({
-      ...current,
-      footer: { ...current.footer, columns: ensureFooterColumnItems(normalizeFooterColumns(nextColumns, footerContract), footerContract) },
-    }))
-  }
-  const setColumnType = (columnIndex: number, type: FooterItemType) => {
-    if (!footerContract) return
-    setColumns(columns.map((column, index) => index !== columnIndex
-      ? column
-      : { ...column, items: [{ ...createFooterItem(type), id: column.items[0]?.id ?? undefined }] }))
-  }
-  const title = zone === "header" ? "Header" : "Footer"
-  const footerActions = (
-    <div className={`${navigationHref ? "grid-cols-2" : "grid-cols-1"} grid gap-2 border-t border-border pt-3`}>
-      {navigationHref && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full gap-1.5"
-          onClick={() => {
-            onClose()
-            onNavigate?.(navigationHref)
-          }}
-        >
-          <Navigation className="size-3.5" aria-hidden />
-          {t("manageNavigation")}
-        </Button>
-      )}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="w-full gap-1.5"
-        onClick={() => onOpenInspector(menu.selection)}
-      >
-        <SlidersHorizontal className="size-3.5" aria-hidden />
-        {t("openInspector")}
-      </Button>
-    </div>
-  )
-  const submenuHeader = (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8"
-        onClick={() => setPanel("main")}
-        aria-label={t("back")}
-      >
-        <ChevronLeft className="size-4" aria-hidden />
-      </Button>
-      <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-    </div>
-  )
-
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 font-sans"
-      role="presentation"
-      onClick={onClose}
-      onContextMenu={(event) => {
-        event.preventDefault()
-        event.stopPropagation()
-        onClose()
-      }}
-    >
-      {menuPosition.styleElement}
-      <div
-        className={`${menuPosition.className} fixed max-h-[min(28rem,calc(100vh-1rem))] w-88 space-y-3 overflow-y-auto rounded-md border border-border bg-popover p-3 text-popover-foreground shadow-md`}
-        onClick={(event) => event.stopPropagation()}
-        onContextMenu={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-      >
-        {panel === "main" && (
-          <>
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {zone === "footer" ? t("footerQuickMenuDescription") : t("siteChromeManagedElsewhere")}
-              </p>
-            </div>
-            <div className="space-y-2">
-              {zone === "footer" && footerContract && (
-                <>
-                  <Button type="button" variant="ghost" className="h-9 w-full justify-start px-2" onClick={() => setPanel("columns")}>
-                    {t("columnsAmount")}
-                  </Button>
-                  <Button type="button" variant="ghost" className="h-9 w-full justify-start px-2" onClick={() => setPanel("items")}>
-                    {t("editColumns")}
-                  </Button>
-                </>
-              )}
-              <Button type="button" variant="ghost" className="h-9 w-full justify-start px-2" onClick={() => setPanel("logo")}>
-                {t("editCustomLogo")}
-              </Button>
-            </div>
-            {footerActions}
-          </>
-        )}
-
-        {panel === "columns" && zone === "footer" && footerContract && (
-          <>
-            {submenuHeader}
-            <div className="space-y-1.5">
-              <Label htmlFor="footer-quick-columns" className="text-xs">{t("columnsAmount")}</Label>
-              <Select
-                value={String(columns.length)}
-                disabled={!canEditSettings}
-                onValueChange={(value) => setColumns(setFooterColumnCount(columns, Number(value), footerContract))}
-              >
-                <SelectTrigger id="footer-quick-columns" className="h-8 w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {footerContract.columnCounts.map((count) => (
-                    <SelectItem key={count} value={String(count)}>
-                      {t("footerColumnCount", { count })}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {footerActions}
-          </>
-        )}
-
-        {panel === "items" && zone === "footer" && footerContract && (
-          <>
-            {submenuHeader}
-            <div className="space-y-2">
-              {columns.map((column, index) => (
-                <div key={column.id ?? index} className="space-y-1.5">
-                  <Label className="text-xs text-muted-foreground">{t("footerColumn", { index: index + 1 })}</Label>
-                  <Select
-                    value={column.items[0]?.type}
-                    disabled={!canEditSettings}
-                    onValueChange={(type) => setColumnType(index, type as FooterItemType)}
-                  >
-                    <SelectTrigger className="h-8 w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {footerContract.items.map((item) => (
-                        <SelectItem key={item.type} value={item.type}>{item.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </div>
-            {footerActions}
-          </>
-        )}
-
-        {panel === "logo" && (
-          <>
-            {submenuHeader}
-            <div className="space-y-1.5">
-              <Label className="text-xs">{t("customLogo")}</Label>
-              {canEditSettings ? (
-                <MediaPicker value={logo} onChange={setLogo} relationTo="media" tenantId={tenantId} />
-              ) : (
-                <p className="text-xs text-muted-foreground">{t("siteChromeReadOnly")}</p>
-              )}
-            </div>
-            {footerActions}
-          </>
-          )}
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
-export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, userEditorMode, tenantCss, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, autoPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; userEditorMode?: EditorMode | null; tenantCss?: string | null; theme?: ThemeTokens | null; siteSettings?: any; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; autoPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, autoPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: any; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; autoPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -886,45 +631,31 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [canEditPage, initial],
   )
 
-  // Editor mode: resolved from user preference → manifest default → "canvas".
-  // Both canvas and sidebar modes are persisted via server action.
-  const [mode, setMode] = useState<EditorMode>(() => readOnly ? "canvas" : resolveDefaultMode(userEditorMode, manifest))
-
   // Theme state — seeded from the server-fetched tenant.theme prop (B2).
-  // ThemeBar writes here for immediate canvas re-renders; persistence
+  // ThemeBar writes here for immediate renderer updates; persistence
   // piggybacks on the page-form Save cycle. `themeBaseline` is held as
   // STATE (not a ref) so updates to it re-trigger the `themeDirty`
   // memo — a ref would mutate silently and leave the badge stuck on
   // "unsaved" after a successful theme save.
   const tenantStyleCacheKey = String(tenantId)
-  const cachedStyle = pageEditorStyleCache.get(tenantStyleCacheKey)
-  const [themeState, setThemeState] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedStyle?.theme ?? null))
-  const [themeBaseline, setThemeBaseline] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedStyle?.theme ?? null))
-  const [stableTenantCss, setStableTenantCss] = useState<string | null>(() => tenantCss ?? cachedStyle?.tenantCss ?? null)
-  const [editorFrameDocument, setEditorFrameDocument] = useState<Document | null>(null)
+  const cachedTheme = pageEditorThemeCache.get(tenantStyleCacheKey)
+  const [themeState, setThemeState] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedTheme ?? null))
+  const [themeBaseline, setThemeBaseline] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedTheme ?? null))
   const themeDirty = useMemo(
     () => JSON.stringify(themeState) !== JSON.stringify(themeBaseline),
     [themeState, themeBaseline],
   )
 
   useEffect(() => {
-    if (tenantCss == null && theme == null) return
-    const previous = pageEditorStyleCache.get(tenantStyleCacheKey)
-    const normalizedTheme = normalizeThemeForSave(theme ?? previous?.theme ?? null)
-    pageEditorStyleCache.set(tenantStyleCacheKey, {
-      tenantCss: tenantCss ?? previous?.tenantCss ?? null,
-      theme: normalizedTheme,
-    })
-    if (tenantCss != null) setStableTenantCss(tenantCss)
-  }, [tenantCss, tenantStyleCacheKey, theme])
+    if (theme == null) return
+    pageEditorThemeCache.set(tenantStyleCacheKey, normalizeThemeForSave(theme))
+  }, [tenantStyleCacheKey, theme])
 
   // Element selection state — single source of truth.
-  // SidebarDrillDown and the canvas's click-to-select BOTH write via the context's
-  // select; SidebarDrillDown reads selected to know which block to open.
+  // The sidebar and event-delegated renderer selection share one element path.
   const [selected, setSelected] = useState<ElementPath | null>(null)
   const [mobileFocusedSectionIndex, setMobileFocusedSectionIndex] = useState<number | null>(null)
   const [selectedChrome, setSelectedChrome] = useState<SiteChromeSelection | null>(null)
-  const [chromeQuickMenu, setChromeQuickMenu] = useState<{ selection: SiteChromeSelection; point: SiteChromeSelectPoint } | null>(null)
   const siteSettingsState = siteSettings ?? null
   const footerContract = useMemo(() => resolveFooterContract(manifest), [manifest])
   const settingsContract = useMemo(() => resolveSettingsContract(manifest), [manifest])
@@ -969,92 +700,15 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setSelected((current) => {
       const resolved = typeof next === "function" ? next(current) : next
       setSelectedChrome(null)
-      setChromeQuickMenu(null)
       return resolved
     })
   }, [readOnly])
 
-  const selectChrome = useCallback((selection: SiteChromeSelection, point?: SiteChromeSelectPoint) => {
+  const selectChrome = useCallback((selection: SiteChromeSelection) => {
     if (readOnly) return
     setSelected(null)
     setSelectedChrome(selection)
-    if (mode === "canvas" && point) setChromeQuickMenu({ selection, point })
-  }, [mode, readOnly])
-
-  // Sidebar height tracks the canvas pane's bottom edge in the viewport, so
-  // the sidebar's bottom never extends past the canvas's bottom — symmetric
-  // with the sticky `top: CHROME_STACK_HEIGHT` that prevents the sidebar's
-  // top from rising above the chrome. The static ResizeObserver-only
-  // approach handled the "short canvas, no scroll" case but not the
-  // "user scrolls down so canvas content end enters the viewport" case —
-  // the sidebar (sticky at the chrome offset, full viewport height) would
-  // continue past the canvas content's bottom.
-  //
-  // Fix: track the canvas pane's bounding rect on every scroll/resize via
-  // rAF-throttled listener. Aside height = min(viewport, canvas-pane-bottom)
-  // - CHROME - SIDEBAR_BOTTOM_GUTTER. Bumps any time the canvas pane
-  // resizes too (block add/remove, image load, theme bar toggle, etc.).
-  const canvasPaneRef = useRef<HTMLDivElement | null>(null)
-  const asideRef = useRef<HTMLElement | null>(null)
-  useEffect(() => {
-    const canvasNode = canvasPaneRef.current
-    if (!canvasNode) return
-    let raf: number | null = null
-    let lastHeightPx = -1
-    const recompute = () => {
-      raf = null
-      const aside = asideRef.current
-      const canvas = canvasPaneRef.current
-      if (!aside || !canvas) return
-      const rect = canvas.getBoundingClientRect()
-      const rootFs = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16
-      const baseChromePx = 6.5 * rootFs        // CHROME_STACK_HEIGHT in px
-      const topGutterPx = 0.5 * rootFs         // matches theme bar's py-2 top
-      const bottomGutterPx = 0.5 * rootFs      // breathing above viewport bottom
-      const chromePx = baseChromePx + topGutterPx
-      // rect.bottom INCLUDES the canvas pane's pb-24 padding (6rem) — that
-      // padding is breathing room for the canvas content, not a continuation
-      // of the canvas surface. The sidebar should bound by the *visible* end
-      // of the canvas content, not the padded box bottom. Subtract pb-24.
-      const canvasPbPx = 6 * rootFs            // matches pb-24 on the canvas pane
-      const vh = window.innerHeight
-      const canvasContentBottomInVp = rect.bottom - canvasPbPx
-      const asideBottomInVp = Math.min(vh - bottomGutterPx, canvasContentBottomInVp)
-      const next = Math.max(0, Math.round(asideBottomInVp - chromePx))
-      if (next === lastHeightPx) return     // skip identical writes
-      lastHeightPx = next
-      // Write directly to the DOM — bypasses React reconciliation so the
-      // scroll-driven height updates land in the same frame as the scroll
-      // paint, without triggering setState → reconcile → commit per
-      // pointer movement. Substantially smoother on long pages.
-      aside.style.height = `${next}px`
-    }
-    const schedule = () => { if (raf === null) raf = requestAnimationFrame(recompute) }
-    recompute()
-    window.addEventListener("scroll", schedule, { passive: true })
-    window.addEventListener("resize", schedule, { passive: true })
-    const ro = new ResizeObserver(schedule)
-    ro.observe(canvasNode)
-    return () => {
-      window.removeEventListener("scroll", schedule)
-      window.removeEventListener("resize", schedule)
-      ro.disconnect()
-      if (raf !== null) cancelAnimationFrame(raf)
-    }
-  }, [mode])  // re-run when mode toggles so we observe the sidebar-view pane on activation
-
-  const handleModeChange = async (next: EditorMode) => {
-    const prev = mode
-    setChromeQuickMenu(null)
-    setMode(next)
-    try {
-      await setUserEditorMode(next)
-    } catch {
-      // Roll back on error
-      setMode(prev)
-      status.error(t("editorModePreferenceFailed"))
-    }
-  }
+  }, [readOnly])
 
   const isDesktop = useIsDesktop()
 
@@ -1255,11 +909,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       ? saveTenantTheme(tenantId, normalizedThemeSnapshot).then((savedTheme) => {
           setThemeState(savedTheme)
           setThemeBaseline(savedTheme)
-          const previous = pageEditorStyleCache.get(tenantStyleCacheKey)
-          pageEditorStyleCache.set(tenantStyleCacheKey, {
-            tenantCss: previous?.tenantCss ?? stableTenantCss,
-            theme: savedTheme,
-          })
+          pageEditorThemeCache.set(tenantStyleCacheKey, savedTheme)
         })
       : Promise.resolve()
     const navWasDirty = navDirty
@@ -1536,7 +1186,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   // Watched blocks — needed by SidebarDrillDown in sidebar view.
   const watchedBlocks: any[] = form.watch("blocks") ?? []
 
-  // Reorder helper for SidebarDrillDown and iframe protocol handlers.
+  // Reorder helper for the parent-owned desktop and mobile section lists.
   const reorderBlocks = (from: number, to: number) => {
     if (readOnly) return
     const copy = [...watchedBlocks]
@@ -1571,9 +1221,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setSelected({ blockIndex: index, field: "" })
   }, [form, readOnly, watchedBlocks])
 
-  // FE-53 — SidebarDrillDown's "Add block" affordance. Mirrors
-  // useCanvasBlocks.insertBlockAt (defaultAnchor pre-fill + seed merge) but
-  // appends at the end; selects the new block so its form opens immediately.
+  // SidebarDrillDown add affordance: append and open the new block form.
   const addBlock = (blockType: string, seed?: Record<string, unknown>) => {
     if (readOnly) return
     const defaultAnchor = manifest?.blocks?.find((m) => m.slug === blockType)?.defaultAnchor
@@ -1605,7 +1253,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setMobileFocusedSectionIndex(null)
   }, [mobileFocusedSectionIndex, watchedBlocks])
 
-  // Danger zone — standalone card rendered below the canvas (canvas view)
+  // Danger zone shown from page settings in the inspector/mobile shell.
   // or inside the sidebar (sidebar view).
   const dangerZone = readOnly ? null : (
     <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
@@ -1652,7 +1300,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     </section>
   )
 
-  // SEO card — rendered below the canvas (canvas view) or inside the sidebar (sidebar view).
+  // SEO settings rendered inside the inspector/mobile page settings.
   const seoCard = (
     <section className="rounded-md border border-border bg-card p-4">
       <h2 className="text-base font-semibold text-foreground">{t("seo")}</h2>
@@ -1696,7 +1344,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       </section>
     ) : null
 
-  // Page-settings card stack handed to the canvas / sidebar `seoCard` slot
+  // Page-settings card stack handed to the sidebar `seoCard` slot
   // (a ReactNode slot — local UI components render whatever node they get).
   const pageSettings = readOnly ? null : (
     <>
@@ -1713,23 +1361,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     },
     [navigationHref],
   )
-
-  const openChromeInSidebar = useCallback((selection: SiteChromeSelection) => {
-    setChromeQuickMenu(null)
-    setSelected(null)
-    setSelectedChrome(selection)
-    void handleModeChange("sidebar")
-  }, [handleModeChange])
-
-  const openBlockInSidebar = useCallback((index: number) => {
-    setChromeQuickMenu(null)
-    setSelectedChrome(null)
-    setSelected({ blockIndex: index, field: "" })
-    if (!isDesktop) {
-      return
-    }
-    void handleModeChange("sidebar")
-  }, [handleModeChange, isDesktop])
 
   const renderSidebarList = useCallback(
     (ctx: SidebarListSlotContext) => (
@@ -1814,8 +1445,8 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   ) : null
 
   // The visual pane is always the authenticated `/editor-frame` iframe when
-  // renderer settings are available. Parent owns RHF/save/ThemeBar/sidebars;
-  // the iframe owns render, inline edit, DnD, gutters, and chrome selection.
+  // The iframe owns rendering only. The parent owns fields, ordering, saving,
+  // theme controls, and the single inspector sidebar.
   const watchedSeo = form.watch("seo")
   const watchedSlug = form.watch("slug")
   const iframeAnalyticsContext = useMemo(
@@ -1840,7 +1471,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const frameSettings = rendererSettingsState as ContractSiteSettings | null
   const frameTheme = useMemo(() => normalizeThemeForSave(themeState), [themeState])
   const frameEditorLayout = isDesktop ? "desktop" : "mobile"
-  const frameEditorView: PageEditorFrameView = readOnly ? "sidebar" : isDesktop ? mode : "canvas"
   const canRenderEditorFrame = frameSettings != null
   const framePageId = initial?.id ?? "new"
   const frameSelection = useMemo(
@@ -1858,8 +1488,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       focusedBlockIndex: mobileFocusedSectionIndex,
       ...(focusedBlockId ? { focusedBlockId } : {}),
       showChrome: false,
-      showGutters: false,
-      allowInlineEditing: false,
     }
   }, [isDesktop, mobileFocusedSectionIndex, watchedBlocks])
   const handleFrameSelectionChanged = useCallback((selection: IframeEditorSelection | null) => {
@@ -1871,83 +1499,15 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     }
     const path = iframeSelectionToElementPath(selection, watchedBlocks)
     if (!path) return
-    setChromeQuickMenu(null)
     setSelectedChrome(null)
     setSelected(path)
   }, [readOnly, watchedBlocks])
   const handleFrameChromeSelect = useCallback(
-    (zone: "header" | "footer", point?: { x: number; y: number }) => {
-      selectChrome({ zone }, point)
+    (zone: "header" | "footer") => {
+      selectChrome({ zone })
     },
     [selectChrome],
   )
-  const handleFrameChromeGeometry = useCallback(() => {
-    // Chrome geometry is still part of the iframe contract, but quick-menu
-    // anchoring must come from the user action point on `chrome.select`.
-  }, [])
-  const frameMutations = useMemo(() => ({
-    onBlocksInsert: ({
-      block,
-      index,
-      beforeBlockId,
-      afterBlockId,
-    }: {
-      block: Record<string, unknown>
-      index?: number
-      beforeBlockId?: string
-      afterBlockId?: string
-    }) => {
-      let at = index ?? watchedBlocks.length
-      if (afterBlockId) {
-        const afterIndex = findBlockIndexByWireId(watchedBlocks, afterBlockId)
-        if (afterIndex >= 0) at = afterIndex + 1
-      } else if (beforeBlockId) {
-        const beforeIndex = findBlockIndexByWireId(watchedBlocks, beforeBlockId)
-        if (beforeIndex >= 0) at = beforeIndex
-      }
-      insertBlockAtIndex(at, block)
-      setSelected((prev) => remapSelectionAfterInsert(prev, at))
-    },
-    onBlocksDelete: ({ blockId }: { blockId: string }) => {
-      const index = findBlockIndexByWireId(watchedBlocks, blockId)
-      if (index < 0) return
-      deleteBlock(index)
-    },
-    onBlocksReorder: ({ blockIds }: { blockIds: string[] }) => {
-      const byId = new Map<string, unknown>()
-      for (const block of watchedBlocks) {
-        if (!block || typeof block !== "object") continue
-        const id = blockWireId(block as Record<string, unknown>)
-        if (id) byId.set(id, block)
-      }
-      const reordered = blockIds.map((id) => byId.get(id)).filter((block) => block != null)
-      if (reordered.length !== watchedBlocks.length) return
-      form.setValue("blocks", reordered, { shouldDirty: true })
-    },
-    onBlockPatch: ({ blockId, patch }: { blockId: string; patch: Record<string, unknown> }) => {
-      const index = findBlockIndexByWireId(watchedBlocks, blockId)
-      if (index < 0) return
-      form.setValue(`blocks.${index}`, { ...watchedBlocks[index], ...patch }, { shouldDirty: true })
-    },
-    onFieldCommit: ({
-      blockId,
-      fieldPath,
-      value,
-    }: {
-      blockId: string
-      fieldPath: readonly string[]
-      value: unknown
-    }) => {
-      const index = findBlockIndexByWireId(watchedBlocks, blockId)
-      if (index < 0 || fieldPath.length < 2 || fieldPath[0] !== "blocks") return
-      const field = fieldPath.slice(2).join(".")
-      if (!field) {
-        form.setValue(`blocks.${index}`, value as Record<string, unknown>, { shouldDirty: true })
-        return
-      }
-      form.setValue(`blocks.${index}.${field}` as any, value, { shouldDirty: true })
-    },
-  }), [deleteBlock, form, insertBlockAtIndex, watchedBlocks])
 
   const pageEditorFrame = canRenderEditorFrame ? (
     <PageEditorFrameHost
@@ -1956,17 +1516,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       page={framePage}
       settings={frameSettings!}
       theme={frameTheme}
-      view={frameEditorView}
       tenantId={tenantId}
       tenantSlug={tenantSlug}
       selection={frameSelection}
       mobileMode={frameMobileMode}
       onSelectionChanged={handleFrameSelectionChanged}
-      onOpenBlockInspector={openBlockInSidebar}
       onChromeSelect={handleFrameChromeSelect}
-      onChromeGeometry={handleFrameChromeGeometry}
-      onFrameDocument={setEditorFrameDocument}
-      mutations={readOnly ? undefined : frameMutations}
     />
   ) : (
     <p className="px-4 py-8 text-center text-sm text-muted-foreground">
@@ -1976,20 +1531,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
 
   return (
     <RtManifestProvider manifest={manifest}>
-    <EditorFrameDocumentContext.Provider value={editorFrameDocument}>
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
         noValidate
         className="flex flex-col w-full"
       >
-        {/*
-          CanvasSelectionProvider wraps both view branches so selection
-          state flows through the iframe editor surface and SidebarDrillDown
-          without any prop drilling.
-        */}
-        <CanvasSelectionProvider value={{ view: readOnly ? "sidebar" : mode, selected, select: selectElement }}>
-
           {/* Shared sticky header — sits below SiteHeader, above ThemeBar, in both view modes */}
           {isDesktop && (
             <header data-siab-cms-sticky-chrome className="sticky top-12 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
@@ -2028,65 +1575,36 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             </div>
           )}
 
-          {/*
-            Canvas view: full-bleed WYSIWYG layout.
-            Canvas → SEO card → Danger Zone (stacked, scrollable).
-          */}
-          {mode === "canvas" && (
-            <>
-              {/* Document-scroll canvas + SEO/Danger grid below */}
-              <div className="w-full">
-                {!isDesktop && !readOnly ? (
-                  <MobileMediaSheetProvider>
-                  <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                    <MobileFrameEditor
-                      api={mobileFrameBlocksApi}
-                      manifest={manifest}
-                      theme={themeState}
-                      pageTitle={pageTitle}
-                      selected={selected}
-                      onSelectElement={selectElement}
-                      onFocusedSectionChange={setMobileFocusedSectionIndex}
-                      focusedFrame={pageEditorFrame}
-                      onDeletePage={onDeletePage}
-                    />
-                  </BlockPresetsProvider>
-                  </MobileMediaSheetProvider>
-                ) : (
-                  <MobileMediaSheetProvider>
-                  <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                    {pageEditorFrame}
-                  </BlockPresetsProvider>
-                  </MobileMediaSheetProvider>
-                )}
-                {/* SEO + Danger grid: full-width breakout cancels main p-4/p-6 padding */}
-                {isDesktop && !readOnly && (
-                  <div className="-mx-4 md:-mx-6 px-4 md:px-6 pt-8 pb-24 grid gap-6 md:grid-cols-2">
-                    {pageSettings}
-                    {dangerZone}
-                  </div>
-                )}
-              </div>
-            </>
+          {!isDesktop && !readOnly && (
+            <MobileMediaSheetProvider>
+              <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
+                <MobileFrameEditor
+                  api={mobileFrameBlocksApi}
+                  manifest={manifest}
+                  theme={themeState}
+                  pageTitle={pageTitle}
+                  selected={selected}
+                  onSelectElement={selectElement}
+                  onFocusedSectionChange={setMobileFocusedSectionIndex}
+                  focusedFrame={pageEditorFrame}
+                  onDeletePage={onDeletePage}
+                />
+              </BlockPresetsProvider>
+            </MobileMediaSheetProvider>
           )}
 
-          {/*
-            Sidebar view: select-only canvas + SidebarDrillDown (block list → block
-            form → page settings drill-down navigation).
-            Header → flex row: canvas-pane (left) + aside (right).
-          */}
-          {mode === "sidebar" && (
+          {/* Desktop/read-only: exact renderer beside the one inspector. */}
+          {(isDesktop || readOnly) && (
             <>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
               <div className="flex w-full min-w-0 items-start gap-3 pt-2">
-                <div ref={canvasPaneRef} className="flex-1 min-w-0 pb-24">
+                <div className="flex-1 min-w-0 pb-24">
                   <MobileMediaSheetProvider>
                       {pageEditorFrame}
                   </MobileMediaSheetProvider>
                 </div>
                 {isDesktop && !readOnly && (
                   <aside
-                    ref={asideRef}
                     className="sticky top-[calc(6.5rem+0.5rem)] h-[calc(100dvh-6.5rem)] max-h-[calc(100dvh-6.5rem)] w-[360px] shrink-0 self-start overflow-hidden rounded-lg border border-border bg-card"
                   >
                     <EditorErrorBoundary>
@@ -2108,7 +1626,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                           selectedBlockIndex={selected?.blockIndex ?? null}
                           onSelectBlock={(i) => {
                             setSelectedChrome(null)
-                            setChromeQuickMenu(null)
                             setSelected(i != null ? { blockIndex: i, field: "" } : null)
                           }}
                           onReorder={reorderBlocks}
@@ -2132,8 +1649,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             </>
           )}
 
-        </CanvasSelectionProvider>
-
         {/*
           Phone-only floating Save pill. Mounted unconditionally so the
           icon is always visible in mobile views — visual state (amber/
@@ -2150,10 +1665,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           </div>
         )}
       </form>
-      {/* Floating mode bar — canvas/sidebar switcher, fixed bottom-centre. Desktop only: mobile has a single view. */}
-      {isDesktop && !readOnly && (
-        <ModeBar mode={mode} onChange={handleModeChange} />
-      )}
       {isDesktop && !readOnly && (
         <SaveStatusBar
           status={saveStatus}
@@ -2189,23 +1700,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             guard.confirm()
           }}
         />
-        {!readOnly && (
-          <SiteChromeQuickMenu
-            menu={chromeQuickMenu}
-            draft={chromeDraft}
-            setDraft={setChromeDraft}
-            tenantId={tenantId}
-            canEditSettings={canEditSettingsResolved}
-            navigationHref={chromeQuickMenu ? navigationHrefFor(chromeQuickMenu.selection.zone) : null}
-            onNavigate={navigateFromChrome}
-            footerContract={footerContract}
-            onOpenInspector={openChromeInSidebar}
-            onClose={() => {
-              setChromeQuickMenu(null)
-              setSelectedChrome(null)
-            }}
-          />
-        )}
         <PageDraftRecoveryDialog
           open={draftCandidate !== null}
         savedAt={draftCandidate?.savedAt ?? null}
@@ -2228,7 +1722,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         />
       )}
     </Form>
-    </EditorFrameDocumentContext.Provider>
     </RtManifestProvider>
   )
 }

@@ -13,10 +13,9 @@ This app renders immutable published snapshots from the CMS:
 The app intentionally does not implement AI, intake, CMS writes, payment, or
 domain/DNS automation.
 
-`src/pages/_renderer/editor.astro` is a renderer-owned isolated iframe smoke
-route for the public renderer runtime. It is not the CMS page-editor iframe
-surface; CMS editing is hosted by `apps/cms` under `/editor-frame` and keeps
-RHF/save/sidebar state in the CMS parent document.
+Preview and editor frames are owned by `apps/cms`. The public renderer has no
+second editor runtime or block-mutation API; it only renders published
+snapshots.
 
 ## Deployment Contract
 

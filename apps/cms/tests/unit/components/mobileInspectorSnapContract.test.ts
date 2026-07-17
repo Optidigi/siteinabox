@@ -5,7 +5,7 @@ const read = (path: string) => readFileSync(path, "utf8")
 
 describe("mobile inspector snap contract", () => {
   it("collapses to a handle by default and ignores invalid vaul snap callbacks", () => {
-    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+    const inspectorBar = read("src/components/editor/mobile/mobile-inspector-bar.tsx")
 
     expect(inspectorBar).toContain("MOBILE_INSPECTOR_COLLAPSED_SNAP")
     expect(inspectorBar).toContain("const SNAP_POINTS: MobileSnap[] = [MOBILE_INSPECTOR_COLLAPSED_SNAP, 0.42, 0.92]")
@@ -19,8 +19,8 @@ describe("mobile inspector snap contract", () => {
   })
 
   it("ships vaul snap mechanics through nonce-bearing css for production CSP", () => {
-    const sharedCss = read("src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
-    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
+    const sharedCss = read("src/components/editor/mobile/vaulBottomSnapCss.ts")
+    const inspectorBar = read("src/components/editor/mobile/mobile-inspector-bar.tsx")
 
     expect(inspectorBar).toContain('import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"')
     expect(sharedCss).toContain("export const VAUL_BOTTOM_SNAP_CSS = `")
@@ -34,9 +34,9 @@ describe("mobile inspector snap contract", () => {
   })
 
   it("promotes to the editing detent only for intentional editable-field focus", () => {
-    const sharedCss = read("src/components/editor/canvas/mobile/vaulBottomSnapCss.ts")
-    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
-    const componentEditor = read("src/components/editor/canvas/mobile/mobile-component-editor.tsx")
+    const sharedCss = read("src/components/editor/mobile/vaulBottomSnapCss.ts")
+    const inspectorBar = read("src/components/editor/mobile/mobile-inspector-bar.tsx")
+    const componentEditor = read("src/components/editor/mobile/mobile-component-editor.tsx")
 
     expect(inspectorBar).toContain("handleOnly")
     expect(inspectorBar).toContain("only the visible grip drags the sheet")
@@ -104,13 +104,13 @@ describe("mobile inspector snap contract", () => {
   })
 
   it("opens image selection directly on mobile and uses a thumb-sized media close control", () => {
-    const componentEditor = read("src/components/editor/canvas/mobile/mobile-component-editor.tsx")
-    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
-    const mediaSheet = read("src/components/editor/canvas/mobile/mobile-media-sheet.tsx")
-    const inlineImage = read("src/components/editor/canvas/inline/InlineImage.tsx")
+    const componentEditor = read("src/components/editor/mobile/mobile-component-editor.tsx")
+    const inspectorBar = read("src/components/editor/mobile/mobile-inspector-bar.tsx")
+    const mediaSheet = read("src/components/editor/mobile/mobile-media-sheet.tsx")
+    const blockFields = read("src/components/editor/fields/block-form-fields.tsx")
 
     expect(inspectorBar).toContain('import { useFormContext } from "react-hook-form"')
-    expect(inspectorBar).toContain('import { MobileMediaSheet } from "@/components/editor/canvas/mobile/mobile-media-sheet"')
+    expect(inspectorBar).toContain('import { MobileMediaSheet } from "@/components/editor/mobile/mobile-media-sheet"')
     expect(inspectorBar).toContain("const isDirectMediaSelection = state.selected != null && selectedName != null && selectedSpec?.kind === \"image\"")
     expect(inspectorBar).toContain("if (isDirectMediaSelection)")
     expect(inspectorBar).toContain("useInspectorKeyboardLock(!isIdle && !isDirectMediaSelection)")
@@ -123,6 +123,7 @@ describe("mobile inspector snap contract", () => {
     expect(mediaSheet).toContain('className="size-10 rounded-full border border-border bg-muted text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"')
     expect(mediaSheet).toContain("<X className=\"size-4\"")
     expect(mediaSheet).toContain("data-mobile-media-close")
-    expect(inlineImage).toContain('showOverlayChrome && view !== "mobile" && canvasChrome.visible')
+    expect(blockFields).toContain('import { MediaPicker } from "@/components/media/MediaPicker"')
+    expect(blockFields).not.toContain("InlineImage")
   })
 })

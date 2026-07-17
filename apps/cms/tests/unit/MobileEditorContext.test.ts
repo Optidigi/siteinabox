@@ -5,8 +5,8 @@ import {
   initialMobileEditorState,
   type MobileEditorState,
   type DrillFrame,
-} from "@/components/editor/canvas/mobile/MobileEditorContext"
-import type { ElementPath } from "@/components/editor/canvas/elementPath"
+} from "@/components/editor/mobile/MobileEditorContext"
+import type { ElementPath } from "@/components/editor/elementPath"
 
 const path = (over: Partial<ElementPath> = {}): ElementPath => ({ blockIndex: 0, field: "headline", ...over })
 

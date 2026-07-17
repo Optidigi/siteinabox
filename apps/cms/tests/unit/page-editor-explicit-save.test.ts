@@ -17,7 +17,7 @@ describe("page editor explicit-save contract", () => {
     expect(source).toContain("await Promise.all([themePromise, saveNavMembership(), saveChrome()])")
 
     const toggleNavStart = source.indexOf("const toggleNav = useCallback(")
-    const toggleNavEnd = source.indexOf("// Editor mode:", toggleNavStart)
+    const toggleNavEnd = source.indexOf("// Theme state", toggleNavStart)
     const toggleNavBody = source.slice(toggleNavStart, toggleNavEnd)
     expect(toggleNavBody).not.toContain("togglePageInNav")
   })
@@ -35,7 +35,7 @@ describe("page editor explicit-save contract", () => {
 
     expect(source).toContain('import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"')
     expect(source).toContain('import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"')
-    expect(source).toContain("const [themeState, setThemeState] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedStyle?.theme ?? null))")
+    expect(source).toContain("const [themeState, setThemeState] = useState<ThemeTokens | null>(() => normalizeThemeForSave(theme ?? cachedTheme ?? null))")
     expect(source).toContain("const normalizedThemeSnapshot = normalizeThemeForSave(themeSnapshot)")
     expect(source).toContain('fetch("/api/tenant-theme"')
     expect(source).toContain("themeWasDirty && normalizedThemeSnapshot")
@@ -70,16 +70,11 @@ describe("page editor explicit-save contract", () => {
     expect(siteChromeDraft).toContain("columns: normalizeFooterColumns(draft.footer.columns, footerContract)")
     expect(source).toContain("resolveFooterContract(manifest)")
     expect(source).toContain("<FooterCompositionEditor")
-    expect(source).toContain("<SiteChromeQuickMenu")
+    expect(source).toContain("<SiteChromeDrillDown")
     expect(source).toContain("tenantId={tenantId}")
-    expect(source).toContain('useState<"main" | "columns" | "items" | "logo">("main")')
-    expect(source).toContain('setPanel("columns")')
-    expect(source).toContain('setPanel("items")')
-    expect(source).toContain('setPanel("logo")')
-    expect(source).toContain('max-h-[min(28rem,calc(100vh-1rem))]')
-    expect(source).toContain("window.innerWidth - 368")
-    expect(source).toContain("w-88")
-    expect(source).toContain('navigationHref ? "grid-cols-2" : "grid-cols-1"')
+    expect(source).toContain("<FooterCompositionEditor")
+    expect(source).toContain("<SidebarDrillDown")
+    expect(source).not.toContain("SiteChromeQuickMenu")
     expect(source).not.toContain("const mobileChromeRows")
     expect(source).toContain("const saveChrome = async () => {")
     expect(source).toContain('fetch(`/api/site-settings/${siteSettingsState.id}`')
@@ -94,32 +89,14 @@ describe("page editor explicit-save contract", () => {
     expect(source).toContain("setChromeDraftState(resolved)")
   })
 
-  it("clears selected footer chrome when canvas selection is cleared or moves to a page element", () => {
+  it("clears selected footer chrome when renderer selection moves to a page element", () => {
     const source = pageFormSource()
-    const canvasMode = readFileSync("src/components/editor/canvas/CanvasSurface.tsx", "utf8")
     const selectStart = source.indexOf("const selectElement = useCallback")
     const selectEnd = source.indexOf("const selectChrome = useCallback", selectStart)
     const selectElement = source.slice(selectStart, selectEnd)
 
     expect(selectElement).toContain("setSelectedChrome(null)")
-    expect(selectElement).toContain("setChromeQuickMenu(null)")
     expect(selectElement).not.toContain("if (resolved)")
-    expect(canvasMode).toContain('className="site-frame-root"')
-    expect(canvasMode).toContain("if (event.target === event.currentTarget) {")
-    expect(canvasMode).toContain("setActiveIndex(null)")
-    expect(canvasMode).toContain("select(null)")
-  })
-
-  it("clears selected footer chrome when the canvas quick menu is dismissed", () => {
-    const source = pageFormSource()
-
-    const quickMenuStart = source.indexOf("<SiteChromeQuickMenu")
-    const quickMenuEnd = source.indexOf("</SiteChromeQuickMenu>", quickMenuStart)
-    const quickMenuBlock = source.slice(quickMenuStart, quickMenuEnd)
-
-    expect(quickMenuBlock).toContain("onClose={() => {")
-    expect(quickMenuBlock).toContain("setChromeQuickMenu(null)")
-    expect(quickMenuBlock).toContain("setSelectedChrome(null)")
   })
 
   it("does not recreate a recovery draft from the normal save reset cycle", () => {

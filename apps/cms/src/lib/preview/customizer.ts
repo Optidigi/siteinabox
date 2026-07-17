@@ -7,7 +7,6 @@ import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { sameRelationshipId } from "@/lib/relationshipId"
-import { loadTenantCss } from "@/lib/editor/loadTenantCss"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -46,7 +45,6 @@ export type PreviewCustomizerData = {
   manifest: RtManifest
   theme: ThemeTokens | null
   rendererTheme: ThemeTokenSpec | null
-  tenantCss: string | null
   approval: PreviewApprovalState | null
   payment: PreviewPaymentState | null
 }
@@ -159,10 +157,9 @@ export async function getPreviewCustomizerData(
 ): Promise<PreviewCustomizerData> {
   const { claims, payload, tenant, pages: allPages, claimedPage } = await loadPreviewContext(token)
 
-  const [pages, settingsDoc, tenantCss, run] = await Promise.all([
+  const [pages, settingsDoc, run] = await Promise.all([
     Promise.resolve(allPages),
     getOrCreateSiteSettings(tenant.id),
-    loadTenantCss(tenant.id),
     latestRunForTenant(payload, tenant.id),
   ])
   const requestedSelection = requestedPage ? pages.find((page) => pagePathMatches(page, requestedPage)) : null
@@ -202,7 +199,6 @@ export async function getPreviewCustomizerData(
     manifest,
     theme,
     rendererTheme: normalizeThemeForSave(theme),
-    tenantCss,
     approval: (run?.clientApproval as PreviewApprovalState | null | undefined) ?? null,
     payment: (run?.payment as PreviewPaymentState | null | undefined) ?? null,
   }
@@ -225,10 +221,7 @@ export async function getPreviewCustomizerDataForGrant(input: {
     pageSlug: input.requestedPage,
   })
 
-  const [settingsDoc, tenantCss] = await Promise.all([
-    getOrCreateSiteSettings(tenant.id),
-    loadTenantCss(tenant.id),
-  ])
+  const settingsDoc = await getOrCreateSiteSettings(tenant.id)
   const requestedSelection = input.requestedPage ? pages.find((page) => pagePathMatches(page, input.requestedPage)) : null
   const selected = requestedSelection ?? defaultPageForGrant(pages)
   if (!selected || !sameRelationshipId(selected.tenant, tenant.id)) {
@@ -261,7 +254,6 @@ export async function getPreviewCustomizerDataForGrant(input: {
     manifest,
     theme,
     rendererTheme: normalizeThemeForSave(theme),
-    tenantCss,
     approval: (run.clientApproval as PreviewApprovalState | null | undefined) ?? null,
     payment: (run.payment as PreviewPaymentState | null | undefined) ?? null,
   }

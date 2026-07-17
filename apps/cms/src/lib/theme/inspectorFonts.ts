@@ -1,23 +1,34 @@
-import type { CSSProperties } from "react"
 import type { ThemeTokens } from "./schema"
-import type { ElementRole } from "@/components/editor/canvas/blockElements"
+import { formatRuntimeCssValue } from "@siteinabox/ui/lib/csp-style"
 import { resolveThemeTokens } from "@siteinabox/site-renderer/theme/resolve"
 
-export function inspectorFontStyle(theme: ThemeTokens | null | undefined): CSSProperties {
+export function inspectorThemeDeclarations(theme: ThemeTokens | null | undefined): string {
   const resolved = resolveThemeTokens(theme)
-  return {
-    "--rt-inspector-font-title": resolved.fonts.roles.display ?? resolved.fonts.roles.heading,
-    "--rt-inspector-font-heading": resolved.fonts.roles.heading,
-    "--rt-inspector-font-text": resolved.fonts.roles.body,
-  } as CSSProperties
+  const title = cssValue(resolved.fonts.roles.display ?? resolved.fonts.roles.heading, "inherit")
+  const heading = cssValue(resolved.fonts.roles.heading, "inherit")
+  const text = cssValue(resolved.fonts.roles.body, "inherit")
+  return [
+    `--rt-inspector-font-title:${title}`,
+    `--rt-inspector-font-heading:${heading}`,
+    `--rt-inspector-font-text:${text}`,
+    `--font-title:${title}`,
+    `--font-heading:${heading}`,
+    `--font-text:${text}`,
+    `--color-bg:${cssValue(resolved.light.surface, "transparent")}`,
+    `--color-ink:${cssValue(resolved.light.ink, "currentColor")}`,
+    `--color-ink-muted:${cssValue(resolved.light.muted, "currentColor")}`,
+    `--color-accent:${cssValue(resolved.light.accent[600], "currentColor")}`,
+  ].join(";") + ";"
 }
 
-export function roleToFontFamily(role: ElementRole | undefined): string {
-  switch (role) {
-    case "title":   return "var(--rt-inspector-font-title, inherit)"
-    case "heading": return "var(--rt-inspector-font-heading, inherit)"
-    case "text":    return "var(--rt-inspector-font-text, inherit)"
-    case "script":  return "inherit"
-    default:        return "inherit"
-  }
+export function inspectorFontValue(theme: ThemeTokens | null | undefined, cssVar: string): string {
+  const fonts = resolveThemeTokens(theme).fonts.roles
+  if (cssVar === "--font-title") return fonts.display ?? fonts.heading
+  if (cssVar === "--font-heading") return fonts.heading
+  if (cssVar === "--font-text") return fonts.body
+  return `var(${cssVar}, inherit)`
+}
+
+function cssValue(value: string, fallback: string): string {
+  return formatRuntimeCssValue(value) ?? fallback
 }

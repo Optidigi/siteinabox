@@ -5,10 +5,10 @@ const read = (path: string) => readFileSync(path, "utf8")
 
 describe("sidebar inspector composition", () => {
   it("keeps the active mobile iframe editor layout primitives available for composition", () => {
-    const sectionList = read("src/components/editor/canvas/mobile/mobile-section-list.tsx")
-    const inspectorBar = read("src/components/editor/canvas/mobile/mobile-inspector-bar.tsx")
-    const pageSettings = read("src/components/editor/canvas/mobile/mobile-page-settings.tsx")
-    const seoSettings = read("src/components/editor/canvas/mobile/mobile-seo-settings.tsx")
+    const sectionList = read("src/components/editor/mobile/mobile-section-list.tsx")
+    const inspectorBar = read("src/components/editor/mobile/mobile-inspector-bar.tsx")
+    const pageSettings = read("src/components/editor/mobile/mobile-page-settings.tsx")
+    const seoSettings = read("src/components/editor/mobile/mobile-seo-settings.tsx")
     const frameEditor = read("src/components/editor/iframe/MobileFrameEditor.tsx")
 
     expect(sectionList).toContain("export interface MobileSectionListSlotContext")

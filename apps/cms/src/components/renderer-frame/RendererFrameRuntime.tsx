@@ -9,9 +9,23 @@ import {
   type IframeEditorMessage,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { SitePageRenderer, createRendererMediaResolver } from "@siteinabox/site-renderer"
+import {
+  ClientSitePageRenderer,
+  createRendererMediaResolver,
+  prepareClientSiteRenderer,
+  type PreparedClientSiteRenderer,
+} from "@siteinabox/site-renderer"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+
+function waitForWindowLoad(): Promise<void> {
+  if (document.readyState === "complete") return Promise.resolve()
+  return new Promise((resolve) => window.addEventListener("load", () => resolve(), { once: true }))
+}
+
+function nextFrame(): Promise<void> {
+  return new Promise((resolve) => window.requestAnimationFrame(() => resolve()))
+}
 
 export function RendererFrameRuntime({
   page,
@@ -36,6 +50,9 @@ export function RendererFrameRuntime({
   const cspNonce = useCspNonce()
   const revisionRef = React.useRef(0)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
+  const variantKey = framePage.blocks.map((block) => `${block.blockType}:${block.designVariant ?? ""}`).join("|")
+  const [prepared, setPrepared] = React.useState<{ key: string; renderer: PreparedClientSiteRenderer } | null>(null)
+  const [prepareError, setPrepareError] = React.useState<string | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
   const previewViewportRule = useCspStyleRule(
     "renderer-frame-preview-viewport",
@@ -62,22 +79,31 @@ export function RendererFrameRuntime({
   }, [mode])
 
   React.useEffect(() => {
-    const emit = (payload: IframeEditorMessage) => {
-      window.parent?.postMessage(payload, window.location.origin)
-    }
+    if (prepared?.key === variantKey) return
+    let cancelled = false
+    setPrepareError(null)
+    void prepareClientSiteRenderer({ page: framePage, settings: frameSettings, tenantSlug, domain })
+      .then((renderer) => {
+        if (!cancelled) setPrepared({ key: variantKey, renderer })
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setPrepareError(error instanceof Error ? error.message : "Renderer preparation failed.")
+      })
+    return () => { cancelled = true }
+  }, [domain, framePage, frameSettings, prepared?.key, tenantSlug, variantKey])
 
+  React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
+      if (event.source !== window.parent) return
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
       if (!parsed.ok) return
       const message = parsed.message
 
       if (mode === "preview" && message.type !== "page.replace" && message.type !== "theme.patch") return
-      if (!("expectedRevision" in message)) return
 
       if (message.type === "theme.patch") {
         setFrameTheme(message.theme)
-        revisionRef.current += 1
         return
       }
 
@@ -90,23 +116,41 @@ export function RendererFrameRuntime({
     }
 
     window.addEventListener("message", onMessage)
-    emit({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "renderer.ready",
-      messageId: "renderer-ready",
-      rendererId: "cms-preview-frame",
-      revision: revisionRef.current,
-      pageId: String(page.id ?? page.slug ?? "page"),
-      capabilities: {
-        selection: false,
-        fieldEditing: false,
-        assetPicking: false,
-        viewportResize: false,
-      },
-    })
     return () => window.removeEventListener("message", onMessage)
   }, [mode, page.id, page.slug])
+
+  React.useEffect(() => {
+    if (!prepareError) return
+    window.parent?.postMessage({
+      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+      type: "error",
+      messageId: "renderer-prepare-error",
+      code: "renderer_prepare_failed",
+      message: prepareError,
+    } satisfies IframeEditorMessage, window.location.origin)
+  }, [prepareError])
+
+  React.useEffect(() => {
+    if (!prepared || prepared.key !== variantKey) return
+    let cancelled = false
+    void (async () => {
+      await waitForWindowLoad()
+      await document.fonts?.ready
+      await nextFrame()
+      await nextFrame()
+      if (cancelled) return
+      window.parent?.postMessage({
+        protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+        schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+        type: "renderer.ready",
+        messageId: "renderer-ready",
+        rendererId: "cms-preview-frame",
+        pageId: String(page.id ?? page.slug ?? "page"),
+      } satisfies IframeEditorMessage, window.location.origin)
+    })()
+    return () => { cancelled = true }
+  }, [page.id, page.slug, prepared, variantKey])
 
   React.useEffect(() => {
     if (mode !== "preview") return
@@ -140,17 +184,20 @@ export function RendererFrameRuntime({
         className={previewViewportRule.className}
         data-siab-preview-viewport={mode === "preview" ? "true" : undefined}
       >
-        <SitePageRenderer
-          page={framePage}
-          settings={frameSettings}
-          theme={frameTheme}
-          tenantSlug={tenantSlug}
-          domain={domain}
-          mediaResolver={mediaResolver}
-          nonce={cspNonce}
-          includeBehaviorScripts={false}
-          formAction="#"
-        />
+        {prepared?.key === variantKey ? (
+          <ClientSitePageRenderer
+            prepared={prepared.renderer}
+            page={framePage}
+            settings={frameSettings}
+            theme={frameTheme}
+            tenantSlug={tenantSlug}
+            domain={domain}
+            mediaResolver={mediaResolver}
+            nonce={cspNonce}
+            includeBehaviorScripts={false}
+            formAction="#"
+          />
+        ) : null}
       </div>
     </>
   )

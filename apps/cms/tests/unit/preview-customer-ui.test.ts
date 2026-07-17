@@ -6,7 +6,7 @@ const root = join(__dirname, "..", "..")
 const read = (file: string) => readFileSync(join(root, file), "utf8")
 
 describe("customer preview UI", () => {
-  it("uses a dedicated customer preview canvas mode without editor metadata badges", () => {
+  it("uses the dedicated customer preview renderer without editor metadata badges", () => {
     const customizer = read("src/components/preview/PreviewCustomizer.tsx")
 
     const desktopToolbar = read("src/components/preview/preview-desktop-theme-toolbar.tsx")
@@ -73,7 +73,7 @@ describe("customer preview UI", () => {
     expect(customizer).toContain("preview-renderer-frame-auto-height")
     expect(customizer).toContain("measurePreviewFrameDocumentHeight")
     expect(customizer).toContain("ResizeObserver")
-    expect(customizer).toContain("MutationObserver")
+    expect(customizer).not.toContain("MutationObserver")
     expect(customizer).toContain('scrolling="no"')
     expect(customizer).not.toContain("h-[calc(100dvh-9rem)]")
     expect(customizer).not.toContain("sticky top-0 z-20 flex items-center justify-center border-b")

@@ -34,7 +34,7 @@ describe("rtToLexicalJson", () => {
     expect(j.root.children[0]).toMatchObject({ type: "styled-paragraph", style: "lead" })
     expect(j.root.children[0].children[0]).toMatchObject({ type: "text", text: "hi", format: 1 })
     expect(j.root.children[0].children[0].style).toContain("--rt-color:accent")
-    expect(j.root.children[0].children[0].style).toContain("color:var(--rt-tenant-color-accent, var(--color-accent))")
+    expect(j.root.children[0].children[0].style).toContain("color:var(--color-accent)")
     expect(j.root.children[0].children[0].style).toContain("--rt-font:heading")
     expect(j.root.children[0].children[0].style).toContain("font-family:var(--font-heading)")
   })

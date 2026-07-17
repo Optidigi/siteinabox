@@ -198,8 +198,6 @@ export const manifestSchema = z.object({
   }),
   themedNodes: z.array(themedNodeSchema).max(64).optional(),
   blocks: z.array(blockMenuItemSchema).min(1).optional(),
-  cssEntry: z.string().optional(),
-  defaultMode: z.enum(["canvas", "sidebar"]).optional(),
   settings: settingsContractSchema,
   footer: footerContractSchema,
   analytics: analyticsContractSchema,

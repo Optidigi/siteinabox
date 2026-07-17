@@ -33,10 +33,6 @@ vi.mock("@/lib/queries/settings", () => ({
   getOrCreateSiteSettings: vi.fn(async () => mocks.settingsDoc),
 }))
 
-vi.mock("@/lib/editor/loadTenantCss", () => ({
-  loadTenantCss: vi.fn(async () => ".rt-canvas{color:var(--color-ink)}"),
-}))
-
 vi.mock("@/lib/projection/pageToJson", () => ({
   pageToJson: vi.fn((page: Page) => ({
     id: String(page.id),

@@ -3,7 +3,6 @@ import { requireAuth } from "@/lib/authGate"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
-import { loadTenantCss } from "@/lib/editor/loadTenantCss"
 import { getAdminTranslations } from "@/i18n/admin"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { isOfficialTenant } from "@/lib/officialTenants"
@@ -14,9 +13,8 @@ export default async function NewTenantPage() {
   if (ctx.mode === "super-admin") redirect("/sites")
   if (user.role === "viewer") redirect("/?error=forbidden")
   const t = await getAdminTranslations(user, "pages")
-  const [manifest, tenantCss, settings, rendererNavPages] = await Promise.all([
+  const [manifest, settings, rendererNavPages] = await Promise.all([
     loadTenantManifest(ctx.tenant.id),
-    loadTenantCss(ctx.tenant.id),
     getOrCreateSiteSettings(ctx.tenant.id),
     listPages(ctx.tenant.id),
   ])
@@ -32,8 +30,6 @@ export default async function NewTenantPage() {
         baseHref="/pages"
         tenantOrigin={`https://${ctx.tenant.domain}`}
         manifest={manifest}
-        tenantCss={tenantCss}
-        userEditorMode={user.editorMode ?? null}
         theme={ctx.tenant.theme as any}
         siteSettings={settings}
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}

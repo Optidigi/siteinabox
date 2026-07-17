@@ -134,7 +134,7 @@ route inventory and production host contract.
 - Super-admin site management: `/sites`, `/sites/new`, `/sites/[slug]` and
   child pages for edit, pages, forms, media, navigation, settings, users,
   onboarding, and analytics.
-- Page editor/canvas: `/pages/new`, `/pages/edit/[pageSlug]`,
+- Page editor: `/pages/new`, `/pages/edit/[pageSlug]`,
   `/sites/[slug]/pages/new`, `/sites/[slug]/pages/edit/[pageSlug]`.
   Numeric `/pages/[id]` and `/sites/[slug]/pages/[id]` remain compatibility
   routes for old links.

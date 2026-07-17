@@ -67,15 +67,6 @@ describe("manifestSchema", () => {
     expect(() => manifestSchema.parse(v)).toThrow()
   })
 
-  it("accepts cssEntry as a string", () => {
-    expect(() => manifestSchema.parse({ ...minimalValid, cssEntry: "cms-editor.css" })).not.toThrow()
-  })
-
-  it("accepts defaultMode canvas or sidebar", () => {
-    expect(() => manifestSchema.parse({ ...minimalValid, defaultMode: "canvas" })).not.toThrow()
-    expect(() => manifestSchema.parse({ ...minimalValid, defaultMode: "sidebar" })).not.toThrow()
-  })
-
   it("accepts manifest-driven footer composition contract", () => {
     expect(() => manifestSchema.parse({
       ...minimalValid,
@@ -108,14 +99,6 @@ describe("manifestSchema", () => {
         items: [{ type: "brand" }, { type: "brand" }],
       },
     })).toThrow()
-  })
-
-  it("rejects defaultMode legacy/unknown values", () => {
-    // "form" and "preview" were dropped when the 3-mode editor was narrowed
-    // to the 2-view (canvas | sidebar) model.
-    expect(() => manifestSchema.parse({ ...minimalValid, defaultMode: "form" })).toThrow()
-    expect(() => manifestSchema.parse({ ...minimalValid, defaultMode: "preview" })).toThrow()
-    expect(() => manifestSchema.parse({ ...minimalValid, defaultMode: "split" })).toThrow()
   })
 
   // OBS-32: bound the admin-only manifest field so a compromised admin

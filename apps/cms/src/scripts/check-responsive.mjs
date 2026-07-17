@@ -144,58 +144,19 @@ function scanSiteFile(file, source) {
 }
 
 function scanPayload(rootDir) {
-  const files = [
-    join(rootDir, "src/components/editor/canvas/CanvasSurface.tsx"),
-    join(rootDir, "src/styles/siab.css"),
+  const rendererHosts = [
+    join(rootDir, "src/components/editor/iframe/PageEditorFrameHost.tsx"),
+    join(rootDir, "src/components/preview/PreviewCustomizer.tsx"),
   ]
-
-  for (const file of files) {
+  for (const file of rendererHosts) {
     if (!existsSync(file)) continue
-    const source = readFileSync(file, "utf8")
-    const lines = source.split(/\r?\n/)
+    const lines = readFileSync(file, "utf8").split(/\r?\n/)
     lines.forEach((line, index) => {
       if (lineIgnored(lines, index)) return
-      if (/\bCANVAS_DESIGN_WIDTH\b|\buseFitZoom\b|style=\{\{\s*width:\s*CANVAS_DESIGN_WIDTH\b|\bzoom\b/.test(line)) {
-        fail(
-          file,
-          index + 1,
-          "Fixed-width zoom canvas code found.",
-          "OBS-62 requires the desktop canvas to render at actual pane width and let site-frame container queries drive layout.",
-        )
+      if (/\bCANVAS_DESIGN_WIDTH\b|style=\{\{\s*width:\s*CANVAS_DESIGN_WIDTH\b|\bzoom\b/.test(line)) {
+        fail(file, index + 1, "Fixed-width zoom renderer found.", "Renderer frames must use their real viewport width.")
       }
     })
-  }
-
-  const siabCss = join(rootDir, "src/styles/siab.css")
-  if (existsSync(siabCss)) {
-    const source = readFileSync(siabCss, "utf8")
-    if (!/container-name:\s*site-frame/.test(source) || !/container-type:\s*inline-size/.test(source)) {
-      fail(
-        siabCss,
-        1,
-        "Missing .rt-canvas site-frame container CSS.",
-        "The SIAB canvas CSS must declare container-type:inline-size and container-name:site-frame.",
-      )
-    }
-  }
-
-  const tenantFacingCanvasDirs = [
-    join(rootDir, "src/components/editor/canvas/blocks"),
-  ]
-  const tenantFacingCanvasFiles = [
-    join(rootDir, "src/components/editor/canvas/SiteChromePreview.tsx"),
-  ]
-
-  for (const dir of tenantFacingCanvasDirs) {
-    if (!existsSync(dir)) continue
-    for (const file of walk(dir)) {
-      scanSiteFile(file, readFileSync(file, "utf8"))
-    }
-  }
-
-  for (const file of tenantFacingCanvasFiles) {
-    if (!existsSync(file)) continue
-    scanSiteFile(file, readFileSync(file, "utf8"))
   }
 }
 

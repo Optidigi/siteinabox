@@ -5,6 +5,7 @@ import { FORMAT_ELEMENT_COMMAND } from "lexical"
 import { AlignLeft, AlignCenter, AlignRight } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import type { RtManifest } from "@/lib/richText/manifest"
+import type { ThemeTokens } from "@/lib/theme/schema"
 import { MarkChips } from "@/components/editor/richText/toolbar/mark-chips"
 import { FontChip } from "@/components/editor/richText/toolbar/font-chip"
 import { StyleChip } from "@/components/editor/richText/toolbar/style-chip"
@@ -17,7 +18,7 @@ type Alignment = "left" | "center" | "right"
 
 const ACTIVE_CHIP_CLASS = "bg-accent text-accent-foreground hover:bg-accent hover:text-accent-foreground"
 
-export const Toolbar: React.FC<{ manifest: RtManifest; variant: "block" | "inline"; allowFontFamily?: boolean; onOpenLink: () => void }> = ({ manifest, variant, allowFontFamily = false, onOpenLink }) => {
+export const Toolbar: React.FC<{ manifest: RtManifest; variant: "block" | "inline"; allowFontFamily?: boolean; theme?: ThemeTokens | null; onOpenLink: () => void }> = ({ manifest, variant, allowFontFamily = false, theme, onOpenLink }) => {
   const t = useTranslations("editor")
   const [editor] = useLexicalComposerContext()
   const { alignment } = useActiveTextStyle()
@@ -47,7 +48,7 @@ export const Toolbar: React.FC<{ manifest: RtManifest; variant: "block" | "inlin
   return (
     <div className="flex flex-wrap items-center gap-1 border-b border-border bg-muted/30 p-1">
       <MarkChips manifest={manifest} surface="persistent" />
-      {allowFontFamily && <FontChip manifest={manifest} />}
+      {allowFontFamily && <FontChip manifest={manifest} theme={theme} />}
       <StyleChip manifest={manifest} />
       <LinkChip onOpen={onOpenLink} surface="persistent" />
       {variant === "block" && (

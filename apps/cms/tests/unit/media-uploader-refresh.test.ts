@@ -38,12 +38,11 @@ describe("FE-79 media library upload refresh", () => {
   })
 
   it("picker flows stay callback-driven instead of forcing page refresh", () => {
-    expect(read("src/components/media/MediaPicker.tsx")).toContain(
-      "<MediaUploader tenantId={resolvedTenantId} onUploaded={() => reload()} />",
+    const mediaPicker = read("src/components/media/MediaPicker.tsx")
+    expect(mediaPicker).toContain(
+      "onUploaded={(media) => { void reload(); onChange(media); setOpen(false) }}",
     )
-    expect(read("src/components/editor/canvas/inline/InlineImage.tsx")).toContain(
-      "onUploaded={(m) => { void reload(); handlePick(m) }}",
-    )
+    expect(mediaPicker).not.toContain("refreshOnUploaded")
   })
 
   it("MediaPicker keeps selected media populated so editor previews update immediately", () => {

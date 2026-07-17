@@ -102,7 +102,7 @@ export const BlockChip: React.FC<BlockChipProps> = ({ manifest }) => {
         onOpenAutoFocus={(e) => e.preventDefault()}
         onCloseAutoFocus={(e) => e.preventDefault()}
         data-siab-editor-ui
-        data-siab-canvas-chrome="rich-text-popover"
+
       >
         {kinds.map((k) => {
           const Icon = ICONS[k]

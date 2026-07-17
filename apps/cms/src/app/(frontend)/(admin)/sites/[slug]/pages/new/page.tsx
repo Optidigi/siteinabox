@@ -3,7 +3,6 @@ import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/page-header"
 import { TenantPill } from "@/components/layout/TenantPill"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
-import { loadTenantCss } from "@/lib/editor/loadTenantCss"
 import { getAdminTranslations } from "@/i18n/admin"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import type { ThemeTokens } from "@/lib/theme/schema"
@@ -14,9 +13,8 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
   const { slug } = await params
   const { user, tenant } = await requireSuperAdminSelectedSite(slug)
   const t = await getAdminTranslations(user, "pages")
-  const [manifest, tenantCss, settings, rendererNavPages] = await Promise.all([
+  const [manifest, settings, rendererNavPages] = await Promise.all([
     loadTenantManifest(tenant.id),
-    loadTenantCss(tenant.id),
     getOrCreateSiteSettings(tenant.id),
     listPages(tenant.id),
   ])
@@ -38,8 +36,6 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
           process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
         }
         manifest={manifest}
-        tenantCss={tenantCss}
-        userEditorMode={user.editorMode ?? null}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}

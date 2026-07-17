@@ -64,7 +64,7 @@ intake app for both apex and `www`.
 | Editor frame | `/editor-frame/pages/[id]`. |
 | Renderer frames | `/renderer-frame/preview/[clientSlug]/[[...pageSlug]]`; legacy `/renderer-frame/preview-token/[token]/[[...pageSlug]]` is also production-disabled unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`. |
 | Payload admin/API | `/admin`, `/api/[...slug]`, `/api/graphql`, `/api/graphql-playground`, `/api/health`, `/api/users/request-data`. |
-| Platform service APIs | `/api/contact`, `/api/intake`, `/api/intake/kvk/search`, `/api/intake/kvk/profile`, `/api/payments/mollie/webhook`, `/api/preview-tokens`, `/api/publish`, `/api/renderer/snapshot`, `/api/renderer/media/[tenantId]/[...path]`, `/api/tenant-assets/[tenantId]/[...path]`, `/api/tenant-media/[tenantId]/[filename]`, `/api/tenant-theme`. |
+| Platform service APIs | `/api/contact`, `/api/intake`, `/api/intake/kvk/search`, `/api/intake/kvk/profile`, `/api/payments/mollie/webhook`, `/api/preview-tokens`, `/api/publish`, `/api/renderer/snapshot`, `/api/renderer/media/[tenantId]/[...path]`, `/api/tenant-media/[tenantId]/[filename]`, `/api/tenant-theme`. |
 | Auth APIs | `/api/auth/[...all]`, `/api/preview-auth/[...all]`, `/api/siab-auth/complete`. |
 | Media compatibility | `/siab-media/[tenantId]/[...path]`. |
 
@@ -75,7 +75,6 @@ intake app for both apex and `www`.
 | `/healthz` | `healthz.ts` | Container/edge healthcheck. |
 | `/api/forms` | `api/forms.ts` | Renderer-owned generated-site form ingress; forwards to CMS after host snapshot resolution. |
 | `/siab-media/[tenantId]/[...path]` | `siab-media/[tenantId]/[...path].ts` | Public snapshot media route guarded by active host snapshot. |
-| `/_renderer/editor` | `_renderer/editor.astro` | Intentional renderer smoke/dev iframe route documented in `apps/renderer/README.md`; not the CMS editor frame. |
 | `/404` | `404.astro` | Platform/default renderer 404 page for direct/static fallback. |
 | `/[...path]` | `[...path].astro` | Public snapshot renderer for tenant domains; known-host missing paths render the explicit imported `shadcnui-blocks.not-found-01` system template, while unknown hosts use the platform 404. |
 
@@ -88,8 +87,6 @@ Kept:
   `/renderer-frame/preview-token/[token]/...`: legacy compatibility only,
   fail closed in production unless `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`, and
   still covered by CMS tests.
-- Renderer `/_renderer/editor`: intentional smoke/dev surface, documented in
-  `apps/renderer/README.md`.
 
 Removed:
 
