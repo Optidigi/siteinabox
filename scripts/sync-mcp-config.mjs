@@ -6,8 +6,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const registryPath = resolve(root, "mcp.registry.json")
 const TARGETS = new Set(["codex", "cursor", "genericJson", "genericToml"])
 const SERVER_FIELDS = new Set([
-  "purpose", "transport", "command", "args", "url", "implementation", "requiredEnv", "staticEnv",
+  "purpose", "transport", "command", "args", "url", "workingDirectory", "implementation", "requiredEnv", "staticEnv",
   "staticHeaders", "secretHeaders", "serverPolicy", "clientPolicy", "preconditions", "projectionTargets", "fallback",
+  "runtimeConfig",
 ])
 const IMPLEMENTATION_FIELDS = new Set(["kind", "identifier", "version", "digest", "reviewedAt", "unpinnedReason"])
 const SERVER_POLICY_FIELDS = new Set(["readOnly", "toolsets", "toolAllowlist"])
@@ -39,7 +40,7 @@ function validateControl(control, location, hasValues, requireEnforcement = true
   if (control.enforcement != null) {
     assert(control.enforcement && typeof control.enforcement === "object", `${location}.enforcement must be null or an object`)
     rejectUnknownKeys(control.enforcement, new Set(["kind", "value"]), `${location}.enforcement`)
-    assert(["argument", "environment", "header"].includes(control.enforcement.kind), `${location}.enforcement.kind is invalid`)
+    assert(["argument", "environment", "header", "generatedConfig"].includes(control.enforcement.kind), `${location}.enforcement.kind is invalid`)
     assert(typeof control.enforcement.value === "string" && control.enforcement.value.length > 0, `${location}.enforcement.value is required`)
   }
   assert(!requireEnforcement || !control.required || control.enforcement, `${location} requires an enforcement mechanism`)
@@ -65,6 +66,7 @@ function targetSupports(server, target) {
   if (policy.approval.required && target !== "codex") return false
   if ((policy.enabledTools.required || policy.disabledTools.required) && target !== "codex") return false
   if (server.requiredEnv.length > 0 && (target === "genericJson" || target === "genericToml")) return false
+  if (server.workingDirectory && target !== "codex") return false
   if ((Object.keys(server.staticEnv).length > 0 || Object.keys(server.staticHeaders).length > 0 || Object.keys(server.secretHeaders).length > 0) && target === "genericToml") return false
   return true
 }
@@ -79,6 +81,10 @@ function validateEnforcement(server, control, location) {
     assert(Object.hasOwn(server.staticEnv, value), `${location} environment enforcement is missing from staticEnv`)
     enforcedValue = server.staticEnv[value]
   } else {
+    if (kind === "generatedConfig") {
+      assert(server.runtimeConfig, `${location} generatedConfig enforcement requires runtimeConfig`)
+      return
+    }
     assert(Object.hasOwn(server.staticHeaders, value), `${location} header enforcement is missing from staticHeaders`)
     enforcedValue = server.staticHeaders[value]
   }
@@ -107,6 +113,9 @@ export function validateRegistry(registry) {
     } else {
       assert(typeof server.url === "string" && server.url.startsWith("https://"), `${location}.url must use HTTPS`)
       assert(!Object.hasOwn(server, "command") && !Object.hasOwn(server, "args"), `${location} cannot mix HTTP and stdio fields`)
+    }
+    if (Object.hasOwn(server, "workingDirectory")) {
+      assert(server.workingDirectory === "repositoryRoot", `${location}.workingDirectory must be repositoryRoot`)
     }
 
     rejectUnknownKeys(server.implementation, IMPLEMENTATION_FIELDS, `${location}.implementation`)
@@ -160,6 +169,7 @@ export function validateRegistry(registry) {
     validateControl(server.clientPolicy.disabledTools, `${location}.clientPolicy.disabledTools`, true, false)
 
     validateStringArray(server.preconditions, `${location}.preconditions`)
+    if (server.runtimeConfig) validateRuntimeConfig(server, location)
     validateStringArray(server.projectionTargets, `${location}.projectionTargets`)
     assert(server.projectionTargets.length > 0, `${location}.projectionTargets must not be empty`)
     for (const target of server.projectionTargets) {
@@ -171,6 +181,23 @@ export function validateRegistry(registry) {
 
   validateNoCredentialUrls(registry)
   return registry
+}
+
+function validateRuntimeConfig(server, location) {
+  const config = server.runtimeConfig
+  rejectUnknownKeys(config, new Set(["kind", "path", "source", "executeSql", "exposeSearchObjects"]), `${location}.runtimeConfig`)
+  assert(config.kind === "dbhub", `${location}.runtimeConfig.kind must be dbhub`)
+  assert(config.path === ".mcp/dbhub-postgres.toml", `${location}.runtimeConfig.path is invalid`)
+  assert(server.args.includes(config.path), `${location}.args must reference runtimeConfig.path`)
+  rejectUnknownKeys(config.source, new Set(["id", "dsnEnv", "connectionTimeoutSeconds", "queryTimeoutSeconds"]), `${location}.runtimeConfig.source`)
+  assert(/^[a-z0-9-]+$/.test(config.source.id), `${location}.runtimeConfig.source.id is invalid`)
+  assert(server.requiredEnv.includes(config.source.dsnEnv), `${location}.runtimeConfig.source.dsnEnv must be required`)
+  assert(Number.isInteger(config.source.connectionTimeoutSeconds) && config.source.connectionTimeoutSeconds > 0, `${location} connection timeout must be positive`)
+  assert(Number.isInteger(config.source.queryTimeoutSeconds) && config.source.queryTimeoutSeconds > 0, `${location} query timeout must be positive`)
+  rejectUnknownKeys(config.executeSql, new Set(["readOnly", "maxRows"]), `${location}.runtimeConfig.executeSql`)
+  assert(config.executeSql.readOnly === true, `${location}.runtimeConfig.executeSql.readOnly must be true`)
+  assert(Number.isInteger(config.executeSql.maxRows) && config.executeSql.maxRows > 0, `${location}.runtimeConfig.executeSql.maxRows must be positive`)
+  assert(config.exposeSearchObjects === true, `${location}.runtimeConfig.exposeSearchObjects must be true`)
 }
 
 const quote = (value) => JSON.stringify(value)
@@ -210,6 +237,7 @@ function tomlServer(name, server, target) {
     if (Object.keys(server.staticEnv).length > 0) lines.push(`env = ${tomlInlineTable(server.staticEnv)}`)
     if (Object.keys(server.staticHeaders).length > 0) lines.push(`http_headers = ${tomlInlineTable(server.staticHeaders)}`)
     if (Object.keys(server.secretHeaders).length > 0) lines.push(`env_http_headers = ${tomlInlineTable(server.secretHeaders)}`)
+    if (server.workingDirectory === "repositoryRoot") lines.push('cwd = ".."')
   }
   return `${lines.join("\n")}\n`
 }
@@ -226,6 +254,27 @@ export function renderProjections(registry) {
     .filter(([, server]) => server.projectionTargets.includes(target))
     .map(([name, server]) => tomlServer(name, server, target))
     .join("\n")
+  const postgres = registry.servers.postgres.runtimeConfig
+  const dbhub = [
+    "# Generated from mcp.registry.json. Do not edit.",
+    "[[sources]]",
+    `id = ${quote(postgres.source.id)}`,
+    'description = "SIAB local or staging database through a dedicated read-only role"',
+    `dsn = ${quote(`\${${postgres.source.dsnEnv}}`)}`,
+    `connection_timeout = ${postgres.source.connectionTimeoutSeconds}`,
+    `query_timeout = ${postgres.source.queryTimeoutSeconds}`,
+    "",
+    "[[tools]]",
+    'name = "execute_sql"',
+    `source = ${quote(postgres.source.id)}`,
+    "readonly = true",
+    `max_rows = ${postgres.executeSql.maxRows}`,
+    "",
+    "[[tools]]",
+    'name = "search_objects"',
+    `source = ${quote(postgres.source.id)}`,
+    "",
+  ].join("\n")
 
   return new Map([
     [resolve(root, ".mcp.json"), jsonFor("genericJson")],
@@ -233,6 +282,7 @@ export function renderProjections(registry) {
     [resolve(root, ".codex/config.toml"), tomlFor("codex")],
     [resolve(root, ".codex/mcp.toml"), tomlFor("codex")],
     [resolve(root, ".cursor/mcp.json"), jsonFor("cursor")],
+    [resolve(root, postgres.path), dbhub],
   ])
 }
 

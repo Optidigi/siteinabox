@@ -67,3 +67,22 @@ test("GitHub projections retain official server-side least privilege", () => {
     assert.doesNotMatch(content, /@modelcontextprotocol\/server-github/)
   }
 })
+
+test("PostgreSQL stays disabled with generated DBHub guardrails", () => {
+  const projections = renderProjections(clone())
+  const codex = projections.get([...projections.keys()].find((path) => path.endsWith(".codex/config.toml")))
+  const dbhub = projections.get([...projections.keys()].find((path) => path.endsWith(".mcp/dbhub-postgres.toml")))
+  assert.match(codex, /@bytebase\/dbhub@0\.23\.0/)
+  assert.match(codex, /\[mcp_servers\.postgres\][\s\S]*enabled = false/)
+  assert.match(codex, /env_vars = \["SIAB_MCP_POSTGRES_URL"\]/)
+  assert.match(codex, /cwd = "\.\."/)
+  assert.match(dbhub, /dsn = "\$\{SIAB_MCP_POSTGRES_URL\}"/)
+  assert.match(dbhub, /connection_timeout = 10/)
+  assert.match(dbhub, /query_timeout = 15/)
+  assert.match(dbhub, /readonly = true/)
+  assert.match(dbhub, /max_rows = 100/)
+
+  const unsafe = clone()
+  unsafe.servers.postgres.runtimeConfig.executeSql.readOnly = false
+  assert.throws(() => validateRegistry(unsafe), /readOnly must be true/)
+})

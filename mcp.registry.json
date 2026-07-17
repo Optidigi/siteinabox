@@ -169,31 +169,55 @@
       "fallback": "Use git, gh read-only commands, or GitHub primary documentation."
     },
     "postgres": {
-      "purpose": "Database inspection; deprecated implementation pending dedicated read-only replacement.",
+      "purpose": "Bounded read-only database inspection with a dedicated database role.",
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-postgres@0.6.2", "${SIAB_MCP_POSTGRES_URL}"],
+      "args": ["-y", "@bytebase/dbhub@0.23.0", "--transport", "stdio", "--config", ".mcp/dbhub-postgres.toml"],
+      "workingDirectory": "repositoryRoot",
       "implementation": {
         "kind": "npm",
-        "identifier": "@modelcontextprotocol/server-postgres",
-        "version": "0.6.2"
+        "identifier": "@bytebase/dbhub",
+        "version": "0.23.0"
       },
       "requiredEnv": ["SIAB_MCP_POSTGRES_URL"],
       "staticEnv": {},
       "staticHeaders": {},
       "secretHeaders": {},
       "serverPolicy": {
-        "readOnly": { "required": false, "enforcement": null },
+        "readOnly": {
+          "required": true,
+          "enforcement": { "kind": "generatedConfig", "value": "tools.execute_sql.readonly" }
+        },
         "toolsets": { "required": false, "values": [], "enforcement": null },
-        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+        "toolAllowlist": {
+          "required": true,
+          "values": ["execute_sql", "search_objects"],
+          "enforcement": { "kind": "generatedConfig", "value": "tools" }
+        }
       },
       "clientPolicy": {
         "defaultEnabled": false,
-        "approval": { "required": true, "mode": "prompt" },
+        "approval": { "required": false, "mode": "auto" },
         "enabledTools": { "required": false, "values": [] },
         "disabledTools": { "required": false, "values": [] }
       },
-      "preconditions": ["Keep disabled until a dedicated read-only role and user-local SIAB_MCP_POSTGRES_URL exist."],
+      "runtimeConfig": {
+        "kind": "dbhub",
+        "path": ".mcp/dbhub-postgres.toml",
+        "source": {
+          "id": "siab",
+          "dsnEnv": "SIAB_MCP_POSTGRES_URL",
+          "connectionTimeoutSeconds": 10,
+          "queryTimeoutSeconds": 15
+        },
+        "executeSql": { "readOnly": true, "maxRows": 100 },
+        "exposeSearchObjects": true
+      },
+      "preconditions": [
+        "Keep disabled until an owner creates a dedicated siab_mcp_readonly role and user-local SIAB_MCP_POSTGRES_URL.",
+        "The role must not be the Payload application role and must have only CONNECT, intended-schema USAGE, and intended-relation SELECT.",
+        "Do not target production by default; database permissions remain the primary security boundary and do not reproduce application tenancy."
+      ],
       "projectionTargets": ["codex"],
       "fallback": "Use approved psql read-only inspection with a dedicated database role."
     },

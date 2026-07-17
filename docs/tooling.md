@@ -50,6 +50,20 @@ before relying on it.
 Never install components, mutate providers, change database state, publish,
 deploy, rotate, provision, or delete anything merely as an availability test.
 
+### PostgreSQL MCP precondition
+
+The `postgres` server is disabled until an owner creates a dedicated local or
+staging role and supplies `SIAB_MCP_POSTGRES_URL` in user scope. The role must
+not be the Payload application role: grant only database `CONNECT`, `USAGE` on
+the intended schemas, and `SELECT` on the intended relations. It must have no
+write, DDL, role-management, superuser, or `BYPASSRLS` capability, and
+production must not be its default target.
+
+After an owner supplies that role, harmless availability checks are limited to
+`current_database()`, `current_user`,
+`current_setting('transaction_read_only')`, bounded object search, and a small
+`SELECT`. DB role access does not reproduce application tenant or access rules.
+
 ## Workspace tools
 
 Node, pnpm, the workspace definition, dependency overrides, and the shared

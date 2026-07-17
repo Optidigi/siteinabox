@@ -1,0 +1,17 @@
+# Generated from mcp.registry.json. Do not edit.
+[[sources]]
+id = "siab"
+description = "SIAB local or staging database through a dedicated read-only role"
+dsn = "${SIAB_MCP_POSTGRES_URL}"
+connection_timeout = 10
+query_timeout = 15
+
+[[tools]]
+name = "execute_sql"
+source = "siab"
+readonly = true
+max_rows = 100
+
+[[tools]]
+name = "search_objects"
+source = "siab"

@@ -35,11 +35,12 @@ env = { "GITHUB_READ_ONLY" = "1", "GITHUB_TOOLSETS" = "repos,issues,pull_request
 
 [mcp_servers.postgres]
 command = "npx"
-args = ["-y", "@modelcontextprotocol/server-postgres@0.6.2", "${SIAB_MCP_POSTGRES_URL}"]
+args = ["-y", "@bytebase/dbhub@0.23.0", "--transport", "stdio", "--config", ".mcp/dbhub-postgres.toml"]
 enabled = false
 required = false
-default_tools_approval_mode = "prompt"
+default_tools_approval_mode = "auto"
 env_vars = ["SIAB_MCP_POSTGRES_URL"]
+cwd = ".."
 
 [mcp_servers.posthog]
 url = "https://mcp.posthog.com/mcp"
