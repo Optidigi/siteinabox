@@ -198,17 +198,26 @@ try {
           })
           await Promise.all([reference.evaluate(() => document.fonts.ready), runtime.evaluate(() => document.fonts.ready)])
           progress("hydrated-and-fonts-ready")
-          const imagesEstablishedLayout = () => [...document.images].every((image) => {
-            if (image.offsetParent === null) return true
-            const bounds = image.getBoundingClientRect()
-            return bounds.width > 0 && bounds.height > 0
-          })
-          await Promise.all([
-            reference.waitForFunction(imagesEstablishedLayout, undefined, { timeout: 20_000 }),
-            runtime.waitForFunction(imagesEstablishedLayout, undefined, { timeout: 20_000 }),
-          ]).catch((error) => {
-            throw new Error(`${variant.id} ${viewport.name} deterministic images did not establish layout`, { cause: error })
-          })
+          const waitForStableLayout = async (page) => {
+            let previous = ""
+            let stableFrames = 0
+            for (let attempt = 0; attempt < 40; attempt += 1) {
+              const signature = await page.evaluate(() => JSON.stringify([
+                document.documentElement.scrollWidth,
+                document.documentElement.scrollHeight,
+                ...[...document.images].flatMap((image) => {
+                  const bounds = image.getBoundingClientRect()
+                  return [Math.round(bounds.width * 100), Math.round(bounds.height * 100)]
+                }),
+              ]))
+              stableFrames = signature === previous ? stableFrames + 1 : 0
+              if (stableFrames >= 2) return
+              previous = signature
+              await page.waitForTimeout(50)
+            }
+            throw new Error(`${variant.id} ${viewport.name} layout did not settle`)
+          }
+          await Promise.all([waitForStableLayout(reference), waitForStableLayout(runtime)])
           progress("media-ready")
           if (await reference.locator('[data-slot="carousel"]').count() || await runtime.locator('[data-slot="carousel"]').count()) {
             // Embla publishes button/dot state from a post-hydration effect.
