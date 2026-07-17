@@ -53,8 +53,6 @@ type RuntimeState = {
   viewedComponents: WeakSet<Element>
   componentStats: WeakMap<Element, ComponentStats>
   startedForms: WeakSet<HTMLFormElement>
-  pageviewId: string | null
-  pageleaveCaptured: boolean
 }
 
 type ComponentStats = {
@@ -109,8 +107,6 @@ const state: RuntimeState = {
   viewedComponents: new WeakSet(),
   componentStats: new WeakMap(),
   startedForms: new WeakSet(),
-  pageviewId: null,
-  pageleaveCaptured: false,
 }
 
 const legacyCookieConsentStorageKey = "siab_cookie_consent_v1"
@@ -409,42 +405,6 @@ const capture = (event: string, properties: Record<string, unknown> = {}) => {
     headers: { "Content-Type": "text/plain" },
     keepalive: true,
     body: payload,
-  })
-}
-
-const capturePageview = () => {
-  state.pageStartedAt = performance.now()
-  state.pageviewId = randomId()
-  state.pageleaveCaptured = false
-  capture("$pageview", {
-    title: document.title,
-    $pageview_id: state.pageviewId,
-  })
-}
-
-const capturePageleave = () => {
-  if (state.pageleaveCaptured) return
-  state.pageleaveCaptured = true
-  const doc = document.documentElement
-  const maxScrollHeight = Math.max(1, doc.scrollHeight - window.innerHeight)
-  const maxScrollY = Math.round((Math.max(state.maxScrollDepth, scrollDepth()) / 100) * maxScrollHeight)
-  const maxScrollPercentage = Math.min(1, Math.max(0, maxScrollY / maxScrollHeight))
-  const maxContentHeight = Math.max(1, doc.scrollHeight)
-  const maxContentY = Math.min(maxContentHeight, maxScrollY + window.innerHeight)
-  const maxContentPercentage = Math.min(1, Math.max(0, maxContentY / maxContentHeight))
-
-  capture("$pageleave", {
-    $pageview_id: state.pageviewId,
-    $prev_pageview_id: state.pageviewId,
-    $prev_pageview_pathname: location.pathname,
-    $prev_pageview_duration: Math.max(0, (performance.now() - state.pageStartedAt) / 1000),
-    $prev_pageview_max_scroll: maxScrollY,
-    $prev_pageview_max_scroll_percentage: maxScrollPercentage,
-    $prev_pageview_max_content: maxContentY,
-    $prev_pageview_max_content_percentage: maxContentPercentage,
-    page_duration_ms: Math.max(0, Math.round(performance.now() - state.pageStartedAt)),
-    scroll_depth: Math.round(maxContentPercentage * 100),
-    interaction_type: "leave",
   })
 }
 
@@ -781,13 +741,6 @@ const setupScrollDepth = () => {
   onScroll()
 }
 
-const setupPageLifecycle = () => {
-  window.addEventListener("pagehide", capturePageleave, { capture: true })
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") capturePageleave()
-  })
-}
-
 const setupWebVitals = () => {
   const allowedMetrics = new Set(["CLS", "FCP", "INP", "LCP"])
   const metrics = new Map<string, WebVitalMetric>()
@@ -835,13 +788,11 @@ const initializeAfterConsent = () => {
   if (state.initialized) return
   state.initialized = true
   setupPostHogAutocapture()
-  capturePageview()
   captureJourneyStep("page-viewed")
   observeSections()
   observeComponents()
   setupDelegatedListeners()
   setupScrollDepth()
-  setupPageLifecycle()
   setupWebVitals()
 }
 

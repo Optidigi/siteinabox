@@ -59,9 +59,6 @@ Native and semantic events must not count the same interaction twice:
   `site_conversion_completed` rollup. Configured phone, email, or WhatsApp
   goals emit `site_conversion_completed` after consent.
 
-The renderer currently has a lifecycle-ownership deviation from this contract;
-see SIAB-010 in `docs/findings.md`.
-
 ## Consent and SDK controls
 
 Before consent, a public site must not initialize PostHog, transmit analytics,

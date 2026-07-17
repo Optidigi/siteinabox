@@ -31,3 +31,13 @@ test("approved banner persists a versioned receipt and controls analytics", () =
   assert.match(runtimeSource, /receipt\.categories\?\.analytics === true/)
   assert.match(runtimeSource, /state\.config\?\.consentVersion \? null : stored/)
 })
+
+test("PostHog JS is the sole page lifecycle owner", () => {
+  assert.match(runtimeSource, /capture_pageview: true/)
+  assert.match(runtimeSource, /capture_pageleave: true/)
+  assert.match(runtimeSource, /disable_scroll_properties: false/)
+  assert.match(runtimeSource, /opt_in_capturing\?\.\(\{ captureEventName: false \}\)/)
+  assert.doesNotMatch(runtimeSource, /capture\(["']\$pageview["']/)
+  assert.doesNotMatch(runtimeSource, /capture\(["']\$pageleave["']/)
+  assert.doesNotMatch(runtimeSource, /setupPageLifecycle|capturePageview|capturePageleave/)
+})

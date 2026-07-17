@@ -22,9 +22,8 @@ stable internal IDs plus role/tenant/domain context.
 PostHog's web analytics installation health checks map to SIAB as follows:
 
 - `$pageview` and `$pageleave`: the canonical contract assigns both to the
-  PostHog SDK. SIAB-010 records a current renderer deviation: SDK capture is
-  enabled while a separate SIAB lifecycle capture path also exists. Resolve
-  that conflict before relying on exact lifecycle counts.
+  PostHog SDK. The renderer's intercepted-ingestion browser regression verifies
+  one event of each kind per consented page lifecycle.
 - Scroll depth: PostHog expects native `$prev_pageview_*` properties, including
   `$prev_pageview_max_content_percentage`, on `$pageleave` or the following
   `$pageview`. The site runtime keeps `disable_scroll_properties: false`.

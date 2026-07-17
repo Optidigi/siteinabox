@@ -81,18 +81,15 @@ observations before acting on them.
 
 ## SIAB-010 — Renderer page-lifecycle ownership conflicts with the contract
 
-- **Classification:** Confirmed defect; **confidence:** high from current
-  source and contract tests.
+- **Classification:** Historical / closed; **confidence:** high from event-level
+  browser regression.
 - **Scope:** Public renderer analytics counts and PostHog web analytics.
-- **Evidence:** The typed contract and tests make `$pageview` and `$pageleave`
-  PostHog-SDK-owned and reject the historical SIAB page events. The renderer
-  enables `capture_pageview` and `capture_pageleave` while also calling its own
-  `capturePageview()` and `capturePageleave()` network path.
-- **Impact:** A consented page visit can produce duplicate lifecycle events and
-  inflate visitors, pageviews, duration, and scroll reporting.
-- **Next:** Choose one owner for each lifecycle event, preserve native PostHog
-  scroll properties, add a browser regression proving one pageview/pageleave,
-  and update code, contract, tests, and the PostHog runbook together.
+- **Evidence:** The renderer now delegates `$pageview` and `$pageleave` only to
+  PostHog JS. The local intercepted-ingestion browser regression decodes SDK
+  batches and beacons, proves one event of each kind after consent, preserves
+  native duration and scroll properties, and rejects real PostHog requests.
+- **Review trigger:** Reopen if lifecycle events are emitted outside PostHog JS
+  or the event-level browser regression loses native duration/scroll coverage.
 
 ## SIAB-011 — Legal-content changes do not trigger a renderer image
 
