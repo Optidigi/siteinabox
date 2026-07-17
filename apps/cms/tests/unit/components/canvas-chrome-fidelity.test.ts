@@ -308,14 +308,14 @@ describe("canvas chrome fidelity", () => {
     expect(rendererCanvasCss).toContain('.site-renderer[data-siab-site-renderer][data-tenant-renderer="amicare"] .site-frame-root > footer')
   })
 
-  it("uses one canonical renderer theme injection in the shared shell path", () => {
+  it("uses static theme attributes in the shared shell path", () => {
     const canvasSurface = read("src/components/editor/canvas/CanvasSurface.tsx")
     const palettePicker = read("src/components/editor/theme/palette-picker.tsx")
 
     expect(canvasSurface).toContain("useSharedRendererShell")
-    expect(canvasSurface).toContain("includeThemeStyle")
-    expect(canvasSurface).toContain("theme && !useSharedRendererShell")
-    expect(canvasSurface).toContain("data-rt-theme-overrides")
+    expect(canvasSurface).toContain("themeAttributeProps")
+    expect(canvasSurface).not.toContain("includeThemeStyle")
+    expect(canvasSurface).not.toContain("data-rt-theme-overrides")
     expect(canvasSurface).not.toContain("data-siab-canvas-theme-overrides")
     expect(canvasSurface).not.toContain("amicareCanvasThemeCss")
     expect(canvasSurface).not.toContain("rendererThemeCss")

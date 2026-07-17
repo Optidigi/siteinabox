@@ -329,9 +329,9 @@ export function loadMockSiteGenerationSpec(
     theme: {
       version: 3,
       appearance: { mode: "system" },
-      colors: { schemeId: "shadcn-neutral" },
-      fonts: { schemeId: "shadcn-geist" },
-      shape: { schemeId: "shadcn-default" },
+      colors: { schemeId: "monochrome" },
+      fonts: { schemeId: "clear-modern" },
+      shape: { schemeId: "soft" },
     },
     settings: {
       siteName: normalized.businessName,
@@ -367,7 +367,7 @@ export function loadMockSiteGenerationSpec(
           },
         },
         banner: {
-          variant: "shadcnui-blocks.banner-02",
+          variant: "shadcnui-blocks.banner-01",
           visible: true,
           title: "Visuele testfixture",
           message: "Controleer deze pagina in licht en donker en op desktop en mobiel.",

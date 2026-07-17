@@ -8,7 +8,6 @@ const renderGenericSite = (settings: SiteSettings) =>
     <SitePageRenderer
       page={{ ...v1FixturePage, blocks: [] }}
       settings={settings}
-      includeThemeStyle={false}
     />,
   )
 
@@ -27,6 +26,7 @@ describe("generic site renderer maintenance banner", () => {
     expect(html).toContain("Reusable chrome variants are available for generated sites.")
     expect(html).toContain('data-provider-variant="shadcnui-blocks.banner-02"')
     expect(html).toContain("We are updating this site tonight.")
+    expect(html.indexOf('data-provider-variant="shadcnui-blocks.banner-01"')).toBeLessThan(html.indexOf('data-provider-variant="shadcnui-blocks.navbar-'))
   })
 
   it("omits maintenance chrome when maintenance is disabled", () => {

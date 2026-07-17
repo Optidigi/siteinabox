@@ -29,7 +29,7 @@ import type { MediaResolver, ResolvedMedia } from "../../media"
 import { resolveMedia } from "../../media"
 import { RichTextRenderer, extractRichText } from "../../rich-text"
 import { isRtRoot } from "@siteinabox/contracts/rich-text"
-import { PUBLIC_RENDERER_THEME_SCOPE, ThemeCanvas, ThemeStyle } from "../../theme"
+import { ThemeCanvas } from "../../theme"
 import type {
   BlockEditSlots,
   BlockRenderOptions,
@@ -52,7 +52,6 @@ export type AmicarePageRendererProps = {
   canvasClassName?: string
   canvasAttributes?: React.HTMLAttributes<HTMLDivElement>
   nonce?: string
-  includeThemeStyle?: boolean
   includeBehaviorScripts?: boolean
   renderBlock?: AmicareRenderBlock
   renderBlocks?: AmicareRenderBlocks
@@ -1425,7 +1424,6 @@ export function AmicarePageRenderer({
   canvasClassName,
   canvasAttributes,
   nonce,
-  includeThemeStyle = true,
   includeBehaviorScripts = true,
   renderBlock,
   renderBlocks,
@@ -1457,7 +1455,6 @@ export function AmicarePageRenderer({
       data-siab-site-renderer
       data-tenant-renderer="amicare"
     >
-      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <ThemeCanvas
         theme={theme}
         {...canvasAttributes}

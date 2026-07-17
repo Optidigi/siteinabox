@@ -45,6 +45,8 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     expect(spec.settings.navHeader).toHaveLength(5)
     expect(spec.settings.navFooter).toHaveLength(5)
     expect(spec.theme.appearance.mode).toBe("system")
+    expect(spec.theme).toMatchObject({ colors: { schemeId: "monochrome" }, fonts: { schemeId: "clear-modern" }, shape: { schemeId: "soft" } })
+    expect(spec.settings.chrome?.banner?.variant).toBe("shadcnui-blocks.banner-01")
   })
 
   it("uses a different approved provider variant for every section", () => {

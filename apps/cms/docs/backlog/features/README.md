@@ -32,11 +32,19 @@ depended on command-run site generation are no longer current source of truth.
 The provider theme boundary remains intentionally preset-only: blocks own UI,
 the CMS owns structured content, and the tenant theme owns appearance, semantic
 colors, deterministic self-hosted fonts, and exact component radii. The upstream
-default is `shadcn-neutral` + Geist + the shadcn radius. The shared resolver
-exposes status, rating, chart, overlay, on-media, font-role, radius-role and
-Tailwind palette variables. Imported literal classes stay unchanged; a custom
-tenant preset changes the variables they resolve, while default mode remains
-pixel-equivalent to the pinned provider.
+reference is `monochrome` + `clear-modern` + `soft`: exact shadcn light/dark
+semantic values, Inter, and the upstream 0.625rem radius. Round and Sharp are
+the only alternate shapes. One canonical manifest generates static scoped CSS
+for status, rating, chart, overlay, on-media, font-role, radius-role and Tailwind
+palette variables. Literal classes stay unchanged; semantic buttons follow the
+selected shape while true avatars/dots remain circles. Colored presets tint
+appropriate light and dark surfaces without coloring high-contrast text or
+status roles.
+
+Theme-only canvas/preview edits send one `theme.patch`, mutate preset attributes,
+and do not replace the page or rerender all blocks. The unused `tenant-theme.css`
+projection and runtime style generation were removed. Existing Amicare renderer
+compatibility remains intentionally isolated for its future migration.
 
 All 156 imported variants and all namespaced provider primitives are covered by
 a source audit. Only exact reviewed brand artwork, authored illustrations,

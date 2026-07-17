@@ -9,7 +9,7 @@ import {
   type IframeEditorMessage,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { SitePageRenderer, createRendererMediaResolver } from "@siteinabox/site-renderer"
+import { SitePageRenderer, applyThemeAttributes, createRendererMediaResolver } from "@siteinabox/site-renderer"
 import { fixturePublishedSiteSnapshot } from "../fixtures/published-site"
 
 type RendererFrameState = {
@@ -147,6 +147,19 @@ class RendererErrorBoundary extends React.Component<
 function RendererEditorApp() {
   const [state, setState] = React.useState<RendererFrameState>(() => initialState())
   const revisionRef = React.useRef(0)
+  const themeRef = React.useRef(state.snapshot.theme)
+  const themeCleanupRef = React.useRef<(() => void) | null>(null)
+
+  const patchTheme = React.useCallback((theme: PublishedSiteSnapshot["theme"]) => {
+    themeRef.current = theme
+    themeCleanupRef.current?.()
+    themeCleanupRef.current = applyThemeAttributes(document, theme)
+  }, [])
+
+  React.useEffect(() => {
+    patchTheme(themeRef.current)
+    return () => themeCleanupRef.current?.()
+  }, [patchTheme])
 
   React.useEffect(() => {
     postReady(state, revisionRef.current)
@@ -160,9 +173,18 @@ function RendererEditorApp() {
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
       if (!parsed.ok) return
 
+      const message = parsed.message
+      if ("expectedRevision" in message && message.type === "theme.patch") {
+        revisionRef.current += 1
+        patchTheme(message.theme)
+        return
+      }
+      if ("expectedRevision" in message && message.type === "page.replace" && message.theme !== undefined) {
+        patchTheme(message.theme)
+      }
+
       setState((current) => {
         try {
-          const message = parsed.message
           if (!("expectedRevision" in message)) return current
 
           if (message.type === "page.replace") {
@@ -175,11 +197,6 @@ function RendererEditorApp() {
               },
               page: toRendererPage(message.page),
             }
-          }
-
-          if (message.type === "theme.patch") {
-            revisionRef.current += 1
-            return { ...current, snapshot: { ...current.snapshot, theme: message.theme } }
           }
 
           if (message.type === "block.patch") {
@@ -221,7 +238,7 @@ function RendererEditorApp() {
 
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [])
+  }, [patchTheme])
 
   const mediaResolver = React.useMemo(
     () => createRendererMediaResolver(state.snapshot.tenantId),
@@ -233,7 +250,7 @@ function RendererEditorApp() {
       <SitePageRenderer
         page={state.page}
         settings={state.snapshot.settings}
-        theme={state.snapshot.theme}
+        theme={themeRef.current}
         tenantSlug={state.snapshot.tenantSlug}
         domain={state.snapshot.domain}
         mediaResolver={mediaResolver}

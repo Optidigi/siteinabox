@@ -12,7 +12,7 @@ import {
   type IframeEditorSelection,
   validateIframeEditorMessage,
 } from "@siteinabox/contracts/iframe-editor"
-import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
+import { SitePageRenderer, applyThemeAttributes, createRendererMediaResolver, resolveTenantRenderer } from "@siteinabox/site-renderer"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { FrameCanvasSurface } from "@/components/editor-frame/FrameCanvasSurface"
 import type { PageEditorFrameView } from "@/components/editor/iframe/PageEditorFrameHost"
@@ -47,7 +47,8 @@ export function EditorFrameRuntime({
   const cspNonce = useCspNonce()
   const [framePage, setFramePage] = React.useState(page)
   const [frameSettings, setFrameSettings] = React.useState(settings)
-  const [frameTheme, setFrameTheme] = React.useState(theme)
+  const frameThemeRef = React.useRef(theme)
+  const themeCleanupRef = React.useRef<(() => void) | null>(null)
   const [activeSelection, setActiveSelection] = React.useState<IframeEditorSelection | null>(null)
   const [frameView, setFrameView] = React.useState<PageEditorFrameView | null>(initialView ?? null)
   const [mobileMode, setMobileMode] = React.useState<IframeEditorMobileMode>(initialMobileMode ?? { mode: "fullPage" })
@@ -78,9 +79,16 @@ export function EditorFrameRuntime({
     setFrameSettings(settings)
   }, [settings])
 
+  const patchTheme = React.useCallback((nextTheme: ThemeTokenSpec | null) => {
+    frameThemeRef.current = nextTheme
+    themeCleanupRef.current?.()
+    themeCleanupRef.current = applyThemeAttributes(document, nextTheme)
+  }, [])
+
   React.useEffect(() => {
-    setFrameTheme(theme)
-  }, [theme])
+    patchTheme(theme)
+    return () => themeCleanupRef.current?.()
+  }, [patchTheme, theme])
 
   React.useEffect(() => {
     receivedParentCommandRef.current = false
@@ -137,12 +145,12 @@ export function EditorFrameRuntime({
       const revisioned = message as IframeEditorMessage & IframeEditorRevisionedMessageBase<"page.replace" | "theme.patch">
 
       if (revisioned.type === "theme.patch") {
-        setFrameTheme(revisioned.theme)
+        patchTheme(revisioned.theme)
         return
       }
 
       if (revisioned.type === "page.replace") {
-        if ("theme" in revisioned) setFrameTheme(revisioned.theme ?? null)
+        if ("theme" in revisioned) patchTheme(revisioned.theme ?? null)
         if (revisioned.expectedRevision < revisionRef.current) return
         setFramePage(revisioned.page)
         if (revisioned.settings) setFrameSettings(revisioned.settings)
@@ -161,7 +169,7 @@ export function EditorFrameRuntime({
       window.clearInterval(readyInterval)
       window.removeEventListener("message", onMessage)
     }
-  }, [emit, page.id, page.slug])
+  }, [emit, page.id, page.slug, patchTheme])
 
   React.useEffect(() => {
     const pageId = String(framePage.id ?? framePage.slug ?? "page")
@@ -280,7 +288,7 @@ export function EditorFrameRuntime({
         view={frameView}
         page={framePage}
         settings={frameSettings}
-        theme={frameTheme}
+        theme={frameThemeRef.current}
         tenantId={tenantId}
         tenantSlug={tenantSlug}
         domain={domain}
@@ -300,7 +308,7 @@ export function EditorFrameRuntime({
       <SitePageRenderer
         page={framePage}
         settings={frameSettings}
-        theme={frameTheme}
+        theme={frameThemeRef.current}
         tenantSlug={tenantSlug}
         domain={domain}
         mediaResolver={mediaResolver}

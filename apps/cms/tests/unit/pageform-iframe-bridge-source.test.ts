@@ -26,7 +26,8 @@ describe("page editor iframe bridge source contract", () => {
     expect(host).toContain('type === "error"')
     expect(host).toContain('type: "page.replace"')
     expect(host).toContain('type: "theme.patch"')
-    expect(host).toContain("theme,")
+    const pageReplacePayload = host.slice(host.indexOf('type: "page.replace"'), host.indexOf("revisionRef.current =", host.indexOf('type: "page.replace"')))
+    expect(pageReplacePayload).not.toContain("theme,")
     expect(host).toContain("--siab-parent-chrome-bottom")
     expect(host).toContain("expectedRevision")
     expect(host).toMatch(/<iframe\b/i)
@@ -165,7 +166,9 @@ describe("page editor iframe bridge source contract", () => {
 
     expect(runtime).toContain('revisioned.type === "theme.patch"')
     expect(runtime).toContain('revisioned.expectedRevision < revisionRef.current')
-    expect(runtime).toContain('if ("theme" in revisioned) setFrameTheme')
+    expect(runtime).toContain('if ("theme" in revisioned) patchTheme')
+    expect(runtime).toContain("applyThemeAttributes")
+    expect(runtime).not.toContain("setFrameTheme")
     expect(runtime).toContain("if (frameView) return")
   })
 

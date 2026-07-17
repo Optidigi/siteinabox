@@ -84,7 +84,7 @@ test("provider primitives use the same token boundary and only structural except
 
 test("theme CSS exposes exact role variables without rewriting literal provider classes", async () => {
   const styles = await readFile(resolve(root, "packages/site-renderer/src/styles.css"), "utf8")
-  const cssVars = await readFile(resolve(root, "packages/site-renderer/src/theme/css-vars.ts"), "utf8")
+  const cssVars = await readFile(resolve(root, "packages/site-renderer/src/theme-presets.generated.css"), "utf8")
   const resolver = await readFile(resolve(root, "packages/site-renderer/src/theme/resolve.ts"), "utf8")
   for (const role of ["sm", "md", "lg", "xl", "2xl", "3xl", "4xl"]) {
     assert.match(styles, new RegExp(`--radius-${role}: var\\(--siab-radius-${role}\\)`))
@@ -95,7 +95,7 @@ test("theme CSS exposes exact role variables without rewriting literal provider 
     assert.match(cssVars, new RegExp(`--${token}`))
   }
   for (const role of ["body", "heading", "display", "mono"]) assert.match(cssVars, new RegExp(`--siab-font-${role}`))
-  for (const family of ["gray", "neutral", "blue", "indigo", "purple", "red", "amber", "green", "emerald"]) assert.match(cssVars, new RegExp(`\\b${family}\\b`))
+  for (const family of ["gray", "neutral", "blue", "indigo", "purple"]) assert.match(cssVars, new RegExp(`--color-${family}-`))
   assert.match(cssVars, /--provider-surface/)
   assert.match(resolver, /Nunito Variable/)
   assert.doesNotMatch(resolver, /Avenir|Segoe UI/)

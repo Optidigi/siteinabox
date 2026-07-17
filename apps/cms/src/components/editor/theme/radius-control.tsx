@@ -16,7 +16,6 @@ function iconFor(level: ShapePreset): React.ComponentType<{ className?: string }
 }
 
 const SHAPE_CORNER_RADIUS: Record<ShapeSchemeId, number> = {
-  "shadcn-default": 3,
   sharp: 0,
   soft: 3,
   rounded: 6,

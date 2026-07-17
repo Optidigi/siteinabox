@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { normalizeColorMode, SYSTEM_DARK_QUERY } from "../../../theme/color-mode"
-import { useThemeCanvasColorMode } from "../../../theme"
 
 const subscribe = (notify: () => void) => {
   if (typeof window === "undefined") return () => undefined
@@ -24,8 +23,7 @@ const snapshot = () => {
 }
 
 export function useTheme() {
-  const canvasTheme = useThemeCanvasColorMode()
   const documentTheme = React.useSyncExternalStore(subscribe, snapshot, () => "light")
-  const resolvedTheme = canvasTheme ?? documentTheme
+  const resolvedTheme = documentTheme
   return { theme: resolvedTheme, resolvedTheme, systemTheme: resolvedTheme, setTheme: () => undefined }
 }

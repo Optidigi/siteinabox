@@ -384,10 +384,9 @@ export function PageEditorFrameHost({
       pageId: String(pageId),
       page,
       settings,
-      theme,
     })
     revisionRef.current = expectedRevision + 1
-  }, [page, pageId, postToFrame, ready, settings, theme])
+  }, [page, pageId, postToFrame, ready, settings])
 
   React.useEffect(() => {
     if (!ready) return

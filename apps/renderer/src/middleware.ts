@@ -15,14 +15,13 @@ const approvedValue = <T extends readonly string[]>(values: T, value: string, fa
 export const onRequest = defineMiddleware(async (context, next) => {
   if (!import.meta.env.DEV || context.url.pathname !== "/provider-parity") return next()
 
-  const [{ v1FixturePage }, { ShadcnUiExplicitBlockView }, { ShadcnUiChromeView }, { ShadcnUiNotFoundView }, { ShadcnUiPinnedLiteralPreview }, { default: inventory }, { themeToCssVars }] = await Promise.all([
+  const [{ v1FixturePage }, { ShadcnUiExplicitBlockView }, { ShadcnUiChromeView }, { ShadcnUiNotFoundView }, { ShadcnUiPinnedLiteralPreview }, { default: inventory }] = await Promise.all([
     import("../../../packages/site-renderer/src/fixtures/v1"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/block-views.generated"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/views"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/system-views"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/literal-previews.generated"),
     import("../../../packages/site-renderer/src/providers/shadcnui-blocks/inventory.json"),
-    import("../../../packages/site-renderer/src/theme/css-vars"),
   ])
   const variantId = context.url.searchParams.get("variant") ?? ""
   const literal = context.url.searchParams.get("literal") === "1"
@@ -61,19 +60,19 @@ export const onRequest = defineMiddleware(async (context, next) => {
     : React.createElement(ShadcnUiExplicitBlockView, props as any))
   const mode = context.url.searchParams.get("mode") === "dark" ? "dark" : "light"
   const preference = context.url.searchParams.get("preference") === "system" ? "system" : mode
-  const requestedColors = context.url.searchParams.get("colors") ?? (literal ? "shadcn-neutral" : "blue-professional")
-  const requestedFonts = context.url.searchParams.get("fonts") ?? (literal ? "shadcn-geist" : "clear-modern")
-  const requestedShape = context.url.searchParams.get("shape") ?? (literal ? "shadcn-default" : "soft")
+  const requestedColors = context.url.searchParams.get("colors") ?? (literal ? "monochrome" : "blue-professional")
+  const requestedFonts = context.url.searchParams.get("fonts") ?? "clear-modern"
+  const requestedShape = context.url.searchParams.get("shape") ?? "soft"
   const theme = {
     version: 3 as const,
     appearance: { mode: preference },
-    colors: { schemeId: approvedValue(COLOR_SCHEME_IDS, requestedColors, literal ? "shadcn-neutral" : "blue-professional") },
-    fonts: { schemeId: approvedValue(FONT_SCHEME_IDS, requestedFonts, literal ? "shadcn-geist" : "clear-modern") },
-    shape: { schemeId: approvedValue(SHAPE_SCHEME_IDS, requestedShape, literal ? "shadcn-default" : "soft") },
+    colors: { schemeId: approvedValue(COLOR_SCHEME_IDS, requestedColors, literal ? "monochrome" : "blue-professional") },
+    fonts: { schemeId: approvedValue(FONT_SCHEME_IDS, requestedFonts, "clear-modern") },
+    shape: { schemeId: approvedValue(SHAPE_SCHEME_IDS, requestedShape, "soft") },
   } satisfies ThemeTokenSpec
   const hydrationClient = literal ? "/src/smoke/provider-literal-client.tsx" : "/src/smoke/provider-parity-client.tsx"
   const hydration = `<script id="provider-parity-props" type="application/json">${jsonForHtml(props)}</script><script type="module">import RefreshRuntime from "/@react-refresh";RefreshRuntime.injectIntoGlobalHook(window);window.$RefreshReg$=()=>{};window.$RefreshSig$=()=>type=>type;window.__vite_plugin_react_preamble_installed__=true</script><script type="module" src="${hydrationClient}"></script><script type="module" src="/src/client/site-behavior.ts"></script>`
-  return new Response(`<!doctype html><html lang="en" data-siab-theme-mode="${preference}" data-siab-color-mode="${mode}" data-rt-mode="${mode}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"><link rel="stylesheet" href="/src/styles/site.css"><style>${themeToCssVars(theme, ":root")}</style><title>${variant.id}</title></head><body class="m-0 min-w-80 bg-background text-foreground"><div id="provider-parity-root" class="site-frame-root">${body}</div>${hydration}</body></html>`, {
+  return new Response(`<!doctype html><html lang="en" data-siab-theme-mode="${preference}" data-siab-color-mode="${mode}" data-rt-mode="${mode}"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E"><link rel="stylesheet" href="/src/styles/site.css"><title>${variant.id}</title></head><body class="m-0 min-w-80 bg-background text-foreground"><div id="provider-parity-root" class="rt-canvas site-frame-root" data-theme-color="${theme.colors.schemeId}" data-theme-font="${theme.fonts.schemeId}" data-theme-shape="${theme.shape.schemeId}" data-siab-theme-mode="${preference}" data-rt-mode="${mode}">${body}</div>${hydration}</body></html>`, {
     headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   })
 })

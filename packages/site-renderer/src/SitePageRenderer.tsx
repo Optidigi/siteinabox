@@ -7,7 +7,7 @@ import { SiteBanner, SiteFooter, SiteHeader, SiteMaintenanceBanner } from "./chr
 import { AmicarePageRenderer, type AmicareRenderBlock, type AmicareRenderChrome } from "./tenant-renderers/amicare/AmicarePage"
 import { resolveTenantRenderer } from "./tenant-renderers/resolve"
 import type { MediaResolver } from "./media"
-import { PUBLIC_RENDERER_THEME_SCOPE, ThemeCanvas, ThemeStyle } from "./theme"
+import { ThemeCanvas } from "./theme"
 import { getProviderBlockVariant } from "@siteinabox/contracts"
 
 export type SiteRenderBlocks = (args: {
@@ -28,7 +28,6 @@ export type SitePageRendererProps = {
   nonce?: string
   tenantSlug?: string | null
   domain?: string | null
-  includeThemeStyle?: boolean
   includeBehaviorScripts?: boolean
   header?: React.ReactNode
   footer?: React.ReactNode
@@ -51,7 +50,6 @@ export function SitePageRenderer({
   nonce,
   tenantSlug,
   domain,
-  includeThemeStyle = true,
   includeBehaviorScripts = true,
   header,
   footer,
@@ -75,7 +73,6 @@ export function SitePageRenderer({
         canvasClassName={canvasClassName}
         canvasAttributes={canvasAttributes}
         nonce={nonce}
-        includeThemeStyle={includeThemeStyle}
         includeBehaviorScripts={includeBehaviorScripts}
         renderBlock={renderBlock}
         renderBlocks={renderBlocks}
@@ -100,11 +97,10 @@ export function SitePageRenderer({
   const headerChrome = embedsNavigation ? null : (header ?? <SiteHeader settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />)
   const bannerChrome = <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
   const maintenanceChrome = <SiteMaintenanceBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
-  const renderedBody = <>{headerChrome}{bannerChrome}{maintenanceChrome}{renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}</>
+  const renderedBody = <>{bannerChrome}{headerChrome}{maintenanceChrome}{renderBlocks ? renderBlocks({ blocks: page.blocks, defaultRenderBlocks }) : defaultRenderBlocks}</>
 
   return (
     <div className={cn("site-renderer", className)} data-siab-site-renderer>
-      {includeThemeStyle && <ThemeStyle theme={theme} nonce={nonce} scope={PUBLIC_RENDERER_THEME_SCOPE} />}
       <ThemeCanvas
         theme={theme}
         {...canvasAttributes}

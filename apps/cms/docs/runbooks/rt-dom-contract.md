@@ -96,9 +96,9 @@ The canvas renderers (`src/components/editor/canvas/blocks/`) AND the live-site 
 | `var(--radius-md)` | buttons, inputs, default surfaces |
 | `var(--radius-lg)` | cards, large rounded panels, image containers |
 
-Radius variables are resolved by `toCssVars` from the user's selected shape
-preset (`soft`, `sharp`, or `rounded`). CMS and generation never store raw
-radius values.
+Radius variables come from the generated static preset stylesheet selected by
+`data-theme-shape` (`soft`, `sharp`, or `rounded`). CMS and generation never
+store raw radius values.
 
 ### Dark mode overlay
 
@@ -107,21 +107,18 @@ the shared `ThemeCanvas`. The configured `light` / `dark` / `system` preference
 is retained separately as `data-siab-theme-mode`; system mode follows
 `prefers-color-scheme`. Public pages also stamp the resolved value on
 `html[data-siab-color-mode]` before paint and may use the visitor's safe
-`siab-color-mode` override. SIAB
-semantic color vars MUST be defined in BOTH:
-
-- a base block: `.rt-canvas { --color-accent: …; --color-bg: …; … }` for the canvas, or `html { --color-accent: …; … }` for the live site.
-- a dark overlay block: `.rt-canvas[data-rt-mode="dark"] { … }` for the canvas, or `html[data-siab-color-mode="dark"] { … }` for the live site.
-
-The base block and dark overlay are resolved from ThemeTokenSpec V3 preset IDs.
-`toCssVars` emits both blocks from the selected color, font, shape, and
-appearance presets; CMS/generation do not store raw palettes.
+`siab-color-mode` override. SIAB semantic color variables are emitted once in
+the generated static preset stylesheet. `data-theme-color`, `data-theme-font`,
+and `data-theme-shape` select the approved preset; `data-rt-mode` selects its
+paired light/dark values. CMS/generation do not store raw palettes or emit
+runtime CSS.
 
 Generated-site CSS wires Tailwind's native `dark:` variant to
 `[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use
-that native path and should compute from Tailwind's default palette values. SIAB
-theme presets do not globally redefine Tailwind `--color-gray-*` or
-`--color-indigo-*` variables. Provider sources that do not include `dark:`
+that native path and should compute from Tailwind's default palette values.
+Monochrome retains exact upstream palette values. Colored presets scope neutral
+and decorative palette families to the tenant color; status palettes remain
+independent. Provider sources that do not include `dark:`
 utilities may be themed only through renderer-owned bridge rules
 for explicit semantic roles: ambient surfaces, ambient ink, accent affordances,
 borders, shape, and reviewed tokenized decoration.

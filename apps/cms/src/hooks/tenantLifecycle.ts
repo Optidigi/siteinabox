@@ -4,7 +4,6 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from "paylo
 import { generateCookie, mergeHeaders } from "payload"
 import { writeAtomic } from "@/lib/atomicWrite"
 import { withManifestLock } from "@/lib/projection/manifest"
-import { projectTenantTheme } from "@/lib/projection/projectTenantTheme"
 
 // Both `tenants/<id>/` and `archived/<id>/` are siblings under dataDir(), so
 // `fs.rename` between them is always intra-filesystem (no EXDEV). If the
@@ -114,15 +113,6 @@ export const removeTenantDir: CollectionAfterDeleteHook = async ({ doc, req }) =
  * tenant-scoped admin operations would silently return empty until they pick
  * a different tenant. Clearing the cookie on delete restores the expected UX.
  */
-export const projectThemeOnChange: CollectionAfterChangeHook = async ({ doc, previousDoc, operation, req }) => {
-  if (shouldSkipProjection(req)) return doc
-  if (operation === "update" && JSON.stringify(doc.theme) === JSON.stringify(previousDoc?.theme)) {
-    return doc
-  }
-  await projectTenantTheme(String(doc.id), doc.theme ?? null)
-  return doc
-}
-
 export const clearTenantCookieIfStale: CollectionAfterDeleteHook = async ({ id, req }) => {
   // Cookie value is the deleted tenant's id encoded as string. Compare loosely
   // because the cookie value is always a string and id may be number|string

@@ -177,7 +177,9 @@ try {
             const referenceRoot = document.querySelector("[data-provider-literal-preview]")
             if (!referenceRoot) return
             const styles = getComputedStyle(referenceRoot)
-            document.body.style.backgroundColor = styles.getPropertyValue("--background")
+            const background = styles.getPropertyValue("--background")
+            document.documentElement.style.backgroundColor = background
+            document.body.style.backgroundColor = background
             document.body.style.color = styles.getPropertyValue("--foreground")
           })
           await runtime.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true").catch((error) => {

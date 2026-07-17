@@ -105,20 +105,9 @@ const red: ColorRamp = {
   950: "#450a0a",
 }
 
-const defaultLight: ProviderColorSchemeMode = {
-  neutral: gray,
-  accent: indigo,
-  surface: "#ffffff",
-  ink: gray[900],
-  muted: gray[600],
-  rule: gray[200],
-  onAccent: "#ffffff",
-}
-
 const modernSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
 const editorialSerifStack = "Fraunces Variable, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
 const humanistSansStack = "\"Nunito Variable\", Nunito, ui-sans-serif, system-ui, sans-serif"
-const geistSansStack = "Geist Variable, Geist, ui-sans-serif, system-ui, sans-serif"
 
 type SemanticColors = {
   destructive: string
@@ -148,20 +137,30 @@ const semanticColors = (accent: ColorRamp, dark: boolean): SemanticColors => ({
   onMedia: "#ffffff",
 })
 
-const defaultDark: ProviderColorSchemeMode = {
-  neutral: grayDark,
-  accent: indigo,
-  surface: gray[900],
-  ink: gray[50],
-  muted: gray[300],
-  rule: "rgba(255,255,255,0.12)",
-  onAccent: "#ffffff",
-}
+const tintedMode = (accent: ColorRamp, hue: number, dark: boolean): ProviderColorSchemeMode => dark
+  ? {
+      neutral: grayDark,
+      accent,
+      surface: `oklch(0.145 0.012 ${hue})`,
+      ink: "oklch(0.985 0.002 260)",
+      muted: "oklch(0.708 0.012 260)",
+      rule: `oklch(0.985 0.01 ${hue} / 12%)`,
+      onAccent: "#ffffff",
+    }
+  : {
+      neutral: gray,
+      accent,
+      surface: `oklch(0.992 0.006 ${hue})`,
+      ink: "oklch(0.145 0.004 260)",
+      muted: "oklch(0.48 0.012 260)",
+      rule: `oklch(0.89 0.012 ${hue})`,
+      onAccent: "#ffffff",
+    }
 
 export const colorSchemes = {
-  "shadcn-neutral": {
-    id: "shadcn-neutral",
-    label: "Shadcn Neutral",
+  monochrome: {
+    id: "monochrome",
+    label: "Monochrome",
     source: "builtin",
     light: {
       neutral: gray,
@@ -186,39 +185,33 @@ export const colorSchemes = {
     id: "blue-professional",
     label: "Blue Professional",
     source: "builtin",
-    light: { ...defaultLight, accent: indigo },
-    dark: { ...defaultDark, accent: indigo },
+    light: tintedMode(indigo, 264, false),
+    dark: tintedMode(indigo, 264, true),
   },
   "red-confident": {
     id: "red-confident",
     label: "Red Confident",
     source: "builtin",
-    light: { ...defaultLight, accent: red },
-    dark: { ...defaultDark, accent: red },
+    light: tintedMode(red, 25, false),
+    dark: tintedMode(red, 25, true),
   },
   "emerald-calm": {
     id: "emerald-calm",
     label: "Emerald Calm",
     source: "builtin",
-    light: { ...defaultLight, accent: emerald },
-    dark: { ...defaultDark, accent: emerald },
+    light: tintedMode(emerald, 165, false),
+    dark: tintedMode(emerald, 165, true),
   },
   "amber-warm": {
     id: "amber-warm",
     label: "Amber Warm",
     source: "builtin",
-    light: { ...defaultLight, accent: amber },
-    dark: { ...defaultDark, accent: amber },
+    light: tintedMode(amber, 75, false),
+    dark: tintedMode(amber, 75, true),
   },
 } as const satisfies Record<string, ProviderColorScheme>
 
 export const fontSchemes = {
-  "shadcn-geist": {
-    id: "shadcn-geist",
-    label: "Shadcn Geist",
-    source: "builtin",
-    roles: { body: geistSansStack, heading: geistSansStack, display: geistSansStack, mono: "Geist Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" },
-  },
   "clear-modern": {
     id: "clear-modern",
     label: "Clear Modern",
@@ -240,9 +233,8 @@ export const fontSchemes = {
 } as const satisfies Record<string, FontScheme>
 
 export const shapeSchemes = {
-  "shadcn-default": { id: "shadcn-default", label: "Shadcn Default", radius: { none: "0", sm: "0.375rem", md: "0.5rem", lg: "0.625rem", xl: "0.875rem", "2xl": "1rem", "3xl": "1.5rem", "4xl": "2rem", full: "9999px" } },
   rounded: { id: "rounded", label: "Rounded", radius: { none: "0", sm: "0.75rem", md: "1rem", lg: "1.25rem", xl: "1.75rem", "2xl": "2.25rem", "3xl": "3rem", "4xl": "3.5rem", full: "9999px" } },
-  soft: { id: "soft", label: "Soft", radius: { none: "0", sm: "0.25rem", md: "0.375rem", lg: "0.5rem", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem", "4xl": "2rem", full: "9999px" } },
+  soft: { id: "soft", label: "Soft", radius: { none: "0", sm: "0.375rem", md: "0.5rem", lg: "0.625rem", xl: "0.875rem", "2xl": "1.125rem", "3xl": "1.375rem", "4xl": "1.625rem", full: "9999px" } },
   sharp: { id: "sharp", label: "Sharp", radius: { none: "0", sm: "0", md: "0", lg: "0", xl: "0", "2xl": "0", "3xl": "0", "4xl": "0", full: "9999px" } },
 } as const satisfies Record<string, ShapeScheme>
 
@@ -258,8 +250,8 @@ export type ResolvedTheme = {
 }
 
 export function resolveThemeTokens(theme: ThemeTokenSpec | null | undefined): ResolvedTheme {
-  const scheme = colorSchemes[theme?.colors?.schemeId as keyof typeof colorSchemes] ?? colorSchemes["shadcn-neutral"]
-  const fonts = fontSchemes[theme?.fonts?.schemeId as keyof typeof fontSchemes] ?? fontSchemes["shadcn-geist"]
+  const scheme = colorSchemes[theme?.colors?.schemeId as keyof typeof colorSchemes] ?? colorSchemes.monochrome
+  const fonts = fontSchemes[theme?.fonts?.schemeId as keyof typeof fontSchemes] ?? fontSchemes["clear-modern"]
   return {
     version: 3,
     mode: theme?.appearance?.mode ?? "light",
@@ -267,7 +259,7 @@ export function resolveThemeTokens(theme: ThemeTokenSpec | null | undefined): Re
     light: scheme.light,
     dark: scheme.dark,
     fonts,
-    shape: shapeSchemes[theme?.shape?.schemeId as keyof typeof shapeSchemes] ?? shapeSchemes["shadcn-default"],
+    shape: shapeSchemes[theme?.shape?.schemeId as keyof typeof shapeSchemes] ?? shapeSchemes.soft,
     semantic: { light: semanticColors(scheme.light.accent, false), dark: semanticColors(scheme.dark.accent, true) },
   }
 }

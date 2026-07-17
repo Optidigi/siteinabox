@@ -184,7 +184,8 @@ then browser-verified under a nonce-only `style-src`.
 Started the nonce-capable style path without tightening CSP yet. The frontend
 layout exposes the request nonce through an app-level client provider, and the
 app-owned desktop canvas style tags for scoped tenant CSS (`data-rt-tenant-css`)
-and live theme overrides (`data-rt-theme-overrides`) now render with that nonce.
+and the then-current live theme override rendered with that nonce. Theme presets
+now use static scoped CSS, so no runtime theme style or nonce is required.
 
 This is intentionally additive and does not alter tenant `siteManifest.cssEntry`,
 the `loadTenantCss` scoping/rewrite pipeline, tenant site CSS imports, or

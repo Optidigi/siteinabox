@@ -1,8 +1,8 @@
 @import "@fontsource-variable/fraunces/index.css";
 @import "@fontsource-variable/inter/index.css";
 @import "@fontsource-variable/caveat/index.css";
-@import "@fontsource-variable/geist/index.css";
 @import "@fontsource-variable/nunito/index.css";
+@import "./theme-presets.generated.css";
 
 :root {
   color-scheme: light;
@@ -111,6 +111,13 @@
   --color-ring: var(--ring);
 }
 
+/* Controls are semantic shapes. Explicit provider `rounded-full` remains
+   structural everywhere else (avatars, dots and decorative circles). */
+:where(.rt-canvas) [data-provider-token-mode="theme"] [data-slot="button"],
+[data-provider-token-mode="theme"] [data-slot="button"] {
+  border-radius: var(--siab-radius-control);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -162,33 +169,9 @@ body {
 }
 
 .site-renderer {
-  min-height: 100%;
+  min-height: 100vh;
   background: var(--color-bg, #f8fafc);
   color: var(--color-ink, #111827);
-}
-
-:where(.site-renderer:not([data-tenant-renderer])) .rt-canvas {
-  --color-accent: #0f766e;
-  --color-on-accent: #ffffff;
-  --color-bg: #f8fafc;
-  --color-ink: #111827;
-  --color-ink-muted: #64748b;
-  --color-card: #ffffff;
-  --color-secondary: #e2e8f0;
-  --color-rule: rgba(15, 23, 42, 0.14);
-  --font-title: var(--font-sans);
-  --font-heading: var(--font-sans);
-  --font-text: var(--font-sans);
-  --siab-radius-sm: 0.25rem;
-  --siab-radius-md: 0.5rem;
-  --siab-radius-lg: 1rem;
-  --siab-radius-xl: 1.25rem;
-  --siab-radius-2xl: 1.5rem;
-  --siab-radius-3xl: 2rem;
-  --siab-radius-4xl: 2.5rem;
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-text);
 }
 
 :where(.site-renderer[data-tenant-renderer="amicare"]) .rt-canvas {

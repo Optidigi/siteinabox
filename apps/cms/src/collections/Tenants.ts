@@ -4,7 +4,6 @@ import {
   archiveTenantDir,
   clearTenantCookieIfStale,
   createTenantDir,
-  projectThemeOnChange,
   removeTenantDir,
   restoreTenantDir
 } from "@/hooks/tenantLifecycle"
@@ -167,7 +166,7 @@ export const Tenants: CollectionConfig = {
     },
   ],
   hooks: {
-    afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir, projectThemeOnChange],
+    afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir],
     afterDelete: [removeTenantDir, clearTenantCookieIfStale]
   }
 }

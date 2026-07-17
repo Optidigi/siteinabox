@@ -44,6 +44,12 @@ test("structured content variants do not retain multi-word upstream demo copy", 
   }
 })
 
+test("literal parity views use the isolated reference token mode", () => {
+  const html = renderToStaticMarkup(React.createElement(ShadcnUiPinnedLiteralPreview, { variant: "shadcnui-blocks.hero-01" }))
+  assert.match(html, /data-provider-token-mode="reference"/)
+  assert.doesNotMatch(html, /data-provider-token-mode="theme"/)
+})
+
 test("literal views preserve CMS edit-slot boundaries", () => {
   const hero = {
     ...fixtures.get("hero"),

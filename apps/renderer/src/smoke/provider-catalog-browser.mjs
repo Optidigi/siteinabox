@@ -37,17 +37,27 @@ try {
       await page.waitForTimeout(1_000)
       await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 })
       await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "dark", undefined, { timeout: 60_000 })
-      const darkBackground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background"))
+      const darkBackground = await page.evaluate(() => getComputedStyle(document.querySelector(".rt-canvas")).getPropertyValue("--background"))
       await page.emulateMedia({ colorScheme: "light" })
       await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "light")
-      const lightBackground = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background"))
+      const lightBackground = await page.evaluate(() => getComputedStyle(document.querySelector(".rt-canvas")).getPropertyValue("--background"))
       assert.notEqual(lightBackground, darkBackground, "system preference changes computed theme tokens")
       await page.locator("[data-theme-toggle]:visible").first().click()
       assert.equal(await page.evaluate(() => document.documentElement.dataset.siabColorMode), "dark", "navbar writes resolved color mode")
       assert.equal(await page.evaluate(() => localStorage.getItem("siab-color-mode")), "dark", "navbar persists visitor override")
       await page.reload({ waitUntil: "load" })
       await page.waitForFunction(() => document.documentElement.dataset.siabColorMode === "dark")
-      assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--background")), darkBackground, "visitor override survives reload")
+      assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector(".rt-canvas")).getPropertyValue("--background")), darkBackground, "visitor override survives reload")
+
+      await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.hero-01&mode=light&shape=rounded`, { waitUntil: "load" })
+      const roundedButtonRadius = await page.locator('[data-provider-variant="shadcnui-blocks.hero-01"] [data-slot="button"]').first().evaluate((button) => getComputedStyle(button).borderTopLeftRadius)
+      const roundedStructuralRadius = await page.locator('[data-provider-variant="shadcnui-blocks.hero-01"] .rounded-full:not([data-slot="button"])').first().evaluate((element) => getComputedStyle(element).borderTopLeftRadius)
+      await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.hero-01&mode=light&shape=sharp`, { waitUntil: "load" })
+      const sharpButtonRadius = await page.locator('[data-provider-variant="shadcnui-blocks.hero-01"] [data-slot="button"]').first().evaluate((button) => getComputedStyle(button).borderTopLeftRadius)
+      const sharpStructuralRadius = await page.locator('[data-provider-variant="shadcnui-blocks.hero-01"] .rounded-full:not([data-slot="button"])').first().evaluate((element) => getComputedStyle(element).borderTopLeftRadius)
+      assert.notEqual(roundedButtonRadius, sharpButtonRadius, "hero-01 semantic buttons follow the selected shape")
+      assert.equal(sharpButtonRadius, "0px", "hero-01 semantic buttons become square under Sharp")
+      assert.equal(roundedStructuralRadius, sharpStructuralRadius, "hero-01 structural circles remain circular")
     } finally {
       await browser.close()
     }
@@ -210,12 +220,12 @@ try {
         if (await themeToggle.count()) {
           const before = await page.evaluate(() => ({
             mode: document.documentElement.dataset.siabColorMode,
-            background: getComputedStyle(document.documentElement).getPropertyValue("--background"),
+            background: getComputedStyle(document.querySelector(".rt-canvas")).getPropertyValue("--background"),
           }))
           await themeToggle.click()
           const after = await page.evaluate(() => ({
             mode: document.documentElement.dataset.siabColorMode,
-            background: getComputedStyle(document.documentElement).getPropertyValue("--background"),
+            background: getComputedStyle(document.querySelector(".rt-canvas")).getPropertyValue("--background"),
             stored: localStorage.getItem("siab-color-mode"),
           }))
           assert.equal(after.mode, before.mode === "dark" ? "light" : "dark", `${variant.id} toggles color mode`)

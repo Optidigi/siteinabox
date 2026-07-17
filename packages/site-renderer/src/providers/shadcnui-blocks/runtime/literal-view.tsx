@@ -28,6 +28,6 @@ export function LiteralProviderPreviewView({ Literal, variant }: { Literal: Lite
   if (!React.isValidElement(root)) throw new Error(`Literal provider reference "${variant}" did not return a React element.`)
   return tooltips(variant, React.cloneElement(root as React.ReactElement<Record<string, unknown>>, {
     "data-provider-literal-preview": variant,
-    "data-provider-token-mode": "theme",
+    "data-provider-token-mode": "reference",
   }))
 }

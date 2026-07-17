@@ -20,7 +20,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { ChevronDown, ChevronRight, Copy, Plus, SlidersHorizontal, Trash2 } from "lucide-react"
-import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer, themeMode } from "@siteinabox/site-renderer"
+import { SitePageRenderer, createRendererMediaResolver, resolveTenantRenderer, themeAttributeProps } from "@siteinabox/site-renderer"
 import { CanvasBlockRenderer, type CanvasSectionChromeProps } from "@/components/editor/canvas/CanvasBlockRenderer"
 import { Button } from "@siteinabox/ui/components/button"
 import { ConfirmDialog } from "@/components/confirm-dialog"
@@ -48,7 +48,6 @@ import {
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
-import { toCssVars } from "@/lib/theme/toCssVars"
 import { isCustomerPreviewView, isReadOnlyView, type CanvasView } from "@/components/editor/canvas/canvasView"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
@@ -903,9 +902,6 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
         {effectiveTenantCss && (
           <style nonce={cspNonce} suppressHydrationWarning data-rt-tenant-css dangerouslySetInnerHTML={{ __html: effectiveTenantCss }} />
         )}
-        {theme && !useSharedRendererShell && (
-          <style nonce={cspNonce} suppressHydrationWarning data-rt-theme-overrides dangerouslySetInnerHTML={{ __html: toCssVars(theme) }} />
-        )}
         {useSharedRendererShell ? (
           <div
             onContextMenuCapture={onCanvasContextMenu}
@@ -934,7 +930,6 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
                   domain={tenantDomain}
                   mediaResolver={mediaResolver}
                   nonce={cspNonce}
-                  includeThemeStyle
                   includeBehaviorScripts={false}
                   header={showChrome ? undefined : null}
                   footer={showChrome ? undefined : null}
@@ -1017,7 +1012,7 @@ export const CanvasSurface: React.FC<CanvasSurfaceProps> = ({
           <div
             className={cn("rt-canvas w-full", suppressCanvasNavigation && "[&_a[href]:not(.rt-click-edit)]:pointer-events-none")}
             data-rt-view={view}
-            data-rt-mode={themeMode(rendererTheme)}
+            {...themeAttributeProps(rendererTheme)}
             onContextMenuCapture={onCanvasContextMenu}
             onClickCapture={(event) => {
               if (suppressCanvasNavigation && shouldSuppressCanvasNavigation(event.target as HTMLElement | null)) {

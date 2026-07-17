@@ -22,16 +22,18 @@ The importer always checks out commit
 `packages/ui/src/providers/shadcnui-blocks/radix-nova`; they never overwrite
 shared/CMS primitives.
 
-`themeToCssVars` is the single tenant-theme resolver. `ThemeTokenSpec` stores
-only approved appearance, color, font, and shape preset IDs; the resolver emits
-root-scoped semantic color/status/chart roles, deterministic self-hosted font
-roles, and exact radius roles. Imported tenant views use those roles directly.
-There is no arbitrary CSS map or per-block theme schema.
+`ThemeTokenSpec` stores only approved appearance, color, font, and shape preset
+IDs. One canonical preset manifest generates `theme-presets.generated.css`;
+renderers select it with data attributes and never generate tenant CSS at
+runtime. Preview theme edits patch those attributes without rerendering the
+block tree. The three shapes are Round, Soft (the upstream 0.625rem default),
+and Sharp. Semantic controls follow the selected shape while structural circles
+remain circles. There is no arbitrary CSS map or per-block theme schema.
 
 There is one imported literal component tree. Production views and the parity
 surface import that same tree, so parity cannot drift into a second reference
-implementation. The upstream default theme emits the exact pinned shadcn token
-values. A custom tenant theme changes root-scoped Tailwind and semantic variables;
+implementation. Monochrome emits the exact pinned shadcn light/dark tokens with
+Inter as the provider reference font. A colored tenant theme changes root-scoped Tailwind and semantic variables;
 it never rewrites literal classes. Intentional fixed artwork, logo, mask, and
 on-media values are exhaustively listed in `token-exceptions.json`; a fixed visual
 value outside that manifest fails the catalog tests.

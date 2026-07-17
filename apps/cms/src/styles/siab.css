@@ -162,30 +162,6 @@ body { font-family: var(--font-sans); }
   }
 }
 
-/* Default dark-mode fallback for the canvas — INTENTIONALLY UNLAYERED.
- * Tenant CSS (the data-rt-tenant-css style tag) is emitted verbatim with no
- * @layer wrapper, so its `.rt-canvas { --color-bg: ... }` rule wins
- * over anything inside `@layer base` regardless of specificity. By
- * declaring this rule outside the layer it sits in the same cascade tier
- * as the tenant CSS, and the higher selector specificity
- * (`.rt-canvas[data-rt-mode="dark"]` vs `.rt-canvas`) lets it win.
- *
- * Fires when the canvas stamps `data-rt-mode="dark"` (driven by
- * `theme.appearance.mode === "dark"`). ThemeTokenSpec V3 preset overrides are
- * injected later via the data-rt-theme-overrides style tag and naturally
- * override this baseline (same selector, later in document order).
- */
-.rt-canvas[data-rt-mode="dark"] {
-    --color-bg: #09090b;
-    --color-ink: #fafafa;
-    --color-ink-muted: #a1a1aa;
-    --color-card: #18181b;
-    --color-secondary: #27272a;
-    --color-rule: rgba(255, 255, 255, 0.12);
-    background-color: var(--color-bg);
-    color-scheme: dark;
-}
-
 /* Editor-affordance accent. The tenant CSS (scoped under .rt-canvas) defines
    `--color-accent`; the CMS does not. So inside the canvas this resolves to
    the *tenant's* accent and the selection / hover rings match the site theme;
