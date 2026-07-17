@@ -132,6 +132,9 @@ Then sign in at http://localhost:3000/login.
 
 - **Unit tests:** `pnpm test`
 - **Integration tests** (require DB up): `pnpm test tests/integration/` — they skip if the DB isn't reachable; with the local compose up they run.
+- **Typecheck:** `pnpm typecheck` — runs `next typegen` first. Next owns the
+  generated, gitignored `next-env.d.ts`; do not edit or commit it.
+
 ## Common operations
 
 - **Reset the local DB (lose all data):**
