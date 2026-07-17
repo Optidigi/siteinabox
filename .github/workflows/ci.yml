@@ -131,14 +131,31 @@ jobs:
         run: pnpm --dir apps/renderer exec playwright install --with-deps chromium
       - name: Hydrate and exercise provider catalog
         run: pnpm --dir apps/renderer test:provider-browser
+
+  provider-parity:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        case: [desktop-light, desktop-dark, mobile-light, mobile-dark]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+      - run: pnpm install --frozen-lockfile
+      - name: Install provider parity browser
+        run: pnpm --dir apps/renderer exec playwright install --with-deps chromium
       - name: Compare pinned provider pixels
         run: pnpm --dir packages/site-renderer visual:provider-parity
         env:
-          SIAB_PROVIDER_PARITY_OUTPUT: artifacts/provider-parity
+          SIAB_PROVIDER_PARITY_CASE: ${{ matrix.case }}
+          SIAB_PROVIDER_PARITY_OUTPUT: artifacts/provider-parity-${{ matrix.case }}
       - name: Upload provider parity failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: provider-parity-failure
-          path: artifacts/provider-parity
+          name: provider-parity-failure-${{ matrix.case }}
+          path: artifacts/provider-parity-${{ matrix.case }}
           if-no-files-found: ignore

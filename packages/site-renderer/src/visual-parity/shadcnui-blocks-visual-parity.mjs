@@ -172,7 +172,7 @@ try {
         // The upstream Next preview downloads Geist independently while SIAB
         // self-hosts its pinned package. Normalize glyph rasterization here so
         // pixel diffs measure block DOM/classes/layout rather than font files.
-          const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[data-slot='accordion-content']{animation:none!important}[style*='background-position']{background-position:0 0!important}img,[data-slot='avatar-fallback']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
+          const deterministicFont = "html,body{overflow-x:clip!important}body{height:auto!important}body,body *{font-family:Arial,sans-serif!important;font-feature-settings:normal!important}.animate-marquee,.animate-marquee-vertical{animation:none!important;transform:none!important}[style*='background-position']{background-position:0 0!important}img,[data-slot='avatar-fallback']{visibility:hidden!important}[aria-hidden=true].pointer-events-none>canvas.size-full,[data-paper-shader]>canvas,[style*='offset-path']{visibility:hidden!important}"
           await Promise.all([
             addStyleAfterNavigation(reference, `nextjs-portal,.block-preview-wrapper .grow.bg-muted\\/50{display:none!important}.block-preview-wrapper{min-height:0!important;background:var(--background)!important}${deterministicFont}`),
             addStyleAfterNavigation(runtime, deterministicFont),
@@ -190,32 +190,6 @@ try {
             throw new Error(`${variant.id} ${viewport.name} did not hydrate`, { cause: error })
           })
           await Promise.all([reference.evaluate(() => document.fonts.ready), runtime.evaluate(() => document.fonts.ready)])
-          const accordionIsSettled = () => {
-            const openContent = [...document.querySelectorAll('[data-slot="accordion-content"][data-state="open"]')]
-            return openContent.every((content) => {
-              const height = Number.parseFloat(getComputedStyle(content).getPropertyValue("--radix-accordion-content-height"))
-              return Number.isFinite(height) && height > 0 && content.firstElementChild?.getBoundingClientRect().height > 0
-            })
-          }
-          if (await reference.locator('[data-slot="accordion"]').count() || await runtime.locator('[data-slot="accordion"]').count()) {
-            // The upstream preview has no explicit hydration marker. Its SSR
-            // accordion can already expose an open height while React is still
-            // downloading, then Radix remeasures it during hydration. Wait for
-            // that client work before accepting the final measurement.
-            await Promise.all([
-              reference.waitForLoadState("networkidle"),
-              runtime.waitForLoadState("networkidle"),
-            ])
-            await Promise.all([
-              reference.waitForFunction(accordionIsSettled),
-              runtime.waitForFunction(accordionIsSettled),
-            ])
-            await Promise.all([reference.evaluate(() => new Promise((resolve) => {
-              requestAnimationFrame(() => requestAnimationFrame(resolve))
-            })), runtime.evaluate(() => new Promise((resolve) => {
-              requestAnimationFrame(() => requestAnimationFrame(resolve))
-            }))])
-          }
           progress("hydrated-and-fonts-ready")
           await reference.waitForFunction(() => [...document.images].every((image) => {
             if (!/^https?:/.test(image.currentSrc || image.src) || image.offsetParent === null) return true
@@ -292,12 +266,24 @@ try {
           // sequence the two pages instead of making competing CDP captures.
           let referencePng
           let runtimePng
-          try {
-            referencePng = await reference.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
-            runtimePng = await runtime.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
-          } catch (error) {
-            throw new Error(`${variant.id} ${viewport.name} screenshot failed`, { cause: error })
+          const capture = async (page, side) => {
+            let firstError
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+              try {
+                return await page.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
+              } catch (error) {
+                if (attempt === 1 || !/Timeout/i.test(String(error))) {
+                  throw new Error(`${variant.id} ${viewport.name} ${side} screenshot failed`, { cause: error })
+                }
+                firstError = error
+                await page.bringToFront()
+                await page.waitForTimeout(250)
+              }
+            }
+            throw firstError
           }
+          referencePng = await capture(reference, "upstream")
+          runtimePng = await capture(runtime, "vendored")
           progress("captured")
           let a = PNG.sync.read(referencePng)
           const b = PNG.sync.read(runtimePng)
