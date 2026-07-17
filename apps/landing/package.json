@@ -10,15 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@astrojs/preact": "^5.1.2",
     "@astrojs/sitemap": "^3.7.2",
-    "@siteinabox/contracts": "workspace:*",
     "@siteinabox/legal-content": "workspace:*",
     "astro": "^6.2.1",
     "astro-seo": "^1.1.0",
-    "lottie-web": "^5.13.0",
-    "lucide-preact": "^1.14.0",
-    "preact": "^10.29.1"
+    "lottie-web": "^5.13.0"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",

@@ -353,15 +353,9 @@ importers:
 
   apps/landing:
     dependencies:
-      '@astrojs/preact':
-        specifier: ^5.1.2
-        version: 5.1.5(@babel/core@7.29.7)(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.32.0)(preact@10.29.2)(rollup@4.62.0)(sass@1.77.4)(tsx@4.22.4)(yaml@2.9.0)
       '@astrojs/sitemap':
         specifier: ^3.7.2
         version: 3.7.3
-      '@siteinabox/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
       '@siteinabox/legal-content':
         specifier: workspace:*
         version: link:../../packages/legal-content
@@ -374,12 +368,6 @@ importers:
       lottie-web:
         specifier: ^5.13.0
         version: 5.13.0
-      lucide-preact:
-        specifier: ^1.14.0
-        version: 1.18.0(preact@10.29.2)
-      preact:
-        specifier: ^10.29.1
-        version: 10.29.2
     devDependencies:
       '@astrojs/check':
         specifier: ^0.9.9
