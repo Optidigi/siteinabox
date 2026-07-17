@@ -25,12 +25,13 @@ required = false
 default_tools_approval_mode = "prompt"
 
 [mcp_servers.github]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-github@2025.4.8"]
-enabled = false
+command = "docker"
+args = ["run", "-i", "--rm", "-e", "GITHUB_PERSONAL_ACCESS_TOKEN", "-e", "GITHUB_READ_ONLY", "-e", "GITHUB_TOOLSETS", "ghcr.io/github/github-mcp-server@sha256:2b0c48b070f61e9d3969269ead600f62d00fb237b60ac849ef3d166ee7de9ad3", "stdio"]
+enabled = true
 required = false
-default_tools_approval_mode = "prompt"
+default_tools_approval_mode = "auto"
 env_vars = ["GITHUB_PERSONAL_ACCESS_TOKEN"]
+env = { "GITHUB_READ_ONLY" = "1", "GITHUB_TOOLSETS" = "repos,issues,pull_requests,actions" }
 
 [mcp_servers.postgres]
 command = "npx"

@@ -51,5 +51,19 @@ test("Codex receives policy fields while basic clients omit unsafe servers", () 
   const cursor = projections.get([...projections.keys()].find((path) => path.endsWith(".cursor/mcp.json")))
   assert.match(codex, /\[mcp_servers\.cloudflare-api\][\s\S]*enabled = false[\s\S]*default_tools_approval_mode = "prompt"/)
   assert.match(codex, /env_vars = \["SIAB_MCP_POSTGRES_URL"\]/)
-  assert.doesNotMatch(cursor, /"cloudflare-api"|"docker"|"github"|"postgres"|"posthog"|"shadcn"/)
+  const cursorServers = Object.keys(JSON.parse(cursor).mcpServers)
+  for (const omitted of ["cloudflare-api", "docker", "postgres", "posthog", "shadcn"]) {
+    assert(!cursorServers.includes(omitted), `${omitted} must be omitted from Cursor`)
+  }
+})
+
+test("GitHub projections retain official server-side least privilege", () => {
+  const projections = renderProjections(clone())
+  for (const content of projections.values()) {
+    if (!content.includes("github-mcp-server")) continue
+    assert.match(content, /ghcr\.io\/github\/github-mcp-server@sha256:2b0c48b070f61e9d3969269ead600f62d00fb237b60ac849ef3d166ee7de9ad3/)
+    assert.match(content, /GITHUB_READ_ONLY/)
+    assert.match(content, /repos,issues,pull_requests,actions/)
+    assert.doesNotMatch(content, /@modelcontextprotocol\/server-github/)
+  }
 })

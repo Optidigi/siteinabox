@@ -9,7 +9,7 @@ const SERVER_FIELDS = new Set([
   "purpose", "transport", "command", "args", "url", "implementation", "requiredEnv", "staticEnv",
   "staticHeaders", "secretHeaders", "serverPolicy", "clientPolicy", "preconditions", "projectionTargets", "fallback",
 ])
-const IMPLEMENTATION_FIELDS = new Set(["kind", "identifier", "version", "reviewedAt", "unpinnedReason"])
+const IMPLEMENTATION_FIELDS = new Set(["kind", "identifier", "version", "digest", "reviewedAt", "unpinnedReason"])
 const SERVER_POLICY_FIELDS = new Set(["readOnly", "toolsets", "toolAllowlist"])
 const CLIENT_POLICY_FIELDS = new Set(["defaultEnabled", "approval", "enabledTools", "disabledTools"])
 const CONTROL_FIELDS = new Set(["required", "values", "enforcement"])
@@ -25,9 +25,9 @@ function rejectUnknownKeys(value, allowed, location) {
   }
 }
 
-function validateStringArray(value, location) {
+function validateStringArray(value, location, allowDuplicates = false) {
   assert(Array.isArray(value) && value.every((entry) => typeof entry === "string"), `${location} must be a string array`)
-  assert(new Set(value).size === value.length, `${location} must not contain duplicates`)
+  assert(allowDuplicates || new Set(value).size === value.length, `${location} must not contain duplicates`)
 }
 
 function validateControl(control, location, hasValues, requireEnforcement = true) {
@@ -102,7 +102,7 @@ export function validateRegistry(registry) {
     assert(["stdio", "http"].includes(server.transport), `${location}.transport is invalid`)
     if (server.transport === "stdio") {
       assert(typeof server.command === "string" && server.command.length > 0, `${location}.command is required`)
-      validateStringArray(server.args, `${location}.args`)
+      validateStringArray(server.args, `${location}.args`, true)
       assert(!Object.hasOwn(server, "url"), `${location}.url is invalid for stdio`)
     } else {
       assert(typeof server.url === "string" && server.url.startsWith("https://"), `${location}.url must use HTTPS`)
@@ -116,6 +116,13 @@ export function validateRegistry(registry) {
     assert(!["latest", "main", "master"].includes(server.implementation.version), `${location}.implementation.version must be pinned`)
     if (server.implementation.kind === "npm") {
       const pinned = `${server.implementation.identifier}@${server.implementation.version}`
+      assert(server.args.includes(pinned), `${location}.args must invoke pinned implementation ${pinned}`)
+    }
+    if (server.implementation.kind === "container") {
+      assert(!server.implementation.digest || /^sha256:[a-f0-9]{64}$/.test(server.implementation.digest), `${location}.implementation.digest is invalid`)
+      const pinned = server.implementation.digest
+        ? `${server.implementation.identifier}@${server.implementation.digest}`
+        : `${server.implementation.identifier}:${server.implementation.version}`
       assert(server.args.includes(pinned), `${location}.args must invoke pinned implementation ${pinned}`)
     }
     if (server.implementation.kind === "remote") {
