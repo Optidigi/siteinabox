@@ -22,7 +22,7 @@
     "landing:build": "pnpm --filter siteinabox-landing build",
     "landing:test": "pnpm --filter siteinabox-landing test",
     "legal:check": "pnpm --dir packages/legal-content check",
-    "mcp:check": "node scripts/sync-mcp-config.mjs --check",
+    "mcp:check": "node --test scripts/sync-mcp-config.test.mjs && node scripts/sync-mcp-config.mjs --check",
     "mcp:sync": "node scripts/sync-mcp-config.mjs",
     "packages:typecheck": "pnpm contracts:typecheck && pnpm ui:typecheck && pnpm site-renderer:typecheck",
     "renderer:build": "pnpm --dir apps/renderer build",

@@ -4,24 +4,33 @@ This monorepo has one root toolchain and one repository MCP registry.
 
 ## MCP configuration
 
-`.mcp.json` is canonical. These client projections are committed so supported
-tools work when the repository is opened at its root:
+`mcp.registry.json` is the single human-authored canonical policy. It records
+transport, pinned implementation, required environment-variable names,
+server-enforced controls, client tool and approval policy, preconditions,
+supported targets, and the fallback for an unavailable server. These generated
+client projections are committed so supported tools work when the repository is
+opened at its root:
 
+- `.mcp.json` — basic JSON compatibility;
 - `.mcp.toml` — generic TOML compatibility;
 - `.codex/config.toml` — Codex project configuration;
 - `.codex/mcp.toml` — compatibility for clients probing that filename;
 - `.cursor/mcp.json` — Cursor project configuration.
 
-Do not edit projections by hand or create app-local copies.
+Do not edit projections by hand or create app-local copies. The generator omits
+a server from a target that cannot preserve its mandatory controls; it never
+silently weakens policy to make a projection fit.
 
 ```bash
 pnpm mcp:sync
 pnpm mcp:check
 ```
 
-The registry declares `shadcn`, `postgres`, `github`, `context7`,
+The policy registry declares `shadcn`, `postgres`, `github`, `context7`,
 `better-auth`, `cloudflare-api`, `docker`, `sequential-thinking`, and `posthog`.
-A declaration proves configuration, not startup, authentication, or permission.
+A declaration proves policy, not startup, authentication, or effective runtime
+permission. Inspect the generated target and the server's advertised tools
+before relying on it.
 
 ## MCP use
 

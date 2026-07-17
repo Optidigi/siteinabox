@@ -1,0 +1,269 @@
+{
+  "schemaVersion": 1,
+  "servers": {
+    "better-auth": {
+      "purpose": "Version-aware Better Auth documentation and research.",
+      "transport": "http",
+      "url": "https://mcp.better-auth.com/mcp",
+      "implementation": {
+        "kind": "remote",
+        "identifier": "https://mcp.better-auth.com/mcp",
+        "version": "provider-managed",
+        "reviewedAt": "2026-07-18",
+        "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": true,
+        "approval": { "required": false, "mode": "auto" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": [],
+      "projectionTargets": ["codex", "cursor", "genericJson", "genericToml"],
+      "fallback": "Use Better Auth primary documentation."
+    },
+    "cloudflare-api": {
+      "purpose": "Approved Cloudflare account investigation; provider mutations require explicit approval.",
+      "transport": "http",
+      "url": "https://mcp.cloudflare.com/mcp",
+      "implementation": {
+        "kind": "remote",
+        "identifier": "https://mcp.cloudflare.com/mcp",
+        "version": "provider-managed",
+        "reviewedAt": "2026-07-18",
+        "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": false,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": ["Authenticate in user scope only after an approved provider investigation requires it."],
+      "projectionTargets": ["codex"],
+      "fallback": "Use repository configuration and Cloudflare primary documentation; do not mutate the provider."
+    },
+    "context7": {
+      "purpose": "Versioned library documentation research.",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp@3.2.4"],
+      "implementation": {
+        "kind": "npm",
+        "identifier": "@upstash/context7-mcp",
+        "version": "3.2.4"
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": true,
+        "approval": { "required": false, "mode": "auto" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": [],
+      "projectionTargets": ["codex", "cursor", "genericJson", "genericToml"],
+      "fallback": "Use the library's primary documentation."
+    },
+    "docker": {
+      "purpose": "Container inspection; current implementation is pending least-privilege replacement.",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-server-docker@1.0.0"],
+      "implementation": {
+        "kind": "npm",
+        "identifier": "mcp-server-docker",
+        "version": "1.0.0"
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": true,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": ["Requires Docker socket access and currently exposes arbitrary commands in allowed containers."],
+      "projectionTargets": ["codex"],
+      "fallback": "Use Docker or Podman CLI under the normal sandbox and approval policy."
+    },
+    "github": {
+      "purpose": "Hosted repository metadata research; deprecated implementation pending replacement.",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github@2025.4.8"],
+      "implementation": {
+        "kind": "npm",
+        "identifier": "@modelcontextprotocol/server-github",
+        "version": "2025.4.8"
+      },
+      "requiredEnv": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": false,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": ["A user-local token is optional; do not create one merely to start the server."],
+      "projectionTargets": ["codex"],
+      "fallback": "Use git, gh read-only commands, or GitHub primary documentation."
+    },
+    "postgres": {
+      "purpose": "Database inspection; deprecated implementation pending dedicated read-only replacement.",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres@0.6.2", "${SIAB_MCP_POSTGRES_URL}"],
+      "implementation": {
+        "kind": "npm",
+        "identifier": "@modelcontextprotocol/server-postgres",
+        "version": "0.6.2"
+      },
+      "requiredEnv": ["SIAB_MCP_POSTGRES_URL"],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": false,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": ["Keep disabled until a dedicated read-only role and user-local SIAB_MCP_POSTGRES_URL exist."],
+      "projectionTargets": ["codex"],
+      "fallback": "Use approved psql read-only inspection with a dedicated database role."
+    },
+    "posthog": {
+      "purpose": "Approved PostHog project investigation; provider mutations require explicit approval.",
+      "transport": "http",
+      "url": "https://mcp.posthog.com/mcp",
+      "implementation": {
+        "kind": "remote",
+        "identifier": "https://mcp.posthog.com/mcp",
+        "version": "provider-managed",
+        "reviewedAt": "2026-07-18",
+        "unpinnedReason": "The provider exposes a managed remote endpoint rather than a versioned local executable."
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": false,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": ["Authenticate in user scope only after an approved provider investigation requires it."],
+      "projectionTargets": ["codex"],
+      "fallback": "Use repository analytics contracts and PostHog primary documentation; do not mutate the provider."
+    },
+    "sequential-thinking": {
+      "purpose": "Local structured reasoning utility.",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@2026.7.4"],
+      "implementation": {
+        "kind": "npm",
+        "identifier": "@modelcontextprotocol/server-sequential-thinking",
+        "version": "2026.7.4"
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": true,
+        "approval": { "required": false, "mode": "auto" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": [],
+      "projectionTargets": ["codex", "cursor", "genericJson", "genericToml"],
+      "fallback": "Reason directly without an MCP server."
+    },
+    "shadcn": {
+      "purpose": "shadcn component discovery; installation and file mutation require approval.",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "shadcn@4.13.1", "mcp"],
+      "implementation": {
+        "kind": "npm",
+        "identifier": "shadcn",
+        "version": "4.13.1"
+      },
+      "requiredEnv": [],
+      "staticEnv": {},
+      "staticHeaders": {},
+      "secretHeaders": {},
+      "serverPolicy": {
+        "readOnly": { "required": false, "enforcement": null },
+        "toolsets": { "required": false, "values": [], "enforcement": null },
+        "toolAllowlist": { "required": false, "values": [], "enforcement": null }
+      },
+      "clientPolicy": {
+        "defaultEnabled": true,
+        "approval": { "required": true, "mode": "prompt" },
+        "enabledTools": { "required": false, "values": [] },
+        "disabledTools": { "required": false, "values": [] }
+      },
+      "preconditions": ["Review any component-installation or file-writing operation before approval."],
+      "projectionTargets": ["codex"],
+      "fallback": "Inspect the existing component registry and repository UI primitives directly."
+    }
+  }
+}

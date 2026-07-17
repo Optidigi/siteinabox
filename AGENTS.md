@@ -8,8 +8,9 @@ app-local agent instruction files. Start work from the repository root.
 - Human documentation lives under `docs/`.
 - Executable facts come from manifests, the root lockfile, schemas, tests,
   scripts, compose files, Dockerfiles, and CI.
-- Root `.mcp.json` is the canonical MCP registry. Generated client projections
-  are checked with `pnpm mcp:check` and updated with `pnpm mcp:sync`.
+- Root `mcp.registry.json` is the canonical MCP policy registry. Root client
+  projections, including `.mcp.json`, are checked with `pnpm mcp:check` and
+  updated with `pnpm mcp:sync`.
 - Runtime content, migrations, fixtures, and source-owned configuration stay
   with the code that consumes them; they are not general documentation.
 - Do not commit temporary plans, transcripts, personal machine paths, secrets,
