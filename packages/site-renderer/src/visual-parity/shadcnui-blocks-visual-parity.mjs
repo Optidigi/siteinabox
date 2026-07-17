@@ -194,13 +194,23 @@ try {
             })
           }
           if (await reference.locator('[data-slot="accordion"]').count() || await runtime.locator('[data-slot="accordion"]').count()) {
-            // Radix measures default-open content after hydration. Wait for
-            // both isolated implementations to publish that measurement so a
-            // fast runner cannot capture one side in its zero-height frame.
+            // The upstream preview has no explicit hydration marker. Its SSR
+            // accordion can already expose an open height while React is still
+            // downloading, then Radix remeasures it during hydration. Wait for
+            // that client work before accepting the final measurement.
+            await Promise.all([
+              reference.waitForLoadState("networkidle"),
+              runtime.waitForLoadState("networkidle"),
+            ])
             await Promise.all([
               reference.waitForFunction(accordionIsSettled),
               runtime.waitForFunction(accordionIsSettled),
             ])
+            await Promise.all([reference.evaluate(() => new Promise((resolve) => {
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            })), runtime.evaluate(() => new Promise((resolve) => {
+              requestAnimationFrame(() => requestAnimationFrame(resolve))
+            }))])
           }
           progress("hydrated-and-fonts-ready")
           await reference.waitForFunction(() => [...document.images].every((image) => {
