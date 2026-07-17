@@ -177,6 +177,13 @@ try {
             addStyleAfterNavigation(reference, `nextjs-portal,.block-preview-wrapper .grow.bg-muted\\/50{display:none!important}.block-preview-wrapper{min-height:0!important;background:var(--background)!important}${deterministicFont}`),
             addStyleAfterNavigation(runtime, deterministicFont),
           ])
+          const importedImageSources = await runtime.locator("img").evaluateAll((images) => images.map((image) => image.getAttribute("src") ?? ""))
+          await reference.locator("img").evaluateAll((images, sources) => images.forEach((image, index) => {
+            const source = sources[index]
+            if (!source) return
+            image.removeAttribute("srcset")
+            image.src = source
+          }), importedImageSources)
           await runtime.evaluate(() => {
             const referenceRoot = document.querySelector("[data-provider-literal-preview]")
             if (!referenceRoot) return
@@ -191,15 +198,16 @@ try {
           })
           await Promise.all([reference.evaluate(() => document.fonts.ready), runtime.evaluate(() => document.fonts.ready)])
           progress("hydrated-and-fonts-ready")
-          await reference.waitForFunction(() => [...document.images].every((image) => {
-            if (!/^https?:/.test(image.currentSrc || image.src) || image.offsetParent === null) return true
+          const imagesEstablishedLayout = () => [...document.images].every((image) => {
+            if (image.offsetParent === null) return true
             const bounds = image.getBoundingClientRect()
-            return bounds.width > 0 && bounds.height > 0
-          }), undefined, { timeout: 20_000 }).catch(async (error) => {
-            const pending = await reference.locator("img").evaluateAll((images) => images
-              .filter((image) => /^https?:/.test(image.currentSrc || image.src) && image.offsetParent !== null && (!image.getBoundingClientRect().width || !image.getBoundingClientRect().height))
-              .map((image) => image.currentSrc || image.src))
-            throw new Error(`${variant.id} ${viewport.name} upstream images did not establish layout: ${pending.join(", ")}`, { cause: error })
+            return image.complete && image.naturalWidth > 0 && bounds.width > 0 && bounds.height > 0
+          })
+          await Promise.all([
+            reference.waitForFunction(imagesEstablishedLayout, undefined, { timeout: 20_000 }),
+            runtime.waitForFunction(imagesEstablishedLayout, undefined, { timeout: 20_000 }),
+          ]).catch((error) => {
+            throw new Error(`${variant.id} ${viewport.name} deterministic images did not establish layout`, { cause: error })
           })
           progress("media-ready")
           if (await reference.locator('[data-slot="carousel"]').count() || await runtime.locator('[data-slot="carousel"]').count()) {
@@ -291,6 +299,12 @@ try {
             const visibleReference = new PNG({ width: b.width, height: a.height })
             PNG.bitblt(a, visibleReference, 0, 0, b.width, a.height, 0, 0)
             a = visibleReference
+          }
+          if (a.width !== b.width || a.height !== b.height) {
+            await Promise.all([
+              writeFile(referencePath, referencePng),
+              writeFile(runtimePath, runtimePng),
+            ])
           }
           assert.equal(`${b.width}x${b.height}`, `${a.width}x${a.height}`, `${variant.id} ${viewport.name} dimensions`)
           const diff = new PNG({ width: a.width, height: a.height })
