@@ -111,6 +111,16 @@ the shared renderer pending its already-backlogged migration.
 
 ## Open Follow-Up
 
+- Revisit generated-site visual fidelity based on the 2026-07-17 production
+  smoke review. The hero on the smoke site's `/overzicht` page still renders
+  quirkily, and the operator has not accepted the remaining block output as
+  visually complete. Do not treat the existing automated parity results as
+  sufficient closure evidence for this observation. A future focused pass
+  should first record the exact snapshot, hero variant, viewport and color mode,
+  reproduce the production output against the pinned provider snippet and the
+  CMS preview, and then address the demonstrated root cause within the single
+  shared renderer. Do not add another renderer, page-specific workaround or
+  tenant-generated source path.
 - POSTHOG RETENTION: production project `193842` currently reports
   `event_retention_months=84` and `events_retention_enforced=false`, while the
   SIAB analytics policy requires 13 months with enforcement. This was verified
