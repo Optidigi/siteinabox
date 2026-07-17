@@ -13,13 +13,19 @@ observations before acting on them.
 - **Next:** Reproduce the exact snapshot, variant, viewport, and color mode; fix
   only a demonstrated shared-renderer cause.
 
-## SIAB-002 — PostHog retention enforcement is unconfirmed
+## SIAB-002 — PostHog retention exceeds the approved target
 
-- **Classification:** Risk; current provider state unknown.
+- **Classification:** Confirmed external privacy risk; **confidence:** high as
+  of the recorded provider verification.
 - **Scope:** Analytics privacy and operations.
-- **Evidence:** Recorded provider retention differed from the platform maximum.
-- **Next:** A privacy owner and named operator must verify enforcement before
-  expanding collection or generated-site analytics.
+- **Evidence:** PostHog MCP and API verification on 2026-07-11 found event
+  retention set to 84 months with enforcement disabled. Repository governance
+  requires 13 months. The scheduled privacy audit intentionally stays red while
+  this difference remains.
+- **Next:** A privacy owner and named operator must change the plan-derived
+  retention entitlement through PostHog billing/support, then rerun
+  `pnpm --dir apps/cms posthog:check-settings`. Do not represent the repository
+  target as provider-enforced until that check passes.
 
 ## SIAB-003 — Legal-notice interaction needs production smoke
 
@@ -72,3 +78,31 @@ observations before acting on them.
 - **Next:** No new tenant may use it. Remove it only with a published and
   visually accepted generic-provider replacement covering all content and
   interaction surfaces.
+
+## SIAB-010 — Renderer page-lifecycle ownership conflicts with the contract
+
+- **Classification:** Confirmed defect; **confidence:** high from current
+  source and contract tests.
+- **Scope:** Public renderer analytics counts and PostHog web analytics.
+- **Evidence:** The typed contract and tests make `$pageview` and `$pageleave`
+  PostHog-SDK-owned and reject the historical SIAB page events. The renderer
+  enables `capture_pageview` and `capture_pageleave` while also calling its own
+  `capturePageview()` and `capturePageleave()` network path.
+- **Impact:** A consented page visit can produce duplicate lifecycle events and
+  inflate visitors, pageviews, duration, and scroll reporting.
+- **Next:** Choose one owner for each lifecycle event, preserve native PostHog
+  scroll properties, add a browser regression proving one pageview/pageleave,
+  and update code, contract, tests, and the PostHog runbook together.
+
+## SIAB-011 — Legal-content changes do not trigger a renderer image
+
+- **Classification:** Confirmed release-integrity defect; **confidence:** high.
+- **Scope:** Renderer image publication and governed legal content.
+- **Evidence:** `apps/renderer/package.json` directly depends on
+  `@siteinabox/legal-content`, and its Dockerfile copies that workspace package,
+  but `build-renderer-image.yml` does not include
+  `packages/legal-content/**` in its push paths.
+- **Impact:** A legal-content-only merge can leave the published renderer image
+  serving the previous legal content.
+- **Next:** Add the missing path in a separate release-behavior commit and
+  verify a legal-content-only change selects the renderer workflow.

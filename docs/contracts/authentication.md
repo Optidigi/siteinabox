@@ -1,6 +1,6 @@
-# Social Auth Runbook
+# Authentication contract
 
-OBS-101 makes Better Auth magic links the primary CMS login path, with optional
+Better Auth magic links are the primary CMS login path, with optional
 Google, Microsoft, and Apple provider buttons. Better Auth brokers provider
 identity; Payload `users` remain the authorization source for CMS role, tenant
 membership, and sessions.

@@ -1,16 +1,13 @@
-# OBS-103 Route Access Matrix
+# Route access matrix
 
-Status snapshot: 2026-06-05.
-
-This matrix records route/navigation parity verified during OBS-103. It is not a
+This matrix records the current expected route/navigation parity. It is not a
 replacement for route guards; it documents the expected user-facing behavior so
 future sidebar, dashboard, table, and direct-URL changes can be checked against
 one place.
 
-This file is intentionally scoped to CMS role/context access. The broader
-source-defined route and production host inventory lives at
-Route ownership is summarized in `docs/architecture.md`; application source and
-route tests are canonical for the exact current surface.
+This file is intentionally scoped to CMS role/context access. Route ownership
+is summarized in `docs/architecture.md`; application source and route tests are
+canonical for the exact current surface.
 
 ## Result Meanings
 

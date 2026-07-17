@@ -81,7 +81,8 @@ Values to set:
   - `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` (any platform)
 - `DATABASE_URI=postgres://payload:change-me@localhost:5432/payload` — matches the compose defaults; already set in `.env.example`
 - `DATA_DIR=./.data-out` — gitignored; Payload writes per-tenant JSON snapshots here
-- `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl` — Phase 7's `hostToTenant` falls back to treating `localhost` as super-admin in dev
+- `NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl` — the current tenant resolver
+  treats `localhost` as the super-admin surface in development
 - `SIAB_ALLOWED_DEV_ORIGINS=admin.siteinabox.nl` — allows Next dev resources when local browser checks map the production admin hostname to `127.0.0.1`.
 - `CLOUDFLARE_EMAIL_SMTP_TOKEN=` — leave empty in dev unless testing live email. Mail sends throw before opening SMTP when unset.
 - `EMAIL_FROM=noreply@siteinabox.nl`

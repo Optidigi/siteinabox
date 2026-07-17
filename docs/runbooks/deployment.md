@@ -245,7 +245,7 @@ allowed to manage the customer zone and Cloudflare Email Sending subdomains.
 `RESEND_API_KEY` is obsolete after the Cloudflare Email Sending mail-path change and
 should not be carried forward into the production `.env`.
 
-Current Phase 3 env readiness status:
+Current production environment requirements:
 
 | Area | Required action |
 | --- | --- |
@@ -257,7 +257,7 @@ Current Phase 3 env readiness status:
 | PostHog | Keep existing `POSTHOG_*` values; fill missing project token/id/API key only when analytics/admin sync needs them. |
 | Better Auth | Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_PREVIEW_SECRET`; `BETTER_AUTH_API_KEY` remains optional Infrastructure dashboard/audit integration. |
 | CMS origin | Set `SITE_URL=https://admin.siteinabox.nl`. |
-| Renderer token | Set `SIAB_RENDERER_API_TOKEN` now for the CMS snapshot endpoint; renderer `.env` is a later separate phase using the same token. |
+| Renderer token | Set the same `SIAB_RENDERER_API_TOKEN` for the CMS snapshot endpoint and renderer environment. |
 | Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and webhook signing secret. Production webhooks fail closed when `MOLLIE_WEBHOOK_SIGNING_SECRET` is unset. |
@@ -756,10 +756,11 @@ ever migrate, replace the autoRun with an external scheduler (k8s
 CronJob, GitHub Actions cron, or system cron on the host) that POSTs
 to a Payload jobs endpoint.
 
-## GraphQL playground env-gate (audit-p3 #16)
+## GraphQL playground environment gate
 
-Audit-p3 #16 (T10) — defense-in-depth env-gate on `/api/graphql-playground`.
-Payload v3.84.1's built-in `disablePlaygroundInProduction` default already
+The in-repository gate provides defense in depth for
+`/api/graphql-playground`. Payload's built-in
+`disablePlaygroundInProduction` default already
 returns 404 in production, but a future `payload.config.ts` change setting
 that to `false` would silently re-arm anonymous schema enumeration. The
 in-repo gate (`src/lib/graphql/playgroundGate.ts`) closes that gap.
@@ -780,12 +781,8 @@ prod — set `ENABLE_GRAPHQL_PLAYGROUND=1`, redeploy, debug, unset, and
 redeploy again. Leaving it set keeps `/api/graphql-playground` serving
 the introspectable Apollo HTML to anonymous internet.
 
-### Side effect: closes OBS-3
-
-Out-of-batch observation OBS-3 (graphql-playground iframable: middleware
-matcher excludes `/api/*` from CSP stamping → no `frame-ancestors` on
-the playground HTML) closes as a consequence: in production the route
-no longer serves HTML at all.
+The gate also prevents the production playground from returning iframable HTML
+without relying on CSP middleware for `/api/*` routes.
 
 ## Future improvements (out of scope for this runbook)
 
