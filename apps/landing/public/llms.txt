@@ -39,7 +39,7 @@ Website package:
 - Price: €19 per month.
 - Yearly billing: no one-time setup fee.
 - Monthly billing: €99 one-time setup fee.
-- Includes: professional website, own .nl domain, hosting, security, fast loading time, findability in Google and ChatGPT, management environment to edit content, automatic backups, e-mail forwarding and Dutch support.
+- Includes: professional website, own .nl domain, hosting, security, fast loading time, ready for Google and ChatGPT, management environment to edit content, automatic backups and Dutch support.
 
 Compleet package:
 
