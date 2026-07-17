@@ -91,7 +91,7 @@
       "fallback": "Use the library's primary documentation."
     },
     "docker": {
-      "purpose": "Container inspection; current implementation is pending least-privilege replacement.",
+      "purpose": "Reserved container-inspection integration; disabled until a least-privilege implementation exists.",
       "transport": "stdio",
       "command": "npx",
       "args": ["-y", "mcp-server-docker@1.0.0"],
@@ -110,12 +110,16 @@
         "toolAllowlist": { "required": false, "values": [], "enforcement": null }
       },
       "clientPolicy": {
-        "defaultEnabled": true,
+        "defaultEnabled": false,
         "approval": { "required": true, "mode": "prompt" },
         "enabledTools": { "required": false, "values": [] },
         "disabledTools": { "required": false, "values": [] }
       },
-      "preconditions": ["Requires Docker socket access and currently exposes arbitrary commands in allowed containers."],
+      "preconditions": [
+        "A replacement must enforce an explicit SIAB container allowlist with no unrelated host-container visibility.",
+        "A replacement must expose read-only inspection only: no exec, arbitrary command, lifecycle mutation, build, push, prune, or compose mutation.",
+        "The current implementation has Docker socket access and permits arbitrary commands, so it must remain disabled."
+      ],
       "projectionTargets": ["codex"],
       "fallback": "Use Docker or Podman CLI under the normal sandbox and approval policy."
     },

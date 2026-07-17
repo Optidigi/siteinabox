@@ -32,6 +32,11 @@ A declaration proves policy, not startup, authentication, or effective runtime
 permission. Inspect the generated target and the server's advertised tools
 before relying on it.
 
+`docker` remains a stable policy name but is disabled and omitted where a
+client cannot express disabled state. No reviewed server combines an explicit
+SIAB-container allowlist with a server-enforced inspection-only surface. Use
+Docker or Podman CLI under the normal sandbox and approval policy instead.
+
 ## MCP use
 
 - Inventory availability before relying on a server and use read-only

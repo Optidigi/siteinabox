@@ -86,3 +86,11 @@ test("PostgreSQL stays disabled with generated DBHub guardrails", () => {
   unsafe.servers.postgres.runtimeConfig.executeSql.readOnly = false
   assert.throws(() => validateRegistry(unsafe), /readOnly must be true/)
 })
+
+test("unsafe Docker integration remains disabled and Codex-only", () => {
+  const projections = renderProjections(clone())
+  const codex = projections.get([...projections.keys()].find((path) => path.endsWith(".codex/config.toml")))
+  const cursor = JSON.parse(projections.get([...projections.keys()].find((path) => path.endsWith(".cursor/mcp.json"))))
+  assert.match(codex, /\[mcp_servers\.docker\][\s\S]*enabled = false[\s\S]*default_tools_approval_mode = "prompt"/)
+  assert(!Object.hasOwn(cursor.mcpServers, "docker"))
+})

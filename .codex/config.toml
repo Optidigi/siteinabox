@@ -20,7 +20,7 @@ default_tools_approval_mode = "auto"
 [mcp_servers.docker]
 command = "npx"
 args = ["-y", "mcp-server-docker@1.0.0"]
-enabled = true
+enabled = false
 required = false
 default_tools_approval_mode = "prompt"
 
