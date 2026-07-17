@@ -35,7 +35,9 @@ jobs:
       - name: Reject obsolete generated-site providers
         run: pnpm run audit:provider-cutover
       - name: Legal release integrity
-        run: pnpm legal:check
+        run: |
+          pnpm legal:check
+          pnpm --dir packages/legal-content test
 
   cms-quality:
     runs-on: ubuntu-latest
