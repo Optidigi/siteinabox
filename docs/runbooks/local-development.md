@@ -134,6 +134,9 @@ Then sign in at http://localhost:3000/login.
 - **Integration tests** (require DB up): `pnpm test tests/integration/` — they skip if the DB isn't reachable; with the local compose up they run.
 - **Typecheck:** `pnpm typecheck` — runs `next typegen` first. Next owns the
   generated, gitignored `next-env.d.ts`; do not edit or commit it.
+- **Remove abandoned test data:** from the repository root, run
+  `pnpm cms:cleanup-test-data` to list matching `apps/cms/.data-test-<pid>`
+  directories. Review the list, then rerun with `--apply` to remove them.
 
 ## Common operations
 

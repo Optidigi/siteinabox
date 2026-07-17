@@ -9,6 +9,8 @@
   },
   "scripts": {
     "audit:provider-cutover": "node scripts/check-generated-site-provider-cutover.mjs",
+    "cms:cleanup-test-data": "node scripts/cleanup-cms-test-data.mjs",
+    "cms:cleanup-test-data:test": "node --test scripts/cleanup-cms-test-data.test.mjs",
     "cms:typecheck": "pnpm --dir apps/cms typecheck",
     "cms:test": "pnpm --dir apps/cms test",
     "cms:build": "pnpm --dir apps/cms build",
