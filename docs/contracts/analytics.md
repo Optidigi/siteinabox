@@ -127,9 +127,12 @@ retention target. Provider retention currently differs; see SIAB-002.
 ## Public runtime behavior
 
 The renderer reads projected analytics configuration and page/block metadata.
-Every newly published tenant snapshot receives this configuration from the
-same CMS projection path; there are no per-tenant source trees or manual SDK
-snippets. After consent it:
+Every generated tenant receives the governed public consent policy in its site
+manifest, and every newly published tenant snapshot receives analytics
+configuration from the same CMS projection path. A migration backfills the
+policy only where an existing tenant manifest has no `analyticsConsent` value;
+an explicit tenant policy is preserved. There are no per-tenant source trees or
+manual SDK snippets. After consent it:
 
 - starts PostHog when the projected token and host are available;
 - observes section exposure and engagement;
@@ -153,6 +156,11 @@ and privacy rules with `site_kind: platform` and no tenant group. Both public
 runtimes expose the approved consent UI for version `2026-07-07.1`, remain
 inactive before a choice, initialize PostHog only after acceptance, and remain
 disabled after rejection.
+
+The landing image bakes the public project token into its static build. The
+hosted image workflow therefore requires the user-scoped Actions secret
+`POSTHOG_PROJECT_TOKEN` and fails instead of publishing an analytics-disabled
+image when it is absent. The value itself is never stored in the repository.
 
 ## Server capture and CMS queries
 

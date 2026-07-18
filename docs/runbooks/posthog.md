@@ -126,6 +126,13 @@ remain inactive before a choice, start only after acceptance, and remain
 disabled after rejection. Do not infer live landing events or existing PostHog
 group types until an approved deployment and provider query confirm them.
 
+Generated tenant manifests receive this approved consent policy automatically.
+The migration `20260718_123000_backfill_public_analytics_consent` adds it only
+to existing tenant manifests where `analyticsConsent` is absent; explicit
+tenant choices are not overwritten. The landing GHCR workflow separately
+requires the Actions secret `POSTHOG_PROJECT_TOKEN` and fails closed when that
+build input is missing.
+
 Live browser smoke on 2026-06-08 found that consent-and-idle SDK initialization
 can miss PostHog JS's normal DOM-loaded initial pageview path. The public-site
 runtime therefore calls `posthog.opt_in_capturing({ captureEventName: false })`

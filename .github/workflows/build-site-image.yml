@@ -48,6 +48,15 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
 
+      - name: Validate public analytics build inputs
+        env:
+          POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+        run: |
+          if [ -z "$POSTHOG_PROJECT_TOKEN" ]; then
+            echo "Required Actions secret POSTHOG_PROJECT_TOKEN is not configured." >&2
+            exit 1
+          fi
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:

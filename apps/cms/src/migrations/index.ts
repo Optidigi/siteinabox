@@ -64,6 +64,7 @@ import * as migration_20260716_120000_remove_theme_density from './20260716_1200
 import * as migration_20260716_123000_remove_wrapped_density_hints from './20260716_123000_remove_wrapped_density_hints';
 import * as migration_20260717_120000_consolidate_theme_presets from './20260717_120000_consolidate_theme_presets';
 import * as migration_20260717_180000_remove_user_editor_mode from './20260717_180000_remove_user_editor_mode';
+import * as migration_20260718_123000_backfill_public_analytics_consent from './20260718_123000_backfill_public_analytics_consent';
 
 export const migrations = [
   {
@@ -395,5 +396,10 @@ export const migrations = [
     up: migration_20260717_180000_remove_user_editor_mode.up,
     down: migration_20260717_180000_remove_user_editor_mode.down,
     name: '20260717_180000_remove_user_editor_mode'
+  },
+  {
+    up: migration_20260718_123000_backfill_public_analytics_consent.up,
+    down: migration_20260718_123000_backfill_public_analytics_consent.down,
+    name: '20260718_123000_backfill_public_analytics_consent'
   },
 ];

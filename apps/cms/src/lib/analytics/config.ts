@@ -1,7 +1,9 @@
 import type { AnalyticsEnvironment } from "./events"
+import { publicAnalyticsConsentApproval } from "@siteinabox/legal-content/consent-approval"
 
 const DEFAULT_POSTHOG_HOST = "https://app.posthog.com"
 const DEFAULT_POSTHOG_PUBLIC_HOST = "https://r.siteinabox.nl"
+export const PUBLIC_ANALYTICS_CONSENT_STORAGE_KEY = "siab_cookie_consent_v1"
 
 const boolDisabled = (value: string | undefined) =>
   value === "1" || value?.toLowerCase() === "true"
@@ -54,6 +56,17 @@ export type PublicAnalyticsConfigInput = {
   conversionGoals?: {
     acceptedForms?: true
     contactClicks?: Array<"phone" | "email" | "whatsapp">
+  }
+}
+
+export const approvedPublicAnalyticsConsent = () => {
+  const consentVersion = publicAnalyticsConsentApproval.consentVersion
+  if (!consentVersion) return null
+  return {
+    enabled: true as const,
+    provider: "posthog" as const,
+    consentStorageKey: PUBLIC_ANALYTICS_CONSENT_STORAGE_KEY,
+    consentVersion,
   }
 }
 

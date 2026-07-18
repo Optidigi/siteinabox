@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { getPostHogAnalyticsConfig, resolvePublicAnalyticsConfig } from "@/lib/analytics/config"
+import {
+  approvedPublicAnalyticsConsent,
+  getPostHogAnalyticsConfig,
+  resolvePublicAnalyticsConfig,
+} from "@/lib/analytics/config"
 import { redactAnalyticsProperties } from "@/lib/analytics/redaction"
 
 const ORIGINAL_ENV = { ...process.env }
@@ -10,6 +14,15 @@ afterEach(() => {
 })
 
 describe("analytics config", () => {
+  it("derives the default tenant consent policy from the governed approval", () => {
+    expect(approvedPublicAnalyticsConsent()).toEqual({
+      enabled: true,
+      provider: "posthog",
+      consentStorageKey: "siab_cookie_consent_v1",
+      consentVersion: "2026-07-07.1",
+    })
+  })
+
   it("keeps capture/query disabled when PostHog config is absent", () => {
     delete process.env.POSTHOG_PROJECT_TOKEN
     delete process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN

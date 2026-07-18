@@ -169,6 +169,12 @@ describe("applySiteGenerationSpec", () => {
       shape: { schemeId: "soft" },
     })
     expect(tenant.siteManifest.generation.hash).toBe(result.idempotencyKey)
+    expect(tenant.siteManifest.analyticsConsent).toEqual({
+      enabled: true,
+      provider: "posthog",
+      consentStorageKey: "siab_cookie_consent_v1",
+      consentVersion: "2026-07-07.1",
+    })
     expect(settings.navHeader[0]).toMatchObject({ type: "page", page: page.id })
     expect(settings.navHeader[1]).toMatchObject({ type: "section", page: page.id, anchor: "contact" })
     expect([...calls.create, ...calls.update].every((call) => call.context?.skipProjection === true)).toBe(true)

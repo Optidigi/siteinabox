@@ -34,6 +34,7 @@ import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
 import { materializeTenantPrivacyPage } from "@/lib/legal/tenantPrivacyPage"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { themeSchema, type ThemeTokens } from "@/lib/theme/schema"
+import { approvedPublicAnalyticsConsent } from "@/lib/analytics/config"
 
 type ApplyOperation = "created" | "updated"
 type RetainedPage = { id: string | number; slug: string; status?: string }
@@ -536,6 +537,7 @@ const manifestCapabilitiesForSpec = (spec: SiteGenerationSpec): Pick<RtManifest,
 
 const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): RtManifest & Record<string, unknown> => {
   const capabilities = manifestCapabilitiesForSpec(spec)
+  const analyticsConsent = approvedPublicAnalyticsConsent()
   const manifest = {
     ...DEFAULT_GENERATION_MANIFEST,
     ...capabilities,
@@ -551,6 +553,7 @@ const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): 
       generatedAt: spec.generatedAt ?? null,
       generator: spec.generator ?? null,
     },
+    ...(analyticsConsent ? { analyticsConsent } : {}),
   }
 
   const parsed = manifestSchema.safeParse(manifest)
