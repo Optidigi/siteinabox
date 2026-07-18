@@ -64,11 +64,11 @@ describe("legal document synchronization", () => {
     await syncLegalDocuments({ payload, now, sourceCommit: "abc1234" })
     await syncLegalDocuments({ payload, now, sourceCommit: "abc1234" })
 
-    expect(stores["legal-documents"]!).toHaveLength(2)
-    expect(stores["legal-publication-events"]!).toHaveLength(4)
+    expect(stores["legal-documents"]!).toHaveLength(3)
+    expect(stores["legal-publication-events"]!).toHaveLength(6)
     expect(stores["legal-documents"]!.find((doc) => doc.documentType === "platform-privacy")?.acceptanceVersion).toBeUndefined()
     expect(stores["legal-publication-events"]!.map((event) => event.eventType)).toEqual([
-      "registered", "activated", "registered", "activated",
+      "registered", "activated", "registered", "activated", "registered", "scheduled",
     ])
   })
 
@@ -204,6 +204,20 @@ describe("legal document synchronization", () => {
     )).resolves.toEqual([])
     await expect(ensureConsentRenewalsForRelease(payload, release("direct_notice", "renew_marketing"), new Date("2026-08-02T00:00:00.000Z")))
       .resolves.toEqual([])
+    expect(payload.update).not.toHaveBeenCalled()
+  })
+
+  it("keeps landing-only analytics renewal out of tenant manifests", async () => {
+    const payload = { find: vi.fn(), update: vi.fn() } as any
+    const landingRelease = release("publish_notice", "renew_analytics")
+    landingRelease.change.audience = "siteinabox_visitors"
+
+    await expect(ensureConsentRenewalsForRelease(
+      payload,
+      landingRelease,
+      new Date("2026-08-02T00:00:00.000Z"),
+    )).resolves.toEqual([])
+    expect(payload.find).not.toHaveBeenCalled()
     expect(payload.update).not.toHaveBeenCalled()
   })
 

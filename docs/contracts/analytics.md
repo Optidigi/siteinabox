@@ -25,6 +25,10 @@ product analytics. `site_kind`, `analytics_tier`,
 Tenant events also use PostHog's native `tenant` group type with the stable
 Payload tenant ID as group key.
 
+The static `siteinabox.nl` landing site additionally uses Google Analytics 4
+measurement after analytics consent. GA4 is not part of the cookieless
+baseline, tenant renderer, or authenticated CMS analytics contract.
+
 - Public sites capture only minimized cookieless pageviews and Web Vitals
   before a choice or after refusal. Richer interaction and lifecycle analytics
   require explicit analytics consent.
@@ -95,6 +99,13 @@ cookieless baseline active. Revocation uses the SDK's native reset back to the
 cookieless tier. PostHog JS remains the sole `$pageview`/`$pageleave` owner.
 Accepting after the baseline pageview does not duplicate that current
 pageview; the next navigation starts a fully consented native lifecycle.
+
+On `siteinabox.nl`, the same accepted choice loads `gtag.js`, grants only
+`analytics_storage`, and configures one GA4 pageview per landing-page load.
+Google advertising storage, ad user data, ad personalization, Google signals,
+and ad-personalization signals remain disabled. Pending and refused choices do
+not load Google code or send Google requests. Refusal/revocation applies denied
+consent and removes the landing site's known `_ga` cookies.
 
 Public-site SDK controls keep:
 
@@ -172,10 +183,13 @@ empty unless explicitly configured.
 
 The static landing site uses the same consent, lifecycle-ownership, property,
 and privacy rules with `site_kind: platform` and no tenant group. Both public
-runtimes expose the approved consent UI for version `2026-07-07.1`. Pending and
-refused states remain cookieless/minimized; acceptance enables the consented
-tier. New generated tenants receive this behavior through the same manifest
-and snapshot projection, with no per-tenant code or configuration.
+runtimes expose an approved consent UI. Generated tenant sites retain consent
+version `2026-07-07.1`; the landing advances to `2026-07-18.1` so an earlier
+landing choice is renewed for the added GA4 provider. Pending and refused
+states remain PostHog-cookieless/minimized; acceptance enables the consented
+tier and, on the landing only, GA4. New generated tenants receive their
+PostHog behavior through the same manifest and snapshot projection, with no
+per-tenant code or configuration.
 
 The landing image bakes the public project token into its static build. The
 hosted image workflow therefore requires the user-scoped Actions secret

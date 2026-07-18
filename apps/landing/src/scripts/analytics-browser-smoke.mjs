@@ -99,6 +99,17 @@ async function installLandingRoute(page, publicOrigin, landingOrigin) {
   })
 }
 
+async function installGoogleAnalyticsRoute(page, requests) {
+  await page.route("https://www.googletagmanager.com/**", async (route) => {
+    requests.push(route.request().url())
+    await route.fulfill({
+      status: 200,
+      contentType: "text/javascript",
+      body: "/* intercepted gtag.js: no external analytics write */",
+    })
+  })
+}
+
 const port = await openPort()
 const landingOrigin = `http://127.0.0.1:${port}`
 const publicOrigin = `http://landing.example.test:${port}`
@@ -135,6 +146,7 @@ try {
     const acceptedEvents = []
     const ingestRequests = []
     const externalAnalyticsRequests = []
+    const googleAnalyticsRequests = []
     const browserErrors = []
     acceptedPage.on("pageerror", (error) => browserErrors.push(String(error)))
     acceptedPage.on("console", (message) => {
@@ -146,6 +158,7 @@ try {
     })
     await installIngestRoute(acceptedPage, ingestOrigin, acceptedEvents, ingestRequests)
     await installLandingRoute(acceptedPage, publicOrigin, landingOrigin)
+    await installGoogleAnalyticsRoute(acceptedPage, googleAnalyticsRequests)
 
     await acceptedPage.goto(`${publicOrigin}/?email=private%40example.test&utm_campaign=secret`, { waitUntil: "networkidle", timeout: 60_000 })
     const consentChrome = await acceptedPage.evaluate(() => {
@@ -213,15 +226,38 @@ try {
       0,
       "PostHog creates no storage before consent",
     )
+    assert.deepEqual(googleAnalyticsRequests, [], "Google Analytics does not load before consent")
 
     await acceptedPage.click('[data-consent-action="accept"]')
-    await acceptedPage.waitForTimeout(250)
+    await waitFor(() => googleAnalyticsRequests.length === 1, "accepted consent did not load gtag.js")
+    assert.match(googleAnalyticsRequests[0], /\/gtag\/js\?id=G-EM6YQ9893X$/)
     assert.equal(acceptedEvents.filter((event) => event.event === "$pageview").length, 1, "consent transition does not duplicate the current pageview")
     await acceptedPage.reload({ waitUntil: "networkidle", timeout: 60_000 })
     await waitFor(
       () => acceptedEvents.some((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented"),
       "stored consent did not start a consented PostHog lifecycle",
     )
+    await waitFor(() => googleAnalyticsRequests.length === 2, "stored consent did not reload gtag.js")
+    const googleCommands = await acceptedPage.evaluate(() => (window.dataLayer ?? []).map((entry) => ({
+      command: entry[0],
+      target: entry[1],
+      options: entry[2],
+    })))
+    assert.ok(googleCommands.some(({ command, target, options }) =>
+      command === "consent"
+      && target === "default"
+      && options?.analytics_storage === "granted"
+      && options?.ad_storage === "denied"
+      && options?.ad_user_data === "denied"
+      && options?.ad_personalization === "denied",
+    ), "GA4 consent defaults allow analytics only")
+    assert.ok(googleCommands.some(({ command, target, options }) =>
+      command === "config"
+      && target === "G-EM6YQ9893X"
+      && options?.send_page_view === true
+      && options?.allow_google_signals === false
+      && options?.allow_ad_personalization_signals === false,
+    ), "GA4 config uses the approved measurement and privacy controls")
     const consentedStart = acceptedEvents.findIndex((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented")
     await acceptedPage.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await acceptedPage.waitForTimeout(250)
@@ -250,8 +286,10 @@ try {
 
     const rejectedPage = await browser.newPage({ ...pageOptions, viewport: { width: 375, height: 812 } })
     const rejectedEvents = []
+    const rejectedGoogleAnalyticsRequests = []
     await installIngestRoute(rejectedPage, ingestOrigin, rejectedEvents)
     await installLandingRoute(rejectedPage, publicOrigin, landingOrigin)
+    await installGoogleAnalyticsRoute(rejectedPage, rejectedGoogleAnalyticsRequests)
     await rejectedPage.goto(`${publicOrigin}/?token=must-not-leak`, { waitUntil: "networkidle", timeout: 60_000 })
     const mobileActions = await rejectedPage.locator(".siab-cookie-consent__actions").evaluate((element) => ({
       display: getComputedStyle(element).display,
@@ -261,6 +299,10 @@ try {
     assert.equal(mobileActions.display, "grid")
     assert.match(mobileActions.columns, /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/)
     assert.ok(mobileActions.width > 250, "mobile consent actions use the available width")
+    await rejectedPage.evaluate(() => {
+      document.cookie = "_ga=test-cookie; path=/; SameSite=Lax"
+      document.cookie = "_ga_EM6YQ9893X=test-cookie; path=/; SameSite=Lax"
+    })
     await rejectedPage.click('[data-consent-action="reject"]')
     await rejectedPage.waitForTimeout(750)
     const rejectedPageviews = rejectedEvents.filter((event) => event.event === "$pageview")
@@ -269,6 +311,12 @@ try {
     assert.equal(rejectedPageviews[0].properties.distinct_id, "$posthog_cookieless")
     assert.doesNotMatch(rejectedPageviews[0].properties.$current_url, /token|must-not-leak/)
     assert.equal(rejectedEvents.some((event) => event.event === "$pageleave" || event.event === "$autocapture"), false)
+    assert.deepEqual(rejectedGoogleAnalyticsRequests, [], "rejecting consent never loads Google Analytics")
+    assert.deepEqual(
+      await rejectedPage.evaluate(() => document.cookie.split(";").map((entry) => entry.trim()).filter((entry) => entry.startsWith("_ga"))),
+      [],
+      "rejecting consent clears known GA4 cookies",
+    )
     assert.equal(
       await rejectedPage.evaluate(() => Object.keys(localStorage).filter((key) => /posthog/i.test(key)).length),
       0,
@@ -281,6 +329,8 @@ try {
       nativeDuration: pageleaves[0].properties.$prev_pageview_duration,
       nativeMaxScroll: pageleaves[0].properties.$prev_pageview_max_scroll,
       rejectedBaselinePageviews: rejectedPageviews.length,
+      consentedGtagLoads: googleAnalyticsRequests.length,
+      rejectedGtagLoads: rejectedGoogleAnalyticsRequests.length,
     }))
   } finally {
     await browser.close()

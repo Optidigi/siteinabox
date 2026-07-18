@@ -4,8 +4,9 @@
  * consent chrome and a reviewed platform privacy release.
  */
 export const publicAnalyticsConsentApproval = Object.freeze({
-  privacyDocumentVersion: '2026-07-07.1',
+  privacyDocumentVersion: '2026-07-18.1',
   consentVersion: '2026-07-07.1',
+  platformLandingConsentVersion: '2026-07-18.1',
   maxEventRetentionDays: 396,
 })
 

@@ -14,7 +14,8 @@ changes.
 | CMS form submissions | 90-day recommended default, disclosed per tenant | Configured scheduled purge and customer deletion |
 | Backups | Rolling, normally at most 90 days | Infrastructure backup policy |
 | Security/access logs | Normally 6-12 months | Logging platform retention |
-| Identifiable/pseudonymous analytics | At most 13 months | PostHog project retention verification |
+| PostHog identifiable/pseudonymous analytics | At most 13 months | PostHog project retention verification |
+| Google Analytics 4 landing analytics | At most 13 months; prefer the available 2-month setting | GA4 property retention verification |
 | Fiscal administration | 7 years or applicable statutory period | Finance system retention |
 | Marketing permission evidence | Through use plus required evidence period | Preference event retention |
 | Suppression/opt-out record | As long as needed to honor opt-out | Minimal suppression record |
@@ -25,4 +26,3 @@ available during the active agreement, while the implementation purges them
 after 90 days. Before the first legal publication, the public statement and
 product setting must be made identical. The recommended product default is 90
 days with a clear tenant-facing disclosure and deletion/export controls.
-

@@ -12,6 +12,7 @@ removed, or changes role or processing location.
 | Mollie | Payment processing | Confirm controller/processor allocation and retention |
 | Moneybird | Accounting and invoicing | Confirm actual integration and data fields |
 | PostHog Cloud EU | Product and tenant-site analytics | IP anonymization enabled; enforce 13-month event retention |
+| Google Analytics 4 / Google Ireland Limited | Consent-gated analytics for `siteinabox.nl` only | Verify GA4 property retention; Google signals and advertising features disabled |
 | KVK | Public business-data lookup | Confirm terms and request logging |
 | Microsoft / Pax8 | Professional email add-on where selected | Confirm actual sold product and reseller chain |
 | Google Workspace / TD SYNNEX | Professional email add-on where selected | Confirm actual sold product and reseller chain |
@@ -23,4 +24,3 @@ service, while allowing a reasonable update mechanism. A supplier integration
 must not send raw tenant form content to analytics, benchmarking, or model
 training. Secrets and authenticated vendor configuration remain outside this
 repository.
-

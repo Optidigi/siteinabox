@@ -125,6 +125,7 @@ export async function ensureConsentRenewalsForRelease(
   at = new Date(),
 ) {
   if (!["renew_analytics", "renew_all_optional"].includes(release.change.consentAction)) return []
+  if (release.change.audience === "siteinabox_visitors") return []
   if (new Date(release.effectiveAt) > at) return []
 
   const consentVersion = analyticsConsentVersionForRelease(release)

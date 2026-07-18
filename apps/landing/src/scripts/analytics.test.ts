@@ -20,4 +20,14 @@ describe("landing analytics contract", () => {
     expect(source).toContain("delete properties.$elements")
     expect(source).toContain('posthog.capture("site_conversion_completed"')
   })
+
+  it("loads GA4 only through accepted analytics consent", () => {
+    expect(source).toContain('initializeGoogleAnalytics()')
+    expect(source).toContain("https://www.googletagmanager.com/gtag/js?id=")
+    expect(source).toContain('analytics_storage: "granted"')
+    expect(source).toContain('ad_storage: "denied"')
+    expect(source).toContain('allow_google_signals: false')
+    expect(source).toContain('allow_ad_personalization_signals: false')
+    expect(source).toContain('disableGoogleAnalytics()')
+  })
 })

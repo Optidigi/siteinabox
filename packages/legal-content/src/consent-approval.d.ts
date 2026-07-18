@@ -1,6 +1,7 @@
 export type PublicAnalyticsConsentApproval = Readonly<{
   privacyDocumentVersion: string
   consentVersion: string | null
+  platformLandingConsentVersion: string
   maxEventRetentionDays: number
 }>
 

@@ -5,6 +5,7 @@ type LandingAnalyticsConfig = {
   consentStorageKey: string
   consentVersion: string
   siteDomain: string
+  googleAnalyticsMeasurementId: string
 }
 
 type PostHogClient = typeof import("posthog-js").default & {
@@ -21,6 +22,14 @@ let started = false
 let consentGranted = false
 let posthog: PostHogClient | null = null
 let recentAction: Record<string, unknown> | null = null
+let googleAnalyticsStarted = false
+
+type AnalyticsWindow = Window & {
+  dataLayer?: unknown[][]
+  gtag?: (...args: unknown[]) => void
+}
+
+const analyticsWindow = window as AnalyticsWindow
 
 const environment = () => location.hostname === "localhost" ? "development" : "production"
 const referrerType = () => {
@@ -102,6 +111,61 @@ const targetProperties = (anchor: HTMLAnchorElement | null) => {
 const activateConsented = (instance: PostHogClient) => {
   instance.opt_in_capturing({ captureEventName: false })
   instance.register(baseProperties())
+}
+
+const googleAnalyticsCookieNames = () => {
+  const measurementId = config?.googleAnalyticsMeasurementId ?? ""
+  return ["_ga", `_ga_${measurementId.replace(/^G-/, "").replaceAll("-", "_")}`]
+}
+
+const clearGoogleAnalyticsCookies = () => {
+  const domains = ["", location.hostname, `.${location.hostname.replace(/^www\./, "")}`]
+  for (const name of googleAnalyticsCookieNames()) {
+    for (const domain of domains) {
+      document.cookie = `${name}=; Max-Age=0; path=/;${domain ? ` domain=${domain};` : ""} SameSite=Lax`
+    }
+  }
+}
+
+const disableGoogleAnalytics = () => {
+  analyticsWindow.gtag?.("consent", "update", {
+    analytics_storage: "denied",
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  })
+  clearGoogleAnalyticsCookies()
+}
+
+const initializeGoogleAnalytics = () => {
+  const measurementId = config?.googleAnalyticsMeasurementId
+  if (googleAnalyticsStarted || !measurementId || !/^G-[A-Z0-9]+$/.test(measurementId)) return
+  googleAnalyticsStarted = true
+
+  analyticsWindow.dataLayer = analyticsWindow.dataLayer ?? []
+  analyticsWindow.gtag = analyticsWindow.gtag ?? ((...args: unknown[]) => analyticsWindow.dataLayer?.push(args))
+  analyticsWindow.gtag("consent", "default", {
+    analytics_storage: "granted",
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  })
+  analyticsWindow.gtag("js", new Date())
+  analyticsWindow.gtag("config", measurementId, {
+    send_page_view: true,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false,
+  })
+
+  const script = document.createElement("script")
+  script.id = "siab-google-analytics"
+  script.async = true
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`
+  script.onerror = () => {
+    googleAnalyticsStarted = false
+    script.remove()
+  }
+  document.head.append(script)
 }
 
 const initialize = async () => {
@@ -193,12 +257,17 @@ document.addEventListener("click", (event) => {
     document.querySelector<HTMLElement>("[data-siab-cookie-consent]")?.setAttribute("hidden", "")
     if (accepted) {
       consentGranted = true
+      initializeGoogleAnalytics()
       if (posthog) activateConsented(posthog)
       else void initialize()
     } else if (consentGranted && posthog) {
       consentGranted = false
+      disableGoogleAnalytics()
       posthog.opt_out_capturing()
       posthog.clear_opt_in_out_capturing?.()
+    } else {
+      consentGranted = false
+      disableGoogleAnalytics()
     }
     return
   }
@@ -227,4 +296,5 @@ document.addEventListener("click", (event) => {
 
 consentGranted = receipt() === true
 if (receipt() !== null) document.querySelector<HTMLElement>("[data-siab-cookie-consent]")?.setAttribute("hidden", "")
+if (consentGranted) initializeGoogleAnalytics()
 void initialize()
