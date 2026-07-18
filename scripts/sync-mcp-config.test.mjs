@@ -23,6 +23,28 @@ test("unknown fields and credential-bearing URLs fail validation", () => {
   assert.throws(() => validateRegistry(credential), /credential-bearing URL/)
 })
 
+test("embedded credentials and transport-incompatible fields fail validation", () => {
+  const argumentSecret = clone()
+  argumentSecret.servers.context7.args.push("--token=github_pat_not-a-real-token")
+  assert.throws(() => validateRegistry(argumentSecret), /embedded credential-like value/)
+
+  const opaqueStaticValue = clone()
+  opaqueStaticValue.servers.context7.staticEnv.NOTE = "OpaqueCredential1234567890"
+  assert.throws(() => validateRegistry(opaqueStaticValue), /opaque credential-like value/)
+
+  const staticAuthorization = clone()
+  staticAuthorization.servers["better-auth"].staticHeaders.Authorization = "public-value"
+  assert.throws(() => validateRegistry(staticAuthorization), /credential-like field Authorization/)
+
+  const stdioHeader = clone()
+  stdioHeader.servers.context7.staticHeaders["X-Public-Metadata"] = "documentation"
+  assert.throws(() => validateRegistry(stdioHeader), /stdio transport cannot define HTTP headers/)
+
+  const httpEnvironment = clone()
+  httpEnvironment.servers["better-auth"].staticEnv.MODE = "read-only"
+  assert.throws(() => validateRegistry(httpEnvironment), /HTTP transport cannot define process environment/)
+})
+
 test("dynamic executable versions fail validation", () => {
   const registry = clone()
   registry.servers.context7.implementation.version = "latest"
@@ -75,7 +97,7 @@ test("PostgreSQL stays disabled with generated DBHub guardrails", () => {
   assert.match(codex, /@bytebase\/dbhub@0\.23\.0/)
   assert.match(codex, /\[mcp_servers\.postgres\][\s\S]*enabled = false/)
   assert.match(codex, /env_vars = \["SIAB_MCP_POSTGRES_URL"\]/)
-  assert.match(codex, /cwd = "\.\."/)
+  assert.match(codex, /cwd = "\."/)
   assert.match(dbhub, /dsn = "\$\{SIAB_MCP_POSTGRES_URL\}"/)
   assert.match(dbhub, /connection_timeout = 10/)
   assert.match(dbhub, /query_timeout = 15/)
@@ -84,7 +106,15 @@ test("PostgreSQL stays disabled with generated DBHub guardrails", () => {
 
   const unsafe = clone()
   unsafe.servers.postgres.runtimeConfig.executeSql.readOnly = false
-  assert.throws(() => validateRegistry(unsafe), /readOnly must be true/)
+  assert.throws(() => validateRegistry(unsafe), /does not enforce read-only SQL/)
+
+  const bogusReadOnlyPath = clone()
+  bogusReadOnlyPath.servers.postgres.serverPolicy.readOnly.enforcement.value = "anything.is.readonly"
+  assert.throws(() => validateRegistry(bogusReadOnlyPath), /must be tools\.execute_sql\.readonly/)
+
+  const mismatchedTools = clone()
+  mismatchedTools.servers.postgres.serverPolicy.toolAllowlist.values = ["execute_sql"]
+  assert.throws(() => validateRegistry(mismatchedTools), /does not match generated DBHub tools/)
 })
 
 test("unsafe Docker integration remains disabled and Codex-only", () => {

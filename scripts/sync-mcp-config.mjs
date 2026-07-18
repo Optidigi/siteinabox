@@ -60,6 +60,19 @@ function validateNoCredentialUrls(value, location = "registry") {
   }
 }
 
+function validateNoEmbeddedSecret(value, location, { opaqueValue = false } = {}) {
+  const knownSecret = /(?:github_pat_|gh[pousr]_|sk-(?:proj-)?)[a-z0-9_-]+|\bbearer\s+\S+|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|password|secret|api[_-]?key)\s*[:=]\s*\S+/i
+  assert(!knownSecret.test(value), `${location} contains an embedded credential-like value`)
+  if (opaqueValue) {
+    const compact = value.replace(/\s/g, "")
+    const looksOpaque = compact.length >= 20
+      && /^[a-z0-9_+/=-]+$/i.test(compact)
+      && /[a-z]/i.test(compact)
+      && /\d/.test(compact)
+    assert(!looksOpaque, `${location} contains an embedded opaque credential-like value`)
+  }
+}
+
 function targetSupports(server, target) {
   const policy = server.clientPolicy
   if (!policy.defaultEnabled && target !== "codex") return false
@@ -83,8 +96,20 @@ function validateEnforcement(server, control, location) {
   } else {
     if (kind === "generatedConfig") {
       assert(server.runtimeConfig, `${location} generatedConfig enforcement requires runtimeConfig`)
+      assert(server.runtimeConfig.kind === "dbhub", `${location} generatedConfig enforcement requires DBHub runtimeConfig`)
+      if (location.endsWith(".serverPolicy.readOnly")) {
+        assert(value === "tools.execute_sql.readonly", `${location} generatedConfig path must be tools.execute_sql.readonly`)
+        assert(server.runtimeConfig.executeSql.readOnly === true, `${location} generatedConfig does not enforce read-only SQL`)
+      } else if (location.endsWith(".serverPolicy.toolAllowlist")) {
+        assert(value === "tools", `${location} generatedConfig path must be tools`)
+        const exposedTools = ["execute_sql", ...(server.runtimeConfig.exposeSearchObjects ? ["search_objects"] : [])]
+        assert(control.values.length === exposedTools.length && control.values.every((tool) => exposedTools.includes(tool)), `${location} does not match generated DBHub tools`)
+      } else {
+        assert(false, `${location} does not support generatedConfig enforcement`)
+      }
       return
     }
+    assert(server.transport === "http", `${location} header enforcement requires HTTP transport`)
     assert(Object.hasOwn(server.staticHeaders, value), `${location} header enforcement is missing from staticHeaders`)
     enforcedValue = server.staticHeaders[value]
   }
@@ -146,8 +171,19 @@ export function validateRegistry(registry) {
       assert(server[field] && typeof server[field] === "object" && !Array.isArray(server[field]), `${location}.${field} must be an object`)
       assert(Object.values(server[field]).every((value) => typeof value === "string"), `${location}.${field} values must be strings`)
     }
+    if (server.transport === "stdio") {
+      assert(Object.keys(server.staticHeaders).length === 0 && Object.keys(server.secretHeaders).length === 0, `${location} stdio transport cannot define HTTP headers`)
+    } else {
+      assert(Object.keys(server.staticEnv).length === 0, `${location} HTTP transport cannot define process environment`)
+    }
     for (const key of Object.keys(server.staticEnv)) {
       assert(!/(TOKEN|SECRET|PASSWORD|KEY|DSN|URL)/i.test(key), `${location}.staticEnv cannot contain credential-like field ${key}`)
+    }
+    for (const [index, arg] of server.args?.entries() ?? []) validateNoEmbeddedSecret(arg, `${location}.args[${index}]`)
+    for (const [key, value] of Object.entries(server.staticEnv)) validateNoEmbeddedSecret(value, `${location}.staticEnv.${key}`, { opaqueValue: true })
+    for (const [key, value] of Object.entries(server.staticHeaders)) {
+      assert(!/(AUTHORIZATION|TOKEN|SECRET|PASSWORD|API[-_]?KEY)/i.test(key), `${location}.staticHeaders cannot contain credential-like field ${key}`)
+      validateNoEmbeddedSecret(value, `${location}.staticHeaders.${key}`, { opaqueValue: true })
     }
     for (const envName of Object.values(server.secretHeaders)) {
       assert(server.requiredEnv.includes(envName), `${location}.secretHeaders must reference a required environment name`)
@@ -237,7 +273,7 @@ function tomlServer(name, server, target) {
     if (Object.keys(server.staticEnv).length > 0) lines.push(`env = ${tomlInlineTable(server.staticEnv)}`)
     if (Object.keys(server.staticHeaders).length > 0) lines.push(`http_headers = ${tomlInlineTable(server.staticHeaders)}`)
     if (Object.keys(server.secretHeaders).length > 0) lines.push(`env_http_headers = ${tomlInlineTable(server.secretHeaders)}`)
-    if (server.workingDirectory === "repositoryRoot") lines.push('cwd = ".."')
+    if (server.workingDirectory === "repositoryRoot") lines.push('cwd = "."')
   }
   return `${lines.join("\n")}\n`
 }

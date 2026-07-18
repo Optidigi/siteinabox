@@ -40,7 +40,7 @@ enabled = false
 required = false
 default_tools_approval_mode = "auto"
 env_vars = ["SIAB_MCP_POSTGRES_URL"]
-cwd = ".."
+cwd = "."
 
 [mcp_servers.posthog]
 url = "https://mcp.posthog.com/mcp"
