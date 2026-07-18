@@ -151,11 +151,14 @@ try {
     const consentChrome = await acceptedPage.evaluate(() => {
       const banner = document.querySelector("[data-siab-cookie-consent]")
       const accept = document.querySelector('[data-consent-action="accept"]')
+      const reject = document.querySelector('[data-consent-action="reject"]')
       const privacy = banner?.querySelector('a[href="/privacy-en-cookieverklaring"]')
       assertElement(banner, "consent banner")
       assertElement(accept, "accept button")
+      assertElement(reject, "reject button")
       const bannerStyle = getComputedStyle(banner)
       const acceptStyle = getComputedStyle(accept)
+      const rejectStyle = getComputedStyle(reject)
       return {
         labelledBy: banner.getAttribute("aria-labelledby"),
         describedBy: banner.getAttribute("aria-describedby"),
@@ -164,7 +167,13 @@ try {
         borderRadius: bannerStyle.borderTopLeftRadius,
         boxShadow: bannerStyle.boxShadow,
         acceptBackground: acceptStyle.backgroundColor,
+        rejectBackground: rejectStyle.backgroundColor,
+        acceptShadow: acceptStyle.boxShadow,
+        rejectShadow: rejectStyle.boxShadow,
+        acceptWidth: accept.getBoundingClientRect().width,
+        rejectWidth: reject.getBoundingClientRect().width,
         acceptHeight: accept.getBoundingClientRect().height,
+        rejectHeight: reject.getBoundingClientRect().height,
       }
 
       function assertElement(value, label) {
@@ -178,6 +187,10 @@ try {
     assert.equal(consentChrome.borderRadius, "0px")
     assert.notEqual(consentChrome.boxShadow, "none")
     assert.equal(consentChrome.acceptBackground, "rgb(245, 233, 0)")
+    assert.equal(consentChrome.rejectBackground, consentChrome.acceptBackground)
+    assert.equal(consentChrome.rejectShadow, consentChrome.acceptShadow)
+    assert.equal(consentChrome.rejectHeight, consentChrome.acceptHeight)
+    assert.equal(consentChrome.rejectWidth, consentChrome.acceptWidth)
     assert.ok(consentChrome.acceptHeight >= 44, "accept target remains at least 44px high")
     assert.deepEqual(acceptedEvents, [], "analytics ingestion is empty before consent")
     assert.equal(

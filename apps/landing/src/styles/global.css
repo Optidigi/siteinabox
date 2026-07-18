@@ -99,6 +99,7 @@ body {
 }
 
 .siab-cookie-consent__actions button {
+  width: 7.75rem;
   min-height: 46px;
   padding: .65rem 1.1rem;
   border: 2px solid var(--siab-border, #000);
@@ -110,12 +111,7 @@ body {
   transition: transform .12s, box-shadow .12s, background .12s;
 }
 
-.siab-cookie-consent__reject {
-  background: var(--siab-bg-surface, #fff);
-  color: var(--siab-text, #000);
-}
-
-.siab-cookie-consent__accept {
+.siab-cookie-consent__choice {
   background: var(--siab-accent-yellow, #f5e900);
   color: #000;
   box-shadow: 4px 4px var(--siab-shadow-color, #000);
@@ -125,7 +121,7 @@ body {
   transform: translate(2px, 2px);
 }
 
-.siab-cookie-consent__accept:hover {
+.siab-cookie-consent__choice:hover {
   box-shadow: 2px 2px var(--siab-shadow-color, #000);
 }
 
@@ -153,6 +149,10 @@ body {
   .siab-cookie-consent__actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+  }
+
+  .siab-cookie-consent__actions button {
+    width: 100%;
   }
 }
 
