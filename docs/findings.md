@@ -114,14 +114,19 @@ observations before acting on them.
 
 ## SIAB-012 — Public analytics activation requires production proof
 
-- **Classification:** Implementation complete; production verification
-  pending; **confidence:** high from repository sources.
+- **Classification:** Historical / closed; **confidence:** high from
+  event-level production browser verification.
 - **Scope:** Landing and generated tenant-site analytics.
 - **Evidence:** The owner approved the shared accept/reject consent flow and
-  explicitly accepted SIAB-002 temporarily on 2026-07-18. The governed package
-  now approves consent version `2026-07-07.1`, matching the current privacy
-  document release.
-- **Next:** Run both public browser regressions and production network smoke.
-  Close only after production proves the banner is visible, no PostHog request
-  occurs before consent, acceptance starts the approved runtime, and rejection
-  keeps it disabled.
+  explicitly accepted SIAB-002 temporarily on 2026-07-18. Consent version
+  `2026-07-07.1` matches the current privacy document release. Production
+  browser verification on 2026-07-18 proved the banner on the platform and
+  tenant sites, no PostHog request before consent, no event after rejection,
+  and native PostHog capture after acceptance. The landing verification decoded
+  exactly one `$pageview` and `$pageleave` with native duration and scroll
+  properties while intercepting every analytics endpoint, so it made no real
+  provider write. CI now runs equivalent event-level landing and renderer
+  regressions against fake ingestion endpoints.
+- **Review trigger:** Reopen if the approved consent version, generated tenant
+  defaults, public build token, banner, or event-level browser regressions are
+  removed or weakened.

@@ -25,8 +25,8 @@ stable internal IDs plus role/tenant/domain context.
 PostHog's web analytics installation health checks map to SIAB as follows:
 
 - `$pageview` and `$pageleave`: the canonical contract assigns both to the
-  PostHog SDK. The renderer's intercepted-ingestion browser regression verifies
-  one event of each kind per consented page lifecycle.
+  PostHog SDK. The landing and renderer intercepted-ingestion browser
+  regressions verify one event of each kind per consented page lifecycle.
 - Scroll depth: PostHog expects native `$prev_pageview_*` properties, including
   `$prev_pageview_max_content_percentage`, on `$pageleave` or the following
   `$pageview`. The site runtime keeps `disable_scroll_properties: false`.
@@ -123,8 +123,13 @@ those event names.
 Repository implementation now also covers the platform landing site and native
 tenant grouping. Consent version `2026-07-07.1` is approved: public runtimes
 remain inactive before a choice, start only after acceptance, and remain
-disabled after rejection. Do not infer live landing events or existing PostHog
-group types until an approved deployment and provider query confirm them.
+disabled after rejection. Production browser verification on 2026-07-18
+confirmed the banner and this request boundary on both the platform and tenant
+sites. The landing verification decoded one native `$pageview` and `$pageleave`
+with native duration and scroll properties after acceptance, zero events after
+rejection, and intercepted every analytics endpoint to avoid a test write.
+Existing PostHog group types still require a provider query; browser capture
+proves emitted group metadata, not provider-side group materialization.
 
 Generated tenant manifests receive this approved consent policy automatically.
 The migration `20260718_123000_backfill_public_analytics_consent` adds it only
@@ -133,12 +138,14 @@ tenant choices are not overwritten. The landing GHCR workflow separately
 requires the Actions secret `POSTHOG_PROJECT_TOKEN` and fails closed when that
 build input is missing.
 
-Live browser smoke on 2026-06-08 found that consent-and-idle SDK initialization
-can miss PostHog JS's normal DOM-loaded initial pageview path. The public-site
-runtime therefore calls `posthog.opt_in_capturing({ captureEventName: false })`
-inside the SDK `loaded` hook after registering SIAB metadata. In the installed
-PostHog JS SDK, this starts capture after consent and triggers the SDK-owned
-initial `$pageview` without emitting a separate `$opt_in` event.
+The public-site runtime calls
+`posthog.opt_in_capturing({ captureEventName: false })` inside the SDK `loaded`
+hook after registering SIAB metadata. In the installed PostHog JS SDK, this
+starts capture after consent and triggers the SDK-owned initial `$pageview`
+without emitting a separate `$opt_in` event. Automated production probes must
+neutralize both `navigator.webdriver` and headless browser brands: PostHog
+intentionally drops detected bot events, which otherwise creates a false
+negative while still showing successful SDK initialization.
 
 ## Reverse Proxy Strategy
 
