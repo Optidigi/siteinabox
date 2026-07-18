@@ -5,7 +5,7 @@
  */
 export const publicAnalyticsConsentApproval = Object.freeze({
   privacyDocumentVersion: '2026-07-07.1',
-  consentVersion: null,
+  consentVersion: '2026-07-07.1',
   maxEventRetentionDays: 396,
 })
 

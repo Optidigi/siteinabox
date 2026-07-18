@@ -13,7 +13,7 @@ test('public analytics approval is anchored to the current privacy release', () 
   const privacy = getCurrentLegalDocument('platform-privacy', 'nl', new Date('2026-07-11T00:00:00Z'))
 
   assert.equal(publicAnalyticsConsentApproval.privacyDocumentVersion, privacy.documentVersion)
-  assert.equal(publicAnalyticsConsentApproval.consentVersion, null)
+  assert.equal(publicAnalyticsConsentApproval.consentVersion, '2026-07-07.1')
   assert.equal(publicAnalyticsConsentApproval.maxEventRetentionDays, 396)
 })
 

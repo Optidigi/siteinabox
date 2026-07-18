@@ -26,7 +26,7 @@ const baseSnapshot = {
       enabled: true,
       provider: "posthog",
       consentStorageKey: "siab_cookie_consent_v1",
-      consentVersion: "2026-06",
+      consentVersion: "2026-07-07.1",
       captureActions: true,
       captureForms: false,
     },
@@ -38,11 +38,12 @@ const page = {
   title: "Home",
 }
 
-test("omits analytics until a public analytics consent version is legally approved", () => {
+test("emits analytics for the governed public consent version", () => {
   const config = buildAnalyticsConfig({ snapshot: baseSnapshot, page, pathname: "/" })
 
-  assert.equal(publicAnalyticsConsentApproval.consentVersion, null)
-  assert.equal(config, null)
+  assert.equal(publicAnalyticsConsentApproval.consentVersion, "2026-07-07.1")
+  assert.equal(config?.consentVersion, "2026-07-07.1")
+  assert.equal(config?.posthogProjectToken, "phc_public")
 })
 
 test("escapes JSON for safe inline script embedding", () => {
@@ -55,11 +56,11 @@ test("escapes JSON for safe inline script embedding", () => {
 test("requires enabled PostHog consent with storage and the exact approved version", () => {
   const consent = baseSnapshot.settings.analyticsConsent
 
-  assert.equal(matchesApprovedPublicAnalyticsConsent(consent, "2026-06"), true)
-  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, enabled: false }, "2026-06"), false)
-  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, provider: "custom" }, "2026-06"), false)
-  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, consentStorageKey: "" }, "2026-06"), false)
-  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, consentVersion: "stale" }, "2026-06"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent(consent, "2026-07-07.1"), true)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, enabled: false }, "2026-07-07.1"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, provider: "custom" }, "2026-07-07.1"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, consentStorageKey: "" }, "2026-07-07.1"), false)
+  assert.equal(matchesApprovedPublicAnalyticsConsent({ ...consent, consentVersion: "stale" }, "2026-07-07.1"), false)
   assert.equal(matchesApprovedPublicAnalyticsConsent(consent, null), false)
 })
 
@@ -74,7 +75,7 @@ test("omits analytics config when snapshot settings have no analytics block", ()
   assert.equal(analyticsConfigJson(config), null)
 })
 
-test("does not bypass legal consent approval when public token fields exist", () => {
+test("ignores private-looking token aliases when a public token exists", () => {
   const config = buildAnalyticsConfig({
     snapshot: {
       ...baseSnapshot,
@@ -92,7 +93,9 @@ test("does not bypass legal consent approval when public token fields exist", ()
     pathname: "/",
   })
 
-  assert.equal(config, null)
+  assert.equal(config?.posthogProjectToken, "phc_public")
+  assert.equal(JSON.stringify(config).includes("private_api_key"), false)
+  assert.equal(JSON.stringify(config).includes("private_project_api_key"), false)
 })
 
 test("omits analytics config when only private-looking PostHog token aliases exist", () => {

@@ -121,10 +121,10 @@ cache windows; the current tenant-site and Amicare source no longer emit
 those event names.
 
 Repository implementation now also covers the platform landing site and native
-tenant grouping, but public capture is intentionally inactive until the legal
-consent gate has a reviewed non-null version. Do not infer live landing events
-or existing PostHog group types until an approved deployment and provider query
-confirm them.
+tenant grouping. Consent version `2026-07-07.1` is approved: public runtimes
+remain inactive before a choice, start only after acceptance, and remain
+disabled after rejection. Do not infer live landing events or existing PostHog
+group types until an approved deployment and provider query confirm them.
 
 Live browser smoke on 2026-06-08 found that consent-and-idle SDK initialization
 can miss PostHog JS's normal DOM-loaded initial pageview path. The public-site

@@ -26,6 +26,10 @@ observations before acting on them.
   retention entitlement through PostHog billing/support, then rerun
   `pnpm --dir apps/cms posthog:check-settings`. Do not represent the repository
   target as provider-enforced until that check passes.
+- **Temporary disposition:** On 2026-07-18, the owner explicitly accepted the
+  current 84-month provider retention temporarily so consent-gated public
+  analytics could be activated. This does not resolve the finding or change
+  the governed 13-month target.
 
 ## SIAB-003 — Legal-notice interaction needs production smoke
 
@@ -108,17 +112,16 @@ observations before acting on them.
   dependency, Docker build input, workflow path selection, or deploy-contract
   fixture.
 
-## SIAB-012 — Public analytics awaits governed consent approval
+## SIAB-012 — Public analytics activation requires production proof
 
-- **Classification:** Intentional / accepted legal constraint; **confidence:**
-  high from repository sources.
+- **Classification:** Implementation complete; production verification
+  pending; **confidence:** high from repository sources.
 - **Scope:** Landing and generated tenant-site analytics.
-- **Evidence:** Both public runtimes are implemented and consent-gated, but
-  `packages/legal-content/src/consent-approval.js` keeps
-  `publicAnalyticsConsentApproval.consentVersion` null. The renderer and landing
-  therefore emit no analytics configuration, banner, identifier, or event.
-- **Next:** A privacy owner must approve matching shared consent chrome and a
-  privacy-document release, set the reviewed version through the governed legal
-  package, resolve or explicitly accept SIAB-002, then rerun the event-level
-  browser regressions and production network smoke. Deployment alone must not
-  bypass this gate.
+- **Evidence:** The owner approved the shared accept/reject consent flow and
+  explicitly accepted SIAB-002 temporarily on 2026-07-18. The governed package
+  now approves consent version `2026-07-07.1`, matching the current privacy
+  document release.
+- **Next:** Run both public browser regressions and production network smoke.
+  Close only after production proves the banner is visible, no PostHog request
+  occurs before consent, acceptance starts the approved runtime, and rejection
+  keeps it disabled.

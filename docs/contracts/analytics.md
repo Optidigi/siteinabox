@@ -150,8 +150,9 @@ contact-click conversion goals empty unless explicitly configured.
 
 The static landing site uses the same consent, lifecycle-ownership, property,
 and privacy rules with `site_kind: platform` and no tenant group. Both public
-runtimes remain fail-closed while the governed legal consent approval version
-is null; see `packages/legal-content/src/consent-approval.js` and SIAB-012.
+runtimes expose the approved consent UI for version `2026-07-07.1`, remain
+inactive before a choice, initialize PostHog only after acceptance, and remain
+disabled after rejection.
 
 ## Server capture and CMS queries
 
