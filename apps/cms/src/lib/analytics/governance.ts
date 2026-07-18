@@ -35,6 +35,11 @@ export const PUBLIC_BROWSER_ANALYTICS_POLICY: Record<PublicSiteEventName, Analyt
   ]),
 ) as Record<PublicSiteEventName, AnalyticsPurposePolicy>
 
+export const PUBLIC_BASELINE_ANALYTICS_POLICY = {
+  "$pageview": policy("service_improvement", "legitimate_interest"),
+  "$web_vitals": policy("site_performance", "legitimate_interest"),
+} as const satisfies Partial<Record<PublicSiteEventName, AnalyticsPurposePolicy>>
+
 export const PUBLIC_SERVER_ANALYTICS_POLICY = {
   site_form_accepted: policy("operational_conversion", "legitimate_interest"),
   site_conversion_completed: policy("operational_conversion", "legitimate_interest"),

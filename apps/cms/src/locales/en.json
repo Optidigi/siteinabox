@@ -186,7 +186,7 @@
   },
   "analytics": {
     "title": "Analytics",
-    "description": "A focused view of consented website traffic, actions, and conversions.",
+    "description": "A focused view of privacy-friendly website traffic and performance, plus consented actions and conversions.",
     "superAdminDescription": "Select a site first to view analytics.",
     "unavailableTitle": "Analytics are not connected",
     "unavailableDescription": "PostHog query settings are missing or disabled. Tracking can still be projected for sites once configuration is present.",
@@ -241,7 +241,7 @@
     "performanceOverview": "Performance overview",
     "overallScore": "Overall score",
     "scoreUnavailable": "Not enough data",
-    "measuredFromVisitors": "{samples} measurements from about {visitors} visitors after analytics consent.",
+    "measuredFromVisitors": "{samples} privacy-friendly measurements from about {visitors} visitors.",
     "lowSampleNotice": "This score is based on a small number of measurements and can move quickly.",
     "fieldPerformanceExplanation": "Real visitor loading, interaction, and stability signals.",
     "siteQualityExplanation": "CMS checks for metadata, navigation, contact details, and publishing basics.",

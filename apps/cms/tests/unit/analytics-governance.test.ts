@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   ANALYTICS_RETENTION_MONTHS,
   CMS_ANALYTICS_POLICY,
+  PUBLIC_BASELINE_ANALYTICS_POLICY,
   PUBLIC_BROWSER_ANALYTICS_POLICY,
   PUBLIC_SERVER_ANALYTICS_POLICY,
 } from "@/lib/analytics/governance"
@@ -13,11 +14,23 @@ describe("analytics purpose governance", () => {
     expect(Object.keys(PUBLIC_BROWSER_ANALYTICS_POLICY).sort()).toEqual([...PUBLIC_SITE_EVENT_NAMES].sort())
   })
 
-  it("keeps public browser intelligence consent-gated and direct-identifier free", () => {
+  it("keeps richer public browser intelligence consent-gated and direct-identifier free", () => {
     for (const policy of Object.values(PUBLIC_BROWSER_ANALYTICS_POLICY)) {
       expect(policy).toMatchObject({
         legalBasis: "consent",
         consentCategory: "analytics",
+        retentionMonths: ANALYTICS_RETENTION_MONTHS,
+        permitsDirectIdentifiers: false,
+      })
+    }
+  })
+
+  it("limits the non-consent browser baseline to minimized page and performance events", () => {
+    expect(Object.keys(PUBLIC_BASELINE_ANALYTICS_POLICY).sort()).toEqual(["$pageview", "$web_vitals"])
+    for (const policy of Object.values(PUBLIC_BASELINE_ANALYTICS_POLICY)) {
+      expect(policy).toMatchObject({
+        legalBasis: "legitimate_interest",
+        consentCategory: null,
         retentionMonths: ANALYTICS_RETENTION_MONTHS,
         permitsDirectIdentifiers: false,
       })

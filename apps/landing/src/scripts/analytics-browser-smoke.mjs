@@ -147,7 +147,7 @@ try {
     await installIngestRoute(acceptedPage, ingestOrigin, acceptedEvents, ingestRequests)
     await installLandingRoute(acceptedPage, publicOrigin, landingOrigin)
 
-    await acceptedPage.goto(publicOrigin, { waitUntil: "networkidle", timeout: 60_000 })
+    await acceptedPage.goto(`${publicOrigin}/?email=private%40example.test&utm_campaign=secret`, { waitUntil: "networkidle", timeout: 60_000 })
     const consentChrome = await acceptedPage.evaluate(() => {
       const banner = document.querySelector("[data-siab-cookie-consent]")
       const accept = document.querySelector('[data-consent-action="accept"]')
@@ -192,7 +192,22 @@ try {
     assert.equal(consentChrome.rejectHeight, consentChrome.acceptHeight)
     assert.equal(consentChrome.rejectWidth, consentChrome.acceptWidth)
     assert.ok(consentChrome.acceptHeight >= 44, "accept target remains at least 44px high")
-    assert.deepEqual(acceptedEvents, [], "analytics ingestion is empty before consent")
+    await waitFor(
+      () => acceptedEvents.some((event) => event.event === "$pageview"),
+      "cookieless baseline did not capture a landing pageview",
+    )
+    const baselinePageviews = acceptedEvents.filter((event) => event.event === "$pageview")
+    assert.equal(baselinePageviews.length, 1, "baseline captures one pageview")
+    const baseline = baselinePageviews[0].properties
+    assert.equal(baseline.analytics_tier, "baseline")
+    assert.equal(baseline.distinct_id, "$posthog_cookieless")
+    assert.equal(baseline.$device_id, null)
+    assert.equal(baseline.$cookieless_mode, true)
+    assert.equal(baseline.$process_person_profile, false)
+    assert.doesNotMatch(baseline.$current_url, /email|utm_campaign|private/)
+    for (const forbidden of ["$session_id", "$referrer", "$referring_domain", "$groups", "tenant_name", "utm_campaign", "gclid"]) {
+      assert.equal(forbidden in baseline, false, `baseline omits ${forbidden}`)
+    }
     assert.equal(
       await acceptedPage.evaluate(() => Object.keys(localStorage).filter((key) => /posthog/i.test(key)).length),
       0,
@@ -200,20 +215,14 @@ try {
     )
 
     await acceptedPage.click('[data-consent-action="accept"]')
-    try {
-      await waitFor(
-        () => acceptedEvents.some((event) => event.event === "$pageview"),
-        "PostHog JS did not capture a landing pageview",
-      )
-    } catch {
-      const state = await acceptedPage.evaluate(() => ({
-        config: document.querySelector("#siab-analytics-config")?.textContent,
-        consent: localStorage.getItem("siab_platform_analytics_consent"),
-        localStorage: { ...localStorage },
-        posthogKeys: Object.keys(localStorage).filter((key) => /posthog/i.test(key)),
-      }))
-      assert.fail(`PostHog JS did not capture a landing pageview\n${JSON.stringify({ state, ingestRequests, browserErrors }, null, 2)}\n${output}`)
-    }
+    await acceptedPage.waitForTimeout(250)
+    assert.equal(acceptedEvents.filter((event) => event.event === "$pageview").length, 1, "consent transition does not duplicate the current pageview")
+    await acceptedPage.reload({ waitUntil: "networkidle", timeout: 60_000 })
+    await waitFor(
+      () => acceptedEvents.some((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented"),
+      "stored consent did not start a consented PostHog lifecycle",
+    )
+    const consentedStart = acceptedEvents.findIndex((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented")
     await acceptedPage.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await acceptedPage.waitForTimeout(250)
     await acceptedPage.evaluate(() => {
@@ -226,12 +235,15 @@ try {
       "PostHog JS did not capture a landing pageleave",
     )
 
-    const pageviews = acceptedEvents.filter((event) => event.event === "$pageview")
-    const pageleaves = acceptedEvents.filter((event) => event.event === "$pageleave")
-    assert.equal(pageviews.length, 1, `one lifecycle must emit one $pageview: ${JSON.stringify(pageviews)}`)
+    const consentedLifecycle = acceptedEvents.slice(consentedStart)
+    const pageviews = consentedLifecycle.filter((event) => event.event === "$pageview")
+    const pageleaves = consentedLifecycle.filter((event) => event.event === "$pageleave")
+    assert.equal(pageviews.length, 1, `one consented lifecycle emits one SDK-owned $pageview: ${JSON.stringify(pageviews)}`)
     assert.equal(pageleaves.length, 1, `one lifecycle must emit one $pageleave: ${JSON.stringify(pageleaves)}`)
     assert.equal(pageviews[0]?.properties?.analytics_surface, "site")
     assert.equal(pageviews[0]?.properties?.site_kind, "platform")
+    assert.deepEqual(pageviews.map((event) => event.properties.analytics_tier), ["consented"])
+    assert.equal(pageleaves[0]?.properties?.analytics_tier, "consented")
     assert.equal(typeof pageleaves[0]?.properties?.$prev_pageview_duration, "number")
     assert.equal(typeof pageleaves[0]?.properties?.$prev_pageview_max_scroll, "number")
     assert.deepEqual(externalAnalyticsRequests, [], "the regression never reaches a real PostHog host")
@@ -240,7 +252,7 @@ try {
     const rejectedEvents = []
     await installIngestRoute(rejectedPage, ingestOrigin, rejectedEvents)
     await installLandingRoute(rejectedPage, publicOrigin, landingOrigin)
-    await rejectedPage.goto(publicOrigin, { waitUntil: "networkidle", timeout: 60_000 })
+    await rejectedPage.goto(`${publicOrigin}/?token=must-not-leak`, { waitUntil: "networkidle", timeout: 60_000 })
     const mobileActions = await rejectedPage.locator(".siab-cookie-consent__actions").evaluate((element) => ({
       display: getComputedStyle(element).display,
       columns: getComputedStyle(element).gridTemplateColumns,
@@ -251,7 +263,12 @@ try {
     assert.ok(mobileActions.width > 250, "mobile consent actions use the available width")
     await rejectedPage.click('[data-consent-action="reject"]')
     await rejectedPage.waitForTimeout(750)
-    assert.deepEqual(rejectedEvents, [], "rejecting consent keeps PostHog disabled")
+    const rejectedPageviews = rejectedEvents.filter((event) => event.event === "$pageview")
+    assert.equal(rejectedPageviews.length, 1, "rejecting retains one minimized baseline pageview")
+    assert.equal(rejectedPageviews[0].properties.analytics_tier, "baseline")
+    assert.equal(rejectedPageviews[0].properties.distinct_id, "$posthog_cookieless")
+    assert.doesNotMatch(rejectedPageviews[0].properties.$current_url, /token|must-not-leak/)
+    assert.equal(rejectedEvents.some((event) => event.event === "$pageleave" || event.event === "$autocapture"), false)
     assert.equal(
       await rejectedPage.evaluate(() => Object.keys(localStorage).filter((key) => /posthog/i.test(key)).length),
       0,
@@ -259,11 +276,11 @@ try {
     )
 
     console.log(JSON.stringify({
-      pageviews: pageviews.length,
+      pageviewsByTier: pageviews.map((event) => event.properties.analytics_tier),
       pageleaves: pageleaves.length,
       nativeDuration: pageleaves[0].properties.$prev_pageview_duration,
       nativeMaxScroll: pageleaves[0].properties.$prev_pageview_max_scroll,
-      rejectedEvents: rejectedEvents.length,
+      rejectedBaselinePageviews: rejectedPageviews.length,
     }))
   } finally {
     await browser.close()

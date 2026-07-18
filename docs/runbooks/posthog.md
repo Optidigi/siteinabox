@@ -6,10 +6,12 @@ usage analytics.
 
 ## Consent Boundary
 
-The landing and tenant public sites initialize `posthog-js` only after
-analytics consent is granted. Native PostHog events such as `$pageview`, `$pageleave`,
-`$autocapture`, `$rageclick`, `$dead_click`, and `$web_vitals` are therefore
-also consent-gated.
+The landing and tenant public sites initialize one `posthog-js` instance in
+`cookieless_mode: "on_reject"`. Pending/refused visitors emit only minimized
+`$pageview` and `$web_vitals` events with `analytics_tier: baseline`; the SDK
+stores no PostHog cookie/local/session identifier or person profile. Consent
+enables `analytics_tier: consented` lifecycle, interaction, tenant grouping,
+and semantic events. Refusal does not disable the minimized baseline.
 
 The authenticated CMS sends minimized semantic events through its authenticated
 server endpoint without a public cookie banner. It does not initialize a second
@@ -25,8 +27,10 @@ stable internal IDs plus role/tenant/domain context.
 PostHog's web analytics installation health checks map to SIAB as follows:
 
 - `$pageview` and `$pageleave`: the canonical contract assigns both to the
-  PostHog SDK. The landing and renderer intercepted-ingestion browser
-  regressions verify one event of each kind per consented page lifecycle.
+  PostHog SDK. The baseline permits one minimized pageview; pageleave remains
+  consented. The landing and renderer intercepted-ingestion browser regressions
+  verify one event of each kind per consented lifecycle after a stored choice,
+  plus a single non-duplicated baseline pageview during consent transition.
 - Scroll depth: PostHog expects native `$prev_pageview_*` properties, including
   `$prev_pageview_max_content_percentage`, on `$pageleave` or the following
   `$pageview`. The site runtime keeps `disable_scroll_properties: false`.
@@ -74,6 +78,7 @@ privacy baseline:
 - `autocapture_web_vitals_allowed_metrics`: `CLS`, `FCP`, `INP`, `LCP`
 - `capture_performance_opt_in`
 - `autocapture_opt_out: true`
+- `cookieless_server_hash_mode: 1` (stateless)
 
 Event retention is audited by the same command, but current PostHog project and
 environment APIs expose `event_retention_months` and
@@ -122,14 +127,13 @@ events were present for `ami-care.nl`. CMS semantic events use
 cache windows; the current tenant-site and Amicare source no longer emit
 those event names.
 
-Repository implementation now also covers the platform landing site and native
-tenant grouping. Consent version `2026-07-07.1` is approved: public runtimes
-remain inactive before a choice, start only after acceptance, and remain
-disabled after rejection. Production browser verification on 2026-07-18
-confirmed the banner and this request boundary on both the platform and tenant
-sites. The landing verification decoded one native `$pageview` and `$pageleave`
-with native duration and scroll properties after acceptance, zero events after
-rejection, and intercepted every analytics endpoint to avoid a test write.
+Repository implementation covers the platform landing site, dynamic tenant
+sites, and native tenant grouping. Consent version `2026-07-07.1` is approved.
+The runtime contract now uses a minimized cookieless baseline before a choice
+and after refusal, with richer analytics only after acceptance. Local
+intercepted-ingestion regressions decode the tiered payloads and prevent real
+analytics writes. Production provider setting and payload verification must be
+re-run after deployment before claiming the baseline is live.
 Existing PostHog group types still require a provider query; browser capture
 proves emitted group metadata, not provider-side group materialization.
 
@@ -141,9 +145,8 @@ requires the Actions secret `POSTHOG_PROJECT_TOKEN` and fails closed when that
 build input is missing.
 
 The public-site runtime calls
-`posthog.opt_in_capturing({ captureEventName: false })` inside the SDK `loaded`
-hook after registering SIAB metadata. In the installed PostHog JS SDK, this
-starts capture after consent and triggers the SDK-owned initial `$pageview`
+`posthog.opt_in_capturing({ captureEventName: false })` after accepted consent.
+The installed SDK resets cookieless state before starting persistent capture,
 without emitting a separate `$opt_in` event. Automated production probes must
 neutralize both `navigator.webdriver` and headless browser brands: PostHog
 intentionally drops detected bot events, which otherwise creates a false

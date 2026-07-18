@@ -7,6 +7,10 @@ type LandingAnalyticsConfig = {
   siteDomain: string
 }
 
+type PostHogClient = typeof import("posthog-js").default & {
+  clear_opt_in_out_capturing?: () => void
+}
+
 const node = document.querySelector<HTMLScriptElement>("#siab-analytics-config")
 const config = (() => {
   if (!node?.textContent) return null
@@ -14,14 +18,28 @@ const config = (() => {
 })()
 
 let started = false
-let posthog: typeof import("posthog-js").default | null = null
+let consentGranted = false
+let posthog: PostHogClient | null = null
 let recentAction: Record<string, unknown> | null = null
+
+const environment = () => location.hostname === "localhost" ? "development" : "production"
+const referrerType = () => {
+  if (!document.referrer) return "direct"
+  try {
+    const host = new URL(document.referrer).hostname.toLowerCase()
+    if (host === location.hostname) return "internal"
+    if (/(^|\.)google\.|(^|\.)bing\.com$|(^|\.)duckduckgo\.com$|(^|\.)ecosia\.org$/.test(host)) return "search"
+    if (/(^|\.)facebook\.com$|(^|\.)instagram\.com$|(^|\.)linkedin\.com$|(^|\.)x\.com$|(^|\.)twitter\.com$/.test(host)) return "social"
+    return "external"
+  } catch { return "direct" }
+}
 
 const baseProperties = () => ({
   schema_version: 1,
   analytics_surface: "site",
+  analytics_tier: "consented",
   site_kind: "platform",
-  environment: location.hostname === "localhost" ? "development" : "production",
+  environment: environment(),
   tenant_id: null,
   tenant_slug: null,
   tenant_name: null,
@@ -29,6 +47,39 @@ const baseProperties = () => ({
   site_domain: config?.siteDomain ?? location.hostname,
   page_path: location.pathname,
 })
+
+const baselineProperties = () => ({
+  schema_version: 1,
+  analytics_surface: "site",
+  analytics_tier: "baseline",
+  site_kind: "platform",
+  environment: environment(),
+  tenant_id: null,
+  tenant_slug: null,
+  site_id: "platform:siteinabox",
+  site_domain: config?.siteDomain ?? location.hostname,
+  page_path: location.pathname,
+  $current_url: `${location.origin}${location.pathname}`,
+  $host: location.hostname,
+  $pathname: location.pathname,
+  referrer_type: referrerType(),
+  $geoip_disable: true,
+  $process_person_profile: false,
+})
+
+const baselineSdkKeys = new Set([
+  "token", "distinct_id", "$device_id", "$cookieless_mode", "$lib", "$lib_version",
+  "$time", "$insert_id", "$is_identified", "$browser", "$os", "$device_type",
+])
+
+const minimizedBaselineProperties = (properties: Record<string, unknown>, webVitals: boolean) => {
+  const minimized: Record<string, unknown> = { ...baselineProperties() }
+  for (const [key, value] of Object.entries(properties)) {
+    if (baselineSdkKeys.has(key) || (webVitals && key.startsWith("$web_vitals_"))) minimized[key] = value
+  }
+  if (webVitals) minimized.siab_web_vitals = true
+  return minimized
+}
 
 const targetProperties = (anchor: HTMLAnchorElement | null) => {
   if (!anchor) return { target_type: "unknown", target_domain: null, target_path: null }
@@ -48,12 +99,17 @@ const targetProperties = (anchor: HTMLAnchorElement | null) => {
   }
 }
 
+const activateConsented = (instance: PostHogClient) => {
+  instance.opt_in_capturing({ captureEventName: false })
+  instance.register(baseProperties())
+}
+
 const initialize = async () => {
   if (!config || started) return
   started = true
   try {
     const module = await import("posthog-js")
-    posthog = module.default
+    posthog = module.default as PostHogClient
   } catch {
     started = false
     return
@@ -64,8 +120,15 @@ const initialize = async () => {
     defaults: "2026-01-30",
     capture_pageview: true,
     capture_pageleave: true,
-    opt_out_capturing_by_default: true,
     disable_scroll_properties: false,
+    capture_performance: {
+      web_vitals: true,
+      web_vitals_allowed_metrics: ["CLS", "FCP", "INP", "LCP"],
+      web_vitals_attribution: true,
+    },
+    cookieless_mode: "on_reject",
+    opt_out_capturing_by_default: true,
+    opt_out_persistence_by_default: true,
     person_profiles: "identified_only",
     disable_session_recording: true,
     enable_recording_console_log: false,
@@ -78,8 +141,15 @@ const initialize = async () => {
       capture_copied_text: false,
     },
     before_send(event) {
-      if (!event || !["$pageview", "$pageleave", "$autocapture", "$web_vitals", "site_conversion_completed"].includes(event.event)) return null
+      if (!event) return null
+      const allowed = ["$pageview", "$pageleave", "$autocapture", "$web_vitals", "site_conversion_completed"]
+      if (!allowed.includes(event.event)) return null
       const properties = event.properties ?? {}
+      if (!consentGranted) {
+        const webVitals = event.event === "$web_vitals"
+        if (event.event !== "$pageview" && !webVitals) return null
+        return { ...event, properties: minimizedBaselineProperties(properties, webVitals) }
+      }
       delete properties.$el_text
       delete properties.$element_text
       delete properties.$elements
@@ -95,8 +165,7 @@ const initialize = async () => {
       }
     },
     loaded(instance) {
-      instance.register(baseProperties())
-      instance.opt_in_capturing({ captureEventName: false })
+      if (consentGranted) activateConsented(instance as PostHogClient)
     },
   })
 }
@@ -122,12 +191,14 @@ document.addEventListener("click", (event) => {
       categories: { necessary: true, analytics: accepted },
     }))
     document.querySelector<HTMLElement>("[data-siab-cookie-consent]")?.setAttribute("hidden", "")
-    if (accepted) void initialize()
-    else {
-      posthog?.opt_out_capturing()
-      posthog?.reset()
-      posthog = null
-      started = false
+    if (accepted) {
+      consentGranted = true
+      if (posthog) activateConsented(posthog)
+      else void initialize()
+    } else if (consentGranted && posthog) {
+      consentGranted = false
+      posthog.opt_out_capturing()
+      posthog.clear_opt_in_out_capturing?.()
     }
     return
   }
@@ -145,7 +216,7 @@ document.addEventListener("click", (event) => {
     ...target,
   }
   window.setTimeout(() => { recentAction = null }, 0)
-  if (started && ["phone", "email", "whatsapp"].includes(String(target.target_type))) {
+  if (consentGranted && ["phone", "email", "whatsapp"].includes(String(target.target_type))) {
     posthog?.capture("site_conversion_completed", {
       ...baseProperties(),
       ...recentAction,
@@ -154,5 +225,6 @@ document.addEventListener("click", (event) => {
   }
 }, true)
 
-if (receipt() === true) void initialize()
+consentGranted = receipt() === true
 if (receipt() !== null) document.querySelector<HTMLElement>("[data-siab-cookie-consent]")?.setAttribute("hidden", "")
+void initialize()

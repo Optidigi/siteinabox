@@ -242,7 +242,7 @@ export function PerformanceOverviewCard({
             score={overallScore}
             tone={overallTone}
             label={scoreLabel(overallScore, labels)}
-            description={(labels.measuredFromVisitors ?? "Based on real visitor measurements after analytics consent.")
+            description={(labels.measuredFromVisitors ?? "Based on privacy-friendly real visitor measurements.")
               .replace("{samples}", String(sampleCount))
               .replace("{visitors}", String(visitorCount))}
           />

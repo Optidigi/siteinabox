@@ -100,6 +100,8 @@ describe("tenant privacy page materialization", () => {
       label: "Privacy en cookies",
       href: "/privacy-en-cookieverklaring",
     })
+    expect(JSON.stringify(page)).toContain("privacyvriendelijke bezoek- en prestatiestatistieken")
+    expect(JSON.stringify(page)).toContain("Alleen met uw toestemming")
     const validation = validateSiteGenerationSpecForCms(result, { variantScope: "self-serve", allowSystemPages: true })
     expect(validation.issues.filter((issue) => issue.path?.[0] === "pages" && issue.path?.[1] === 1)).toEqual([])
   })

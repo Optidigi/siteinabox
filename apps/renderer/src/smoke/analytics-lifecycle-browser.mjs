@@ -123,19 +123,48 @@ try {
       await route.fulfill({ status: response.status, headers, body })
     })
 
-    await page.goto(`${publicOrigin}/`, { waitUntil: "networkidle", timeout: 60_000 })
+    await page.goto(`${publicOrigin}/?email=private%40example.test&utm_campaign=secret`, { waitUntil: "networkidle", timeout: 60_000 })
     await page.waitForFunction(
       () => typeof window.SIABAnalytics?.grantConsent === "function",
       undefined,
       { timeout: 60_000 },
     )
-    assert.deepEqual(events, [], "analytics ingestion is empty before consent")
-
-    await page.evaluate(() => window.SIABAnalytics.grantConsent())
     await waitFor(
       () => events.some((event) => event.event === "$pageview" && event.transport === "posthog-js"),
-      `PostHog JS did not capture a pageview\n${output}`,
+      `cookieless baseline did not capture a renderer pageview\n${output}`,
     )
+    const baselinePageviews = events.filter((event) => event.event === "$pageview")
+    assert.equal(baselinePageviews.length, 1, "baseline captures one pageview")
+    const baseline = baselinePageviews[0].properties
+    assert.equal(baseline.analytics_tier, "baseline")
+    assert.equal(baseline.distinct_id, "$posthog_cookieless")
+    assert.equal(baseline.$device_id, null)
+    assert.equal(baseline.$cookieless_mode, true)
+    assert.equal(baseline.$process_person_profile, false)
+    assert.equal(baseline.tenant_id, "tenant-test")
+    assert.doesNotMatch(baseline.$current_url, /email|utm_campaign|private/)
+    for (const forbidden of ["$session_id", "$referrer", "$referring_domain", "$groups", "tenant_name", "utm_campaign", "gclid"]) {
+      assert.equal(forbidden in baseline, false, `baseline omits ${forbidden}`)
+    }
+    assert.equal(
+      await page.evaluate(() => Object.keys(localStorage).filter((key) => /posthog/i.test(key)).length),
+      0,
+      "cookieless baseline creates no PostHog persistence",
+    )
+
+    await page.evaluate(() => window.SIABAnalytics.grantConsent())
+    await waitFor(() => events.some((event) => event.event === "site_journey_step"), "semantic analytics did not activate")
+    assert.equal(events.filter((event) => event.event === "$pageview").length, 1, "consent transition does not duplicate the current pageview")
+    await page.evaluate(() => localStorage.setItem("siab_lifecycle_test_consent", JSON.stringify({
+      version: "test",
+      categories: { necessary: true, analytics: true },
+    })))
+    await page.reload({ waitUntil: "networkidle", timeout: 60_000 })
+    await waitFor(
+      () => events.some((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented"),
+      `stored consent did not start a consented renderer lifecycle\n${output}`,
+    )
+    const consentedStart = events.findIndex((event) => event.event === "$pageview" && event.properties?.analytics_tier === "consented")
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await page.waitForTimeout(250)
 
@@ -143,26 +172,31 @@ try {
       Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" })
       document.dispatchEvent(new Event("visibilitychange"))
       document.dispatchEvent(new Event("visibilitychange"))
+      window.dispatchEvent(new PageTransitionEvent("pagehide"))
     })
-    await page.goto(`${publicOrigin}/about`, { waitUntil: "load", timeout: 60_000 })
     await waitFor(
       () => events.some((event) => event.event === "$pageleave" && event.transport === "posthog-js"),
       "PostHog JS did not capture a pageleave",
     )
+    await page.goto(`${publicOrigin}/about`, { waitUntil: "load", timeout: 60_000 })
 
-    const pageviews = events.filter((event) => event.event === "$pageview")
-    const pageleaves = events.filter((event) => event.event === "$pageleave")
-    const groupIdentify = events.find((event) => event.event === "$groupidentify")
+    const consentedLifecycle = events.slice(consentedStart)
+    const pageviews = consentedLifecycle.filter((event) => event.event === "$pageview")
+    const pageleaves = consentedLifecycle.filter((event) => event.event === "$pageleave")
+    const groupIdentify = consentedLifecycle.find((event) => event.event === "$groupidentify")
     const nativePageleave = pageleaves.find((event) => event.transport === "posthog-js")
 
-    assert.equal(pageviews.length, 1, `one lifecycle must emit one $pageview: ${JSON.stringify(pageviews)}`)
+    assert.equal(pageviews.length, 1, `one consented lifecycle emits one SDK-owned $pageview: ${JSON.stringify(pageviews)}`)
     assert.equal(pageleaves.length, 1, `one lifecycle must emit one $pageleave: ${JSON.stringify(pageleaves)}`)
     assert.ok(events.some((event) => event.event === "site_journey_step"), "semantic SIAB events remain active")
+    assert.equal(events.some((event) => event.transport === "siab-direct"), false, "semantic events use PostHog JS")
     assert.equal(typeof nativePageleave?.properties?.$prev_pageview_duration, "number")
     assert.equal(typeof nativePageleave?.properties?.$prev_pageview_max_scroll, "number")
     assert.equal(typeof nativePageleave?.properties?.$prev_pageview_max_scroll_percentage, "number")
     assert.equal(nativePageleave?.properties?.tenant_id, "tenant-test", "common enrichment remains on native lifecycle events")
+    assert.deepEqual(pageviews.map((event) => event.properties.analytics_tier), ["consented"])
     assert.deepEqual(pageviews[0]?.properties?.$groups, { tenant: "tenant-test" })
+    assert.equal(nativePageleave?.properties?.analytics_tier, "consented")
     assert.deepEqual(groupIdentify?.properties?.$group_set, {
       name: "Tenant Test",
       slug: "tenant-test",

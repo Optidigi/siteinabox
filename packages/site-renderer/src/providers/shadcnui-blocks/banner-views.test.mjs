@@ -28,6 +28,7 @@ test("approved banner-04 exposes accept and reject consent actions", () => {
   assert.match(html, /data-siab-cookie-consent="true"/)
   assert.match(html, /data-consent-action="accept"/)
   assert.match(html, /data-consent-action="reject"/)
+  assert.equal((html.match(/data-variant="default"/g) ?? []).length, 2, "accept and reject have equal visual emphasis")
 })
 
 test("maintenance uses an approved provider banner without consent controls", () => {

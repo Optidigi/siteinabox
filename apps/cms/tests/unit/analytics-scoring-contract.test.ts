@@ -6,7 +6,7 @@ describe("analytics event contract", () => {
   it("keeps native PostHog page lifecycle events SDK-owned and duplicate-safe", () => {
     expect(analyticsEventContractByName.get("$pageview")).toMatchObject({
       source: "posthog-js-native",
-      consentRequired: true,
+      consentRequired: false,
       cmsConsentRequired: false,
     })
     expect(analyticsEventContractByName.get("$pageleave")).toMatchObject({

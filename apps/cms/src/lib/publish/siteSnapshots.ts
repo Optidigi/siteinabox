@@ -99,11 +99,11 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
   const consentEnabled = (consent as Record<string, unknown>).enabled === true
   const consentBanner = consentEnabled
     ? {
+        ...(banner ?? {}),
         visible: true,
         title: "Cookies en privacy",
-        message: "Wij gebruiken alleen met uw toestemming optionele analytics om de website te verbeteren.",
+        message: "Wij meten privacyvriendelijk bezoek zonder analyticscookies. Met uw toestemming meten wij ook interacties om de website te verbeteren.",
         dismissible: false,
-        ...(banner ?? {}),
         variant: "shadcnui-blocks.banner-04",
       }
     : banner

@@ -215,6 +215,7 @@ describe("legal document synchronization", () => {
 
     expect(served.settings.analyticsConsent).toEqual(consent)
     expect(served.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-04")
+    expect(served.settings.chrome.banner.message).toContain("privacyvriendelijk bezoek")
     expect(snapshot.settings.analyticsConsent.consentVersion).toBe("old")
     expect(snapshot.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-01")
   })

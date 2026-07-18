@@ -31,9 +31,11 @@ export {}
 type PostHogClient = {
   init: (token: string, config: Record<string, unknown>, name?: string) => void
   register: (properties: Record<string, unknown>) => void
+  capture?: (event: string, properties?: Record<string, unknown>) => void
   group?: (groupType: string, groupKey: string, properties?: Record<string, unknown>) => void
   opt_in_capturing?: (options?: { captureEventName?: string | false | null }) => void
   opt_out_capturing?: () => void
+  clear_opt_in_out_capturing?: () => void
   reset?: () => void
 }
 
@@ -44,8 +46,6 @@ type RuntimeState = {
   posthog: PostHogClient | null
   lastAutocaptureAction: AutocaptureActionSnapshot | null
   config: AnalyticsConfig | null
-  distinctId: string | null
-  sessionId: string | null
   pageStartedAt: number
   maxScrollDepth: number
   capturedScrollDepths: Set<number>
@@ -73,15 +73,6 @@ type AutocaptureActionSnapshot = {
   properties: Record<string, unknown>
 }
 
-type WebVitalMetric = {
-  name: string
-  value: number
-  rating?: string
-  id?: string
-  delta?: number
-  navigationType?: string
-}
-
 declare global {
   interface Window {
     SIABAnalytics?: {
@@ -98,8 +89,6 @@ const state: RuntimeState = {
   posthog: null,
   lastAutocaptureAction: null,
   config: null,
-  distinctId: null,
-  sessionId: null,
   pageStartedAt: performance.now(),
   maxScrollDepth: 0,
   capturedScrollDepths: new Set(),
@@ -125,32 +114,12 @@ const readConfig = (): AnalyticsConfig | null => {
   }
 }
 
-const randomId = () => {
-  if (crypto.randomUUID) return crypto.randomUUID()
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-const distinctId = () => {
-  if (state.distinctId) return state.distinctId
-  const existing = window.localStorage.getItem("siab_analytics_distinct_id")
-  state.distinctId = existing || randomId()
-  if (!existing) window.localStorage.setItem("siab_analytics_distinct_id", state.distinctId)
-  return state.distinctId
-}
-
-const sessionId = () => {
-  if (state.sessionId) return state.sessionId
-  const existing = window.sessionStorage.getItem("siab_analytics_session_id")
-  state.sessionId = existing || randomId()
-  if (!existing) window.sessionStorage.setItem("siab_analytics_session_id", state.sessionId)
-  return state.sessionId
-}
-
 const baseProperties = () => {
   const config = state.config
   return {
     schema_version: 1,
     analytics_surface: "site",
+    analytics_tier: "consented",
     site_kind: config?.siteKind ?? (config?.tenantId ? "tenant" : "platform"),
     environment: location.hostname === "localhost" ? "development" : "production",
     tenant_id: config?.tenantId ?? null,
@@ -164,7 +133,6 @@ const baseProperties = () => {
     theme_id: config?.themeId ?? null,
     site_build_id: config?.siteBuildId ?? null,
     manifest_version: config?.manifestVersion ?? null,
-    session_id: sessionId(),
     $current_url: location.href,
     $host: location.hostname,
     $pathname: location.pathname,
@@ -176,16 +144,81 @@ const baseProperties = () => {
   }
 }
 
+const baselineProperties = () => {
+  const config = state.config
+  return {
+    schema_version: 1,
+    analytics_surface: "site",
+    analytics_tier: "baseline",
+    site_kind: config?.siteKind ?? (config?.tenantId ? "tenant" : "platform"),
+    environment: location.hostname === "localhost" ? "development" : "production",
+    tenant_id: config?.tenantId ?? null,
+    tenant_slug: config?.tenantSlug ?? null,
+    site_id: config?.siteId ?? config?.tenantId ?? null,
+    site_domain: config?.siteDomain ?? location.hostname,
+    page_id: config?.pageId ?? null,
+    page_slug: config?.pageSlug ?? null,
+    page_path: location.pathname,
+    theme_id: config?.themeId ?? null,
+    site_build_id: config?.siteBuildId ?? null,
+    manifest_version: config?.manifestVersion ?? null,
+    $current_url: `${location.origin}${location.pathname}`,
+    $host: location.hostname,
+    $pathname: location.pathname,
+    $browser: browserProperties().$browser,
+    $os: browserProperties().$os,
+    $device_type: deviceType(),
+    referrer_type: trafficProperties().referrer_type,
+    $geoip_disable: true,
+    $process_person_profile: false,
+  }
+}
+
+const baselineSdkKeys = new Set([
+  "token",
+  "distinct_id",
+  "$device_id",
+  "$cookieless_mode",
+  "$lib",
+  "$lib_version",
+  "$time",
+  "$insert_id",
+  "$is_identified",
+])
+
+const minimizedBaselineProperties = (properties: Record<string, unknown>, isWebVitals: boolean) => {
+  const minimized: Record<string, unknown> = { ...baselineProperties() }
+  for (const [key, value] of Object.entries(properties)) {
+    if (baselineSdkKeys.has(key) || (isWebVitals && key.startsWith("$web_vitals_"))) minimized[key] = value
+  }
+  if (isWebVitals) minimized.siab_web_vitals = true
+  return minimized
+}
+
+const consentedSemanticEvents = new Set([
+  "site_section_viewed",
+  "site_section_engaged",
+  "site_component_viewed",
+  "site_scroll_depth_reached",
+  "site_journey_step",
+  "site_form_started",
+  "site_form_submitted",
+  "site_conversion_completed",
+])
+
 const sanitizeAutocaptureEvent = (event: Record<string, unknown> | null | undefined) => {
   if (!event || typeof event !== "object") return null
   const eventName = typeof event.event === "string" ? event.event : ""
-  if (!["$autocapture", "$rageclick", "$dead_click", "$web_vitals", "$pageview", "$pageleave", "$groupidentify"].includes(eventName)) return null
+  if (!["$autocapture", "$rageclick", "$dead_click", "$web_vitals", "$pageview", "$pageleave", "$groupidentify"].includes(eventName) && !consentedSemanticEvents.has(eventName)) return null
 
   const props = typeof event.properties === "object" && event.properties ? event.properties as Record<string, unknown> : {}
   const isWebVitals = eventName === "$web_vitals"
-  const isPageLifecycle = eventName === "$pageview" || eventName === "$pageleave"
-  const isGroupIdentify = eventName === "$groupidentify"
-  const snapshot = !isWebVitals && state.lastAutocaptureAction && performance.now() - state.lastAutocaptureAction.at < 2000
+  if (!state.consentGranted) {
+    if (eventName !== "$pageview" && !isWebVitals) return null
+    return { ...event, properties: minimizedBaselineProperties(props, isWebVitals) }
+  }
+  const isNativeInteraction = ["$autocapture", "$rageclick", "$dead_click"].includes(eventName)
+  const snapshot = isNativeInteraction && state.lastAutocaptureAction && performance.now() - state.lastAutocaptureAction.at < 2000
     ? state.lastAutocaptureAction
     : null
 
@@ -199,14 +232,14 @@ const sanitizeAutocaptureEvent = (event: Record<string, unknown> | null | undefi
     properties: {
       ...props,
       ...baseProperties(),
-      ...(!isPageLifecycle && !isGroupIdentify ? snapshot?.properties : {}),
+      ...(isNativeInteraction ? snapshot?.properties : {}),
       ...(eventName === "$pageleave" ? {
         page_duration_ms: Math.max(0, Math.round(performance.now() - state.pageStartedAt)),
         scroll_depth: Math.max(state.maxScrollDepth, scrollDepth()),
         interaction_type: "leave",
       } : {}),
       ...(isWebVitals ? { siab_web_vitals: true } : {}),
-      ...(!isWebVitals && !isPageLifecycle && !isGroupIdentify ? { siab_autocapture: true } : {}),
+      ...(isNativeInteraction ? { siab_autocapture: true } : {}),
     },
   }
 }
@@ -223,23 +256,17 @@ const afterIdle = (callback: () => void) => {
 const setupPostHogAutocapture = () => {
   if (state.posthogStarted) return
   const config = state.config
-  if (!state.consentGranted || !config?.enabled || !config.posthogProjectToken || !config.posthogHost) return
+  if (!config?.enabled || !config.posthogProjectToken || !config.posthogHost) return
   state.posthogStarted = true
 
   afterIdle(() => {
-    if (!state.consentGranted) return
     void import("posthog-js").then((module) => {
-      if (!state.consentGranted) return
       const posthog = (module.default ?? module) as unknown as PostHogClient
       state.posthog = posthog
       posthog.init(config.posthogProjectToken!, {
         api_host: config.posthogHost,
         ui_host: config.posthogUiHost,
         defaults: "2026-01-30",
-        bootstrap: {
-          distinctID: distinctId(),
-          sessionID: sessionId(),
-        },
         capture_pageview: true,
         capture_pageleave: true,
         disable_scroll_properties: false,
@@ -248,7 +275,9 @@ const setupPostHogAutocapture = () => {
           web_vitals_allowed_metrics: ["CLS", "FCP", "INP", "LCP"],
           web_vitals_attribution: true,
         },
-        opt_out_capturing_by_default: false,
+        cookieless_mode: "on_reject",
+        opt_out_capturing_by_default: true,
+        opt_out_persistence_by_default: true,
         person_profiles: "identified_only",
         disable_session_recording: true,
         enable_recording_console_log: false,
@@ -265,16 +294,7 @@ const setupPostHogAutocapture = () => {
         },
         before_send: sanitizeAutocaptureEvent,
         loaded(instance: PostHogClient) {
-          instance.register(baseProperties())
-          if (config.tenantId) {
-            instance.group?.(POSTHOG_TENANT_GROUP_TYPE, config.tenantId, {
-              name: config.tenantName ?? config.tenantSlug ?? config.tenantId,
-              slug: config.tenantSlug ?? undefined,
-              domain: config.siteDomain ?? location.hostname,
-              site_kind: "tenant",
-            })
-          }
-          instance.opt_in_capturing?.({ captureEventName: false })
+          if (state.consentGranted) activateConsentedPostHog(instance)
         },
       })
     }).catch(() => {
@@ -282,6 +302,21 @@ const setupPostHogAutocapture = () => {
       state.posthog = null
     })
   })
+}
+
+const activateConsentedPostHog = (instance: PostHogClient) => {
+  instance.opt_in_capturing?.({ captureEventName: false })
+  instance.register(baseProperties())
+  const config = state.config
+  if (config?.tenantId) {
+    instance.group?.(POSTHOG_TENANT_GROUP_TYPE, config.tenantId, {
+      name: config.tenantName ?? config.tenantSlug ?? config.tenantId,
+      slug: config.tenantSlug ?? undefined,
+      domain: config.siteDomain ?? location.hostname,
+      site_kind: "tenant",
+    })
+  }
+  initializeAfterConsent()
 }
 
 const deviceType = () => {
@@ -408,21 +443,7 @@ const capture = (event: string, properties: Record<string, unknown> = {}) => {
   const config = state.config
   if (!state.consentGranted || !config?.enabled || !config.posthogProjectToken || !config.posthogHost) return
 
-  const url = `${config.posthogHost.replace(/\/+$/, "")}/capture/`
-  const payload = JSON.stringify({
-    api_key: config.posthogProjectToken,
-    event,
-    distinct_id: distinctId(),
-    properties: { ...baseProperties(), ...properties },
-  })
-
-  void fetch(url, {
-    method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "text/plain" },
-    keepalive: true,
-    body: payload,
-  })
+  state.posthog?.capture?.(event, { ...baseProperties(), ...properties })
 }
 
 const captureJourneyStep = (step: string, properties: Record<string, unknown> = {}) => {
@@ -758,76 +779,32 @@ const setupScrollDepth = () => {
   onScroll()
 }
 
-const setupWebVitals = () => {
-  const allowedMetrics = new Set(["CLS", "FCP", "INP", "LCP"])
-  const metrics = new Map<string, WebVitalMetric>()
-  let flushTimer: number | null = null
-
-  const flush = () => {
-    if (flushTimer) window.clearTimeout(flushTimer)
-    flushTimer = null
-    if (!metrics.size) return
-
-    const properties: Record<string, unknown> = { siab_web_vitals: true }
-    metrics.forEach((metric) => {
-      properties[`$web_vitals_${metric.name}_event`] = { ...metric }
-      properties[`$web_vitals_${metric.name}_value`] = metric.value
-    })
-    metrics.clear()
-    capture("$web_vitals", properties)
-  }
-
-  const scheduleFlush = () => {
-    if (flushTimer) return
-    flushTimer = window.setTimeout(flush, 5000)
-  }
-
-  const addMetric = (metric: WebVitalMetric) => {
-    if (!allowedMetrics.has(metric.name) || typeof metric.value !== "number") return
-    metrics.set(metric.name, metric)
-    scheduleFlush()
-  }
-
-  void import("web-vitals").then(({ onCLS, onFCP, onINP, onLCP }) => {
-    onCLS(addMetric)
-    onFCP(addMetric)
-    onINP(addMetric)
-    onLCP(addMetric)
-  }).catch(() => {})
-
-  window.addEventListener("pagehide", flush, { capture: true })
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") flush()
-  })
-}
-
 const initializeAfterConsent = () => {
   if (state.initialized) return
   state.initialized = true
-  setupPostHogAutocapture()
   captureJourneyStep("page-viewed")
   observeSections()
   observeComponents()
   setupDelegatedListeners()
   setupScrollDepth()
-  setupWebVitals()
 }
 
 state.config = readConfig()
 
 window.SIABAnalytics = {
   grantConsent() {
+    if (state.consentGranted) return
     state.consentGranted = true
-    initializeAfterConsent()
+    if (state.posthog) activateConsentedPostHog(state.posthog)
+    else setupPostHogAutocapture()
   },
   revokeConsent() {
+    const wasGranted = state.consentGranted
     state.consentGranted = false
-    state.posthog?.opt_out_capturing?.()
-    state.posthog?.reset?.()
-    state.posthog = null
-    state.posthogStarted = false
-    state.distinctId = null
-    state.sessionId = null
+    if (wasGranted && state.posthog) {
+      state.posthog.opt_out_capturing?.()
+      state.posthog.clear_opt_in_out_capturing?.()
+    }
     window.localStorage.removeItem("siab_analytics_distinct_id")
     window.sessionStorage.removeItem("siab_analytics_session_id")
   },
@@ -856,5 +833,5 @@ const storedConsent = (() => {
   }
 })()
 
-if (storedConsent === "accepted") window.SIABAnalytics.grantConsent()
-if (storedConsent === "declined") window.SIABAnalytics.revokeConsent()
+state.consentGranted = storedConsent === "accepted"
+setupPostHogAutocapture()

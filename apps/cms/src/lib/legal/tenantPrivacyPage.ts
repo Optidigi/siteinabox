@@ -3,7 +3,7 @@ import type { RtBlock, RtInline, RtRoot } from "@siteinabox/contracts/rich-text"
 import type { TenantPrivacyDisclosure } from "@siteinabox/contracts/site"
 
 export const TENANT_PRIVACY_PAGE_SLUG = "privacy-en-cookieverklaring"
-export const TENANT_PRIVACY_TEMPLATE_VERSION = "tenant-privacy-shadcnui-blocks-2026-07-15.1"
+export const TENANT_PRIVACY_TEMPLATE_VERSION = "tenant-privacy-shadcnui-blocks-2026-07-18.1"
 
 const text = (value: string, marks?: Array<"bold">): RtInline => ({
   t: "text",
@@ -106,7 +106,7 @@ const disclosureBody = (disclosure: TenantPrivacyDisclosure): RtRoot => {
       ? [paragraph(text(`Formulierinzendingen worden normaal maximaal ${forms.retention.days} dagen bewaard, tenzij eerdere verwijdering of langere wettelijke bewaring nodig is.`))]
       : []),
     heading("3. Cookies en analytics"),
-    paragraph(text("Noodzakelijke technieken kunnen worden gebruikt voor beveiliging, formulierafhandeling en de werking van de website. Er worden momenteel geen optionele browseranalytics of marketingtechnieken door de Site in a Box-runtime geactiveerd.")),
+    paragraph(text("Noodzakelijke technieken kunnen worden gebruikt voor beveiliging, formulierafhandeling en de werking van de website. Site in a Box kan privacyvriendelijke bezoek- en prestatiestatistieken zonder analyticscookies of lokale tracking-ID opslaan. Alleen met uw toestemming worden aanvullende interacties, sessie-informatie en conversies gemeten. U kunt die keuze via de cookiebanner maken of intrekken. Marketingtechnieken worden niet door de standaard Site in a Box-runtime geactiveerd.")),
     heading("4. Technische dienstverlening"),
     paragraph(text("Site in a Box levert de technische websiteomgeving. Optidigi, handelend onder de naam Site in a Box, verwerkt daarbij voor zover van toepassing persoonsgegevens in opdracht van de ondernemer als verwerker.")),
     ...(processors.length

@@ -41,7 +41,7 @@ function Banner({ model, variant }: { model: BannerViewModel; variant: string })
   return (
     <div className="px-6 py-10"><div className="mx-auto max-w-xl rounded-xl border bg-muted/70 p-0.75"><div className="shadow/5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-5 py-3.5">
       <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"><UserPlusIcon className="size-5 shrink-0" /></div><div>{model.title ? <p className="font-medium text-sm">{model.title}</p> : null}<p className="text-muted-foreground text-sm">{model.message}</p></div></div>
-      <div className="flex items-center gap-2">{model.consent ? <><Button data-consent-action="reject" size="sm" type="button" variant="ghost">Weigeren</Button><Button data-consent-action="accept" size="sm" type="button">Accepteren</Button></> : <>{model.dismissible ? <Button data-banner-dismiss size="sm" type="button" variant="ghost">Sluiten</Button> : null}{model.link ? <Button asChild size="sm"><a href={model.link.href}>{model.link.label}</a></Button> : null}</>}</div>
+      <div className="flex items-center gap-2">{model.consent ? <><Button data-consent-action="reject" size="sm" type="button">Weigeren</Button><Button data-consent-action="accept" size="sm" type="button">Accepteren</Button></> : <>{model.dismissible ? <Button data-banner-dismiss size="sm" type="button" variant="ghost">Sluiten</Button> : null}{model.link ? <Button asChild size="sm"><a href={model.link.href}>{model.link.label}</a></Button> : null}</>}</div>
     </div></div></div>
   )
 }

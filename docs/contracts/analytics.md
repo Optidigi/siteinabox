@@ -18,13 +18,16 @@ deviations are recorded in `docs/findings.md`.
 
 ## Boundaries
 
-SIAB uses one shared PostHog project for consent-gated platform/tenant-site
-analytics and first-party authenticated CMS product analytics. `site_kind`,
+SIAB uses one shared PostHog project for minimized public baseline analytics,
+consented platform/tenant-site intelligence, and first-party authenticated CMS
+product analytics. `site_kind`, `analytics_tier`,
 `analytics_surface`, and tenant/site/page metadata distinguish those surfaces.
 Tenant events also use PostHog's native `tenant` group type with the stable
 Payload tenant ID as group key.
 
-- Public browser analytics require explicit analytics consent.
+- Public sites capture only minimized cookieless pageviews and Web Vitals
+  before a choice or after refusal. Richer interaction and lifecycle analytics
+  require explicit analytics consent.
 - The authenticated CMS may capture minimized first-party product analytics
   without the public-site cookie banner.
 - Server-side accepted-form conversion outcomes use legitimate interest and do
@@ -69,9 +72,15 @@ Native and semantic events must not count the same interaction twice:
 
 ## Consent and SDK controls
 
-Before consent, the landing site and a tenant public site must not initialize
-PostHog, transmit analytics, identify a visitor, or create analytics
-cookies/localStorage/sessionStorage.
+The landing and tenant public runtimes initialize one PostHog JS instance in
+`cookieless_mode: "on_reject"`. Before consent and after refusal, the
+`before_send` privacy boundary permits only `$pageview` and `$web_vitals`,
+marks them `analytics_tier: baseline`, and replaces their properties with a
+minimized allowlist. This baseline creates no PostHog cookies, localStorage,
+sessionStorage, stable device ID, person profile, session/group identity, raw
+referrer, query string, campaign/click IDs, or interaction detail. The separate
+versioned consent receipt is necessary preference storage.
+
 The approved consent UI calls:
 
 ```ts
@@ -79,8 +88,13 @@ window.SIABAnalytics?.grantConsent()
 window.SIABAnalytics?.revokeConsent()
 ```
 
-After consent, the renderer may initialize PostHog and the semantic observers.
-Revocation opts out, resets the client, and removes SIAB analytics identifiers.
+Acceptance calls `opt_in_capturing({ captureEventName: false })`, switches the
+same SDK instance to normal PostHog persistence, and enables consented native
+interaction/lifecycle plus SIAB semantic events. Refusal keeps the minimized
+cookieless baseline active. Revocation uses the SDK's native reset back to the
+cookieless tier. PostHog JS remains the sole `$pageview`/`$pageleave` owner.
+Accepting after the baseline pageview does not duplicate that current
+pageview; the next navigation starts a fully consented native lifecycle.
 
 Public-site SDK controls keep:
 
@@ -99,8 +113,9 @@ The operational PostHog configuration and provider-state checks live in
 ## Metadata and redaction
 
 All analytics uses `schema_version: 1`, identifies `analytics_surface` as
-`site` or `cms`, and identifies `site_kind` as `platform` or `tenant`. Tenant
-events carry `$groups: { tenant: <tenant_id> }`; group metadata is limited to
+`site` or `cms`, and identifies `site_kind` as `platform` or `tenant`. Public
+events additionally use `analytics_tier: baseline` or `consented`. Consented
+tenant events carry `$groups: { tenant: <tenant_id> }`; group metadata is limited to
 tenant name, slug, domain, and site kind. Common projected properties include
 environment, tenant/site identity, domain, page identity/path, theme, build,
 and manifest version.
@@ -133,7 +148,9 @@ manifest, and every newly published tenant snapshot receives analytics
 configuration from the same CMS projection path. A migration backfills the
 policy only where an existing tenant manifest has no `analyticsConsent` value;
 an explicit tenant policy is preserved. There are no per-tenant source trees or
-manual SDK snippets. After consent it:
+manual SDK snippets. The cookieless baseline records page traffic and approved
+field-performance metrics automatically for every projected site. After
+consent it additionally:
 
 - starts PostHog when the projected token and host are available;
 - observes section exposure and engagement;
@@ -149,14 +166,16 @@ or an interaction for section engagement. These values are implementation
 constants and must change together with focused tests and query expectations.
 
 Public analytics defaults to enabled only when capture configuration exists,
-uses PostHog, requires consent, treats accepted forms as conversions, and keeps
-contact-click conversion goals empty unless explicitly configured.
+uses PostHog, minimizes the baseline, requires consent for richer intelligence,
+treats accepted forms as conversions, and keeps contact-click conversion goals
+empty unless explicitly configured.
 
 The static landing site uses the same consent, lifecycle-ownership, property,
 and privacy rules with `site_kind: platform` and no tenant group. Both public
-runtimes expose the approved consent UI for version `2026-07-07.1`, remain
-inactive before a choice, initialize PostHog only after acceptance, and remain
-disabled after rejection.
+runtimes expose the approved consent UI for version `2026-07-07.1`. Pending and
+refused states remain cookieless/minimized; acceptance enables the consented
+tier. New generated tenants receive this behavior through the same manifest
+and snapshot projection, with no per-tenant code or configuration.
 
 The landing image bakes the public project token into its static build. The
 hosted image workflow therefore requires the user-scoped Actions secret
@@ -204,7 +223,9 @@ then the broader checks required by `docs/engineering.md`. At minimum verify:
 - property redaction;
 - tenant query access;
 - accepted-form minimization;
-- no transmission before consent;
+- minimized allowlisted baseline transmission without PostHog persistence;
+- no baseline interaction, pageleave, group, campaign, raw-referrer, query, or
+  stable-identity data;
 - native/semantic duplicate prevention; and
 - missing-configuration behavior.
 

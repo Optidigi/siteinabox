@@ -168,7 +168,7 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
         variant: "shadcnui-blocks.banner-04",
         visible: true,
         title: "Privacy",
-        message: "Choose whether anonymous analytics may be used.",
+        message: "We measure privacy-friendly visits without analytics cookies. With consent, we also measure interactions to improve this website.",
         link: { label: "Privacy policy", href: "/privacy" },
       },
     },

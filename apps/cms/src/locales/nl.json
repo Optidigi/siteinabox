@@ -186,7 +186,7 @@
   },
   "analytics": {
     "title": "Analytics",
-    "description": "Een gericht overzicht van verkeer, acties en conversies waarvoor toestemming is gegeven.",
+    "description": "Een gericht overzicht van privacyvriendelijk websiteverkeer en prestaties, aangevuld met acties en conversies na toestemming.",
     "superAdminDescription": "Selecteer eerst een website om analytics te bekijken.",
     "unavailableTitle": "Analytics zijn niet gekoppeld",
     "unavailableDescription": "PostHog-queryinstellingen ontbreken of zijn uitgeschakeld. Tracking kan wel voor websites worden geprojecteerd zodra de configuratie aanwezig is.",
@@ -241,7 +241,7 @@
     "performanceOverview": "Prestatieoverzicht",
     "overallScore": "Totale score",
     "scoreUnavailable": "Nog niet genoeg data",
-    "measuredFromVisitors": "{samples} metingen van ongeveer {visitors} bezoekers na analytics-toestemming.",
+    "measuredFromVisitors": "{samples} privacyvriendelijke metingen van ongeveer {visitors} bezoekers.",
     "lowSampleNotice": "Deze score is gebaseerd op weinig metingen en kan snel veranderen.",
     "fieldPerformanceExplanation": "Echte bezoekersmetingen voor laden, reageren en visuele stabiliteit.",
     "siteQualityExplanation": "CMS-checks voor metadata, navigatie, contactgegevens en publicatiebasis.",

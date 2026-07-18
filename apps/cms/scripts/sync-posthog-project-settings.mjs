@@ -121,6 +121,7 @@ const patch = {
   session_recording_opt_in: false,
   heatmaps_opt_in: false,
   capture_dead_clicks: false,
+  cookieless_server_hash_mode: 1,
 }
 
 // PostHog exposes these values in project/environment responses, but its
@@ -160,6 +161,7 @@ if (checkOnly) {
   console.log(`  Console capture: ${updated.capture_console_log_opt_in === false ? "disabled" : "unknown"}`)
   console.log(`  Heatmaps: ${updated.heatmaps_opt_in === false ? "disabled" : "unknown"}`)
   console.log(`  Dead clicks: ${updated.capture_dead_clicks === false ? "disabled" : "unknown"}`)
+  console.log(`  Cookieless hashing: ${updated.cookieless_server_hash_mode === 1 ? "stateless" : "unknown"}`)
   console.log(`  Event retention: ${updated.event_retention_months ?? "unknown"} months`)
   console.log(`  Retention enforcement: ${updated.events_retention_enforced === true ? "enabled" : "disabled"}`)
   console.log(`  App URLs: ${appUrls.length}`)

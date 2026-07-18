@@ -44,6 +44,7 @@ export type AnalyticsEnvironment = "production" | "staging" | "development"
 export type AnalyticsBaseProperties = {
   schema_version: 1
   analytics_surface: "site" | "cms"
+  analytics_tier?: "baseline" | "consented" | "authenticated"
   site_kind: "platform" | "tenant"
   environment: AnalyticsEnvironment
   admin_host?: string | null
