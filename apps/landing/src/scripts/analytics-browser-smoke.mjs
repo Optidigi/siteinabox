@@ -269,7 +269,7 @@ try {
       window.dispatchEvent(new PageTransitionEvent("pagehide"))
     })
     await waitFor(
-      () => acceptedEvents.some((event) => event.event === "$pageleave"),
+      () => acceptedEvents.slice(consentedStart).some((event) => event.event === "$pageleave"),
       "PostHog JS did not capture a landing pageleave",
     )
 
