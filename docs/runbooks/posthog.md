@@ -1,17 +1,20 @@
 # PostHog Analytics Operations
 
-SIAB uses PostHog as the canonical analytics backend for tenant public
-sites and CMS/product usage analytics.
+SIAB uses one PostHog project as the canonical analytics backend for the
+platform landing site, generated tenant sites, and authenticated CMS/product
+usage analytics.
 
 ## Consent Boundary
 
-Tenant public sites initialize `posthog-js` only after analytics consent is
-granted. Native PostHog events such as `$pageview`, `$pageleave`,
+The landing and tenant public sites initialize `posthog-js` only after
+analytics consent is granted. Native PostHog events such as `$pageview`, `$pageleave`,
 `$autocapture`, `$rageclick`, `$dead_click`, and `$web_vitals` are therefore
 also consent-gated.
 
-The authenticated CMS initializes `posthog-js` without a cookie banner. This is
-first-party product analytics for logged-in users, not public visitor tracking.
+The authenticated CMS sends minimized semantic events through its authenticated
+server endpoint without a public cookie banner. It does not initialize a second
+CMS browser PostHog lifecycle SDK. This is first-party product analytics for
+logged-in users, not public visitor tracking.
 Keep the privacy boundary tight: session replay stays off, IP anonymization
 stays on at the PostHog project level, and CMS events must not include raw form
 content, rich text, email addresses, phone numbers, or user display names. Use
@@ -33,13 +36,18 @@ PostHog's web analytics installation health checks map to SIAB as follows:
   `CLS`, `FCP`, `INP`, and `LCP`. The PostHog project/environment must also
   have Web Vitals and performance capture enabled server-side.
 - Authorized URLs: this is the PostHog project/environment `app_urls` setting.
-  Keep it in sync through approved tenant provisioning/deploy automation.
+  When a production tenant domain becomes verified, the tenant lifecycle hook
+  merges both `https://<domain>` and `https://admin.<domain>` if project API
+  credentials are configured. The manual sync command remains the repair and
+  reconciliation path.
 - Reverse proxy: this is an infra/DNS concern. Keep it out of per-site runtime
   code until SIAB chooses a central or wildcard ingest proxy strategy.
 
 ## Sync Project Settings
 
-Use the sync script after adding or generating a site domain:
+Normally verified domains enroll automatically. Use the sync script to repair
+a failed enrollment, reconcile existing tenants, or apply project privacy
+settings:
 
 ```bash
 POSTHOG_PERSONAL_API_KEY=phx_... \
@@ -79,15 +87,18 @@ Run with `--dry-run` to inspect the PATCH payload.
 
 ## Current Project State
 
+This section is external-state evidence, not an executable repository fact.
+Re-run the read-only check before relying on it.
+
 PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
 (`193842`) is configured with:
 
 - `app_urls`: `https://ami-care.nl`, `https://admin.ami-care.nl`,
   `https://siteinabox.nl`, `https://admin.siteinabox.nl`
-- Native CMS `posthog-js` tracking is enabled on the frontend admin shell when
-  `POSTHOG_PROJECT_TOKEN` / `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` is set. The
-  CMS SDK uses `POSTHOG_PUBLIC_HOST` for browser ingest and `POSTHOG_HOST` as
-  `ui_host`.
+- CMS semantic tracking is enabled when `POSTHOG_PROJECT_TOKEN` is set and is
+  sent by the authenticated server boundary. Site and CMS events are separated
+  by `analytics_surface`; platform and tenant sites are separated by
+  `site_kind`; tenant activity uses the native `tenant` PostHog group.
 - `autocapture_opt_out: true`
 - `autocapture_web_vitals_opt_in: true`
 - `autocapture_web_vitals_allowed_metrics`: `CLS`, `FCP`, `INP`, `LCP`
@@ -102,13 +113,18 @@ PostHog MCP and API verification on 2026-07-11 confirmed project `SiteinaBox`
   changes the plan-derived values to 13 months with enforcement enabled.
 
 PostHog SDK health reported healthy with no outdated SDKs. Fresh `$pageview`
-events were present for `ami-care.nl`. CMS-native `$pageview`, `$pageleave`,
-`$web_vitals`, `$autocapture`, `$rageclick`, and `$dead_click` events are
-categorized with `analytics_surface: cms` and can be separated from public site
-events, which use `analytics_surface: site`. Historic `site_page_viewed` and
+events were present for `ami-care.nl`. CMS semantic events use
+`analytics_surface: cms`; native public lifecycle and behavior events use
+`analytics_surface: site`. Historic `site_page_viewed` and
 `site_page_left` rows remain in PostHog data from earlier runtimes and browser
 cache windows; the current tenant-site and Amicare source no longer emit
 those event names.
+
+Repository implementation now also covers the platform landing site and native
+tenant grouping, but public capture is intentionally inactive until the legal
+consent gate has a reviewed non-null version. Do not infer live landing events
+or existing PostHog group types until an approved deployment and provider query
+confirm them.
 
 Live browser smoke on 2026-06-08 found that consent-and-idle SDK initialization
 can miss PostHog JS's normal DOM-loaded initial pageview path. The public-site

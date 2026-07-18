@@ -7,7 +7,9 @@ names, ownership, governance, redaction, and queries remain canonical in:
 - `apps/cms/src/lib/analytics/contract.ts`
 - `apps/cms/src/lib/analytics/governance.ts`
 - `apps/cms/src/lib/analytics/redaction.ts`
+- `apps/cms/src/lib/analytics/identity.ts`
 - `apps/cms/src/lib/analytics/queries.ts`
+- `apps/landing/src/scripts/analytics.ts`
 - `apps/renderer/src/client/analytics-runtime.ts`
 
 When this document and those sources disagree, treat the difference as a
@@ -16,9 +18,11 @@ deviations are recorded in `docs/findings.md`.
 
 ## Boundaries
 
-SIAB uses one shared PostHog project for consent-gated tenant-site analytics
-and first-party authenticated CMS product analytics. Tenant, site, page, and
-section metadata distinguish those surfaces inside the project.
+SIAB uses one shared PostHog project for consent-gated platform/tenant-site
+analytics and first-party authenticated CMS product analytics. `site_kind`,
+`analytics_surface`, and tenant/site/page metadata distinguish those surfaces.
+Tenant events also use PostHog's native `tenant` group type with the stable
+Payload tenant ID as group key.
 
 - Public browser analytics require explicit analytics consent.
 - The authenticated CMS may capture minimized first-party product analytics
@@ -27,6 +31,10 @@ section metadata distinguish those surfaces inside the project.
   not include submitted form content or direct identifiers.
 - Analytics configuration is projected from CMS-owned tenant/site data. The
   renderer must not invent tenant or page identity.
+- Verified production tenant domains are idempotently added to PostHog's
+  authorized URL list by the tenant lifecycle hook when provider credentials
+  are available. Provider failure does not roll back authoritative domain
+  state.
 - CMS queries are server-only and tenant-filtered before PostHog is queried.
 
 ## Event ownership
@@ -36,7 +44,7 @@ event inventory. Do not add an event only in prose.
 
 | Owner | Events | Canonical use |
 | --- | --- | --- |
-| PostHog JS | `$pageview`, `$pageleave`, `$web_vitals`, `$autocapture`, `$rageclick`, `$dead_click` | Native page lifecycle, field performance, interaction, and friction signals |
+| PostHog JS | `$pageview`, `$pageleave`, `$web_vitals`, `$autocapture`, `$rageclick`, `$dead_click`, `$groupidentify` | Native page lifecycle, field performance, interaction, friction, and tenant-group identity |
 | SIAB browser runtime | `site_section_viewed`, `site_section_engaged`, `site_component_viewed`, `site_scroll_depth_reached`, `site_journey_step`, `site_form_started`, `site_form_submitted` | Consent-gated semantic exposure, engagement, journey, and form-funnel signals |
 | SIAB browser or server conversion path | `site_conversion_completed` | Configured contact-click goals in the browser and accepted-form conversion rollups on the server |
 | SIAB server | `site_form_accepted` | Trusted accepted-form outcome after server validation |
@@ -61,8 +69,9 @@ Native and semantic events must not count the same interaction twice:
 
 ## Consent and SDK controls
 
-Before consent, a public site must not initialize PostHog, transmit analytics,
-identify a visitor, or create analytics cookies/localStorage/sessionStorage.
+Before consent, the landing site and a tenant public site must not initialize
+PostHog, transmit analytics, identify a visitor, or create analytics
+cookies/localStorage/sessionStorage.
 The approved consent UI calls:
 
 ```ts
@@ -89,9 +98,12 @@ The operational PostHog configuration and provider-state checks live in
 
 ## Metadata and redaction
 
-All analytics uses `schema_version: 1` and identifies `analytics_surface` as
-`site` or `cms`. Common projected properties include environment, tenant/site
-identity, domain, page identity/path, theme, build, and manifest version.
+All analytics uses `schema_version: 1`, identifies `analytics_surface` as
+`site` or `cms`, and identifies `site_kind` as `platform` or `tenant`. Tenant
+events carry `$groups: { tenant: <tenant_id> }`; group metadata is limited to
+tenant name, slug, domain, and site kind. Common projected properties include
+environment, tenant/site identity, domain, page identity/path, theme, build,
+and manifest version.
 
 Section events may add stable section identity/type/position, provider variant,
 block preset, and a sanitized content signature. Interaction events may add a
@@ -115,7 +127,9 @@ retention target. Provider retention currently differs; see SIAB-002.
 ## Public runtime behavior
 
 The renderer reads projected analytics configuration and page/block metadata.
-After consent it:
+Every newly published tenant snapshot receives this configuration from the
+same CMS projection path; there are no per-tenant source trees or manual SDK
+snippets. After consent it:
 
 - starts PostHog when the projected token and host are available;
 - observes section exposure and engagement;
@@ -134,6 +148,11 @@ Public analytics defaults to enabled only when capture configuration exists,
 uses PostHog, requires consent, treats accepted forms as conversions, and keeps
 contact-click conversion goals empty unless explicitly configured.
 
+The static landing site uses the same consent, lifecycle-ownership, property,
+and privacy rules with `site_kind: platform` and no tenant group. Both public
+runtimes remain fail-closed while the governed legal consent approval version
+is null; see `packages/legal-content/src/consent-approval.js` and SIAB-012.
+
 ## Server capture and CMS queries
 
 When CMS accepts a public form, `acceptedForm.ts` emits a minimized
@@ -147,6 +166,14 @@ The server query layer:
 - scopes site analytics by tenant and optional site/domain/time range;
 - permits tenant users to query only their tenant;
 - permits super-admins to query tenant or aggregate CMS views;
+- separates site queries from CMS queries with `analytics_surface` before
+  applying tenant and time filters; historical public events without the
+  property remain site events, while CMS events must explicitly use `cms`;
+- attributes tenant-host CMS activity automatically from `getSiabContext()`;
+- attributes super-admin activity below `/sites/<slug>` only after resolving
+  the slug to a tenant on the server;
+- presents aggregate platform and per-tenant CMS usage to super-admins while
+  tenant analytics pages remain limited to their own public-site metrics;
 - uses `$pageview` for visitors, traffic, sources, and device splits;
 - uses `site_conversion_completed` and `site_form_accepted` for conversion
   reporting;

@@ -107,3 +107,18 @@ observations before acting on them.
 - **Review trigger:** Reopen if the renderer loses its legal-content workspace
   dependency, Docker build input, workflow path selection, or deploy-contract
   fixture.
+
+## SIAB-012 — Public analytics awaits governed consent approval
+
+- **Classification:** Intentional / accepted legal constraint; **confidence:**
+  high from repository sources.
+- **Scope:** Landing and generated tenant-site analytics.
+- **Evidence:** Both public runtimes are implemented and consent-gated, but
+  `packages/legal-content/src/consent-approval.js` keeps
+  `publicAnalyticsConsentApproval.consentVersion` null. The renderer and landing
+  therefore emit no analytics configuration, banner, identifier, or event.
+- **Next:** A privacy owner must approve matching shared consent chrome and a
+  privacy-document release, set the reviewed version through the governed legal
+  package, resolve or explicitly accept SIAB-002, then rerun the event-level
+  browser regressions and production network smoke. Deployment alone must not
+  bypass this gate.

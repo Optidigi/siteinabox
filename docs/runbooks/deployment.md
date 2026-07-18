@@ -146,6 +146,7 @@ POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl
 POSTHOG_PROJECT_TOKEN=
 POSTHOG_PROJECT_ID=
 POSTHOG_PERSONAL_API_KEY=
+POSTHOG_ORGANIZATION_ID=
 POSTHOG_ENVIRONMENT=production
 ```
 
@@ -156,10 +157,12 @@ pnpm --dir apps/cms posthog:sync-settings
 pnpm --dir apps/cms posthog:check-settings
 ```
 
-The sync enforces IP anonymization, disables browser autocapture, console
-capture, session recording, heatmaps and dead-click capture, and enforces
-13-month event retention. `.github/workflows/posthog-privacy-audit.yml` repeats
-the read-only verification daily using repository secrets and fails on drift.
+The sync enforces IP anonymization, disables project-level browser autocapture,
+console capture, session recording, heatmaps and dead-click capture, and audits
+the 13-month event-retention target. PostHog exposes retention as a plan-managed
+read-only setting, so the command cannot enforce it. The daily
+`.github/workflows/posthog-privacy-audit.yml` check intentionally fails while
+provider retention differs from the governed target; see SIAB-002.
 
 Keep Payload job autorun enabled in the long-lived CMS process. Setting
 `PAYLOAD_DISABLE_JOBS_AUTORUN=1` disables legal re-acceptance email delivery as
