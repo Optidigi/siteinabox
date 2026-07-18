@@ -90,6 +90,16 @@ When changing `apps/cms`:
 
 - Run the narrowest check first, then the broader package and CI-equivalent
   checks justified by the changed surface.
+- Stop expanding verification when the changed surface and triggered risk are
+  proven. Documentation-only changes do not require application builds, image
+  publication, or deployment; test-only changes do not require deployment
+  unless they alter runtime packaging or release behavior.
+- Wait for and report workflows required by the changed surface. Do not turn an
+  unrelated workflow selected by broad CI triggers into extra implementation or
+  production work.
+- Treat production as current when it runs the latest deploy-relevant content.
+  Documentation, instructions, and non-packaged tests may legitimately be ahead
+  of the deployed image SHA.
 - Never weaken tests, typing, access rules, constraints, visual-parity checks,
   legal-integrity checks, or release controls to make work pass.
 - For a workspace package used by an image, verify the consuming image
