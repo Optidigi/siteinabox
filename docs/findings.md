@@ -13,23 +13,23 @@ observations before acting on them.
 - **Next:** Reproduce the exact snapshot, variant, viewport, and color mode; fix
   only a demonstrated shared-renderer cause.
 
-## SIAB-002 — PostHog retention exceeds the approved target
+## SIAB-002 — PostHog retention exceeds the governance target
 
-- **Classification:** Confirmed external privacy risk; **confidence:** high as
-  of the recorded provider verification.
+- **Classification:** Accepted external constraint / closed; **confidence:**
+  high as of the recorded provider verification.
 - **Scope:** Analytics privacy and operations.
 - **Evidence:** PostHog MCP and API verification on 2026-07-11 found event
   retention set to 84 months with enforcement disabled. Repository governance
-  requires 13 months. The scheduled privacy audit intentionally stays red while
-  this difference remains.
-- **Next:** A privacy owner and named operator must change the plan-derived
-  retention entitlement through PostHog billing/support, then rerun
-  `pnpm --dir apps/cms posthog:check-settings`. Do not represent the repository
-  target as provider-enforced until that check passes.
-- **Temporary disposition:** On 2026-07-18, the owner explicitly accepted the
-  current 84-month provider retention temporarily so consent-gated public
-  analytics could be activated. This does not resolve the finding or change
-  the governed 13-month target.
+  requires 13 months. The strict privacy audit continues to report this
+  difference as a monitoring signal.
+- **Disposition:** On 2026-07-18, the owner explicitly accepted the current
+  plan-derived 84-month, unenforced provider retention as an external
+  constraint. No implementation action remains. This acceptance does not
+  represent 84 months as the repository governance target or as provider-
+  enforced deletion.
+- **Review trigger:** Reopen only if the PostHog plan/API gains a supported
+  13-month enforcement control, applicable legal obligations change, or the
+  actual provider retention exceeds the accepted 84-month state.
 
 ## SIAB-003 — Legal-notice interaction needs production smoke
 
@@ -118,7 +118,7 @@ observations before acting on them.
   event-level production browser verification.
 - **Scope:** Landing and generated tenant-site analytics.
 - **Evidence:** The owner approved the shared accept/reject consent flow and
-  explicitly accepted SIAB-002 temporarily on 2026-07-18. Consent version
+  explicitly accepted SIAB-002 on 2026-07-18. Consent version
   `2026-07-07.1` matches the current privacy document release. Production
   browser verification on 2026-07-18 proved the banner on the platform and
   tenant sites, no PostHog request before consent, no event after rejection,
