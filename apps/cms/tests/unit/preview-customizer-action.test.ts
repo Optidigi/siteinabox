@@ -13,10 +13,7 @@ vi.mock("next/headers", () => ({
 
 vi.mock("next-intl/server", () => ({
   getTranslations: vi.fn(async () => (key: string) => {
-    const messages: Record<string, string> = {
-      checkoutRequiresPreviewAccess: "Customer checkout requires Better Auth preview access.",
-      previewLoginRequired: "Preview login required",
-    }
+    const messages: Record<string, string> = { previewLoginRequired: "Preview login required" }
     return messages[key] ?? key
   }),
 }))
@@ -76,15 +73,5 @@ describe("preview customizer actions", () => {
         actor: "Customer@Example.com",
       },
     )
-  })
-
-  it("does not offer customer checkout for legacy token previews", async () => {
-    const { createPreviewMollieCheckout } = await import("@/lib/actions/previewCustomizer")
-
-    await expect(createPreviewMollieCheckout({ type: "legacy-token", token: "preview-token", exp: 1 }))
-      .rejects.toThrow("Customer checkout requires Better Auth preview access.")
-
-    expect(mocks.loadPreviewGrantContext).not.toHaveBeenCalled()
-    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 })

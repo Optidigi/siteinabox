@@ -1,16 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
-import { signPreviewToken } from "@/lib/preview/sign"
-
-const SECRET = "test-secret-32-bytes-deadbeefcafe1234567890"
 
 const mocks = vi.hoisted(() => ({
-  payload: {
-    findByID: vi.fn(),
-    find: vi.fn(),
-    update: vi.fn(),
-  },
+  loadPreviewGrantContext: vi.fn(),
+  payload: { update: vi.fn() },
   settingsDoc: {
     id: 10,
     tenant: 1,
@@ -21,12 +15,8 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
-vi.mock("payload", () => ({
-  getPayload: vi.fn(async () => mocks.payload),
-}))
-
-vi.mock("@/payload.config", () => ({
-  default: {},
+vi.mock("@/lib/preview/previewAccess", () => ({
+  loadPreviewGrantContext: mocks.loadPreviewGrantContext,
 }))
 
 vi.mock("@/lib/queries/settings", () => ({
@@ -52,17 +42,6 @@ vi.mock("@/lib/projection/settingsToJson", () => ({
     updatedAt: settings.updatedAt,
   })),
 }))
-
-const matchesWhere = (doc: any, where: any): boolean => {
-  if (!where) return true
-  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
-  return Object.entries(where).every(([field, condition]) => {
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      return String(doc[field]) === String((condition as any).equals)
-    }
-    return doc[field] === condition
-  })
-}
 
 const createState = () => {
   const tenant = {
@@ -98,78 +77,48 @@ const createState = () => {
       updatedAt: "2026-06-25T19:02:00.000Z",
     },
   ] as Page[]
-  const runs = [
-    {
-      id: 500,
-      intakeSubmission: 400,
-      status: "preview_ready",
-      idempotencyKey: "preview-run",
-      normalizedIntake: {},
-      normalizedIntakeHash: "normalized",
-      provider: "mock",
-      model: "fixture",
-      promptVersion: "site-generation-v1",
-      generationInputHash: "input",
-      tenant: 1,
-      pages: [100],
-      createdAt: "2026-06-25T19:03:00.000Z",
-      updatedAt: "2026-06-25T19:03:00.000Z",
-    } as SiteGenerationRun,
-  ]
+  const run = {
+    id: 500,
+    status: "preview_ready",
+    tenant: 1,
+    pages: [100, 101],
+    clientApproval: { status: "pending" },
+    payment: { status: "not_started" },
+  } as unknown as SiteGenerationRun
 
-  mocks.payload.findByID.mockImplementation(async ({ collection, id }: any) => {
-    if (collection === "tenants" && String(id) === "1") return tenant
-    throw new Error(`Missing ${collection} ${id}`)
-  })
-  mocks.payload.find.mockImplementation(async ({ collection, where }: any) => {
-    if (collection === "pages") {
-      const docs = pages.filter((page) => matchesWhere(page, where))
-      return { docs, totalDocs: docs.length }
-    }
-    if (collection === "site-generation-runs") {
-      const docs = runs.filter((run) => matchesWhere(run, where))
-      return { docs, totalDocs: docs.length }
-    }
-    return { docs: [], totalDocs: 0 }
-  })
-  mocks.payload.update.mockImplementation(async ({ collection, id, data }: any) => {
-    if (collection === "tenants") {
-      Object.assign(tenant, data)
-      return { ...tenant, id }
-    }
-    if (collection === "site-generation-runs") {
-      const run = runs.find((entry) => String(entry.id) === String(id))
-      if (!run) throw new Error(`Missing run ${id}`)
-      Object.assign(run, data)
-      return run
-    }
-    throw new Error(`Unexpected update ${collection}`)
+  mocks.payload.update.mockImplementation(async ({ id, data }: any) => ({ id, ...data }))
+  mocks.loadPreviewGrantContext.mockResolvedValue({
+    clientSlug: "preview-studio",
+    customerEmail: "customer@example.com",
+    payload: mocks.payload,
+    tenant,
+    run,
+    pages,
   })
 
-  return { tenant, pages, runs }
+  return { tenant, pages, run }
 }
 
-const tokenFor = (tenantId: number | string, pageId: number | string) =>
-  signPreviewToken({ tenantId, pageId }, SECRET).token
-
-describe("preview customizer service", () => {
+describe("grant preview customizer service", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.PREVIEW_HMAC_SECRET = SECRET
     createState()
   })
 
-  it("loads preview data with page navigation, token expiry, persisted theme, approval, and payment state", async () => {
-    const { tenant, runs } = createState()
+  it("loads preview data with grant-scoped page navigation, theme, approval, and payment state", async () => {
+    const { tenant, run } = createState()
     tenant.theme = DEFAULT_THEME_TOKEN_SPEC as any
-    runs[0]!.clientApproval = { status: "pending" } as any
-    runs[0]!.payment = { status: "not_started" } as any
-    const { getPreviewCustomizerData } = await import("@/lib/preview/customizer")
+    run.clientApproval = { status: "pending" } as any
+    run.payment = { status: "not_started" } as any
+    const { getPreviewCustomizerDataForGrant } = await import("@/lib/preview/customizer")
 
-    const data = await getPreviewCustomizerData(tokenFor(1, 100), "about")
+    const data = await getPreviewCustomizerDataForGrant({
+      clientSlug: "preview-studio",
+      customerEmail: "customer@example.com",
+      requestedPage: "about",
+    })
 
-    expect(data.token).toEqual(expect.any(String))
-    expect(data.tokenExp).toEqual(expect.any(Number))
+    expect(data.access).toEqual({ type: "grant", clientSlug: "preview-studio" })
     expect(data.pages).toEqual([
       { id: 100, slug: "index", title: "Home" },
       { id: 101, slug: "about", title: "About" },
@@ -180,61 +129,45 @@ describe("preview customizer service", () => {
     expect(data.payment).toEqual({ status: "not_started" })
   })
 
-  it("rejects a token whose claimed persisted page is not in the tenant", async () => {
-    const { getPreviewCustomizerData } = await import("@/lib/preview/customizer")
-
-    await expect(getPreviewCustomizerData(tokenFor(1, 999))).rejects.toThrow("Preview page is not available")
-  })
-
-  it("rejects a requested page path that is not in the token tenant", async () => {
-    const { getPreviewCustomizerData } = await import("@/lib/preview/customizer")
-
-    await expect(getPreviewCustomizerData(tokenFor(1, 100), "missing")).rejects.toThrow("Preview page is not available")
-  })
-
-  it("rejects suspended or archived tenants before preview writes", async () => {
-    const { tenant } = createState()
-    tenant.status = "suspended"
-    const { persistPreviewTheme, approvePreview } = await import("@/lib/preview/customizer")
-
-    await expect(persistPreviewTheme(tokenFor(1, 100), DEFAULT_THEME_TOKEN_SPEC)).rejects.toThrow("Preview tenant is not available")
-    await expect(approvePreview(tokenFor(1, 100))).rejects.toThrow("Preview tenant is not available")
-    expect(mocks.payload.update).not.toHaveBeenCalled()
-  })
-
-  it("persists only schema-approved V2 preset tokens", async () => {
-    const { persistPreviewTheme } = await import("@/lib/preview/customizer")
-
-    const saved = await persistPreviewTheme(tokenFor(1, 100), {
+  it("persists only schema-approved theme tokens through the grant context", async () => {
+    const { persistPreviewThemeForGrant } = await import("@/lib/preview/customizer")
+    const theme = {
       version: 3,
       appearance: { mode: "dark" },
       colors: { schemeId: "emerald-calm" },
       fonts: { schemeId: "classic-editorial" },
       shape: { schemeId: "soft" },
+    } as const
+
+    const saved = await persistPreviewThemeForGrant({
+      clientSlug: "preview-studio",
+      customerEmail: "customer@example.com",
+      theme,
     })
 
-    expect(saved).toEqual({
-      version: 3,
-      appearance: { mode: "dark" },
-      colors: { schemeId: "emerald-calm" },
-      fonts: { schemeId: "classic-editorial" },
-      shape: { schemeId: "soft" },
-    })
+    expect(saved).toEqual(theme)
     expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
       collection: "tenants",
       id: 1,
-      data: { theme: saved },
+      data: { theme },
     }))
 
     mocks.payload.update.mockClear()
-    await expect(persistPreviewTheme(tokenFor(1, 100), { stylePreset: "bad;}" } as any)).rejects.toThrow("Invalid theme data")
+    await expect(persistPreviewThemeForGrant({
+      clientSlug: "preview-studio",
+      customerEmail: "customer@example.com",
+      theme: { stylePreset: "bad;}" } as any,
+    })).rejects.toThrow("Invalid theme data")
     expect(mocks.payload.update).not.toHaveBeenCalled()
   })
 
-  it("records approval and pending payment handoff without activating or publishing", async () => {
-    const { approvePreview } = await import("@/lib/preview/customizer")
+  it("records approval and pending payment without activating or publishing", async () => {
+    const { approvePreviewForGrant } = await import("@/lib/preview/customizer")
 
-    const result = await approvePreview(tokenFor(1, 100))
+    const result = await approvePreviewForGrant({
+      clientSlug: "preview-studio",
+      customerEmail: "customer@example.com",
+    })
 
     expect(result.approval.status).toBe("approved")
     expect(result.payment.status).toBe("pending_provider")
@@ -253,8 +186,8 @@ describe("preview customizer service", () => {
   })
 
   it("does not downgrade an already completed payment when approval is recorded", async () => {
-    const { runs } = createState()
-    runs[0]!.payment = {
+    const { run } = createState()
+    run.payment = {
       status: "completed",
       provider: "invoice",
       externalReference: "ref-123",
@@ -264,9 +197,12 @@ describe("preview customizer service", () => {
       updatedAt: "2026-06-26T10:00:00.000Z",
       note: "Paid before approval",
     } as any
-    const { approvePreview } = await import("@/lib/preview/customizer")
+    const { approvePreviewForGrant } = await import("@/lib/preview/customizer")
 
-    const result = await approvePreview(tokenFor(1, 100))
+    const result = await approvePreviewForGrant({
+      clientSlug: "preview-studio",
+      customerEmail: "customer@example.com",
+    })
 
     expect(result.payment).toMatchObject({
       status: "completed",
@@ -274,18 +210,5 @@ describe("preview customizer service", () => {
       externalReference: "ref-123",
       actor: 42,
     })
-    expect(mocks.payload.update).toHaveBeenCalledWith(expect.objectContaining({
-      collection: "site-generation-runs",
-      id: 500,
-      data: expect.objectContaining({
-        payment: expect.objectContaining({ status: "completed" }),
-      }),
-    }))
-  })
-
-  it("does not let a token for a page outside the preview-ready run approve that run", async () => {
-    const { approvePreview } = await import("@/lib/preview/customizer")
-
-    await expect(approvePreview(tokenFor(1, 101))).rejects.toThrow("Preview generation run does not include this page")
   })
 })

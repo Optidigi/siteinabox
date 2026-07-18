@@ -268,7 +268,7 @@ Current production environment requirements:
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and webhook signing secret. Production webhooks fail closed when `MOLLIE_WEBHOOK_SIGNING_SECRET` is unset. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
 | Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |
-| Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN`, `ENABLE_GRAPHQL_PLAYGROUND`, and `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE` unset unless there is a temporary operator-approved reason. |
+| Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN` and `ENABLE_GRAPHQL_PLAYGROUND` unset unless there is a temporary operator-approved reason. |
 
 **DO NOT wrap values in quotes.** Compose's dotenv parser strips them, but raw
 shell tools like `cut` don't, so any helper script that reads `.env`

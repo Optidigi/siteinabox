@@ -9,7 +9,7 @@ describe("preview customizer source contract", () => {
       "utf8",
     )
     const routeSource = fs.readFileSync(
-      path.resolve(process.cwd(), "src/app/(frontend)/(site-preview)/preview/[token]/page.tsx"),
+      path.resolve(process.cwd(), "src/app/(frontend)/(site-preview)/[clientSlug]/page.tsx"),
       "utf8",
     )
 
@@ -78,9 +78,9 @@ describe("preview customizer source contract", () => {
     expect(componentSource).not.toContain("stylePresetLevels={STYLE_PRESETS}")
     expect(componentSource.includes('view="preview"')).toBe(false)
     expect(componentSource).not.toContain('aria-label={t("pagesNav")}')
-    expect(componentSource).toContain('access.type === "grant"')
-    expect(componentSource).toContain('const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"')
-    expect(componentSource).toContain('const reviewHref = access.type === "grant" ? `/${access.clientSlug}/review` : "#"')
+    expect(componentSource).not.toContain("access.type")
+    expect(componentSource).toContain('const checkoutHref = `/${access.clientSlug}/checkout`')
+    expect(componentSource).toContain('const reviewHref = `/${access.clientSlug}/review`')
     expect(componentSource).toContain("checkoutHref={checkoutHref}")
     expect(componentSource).toContain("reviewHref={reviewHref}")
     expect(componentSource).toContain('t("launchWebsite")')

@@ -87,8 +87,7 @@ export function resolvePreviewNavigationTarget({ access, pages, href, origin }: 
   const requestedSlug = pathname === "" ? "index" : pathname.split("/").at(-1) ?? "index"
   const target = pages.find((candidate) => candidate.slug === requestedSlug || (requestedSlug === "home" && candidate.slug === "index"))
   if (!target) return null
-  if (access.type === "grant") return target.slug === "index" ? `/${access.clientSlug}` : `/${access.clientSlug}/pages/${encodeURIComponent(target.slug)}`
-  return `/preview/${encodeURIComponent(access.token)}?page=${encodeURIComponent(target.slug)}`
+  return target.slug === "index" ? `/${access.clientSlug}` : `/${access.clientSlug}/pages/${encodeURIComponent(target.slug)}`
 }
 
 export function PreviewCustomizer({
@@ -225,20 +224,14 @@ export function PreviewCustomizer({
   }, [flushThemeSaveQueue, themeState])
 
   const paymentSatisfied = paymentState?.status === "completed" || paymentState?.status === "waived"
-  const canCompleteOrder = access.type === "grant" && !paymentSatisfied
-  const checkoutHref = access.type === "grant" ? `/${access.clientSlug}/checkout` : "#"
-  const reviewHref = access.type === "grant" ? `/${access.clientSlug}/review` : "#"
+  const canCompleteOrder = !paymentSatisfied
+  const checkoutHref = `/${access.clientSlug}/checkout`
+  const reviewHref = `/${access.clientSlug}/review`
   const customerNavigationBlocked = shouldBlockPreviewCustomerNavigation(themeSaveStatus)
   const rendererTheme = React.useMemo(() => normalizeThemeForSave(themeState), [themeState])
   const frameSrc = React.useMemo(() => {
     const slug = page.slug && page.slug !== "index" ? `/pages/${encodeURIComponent(page.slug)}` : ""
-    if (access.type === "grant") {
-      return `/renderer-frame/preview/${encodeURIComponent(access.clientSlug)}${slug}`
-    }
-    if (access.type === "legacy-token") {
-      return `/renderer-frame/preview-token/${encodeURIComponent(access.token)}${slug}`
-    }
-    return null
+    return `/renderer-frame/preview/${encodeURIComponent(access.clientSlug)}${slug}`
   }, [access, page.slug])
 
   const framePageId = React.useMemo(() => {
@@ -254,23 +247,17 @@ export function PreviewCustomizer({
     <RtManifestProvider manifest={manifest}>
       <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
         <main className="h-dvh w-full overflow-hidden">
-          {frameSrc ? (
-            <PreviewRendererFrame
-              src={frameSrc}
-              title={page.title || t("metadataTitle")}
-              pageId={framePageId}
-              page={page}
-              settings={settings}
-              theme={rendererTheme}
-              revisionRef={frameRevisionRef}
-              onNavigationRequested={navigatePreview}
-              onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}
-            />
-          ) : (
-            <div className="flex min-h-[60dvh] items-center justify-center px-6 text-center text-muted-foreground">
-              {t("accessUnavailableDescription")}
-            </div>
-          )}
+          <PreviewRendererFrame
+            src={frameSrc}
+            title={page.title || t("metadataTitle")}
+            pageId={framePageId}
+            page={page}
+            settings={settings}
+            theme={rendererTheme}
+            revisionRef={frameRevisionRef}
+            onNavigationRequested={navigatePreview}
+            onFrameInteraction={() => window.dispatchEvent(new Event(PREVIEW_THEME_TOOLBAR_CLOSE_EVENT))}
+          />
         </main>
 
         <PreviewMobileChrome

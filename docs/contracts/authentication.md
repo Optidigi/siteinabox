@@ -110,10 +110,6 @@ https://preview.siteinabox.nl/api/preview-auth/magic-link/verify
 https://preview.siteinabox.nl/<clientSlug>
 ```
 
-The old `/preview/[token]` HMAC route is internal compatibility only. Production
-serves it only when `ENABLE_LEGACY_PREVIEW_TOKEN_ROUTE=1`; normal customer
-review must use the Better Auth preview host flow above.
-
 Example for Amicare:
 
 ```text

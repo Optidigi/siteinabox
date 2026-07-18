@@ -1026,7 +1026,6 @@
     "previewAccessSendFailed": "Preview access could not be sent.",
     "superAdminRequired": "Only super-admins can manage customer preview access.",
     "previewLoginRequired": "Preview login required",
-    "checkoutRequiresPreviewAccess": "Customer checkout requires Better Auth preview access.",
     "accessUnavailableTitle": "Preview access unavailable",
     "loginTitle": "Preview login",
     "accessUnavailableDescription": "Use the email address that received the preview invitation, or request a new magic link.",
@@ -1228,7 +1227,6 @@
       ,"intakeStatuses": { "submitted": "Submitted", "normalized": "Normalized", "reviewed": "Reviewed", "generating": "Generating", "preview_ready": "Preview ready", "failed": "Failed" }
     },
     "previewAccess": { "sendPreview": "Send preview", "previewUrl": "Preview URL", "copy": "Copy", "open": "Open", "helper": "Creates or refreshes preview access and emails the customer link.", "sentTitle": "Preview access sent", "failedTitle": "Preview access failed" },
-    "previewLink": { "title": "Customer preview link", "selectPage": "Select a page", "refreshLink": "Refresh link", "createLink": "Create link", "previewLink": "Preview link", "copy": "Copy", "open": "Open", "expires": "Expires {date}.", "expiryHelper": "Links expire 30 minutes after creation.", "failedTitle": "Preview link failed", "readyTitle": "Ready to share", "createFailedMessage": "Preview link could not be created.", "copiedMessage": "Preview link copied.", "copyFailedMessage": "Copy failed. Select the link and copy it manually." },
     "detail": { "title": "Draft site #{id}" },
     "actions": { "back": "Back", "liveSite": "Live site", "launchSite": "Launch site" },
     "fallbacks": { "noDomain": "No domain selected", "page": "Page", "noTenant": "No site linked", "noIntakeEmail": "No intake email", "noMessage": "No message recorded" },

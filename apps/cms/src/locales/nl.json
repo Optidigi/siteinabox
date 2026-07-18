@@ -1026,7 +1026,6 @@
     "previewAccessSendFailed": "Preview-toegang kon niet worden verstuurd.",
     "superAdminRequired": "Alleen superbeheerders kunnen klanttoegang tot previews beheren.",
     "previewLoginRequired": "Preview-login vereist",
-    "checkoutRequiresPreviewAccess": "Afrekenen vereist preview-toegang via Better Auth.",
     "accessUnavailableTitle": "Preview-toegang niet beschikbaar",
     "loginTitle": "Preview-login",
     "accessUnavailableDescription": "Gebruik het e-mailadres dat de preview-uitnodiging heeft ontvangen, of vraag een nieuwe inloglink aan.",
@@ -1228,7 +1227,6 @@
       ,"intakeStatuses": { "submitted": "Ingediend", "normalized": "Genormaliseerd", "reviewed": "Beoordeeld", "generating": "Wordt gegenereerd", "preview_ready": "Preview gereed", "failed": "Mislukt" }
     },
     "previewAccess": { "sendPreview": "Preview versturen", "previewUrl": "Preview-URL", "copy": "Kopiëren", "open": "Openen", "helper": "Maakt previewtoegang aan of vernieuwt deze en mailt de klantlink.", "sentTitle": "Previewtoegang verzonden", "failedTitle": "Previewtoegang mislukt" },
-    "previewLink": { "title": "Previewlink voor klant", "selectPage": "Selecteer een pagina", "refreshLink": "Link vernieuwen", "createLink": "Link maken", "previewLink": "Previewlink", "copy": "Kopiëren", "open": "Openen", "expires": "Verloopt op {date}.", "expiryHelper": "Links verlopen 30 minuten na het aanmaken.", "failedTitle": "Previewlink mislukt", "readyTitle": "Klaar om te delen", "createFailedMessage": "De previewlink kon niet worden gemaakt.", "copiedMessage": "Previewlink gekopieerd.", "copyFailedMessage": "Kopiëren mislukt. Selecteer de link en kopieer deze handmatig." },
     "detail": { "title": "Conceptsite #{id}" },
     "actions": { "back": "Terug", "liveSite": "Live site", "launchSite": "Site live zetten" },
     "fallbacks": { "noDomain": "Geen domein geselecteerd", "page": "Pagina", "noTenant": "Geen klantomgeving gekoppeld", "noIntakeEmail": "Geen intake-e-mailadres", "noMessage": "Geen bericht vastgelegd" },

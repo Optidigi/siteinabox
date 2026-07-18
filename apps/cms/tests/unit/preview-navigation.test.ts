@@ -13,11 +13,6 @@ describe("preview site navigation", () => {
     expect(resolvePreviewNavigationTarget({ access, pages, href: "/diensten", origin: "https://preview.test" })).toBe("/demo/pages/diensten")
   })
 
-  it("keeps legacy-token navigation inside the token preview", () => {
-    const access = { type: "legacy-token", token: "token", exp: 1 } as const
-    expect(resolvePreviewNavigationTarget({ access, pages, href: "/diensten", origin: "https://preview.test" })).toBe("/preview/token?page=diensten")
-  })
-
   it("fails closed for links that are not pages in the current preview", () => {
     const access = { type: "grant", clientSlug: "demo" } as const
     expect(resolvePreviewNavigationTarget({ access, pages, href: "/unknown", origin: "https://preview.test" })).toBeNull()

@@ -4,9 +4,7 @@ import { headers } from "next/headers"
 import { getTranslations } from "next-intl/server"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import {
-  approvePreview,
   approvePreviewForGrant,
-  persistPreviewTheme,
   persistPreviewThemeForGrant,
   type PreviewCustomizerAccess,
   type PreviewApprovalState,
@@ -27,7 +25,6 @@ const previewSessionEmail = async (loginRequiredMessage: string): Promise<string
 }
 
 export async function setPreviewTheme(access: PreviewCustomizerAccess, theme: ThemeTokens) {
-  if (access.type === "legacy-token") return persistPreviewTheme(access.token, theme)
   const t = await getTranslations("preview")
   return persistPreviewThemeForGrant({
     clientSlug: access.clientSlug,
@@ -40,7 +37,6 @@ export async function approvePreviewSite(access: PreviewCustomizerAccess): Promi
   approval: PreviewApprovalState
   payment: PreviewPaymentState
 }> {
-  if (access.type === "legacy-token") return approvePreview(access.token)
   const t = await getTranslations("preview")
   return approvePreviewForGrant({
     clientSlug: access.clientSlug,
@@ -54,9 +50,6 @@ export async function createPreviewMollieCheckout(access: PreviewCustomizerAcces
   reused: boolean
 }> {
   const t = await getTranslations("preview")
-  if (access.type === "legacy-token") {
-    throw new Error(t("checkoutRequiresPreviewAccess"))
-  }
   const customerEmail = await previewSessionEmail(t("previewLoginRequired"))
   const context = await loadPreviewGrantContext({
     clientSlug: access.clientSlug,
