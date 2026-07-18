@@ -139,11 +139,11 @@ data, and the customer can review and edit the page before approval. The public
 renderer has no special privacy route or legal-page presentation path. SIAB
 does not generate customer terms as part of the standard service.
 
-Optional generated-site analytics remain disabled until a consent component is
+Generated-site analytics activate only when the configured consent component is
 approved and registered through the shared chrome catalog. Consent storage and
-analytics gating may be runtime responsibilities, but their visible controls
-must come from the same approved chrome component used by CMS preview and the
-public renderer. The renderer must never fall back to route-authored consent UI.
+analytics gating are runtime responsibilities, but their visible controls must
+come from the same approved chrome component used by CMS preview and the public
+renderer. The renderer must never fall back to route-authored consent UI.
 
 The lightweight approval registry in `@siteinabox/legal-content/consent-approval`
 binds public analytics activation to the reviewed platform privacy release and
