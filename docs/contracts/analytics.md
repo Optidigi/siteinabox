@@ -9,6 +9,7 @@ names, ownership, governance, redaction, and queries remain canonical in:
 - `apps/cms/src/lib/analytics/redaction.ts`
 - `apps/cms/src/lib/analytics/identity.ts`
 - `apps/cms/src/lib/analytics/queries.ts`
+- `apps/cms/src/lib/analytics/variantRanking.ts`
 - `apps/landing/src/scripts/analytics.ts`
 - `apps/renderer/src/client/analytics-runtime.ts`
 
@@ -222,6 +223,43 @@ The server query layer:
   reporting;
 - uses enriched `$autocapture` for CTA/component interactions; and
 - uses native `$pageleave` properties for PostHog-compatible scroll depth.
+
+### Provider-variant comparison
+
+The super-admin aggregate behavior view compares provider variants only with
+other variants of the same `section_type`. Tenant users and super-admin
+tenant-detail views keep instance-level analytics and do not receive the
+cross-tenant ranking.
+
+The comparison uses unique exposed visitors as its denominator and reports
+unique engaged, interacting, and attributed-converting visitors. Raw event
+counts remain in the query result for diagnostics but do not drive the ranking. Rates are
+smoothed toward the observed peer baseline with a 20-visitor prior so a tiny
+sample cannot outrank sustained evidence by chance. The score weights
+engagement at 55%, interaction at 30%, and attributed conversion at 15%; when
+an outcome has no observations within that section type, its weight is omitted
+and the remaining weights are normalized.
+
+Evidence is deliberately fail-closed:
+
+- fewer than 20 exposed visitors or fewer than two section instances is
+  `insufficient` and receives no score or rank;
+- eligible evidence is `directional`; and
+- at least 100 exposed visitors across at least three instances and two tenants
+  is `established`.
+
+A numeric rank is assigned only when at least two variants of the same section
+type clear the evidence floor. A lone eligible variant may receive a score and
+evidence label, but it is never presented as the winner of a nonexistent
+comparison.
+
+Only conversions that already carry trustworthy `provider_variant` metadata
+are attributed to a variant. Accepted-form server outcomes remain site-level
+until the server can independently resolve their originating section; the
+ranking must not infer that attribution from untrusted browser fields. The
+ranking is an observational product signal, not an A/B experiment or a causal
+claim. Content, placement, audience, traffic source, and tenant differences
+remain potential confounders.
 
 Curated helpers in `queries.ts` are the supported query surface. UI code must
 not issue ad hoc PostHog queries or expose personal API credentials to the

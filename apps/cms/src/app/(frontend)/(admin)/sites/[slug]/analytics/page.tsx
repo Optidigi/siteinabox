@@ -124,6 +124,7 @@ export default async function TenantAnalyticsPage({
         deviceSplit={deviceSplit}
         componentPerformance={componentPerformance}
         componentExposure={componentExposure}
+        variantRanking={[]}
         webVitals={webVitals}
         siteQuality={siteQuality}
         autocaptureInteractions={autocaptureInteractions}
@@ -156,6 +157,7 @@ export default async function TenantAnalyticsPage({
           sectionPerformance: t("sectionPerformance"),
           section: t("section"),
           engagements: t("engagements"),
+          engagementRate: t("engagementRate"),
           emptyValue: t("emptyValue"),
           days7: t("days7"),
           days30: t("days30"),
@@ -185,6 +187,18 @@ export default async function TenantAnalyticsPage({
           scoreUnavailable: t("scoreUnavailable"),
           measuredFromVisitors: t.raw("measuredFromVisitors"),
           lowSampleNotice: t("lowSampleNotice"),
+          variantRanking: t("variantRanking"),
+          variantRankingDescription: t("variantRankingDescription"),
+          providerVariant: t("providerVariant"),
+          rank: t("rank"),
+          score: t("score"),
+          evidence: t("evidence"),
+          exposedVisitors: t("exposedVisitors"),
+          tenants: t("tenants"),
+          instances: t("instances"),
+          confidenceInsufficient: t("confidenceInsufficient"),
+          confidenceDirectional: t("confidenceDirectional"),
+          confidenceEstablished: t("confidenceEstablished"),
           fieldPerformanceExplanation: t("fieldPerformanceExplanation"),
           siteQualityExplanation: t("siteQualityExplanation"),
           metricMainContent: t("metricMainContent"),

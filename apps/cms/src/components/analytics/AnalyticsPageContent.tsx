@@ -31,6 +31,7 @@ import {
   TopCtasTable,
   TopPagesTable,
   TrafficSourcesTable,
+  VariantRankingTable,
   WebVitalsTable,
 } from "@/components/analytics/AnalyticsTables"
 import { TrafficChart } from "@/components/analytics/TrafficChart"
@@ -53,6 +54,7 @@ import type {
   TopPageMetric,
   TrafficSeriesPoint,
   TrafficSourceMetric,
+  VariantRankingMetric,
   WebVitalMetric,
 } from "@/lib/analytics/queries"
 import type { SiteQualityScore } from "@/lib/analytics/scoring"
@@ -81,6 +83,7 @@ type AnalyticsLabels = {
   sectionPerformance: string
   section: string
   engagements: string
+  engagementRate: string
   emptyValue: string
   days7: string
   days30: string
@@ -153,6 +156,18 @@ type AnalyticsLabels = {
   viewConversion: string
   viewBehavior: string
   viewGeography: string
+  variantRanking: string
+  variantRankingDescription: string
+  providerVariant: string
+  rank: string
+  score: string
+  evidence: string
+  exposedVisitors: string
+  tenants: string
+  instances: string
+  confidenceInsufficient: string
+  confidenceDirectional: string
+  confidenceEstablished: string
 }
 
 export function AnalyticsPageContent({
@@ -166,6 +181,7 @@ export function AnalyticsPageContent({
   deviceSplit,
   componentPerformance,
   componentExposure,
+  variantRanking,
   webVitals,
   siteQuality,
   autocaptureInteractions,
@@ -197,6 +213,7 @@ export function AnalyticsPageContent({
   deviceSplit: DeviceMetric[]
   componentPerformance: ComponentPerformanceMetric[]
   componentExposure: ComponentExposureMetric[]
+  variantRanking: VariantRankingMetric[]
   webVitals: WebVitalMetric[]
   siteQuality: SiteQualityScore
   autocaptureInteractions: AutocaptureInteractionMetric[]
@@ -234,6 +251,7 @@ export function AnalyticsPageContent({
     sectionPerformance: labels.sectionPerformance,
     section: labels.section,
     engagements: labels.engagements,
+    engagementRate: labels.engagementRate,
     ctaClicks: labels.ctaClicks,
     emptyValue: labels.emptyValue,
     formFunnel: labels.formFunnel,
@@ -299,6 +317,18 @@ export function AnalyticsPageContent({
     city: labels.city,
     countryCode: labels.countryCode,
     share: labels.share,
+    variantRanking: labels.variantRanking,
+    variantRankingDescription: labels.variantRankingDescription,
+    providerVariant: labels.providerVariant,
+    rank: labels.rank,
+    score: labels.score,
+    evidence: labels.evidence,
+    exposedVisitors: labels.exposedVisitors,
+    tenants: labels.tenants,
+    instances: labels.instances,
+    confidenceInsufficient: labels.confidenceInsufficient,
+    confidenceDirectional: labels.confidenceDirectional,
+    confidenceEstablished: labels.confidenceEstablished,
   }
   const viewItems = [
     { value: "overview", label: labels.viewOverview },
@@ -358,6 +388,7 @@ export function AnalyticsPageContent({
             !aggregateScope && <SiteQualityCard score={siteQuality} labels={tableLabels} />
           ) : (
             <>
+          {aggregateScope && <VariantRankingTable rows={variantRanking} labels={tableLabels} />}
           <div className="grid min-w-0 gap-4 xl:grid-cols-2">
             <SectionStackedBarChart rows={sections} labels={tableLabels} />
             <ComponentExposureBarChart rows={componentExposure} labels={tableLabels} />

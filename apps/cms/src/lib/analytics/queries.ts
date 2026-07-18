@@ -2,6 +2,9 @@ import "server-only"
 import { getPostHogAnalyticsConfig } from "./config"
 import { queryPostHog } from "./posthogClient"
 import { WEB_VITAL_NAMES, combineSiteScore, getSiteQualityScore, webVitalRating, webVitalScore } from "./scoring"
+import { rankProviderVariants, type VariantRankingMetric } from "./variantRanking"
+
+export type { VariantRankingMetric } from "./variantRanking"
 
 export type AnalyticsQueryScope = {
   tenantId?: string | number | null
@@ -470,6 +473,62 @@ export const getSectionPerformance = async (_scope: AnalyticsQueryScope): Promis
     engagements: numberAt(row, 5),
     ctaClicks: numberAt(row, 6),
   }))
+}
+
+export const getProviderVariantRanking = async (_scope: AnalyticsQueryScope): Promise<VariantRankingMetric[]> => {
+  if (!getPostHogAnalyticsConfig().queryEnabled) return []
+  const response = await queryPostHog<HogQLResponse>(`
+    SELECT
+      properties.section_type AS section_type,
+      properties.provider_variant AS provider_variant,
+      countIf(event = 'site_section_viewed') AS views,
+      uniqIf(person_id, event = 'site_section_viewed') AS exposed_visitors,
+      countIf(event = 'site_section_engaged') AS engagements,
+      uniqIf(person_id, event = 'site_section_engaged') AS engaged_visitors,
+      countIf(${componentInteractionCondition}) AS interactions,
+      uniqIf(person_id, ${componentInteractionCondition}) AS interacting_visitors,
+      countIf(event = 'site_conversion_completed') AS attributed_conversions,
+      uniqIf(person_id, event = 'site_conversion_completed') AS converting_visitors,
+      uniqIf(properties.tenant_id, event = 'site_section_viewed') AS tenant_count,
+      uniqIf(
+        concat(
+          coalesce(properties.tenant_id, ''), '|',
+          coalesce(properties.page_path, ''), '|',
+          coalesce(properties.section_id, '')
+        ),
+        event = 'site_section_viewed'
+      ) AS instance_count
+    FROM events
+    WHERE ${analyticsWhere(_scope)}
+      AND coalesce(properties.site_kind, 'tenant') = 'tenant'
+      AND properties.tenant_id IS NOT NULL
+      AND properties.provider_variant IS NOT NULL
+      AND properties.provider_variant != ''
+      AND properties.section_type IS NOT NULL
+      AND properties.section_type != ''
+      AND (
+        event IN ('site_section_viewed', 'site_section_engaged', 'site_conversion_completed')
+        OR ${componentInteractionCondition}
+      )
+    GROUP BY section_type, provider_variant
+    ORDER BY exposed_visitors DESC
+    LIMIT 200
+  `, "siab_provider_variant_ranking")
+
+  return rankProviderVariants((response?.results ?? []).map((row) => ({
+    sectionType: stringAt(row, 0) ?? "unknown",
+    providerVariant: stringAt(row, 1) ?? "unknown",
+    views: numberAt(row, 2),
+    exposedVisitors: numberAt(row, 3),
+    engagements: numberAt(row, 4),
+    engagedVisitors: numberAt(row, 5),
+    interactions: numberAt(row, 6),
+    interactingVisitors: numberAt(row, 7),
+    attributedConversions: numberAt(row, 8),
+    convertingVisitors: numberAt(row, 9),
+    tenantCount: numberAt(row, 10),
+    instanceCount: numberAt(row, 11),
+  })))
 }
 
 export const getFormFunnel = async (_scope: AnalyticsQueryScope): Promise<FormFunnelMetric> => {

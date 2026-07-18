@@ -12,6 +12,7 @@ import {
   getGeoCities,
   getGeoCountries,
   getJourneySteps,
+  getProviderVariantRanking,
   getSectionPerformance,
   getSiteAnalyticsOverview,
   getScrollDepth,
@@ -151,6 +152,49 @@ describe("analytics queries", () => {
     expect(body.name).toBe("siab_section_performance")
     expect(body.query.query).toContain("properties.provider_variant AS provider_variant")
     expect(body.query.query).toContain("GROUP BY section_id, section_type, provider_variant, page_path")
+  })
+
+  it("queries and ranks cross-tenant provider variants using unique visitor outcomes", async () => {
+    process.env.POSTHOG_PROJECT_ID = "123"
+    process.env.POSTHOG_PERSONAL_API_KEY = "phx_test"
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        results: [[
+          "hero",
+          "shadcnui-blocks.hero-01",
+          80,
+          40,
+          24,
+          20,
+          12,
+          10,
+          2,
+          2,
+          2,
+          3,
+        ]],
+      }),
+    } as Response)
+
+    await expect(getProviderVariantRanking({ days: 30 })).resolves.toEqual([
+      expect.objectContaining({
+        sectionType: "hero",
+        providerVariant: "shadcnui-blocks.hero-01",
+        exposedVisitors: 40,
+        engagementRate: 0.5,
+        interactionRate: 0.25,
+        conversionRate: 0.05,
+        confidence: "directional",
+        rank: null,
+      }),
+    ])
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
+    expect(body.name).toBe("siab_provider_variant_ranking")
+    expect(body.query.query).toContain("uniqIf(person_id, event = 'site_section_viewed')")
+    expect(body.query.query).toContain("coalesce(properties.site_kind, 'tenant') = 'tenant'")
+    expect(body.query.query).not.toContain("properties.tenant_id =")
   })
 
   it("parses form funnel, traffic source, and device metrics", async () => {

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@siteinabox/ui/components/card"
 import { GeoChoroplethMap } from "@/components/analytics/GeoChoroplethMap"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@siteinabox/ui/components/table"
@@ -17,6 +17,7 @@ import type {
   TopCtaMetric,
   TopPageMetric,
   TrafficSourceMetric,
+  VariantRankingMetric,
   WebVitalMetric,
 } from "@/lib/analytics/queries"
 import type { SiteQualityScore } from "@/lib/analytics/scoring"
@@ -40,6 +41,7 @@ type TableLabels = {
   sectionPerformance: string
   section: string
   engagements: string
+  engagementRate?: string
   ctaClicks: string
   emptyValue: string
   formFunnel: string
@@ -104,6 +106,18 @@ type TableLabels = {
   city?: string
   countryCode?: string
   share?: string
+  variantRanking?: string
+  variantRankingDescription?: string
+  providerVariant?: string
+  rank?: string
+  score?: string
+  evidence?: string
+  exposedVisitors?: string
+  tenants?: string
+  instances?: string
+  confidenceInsufficient?: string
+  confidenceDirectional?: string
+  confidenceEstablished?: string
 }
 
 const countryLabel = (row: GeoCountryMetric, emptyValue: string) =>
@@ -462,6 +476,67 @@ export function SectionPerformanceTable({ rows, labels }: { rows: SectionPerform
                 <TableCell>{row.views}</TableCell>
                 <TableCell>{row.engagements}</TableCell>
                 <TableCell>{row.ctaClicks}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+const confidenceLabel = (row: VariantRankingMetric, labels: TableLabels) => {
+  if (row.confidence === "established") return labels.confidenceEstablished ?? "Established"
+  if (row.confidence === "directional") return labels.confidenceDirectional ?? "Directional"
+  return labels.confidenceInsufficient ?? "Insufficient"
+}
+
+export function VariantRankingTable({ rows, labels }: { rows: VariantRankingMetric[]; labels: TableLabels }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">{labels.variantRanking ?? "Provider variant ranking"}</CardTitle>
+        <CardDescription>
+          {labels.variantRankingDescription ?? "Compares variants only within the same section type using unique exposed visitors and smoothed outcome rates."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{labels.rank ?? "Rank"}</TableHead>
+              <TableHead>{labels.section}</TableHead>
+              <TableHead>{labels.providerVariant ?? "Variant"}</TableHead>
+              <TableHead>{labels.score ?? "Score"}</TableHead>
+              <TableHead>{labels.evidence ?? "Evidence"}</TableHead>
+              <TableHead>{labels.exposedVisitors ?? labels.visitors}</TableHead>
+              <TableHead>{labels.tenants ?? "Tenants"}</TableHead>
+              <TableHead>{labels.instances ?? "Instances"}</TableHead>
+              <TableHead>{labels.engagementRate ?? labels.engagements}</TableHead>
+              <TableHead>{labels.interactionRate}</TableHead>
+              <TableHead>{labels.conversionRate}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.length === 0 ? (
+              <TableRow><TableCell colSpan={11} className="h-20 text-center text-muted-foreground">{labels.noData}</TableCell></TableRow>
+            ) : rows.map((row) => (
+              <TableRow key={`${row.sectionType}:${row.providerVariant}`}>
+                <TableCell>{row.rank ?? labels.emptyValue}</TableCell>
+                <TableCell className="font-medium">{row.sectionType}</TableCell>
+                <TableCell className="max-w-72 truncate font-mono text-xs" title={row.providerVariant}>{row.providerVariant}</TableCell>
+                <TableCell>{row.score == null ? labels.emptyValue : `${row.score}/100`}</TableCell>
+                <TableCell>
+                  <Badge variant={row.confidence === "established" ? "default" : row.confidence === "directional" ? "secondary" : "outline"}>
+                    {confidenceLabel(row, labels)}
+                  </Badge>
+                </TableCell>
+                <TableCell>{row.exposedVisitors}</TableCell>
+                <TableCell>{row.tenantCount}</TableCell>
+                <TableCell>{row.instanceCount}</TableCell>
+                <TableCell>{pct(row.engagementRate)}</TableCell>
+                <TableCell>{pct(row.interactionRate)}</TableCell>
+                <TableCell>{pct(row.conversionRate)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

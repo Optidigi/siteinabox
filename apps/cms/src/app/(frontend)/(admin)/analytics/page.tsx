@@ -37,6 +37,7 @@ import {
   getGeoCities,
   getGeoCountries,
   getJourneySteps,
+  getProviderVariantRanking,
   getSectionPerformance,
   getSiteAnalyticsOverview,
   getSiteTrafficSeries,
@@ -125,6 +126,7 @@ export default async function AnalyticsPage({
       cmsTenantUsage,
       componentPerformance,
       componentExposure,
+      variantRanking,
       webVitals,
       siteQuality,
       autocaptureInteractions,
@@ -151,6 +153,7 @@ export default async function AnalyticsPage({
       view === "cms" ? getCmsTenantUsage(scope) : Promise.resolve([]),
       view === "behavior" ? getComponentPerformance(scope) : Promise.resolve([]),
       view === "behavior" ? getComponentExposure(scope) : Promise.resolve([]),
+      view === "behavior" && !selectedTenantId ? getProviderVariantRanking(scope) : Promise.resolve([]),
       view === "behavior" ? getWebVitals(scope) : Promise.resolve([]),
       view === "behavior" && selectedTenantId ? getSiteQualityScore(selectedTenantId) : Promise.resolve(emptySiteQuality),
       view === "behavior" ? getAutocaptureInteractions(scope) : Promise.resolve([]),
@@ -281,6 +284,7 @@ export default async function AnalyticsPage({
           deviceSplit={deviceSplit}
           componentPerformance={componentPerformance}
           componentExposure={componentExposure}
+          variantRanking={variantRanking}
           webVitals={webVitals}
           siteQuality={siteQuality}
           autocaptureInteractions={autocaptureInteractions}
@@ -314,6 +318,7 @@ export default async function AnalyticsPage({
             sectionPerformance: t("sectionPerformance"),
             section: t("section"),
             engagements: t("engagements"),
+            engagementRate: t("engagementRate"),
             emptyValue: t("emptyValue"),
             days7: t("days7"),
             days30: t("days30"),
@@ -343,6 +348,18 @@ export default async function AnalyticsPage({
             scoreUnavailable: t("scoreUnavailable"),
             measuredFromVisitors: t.raw("measuredFromVisitors"),
             lowSampleNotice: t("lowSampleNotice"),
+            variantRanking: t("variantRanking"),
+            variantRankingDescription: t("variantRankingDescription"),
+            providerVariant: t("providerVariant"),
+            rank: t("rank"),
+            score: t("score"),
+            evidence: t("evidence"),
+            exposedVisitors: t("exposedVisitors"),
+            tenants: t("tenants"),
+            instances: t("instances"),
+            confidenceInsufficient: t("confidenceInsufficient"),
+            confidenceDirectional: t("confidenceDirectional"),
+            confidenceEstablished: t("confidenceEstablished"),
             fieldPerformanceExplanation: t("fieldPerformanceExplanation"),
             siteQualityExplanation: t("siteQualityExplanation"),
             metricMainContent: t("metricMainContent"),
@@ -456,6 +473,7 @@ export default async function AnalyticsPage({
         deviceSplit={deviceSplit}
         componentPerformance={componentPerformance}
         componentExposure={componentExposure}
+        variantRanking={[]}
         webVitals={webVitals}
         siteQuality={siteQuality}
         autocaptureInteractions={autocaptureInteractions}
@@ -491,6 +509,7 @@ export default async function AnalyticsPage({
           sectionPerformance: t("sectionPerformance"),
           section: t("section"),
           engagements: t("engagements"),
+          engagementRate: t("engagementRate"),
           emptyValue: t("emptyValue"),
           days7: t("days7"),
           days30: t("days30"),
@@ -520,6 +539,18 @@ export default async function AnalyticsPage({
           scoreUnavailable: t("scoreUnavailable"),
           measuredFromVisitors: t.raw("measuredFromVisitors"),
           lowSampleNotice: t("lowSampleNotice"),
+          variantRanking: t("variantRanking"),
+          variantRankingDescription: t("variantRankingDescription"),
+          providerVariant: t("providerVariant"),
+          rank: t("rank"),
+          score: t("score"),
+          evidence: t("evidence"),
+          exposedVisitors: t("exposedVisitors"),
+          tenants: t("tenants"),
+          instances: t("instances"),
+          confidenceInsufficient: t("confidenceInsufficient"),
+          confidenceDirectional: t("confidenceDirectional"),
+          confidenceEstablished: t("confidenceEstablished"),
           fieldPerformanceExplanation: t("fieldPerformanceExplanation"),
           siteQualityExplanation: t("siteQualityExplanation"),
           metricMainContent: t("metricMainContent"),
