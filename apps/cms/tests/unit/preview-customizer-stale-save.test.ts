@@ -31,10 +31,6 @@ vi.mock("@/components/editor/RtManifestContext", () => ({
   RtManifestProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-vi.mock("@/components/editor/theme/theme-bar", () => ({
-  ThemeBar: () => null,
-}))
-
 vi.mock("@/lib/actions/previewCustomizer", () => ({
   setPreviewTheme: vi.fn(),
 }))

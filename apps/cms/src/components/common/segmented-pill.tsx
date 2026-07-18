@@ -11,9 +11,7 @@ import { cn } from "@siteinabox/ui/lib/utils"
  * visual: a rounded-md `bg-muted/30` capsule containing filled-on-active /
  * ghost-on-inactive shadcn Buttons.
  *
- * Used by `ModeToggle` (2-state, always one active) and `ThemeBar`'s
- * Colours/Fonts/Shape selector (3-state, null = closed). Same look in
- * both places — one primitive, one item shape, one active treatment.
+ * Used by `ModeToggle` (2-state, always one active).
  */
 export interface SegmentedPillItem<V extends string> {
   value: V
@@ -28,7 +26,7 @@ export interface SegmentedPillProps<V extends string> {
   onValueChange: (next: V | null) => void
   items: SegmentedPillItem<V>[]
   ariaLabel: string
-  /** Per-item ref callback — used by ThemeBar to return focus on close. */
+  /** Optional per-item ref callback for focus management. */
   itemRef?: (value: V, el: HTMLButtonElement | null) => void
   /** `"md"` hides the text label below the md breakpoint (icon-only). */
   labelBreakpoint?: "always" | "md"

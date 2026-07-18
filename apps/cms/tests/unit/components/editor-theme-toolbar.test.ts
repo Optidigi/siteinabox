@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest"
 
 const read = (path: string) => readFileSync(path, "utf8")
 
-describe("ThemeBar controls", () => {
+describe("page-editor theme toolbar", () => {
   it("exposes only color, font and shape controls", () => {
-    const themeBar = read("src/components/editor/theme/theme-bar.tsx")
+    const themeBar = read("src/components/editor/theme/editor-theme-toolbar.tsx")
     const radiusControl = read("src/components/editor/theme/radius-control.tsx")
     const pageForm = read("src/components/forms/PageForm.tsx")
 
@@ -22,14 +22,14 @@ describe("ThemeBar controls", () => {
   })
 
   it("uses functional theme updates so quick toolbar patches merge with the latest state", () => {
-    const themeBar = read("src/components/editor/theme/theme-bar.tsx")
+    const themeBar = read("src/components/editor/theme/editor-theme-toolbar.tsx")
 
     expect(themeBar).toContain("React.Dispatch<React.SetStateAction<ThemeTokens | null>>")
     expect(themeBar).toContain("onThemeChange((current) => normalizeThemeForSave")
   })
 
   it("renders mobile shuffle/default controls from approved theme presets only", () => {
-    const themeBar = read("src/components/editor/theme/theme-bar.tsx")
+    const themeBar = read("src/components/editor/theme/editor-theme-toolbar.tsx")
 
     expect(themeBar).toContain("DEFAULT_THEME_TOKEN_SPEC")
     expect(themeBar).toContain("MOBILE_RANDOM_MODES")
@@ -44,17 +44,20 @@ describe("ThemeBar controls", () => {
     expect(themeBar).toContain('t("default")')
     expect(themeBar).toContain('className="hidden md:block"')
     expect(themeBar).not.toContain('size="lg"')
-    expect(themeBar).toContain("onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}")
+    expect(themeBar).toContain("onClick={() => setOpenSegment((current) => (current === segment ? null : segment))}")
     expect(themeBar).toContain("onPointerDownOutside={() => setOpenSegment(null)}")
     expect(themeBar).toContain("onFocusOutside={() => setOpenSegment(null)}")
   })
 
-  it("mounts the page-editor ThemeBar on desktop only", () => {
+  it("mounts and centers the page-editor toolbar over the canvas column only", () => {
     const pageForm = read("src/components/forms/PageForm.tsx")
 
     expect(pageForm).toContain("{!readOnly && isDesktop && (")
-    expect(pageForm).toContain("desktop editor only")
-    expect(pageForm).toContain('className="sticky top-[6.5rem] z-20 flex justify-center pointer-events-none"')
+    expect(pageForm).toContain("EditorThemeToolbar")
+    expect(pageForm).toContain('className="pointer-events-none sticky top-[6.5rem] z-20 grid w-full grid-cols-[minmax(0,1fr)_360px] gap-3"')
+    expect(pageForm).toContain('className="pointer-events-auto flex justify-center"')
+    expect(pageForm).not.toContain("SegmentedPill")
+    expect(pageForm).not.toContain("FLOATING_PILL_CLASS")
     expect(pageForm).not.toContain('className={`sticky z-20 flex justify-center pointer-events-none ${isDesktop ? "top-[6.5rem]" : "top-0"}`}')
   })
 })

@@ -55,7 +55,7 @@ import {
   remapSelectionAfterReorder,
 } from "@/components/editor/elementPath"
 import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
-import { ThemeBar } from "@/components/editor/theme/theme-bar"
+import { EditorThemeToolbar } from "@/components/editor/theme/editor-theme-toolbar"
 import { togglePageInNav } from "@/lib/actions/togglePageInNav"
 import { publishCurrentTenantStateAction } from "@/lib/actions/publishCurrentTenantState"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
@@ -632,7 +632,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   )
 
   // Theme state — seeded from the server-fetched tenant.theme prop (B2).
-  // ThemeBar writes here for immediate renderer updates; persistence
+  // EditorThemeToolbar writes here for immediate renderer updates; persistence
   // piggybacks on the page-form Save cycle. `themeBaseline` is held as
   // STATE (not a ref) so updates to it re-trigger the `themeDirty`
   // memo — a ref would mutate silently and leave the badge stuck on
@@ -1537,7 +1537,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         noValidate
         className="flex flex-col w-full"
       >
-          {/* Shared sticky header — sits below SiteHeader, above ThemeBar, in both view modes */}
+          {/* Shared sticky header — sits below SiteHeader, above the editor theme toolbar. */}
           {isDesktop && (
             <header data-siab-cms-sticky-chrome className="sticky top-12 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
               {readOnly ? (
@@ -1556,14 +1556,14 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             </header>
           )}
 
-          {/* Sticky-but-transparent ThemeBar — desktop editor only; phone editing uses the mobile section shell. */}
+          {/* Editor-owned theme toolbar — centered over the canvas column, never inside the renderer frame. */}
           {!readOnly && isDesktop && (
             <div
               data-siab-cms-sticky-chrome
-              className="sticky top-[6.5rem] z-20 flex justify-center pointer-events-none"
+              className="pointer-events-none sticky top-[6.5rem] z-20 grid w-full grid-cols-[minmax(0,1fr)_360px] gap-3"
             >
-              <div className="pointer-events-auto">
-                <ThemeBar
+              <div className="pointer-events-auto flex justify-center">
+                <EditorThemeToolbar
                   theme={themeState}
                   manifest={manifest}
                   onThemeChange={setThemeState}

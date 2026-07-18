@@ -16,9 +16,6 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ColorPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
-import { SegmentedPill } from "@/components/common/segmented-pill"
-import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
-import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 type Segment = "colors" | "fonts" | "shape"
@@ -31,7 +28,7 @@ function pickRandom<T>(items: T[]): T | null {
   return items[Math.floor(Math.random() * items.length)] ?? null
 }
 
-export function ThemeBar({
+export function EditorThemeToolbar({
   theme,
   manifest: _manifest,
   onThemeChange,
@@ -49,7 +46,7 @@ export function ThemeBar({
   const t = useTranslations("editor")
   // Theme edits are *not* autosaved — they flow up via onThemeChange so the
   // parent form can track them in the same dirty/Save cycle as page-form
-  // fields. The previous debounced setTenantTheme inside ThemeBar was a
+  // fields. The previous debounced setTenantTheme inside the theme toolbar was a
   // behaviour outlier (silent autosave to a different document); routing
   // through the explicit Save button is what users expect.
   function handleUpdate(partial: Partial<ThemeTokens>) {
@@ -97,18 +94,18 @@ export function ThemeBar({
   return (
     <>
       <div className="flex justify-center py-2 md:hidden">
-        <div className={cn(FLOATING_PILL_CLASS)}>
+        <div className="rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur-sm">
           <div
             role="group"
             aria-label={t("themeControls")}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5"
+            className="inline-flex items-center gap-1"
           >
             <Button
               type="button"
               size="sm"
               variant="ghost"
               onClick={handleShuffle}
-              className="h-7 rounded-sm px-2"
+              className="h-8 rounded-md px-2.5"
             >
               <Dices className="size-4" aria-hidden />
               <span className="ml-1.5">{t("shuffle")}</span>
@@ -118,7 +115,7 @@ export function ThemeBar({
               size="sm"
               variant="ghost"
               onClick={handleDefault}
-              className="h-7 rounded-sm px-2"
+              className="h-8 rounded-md px-2.5"
             >
               <RotateCcw className="size-4" aria-hidden />
               <span className="ml-1.5">{t("default")}</span>
@@ -131,20 +128,29 @@ export function ThemeBar({
         <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
           <PopoverAnchor asChild>
             <div className="flex justify-center py-2">
-              <div className={cn(FLOATING_PILL_CLASS)}>
-                <SegmentedPill<Segment>
-                  ariaLabel={t("themeControls")}
-                  value={openSegment}
-                  onValueChange={(next) => setOpenSegment((current) => (current === next ? null : next))}
-                  itemRef={(value, el) => {
-                    segmentRefs.current[value] = el
-                  }}
-                  items={[
-                    { value: "colors", label: t("colours"), icon: Palette, ariaLabel: t("colourPalette") },
-                    { value: "fonts", label: t("fonts"), icon: Type, ariaLabel: t("fontPairings") },
-                    { value: "shape", label: t("shape"), icon: SquareRoundCorner, ariaLabel: t("cornerRadius") },
-                  ]}
-                />
+              <div className="rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur-sm">
+                <div className="inline-flex items-center gap-1" role="group" aria-label={t("themeControls")}>
+                  {([
+                    ["colors", t("colours"), t("colourPalette"), Palette],
+                    ["fonts", t("fonts"), t("fontPairings"), Type],
+                    ["shape", t("shape"), t("cornerRadius"), SquareRoundCorner],
+                  ] as const).map(([segment, label, ariaLabel, Icon]) => (
+                    <Button
+                      key={segment}
+                      ref={(element) => { segmentRefs.current[segment] = element }}
+                      type="button"
+                      size="sm"
+                      variant={openSegment === segment ? "secondary" : "ghost"}
+                      aria-label={ariaLabel}
+                      aria-pressed={openSegment === segment}
+                      className="h-8 rounded-md px-3"
+                      onClick={() => setOpenSegment((current) => (current === segment ? null : segment))}
+                    >
+                      <Icon className="size-4" aria-hidden />
+                      <span className="ml-1.5">{label}</span>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
           </PopoverAnchor>

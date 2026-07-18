@@ -101,8 +101,8 @@ otherwise.
 
 Each renderer (canvas + live-site) MUST emit its styling through class rules that
 resolve to these vars — **never hard-code colour / font / radius values**. If a
-renderer hard-codes a value, the ThemeBar cannot drive it and the user can't see
-the change.
+renderer hard-codes a value, the editor theme toolbar cannot drive it and the
+user can't see the change.
 
 Do not add arbitrary block-level visual tokens, per-block class names, provider
 token override fields, or one-off color/font/radius/spacing controls. Fonts,
