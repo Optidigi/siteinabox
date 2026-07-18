@@ -4,8 +4,9 @@ import {
   archiveTenantDir,
   clearTenantCookieIfStale,
   createTenantDir,
+  enrollTenantAnalytics,
   removeTenantDir,
-  restoreTenantDir
+  restoreTenantDir,
 } from "@/hooks/tenantLifecycle"
 import { tenantEmailSendingStatuses } from "@/lib/tenants/emailSending"
 import { manifestSchema } from "@/lib/richText/manifest"
@@ -166,7 +167,7 @@ export const Tenants: CollectionConfig = {
     },
   ],
   hooks: {
-    afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir],
+    afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir, enrollTenantAnalytics],
     afterDelete: [removeTenantDir, clearTenantCookieIfStale]
   }
 }

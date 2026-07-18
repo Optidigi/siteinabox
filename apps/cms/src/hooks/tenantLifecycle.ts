@@ -4,6 +4,7 @@ import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from "paylo
 import { generateCookie, mergeHeaders } from "payload"
 import { writeAtomic } from "@/lib/atomicWrite"
 import { withManifestLock } from "@/lib/projection/manifest"
+import { ensureTenantPostHogEnrollment, tenantAnalyticsAppUrls } from "@/lib/analytics/projectEnrollment"
 
 // Both `tenants/<id>/` and `archived/<id>/` are siblings under dataDir(), so
 // `fs.rename` between them is always intra-filesystem (no EXDEV). If the
@@ -76,6 +77,23 @@ export const restoreTenantDir: CollectionAfterChangeHook = async ({ doc, previou
     // the tenant is conceptually re-activated even without on-disk content.
     if (err?.code !== "ENOENT") throw err
     req.payload.logger.warn({ tenantId: id }, "[tenants] restore: archived dir missing (manually purged?)")
+  }
+  return doc
+}
+
+export const enrollTenantAnalytics: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
+  if (shouldSkipProjection(req)) return doc
+  const urls = tenantAnalyticsAppUrls(doc)
+  if (urls.length === 0) return doc
+  const previousUrls = previousDoc ? tenantAnalyticsAppUrls(previousDoc) : []
+  if (JSON.stringify(urls) === JSON.stringify(previousUrls)) return doc
+  try {
+    const result = await ensureTenantPostHogEnrollment(doc)
+    req.payload.logger.info({ tenantId: String(doc.id), result }, "[analytics] tenant PostHog enrollment checked")
+  } catch (err) {
+    // Domain activation remains authoritative. Provider enrollment is
+    // idempotent and recoverable through posthog:sync-settings.
+    req.payload.logger.warn({ err, tenantId: String(doc.id) }, "[analytics] tenant PostHog enrollment failed")
   }
   return doc
 }

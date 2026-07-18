@@ -171,6 +171,7 @@ export type DashboardHighlights = SiteAnalyticsOverview & {
 }
 
 export type TenantPerformanceMetric = {
+  siteKind: "platform" | "tenant"
   tenantId: string | null
   tenantSlug: string | null
   siteDomain: string | null
@@ -222,6 +223,17 @@ export type CmsDeviceMetric = {
   actionClicks: number
   editorOpens: number
   users: number
+}
+
+export type CmsTenantUsageMetric = {
+  tenantId: string
+  tenantSlug: string | null
+  siteDomain: string | null
+  activeUsers: number
+  routeViews: number
+  actionClicks: number
+  editorOpens: number
+  pageSaves: number
 }
 
 type HogQLResponse = {
@@ -278,7 +290,22 @@ const quote = (value: string | number) =>
   `'${String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`
 
 const analyticsWhere = (scope: AnalyticsQueryScope) => {
-  const clauses = [`timestamp >= now() - INTERVAL ${days(scope.days)} DAY`]
+  const clauses = [
+    `timestamp >= now() - INTERVAL ${days(scope.days)} DAY`,
+    `coalesce(properties.analytics_surface, 'site') = 'site'`,
+  ]
+  if (scope.tenantId != null && String(scope.tenantId).trim() !== "") {
+    clauses.push(`properties.tenant_id = ${quote(scope.tenantId)}`)
+  }
+  return clauses.join(" AND ")
+}
+
+const cmsAnalyticsWhere = (scope: AnalyticsQueryScope) => {
+  const clauses = [
+    `timestamp >= now() - INTERVAL ${days(scope.days)} DAY`,
+    `properties.analytics_surface = 'cms'`,
+    `event LIKE 'cms_%'`,
+  ]
   if (scope.tenantId != null && String(scope.tenantId).trim() !== "") {
     clauses.push(`properties.tenant_id = ${quote(scope.tenantId)}`)
   }
@@ -539,6 +566,7 @@ export const getTenantPerformance = async (_scope: AnalyticsQueryScope): Promise
   if (!getPostHogAnalyticsConfig().queryEnabled) return []
   const response = await queryPostHog<HogQLResponse>(`
     SELECT
+      coalesce(properties.site_kind, 'tenant') AS site_kind,
       properties.tenant_id AS tenant_id,
       properties.tenant_slug AS tenant_slug,
       properties.site_domain AS site_domain,
@@ -549,24 +577,25 @@ export const getTenantPerformance = async (_scope: AnalyticsQueryScope): Promise
       countIf(event = 'site_form_accepted') AS accepted_forms
     FROM events
     WHERE ${analyticsWhere(_scope)}
-    GROUP BY tenant_id, tenant_slug, site_domain
+    GROUP BY site_kind, tenant_id, tenant_slug, site_domain
     ORDER BY pageviews DESC
     LIMIT 50
   `, "siab_tenant_performance")
 
   return (response?.results ?? []).map((row) => {
-    const visitors = numberAt(row, 3)
-    const conversions = numberAt(row, 5)
+    const visitors = numberAt(row, 4)
+    const conversions = numberAt(row, 6)
     return {
-      tenantId: stringAt(row, 0),
-      tenantSlug: stringAt(row, 1),
-      siteDomain: stringAt(row, 2),
+      siteKind: stringAt(row, 0) === "platform" ? "platform" : "tenant",
+      tenantId: stringAt(row, 1),
+      tenantSlug: stringAt(row, 2),
+      siteDomain: stringAt(row, 3),
       visitors,
-      pageviews: numberAt(row, 4),
+      pageviews: numberAt(row, 5),
       conversions,
       conversionRate: conversionRate(conversions, visitors),
-      ctaClicks: numberAt(row, 6),
-      acceptedForms: numberAt(row, 7),
+      ctaClicks: numberAt(row, 7),
+      acceptedForms: numberAt(row, 8),
     }
   })
 }
@@ -606,6 +635,22 @@ export const getEventVolume = async (_scope: AnalyticsQueryScope): Promise<Event
     GROUP BY event
     ORDER BY count DESC
   `, "siab_event_volume")
+
+  return (response?.results ?? []).map((row) => ({
+    event: stringAt(row, 0) ?? "unknown",
+    count: numberAt(row, 1),
+  }))
+}
+
+export const getCmsEventVolume = async (_scope: AnalyticsQueryScope = {}): Promise<EventVolumeMetric[]> => {
+  if (!getPostHogAnalyticsConfig().queryEnabled) return []
+  const response = await queryPostHog<HogQLResponse>(`
+    SELECT event, count() AS count
+    FROM events
+    WHERE ${cmsAnalyticsWhere(_scope)}
+    GROUP BY event
+    ORDER BY count DESC
+  `, "siab_cms_event_volume")
 
   return (response?.results ?? []).map((row) => ({
     event: stringAt(row, 0) ?? "unknown",
@@ -929,7 +974,7 @@ export const getGeoCities = async (_scope: AnalyticsQueryScope): Promise<GeoCity
   }))
 }
 
-export const getCmsUsageOverview = async (_scope: { days?: 7 | 30 | 90 | number } = {}): Promise<CmsUsageOverview> => {
+export const getCmsUsageOverview = async (_scope: AnalyticsQueryScope = {}): Promise<CmsUsageOverview> => {
   if (!getPostHogAnalyticsConfig().queryEnabled) return unavailableCmsUsage()
   const response = await queryPostHog<HogQLResponse>(`
     SELECT
@@ -944,8 +989,7 @@ export const getCmsUsageOverview = async (_scope: { days?: 7 | 30 | 90 | number 
       countIf(event = 'cms_media_uploaded') AS media_uploads,
       countIf(event = 'cms_form_submission_received') AS received_submissions
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days(_scope.days)} DAY
-      AND event LIKE 'cms_%'
+    WHERE ${cmsAnalyticsWhere(_scope)}
   `, "siab_cms_usage_overview")
 
   const row = response?.results?.[0]
@@ -964,7 +1008,39 @@ export const getCmsUsageOverview = async (_scope: { days?: 7 | 30 | 90 | number 
   }
 }
 
-export const getCmsRouteMetrics = async (_scope: { days?: 7 | 30 | 90 | number } = {}): Promise<CmsRouteMetric[]> => {
+export const getCmsTenantUsage = async (_scope: AnalyticsQueryScope = {}): Promise<CmsTenantUsageMetric[]> => {
+  if (!getPostHogAnalyticsConfig().queryEnabled) return []
+  const response = await queryPostHog<HogQLResponse>(`
+    SELECT
+      properties.tenant_id AS tenant_id,
+      properties.tenant_slug AS tenant_slug,
+      properties.site_domain AS site_domain,
+      uniq(distinct_id) AS active_users,
+      countIf(event = 'cms_route_viewed') AS route_views,
+      countIf(event = 'cms_action_clicked') AS action_clicks,
+      countIf(event = 'cms_page_editor_opened') AS editor_opens,
+      countIf(event = 'cms_page_saved') AS page_saves
+    FROM events
+    WHERE ${cmsAnalyticsWhere(_scope)}
+      AND properties.tenant_id IS NOT NULL
+    GROUP BY tenant_id, tenant_slug, site_domain
+    ORDER BY route_views DESC, action_clicks DESC
+    LIMIT 50
+  `, "siab_cms_tenant_usage")
+
+  return (response?.results ?? []).map((row) => ({
+    tenantId: stringAt(row, 0) ?? "",
+    tenantSlug: stringAt(row, 1),
+    siteDomain: stringAt(row, 2),
+    activeUsers: numberAt(row, 3),
+    routeViews: numberAt(row, 4),
+    actionClicks: numberAt(row, 5),
+    editorOpens: numberAt(row, 6),
+    pageSaves: numberAt(row, 7),
+  })).filter((row) => row.tenantId !== "")
+}
+
+export const getCmsRouteMetrics = async (_scope: AnalyticsQueryScope = {}): Promise<CmsRouteMetric[]> => {
   if (!getPostHogAnalyticsConfig().queryEnabled) return []
   const response = await queryPostHog<HogQLResponse>(`
     SELECT
@@ -975,7 +1051,7 @@ export const getCmsRouteMetrics = async (_scope: { days?: 7 | 30 | 90 | number }
       countIf(properties.cms_referrer_type = 'internal') AS internal,
       countIf(properties.cms_referrer_type = 'external') AS external
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days(_scope.days)} DAY
+    WHERE ${cmsAnalyticsWhere(_scope)}
       AND event = 'cms_route_viewed'
     GROUP BY route
     ORDER BY views DESC
@@ -992,7 +1068,7 @@ export const getCmsRouteMetrics = async (_scope: { days?: 7 | 30 | 90 | number }
   }))
 }
 
-export const getCmsActionMetrics = async (_scope: { days?: 7 | 30 | 90 | number } = {}): Promise<CmsActionMetric[]> => {
+export const getCmsActionMetrics = async (_scope: AnalyticsQueryScope = {}): Promise<CmsActionMetric[]> => {
   if (!getPostHogAnalyticsConfig().queryEnabled) return []
   const response = await queryPostHog<HogQLResponse>(`
     SELECT
@@ -1000,7 +1076,7 @@ export const getCmsActionMetrics = async (_scope: { days?: 7 | 30 | 90 | number 
       count() AS clicks,
       uniq(distinct_id) AS users
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days(_scope.days)} DAY
+    WHERE ${cmsAnalyticsWhere(_scope)}
       AND event = 'cms_action_clicked'
     GROUP BY action
     ORDER BY clicks DESC
@@ -1014,7 +1090,7 @@ export const getCmsActionMetrics = async (_scope: { days?: 7 | 30 | 90 | number 
   }))
 }
 
-export const getCmsDeviceMetrics = async (_scope: { days?: 7 | 30 | 90 | number } = {}): Promise<CmsDeviceMetric[]> => {
+export const getCmsDeviceMetrics = async (_scope: AnalyticsQueryScope = {}): Promise<CmsDeviceMetric[]> => {
   if (!getPostHogAnalyticsConfig().queryEnabled) return []
   const response = await queryPostHog<HogQLResponse>(`
     SELECT
@@ -1024,7 +1100,7 @@ export const getCmsDeviceMetrics = async (_scope: { days?: 7 | 30 | 90 | number 
       countIf(event = 'cms_route_viewed' AND properties.cms_route IN ('/pages/[id]', '/sites/[slug]/pages/[id]', '/pages/edit/[slug]', '/sites/[slug]/pages/edit/[slug]')) AS editor_opens,
       uniq(distinct_id) AS users
     FROM events
-    WHERE timestamp >= now() - INTERVAL ${days(_scope.days)} DAY
+    WHERE ${cmsAnalyticsWhere(_scope)}
       AND event IN ('cms_route_viewed', 'cms_action_clicked')
     GROUP BY device_type
     ORDER BY route_views DESC

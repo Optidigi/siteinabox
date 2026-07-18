@@ -44,10 +44,12 @@ export type AnalyticsEnvironment = "production" | "staging" | "development"
 export type AnalyticsBaseProperties = {
   schema_version: 1
   analytics_surface: "site" | "cms"
+  site_kind: "platform" | "tenant"
   environment: AnalyticsEnvironment
   admin_host?: string | null
   tenant_id: string | null
   tenant_slug: string | null
+  tenant_name?: string | null
   site_id: string | null
   site_domain: string | null
   page_id: string | null
@@ -125,7 +127,9 @@ export type AnalyticsEventProperties =
     cms_block_type: string
     cms_field_type: string
     cms_mode: "super-admin" | "tenant"
+    cms_tenant_context: "host" | "managed" | "none"
     user_role: "super-admin" | "owner" | "editor" | "viewer"
+    $groups: Record<string, string>
     action_key: string
     web_vital_name: "CLS" | "FCP" | "INP" | "LCP" | "TTFB"
     web_vital_value: number

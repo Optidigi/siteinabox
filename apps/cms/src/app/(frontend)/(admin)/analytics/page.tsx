@@ -6,6 +6,7 @@ import {
   CmsActionBarChart,
   CmsDeviceBarChart,
   CmsRouteStackedBarChart,
+  CmsTenantUsageChart,
   EventVolumeBarChart,
   TenantPerformanceChart,
 } from "@/components/analytics/AdminAnalyticsCharts"
@@ -13,6 +14,7 @@ import {
   CmsActionMetricsTable,
   CmsDeviceMetricsTable,
   CmsRouteMetricsTable,
+  CmsTenantUsageTable,
   EventVolumeTable,
   TenantPerformanceTable,
   TenantWebVitalsTable,
@@ -27,9 +29,10 @@ import {
   getCmsActionMetrics,
   getCmsDeviceMetrics,
   getCmsRouteMetrics,
+  getCmsTenantUsage,
   getComponentExposure,
   getComponentPerformance,
-  getEventVolume,
+  getCmsEventVolume,
   getFormFunnel,
   getGeoCities,
   getGeoCountries,
@@ -46,8 +49,10 @@ import {
   getWebVitals,
 } from "@/lib/analytics/queries"
 import { getSiteQualityScore } from "@/lib/analytics/scoring"
+import { tenantAnalyticsDashboardVisible } from "@/lib/analytics/config"
 import { requireAuth } from "@/lib/authGate"
 import { listTenants } from "@/lib/queries/tenants"
+import { notFound } from "next/navigation"
 
 export const dynamic = "force-dynamic"
 
@@ -117,6 +122,7 @@ export default async function AnalyticsPage({
       cmsRoutes,
       cmsActions,
       cmsDevices,
+      cmsTenantUsage,
       componentPerformance,
       componentExposure,
       webVitals,
@@ -131,17 +137,18 @@ export default async function AnalyticsPage({
     ] = await Promise.all([
       getSiteAnalyticsOverview(scope),
       view === "overview" ? getSiteTrafficSeries(scope) : Promise.resolve([]),
-      view === "overview" || view === "cms" ? getTenantPerformance(scope) : Promise.resolve([]),
-      view === "cms" ? getEventVolume(scope) : Promise.resolve([]),
+      view === "overview" ? getTenantPerformance(scope) : Promise.resolve([]),
+      view === "cms" ? getCmsEventVolume(scope) : Promise.resolve([]),
       view === "acquisition" ? getTrafficSources(scope) : Promise.resolve([]),
       view === "acquisition" ? getDeviceSplit(scope) : Promise.resolve([]),
       view === "overview" ? getTopPages(scope) : Promise.resolve([]),
       view === "conversion" ? getTopCtas(scope) : Promise.resolve([]),
       view === "behavior" ? getSectionPerformance(scope) : Promise.resolve([]),
       view === "conversion" ? getFormFunnel(scope) : Promise.resolve(emptyFormFunnel),
-      view === "cms" ? getCmsRouteMetrics({ days }) : Promise.resolve([]),
-      view === "cms" ? getCmsActionMetrics({ days }) : Promise.resolve([]),
-      view === "cms" ? getCmsDeviceMetrics({ days }) : Promise.resolve([]),
+      view === "cms" ? getCmsRouteMetrics(scope) : Promise.resolve([]),
+      view === "cms" ? getCmsActionMetrics(scope) : Promise.resolve([]),
+      view === "cms" ? getCmsDeviceMetrics(scope) : Promise.resolve([]),
+      view === "cms" ? getCmsTenantUsage(scope) : Promise.resolve([]),
       view === "behavior" ? getComponentPerformance(scope) : Promise.resolve([]),
       view === "behavior" ? getComponentExposure(scope) : Promise.resolve([]),
       view === "behavior" ? getWebVitals(scope) : Promise.resolve([]),
@@ -184,6 +191,9 @@ export default async function AnalyticsPage({
       routeViews: tAdmin("routeViews"),
       actionClicks: tAdmin("actionClicks"),
       editorOpens: tAdmin("editorOpens"),
+      cmsTenantUsage: tAdmin("cmsTenantUsage"),
+      activeUsers: tAdmin("activeUsers"),
+      pageSaves: tAdmin("pageSaves"),
       webVitals: t("webVitals"),
       webPerformanceScore: t("webPerformanceScore"),
       samples: t("samples"),
@@ -229,8 +239,8 @@ export default async function AnalyticsPage({
         {view === "cms" ? (
           <>
             <div className="grid min-w-0 gap-4 xl:grid-cols-2">
-              <TenantPerformanceChart data={tenantPerformanceRows} />
-              <TenantPerformanceTable rows={tenantPerformanceRows} labels={tableLabels} />
+              <CmsTenantUsageChart data={cmsTenantUsage} />
+              <CmsTenantUsageTable rows={cmsTenantUsage} labels={tableLabels} />
             </div>
             <div className="grid min-w-0 gap-4 xl:grid-cols-2">
               <EventVolumeBarChart rows={eventVolumeRows} labels={tableLabels} />
@@ -389,6 +399,7 @@ export default async function AnalyticsPage({
     )
   }
 
+  if (!tenantAnalyticsDashboardVisible(ctx.tenant.siteManifest)) notFound()
   const tenantId = ctx.tenant.id
   const view = parseSiteAnalyticsView(params.view)
   const scope = { tenantId, days }

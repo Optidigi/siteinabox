@@ -15,11 +15,22 @@ vi.mock("node:fs", async (orig) => {
   }
 })
 
+const { ensureTenantPostHogEnrollment } = vi.hoisted(() => ({
+  ensureTenantPostHogEnrollment: vi.fn(async () => "updated"),
+}))
+vi.mock("@/lib/analytics/projectEnrollment", () => ({
+  ensureTenantPostHogEnrollment,
+  tenantAnalyticsAppUrls: (tenant: any) => tenant.domainVerification?.status === "verified"
+    ? [`https://${tenant.domain}`, `https://admin.${tenant.domain}`]
+    : [],
+}))
+
 import { promises as fs } from "node:fs"
 import path from "node:path"
 import {
   archiveTenantDir,
   createTenantDir,
+  enrollTenantAnalytics,
   removeTenantDir,
   restoreTenantDir
 } from "@/hooks/tenantLifecycle"
@@ -73,6 +84,42 @@ describe("createTenantDir (afterChange create)", () => {
     } as any)
 
     expect(fs.mkdir).not.toHaveBeenCalled()
+  })
+})
+
+describe("enrollTenantAnalytics (verified tenant lifecycle)", () => {
+  it("automatically enrolls a newly verified tenant", async () => {
+    const req = fakeReq()
+    await enrollTenantAnalytics({
+      doc: { id: 42, domain: "client.example", domainVerification: { status: "verified" } },
+      previousDoc: { id: 42, domain: "client.example", domainVerification: { status: "not_checked" } },
+      req,
+      collection: {} as any,
+      context: {} as any,
+      operation: "update",
+    } as any)
+
+    expect(ensureTenantPostHogEnrollment).toHaveBeenCalledWith(expect.objectContaining({ id: 42 }))
+    expect(req.payload.logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ tenantId: "42", result: "updated" }),
+      "[analytics] tenant PostHog enrollment checked",
+    )
+  })
+
+  it("does not call PostHog for unverified or unchanged domains", async () => {
+    const req = fakeReq()
+    await enrollTenantAnalytics({
+      doc: { id: 42, domain: "client.example", domainVerification: { status: "not_checked" } },
+      previousDoc: null,
+      req,
+    } as any)
+    await enrollTenantAnalytics({
+      doc: { id: 42, domain: "client.example", domainVerification: { status: "verified" } },
+      previousDoc: { id: 42, domain: "client.example", domainVerification: { status: "verified" } },
+      req,
+    } as any)
+
+    expect(ensureTenantPostHogEnrollment).not.toHaveBeenCalled()
   })
 })
 

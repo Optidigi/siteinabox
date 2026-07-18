@@ -5,10 +5,12 @@ const EMAIL_OR_PHONE_SCHEME = /^(mailto|tel):/i
 const SAFE_KEYS = new Set([
   "schema_version",
   "analytics_surface",
+  "site_kind",
   "environment",
   "admin_host",
   "tenant_id",
   "tenant_slug",
+  "tenant_name",
   "site_id",
   "site_domain",
   "page_id",
@@ -59,7 +61,9 @@ const SAFE_KEYS = new Set([
   "cms_block_type",
   "cms_field_type",
   "cms_mode",
+  "cms_tenant_context",
   "user_role",
+  "$groups",
 ])
 
 const safeScalar = (value: unknown): value is string | number | boolean | null =>
@@ -76,6 +80,18 @@ export const redactAnalyticsProperties = (properties: AnalyticsEventProperties):
 
   for (const [key, value] of Object.entries(properties)) {
     if (!SAFE_KEYS.has(key)) continue
+    if (key === "$groups") {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue
+      const groups = Object.fromEntries(
+        Object.entries(value).filter(([groupType, groupId]) =>
+          /^[a-z][a-z0-9_-]{0,31}$/.test(groupType)
+          && typeof groupId === "string"
+          && groupId.length > 0
+          && groupId.length <= 128),
+      )
+      if (Object.keys(groups).length > 0) out.$groups = groups
+      continue
+    }
     if (!safeScalar(value)) continue
     out[key] = typeof value === "string" ? sanitizeString(key, value) : value
   }

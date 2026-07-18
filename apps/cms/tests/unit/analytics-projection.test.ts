@@ -68,6 +68,7 @@ describe("analytics projection", () => {
       {
         tenantId: 7,
         tenantSlug: "amicare",
+        tenantName: "Amicare",
         siteDomain: "ami-care.nl",
         manifestVersion: 1,
         analytics: { conversionGoals: { contactClicks: ["phone"] } },
@@ -83,6 +84,8 @@ describe("analytics projection", () => {
       posthogProjectToken: "phc_test",
       tenantId: "7",
       tenantSlug: "amicare",
+      tenantName: "Amicare",
+      siteKind: "tenant",
       siteId: "7",
       siteDomain: "ami-care.nl",
       manifestVersion: 1,

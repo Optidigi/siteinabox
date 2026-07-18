@@ -16,6 +16,7 @@ import type {
   CmsActionMetric,
   CmsDeviceMetric,
   CmsRouteMetric,
+  CmsTenantUsageMetric,
   DeviceMetric,
   EventVolumeMetric,
   TenantPerformanceMetric,
@@ -25,6 +26,38 @@ import type {
 const truncateTick = (value: unknown, max = 14) => {
   const text = String(value ?? "")
   return text.length > max ? `${text.slice(0, max)}...` : text
+}
+
+export function CmsTenantUsageChart({ data }: { data: CmsTenantUsageMetric[] }) {
+  const t = useTranslations("adminAnalytics")
+  const rows = data.slice(0, 8).map((row) => ({
+    tenant: row.tenantSlug ?? row.siteDomain ?? row.tenantId,
+    routeViews: row.routeViews,
+    actionClicks: row.actionClicks,
+  }))
+  const chartConfig: ChartConfig = {
+    routeViews: { label: t("routeViews"), color: "var(--chart-1)" },
+    actionClicks: { label: t("actionClicks"), color: "var(--chart-2)" },
+  }
+  return (
+    <Card>
+      <CardHeader><CardTitle className="text-base">{t("cmsTenantUsage")}</CardTitle></CardHeader>
+      <CardContent>
+        {rows.length === 0 ? <EmptyChart label={t("noData")} /> : (
+          <ChartContainer config={chartConfig} className="h-[300px] min-w-0 w-full">
+            <BarChart data={rows} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+              <CartesianGrid vertical={false} strokeDasharray="3 3" />
+              <XAxis dataKey="tenant" tickLine={false} axisLine={false} interval={0} tickMargin={8} tickFormatter={categoryTickFormatter(rows.length)} />
+              <YAxis width={32} tickLine={false} axisLine={false} allowDecimals={false} />
+              <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
+              <Bar dataKey="routeViews" fill="var(--color-routeViews)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="actionClicks" fill="var(--color-actionClicks)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
+        )}
+      </CardContent>
+    </Card>
+  )
 }
 
 const tickLimitForRows = (rows: number) => {
@@ -72,7 +105,7 @@ export function TenantPerformanceChart({ data }: { data: TenantPerformanceMetric
     conversions: { label: t("conversions"), color: "var(--chart-3)" },
   }
   const rows = data.slice(0, 8).map((row) => ({
-    tenant: row.tenantSlug ?? row.siteDomain ?? row.tenantId ?? t("unknownTenant"),
+    tenant: row.siteKind === "platform" ? row.siteDomain ?? t("platformSite") : row.tenantSlug ?? row.siteDomain ?? row.tenantId ?? t("unknownTenant"),
     visitors: row.visitors,
     conversions: row.conversions,
   }))

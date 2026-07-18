@@ -58,6 +58,8 @@ describe("analytics redaction", () => {
   it("allowlists safe scalar properties and strips raw phone/email hrefs", () => {
     const redacted = redactAnalyticsProperties({
       tenant_id: "7",
+      tenant_name: "Amicare",
+      site_kind: "tenant",
       analytics_surface: "cms",
       admin_host: "admin.ami-care.nl",
       action_label: "Bel ons",
@@ -98,11 +100,15 @@ describe("analytics redaction", () => {
       cms_field_type: "richText",
       cms_mode: "tenant",
       user_role: "owner",
+      cms_tenant_context: "host",
+      $groups: { tenant: "7", "INVALID!": "ignored", oversized: "x".repeat(129) },
       target_url: "tel:+31612345678",
     })
 
     expect(redacted).toEqual({
       tenant_id: "7",
+      tenant_name: "Amicare",
+      site_kind: "tenant",
       analytics_surface: "cms",
       admin_host: "admin.ami-care.nl",
       action_label: "Bel ons",
@@ -139,6 +145,8 @@ describe("analytics redaction", () => {
       cms_field_type: "richText",
       cms_mode: "tenant",
       user_role: "owner",
+      cms_tenant_context: "host",
+      $groups: { tenant: "7" },
     })
   })
 })

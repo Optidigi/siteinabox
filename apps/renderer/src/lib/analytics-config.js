@@ -53,6 +53,8 @@ export function buildAnalyticsConfig({ snapshot, page, pathname }) {
     schemaVersion: 1,
     tenantId: firstString(pageAnalytics?.tenantId, analytics.tenantId, snapshot.tenantId),
     tenantSlug: firstString(pageAnalytics?.tenantSlug, analytics.tenantSlug, snapshot.tenantSlug),
+    tenantName: firstString(analytics.tenantName, snapshot.tenantName, snapshot.settings?.siteName),
+    siteKind: firstString(analytics.siteKind) ?? (firstString(pageAnalytics?.tenantId, analytics.tenantId, snapshot.tenantId) ? "tenant" : "platform"),
     siteId: firstString(pageAnalytics?.siteId, analytics.siteId, snapshot.tenantId),
     siteDomain: firstString(pageAnalytics?.siteDomain, analytics.siteDomain, snapshot.domain),
     pageId: firstString(pageAnalytics?.pageId, analytics.pageId, page?.id),

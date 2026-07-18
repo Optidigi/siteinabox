@@ -8,6 +8,7 @@ import { resolvePublicAnalyticsConfig, type PublicAnalyticsConfigInput } from "@
 export type SettingsAnalyticsProjectionContext = {
   tenantId?: string | number | null
   tenantSlug?: string | null
+  tenantName?: string | null
   siteDomain?: string | null
   themeId?: string | null
   siteBuildId?: string | null
@@ -46,6 +47,8 @@ export function settingsToJson(
       schemaVersion: 1,
       tenantId: analyticsContext.tenantId != null ? String(analyticsContext.tenantId) : null,
       tenantSlug: analyticsContext.tenantSlug ?? null,
+      tenantName: analyticsContext.tenantName ?? null,
+      siteKind: analyticsContext.tenantId != null ? "tenant" : "platform",
       siteId: analyticsContext.tenantId != null ? String(analyticsContext.tenantId) : null,
       siteDomain: analyticsContext.siteDomain ?? null,
       themeId: analyticsContext.themeId ?? null,

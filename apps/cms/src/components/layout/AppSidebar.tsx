@@ -13,7 +13,7 @@ import {
 type Mode = "super-admin" | "tenant"
 type Role = "super-admin" | "owner" | "editor" | "viewer"
 
-export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
+export function AppSidebar({ mode, role, analyticsVisible = true }: { mode: Mode; role: Role; analyticsVisible?: boolean }) {
   const pathname = usePathname() ?? "/"
   const t = useTranslations("app")
   const { isMobile, setOpenMobile } = useSidebar()
@@ -89,7 +89,7 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/")}><Link href="/"><LayoutDashboard /> {t("dashboard")}</Link></SidebarMenuButton></SidebarMenuItem>
-              {(mode === "tenant" || mode === "super-admin") && (
+              {(mode === "super-admin" || analyticsVisible) && (
                 <SidebarMenuItem className="max-md:hidden"><SidebarMenuButton asChild isActive={isActive(analyticsHref)}><Link href={analyticsHref}><BarChart3 /> {t("analytics")}</Link></SidebarMenuButton></SidebarMenuItem>
               )}
               {showSettings && (

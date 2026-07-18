@@ -299,6 +299,7 @@
     "event": "Analytics event",
     "count": "Count",
     "unknownTenant": "Unknown site",
+    "platformSite": "Site in a Box platform",
     "visitors": "Visitors",
     "conversions": "Conversions",
     "deviceSplit": "Device split",
@@ -315,6 +316,10 @@
     "routeViews": "Screen views",
     "actionClicks": "Interaction clicks",
     "editorOpens": "Page editor opens",
+    "cmsTenantUsage": "CMS usage by site",
+    "activeUsers": "Active users",
+    "pageSaves": "Page saves",
+    "noData": "No analytics data",
     "viewCms": "CMS"
   },
   "lists": {

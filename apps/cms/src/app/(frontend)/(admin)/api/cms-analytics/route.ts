@@ -31,6 +31,12 @@ const cleanNumber = (value: unknown, max: number): number | null => {
   return Math.min(Math.floor(n), max)
 }
 
+const cleanTenantSlug = (value: unknown): string | null => {
+  if (typeof value !== "string") return null
+  const slug = value.trim().toLowerCase()
+  return /^[a-z0-9-]{1,96}$/.test(slug) ? slug : null
+}
+
 const allowed = <T extends string>(value: unknown, values: readonly T[], fallback: T): T =>
   values.includes(value as T) ? value as T : fallback
 
@@ -102,6 +108,16 @@ export async function POST(req: NextRequest) {
   }
 
   const props = applyCmsEventPropertyPolicy(event, propertyPayload(body))
+  const managedSlug = ctx.mode === "super-admin" ? cleanTenantSlug(body.cms_tenant_slug) : null
+  const managedTenant = managedSlug
+    ? (await payload.find({
+        collection: "tenants",
+        where: { slug: { equals: managedSlug } },
+        limit: 1,
+        depth: 0,
+        overrideAccess: true,
+      })).docs[0] ?? null
+    : null
   const surface = event === "cms_route_viewed" ? props.cms_route ?? "route" : props.cms_route ?? "action"
   await captureCmsUsageEvent({
     event: event as CmsEventName,
@@ -110,6 +126,7 @@ export async function POST(req: NextRequest) {
     surface,
     action: props.cms_action,
     properties: props,
+    managedTenant,
   })
 
   return new NextResponse(null, { status: 204 })

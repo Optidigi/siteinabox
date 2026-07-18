@@ -75,3 +75,10 @@ export const resolvePublicAnalyticsConfig = (input?: PublicAnalyticsConfigInput 
     dashboardVisible: input?.dashboardVisible ?? true,
   }
 }
+
+export const tenantAnalyticsDashboardVisible = (siteManifest: unknown): boolean => {
+  if (!siteManifest || typeof siteManifest !== "object" || Array.isArray(siteManifest)) return true
+  const analytics = (siteManifest as { analytics?: unknown }).analytics
+  if (!analytics || typeof analytics !== "object" || Array.isArray(analytics)) return true
+  return (analytics as { dashboardVisible?: unknown }).dashboardVisible !== false
+}

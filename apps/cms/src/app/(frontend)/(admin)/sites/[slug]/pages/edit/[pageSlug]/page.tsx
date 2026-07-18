@@ -37,7 +37,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
   if (!page) notFound()
   if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
   const { inHeader, inFooter } = pageNavMembership(settings as any, Number(page.id))
-  await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open" })
+  await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open", managedTenant: tenant })
   return (
     <div className="flex flex-col gap-4">
       <div className="max-md:hidden">

@@ -105,6 +105,9 @@ try {
           consentVersion: "test",
           schemaVersion: 1,
           tenantId: "tenant-test",
+          tenantSlug: "tenant-test",
+          tenantName: "Tenant Test",
+          siteKind: "tenant",
           siteId: "site-test",
           pageId: "home",
           pagePath: "/",
@@ -148,6 +151,7 @@ try {
 
     const pageviews = events.filter((event) => event.event === "$pageview")
     const pageleaves = events.filter((event) => event.event === "$pageleave")
+    const groupIdentify = events.find((event) => event.event === "$groupidentify")
     const nativePageleave = pageleaves.find((event) => event.transport === "posthog-js")
 
     assert.equal(pageviews.length, 1, `one lifecycle must emit one $pageview: ${JSON.stringify(pageviews)}`)
@@ -157,6 +161,13 @@ try {
     assert.equal(typeof nativePageleave?.properties?.$prev_pageview_max_scroll, "number")
     assert.equal(typeof nativePageleave?.properties?.$prev_pageview_max_scroll_percentage, "number")
     assert.equal(nativePageleave?.properties?.tenant_id, "tenant-test", "common enrichment remains on native lifecycle events")
+    assert.deepEqual(pageviews[0]?.properties?.$groups, { tenant: "tenant-test" })
+    assert.deepEqual(groupIdentify?.properties?.$group_set, {
+      name: "Tenant Test",
+      slug: "tenant-test",
+      domain: "renderer.example.test",
+      site_kind: "tenant",
+    })
     assert.deepEqual(externalAnalyticsRequests, [], "the regression never reaches a real PostHog host")
 
     console.log(JSON.stringify({

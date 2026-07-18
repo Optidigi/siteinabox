@@ -2,11 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   getComponentPerformance,
   getDeviceSplit,
+  getCmsEventVolume,
   getCmsActionMetrics,
   getCmsDeviceMetrics,
   getCmsRouteMetrics,
+  getCmsTenantUsage,
   getCmsUsageOverview,
-  getEventVolume,
   getFormFunnel,
   getGeoCities,
   getGeoCountries,
@@ -320,14 +321,15 @@ describe("analytics queries", () => {
     const fetchMock = vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ results: [["7", "amicare", "ami-care.nl", 10, 25, 2, 5, 1]] }),
+      json: async () => ({ results: [["tenant", "7", "amicare", "ami-care.nl", 10, 25, 2, 5, 1]] }),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ results: [["$pageview", 25], ["site_conversion_completed", 2]] }),
+        json: async () => ({ results: [["cms_route_viewed", 25], ["cms_action_clicked", 2]] }),
       } as Response)
 
     await expect(getTenantPerformance({ days: 30 })).resolves.toEqual([{
+      siteKind: "tenant",
       tenantId: "7",
       tenantSlug: "amicare",
       siteDomain: "ami-care.nl",
@@ -338,10 +340,13 @@ describe("analytics queries", () => {
       ctaClicks: 5,
       acceptedForms: 1,
     }])
-    await expect(getEventVolume({ days: 30 })).resolves.toEqual([
-      { event: "$pageview", count: 25 },
-      { event: "site_conversion_completed", count: 2 },
+    await expect(getCmsEventVolume({ days: 30 })).resolves.toEqual([
+      { event: "cms_route_viewed", count: 25 },
+      { event: "cms_action_clicked", count: 2 },
     ])
+    const bodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)))
+    expect(bodies[0].query.query).toContain("coalesce(properties.analytics_surface, 'site') = 'site'")
+    expect(bodies[1].query.query).toContain("properties.analytics_surface = 'cms'")
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
@@ -353,7 +358,7 @@ describe("analytics queries", () => {
       json: async () => ({ results: [[3, 9, 42, 18, 5, 4, 1, 4, 2, 1]] }),
     } as Response)
 
-    await expect(getCmsUsageOverview({ days: 30 })).resolves.toEqual({
+    await expect(getCmsUsageOverview({ tenantId: 7, days: 30 })).resolves.toEqual({
       available: true,
       activeUsers: 3,
       dashboardViews: 9,
@@ -369,6 +374,8 @@ describe("analytics queries", () => {
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))
     expect(body.name).toBe("siab_cms_usage_overview")
     expect(body.query.query).toContain("event LIKE 'cms_%'")
+    expect(body.query.query).toContain("properties.analytics_surface = 'cms'")
+    expect(body.query.query).toContain("properties.tenant_id = '7'")
   })
 
   it("parses CMS route, action, and device intelligence metrics", async () => {
@@ -387,8 +394,12 @@ describe("analytics queries", () => {
         ok: true,
         json: async () => ({ results: [["desktop", 20, 7, 5, 4], ["mobile", 6, 3, 2, 2]] }),
       } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ results: [["7", "amicare", "ami-care.nl", 4, 20, 7, 5, 3]] }),
+      } as Response)
 
-    await expect(getCmsRouteMetrics({ days: 30 })).resolves.toEqual([{
+    await expect(getCmsRouteMetrics({ tenantId: 7, days: 30 })).resolves.toEqual([{
       route: "/pages/[id]",
       views: 12,
       users: 4,
@@ -396,15 +407,30 @@ describe("analytics queries", () => {
       internal: 9,
       external: 1,
     }])
-    await expect(getCmsActionMetrics({ days: 30 })).resolves.toEqual([{
+    await expect(getCmsActionMetrics({ tenantId: 7, days: 30 })).resolves.toEqual([{
       action: "Save",
       clicks: 8,
       users: 3,
     }])
-    await expect(getCmsDeviceMetrics({ days: 30 })).resolves.toEqual([
+    await expect(getCmsDeviceMetrics({ tenantId: 7, days: 30 })).resolves.toEqual([
       { deviceType: "desktop", routeViews: 20, actionClicks: 7, editorOpens: 5, users: 4 },
       { deviceType: "mobile", routeViews: 6, actionClicks: 3, editorOpens: 2, users: 2 },
     ])
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    await expect(getCmsTenantUsage({ tenantId: 7, days: 30 })).resolves.toEqual([{
+      tenantId: "7",
+      tenantSlug: "amicare",
+      siteDomain: "ami-care.nl",
+      activeUsers: 4,
+      routeViews: 20,
+      actionClicks: 7,
+      editorOpens: 5,
+      pageSaves: 3,
+    }])
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    for (const call of fetchMock.mock.calls) {
+      const body = JSON.parse(String(call[1]?.body))
+      expect(body.query.query).toContain("properties.analytics_surface = 'cms'")
+      expect(body.query.query).toContain("properties.tenant_id = '7'")
+    }
   })
 })

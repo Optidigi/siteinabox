@@ -40,6 +40,7 @@ describe("captureAcceptedFormAnalytics", () => {
       payload: {
         findByID: vi.fn().mockResolvedValue({
           id: 7,
+          name: "Amicare",
           slug: "amicare",
           domain: "ami-care.nl",
           siteManifest: { version: 1 },
@@ -47,19 +48,28 @@ describe("captureAcceptedFormAnalytics", () => {
       },
     })
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     const bodies = fetchMock.mock.calls.map((call) => JSON.parse(String(call[1]?.body)))
-    expect(bodies.map((body) => body.event)).toEqual(["site_form_accepted", "site_conversion_completed"])
+    expect(bodies.map((body) => body.event)).toEqual(["$groupidentify", "site_form_accepted", "site_conversion_completed"])
     expect(JSON.stringify(bodies)).not.toContain("person@example.com")
     expect(JSON.stringify(bodies)).not.toContain("private")
     expect(bodies[0].properties).toMatchObject({
+      distinct_id: "$tenant:7",
+      $group_type: "tenant",
+      $group_key: "7",
+      $group_set: { name: "Amicare", slug: "amicare", domain: "ami-care.nl" },
+    })
+    expect(bodies[1].properties).toMatchObject({
       tenant_id: "7",
       tenant_slug: "amicare",
+      tenant_name: "Amicare",
       site_domain: "ami-care.nl",
+      site_kind: "tenant",
+      $groups: { tenant: "7" },
       page_path: "/contact",
       conversion_source: "accepted_form",
     })
-    expect(bodies[0].distinct_id).toBe("site:7:server-conversions")
+    expect(bodies[1].properties.distinct_id).toBe("site:7:server-conversions")
     expect(JSON.stringify(bodies)).not.toContain('"form_id"')
     expect(JSON.stringify(bodies)).not.toContain('"form_name"')
   })

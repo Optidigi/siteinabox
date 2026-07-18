@@ -10,6 +10,8 @@ type AnalyticsConfig = {
   schemaVersion?: number
   tenantId?: string | null
   tenantSlug?: string | null
+  tenantName?: string | null
+  siteKind?: "platform" | "tenant"
   siteId?: string | null
   siteDomain?: string | null
   pageId?: string | null
@@ -29,6 +31,7 @@ export {}
 type PostHogClient = {
   init: (token: string, config: Record<string, unknown>, name?: string) => void
   register: (properties: Record<string, unknown>) => void
+  group?: (groupType: string, groupKey: string, properties?: Record<string, unknown>) => void
   opt_in_capturing?: (options?: { captureEventName?: string | false | null }) => void
   opt_out_capturing?: () => void
   reset?: () => void
@@ -110,6 +113,7 @@ const state: RuntimeState = {
 }
 
 const legacyCookieConsentStorageKey = "siab_cookie_consent_v1"
+const POSTHOG_TENANT_GROUP_TYPE = "tenant"
 
 const readConfig = (): AnalyticsConfig | null => {
   const node = document.getElementById("siab-analytics-config")
@@ -146,9 +150,12 @@ const baseProperties = () => {
   const config = state.config
   return {
     schema_version: 1,
+    analytics_surface: "site",
+    site_kind: config?.siteKind ?? (config?.tenantId ? "tenant" : "platform"),
     environment: location.hostname === "localhost" ? "development" : "production",
     tenant_id: config?.tenantId ?? null,
     tenant_slug: config?.tenantSlug ?? null,
+    tenant_name: config?.tenantName ?? null,
     site_id: config?.siteId ?? config?.tenantId ?? null,
     site_domain: config?.siteDomain ?? location.hostname,
     page_id: config?.pageId ?? null,
@@ -165,17 +172,19 @@ const baseProperties = () => {
     ...browserProperties(),
     ...trafficProperties(),
     ...campaignProperties(),
+    ...(config?.tenantId ? { $groups: { [POSTHOG_TENANT_GROUP_TYPE]: config.tenantId } } : {}),
   }
 }
 
 const sanitizeAutocaptureEvent = (event: Record<string, unknown> | null | undefined) => {
   if (!event || typeof event !== "object") return null
   const eventName = typeof event.event === "string" ? event.event : ""
-  if (!["$autocapture", "$rageclick", "$dead_click", "$web_vitals", "$pageview", "$pageleave"].includes(eventName)) return null
+  if (!["$autocapture", "$rageclick", "$dead_click", "$web_vitals", "$pageview", "$pageleave", "$groupidentify"].includes(eventName)) return null
 
   const props = typeof event.properties === "object" && event.properties ? event.properties as Record<string, unknown> : {}
   const isWebVitals = eventName === "$web_vitals"
   const isPageLifecycle = eventName === "$pageview" || eventName === "$pageleave"
+  const isGroupIdentify = eventName === "$groupidentify"
   const snapshot = !isWebVitals && state.lastAutocaptureAction && performance.now() - state.lastAutocaptureAction.at < 2000
     ? state.lastAutocaptureAction
     : null
@@ -190,14 +199,14 @@ const sanitizeAutocaptureEvent = (event: Record<string, unknown> | null | undefi
     properties: {
       ...props,
       ...baseProperties(),
-      ...(!isPageLifecycle ? snapshot?.properties : {}),
+      ...(!isPageLifecycle && !isGroupIdentify ? snapshot?.properties : {}),
       ...(eventName === "$pageleave" ? {
         page_duration_ms: Math.max(0, Math.round(performance.now() - state.pageStartedAt)),
         scroll_depth: Math.max(state.maxScrollDepth, scrollDepth()),
         interaction_type: "leave",
       } : {}),
       ...(isWebVitals ? { siab_web_vitals: true } : {}),
-      ...(!isWebVitals && !isPageLifecycle ? { siab_autocapture: true } : {}),
+      ...(!isWebVitals && !isPageLifecycle && !isGroupIdentify ? { siab_autocapture: true } : {}),
     },
   }
 }
@@ -257,6 +266,14 @@ const setupPostHogAutocapture = () => {
         before_send: sanitizeAutocaptureEvent,
         loaded(instance: PostHogClient) {
           instance.register(baseProperties())
+          if (config.tenantId) {
+            instance.group?.(POSTHOG_TENANT_GROUP_TYPE, config.tenantId, {
+              name: config.tenantName ?? config.tenantSlug ?? config.tenantId,
+              slug: config.tenantSlug ?? undefined,
+              domain: config.siteDomain ?? location.hostname,
+              site_kind: "tenant",
+            })
+          }
           instance.opt_in_capturing?.({ captureEventName: false })
         },
       })

@@ -39,6 +39,12 @@ const normalizeRoute = (path: string) => {
   return match?.[1] ?? pathname
 }
 
+export const managedTenantSlug = (path: string): string | null => {
+  const match = path.split(/[?#]/, 1)[0]?.match(/^\/sites\/([a-z0-9-]+)(?:\/|$)/)
+  const slug = match?.[1]
+  return slug && slug !== "new" ? slug : null
+}
+
 const deviceType = (): CmsDeviceType => {
   if (typeof window === "undefined") return "unknown"
   const width = window.innerWidth
@@ -119,6 +125,7 @@ export function CmsUsageTracker() {
     captureCmsBrowserEvent({
       event: "cms_route_viewed",
       cms_route: normalizeRoute(pathname),
+      ...(managedTenantSlug(pathname) ? { cms_tenant_slug: managedTenantSlug(pathname) } : {}),
       cms_referrer_type: source.type,
       ...(source.route ? { cms_referrer_route: source.route } : {}),
       cms_device_type: deviceType(),
@@ -146,6 +153,7 @@ export function CmsUsageTracker() {
       captureCmsBrowserEvent({
         event: "cms_action_clicked",
         cms_route: normalizeRoute(pathname),
+        ...(managedTenantSlug(pathname) ? { cms_tenant_slug: managedTenantSlug(pathname) } : {}),
         cms_action: label,
         cms_element_role: role,
         cms_device_type: deviceType(),

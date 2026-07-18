@@ -299,6 +299,7 @@
     "event": "Analytics-event",
     "count": "Aantal",
     "unknownTenant": "Onbekende website",
+    "platformSite": "Site in a Box-platform",
     "visitors": "Bezoekers",
     "conversions": "Conversies",
     "deviceSplit": "Apparaten",
@@ -315,6 +316,10 @@
     "routeViews": "Schermweergaven",
     "actionClicks": "Interactieklikken",
     "editorOpens": "Pagina-editor geopend",
+    "cmsTenantUsage": "CMS-gebruik per website",
+    "activeUsers": "Actieve gebruikers",
+    "pageSaves": "Opgeslagen pagina's",
+    "noData": "Geen analyticsgegevens",
     "viewCms": "CMS"
   },
   "lists": {

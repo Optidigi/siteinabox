@@ -41,3 +41,10 @@ test("PostHog JS is the sole page lifecycle owner", () => {
   assert.doesNotMatch(runtimeSource, /capture\(["']\$pageleave["']/)
   assert.doesNotMatch(runtimeSource, /setupPageLifecycle|capturePageview|capturePageleave/)
 })
+
+test("tenant events use the native PostHog group contract", () => {
+  assert.match(runtimeSource, /instance\.group\?\.\(POSTHOG_TENANT_GROUP_TYPE/)
+  assert.match(runtimeSource, /\$groups: \{ \[POSTHOG_TENANT_GROUP_TYPE\]: config\.tenantId \}/)
+  assert.match(runtimeSource, /site_kind: config\?\.siteKind/)
+  assert.match(runtimeSource, /"\$groupidentify"/)
+})

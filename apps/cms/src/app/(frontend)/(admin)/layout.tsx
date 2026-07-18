@@ -10,6 +10,7 @@ import { loadMessages } from "@/i18n/messages"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { getTenantLegalRequirements } from "@/lib/legal/customerRequirements"
+import { tenantAnalyticsDashboardVisible } from "@/lib/analytics/config"
 import { LegalRequirementBanner } from "@/components/legal/LegalRequirementBanner"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const locale = resolveLocale(user.language)
   const messages = await loadMessages(locale)
   const tenant = ctx.mode === "tenant" ? ctx.tenant : null
+  const analyticsVisible = tenant ? tenantAnalyticsDashboardVisible(tenant.siteManifest) : true
   const legalRequirements = tenant
     ? await getTenantLegalRequirements(await getPayload({ config }), tenant.id)
     : []
@@ -27,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <CmsUsageTracker />
       </Suspense>
       <SidebarProvider>
-        <AppSidebar mode={ctx.mode} role={user.role} />
+        <AppSidebar mode={ctx.mode} role={user.role} analyticsVisible={analyticsVisible} />
         <SidebarInset className="min-w-0">
           <SiteHeader user={user} />
           <LegalRequirementBanner requirements={legalRequirements} canAccept={user.role === "owner"} locale={locale} />

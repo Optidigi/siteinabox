@@ -1,7 +1,8 @@
 import "server-only"
 import { analyticsEnvironment } from "./config"
-import { captureAnalyticsEvent } from "./posthogClient"
+import { captureAnalyticsEvent, identifyPostHogTenantGroup } from "./posthogClient"
 import type { AnalyticsBaseProperties } from "./events"
+import { POSTHOG_TENANT_GROUP_TYPE, tenantAnalyticsProperties } from "./identity"
 
 const tenantIdOf = (doc: any): string | null => {
   const tenant = doc?.tenant
@@ -43,10 +44,12 @@ export const captureAcceptedFormAnalytics = async (args: {
   const base: AnalyticsBaseProperties = {
     schema_version: 1,
     analytics_surface: "site",
+    site_kind: "tenant",
     environment: analyticsEnvironment(),
     admin_host: null,
     tenant_id: tenantId,
     tenant_slug: tenant?.slug ? String(tenant.slug) : null,
+    tenant_name: tenant?.name ? String(tenant.name) : null,
     site_id: tenantId,
     site_domain: tenant?.domain ? String(tenant.domain) : null,
     page_id: null,
@@ -58,11 +61,19 @@ export const captureAcceptedFormAnalytics = async (args: {
   }
 
   const properties = {
+    ...tenantAnalyticsProperties(tenant),
+    $groups: { [POSTHOG_TENANT_GROUP_TYPE]: tenantId },
     ...base,
     conversion_source: "accepted_form",
   }
 
   try {
+    await identifyPostHogTenantGroup({
+      id: tenantId,
+      name: tenant?.name ? String(tenant.name) : null,
+      slug: tenant?.slug ? String(tenant.slug) : null,
+      domain: tenant?.domain ? String(tenant.domain) : null,
+    })
     await captureAnalyticsEvent({
       event: "site_form_accepted",
       distinctId: `site:${tenantId}:server-conversions`,

@@ -120,11 +120,12 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
   }
 }
 
-const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | "siteManifest">) => {
+const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "name" | "slug" | "domain" | "siteManifest">) => {
   const manifest = tenant.siteManifest as Record<string, any> | null | undefined
   return {
     tenantId: tenant.id,
     tenantSlug: tenant.slug ?? null,
+    tenantName: tenant.name ?? null,
     siteDomain: tenant.domain ?? null,
     themeId: typeof manifest?.themeId === "string" ? manifest.themeId : null,
     siteBuildId: process.env.SIAB_SITE_BUILD_ID ?? null,
