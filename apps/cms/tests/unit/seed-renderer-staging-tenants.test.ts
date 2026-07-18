@@ -121,7 +121,8 @@ describe("renderer seed profiles", () => {
       expect(withAnalytics.settings.analyticsConsent).toMatchObject({
         enabled: true,
         provider: "posthog",
-        consentStorageKey: "siab-analytics-consent",
+        consentStorageKey: "siab_cookie_consent_v1",
+        consentVersion: "2026-07-07.1",
       })
       expect(withAnalytics.pages[0]?.analytics).toMatchObject({
         tenantSlug: "ami-care",
