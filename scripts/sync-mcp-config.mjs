@@ -48,8 +48,9 @@ function validateControl(control, location, hasValues, requireEnforcement = true
 
 function validateNoCredentialUrls(value, location = "registry") {
   if (typeof value === "string") {
-    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) {
-      const parsed = new URL(value)
+    const urls = value.match(/[a-z][a-z0-9+.-]*:\/\/[^\s"']+/ig) ?? []
+    for (const candidate of urls) {
+      const parsed = new URL(candidate.replace(/[),.;]+$/, ""))
       assert(!parsed.username && !parsed.password, `${location} contains a credential-bearing URL`)
     }
     return
@@ -60,17 +61,9 @@ function validateNoCredentialUrls(value, location = "registry") {
   }
 }
 
-function validateNoEmbeddedSecret(value, location, { opaqueValue = false } = {}) {
-  const knownSecret = /(?:github_pat_|gh[pousr]_|sk-(?:proj-)?)[a-z0-9_-]+|\bbearer\s+\S+|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|password|secret|api[_-]?key)\s*[:=]\s*\S+/i
+function validateNoEmbeddedSecret(value, location) {
+  const knownSecret = /(?:github_pat_|gh[pousr]_|sk-(?:proj-)?)[a-z0-9_-]+|(?:AKIA|ASIA)[A-Z0-9]{16}|xox[baprs]-[a-z0-9-]+|AIza[a-z0-9_-]{35}|\bbearer\s+\S+|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|password|secret|api[_-]?key)\s*[:=]\s*\S+/i
   assert(!knownSecret.test(value), `${location} contains an embedded credential-like value`)
-  if (opaqueValue) {
-    const compact = value.replace(/\s/g, "")
-    const looksOpaque = compact.length >= 20
-      && /^[a-z0-9_+/=-]+$/i.test(compact)
-      && /[a-z]/i.test(compact)
-      && /\d/.test(compact)
-    assert(!looksOpaque, `${location} contains an embedded opaque credential-like value`)
-  }
 }
 
 function targetSupports(server, target) {
@@ -180,10 +173,10 @@ export function validateRegistry(registry) {
       assert(!/(TOKEN|SECRET|PASSWORD|KEY|DSN|URL)/i.test(key), `${location}.staticEnv cannot contain credential-like field ${key}`)
     }
     for (const [index, arg] of server.args?.entries() ?? []) validateNoEmbeddedSecret(arg, `${location}.args[${index}]`)
-    for (const [key, value] of Object.entries(server.staticEnv)) validateNoEmbeddedSecret(value, `${location}.staticEnv.${key}`, { opaqueValue: true })
+    for (const [key, value] of Object.entries(server.staticEnv)) validateNoEmbeddedSecret(value, `${location}.staticEnv.${key}`)
     for (const [key, value] of Object.entries(server.staticHeaders)) {
       assert(!/(AUTHORIZATION|TOKEN|SECRET|PASSWORD|API[-_]?KEY)/i.test(key), `${location}.staticHeaders cannot contain credential-like field ${key}`)
-      validateNoEmbeddedSecret(value, `${location}.staticHeaders.${key}`, { opaqueValue: true })
+      validateNoEmbeddedSecret(value, `${location}.staticHeaders.${key}`)
     }
     for (const envName of Object.values(server.secretHeaders)) {
       assert(server.requiredEnv.includes(envName), `${location}.secretHeaders must reference a required environment name`)

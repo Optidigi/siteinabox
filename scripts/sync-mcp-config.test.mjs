@@ -21,6 +21,10 @@ test("unknown fields and credential-bearing URLs fail validation", () => {
   const credential = clone()
   credential.servers["better-auth"].url = "https://user:secret@example.com/mcp"
   assert.throws(() => validateRegistry(credential), /credential-bearing URL/)
+
+  const assignedCredentialUrl = clone()
+  assignedCredentialUrl.servers.context7.args.push("--dsn=postgres://user:secret@example.test/database")
+  assert.throws(() => validateRegistry(assignedCredentialUrl), /credential-bearing URL/)
 })
 
 test("embedded credentials and transport-incompatible fields fail validation", () => {
@@ -28,9 +32,14 @@ test("embedded credentials and transport-incompatible fields fail validation", (
   argumentSecret.servers.context7.args.push("--token=github_pat_not-a-real-token")
   assert.throws(() => validateRegistry(argumentSecret), /embedded credential-like value/)
 
-  const opaqueStaticValue = clone()
-  opaqueStaticValue.servers.context7.staticEnv.NOTE = "OpaqueCredential1234567890"
-  assert.throws(() => validateRegistry(opaqueStaticValue), /opaque credential-like value/)
+  const accessKeyStaticValue = clone()
+  accessKeyStaticValue.servers.context7.staticEnv.NOTE = "AKIAIOSFODNN7EXAMPLE"
+  assert.throws(() => validateRegistry(accessKeyStaticValue), /embedded credential-like value/)
+
+  const legitimateStaticValue = clone()
+  legitimateStaticValue.servers.context7.staticEnv.NOTE = "release-channel-version-2026"
+  legitimateStaticValue.servers.context7.projectionTargets = ["codex"]
+  assert.doesNotThrow(() => validateRegistry(legitimateStaticValue))
 
   const staticAuthorization = clone()
   staticAuthorization.servers["better-auth"].staticHeaders.Authorization = "public-value"
