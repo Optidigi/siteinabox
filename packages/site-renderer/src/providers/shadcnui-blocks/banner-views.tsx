@@ -15,6 +15,20 @@ function Close() {
   return <X aria-hidden className="size-3" />
 }
 
+function BannerFourCard({ model }: { model: BannerViewModel }) {
+  return (
+    <div className="mx-auto w-full max-w-xl rounded-xl border bg-muted/70 p-0.75">
+      <div className="shadow/5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-5 py-3.5">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"><UserPlusIcon className="size-5" /></div>
+          <div>{model.title ? <p className="font-medium text-sm">{model.title}</p> : null}<p className="text-muted-foreground text-sm">{model.message}</p></div>
+        </div>
+        <div className="flex items-center gap-2">{model.consent ? <><Button data-consent-action="reject" size="sm" type="button">Weigeren</Button><Button data-consent-action="accept" size="sm" type="button">Accepteren</Button></> : <>{model.dismissible ? <Button data-banner-dismiss size="sm" type="button" variant="ghost">Sluiten</Button> : null}{model.link ? <Button asChild size="sm"><a href={model.link.href}>{model.link.label}</a></Button> : null}</>}</div>
+      </div>
+    </div>
+  )
+}
+
 function Banner({ model, variant }: { model: BannerViewModel; variant: string }) {
   if (variant === "shadcnui-blocks.banner-01") return (
     <div className="flex min-h-10 flex-wrap items-center justify-center bg-primary px-3 py-2 text-center text-primary-foreground text-sm">
@@ -38,17 +52,22 @@ function Banner({ model, variant }: { model: BannerViewModel; variant: string })
     </div></div>
   )
 
-  return (
-    <div className="px-6 py-10"><div className="mx-auto max-w-xl rounded-xl border bg-muted/70 p-0.75"><div className="shadow/5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background px-5 py-3.5">
-      <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary"><UserPlusIcon className="size-5 shrink-0" /></div><div>{model.title ? <p className="font-medium text-sm">{model.title}</p> : null}<p className="text-muted-foreground text-sm">{model.message}</p></div></div>
-      <div className="flex items-center gap-2">{model.consent ? <><Button data-consent-action="reject" size="sm" type="button">Weigeren</Button><Button data-consent-action="accept" size="sm" type="button">Accepteren</Button></> : <>{model.dismissible ? <Button data-banner-dismiss size="sm" type="button" variant="ghost">Sluiten</Button> : null}{model.link ? <Button asChild size="sm"><a href={model.link.href}>{model.link.label}</a></Button> : null}</>}</div>
-    </div></div></div>
-  )
+  return <div className="px-6 py-10"><BannerFourCard model={model} /></div>
 }
 
 export function ShadcnUiBannerView({ variant, settings }: { variant: string; settings: SiteSettings }) {
   if (!variants.has(variant)) throw new Error(`Unresolved provider chrome variant "${variant}" for banner.`)
   const model = adaptBanner(settings)
   if (!model) return null
-  return <aside data-provider-variant={variant} data-provider-token-mode="theme" data-siab-cookie-consent={variant === "shadcnui-blocks.banner-04" && model.consent ? "true" : undefined}><Banner model={model} variant={variant} /></aside>
+  const isConsentChrome = variant === "shadcnui-blocks.banner-04" && model.consent
+  return (
+    <aside
+      className={isConsentChrome ? "pointer-events-none fixed inset-x-0 z-50 px-3 sm:px-6" : undefined}
+      data-provider-variant={variant}
+      data-provider-token-mode="theme"
+      data-siab-cookie-consent={isConsentChrome ? "true" : undefined}
+    >
+      {isConsentChrome ? <div className="pointer-events-auto"><BannerFourCard model={model} /></div> : <Banner model={model} variant={variant} />}
+    </aside>
+  )
 }

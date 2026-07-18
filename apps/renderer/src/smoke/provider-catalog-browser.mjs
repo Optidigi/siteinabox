@@ -62,6 +62,39 @@ try {
       await browser.close()
     }
   }
+  {
+    const browser = await chromium.launch({ headless: true })
+    try {
+      for (const viewport of [{ width: 1440, height: 1200 }, { width: 390, height: 844 }]) {
+        const page = await browser.newPage({ viewport, colorScheme: "light" })
+        await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.banner-04&consent=1`, { waitUntil: "load", timeout: 60_000 })
+        await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 })
+        const consentChrome = page.locator('[data-siab-cookie-consent="true"]')
+        await consentChrome.waitFor({ state: "visible" })
+        const before = await consentChrome.evaluate((element) => ({
+          bottom: element.getBoundingClientRect().bottom,
+          position: getComputedStyle(element).position,
+        }))
+        await page.evaluate(() => {
+          document.body.style.minHeight = "200vh"
+          window.scrollTo(0, document.body.scrollHeight)
+        })
+        const after = await consentChrome.evaluate((element) => ({
+          bottom: element.getBoundingClientRect().bottom,
+          position: getComputedStyle(element).position,
+        }))
+        assert.equal(before.position, "fixed", `${viewport.width}px consent chrome is viewport-fixed`)
+        assert.equal(after.position, "fixed", `${viewport.width}px consent chrome stays viewport-fixed after scrolling`)
+        assert.ok(Math.abs(before.bottom - after.bottom) < 1, `${viewport.width}px consent chrome keeps its viewport position`)
+        assert.ok(after.bottom <= viewport.height && after.bottom >= viewport.height - 40, `${viewport.width}px consent chrome remains near the viewport bottom`)
+        assert.equal(await page.locator('[data-consent-action="accept"]:visible').count(), 1)
+        assert.equal(await page.locator('[data-consent-action="reject"]:visible').count(), 1)
+        await page.close()
+      }
+    } finally {
+      await browser.close()
+    }
+  }
   const catalogVariants = inventory.variants
   assert.equal(catalogVariants.length, 156)
   const requestedVariant = process.env.SIAB_PROVIDER_VARIANT

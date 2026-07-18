@@ -13,7 +13,6 @@ import {
 import { CheckCircle2, Rocket, SquarePen } from "lucide-react"
 import { Button } from "@siteinabox/ui/components/button"
 import { Separator } from "@siteinabox/ui/components/separator"
-import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { RtManifestProvider } from "@/components/editor/RtManifestContext"
 import { setPreviewTheme } from "@/lib/actions/previewCustomizer"
@@ -90,21 +89,6 @@ export function resolvePreviewNavigationTarget({ access, pages, href, origin }: 
   if (!target) return null
   if (access.type === "grant") return target.slug === "index" ? `/${access.clientSlug}` : `/${access.clientSlug}/pages/${encodeURIComponent(target.slug)}`
   return `/preview/${encodeURIComponent(access.token)}?page=${encodeURIComponent(target.slug)}`
-}
-
-function measurePreviewFrameDocumentHeight(frameDocument: Document | null | undefined): number | null {
-  if (!frameDocument) return null
-  const body = frameDocument.body
-  if (!body) return null
-  const frameWindow = frameDocument.defaultView
-  const scrollY = frameWindow?.scrollY ?? 0
-  const bodyTop = body.getBoundingClientRect().top + scrollY
-  const height = Array.from(body.children).reduce((max, child) => {
-    const rect = child.getBoundingClientRect()
-    if (rect.width <= 0 && rect.height <= 0) return max
-    return Math.max(max, rect.bottom + scrollY - bodyTop)
-  }, 0)
-  return Number.isFinite(height) && height > 0 ? Math.ceil(height) : null
 }
 
 export function PreviewCustomizer({
@@ -269,7 +253,7 @@ export function PreviewCustomizer({
   return (
     <RtManifestProvider manifest={manifest}>
       <form className="min-h-dvh bg-background text-foreground" onSubmit={(event) => event.preventDefault()}>
-        <main className="w-full pb-24 md:pb-32">
+        <main className="h-dvh w-full overflow-hidden">
           {frameSrc ? (
             <PreviewRendererFrame
               src={frameSrc}
@@ -340,11 +324,6 @@ function PreviewRendererFrame({
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const [ready, setReady] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
-  const [frameContentHeight, setFrameContentHeight] = React.useState<number | null>(null)
-  const iframeAutoHeight = useCspStyleRule(
-    "preview-renderer-frame-auto-height",
-    frameContentHeight != null ? `height:${formatCssPx(frameContentHeight)};` : null,
-  )
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
     const target = frameRef.current?.contentWindow
@@ -355,7 +334,6 @@ function PreviewRendererFrame({
   React.useEffect(() => {
     setReady(false)
     setFrameError(null)
-    setFrameContentHeight(null)
     revisionRef.current = 0
   }, [revisionRef, src])
 
@@ -385,42 +363,14 @@ function PreviewRendererFrame({
     return () => window.clearTimeout(timeout)
   }, [frameError, ready, src])
 
-  React.useLayoutEffect(() => {
-    if (!ready) {
-      setFrameContentHeight(null)
-      return
-    }
+  React.useEffect(() => {
+    if (!ready) return
     const frameDocument = frameRef.current?.contentDocument
-    const frameWindow = frameRef.current?.contentWindow
     if (!frameDocument) return
-
-    let raf: number | null = null
-    const measure = () => {
-      raf = null
-      const next = measurePreviewFrameDocumentHeight(frameDocument)
-      setFrameContentHeight((current) => (current === next ? current : next))
-    }
-    const schedule = () => {
-      if (raf != null) return
-      raf = window.requestAnimationFrame(measure)
-    }
-
-    measure()
-    const resizeObserver = new ResizeObserver(schedule)
-    if (frameDocument.documentElement) resizeObserver.observe(frameDocument.documentElement)
-    if (frameDocument.body) resizeObserver.observe(frameDocument.body)
-    frameWindow?.addEventListener("resize", schedule)
-    frameWindow?.addEventListener("load", schedule)
-    window.addEventListener("resize", schedule)
     frameDocument.addEventListener("pointerdown", onFrameInteraction, true)
     frameDocument.addEventListener("focusin", onFrameInteraction, true)
 
     return () => {
-      if (raf != null) window.cancelAnimationFrame(raf)
-      resizeObserver.disconnect()
-      frameWindow?.removeEventListener("resize", schedule)
-      frameWindow?.removeEventListener("load", schedule)
-      window.removeEventListener("resize", schedule)
       frameDocument.removeEventListener("pointerdown", onFrameInteraction, true)
       frameDocument.removeEventListener("focusin", onFrameInteraction, true)
     }
@@ -461,21 +411,18 @@ function PreviewRendererFrame({
     })
   }, [postToFrame, ready, revisionRef, theme])
 
-  const visible = ready && frameContentHeight != null
+  const visible = ready
 
   return (
-    <div className="relative min-h-dvh w-full overflow-hidden bg-background">
-      {iframeAutoHeight.styleElement}
+    <div className="relative h-dvh min-h-[32rem] w-full overflow-hidden bg-background">
       <iframe
         ref={frameRef}
         src={src}
         title={title}
         className={cn(
-          iframeAutoHeight.className,
-          "block min-h-dvh w-full border-0 bg-transparent transition-opacity duration-150",
+          "block h-full min-h-[32rem] w-full border-0 bg-transparent transition-opacity duration-150",
           visible ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-        scrolling="no"
         sandbox="allow-same-origin allow-scripts allow-forms"
         data-siab-renderer-frame
         onFocus={onFrameInteraction}

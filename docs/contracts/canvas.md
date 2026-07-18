@@ -22,8 +22,9 @@ is no alternate CMS block renderer or canvas/source tree.
 Preview/editor hosts keep the iframe transparent behind a CMS skeleton until
 active provider modules, `window.load`, `document.fonts.ready`, React commit,
 and two animation frames have completed. The frame then emits `renderer.ready`.
-Customer preview uses one `ResizeObserver` for genuine later layout changes.
-The removed mutation-observer/continuous geometry bridge must not be restored.
+Customer preview uses a viewport-height, internally scrolling iframe so public
+fixed-position chrome remains anchored to the visible preview viewport. The
+removed resize/mutation-observer geometry bridge must not be restored.
 
 ## Protocol
 

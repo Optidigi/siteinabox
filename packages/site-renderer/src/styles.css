@@ -4,6 +4,10 @@
 @import "@fontsource-variable/nunito/index.css";
 @import "./theme-presets.generated.css";
 
+[data-siab-cookie-consent="true"] {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
 :root {
   color-scheme: light;
   background: #f8fafc;

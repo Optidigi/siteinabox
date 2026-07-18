@@ -48,7 +48,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
       footer: { variant: variant.area === "footer" ? variant.id : "shadcnui-blocks.footer-01", tagline: "Built with structured data", copyright: "© Fixture Studio", legalLinks: [{ label: "Terms", href: "/terms" }], columns: [{ items: [{ type: "navigation", label: "Explore" }, { type: "contact", label: "Contact" }] }], ...((variant as any).capabilities?.newsletter ? { newsletter: { title: "Updates", placeholder: "Email address", submitLabel: "Subscribe", action: "/subscribe", method: "POST" } } : {}) },
       banner: { variant: variant.area === "banner" ? variant.id : "shadcnui-blocks.banner-01", visible: true, title: "Notice", message: "A structured announcement", link: { label: "Learn more", href: "/notice" }, dismissible: true },
     },
-    analyticsConsent: { enabled: variant.id === "shadcnui-blocks.banner-04" },
+    analyticsConsent: { enabled: context.url.searchParams.get("consent") === "1" },
   }
   const props = literal ? { kind: "literal", variant: variant.id }
     : variant.role === "chrome" ? { kind: "chrome", area: variant.area, variant: variant.id, settings }

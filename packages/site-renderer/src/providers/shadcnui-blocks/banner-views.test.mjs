@@ -26,9 +26,21 @@ test("all four banner variants dispatch explicitly from structured chrome data",
 test("approved banner-04 exposes accept and reject consent actions", () => {
   const html = renderToStaticMarkup(React.createElement(ShadcnUiBannerView, { variant: "shadcnui-blocks.banner-04", settings }))
   assert.match(html, /data-siab-cookie-consent="true"/)
+  assert.match(html, /pointer-events-none fixed inset-x-0 z-50/)
+  assert.doesNotMatch(html, /px-6 py-10/)
   assert.match(html, /data-consent-action="accept"/)
   assert.match(html, /data-consent-action="reject"/)
   assert.equal((html.match(/data-variant="default"/g) ?? []).length, 2, "accept and reject have equal visual emphasis")
+})
+
+test("banner-04 remains a normal content block when consent is disabled", () => {
+  const html = renderToStaticMarkup(React.createElement(ShadcnUiBannerView, {
+    variant: "shadcnui-blocks.banner-04",
+    settings: { ...settings, analyticsConsent: { enabled: false } },
+  }))
+  assert.match(html, /px-6 py-10/)
+  assert.doesNotMatch(html, /data-siab-cookie-consent/)
+  assert.doesNotMatch(html, /pointer-events-none fixed inset-x-0 z-50/)
 })
 
 test("maintenance uses an approved provider banner without consent controls", () => {
