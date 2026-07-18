@@ -1,5 +1,6 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+import Image from "../../runtime/image";
 import { ArrowUpRight, CirclePlay } from "lucide-react";
 import Link from "../../runtime/link";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -34,7 +35,7 @@ export default function Hero() {
              asChild><ProviderAction field="secondary" fallback={"Watch Demo"} decoration="before"><CirclePlay className="h-5! w-5!" /></ProviderAction></Button>
           </div>
         </div>
-        <div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />
+        <ProviderImage field="image" fallback={<Image alt="" className="aspect-video w-full rounded-xl bg-accent object-cover lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E" />} />
       </div>
     </div>
   );

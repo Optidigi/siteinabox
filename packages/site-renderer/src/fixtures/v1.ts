@@ -91,8 +91,8 @@ export const v1FixturePage: Page = {
       blockType: "featureList",
       title: inlineText("Features"),
       features: [
-        { title: inlineText("Shared"), description: blockText("One renderer for CMS and public runtime."), icon: "layers" },
-        { title: inlineText("Typed"), description: blockText("Driven by contract data."), icon: "check-circle" },
+        { title: inlineText("Shared"), description: blockText("One renderer for CMS and public runtime."), icon: "layers", image: { url: "/media/feature-shared.jpg", alt: "Shared renderer preview" } },
+        { title: inlineText("Typed"), description: blockText("Driven by contract data."), icon: "check-circle", image: { url: "/media/feature-typed.jpg", alt: "Typed content preview" } },
       ],
     },
     {

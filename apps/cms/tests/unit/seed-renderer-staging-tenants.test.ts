@@ -59,11 +59,11 @@ describe("renderer seed profiles", () => {
     ]))
   })
 
-  it("validates the production Amicare seed spec through the official tenant CMS path", () => {
+  it("validates the production Ami Care seed spec through the canonical tenant CMS path", () => {
     for (const fixture of selectRendererSeedFixtures({ profile: "production", tenants: ["amicare"] })) {
       const spec = cloneForRendererSeedProfile(fixture)
 
-      expect(SiteGenerationSpecSchema.safeParse(spec).success, `${fixture.key} generic schema should stay strict`).toBe(false)
+      expect(SiteGenerationSpecSchema.safeParse(spec).success, `${fixture.key} must use the generic schema`).toBe(true)
       expect(() => parseRendererSeedSpecForCms(fixture, spec, { validateSiteGenerationSpecForCms })).not.toThrow()
     }
   })
@@ -89,7 +89,7 @@ describe("renderer seed profiles", () => {
     expect(amicareSnapshot.domain).toBe("ami-care.nl")
     expect(amicareSnapshot.siteUrl).toBe("https://ami-care.nl")
     expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/toys.jpg")
-    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/api/tenant-media/7/bedroom.jpg")
+    expect(JSON.stringify(amicareSnapshot.pages)).toContain("https://ami-care.nl/media/bedroom.jpg")
   })
 
   it("injects public PostHog analytics into the Amicare production snapshot from seed environment", () => {

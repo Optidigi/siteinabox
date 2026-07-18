@@ -6,7 +6,6 @@ import { TenantPill } from "@/components/layout/TenantPill"
 import { NavigationManager } from "@/components/navigation/NavigationManager"
 import type { NavEntry, NavPageOption, NavZone } from "@/components/navigation/navTypes"
 import { getAdminTranslations } from "@/i18n/admin"
-import { isOfficialTenant } from "@/lib/officialTenants"
 
 // OBS-20 — navigation management. Owner + super-admin only, matching
 // SiteSettings.access.update (canUpdateSettings). AppSidebar gates the link
@@ -86,7 +85,6 @@ export default async function NavigationPage({
         initialNavFooter={navFooter}
         pages={pageOptions}
         initialZone={initialZone}
-        autoPublishLive={isOfficialTenant(tenant)}
       />
     </div>
   )

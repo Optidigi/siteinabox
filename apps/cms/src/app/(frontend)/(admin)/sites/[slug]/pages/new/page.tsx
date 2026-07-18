@@ -6,7 +6,6 @@ import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { getAdminTranslations } from "@/i18n/admin"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { isOfficialTenant } from "@/lib/officialTenants"
 import { listPages } from "@/lib/queries/pages"
 
 export default async function NewPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -40,7 +39,6 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
         siteSettings={settings}
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canEditSettings
-        autoPublishLive={isOfficialTenant(tenant)}
       />
     </div>
   )

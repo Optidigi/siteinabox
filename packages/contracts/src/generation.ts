@@ -382,15 +382,12 @@ export type GeneratedFeatureListBlockSpec = FeatureListBlock & GeneratedBlockMet
 export type GeneratedTestimonialsBlockSpec = TestimonialsBlock & GeneratedBlockMetadata
 export type GeneratedFAQBlockSpec = FAQBlock & GeneratedBlockMetadata
 export type GeneratedCTABlockSpec = CTABlock & GeneratedBlockMetadata
-export type OfficialTenantGeneratedRichTextBlockSpec = RichTextBlock & GeneratedBlockMetadata
 export type GeneratedContactSectionBlockSpec = ContactSectionBlock & GeneratedBlockMetadata
 export type GeneratedContactDetailsBlockSpec = ContactDetailsBlock & GeneratedBlockMetadata
-export type OfficialTenantGeneratedNewsletterBlockSpec = NewsletterBlock & GeneratedBlockMetadata
 export type GeneratedPricingBlockSpec = PricingBlock & GeneratedBlockMetadata
 export type GeneratedStatsBlockSpec = StatsBlock & GeneratedBlockMetadata
 export type GeneratedLogoCloudBlockSpec = LogoCloudBlock & GeneratedBlockMetadata
 export type GeneratedGalleryBlockSpec = GalleryBlock & GeneratedBlockMetadata
-export type OfficialTenantGeneratedBentoGridBlockSpec = BentoGridBlock & GeneratedBlockMetadata
 export type GeneratedContentSectionBlockSpec = ContentSectionBlock & GeneratedBlockMetadata
 export type GeneratedTimelineBlockSpec = TimelineBlock & GeneratedBlockMetadata
 export type GeneratedTeamBlockSpec = TeamBlock & GeneratedBlockMetadata
@@ -413,19 +410,8 @@ export type GeneratedBlockSpec =
   | GeneratedTeamBlockSpec
   | GeneratedBlogCardsBlockSpec
 
-export type OfficialTenantGeneratedBlockSpec =
-  | GeneratedBlockSpec
-  | OfficialTenantGeneratedRichTextBlockSpec
-  | OfficialTenantGeneratedNewsletterBlockSpec
-  | OfficialTenantGeneratedBentoGridBlockSpec
-
 export type GeneratedPageSpec = Omit<Page, "blocks" | "updatedAt"> & {
   blocks: GeneratedBlockSpec[]
-  updatedAt?: string
-}
-
-export type OfficialTenantGeneratedPageSpec = Omit<Page, "blocks" | "updatedAt"> & {
-  blocks: OfficialTenantGeneratedBlockSpec[]
   updatedAt?: string
 }
 
@@ -455,10 +441,6 @@ export type SiteGenerationSpec = {
   } | null
 }
 
-export type OfficialTenantSiteGenerationSpec = Omit<SiteGenerationSpec, "pages"> & {
-  pages: OfficialTenantGeneratedPageSpec[]
-}
-
 export type PublishedSnapshotManifestEntry = {
   type: "page" | "media" | "settings"
   key: string
@@ -480,7 +462,7 @@ export type PublishedSiteSnapshot = {
   siteUrl: string
   manifest: PublishedSnapshotManifest
   settings: GeneratedSiteSettings
-  pages: Array<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>
+  pages: GeneratedPageSpec[]
   theme?: ThemeTokenSpec | null
   blocks?: SiteBlockManifestItem[]
   media?: MediaRef[]

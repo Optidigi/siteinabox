@@ -4,7 +4,7 @@ const shades = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950] as const
 const selector = (kind: string, id: string) => `:where(.rt-canvas,[data-siab-theme-scope])[data-theme-${kind}="${id}"]`
 const declarations = (values: Record<string, string>) => Object.entries(values).map(([name, value]) => `${name}:${value}`).join(";")
 
-const hues: Record<string, number> = { monochrome: 0, "blue-professional": 264, "red-confident": 25, "emerald-calm": 165, "amber-warm": 75 }
+const hues: Record<string, number> = { monochrome: 0, "blue-professional": 264, "red-confident": 25, "emerald-calm": 165, "amber-warm": 75, "terracotta-warm": 35 }
 const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSchemes]["light"], dark: boolean) => {
   const hue = hues[id] ?? 0
   return ({

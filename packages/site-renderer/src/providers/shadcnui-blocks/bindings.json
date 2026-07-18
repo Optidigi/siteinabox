@@ -400,6 +400,10 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "field": "image",
+          "kind": "image"
         }
       ]
     },
@@ -429,6 +433,10 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "field": "image",
+          "kind": "image"
         }
       ]
     },
@@ -458,6 +466,10 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "field": "image",
+          "kind": "image"
         }
       ]
     },
@@ -487,6 +499,10 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "field": "image",
+          "kind": "image"
         }
       ]
     },

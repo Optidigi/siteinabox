@@ -25,12 +25,12 @@ describe("site chrome draft helpers", () => {
       {
         chrome: {
           header: {
-            variant: "amicareZen",
+            variant: "shadcnui-blocks.navbar-03",
             logo: { id: 10, url: "/logo.png" },
             cta: { label: "Contact", href: "/contact" },
           },
           footer: {
-            variant: "amicareZen",
+            variant: "shadcnui-blocks.footer-07",
             logo: 11,
             tagline: "Footer copy",
             copyright: "2026",
@@ -43,10 +43,10 @@ describe("site chrome draft helpers", () => {
       footerContract,
     )
 
-    expect(draft.header.variant).toBe("amicareZen")
+    expect(draft.header.variant).toBe("shadcnui-blocks.navbar-03")
     expect(draft.header.logo).toEqual({ id: 10, url: "/logo.png" })
     expect(draft.header.cta).toEqual({ label: "Contact", href: "/contact" })
-    expect(draft.footer.variant).toBe("amicareZen")
+    expect(draft.footer.variant).toBe("shadcnui-blocks.footer-07")
     expect(draft.footer.logo).toBe(11)
     expect(draft.footer.tagline).toBe("Footer copy")
     expect(draft.footer.legalLinks).toEqual([{ label: "Privacy", href: "/privacy" }])
@@ -131,7 +131,7 @@ describe("site chrome draft helpers", () => {
     }
     const draft: SiteChromeDraft = {
       header: {
-        variant: "amicareZen",
+        variant: "shadcnui-blocks.navbar-03",
         logo: { url: "/draft-logo.png", filename: "draft-logo.png", alt: "Draft logo" },
         behavior: "sticky",
         activeMode: "path",
@@ -139,7 +139,7 @@ describe("site chrome draft helpers", () => {
         cta: { label: "Contact", href: "/contact" },
       },
       footer: {
-        variant: "amicareZen",
+        variant: "shadcnui-blocks.footer-07",
         logo: 9,
         tagline: "Draft footer",
         copyright: "2026",
@@ -158,7 +158,7 @@ describe("site chrome draft helpers", () => {
       siteUrl: "https://example.test",
       chrome: {
         header: {
-          variant: "amicareZen",
+          variant: "shadcnui-blocks.navbar-03",
           logo: { url: "/draft-logo.png", filename: "draft-logo.png", alt: "Draft logo" },
           behavior: "sticky",
           activeMode: "path",
@@ -166,7 +166,7 @@ describe("site chrome draft helpers", () => {
           cta: { label: "Contact", href: "/contact" },
         },
         footer: {
-          variant: "amicareZen",
+          variant: "shadcnui-blocks.footer-07",
           logo: { id: 9 },
           tagline: "Draft footer",
           copyright: "2026",

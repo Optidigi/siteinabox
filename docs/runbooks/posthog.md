@@ -124,8 +124,8 @@ events were present for `ami-care.nl`. CMS semantic events use
 `analytics_surface: cms`; native public lifecycle and behavior events use
 `analytics_surface: site`. Historic `site_page_viewed` and
 `site_page_left` rows remain in PostHog data from earlier runtimes and browser
-cache windows; the current tenant-site and Amicare source no longer emit
-those event names.
+cache windows; the current shared tenant-site runtime no longer emits those
+event names.
 
 Repository implementation covers the platform landing site, dynamic tenant
 sites, and native tenant grouping. Consent version `2026-07-07.1` is approved.

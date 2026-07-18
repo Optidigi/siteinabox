@@ -6,7 +6,6 @@ import {
 } from "./theme-presets"
 
 import {
-  AMICARE_TENANT_ALIASES,
   SITE_BLOCK_CATALOG,
   SITE_CHROME_CATALOG,
   SITE_GENERATION_BLOCK_CATALOG,
@@ -57,9 +56,6 @@ import type {
   CmsApplyResult,
   GeneratedBlockSpec,
   GeneratedPageSpec,
-  OfficialTenantGeneratedBlockSpec,
-  OfficialTenantGeneratedPageSpec,
-  OfficialTenantSiteGenerationSpec,
   GeneratedSiteSettings,
   GenerationInput,
   CompanyFacts,
@@ -113,15 +109,6 @@ const SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET = new Set<SiteFooterChromeVarian
 const SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET = new Set<SiteBannerChromeVariant>(
   uniqueChromeVariantsFor<SiteBannerChromeVariant>("banner"),
 )
-const SITE_OFFICIAL_HEADER_CHROME_VARIANT_SET = new Set<SiteHeaderChromeVariant>([
-  ...SITE_SELF_SERVE_HEADER_CHROME_VARIANT_SET,
-  "amicareZen",
-])
-const SITE_OFFICIAL_FOOTER_CHROME_VARIANT_SET = new Set<SiteFooterChromeVariant>([
-  ...SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET,
-  "amicareZen",
-])
-type RuntimeVariantScope = "generic" | "officialTenant"
 const SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAME_SET = new Set<string>(
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_PROVIDER_NAMES,
 )
@@ -206,15 +193,6 @@ export const isSupportedBlockVariant = (
   if (!variant) return false
   if (!SITE_GENERATION_BLOCK_SLUGS.includes(blockType as SiteGenerationBlockSlug)) return false
   return SITE_GENERIC_VARIANTS_BY_BLOCK_SLUG[blockType as SiteGenerationBlockSlug]?.has(variant) ?? false
-}
-
-export const isSupportedOfficialTenantBlockVariant = (
-  blockType: string,
-  variant: string | null | undefined,
-): boolean => {
-  if (!variant) return false
-  if (!SITE_BLOCK_SLUGS.includes(blockType as SiteBlockSlug)) return false
-  return SITE_VARIANTS_BY_BLOCK_SLUG[blockType as SiteBlockSlug]?.has(variant) ?? false
 }
 
 export const RtTextSchema: z.ZodType<RtText> = strictObject({
@@ -738,12 +716,10 @@ const refineBlockVariant = (
     designVariant?: string | null
   },
   ctx: z.RefinementCtx,
-  scope: RuntimeVariantScope = "generic",
 ) => {
   const designVariant = typeof block.designVariant === "string" && block.designVariant.length > 0
     ? block.designVariant
     : undefined
-  const supportsBlockVariant = scope === "officialTenant" ? isSupportedOfficialTenantBlockVariant : isSupportedBlockVariant
   if (!designVariant) {
     ctx.addIssue({
       code: "custom",
@@ -752,7 +728,7 @@ const refineBlockVariant = (
     })
     return
   }
-  if (designVariant && !supportsBlockVariant(block.blockType, designVariant)) {
+  if (designVariant && !isSupportedBlockVariant(block.blockType, designVariant)) {
     ctx.addIssue({
       code: "custom",
       path: ["designVariant"],
@@ -794,10 +770,9 @@ const refineGeneratedBlock = (
     designVariant?: string | null
   },
   ctx: z.RefinementCtx,
-  scope: RuntimeVariantScope = "generic",
 ) => {
   addForbiddenGeneratedPayloadIssues(block, ctx, [])
-  refineBlockVariant(block, ctx, scope)
+  refineBlockVariant(block, ctx)
 }
 
 export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
@@ -807,15 +782,6 @@ export const BlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block,
 export const GeneratedBlockSpecSchema: z.ZodType<GeneratedBlockSpec> =
   GeneratedBlockSchemaBase.superRefine((block, ctx) => {
     refineGeneratedBlock(block, ctx)
-  })
-
-export const OfficialTenantBlockSchema: z.ZodType<Block> = BlockSchemaBase.superRefine((block, ctx) => {
-  refineBlockVariant(block, ctx, "officialTenant")
-})
-
-export const OfficialTenantGeneratedBlockSpecSchema: z.ZodType<OfficialTenantGeneratedBlockSpec> =
-  BlockSchemaBase.superRefine((block, ctx) => {
-    refineGeneratedBlock(block, ctx, "officialTenant")
   })
 
 function addForbiddenGeneratedPayloadIssues(
@@ -1069,16 +1035,7 @@ export const SiteSettingsSchema: z.ZodType<SiteSettings> = createSiteSettingsSch
   footer: SITE_SELF_SERVE_FOOTER_CHROME_VARIANT_SET,
   banner: SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET,
 })
-export const OfficialTenantSiteSettingsSchema: z.ZodType<SiteSettings> =
-  createSiteSettingsSchema({
-    header: SITE_OFFICIAL_HEADER_CHROME_VARIANT_SET,
-    footer: SITE_OFFICIAL_FOOTER_CHROME_VARIANT_SET,
-    banner: SITE_SELF_SERVE_BANNER_CHROME_VARIANT_SET,
-  })
-
 export const GeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> = SiteSettingsSchema
-export const OfficialTenantGeneratedSiteSettingsSchema: z.ZodType<GeneratedSiteSettings> =
-  OfficialTenantSiteSettingsSchema
 
 const PageSchemaBase = strictObject({
   id: z.string().optional(),
@@ -1103,14 +1060,6 @@ const GeneratedPageSpecSchemaBase = PageSchemaBase.omit({ updatedAt: true, block
 })
 
 export const GeneratedPageSpecSchema: z.ZodType<GeneratedPageSpec> = GeneratedPageSpecSchemaBase
-
-const OfficialTenantGeneratedPageSpecSchemaBase = PageSchemaBase.omit({ updatedAt: true, blocks: true }).extend({
-  blocks: z.array(OfficialTenantGeneratedBlockSpecSchema).min(1),
-  updatedAt: z.string().optional(),
-})
-
-export const OfficialTenantGeneratedPageSpecSchema: z.ZodType<OfficialTenantGeneratedPageSpec> =
-  OfficialTenantGeneratedPageSpecSchemaBase
 
 const IntakeCompanySourceSchema = z.enum(["kvk", "manual"]).nullable()
 const IntakeContactActionSchema = z.enum(["message", "appointment", "quote", "phone", "whatsapp"])
@@ -1379,13 +1328,6 @@ export const SiteBlockManifestItemSchema: z.ZodType<SiteBlockManifestItem> = str
   fields: z.array(SiteBlockEditorFieldSchema).optional(),
 })
 
-export const OfficialTenantSiteBlockManifestItemSchema: z.ZodType<SiteBlockManifestItem> = strictObject({
-  slug: z.enum(SITE_BLOCK_SLUGS),
-  label: z.string().optional(),
-  defaultAnchor: z.string().optional(),
-  fields: z.array(SiteBlockEditorFieldSchema).optional(),
-})
-
 const createSiteGenerationSpecSchema = (
   settingsSchema: z.ZodType<GeneratedSiteSettings>,
   pageSchema: z.ZodType<GeneratedPageSpec>,
@@ -1415,73 +1357,6 @@ const createSiteGenerationSpecSchema = (
 export const SiteGenerationSpecSchema: z.ZodType<SiteGenerationSpec> =
   createSiteGenerationSpecSchema(GeneratedSiteSettingsSchema, GeneratedPageSpecSchema)
 
-const tenantExclusiveBlockVariantAllowedForTenant = (
-  blockType: string,
-  value: string | null | undefined,
-  tenantSlug: string,
-): boolean => {
-  if (!value || !SITE_BLOCK_SLUGS.includes(blockType as SiteBlockSlug)) return true
-  const catalogEntry = SITE_BLOCK_CATALOG
-    .filter((entry) => entry.slug === blockType)
-    .flatMap((entry) => entry.variants as readonly SiteBlockCatalogVariant[])
-    .find((variant) => variant.variant === value)
-  if (!catalogEntry || catalogEntry.scope.kind === "global") return true
-  return catalogEntry.scope.tenantSlugs.includes(tenantSlug)
-}
-
-const tenantExclusiveChromeVariantAllowedForTenant = (
-  area: "header" | "footer" | "banner",
-  value: string | null | undefined,
-  tenantSlug: string,
-): boolean => {
-  if (!value) return true
-  const catalogEntry = SITE_CHROME_CATALOG.find((entry) => entry.area === area && entry.variant === value)
-  if (!catalogEntry || catalogEntry.scope.kind === "global") return true
-  return catalogEntry.scope.tenantSlugs.includes(tenantSlug)
-}
-
-const refineOfficialTenantVariantOwnership = (
-  value: { tenant?: { slug?: string } | null; tenantSlug?: string; settings?: GeneratedSiteSettings; pages?: Array<GeneratedPageSpec | OfficialTenantGeneratedPageSpec> },
-  ctx: z.RefinementCtx,
-): void => {
-  const tenantSlug = value.tenant?.slug ?? value.tenantSlug
-  if (!tenantSlug) return
-
-  const chrome = value.settings?.chrome
-  for (const area of ["header", "footer", "banner"] as const) {
-    const variant = chrome?.[area]?.variant
-    if (!tenantExclusiveChromeVariantAllowedForTenant(area, variant, tenantSlug)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["settings", "chrome", area, "variant"],
-        message: `Chrome variant "${variant}" is not allowed for official tenant "${tenantSlug}"`,
-      })
-    }
-  }
-
-  value.pages?.forEach((page, pageIndex) => {
-    page.blocks.forEach((block, blockIndex) => {
-      const designVariant = typeof block.designVariant === "string" && block.designVariant.length > 0
-        ? block.designVariant
-        : null
-      if (!tenantExclusiveBlockVariantAllowedForTenant(block.blockType, designVariant, tenantSlug)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["pages", pageIndex, "blocks", blockIndex, "designVariant"],
-          message: `Block design variant "${designVariant}" is not allowed for official tenant "${tenantSlug}"`,
-        })
-      }
-    })
-  })
-}
-
-export const OfficialTenantSiteGenerationSpecSchema: z.ZodType<OfficialTenantSiteGenerationSpec> =
-  createSiteGenerationSpecSchema(
-    OfficialTenantGeneratedSiteSettingsSchema,
-    OfficialTenantGeneratedPageSpecSchema as unknown as z.ZodType<GeneratedPageSpec>,
-    OfficialTenantSiteBlockManifestItemSchema,
-  ).superRefine(refineOfficialTenantVariantOwnership) as unknown as z.ZodType<OfficialTenantSiteGenerationSpec>
-
 export const PublishedSnapshotManifestEntrySchema = strictObject({
   type: z.enum(["page", "media", "settings"]),
   key: z.string().min(1),
@@ -1500,14 +1375,9 @@ const PublishedSnapshotPageSchema = GeneratedPageSpecSchemaBase.extend({
   updatedAt: z.string(),
 })
 
-const OfficialTenantPublishedSnapshotPageSchema = OfficialTenantGeneratedPageSpecSchemaBase.extend({
-  status: z.literal("published"),
-  updatedAt: z.string(),
-})
-
 const createPublishedSiteSnapshotSchema = (
   settingsSchema: z.ZodType<GeneratedSiteSettings>,
-  pageSchema: z.ZodType<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>,
+  pageSchema: z.ZodType<GeneratedPageSpec>,
   manifestItemSchema: z.ZodType<SiteBlockManifestItem> = SiteBlockManifestItemSchema,
 ): z.ZodType<PublishedSiteSnapshot> => strictObject({
   schemaVersion: z.literal(1),
@@ -1533,29 +1403,12 @@ const createPublishedSiteSnapshotSchema = (
 })
 
 export const PublishedSiteSnapshotSchema: z.ZodType<PublishedSiteSnapshot> =
-  createPublishedSiteSnapshotSchema(GeneratedSiteSettingsSchema, PublishedSnapshotPageSchema as z.ZodType<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>)
-
-export const OfficialTenantPublishedSiteSnapshotSchema: z.ZodType<PublishedSiteSnapshot> =
-  createPublishedSiteSnapshotSchema(
-    OfficialTenantGeneratedSiteSettingsSchema,
-    OfficialTenantPublishedSnapshotPageSchema,
-    OfficialTenantSiteBlockManifestItemSchema,
-  ).superRefine(refineOfficialTenantVariantOwnership)
-
-export const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS = AMICARE_TENANT_ALIASES
-
-const OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUG_SET = new Set<string>(OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUGS)
-
-export function isOfficialTenantPublishedSnapshotSlug(tenantSlug: string | null | undefined): boolean {
-  return OFFICIAL_TENANT_PUBLISHED_SNAPSHOT_SLUG_SET.has((tenantSlug ?? "").trim().toLowerCase())
-}
+  createPublishedSiteSnapshotSchema(GeneratedSiteSettingsSchema, PublishedSnapshotPageSchema)
 
 export function schemaForPublishedSiteSnapshot(
-  snapshot: Pick<PublishedSiteSnapshot, "tenantSlug"> | { tenantSlug?: string | null },
+  _snapshot: Pick<PublishedSiteSnapshot, "tenantSlug"> | { tenantSlug?: string | null },
 ): z.ZodType<PublishedSiteSnapshot> {
-  return isOfficialTenantPublishedSnapshotSlug(snapshot.tenantSlug)
-    ? OfficialTenantPublishedSiteSnapshotSchema
-    : PublishedSiteSnapshotSchema
+  return PublishedSiteSnapshotSchema
 }
 
 export const ValidationIssueSchema: z.ZodType<ValidationIssue> = strictObject({

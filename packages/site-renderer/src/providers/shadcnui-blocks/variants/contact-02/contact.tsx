@@ -18,9 +18,9 @@ import { Textarea } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 const Contact = () => (
   <div className="py-20">
     <div className="mx-auto w-full max-w-(--breakpoint-xl) px-6 xl:px-0">
-      <b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
+      <ProviderDemoOnly fallback={<><b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
         Contact Us
-      </b>
+      </b></>} />
       <h2 className="mt-3 font-medium text-4xl tracking-[-0.035em]"><ProviderField field="title" fallback={<>
         Chat with our friendly team!
       </>} inline /></h2>

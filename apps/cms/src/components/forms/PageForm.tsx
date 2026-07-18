@@ -57,7 +57,6 @@ import {
 import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
 import { EditorThemeToolbar } from "@/components/editor/theme/editor-theme-toolbar"
 import { togglePageInNav } from "@/lib/actions/togglePageInNav"
-import { publishCurrentTenantStateAction } from "@/lib/actions/publishCurrentTenantState"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { countLeafDirty } from "@/lib/countLeafDirty"
 import { countLeafErrors } from "@/lib/countLeafErrors"
@@ -589,7 +588,7 @@ function SiteChromeDrillDown({
   )
 }
 
-export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, autoPublishLive, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: any; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; autoPublishLive?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: any; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -1029,12 +1028,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     }
     try {
       await Promise.all([themePromise, saveNavMembership(), saveChrome()])
-      if (autoPublishLive) {
-        await publishCurrentTenantStateAction(
-          tenantId,
-          `auto-publish current CMS state after page ${initial?.id ?? createdPage?.id ?? "new"} save`,
-        )
-      }
     } catch (err) {
       setPending(false)
       const msg = err instanceof Error ? err.message : t("saveFailed")

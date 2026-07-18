@@ -6,8 +6,8 @@ import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
-import type { OfficialTenantSiteGenerationSpec, PublishedSiteSnapshot } from "@siteinabox/contracts/generation"
-import { OfficialTenantSiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
+import type { PublishedSiteSnapshot, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import { SiteGenerationSpecSchema, formatContractValidationIssues } from "@siteinabox/contracts/generation"
 
 type TenantKey = "amicare"
 export type RendererSeedProfile = "staging" | "production"
@@ -35,7 +35,7 @@ export type RendererSeedFixture = {
   sourceMediaBaseUrl: string
   importMediaBaseUrl?: string
   mediaBaseNote: string
-  sourceSpec: OfficialTenantSiteGenerationSpec
+  sourceSpec: SiteGenerationSpec
   publishedSnapshot: PublishedSiteSnapshot
 }
 
@@ -54,7 +54,7 @@ const GENERATED_AT = "2026-06-26T00:00:00.000Z"
 
 const fixture = (
   input: Omit<RendererSeedFixture, "siteUrl" | "sourceSpec" | "publishedSnapshot"> & {
-    sourceSpec: OfficialTenantSiteGenerationSpec
+    sourceSpec: SiteGenerationSpec
     publishedSnapshot: PublishedSiteSnapshot
     siteUrl?: string
   },
@@ -298,7 +298,7 @@ const importMediaBaseUrl = (fixture: RendererSeedFixture) => fixture.importMedia
 export const cloneForRendererSeedProfile = (
   fixture: RendererSeedFixture,
   options: { mediaBaseUrl?: string } = {},
-): OfficialTenantSiteGenerationSpec => {
+): SiteGenerationSpec => {
   const source = structuredClone(fixture.sourceSpec)
   const spec = {
     ...source,
@@ -330,7 +330,7 @@ export const cloneForRendererSeedProfile = (
       version: fixture.profile === "production" ? "live-cutover-v1" : "phase-4",
     },
   }
-  return absolutizeGeneratedMediaUrls(spec, options.mediaBaseUrl ?? fixture.sourceMediaBaseUrl) as OfficialTenantSiteGenerationSpec
+  return absolutizeGeneratedMediaUrls(spec, options.mediaBaseUrl ?? fixture.sourceMediaBaseUrl) as SiteGenerationSpec
 }
 
 export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" | "tenants">): RendererSeedFixture[] =>
@@ -338,18 +338,18 @@ export const selectRendererSeedFixtures = (options: Pick<CliOptions, "profile" |
 
 export const parseRendererSeedSpecForCms = (
   fixture: RendererSeedFixture,
-  spec: OfficialTenantSiteGenerationSpec,
+  spec: SiteGenerationSpec,
   helpers: Pick<SiteGenerationHelpers, "validateSiteGenerationSpecForCms">,
   label = "spec",
-): OfficialTenantSiteGenerationSpec => {
+): SiteGenerationSpec => {
   const validation = helpers.validateSiteGenerationSpecForCms(spec)
   if (!validation.valid) {
     throw new Error(`${fixture.key} ${fixture.profile} ${label} failed CMS validation: ${JSON.stringify(validation.issues, null, 2)}`)
   }
 
-  const parsed = OfficialTenantSiteGenerationSpecSchema.safeParse(spec)
+  const parsed = SiteGenerationSpecSchema.safeParse(spec)
   if (!parsed.success) {
-    throw new Error(`${fixture.key} ${fixture.profile} ${label} failed official tenant contract validation: ${formatContractValidationIssues(parsed.error)}`)
+    throw new Error(`${fixture.key} ${fixture.profile} ${label} failed canonical tenant contract validation: ${formatContractValidationIssues(parsed.error)}`)
   }
 
   return parsed.data
@@ -375,7 +375,7 @@ const transition = (status: string, message: string, at: string) => ({ status, m
 const upsertIntakeSubmission = async (
   payload: Payload,
   fixture: RendererSeedFixture,
-  spec: OfficialTenantSiteGenerationSpec,
+  spec: SiteGenerationSpec,
   now: string,
 ) => {
   const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:intake:v1`
@@ -428,7 +428,7 @@ const upsertGenerationRun = async (
   payload: Payload,
   fixture: RendererSeedFixture,
   intakeId: string | number,
-  spec: OfficialTenantSiteGenerationSpec,
+  spec: SiteGenerationSpec,
   applyResult: ApplySuccessResult,
   specHash: string,
   now: string,

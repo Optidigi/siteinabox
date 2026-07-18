@@ -193,8 +193,7 @@ describe("SiteSettings collection config", () => {
     expect(filterChromeVariantOptions("footer", footerVariant.options, {}).map((x) => x.value))
       .toEqual(officialVariants("footer"))
   })
-
-  it("keeps the active official tenant renderer chrome variants available in admin options", () => {
+  it("gives Ami Care the same canonical chrome options as every tenant", () => {
     const chrome = findField("chrome")
     const header = chrome.fields.find((x: any) => x.name === "header")
     const footer = chrome.fields.find((x: any) => x.name === "footer")
@@ -202,73 +201,10 @@ describe("SiteSettings collection config", () => {
     const footerOptions = footer.fields.find((x: any) => x.name === "variant").options
 
     expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug: "ami-care" } }).map((x) => x.value))
-      .toEqual(officialVariants("header"))
-    expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "amicare" } }).map((x) => x.value))
-      .toEqual(officialVariants("footer"))
-    expect(filterChromeVariantOptions("header", headerOptions, { tenant: 1 }, { user: { tenants: [{ tenant: { slug: "ami-care" } }] } }).map((x) => x.value))
-      .toEqual(officialVariants("header"))
-  })
-
-  it("keeps Amicare alias tenant slugs eligible for tenant-exclusive chrome", () => {
-    const chrome = findField("chrome")
-    const header = chrome.fields.find((x: any) => x.name === "header")
-    const footer = chrome.fields.find((x: any) => x.name === "footer")
-    const headerOptions = header.fields.find((x: any) => x.name === "variant").options
-    const footerOptions = footer.fields.find((x: any) => x.name === "variant").options
-
-    for (const slug of ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"]) {
-      expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug } }).map((x) => x.value), slug)
-        .toEqual(officialVariants("header"))
-      expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug } }).map((x) => x.value), slug)
-        .toEqual(officialVariants("footer"))
-    }
-  })
-
-  it("rejects tenant-exclusive chrome variants for future generated tenants", async () => {
-    const req = {
-      payload: {
-        findByID: async () => ({ id: 1, slug: "future-generated" }),
-      },
-    }
-
-    await expect(enforceTenantExclusiveChromeVariants({
-      collection: { slug: "site-settings" },
-      data: {
-        tenant: 1,
-        chrome: {
-          header: { variant: "amicareZen" },
-          footer: { variant: "amicareZen" },
-        },
-      },
-      req,
-    } as any)).rejects.toMatchObject({
-      data: {
-        errors: expect.arrayContaining([
-          expect.objectContaining({ path: "chrome.header.variant" }),
-        ]),
-      },
-    })
-  })
-
-  it("allows Amicare alias tenants to retain tenant-exclusive chrome variants", async () => {
-    for (const slug of ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"]) {
-      const req = {
-        payload: {
-          findByID: async () => ({ id: 1, slug }),
-        },
-      }
-
-      await expect(enforceTenantExclusiveChromeVariants({
-        collection: { slug: "site-settings" },
-        data: {
-          tenant: 1,
-          chrome: {
-            header: { variant: "amicareZen" },
-            footer: { variant: "amicareZen" },
-          },
-        },
-        req,
-      } as any), slug).resolves.toMatchObject({ chrome: { header: { variant: "amicareZen" } } })
-    }
+      .toEqual(globalVariants("header"))
+    expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "ami-care" } }).map((x) => x.value))
+      .toEqual(globalVariants("footer"))
+    expect(headerOptions.map((x: any) => x.value)).not.toContain("amicareZen")
+    expect(footerOptions.map((x: any) => x.value)).not.toContain("amicareZen")
   })
 })

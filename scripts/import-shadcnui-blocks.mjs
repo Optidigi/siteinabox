@@ -122,6 +122,32 @@ function adaptThemeHooks(name, filename, contents) {
   return adapted
 }
 
+function adaptStructuredMediaRegions(name, filename, contents) {
+  if (filename !== "hero.tsx") return contents
+  const replacements = {
+    "hero-02": [
+      '<div className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
+      `<img alt="" className="mt-auto aspect-video w-full rounded-xl bg-accent object-cover" src="${transparentSquare}" />`,
+    ],
+    "hero-03": [
+      '<div className="size-full rounded-lg bg-background" />',
+      `<img alt="" className="size-full rounded-lg bg-background object-cover" src="${transparentSquare}" />`,
+    ],
+    "hero-04": [
+      '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
+      `<img alt="" className="aspect-video w-full rounded-xl bg-accent object-cover lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" src="${transparentSquare}" />`,
+    ],
+    "hero-05": [
+      '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
+      `<img alt="" className="aspect-video w-full rounded-xl bg-accent object-cover lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" src="${transparentSquare}" />`,
+    ],
+  }
+  const replacement = replacements[name]
+  if (!replacement) return contents
+  if (!contents.includes(replacement[0])) throw new Error(`Expected structured media region was not found in ${name}/${filename}.`)
+  return contents.replace(replacement[0], replacement[1])
+}
+
 function referenceRootClassName(contents) {
   return contents.match(/return\s*\(\s*<(?:section|main|div)[^>]*className=["']([^"']+)["']/s)?.[1]
 }
@@ -275,6 +301,12 @@ function compileBlockBindings(contents, blockType, declaredBindings, label = blo
       const fallback = kind ? elementText(node) : null
       const declared = fallback ? remaining.find((binding) => binding.kind === "field" && binding.fallback === fallback) : null
       const field = declared?.field
+      if (kind === "eyebrow" && fallback?.toLowerCase() === "contact us" && !declared) {
+        const literal = node.getText(source)
+        edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderDemoOnly fallback={<>${literal}</>} />` })
+        needsRuntime = true
+        return
+      }
       if (fallback && field) {
         const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
         edits.push({ start: node.openingElement.end, end: node.closingElement.pos, text: `<ProviderField field=${JSON.stringify(field)} fallback={<>${literalChildren}</>} inline />` })
@@ -325,6 +357,18 @@ function compileBlockBindings(contents, blockType, declaredBindings, label = blo
           .map((attribute) => attribute.getText(source)).join(" ")
         const literalChildren = contents.slice(node.openingElement.end, node.closingElement.pos)
         edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderContactLink field=${JSON.stringify(staticContactBinding.field)} index={${staticContactIndex}} fallback={<>${literalChildren}</>} ${attributes} />` })
+        needsRuntime = true
+        return
+      }
+    }
+    if (staticContactBinding && ts.isJsxSelfClosingElement(node) && !insideMap(node)) {
+      const tag = node.tagName.getText(source)
+      if (tag.endsWith("Icon")) {
+        edits.push({
+          start: node.getStart(source),
+          end: node.end,
+          text: `<ProviderContactIcon field=${JSON.stringify(staticContactBinding.field)} index={${staticContactIndex + 1}} fallback={<${tag} />} />`,
+        })
         needsRuntime = true
         return
       }
@@ -384,7 +428,9 @@ function compileBlockBindings(contents, blockType, declaredBindings, label = blo
   if (!needsRuntime) return { contents, bindings }
   const prologue = contents.match(/^\/\/ @ts-nocheck[^\n]*\n(?:\s*["']use client["'];?\s*\n)?/)
   const insertAt = prologue?.[0].length ?? contents.indexOf("\n") + 1
-  edits.push({ start: insertAt, end: insertAt, text: 'import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";\n' })
+  const runtimeImports = ["ProviderAction", "ProviderContactLink", "ProviderDemoOnly", "ProviderField", "ProviderImage", "ProviderItemField", "ProviderItemLink", "ProviderItems", "ProviderLogo"]
+  if (staticContactBinding) runtimeImports.splice(1, 0, "ProviderContactIcon")
+  edits.push({ start: insertAt, end: insertAt, text: `import { ${runtimeImports.join(", ")} } from "../../runtime/content";\n` })
   const adapted = edits.sort((a, b) => b.start - a.start).reduce((value, edit) => value.slice(0, edit.start) + edit.text + value.slice(edit.end), contents)
   return { contents: adapted, bindings }
 }
@@ -670,7 +716,8 @@ async function main() {
         const literalFilename = item.name === "navbar-03" && upstreamFilename === "navbar.ts" ? "navbar-data.ts" : upstreamFilename
         const literalDestination = join(variantsRoot, item.name, literalFilename)
         await mkdir(dirname(literalDestination), { recursive: true })
-        let adaptedLiteral = adaptThemeHooks(item.name, literalFilename, adaptLiteralImports(contents.toString("utf8")))
+        const structuredMediaLiteral = adaptStructuredMediaRegions(item.name, literalFilename, contents.toString("utf8"))
+        let adaptedLiteral = adaptThemeHooks(item.name, literalFilename, adaptLiteralImports(structuredMediaLiteral))
           .replaceAll(item.name === "navbar-03" ? 'from "./navbar"' : "\0", 'from "./navbar-data"')
         if ((item.name === "hero-03" || item.name === "hero-08") && file.path === literalEntryPath) {
           adaptedLiteral = adaptedLiteral.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')

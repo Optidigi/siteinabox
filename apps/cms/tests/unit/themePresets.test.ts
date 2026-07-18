@@ -14,6 +14,7 @@ describe("theme presets", () => {
       ["red-confident", "Red Confident"],
       ["emerald-calm", "Emerald Calm"],
       ["amber-warm", "Amber Warm"],
+      ["terracotta-warm", "Terracotta Warm"],
     ])
     expect(RADIUS_PRESETS.map((preset) => [preset.id, preset.label])).toEqual([
       ["rounded", "Round"],

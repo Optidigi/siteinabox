@@ -1181,7 +1181,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/contact.tsx",
-          "sha256": "sha256:5ace9d9ac360d25c6738425263b9ca597856bb7073978dc81f4dc7e44af2b4ba"
+          "sha256": "sha256:decadaa94b37b3fdc96e38f632b54d5bfdc3584c8457b8ef88623bcec95db104"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/view.tsx",
@@ -1439,7 +1439,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/contact.tsx",
-          "sha256": "sha256:d51999e9a2af0a716ac0e0d24be688b054e12effd9c5e5ac71002ffbe014c260"
+          "sha256": "sha256:86aff7a403f52e4ee214ec8e3caa423c3c0d7b2a74f8be73e5fca7535c70ed27"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/view.tsx",
@@ -1696,7 +1696,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/contact.tsx",
-          "sha256": "sha256:2fc9793463e769e5b092c9cbb49debbc8debfdf3687559bb4232fc7ab79d8e72"
+          "sha256": "sha256:bcb2959aa3d4466395233454633e68124075db6e3d13fcb39e9ae6a53dac23d0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/view.tsx",
@@ -6185,9 +6185,8 @@
         },
         "image": {
           "kind": "image",
-          "status": "inactive",
-          "repeated": false,
-          "reason": "The pinned hero-02 view has no region for this field."
+          "status": "optional",
+          "repeated": false
         },
         "stats": {
           "kind": "repeater",
@@ -6358,6 +6357,11 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "file": "hero.tsx",
+          "field": "image",
+          "kind": "image"
         }
       ],
       "featureAudit": [
@@ -6397,7 +6401,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-02/hero.tsx",
-          "sha256": "sha256:df260a13bcbc91f70265b3b39a1be55825d7a60cd6d800b4695833a22caa594b"
+          "sha256": "sha256:db831840b52d810a2113c44f24343edaa80a9fcd969367d967d613f88a4b31cb"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-02/view.tsx",
@@ -6453,9 +6457,8 @@
         },
         "image": {
           "kind": "image",
-          "status": "inactive",
-          "repeated": false,
-          "reason": "The pinned hero-03 view has no region for this field."
+          "status": "optional",
+          "repeated": false
         },
         "stats": {
           "kind": "repeater",
@@ -6626,6 +6629,11 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "file": "hero.tsx",
+          "field": "image",
+          "kind": "image"
         }
       ],
       "featureAudit": [
@@ -6700,7 +6708,7 @@
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-03/hero.tsx",
-          "sha256": "sha256:4f3b4358d3e12819f64bb0e7f468aafaecace81b4f82bef5e7e6f3d4265e5c4f"
+          "sha256": "sha256:732150b22f7505f459ac8df97daee4ac11c616d1ac6678f93e7926406027b3d0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-03/logo.tsx",
@@ -6772,9 +6780,8 @@
         },
         "image": {
           "kind": "image",
-          "status": "inactive",
-          "repeated": false,
-          "reason": "The pinned hero-04 view has no region for this field."
+          "status": "optional",
+          "repeated": false
         },
         "stats": {
           "kind": "repeater",
@@ -6945,6 +6952,11 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "file": "hero.tsx",
+          "field": "image",
+          "kind": "image"
         }
       ],
       "featureAudit": [
@@ -6984,7 +6996,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-04/hero.tsx",
-          "sha256": "sha256:11a7bcc8b1bdb1c12f84a69f30a120cfff775e4a27c7c4fde42da23ac3f1395a"
+          "sha256": "sha256:469dc9a42b4aff0efbccce3290310297582050d6c3aa7a0fc88c9b5801a39b63"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-04/view.tsx",
@@ -7040,9 +7052,8 @@
         },
         "image": {
           "kind": "image",
-          "status": "inactive",
-          "repeated": false,
-          "reason": "The pinned hero-05 view has no region for this field."
+          "status": "optional",
+          "repeated": false
         },
         "stats": {
           "kind": "repeater",
@@ -7213,6 +7224,11 @@
           "field": "secondary",
           "kind": "action",
           "fallback": "Watch Demo"
+        },
+        {
+          "file": "hero.tsx",
+          "field": "image",
+          "kind": "image"
         }
       ],
       "featureAudit": [
@@ -7252,7 +7268,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-05/hero.tsx",
-          "sha256": "sha256:905f6362063afef73b53cc6e2c0e74b85772cf23a8851329fa8287c762cb1580"
+          "sha256": "sha256:a4f6a02991d5afae9565cec6bcc14a1e1636df59d90d6ed79100684c75bf9e63"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-05/view.tsx",

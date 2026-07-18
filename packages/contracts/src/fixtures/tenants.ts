@@ -4,8 +4,6 @@ import type {
   GeneratedPageSpec,
   GeneratedSiteSettings,
   PublishedSiteSnapshot,
-  OfficialTenantSiteGenerationSpec,
-  OfficialTenantGeneratedPageSpec,
   SiteBlockManifestItem,
   SiteGenerationSpec,
   ThemeTokenSpec,
@@ -52,42 +50,7 @@ const blockRichText = (parts: Array<{ heading?: string; text?: string }>): RtBlo
   }),
 })
 
-const amicareEditorialBody = (): RtBlockRoot => ({
-  t: "root",
-  variant: "block",
-  children: [
-    { t: "themed", id: "eyebrow", props: { text: "Over mij" } },
-    {
-      t: "heading",
-      level: 2,
-      children: [
-        { t: "text", v: "Het vak waar mijn " },
-        { t: "text", v: "hart ligt", marks: ["italic"] },
-        { t: "text", v: "." },
-      ],
-    },
-    {
-      t: "paragraph",
-      children: [
-        {
-          t: "text",
-          v: "Tegelijk blijf ik mijzelf graag ontwikkelen, en sta ik open voor nieuwe uitdagingen en opdrachten binnen het werkveld.",
-        },
-      ],
-    },
-    {
-      t: "paragraph",
-      children: [
-        {
-          t: "text",
-          v: "Naast mijn werk ben ik moeder, en geniet ik van het drukke, gezellige gezinsleven. De combinatie van werk en gezin maakt mijn dagen dynamisch — en waardevol.",
-        },
-      ],
-    },
-  ],
-})
-
-const manifestEntries = (tenantId: string, settings: GeneratedSiteSettings, pages: Array<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>) => ({
+const manifestEntries = (tenantId: string, settings: GeneratedSiteSettings, pages: GeneratedPageSpec[]) => ({
   tenantId,
   version: 1,
   updatedAt: GENERATED_AT,
@@ -108,10 +71,10 @@ const mediaManifestKey = (media: MediaRef): string | null => {
 }
 
 const toSnapshot = (
-  spec: SiteGenerationSpec | OfficialTenantSiteGenerationSpec,
+  spec: SiteGenerationSpec,
   tenantId: string,
   overrides?: {
-    pages?: Array<GeneratedPageSpec | OfficialTenantGeneratedPageSpec>
+    pages?: GeneratedPageSpec[]
     blocks?: SiteBlockManifestItem[]
     assets?: MediaRef[]
   },
@@ -152,7 +115,7 @@ const toSnapshot = (
 export const amicareTheme: ThemeTokenSpec = {
   version: 3,
   appearance: { mode: "light" },
-  colors: { schemeId: "amber-warm" },
+  colors: { schemeId: "terracotta-warm" },
   fonts: { schemeId: "classic-editorial" },
   shape: { schemeId: "soft" },
 }
@@ -160,9 +123,8 @@ export const amicareTheme: ThemeTokenSpec = {
 const canonicalBlocks: SiteBlockManifestItem[] = [
   { slug: "hero", label: "Hero", defaultAnchor: "top" },
   { slug: "featureList", label: "Services", defaultAnchor: "diensten" },
-  { slug: "richText", label: "Content" },
   { slug: "cta", label: "CTA", defaultAnchor: "contact" },
-  { slug: "contactSection", label: "Contactformulier", defaultAnchor: "contact-form" },
+  { slug: "contactDetails", label: "Contact", defaultAnchor: "contact" },
   { slug: "faq", label: "Veelgestelde vragen" },
   { slug: "testimonials", label: "Ervaringen" },
 ]
@@ -183,14 +145,14 @@ const amicareSettings: GeneratedSiteSettings = {
   },
   chrome: {
     header: {
-      variant: "amicareZen",
+      variant: "shadcnui-blocks.navbar-03",
       behavior: "sticky",
       activeMode: "anchor",
       mobileMenu: "dropdown",
       cta: { label: "Contact", href: "#contact" },
     },
     footer: {
-      variant: "amicareZen",
+      variant: "shadcnui-blocks.footer-07",
       tagline: "Jeugdzorg met hart en toewijding.",
       copyright: "© Amicare-Zorg",
       columns: [
@@ -203,8 +165,8 @@ const amicareSettings: GeneratedSiteSettings = {
     banner: {
       variant: "shadcnui-blocks.banner-04",
       visible: true,
-      title: "Cookies en privacy",
-      message: "Wij meten privacyvriendelijk bezoek zonder analyticscookies. Met uw toestemming meten wij ook interacties om de website te verbeteren.",
+      title: "Cookies",
+      message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
       dismissible: false,
     },
   },
@@ -257,7 +219,7 @@ const amicareSettings: GeneratedSiteSettings = {
   updatedAt: GENERATED_AT,
 }
 
-const amicarePages: OfficialTenantGeneratedPageSpec[] = [
+const amicarePages: GeneratedPageSpec[] = [
   {
     id: "amicare-index",
     slug: "index",
@@ -272,7 +234,7 @@ const amicarePages: OfficialTenantGeneratedPageSpec[] = [
     blocks: [
       {
         blockType: "hero",
-        designVariant: "amicareZenHero",
+        designVariant: "shadcnui-blocks.hero-02",
         anchor: "top",
         eyebrow: inlineText("Voor jongeren en gezinnen"),
         headline: inlineParts([
@@ -281,17 +243,12 @@ const amicarePages: OfficialTenantGeneratedPageSpec[] = [
           { text: " en toewijding." },
         ]),
         subheadline: blockText("Al jarenlang werk ik met toewijding in de jeugdzorg. Dit is het vak dat ik ken — waar mijn hart ligt, en waar ik mij dagelijks voor inzet."),
-        pills: [
-          { id: "amicare-hero-pill-jeugdzorg", label: "Jeugdzorg" },
-          { id: "amicare-hero-pill-begeleiding", label: "Begeleiding" },
-          { id: "amicare-hero-pill-vertrouwen", label: "Vertrouwen" },
-        ],
         cta: { label: "Contact", href: "#contact" },
         image: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
       },
       {
         blockType: "featureList",
-        designVariant: "amicareCareCards",
+        designVariant: "shadcnui-blocks.features-01",
         anchor: "werkwijze",
         title: inlineParts([{ text: "Wat voor mij " }, { text: "centraal staat", marks: ["italic"] }, { text: "." }]),
         intro: blockText("Drie dingen"),
@@ -302,20 +259,30 @@ const amicarePages: OfficialTenantGeneratedPageSpec[] = [
         ],
       },
       {
-        blockType: "richText",
-        designVariant: "amicareEditorial",
+        blockType: "cta",
+        designVariant: "shadcnui-blocks.cta-03",
         anchor: "over",
-        body: amicareEditorialBody(),
+        headline: inlineParts([
+          { text: "Het vak waar mijn " },
+          { text: "hart ligt", marks: ["italic"] },
+          { text: "." },
+        ]),
+        description: paragraphs([
+          "Tegelijk blijf ik mijzelf graag ontwikkelen, en sta ik open voor nieuwe uitdagingen en opdrachten binnen het werkveld.",
+          "Naast mijn werk ben ik moeder, en geniet ik van het drukke, gezellige gezinsleven. De combinatie van werk en gezin maakt mijn dagen dynamisch — en waardevol.",
+        ]),
+        primary: { label: "Neem contact op", href: "#contact" },
+        backgroundImage: { id: "amicare-toys", url: "/media/toys.jpg", filename: "toys.jpg", alt: "Speelgoed" },
       },
       {
         blockType: "cta",
-        designVariant: "amicareQuoteContact",
+        designVariant: "shadcnui-blocks.cta-02",
         anchor: "wat-telt",
         headline: inlineText("Vertrouwen ontstaat in de tijd, niet in één gesprek."),
         description: blockText("Daarom werk ik graag in trajecten waar continuïteit en kleine stappen het echte werk doen — voor jongeren, voor gezinnen, en voor de mensen om hen heen."),
         backgroundImage: {
           id: "amicare-bedroom",
-          url: "/api/tenant-media/7/bedroom.jpg",
+          url: "/media/bedroom.jpg",
           filename: "bedroom.jpg",
           alt: "Slaapkamer met zacht ochtendlicht",
           width: 1600,
@@ -323,41 +290,21 @@ const amicarePages: OfficialTenantGeneratedPageSpec[] = [
         },
       },
       {
-        blockType: "cta",
-        designVariant: "amicareQuoteContact",
+        blockType: "contactDetails",
+        designVariant: "shadcnui-blocks.contact-01",
         anchor: "contact",
-        headline: inlineText("Wilt u meer informatie of in contact komen?"),
-        primary: { label: "info@ami-care.nl", href: "mailto:info@ami-care.nl" },
+        title: inlineText("Wilt u meer informatie of in contact komen?"),
+        items: [
+          { title: "E-mail", description: "Neem rechtstreeks contact op.", value: "info@ami-care.nl", href: "mailto:info@ami-care.nl", icon: "mail" },
+          { title: "Werkgebied", description: "Jeugdzorg voor jongeren en gezinnen.", value: "Nederland", icon: "map-pin" },
+          { title: "Bedrijfsgegevens", description: "KVK 99968347", value: "Vestigingsnummer 000065004922", icon: "building-2" },
+        ],
       },
     ],
   },
 ]
 
-const amicareRendererPages: OfficialTenantGeneratedPageSpec[] = amicarePages.map((page) => ({
-  ...page,
-  blocks: page.blocks.map((block) => {
-    if (block.blockType !== "contactSection") return block
-    return {
-      ...block,
-      fields: block.fields.map((field) => ({
-        ...field,
-        maxLength: field.type === "textarea" ? 2000 : field.name === "email" ? 240 : 160,
-      })),
-      provider: {
-        provider: "siab" as const,
-        action: "/api/forms",
-        method: "POST" as const,
-        hiddenFields: [{ name: "tenant", value: "amicare" }],
-        honeypotField: "company",
-        successMessage: "Bedankt, je bericht is verzonden.",
-        errorMessage: "Verzenden is niet gelukt. Mail eventueel direct naar info@ami-care.nl.",
-        analyticsEnabled: true,
-      },
-    }
-  }),
-}))
-
-export const amicareSiteGenerationSpec: OfficialTenantSiteGenerationSpec = {
+export const amicareSiteGenerationSpec: SiteGenerationSpec = {
   schemaVersion: 1,
   intake: {
     businessName: "Amicare-Zorg",
@@ -367,13 +314,13 @@ export const amicareSiteGenerationSpec: OfficialTenantSiteGenerationSpec = {
     language: "nl",
     industry: "Jeugdzorg",
     serviceArea: ["Nederland"],
-    goals: ["CMS-backed tenant renderer parity", "Renderer-compatible data validation"],
+    goals: ["Shared provider rendering", "CMS and public renderer parity"],
     requestedPages: [{ slug: "index", title: "Home", purpose: "Homepage" }],
   },
   tenant: { name: "Amicare-Zorg", slug: "amicare", domain: "ami-care.nl", status: "active" },
   theme: amicareTheme,
   settings: amicareSettings,
-  pages: amicareRendererPages,
+  pages: amicarePages,
   blocks: canonicalBlocks,
   assets: [
     { id: "amicare-bedroom", url: "/media/bedroom.jpg", filename: "bedroom.jpg", alt: "Rustige kinderkamer" },
@@ -384,7 +331,7 @@ export const amicareSiteGenerationSpec: OfficialTenantSiteGenerationSpec = {
     { id: "amicare-apple-touch-icon", url: "/apple-touch-icon.png", filename: "apple-touch-icon.png", alt: "Amicare-Zorg app icon" },
   ],
   generatedAt: GENERATED_AT,
-  generator: { name: "legacy-tenant-migration", version: "phase-5" },
+  generator: { name: "siteinabox-structured-site", version: "1" },
 }
 
 export const amicarePublishedSiteSnapshot = toSnapshot(amicareSiteGenerationSpec, "tenant-amicare")

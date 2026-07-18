@@ -96,7 +96,7 @@ describe("renderer snapshot loader environment gates", () => {
     await expect(listPublishedPaths("renderer.example.test")).resolves.toEqual(["/", "/services", "/about"])
   })
 
-  it("accepts official tenant snapshots from CMS responses", async () => {
+  it("accepts canonical provider tenant snapshots from CMS responses", async () => {
     process.env = {
       ...ORIGINAL_ENV,
       NODE_ENV: "production",

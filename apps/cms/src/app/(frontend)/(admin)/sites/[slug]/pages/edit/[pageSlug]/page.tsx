@@ -12,7 +12,6 @@ import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { pageNavMembership } from "@/lib/nav/membership"
 import { sameRelationshipId } from "@/lib/relationshipId"
 import type { ThemeTokens } from "@/lib/theme/schema"
-import { isOfficialTenant } from "@/lib/officialTenants"
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string; pageSlug: string }> }
@@ -59,7 +58,6 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canManageNav
         canEditSettings
-        autoPublishLive={isOfficialTenant(tenant)}
         inHeaderNav={inHeader}
         inFooterNav={inFooter}
       />

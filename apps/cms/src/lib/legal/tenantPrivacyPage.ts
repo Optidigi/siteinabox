@@ -1,4 +1,4 @@
-import type { GeneratedPageSpec, OfficialTenantSiteGenerationSpec, SiteGenerationSpec } from "@siteinabox/contracts/generation"
+import type { GeneratedPageSpec, SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import type { RtBlock, RtInline, RtRoot } from "@siteinabox/contracts/rich-text"
 import type { TenantPrivacyDisclosure } from "@siteinabox/contracts/site"
 
@@ -151,7 +151,7 @@ const privacyPage = (disclosure: TenantPrivacyDisclosure, siteName: string): Gen
   ],
 })
 
-export function materializeTenantPrivacyPage<T extends SiteGenerationSpec | OfficialTenantSiteGenerationSpec>(spec: T): T {
+export function materializeTenantPrivacyPage<T extends SiteGenerationSpec>(spec: T): T {
   if (!spec.settings || typeof spec.settings !== "object" || !Array.isArray(spec.pages)) return spec
   const disclosure = spec.settings.privacyDisclosure
   if (!disclosure || disclosure.enabled === false) return spec

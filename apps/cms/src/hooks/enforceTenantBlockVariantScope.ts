@@ -7,7 +7,6 @@ import {
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
-import { isOfficialTenant } from "@/lib/officialTenants"
 import { relationshipId } from "@/lib/relationshipId"
 
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
@@ -35,7 +34,6 @@ const variantAllowedForTenant = (
   tenant: { slug?: string | null; domain?: string | null } | null,
 ) => {
   if (variant.scope.kind === "global") return true
-  if (isOfficialTenant(tenant)) return true
   return tenant?.slug ? variant.scope.tenantSlugs.includes(tenant.slug) : false
 }
 
@@ -78,8 +76,7 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
       const issue = scopedVariantIssue(blockType, "designVariant", designVariant, tenant)
       if (issue) violations.push({ path: `blocks.${index}.designVariant`, message: issue.message })
     }
-    const tenantOwnedVariant = designVariant.startsWith("amicare") && isOfficialTenant(tenant)
-    for (const issue of tenantOwnedVariant ? [] : validateProviderBlockInstance(record as any)) {
+    for (const issue of validateProviderBlockInstance(record as any)) {
       violations.push({
         path: `blocks.${index}.${issue.path.join(".")}`,
         message: issue.message,

@@ -668,9 +668,9 @@ hosts for the same tenant snapshot. There is no canonical-domain redirect in
 the current renderer contract.
 
 The production renderer owns generated-site tenant domains. `ami-care.nl` is
-served through the renderer as the official Ami-care tenant-renderer path, and
-`amicare.optidigi.nl` may be used only as an alias/staging host for the same
-snapshot contract. Traefik preserves `Host` by default. The renderer compose
+served from the same canonical provider-block snapshot contract as every other
+tenant; `amicare.optidigi.nl` may be used only as an alias/staging host for that
+snapshot. Traefik preserves `Host` by default. The renderer compose
 template does not add an explicit `X-Forwarded-Host` middleware; smoke testing
 must verify the CMS snapshot endpoint sees the public tenant hostname during
 renderer requests.

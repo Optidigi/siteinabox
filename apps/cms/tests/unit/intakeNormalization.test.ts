@@ -162,6 +162,14 @@ describe("normalizeIntakeSubmission", () => {
     })
   })
 
+  it("maps the Ami-care terracotta brand color to the reusable warm preset", () => {
+    const raw = richIntake()
+    raw.visual.color.sourceValue = "#a04e32"
+    const normalized = normalizeIntakeSubmission(PublicIntakeSubmissionSchema.parse(raw))
+
+    expect(normalized.intakeBrief?.visualPreferences?.colorSchemeId).toBe("terracotta-warm")
+  })
+
   it("does not treat factual company website or contact email as add-on interest", () => {
     const raw = richIntake()
     delete (raw as { domain?: string | null }).domain

@@ -43,10 +43,9 @@ chrome around that output but must not add another block renderer or mutate an
 iframe's DOM/geometry to simulate parity. Missing or unknown variants fail
 closed.
 
-Amicare remains an explicitly tenant-gated compatibility renderer. It is an
-accepted migration constraint, not a pattern for new tenants. Removal requires
-a verified generic-provider replacement covering content, navigation, footer,
-forms, legal pages, media, and visual identity.
+Ami Care uses the same validated provider-block, chrome, theme, media, preview,
+and published-snapshot path as every generated tenant. Tenant identity affects
+content and routing only; it never selects a source-code renderer.
 
 ## Operational ownership
 

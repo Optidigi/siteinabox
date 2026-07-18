@@ -760,7 +760,7 @@ describe("applySiteGenerationSpec", () => {
     expect(store["site-settings"]).toHaveLength(0)
   })
 
-  it("rejects tenant-exclusive tenant-exclusive variants for self-serve generated tenants", () => {
+  it("rejects retired tenant-specific variants for generated tenants", () => {
     const spec = fixtureSpec()
     spec.settings = {
       ...spec.settings,
@@ -779,8 +779,8 @@ describe("applySiteGenerationSpec", () => {
 
     expect(report.valid).toBe(false)
     expect(report.issues.map((entry) => entry.code)).toEqual(expect.arrayContaining([
-      "tenant_exclusive_block_variant",
-      "tenant_exclusive_chrome_variant",
+      "invalid_contract_shape",
+      "unsupported_block_variant",
     ]))
   })
 

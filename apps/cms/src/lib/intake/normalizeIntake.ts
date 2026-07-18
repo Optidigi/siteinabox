@@ -44,6 +44,7 @@ const compactUnique = <T extends string>(values: Array<T | null | undefined>): T
 
 const themeColorHint = (value: string | null | undefined) => {
   const lower = value?.toLowerCase() ?? ""
+  if (/\b(terracotta|rust|clay|copper)\b/.test(lower)) return "terracotta-warm"
   if (/\b(red|rose|pink|confident)\b/.test(lower)) return "red-confident"
   if (/\b(green|emerald|calm|nature|eco)\b/.test(lower)) return "emerald-calm"
   if (/\b(amber|yellow|orange|warm|gold)\b/.test(lower)) return "amber-warm"
@@ -52,6 +53,7 @@ const themeColorHint = (value: string | null | undefined) => {
     const r = Number.parseInt(hex[1].slice(0, 2), 16)
     const g = Number.parseInt(hex[1].slice(2, 4), 16)
     const b = Number.parseInt(hex[1].slice(4, 6), 16)
+    if (r >= 120 && r < 210 && g >= 50 && g <= 130 && b >= 30 && b <= 100 && g > b + 10) return "terracotta-warm"
     if (r > g + 30 && r > b + 30) return "red-confident"
     if (g > r + 20 && g > b + 20) return "emerald-calm"
     if (r > 160 && g > 100 && b < 100) return "amber-warm"

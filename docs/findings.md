@@ -75,13 +75,25 @@ observations before acting on them.
 - **Review trigger:** Horizontal scaling, multiple writer processes, or shared
   storage-topology changes.
 
-## SIAB-009 — Amicare uses a compatibility renderer
+## SIAB-009 — Ami Care compatibility renderer retirement
 
-- **Classification:** Accepted constraint with migration risk.
-- **Scope:** Contracts, shared renderer, CMS preview, and snapshots.
-- **Next:** No new tenant may use it. Remove it only with a published and
-  visually accepted generic-provider replacement covering all content and
-  interaction surfaces.
+- **Classification:** Remediation implemented; production verification pending.
+- **Scope:** Contracts, shared renderer, CMS preview, persisted CMS data, and
+  published snapshots.
+- **Evidence:** The canonical Ami Care fixture now uses approved provider
+  blocks and chrome, the shared terracotta theme, structured media and contact
+  bindings, and the generic published-snapshot schema. Tenant-by-host renderer
+  selection, tenant-only variants, CSS, rich-text import matchers, repair tools,
+  and save-time auto-publish wiring were removed. The owning migration rebuilds
+  current Ami Care CMS rows and activates a generic snapshot before dropping
+  the retired chrome enum values; focused contract, renderer, CMS, and migration
+  tests cover the cutover. A fresh disposable PostgreSQL migration rehearsal
+  and local desktop/mobile browser smoke cover the schema, provider blocks,
+  media bindings, navigation, terracotta theme, consent chrome, and responsive
+  layout without contacting real analytics ingestion.
+- **Next:** After deployment, verify the production `ami-care.nl` media, forms,
+  legal page, active snapshot, and desktop/mobile output against the rebuilt
+  tenant data.
 
 ## SIAB-010 — Renderer page-lifecycle ownership conflicts with the contract
 

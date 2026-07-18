@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/page-header"
 import { TenantPill } from "@/components/layout/TenantPill"
 import { getAdminTranslations } from "@/i18n/admin"
 import { resolveSettingsContract } from "@/lib/settingsContract"
-import { isOfficialTenant } from "@/lib/officialTenants"
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
   // FE-54: settings is owner-only (matches SiteSettings.access.update gate).
@@ -26,8 +25,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
         initial={settings}
         canEdit={canEdit}
         settingsContract={resolveSettingsContract(tenant.siteManifest as any)}
-        tenantId={tenant.id}
-        autoPublishLive={isOfficialTenant(tenant)}
       />
     </div>
   )

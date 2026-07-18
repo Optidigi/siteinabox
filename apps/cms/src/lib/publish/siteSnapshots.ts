@@ -101,8 +101,8 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
     ? {
         ...(banner ?? {}),
         visible: true,
-        title: "Cookies en privacy",
-        message: "Wij meten privacyvriendelijk bezoek zonder analyticscookies. Met uw toestemming meten wij ook interacties om de website te verbeteren.",
+        title: "Cookies",
+        message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
         dismissible: false,
         variant: "shadcnui-blocks.banner-04",
       }

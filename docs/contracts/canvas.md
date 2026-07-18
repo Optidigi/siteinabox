@@ -42,8 +42,8 @@ from protocol v2.
 - Links/forms are inert in the editor. Internal preview links route through the
   parent so all generated pages remain testable.
 - The editor-frame layout imports only generated-site renderer CSS.
-- Amicare remains isolated pending the explicit migration in the feature
-  backlog. No new tenant may use it.
+- Ami Care and newly generated tenants use the same provider renderer in the
+  editor frame and public runtime; tenant identity never selects a renderer.
 
 ## Verification
 

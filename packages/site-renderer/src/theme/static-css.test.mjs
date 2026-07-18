@@ -34,6 +34,11 @@ test("colored themes use explicit paired surface values and dark tinting", () =>
   }
 })
 
+test("terracotta uses the Ami-care brand color as its light primary", () => {
+  const css = generateStaticThemeCss()
+  assert.match(css, /data-theme-color="terracotta-warm"[^}]*--primary:#a04e32/)
+})
+
 test("semantic controls override literal rounded-full without changing structural circles", async () => {
   const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8")
   const hero = await readFile(new URL("../providers/shadcnui-blocks/variants/hero-01/hero.tsx", import.meta.url), "utf8")

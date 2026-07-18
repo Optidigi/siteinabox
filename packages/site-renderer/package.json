@@ -35,11 +35,6 @@
       "import": "./src/blocks/variants.ts",
       "default": "./src/blocks/variants.ts"
     },
-    "./tenant-renderers/resolve": {
-      "types": "./src/tenant-renderers/resolve.ts",
-      "import": "./src/tenant-renderers/resolve.ts",
-      "default": "./src/tenant-renderers/resolve.ts"
-    },
     "./source-templates": {
       "types": "./src/source-templates/index.ts",
       "import": "./src/source-templates/index.ts",

@@ -57,7 +57,7 @@ test("literal views preserve CMS edit-slot boundaries", () => {
   }
   const html = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
     block: hero,
-    variant: "shadcnui-blocks.hero-01",
+    variant: "shadcnui-blocks.hero-02",
     options: {
       index: 2,
       editSlots: {
@@ -70,6 +70,7 @@ test("literal views preserve CMS edit-slot boundaries", () => {
   }))
   assert.match(html, /data-edit-rich="(?:eyebrow|headline|subheadline):2"/)
   assert.match(html, /data-edit-cta="cta"/)
+  assert.match(html, /data-edit-image="image"/)
   const team = fixtures.get("team")
   const teamHtml = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
     block: team,
@@ -82,6 +83,41 @@ test("literal views preserve CMS edit-slot boundaries", () => {
     },
   }))
   assert.match(teamHtml, /data-edit-image="members"/)
+})
+
+test("media-dependent heroes bind the structured hero image", () => {
+  const hero = {
+    ...fixtures.get("hero"),
+    image: { id: "hero-media", url: "/media/hero.jpg", alt: "Structured hero media", width: 1200, height: 675 },
+  }
+  for (const variant of ["hero-02", "hero-03", "hero-04", "hero-05"]) {
+    const html = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+      block: hero,
+      variant: `shadcnui-blocks.${variant}`,
+      options: { index: 0 },
+    }))
+    assert.match(html, /src="\/media\/hero\.jpg"/, variant)
+    assert.match(html, /alt="Structured hero media"/, variant)
+  }
+  const decorative = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+    block: hero,
+    variant: "shadcnui-blocks.hero-01",
+    options: { index: 0 },
+  }))
+  assert.doesNotMatch(decorative, /\/media\/hero\.jpg/)
+})
+
+test("feature variants with native media regions bind feature item images", () => {
+  const featureList = fixtures.get("featureList")
+  for (const variant of ["features-02", "features-07", "features-15", "features-16"]) {
+    const html = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+      block: featureList,
+      variant: `shadcnui-blocks.${variant}`,
+      options: { index: 0 },
+    }))
+    assert.match(html, /src="\/media\/feature-shared\.jpg"/, variant)
+    assert.match(html, /alt="Shared renderer preview"/, variant)
+  }
 })
 
 test("team profile links fill only native provider social-link positions", () => {
@@ -139,6 +175,28 @@ test("contact variants use only structured SIAB form actions, fields, and submit
     assert.match(html, />Send securely<\/button>/, variant.id)
     assert.doesNotMatch(html, /action="(?:https?:|about:blank)/, variant.id)
   }
+})
+
+test("contact-01 binds semantic icons from structured contact details", () => {
+  const source = fixtures.get("contactDetails")
+  const block = {
+    ...source,
+    items: [
+      { ...source.items[0], icon: "mail" },
+      { ...source.items[1], icon: "map-pin" },
+      { ...source.items[2], icon: "building-2" },
+    ],
+  }
+  const html = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+    block,
+    options: { index: 0 },
+    variant: "shadcnui-blocks.contact-01",
+  }))
+  assert.match(html, /lucide-mail/)
+  assert.match(html, /lucide-map-pin/)
+  assert.match(html, /lucide-building-2/)
+  assert.doesNotMatch(html, /lucide-phone/)
+  assert.doesNotMatch(html, /<b[^>]*>\s*Contact Us\s*<\/b>/i)
 })
 
 test("content dispatch fails closed for unknown and block-type-mismatched variants", () => {

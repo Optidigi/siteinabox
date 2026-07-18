@@ -1,5 +1,4 @@
-import type { Page } from "@siteinabox/contracts"
-import type { PublishedSiteSnapshot, ThemeTokenSpec } from "@siteinabox/contracts/generation"
+import type { GeneratedPageSpec, PublishedSiteSnapshot, ThemeTokenSpec } from "@siteinabox/contracts/generation"
 
 const inlineText = (text: string) => ({
   t: "root" as const,
@@ -21,7 +20,7 @@ const fixtureTheme: ThemeTokenSpec = {
   shape: { schemeId: "soft" },
 }
 
-const pages: Page[] = [
+const pages: GeneratedPageSpec[] = [
   {
     id: "home",
     slug: "index",
@@ -212,7 +211,7 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
       ...pages.map((page) => ({
         type: "page" as const,
         key: page.slug,
-        updatedAt: page.updatedAt,
+        updatedAt: page.updatedAt!,
       })),
     ],
   },

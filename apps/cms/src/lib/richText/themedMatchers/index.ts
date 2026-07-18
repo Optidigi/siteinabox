@@ -1,4 +1,3 @@
-import { MATCHERS as AMICARE_MATCHERS } from "./amicare"
 import type { ThemedMatcher } from "./types"
 import type { RtManifest } from "../manifest"
 
@@ -13,9 +12,7 @@ export type { ThemedMatcher, P5Element } from "./types"
 //      exports `MATCHERS: ThemedMatcher[]`.
 //   2. Import + spread it into ALL_MATCHERS below.
 // No other files need to change.
-const ALL_MATCHERS: ThemedMatcher[] = [
-  ...AMICARE_MATCHERS,
-]
+const ALL_MATCHERS: ThemedMatcher[] = []
 
 // Build the lookup-by-id registry. Throws at module init if two matchers
 // share an id — better to fail loud than to silently shadow.
@@ -39,5 +36,3 @@ export const matchersForManifest = (manifest: RtManifest): ThemedMatcher[] => {
     .map((n) => matcherRegistry[n.id])
     .filter((m): m is ThemedMatcher => Boolean(m))
 }
-
-export { eyebrowMatcher } from "./amicare/eyebrow"

@@ -1,7 +1,6 @@
 import type { Block } from "@siteinabox/contracts"
 
 export type BlockAnchorResolveContext = {
-  tenantRendererKey?: "amicare" | null
   surface?: "canvas" | "live"
 }
 
@@ -14,18 +13,16 @@ export function resolveBlockAnchor(block: Block, context: BlockAnchorResolveCont
   const anchor = typeof block.anchor === "string" && block.anchor.trim() ? block.anchor.trim() : undefined
   if (anchor) return anchor
 
-  const isAmicare = context.tenantRendererKey === "amicare"
-
   switch (block.blockType) {
     case "hero":
-      return isAmicare ? "top" : undefined
+      return undefined
     case "featureList":
-      return isAmicare ? "werkwijze" : context.surface === "canvas" ? "features" : undefined
+      return context.surface === "canvas" ? "features" : undefined
     case "richText":
-      return isAmicare ? "over" : undefined
+      return undefined
     case "cta":
       if (ctaIsContact(block)) return "contact"
-      return isAmicare ? "wat-telt" : context.surface === "canvas" ? "cta" : undefined
+      return context.surface === "canvas" ? "cta" : undefined
     default:
       return undefined
   }

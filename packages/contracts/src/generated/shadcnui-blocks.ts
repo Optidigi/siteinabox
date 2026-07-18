@@ -4668,9 +4668,8 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       },
       "image": {
         "kind": "image",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned hero-02 view has no region for this field."
+        "status": "optional",
+        "repeated": false
       },
       "stats": {
         "kind": "repeater",
@@ -4841,6 +4840,11 @@ export const SHADCNUI_BLOCK_VARIANTS = [
         "field": "secondary",
         "kind": "action",
         "fallback": "Watch Demo"
+      },
+      {
+        "file": "hero.tsx",
+        "field": "image",
+        "kind": "image"
       }
     ],
     "composition": {
@@ -4898,9 +4902,8 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       },
       "image": {
         "kind": "image",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned hero-03 view has no region for this field."
+        "status": "optional",
+        "repeated": false
       },
       "stats": {
         "kind": "repeater",
@@ -5071,6 +5074,11 @@ export const SHADCNUI_BLOCK_VARIANTS = [
         "field": "secondary",
         "kind": "action",
         "fallback": "Watch Demo"
+      },
+      {
+        "file": "hero.tsx",
+        "field": "image",
+        "kind": "image"
       }
     ],
     "composition": {
@@ -5130,9 +5138,8 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       },
       "image": {
         "kind": "image",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned hero-04 view has no region for this field."
+        "status": "optional",
+        "repeated": false
       },
       "stats": {
         "kind": "repeater",
@@ -5303,6 +5310,11 @@ export const SHADCNUI_BLOCK_VARIANTS = [
         "field": "secondary",
         "kind": "action",
         "fallback": "Watch Demo"
+      },
+      {
+        "file": "hero.tsx",
+        "field": "image",
+        "kind": "image"
       }
     ],
     "composition": {
@@ -5360,9 +5372,8 @@ export const SHADCNUI_BLOCK_VARIANTS = [
       },
       "image": {
         "kind": "image",
-        "status": "inactive",
-        "repeated": false,
-        "reason": "The pinned hero-05 view has no region for this field."
+        "status": "optional",
+        "repeated": false
       },
       "stats": {
         "kind": "repeater",
@@ -5533,6 +5544,11 @@ export const SHADCNUI_BLOCK_VARIANTS = [
         "field": "secondary",
         "kind": "action",
         "fallback": "Watch Demo"
+      },
+      {
+        "file": "hero.tsx",
+        "field": "image",
+        "kind": "image"
       }
     ],
     "composition": {

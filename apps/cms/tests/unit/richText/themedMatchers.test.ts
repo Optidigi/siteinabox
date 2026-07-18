@@ -1,31 +1,29 @@
 import { describe, expect, it } from "vitest"
-import { matchersForManifest, eyebrowMatcher } from "@/lib/richText/themedMatchers"
+import { matchersForManifest } from "@/lib/richText/themedMatchers"
 import type { RtManifest } from "@/lib/richText/manifest"
 
-describe("matchersForManifest (post-reorganisation)", () => {
+describe("matchersForManifest", () => {
   const baseManifest: RtManifest = {
     version: 1,
     inlineMarks: { bold: true, italic: true },
     blockTypes: { paragraph: true, heading: { levels: [2, 3] } },
   }
 
-  it("returns the eyebrow matcher when manifest declares themedNodes[eyebrow]", () => {
+  it("does not infer retired tenant-specific HTML matchers", () => {
     const result = matchersForManifest({
       ...baseManifest,
       themedNodes: [
         { id: "eyebrow", label: "Eyebrow", fields: [{ name: "text", type: "text" }] },
       ],
     })
-    expect(result).toHaveLength(1)
-    expect(result[0]?.id).toBe("eyebrow")
-    expect(result[0]).toBe(eyebrowMatcher)
+    expect(result).toEqual([])
   })
 
   it("returns empty when manifest declares no themedNodes", () => {
     expect(matchersForManifest(baseManifest)).toHaveLength(0)
   })
 
-  it("ignores themedNode ids that have no registered matcher", () => {
+  it("ignores themedNode ids without a generic registered matcher", () => {
     const result = matchersForManifest({
       ...baseManifest,
       themedNodes: [
@@ -33,7 +31,6 @@ describe("matchersForManifest (post-reorganisation)", () => {
         { id: "eyebrow", label: "Eyebrow", fields: [{ name: "text", type: "text" }] },
       ],
     })
-    expect(result).toHaveLength(1)
-    expect(result[0]?.id).toBe("eyebrow")
+    expect(result).toEqual([])
   })
 })

@@ -4,6 +4,7 @@ export const COLOR_SCHEME_IDS = [
   "red-confident",
   "emerald-calm",
   "amber-warm",
+  "terracotta-warm",
 ] as const
 
 export const FONT_SCHEME_IDS = [
@@ -33,6 +34,7 @@ export const COLOR_SCHEME_PRESETS = [
   { id: "red-confident", label: "Red Confident" },
   { id: "emerald-calm", label: "Emerald Calm" },
   { id: "amber-warm", label: "Amber Warm" },
+  { id: "terracotta-warm", label: "Terracotta Warm" },
 ] as const satisfies readonly ThemePresetOption<ColorSchemeId>[]
 
 export const FONT_SCHEME_PRESETS = [

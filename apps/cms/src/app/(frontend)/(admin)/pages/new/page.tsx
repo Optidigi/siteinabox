@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/page-header"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { getAdminTranslations } from "@/i18n/admin"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
-import { isOfficialTenant } from "@/lib/officialTenants"
 import { listPages } from "@/lib/queries/pages"
 
 export default async function NewTenantPage() {
@@ -34,7 +33,6 @@ export default async function NewTenantPage() {
         siteSettings={settings}
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canEditSettings={user.role === "owner" || user.role === "super-admin"}
-        autoPublishLive={isOfficialTenant(ctx.tenant)}
       />
     </div>
   )

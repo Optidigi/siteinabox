@@ -12,6 +12,7 @@
     "test": "node --test src/lib/analytics-config.test.mjs src/lib/pathname.test.mjs src/smoke/cookie-consent-contract.test.mjs src/smoke/host-routing.test.mjs && tsx --test src/lib/media.test.ts",
     "smoke:packaged-image": "node src/smoke/packaged-image-smoke.mjs",
     "test:analytics-browser": "node src/smoke/analytics-lifecycle-browser.mjs",
+    "test:amicare-browser": "node src/smoke/amicare-site-browser.mjs",
     "test:provider-browser": "node src/smoke/provider-catalog-browser.mjs"
   },
   "dependencies": {

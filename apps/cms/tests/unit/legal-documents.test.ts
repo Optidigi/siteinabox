@@ -229,7 +229,10 @@ describe("legal document synchronization", () => {
 
     expect(served.settings.analyticsConsent).toEqual(consent)
     expect(served.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-04")
-    expect(served.settings.chrome.banner.message).toContain("privacyvriendelijk bezoek")
+    expect(served.settings.chrome.banner).toMatchObject({
+      title: "Cookies",
+      message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
+    })
     expect(snapshot.settings.analyticsConsent.consentVersion).toBe("old")
     expect(snapshot.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-01")
   })
@@ -245,7 +248,7 @@ describe("legal document synchronization", () => {
       visible: true,
       dismissible: false,
     })
-    expect(served.settings.chrome.banner.message).toMatch(/toestemming/)
+    expect(served.settings.chrome.banner.message).toMatch(/cookies en vergelijkbare technologieën/)
     expect(snapshot).toEqual({ settings: { siteName: "Demo" } })
   })
 })

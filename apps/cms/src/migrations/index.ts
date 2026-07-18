@@ -65,6 +65,7 @@ import * as migration_20260716_123000_remove_wrapped_density_hints from './20260
 import * as migration_20260717_120000_consolidate_theme_presets from './20260717_120000_consolidate_theme_presets';
 import * as migration_20260717_180000_remove_user_editor_mode from './20260717_180000_remove_user_editor_mode';
 import * as migration_20260718_123000_backfill_public_analytics_consent from './20260718_123000_backfill_public_analytics_consent';
+import * as migration_20260718_230256 from './20260718_230256';
 
 export const migrations = [
   {
@@ -375,31 +376,36 @@ export const migrations = [
   {
     up: migration_20260715_233924_provider_system_settings.up,
     down: migration_20260715_233924_provider_system_settings.down,
-    name: '20260715_233924_provider_system_settings'
+    name: '20260715_233924_provider_system_settings',
   },
   {
     up: migration_20260716_120000_remove_theme_density.up,
     down: migration_20260716_120000_remove_theme_density.down,
-    name: '20260716_120000_remove_theme_density'
+    name: '20260716_120000_remove_theme_density',
   },
   {
     up: migration_20260716_123000_remove_wrapped_density_hints.up,
     down: migration_20260716_123000_remove_wrapped_density_hints.down,
-    name: '20260716_123000_remove_wrapped_density_hints'
+    name: '20260716_123000_remove_wrapped_density_hints',
   },
   {
     up: migration_20260717_120000_consolidate_theme_presets.up,
     down: migration_20260717_120000_consolidate_theme_presets.down,
-    name: '20260717_120000_consolidate_theme_presets'
+    name: '20260717_120000_consolidate_theme_presets',
   },
   {
     up: migration_20260717_180000_remove_user_editor_mode.up,
     down: migration_20260717_180000_remove_user_editor_mode.down,
-    name: '20260717_180000_remove_user_editor_mode'
+    name: '20260717_180000_remove_user_editor_mode',
   },
   {
     up: migration_20260718_123000_backfill_public_analytics_consent.up,
     down: migration_20260718_123000_backfill_public_analytics_consent.down,
-    name: '20260718_123000_backfill_public_analytics_consent'
+    name: '20260718_123000_backfill_public_analytics_consent',
+  },
+  {
+    up: migration_20260718_230256.up,
+    down: migration_20260718_230256.down,
+    name: '20260718_230256'
   },
 ];

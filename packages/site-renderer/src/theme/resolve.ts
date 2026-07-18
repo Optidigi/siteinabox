@@ -105,6 +105,20 @@ const red: ColorRamp = {
   950: "#450a0a",
 }
 
+const terracotta: ColorRamp = {
+  50: "#fdf6f3",
+  100: "#f8e8e1",
+  200: "#f1d1c5",
+  300: "#e5aa95",
+  400: "#d67f61",
+  500: "#c45f41",
+  600: "#b04f34",
+  700: "#a04e32",
+  800: "#7f3b28",
+  900: "#683226",
+  950: "#371811",
+}
+
 const modernSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
 const editorialSerifStack = "Fraunces Variable, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
 const humanistSansStack = "\"Nunito Variable\", Nunito, ui-sans-serif, system-ui, sans-serif"
@@ -208,6 +222,13 @@ export const colorSchemes = {
     source: "builtin",
     light: tintedMode(amber, 75, false),
     dark: tintedMode(amber, 75, true),
+  },
+  "terracotta-warm": {
+    id: "terracotta-warm",
+    label: "Terracotta Warm",
+    source: "builtin",
+    light: tintedMode(terracotta, 35, false),
+    dark: tintedMode(terracotta, 35, true),
   },
 } as const satisfies Record<string, ProviderColorScheme>
 

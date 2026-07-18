@@ -103,8 +103,8 @@ function publishedSnapshotForHost(host) {
         status: "published",
         updatedAt: "2026-07-10T00:00:00.000Z",
         blocks: [{
-          blockType: "richText",
-          designVariant: "amicareEditorial",
+          blockType: "contentSection",
+          designVariant: "shadcnui-blocks.legal-content-01",
           body: {
             t: "root",
             variant: "block",
@@ -158,7 +158,7 @@ export async function fetchWithHost(baseUrl, host, pathname) {
 
 export async function assertStubCmsSnapshots(cms) {
   const expected = [
-    ["ami-care.nl", "ami-care", "amber-warm"],
+    ["ami-care.nl", "ami-care", "terracotta-warm"],
   ]
 
   for (const [host, tenantSlug, colorSchemeId] of expected) {
@@ -204,13 +204,16 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareHome = await fetchWithHost(baseUrl, "ami-care.nl", "/")
   const amicareHtml = await amicareHome.text()
   await assertStatus(amicareHome, 200, "ami-care.nl homepage status", amicareHtml, failureContext)
-  assert.match(amicareHtml, /data-tenant-renderer="amicare"/)
+  assert.doesNotMatch(amicareHtml, /data-tenant-renderer=/)
+  assert.match(amicareHtml, /data-provider-variant="shadcnui-blocks\.hero-02"/)
+  assert.match(amicareHtml, /data-provider-variant="shadcnui-blocks\.features-01"/)
+  assert.match(amicareHtml, /data-provider-variant="shadcnui-blocks\.contact-01"/)
   assert.match(amicareHtml, /data-siab-theme-mode="light"/)
   assert.match(amicareHtml, /data-siab-color-mode="light"/)
   assert.match(amicareHtml, /localStorage\.getItem\("siab-color-mode"\)/)
   assert.match(amicareHtml, /name="color-scheme" content="light dark"/)
   assert.doesNotMatch(amicareHtml, /data-siab-theme-overrides/)
-  assert.match(amicareHtml, /data-theme-color="amber-warm"/)
+  assert.match(amicareHtml, /data-theme-color="terracotta-warm"/)
   assert.match(amicareHtml, /data-theme-font="classic-editorial"/)
   assert.match(amicareHtml, /data-theme-shape="soft"/)
   assert.doesNotMatch(amicareHtml, /--site-style-preset:/)
@@ -220,15 +223,14 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /<link rel="icon" href="\/siab-media\/tenant-ami-care\/favicon\.svg"\/?>/)
   assert.match(amicareHtml, /\/siab-media\/tenant-ami-care\/bedroom\.jpg/)
   assert.match(amicareHtml, /Jeugdzorg/)
-  assert.match(amicareHtml, /Begeleiding/)
+  assert.match(amicareHtml, /Aandacht/)
   assert.match(amicareHtml, /Vertrouwen/)
   assert.match(amicareHtml, /href="\/privacy-en-cookieverklaring"/)
 
   const amicarePrivacy = await fetchWithHost(baseUrl, "ami-care.nl", "/privacy-en-cookieverklaring")
   const amicarePrivacyHtml = await amicarePrivacy.text()
   await assertStatus(amicarePrivacy, 200, "ami-care.nl privacy status", amicarePrivacyHtml, failureContext)
-  assert.doesNotMatch(amicarePrivacyHtml, /data-system-page="tenant-privacy"/)
-  assert.match(amicarePrivacyHtml, /cms-block--richtext/)
+  assert.match(amicarePrivacyHtml, /data-provider-variant="shadcnui-blocks\.legal-content-01"/)
   assert.match(amicarePrivacyHtml, /AMICARE ZORG/)
   assert.match(amicarePrivacyHtml, /Optidigi, handelend onder de naam Site in a Box/)
 

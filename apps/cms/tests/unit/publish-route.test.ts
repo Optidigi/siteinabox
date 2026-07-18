@@ -102,29 +102,6 @@ describe("publish route", () => {
       manualActivation: true,
       publishedBy: 2,
     }))
-    expect(mocks.payload.findByID).toHaveBeenCalledWith({
-      collection: "tenants",
-      id: 7,
-      depth: 0,
-      overrideAccess: true,
-    })
-  })
-
-  it("rejects tenant users publishing non-official tenants directly", async () => {
-    mocks.payload.auth.mockResolvedValue({
-      user: { id: 2, role: "editor", tenants: [{ tenant: 7 }] },
-    })
-    mocks.payload.findByID.mockResolvedValue({ id: 7, slug: "customer-preview", domain: "customer.example" })
-
-    const res = await POST(req({
-      tenantId: 7,
-      includeAllPublishedPages: true,
-      activate: true,
-      manualActivation: true,
-    }))
-
-    expect(res.status).toBe(403)
-    expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
   })
 
   it("rejects tenant users publishing another tenant or non-current-state snapshots", async () => {

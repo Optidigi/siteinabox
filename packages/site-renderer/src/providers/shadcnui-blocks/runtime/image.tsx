@@ -33,5 +33,5 @@ export default function Image({ src, fill = false, priority, loading, style, ...
   const fillStyle = fill
     ? { position: "absolute", height: "100%", width: "100%", inset: 0, color: "transparent", ...style } as React.CSSProperties
     : style
-  return <img {...props} alt={props.alt ?? binding?.alt ?? ""} src={value} width={fill ? undefined : width} height={fill ? undefined : height} style={fillStyle} loading={priority ? "eager" : loading ?? "lazy"} decoding={props.decoding ?? "async"} />
+  return <img {...props} alt={binding?.alt ?? props.alt ?? ""} src={value} width={fill ? undefined : width} height={fill ? undefined : height} style={fillStyle} loading={priority ? "eager" : loading ?? "lazy"} decoding={props.decoding ?? "async"} />
 }

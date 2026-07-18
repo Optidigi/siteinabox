@@ -19,7 +19,7 @@ export type BlockVariantSourceAvailability = "free-public" | "operator-archive-r
 export type BlockVariantApprovalStatus = "approved" | "deferred" | "blocked"
 export type BlockVariantLicenseCompatibility = "compatible" | "incompatible" | "operator-review-required"
 export type BlockVariantVisualExactnessStatus = "reviewed-adapted-exact-style" | "reviewed-exact-source" | "needs-browser-comparison" | "blocked"
-export type BlockSourceIntegrationKind = "radix-nova" | "tenant-renderer-source" | "deferred"
+export type BlockSourceIntegrationKind = "radix-nova" | "deferred"
 export type BlockSourceRuntimeRequirement = {
   kind: BlockSourceIntegrationKind
   supportedAstroPath: string
@@ -92,8 +92,6 @@ export type SiteChromeCatalogVariant = {
   editableFields: SiteBlockEditorField[]
 }
 
-export const AMICARE_TENANT_ALIASES = ["ami-care", "amicare", "amicare-zorg", "tenant-amicare", "amicare-renderer"] as const
-const amicareScope = { kind: "tenant-exclusive", tenantSlugs: [...AMICARE_TENANT_ALIASES] } as const
 const globalScope = { kind: "global" } as const
 
 export const SITE_BLOCK_REFERENCE_SOURCES = {
@@ -103,13 +101,6 @@ export const SITE_BLOCK_REFERENCE_SOURCES = {
     licenseStatus: "MIT; LICENSE and pinned source provenance are vendored with the provider inventory.",
     availability: "free",
     notes: "Imported only from the pinned Radix registry commit; moving main is never a source input.",
-  },
-  tenantRendererSnapshots: {
-    name: "SIAB tenant renderer snapshots",
-    url: "https://github.com/optidigi/siteinabox",
-    licenseStatus: "Operator-owned Amicare compatibility source.",
-    availability: "free",
-    notes: "Tenant-exclusive compatibility only; never offered to generated sites.",
   },
 } as const satisfies Record<string, BlockReferenceSource>
 
@@ -148,10 +139,6 @@ const providerRuntime: BlockSourceRuntimeRequirement = {
   docs: ["packages/site-renderer/src/providers/shadcnui-blocks/inventory.json"],
   notes: "Provider primitives are namespaced in @siteinabox/ui; no second components.json is used.",
 }
-const tenantRuntime: BlockSourceRuntimeRequirement = {
-  kind: "tenant-renderer-source", supportedAstroPath: "Render through the isolated Amicare tenant renderer.", interactive: true,
-  docs: ["packages/site-renderer/src/tenant-renderers/amicare"], notes: "Official tenant compatibility only.",
-}
 type ProviderCatalogSource = { id: string; upstreamName: string; entryFile: string; sourceHash: string }
 const provenanceFor = (variant: ProviderCatalogSource): BlockVariantProvenance => ({
   sourceName: "akash3444/shadcn-ui-blocks", url: "https://github.com/akash3444/shadcn-ui-blocks",
@@ -165,14 +152,6 @@ const provenanceFor = (variant: ProviderCatalogSource): BlockVariantProvenance =
   visualSourceNotes: variant.upstreamName === "legal-content-01" ? "Provider-token long-form system layout for generated legal content." : "Pinned literal source; true upstream browser comparison is required before exact parity can be claimed.",
   runtime: providerRuntime, notes: `Aggregate source hash ${variant.sourceHash}.`,
 })
-const amicareProvenance = (name: string): BlockVariantProvenance => ({
-  sourceName: "SIAB tenant renderer snapshots", url: "https://github.com/optidigi/siteinabox", licenseStatus: "Operator-owned",
-  licenseCompatibility: "compatible", approvalStatus: "approved", sourceAvailability: "free-public", upstreamBlockName: name,
-  sourceAccessType: "local-source", sourceAccess: "Repository-local Amicare renderer", implementation: "siab-owned",
-  retrieval: "Repository history", verifiedAt: "2026-07-15", visualExactnessStatus: "reviewed-exact-source",
-  visualSourceNotes: "Preserved tenant-specific compatibility.", runtime: tenantRuntime, notes: "Not self-serve.",
-})
-
 const grouped = new Map<string, SiteBlockCatalogVariant[]>()
 for (const source of [...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_SYSTEM_BLOCK_VARIANTS]) {
   const variants = grouped.get(source.blockType) ?? []
@@ -183,17 +162,6 @@ for (const source of [...SHADCNUI_BLOCK_VARIANTS, ...SHADCNUI_SYSTEM_BLOCK_VARIA
   })
   grouped.set(source.blockType, variants)
 }
-const amicareVariants: Partial<Record<SiteBlockSlug, string>> = {
-  hero: "amicareZenHero", featureList: "amicareCareCards", faq: "amicareWarmAccordion", richText: "amicareEditorial",
-  cta: "amicareQuoteContact", contactSection: "amicareContactForm", testimonials: "amicareStoryCards",
-}
-for (const [slug, variant] of Object.entries(amicareVariants)) {
-  const variants = grouped.get(slug) ?? []
-  variants.push({ id: `${slug}:${variant}`, variant, label: variant, intent: "Official Amicare compatibility", scope: amicareScope,
-    dataSignal: "variant", rendererSupportStatus: "supported", rendererClassName: `cms-block--${variant}`, provenance: amicareProvenance(variant) })
-  grouped.set(slug, variants)
-}
-
 export const SITE_BLOCK_CATALOG = SITE_BLOCK_SLUGS.map((slug): SiteBlockCatalogEntry => ({
   slug, label: slug, status: "approved", contractType: `${slug}Block`, runtimeValidationTarget: "SiteGenerationSpecSchema + provider slot validation",
   cmsEditableFields: fieldsBySlug[slug], renderer: { package: "@siteinabox/site-renderer", component: "ProviderBlockRenderer", output: "Pinned provider view" },
@@ -238,10 +206,6 @@ export const SITE_CHROME_CATALOG: SiteChromeCatalogVariant[] = [
     scope: globalScope, dataSignal: "settings.chrome.variant" as const, rendererSupportStatus: "supported" as const,
     rendererClassName: `site-${source.area}--source-shadcnui-blocks-${source.upstreamName}`, provenance: provenanceFor(source as never), editableFields: chromeField(source.area, source),
   })),
-  { id: "header:amicareZen", area: "header", variant: "amicareZen", label: "Amicare header", intent: "Official tenant compatibility", scope: amicareScope,
-    dataSignal: "settings.chrome.variant", rendererSupportStatus: "supported", rendererClassName: "site-header--amicare", provenance: amicareProvenance("amicareZen"), editableFields: chromeField("header") },
-  { id: "footer:amicareZen", area: "footer", variant: "amicareZen", label: "Amicare footer", intent: "Official tenant compatibility", scope: amicareScope,
-    dataSignal: "settings.chrome.variant", rendererSupportStatus: "supported", rendererClassName: "site-footer--amicare", provenance: amicareProvenance("amicareZen"), editableFields: chromeField("footer") },
 ]
 
 export type ChromeCapabilityIssue = { path: string; message: string }

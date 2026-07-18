@@ -4,15 +4,12 @@ import type { BlockRenderOptions } from "./blocks"
 import type { MediaResolver } from "./media"
 import { loadShadcnUiExplicitBlockView } from "./providers/shadcnui-blocks/block-client-loaders.generated"
 import { ShadcnUiNavbarView } from "./providers/shadcnui-blocks/navbar-views"
-import { resolveTenantRenderer } from "./tenant-renderers/resolve"
 import type { SitePageRendererProps } from "./SitePageRenderer"
 import { SitePageShell } from "./SitePageShell"
 
 type ProviderView = React.ComponentType<{ block: never; options: BlockRenderOptions }>
 
-export type PreparedClientSiteRenderer =
-  | { kind: "generic"; views: ReadonlyMap<string, ProviderView> }
-  | { kind: "amicare"; Renderer: React.ComponentType<SitePageRendererProps> }
+export type PreparedClientSiteRenderer = { kind: "generic"; views: ReadonlyMap<string, ProviderView> }
 
 export async function prepareClientSiteRenderer({
   page,
@@ -20,11 +17,6 @@ export async function prepareClientSiteRenderer({
   tenantSlug,
   domain,
 }: Pick<SitePageRendererProps, "page" | "settings" | "tenantSlug" | "domain">): Promise<PreparedClientSiteRenderer> {
-  if (resolveTenantRenderer({ tenantSlug, domain, settings }) === "amicare") {
-    const module = await import("./SitePageRenderer")
-    return { kind: "amicare", Renderer: module.SitePageRenderer }
-  }
-
   const variants = new Map<string, ProviderView>()
   const definitions = new Map(page.blocks.map((block) => {
     const definition = getProviderBlockVariant(block)
@@ -95,11 +87,6 @@ export function ClientSitePageRenderer({
   banner,
   footer,
 }: SitePageRendererProps & { prepared: PreparedClientSiteRenderer }) {
-  if (prepared.kind === "amicare") {
-    const Renderer = prepared.Renderer
-    return <Renderer {...{ page, settings, theme, registry, mediaResolver, formAction, className, canvasClassName, canvasAttributes, nonce, tenantSlug, domain, includeBehaviorScripts, header, banner, footer }} />
-  }
-
   const blocks = page.blocks.map((block, index) => {
     const explicitRenderer = registry?.[block.blockType]
     if (explicitRenderer && !block.designVariant) {

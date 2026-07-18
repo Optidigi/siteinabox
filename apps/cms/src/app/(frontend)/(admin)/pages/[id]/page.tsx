@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/page-header"
 import { captureCmsUsageEvent } from "@/lib/analytics/cms"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { sameRelationshipId } from "@/lib/relationshipId"
-import { isOfficialTenant } from "@/lib/officialTenants"
 
 export default async function EditTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { ctx, user } = await requireAuth()
@@ -47,7 +46,6 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
         rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
         canManageNav={canManageNav}
         canEditSettings={canManageNav}
-        autoPublishLive={isOfficialTenant(ctx.tenant)}
         inHeaderNav={inHeader}
         inFooterNav={inFooter}
         readOnly={readOnly}

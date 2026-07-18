@@ -83,7 +83,7 @@ export const filterChromeVariantOptions = (
   // validation without the root tenant document in `data`. Option filtering is
   // only an admin UX affordance; canonical enforcement lives in
   // `enforceTenantExclusiveChromeVariants` below. Without concrete tenant
-  // context, keep the static options intact so internal official-tenant imports
+  // context, keep the static options intact so system-internal imports
   // are not rejected before the tenant-aware hook runs.
   if (tenantSlugs.size === 0) return options
 

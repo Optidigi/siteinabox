@@ -6,7 +6,6 @@ import type {
   CmsApplyResult,
   GeneratedPageSpec,
   GeneratedSiteSettings,
-  OfficialTenantSiteGenerationSpec,
   SiteGenerationSpec,
   ThemeTokenSpec,
   ValidationIssue,
@@ -14,8 +13,7 @@ import type {
 } from "@siteinabox/contracts/generation"
 import {
   contractValidationReport,
-  isSupportedOfficialTenantBlockVariant,
-  OfficialTenantSiteGenerationSpecSchema,
+  isSupportedBlockVariant,
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
 import { validateProviderBlockInstance } from "@siteinabox/contracts"
@@ -38,7 +36,7 @@ import { approvedPublicAnalyticsConsent } from "@/lib/analytics/config"
 
 type ApplyOperation = "created" | "updated"
 type RetainedPage = { id: string | number; slug: string; status?: string }
-type CmsSiteGenerationSpec = SiteGenerationSpec | OfficialTenantSiteGenerationSpec
+type CmsSiteGenerationSpec = SiteGenerationSpec
 
 export type CmsGenerationApplyResult = CmsApplyResult & {
   idempotencyKey?: string
@@ -77,7 +75,6 @@ const TENANT_SLUG_REGEX = /^[a-z0-9-]+$/
 const DOMAIN_REGEX =
   /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const SUPPORTED_BLOCK_SLUGS = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
-const SUPPORTED_OFFICIAL_BLOCK_SLUGS = new Set<string>(SITE_BLOCK_SLUGS)
 const SELF_SERVE_SOURCE_BACKED_BLOCK_SLUGS = new Set<string>(
   SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS.map((variant) => variant.slug),
 )
@@ -200,21 +197,14 @@ const chromeVariantScopeIssue = (
   return `Generated ${area} chrome variant "${value}" is tenant-exclusive and cannot be used for tenant "${tenantSlug ?? "unknown"}".`
 }
 
-const isSupportedSelfServeSourceBackedBlockVariant = (
-  blockType: string,
-  variant: string | null | undefined,
-): boolean => typeof variant === "string" && (SELF_SERVE_SOURCE_BACKED_VARIANTS_BY_BLOCK.get(blockType)?.has(variant) ?? false)
-
 export const validateSiteGenerationSpecForCms = (
   spec: CmsSiteGenerationSpec,
   options: SiteGenerationValidationOptions = {},
 ): ValidationReport => {
   const issues: ValidationIssue[] = []
   const validationScope = options.variantScope ?? "tenant-aware"
-  const supportedBlockSlugs = validationScope === "self-serve" ? SUPPORTED_BLOCK_SLUGS : SUPPORTED_OFFICIAL_BLOCK_SLUGS
-  const supportsBlockVariant = validationScope === "tenant-aware"
-    ? isSupportedOfficialTenantBlockVariant
-    : isSupportedSelfServeSourceBackedBlockVariant
+  const supportedBlockSlugs = SUPPORTED_BLOCK_SLUGS
+  const supportsBlockVariant = isSupportedBlockVariant
   const candidate = spec as unknown
 
   if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
@@ -229,10 +219,7 @@ export const validateSiteGenerationSpecForCms = (
     originalValue as SiteGenerationSpec,
   ) as Partial<SiteGenerationSpec> & Record<string, unknown>
   const value = canonicalValue
-  const contractSchema = validationScope === "tenant-aware"
-    ? OfficialTenantSiteGenerationSpecSchema
-    : SiteGenerationSpecSchema
-  const parsedContract = contractSchema.safeParse(value)
+  const parsedContract = SiteGenerationSpecSchema.safeParse(value)
   if (!parsedContract.success) {
     issues.push(...contractValidationReport(parsedContract.error).issues)
   }
@@ -1065,9 +1052,7 @@ export async function applySiteGenerationSpec(
   if (!validation.valid) {
     return { ok: false, validation }
   }
-  const parsedContractSpec = (options.variantScope === "self-serve"
-    ? SiteGenerationSpecSchema
-    : OfficialTenantSiteGenerationSpecSchema).parse(canonicalSpec)
+  const parsedContractSpec = SiteGenerationSpecSchema.parse(canonicalSpec)
   const parsedSpec = parsedContractSpec as unknown as SiteGenerationSpec
 
   const idempotencyKey = siteGenerationSpecHash(parsedContractSpec)

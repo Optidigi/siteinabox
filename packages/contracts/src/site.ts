@@ -422,9 +422,8 @@ export type Alias = { host: string }
 export type ServiceAreaEntry = { name: string }
 
 export type SiteHeaderChromeVariant =
-  | "amicareZen"
-  | `shadcnui-blocks.navbar-${"01" | "02" | "03" | "04" | "05"}`
-export type SiteFooterChromeVariant = "amicareZen" | `shadcnui-blocks.footer-${"01" | "02" | "03" | "04" | "05" | "06" | "07"}`
+  `shadcnui-blocks.navbar-${"01" | "02" | "03" | "04" | "05"}`
+export type SiteFooterChromeVariant = `shadcnui-blocks.footer-${"01" | "02" | "03" | "04" | "05" | "06" | "07"}`
 export type SiteBannerChromeVariant = `shadcnui-blocks.banner-${"01" | "02" | "03" | "04"}`
 export type SiteChromeVariant = SiteHeaderChromeVariant | SiteFooterChromeVariant | SiteBannerChromeVariant
 

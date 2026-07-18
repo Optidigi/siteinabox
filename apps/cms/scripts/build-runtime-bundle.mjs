@@ -124,14 +124,6 @@ await build({
   outfile: path.join(outDir, "seed-renderer-staging-tenants.bundled.mjs"),
 })
 
-// Operator-run official tenant snapshot repair. This publishes and activates
-// from current CMS rows through the normal snapshot lifecycle.
-await build({
-  ...sharedBuildOpts,
-  entryPoints: [path.join(repoRoot, "scripts/repair-official-tenant-snapshots.ts")],
-  outfile: path.join(outDir, "repair-official-tenant-snapshots.bundled.mjs"),
-})
-
 // Mark the directory as ESM so any `.js` peers parse as module syntax.
 // Belt-and-braces: the bundled output is `.mjs`, but a sibling package.json
 // keeps behaviour explicit and protects against future renames.

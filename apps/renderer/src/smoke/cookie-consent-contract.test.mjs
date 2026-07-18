@@ -5,17 +5,14 @@ import test from "node:test"
 const pageSource = await readFile(new URL("../pages/[...path].astro", import.meta.url), "utf8")
 const runtimeSource = await readFile(new URL("../client/analytics-runtime.ts", import.meta.url), "utf8")
 const behaviorSource = await readFile(new URL("../client/site-behavior.ts", import.meta.url), "utf8")
-const amicareSource = await readFile(new URL("../../../../packages/site-renderer/src/tenant-renderers/amicare/AmicarePage.tsx", import.meta.url), "utf8")
 const chromeSource = await readFile(new URL("../../../../packages/site-renderer/src/chrome.tsx", import.meta.url), "utf8")
 const providerChromeSource = await readFile(new URL("../../../../packages/site-renderer/src/providers/shadcnui-blocks/banner-views.tsx", import.meta.url), "utf8")
 
 test("consent presentation is owned only by the approved cloned banner variant", () => {
   assert.doesNotMatch(pageSource, /renderer-cookie-consent|Cookievoorkeuren|Alles accepteren/)
-  assert.doesNotMatch(amicareSource, /cookie-consent-banner|AmicareCookieConsent|data-cookie-consent/)
   assert.match(pageSource, /buildAnalyticsConfig/)
   assert.match(pageSource, /id="siab-analytics-config"/)
   assert.doesNotMatch(chromeSource, /settings\.privacyDisclosure/)
-  assert.doesNotMatch(amicareSource, /settings\.privacyDisclosure/)
   assert.match(providerChromeSource, /shadcnui-blocks\.banner-04/)
   assert.match(providerChromeSource, /data-siab-cookie-consent/)
   assert.match(providerChromeSource, /data-consent-action/)

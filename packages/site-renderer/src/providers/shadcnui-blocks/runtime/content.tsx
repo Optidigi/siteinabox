@@ -3,6 +3,7 @@ import type { Block, LinkRef, MediaRef, RtRoot } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../blocks/types"
 import { resolveMedia } from "../../../media"
 import { extractRichText, RichTextRenderer } from "../../../rich-text"
+import { Building2, Clock3, Globe2, Mail, MapPin, MessageCircle, Phone } from "lucide-react"
 
 export type ProviderBlockModel = { block: Block; options: BlockRenderOptions }
 
@@ -131,10 +132,13 @@ const text = (value: unknown) => typeof value === "string" ? value : extractRich
 const link = (value: unknown): LinkRef | undefined => value && typeof value === "object" ? value as LinkRef : undefined
 const media = (value: MediaRef | undefined, model: ProviderBlockModel) => resolveMedia(value ?? null, model.options.mediaResolver)?.src
 const transparentSquare = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E"
-const mediaSlot = (value: MediaRef | undefined, model: ProviderBlockModel, field: string, itemIndex: number, subField: string, alt: string) => ({
-  src: media(value, model) ?? transparentSquare,
-  __providerMedia: { value, field, itemIndex, subField, alt },
-})
+const mediaSlot = (value: MediaRef | undefined, model: ProviderBlockModel, field: string, itemIndex: number, subField: string, alt: string) => {
+  const resolved = resolveMedia(value ?? null, model.options.mediaResolver)
+  return {
+    src: resolved?.src ?? transparentSquare,
+    __providerMedia: { value, field, itemIndex, subField, alt: resolved?.alt ?? alt },
+  }
+}
 
 function overlay(template: unknown, values: Record<string, unknown>) {
   return { ...(template && typeof template === "object" ? template as Record<string, unknown> : {}), ...values }
@@ -149,7 +153,8 @@ function bindItems(model: ProviderBlockModel, field: string, templates: readonly
     const template = templates[index % Math.max(templates.length, 1)]
     if (block.blockType === "featureList" || (block.blockType === "contentSection" && field === "features")) {
       const cta = link(record.cta)
-      return overlay(template, { title: text(record.title), name: text(record.title), description: text(record.description), details: text(record.description), content: text(record.description), metricValue: record.metricValue, metricLabel: record.metricLabel, value: record.metricValue, cta, href: cta?.href, tutorialLink: cta?.href, buttonText: cta?.label })
+      const image = mediaSlot(record.image as MediaRef, model, field, index, "image", text(record.title))
+      return overlay(template, { title: text(record.title), name: text(record.title), description: text(record.description), details: text(record.description), content: text(record.description), image, imageUrl: image, src: image, metricValue: record.metricValue, metricLabel: record.metricLabel, value: record.metricValue, cta, href: cta?.href, tutorialLink: cta?.href, buttonText: cta?.label })
     }
     if (block.blockType === "faq") {
       return overlay(template, { question: text(record.question), title: text(record.question), answer: text(record.answer), content: text(record.answer), description: text(record.answer) })
@@ -255,6 +260,27 @@ export function ProviderContactLink({ field, index, fallback, ...props }: { fiel
     ? model.options.editSlots.renderText({ name: `${model.block.blockType}.${field}.value`, value, className: "contents", elementPath: path(model, field, index, "value") })
     : value
   return <a {...props} href={href || undefined}>{content}</a>
+}
+
+const contactIcons = {
+  "building-2": Building2,
+  building: Building2,
+  clock: Clock3,
+  globe: Globe2,
+  mail: Mail,
+  "map-pin": MapPin,
+  message: MessageCircle,
+  phone: Phone,
+} as const
+
+export function ProviderContactIcon({ field, index, fallback }: { field: string; index: number; fallback: React.ReactNode }) {
+  const model = useProviderBlockModel()
+  if (!model) return <>{fallback}</>
+  const items = fieldValue(model.block, field)
+  if (!Array.isArray(items) || !items[index]) return null
+  const icon = String((items[index] as Record<string, unknown>).icon ?? "").trim().toLowerCase() as keyof typeof contactIcons
+  const Icon = contactIcons[icon]
+  return Icon ? <Icon aria-hidden="true" /> : <>{fallback}</>
 }
 
 export function ProviderLogo({ field, index, fallback }: { field: string; index: number; fallback: React.ReactNode }) {
