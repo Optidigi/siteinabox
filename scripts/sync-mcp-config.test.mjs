@@ -41,6 +41,10 @@ test("embedded credentials and transport-incompatible fields fail validation", (
   legitimateStaticValue.servers.context7.projectionTargets = ["codex"]
   assert.doesNotThrow(() => validateRegistry(legitimateStaticValue))
 
+  const legitimateArgument = clone()
+  legitimateArgument.servers.context7.args.push("--feature=mask-image")
+  assert.doesNotThrow(() => validateRegistry(legitimateArgument))
+
   const staticAuthorization = clone()
   staticAuthorization.servers["better-auth"].staticHeaders.Authorization = "public-value"
   assert.throws(() => validateRegistry(staticAuthorization), /credential-like field Authorization/)

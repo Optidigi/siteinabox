@@ -62,7 +62,7 @@ function validateNoCredentialUrls(value, location = "registry") {
 }
 
 function validateNoEmbeddedSecret(value, location) {
-  const knownSecret = /(?:github_pat_|gh[pousr]_|sk-(?:proj-)?)[a-z0-9_-]+|(?:AKIA|ASIA)[A-Z0-9]{16}|xox[baprs]-[a-z0-9-]+|AIza[a-z0-9_-]{35}|\bbearer\s+\S+|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|password|secret|api[_-]?key)\s*[:=]\s*\S+/i
+  const knownSecret = /github_pat_[a-z0-9_-]{12,}|gh[pousr]_[a-z0-9_-]{20,}|(?:^|[^a-z0-9])sk-(?:proj-)?[a-z0-9_-]{16,}|(?:AKIA|ASIA)[A-Z0-9]{16}|xox[baprs]-[a-z0-9-]{10,}|AIza[a-z0-9_-]{35}|\bbearer\s+\S+|-----BEGIN [A-Z ]*PRIVATE KEY-----|(?:token|password|secret|api[_-]?key)\s*[:=]\s*\S+/i
   assert(!knownSecret.test(value), `${location} contains an embedded credential-like value`)
 }
 
