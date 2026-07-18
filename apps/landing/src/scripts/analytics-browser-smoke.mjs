@@ -148,6 +148,37 @@ try {
     await installLandingRoute(acceptedPage, publicOrigin, landingOrigin)
 
     await acceptedPage.goto(publicOrigin, { waitUntil: "networkidle", timeout: 60_000 })
+    const consentChrome = await acceptedPage.evaluate(() => {
+      const banner = document.querySelector("[data-siab-cookie-consent]")
+      const accept = document.querySelector('[data-consent-action="accept"]')
+      const privacy = banner?.querySelector('a[href="/privacy-en-cookieverklaring"]')
+      assertElement(banner, "consent banner")
+      assertElement(accept, "accept button")
+      const bannerStyle = getComputedStyle(banner)
+      const acceptStyle = getComputedStyle(accept)
+      return {
+        labelledBy: banner.getAttribute("aria-labelledby"),
+        describedBy: banner.getAttribute("aria-describedby"),
+        privacyLabel: privacy?.textContent?.trim(),
+        borderWidth: bannerStyle.borderTopWidth,
+        borderRadius: bannerStyle.borderTopLeftRadius,
+        boxShadow: bannerStyle.boxShadow,
+        acceptBackground: acceptStyle.backgroundColor,
+        acceptHeight: accept.getBoundingClientRect().height,
+      }
+
+      function assertElement(value, label) {
+        if (!(value instanceof HTMLElement)) throw new Error(`Missing ${label}`)
+      }
+    })
+    assert.equal(consentChrome.labelledBy, "siab-cookie-consent-title")
+    assert.equal(consentChrome.describedBy, "siab-cookie-consent-description")
+    assert.match(consentChrome.privacyLabel ?? "", /gegevens omgaan/)
+    assert.equal(consentChrome.borderWidth, "2px")
+    assert.equal(consentChrome.borderRadius, "0px")
+    assert.notEqual(consentChrome.boxShadow, "none")
+    assert.equal(consentChrome.acceptBackground, "rgb(245, 233, 0)")
+    assert.ok(consentChrome.acceptHeight >= 44, "accept target remains at least 44px high")
     assert.deepEqual(acceptedEvents, [], "analytics ingestion is empty before consent")
     assert.equal(
       await acceptedPage.evaluate(() => Object.keys(localStorage).filter((key) => /posthog/i.test(key)).length),
@@ -192,11 +223,19 @@ try {
     assert.equal(typeof pageleaves[0]?.properties?.$prev_pageview_max_scroll, "number")
     assert.deepEqual(externalAnalyticsRequests, [], "the regression never reaches a real PostHog host")
 
-    const rejectedPage = await browser.newPage(pageOptions)
+    const rejectedPage = await browser.newPage({ ...pageOptions, viewport: { width: 375, height: 812 } })
     const rejectedEvents = []
     await installIngestRoute(rejectedPage, ingestOrigin, rejectedEvents)
     await installLandingRoute(rejectedPage, publicOrigin, landingOrigin)
     await rejectedPage.goto(publicOrigin, { waitUntil: "networkidle", timeout: 60_000 })
+    const mobileActions = await rejectedPage.locator(".siab-cookie-consent__actions").evaluate((element) => ({
+      display: getComputedStyle(element).display,
+      columns: getComputedStyle(element).gridTemplateColumns,
+      width: element.getBoundingClientRect().width,
+    }))
+    assert.equal(mobileActions.display, "grid")
+    assert.match(mobileActions.columns, /^\d+(?:\.\d+)?px \d+(?:\.\d+)?px$/)
+    assert.ok(mobileActions.width > 250, "mobile consent actions use the available width")
     await rejectedPage.click('[data-consent-action="reject"]')
     await rejectedPage.waitForTimeout(750)
     assert.deepEqual(rejectedEvents, [], "rejecting consent keeps PostHog disabled")

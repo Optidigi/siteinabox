@@ -132,14 +132,30 @@ const analyticsConfig = posthogProjectToken && matchesApprovedPublicAnalyticsCon
     </div>
 
     {analyticsConfig && (
-      <aside class="siab-cookie-consent" data-siab-cookie-consent="true" aria-label="Analyticsvoorkeuren">
-        <div>
-          <strong>Cookies en privacy</strong>
-          <p>Met jouw toestemming gebruiken we analytics om Site in a Box te verbeteren.</p>
+      <aside
+        class="siab-cookie-consent"
+        data-siab-cookie-consent="true"
+        aria-labelledby="siab-cookie-consent-title"
+        aria-describedby="siab-cookie-consent-description"
+      >
+        <div class="siab-cookie-consent__content">
+          <span class="siab-cookie-consent__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a3 3 0 0 0 3 3 3 3 0 0 0 3 3 3 3 0 0 0 3 3 9 9 0 1 1-9-9Z" />
+              <path d="M8 8h.01M8 14h.01M14 14h.01M14 18h.01" />
+            </svg>
+          </span>
+          <div>
+            <strong id="siab-cookie-consent-title">Cookies en privacy</strong>
+            <p id="siab-cookie-consent-description">
+              Met jouw toestemming gebruiken we analytics om Site in a Box te verbeteren.
+              <a href="/privacy-en-cookieverklaring">Lees hoe we met gegevens omgaan</a>.
+            </p>
+          </div>
         </div>
         <div class="siab-cookie-consent__actions">
-          <button type="button" data-consent-action="reject">Weigeren</button>
-          <button type="button" data-consent-action="accept">Accepteren</button>
+          <button class="siab-cookie-consent__reject" type="button" data-consent-action="reject">Weigeren</button>
+          <button class="siab-cookie-consent__accept" type="button" data-consent-action="accept">Accepteren</button>
         </div>
       </aside>
     )}

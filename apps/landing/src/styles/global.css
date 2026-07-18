@@ -18,4 +18,157 @@ body {
   text-rendering: optimizeLegibility;
 }
 /* Consent chrome is emitted only when the reviewed legal analytics gate is active. */
-.siab-cookie-consent{position:fixed;z-index:10000;right:1rem;bottom:1rem;left:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:48rem;margin:auto;padding:1rem 1.25rem;border:1px solid var(--siab-border,#d8cbd3);border-radius:1rem;background:var(--siab-surface,#fff);color:var(--siab-text,#25131f);box-shadow:0 1rem 3rem #25131f26}.siab-cookie-consent[hidden]{display:none}.siab-cookie-consent p{margin:.25rem 0 0;font-size:.9rem;line-height:1.45}.siab-cookie-consent__actions{display:flex;gap:.5rem;flex-shrink:0}.siab-cookie-consent__actions button{min-height:44px;padding:.55rem .9rem;border:1px solid currentColor;border-radius:.65rem;font-weight:600}.siab-cookie-consent__actions button[data-consent-action=accept]{background:#25131f;color:#fff}@media(max-width:640px){.siab-cookie-consent{align-items:stretch;flex-direction:column}.siab-cookie-consent__actions{justify-content:flex-end}}
+.siab-cookie-consent {
+  position: fixed;
+  z-index: 10000;
+  right: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(1rem, 3vw, 2rem);
+  left: clamp(1rem, 3vw, 2rem);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  width: min(58rem, calc(100% - 2rem));
+  margin: auto;
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border: 2px solid var(--siab-border, #000);
+  border-radius: 0;
+  background: var(--siab-bg-surface, #fff);
+  color: var(--siab-text, #000);
+  box-shadow: 7px 7px var(--siab-shadow-color, #000);
+}
+
+.siab-cookie-consent[hidden] {
+  display: none;
+}
+
+.siab-cookie-consent__content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.siab-cookie-consent__icon {
+  display: flex;
+  flex: 0 0 3.25rem;
+  align-items: center;
+  justify-content: center;
+  width: 3.25rem;
+  height: 3.25rem;
+  border: 2px solid var(--siab-border, #000);
+  background: var(--siab-accent-yellow, #f5e900);
+  color: #000;
+  box-shadow: 3px 3px var(--siab-shadow-color, #000);
+}
+
+.siab-cookie-consent__icon svg {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+.siab-cookie-consent strong {
+  display: block;
+  margin: 0;
+  color: var(--siab-text, #000);
+  font-family: 'Familjen Grotesk', sans-serif;
+  font-size: clamp(1.1rem, 2vw, 1.3rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.siab-cookie-consent p {
+  margin: .35rem 0 0;
+  color: var(--siab-text-muted, #5a504b);
+  font-family: 'Chivo', sans-serif;
+  font-size: .9rem;
+  line-height: 1.55;
+}
+
+.siab-cookie-consent p a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline 1px dashed currentColor;
+  text-underline-offset: 3px;
+}
+
+.siab-cookie-consent__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: .75rem;
+}
+
+.siab-cookie-consent__actions button {
+  min-height: 46px;
+  padding: .65rem 1.1rem;
+  border: 2px solid var(--siab-border, #000);
+  border-radius: 0;
+  font-family: 'Chivo', sans-serif;
+  font-size: .9rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: transform .12s, box-shadow .12s, background .12s;
+}
+
+.siab-cookie-consent__reject {
+  background: var(--siab-bg-surface, #fff);
+  color: var(--siab-text, #000);
+}
+
+.siab-cookie-consent__accept {
+  background: var(--siab-accent-yellow, #f5e900);
+  color: #000;
+  box-shadow: 4px 4px var(--siab-shadow-color, #000);
+}
+
+.siab-cookie-consent__actions button:hover {
+  transform: translate(2px, 2px);
+}
+
+.siab-cookie-consent__accept:hover {
+  box-shadow: 2px 2px var(--siab-shadow-color, #000);
+}
+
+.siab-cookie-consent__actions button:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+.siab-cookie-consent :is(a, button):focus-visible {
+  outline: 3px solid var(--siab-focus-ring, #000);
+  outline-offset: 4px;
+}
+
+@media (max-width: 720px) {
+  .siab-cookie-consent {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .siab-cookie-consent__content {
+    align-items: flex-start;
+  }
+
+  .siab-cookie-consent__actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .siab-cookie-consent__icon {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .siab-cookie-consent__actions button {
+    transition: none;
+  }
+
+  .siab-cookie-consent__actions button:hover,
+  .siab-cookie-consent__actions button:active {
+    transform: none;
+  }
+}
