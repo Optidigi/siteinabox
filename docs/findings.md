@@ -93,13 +93,13 @@ observations before acting on them.
 
 ## SIAB-011 — Legal-content changes do not trigger a renderer image
 
-- **Classification:** Confirmed release-integrity defect; **confidence:** high.
+- **Classification:** Risk; implementation complete, hosted verification
+  pending; **confidence:** high for repository coverage.
 - **Scope:** Renderer image publication and governed legal content.
 - **Evidence:** `apps/renderer/package.json` directly depends on
   `@siteinabox/legal-content`, and its Dockerfile copies that workspace package,
-  but `build-renderer-image.yml` does not include
-  `packages/legal-content/**` in its push paths.
-- **Impact:** A legal-content-only merge can leave the published renderer image
-  serving the previous legal content.
-- **Next:** Add the missing path in a separate release-behavior commit and
-  verify a legal-content-only change selects the renderer workflow.
+  while `build-renderer-image.yml` now includes `packages/legal-content/**` in
+  its push paths. The deploy-contract check exercises a legal-content-only
+  changed-path fixture and requires that dependency/path relationship.
+- **Next:** Observe an actual legal-content-only GitHub change selecting the
+  renderer image workflow before classifying this finding as historical/closed.
