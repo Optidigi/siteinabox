@@ -93,13 +93,17 @@ observations before acting on them.
 
 ## SIAB-011 — Legal-content changes do not trigger a renderer image
 
-- **Classification:** Risk; implementation complete, hosted verification
-  pending; **confidence:** high for repository coverage.
+- **Classification:** Historical / closed; **confidence:** high from hosted
+  workflow selection and repository coverage.
 - **Scope:** Renderer image publication and governed legal content.
 - **Evidence:** `apps/renderer/package.json` directly depends on
   `@siteinabox/legal-content`, and its Dockerfile copies that workspace package,
   while `build-renderer-image.yml` now includes `packages/legal-content/**` in
   its push paths. The deploy-contract check exercises a legal-content-only
-  changed-path fixture and requires that dependency/path relationship.
-- **Next:** Observe an actual legal-content-only GitHub change selecting the
-  renderer image workflow before classifying this finding as historical/closed.
+  changed-path fixture and requires that dependency/path relationship. Push
+  `c9b8f179136bc81ae502d735101b276e650c166e` selected and completed the hosted
+  `build-renderer-image` workflow successfully in GitHub Actions run
+  `29639715030`.
+- **Review trigger:** Reopen if the renderer loses its legal-content workspace
+  dependency, Docker build input, workflow path selection, or deploy-contract
+  fixture.
