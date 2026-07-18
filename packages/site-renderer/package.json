@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "theme:generate": "tsx scripts/generate-theme-css.mjs",
-    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/providers/shadcnui-blocks/*.test.mjs",
+    "test": "tsc --noEmit && tsx --test src/theme/*.test.mjs src/providers/shadcnui-blocks/*.test.mjs src/visual-parity/*.test.mjs",
     "typecheck": "tsc --noEmit",
     "visual:provider-parity": "tsx src/visual-parity/shadcnui-blocks-visual-parity.mjs"
   },

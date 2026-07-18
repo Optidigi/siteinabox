@@ -10,6 +10,7 @@ import pixelmatch from "pixelmatch"
 import { PNG } from "pngjs"
 import { chromium } from "playwright"
 import inventory from "../providers/shadcnui-blocks/inventory.json" with { type: "json" }
+import { ScreenshotCaptureError, runScreenshotCaptureSequence } from "./screenshot-capture.mjs"
 
 const root = new URL("../../../../", import.meta.url)
 const children = []
@@ -44,9 +45,10 @@ const stopChild = async (child) => {
 const start = async ({ command, args, cwd, env, ready }) => {
   let output = ""
   const child = spawn(command, args, { cwd, detached: supportsProcessGroups, env: { ...process.env, ...env }, stdio: ["ignore", "pipe", "pipe"] })
-  child.stdout.on("data", (chunk) => { output += chunk })
-  child.stderr.on("data", (chunk) => { output += chunk })
-  children.push(child)
+  const appendOutput = (chunk) => { output = `${output}${chunk}`.slice(-200_000) }
+  child.stdout.on("data", appendOutput)
+  child.stderr.on("data", appendOutput)
+  children.push({ child, getOutput: () => output })
   for (let attempt = 0; attempt < 240; attempt += 1) {
     if (child.exitCode !== null) throw new Error(`Parity server exited early.\n${output}`)
     try {
@@ -126,7 +128,7 @@ const output = configuredOutput
   : await mkdtemp(join(tmpdir(), "siab-provider-parity-"))
 if (!configuredOutput) temporaryDirectories.push(output)
 await mkdir(output, { recursive: true })
-const browser = await chromium.launch({ headless: true })
+let browser = await chromium.launch({ headless: true })
 try {
   if (startsLocalServers) {
     // The first real browser request lets the dev servers discover and
@@ -143,25 +145,35 @@ try {
     }
   }
   for (const viewport of cases) {
-    const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, colorScheme: viewport.mode })
-    try {
+    const createContext = async () => {
+      const nextContext = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, colorScheme: viewport.mode })
       // Animated provider canvases seed their initial particles with
       // Math.random. Give both isolated pages the same seed so this comparison
       // measures the implementation rather than two unrelated particle sets.
-      await context.addInitScript(() => {
+      await nextContext.addInitScript(() => {
         let state = 0x46c2e50
         Math.random = () => {
           state = (Math.imul(state, 1664525) + 1013904223) >>> 0
           return state / 0x100000000
         }
       })
+      return nextContext
+    }
+    let context = await createContext()
+    try {
       for (const variant of variants) {
         const variantStartedAt = Date.now()
         const progress = (phase) => {
           if (process.env.SIAB_PROVIDER_PARITY_PROGRESS === "1") console.log(`${variant.id} ${viewport.name} ${phase} ${Date.now() - variantStartedAt}ms`)
         }
+        const prefix = `${variant.upstreamName}-${viewport.name}`
+        await runScreenshotCaptureSequence({
+          runAttempt: async (captureAttempt) => {
         const reference = await context.newPage()
         const runtime = await context.newPage()
+        const crashedPages = new WeakSet()
+        reference.on("crash", () => crashedPages.add(reference))
+        runtime.on("crash", () => crashedPages.add(runtime))
         try {
           const referenceUrl = `${upstreamOrigin}/blocks/${encodeURIComponent(variant.upstreamName)}/preview?primitive=radix`
           const runtimeUrl = `${runtimeOrigin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=${viewport.mode}&literal=1`
@@ -276,7 +288,6 @@ try {
           })
           console.log(JSON.stringify({ variant: variant.id, viewport: viewport.name, upstream: await readStyles(reference), vendored: await readStyles(runtime) }, null, 2))
           }
-          const prefix = `${variant.upstreamName}-${viewport.name}`
           const referencePath = join(output, `${prefix}-upstream.png`)
           const runtimePath = join(output, `${prefix}-vendored.png`)
           // Chromium serializes full-page capture internally. Explicitly
@@ -284,20 +295,38 @@ try {
           let referencePng
           let runtimePng
           const capture = async (page, side) => {
-            let firstError
-            for (let attempt = 0; attempt < 2; attempt += 1) {
-              try {
-                return await page.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
-              } catch (error) {
-                if (attempt === 1 || !/Timeout/i.test(String(error))) {
-                  throw new Error(`${variant.id} ${viewport.name} ${side} screenshot failed`, { cause: error })
-                }
-                firstError = error
-                await page.bringToFront()
-                await page.waitForTimeout(250)
+            const captureStartedAt = Date.now()
+            try {
+              return await page.screenshot({ fullPage: true, animations: "disabled", timeout: 60_000 })
+            } catch (error) {
+              let documentSize = null
+              if (!page.isClosed()) {
+                try {
+                  documentSize = await page.evaluate(() => ({
+                    scrollHeight: document.documentElement.scrollHeight,
+                    scrollWidth: document.documentElement.scrollWidth,
+                  }))
+                } catch {}
               }
+              const wrapped = new ScreenshotCaptureError(side, error)
+              wrapped.diagnostics = {
+                attempt: captureAttempt,
+                browserConnected: browser.isConnected(),
+                browserVersion: browser.version(),
+                documentSize,
+                elapsedCaptureMs: Date.now() - captureStartedAt,
+                nodeMemory: process.memoryUsage(),
+                pageCrashed: crashedPages.has(page),
+                pageClosed: page.isClosed(),
+                provider: "shadcnui-blocks",
+                serverOutputLocations: children.map((_, index) => join(output, `${prefix}-server-${index + 1}.log`)),
+                side,
+                url: page.url(),
+                variant: variant.id,
+                viewport,
+              }
+              throw wrapped
             }
-            throw firstError
           }
           referencePng = await capture(reference, "upstream")
           runtimePng = await capture(runtime, "vendored")
@@ -331,17 +360,42 @@ try {
           }
           assert.ok(different <= tolerance, `${variant.id} ${viewport.name} differs by ${different} pixels (tolerance ${tolerance})`)
         } finally {
-          await Promise.all([reference.close(), runtime.close()])
+          await Promise.allSettled([reference.close(), runtime.close()])
         }
+          },
+          isBrowserConnected: () => browser.isConnected(),
+          relaunchBrowser: async () => {
+            await context.close().catch(() => {})
+            await browser.close().catch(() => {})
+            browser = await chromium.launch({ headless: true })
+            context = await createContext()
+          },
+          onFailure: async ({ attempt, browserConnected, classification, error, final }) => {
+            const diagnostics = {
+              ...error.diagnostics,
+              attempt,
+              browserConnected,
+              classification,
+              error: String(error.cause?.message ?? error.message ?? error),
+              final,
+              serverOutputLocations: final ? error.diagnostics?.serverOutputLocations ?? [] : [],
+            }
+            await writeFile(join(output, `${prefix}-capture-attempt-${attempt}.json`), `${JSON.stringify(diagnostics, null, 2)}\n`)
+            if (final) {
+              await Promise.all(children.map(({ getOutput }, index) => writeFile(join(output, `${prefix}-server-${index + 1}.log`), getOutput())))
+            }
+            console.error(`[provider-parity] ${variant.id} ${viewport.name} capture attempt ${attempt}: ${classification}${final ? " (final)" : " (retrying with new pages)"}`)
+          },
+        })
       }
       console.log(`Pixel-matched ${variants.length} pinned variants against the true upstream at ${viewport.name}.`)
     } finally {
-      await context.close()
+      await context.close().catch(() => {})
     }
   }
 } finally {
-  await browser.close()
-  await Promise.all(children.map(stopChild))
+  await browser.close().catch(() => {})
+  await Promise.all(children.map(({ child }) => stopChild(child)))
   if (process.env.SIAB_KEEP_PROVIDER_PARITY !== "1") {
     await Promise.all(temporaryDirectories.map((directory) => rm(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 250 })))
   }
