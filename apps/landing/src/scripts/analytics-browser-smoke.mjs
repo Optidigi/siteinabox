@@ -195,7 +195,7 @@ try {
     })
     assert.equal(consentChrome.labelledBy, "siab-cookie-consent-title")
     assert.equal(consentChrome.describedBy, "siab-cookie-consent-description")
-    assert.match(consentChrome.privacyLabel ?? "", /gegevens omgaan/)
+    assert.equal(consentChrome.privacyLabel, "Lees meer in onze privacy- en cookieverklaring")
     assert.equal(consentChrome.borderWidth, "2px")
     assert.equal(consentChrome.borderRadius, "0px")
     assert.notEqual(consentChrome.boxShadow, "none")
