@@ -4,9 +4,17 @@ packages:
 
 overrides:
   "@esbuild-kit/core-utils>esbuild": "0.25.12"
+  "@better-auth/sso>fast-xml-parser": "5.9.0"
+  "fast-xml-builder>path-expression-matcher": "1.5.0"
+  "fast-xml-builder>xml-naming": "0.1.0"
+  "fast-xml-parser>fast-xml-builder": "1.2.0"
+  "fast-xml-parser>path-expression-matcher": "1.5.0"
+  "fast-xml-parser>strnum": "2.4.0"
+  "fast-xml-parser>xml-naming": "0.1.0"
   "jsdom>undici": "7.28.0"
   "monaco-editor>dompurify": "3.4.7"
   "next>postcss": "8.5.15"
+  "strnum>anynum": "1.0.0"
 
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
