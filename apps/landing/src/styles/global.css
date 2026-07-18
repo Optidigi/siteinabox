@@ -111,7 +111,12 @@ body {
   transition: transform .12s, box-shadow .12s, background .12s;
 }
 
-.siab-cookie-consent__choice {
+.siab-cookie-consent__reject {
+  background: var(--siab-bg-surface, #fff);
+  color: var(--siab-text, #000);
+}
+
+.siab-cookie-consent__accept {
   background: var(--siab-accent-yellow, #f5e900);
   color: #000;
   box-shadow: 4px 4px var(--siab-shadow-color, #000);
@@ -121,7 +126,7 @@ body {
   transform: translate(2px, 2px);
 }
 
-.siab-cookie-consent__choice:hover {
+.siab-cookie-consent__accept:hover {
   box-shadow: 2px 2px var(--siab-shadow-color, #000);
 }
 
