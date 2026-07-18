@@ -114,19 +114,21 @@ observations before acting on them.
 
 ## SIAB-012 — Public analytics activation requires production proof
 
-- **Classification:** Historical / closed; **confidence:** high from
-  event-level production browser verification.
+- **Classification:** Confirmed provider-configuration gap; **confidence:**
+  high from the production project-settings check.
 - **Scope:** Landing and generated tenant-site analytics.
-- **Evidence:** The owner approved the shared accept/reject consent flow and
-  explicitly accepted SIAB-002 on 2026-07-18. Consent version
-  `2026-07-07.1` matches the current privacy document release. Production
-  browser verification on 2026-07-18 proved the banner on the platform and
-  tenant sites, no PostHog request before consent, no event after rejection,
-  and native PostHog capture after acceptance. The landing verification decoded
-  exactly one `$pageview` and `$pageleave` with native duration and scroll
-  properties while intercepting every analytics endpoint, so it made no real
-  provider write. CI now runs equivalent event-level landing and renderer
-  regressions against fake ingestion endpoints.
-- **Review trigger:** Reopen if the approved consent version, generated tenant
-  defaults, public build token, banner, or event-level browser regressions are
-  removed or weakened.
+- **Evidence:** Commit `99dced376397b6ce3cb89a37da4cb9290fd3c798` implements
+  the approved two-tier contract: a minimized cookieless `$pageview` and Web
+  Vitals baseline before a choice and after refusal, with richer native
+  lifecycle and semantic capture after acceptance. CI run `29650024523` passed
+  the fake-ingestion landing and renderer event regressions. The exact images
+  were deployed on 2026-07-18; an intercepted production-browser probe decoded
+  one baseline `$pageview` for both `siteinabox.nl` and `ami-care.nl`, with no
+  PostHog persistence, sensitive query properties, or real provider write. The
+  read-only production project check still reports
+  `cookieless_server_hash_mode: 0` instead of the required stateless value `1`.
+- **Resolution requirement:** Apply the reviewed PostHog project setting,
+  re-run the strict settings check, and verify a fresh baseline event through
+  the provider before closing. Reopen after closure if the consent version,
+  generated tenant defaults, public build token, banner, provider setting, or
+  event-level browser regressions are removed or weakened.

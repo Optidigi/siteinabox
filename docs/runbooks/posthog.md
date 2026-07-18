@@ -130,10 +130,16 @@ those event names.
 Repository implementation covers the platform landing site, dynamic tenant
 sites, and native tenant grouping. Consent version `2026-07-07.1` is approved.
 The runtime contract now uses a minimized cookieless baseline before a choice
-and after refusal, with richer analytics only after acceptance. Local
-intercepted-ingestion regressions decode the tiered payloads and prevent real
-analytics writes. Production provider setting and payload verification must be
-re-run after deployment before claiming the baseline is live.
+and after refusal, with richer analytics only after acceptance. Commit
+`99dced376397b6ce3cb89a37da4cb9290fd3c798` is deployed to the landing,
+renderer, and CMS production containers. Local and CI intercepted-ingestion
+regressions decode the tiered payloads and prevent real analytics writes. A
+2026-07-18 intercepted production-browser probe decoded one minimized baseline
+`$pageview` for both `siteinabox.nl` and `ami-care.nl`, with no PostHog
+persistence or sensitive query properties. The production project-settings
+check still reports `cookieless_server_hash_mode: 0`; the reviewed stateless
+value `1` must be applied and provider ingestion verified before claiming the
+baseline is fully live in PostHog.
 Existing PostHog group types still require a provider query; browser capture
 proves emitted group metadata, not provider-side group materialization.
 
