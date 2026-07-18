@@ -22,6 +22,21 @@ export function classifyScreenshotCaptureError(error) {
   return null
 }
 
+export function createPreparedPagePairAttempt({
+  closePagePair,
+  createPagePair,
+  prepareAndCapturePagePair,
+}) {
+  return async (attempt) => {
+    const pagePair = await createPagePair(attempt)
+    try {
+      return await prepareAndCapturePagePair(pagePair, attempt)
+    } finally {
+      await closePagePair(pagePair, attempt)
+    }
+  }
+}
+
 export async function runScreenshotCaptureSequence({
   runAttempt,
   isBrowserConnected,

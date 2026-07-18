@@ -10,7 +10,7 @@ import pixelmatch from "pixelmatch"
 import { PNG } from "pngjs"
 import { chromium } from "playwright"
 import inventory from "../providers/shadcnui-blocks/inventory.json" with { type: "json" }
-import { ScreenshotCaptureError, runScreenshotCaptureSequence } from "./screenshot-capture.mjs"
+import { createPreparedPagePairAttempt, ScreenshotCaptureError, runScreenshotCaptureSequence } from "./screenshot-capture.mjs"
 
 const root = new URL("../../../../", import.meta.url)
 const children = []
@@ -168,13 +168,16 @@ try {
         }
         const prefix = `${variant.upstreamName}-${viewport.name}`
         await runScreenshotCaptureSequence({
-          runAttempt: async (captureAttempt) => {
-        const reference = await context.newPage()
-        const runtime = await context.newPage()
-        const crashedPages = new WeakSet()
-        reference.on("crash", () => crashedPages.add(reference))
-        runtime.on("crash", () => crashedPages.add(runtime))
-        try {
+          runAttempt: createPreparedPagePairAttempt({
+            createPagePair: async () => {
+              const reference = await context.newPage()
+              const runtime = await context.newPage()
+              const crashedPages = new WeakSet()
+              reference.on("crash", () => crashedPages.add(reference))
+              runtime.on("crash", () => crashedPages.add(runtime))
+              return { crashedPages, reference, runtime }
+            },
+            prepareAndCapturePagePair: async ({ crashedPages, reference, runtime }, captureAttempt) => {
           const referenceUrl = `${upstreamOrigin}/blocks/${encodeURIComponent(variant.upstreamName)}/preview?primitive=radix`
           const runtimeUrl = `${runtimeOrigin}/provider-parity?variant=${encodeURIComponent(variant.id)}&mode=${viewport.mode}&literal=1`
           const responses = await Promise.all([reference.goto(referenceUrl, { waitUntil: "domcontentloaded", timeout: 60_000 }), runtime.goto(runtimeUrl, { waitUntil: "domcontentloaded", timeout: 60_000 })])
@@ -359,10 +362,11 @@ try {
             ])
           }
           assert.ok(different <= tolerance, `${variant.id} ${viewport.name} differs by ${different} pixels (tolerance ${tolerance})`)
-        } finally {
-          await Promise.allSettled([reference.close(), runtime.close()])
-        }
-          },
+            },
+            closePagePair: async ({ reference, runtime }) => {
+              await Promise.allSettled([reference.close(), runtime.close()])
+            },
+          }),
           isBrowserConnected: () => browser.isConnected(),
           relaunchBrowser: async () => {
             await context.close().catch(() => {})

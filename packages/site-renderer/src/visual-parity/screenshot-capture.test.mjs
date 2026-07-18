@@ -1,23 +1,36 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 
-import { ScreenshotCaptureError, runScreenshotCaptureSequence } from "./screenshot-capture.mjs"
+import { createPreparedPagePairAttempt, ScreenshotCaptureError, runScreenshotCaptureSequence } from "./screenshot-capture.mjs"
 
 const protocolFailure = () => new ScreenshotCaptureError("upstream", new Error("Page.captureScreenshot: Unable to capture screenshot"))
 
 test("a protocol capture failure retries once with a newly created page pair", async () => {
-  const pagePairs = []
+  const closedPairs = []
+  const createdPairs = []
+  const preparedPairs = []
   const result = await runScreenshotCaptureSequence({
-    runAttempt: async (attempt) => {
-      pagePairs.push([`reference-${attempt}`, `runtime-${attempt}`])
-      if (attempt === 1) throw protocolFailure()
-      return "captured"
-    },
+    runAttempt: createPreparedPagePairAttempt({
+      createPagePair: async (attempt) => {
+        const pair = { reference: { attempt }, runtime: { attempt } }
+        createdPairs.push(pair)
+        return pair
+      },
+      prepareAndCapturePagePair: async (pair, attempt) => {
+        preparedPairs.push(pair)
+        if (attempt === 1) throw protocolFailure()
+        return "captured"
+      },
+      closePagePair: async (pair) => { closedPairs.push(pair) },
+    }),
     isBrowserConnected: () => true,
     relaunchBrowser: async () => assert.fail("connected browser must not relaunch"),
   })
   assert.equal(result, "captured")
-  assert.deepEqual(pagePairs, [["reference-1", "runtime-1"], ["reference-2", "runtime-2"]])
+  assert.equal(createdPairs.length, 2)
+  assert.notEqual(createdPairs[0], createdPairs[1])
+  assert.deepEqual(preparedPairs, createdPairs)
+  assert.deepEqual(closedPairs, createdPairs)
 })
 
 test("a disconnected browser is relaunched at most once", async () => {
