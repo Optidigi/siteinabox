@@ -114,8 +114,8 @@ observations before acting on them.
 
 ## SIAB-012 — Public analytics activation requires production proof
 
-- **Classification:** Confirmed provider-configuration gap; **confidence:**
-  high from the production project-settings check.
+- **Classification:** Verification pending; **confidence:** high from the
+  production project-settings check and intercepted browser payload.
 - **Scope:** Landing and generated tenant-site analytics.
 - **Evidence:** Commit `99dced376397b6ce3cb89a37da4cb9290fd3c798` implements
   the approved two-tier contract: a minimized cookieless `$pageview` and Web
@@ -125,10 +125,11 @@ observations before acting on them.
   were deployed on 2026-07-18; an intercepted production-browser probe decoded
   one baseline `$pageview` for both `siteinabox.nl` and `ami-care.nl`, with no
   PostHog persistence, sensitive query properties, or real provider write. The
-  read-only production project check still reports
-  `cookieless_server_hash_mode: 0` instead of the required stateless value `1`.
-- **Resolution requirement:** Apply the reviewed PostHog project setting,
-  re-run the strict settings check, and verify a fresh baseline event through
-  the provider before closing. Reopen after closure if the consent version,
+  reviewed project-settings sync then enabled stateless cookieless hashing and
+  a read-only recheck reports no privacy drift beyond the owner-accepted
+  SIAB-002 retention constraint. Real production probes received successful
+  ingestion responses, but fresh baseline rows were not yet queryable.
+- **Resolution requirement:** Verify a fresh baseline event through the
+  provider before closing. Reopen after closure if the consent version,
   generated tenant defaults, public build token, banner, provider setting, or
   event-level browser regressions are removed or weakened.

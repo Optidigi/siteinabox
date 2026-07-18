@@ -136,10 +136,11 @@ renderer, and CMS production containers. Local and CI intercepted-ingestion
 regressions decode the tiered payloads and prevent real analytics writes. A
 2026-07-18 intercepted production-browser probe decoded one minimized baseline
 `$pageview` for both `siteinabox.nl` and `ami-care.nl`, with no PostHog
-persistence or sensitive query properties. The production project-settings
-check still reports `cookieless_server_hash_mode: 0`; the reviewed stateless
-value `1` must be applied and provider ingestion verified before claiming the
-baseline is fully live in PostHog.
+persistence or sensitive query properties. The reviewed production sync then
+enabled `cookieless_server_hash_mode: 1`; the strict recheck reports only the
+owner-accepted SIAB-002 retention difference. Real production probes received
+successful ingestion responses, but their baseline rows were not immediately
+queryable. Provider event materialization remains the final activation proof.
 Existing PostHog group types still require a provider query; browser capture
 proves emitted group metadata, not provider-side group materialization.
 
