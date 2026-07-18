@@ -12,7 +12,8 @@ const providerChromeSource = await readFile(new URL("../../../../packages/site-r
 test("consent presentation is owned only by the approved cloned banner variant", () => {
   assert.doesNotMatch(pageSource, /renderer-cookie-consent|Cookievoorkeuren|Alles accepteren/)
   assert.doesNotMatch(amicareSource, /cookie-consent-banner|AmicareCookieConsent|data-cookie-consent/)
-  assert.doesNotMatch(pageSource, /siab-analytics-config/)
+  assert.match(pageSource, /buildAnalyticsConfig/)
+  assert.match(pageSource, /id="siab-analytics-config"/)
   assert.doesNotMatch(chromeSource, /settings\.privacyDisclosure/)
   assert.doesNotMatch(amicareSource, /settings\.privacyDisclosure/)
   assert.match(providerChromeSource, /shadcnui-blocks\.banner-04/)

@@ -30,6 +30,7 @@ import { resolveMedia } from "../../media"
 import { RichTextRenderer, extractRichText } from "../../rich-text"
 import { isRtRoot } from "@siteinabox/contracts/rich-text"
 import { ThemeCanvas } from "../../theme"
+import { SiteBanner } from "../../chrome"
 import type {
   BlockEditSlots,
   BlockRenderOptions,
@@ -1462,6 +1463,7 @@ export function AmicarePageRenderer({
         data-page-slug={page.slug}
       >
         <div className="site-frame-root">
+          <SiteBanner settings={settings} currentSlug={page.slug} mediaResolver={mediaResolver} />
           {renderHeader ? renderHeader({ defaultChrome: defaultHeader }) : defaultHeader}
           <AmicareMaintenanceBanner settings={settings} />
           <main>

@@ -195,7 +195,7 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
       enabled: true,
       provider: "posthog",
       consentStorageKey: "siab_cookie_consent_v1",
-      consentVersion: "fixture",
+      consentVersion: "2026-07-07.1",
       captureSections: true,
       captureActions: true,
       captureForms: false,

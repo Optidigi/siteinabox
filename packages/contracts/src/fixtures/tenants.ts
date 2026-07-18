@@ -200,6 +200,13 @@ const amicareSettings: GeneratedSiteSettings = {
         { id: "nav", items: [{ type: "navigation", label: "Navigatie" }] },
       ],
     },
+    banner: {
+      variant: "shadcnui-blocks.banner-04",
+      visible: true,
+      title: "Cookies en privacy",
+      message: "Wij gebruiken alleen met uw toestemming optionele analytics om de website te verbeteren.",
+      dismissible: false,
+    },
   },
   contact: { phone: null, address: null, social: [] },
   nap: {
@@ -224,8 +231,8 @@ const amicareSettings: GeneratedSiteSettings = {
   analyticsConsent: {
     enabled: true,
     provider: "posthog",
-    consentStorageKey: "siab-analytics-consent",
-    consentVersion: "2026-06",
+    consentStorageKey: "siab_cookie_consent_v1",
+    consentVersion: "2026-07-07.1",
     captureSections: true,
     captureActions: true,
     captureForms: true,

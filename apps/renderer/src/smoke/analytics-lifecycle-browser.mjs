@@ -112,10 +112,11 @@ try {
           pageId: "home",
           pagePath: "/",
         }
-        const html = body.toString("utf8").replace(
-          "</body>",
-          `<script id="siab-analytics-config" type="application/json">${JSON.stringify(config)}</script></body>`,
-        )
+        const configScript = `<script id="siab-analytics-config" type="application/json">${JSON.stringify(config)}</script>`
+        const source = body.toString("utf8")
+        const html = source.includes('id="siab-analytics-config"')
+          ? source.replace(/<script\b[^>]*\bid="siab-analytics-config"[^>]*>[\s\S]*?<\/script>/, configScript)
+          : source.replace("</body>", `${configScript}</body>`)
         body = Buffer.from(html)
       }
 

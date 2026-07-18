@@ -13,6 +13,7 @@ import {
 } from "@siteinabox/site-renderer"
 import "../styles/site.css"
 import { findPublishedPage, loadPublishedSnapshot, normalizeRequestHost, pagePath } from "../lib/snapshot"
+import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
 
 const pathname = `/${Astro.params.path ?? ""}`
 const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
@@ -47,6 +48,10 @@ const seo = resolved
     })
   : null
 const mediaResolver = resolved ? createRendererMediaResolver(resolved.snapshot.tenantId) : undefined
+const analyticsConfig = resolved
+  ? buildAnalyticsConfig({ snapshot: resolved.snapshot, page: resolved.page, pathname: resolved.pathname })
+  : null
+const analyticsConfigContent = analyticsConfigJson(analyticsConfig)
 const rendererHtml = resolved
   ? renderToStaticMarkup(
       SitePageRenderer({
@@ -121,6 +126,7 @@ const initialColorMode = themeMode(snapshot?.theme)
         <meta name="twitter:card" content={seo.openGraph?.images?.length ? "summary_large_image" : "summary"} />
       </head>
       <body data-tenant-slug={resolved.snapshot.tenantSlug}>
+        {analyticsConfigContent && <script is:inline id="siab-analytics-config" type="application/json" set:html={analyticsConfigContent} />}
         <div set:html={rendererHtml} />
         <script>
           import "../client/site-behavior"
