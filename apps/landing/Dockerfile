@@ -19,8 +19,11 @@ RUN pnpm install --frozen-lockfile \
   --store-dir=/pnpm/store
 
 ARG SITE_URL=https://example.com
+ARG POSTHOG_PROJECT_TOKEN=
+ARG POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl
+ARG POSTHOG_HOST=https://eu.posthog.com
 ENV SITE_URL=${SITE_URL}
-RUN pnpm --filter siteinabox-landing build
+RUN POSTHOG_PROJECT_TOKEN=${POSTHOG_PROJECT_TOKEN} POSTHOG_PUBLIC_HOST=${POSTHOG_PUBLIC_HOST} POSTHOG_HOST=${POSTHOG_HOST} pnpm --filter siteinabox-landing build
 
 FROM nginx:${NGINX_VERSION}
 RUN rm -f /etc/nginx/conf.d/default.conf

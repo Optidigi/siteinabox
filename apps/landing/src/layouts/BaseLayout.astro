@@ -24,6 +24,7 @@ import slickUrl from '../scripts/slick.min.js?url';
 import Seo from '../components/seo/Seo.astro';
 import JsonLdGraph from '../components/seo/JsonLdGraph.astro';
 import { site } from '../content/site';
+import { matchesApprovedPublicAnalyticsConsent, publicAnalyticsConsentApproval } from '@siteinabox/legal-content/consent-approval';
 
 interface Props {
   title: string;
@@ -36,6 +37,24 @@ interface Props {
 }
 
 const { title, description, ogImage, noindex, canonical, pageType = 'WebPage', hasFaq = false } = Astro.props;
+const consentVersion = publicAnalyticsConsentApproval.consentVersion;
+const consent = {
+  enabled: true,
+  provider: 'posthog',
+  consentStorageKey: 'siab_platform_analytics_consent',
+  consentVersion,
+};
+const posthogProjectToken = process.env.POSTHOG_PROJECT_TOKEN?.trim();
+const analyticsConfig = posthogProjectToken && matchesApprovedPublicAnalyticsConsent(consent)
+  ? {
+      projectToken: posthogProjectToken,
+      apiHost: (process.env.POSTHOG_PUBLIC_HOST || 'https://r.siteinabox.nl').replace(/\/+$/, ''),
+      uiHost: (process.env.POSTHOG_HOST || 'https://eu.posthog.com').replace(/\/+$/, ''),
+      consentStorageKey: consent.consentStorageKey,
+      consentVersion,
+      siteDomain: site.primaryDomain,
+    }
+  : null;
 ---
 
 <!doctype html>
@@ -107,9 +126,26 @@ const { title, description, ogImage, noindex, canonical, pageType = 'WebPage', h
 
   </head>
   <body class="font-test-familjen">
+    {analyticsConfig && <script id="siab-analytics-config" type="application/json" set:html={JSON.stringify(analyticsConfig).replace(/</g, '\\u003c')} />}
     <div class="main-page-wrapper">
       <slot />
     </div>
+
+    {analyticsConfig && (
+      <aside class="siab-cookie-consent" data-siab-cookie-consent="true" aria-label="Analyticsvoorkeuren">
+        <div>
+          <strong>Cookies en privacy</strong>
+          <p>Met jouw toestemming gebruiken we analytics om Site in a Box te verbeteren.</p>
+        </div>
+        <div class="siab-cookie-consent__actions">
+          <button type="button" data-consent-action="reject">Weigeren</button>
+          <button type="button" data-consent-action="accept">Accepteren</button>
+        </div>
+      </aside>
+    )}
+    <script>
+      import '../scripts/analytics';
+    </script>
 
     <!-- Sticky header (.theme-main-menu.sticky-menu → .fixed past 180px scroll).
          Inlined so the scroll listener is wired up before the user can possibly

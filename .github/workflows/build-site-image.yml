@@ -60,3 +60,6 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             SITE_URL=https://siteinabox.nl
+            POSTHOG_PROJECT_TOKEN=${{ secrets.POSTHOG_PROJECT_TOKEN }}
+            POSTHOG_PUBLIC_HOST=https://r.siteinabox.nl
+            POSTHOG_HOST=https://eu.posthog.com

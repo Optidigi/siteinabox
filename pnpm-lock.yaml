@@ -377,6 +377,9 @@ importers:
       lottie-web:
         specifier: ^5.13.0
         version: 5.13.0
+      posthog-js:
+        specifier: ^1.386.8
+        version: 1.386.8
     devDependencies:
       '@astrojs/check':
         specifier: ^0.9.9

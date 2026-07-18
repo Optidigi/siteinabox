@@ -17,3 +17,5 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   text-rendering: optimizeLegibility;
 }
+/* Consent chrome is emitted only when the reviewed legal analytics gate is active. */
+.siab-cookie-consent{position:fixed;z-index:10000;right:1rem;bottom:1rem;left:1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:48rem;margin:auto;padding:1rem 1.25rem;border:1px solid var(--siab-border,#d8cbd3);border-radius:1rem;background:var(--siab-surface,#fff);color:var(--siab-text,#25131f);box-shadow:0 1rem 3rem #25131f26}.siab-cookie-consent[hidden]{display:none}.siab-cookie-consent p{margin:.25rem 0 0;font-size:.9rem;line-height:1.45}.siab-cookie-consent__actions{display:flex;gap:.5rem;flex-shrink:0}.siab-cookie-consent__actions button{min-height:44px;padding:.55rem .9rem;border:1px solid currentColor;border-radius:.65rem;font-weight:600}.siab-cookie-consent__actions button[data-consent-action=accept]{background:#25131f;color:#fff}@media(max-width:640px){.siab-cookie-consent{align-items:stretch;flex-direction:column}.siab-cookie-consent__actions{justify-content:flex-end}}

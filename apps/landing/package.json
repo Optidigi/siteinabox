@@ -14,7 +14,8 @@
     "@siteinabox/legal-content": "workspace:*",
     "astro": "^6.2.1",
     "astro-seo": "^1.1.0",
-    "lottie-web": "^5.13.0"
+    "lottie-web": "^5.13.0",
+    "posthog-js": "^1.386.8"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
