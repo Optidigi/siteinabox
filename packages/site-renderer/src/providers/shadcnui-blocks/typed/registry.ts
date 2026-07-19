@@ -94,6 +94,19 @@ import Team10View from "../variants/team-10/view"
 import Team11View from "../variants/team-11/view"
 import Team12View from "../variants/team-12/view"
 import Team13View from "../variants/team-13/view"
+import Testimonials01View from "../variants/testimonials-01/view"
+import Testimonials02View from "../variants/testimonials-02/view"
+import Testimonials03View from "../variants/testimonials-03/view"
+import Testimonials04View from "../variants/testimonials-04/view"
+import Testimonials05View from "../variants/testimonials-05/view"
+import Testimonials06View from "../variants/testimonials-06/view"
+import Testimonials07View from "../variants/testimonials-07/view"
+import Testimonials08View from "../variants/testimonials-08/view"
+import Testimonials09View from "../variants/testimonials-09/view"
+import Testimonials10View from "../variants/testimonials-10/view"
+import Testimonials11View from "../variants/testimonials-11/view"
+import Testimonials12View from "../variants/testimonials-12/view"
+import Testimonials13View from "../variants/testimonials-13/view"
 
 export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-01",
@@ -192,6 +205,19 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.team-11",
   "shadcnui-blocks.team-12",
   "shadcnui-blocks.team-13",
+  "shadcnui-blocks.testimonials-01",
+  "shadcnui-blocks.testimonials-02",
+  "shadcnui-blocks.testimonials-03",
+  "shadcnui-blocks.testimonials-04",
+  "shadcnui-blocks.testimonials-05",
+  "shadcnui-blocks.testimonials-06",
+  "shadcnui-blocks.testimonials-07",
+  "shadcnui-blocks.testimonials-08",
+  "shadcnui-blocks.testimonials-09",
+  "shadcnui-blocks.testimonials-10",
+  "shadcnui-blocks.testimonials-11",
+  "shadcnui-blocks.testimonials-12",
+  "shadcnui-blocks.testimonials-13",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -205,7 +231,7 @@ export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[numbe
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team" | "testimonials"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -230,6 +256,7 @@ const STATS_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
 const PRICING_TITLE_INTRO_PLANS = ["title", "intro", "plans"] as const
 const PRICING_PLANS_ONLY = ["plans"] as const
 const TEAM_TITLE_INTRO_MEMBERS = ["title", "intro", "members"] as const
+const TESTIMONIALS_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -807,6 +834,84 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "team",
     directFields: TEAM_TITLE_INTRO_MEMBERS,
     View: Team13View,
+  },
+  "shadcnui-blocks.testimonials-01": {
+    upstreamName: "testimonials-01",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials01View,
+  },
+  "shadcnui-blocks.testimonials-02": {
+    upstreamName: "testimonials-02",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials02View,
+  },
+  "shadcnui-blocks.testimonials-03": {
+    upstreamName: "testimonials-03",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials03View,
+  },
+  "shadcnui-blocks.testimonials-04": {
+    upstreamName: "testimonials-04",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials04View,
+  },
+  "shadcnui-blocks.testimonials-05": {
+    upstreamName: "testimonials-05",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials05View,
+  },
+  "shadcnui-blocks.testimonials-06": {
+    upstreamName: "testimonials-06",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials06View,
+  },
+  "shadcnui-blocks.testimonials-07": {
+    upstreamName: "testimonials-07",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials07View,
+  },
+  "shadcnui-blocks.testimonials-08": {
+    upstreamName: "testimonials-08",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials08View,
+  },
+  "shadcnui-blocks.testimonials-09": {
+    upstreamName: "testimonials-09",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials09View,
+  },
+  "shadcnui-blocks.testimonials-10": {
+    upstreamName: "testimonials-10",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials10View,
+  },
+  "shadcnui-blocks.testimonials-11": {
+    upstreamName: "testimonials-11",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials11View,
+  },
+  "shadcnui-blocks.testimonials-12": {
+    upstreamName: "testimonials-12",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials12View,
+  },
+  "shadcnui-blocks.testimonials-13": {
+    upstreamName: "testimonials-13",
+    blockType: "testimonials",
+    directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
+    View: Testimonials13View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown

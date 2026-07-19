@@ -13330,27 +13330,6 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-01/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-02/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-03/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-04/marquee.tsx",
       "line": 1,
       "column": 4,
@@ -13358,77 +13337,7 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-04/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-05/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-06/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-07/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-08/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-09/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-10/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-11/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-12/testimonials.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-13/marquee.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-13/testimonials.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",

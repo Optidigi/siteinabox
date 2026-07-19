@@ -99,7 +99,20 @@
     "team-10": ["title", "intro", "members"],
     "team-11": ["title", "intro", "members"],
     "team-12": ["title", "intro", "members"],
-    "team-13": ["title", "intro", "members"]
+    "team-13": ["title", "intro", "members"],
+    "testimonials-01": ["title", "intro", "items"],
+    "testimonials-02": ["title", "intro", "items"],
+    "testimonials-03": ["title", "intro", "items"],
+    "testimonials-04": ["title", "intro", "items"],
+    "testimonials-05": ["title", "intro", "items"],
+    "testimonials-06": ["title", "intro", "items"],
+    "testimonials-07": ["title", "intro", "items"],
+    "testimonials-08": ["title", "intro", "items"],
+    "testimonials-09": ["title", "intro", "items"],
+    "testimonials-10": ["title", "intro", "items"],
+    "testimonials-11": ["title", "intro", "items"],
+    "testimonials-12": ["title", "intro", "items"],
+    "testimonials-13": ["title", "intro", "items"]
   },
   "variants": {
     "blog-01": {

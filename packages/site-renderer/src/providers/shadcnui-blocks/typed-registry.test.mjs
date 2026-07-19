@@ -98,6 +98,19 @@ import Team10View from "./variants/team-10/view.tsx"
 import Team11View from "./variants/team-11/view.tsx"
 import Team12View from "./variants/team-12/view.tsx"
 import Team13View from "./variants/team-13/view.tsx"
+import Testimonials01View from "./variants/testimonials-01/view.tsx"
+import Testimonials02View from "./variants/testimonials-02/view.tsx"
+import Testimonials03View from "./variants/testimonials-03/view.tsx"
+import Testimonials04View from "./variants/testimonials-04/view.tsx"
+import Testimonials05View from "./variants/testimonials-05/view.tsx"
+import Testimonials06View from "./variants/testimonials-06/view.tsx"
+import Testimonials07View from "./variants/testimonials-07/view.tsx"
+import Testimonials08View from "./variants/testimonials-08/view.tsx"
+import Testimonials09View from "./variants/testimonials-09/view.tsx"
+import Testimonials10View from "./variants/testimonials-10/view.tsx"
+import Testimonials11View from "./variants/testimonials-11/view.tsx"
+import Testimonials12View from "./variants/testimonials-12/view.tsx"
+import Testimonials13View from "./variants/testimonials-13/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
   LEGACY_BEHAVIOR_ADAPTER_IDS,
@@ -202,6 +215,19 @@ const viewById = {
   "shadcnui-blocks.team-11": Team11View,
   "shadcnui-blocks.team-12": Team12View,
   "shadcnui-blocks.team-13": Team13View,
+  "shadcnui-blocks.testimonials-01": Testimonials01View,
+  "shadcnui-blocks.testimonials-02": Testimonials02View,
+  "shadcnui-blocks.testimonials-03": Testimonials03View,
+  "shadcnui-blocks.testimonials-04": Testimonials04View,
+  "shadcnui-blocks.testimonials-05": Testimonials05View,
+  "shadcnui-blocks.testimonials-06": Testimonials06View,
+  "shadcnui-blocks.testimonials-07": Testimonials07View,
+  "shadcnui-blocks.testimonials-08": Testimonials08View,
+  "shadcnui-blocks.testimonials-09": Testimonials09View,
+  "shadcnui-blocks.testimonials-10": Testimonials10View,
+  "shadcnui-blocks.testimonials-11": Testimonials11View,
+  "shadcnui-blocks.testimonials-12": Testimonials12View,
+  "shadcnui-blocks.testimonials-13": Testimonials13View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {

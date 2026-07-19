@@ -126,6 +126,19 @@ export const TYPED_PILOT_UPSTREAM_NAMES = new Set([
   "team-11",
   "team-12",
   "team-13",
+  "testimonials-01",
+  "testimonials-02",
+  "testimonials-03",
+  "testimonials-04",
+  "testimonials-05",
+  "testimonials-06",
+  "testimonials-07",
+  "testimonials-08",
+  "testimonials-09",
+  "testimonials-10",
+  "testimonials-11",
+  "testimonials-12",
+  "testimonials-13",
 ])
 
 /** Upstream names with audited behavior-adapter views (Provider* literals preserved). */
