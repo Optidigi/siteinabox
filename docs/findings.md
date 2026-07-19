@@ -77,7 +77,8 @@ observations before acting on them.
 
 ## SIAB-009 — Ami Care compatibility renderer retirement
 
-- **Classification:** Remediation implemented; production verification pending.
+- **Classification:** Historical / closed; **confidence:** high from production
+  migration and browser verification.
 - **Scope:** Contracts, shared renderer, CMS preview, persisted CMS data, and
   published snapshots.
 - **Evidence:** The canonical Ami Care fixture now uses approved provider
@@ -90,10 +91,18 @@ observations before acting on them.
   tests cover the cutover. A fresh disposable PostgreSQL migration rehearsal
   and local desktop/mobile browser smoke cover the schema, provider blocks,
   media bindings, navigation, terracotta theme, consent chrome, and responsive
-  layout without contacting real analytics ingestion.
-- **Next:** After deployment, verify the production `ami-care.nl` media, forms,
-  legal page, active snapshot, and desktop/mobile output against the rebuilt
-  tenant data.
+  layout without contacting real analytics ingestion. Production deployment on
+  2026-07-19 applied both cutover migrations and activated snapshot version 112.
+  Read-only browser verification proved the home and privacy routes return 200,
+  the intended provider variants and terracotta tokens are active, all bound
+  media loads, the fixed consent chrome remains in the viewport, desktop and
+  mobile have no horizontal overflow or browser errors, the privacy link and
+  legal-content block render, and retired `amicZen` output is absent. Form
+  submission behavior remains covered by CI and was intentionally not exercised
+  against production.
+- **Review trigger:** Reopen if Ami Care regains tenant-specific renderer code,
+  retired variants or tokens, non-provider snapshots, or loses its media,
+  consent, contact, or legal-page coverage.
 
 ## SIAB-010 — Renderer page-lifecycle ownership conflicts with the contract
 
