@@ -13323,77 +13323,7 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-01/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-02/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-03/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-04/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-05/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-06/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-07/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-08/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-09/border-beam.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-09/pricing.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-10/pricing.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
