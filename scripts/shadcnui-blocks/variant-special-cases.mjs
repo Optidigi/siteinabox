@@ -46,22 +46,6 @@ const BORDER_BEAM_THEME_REPLACEMENTS = [
  * (plus catalog metadata tables), never inside generic adaptLiteralImports.
  */
 export const VARIANT_SPECIAL_CASES = {
-  "contact-02": {
-    adaptLiteral({ contents }) {
-      return replaceAll(contents, "bg-white shadow-none", "bg-[var(--provider-surface,#fff)] shadow-none")
-    },
-    generateView({ semantic, namespace }) {
-      return [
-        'import * as React from "react"',
-        'import type { Block } from "@siteinabox/contracts"',
-        'import type { BlockRenderOptions } from "../../../../blocks/types"',
-        'import { ShadcnUiContactView } from "../../contact-views"',
-        `type VariantBlock = Extract<Block, { blockType: "${semantic.blockType}" }>`,
-        `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiContactView block={block} options={options} variant="${namespace}.contact-02" /> }`,
-        "",
-      ].join("\n")
-    },
-  },
   "features-03": {
     slotOverrides({ variantSlots }) {
       if (variantSlots.features) {

@@ -105,7 +105,7 @@ export function buildTypedScaffold({
   return {
     componentName,
     files: {
-      "upstream-literal.tsx": normalizedLiteral,
+      "upstream-literal.upstream.tsx.txt": normalizedLiteral,
       [`${mainStem}`]: componentSource,
       "view.tsx": viewSource,
       [`../../typed/fixtures/${upstreamName}.ts`]: fixtureSource,

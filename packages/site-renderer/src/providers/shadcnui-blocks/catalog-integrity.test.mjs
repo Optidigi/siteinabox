@@ -5,20 +5,31 @@ import test from "node:test"
 import inventory from "./inventory.json" with { type: "json" }
 import exclusions from "./exclusions.json" with { type: "json" }
 import bindings from "./bindings.json" with { type: "json" }
-import { BEHAVIOR_ADAPTER_IDS } from "./typed/registry.ts"
 
 const root = new URL("../../../../../", import.meta.url)
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`
 
+const directUpstreamNames = Object.keys(bindings.direct ?? {})
+const blockVariants = inventory.variants.filter((entry) => entry.role === "block")
+const chromeVariants = inventory.variants.filter((entry) => entry.role === "chrome")
+const systemVariants = inventory.variants.filter((entry) => entry.role === "systemTemplate")
+
 test("pinned catalog is complete and every non-imported registry item is explained", () => {
-  assert.equal(inventory.commit, "46c2e50bb538c9bc7a8927979d38bae178ae4452")
+  assert.equal(inventory.commit, bindings.commit)
   assert.equal(inventory.registry, "registry-radix.json")
-  assert.deepEqual(inventory.counts, { upstream: 542, public: 148, systemTemplates: 8, excluded: 386 })
-  assert.equal(inventory.variants.length, 156)
-  assert.equal(inventory.variants.filter((entry) => entry.role === "block").length, 132)
-  assert.equal(exclusions.exclusions.length, 386)
+  assert.equal(directUpstreamNames.length, blockVariants.length, "every public block has a direct binding")
+  assert.equal(blockVariants.length, inventory.counts.public - chromeVariants.length, "public block inventory matches catalog counts")
+  assert.equal(systemVariants.length, inventory.counts.systemTemplates)
+  assert.equal(exclusions.exclusions.length, inventory.counts.excluded)
+  assert.equal(inventory.variants.length, blockVariants.length + chromeVariants.length + systemVariants.length)
   assert.ok(exclusions.exclusions.every((entry) => typeof entry.reason === "string" && entry.reason.length > 0))
-  assert.equal(new Set([...inventory.variants.map((entry) => entry.upstreamName), ...exclusions.exclusions.map((entry) => entry.upstreamName)]).size, 542)
+  assert.equal(
+    new Set([...inventory.variants.map((entry) => entry.upstreamName), ...exclusions.exclusions.map((entry) => entry.upstreamName)]).size,
+    inventory.counts.upstream,
+  )
+  for (const variant of blockVariants) {
+    assert.ok(directUpstreamNames.includes(variant.upstreamName), `${variant.id} is direct-bound`)
+  }
 })
 
 test("provider interaction dependencies stay pinned to the upstream-compatible release", async () => {
@@ -29,7 +40,7 @@ test("provider interaction dependencies stay pinned to the upstream-compatible r
 })
 
 test("every active structured slot has one explicit literal or direct binding", () => {
-  for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
+  for (const variant of blockVariants) {
     const declared = new Set([
       ...variant.bindings.map((binding) => binding.field),
       ...(bindings.direct?.[variant.upstreamName] ?? []),
@@ -46,25 +57,21 @@ test("every active structured slot has one explicit literal or direct binding", 
 test("the generated browser loader covers each structured variant exactly once", async () => {
   const source = await readFile(new URL("packages/site-renderer/src/providers/shadcnui-blocks/block-client-loaders.generated.ts", root), "utf8")
   const ids = [...source.matchAll(/^  "([^"]+)": \(\) => import\(/gm)].map((match) => match[1]).sort()
-  const expected = inventory.variants.filter((entry) => entry.role === "block").map((entry) => entry.id).sort()
+  const expected = blockVariants.map((entry) => entry.id).sort()
   assert.deepEqual(ids, expected)
 })
 
-test("every production content view renders the pinned literal or an audited behavior adapter", async () => {
-  const behaviorAdapters = new Set(BEHAVIOR_ADAPTER_IDS)
-  for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
+test("every production block view uses the typed mapper surface", async () => {
+  for (const variant of blockVariants) {
     const source = await readFile(new URL(`packages/site-renderer/src/providers/shadcnui-blocks/variants/${variant.upstreamName}/view.tsx`, root), "utf8")
-    if (behaviorAdapters.has(variant.id)) {
-      assert.doesNotMatch(source, /LiteralProviderVariantView/, `${variant.id} uses its audited behavior adapter`)
-      continue
-    }
-    assert.match(source, /LiteralProviderVariantView/, `${variant.id} production renders its pinned literal`)
+    assert.doesNotMatch(source, /LiteralProviderVariantView/, `${variant.id} must not use literal provider views`)
+    assert.doesNotMatch(source, /ProviderField|ProviderItems|ProviderBlockContent/, `${variant.id} must not use Provider* binding runtime`)
+    assert.match(source, /providerBlockAttributes/, `${variant.id} maps typed props through provider attributes`)
   }
-  assert.deepEqual(
-    [...behaviorAdapters].sort(),
-    inventory.variants.filter((entry) => entry.role === "block").map((entry) => entry.id).filter((id) => behaviorAdapters.has(id)).sort(),
-    "the complete alternate production path is explicit",
-  )
+})
+
+test("obsolete AST binding entries are not retained once variants are direct-bound", () => {
+  assert.equal(Object.keys(bindings.variants ?? {}).length, 0, "bindings.variants is empty after direct cutover")
 })
 
 test("vendored registry, license, primitives and literal provider files retain recorded hashes", async () => {
@@ -80,7 +87,7 @@ test("vendored registry, license, primitives and literal provider files retain r
     assert.ok(variant.sourceFiles.length > 0, `${variant.id} records original source hashes`)
     assert.ok(variant.sourceFiles.every((entry) => entry.path.startsWith("src/registry/")), `${variant.id} source provenance points into the pinned repository`)
   }
-  for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
+  for (const variant of blockVariants) {
     assert.ok(variant.adaptedFiles.some((entry) => entry.path.endsWith("/view.tsx")), `${variant.id} view`)
     assert.equal(variant.adaptedFiles.some((entry) => entry.path.endsWith("/adapter.ts")), false, `${variant.id} has no pass-through adapter`)
   }

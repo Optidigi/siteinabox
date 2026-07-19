@@ -23,7 +23,6 @@ test("generic adaptLiteralImports has no variant-id branches", async () => {
 test("variant special-case table is the only transform module with variant-id branches", async () => {
   const modules = [
     "./shadcnui-blocks/adapt-literal.mjs",
-    "./shadcnui-blocks/compile-bindings.mjs",
     "./shadcnui-blocks/import.mjs",
   ]
   for (const modulePath of modules) {
@@ -37,7 +36,7 @@ test("variant special-case table is the only transform module with variant-id br
   }
 })
 
-test("direct-binding variants skip compileBlockBindings", () => {
+test("direct-binding variants skip binding compilation during import", () => {
   for (const upstreamName of Object.keys(bindings.direct ?? {})) {
     assert.equal(
       shouldSkipBindingCompilation(upstreamName, "cta.tsx", bindings),
@@ -60,13 +59,6 @@ test("applyVariantLiteralAdaptations delegates only through the special-case tab
     passthrough,
   )
 
-  const contactAdapted = applyVariantLiteralAdaptations("contact-02", {
-    contents: "bg-white shadow-none",
-    filename: "contact.tsx",
-    isEntryFile: false,
-  })
-  assert.match(contactAdapted, /var\(--provider-surface/)
-
   const beamAdapted = applyVariantLiteralAdaptations("pricing-09", {
     contents: 'colorFrom = "#ffaa40"',
     filename: "border-beam.tsx",
@@ -88,7 +80,7 @@ export default function Hero() {
     directFields: ["headline", "primary"],
     upstreamLiteral,
   })
-  assert.match(scaffold.files["upstream-literal.tsx"], /runtime\/link/)
+  assert.match(scaffold.files["upstream-literal.upstream.tsx.txt"], /runtime\/link/)
   assert.doesNotMatch(scaffold.files["hero.tsx"], /from ["'].*runtime\/content["']/)
   assert.doesNotMatch(scaffold.files["hero.tsx"], /<ProviderField\b/)
   assert.match(scaffold.files["view.tsx"], /providerBlockAttributes/)
@@ -129,5 +121,6 @@ test("assertScaffoldAllowed rejects typed pilots and direct bindings without for
 test("hasDirectBindings mirrors bindings.direct manifest", () => {
   assert.equal(hasDirectBindings(bindings, "faq-01"), true)
   assert.equal(hasDirectBindings(bindings, "hero-01"), true)
+  assert.equal(Object.keys(bindings.variants ?? {}).length, 0)
   assert.deepEqual(Object.keys(VARIANT_SPECIAL_CASES).sort(), VARIANT_SPECIAL_CASE_IDS)
 })

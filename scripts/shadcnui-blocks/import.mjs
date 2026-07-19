@@ -3,7 +3,6 @@ import { tmpdir } from "node:os"
 import { dirname, join, relative, resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 import { adaptLiteralImports } from "./adapt-literal.mjs"
-import { compileBlockBindings } from "./compile-bindings.mjs"
 import {
   COMMIT,
   NAMESPACE,
@@ -41,7 +40,6 @@ import {
   hasDirectBindings,
   resolveLiteralFilename,
   shouldPreserveOwnedVariant,
-  shouldSkipBindingCompilation,
 } from "./variant-special-cases.mjs"
 
 function run(command, args, cwd) {
@@ -95,6 +93,7 @@ async function restoreOwnedVariantFiles(upstreamName, backups) {
 
 export async function runImport() {
   const bindingManifest = JSON.parse(await readFile(bindingManifestPath, "utf8"))
+  const existingInventory = JSON.parse(await readFile(join(providerRoot, "inventory.json"), "utf8"))
   const tokenExceptionManifestBuffer = await readFile(tokenExceptionManifestPath)
   const tokenExceptionManifest = JSON.parse(tokenExceptionManifestBuffer.toString("utf8"))
   if (bindingManifest && (bindingManifest.provider !== PROVIDER || bindingManifest.commit !== COMMIT)) {
@@ -110,8 +109,13 @@ export async function runImport() {
     const approved = registry.items.filter((item) => isPublic(item.name) || isSystem(item.name))
     const publicItems = approved.filter((item) => isPublic(item.name))
     const systemItems = approved.filter((item) => isSystem(item.name))
-    if (publicItems.length !== 148 || systemItems.length !== 8) {
-      throw new Error(`Pinned inventory mismatch: expected 148 public + 8 system; found ${publicItems.length} + ${systemItems.length}.`)
+    const directBlockCount = Object.keys(bindingManifest.direct ?? {}).length
+    const importedDirectBlocks = publicItems.filter((item) => hasDirectBindings(bindingManifest, item.name))
+    if (importedDirectBlocks.length !== directBlockCount) {
+      throw new Error(`Pinned inventory mismatch: expected ${directBlockCount} direct-bound public blocks; found ${importedDirectBlocks.length}.`)
+    }
+    if (systemItems.length !== existingInventory.counts.systemTemplates) {
+      throw new Error(`Pinned inventory mismatch: expected ${existingInventory.counts.systemTemplates} system templates; found ${systemItems.length}.`)
     }
 
     await rm(variantsRoot, { recursive: true, force: true })
@@ -222,14 +226,6 @@ export async function runImport() {
           filename: literalFilename,
           isEntryFile: file.path === literalEntryPath,
         })
-
-        const skipBindings = shouldSkipBindingCompilation(item.name, literalFilename, bindingManifest)
-        if (semantic.role === "block" && !skipBindings) {
-          const declarations = bindingManifest?.variants?.[item.name]?.[literalFilename] ?? []
-          const compiled = compileBlockBindings(adaptedLiteral, semantic.blockType, declarations, `${item.name}/${literalFilename}`)
-          adaptedLiteral = compiled.contents
-          explicitBindings.push(...compiled.bindings.map((binding) => ({ file: literalFilename, ...binding })))
-        }
 
         await writeFile(literalDestination, adaptedLiteral)
       }

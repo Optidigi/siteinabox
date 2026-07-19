@@ -126,6 +126,7 @@ import Blog04View from "../variants/blog-04/view"
 import Blog05View from "../variants/blog-05/view"
 import Blog06View from "../variants/blog-06/view"
 import Contact01View from "../variants/contact-01/view"
+import Contact02View from "../variants/contact-02/view"
 import Contact03View from "../variants/contact-03/view"
 import CarouselBlock01View from "../variants/carousel-block-01/view"
 import CarouselBlock02View from "../variants/carousel-block-02/view"
@@ -259,6 +260,7 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.blog-05",
   "shadcnui-blocks.blog-06",
   "shadcnui-blocks.contact-01",
+  "shadcnui-blocks.contact-02",
   "shadcnui-blocks.contact-03",
   "shadcnui-blocks.carousel-block-01",
   "shadcnui-blocks.carousel-block-02",
@@ -267,15 +269,13 @@ export const TYPED_PILOT_IDS = [
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
 
 /** Pre-typed pilots that still use Provider* runtime adapters instead of the shared typed helpers. */
-export const LEGACY_BEHAVIOR_ADAPTER_IDS = [
-  "shadcnui-blocks.contact-02",
-] as const
+export const LEGACY_BEHAVIOR_ADAPTER_IDS = [] as const
 
 export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[number]
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team" | "testimonials" | "timeline" | "blogCards" | "contactDetails" | "gallery"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team" | "testimonials" | "timeline" | "blogCards" | "contactDetails" | "contactSection" | "gallery"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -307,6 +307,7 @@ const BLOG_TITLE_POSTS = ["title", "posts"] as const
 const BLOG_POSTS_TITLE = ["posts", "title"] as const
 const BLOG_TITLE_INTRO_CTA_POSTS_SECONDARY = ["title", "intro", "cta", "posts", "secondary"] as const
 const CONTACT_TITLE_DESCRIPTION_ITEMS = ["title", "description", "items"] as const
+const CONTACT_SECTION_FIELDS = ["title", "description", "formName", "submitLabel", "fields", "provider"] as const
 const GALLERY_TITLE_INTRO_CTA_IMAGES = ["title", "intro", "cta", "images"] as const
 const GALLERY_TITLE_INTRO_IMAGES = ["title", "intro", "images"] as const
 
@@ -1078,6 +1079,12 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "contactDetails",
     directFields: CONTACT_TITLE_DESCRIPTION_ITEMS,
     View: Contact01View,
+  },
+  "shadcnui-blocks.contact-02": {
+    upstreamName: "contact-02",
+    blockType: "contactSection",
+    directFields: CONTACT_SECTION_FIELDS,
+    View: Contact02View,
   },
   "shadcnui-blocks.contact-03": {
     upstreamName: "contact-03",

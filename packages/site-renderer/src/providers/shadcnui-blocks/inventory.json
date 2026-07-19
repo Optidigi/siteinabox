@@ -407,7 +407,7 @@
           "sha256": "sha256:30d31f3d8c7c7a0209dd78df7053e56298a0f87f1efafb1749e79df0ae92e7f3"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-01/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-01/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:7e3b68a604f853caae70e76f7dca9ee11f0cc9c846a13e8b621cb3829ac0c8e5"
         },
         {
@@ -672,7 +672,7 @@
           "sha256": "sha256:88d90ddd119182b485dfff03eeedc00f3d8705de083158b047e2192bec4cca93"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:a6156ee612d60123480b87cc0bf58ca4131d72dffc9be7edd9f647b05cbae3a3"
         },
         {
@@ -935,7 +935,7 @@
           "sha256": "sha256:42aa1d8c2fb982307ddb1ee9721050ce7a5ee4cf5dbc43a3be51c3c1cfcc5ccf"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:603364dd53cc33719725c7a18341784bdf0dd8f5c64431a28b169df05a7b9b80"
         },
         {
@@ -1196,7 +1196,7 @@
           "sha256": "sha256:d2c249622e2220fde915841edf8707f9ceb1f63d14b6b00015b60a365eb0c896"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:decadaa94b37b3fdc96e38f632b54d5bfdc3584c8457b8ef88623bcec95db104"
         },
         {
@@ -1396,25 +1396,12 @@
           "reason": "The contactSection semantic contract does not expose this field."
         }
       },
-      "bindings": [
-        {
-          "file": "contact.tsx",
-          "field": "title",
-          "kind": "field",
-          "fallback": "Chat with our friendly team!"
-        },
-        {
-          "file": "contact.tsx",
-          "field": "description",
-          "kind": "field",
-          "fallback": "We'd love to hear from you. Please fill out this form or shoot us an email."
-        }
-      ],
+      "bindings": [],
       "featureAudit": [
         {
           "feature": "dom-and-classes",
           "disposition": "literal-preserved",
-          "evidence": "Vendored pinned literal view"
+          "evidence": "Owned typed view"
         },
         {
           "feature": "responsive-layout",
@@ -1455,13 +1442,18 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/contact.tsx",
-          "sha256": "sha256:86aff7a403f52e4ee214ec8e3caa423c3c0d7b2a74f8be73e5fca7535c70ed27"
+          "sha256": "sha256:5bb5932b3c81144fa57ac99f5d1e7c7deb0d7e18d47d704f009409ac823f202f"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/view.tsx",
-          "sha256": "sha256:de50ca50270e247b81ee96868ef09279543569335925942691150b88db75710d"
+          "sha256": "sha256:92be7fb6aa59eb5feff58205b3c9b5fbc163fc0b1266029c87e5e26096d53286"
+        },
+        {
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/upstream-literal.upstream.tsx.txt",
+          "sha256": "sha256:86aff7a403f52e4ee214ec8e3caa423c3c0d7b2a74f8be73e5fca7535c70ed27"
         }
-      ]
+      ],
+      "adaptationStatus": "direct-owned"
     },
     {
       "id": "shadcnui-blocks.contact-03",
@@ -1715,7 +1707,7 @@
           "sha256": "sha256:677b95172b40f8541e3ccbf6c51bbf8ee5a514397994ff7e1a5c158f20550d8f"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:bcb2959aa3d4466395233454633e68124075db6e3d13fcb39e9ae6a53dac23d0"
         },
         {
@@ -15711,7 +15703,7 @@
           "sha256": "sha256:0708f09f6e95dda8cd46eaf5a04531bde7311b0dc99d04a90bcbed943891f420"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-01/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-01/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:7575b57e2cb8321fdeb23b111be3b2733d9a88cf646333287e603dea6ed95f7b"
         },
         {
@@ -15963,7 +15955,7 @@
           "sha256": "sha256:25e671978fe1227822ac172e66cda299ff6668638a62d7d0cf55678720cc6845"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-02/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-02/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:25ee94c1b86ef8fbd50758f4d23d67dfeb271c57eb78bd943c4ac639894fea1e"
         },
         {
@@ -16215,7 +16207,7 @@
           "sha256": "sha256:eaf9bb1a6b28345e7bd4d0e2036eb950d2df92f47454b8bd69fbf17aac0ffdc0"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-03/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-03/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:bedce259e660d6c39a3810afc6936b21d80b383dce6b0a72a09864f53924c0bb"
         },
         {
@@ -16467,7 +16459,7 @@
           "sha256": "sha256:b902a53be3127fe036fefc5130ee052c115f783eb8e7211bd7e357dab67cd9d6"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-04/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-04/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:35a3788a52c063be57efcdc9ef8e170ce48a8a8d6e18562d62417fb08e4790f8"
         },
         {
@@ -16716,7 +16708,7 @@
           "sha256": "sha256:48841cbc8e1f421e7ec7faa8221c7c4a3c78f1739e98b843bb46114aa9489344"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-05/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-05/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:2deba993e640a829e03cbd2ad688fb062263fa3ea9c0bd03ccb299bdc63c194a"
         },
         {
@@ -16967,7 +16959,7 @@
           "sha256": "sha256:04339152c867c7f056f685b1ac24a759a4afdb2b33735492eb47c79492ebbaee"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-06/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-06/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:2264f96d3c810a5d62f83f0fbc66015c13b55ef271fd2978a38c166d2bb65116"
         },
         {
@@ -17216,7 +17208,7 @@
           "sha256": "sha256:39c707a51862b8c07c88ef7de54845abbd5ccb25eb37997964f82057b56863e9"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-07/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-07/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:db4393b42b5b3294a1502efdf0764681ae2e4218c60f7a07db9247f504aa3384"
         },
         {
@@ -19564,7 +19556,7 @@
           "sha256": "sha256:1ace4637e65873767be93625b8f005a788d85bbf1f69a0a5680e75303b0b1442"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:3e8b8af5d4f81e6900faac4098b765bd5028c270cb347cc8cd415effa5812c6f"
         },
         {
@@ -19835,7 +19827,7 @@
           "sha256": "sha256:55dc2a897846e4dc85ce6f398b73f95eba5e36ffb552822a094e888ea4fa7fa6"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-02/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-02/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:16873ce104c19a1e7080a9a4f5debdd15b146df803f608a5f6c85dcff73528a2"
         },
         {
@@ -34625,7 +34617,7 @@
           "sha256": "sha256:ddd011ad9dea2f03346a6fd82050e86066bdab989ad28a77231a505219ae7200"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:77430305760576234251994eed4cdab0e8173875fc4180694f8655c0e43f303b"
         },
         {
@@ -34909,7 +34901,7 @@
           "sha256": "sha256:305bbfda9522a174f0fbdb6ad850da0f724c768e6796ebef4ec96d941ab9f081"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:b72e9b5619325524211bb1f9185d63fd77d5ca3e9c5f090f16e626c1216e4c35"
         },
         {
@@ -35188,7 +35180,7 @@
           "sha256": "sha256:5273dac12dc0a26b4e741afe4da8fcc8542d8ca4f4db374b612867ea2ffea564"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:da9773ae73535fc35e88282b91e37e024b27279e35e98040a688e327e37d821f"
         },
         {
@@ -36016,7 +36008,7 @@
           "sha256": "sha256:1b1df6fdd9cc2ee84e480177ba79cf15ba004c9e7b25f50d5eb55094defa227d"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-01/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-01/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:c9637e56a8b46ab5cd07996953d59b8e2ef71b55c1a606c4548fa40e3bbf2e98"
         },
         {
@@ -36280,7 +36272,7 @@
           "sha256": "sha256:5e9b78c3dcdc26eb507a27c81806c34a1b9db0d3b8a5a94cdaba83344a708cec"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-02/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-02/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:f1c40761db421d2c175b2b545a4ad4b10e1fef1280a8d6befdf2548218b0df47"
         },
         {
@@ -36544,7 +36536,7 @@
           "sha256": "sha256:70aa83e67fbbd6dacc18d802eb69267b96a7b6d1bd1ae46a327bdba1d7790df2"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-03/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-03/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:975c6624e973fbce0d384fd1bf70c936ca104d84055364a8f165eb01993ddf3e"
         },
         {
@@ -36808,7 +36800,7 @@
           "sha256": "sha256:737847c0d613d36bfb7bb28d835d3d98944a0d704a654eb662a6863d53eeafc0"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-04/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-04/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:dbf42a2b59bf36efda1b2dfc5281a6539341a270f5208b51ce174406421c8a8c"
         },
         {
@@ -37072,7 +37064,7 @@
           "sha256": "sha256:a68da8b5f403bbedaa98cc3894a830a758bb05f1f1e86a8bed4809532d04ccdf"
         },
         {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-05/upstream-literal.tsx",
+          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-05/upstream-literal.upstream.tsx.txt",
           "sha256": "sha256:e77845a374a16e2ecebfee34858c84ccf6bca505984ec20c22e58df515ae56d9"
         },
         {

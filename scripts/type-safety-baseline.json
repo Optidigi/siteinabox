@@ -12882,83 +12882,6 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-01/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-02/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/contact.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/footer-01/footer.tsx",
       "line": 1,
       "column": 4,
@@ -13086,41 +13009,6 @@
     },
     {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-08/navbar.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-01/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-02/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-03/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-04/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-05/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
@@ -13338,55 +13226,6 @@
     },
     {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/testimonials-13/marquee.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-01/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-02/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-03/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-04/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-05/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-06/upstream-literal.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-07/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",

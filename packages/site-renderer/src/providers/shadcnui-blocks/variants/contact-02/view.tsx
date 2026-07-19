@@ -1,6 +1,27 @@
 import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../../blocks/types"
-import { ShadcnUiContactView } from "../../contact-views"
+import { providerBlockAttributes } from "../../runtime/block"
+import type { TypedPilotId } from "../../typed/registry"
+import { Contact02 } from "./contact"
+
 type VariantBlock = Extract<Block, { blockType: "contactSection" }>
-export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiContactView block={block} options={options} variant="shadcnui-blocks.contact-02" /> }
+
+const VARIANT: TypedPilotId = "shadcnui-blocks.contact-02"
+
+export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) {
+  return (
+    <Contact02
+      title={block.title}
+      description={block.description}
+      formName={block.formName}
+      submitLabel={block.submitLabel}
+      fields={block.fields}
+      formAction={options.formAction}
+      siteSettings={options.siteSettings}
+      blockIndex={options.index}
+      editSlots={options.editSlots}
+      rootAttributes={providerBlockAttributes({ block, options }, VARIANT)}
+    />
+  )
+}

@@ -57,3 +57,16 @@ export const contact03CmsLike = {
   description: previewBlockText("Our friendly team is always here to chat."),
   items: contact03Items,
 }
+
+export const contact02CmsLike = {
+  title: previewInlineText("Chat with our friendly team!"),
+  description: previewBlockText("We'd love to hear from you. Please fill out this form or shoot us an email."),
+  formName: "Contact Us",
+  submitLabel: "Submit",
+  fields: [
+    { name: "firstName", label: "First Name", type: "text" as const, placeholder: "First name", required: true },
+    { name: "lastName", label: "Last Name", type: "text" as const, placeholder: "Last name", required: true },
+    { name: "email", label: "Email", type: "email" as const, placeholder: "Email", required: true },
+    { name: "message", label: "Message", type: "textarea" as const, placeholder: "Message", required: true },
+  ],
+}

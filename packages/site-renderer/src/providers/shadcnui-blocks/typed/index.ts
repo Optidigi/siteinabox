@@ -171,6 +171,16 @@ export {
   resolveContactIcon,
 } from "./contact-details-fields"
 export {
+  CONTACT_SECTION_BLOCK_TYPE,
+  type ContactSectionField,
+  renderContactFieldLabel,
+  renderContactSectionDescription,
+  renderContactSectionTitle,
+  renderContactSubmitLabel,
+  resolveRuntimeContactDetails,
+  type RuntimeContactDetail,
+} from "./contact-section-fields"
+export {
   GALLERY_BLOCK_TYPE,
   type GalleryImageItem,
   renderGalleryCta,

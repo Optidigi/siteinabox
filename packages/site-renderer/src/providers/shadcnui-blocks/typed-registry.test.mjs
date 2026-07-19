@@ -130,6 +130,7 @@ import Blog04View from "./variants/blog-04/view.tsx"
 import Blog05View from "./variants/blog-05/view.tsx"
 import Blog06View from "./variants/blog-06/view.tsx"
 import Contact01View from "./variants/contact-01/view.tsx"
+import Contact02View from "./variants/contact-02/view.tsx"
 import Contact03View from "./variants/contact-03/view.tsx"
 import CarouselBlock01View from "./variants/carousel-block-01/view.tsx"
 import CarouselBlock02View from "./variants/carousel-block-02/view.tsx"
@@ -269,6 +270,7 @@ const viewById = {
   "shadcnui-blocks.blog-05": Blog05View,
   "shadcnui-blocks.blog-06": Blog06View,
   "shadcnui-blocks.contact-01": Contact01View,
+  "shadcnui-blocks.contact-02": Contact02View,
   "shadcnui-blocks.contact-03": Contact03View,
   "shadcnui-blocks.carousel-block-01": CarouselBlock01View,
   "shadcnui-blocks.carousel-block-02": CarouselBlock02View,
