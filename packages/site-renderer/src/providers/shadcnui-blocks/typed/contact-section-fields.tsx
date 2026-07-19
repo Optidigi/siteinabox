@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { RtRoot, SiteSettings } from "@siteinabox/contracts"
-import { MailIcon, MapPinIcon, MessageCircleIcon, PhoneIcon, type LucideIcon } from "lucide-react"
+import { MailIcon, MapPinIcon, MessageCircle, PhoneIcon, type LucideIcon } from "lucide-react"
 import type { BlockEditSlots } from "../../../blocks/types"
 import { elementPath } from "./paths"
 import { fieldInlineRichText } from "./rich-text"
@@ -24,8 +24,53 @@ export type RuntimeContactDetail = {
   description: string
   value: string
   href?: string
+  target?: string
   Icon: LucideIcon
 }
+
+export const contact02LiteralDetails: RuntimeContactDetail[] = [
+  {
+    title: "Email",
+    description: "Our friendly team is here to help.",
+    value: "akashmoradiya3444@gmail.com",
+    href: "mailto:akashmoradiya3444@gmail.com",
+    Icon: MailIcon,
+  },
+  {
+    title: "Live chat",
+    description: "Our friendly team is here to help.",
+    value: "Start new chat",
+    href: "#",
+    Icon: MessageCircle,
+  },
+  {
+    title: "Office",
+    description: "Come say hello at our office HQ.",
+    value: "100 Smith Street Collingwood\nVIC 3066 AU",
+    href: "about:blank#upstream-sha256:45172",
+    target: "_blank",
+    Icon: MapPinIcon,
+  },
+  {
+    title: "Phone",
+    description: "Mon-Fri from 8am to 5pm.",
+    value: "+1 (555) 000-0000",
+    href: "tel:akashmoradiya3444@gmail.com",
+    Icon: PhoneIcon,
+  },
+]
+
+const renderPlainContactValue = (value: string) => {
+  if (!value.includes("\n")) return value
+  return value.split("\n").map((part, index) => (
+    <React.Fragment key={index}>
+      {index > 0 ? <br /> : null}
+      {part}
+    </React.Fragment>
+  ))
+}
+
+export const renderRuntimeContactDetailValue = renderPlainContactValue
 
 const optionalInlineField = (
   editSlots: BlockEditSlots | undefined,
@@ -114,7 +159,7 @@ export const resolveRuntimeContactDetails = (settings?: SiteSettings): RuntimeCo
         description: "Start a conversation with our team.",
         value: settings.contact.social[0].platform,
         href: settings.contact.social[0].url,
-        Icon: MessageCircleIcon,
+        Icon: MessageCircle,
       }
     : null,
   settings?.contact?.address

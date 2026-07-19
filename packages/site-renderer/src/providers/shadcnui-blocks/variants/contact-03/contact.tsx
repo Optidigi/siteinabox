@@ -3,7 +3,6 @@
 
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
-import { Mail, MessageCircle } from "lucide-react"
 import { contact03CmsLike } from "../../typed/fixtures/contact-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
@@ -32,6 +31,7 @@ export function Contact03({ title, description, items, blockIndex, editSlots, ro
   return (
     <div className="flex min-h-screen items-center justify-center pt-12 pb-16 md:pt-16" {...rootAttributes}>
       <div className="mx-auto w-full max-w-(--breakpoint-xl) px-6 xl:px-0">
+        <b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Contact Us</b>
         {titleContent ? <h2 className="mt-3 font-medium text-4xl tracking-[-0.04em]">{titleContent}</h2> : null}
         {descriptionContent ? (
           <p className="mt-3 text-lg text-muted-foreground md:text-xl">{descriptionContent}</p>
@@ -40,13 +40,12 @@ export function Contact03({ title, description, items, blockIndex, editSlots, ro
           {displayItems.map((item, itemIndex) => {
             const itemTitle = renderContactItemTitle(editSlots, item.title, blockIndex, itemIndex)
             const itemDescription = renderContactItemDescription(editSlots, item.description, blockIndex, itemIndex)
-            const ContactIcon =
-              item.icon === "message" ? MessageCircle : resolveContactIcon(item.icon, Mail)
+            const ContactIcon = resolveContactIcon(item.icon)
             if (!itemTitle && !itemDescription && !item.value) return null
             return (
               <div className="rounded-xl border border-dashed bg-muted/20 p-6 pb-8" key={itemIndex}>
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-foreground/5 text-foreground dark:bg-muted">
-                  <ContactIcon className="h-5 w-5" />
+                  <ContactIcon />
                 </div>
                 {itemTitle ? <h3 className="mt-8 font-medium text-xl">{itemTitle}</h3> : null}
                 {itemDescription ? <p className="mt-1.5 mb-4 text-muted-foreground">{itemDescription}</p> : null}

@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
-import { Mail, MapPin, MessageCircle, Phone, Building2, type LucideIcon } from "lucide-react"
+import { MailIcon, MapPinIcon, MessageCircle, PhoneIcon, Building2, type LucideIcon } from "lucide-react"
 import type { BlockEditSlots } from "../../../blocks/types"
 import { isExternalHref } from "./links"
 import { elementPath } from "./paths"
@@ -19,16 +19,26 @@ export type ContactDetailsItem = {
 }
 
 const CONTACT_ICONS: Record<string, LucideIcon> = {
-  mail: Mail,
-  "map-pin": MapPin,
+  mail: MailIcon,
+  "map-pin": MapPinIcon,
   message: MessageCircle,
-  phone: Phone,
+  phone: PhoneIcon,
   "building-2": Building2,
 }
 
-export const resolveContactIcon = (icon: string | null | undefined, fallback: LucideIcon) => {
+export const resolveContactIcon = (icon: string | null | undefined, fallback: LucideIcon = MailIcon) => {
   const key = icon?.trim().toLowerCase() ?? ""
   return CONTACT_ICONS[key] ?? fallback
+}
+
+const renderPlainContactValue = (value: string) => {
+  if (!value.includes("\n")) return value
+  return value.split("\n").map((part, index) => (
+    <React.Fragment key={index}>
+      {index > 0 ? <br /> : null}
+      {part}
+    </React.Fragment>
+  ))
 }
 
 const optionalInlineField = (
@@ -116,7 +126,7 @@ export const renderContactItemValue = (
         className: "contents",
         elementPath: path,
       })
-    : trimmed || null
+    : renderPlainContactValue(trimmed)
   if (!content) return null
   return className ? <span className={className}>{content}</span> : content
 }

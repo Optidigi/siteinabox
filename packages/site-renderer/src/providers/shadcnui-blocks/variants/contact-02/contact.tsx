@@ -7,10 +7,12 @@ import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Chec
 import { contact02CmsLike } from "../../typed/fixtures/contact-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
+  contact02LiteralDetails,
   renderContactFieldLabel,
   renderContactSectionDescription,
   renderContactSectionTitle,
   renderContactSubmitLabel,
+  renderRuntimeContactDetailValue,
   resolveRuntimeContactDetails,
   type ContactSectionField,
 } from "../../typed/contact-section-fields"
@@ -39,7 +41,8 @@ export function Contact02({
 }: Contact02Props) {
   const titleContent = renderContactSectionTitle(editSlots, title, blockIndex)
   const descriptionContent = renderContactSectionDescription(editSlots, description, blockIndex)
-  const details = resolveRuntimeContactDetails(siteSettings)
+  const runtimeDetails = resolveRuntimeContactDetails(siteSettings)
+  const details = runtimeDetails.length > 0 ? runtimeDetails : contact02LiteralDetails
 
   return (
     <div className="py-20" {...rootAttributes}>
@@ -50,30 +53,30 @@ export function Contact02({
           <p className="mt-3 text-lg text-muted-foreground md:text-xl">{descriptionContent}</p>
         ) : null}
         <div className="mt-16 flex flex-col gap-16 md:gap-10 lg:flex-row">
-          {details.length ? (
-            <div className="grid w-full max-w-3xl grid-cols-1 gap-1 rounded-xl border bg-muted p-1 *:rounded-lg *:border *:bg-background *:p-6 sm:grid-cols-2 lg:col-span-2 dark:*:border-foreground/20">
-              {details.map(({ title: detailTitle, description: detailDescription, value, href, Icon }) => (
-                <div key={detailTitle}>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:border-foreground/20 dark:bg-foreground/10">
-                    <Icon />
-                  </div>
-                  <h3 className="mt-6 font-medium text-xl">{detailTitle}</h3>
-                  <p className="my-2.5 text-muted-foreground">{detailDescription}</p>
-                  {href ? (
-                    <a className="font-medium text-primary" href={href}>{value}</a>
-                  ) : (
-                    <span className="font-medium text-primary">{value}</span>
-                  )}
+          <div className="grid w-full max-w-3xl grid-cols-1 gap-1 rounded-xl border bg-muted p-1 *:rounded-lg *:border *:bg-background *:p-6 sm:grid-cols-2 lg:col-span-2 dark:*:border-foreground/20">
+            {details.map(({ title: detailTitle, description: detailDescription, value, href, target, Icon }) => (
+              <div key={detailTitle}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:border-foreground/20 dark:bg-foreground/10">
+                  <Icon />
                 </div>
-              ))}
-            </div>
-          ) : null}
+                <h3 className="mt-6 font-medium text-xl">{detailTitle}</h3>
+                <p className="my-2.5 text-muted-foreground">{detailDescription}</p>
+                {href ? (
+                  <a className="font-medium text-primary" href={href} target={target}>
+                    {renderRuntimeContactDetailValue(value)}
+                  </a>
+                ) : (
+                  <span className="font-medium text-primary">{renderRuntimeContactDetailValue(value)}</span>
+                )}
+              </div>
+            ))}
+          </div>
           <div className="w-full max-w-lg rounded-xl border bg-muted p-1">
             <Card className="relative isolate rounded-lg bg-background shadow-none lg:ms-auto dark:border-foreground/20">
               <CardHeader className="gap-1">
                 <CardTitle className="font-medium text-xl">{formName}</CardTitle>
                 <CardDescription className="text-base">
-                  {description ? "Fill out the form and we will get back to you." : "Send us a message."}
+                  We&apos;d love to hear from you. Please fill out this form.
                 </CardDescription>
               </CardHeader>
               <CardContent className="mt-2">
@@ -84,21 +87,20 @@ export function Contact02({
                       <div
                         key={field.name}
                         className={
-                          field.type === "textarea" || field.type === "select" || field.type === "checkbox"
+                          field.name === "acceptTerms" || field.type === "textarea" || field.type === "select"
                             ? "col-span-2"
                             : "col-span-2 sm:col-span-1"
                         }
                       >
                         {field.type === "checkbox" ? (
                           <div className="flex items-center gap-2">
-                            <Checkbox
-                              className="bg-background"
-                              id={field.name}
-                              name={field.name}
-                              required={field.required}
-                            />
+                            <Checkbox className="bg-background" id={field.name} name={field.name} />
                             <Label className="gap-0" htmlFor={field.name}>
-                              {renderContactFieldLabel(editSlots, field.label, blockIndex, index)}
+                              You agree to our
+                              <a className="ml-1 underline" href="#">
+                                terms and conditions
+                              </a>
+                              <span>.</span>
                             </Label>
                           </div>
                         ) : (
@@ -112,7 +114,6 @@ export function Contact02({
                                 id={field.name}
                                 name={field.name}
                                 placeholder={field.placeholder ?? undefined}
-                                required={field.required}
                                 rows={6}
                                 maxLength={field.maxLength ?? undefined}
                               />
@@ -121,7 +122,6 @@ export function Contact02({
                                 className="mt-2 h-10 w-full rounded-md border bg-[var(--provider-surface,#fff)] px-3 shadow-none"
                                 id={field.name}
                                 name={field.name}
-                                required={field.required}
                               >
                                 {field.options?.map((option) => (
                                   <option key={option.value} value={option.value}>{option.label}</option>
@@ -133,7 +133,6 @@ export function Contact02({
                                 id={field.name}
                                 name={field.name}
                                 placeholder={field.placeholder ?? undefined}
-                                required={field.required}
                                 type={field.type}
                                 maxLength={field.maxLength ?? undefined}
                               />
