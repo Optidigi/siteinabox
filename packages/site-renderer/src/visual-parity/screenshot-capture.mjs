@@ -15,7 +15,7 @@ const errorText = (error) => {
 export function classifyScreenshotCaptureError(error) {
   if (!(error instanceof ScreenshotCaptureError)) return null
   const message = errorText(error)
-  if (/Page\.captureScreenshot:\s*Unable to capture screenshot/i.test(message)) return "capture-protocol"
+  if (/(?:Protocol error \()?Page\.captureScreenshot\)?:\s*Unable to capture screenshot/i.test(message)) return "capture-protocol"
   if (/screenshot[^\n]*(?:timed?\s*out|timeout)|TimeoutError[^\n]*screenshot/i.test(message)) return "capture-timeout"
   if (/page[^\n]*(?:crashed|has been closed|is closed)|Target page, context or browser has been closed/i.test(message)) return "page-unavailable"
   if (/browser[^\n]*(?:disconnected|has been closed|is closed)/i.test(message)) return "browser-disconnected"

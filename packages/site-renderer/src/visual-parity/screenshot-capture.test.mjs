@@ -33,6 +33,25 @@ test("a protocol capture failure retries once with a newly created page pair", a
   assert.deepEqual(closedPairs, createdPairs)
 })
 
+test("Playwright's wrapped protocol capture failure is retryable", async () => {
+  let attempts = 0
+  await runScreenshotCaptureSequence({
+    runAttempt: async (attempt) => {
+      attempts += 1
+      if (attempt === 1) {
+        throw new ScreenshotCaptureError(
+          "upstream",
+          new Error("page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot"),
+        )
+      }
+      return "captured"
+    },
+    isBrowserConnected: () => true,
+    relaunchBrowser: async () => {},
+  })
+  assert.equal(attempts, 2)
+})
+
 test("a disconnected browser is relaunched at most once", async () => {
   let connected = false
   let relaunches = 0
