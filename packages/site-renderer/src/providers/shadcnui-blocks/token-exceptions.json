@@ -4,13 +4,6 @@
   "policy": "Tenant UI must use semantic tokens. Only brand assets, non-visible masks, on-media contrast, structural shadows, and authored illustrations may retain literal visual values.",
   "exceptions": [
     {
-      "variantPattern": "logo-cloud-*",
-      "file": "logos.tsx",
-      "category": "brand-asset",
-      "values": "*",
-      "reason": "Company marks retain their official brand colors and are not tenant-theme artwork."
-    },
-    {
       "variant": "hero-08",
       "file": "logos.tsx",
       "category": "brand-asset",

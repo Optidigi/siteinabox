@@ -143,7 +143,7 @@
   ],
   "tokenExceptions": {
     "path": "packages/site-renderer/src/providers/shadcnui-blocks/token-exceptions.json",
-    "sha256": "sha256:ed976339a877676149263b509adc31632538dea06a7c25b54db3dc431496e97f"
+    "sha256": "sha256:ca6500278563ad3ea90c98e99a080d67214dc88be5a266969a3752989400c587"
   },
   "derivedSystemBlocks": [
     {
@@ -8359,15 +8359,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/logo-cloud.tsx",
-          "sha256": "sha256:ffb431bbeeb95e252bf22e6f187c31f91473cf92dcf1877b9b7882af8f180e10"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
+          "sha256": "sha256:3a13d4391094aeb79e6f7e1d6656de83d1080c54e88bd04559eb08baf5efb6c9"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/view.tsx",
-          "sha256": "sha256:e1afc2b54c6643d8fd17183efbe814504573291602909857affc6af8c206270e"
+          "sha256": "sha256:b0149c9a12f0ffc257989e3125e1821869b9f754342e4ab7746dff3e1dfdb1b5"
         }
       ]
     },
@@ -8623,15 +8619,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-03/logo-cloud.tsx",
-          "sha256": "sha256:6b5ff521861622903a4e11af3a96182441224c327e1b5827f71a703bad971671"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-03/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
+          "sha256": "sha256:08aeb8727224d2cc23630e2d9555a8567936e436e3b1ca04473ce306f3c48bb3"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-03/view.tsx",
-          "sha256": "sha256:b7b04be3bc6a3e1925b1503e73ce9d87c774601f588e2b468e1d62621d1d6fc8"
+          "sha256": "sha256:fa3f62f54bab4cfa440c54de30be2e50f9542e8ded3f0e5bf44428ed2cf40131"
         }
       ]
     },
@@ -8881,15 +8873,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-04/logo-cloud.tsx",
-          "sha256": "sha256:ed50a6bcd6b318331634704c6ae584c654ac2ceec2ab763ecc0ce282f76b8b41"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-04/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
+          "sha256": "sha256:2bba6cf67b9c13a5cb52e834cc15c8db9645c3111dc863c48448df3787e9ca50"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-04/view.tsx",
-          "sha256": "sha256:63eee68438549f2452ddaa1821077ed65a90dc770f250debf374b743fbad2c60"
+          "sha256": "sha256:39728a584915c0deaf7f6a9d4af750d7385b265b5e96afb4f1d005c84cefc5ca"
         }
       ]
     },
@@ -9139,15 +9127,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-05/logo-cloud.tsx",
-          "sha256": "sha256:e806b16d1a527cdac7c707edd27f30fcfb5c44dcc874fc3f1d80fe47fba1a41b"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-05/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
+          "sha256": "sha256:ee269d2edacaa85972ca1a1b3fa68fb7facebeff547558b7399ae84968b4994e"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-05/view.tsx",
-          "sha256": "sha256:8bcb65e4000c952d464ccd68760bc1bf8e8b7773f44038411e8eda5f0c09a422"
+          "sha256": "sha256:616b924592d43eb386e60d7253eacbc56ee7fd415026af6ad91cdd9747a26654"
         }
       ]
     },
@@ -9409,19 +9393,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-06/logo-cloud.tsx",
-          "sha256": "sha256:c46477805de2902eba892de033ea1e0da9b26e772ae76385701f8e85bedadfc3"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-06/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-06/marquee.tsx",
-          "sha256": "sha256:e5c66da8b7d30abbd2dbda3f2d8adf1cec8032b5b9ab1cbd1aee0544a4d8f0b1"
+          "sha256": "sha256:6d5cc11d55087fdce034026c1106dac0f83fb3623e55f02ba04520441013eb4d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-06/view.tsx",
-          "sha256": "sha256:7dea66e8585c25f034c6b82906f707db0c9f09b1bf5e17defcbf7554e9660e44"
+          "sha256": "sha256:8bb775934a40ac89cf944f88127650ec2aa9752eb4e903b636b5da6983e1547b"
         }
       ]
     },
@@ -9683,19 +9659,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-07/logo-cloud.tsx",
-          "sha256": "sha256:6e204fe70251180d7c83ec352dda75dbd667c6c70290e9706a274eaba71f5a06"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-07/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-07/marquee.tsx",
-          "sha256": "sha256:e5c66da8b7d30abbd2dbda3f2d8adf1cec8032b5b9ab1cbd1aee0544a4d8f0b1"
+          "sha256": "sha256:9243217e516b625a120ab588cd5d39bc71744bc1e880c9f96c4353859d3e5ee4"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-07/view.tsx",
-          "sha256": "sha256:e9037e5a99681b7b4509de903ba8f7004ca2d4c42940befef5c74510dc8c8ffa"
+          "sha256": "sha256:48e1e33cde12e011240e0f9d784d64b32432fac670dc14585b6ffba23daccf5d"
         }
       ]
     },
@@ -25213,15 +25181,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-08/logo-cloud.tsx",
-          "sha256": "sha256:5aa418be737398e60a28c4d3a5e3a06c6fb7bd8521a7ec936ea2c9410385a249"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-08/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
+          "sha256": "sha256:5bfd2c9f6b62276b348406c5e479a198205a914923402744ed90c7b210bf3b60"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-08/view.tsx",
-          "sha256": "sha256:44a4a1976df2102fd0359c3973a0ae6007ad52275005c3297d922f4645cdb3f2"
+          "sha256": "sha256:f2da9a051e812fcd761feac9a3abce8cba44bdfe82007cab3e6a6c1dc9204c3d"
         }
       ]
     },
@@ -25467,15 +25431,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-09/logo-cloud.tsx",
-          "sha256": "sha256:6e06b66f9bfa18c208c4921d8bf8a52883a53387c134fc1e2231416c2ac39065"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-09/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
+          "sha256": "sha256:8979d04ef9685f9a17d482fadad6c5a2e18167f1f2fc3f02d2c83283aded1fdd"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-09/view.tsx",
-          "sha256": "sha256:d2fd6c90c2bc2f9ef1ac687b539c85f50076def4c2b1dc1b60030bcc6ef910ce"
+          "sha256": "sha256:454b227fdb89b756a6e87d3a7bb3dcc825953fbe7a8a133d1f91f198b564fd1b"
         }
       ]
     },
@@ -25735,19 +25695,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-10/logo-cloud.tsx",
-          "sha256": "sha256:9435521cd6476caf577cde72a8acccfc1379eebb8170c4af9b5c45163a365857"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-10/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-10/marquee.tsx",
-          "sha256": "sha256:e5c66da8b7d30abbd2dbda3f2d8adf1cec8032b5b9ab1cbd1aee0544a4d8f0b1"
+          "sha256": "sha256:169a6a2b957ffdbf9617185b8f28bf668faa7d45cf6f636b976f747509586c81"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-10/view.tsx",
-          "sha256": "sha256:a2c20bda80d4e1ac584f247a0c8ee10d95818ee67b807d870657ffefa0ac9e7f"
+          "sha256": "sha256:487418f8f8c00da1d1c7af571cbf24a09f9a08121b934bae7970532142f0baaf"
         }
       ]
     },
@@ -25997,15 +25949,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-11/logo-cloud.tsx",
-          "sha256": "sha256:87f09b7d66d070e54e21513e2b706961527b415d549ca681920f5a09a5f3e1fd"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-11/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
+          "sha256": "sha256:6f7fea763221cf69231732297dbfbb49e1b56306afd3ed692ccb14560e176027"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-11/view.tsx",
-          "sha256": "sha256:2c0db906549350d75032dad9791b29d65d7331eb9ca7dc4e415cc530d25fceb0"
+          "sha256": "sha256:edeb7e5d0faabc3bb802a47c7857fbabd5a1602c7c266ca5174f109be2174e15"
         }
       ]
     },
@@ -26260,15 +26208,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-12/logo-cloud.tsx",
-          "sha256": "sha256:85c3297140cbd4c53de5f5cda5b0090263dbac83d81f9e6e0d5a95aaf4e03baf"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-12/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
+          "sha256": "sha256:285f63c05e1e19ce4ef1d3bf5183a349ed0a87d93f2c40d8ddc814fe4c119476"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-12/view.tsx",
-          "sha256": "sha256:184f16f74441617ceb412bae44f6bcbbfb65a5c48e24fabddcad733b2ad2f0b1"
+          "sha256": "sha256:5b42c72fb22cc9c6e7bb2e902deea09205f92f3a027a557289adde85e3caf869"
         }
       ]
     },
@@ -26527,19 +26471,15 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-13/logo-cloud.tsx",
-          "sha256": "sha256:5ef9862b262629832c809be127150b4df3cd2deebfa2aa1369e47341e37f4065"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-13/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
+          "sha256": "sha256:dea8f5dffbb83309e724a365e013707c1e92972bd827ccaeec00efd87a833da4"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-13/marquee.tsx",
-          "sha256": "sha256:e5c66da8b7d30abbd2dbda3f2d8adf1cec8032b5b9ab1cbd1aee0544a4d8f0b1"
+          "sha256": "sha256:1e209c4db7effef10614b007dfcfad72199e0104799acc7b2da1c2e311377c45"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-13/view.tsx",
-          "sha256": "sha256:59ff2658c56b89bebbeebd5f74d2dd488690c06b0bbd602413916e22f1ae457f"
+          "sha256": "sha256:61ef134e86f5e9fa34e96aa377b2a26b5589f9268707779a3c714bbd38f1633c"
         }
       ]
     },
@@ -26794,15 +26734,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-14/logo-cloud.tsx",
-          "sha256": "sha256:fcd68aa69713f0599fe4a806a689de0147baec55a578387f66d90ab01693c6d0"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-14/logos.tsx",
-          "sha256": "sha256:34e3b8e0950c485a5202d81210a33ddf174f84cf26a80da7dbf1a856b2718d3a"
+          "sha256": "sha256:44babd8343d9cbe8e26cc63825ce08b7f7f551bde93491d4d76ec6d4a9c0eec9"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-14/view.tsx",
-          "sha256": "sha256:575a6a4a8a80b4d4a8157cdb4d2c768ac91792451c7da5b82689a38fee1c3527"
+          "sha256": "sha256:a3d181ca79b76b09052535807d0fc0e2975f88940e14e7c452a6d7dec57ba11e"
         }
       ]
     },
@@ -27066,23 +27002,15 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-15/border-beam.tsx",
-          "sha256": "sha256:22053dd95685948c068fa8166aecdb590e1be15759b28ac4fffffc54b670c74a"
+          "sha256": "sha256:b1e57f10b25437809a217b0ac721370e2c2062bb54fabe42306ed12c3ed8470e"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-15/logo-cloud.tsx",
-          "sha256": "sha256:b1d7264aeadfceb172c2a97895bebfbc264c39f1a8ad4b48c1c146bcd50d2878"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-15/logos.tsx",
-          "sha256": "sha256:7c86a8b65abcd16bf92d6edb08f434207f0db7136c766eab6bf4a8a189956043"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-15/marquee.tsx",
-          "sha256": "sha256:e5c66da8b7d30abbd2dbda3f2d8adf1cec8032b5b9ab1cbd1aee0544a4d8f0b1"
+          "sha256": "sha256:24db468733a38b9dcd697d88e244fcf602edcc11fa11b582eb526c8bf392632a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-15/view.tsx",
-          "sha256": "sha256:bc98e735fb0b61cc657ad8c55d23a84e5cb55ee4fddae83b236979104c85e8d0"
+          "sha256": "sha256:261e9336137e071b5f90e5f86487e0e1cf36602cb95380dca2af4b126e95a277"
         }
       ]
     },

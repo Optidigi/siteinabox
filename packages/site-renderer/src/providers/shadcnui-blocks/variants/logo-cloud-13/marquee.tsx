@@ -1,6 +1,6 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import type { ComponentPropsWithoutRef } from "react";
-import { cn } from "@siteinabox/ui/lib/utils";
+import * as React from "react"
+import type { ComponentPropsWithoutRef } from "react"
+import { cn } from "@siteinabox/ui/lib/utils"
 
 interface MarqueeProps extends ComponentPropsWithoutRef<"div"> {
   /**

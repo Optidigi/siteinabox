@@ -6,6 +6,7 @@ export * from "./fixtures/faq-family"
 export * from "./fixtures/feature-family"
 export * from "./fixtures/hero-family"
 export * from "./fixtures/logo-cloud-01"
+export * from "./fixtures/logo-cloud-family"
 export { renderCtaLink, type CtaLinkField } from "./actions"
 export { providerCircuitBoardStyle } from "./grid-pattern"
 export { renderBackgroundImage } from "./images"
@@ -46,6 +47,15 @@ export {
   renderHeroSubheadline,
   renderHeroTrustLabel,
 } from "./hero-fields"
+export {
+  LOGO_CLOUD_BLOCK_TYPE,
+  type LogoCloudLogoItem,
+  renderLogoCloudIntro,
+  renderLogoCloudLink,
+  renderLogoCloudLogo,
+  renderLogoCloudTitle,
+  sliceLogoCloudLogos,
+} from "./logo-cloud-fields"
 export { fieldInlineRichText, renderBlockRichText, renderInlineRichText } from "./rich-text"
 export {
   BEHAVIOR_ADAPTER_IDS,

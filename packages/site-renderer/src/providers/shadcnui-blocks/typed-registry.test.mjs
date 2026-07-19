@@ -50,6 +50,20 @@ import Hero06View from "./variants/hero-06/view.tsx"
 import Hero07View from "./variants/hero-07/view.tsx"
 import Hero08View from "./variants/hero-08/view.tsx"
 import LogoCloud01View from "./variants/logo-cloud-01/view.tsx"
+import LogoCloud02View from "./variants/logo-cloud-02/view.tsx"
+import LogoCloud03View from "./variants/logo-cloud-03/view.tsx"
+import LogoCloud04View from "./variants/logo-cloud-04/view.tsx"
+import LogoCloud05View from "./variants/logo-cloud-05/view.tsx"
+import LogoCloud06View from "./variants/logo-cloud-06/view.tsx"
+import LogoCloud07View from "./variants/logo-cloud-07/view.tsx"
+import LogoCloud08View from "./variants/logo-cloud-08/view.tsx"
+import LogoCloud09View from "./variants/logo-cloud-09/view.tsx"
+import LogoCloud10View from "./variants/logo-cloud-10/view.tsx"
+import LogoCloud11View from "./variants/logo-cloud-11/view.tsx"
+import LogoCloud12View from "./variants/logo-cloud-12/view.tsx"
+import LogoCloud13View from "./variants/logo-cloud-13/view.tsx"
+import LogoCloud14View from "./variants/logo-cloud-14/view.tsx"
+import LogoCloud15View from "./variants/logo-cloud-15/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
   LEGACY_BEHAVIOR_ADAPTER_IDS,
@@ -66,6 +80,20 @@ const viewById = {
   "shadcnui-blocks.cta-06": Cta06View,
   "shadcnui-blocks.cta-07": Cta07View,
   "shadcnui-blocks.logo-cloud-01": LogoCloud01View,
+  "shadcnui-blocks.logo-cloud-02": LogoCloud02View,
+  "shadcnui-blocks.logo-cloud-03": LogoCloud03View,
+  "shadcnui-blocks.logo-cloud-04": LogoCloud04View,
+  "shadcnui-blocks.logo-cloud-05": LogoCloud05View,
+  "shadcnui-blocks.logo-cloud-06": LogoCloud06View,
+  "shadcnui-blocks.logo-cloud-07": LogoCloud07View,
+  "shadcnui-blocks.logo-cloud-08": LogoCloud08View,
+  "shadcnui-blocks.logo-cloud-09": LogoCloud09View,
+  "shadcnui-blocks.logo-cloud-10": LogoCloud10View,
+  "shadcnui-blocks.logo-cloud-11": LogoCloud11View,
+  "shadcnui-blocks.logo-cloud-12": LogoCloud12View,
+  "shadcnui-blocks.logo-cloud-13": LogoCloud13View,
+  "shadcnui-blocks.logo-cloud-14": LogoCloud14View,
+  "shadcnui-blocks.logo-cloud-15": LogoCloud15View,
   "shadcnui-blocks.faq-01": Faq01View,
   "shadcnui-blocks.faq-02": Faq02View,
   "shadcnui-blocks.faq-03": Faq03View,

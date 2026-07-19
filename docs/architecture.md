@@ -56,7 +56,7 @@ Shared helpers for the migrated pilots live in
 `packages/site-renderer/src/providers/shadcnui-blocks/typed/` (rich-text
 preview fixtures, element paths, and edit-slot renderers). The compile-time
 registry in `typed/registry.ts` lists exactly the migrated pilots
-(`cta-01` … `cta-07`, `logo-cloud-01`, `faq-01` … `faq-14`,
+(`cta-01` … `cta-07`, `logo-cloud-01` … `logo-cloud-15`, `faq-01` … `faq-14`,
 `features-01` … `features-18`, `hero-01` … `hero-08`) and ties each variant ID to its
 canonical block type, direct bindings, and view module.
 

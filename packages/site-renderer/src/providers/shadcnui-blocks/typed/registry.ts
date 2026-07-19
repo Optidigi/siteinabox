@@ -46,6 +46,20 @@ import Hero06View from "../variants/hero-06/view"
 import Hero07View from "../variants/hero-07/view"
 import Hero08View from "../variants/hero-08/view"
 import LogoCloud01View from "../variants/logo-cloud-01/view"
+import LogoCloud02View from "../variants/logo-cloud-02/view"
+import LogoCloud03View from "../variants/logo-cloud-03/view"
+import LogoCloud04View from "../variants/logo-cloud-04/view"
+import LogoCloud05View from "../variants/logo-cloud-05/view"
+import LogoCloud06View from "../variants/logo-cloud-06/view"
+import LogoCloud07View from "../variants/logo-cloud-07/view"
+import LogoCloud08View from "../variants/logo-cloud-08/view"
+import LogoCloud09View from "../variants/logo-cloud-09/view"
+import LogoCloud10View from "../variants/logo-cloud-10/view"
+import LogoCloud11View from "../variants/logo-cloud-11/view"
+import LogoCloud12View from "../variants/logo-cloud-12/view"
+import LogoCloud13View from "../variants/logo-cloud-13/view"
+import LogoCloud14View from "../variants/logo-cloud-14/view"
+import LogoCloud15View from "../variants/logo-cloud-15/view"
 
 export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-01",
@@ -56,6 +70,20 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-06",
   "shadcnui-blocks.cta-07",
   "shadcnui-blocks.logo-cloud-01",
+  "shadcnui-blocks.logo-cloud-02",
+  "shadcnui-blocks.logo-cloud-03",
+  "shadcnui-blocks.logo-cloud-04",
+  "shadcnui-blocks.logo-cloud-05",
+  "shadcnui-blocks.logo-cloud-06",
+  "shadcnui-blocks.logo-cloud-07",
+  "shadcnui-blocks.logo-cloud-08",
+  "shadcnui-blocks.logo-cloud-09",
+  "shadcnui-blocks.logo-cloud-10",
+  "shadcnui-blocks.logo-cloud-11",
+  "shadcnui-blocks.logo-cloud-12",
+  "shadcnui-blocks.logo-cloud-13",
+  "shadcnui-blocks.logo-cloud-14",
+  "shadcnui-blocks.logo-cloud-15",
   "shadcnui-blocks.faq-01",
   "shadcnui-blocks.faq-02",
   "shadcnui-blocks.faq-03",
@@ -125,6 +153,11 @@ const FEATURE_EYEBROW_TITLE_INTRO_FEATURES = ["eyebrow", "title", "intro", "feat
 const HERO_STANDARD_FIELDS = ["eyebrow", "headline", "subheadline", "cta", "secondary"] as const
 const HERO_WITH_IMAGE_FIELDS = [...HERO_STANDARD_FIELDS, "image"] as const
 const HERO_08_FIELDS = ["headline", "subheadline", "cta", "secondary", "trustLabel", "logos"] as const
+const LOGO_CLOUD_TITLE_LOGOS = ["title", "logos"] as const
+const LOGO_CLOUD_TITLE_INTRO_CTA_LOGOS = ["title", "intro", "cta", "logos"] as const
+const LOGO_CLOUD_INTRO_LOGOS = ["intro", "logos"] as const
+const LOGO_CLOUD_INTRO_TITLE_LOGOS = ["intro", "title", "logos"] as const
+const LOGO_CLOUD_TITLE_CTA_LOGOS = ["title", "cta", "logos"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -172,8 +205,92 @@ export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.logo-cloud-01": {
     upstreamName: "logo-cloud-01",
     blockType: "logoCloud",
-    directFields: ["title", "logos"],
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
     View: LogoCloud01View,
+  },
+  "shadcnui-blocks.logo-cloud-02": {
+    upstreamName: "logo-cloud-02",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
+    View: LogoCloud02View,
+  },
+  "shadcnui-blocks.logo-cloud-03": {
+    upstreamName: "logo-cloud-03",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_INTRO_CTA_LOGOS,
+    View: LogoCloud03View,
+  },
+  "shadcnui-blocks.logo-cloud-04": {
+    upstreamName: "logo-cloud-04",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_INTRO_LOGOS,
+    View: LogoCloud04View,
+  },
+  "shadcnui-blocks.logo-cloud-05": {
+    upstreamName: "logo-cloud-05",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_INTRO_LOGOS,
+    View: LogoCloud05View,
+  },
+  "shadcnui-blocks.logo-cloud-06": {
+    upstreamName: "logo-cloud-06",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
+    View: LogoCloud06View,
+  },
+  "shadcnui-blocks.logo-cloud-07": {
+    upstreamName: "logo-cloud-07",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
+    View: LogoCloud07View,
+  },
+  "shadcnui-blocks.logo-cloud-08": {
+    upstreamName: "logo-cloud-08",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_INTRO_LOGOS,
+    View: LogoCloud08View,
+  },
+  "shadcnui-blocks.logo-cloud-09": {
+    upstreamName: "logo-cloud-09",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
+    View: LogoCloud09View,
+  },
+  "shadcnui-blocks.logo-cloud-10": {
+    upstreamName: "logo-cloud-10",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
+    View: LogoCloud10View,
+  },
+  "shadcnui-blocks.logo-cloud-11": {
+    upstreamName: "logo-cloud-11",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_INTRO_LOGOS,
+    View: LogoCloud11View,
+  },
+  "shadcnui-blocks.logo-cloud-12": {
+    upstreamName: "logo-cloud-12",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_INTRO_TITLE_LOGOS,
+    View: LogoCloud12View,
+  },
+  "shadcnui-blocks.logo-cloud-13": {
+    upstreamName: "logo-cloud-13",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_INTRO_LOGOS,
+    View: LogoCloud13View,
+  },
+  "shadcnui-blocks.logo-cloud-14": {
+    upstreamName: "logo-cloud-14",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_CTA_LOGOS,
+    View: LogoCloud14View,
+  },
+  "shadcnui-blocks.logo-cloud-15": {
+    upstreamName: "logo-cloud-15",
+    blockType: "logoCloud",
+    directFields: LOGO_CLOUD_TITLE_LOGOS,
+    View: LogoCloud15View,
   },
   "shadcnui-blocks.faq-01": {
     upstreamName: "faq-01",

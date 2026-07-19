@@ -81,20 +81,6 @@ export const VARIANT_SPECIAL_CASES = {
       return /^navbar\.(?:ts|tsx)$/.test(filename)
     },
   },
-  "logo-cloud-15": {
-    adaptLiteral({ contents, filename }) {
-      if (filename === "border-beam.tsx") {
-        return adaptThemeColors(contents, BORDER_BEAM_THEME_REPLACEMENTS)
-      }
-      if (filename === "logo-cloud.tsx") {
-        return adaptThemeColors(contents, [
-          ["#ffaa40", "var(--provider-accent-400, #ffaa40)"],
-          ["#9c40ff", "var(--provider-accent-700, #9c40ff)"],
-        ])
-      }
-      return contents
-    },
-  },
   "footer-03": {
     featureAuditExtras({ sourceText = "" } = {}) {
       if (!/(?:<form|type=["']email|type=["']submit)/i.test(sourceText)) return []
