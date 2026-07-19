@@ -1028,6 +1028,20 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     }
     try {
       await Promise.all([themePromise, saveNavMembership(), saveChrome()])
+      const publishResponse = await fetch("/api/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          tenantId,
+          includeAllPublishedPages: true,
+          activate: true,
+          reason: "page editor save",
+        }),
+      })
+      if (!publishResponse.ok) {
+        const detail = await parsePayloadError(publishResponse)
+        throw new Error(detail.message)
+      }
     } catch (err) {
       setPending(false)
       const msg = err instanceof Error ? err.message : t("saveFailed")
