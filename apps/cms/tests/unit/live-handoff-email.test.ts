@@ -200,11 +200,12 @@ describe("CMS live handoff email", () => {
       }],
     })
 
-    await expect(sendLiveHandoffEmailAfterActivation(payload, {
+    const result = await sendLiveHandoffEmailAfterActivation(payload, {
       tenant: asTenant(tenant),
       run: asGenerationRun(run),
       snapshotDoc: asPublishedSnapshot(snapshot),
-    })).resolves.toBe("sent")
+    })
+    expect(result).toBe("sent")
 
     expect(payload.create).not.toHaveBeenCalled()
     expect(payload.update).toHaveBeenCalledWith(expect.objectContaining({

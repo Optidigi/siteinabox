@@ -737,22 +737,7 @@ const usersBeforeOpHooks = (Users.hooks?.beforeOperation ?? []).map(asBeforeOper
 // layer-2 forgot-password hook is at index 1 (registered second). The
 // AMD-3 test asserts the index-0 invariant; we assert the index-1 hook's
 // behaviour here, with a behavioral fallback in case the order ever drifts.
-const findForgotPasswordHook = () => {
-  for (const h of usersBeforeOpHooks) {
-    let threw = false
-    try {
-      callBeforeOpHook(h, {
-        operation: "forgotPassword",
-        req: reqShape({ authorization: "x" }),
-      })
-    } catch {
-      threw = true
-    }
-    if (threw) return h
-  }
-  return undefined
-}
-const forgotPasswordHook = findForgotPasswordHook()
+  const forgotPasswordHook = usersBeforeOpHooks[1]
 
 const callForgotHook = async (req: Record<string, unknown>, operation: "forgotPassword" | "create" | "update" = "forgotPassword") => {
   if (!forgotPasswordHook) return undefined

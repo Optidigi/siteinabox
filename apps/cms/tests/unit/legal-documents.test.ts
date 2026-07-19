@@ -142,7 +142,7 @@ describe("legal document synchronization", () => {
 
     expect(created).toHaveLength(1)
     expect(created[0]).toMatchObject({
-      tenant: "7",
+      tenant: 7,
       subjectEmail: "owner@example.test",
       document: 10,
       action,

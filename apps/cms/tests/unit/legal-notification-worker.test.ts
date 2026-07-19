@@ -25,6 +25,7 @@ const createPayload = () => {
       changeSummary: "De looptijd is aangepast.",
       noticeDays: 30,
       markdown: "# Algemene voorwaarden\n\nDit is de volledige tekst.",
+      content: "# Algemene voorwaarden\n\nDit is de volledige tekst.",
     },
     action: "mandatory_reaccept",
     status: "pending",

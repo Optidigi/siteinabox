@@ -80,8 +80,7 @@ async function emailFromLinkedIntake(payload: Payload, run: SiteGenerationRun): 
     })
     return cleanEmail(intake?.contactEmail) ?? emailFromNormalizedIntake(intake?.normalized)
   } catch (error) {
-    payload.logger.warn({
-      msg: "[publish] live handoff intake lookup failed",
+    payload.logger.warn("[publish] live handoff intake lookup failed", {
       tenant: relationshipId(run.tenant),
       generationRun: run.id,
       intakeSubmission: intakeId,
@@ -243,8 +242,7 @@ export async function sendLiveHandoffEmailAfterActivation(
 
   const recipient = await resolveLiveHandoffRecipient(payload, input.run)
   if (!recipient) {
-    payload.logger.warn({
-      msg: "[publish] live handoff email skipped",
+    payload.logger.warn("[publish] live handoff email skipped", {
       reason: "missing_recipient",
       tenant: input.tenant.id,
       generationRun: input.run.id,
@@ -257,8 +255,7 @@ export async function sendLiveHandoffEmailAfterActivation(
   const siteUrl = buildLiveSiteUrl(input.snapshotDoc)
   const adminUrl = buildTenantAdminUrl(input.tenant)
   if (!siteUrl || !adminUrl) {
-    payload.logger.warn({
-      msg: "[publish] live handoff email skipped",
+    payload.logger.warn("[publish] live handoff email skipped", {
       reason: "missing_urls",
       tenant: input.tenant.id,
       generationRun: input.run.id,
@@ -277,7 +274,7 @@ export async function sendLiveHandoffEmailAfterActivation(
       name: customerName,
       tenantId: input.tenant.id,
     })
-    if (typeof payload.db.beginTransaction === "function") {
+    if (typeof payload.db?.beginTransaction === "function") {
       try {
         await provisionDefaultTenantEmailPreferences({
           payload,
@@ -287,8 +284,7 @@ export async function sendLiveHandoffEmailAfterActivation(
           role: "owner",
         })
       } catch (error) {
-        payload.logger.warn({
-          msg: "[publish] default email preference provisioning failed",
+        payload.logger.warn("[publish] default email preference provisioning failed", {
           tenant: input.tenant.id,
           user: customerUserId,
           error: error instanceof Error ? error.message : "unknown",
@@ -304,8 +300,7 @@ export async function sendLiveHandoffEmailAfterActivation(
     })
     return "sent"
   } catch (error) {
-    payload.logger.warn({
-      msg: "[publish] live handoff email failed after activation",
+    payload.logger.warn("[publish] live handoff email failed after activation", {
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,

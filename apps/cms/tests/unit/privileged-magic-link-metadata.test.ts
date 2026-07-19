@@ -11,10 +11,14 @@ vi.mock("payload", async (importOriginal) => ({
   ...(await importOriginal<typeof import("payload")>()),
   getPayload: mocks.getPayload,
 }))
-vi.mock("@/lib/email/sendEmail", () => ({
-  getPlatformMailSender: () => "noreply@siteinabox.nl",
-  sendEmail: mocks.sendEmail,
-}))
+vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/email/sendEmail")>()
+  return {
+    ...actual,
+    getPlatformMailSender: () => "noreply@siteinabox.nl",
+    sendEmail: mocks.sendEmail,
+  }
+})
 vi.mock("@/lib/socialAuth/payloadUser", () => ({
   resolvePayloadUserForMagicLink: mocks.resolvePayloadUserForMagicLink,
 }))

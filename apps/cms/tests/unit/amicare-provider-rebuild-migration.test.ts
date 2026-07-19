@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { asMockDoc } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
 import { rebuildAmicare } from "@/migrations/20260718_230256"
 
 const filenames = ["toys.jpg", "bedroom.jpg", "og-default.png", "favicon.svg", "favicon.ico", "apple-touch-icon.png"]
@@ -39,13 +39,18 @@ function payloadFixture({
     "site-settings": settings,
     "published-site-snapshots": snapshots,
   }
+  const findByID = vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
+    const doc = (docsByCollection[collection] ?? []).find((entry) => String(entry.id) === String(id))
+    if (!doc) throw new Error(`Missing ${collection} ${id}`)
+    return doc
+  })
   const find = vi.fn(async ({ collection }: { collection: string }) => ({ docs: docsByCollection[collection] ?? [] }))
   const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
     const source = (docsByCollection[collection] ?? []).find((doc) => doc.id === id) ?? { id }
     return { ...source, ...data }
   })
   const create = vi.fn(async ({ data }: MockCreateArgs) => ({ id: 51, ...data }))
-  return { find, update, create }
+  return { find, findByID, update, create }
 }
 
 describe("Ami Care provider rebuild migration", () => {

@@ -1,5 +1,5 @@
 import { asMockDoc, asNextRequest, cast } from "../_helpers/cast"
-import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 import crypto from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -116,7 +116,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     currency: "EUR",
     paymentStatus: "pending",
   }
-  const acceptance = { id: 700, order: 600, acceptanceVersion: "platform-terms-2026-07-07" }
+  const acceptance = { id: 700, tenant: 1, actorEmail: "client@example.com", order: 600, acceptanceVersion: "platform-terms-2026-07-07" }
   const snapshots: MockDoc[] = []
   const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
     if (collection === "site-generation-runs") Object.assign(run, data)
@@ -147,21 +147,40 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     }),
     find: vi.fn(async ({ collection, where }: MockFindArgs) => {
       if (collection === "published-site-snapshots") {
+        if (where?.and) {
+          return { docs: snapshots.filter((snapshot) => matchesWhere(snapshot, where)) }
+        }
         const clause = (where ?? {}) as MockWhere
-        const sourceRun = asMockDoc(clause.sourceGenerationRun).equals
+        const sourceRun = asMockDoc(clause.sourceGenerationRun)?.equals
         if (sourceRun != null) {
           return { docs: snapshots.filter((snapshot) => String(snapshot.sourceGenerationRun) === String(sourceRun)) }
         }
-        const tenantId = asMockDoc(clause.tenant).equals
+        const tenantId = asMockDoc(clause.tenant)?.equals
         if (tenantId != null) {
           return { docs: snapshots.filter((snapshot) => String(snapshot.tenant) === String(tenantId)) }
         }
-        if (where?.and) return { docs: [] }
         return { docs: snapshots }
       }
       if (collection === "pages") return { docs: [page] }
       if (collection === "site-settings") return { docs: [settings] }
-      if (collection === "agreement-acceptances") return { docs: [acceptance] }
+      if (collection === "agreement-acceptances") {
+        const orderEquals = asMockDoc((where as MockWhere)?.order)?.equals
+        if (orderEquals != null) {
+          return { docs: String(acceptance.order) === String(orderEquals) ? [acceptance] : [] }
+        }
+        const clauses = (where as MockWhere)?.and
+        if (!clauses) return { docs: [acceptance] }
+        const tenantId = asMockDoc(clauses.find((clause) => clause.tenant)?.tenant)?.equals
+        const actorEmail = asMockDoc(clauses.find((clause) => clause.actorEmail)?.actorEmail)?.equals
+        if (tenantId != null && actorEmail != null) {
+          return {
+            docs: String(acceptance.tenant) === String(tenantId) && acceptance.actorEmail === actorEmail
+              ? [acceptance]
+              : [],
+          }
+        }
+        return { docs: [acceptance] }
+      }
       return { docs: [] }
     }),
     create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
@@ -173,6 +192,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       if (collection === "site-settings") return settings
       throw new Error(`Unexpected create ${collection}`)
     }),
+    logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
     update,
   }
   vi.mocked(getPayload).mockResolvedValue(asPayload(payload))

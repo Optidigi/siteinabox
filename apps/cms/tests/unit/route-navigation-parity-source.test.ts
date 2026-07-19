@@ -99,10 +99,11 @@ describe("OBS-103 route and navigation parity source checks", () => {
 
   it("renders viewer page detail through read-only editor chrome", () => {
     const pageForm = read("src/components/forms/PageForm.tsx")
+    const pageEditorCore = read("src/components/editor/usePageEditorCore.ts")
     const frameHost = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
 
     expect(pageForm).toContain("readOnly?: boolean")
-    expect(pageForm).toContain('const canEditPage = !readOnly')
+    expect(pageEditorCore).toContain("const canEditPage = !readOnly")
     expect(pageForm).toContain("<PageEditorFrameHost")
     expect(pageForm).not.toContain("CanvasSelectionProvider")
     expect(pageForm).toContain("{isDesktop && !readOnly && (")

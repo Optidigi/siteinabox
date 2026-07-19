@@ -185,7 +185,7 @@ export function pageToJson(
       manifestVersion: analyticsContext.manifestVersion ?? null,
     },
     blocks,
-    seo: doc.seo ? projectField(doc.seo) : null,
+    ...(doc.seo ? { seo: projectField(doc.seo) } : {}),
     updatedAt: doc.updatedAt
   }
 }

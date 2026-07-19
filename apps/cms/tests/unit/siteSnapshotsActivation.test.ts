@@ -75,6 +75,7 @@ const createActivationPayload = (input?: { tenant?: MockDoc; run?: MockDoc }) =>
       }
       return { ...data }
     }),
+    logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
   }
   return { payload: asPayload(payload), tenant, snapshot, updates }
 }

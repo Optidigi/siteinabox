@@ -64,7 +64,7 @@ const createState = () => {
     id: 900,
     customerEmail: "customer@example.com",
     tenant,
-    generationRun: run,
+    generationRun: 500,
     clientSlug: "preview-studio",
     pages: [100],
     expiresAt: "2026-06-27T10:00:00.000Z",
@@ -89,14 +89,19 @@ const createState = () => {
     if (collection === "site-generation-runs" && String(id) === "500") return run
     if (collection === "tenants" && String(id) === "1") return tenant
     if (collection === "tenants" && String(id) === "2") return otherTenant
+    if (collection === "preview-access-grants") {
+      const grant = grants.find((entry) => String(entry.id) === String(id))
+      if (!grant) throw new Error(`Missing ${collection} ${id}`)
+      return grant
+    }
     throw new Error(`Missing ${collection} ${id}`)
   })
   mocks.payload.create.mockImplementation(async ({ data }: MockCreateArgs) => ({ id: 901, ...data }))
-  mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => ({
-    id,
-    ...asMockDoc(grants[0]),
-    ...asMockDoc(data),
-  }))
+  mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => {
+    const grant = grants.find((entry) => String(entry.id) === String(id)) ?? grants[0]
+    Object.assign(grant, data)
+    return { id, ...grant, ...data }
+  })
 
   return { tenant, pages, run, grants }
 }

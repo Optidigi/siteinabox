@@ -47,6 +47,41 @@ export const blogFamilyCmsLike = {
       "Nov 25, 2024",
       "Finance",
     ),
+    blogPost(
+      "Building a Personal Blog with Next.js",
+      "A practical walkthrough for a personal site.",
+      "Chris Moore",
+      "Nov 22, 2024",
+      "Health",
+    ),
+    blogPost(
+      "The Complete Guide to TypeScript for Beginners",
+      "Start with types, inference, and narrowing.",
+      "Emily Johnson",
+      "Nov 20, 2024",
+      "Lifestyle",
+    ),
+    blogPost(
+      "Optimizing Web Performance with Next.js",
+      "Measure, trim, and ship faster pages.",
+      "John Doe",
+      "Nov 18, 2024",
+      "Politics",
+    ),
+    blogPost(
+      "Deploying Full-Stack Apps on Vercel",
+      "From preview to production with confidence.",
+      "Bob Smith",
+      "Nov 15, 2024",
+      "Science",
+    ),
+    blogPost(
+      "Getting Started with Modern Web Development",
+      "Foundations for teams shipping on the web.",
+      "Sarah Williams",
+      "Nov 12, 2024",
+      "Sports",
+    ),
   ],
 }
 

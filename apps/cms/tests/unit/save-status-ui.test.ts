@@ -4,6 +4,7 @@ import { countLeafErrors } from "@/lib/countLeafErrors"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
 
 const read = (path: string) => readFileSync(path, "utf8")
+const pageEditorAuthority = () => read("src/components/forms/PageForm.tsx") + read("src/components/editor/usePageEditorCore.ts")
 const legacyImport = 'from "' + "so" + 'nner"'
 const legacyCall = "to" + "ast."
 const legacyUiPath = "@siteinabox/ui/components/" + "so" + "nner"
@@ -84,8 +85,12 @@ describe("FE-80 save status UI", () => {
     const pageForm = read("src/components/forms/PageForm.tsx")
     const profileForm = read("src/components/forms/ProfileForm.tsx")
 
-    for (const source of [settingsForm, tenantForm, userForm, pageForm]) {
+    const pageEditorCore = read("src/components/editor/usePageEditorCore.ts")
+
+    for (const source of [settingsForm, tenantForm, userForm, pageEditorCore]) {
       expect(source).toContain("countLeafErrors(form.formState.errors)")
+    }
+    for (const source of [settingsForm, tenantForm, userForm, pageForm]) {
       expect(source).toContain("errorCount={errorCount}")
     }
     expect(profileForm).toContain("countLeafErrors(nameForm.formState.errors)")
@@ -133,6 +138,7 @@ describe("FE-80 save status UI", () => {
     })).toBe("idle")
 
     const pageForm = read("src/components/forms/PageForm.tsx")
+    const pageEditorCore = read("src/components/editor/usePageEditorCore.ts")
     const settingsForm = read("src/components/forms/SettingsForm.tsx")
     const tenantForm = read("src/components/forms/TenantEditForm.tsx")
     const userForm = read("src/components/forms/UserEditForm.tsx")
@@ -140,12 +146,13 @@ describe("FE-80 save status UI", () => {
     const formSubmissionSheet = read("src/components/forms/FormSubmissionSheet.tsx")
     const navigation = read("src/components/navigation/NavigationManager.tsx")
 
-    for (const source of [pageForm, settingsForm, tenantForm, userForm, profileForm, formSubmissionSheet, navigation]) {
+    for (const source of [pageEditorCore, settingsForm, tenantForm, userForm, profileForm, formSubmissionSheet, navigation]) {
       expect(source).toContain("deriveSaveStatus")
       expect(source).not.toContain("lastSavedAt")
       expect(source).not.toContain("nameLastSavedAt")
     }
-    expect(pageForm).toContain("setShowSaved(false)")
+    expect(pageForm).toContain("@/components/save-ui/save-status-bar")
+    expect(pageEditorCore).toContain("setShowSaved(false)")
     expect(settingsForm).toContain("form.watch(() => setShowSaved(false))")
     expect(tenantForm).toContain("form.watch(() => setShowSaved(false))")
     expect(userForm).toContain("form.watch(() => setShowSaved(false))")

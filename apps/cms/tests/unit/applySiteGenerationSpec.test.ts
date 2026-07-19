@@ -272,7 +272,7 @@ describe("applySiteGenerationSpec", () => {
       const logoMedia = store.media.find((media) => media.filename === "logo.png")!
       expect(heroMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "hero.jpg", alt: "Hero", mimeType: "image/jpeg" })
       expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
-      expect(asMockDoc(store.pages[0]).seo).toMatchObject({ ogImage: undefined })
+      expect(asMockDoc(store.pages[0]).seo).not.toHaveProperty("ogImage")
       expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[1]!.images).toEqual([
         { image: heroMedia.id },
         { image: logoMedia.id },

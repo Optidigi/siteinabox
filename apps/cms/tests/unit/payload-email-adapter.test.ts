@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ sendEmail: vi.fn() }))
-vi.mock("@/lib/email/sendEmail", () => ({
-  getPlatformMailSender: () => "noreply@siteinabox.nl",
-  sendEmail: mocks.sendEmail,
-}))
+vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/email/sendEmail")>()
+  return {
+    ...actual,
+    getPlatformMailSender: () => "noreply@siteinabox.nl",
+    sendEmail: mocks.sendEmail,
+  }
+})
 
 import { asPayload } from "../_helpers/mockPayload"
 import { payloadEmailAdapter, htmlToPlainText } from "@/lib/email/payloadEmailAdapter"

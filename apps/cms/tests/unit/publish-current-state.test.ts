@@ -80,6 +80,7 @@ describe("publish current tenant state", () => {
   it("uses the transactional save route from the shared page editor", () => {
     const sources = [
       "src/components/forms/PageForm.tsx",
+      "src/components/editor/usePageEditorCore.ts",
       "src/components/forms/SettingsForm.tsx",
       "src/components/navigation/NavigationManager.tsx",
     ].map((file) => readFileSync(file, "utf8")).join("\n")

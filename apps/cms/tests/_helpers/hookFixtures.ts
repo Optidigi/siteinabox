@@ -35,7 +35,7 @@ export function callBeforeOpHook(
     context?: unknown
   },
 ) {
-  return Promise.resolve(hook({
+  return Promise.resolve().then(() => hook({
     args: { data: opts.data ?? null, req: opts.req },
     collection: {},
     context: opts.context ?? opts.req.context ?? {},

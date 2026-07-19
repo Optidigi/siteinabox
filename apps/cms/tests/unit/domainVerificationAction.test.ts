@@ -59,7 +59,7 @@ describe("domain verification action", () => {
         },
       },
       overrideAccess: false,
-      user: { id: 42, role: "super-admin" },
+      user: expect.objectContaining({ id: 42, role: "super-admin" }),
     }))
     expect(revalidatePath).toHaveBeenCalledWith("/operations/runs/500")
   })

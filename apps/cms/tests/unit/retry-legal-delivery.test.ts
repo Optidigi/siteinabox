@@ -17,7 +17,7 @@ const createPayload = (overrides: Record<string, unknown> = {}) => {
     update: vi.fn(async ({ collection, data }: MockUpdateArgs) => {
       calls.push(collection)
       const updated = { ...delivery, ...data }
-      return updated
+      return collection === "legal-notification-deliveries" ? { docs: [updated] } : updated
     }),
   }
   return { payload: Object.assign(asPayload(stubs), stubs), calls }
