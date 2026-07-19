@@ -23,6 +23,8 @@ import { Button } from "@siteinabox/ui/components/button"
 import { BlockTypePicker } from "@/components/editor/block-type-picker"
 import { useBlockPresets } from "@/components/editor/BlockPresetsContext"
 import { blockBySlug } from "@/blocks/registry"
+import { blockWireId } from "@/lib/editor/ensureBlockIds"
+import type { EditorBlock } from "@/lib/editor/editorBlock"
 import type { MobileBlocksApi } from "@/components/editor/mobile/MobileBlocksApi"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
@@ -41,7 +43,7 @@ export interface MobileSectionListProps {
 }
 
 export interface MobileSectionListSlotContext {
-  blocks: any[]
+  blocks: EditorBlock[]
   isEmpty: boolean
   pageTitle: string
   openAddSection: () => void
@@ -68,7 +70,7 @@ export interface MobileSectionListLayoutProps {
 
 interface SortableCardProps {
   id: string
-  block: any
+  block: EditorBlock
   index: number
   onOpen: () => void
 }
@@ -189,7 +191,7 @@ export const MobileSectionList: React.FC<MobileSectionListProps> = ({
         <div className="flex flex-col gap-2">
           {blocks.map((block, i) => (
             <SortableSectionCard
-              key={block.id ?? i}
+              key={blockWireId(block as Record<string, unknown>) ?? i}
               id={String(i)}
               block={block}
               index={i}

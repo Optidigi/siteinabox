@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
 import { MobileBackPill } from "@/components/common/mobile-back-pill"
 import { blockBySlug } from "@/blocks/registry"
+import { blockWireId } from "@/lib/editor/ensureBlockIds"
 import type { MobileBlocksApi } from "@/components/editor/mobile/MobileBlocksApi"
 import type { ElementPath } from "@/components/editor/elementPath"
 import {
@@ -267,7 +268,7 @@ function MobileFocusedSection({
                 const Icon = config?.icon
                 return (
                   <DropdownMenuItem
-                    key={entry?.id ?? i}
+                    key={blockWireId(entry as Record<string, unknown>) ?? i}
                     onClick={() => onJumpToSection(i)}
                     className={i === index ? "bg-accent" : undefined}
                   >

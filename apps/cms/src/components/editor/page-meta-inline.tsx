@@ -7,14 +7,20 @@ import { cn } from "@siteinabox/ui/lib/utils"
 import { slugify } from "@/lib/slugify"
 import { useTranslations } from "next-intl"
 
+export type PageMetaFormValues = {
+  title: string
+  slug: string
+  status: "draft" | "published"
+}
+
 type Props = {
-  control: Control<any>
+  control: Control<PageMetaFormValues>
   // FN-2026-0042 — auto-derive slug from title on Title onBlur, but ONLY
   // before the user has manually edited the slug. Caller passes set/get
   // bindings so we can read the current title + write a derived slug
   // without needing the entire form's useForm result.
-  setValue?: UseFormSetValue<any>
-  getValues?: UseFormGetValues<any>
+  setValue?: UseFormSetValue<PageMetaFormValues>
+  getValues?: UseFormGetValues<PageMetaFormValues>
 }
 
 /**

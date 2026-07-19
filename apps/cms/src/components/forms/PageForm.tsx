@@ -1,6 +1,6 @@
 "use client"
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react"
-import { useForm, type FieldErrors } from "react-hook-form"
+import { useForm, type FieldErrors, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
@@ -14,7 +14,7 @@ import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { RtManifestProvider, useRtManifest } from "@/components/editor/RtManifestContext"
 import { SaveStatusBar, type SaveStatus } from "@/components/save-ui/save-status-bar"
 import { SaveButton } from "@/components/save-ui/save-button"
-import { PageMetaInline } from "@/components/editor/page-meta-inline"
+import { PageMetaInline, type PageMetaFormValues } from "@/components/editor/page-meta-inline"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/save-ui/unsaved-changes-dialog"
 import { PageDraftRecoveryDialog } from "@/components/forms/PageDraftRecoveryDialog"
@@ -33,7 +33,16 @@ import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/prese
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { PageEditorFrameHost } from "@/components/editor/iframe/PageEditorFrameHost"
 import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
-import { ensureBlockId, ensurePageBlockIds, blockWireId } from "@/lib/editor/ensureBlockIds"
+import { blockWireId } from "@/lib/editor/ensureBlockIds"
+import { EditorBlockSchema, editorPageSeoSchema, type EditorBlock } from "@/lib/editor/editorBlock"
+import { ensureEditorBlocks } from "@/lib/editor/ensureItemIds"
+import {
+  appendEditorBlock,
+  cloneEditorBlockAt,
+  insertEditorBlock,
+  removeEditorBlock,
+  reorderEditorBlocks,
+} from "@/lib/editor/pageEditorCommands"
 import { elementPathToIframeSelection, iframeSelectionToElementPath } from "@/lib/editor/elementPathBridge"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -119,6 +128,53 @@ function useIsDesktop() {
 
 const pageEditorThemeCache = new Map<string, ThemeTokens | null>()
 
+type DraftRecord = Record<string, unknown>
+
+type ChromeVariantEntry = (typeof SHADCNUI_CHROME_VARIANTS)[number]
+
+const asDraftRecord = (value: unknown): DraftRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value) ? value as DraftRecord : {}
+
+const draftFieldString = (group: unknown, field: string): string => {
+  const value = asDraftRecord(group)[field]
+  return typeof value === "string" ? value : ""
+}
+
+const draftFieldBool = (group: unknown, field: string): boolean =>
+  asDraftRecord(group)[field] === true
+
+const mergeDraftGroup = (group: unknown, patch: DraftRecord): DraftRecord => ({
+  ...asDraftRecord(group),
+  ...patch,
+})
+
+const chromeVariantById = (id: string): ChromeVariantEntry | undefined =>
+  SHADCNUI_CHROME_VARIANTS.find((entry) => entry.id === id)
+
+type ChromeRange = { min: number; max: number }
+
+type ChromeEditorCapabilities = {
+  mobileMenu?: readonly string[]
+  secondaryAction?: boolean
+  search?: boolean
+  newsletter?: boolean
+  navigation?: string
+  primaryItems?: ChromeRange
+  columns?: ChromeRange
+  linksPerColumn?: ChromeRange
+}
+
+const chromeVariantCapabilities = (id: string): ChromeEditorCapabilities | undefined => {
+  const entry = chromeVariantById(id)
+  if (!entry || !("capabilities" in entry)) return undefined
+  return entry.capabilities as ChromeEditorCapabilities
+}
+
+const settingsRecordId = (settings: unknown): string | number | null => {
+  const id = asDraftRecord(settings).id
+  return typeof id === "string" || typeof id === "number" ? id : null
+}
+
 /**
  * Payload upload fields accept either a numeric id or null. The form may
  * hold a fully populated Media object after a fetched page is loaded
@@ -136,7 +192,7 @@ const createSchema = (t: (key: string) => string) => z.object({
   status: z.enum(["draft", "published"], {
     message: t("statusValidation")
   }),
-  blocks: z.array(z.any()),
+  blocks: z.array(EditorBlockSchema),
   // `.nullish()` (T | null | undefined) is load-bearing — Postgres returns
   // `null` for unset optional text columns inside groups, and `payload-types`
   // declares `seo.title?: string | null`. With plain `.optional()` (T |
@@ -144,14 +200,8 @@ const createSchema = (t: (key: string) => string) => z.object({
   // post-create has `defaultValues.seo = {title: null, description: null,
   // ogImage: null}` — the parent `??` short-circuit doesn't dig into the
   // children — and `handleSubmit` short-circuits to `onInvalid` before any
-  // network call, lighting both text fields red. ogImage uses `z.any()`
-  // which already tolerates null, but standardise on `.nullish()` so the
-  // intent is uniform across the group.
-  seo: z.object({
-    title: z.string().nullish(),
-    description: z.string().nullish(),
-    ogImage: z.any().nullish()
-  }).nullish()
+  // network call, lighting both text fields red.
+  seo: editorPageSeoSchema
 })
 type Values = z.infer<ReturnType<typeof createSchema>>
 
@@ -362,7 +412,7 @@ function SiteChromeInspectorFields({
   const tCommon = useTranslations("common")
   const logo = zone === "header" ? draft.header.logo : draft.footer.logo
   const variant = String(zone === "header" ? draft.header.variant ?? "" : draft.footer.variant ?? "")
-  const capability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === variant)?.capabilities
+  const capability = chromeVariantCapabilities(variant)
   const variantOptions = SITE_CHROME_CATALOG.filter((entry) => entry.area === zone && (entry.scope.kind === "global" || entry.variant === variant))
   const setLogo = (logoValue: unknown) => {
     if (!canEditSettings) return
@@ -371,14 +421,16 @@ function SiteChromeInspectorFields({
       : { ...current, footer: { ...current.footer, logo: logoValue } })
   }
   const setVariant = (value: string) => {
-    const nextCapability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === value)?.capabilities
+    const nextCapability = chromeVariantCapabilities(value)
     setDraft((current) => zone === "header"
       ? {
           ...current,
           header: {
             ...current.header,
             variant: value,
-            mobileMenu: nextCapability?.mobileMenu?.includes(current.header.mobileMenu) ? current.header.mobileMenu : null,
+            mobileMenu: nextCapability?.mobileMenu?.includes(String(current.header.mobileMenu ?? ""))
+              ? current.header.mobileMenu
+              : null,
             secondaryAction: nextCapability?.secondaryAction ? current.header.secondaryAction : undefined,
             search: nextCapability?.search ? current.header.search : undefined,
           },
@@ -401,7 +453,7 @@ function SiteChromeInspectorFields({
           <SelectTrigger id={`site-chrome-${zone}-variant`}><SelectValue /></SelectTrigger>
           <SelectContent>{variantOptions.map((option) => <SelectItem key={option.variant} value={option.variant}>{option.label}</SelectItem>)}</SelectContent>
         </Select>
-        {capability ? <p className="text-xs text-muted-foreground">{zone === "header" ? `${capability.navigation} navigation · ${capability.primaryItems.min}-${capability.primaryItems.max} primary items` : `${capability.columns.min}-${capability.columns.max} columns · 0-${capability.linksPerColumn.max} links per section`}</p> : null}
+        {capability ? <p className="text-xs text-muted-foreground">{zone === "header" ? `${capability.navigation ?? ""} navigation · ${capability.primaryItems?.min ?? 0}-${capability.primaryItems?.max ?? 0} primary items` : `${capability.columns?.min ?? 0}-${capability.columns?.max ?? 0} columns · 0-${capability.linksPerColumn?.max ?? 0} links per section`}</p> : null}
       </section>
       <section className="space-y-3 rounded-md border border-border bg-card p-4">
         <div>
@@ -463,10 +515,10 @@ function SiteChromeInspectorFields({
           </section>
           {capability?.newsletter && <section className="space-y-3 rounded-md border border-border bg-card p-4">
             <h2 className="text-base font-semibold text-foreground">{t("newsletter")}</h2>
-            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.title ?? ""} placeholder={t("newsletterTitle")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), title: event.target.value || null } } }))} />
-            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.placeholder ?? ""} placeholder={t("newsletterPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), placeholder: event.target.value || null } } }))} />
-            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.submitLabel ?? ""} placeholder={t("newsletterSubmit")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), submitLabel: event.target.value || null } } }))} />
-            <Input disabled={!canEditSettings} value={(draft.footer.newsletter as any)?.action ?? ""} placeholder="/newsletter" onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: { ...((current.footer.newsletter as any) ?? {}), action: event.target.value || null, method: (current.footer.newsletter as any)?.method ?? "POST" } } }))} />
+            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "title")} placeholder={t("newsletterTitle")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { title: event.target.value || null }) } }))} />
+            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "placeholder")} placeholder={t("newsletterPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { placeholder: event.target.value || null }) } }))} />
+            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "submitLabel")} placeholder={t("newsletterSubmit")} onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { submitLabel: event.target.value || null }) } }))} />
+            <Input disabled={!canEditSettings} value={draftFieldString(draft.footer.newsletter, "action")} placeholder="/newsletter" onChange={(event) => setDraft((current) => ({ ...current, footer: { ...current.footer, newsletter: mergeDraftGroup(current.footer.newsletter, { action: event.target.value || null, method: draftFieldString(current.footer.newsletter, "method") || "POST" }) } }))} />
           </section>}
         </>
       )}
@@ -478,11 +530,11 @@ function SiteChromeInspectorFields({
           <div className="space-y-1"><Label>{t("activeLinkMode")}</Label><Select disabled={!canEditSettings} value={String(draft.header.activeMode ?? "path")} onValueChange={(activeMode) => setDraft((current) => ({ ...current, header: { ...current.header, activeMode } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="path">{t("activePath")}</SelectItem><SelectItem value="anchor">{t("activeAnchor")}</SelectItem><SelectItem value="none">{t("activeNone")}</SelectItem></SelectContent></Select></div>
           {capability?.mobileMenu?.length ? <div className="space-y-1"><Label>{t("mobileMenu")}</Label><Select disabled={!canEditSettings} value={String(draft.header.mobileMenu ?? capability.mobileMenu[0])} onValueChange={(mobileMenu) => setDraft((current) => ({ ...current, header: { ...current.header, mobileMenu } }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{capability.mobileMenu.map((mode: string) => <SelectItem key={mode} value={mode}>{mode === "drawer" ? t("mobileDrawer") : t("mobileDropdown")}</SelectItem>)}</SelectContent></Select></div> : null}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={(draft.header.cta as any)?.label ?? ""} placeholder={t("primaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: { ...((current.header.cta as any) ?? {}), label: event.target.value || null } } }))} /><Input disabled={!canEditSettings} value={(draft.header.cta as any)?.href ?? ""} placeholder="/contact" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: { ...((current.header.cta as any) ?? {}), href: event.target.value || null } } }))} /></div>
-        <div className="flex items-center justify-between"><Label htmlFor="header-cta-external">{t("externalLink")}</Label><Switch id="header-cta-external" disabled={!canEditSettings} checked={!!(draft.header.cta as any)?.external} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, cta: { ...((current.header.cta as any) ?? {}), external } } }))} /></div>
-        {capability?.secondaryAction && <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={(draft.header.secondaryAction as any)?.label ?? ""} placeholder={t("secondaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: { ...((current.header.secondaryAction as any) ?? {}), label: event.target.value || null } } }))} /><Input disabled={!canEditSettings} value={(draft.header.secondaryAction as any)?.href ?? ""} placeholder="/login" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: { ...((current.header.secondaryAction as any) ?? {}), href: event.target.value || null } } }))} /></div>}
-        {capability?.secondaryAction && <div className="flex items-center justify-between"><Label htmlFor="header-secondary-external">{t("externalLink")}</Label><Switch id="header-secondary-external" disabled={!canEditSettings} checked={!!(draft.header.secondaryAction as any)?.external} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: { ...((current.header.secondaryAction as any) ?? {}), external } } }))} /></div>}
-        {capability?.search && <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="header-search-enabled">{t("siteSearch")}</Label><Switch id="header-search-enabled" disabled={!canEditSettings} checked={!!(draft.header.search as any)?.enabled} onCheckedChange={(enabled) => setDraft((current) => ({ ...current, header: { ...current.header, search: { ...((current.header.search as any) ?? {}), enabled } } }))} /></div><div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} value={(draft.header.search as any)?.action ?? ""} placeholder="/search" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: { ...((current.header.search as any) ?? {}), action: event.target.value || null } } }))} /><Input disabled={!canEditSettings} maxLength={48} value={(draft.header.search as any)?.placeholder ?? ""} placeholder={t("searchPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: { ...((current.header.search as any) ?? {}), placeholder: event.target.value || null } } }))} /></div></div>}
+        <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={draftFieldString(draft.header.cta, "label")} placeholder={t("primaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: mergeDraftGroup(current.header.cta, { label: event.target.value || null }) } }))} /><Input disabled={!canEditSettings} value={draftFieldString(draft.header.cta, "href")} placeholder="/contact" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, cta: mergeDraftGroup(current.header.cta, { href: event.target.value || null }) } }))} /></div>
+        <div className="flex items-center justify-between"><Label htmlFor="header-cta-external">{t("externalLink")}</Label><Switch id="header-cta-external" disabled={!canEditSettings} checked={draftFieldBool(draft.header.cta, "external")} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, cta: mergeDraftGroup(current.header.cta, { external }) } }))} /></div>
+        {capability?.secondaryAction && <div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} maxLength={32} value={draftFieldString(draft.header.secondaryAction, "label")} placeholder={t("secondaryActionLabel")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: mergeDraftGroup(current.header.secondaryAction, { label: event.target.value || null }) } }))} /><Input disabled={!canEditSettings} value={draftFieldString(draft.header.secondaryAction, "href")} placeholder="/login" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: mergeDraftGroup(current.header.secondaryAction, { href: event.target.value || null }) } }))} /></div>}
+        {capability?.secondaryAction && <div className="flex items-center justify-between"><Label htmlFor="header-secondary-external">{t("externalLink")}</Label><Switch id="header-secondary-external" disabled={!canEditSettings} checked={draftFieldBool(draft.header.secondaryAction, "external")} onCheckedChange={(external) => setDraft((current) => ({ ...current, header: { ...current.header, secondaryAction: mergeDraftGroup(current.header.secondaryAction, { external }) } }))} /></div>}
+        {capability?.search && <div className="space-y-2"><div className="flex items-center justify-between"><Label htmlFor="header-search-enabled">{t("siteSearch")}</Label><Switch id="header-search-enabled" disabled={!canEditSettings} checked={draftFieldBool(draft.header.search, "enabled")} onCheckedChange={(enabled) => setDraft((current) => ({ ...current, header: { ...current.header, search: mergeDraftGroup(current.header.search, { enabled }) } }))} /></div><div className="grid gap-2 sm:grid-cols-2"><Input disabled={!canEditSettings} value={draftFieldString(draft.header.search, "action")} placeholder="/search" onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: mergeDraftGroup(current.header.search, { action: event.target.value || null }) } }))} /><Input disabled={!canEditSettings} maxLength={48} value={draftFieldString(draft.header.search, "placeholder")} placeholder={t("searchPlaceholder")} onChange={(event) => setDraft((current) => ({ ...current, header: { ...current.header, search: mergeDraftGroup(current.header.search, { placeholder: event.target.value || null }) } }))} /></div></div>}
       </section>}
 
       <section className="rounded-md border border-border bg-card p-4">
@@ -571,7 +623,7 @@ function SiteChromeDrillDown({
   )
 }
 
-export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: any; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: unknown; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -695,10 +747,10 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const isDesktop = useIsDesktop()
 
   const form = useForm<Values>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema) as Resolver<Values>,
     defaultValues: initial
       ? { title: initial.title, slug: initial.slug ?? "", status: "published",
-          blocks: ensurePageBlockIds((initial.blocks as any) ?? []), seo: (initial.seo as any) ?? {} }
+          blocks: ensureEditorBlocks((initial.blocks ?? []) as EditorBlock[]), seo: initial.seo ?? {} }
       : { title: "", slug: "", status: "published", blocks: [], seo: {} }
   })
 
@@ -891,13 +943,13 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       chromeDirtyRef.current ||
       JSON.stringify(chromeComparable(chromeSnapshot, footerContract)) !==
         JSON.stringify(chromeComparable(chromeBaselineRef.current, footerContract))
-    const chromeWillSave = chromeWasDirty && Boolean(siteSettingsState?.id) && canEditSettingsResolved
+    const chromeWillSave = chromeWasDirty && settingsRecordId(siteSettingsState) != null && canEditSettingsResolved
     const normalizedBlocks = normalizePageBlockUploadIds(savedValues.blocks)
     const pageData = {
       ...savedValues,
       tenant: tenantId,
       blocks: Array.isArray(normalizedBlocks)
-        ? normalizedBlocks.map((block: any) => canonicalizeCtaFields(block))
+        ? normalizedBlocks.map((block) => canonicalizeCtaFields(block as Record<string, unknown>))
         : [],
       seo: savedValues.seo
         ? { ...savedValues.seo, ogImage: normalizeUploadId(savedValues.seo.ogImage) }
@@ -1076,8 +1128,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     showSaved,
   })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const controlAny = form.control as unknown as import("react-hook-form").Control<any>
+  const pageMetaControl = form.control as unknown as import("react-hook-form").Control<PageMetaFormValues>
+  const pageMetaSetValue = form.setValue as unknown as import("react-hook-form").UseFormSetValue<PageMetaFormValues>
+  const pageMetaGetValues = form.getValues as unknown as import("react-hook-form").UseFormGetValues<PageMetaFormValues>
 
   const onDeletePage = () => {
     if (!readOnly) setDeleteOpen(true)
@@ -1085,15 +1138,20 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const pageTitle = form.watch("title") || initial?.title || ""
 
   // Watched blocks — needed by SidebarDrillDown in sidebar view.
-  const watchedBlocks: any[] = form.watch("blocks") ?? []
+  const watchedBlocks: EditorBlock[] = form.watch("blocks") ?? []
+
+  useEffect(() => {
+    if (readOnly) return
+    const normalized = ensureEditorBlocks(watchedBlocks)
+    if (JSON.stringify(normalized) !== JSON.stringify(watchedBlocks)) {
+      form.setValue("blocks", normalized, { shouldDirty: false })
+    }
+  }, [form, readOnly, watchedBlocks])
 
   // Reorder helper for the parent-owned desktop and mobile section lists.
   const reorderBlocks = (from: number, to: number) => {
     if (readOnly) return
-    const copy = [...watchedBlocks]
-    const [moved] = copy.splice(from, 1)
-    copy.splice(to, 0, moved)
-    form.setValue("blocks", copy, { shouldDirty: true })
+    form.setValue("blocks", reorderEditorBlocks(watchedBlocks, from, to), { shouldDirty: true })
     // Keep `selected` coherent: the dragged block follows its new position;
     // blocks in the shift zone shift by one.
     setSelected((prev) => remapSelectionAfterReorder(prev, from, to))
@@ -1101,24 +1159,27 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
 
   const deleteBlock = (i: number) => {
     if (readOnly) return
-    const next = watchedBlocks.filter((_, j) => j !== i)
-    form.setValue("blocks", next, { shouldDirty: true })
+    form.setValue("blocks", removeEditorBlock(watchedBlocks, i), { shouldDirty: true })
     setSelected((prev) => remapSelectionAfterDelete(prev, i))
   }
 
   const duplicateBlock = (i: number) => {
     if (readOnly) return
-    const dup = ensureBlockId(JSON.parse(JSON.stringify(watchedBlocks[i])))
-    const next = [...watchedBlocks.slice(0, i + 1), dup, ...watchedBlocks.slice(i + 1)]
-    form.setValue("blocks", next, { shouldDirty: true })
-    setSelected((prev) => remapSelectionAfterInsert(prev, i + 1))
+    const result = cloneEditorBlockAt(watchedBlocks, i)
+    if (!result) return
+    form.setValue("blocks", result.blocks, { shouldDirty: true })
+    setSelected((prev) => remapSelectionAfterInsert(prev, result.insertedIndex))
   }
 
   const insertBlockAtIndex = useCallback((index: number, block: Record<string, unknown>) => {
     if (readOnly) return
-    const next = [...watchedBlocks]
-    next.splice(index, 0, ensureBlockId({ ...block }))
-    form.setValue("blocks", next, { shouldDirty: true })
+    const blockType = typeof block.blockType === "string" ? block.blockType : ""
+    if (!blockType) return
+    form.setValue(
+      "blocks",
+      insertEditorBlock(watchedBlocks, index, { ...block, blockType }),
+      { shouldDirty: true },
+    )
     setSelected({ blockIndex: index, field: "" })
   }, [form, readOnly, watchedBlocks])
 
@@ -1126,10 +1187,11 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const addBlock = (blockType: string, seed?: Record<string, unknown>) => {
     if (readOnly) return
     const defaultAnchor = manifest?.blocks?.find((m) => m.slug === blockType)?.defaultAnchor
-    const next = [
-      ...watchedBlocks,
-      { blockType, ...(defaultAnchor ? { anchor: defaultAnchor } : {}), ...seed },
-    ]
+    const next = appendEditorBlock(watchedBlocks, {
+      blockType,
+      ...(defaultAnchor ? { anchor: defaultAnchor } : {}),
+      ...seed,
+    })
     form.setValue("blocks", next, { shouldDirty: true })
     setSelected({ blockIndex: next.length - 1, field: "" })
   }
@@ -1446,7 +1508,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                   {pageTitle}
                 </h1>
               ) : (
-                <PageMetaInline control={controlAny} setValue={form.setValue} getValues={form.getValues} />
+                <PageMetaInline control={pageMetaControl} setValue={pageMetaSetValue} getValues={pageMetaGetValues} />
               )}
               {liveLinks}
               {!readOnly && (
