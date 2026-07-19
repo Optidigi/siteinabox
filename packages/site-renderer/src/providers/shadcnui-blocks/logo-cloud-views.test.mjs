@@ -2,32 +2,25 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import {
+  logoCloud01CmsLike,
+  logoCloud01Long,
+  logoCloud01MaxItems,
+  logoCloud01MissingImage,
+  logoCloud01Sparse,
+} from "./typed/fixtures/logo-cloud-01.ts"
 import { LogoCloud01 } from "./variants/logo-cloud-01/logo-cloud.tsx"
 import View from "./variants/logo-cloud-01/view.tsx"
 
 globalThis.React = React
 
-const inlineText = (text) => ({
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: text }],
-})
-
-const logo = (name, overrides = {}) => ({
-  name,
-  image: { url: `https://cdn.example.test/${name.toLowerCase()}.svg`, alt: name },
-  ...overrides,
-})
+const mediaResolver = (media) => ({ src: media.url, alt: media.alt })
 
 test("public render outputs title and resolved logo images", () => {
   const html = renderToStaticMarkup(React.createElement(LogoCloud01, {
-    title: inlineText("Trusted worldwide"),
-    logos: [
-      logo("Acme"),
-      logo("Globex"),
-    ],
+    ...logoCloud01CmsLike,
     blockIndex: 0,
-    mediaResolver: (media) => ({ src: media.url, alt: media.alt }),
+    mediaResolver,
   }))
   assert.match(html, />Trusted worldwide</)
   assert.match(html, /src="https:\/\/cdn\.example\.test\/acme\.svg"/)
@@ -36,10 +29,9 @@ test("public render outputs title and resolved logo images", () => {
 
 test("sparse content renders only provided logos", () => {
   const html = renderToStaticMarkup(React.createElement(LogoCloud01, {
-    title: inlineText("One partner"),
-    logos: [logo("Solo")],
+    ...logoCloud01Sparse,
     blockIndex: 0,
-    mediaResolver: (media) => ({ src: media.url, alt: media.alt }),
+    mediaResolver,
   }))
   assert.match(html, />One partner</)
   assert.match(html, /solo\.svg/)
@@ -56,15 +48,9 @@ test("minimum content tolerates empty logos", () => {
 
 test("maximum content caps logos at four", () => {
   const html = renderToStaticMarkup(React.createElement(LogoCloud01, {
-    logos: [
-      logo("One"),
-      logo("Two"),
-      logo("Three"),
-      logo("Four"),
-      logo("Five"),
-    ],
+    ...logoCloud01MaxItems,
     blockIndex: 0,
-    mediaResolver: (media) => ({ src: media.url, alt: media.alt }),
+    mediaResolver,
   }))
   assert.match(html, /one\.svg/)
   assert.match(html, /four\.svg/)
@@ -73,13 +59,11 @@ test("maximum content caps logos at four", () => {
 
 test("missing image omits logo without crashing", () => {
   assert.doesNotThrow(() => renderToStaticMarkup(React.createElement(LogoCloud01, {
-    title: inlineText("No artwork yet"),
-    logos: [{ name: "Placeholder" }],
+    ...logoCloud01MissingImage,
     blockIndex: 0,
   })))
   const html = renderToStaticMarkup(React.createElement(LogoCloud01, {
-    title: inlineText("No artwork yet"),
-    logos: [{ name: "Placeholder" }],
+    ...logoCloud01MissingImage,
     blockIndex: 0,
   }))
   assert.match(html, />No artwork yet</)
@@ -87,21 +71,19 @@ test("missing image omits logo without crashing", () => {
 })
 
 test("long title does not throw", () => {
-  const long = "A".repeat(500)
   assert.doesNotThrow(() => renderToStaticMarkup(React.createElement(LogoCloud01, {
-    title: inlineText(long),
-    logos: [logo("Acme")],
+    ...logoCloud01Long,
     blockIndex: 0,
-    mediaResolver: (media) => ({ src: media.url, alt: media.alt }),
+    mediaResolver,
   })))
 })
 
 test("editSlots use itemIndex for nested logo images", () => {
   const called = []
   const html = renderToStaticMarkup(React.createElement(LogoCloud01, {
-    title: inlineText("Edit me"),
+    title: logoCloud01CmsLike.title,
     logos: [
-      logo("Acme"),
+      logoCloud01CmsLike.logos[0],
       { name: "Missing", image: undefined },
     ],
     blockIndex: 3,
@@ -131,16 +113,16 @@ test("view maps block to typed component with provider attributes", () => {
   const html = renderToStaticMarkup(React.createElement(View, {
     block: {
       blockType: "logoCloud",
-      title: inlineText("Trusted brands"),
-      logos: [logo("Acme")],
+      title: logoCloud01CmsLike.title,
+      logos: [logoCloud01CmsLike.logos[0]],
     },
     options: {
       index: 2,
-      mediaResolver: (media) => ({ src: media.url, alt: media.alt }),
+      mediaResolver,
     },
   }))
   assert.match(html, /data-provider-variant="shadcnui-blocks\.logo-cloud-01"/)
   assert.match(html, /data-block-index="2"/)
-  assert.match(html, />Trusted brands</)
+  assert.match(html, />Trusted worldwide</)
   assert.match(html, /acme\.svg/)
 })

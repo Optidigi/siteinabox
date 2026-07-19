@@ -47,6 +47,24 @@ Ami Care uses the same validated provider-block, chrome, theme, media, preview,
 and published-snapshot path as every generated tenant. Tenant identity affects
 content and routing only; it never selects a source-code renderer.
 
+### Typed pilot variants
+
+A small set of shadcnui-blocks variants are migrating from pinned upstream
+literals with `Provider*` runtime slots to owned typed components under
+`packages/site-renderer/src/providers/shadcnui-blocks/variants/<name>/`.
+Shared helpers for the migrated pilots live in
+`packages/site-renderer/src/providers/shadcnui-blocks/typed/` (rich-text
+preview fixtures, element paths, and edit-slot renderers). The compile-time
+registry in `typed/registry.ts` lists exactly the migrated pilots
+(`cta-01`, `logo-cloud-01`, `faq-01`) and ties each variant ID to its
+canonical block type, direct bindings, and view module.
+
+Legacy behavior adapters (`contact-02`, `features-03`) still use audited
+`Provider*` views and are tracked beside the typed registry; they are not
+forced into the shared typed helper surface until a pilot migration needs them.
+All other block variants continue to render through pinned literals and
+`block-views.generated.tsx` dispatch.
+
 ## Operational ownership
 
 - Payload schemas and migrations own persisted CMS shape and upgrades.

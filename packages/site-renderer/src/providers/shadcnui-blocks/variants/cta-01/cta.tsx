@@ -4,52 +4,14 @@
 import * as React from "react"
 import type { LinkRef, RtRoot } from "@siteinabox/contracts"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
-import type { BlockEditSlots, RendererElementPath, RendererSectionAttributes } from "../../../../blocks/types"
-import { RichTextRenderer } from "../../../../rich-text"
+import type { BlockEditSlots } from "../../../../blocks/types"
+import { cta01Literal } from "../../typed/fixtures/cta-01"
+import { isExternalHref } from "../../typed/links"
+import { elementPath } from "../../typed/paths"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import { fieldInlineRichText } from "../../typed/rich-text"
 
 const BLOCK_TYPE = "cta" as const
-const isExternalHref = (href: string) => /^(?:https?:)?\/\//i.test(href)
-
-const previewInlineText = (text: string): RtRoot => ({
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: text }],
-})
-
-const previewBlockText = (text: string): RtRoot => ({
-  t: "root",
-  variant: "block",
-  children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
-})
-
-const PREVIEW_HEADLINE = previewInlineText("Ready to Build Faster?")
-const PREVIEW_DESCRIPTION = previewBlockText(
-  "Join thousands of developers using our premium component library to ship beautiful UIs in minutes, not hours.",
-)
-const PREVIEW_PRIMARY: LinkRef = { label: "Get Started", href: "#" }
-
-const elementPath = (blockIndex: number, field: string): RendererElementPath => ({ blockIndex, field })
-
-const renderInlineRichText = (
-  editSlots: BlockEditSlots | undefined,
-  field: string,
-  value: RtRoot,
-  blockIndex: number,
-) => {
-  const path = elementPath(blockIndex, field)
-  const name = `${BLOCK_TYPE}.${field}`
-  return editSlots?.renderRichText
-    ? editSlots.renderRichText({
-        name,
-        value,
-        variant: "inline",
-        as: "span",
-        className: "contents",
-        elementPath: path,
-        blockMode: "inline",
-      })
-    : <RichTextRenderer value={value} blockMode="inline" />
-}
 
 const renderPrimary = (editSlots: BlockEditSlots | undefined, primary: LinkRef, blockIndex: number) => {
   const href = primary.href?.trim()
@@ -71,13 +33,10 @@ const renderPrimary = (editSlots: BlockEditSlots | undefined, primary: LinkRef, 
   )
 }
 
-export type Cta01Props = {
+export type Cta01Props = TypedVariantBaseProps & {
   headline: RtRoot
   description?: RtRoot | null
   primary?: LinkRef | null
-  blockIndex: number
-  editSlots?: BlockEditSlots
-  rootAttributes?: RendererSectionAttributes
 }
 
 export function Cta01({ headline, description, primary, blockIndex, editSlots, rootAttributes }: Cta01Props) {
@@ -87,11 +46,11 @@ export function Cta01({ headline, description, primary, blockIndex, editSlots, r
     <div className="px-0 py-20 sm:px-6" {...rootAttributes}>
       <div className="relative flex w-full flex-col items-center justify-center py-16">
         <h2 className="font-medium text-5xl tracking-tighter">
-          {renderInlineRichText(editSlots, "headline", headline, blockIndex)}
+          {fieldInlineRichText(editSlots, BLOCK_TYPE, "headline", headline, blockIndex)}
         </h2>
         {description ? (
           <p className="mx-auto mt-6 max-w-xl text-center text-muted-foreground text-xl/normal">
-            {renderInlineRichText(editSlots, "description", description, blockIndex)}
+            {fieldInlineRichText(editSlots, BLOCK_TYPE, "description", description, blockIndex)}
           </p>
         ) : null}
         {primaryAction ? (
@@ -107,9 +66,9 @@ export function Cta01({ headline, description, primary, blockIndex, editSlots, r
 export default function Cta01Literal() {
   return (
     <Cta01
-      headline={PREVIEW_HEADLINE}
-      description={PREVIEW_DESCRIPTION}
-      primary={PREVIEW_PRIMARY}
+      headline={cta01Literal.headline}
+      description={cta01Literal.description}
+      primary={cta01Literal.primary}
       blockIndex={0}
     />
   )

@@ -5,6 +5,7 @@ import test from "node:test"
 import inventory from "./inventory.json" with { type: "json" }
 import exclusions from "./exclusions.json" with { type: "json" }
 import bindings from "./bindings.json" with { type: "json" }
+import { BEHAVIOR_ADAPTER_IDS } from "./typed/registry.ts"
 
 const root = new URL("../../../../../", import.meta.url)
 const sha256 = (value) => `sha256:${createHash("sha256").update(value).digest("hex")}`
@@ -50,13 +51,7 @@ test("the generated browser loader covers each structured variant exactly once",
 })
 
 test("every production content view renders the pinned literal or an audited behavior adapter", async () => {
-  const behaviorAdapters = new Set([
-    "shadcnui-blocks.contact-02",
-    "shadcnui-blocks.cta-01",
-    "shadcnui-blocks.features-03",
-    "shadcnui-blocks.logo-cloud-01",
-    "shadcnui-blocks.faq-01",
-  ])
+  const behaviorAdapters = new Set(BEHAVIOR_ADAPTER_IDS)
   for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
     const source = await readFile(new URL(`packages/site-renderer/src/providers/shadcnui-blocks/variants/${variant.upstreamName}/view.tsx`, root), "utf8")
     if (behaviorAdapters.has(variant.id)) {

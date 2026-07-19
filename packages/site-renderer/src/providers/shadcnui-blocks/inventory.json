@@ -1948,11 +1948,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-01/faq.tsx",
-          "sha256": "sha256:1d493dbe09eacf0d1d2958a169f0225117fe80a3d3b84ab36bb13db9ff4544d9"
+          "sha256": "sha256:53bbc6904a8998703d1f3618992b82fc6e693a5c29095e73cb14d20eea296235"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-01/view.tsx",
-          "sha256": "sha256:4108587f03e2c90f7d025f09031c7565a8db38069ff3d8421343d8eeaaf3c141"
+          "sha256": "sha256:fbd9734005161f937678df06023021434d54777d3464c26e7d671f178972f1ca"
         }
       ]
     },
@@ -8105,11 +8105,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/logo-cloud.tsx",
-          "sha256": "sha256:bab0653393ddff4af3379bdb5bb8293064b28bcf9aaa3dbee82c3ce5a78e82d1"
+          "sha256": "sha256:d9688598ec7676ec54ba1bb23ae45317a1d221656919fe6a7b74843a9f604b78"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/view.tsx",
-          "sha256": "sha256:a3e1d4e17cb3110b00b3203a8fdb227c81561937f55d446741efb54e16052a3a"
+          "sha256": "sha256:2cd94d24c2d9d6a81c305252b73ecc13d1654c0f1f9c6f9199894da10d72ce40"
         }
       ]
     },
@@ -17704,11 +17704,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-01/cta.tsx",
-          "sha256": "sha256:097e71d23030f43edefe9d765be01e0174b69e878e419bb5f924574e433bd149"
+          "sha256": "sha256:a921c83d3844be641abc288a2738ca63d68ec47bf03d4a8c1236b32bfb7211b3"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-01/view.tsx",
-          "sha256": "sha256:0d04b75e3f151b805dc70fcacf8466120f1fc906f7ed9abfef8af917347eb163"
+          "sha256": "sha256:697590534ab5e038223521627f9b090ca0e2ff45699258c47d885b90bb7d6c1a"
         }
       ]
     },

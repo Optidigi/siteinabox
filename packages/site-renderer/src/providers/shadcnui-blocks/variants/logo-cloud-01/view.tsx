@@ -2,11 +2,12 @@ import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../../blocks/types"
 import { providerBlockAttributes } from "../../runtime/block"
+import type { TypedPilotId } from "../../typed/registry"
 import { LogoCloud01 } from "./logo-cloud"
 
 type VariantBlock = Extract<Block, { blockType: "logoCloud" }>
 
-const VARIANT = "shadcnui-blocks.logo-cloud-01"
+const VARIANT: TypedPilotId = "shadcnui-blocks.logo-cloud-01"
 
 export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) {
   return (

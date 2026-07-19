@@ -2,35 +2,21 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
+import {
+  faq01CmsLike,
+  faq01EmptyItems,
+  faq01Long,
+  faq01Sparse,
+  faqItem,
+} from "./typed/fixtures/faq-01.ts"
 import { Faq01 } from "./variants/faq-01/faq.tsx"
 import View from "./variants/faq-01/view.tsx"
 
 globalThis.React = React
 
-const inlineText = (text) => ({
-  t: "root",
-  variant: "inline",
-  children: [{ t: "text", v: text }],
-})
-
-const blockText = (text) => ({
-  t: "root",
-  variant: "block",
-  children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
-})
-
-const faqItem = (question, answer) => ({
-  question: inlineText(question),
-  answer: blockText(answer),
-})
-
 test("public render outputs accordion markup with rich text", () => {
   const html = renderToStaticMarkup(React.createElement(Faq01, {
-    title: inlineText("Questions & Answers"),
-    items: [
-      faqItem("What is your return policy?", "You can return unused items within 30 days."),
-      faqItem("How do I track my order?", "Use the link in your confirmation email."),
-    ],
+    ...faq01CmsLike,
     blockIndex: 0,
   }))
   assert.match(html, /data-slot="accordion"/)
@@ -45,7 +31,7 @@ test("public render outputs accordion markup with rich text", () => {
 
 test("sparse content omits optional title", () => {
   const html = renderToStaticMarkup(React.createElement(Faq01, {
-    items: [faqItem("Only question?", "Only answer.")],
+    ...faq01Sparse,
     blockIndex: 0,
   }))
   assert.doesNotMatch(html, /<h2/)
@@ -55,8 +41,7 @@ test("sparse content omits optional title", () => {
 
 test("empty items renders accordion shell without items", () => {
   const html = renderToStaticMarkup(React.createElement(Faq01, {
-    title: inlineText("FAQ"),
-    items: [],
+    ...faq01EmptyItems,
     blockIndex: 0,
   }))
   assert.match(html, /data-slot="accordion"/)
@@ -64,10 +49,8 @@ test("empty items renders accordion shell without items", () => {
 })
 
 test("long question and answer does not throw", () => {
-  const long = "A".repeat(500)
   assert.doesNotThrow(() => renderToStaticMarkup(React.createElement(Faq01, {
-    title: inlineText(long),
-    items: [faqItem(long, long)],
+    ...faq01Long,
     blockIndex: 0,
   })))
 })
@@ -75,11 +58,8 @@ test("long question and answer does not throw", () => {
 test("editSlots use itemIndex for nested question and answer", () => {
   const called = []
   const html = renderToStaticMarkup(React.createElement(Faq01, {
-    title: inlineText("Edit me"),
-    items: [
-      faqItem("First?", "First answer."),
-      faqItem("Second?", "Second answer."),
-    ],
+    title: faq01CmsLike.title,
+    items: faq01CmsLike.items,
     blockIndex: 3,
     editSlots: {
       renderRichText: ({ elementPath, name }) => {
@@ -109,10 +89,7 @@ test("editSlots use itemIndex for nested question and answer", () => {
 
 test("accordion defaults to opening the first item", () => {
   const html = renderToStaticMarkup(React.createElement(Faq01, {
-    items: [
-      faqItem("First?", "First answer."),
-      faqItem("Second?", "Second answer."),
-    ],
+    items: faq01CmsLike.items,
     blockIndex: 0,
   }))
   const items = [...html.matchAll(/data-slot="accordion-item"/g)]
@@ -129,7 +106,7 @@ test("view maps block to typed component with provider attributes", () => {
   const html = renderToStaticMarkup(React.createElement(View, {
     block: {
       blockType: "faq",
-      title: inlineText("Help center"),
+      title: { t: "root", variant: "inline", children: [{ t: "text", v: "Help center" }] },
       items: [faqItem("Shipping?", "We ship worldwide.")],
     },
     options: { index: 2 },
