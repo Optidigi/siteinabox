@@ -157,9 +157,9 @@ observations before acting on them.
 
 ## SIAB-013 — Page-editor saves can diverge from the active snapshot
 
-- **Classification:** Confirmed defect; implementation complete, production
-  verification pending; **confidence:** high from production database and
-  browser evidence.
+- **Classification:** Confirmed defect; implementation deployed, authenticated
+  save verification pending; **confidence:** high from production database,
+  release, and browser evidence.
 - **Scope:** CMS page editor, tenant themes/settings, snapshot publication, and
   generated-site consent chrome.
 - **Evidence:** On 2026-07-19 the Ami Care tenant stored the newer
@@ -172,8 +172,12 @@ observations before acting on them.
   chrome, snapshot construction, and activation in one Payload/PostgreSQL
   transaction, returns and logs the failing stage, and the banner now uses an
   opaque semantic surface. Focused tests cover commit and rollback behavior and
-  the opaque banner contract.
-- **Resolution requirement:** Deploy both CMS and renderer images, perform one
-  authenticated Ami Care save, and prove the committed page/theme values match
-  the newly active snapshot and live renderer output. Capture desktop/mobile
-  consent chrome showing an opaque surface before closing.
+  the opaque banner contract. Commit `0c062027` was deployed to both production
+  images on 2026-07-19 after the CMS and renderer image workflows, packaged
+  image smokes, complete CMS suite, renderer browser suite, and four-mode
+  provider parity matrix passed. Both containers were healthy, CMS boot found
+  no pending migrations, and desktop/mobile production probes showed the
+  consent chrome fixed at the viewport bottom with an opaque semantic surface.
+- **Resolution requirement:** Perform one authenticated Ami Care save and prove
+  the committed page/theme values match the newly active snapshot and live
+  renderer output before closing.
