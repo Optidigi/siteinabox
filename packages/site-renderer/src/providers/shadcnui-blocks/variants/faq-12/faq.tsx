@@ -1,5 +1,8 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks faq-12 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   CircleDollarSign,
   Clock,
@@ -10,116 +13,30 @@ import {
   ShieldPlus,
   Users,
   Waypoints,
-} from "lucide-react";
-import { cn } from "@siteinabox/ui/lib/utils";
+} from "lucide-react"
+import { cn } from "@siteinabox/ui/lib/utils"
+import {
+  type FaqItem,
+  renderFaqAnswer,
+  renderFaqIntro,
+  renderFaqQuestion,
+  renderFaqTitle,
+} from "../../typed/faq-fields"
+import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-type FrequentlyAskedQuestion = {
-  question: string;
-  answer: string;
-  icon: LucideIcon;
-};
+const ITEM_ICONS: LucideIcon[] = [
+  Package, Clock, Plane, Waypoints, CircleDollarSign, PackageX, ShieldPlus, Users,
+]
 
-const faqs: FrequentlyAskedQuestion[] = [
-  {
-    question: "What is your return policy?",
-    answer:
-      "We offer a 30-day return policy on all unused products. Please ensure the item is in original packaging when returning.",
-    icon: Package,
-  },
-  {
-    question: "How long does shipping take?",
-    answer:
-      "Shipping typically takes 3-7 business days depending on your location.",
-    icon: Clock,
-  },
-  {
-    question: "Do you ship internationally?",
-    answer:
-      "Yes, we ship to most countries worldwide. Shipping fees and delivery times vary by destination.",
-    icon: Plane,
-  },
-  {
-    question: "How can I track my order?",
-    answer:
-      "After your order is shipped, you'll receive an email with a tracking link. You can also track your order in your account dashboard.",
-    icon: Waypoints,
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer: "We accept all major credit cards, PayPal, UPI, and net banking.",
-    icon: CircleDollarSign,
-  },
-  {
-    question: "Can I cancel or change my order?",
-    answer:
-      "Yes, you can cancel or modify your order within 2 hours of placing it. After that, the order may already be processed for shipment.",
-    icon: PackageX,
-  },
-  {
-    question: "Is my personal information secure?",
-    answer:
-      "Yes, we use industry-standard encryption to ensure your personal and payment information is secure.",
-    icon: ShieldPlus,
-  },
-  {
-    question: "Do you offer customer support?",
-    answer:
-      "Absolutely. Our support team is available 24/7 via email and chat to help with any issues or questions.",
-    icon: Users,
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer: "We accept all major credit cards, PayPal, UPI, and net banking.",
-    icon: CircleDollarSign,
-  },
-  {
-    question: "Can I cancel or change my order?",
-    answer:
-      "Yes, you can cancel or modify your order within 2 hours of placing it. After that, the order may already be processed for shipment.",
-    icon: PackageX,
-  },
-];
-
-export default function FAQ() {
-  return (
-    <div>
-      <div className="px-6 py-20 text-center">
-        <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
-          Frequently Asked Questions
-        </>} inline /></h2>
-        <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]"><ProviderField field="intro" fallback={<>
-          Find answers to common questions about our products and services
-        </>} inline /></p>
-
-        <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 sm:mt-16 md:grid-cols-2">
-          {<ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
-            <div
-              className={cn(
-                "relative -ms-px -mt-px overflow-hidden border bg-card p-6 text-start",
-                "first:rounded-t-lg last:rounded-b-lg md:nth-[2]:rounded-tr-lg md:nth-last-[2]:rounded-bl-lg md:last:rounded-bl-none md:first:rounded-tr-none"
-              )}
-              key={index}
-            >
-              <div className="isolate">
-                <div className="flex items-center gap-2 font-medium text-lg tracking-tight">
-                  <faq.icon className="mr-2.5 size-5 shrink-0 text-primary" />
-                  {faq.question}
-                </div>
-                <div className="mt-2 pl-10 text-start text-base text-foreground/80">
-                  {faq.answer}
-                </div>
-              </div>
-
-              <div
-                className="absolute inset-0 z-0 -ms-px -mt-0.5"
-                style={{
-                  backgroundImage: `
+const GRID_PATTERN_STYLE: React.CSSProperties = {
+  backgroundImage: `
         linear-gradient(to right, oklch(from var(--card-foreground) l c h / 0.12) 1px, transparent 1px),
         linear-gradient(to bottom, oklch(from var(--card-foreground) l c h / 0.12) 1px, transparent 1px)
       `,
-                  backgroundSize: "20px 20px",
-                  backgroundPosition: "0 0, 0 0",
-                  maskImage: `
+  backgroundSize: "20px 20px",
+  backgroundPosition: "0 0, 0 0",
+  maskImage: `
           repeating-linear-gradient(
               to right,
               black 0px,
@@ -136,7 +53,7 @@ export default function FAQ() {
             ),
             radial-gradient(ellipse 80% 80% at 100% 0%, #000 50%, transparent 90%)
       `,
-                  WebkitMaskImage: `
+  WebkitMaskImage: `
     repeating-linear-gradient(
               to right,
               black 0px,
@@ -153,14 +70,75 @@ export default function FAQ() {
             ),
             radial-gradient(ellipse 80% 80% at 100% 0%, #000 50%, transparent 90%)
       `,
-                  maskComposite: "intersect",
-                  WebkitMaskComposite: "source-in",
-                }}
-              />
-            </div>
-          ))}</ProviderItems>}
+  maskComposite: "intersect",
+  WebkitMaskComposite: "source-in",
+}
+
+export type Faq12Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: FaqItem[]
+}
+
+export function Faq12({ title, intro, items, blockIndex, editSlots, rootAttributes }: Faq12Props) {
+  const titleContent = renderFaqTitle(editSlots, title, blockIndex)
+  const introContent = renderFaqIntro(editSlots, intro, blockIndex)
+
+  return (
+    <div {...rootAttributes}>
+      <div className="px-6 py-20 text-center">
+        {titleContent ? (
+          <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+            {titleContent}
+          </h2>
+        ) : null}
+        {introContent ? (
+          <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+            {introContent}
+          </p>
+        ) : null}
+
+        <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 sm:mt-16 md:grid-cols-2">
+          {items.map((item, itemIndex) => {
+            const Icon = ITEM_ICONS[itemIndex % ITEM_ICONS.length] ?? Package
+            return (
+              <div
+                className={cn(
+                  "relative -ms-px -mt-px overflow-hidden border bg-card p-6 text-start",
+                  "first:rounded-t-lg last:rounded-b-lg md:nth-[2]:rounded-tr-lg md:nth-last-[2]:rounded-bl-lg md:last:rounded-bl-none md:first:rounded-tr-none",
+                )}
+                key={itemIndex}
+              >
+                <div className="isolate">
+                  <div className="flex items-center gap-2 font-medium text-lg tracking-tight">
+                    <Icon className="mr-2.5 size-5 shrink-0 text-primary" />
+                    {renderFaqQuestion(editSlots, item.question, blockIndex, itemIndex)}
+                  </div>
+                  <div className="mt-2 pl-10 text-start text-base text-foreground/80">
+                    {renderFaqAnswer(editSlots, item.answer, blockIndex, itemIndex)}
+                  </div>
+                </div>
+
+                <div
+                  className="absolute inset-0 z-0 -ms-px -mt-0.5"
+                  style={GRID_PATTERN_STYLE}
+                />
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
-  );
+  )
+}
+
+export default function Faq12Literal() {
+  return (
+    <Faq12
+      title={faqFamilyCmsLike.title}
+      intro={faqFamilyCmsLike.intro}
+      items={faqFamilyCmsLike.items}
+      blockIndex={0}
+    />
+  )
 }

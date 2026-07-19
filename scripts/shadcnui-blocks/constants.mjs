@@ -39,6 +39,19 @@ export const TYPED_PILOT_UPSTREAM_NAMES = new Set([
   "cta-07",
   "logo-cloud-01",
   "faq-01",
+  "faq-02",
+  "faq-03",
+  "faq-04",
+  "faq-05",
+  "faq-06",
+  "faq-07",
+  "faq-08",
+  "faq-09",
+  "faq-10",
+  "faq-11",
+  "faq-12",
+  "faq-13",
+  "faq-14",
 ])
 
 /** Upstream names with audited behavior-adapter views (Provider* literals preserved). */

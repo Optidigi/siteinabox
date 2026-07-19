@@ -13,7 +13,20 @@
     "cta-07": ["headline", "description", "primary"],
     "features-03": ["eyebrow", "title", "intro", "features"],
     "logo-cloud-01": ["title", "logos"],
-    "faq-01": ["title", "items"]
+    "faq-01": ["title", "items"],
+    "faq-02": ["title", "items"],
+    "faq-03": ["title", "items"],
+    "faq-04": ["title", "intro", "items"],
+    "faq-05": ["title", "intro", "items"],
+    "faq-06": ["title", "intro", "items"],
+    "faq-07": ["title", "intro", "items"],
+    "faq-08": ["title", "intro", "items"],
+    "faq-09": ["title", "intro", "items"],
+    "faq-10": ["title", "intro", "items"],
+    "faq-11": ["title", "intro", "items"],
+    "faq-12": ["title", "intro", "items"],
+    "faq-13": ["title", "intro", "items"],
+    "faq-14": ["title", "intro", "items"]
   },
   "variants": {
     "blog-01": {

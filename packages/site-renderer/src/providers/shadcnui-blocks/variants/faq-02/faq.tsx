@@ -1,63 +1,64 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks faq-02 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import {
+  faqAccordionValue,
+  type FaqItem,
+  renderFaqAnswer,
+  renderFaqQuestion,
+  renderFaqTitle,
+} from "../../typed/faq-fields"
+import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const faq = [
-  {
-    question: "What is your return policy?",
-    answer:
-      "You can return unused items in their original packaging within 30 days for a refund or exchange. Contact support for assistance.",
-  },
-  {
-    question: "How do I track my order?",
-    answer:
-      "Track your order using the link provided in your confirmation email, or log into your account to view tracking details.",
-  },
-  {
-    question: "Do you ship internationally?",
-    answer:
-      "Yes, we ship worldwide. Shipping fees and delivery times vary by location, and customs duties may apply for some countries.",
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer:
-      "We accept Visa, MasterCard, American Express, PayPal, Apple Pay, and Google Pay, ensuring secure payment options for all customers.",
-  },
-  {
-    question: "What if I receive a damaged item?",
-    answer:
-      "Please contact our support team within 48 hours of delivery with photos of the damaged item. We’ll arrange a replacement or refund.",
-  },
-];
+export type Faq02Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  items: FaqItem[]
+}
 
-const FAQ = () => {
+export function Faq02({ title, items, blockIndex, editSlots, rootAttributes }: Faq02Props) {
+  const titleContent = renderFaqTitle(editSlots, title, blockIndex)
+
   return (
-    <div className="px-6 py-20">
+    <div className="px-6 py-20" {...rootAttributes}>
       <div className="flex flex-col items-start justify-center gap-x-12 gap-y-6 md:flex-row">
-        <h2 className="font-medium text-4xl/snug tracking-[-0.04em] lg:text-[2.75rem]/snug"><ProviderField field="title" fallback={<>
-          Frequently Asked <br /> Questions
-        </>} inline /></h2>
+        {titleContent ? (
+          <h2 className="font-medium text-4xl/snug tracking-[-0.04em] lg:text-[2.75rem]/snug">
+            {titleContent}
+          </h2>
+        ) : null}
 
-        <Accordion className="max-w-xl" defaultValue="question-0" type="single">
-          {<ProviderItems field="items" templates={faq}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
-            <AccordionItem key={question} value={`question-${index}`}>
+        <Accordion className="max-w-xl" defaultValue={items.length > 0 ? faqAccordionValue(0) : undefined} type="single">
+          {items.map((item, itemIndex) => (
+            <AccordionItem key={itemIndex} value={faqAccordionValue(itemIndex)}>
               <AccordionTrigger className="text-left text-lg">
-                {question}
+                {renderFaqQuestion(editSlots, item.question, blockIndex, itemIndex)}
               </AccordionTrigger>
               <AccordionContent className="text-base text-muted-foreground">
-                {answer}
+                {renderFaqAnswer(editSlots, item.answer, blockIndex, itemIndex)}
               </AccordionContent>
             </AccordionItem>
-          ))}</ProviderItems>}
+          ))}
         </Accordion>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FAQ;
+export default function Faq02Literal() {
+  return (
+    <Faq02
+      title={faqFamilyCmsLike.title}
+      items={faqFamilyCmsLike.items}
+      blockIndex={0}
+    />
+  )
+}

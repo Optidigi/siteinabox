@@ -6,6 +6,19 @@ import Cta05View from "../variants/cta-05/view"
 import Cta06View from "../variants/cta-06/view"
 import Cta07View from "../variants/cta-07/view"
 import Faq01View from "../variants/faq-01/view"
+import Faq02View from "../variants/faq-02/view"
+import Faq03View from "../variants/faq-03/view"
+import Faq04View from "../variants/faq-04/view"
+import Faq05View from "../variants/faq-05/view"
+import Faq06View from "../variants/faq-06/view"
+import Faq07View from "../variants/faq-07/view"
+import Faq08View from "../variants/faq-08/view"
+import Faq09View from "../variants/faq-09/view"
+import Faq10View from "../variants/faq-10/view"
+import Faq11View from "../variants/faq-11/view"
+import Faq12View from "../variants/faq-12/view"
+import Faq13View from "../variants/faq-13/view"
+import Faq14View from "../variants/faq-14/view"
 import LogoCloud01View from "../variants/logo-cloud-01/view"
 
 export const TYPED_PILOT_IDS = [
@@ -18,6 +31,19 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-07",
   "shadcnui-blocks.logo-cloud-01",
   "shadcnui-blocks.faq-01",
+  "shadcnui-blocks.faq-02",
+  "shadcnui-blocks.faq-03",
+  "shadcnui-blocks.faq-04",
+  "shadcnui-blocks.faq-05",
+  "shadcnui-blocks.faq-06",
+  "shadcnui-blocks.faq-07",
+  "shadcnui-blocks.faq-08",
+  "shadcnui-blocks.faq-09",
+  "shadcnui-blocks.faq-10",
+  "shadcnui-blocks.faq-11",
+  "shadcnui-blocks.faq-12",
+  "shadcnui-blocks.faq-13",
+  "shadcnui-blocks.faq-14",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -39,6 +65,9 @@ type TypedPilotRegistryMetadata = {
   blockType: TypedPilotBlockType
   directFields: readonly string[]
 }
+
+const FAQ_TITLE_ITEMS = ["title", "items"] as const
+const FAQ_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -92,8 +121,86 @@ export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.faq-01": {
     upstreamName: "faq-01",
     blockType: "faq",
-    directFields: ["title", "items"],
+    directFields: FAQ_TITLE_ITEMS,
     View: Faq01View,
+  },
+  "shadcnui-blocks.faq-02": {
+    upstreamName: "faq-02",
+    blockType: "faq",
+    directFields: FAQ_TITLE_ITEMS,
+    View: Faq02View,
+  },
+  "shadcnui-blocks.faq-03": {
+    upstreamName: "faq-03",
+    blockType: "faq",
+    directFields: FAQ_TITLE_ITEMS,
+    View: Faq03View,
+  },
+  "shadcnui-blocks.faq-04": {
+    upstreamName: "faq-04",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq04View,
+  },
+  "shadcnui-blocks.faq-05": {
+    upstreamName: "faq-05",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq05View,
+  },
+  "shadcnui-blocks.faq-06": {
+    upstreamName: "faq-06",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq06View,
+  },
+  "shadcnui-blocks.faq-07": {
+    upstreamName: "faq-07",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq07View,
+  },
+  "shadcnui-blocks.faq-08": {
+    upstreamName: "faq-08",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq08View,
+  },
+  "shadcnui-blocks.faq-09": {
+    upstreamName: "faq-09",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq09View,
+  },
+  "shadcnui-blocks.faq-10": {
+    upstreamName: "faq-10",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq10View,
+  },
+  "shadcnui-blocks.faq-11": {
+    upstreamName: "faq-11",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq11View,
+  },
+  "shadcnui-blocks.faq-12": {
+    upstreamName: "faq-12",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq12View,
+  },
+  "shadcnui-blocks.faq-13": {
+    upstreamName: "faq-13",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq13View,
+  },
+  "shadcnui-blocks.faq-14": {
+    upstreamName: "faq-14",
+    blockType: "faq",
+    directFields: FAQ_TITLE_INTRO_ITEMS,
+    View: Faq14View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown

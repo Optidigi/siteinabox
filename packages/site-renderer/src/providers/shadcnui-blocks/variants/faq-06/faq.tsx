@@ -1,87 +1,94 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import { PlusIcon } from "lucide-react";
-import { AccordionPrimitive } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+// Owned typed adaptation of upstream shadcnui-blocks faq-06 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import { PlusIcon } from "lucide-react"
+import { AccordionPrimitive } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { cn } from "@siteinabox/ui/lib/utils";
+} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { cn } from "@siteinabox/ui/lib/utils"
+import {
+  faqAccordionValue,
+  type FaqItem,
+  renderFaqAnswer,
+  renderFaqIntro,
+  renderFaqQuestion,
+  renderFaqTitle,
+} from "../../typed/faq-fields"
+import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const faq = [
-  {
-    question: "What is your return policy?",
-    answer:
-      "You can return unused items in their original packaging within 30 days for a refund or exchange. Contact support for assistance.",
-  },
-  {
-    question: "How do I track my order?",
-    answer:
-      "Track your order using the link provided in your confirmation email, or log into your account to view tracking details.",
-  },
-  {
-    question: "Do you ship internationally?",
-    answer:
-      "Yes, we ship worldwide. Shipping fees and delivery times vary by location, and customs duties may apply for some countries.",
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer:
-      "We accept Visa, MasterCard, American Express, PayPal, Apple Pay, and Google Pay, ensuring secure payment options for all customers.",
-  },
-  {
-    question: "What if I receive a damaged item?",
-    answer:
-      "Please contact our support team within 48 hours of delivery with photos of the damaged item. We’ll arrange a replacement or refund.",
-  },
-];
+export type Faq06Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: FaqItem[]
+}
 
-const FAQ = () => {
+export function Faq06({ title, intro, items, blockIndex, editSlots, rootAttributes }: Faq06Props) {
+  const titleContent = renderFaqTitle(editSlots, title, blockIndex)
+  const introContent = renderFaqIntro(editSlots, intro, blockIndex)
+
   return (
-    <div className="px-6 py-20">
+    <div className="px-6 py-20" {...rootAttributes}>
       <div className="mx-auto w-full max-w-2xl">
-        <h2 className="font-medium text-4xl/snug tracking-[-0.04em]"><ProviderField field="title" fallback={<>
-          Frequently Asked Questions
-        </>} inline /></h2>
-        <p className="mt-2 text-muted-foreground text-xl"><ProviderField field="intro" fallback={<>
-          Quick answers to common questions about our products and services.
-        </>} inline /></p>
+        {titleContent ? (
+          <h2 className="font-medium text-4xl/snug tracking-[-0.04em]">
+            {titleContent}
+          </h2>
+        ) : null}
+        {introContent ? (
+          <p className="mt-2 text-muted-foreground text-xl">
+            {introContent}
+          </p>
+        ) : null}
 
         <div className="mt-8 rounded-xl border border-border/65 bg-muted p-1 sm:mt-10">
           <Accordion
             className="space-y-px rounded-lg border border-border/65 bg-border/20"
             collapsible
-            defaultValue="question-0"
+            defaultValue={items.length > 0 ? faqAccordionValue(0) : undefined}
             type="single"
           >
-            {<ProviderItems field="items" templates={faq}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
+            {items.map((item, itemIndex) => (
               <AccordionItem
                 className="border-none bg-background px-4 first:rounded-t-lg last:rounded-b-lg"
-                key={question}
-                value={`question-${index}`}
+                key={itemIndex}
+                value={faqAccordionValue(itemIndex)}
               >
                 <AccordionPrimitive.Header className="flex items-center">
                   <AccordionPrimitive.Trigger
                     className={cn(
                       "flex flex-1 items-center justify-between pt-4 pb-3 font-medium tracking-tight transition-all hover:underline [&[data-state=open]>svg]:rotate-45",
-                      "text-start text-lg"
+                      "text-start text-lg",
                     )}
                   >
-                    {question}
+                    {renderFaqQuestion(editSlots, item.question, blockIndex, itemIndex)}
                     <PlusIcon className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200" />
                   </AccordionPrimitive.Trigger>
                 </AccordionPrimitive.Header>
                 <AccordionContent className="text-base text-muted-foreground">
-                  {answer}
+                  {renderFaqAnswer(editSlots, item.answer, blockIndex, itemIndex)}
                 </AccordionContent>
               </AccordionItem>
-            ))}</ProviderItems>}
+            ))}
           </Accordion>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FAQ;
+export default function Faq06Literal() {
+  return (
+    <Faq06
+      title={faqFamilyCmsLike.title}
+      intro={faqFamilyCmsLike.intro}
+      items={faqFamilyCmsLike.items}
+      blockIndex={0}
+    />
+  )
+}
