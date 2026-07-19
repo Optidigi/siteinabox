@@ -13008,28 +13008,7 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-01/hero.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-02/hero.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-03/gradient-text.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-03/hero.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
@@ -13064,20 +13043,6 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-04/hero.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-05/hero.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-06/background-pattern.tsx",
       "line": 1,
       "column": 4,
@@ -13092,13 +13057,6 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-06/hero.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-06/particles.tsx",
       "line": 1,
       "column": 4,
@@ -13107,20 +13065,6 @@
     },
     {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-07/animated-grid-pattern.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-07/hero.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-08/hero.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",

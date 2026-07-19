@@ -41,25 +41,6 @@ const BORDER_BEAM_THEME_REPLACEMENTS = [
   ['colorTo = "#9c40ff"', 'colorTo = "var(--provider-accent-700, #9c40ff)"'],
 ]
 
-const STRUCTURED_MEDIA_REGIONS = {
-  "hero-02": [
-    '<div className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
-    '<div data-provider-image-region="image" className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
-  ],
-  "hero-03": [
-    '<div className="size-full rounded-lg bg-background" />',
-    '<div data-provider-image-region="image" className="size-full rounded-lg bg-background" />',
-  ],
-  "hero-04": [
-    '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
-    '<div data-provider-image-region="image" className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
-  ],
-  "hero-05": [
-    '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
-    '<div data-provider-image-region="image" className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
-  ],
-}
-
 /**
  * Explicit per-variant transforms. Variant upstream names must appear only here
  * (plus catalog metadata tables), never inside generic adaptLiteralImports.
@@ -88,63 +69,13 @@ export const VARIANT_SPECIAL_CASES = {
       }
     },
   },
-  "hero-01": {
-    adaptLiteral({ contents }) {
-      return adaptThemeColors(contents, [
-        ["#5E8778", "var(--provider-accent-600, #5E8778)"],
-        ["#78FF86", "var(--provider-accent-300, #78FF86)"],
-        ["#575EFF", "var(--provider-accent-700, #575EFF)"],
-        ["#E478FF", "var(--provider-accent-400, #E478FF)"],
-      ])
-    },
-  },
-  "hero-02": {
-    adaptLiteral({ contents, filename }) {
-      if (filename !== "hero.tsx") return contents
-      const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-02"]
-      return adaptStructuredMediaRegion(contents, from, to)
-    },
-  },
   "hero-03": {
-    adaptLiteral({ contents, filename, isEntryFile }) {
-      let adapted = contents
-      if (filename === "hero.tsx") {
-        const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-03"]
-        adapted = adaptStructuredMediaRegion(adapted, from, to)
-      }
-      adapted = adaptThemeColors(adapted, [
-        ['colors = ["#5227FF", "#FF9FFC", "#B497CF"]', 'colors = ["var(--provider-accent-700, #5227FF)", "var(--provider-accent-400, #FF9FFC)", "var(--provider-accent-200, #B497CF)"]'],
-        ["rounded-[1.25rem]", "rounded-[var(--provider-radius-hero-gradient,1.25rem)]"],
-      ])
-      if (isEntryFile) {
-        adapted = adapted.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
-      }
-      return adapted
-    },
     composition: { embedsNavigation: true, suppressesChromeAreas: ["header"] },
     skipBindingCompilationForFile(filename) {
       return /^navbar\.(?:ts|tsx)$/.test(filename)
     },
   },
-  "hero-04": {
-    adaptLiteral({ contents, filename }) {
-      if (filename !== "hero.tsx") return contents
-      const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-04"]
-      return adaptStructuredMediaRegion(contents, from, to)
-    },
-  },
-  "hero-05": {
-    adaptLiteral({ contents, filename }) {
-      if (filename !== "hero.tsx") return contents
-      const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-05"]
-      return adaptStructuredMediaRegion(contents, from, to)
-    },
-  },
   "hero-08": {
-    adaptLiteral({ contents, isEntryFile }) {
-      if (!isEntryFile) return contents
-      return contents.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
-    },
     composition: { embedsNavigation: true, suppressesChromeAreas: ["header"] },
     skipBindingCompilationForFile(filename) {
       return /^navbar\.(?:ts|tsx)$/.test(filename)

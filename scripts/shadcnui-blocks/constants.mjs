@@ -70,6 +70,14 @@ export const TYPED_PILOT_UPSTREAM_NAMES = new Set([
   "features-16",
   "features-17",
   "features-18",
+  "hero-01",
+  "hero-02",
+  "hero-03",
+  "hero-04",
+  "hero-05",
+  "hero-06",
+  "hero-07",
+  "hero-08",
 ])
 
 /** Upstream names with audited behavior-adapter views (Provider* literals preserved). */

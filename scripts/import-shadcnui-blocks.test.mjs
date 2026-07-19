@@ -45,18 +45,18 @@ test("direct-binding variants skip compileBlockBindings", () => {
       `${upstreamName} must skip binding compilation`,
     )
   }
-  assert.equal(shouldSkipBindingCompilation("hero-01", "hero.tsx", bindings), false)
+  assert.equal(shouldSkipBindingCompilation("hero-01", "hero.tsx", bindings), true)
   assert.equal(shouldSkipBindingCompilation("hero-03", "navbar.tsx", bindings), true)
 })
 
 test("applyVariantLiteralAdaptations delegates only through the special-case table", () => {
-  const input = 'colors = ["#5227FF", "#FF9FFC", "#B497CF"]'
-  const adapted = applyVariantLiteralAdaptations("hero-03", {
+  const input = "background: rgba(75, 85, 99, 0.08)"
+  const adapted = applyVariantLiteralAdaptations("pricing-09", {
     contents: input,
-    filename: "border-beam.tsx",
+    filename: "pricing.tsx",
     isEntryFile: false,
   })
-  assert.match(adapted, /var\(--provider-accent/)
+  assert.match(adapted, /var\(--provider-grid-line/)
   assert.equal(
     applyVariantLiteralAdaptations("hero-01", { contents: input, filename: "hero.tsx", isEntryFile: false }),
     input,
@@ -92,11 +92,15 @@ test("assertScaffoldAllowed rejects typed pilots and direct bindings without for
     () => assertScaffoldAllowed(bindings, "features-03"),
     /already a typed pilot/i,
   )
-  assert.doesNotThrow(() => assertScaffoldAllowed(bindings, "hero-02"))
+  assert.throws(
+    () => assertScaffoldAllowed(bindings, "hero-02"),
+    /already a typed pilot/i,
+  )
+  assert.doesNotThrow(() => assertScaffoldAllowed(bindings, "pricing-01"))
 })
 
 test("hasDirectBindings mirrors bindings.direct manifest", () => {
   assert.equal(hasDirectBindings(bindings, "faq-01"), true)
-  assert.equal(hasDirectBindings(bindings, "hero-01"), false)
+  assert.equal(hasDirectBindings(bindings, "hero-01"), true)
   assert.deepEqual(Object.keys(VARIANT_SPECIAL_CASES).sort(), VARIANT_SPECIAL_CASE_IDS)
 })

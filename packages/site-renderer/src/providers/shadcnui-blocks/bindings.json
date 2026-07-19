@@ -43,7 +43,15 @@
     "faq-11": ["title", "intro", "items"],
     "faq-12": ["title", "intro", "items"],
     "faq-13": ["title", "intro", "items"],
-    "faq-14": ["title", "intro", "items"]
+    "faq-14": ["title", "intro", "items"],
+    "hero-01": ["eyebrow", "headline", "subheadline", "cta", "secondary"],
+    "hero-02": ["eyebrow", "headline", "subheadline", "cta", "secondary", "image"],
+    "hero-03": ["eyebrow", "headline", "subheadline", "cta", "secondary", "image"],
+    "hero-04": ["eyebrow", "headline", "subheadline", "cta", "secondary", "image"],
+    "hero-05": ["eyebrow", "headline", "subheadline", "cta", "secondary", "image"],
+    "hero-06": ["eyebrow", "headline", "subheadline", "cta", "secondary"],
+    "hero-07": ["eyebrow", "headline", "subheadline", "cta", "secondary"],
+    "hero-08": ["headline", "subheadline", "cta", "secondary", "trustLabel", "logos"]
   },
   "variants": {
     "blog-01": {

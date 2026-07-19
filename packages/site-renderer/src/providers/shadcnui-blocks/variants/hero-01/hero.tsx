@@ -1,52 +1,90 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import { ArrowUpRight, CirclePlay } from "lucide-react";
-import Link from "../../runtime/link";
-import type { SVGProps } from "react";
-import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+// Owned typed adaptation of upstream shadcnui-blocks hero-01 (MIT, see ../../LICENSE).
+"use client"
 
-export default function Hero() {
+import * as React from "react"
+import type { LinkRef, RtRoot } from "@siteinabox/contracts"
+import { ArrowUpRight, CirclePlay } from "lucide-react"
+import type { SVGProps } from "react"
+import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import {
+  renderHeroEyebrow,
+  renderHeroHeadline,
+  renderHeroLink,
+  renderHeroSubheadline,
+} from "../../typed/hero-fields"
+import { heroFamilyCmsLike } from "../../typed/fixtures/hero-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+
+export type Hero01Props = TypedVariantBaseProps & {
+  eyebrow?: RtRoot | null
+  headline: RtRoot
+  subheadline?: RtRoot | null
+  cta?: LinkRef | null
+  secondary?: LinkRef | null
+}
+
+export function Hero01({
+  eyebrow,
+  headline,
+  subheadline,
+  cta,
+  secondary,
+  blockIndex,
+  editSlots,
+  rootAttributes,
+  ...rest
+}: Hero01Props & React.HTMLAttributes<HTMLDivElement>) {
+  const eyebrowContent = renderHeroEyebrow(editSlots, eyebrow, blockIndex)
+  const primaryAction = renderHeroLink(editSlots, cta ?? {}, blockIndex, "cta", {
+    trailingIcon: <ArrowUpRight className="size-5" />,
+  })
+  const secondaryAction = renderHeroLink(editSlots, secondary ?? {}, blockIndex, "secondary", {
+    leadingIcon: <CirclePlay className="size-5" />,
+  })
+
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6" {...rootAttributes} {...rest}>
       <DreamyBackground className="absolute inset-0 m-auto" />
-
       <div className="relative isolate max-w-3xl text-center">
-        <Badge
-          asChild
-          className="rounded-full bg-background/30 py-1 backdrop-blur-lg"
-          variant="secondary"
-        >
-          <span><ProviderField field="eyebrow" fallback={"Just released v1.0.0"} inline /><ArrowUpRight className="ml-1 size-4" /></span>
-        </Badge>
-        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-tighter sm:text-[2.75rem] md:text-6xl/[1.2]"><ProviderField field="headline" fallback={<>
-          Ship better UI without&nbsp;the&nbsp;hassle
-        </>} inline /></h1>
-        <p className="mx-auto mt-6 max-w-2xl text-foreground/70 text-xl md:text-2xl/normal"><ProviderField field="subheadline" fallback={<>
-          Instead of starting from scratch every time, use thoughtfully designed
-          blocks that give you a solid foundation for any UI.
-        </>} inline /></p>
-        <div className="mt-12 flex items-center justify-center gap-4">
-          <Button className="rounded-full" size="lg" asChild><ProviderAction field="cta" fallback={"Get Started"} decoration="after"><ArrowUpRight className="size-5" /></ProviderAction></Button>
-          <Button
-            className="rounded-full shadow-none"
-            size="lg"
-            variant="outline"
-           asChild><ProviderAction field="secondary" fallback={"Watch Demo"} decoration="before"><CirclePlay className="size-5" /></ProviderAction></Button>
-        </div>
+        {eyebrowContent ? (
+          <Badge asChild className="rounded-full bg-background/30 py-1 backdrop-blur-lg" variant="secondary">
+            <span>
+              {eyebrowContent}
+              <ArrowUpRight className="ml-1 size-4" />
+            </span>
+          </Badge>
+        ) : null}
+        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-tighter sm:text-[2.75rem] md:text-6xl/[1.2]">
+          {renderHeroHeadline(editSlots, headline, blockIndex)}
+        </h1>
+        {subheadline ? (
+          <p className="mx-auto mt-6 max-w-2xl text-foreground/70 text-xl md:text-2xl/normal">
+            {renderHeroSubheadline(editSlots, subheadline, blockIndex)}
+          </p>
+        ) : null}
+        {primaryAction || secondaryAction ? (
+          <div className="mt-12 flex items-center justify-center gap-4">
+            {primaryAction ? (
+              <Button className="rounded-full" size="lg" asChild>
+                {primaryAction}
+              </Button>
+            ) : null}
+            {secondaryAction ? (
+              <Button className="rounded-full shadow-none" size="lg" variant="outline" asChild>
+                {secondaryAction}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
-  );
+  )
 }
 
 function DreamyBackground(props: SVGProps<SVGSVGElement>) {
   return (
-    <svg
-      fill="none"
-      viewBox="0 0 1226 1065"
-      xmlns="http://www.w3.org/2000/svg"
-      {...props}
-    >
+    <svg fill="none" viewBox="0 0 1226 1065" xmlns="http://www.w3.org/2000/svg" {...props}>
       <g filter="url(#filter0_f_0_1)">
         <path
           d="M291.402 416.77C291.402 346.77 244.735 285.603 221.402 263.77C111.902 141.27 448.902 207.27 636.402 359.77C823.902 512.27 618.902 613.27 448.902 740.27C278.902 867.27 291.402 504.27 291.402 416.77Z"
@@ -70,16 +108,8 @@ function DreamyBackground(props: SVGProps<SVGSVGElement>) {
           y="0"
         >
           <feFlood floodOpacity="0" result="BackgroundImageFix" />
-          <feBlend
-            in="SourceGraphic"
-            in2="BackgroundImageFix"
-            mode="normal"
-            result="shape"
-          />
-          <feGaussianBlur
-            result="effect1_foregroundBlur_0_1"
-            stdDeviation="100"
-          />
+          <feBlend in="SourceGraphic" in2="BackgroundImageFix" mode="normal" result="shape" />
+          <feGaussianBlur result="effect1_foregroundBlur_0_1" stdDeviation="100" />
         </filter>
         <filter
           colorInterpolationFilters="sRGB"
@@ -91,16 +121,8 @@ function DreamyBackground(props: SVGProps<SVGSVGElement>) {
           y="134.203"
         >
           <feFlood floodOpacity="0" result="BackgroundImageFix" />
-          <feBlend
-            in="SourceGraphic"
-            in2="BackgroundImageFix"
-            mode="normal"
-            result="shape"
-          />
-          <feGaussianBlur
-            result="effect1_foregroundBlur_0_1"
-            stdDeviation="100"
-          />
+          <feBlend in="SourceGraphic" in2="BackgroundImageFix" mode="normal" result="shape" />
+          <feGaussianBlur result="effect1_foregroundBlur_0_1" stdDeviation="100" />
         </filter>
         <linearGradient
           gradientUnits="userSpaceOnUse"
@@ -126,5 +148,18 @@ function DreamyBackground(props: SVGProps<SVGSVGElement>) {
         </linearGradient>
       </defs>
     </svg>
-  );
+  )
+}
+
+export default function Hero01Literal() {
+  return (
+    <Hero01
+      eyebrow={heroFamilyCmsLike.eyebrow}
+      headline={heroFamilyCmsLike.headline}
+      subheadline={heroFamilyCmsLike.subheadline}
+      cta={heroFamilyCmsLike.cta}
+      secondary={heroFamilyCmsLike.secondary}
+      blockIndex={0}
+    />
+  )
 }

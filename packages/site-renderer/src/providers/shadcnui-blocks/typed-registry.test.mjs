@@ -41,6 +41,14 @@ import Features15View from "./variants/features-15/view.tsx"
 import Features16View from "./variants/features-16/view.tsx"
 import Features17View from "./variants/features-17/view.tsx"
 import Features18View from "./variants/features-18/view.tsx"
+import Hero01View from "./variants/hero-01/view.tsx"
+import Hero02View from "./variants/hero-02/view.tsx"
+import Hero03View from "./variants/hero-03/view.tsx"
+import Hero04View from "./variants/hero-04/view.tsx"
+import Hero05View from "./variants/hero-05/view.tsx"
+import Hero06View from "./variants/hero-06/view.tsx"
+import Hero07View from "./variants/hero-07/view.tsx"
+import Hero08View from "./variants/hero-08/view.tsx"
 import LogoCloud01View from "./variants/logo-cloud-01/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
@@ -90,6 +98,14 @@ const viewById = {
   "shadcnui-blocks.features-16": Features16View,
   "shadcnui-blocks.features-17": Features17View,
   "shadcnui-blocks.features-18": Features18View,
+  "shadcnui-blocks.hero-01": Hero01View,
+  "shadcnui-blocks.hero-02": Hero02View,
+  "shadcnui-blocks.hero-03": Hero03View,
+  "shadcnui-blocks.hero-04": Hero04View,
+  "shadcnui-blocks.hero-05": Hero05View,
+  "shadcnui-blocks.hero-06": Hero06View,
+  "shadcnui-blocks.hero-07": Hero07View,
+  "shadcnui-blocks.hero-08": Hero08View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {

@@ -4,6 +4,7 @@ export * from "./fixtures/cta-family"
 export * from "./fixtures/faq-01"
 export * from "./fixtures/faq-family"
 export * from "./fixtures/feature-family"
+export * from "./fixtures/hero-family"
 export * from "./fixtures/logo-cloud-01"
 export { renderCtaLink, type CtaLinkField } from "./actions"
 export { providerCircuitBoardStyle } from "./grid-pattern"
@@ -33,6 +34,18 @@ export {
   renderFaqQuestion,
   renderFaqTitle,
 } from "./faq-fields"
+export {
+  HERO_BLOCK_TYPE,
+  type HeroLinkField,
+  type HeroLogoItem,
+  renderHeroEyebrow,
+  renderHeroHeadline,
+  renderHeroImage,
+  renderHeroLink,
+  renderHeroLogo,
+  renderHeroSubheadline,
+  renderHeroTrustLabel,
+} from "./hero-fields"
 export { fieldInlineRichText, renderBlockRichText, renderInlineRichText } from "./rich-text"
 export {
   BEHAVIOR_ADAPTER_IDS,

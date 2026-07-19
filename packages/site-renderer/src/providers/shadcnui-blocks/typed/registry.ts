@@ -37,6 +37,14 @@ import Features15View from "../variants/features-15/view"
 import Features16View from "../variants/features-16/view"
 import Features17View from "../variants/features-17/view"
 import Features18View from "../variants/features-18/view"
+import Hero01View from "../variants/hero-01/view"
+import Hero02View from "../variants/hero-02/view"
+import Hero03View from "../variants/hero-03/view"
+import Hero04View from "../variants/hero-04/view"
+import Hero05View from "../variants/hero-05/view"
+import Hero06View from "../variants/hero-06/view"
+import Hero07View from "../variants/hero-07/view"
+import Hero08View from "../variants/hero-08/view"
 import LogoCloud01View from "../variants/logo-cloud-01/view"
 
 export const TYPED_PILOT_IDS = [
@@ -80,6 +88,14 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.features-16",
   "shadcnui-blocks.features-17",
   "shadcnui-blocks.features-18",
+  "shadcnui-blocks.hero-01",
+  "shadcnui-blocks.hero-02",
+  "shadcnui-blocks.hero-03",
+  "shadcnui-blocks.hero-04",
+  "shadcnui-blocks.hero-05",
+  "shadcnui-blocks.hero-06",
+  "shadcnui-blocks.hero-07",
+  "shadcnui-blocks.hero-08",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -93,7 +109,7 @@ export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[numbe
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -106,6 +122,9 @@ const FAQ_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
 const FEATURE_TITLE_INTRO_FEATURES = ["title", "intro", "features"] as const
 const FEATURE_TITLE_FEATURES = ["title", "features"] as const
 const FEATURE_EYEBROW_TITLE_INTRO_FEATURES = ["eyebrow", "title", "intro", "features"] as const
+const HERO_STANDARD_FIELDS = ["eyebrow", "headline", "subheadline", "cta", "secondary"] as const
+const HERO_WITH_IMAGE_FIELDS = [...HERO_STANDARD_FIELDS, "image"] as const
+const HERO_08_FIELDS = ["headline", "subheadline", "cta", "secondary", "trustLabel", "logos"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -347,6 +366,54 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "featureList",
     directFields: FEATURE_EYEBROW_TITLE_INTRO_FEATURES,
     View: Features18View,
+  },
+  "shadcnui-blocks.hero-01": {
+    upstreamName: "hero-01",
+    blockType: "hero",
+    directFields: HERO_STANDARD_FIELDS,
+    View: Hero01View,
+  },
+  "shadcnui-blocks.hero-02": {
+    upstreamName: "hero-02",
+    blockType: "hero",
+    directFields: HERO_WITH_IMAGE_FIELDS,
+    View: Hero02View,
+  },
+  "shadcnui-blocks.hero-03": {
+    upstreamName: "hero-03",
+    blockType: "hero",
+    directFields: HERO_WITH_IMAGE_FIELDS,
+    View: Hero03View,
+  },
+  "shadcnui-blocks.hero-04": {
+    upstreamName: "hero-04",
+    blockType: "hero",
+    directFields: HERO_WITH_IMAGE_FIELDS,
+    View: Hero04View,
+  },
+  "shadcnui-blocks.hero-05": {
+    upstreamName: "hero-05",
+    blockType: "hero",
+    directFields: HERO_WITH_IMAGE_FIELDS,
+    View: Hero05View,
+  },
+  "shadcnui-blocks.hero-06": {
+    upstreamName: "hero-06",
+    blockType: "hero",
+    directFields: HERO_STANDARD_FIELDS,
+    View: Hero06View,
+  },
+  "shadcnui-blocks.hero-07": {
+    upstreamName: "hero-07",
+    blockType: "hero",
+    directFields: HERO_STANDARD_FIELDS,
+    View: Hero07View,
+  },
+  "shadcnui-blocks.hero-08": {
+    upstreamName: "hero-08",
+    blockType: "hero",
+    directFields: HERO_08_FIELDS,
+    View: Hero08View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown
