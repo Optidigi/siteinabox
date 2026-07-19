@@ -71,6 +71,7 @@ import { scrollToFirstError } from "@/lib/formScroll"
 import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
 import type { Page } from "@/payload-types"
 import type { FooterCompositionContract } from "@/lib/footerComposition"
+import type { PageEditorSaveRequest } from "@/lib/publish/pageEditorSaveContract"
 
 const pageEditorThemeCache = new Map<string, ThemeTokens | null>()
 
@@ -571,19 +572,27 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
         : savedValues.seo,
     }
     let createdPage: PageEditorSaveResult["page"] = null
+    const siteDesign: NonNullable<PageEditorSaveRequest["siteDesign"]> = {}
+    if (themeWasDirty && normalizedThemeSnapshot) siteDesign.theme = normalizedThemeSnapshot
+    if (navWasDirty) siteDesign.navigation = navSnapshot
+    if (chromeWillSave) {
+      siteDesign.chrome = chromePatchFromDraft(chromeSnapshot, footerContract) as Record<string, unknown>
+    }
+    const saveBody: PageEditorSaveRequest = {
+      tenantId,
+      publish: true,
+      page: {
+        id: initial?.id,
+        data: pageData,
+        ...(initial?.updatedAt ? { expectedUpdatedAt: initial.updatedAt } : {}),
+      },
+      ...(Object.keys(siteDesign).length > 0 ? { siteDesign } : {}),
+    }
     try {
       const response = await fetch("/api/page-editor-save", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          tenantId,
-          page: { id: initial?.id, data: pageData },
-          theme: themeWasDirty ? normalizedThemeSnapshot : undefined,
-          navigation: navWasDirty ? navSnapshot : undefined,
-          chrome: chromeWillSave
-            ? chromePatchFromDraft(chromeSnapshot, footerContract)
-            : undefined,
-        }),
+        body: JSON.stringify(saveBody),
       })
       const result = await response.json().catch(() => null)
       if (!response.ok) {

@@ -975,111 +975,6 @@
       "text": "as any"
     },
     {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 10,
-      "column": 45,
-      "kind": "record-any",
-      "text": "Record<string, any>"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 19,
-      "column": 32,
-      "kind": "annotated-any",
-      "text": ": any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 22,
-      "column": 59,
-      "kind": "annotated-any",
-      "text": ": any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 25,
-      "column": 25,
-      "kind": "annotated-any",
-      "text": ": any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 34,
-      "column": 30,
-      "kind": "annotated-any",
-      "text": ": any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 34,
-      "column": 32,
-      "kind": "any-array",
-      "text": "any[]"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 74,
-      "column": 92,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 87,
-      "column": 39,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 88,
-      "column": 64,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 88,
-      "column": 73,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 90,
-      "column": 56,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 98,
-      "column": 37,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 116,
-      "column": 38,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 131,
-      "column": 20,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
-      "file": "apps/cms/src/app/(payload)/api/page-editor-save/route.ts",
-      "line": 154,
-      "column": 50,
-      "kind": "as-any",
-      "text": "as any"
-    },
-    {
       "file": "apps/cms/src/app/(payload)/api/renderer/media/[tenantId]/[...path]/route.ts",
       "line": 86,
       "column": 15,
@@ -10752,13 +10647,6 @@
       "column": 3,
       "kind": "as-any",
       "text": "as any"
-    },
-    {
-      "file": "apps/cms/tests/unit/page-editor-save-route.test.ts",
-      "line": 47,
-      "column": 56,
-      "kind": "annotated-any",
-      "text": ": any"
     },
     {
       "file": "apps/cms/tests/unit/pageToJson-blocks.test.ts",
