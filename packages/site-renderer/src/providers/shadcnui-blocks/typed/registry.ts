@@ -81,6 +81,19 @@ import Pricing07View from "../variants/pricing-07/view"
 import Pricing08View from "../variants/pricing-08/view"
 import Pricing09View from "../variants/pricing-09/view"
 import Pricing10View from "../variants/pricing-10/view"
+import Team01View from "../variants/team-01/view"
+import Team02View from "../variants/team-02/view"
+import Team03View from "../variants/team-03/view"
+import Team04View from "../variants/team-04/view"
+import Team05View from "../variants/team-05/view"
+import Team06View from "../variants/team-06/view"
+import Team07View from "../variants/team-07/view"
+import Team08View from "../variants/team-08/view"
+import Team09View from "../variants/team-09/view"
+import Team10View from "../variants/team-10/view"
+import Team11View from "../variants/team-11/view"
+import Team12View from "../variants/team-12/view"
+import Team13View from "../variants/team-13/view"
 
 export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-01",
@@ -166,6 +179,19 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.pricing-08",
   "shadcnui-blocks.pricing-09",
   "shadcnui-blocks.pricing-10",
+  "shadcnui-blocks.team-01",
+  "shadcnui-blocks.team-02",
+  "shadcnui-blocks.team-03",
+  "shadcnui-blocks.team-04",
+  "shadcnui-blocks.team-05",
+  "shadcnui-blocks.team-06",
+  "shadcnui-blocks.team-07",
+  "shadcnui-blocks.team-08",
+  "shadcnui-blocks.team-09",
+  "shadcnui-blocks.team-10",
+  "shadcnui-blocks.team-11",
+  "shadcnui-blocks.team-12",
+  "shadcnui-blocks.team-13",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -179,7 +205,7 @@ export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[numbe
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -203,6 +229,7 @@ const LOGO_CLOUD_TITLE_CTA_LOGOS = ["title", "cta", "logos"] as const
 const STATS_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
 const PRICING_TITLE_INTRO_PLANS = ["title", "intro", "plans"] as const
 const PRICING_PLANS_ONLY = ["plans"] as const
+const TEAM_TITLE_INTRO_MEMBERS = ["title", "intro", "members"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -702,6 +729,84 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "pricing",
     directFields: PRICING_TITLE_INTRO_PLANS,
     View: Pricing10View,
+  },
+  "shadcnui-blocks.team-01": {
+    upstreamName: "team-01",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team01View,
+  },
+  "shadcnui-blocks.team-02": {
+    upstreamName: "team-02",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team02View,
+  },
+  "shadcnui-blocks.team-03": {
+    upstreamName: "team-03",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team03View,
+  },
+  "shadcnui-blocks.team-04": {
+    upstreamName: "team-04",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team04View,
+  },
+  "shadcnui-blocks.team-05": {
+    upstreamName: "team-05",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team05View,
+  },
+  "shadcnui-blocks.team-06": {
+    upstreamName: "team-06",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team06View,
+  },
+  "shadcnui-blocks.team-07": {
+    upstreamName: "team-07",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team07View,
+  },
+  "shadcnui-blocks.team-08": {
+    upstreamName: "team-08",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team08View,
+  },
+  "shadcnui-blocks.team-09": {
+    upstreamName: "team-09",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team09View,
+  },
+  "shadcnui-blocks.team-10": {
+    upstreamName: "team-10",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team10View,
+  },
+  "shadcnui-blocks.team-11": {
+    upstreamName: "team-11",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team11View,
+  },
+  "shadcnui-blocks.team-12": {
+    upstreamName: "team-12",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team12View,
+  },
+  "shadcnui-blocks.team-13": {
+    upstreamName: "team-13",
+    blockType: "team",
+    directFields: TEAM_TITLE_INTRO_MEMBERS,
+    View: Team13View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown

@@ -10,6 +10,8 @@ export * from "./fixtures/stats-01"
 export * from "./fixtures/stats-family"
 export * from "./fixtures/pricing-01"
 export * from "./fixtures/pricing-family"
+export * from "./fixtures/team-01"
+export * from "./fixtures/team-family"
 export { renderCtaLink, type CtaLinkField } from "./actions"
 export { providerCircuitBoardStyle } from "./grid-pattern"
 export { renderBackgroundImage } from "./images"
@@ -88,6 +90,18 @@ export {
   renderPricingTitle,
   slicePricingPlans,
 } from "./pricing-fields"
+export {
+  TEAM_BLOCK_TYPE,
+  type TeamMemberItem,
+  renderMemberBio,
+  renderMemberImage,
+  renderMemberLink,
+  renderMemberName,
+  renderMemberRole,
+  renderTeamIntro,
+  renderTeamTitle,
+  sliceTeamMembers,
+} from "./team-fields"
 export { fieldInlineRichText, renderBlockRichText, renderInlineRichText } from "./rich-text"
 export {
   BEHAVIOR_ADAPTER_IDS,
