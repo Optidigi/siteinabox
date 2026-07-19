@@ -4,6 +4,7 @@
   "commit": "46c2e50bb538c9bc7a8927979d38bae178ae4452",
   "direct": {
     "contact-02": ["title", "description", "formName", "submitLabel", "fields", "provider"],
+    "cta-01": ["headline", "description", "primary"],
     "features-03": ["eyebrow", "title", "intro", "features"]
   },
   "variants": {

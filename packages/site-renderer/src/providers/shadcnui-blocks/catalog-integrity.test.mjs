@@ -52,6 +52,7 @@ test("the generated browser loader covers each structured variant exactly once",
 test("every production content view renders the pinned literal or an audited behavior adapter", async () => {
   const behaviorAdapters = new Set([
     "shadcnui-blocks.contact-02",
+    "shadcnui-blocks.cta-01",
     "shadcnui-blocks.features-03",
   ])
   for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {

@@ -17708,11 +17708,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-01/cta.tsx",
-          "sha256": "sha256:7e02cf44d5141b4f3295dfa0a8a2bc73a0ee3de7ef0a2a8882140902d1563de3"
+          "sha256": "sha256:097e71d23030f43edefe9d765be01e0174b69e878e419bb5f924574e433bd149"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-01/view.tsx",
-          "sha256": "sha256:8d437d1ec7f40eb0d59e4ce364b70970ef787437364661d7b166155a14f09fc1"
+          "sha256": "sha256:0d04b75e3f151b805dc70fcacf8466120f1fc906f7ed9abfef8af917347eb163"
         }
       ]
     },
