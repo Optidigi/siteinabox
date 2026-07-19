@@ -11,7 +11,7 @@ import {
   renderFaqQuestion,
   renderFaqTitle,
 } from "../../typed/faq-fields"
-import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import { faq13Literal } from "../../typed/fixtures/faq-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 export type Faq13Props = TypedVariantBaseProps & {
@@ -67,9 +67,9 @@ export function Faq13({ title, intro, items, blockIndex, editSlots, rootAttribut
 export default function Faq13Literal() {
   return (
     <Faq13
-      title={faqFamilyCmsLike.title}
-      intro={faqFamilyCmsLike.intro}
-      items={faqFamilyCmsLike.items}
+      title={faq13Literal.title}
+      intro={faq13Literal.intro}
+      items={faq13Literal.items}
       blockIndex={0}
     />
   )

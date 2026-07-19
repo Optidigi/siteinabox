@@ -20,7 +20,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { featureFamilyLiteral } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { StatsCard } from "./stats-card"
 
@@ -92,9 +92,9 @@ export function Features10({ title, intro, features, blockIndex, editSlots, root
 export default function Features10Literal() {
   return (
     <Features10
-      title={featureFamilyCmsLike.title}
-      intro={featureFamilyCmsLike.intro}
-      features={featureFamilyCmsLike.features}
+      title={featureFamilyLiteral.title}
+      intro={featureFamilyLiteral.intro}
+      features={featureFamilyLiteral.features}
       blockIndex={0}
       literalPreview
     />

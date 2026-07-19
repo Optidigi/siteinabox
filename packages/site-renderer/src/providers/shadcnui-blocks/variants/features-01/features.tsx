@@ -20,7 +20,7 @@ import {
   renderFeatureItemTitle,
   renderFeatureTitle,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { featureFamilyLiteral } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [Settings2, Blocks, Bot, Film, ChartPie, MessageCircle]
@@ -76,9 +76,9 @@ export function Features01({ title, intro, features, blockIndex, editSlots, root
 export default function Features01Literal() {
   return (
     <Features01
-      title={featureFamilyCmsLike.title}
-      intro={featureFamilyCmsLike.intro}
-      features={featureFamilyCmsLike.features}
+      title={featureFamilyLiteral.title}
+      intro={featureFamilyLiteral.intro}
+      features={featureFamilyLiteral.features}
       blockIndex={0}
     />
   )

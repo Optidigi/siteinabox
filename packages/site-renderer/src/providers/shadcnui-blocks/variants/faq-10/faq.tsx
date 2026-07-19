@@ -28,7 +28,7 @@ import {
   renderFaqQuestion,
   renderFaqTitle,
 } from "../../typed/faq-fields"
-import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import { faq10Literal } from "../../typed/fixtures/faq-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [
@@ -128,9 +128,9 @@ export function Faq10({ title, intro, items, blockIndex, editSlots, rootAttribut
 export default function Faq10Literal() {
   return (
     <Faq10
-      title={faqFamilyCmsLike.title}
-      intro={faqFamilyCmsLike.intro}
-      items={faqFamilyCmsLike.items}
+      title={faq10Literal.title}
+      intro={faq10Literal.intro}
+      items={faq10Literal.items}
       blockIndex={0}
     />
   )

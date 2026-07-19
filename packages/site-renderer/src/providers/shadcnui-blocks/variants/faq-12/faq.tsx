@@ -22,7 +22,7 @@ import {
   renderFaqQuestion,
   renderFaqTitle,
 } from "../../typed/faq-fields"
-import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import { faq12Literal } from "../../typed/fixtures/faq-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [
@@ -135,9 +135,9 @@ export function Faq12({ title, intro, items, blockIndex, editSlots, rootAttribut
 export default function Faq12Literal() {
   return (
     <Faq12
-      title={faqFamilyCmsLike.title}
-      intro={faqFamilyCmsLike.intro}
-      items={faqFamilyCmsLike.items}
+      title={faq12Literal.title}
+      intro={faq12Literal.intro}
+      items={faq12Literal.items}
       blockIndex={0}
     />
   )

@@ -19,7 +19,7 @@ import {
   renderFaqQuestion,
   renderFaqTitle,
 } from "../../typed/faq-fields"
-import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import { faq04Literal } from "../../typed/fixtures/faq-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [Undo2, Route, Truck, BadgeDollarSign, ShieldCheck, UserRoundCheck]
@@ -79,9 +79,9 @@ export function Faq04({ title, intro, items, blockIndex, editSlots, rootAttribut
 export default function Faq04Literal() {
   return (
     <Faq04
-      title={faqFamilyCmsLike.title}
-      intro={faqFamilyCmsLike.intro}
-      items={faqFamilyCmsLike.items}
+      title={faq04Literal.title}
+      intro={faq04Literal.intro}
+      items={faq04Literal.items}
       blockIndex={0}
     />
   )

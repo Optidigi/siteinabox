@@ -15,7 +15,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyWithEyebrow } from "../../typed/fixtures/feature-family"
+import { feature14Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [ShieldCheckIcon, CogIcon, BinocularsIcon]
@@ -137,10 +137,10 @@ export function Features14({ eyebrow, title, intro, features, blockIndex, editSl
 export default function Features14Literal() {
   return (
     <Features14
-      eyebrow={featureFamilyWithEyebrow.eyebrow}
-      title={featureFamilyWithEyebrow.title}
-      intro={featureFamilyWithEyebrow.intro}
-      features={featureFamilyWithEyebrow.features}
+      eyebrow={feature14Literal.eyebrow}
+      title={feature14Literal.title}
+      intro={feature14Literal.intro}
+      features={feature14Literal.features}
       blockIndex={0}
     />
   )

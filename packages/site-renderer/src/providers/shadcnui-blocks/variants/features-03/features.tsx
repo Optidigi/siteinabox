@@ -14,7 +14,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { feature03Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 
@@ -24,6 +24,7 @@ export type Features03Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   features: FeatureItem[]
   mediaResolver?: MediaResolver
+  literalPreview?: boolean
 }
 
 export function Features03({
@@ -33,6 +34,7 @@ export function Features03({
   editSlots,
   mediaResolver,
   rootAttributes,
+  literalPreview = false,
 }: Features03Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const cards = features.slice(0, 2)
@@ -84,6 +86,10 @@ export function Features03({
                     trailingIcon: <ArrowRightIcon />,
                   })}
                 </Button>
+              ) : literalPreview ? (
+                <Button className="mt-8 w-full">
+                  Build your strategy <ArrowRightIcon />
+                </Button>
               ) : null}
             </div>
           )
@@ -113,9 +119,10 @@ export function Features03({
 export default function Features03Literal() {
   return (
     <Features03
-      title={featureFamilyCmsLike.title}
-      features={featureFamilyCmsLike.features}
+      title={feature03Literal.title}
+      features={feature03Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

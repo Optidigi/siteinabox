@@ -16,16 +16,17 @@ import {
   renderFaqQuestion,
   renderFaqTitle,
 } from "../../typed/faq-fields"
-import { faqFamilyCmsLike } from "../../typed/fixtures/faq-family"
+import { faq02Literal } from "../../typed/fixtures/faq-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 export type Faq02Props = TypedVariantBaseProps & {
   title?: RtRoot | null
+  titleOverride?: React.ReactNode
   items: FaqItem[]
 }
 
-export function Faq02({ title, items, blockIndex, editSlots, rootAttributes }: Faq02Props) {
-  const titleContent = renderFaqTitle(editSlots, title, blockIndex)
+export function Faq02({ title, titleOverride, items, blockIndex, editSlots, rootAttributes }: Faq02Props) {
+  const titleContent = titleOverride ?? renderFaqTitle(editSlots, title, blockIndex)
 
   return (
     <div className="px-6 py-20" {...rootAttributes}>
@@ -56,8 +57,13 @@ export function Faq02({ title, items, blockIndex, editSlots, rootAttributes }: F
 export default function Faq02Literal() {
   return (
     <Faq02
-      title={faqFamilyCmsLike.title}
-      items={faqFamilyCmsLike.items}
+      title={faq02Literal.title}
+      titleOverride={
+        <>
+          Frequently Asked <br /> Questions
+        </>
+      }
+      items={faq02Literal.items}
       blockIndex={0}
     />
   )

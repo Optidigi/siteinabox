@@ -20,7 +20,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { featureFamilyLiteral } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [Zap, SquareDashedMousePointer, Code, MonitorSmartphone, Contrast, Cable]
@@ -78,9 +78,9 @@ export function Features09({ title, intro, features, blockIndex, editSlots, root
 export default function Features09Literal() {
   return (
     <Features09
-      title={featureFamilyCmsLike.title}
-      intro={featureFamilyCmsLike.intro}
-      features={featureFamilyCmsLike.features}
+      title={featureFamilyLiteral.title}
+      intro={featureFamilyLiteral.intro}
+      features={featureFamilyLiteral.features}
       blockIndex={0}
     />
   )

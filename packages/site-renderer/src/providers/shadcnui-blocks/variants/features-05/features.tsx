@@ -21,7 +21,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { featureFamilyLiteral } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [Goal, BookCheck, ChartPie, Users, FolderSync, Zap]
@@ -80,9 +80,9 @@ export function Features05({ title, intro, features, blockIndex, editSlots, root
 export default function Features05Literal() {
   return (
     <Features05
-      title={featureFamilyCmsLike.title}
-      intro={featureFamilyCmsLike.intro}
-      features={featureFamilyCmsLike.features}
+      title={featureFamilyLiteral.title}
+      intro={featureFamilyLiteral.intro}
+      features={featureFamilyLiteral.features}
       blockIndex={0}
     />
   )

@@ -25,7 +25,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyWithEyebrow } from "../../typed/fixtures/feature-family"
+import { feature12Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { isExternalHref } from "../../typed/links"
 
@@ -108,10 +108,10 @@ export function Features12({ eyebrow, title, intro, features, blockIndex, editSl
 export default function Features12Literal() {
   return (
     <Features12
-      eyebrow={featureFamilyWithEyebrow.eyebrow}
-      title={featureFamilyWithEyebrow.title}
-      intro={featureFamilyWithEyebrow.intro}
-      features={featureFamilyWithEyebrow.features}
+      eyebrow={feature12Literal.eyebrow}
+      title={feature12Literal.title}
+      intro={feature12Literal.intro}
+      features={feature12Literal.features}
       blockIndex={0}
     />
   )

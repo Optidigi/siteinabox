@@ -21,7 +21,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { feature07Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 import Link from "../../runtime/link"
@@ -100,9 +100,9 @@ export function Features07({
 export default function Features07Literal() {
   return (
     <Features07
-      title={featureFamilyCmsLike.title}
-      intro={featureFamilyCmsLike.intro}
-      features={featureFamilyCmsLike.features}
+      title={feature07Literal.title}
+      intro={feature07Literal.intro}
+      features={feature07Literal.features}
       blockIndex={0}
     />
   )

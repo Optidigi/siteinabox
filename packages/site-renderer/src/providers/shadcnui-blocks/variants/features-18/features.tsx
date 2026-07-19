@@ -25,7 +25,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyWithEyebrow } from "../../typed/fixtures/feature-family"
+import { feature18Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [
@@ -115,10 +115,10 @@ export function Features18({ eyebrow, title, intro, features, blockIndex, editSl
 export default function Features18Literal() {
   return (
     <Features18
-      eyebrow={featureFamilyWithEyebrow.eyebrow}
-      title={featureFamilyWithEyebrow.title}
-      intro={featureFamilyWithEyebrow.intro}
-      features={featureFamilyWithEyebrow.features}
+      eyebrow={feature18Literal.eyebrow}
+      title={feature18Literal.title}
+      intro={feature18Literal.intro}
+      features={feature18Literal.features}
       blockIndex={0}
     />
   )

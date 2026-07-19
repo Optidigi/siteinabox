@@ -17,7 +17,7 @@
     {
       "name": "accordion",
       "path": "packages/ui/src/providers/shadcnui-blocks/radix-nova/accordion.tsx",
-      "sha256": "sha256:dda5c194b842c7d0ad2d149aab82f24247432912f0d33ff1e57e31ab22757d57"
+      "sha256": "sha256:e1d9c8a1afd81740dce397d69dea086b14ed6388fcaa594e1a0ccedfb8596a0c"
     },
     {
       "name": "animated-grid-pattern",
@@ -2212,7 +2212,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-02/faq.tsx",
-          "sha256": "sha256:32dd19683dbf63c7181e1913edb37d6415b875c6a5e4d6f9e957aa90f6b4c5f9"
+          "sha256": "sha256:ca01fb81ebd634a505ca8ce3036c6b59edb1c53a3d9575e65a5cb1238d94b590"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-02/view.tsx",
@@ -2477,7 +2477,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-03/faq.tsx",
-          "sha256": "sha256:83dfcd8038526003185ce636a62c3da6184f1c3c261000ec7c3144a357a243c1"
+          "sha256": "sha256:8944fb14c80291bad86f503702e77a1d4dcf3ad4d9c5c38e8c19e304e80792d8"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-03/view.tsx",
@@ -2734,7 +2734,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-04/faq.tsx",
-          "sha256": "sha256:c9d2c63bc48914253146d536ac9989fee06f9f64c90e680abafbe65e4aeab732"
+          "sha256": "sha256:89d8cb03affe3685e9344a0c6fd6d4760c2d8db043c142e9e275dc488787ebd0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-04/view.tsx",
@@ -2991,7 +2991,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-05/faq.tsx",
-          "sha256": "sha256:fccd607524cc5b97723c2a1f2f9f67489ef8b4d101740022f7d1ab7e5b102c67"
+          "sha256": "sha256:c9fd008feae4ac340945e8098d7f56502de97e14d49071fc90a756038bc0438f"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-05/view.tsx",
@@ -3253,7 +3253,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-06/faq.tsx",
-          "sha256": "sha256:f7e54253a4403747159754bc06272a8c773bdfa3a98d074776d532c34b6020e1"
+          "sha256": "sha256:1d5100f775855ccd4dcc98f6500cbcb196b52603e0994fab70310c2db043d1f1"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-06/view.tsx",
@@ -3517,7 +3517,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-07/faq.tsx",
-          "sha256": "sha256:aa58a3a0a5b4c0dca79e81e7f40a3655d86fc3e0ac1cffc75850b3fc6d445386"
+          "sha256": "sha256:54246d68c4adc654846cb25cfce76ff6e61505fab43f07a009a9c8e70c302b95"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-07/view.tsx",
@@ -3774,7 +3774,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-01/features.tsx",
-          "sha256": "sha256:b682f3eaf42b50e016da4026e4c33659e6d216023dadfe57db20c2f8b788f655"
+          "sha256": "sha256:36a3c39428701af408b3ba3d84747aea30797c9c85d4287c1c22bd4749515810"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-01/view.tsx",
@@ -4281,7 +4281,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-03/features.tsx",
-          "sha256": "sha256:a153b38ba43038459ed3356551acef3f2459a106ef4789a5387c2bc1e6635c77"
+          "sha256": "sha256:5adb440d67d83115a0125735e8ff9b9ad90372926b3edcbd2d2498eae1a90285"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-03/view.tsx",
@@ -4534,7 +4534,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/features.tsx",
-          "sha256": "sha256:2a992e7322e60cb98dd7a8d9c4e07c4cd234c993f30d988833c5aed506150e33"
+          "sha256": "sha256:05c377fedb93d1a27b9f48f3e03fa2f7799f7b3ad0fbb66f5f7122274322112f"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/view.tsx",
@@ -4792,7 +4792,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-05/features.tsx",
-          "sha256": "sha256:b4ed7ec9725f8bdac4ed173adbe7622a73e60d75c0d37996b7fb1b1ffb28b65f"
+          "sha256": "sha256:e1f2ae942f2a67a4b3f12e67b66b09ec7f6dbf1e9768b4c4ee94d4bf15a32a64"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-05/view.tsx",
@@ -5050,7 +5050,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-06/features.tsx",
-          "sha256": "sha256:b8cde47136f823753bc3293ba7dcf2f054e0ce08a107e868bc538a0aef732f13"
+          "sha256": "sha256:5b13df5bae90788777b7bf590f046c24e14962958c10051a8ef8e0514e77eeeb"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-06/shapes.tsx",
@@ -5321,7 +5321,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-07/features.tsx",
-          "sha256": "sha256:4850ae132e3c07d864da91005c7c3eeecb918446b2a6a81e0d4d5092d5d0f49e"
+          "sha256": "sha256:b9d1079936c4e0aaa6298b8413d1491fd219d201b3c68c62aa870c24119a194a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-07/view.tsx",
@@ -20390,7 +20390,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-08/features.tsx",
-          "sha256": "sha256:e0b5bc2954cb7bc4cfc1086fb03d842c710bf103ed33e02c9b1ddb4f91f46663"
+          "sha256": "sha256:494e6a31633adbeda9cd58a4de8fa12a352ba85792e7aeb39bea175e1d86fbba"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-08/view.tsx",
@@ -20645,7 +20645,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-09/features.tsx",
-          "sha256": "sha256:64b557f7e297906cf2d1c3dae31fe3cf2a85c5cb47e190876aec03614878d5b0"
+          "sha256": "sha256:716d57e1a3adaefa92db377d59ca1ceb65cdc829f1214fd098a9cf8a9a0e9fc7"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-09/view.tsx",
@@ -20904,7 +20904,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-10/features.tsx",
-          "sha256": "sha256:25eb9dc2c5082fb46f9f4f75c7cb20e958de51a35e662a200b996f5bc9a188ba"
+          "sha256": "sha256:f8edbb638ef08a0b7336075510a3c9bd6c9be4cb76e2b2cd30a96247711262c9"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-10/stats-card.tsx",
@@ -21168,7 +21168,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-11/features.tsx",
-          "sha256": "sha256:0b11b5e92217a2346415bda71f56a901ea9c569b0b7d799787cf17f0889ba68f"
+          "sha256": "sha256:d8b22314c7de4b22753819d2cd435e777beaf1ef3d59bb4107cefd78532e5e89"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-11/view.tsx",
@@ -21433,7 +21433,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-12/features.tsx",
-          "sha256": "sha256:70a00ab26f8769ed9f15fd0175f79d1eda8473f9c2282a6e65aafe0a6286765a"
+          "sha256": "sha256:fb139464fe04d3347d66f3372303279439419883f5bc5e337cfaef1e37f98a8e"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-12/view.tsx",
@@ -21688,7 +21688,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-13/features.tsx",
-          "sha256": "sha256:b0657a783940d5a3d820a6fc843b4372111ca91a18f63ec6244921bcd2b5c5ce"
+          "sha256": "sha256:1caede356bc01835a1b5d5adf65529c13d9e3268e068028737f0b9b8b66c7787"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-13/view.tsx",
@@ -21948,7 +21948,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-14/features.tsx",
-          "sha256": "sha256:a2133a3309a2523becd1588f3a425d85c9967c01897e8683d1aa835fb76457aa"
+          "sha256": "sha256:5485464ecfed3743e1714f3396aa6b48a7f9e6f370aa64cbe65b624a34aea114"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-14/view.tsx",
@@ -22208,7 +22208,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-15/features.tsx",
-          "sha256": "sha256:45d5970b93ab239606d6ac3015696431acdad8ace16b5e691b49ffdc73eade68"
+          "sha256": "sha256:beb6f71fbcbec1d17e773571855e9c650769735339e3eb45bd99a4b9eed2c39a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-15/view.tsx",
@@ -22468,7 +22468,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-16/features.tsx",
-          "sha256": "sha256:ae96c69bd687b2bb8c792559e65f9c588b0b6bbc96b7aa89b3a5f8ed2a02c517"
+          "sha256": "sha256:4f4a19ba1e01292a4f30e1126a72a9998b49130f9290db6d62616948b1a5819c"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-16/view.tsx",
@@ -22726,7 +22726,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-17/features.tsx",
-          "sha256": "sha256:219dc122997c07ab4c5c3d1a45b231e09b353684f3c6da37bdbbd8ff4790fc1c"
+          "sha256": "sha256:6210bd313567f685c9472fc7bbe0b8f4487d21d0830a4e2a41793377c8e04dd0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-17/view.tsx",
@@ -22989,7 +22989,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-18/features.tsx",
-          "sha256": "sha256:527a9ec9d36ff9c5ba840812a5872d2328ead9cdb3e5fa5a3217deb4e2118a01"
+          "sha256": "sha256:5f54302b391bedb19cb36904cc32f930c7dc2521ab9d68505a74d6c3fa02d2a0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-18/view.tsx",
@@ -23244,7 +23244,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-08/faq.tsx",
-          "sha256": "sha256:65d6c82e9ee90ed65ab771bb9667f64c1df92dd2ecd0c64592e06923a2dd8ac0"
+          "sha256": "sha256:39bc2d11e2ac2c38972ec4c9472a4723afb36a2ee03bb98db9112eb5dd7e8fc2"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-08/view.tsx",
@@ -23499,7 +23499,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-09/faq.tsx",
-          "sha256": "sha256:25eed7be9c40dcd367513bfd78010c998e804e9e728c80504010bbb4e1409139"
+          "sha256": "sha256:d8894b80d95e04f7a5963dd74d44e53e3bda59ecd679f690ca210ac353d2ca4d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-09/view.tsx",
@@ -23754,7 +23754,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-10/faq.tsx",
-          "sha256": "sha256:7f80d649aaeeea24b85a0712910a04b8afed1d21c1e25a6a4269720fbd362cb8"
+          "sha256": "sha256:e9650d64513751bfd63fe5305326b8ef58d21412596652e2e71685a09441b9cd"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-10/view.tsx",
@@ -24009,7 +24009,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-11/faq.tsx",
-          "sha256": "sha256:e5ecf2235824b35b10750e8fd3ad3174292a75d7aa2965c6bf709c6e691414cf"
+          "sha256": "sha256:4ea7951e8955853254442b9289c96d90d95bf81410ad7a2e4ec36b391bcce762"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-11/view.tsx",
@@ -24265,7 +24265,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-12/faq.tsx",
-          "sha256": "sha256:22eb830269a576b8cf487363ff0e4a17aac09d4c62431191758275086364dd2d"
+          "sha256": "sha256:4d8e0db5b0fc951b89d2cc27121a3dad30c73fc15cdbd2cc750ace9b1635c868"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-12/view.tsx",
@@ -24520,7 +24520,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-13/faq.tsx",
-          "sha256": "sha256:b5690c6a0fc58a66fb920cc7a023f77edef8e568c7c6dfebe9fd6ffaaf4c3407"
+          "sha256": "sha256:b09eff32f445e3246cc49bab72e9de5dceea4ada82e9ea6884550be2e40e09ef"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-13/view.tsx",
@@ -24778,7 +24778,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-14/faq.tsx",
-          "sha256": "sha256:1f832207139f500025e779b8f975add4c0f856a722751917053754eea41b2bf5"
+          "sha256": "sha256:10ccffeaeb3a24754901b62c3904797f4f7ce67d5b1a549aeff56e15c7c6068a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-14/view.tsx",

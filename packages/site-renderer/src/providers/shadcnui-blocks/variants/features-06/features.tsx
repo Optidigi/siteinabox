@@ -10,7 +10,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import { featureFamilyLiteral, feature06Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { Flower10, Moon12, Star1, Triangle14 } from "./shapes"
 
@@ -116,9 +116,9 @@ export function Features06({ title, intro, features, blockIndex, editSlots, root
 export default function Features06Literal() {
   return (
     <Features06
-      title={featureFamilyCmsLike.title}
-      intro={featureFamilyCmsLike.intro}
-      features={featureFamilyCmsLike.features}
+      title={feature06Literal.title}
+      intro={feature06Literal.intro}
+      features={feature06Literal.features}
       blockIndex={0}
     />
   )
