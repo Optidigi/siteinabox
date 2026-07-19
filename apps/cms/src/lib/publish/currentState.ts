@@ -15,6 +15,7 @@ export type PublishCurrentTenantStateOptions = {
   tenantId: string | number
   user: PublishCurrentStateUser
   reason?: string | null
+  req?: any
 }
 
 const userTenantIds = (user: PublishCurrentStateUser): Set<string> =>
@@ -48,6 +49,7 @@ export async function publishCurrentTenantState(
     manualActivation: true,
     publishedBy: options.user.id ?? null,
     activationReason: options.reason ?? "auto-publish current CMS state",
+    req: options.req,
   })
   if (options.user.role !== "super-admin" && result.activated) {
     await recordQualifyingContinuedUse({
@@ -55,6 +57,7 @@ export async function publishCurrentTenantState(
       tenantId: options.tenantId,
       evidenceType: "tenant_publish",
       evidenceId: String(result.snapshot.id),
+      req: options.req,
     })
   }
   return result

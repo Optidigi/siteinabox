@@ -35,6 +35,7 @@ export type PublishSiteOptions = {
   manualActivation?: boolean
   publishedBy?: string | number | null
   activationReason?: string | null
+  req?: any
 }
 
 export type ActivateSnapshotOptions = {
@@ -43,7 +44,10 @@ export type ActivateSnapshotOptions = {
   activatedBy?: string | number | null
   activationReason?: string | null
   rollback?: boolean
+  req?: any
 }
+
+const requestArgs = (req: any) => req ? { req } : {}
 
 export type ResolvePublishedSnapshotResult = {
   tenant: Pick<Tenant, "id" | "slug" | "domain" | "status">
@@ -170,26 +174,28 @@ export function canActivatePublishedSnapshot(
   return { ok: true }
 }
 
-async function getTenant(payload: Payload, tenantId: string | number): Promise<Tenant> {
+async function getTenant(payload: Payload, tenantId: string | number, req?: any): Promise<Tenant> {
   return payload.findByID({
     collection: "tenants",
     id: tenantId as any,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(req),
   }) as Promise<Tenant>
 }
 
-async function getGenerationRun(payload: Payload, generationRunId: string | number | null | undefined): Promise<SiteGenerationRun | null> {
+async function getGenerationRun(payload: Payload, generationRunId: string | number | null | undefined, req?: any): Promise<SiteGenerationRun | null> {
   if (generationRunId == null) return null
   return payload.findByID({
     collection: "site-generation-runs",
     id: generationRunId as any,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(req),
   }) as Promise<SiteGenerationRun>
 }
 
-async function latestApprovedRunForTenant(payload: Payload, tenantId: string | number): Promise<SiteGenerationRun | null> {
+async function latestApprovedRunForTenant(payload: Payload, tenantId: string | number, req?: any): Promise<SiteGenerationRun | null> {
   const result = await payload.find({
     collection: "site-generation-runs",
     where: { tenant: { equals: tenantId } },
@@ -197,6 +203,7 @@ async function latestApprovedRunForTenant(payload: Payload, tenantId: string | n
     limit: 10,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(req),
   })
   return ((result.docs as SiteGenerationRun[]).find((run) => {
     const approval = run.clientApproval as { status?: unknown } | null | undefined
@@ -209,6 +216,7 @@ async function pagesForSnapshot(
   tenantId: string | number,
   run: SiteGenerationRun | null,
   options: { includeAllPublishedPages?: boolean } = {},
+  req?: any,
 ): Promise<Page[]> {
   const runPageIds = Array.isArray(run?.pages)
     ? run.pages.map((page) => relationshipId(page)).filter(Boolean)
@@ -224,6 +232,7 @@ async function pagesForSnapshot(
     limit: 200,
     depth: 2,
     overrideAccess: true,
+    ...requestArgs(req),
   })
 
   const pages = result.docs as Page[]
@@ -233,7 +242,7 @@ async function pagesForSnapshot(
   return pages.filter((page) => allowed.has(String(page.id)))
 }
 
-async function nextSnapshotVersion(payload: Payload, tenantId: string | number): Promise<number> {
+async function nextSnapshotVersion(payload: Payload, tenantId: string | number, req?: any): Promise<number> {
   const result = await payload.find({
     collection: "published-site-snapshots" as any,
     where: { tenant: { equals: tenantId } },
@@ -241,6 +250,7 @@ async function nextSnapshotVersion(payload: Payload, tenantId: string | number):
     limit: 1,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(req),
   } as any)
   const latest = result.docs[0] as { version?: number } | undefined
   return Number.isFinite(latest?.version) ? Number(latest!.version) + 1 : 1
@@ -249,7 +259,7 @@ async function nextSnapshotVersion(payload: Payload, tenantId: string | number):
 export async function prunePublishedSnapshotsForTenant(
   payload: Payload,
   tenantId: string | number,
-  options: { keepSnapshotId?: string | number | null; limit?: number } = {},
+  options: { keepSnapshotId?: string | number | null; limit?: number; req?: any } = {},
 ): Promise<{ deleted: number; kept: number }> {
   const limit = options.limit ?? PUBLISHED_SNAPSHOT_RETENTION_LIMIT
   if (!Number.isInteger(limit) || limit < 1) {
@@ -263,6 +273,7 @@ export async function prunePublishedSnapshotsForTenant(
     limit: 1000,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(options.req),
   } as any)
 
   const docs = result.docs as Array<{ id: string | number; status?: string | null }>
@@ -283,6 +294,7 @@ export async function prunePublishedSnapshotsForTenant(
     id: doc.id as any,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(options.req),
   } as any)))
 
   return { deleted: toDelete.length, kept: docs.length - toDelete.length }
@@ -333,17 +345,17 @@ export async function buildPublishedSiteSnapshot(
   payload: Payload,
   tenantId: string | number,
   run: SiteGenerationRun | null,
-  options: { includeAllPublishedPages?: boolean } = {},
+  options: { includeAllPublishedPages?: boolean; req?: any } = {},
 ): Promise<PublishedSiteSnapshot> {
-  const tenant = await getTenant(payload, tenantId)
+  const tenant = await getTenant(payload, tenantId, options.req)
   if (tenant.status === "archived" || tenant.status === "suspended") {
     throw new Error("Cannot publish an archived or suspended tenant.")
   }
 
   const [pages, settingsDoc, version] = await Promise.all([
-    pagesForSnapshot(payload, tenant.id, run, options),
-    getOrCreateSiteSettings(tenant.id),
-    nextSnapshotVersion(payload, tenant.id),
+    pagesForSnapshot(payload, tenant.id, run, options, options.req),
+    getOrCreateSiteSettings(tenant.id, { payload, req: options.req }),
+    nextSnapshotVersion(payload, tenant.id, options.req),
   ])
   if (pages.length === 0) throw new Error("Cannot publish a site with no pages.")
 
@@ -399,16 +411,17 @@ export async function activatePublishedSnapshot(
     id: options.snapshotId as any,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(options.req),
   } as any) as any
   const tenantId = relationshipId(snapshotDoc.tenant)
   if (!tenantId) throw new Error("Published snapshot is missing a tenant.")
-  let tenant = await getTenant(payload, tenantId)
+  let tenant = await getTenant(payload, tenantId, options.req)
   if (normalizeRequestHost(snapshotDoc.domain) !== normalizeRequestHost(tenant.domain)) {
     throw new Error("Cannot activate a snapshot for a tenant domain that has changed.")
   }
 
   const runId = relationshipId(snapshotDoc.sourceGenerationRun)
-  const run = await getGenerationRun(payload, runId)
+  const run = await getGenerationRun(payload, runId, options.req)
   if (run && !hasVerifiedTenantSender(tenant)) {
     tenant = await refreshTenantEmailSendingFromCloudflare(payload, tenant)
   }
@@ -423,6 +436,7 @@ export async function activatePublishedSnapshot(
     limit: 100,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(options.req),
   } as any)
 
   await Promise.all((activeSnapshots.docs as any[])
@@ -440,6 +454,7 @@ export async function activatePublishedSnapshot(
       depth: 0,
       overrideAccess: true,
       context: PUBLISH_SNAPSHOT_MUTATION_CONTEXT,
+      ...requestArgs(options.req),
     } as any)))
 
   const activatedSnapshot = await payload.update({
@@ -453,6 +468,7 @@ export async function activatePublishedSnapshot(
     depth: 0,
     overrideAccess: true,
     context: PUBLISH_SNAPSHOT_MUTATION_CONTEXT,
+    ...requestArgs(options.req),
   } as any)
 
   await payload.update({
@@ -465,6 +481,7 @@ export async function activatePublishedSnapshot(
     } as any,
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(options.req),
   })
 
   await sendLiveHandoffEmailAfterActivation(payload, {
@@ -474,7 +491,7 @@ export async function activatePublishedSnapshot(
     rollback: options.rollback,
   })
 
-  await prunePublishedSnapshotsForTenant(payload, tenantId, { keepSnapshotId: snapshotDoc.id })
+  await prunePublishedSnapshotsForTenant(payload, tenantId, { keepSnapshotId: snapshotDoc.id, req: options.req })
 
   return activatedSnapshot as any
 }
@@ -483,10 +500,11 @@ export async function publishSiteSnapshot(
   payload: Payload,
   options: PublishSiteOptions,
 ) {
-  const explicitRun = await getGenerationRun(payload, options.generationRunId)
-  const run = explicitRun ?? (options.includeAllPublishedPages ? null : await latestApprovedRunForTenant(payload, options.tenantId))
+  const explicitRun = await getGenerationRun(payload, options.generationRunId, options.req)
+  const run = explicitRun ?? (options.includeAllPublishedPages ? null : await latestApprovedRunForTenant(payload, options.tenantId, options.req))
   const snapshot = await buildPublishedSiteSnapshot(payload, options.tenantId, run, {
     includeAllPublishedPages: options.includeAllPublishedPages,
+    req: options.req,
   })
   const hash = snapshotHash(snapshot)
   const snapshotDoc = await payload.create({
@@ -506,10 +524,11 @@ export async function publishSiteSnapshot(
     },
     depth: 0,
     overrideAccess: true,
+    ...requestArgs(options.req),
   } as any) as any
 
   if (!options.activate) {
-    await prunePublishedSnapshotsForTenant(payload, options.tenantId, { keepSnapshotId: snapshotDoc.id })
+    await prunePublishedSnapshotsForTenant(payload, options.tenantId, { keepSnapshotId: snapshotDoc.id, req: options.req })
     return { snapshot: snapshotDoc, activated: false }
   }
 
@@ -518,6 +537,7 @@ export async function publishSiteSnapshot(
     manualActivation: options.manualActivation,
     activatedBy: options.publishedBy,
     activationReason: options.activationReason,
+    req: options.req,
   })
   return { snapshot: activated, activated: true }
 }

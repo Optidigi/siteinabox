@@ -370,7 +370,9 @@ export async function recordQualifyingContinuedUse(input: {
   occurredAt?: Date
   evidenceType: string
   evidenceId: string
+  req?: any
 }) {
+  const request = input.req ? { req: input.req } : {}
   const occurredAt = (input.occurredAt ?? new Date()).toISOString()
   const result = await input.payload.find({
     collection: "legal-requirements" as any,
@@ -385,6 +387,7 @@ export async function recordQualifyingContinuedUse(input: {
     limit: 100,
     depth: 0,
     overrideAccess: true,
+    ...request,
   } as any)
   return Promise.all((result.docs as RecordLike[]).filter((item) => !item.objectedAt).map((item) => input.payload.update({
     collection: "legal-requirements" as any,
@@ -398,6 +401,7 @@ export async function recordQualifyingContinuedUse(input: {
     },
     depth: 0,
     overrideAccess: true,
+    ...request,
   } as any)))
 }
 

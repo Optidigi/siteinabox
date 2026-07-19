@@ -53,20 +53,26 @@ const isUniqueViolation = (err: unknown): boolean => {
   return false
 }
 
-export async function getOrCreateSiteSettings(tenantId: number | string) {
-  const payload = await getPayload({ config })
+export async function getOrCreateSiteSettings(
+  tenantId: number | string,
+  options: { payload?: Awaited<ReturnType<typeof getPayload>>; req?: any } = {},
+) {
+  const payload = options.payload ?? await getPayload({ config })
+  const request = options.req ? { req: options.req } : {}
   const found = await payload.find({
     collection: "site-settings",
     overrideAccess: true,
     where: { tenant: { equals: tenantId } },
-    limit: 1
+    limit: 1,
+    ...request,
   })
   if (found.docs.length) return found.docs[0]
   try {
     return await payload.create({
       collection: "site-settings",
       overrideAccess: true,
-      data: { tenant: tenantId, siteName: "Untitled", siteUrl: "https://example.com" } as any
+      data: { tenant: tenantId, siteName: "Untitled", siteUrl: "https://example.com" } as any,
+      ...request,
     })
   } catch (err) {
     if (!isUniqueViolation(err)) throw err
@@ -75,7 +81,8 @@ export async function getOrCreateSiteSettings(tenantId: number | string) {
       collection: "site-settings",
       overrideAccess: true,
       where: { tenant: { equals: tenantId } },
-      limit: 1
+      limit: 1,
+      ...request,
     })
     // If the re-fetch returns 0, the unique-violation came from somewhere
     // other than our race (e.g. a phantom constraint). Re-throw the original

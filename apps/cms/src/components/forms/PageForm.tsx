@@ -56,7 +56,6 @@ import {
 } from "@/components/editor/elementPath"
 import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
 import { EditorThemeToolbar } from "@/components/editor/theme/editor-theme-toolbar"
-import { togglePageInNav } from "@/lib/actions/togglePageInNav"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { countLeafDirty } from "@/lib/countLeafDirty"
 import { countLeafErrors } from "@/lib/countLeafErrors"
@@ -71,7 +70,6 @@ import { useTranslations } from "next-intl"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
-import { DEFER_PAGE_AUTO_PUBLISH_HEADER } from "@/lib/publish/pageEditorSaveContract"
 import type { NavPage } from "@/lib/projection/resolveNav"
 import { SiteChromeRow, type SiteChromeSelection, type SiteChromeZone } from "@/components/editor/sidebar/SiteChromeRow"
 import { MediaPicker } from "@/components/media/MediaPicker"
@@ -155,23 +153,6 @@ const createSchema = (t: (key: string) => string) => z.object({
   }).nullish()
 })
 type Values = z.infer<ReturnType<typeof createSchema>>
-
-const saveTenantTheme = async (
-  tenantId: number | string,
-  theme: ThemeTokens,
-): Promise<ThemeTokens> => {
-  const res = await fetch("/api/tenant-theme", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ tenantId, theme }),
-  })
-  if (!res.ok) {
-    const detail = await parsePayloadError(res)
-    throw new Error(detail.message)
-  }
-  const json = await res.json()
-  return (json.theme ?? theme) as ThemeTokens
-}
 
 function FooterCompositionEditor({
   draft,
@@ -899,157 +880,58 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     setPending(true)
     setSubmitError(null)
     setShowSaved(false)
-    // Persist tenant theme before live auto-publish. Theme changes are
-    // part of the published snapshot, so a failed theme write must block
-    // publishing instead of activating the previous design tokens.
     const themeWasDirty = themeDirty
     const themeSnapshot = themeState
     const normalizedThemeSnapshot = normalizeThemeForSave(themeSnapshot)
-    const themePromise = themeWasDirty && normalizedThemeSnapshot
-      ? saveTenantTheme(tenantId, normalizedThemeSnapshot).then((savedTheme) => {
-          setThemeState(savedTheme)
-          setThemeBaseline(savedTheme)
-          pageEditorThemeCache.set(tenantStyleCacheKey, savedTheme)
-        })
-      : Promise.resolve()
     const navWasDirty = navDirty
     const navSnapshot = { inHeader, inFooter }
-    const saveNavMembership = async () => {
-      if (!navWasDirty || !initial) return
-      await Promise.all([
-        navSnapshot.inHeader !== savedInHeader
-          ? togglePageInNav(tenantId, initial.id, "header", navSnapshot.inHeader)
-          : Promise.resolve(),
-        navSnapshot.inFooter !== savedInFooter
-          ? togglePageInNav(tenantId, initial.id, "footer", navSnapshot.inFooter)
-          : Promise.resolve(),
-      ])
-      setSavedInHeader(navSnapshot.inHeader)
-      setSavedInFooter(navSnapshot.inFooter)
-    }
     const chromeSnapshot = chromeDraftRef.current
     const chromeWasDirty =
       chromeDirtyRef.current ||
       JSON.stringify(chromeComparable(chromeSnapshot, footerContract)) !==
         JSON.stringify(chromeComparable(chromeBaselineRef.current, footerContract))
-    const saveChrome = async () => {
-      if (!chromeWasDirty || !siteSettingsState?.id || !canEditSettingsResolved) return
-      const res = await fetch(`/api/site-settings/${siteSettingsState.id}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ chrome: chromePatchFromDraft(chromeSnapshot, footerContract) }),
-      })
-      if (!res.ok) {
-        const detail = await parsePayloadError(res)
-        throw new Error(detail.message)
-      }
-      setChromeBaseline(chromeSnapshot)
-    }
-    const url = initial ? `/api/pages/${initial.id}` : "/api/pages"
-    const method = initial ? "PATCH" : "POST"
-    // Normalize upload relationships to bare ids so Payload validation
-    // never receives populated Media objects from depth-loaded edit pages.
-    const body = JSON.stringify({
+    const chromeWillSave = chromeWasDirty && Boolean(siteSettingsState?.id) && canEditSettingsResolved
+    const pageData = {
       ...savedValues,
       tenant: tenantId,
       blocks: normalizePageBlockUploadIds(savedValues.blocks),
       seo: savedValues.seo
         ? { ...savedValues.seo, ogImage: normalizeUploadId(savedValues.seo.ogImage) }
         : savedValues.seo,
-    })
-    const pageWasDirty =
-      !initial ||
-      form.formState.isDirty ||
-      initial.status !== "published"
-    let createdPage: { id: string | number; slug?: string | null } | null = null
-    if (pageWasDirty) {
-      let res: Response
-      try {
-        res = await fetch(url, {
-          method,
-          headers: {
-            "content-type": "application/json",
-            [DEFER_PAGE_AUTO_PUBLISH_HEADER]: "1",
-          },
-          body,
-        })
-      } catch (e) {
-        setPending(false)
-        const msg = e instanceof Error ? e.message : t("networkError")
-        setSubmitError(msg)
-        captureCmsBrowserEvent({
-          event: "cms_page_save_failed",
-          cms_route: initial ? "/pages/[id]" : "/pages/new",
-          cms_action: "page-save",
-          cms_result: "failure",
-          cms_object_type: "page",
-          cms_object_id: initial?.id,
-          cms_error_type: "network",
-          cms_dirty_count: dirtyCount,
-          cms_duration_ms: performance.now() - saveStartedAt,
-        })
-        return
-      }
-      if (!res.ok) {
-        setPending(false)
-        // Drill into Payload's error envelope so a slug-regex / unique
-        // conflict / required-field error lights up the offending field
-        // instead of bubbling up as an opaque "HTTP 400".
-        const detail = await parsePayloadError(res)
-        if (detail.field) {
-          // RHF accepts dotted paths (e.g. "seo.title"). Cast widens to any
-          // because `keyof Values` is only the top-level keys, but RHF's
-          // runtime accepts the full FieldPath. Matches the pattern in
-          // TenantEditForm/UserEditForm for consistency.
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          form.setError(detail.field as any, {
-            type: "server",
-            message: detail.message
-          })
-          // setError mutates the errors object synchronously, but defer
-          // the scroll to next frame so RHF has flushed re-renders that
-          // would otherwise move the field's DOM position out from under
-          // us.
-          requestAnimationFrame(() => scrollToFirstError(form.formState.errors))
-        }
-        setSubmitError(detail.message)
-        captureCmsBrowserEvent({
-          event: "cms_page_save_failed",
-          cms_route: initial ? "/pages/[id]" : "/pages/new",
-          cms_action: "page-save",
-          cms_result: "failure",
-          cms_object_type: "page",
-          cms_object_id: initial?.id,
-          cms_error_type: detail.field ? "validation" : `http-${res.status}`,
-          cms_dirty_count: dirtyCount,
-          cms_duration_ms: performance.now() - saveStartedAt,
-        })
-        return
-      }
-      if (!initial) {
-        const json = await res.json()
-        const createdId = json.doc?.id ?? json.id
-        createdPage = createdId == null
-          ? null
-          : { id: createdId, slug: json.doc?.slug ?? json.slug ?? savedValues.slug }
-      }
     }
+    let createdPage: { id: string | number; slug?: string | null } | null = null
     try {
-      await Promise.all([themePromise, saveNavMembership(), saveChrome()])
-      const publishResponse = await fetch("/api/publish", {
+      const response = await fetch("/api/page-editor-save", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           tenantId,
-          includeAllPublishedPages: true,
-          activate: true,
-          reason: "page editor save",
+          page: { id: initial?.id, data: pageData },
+          theme: themeWasDirty ? normalizedThemeSnapshot : undefined,
+          navigation: navWasDirty ? navSnapshot : undefined,
+          chrome: chromeWillSave
+            ? chromePatchFromDraft(chromeSnapshot, footerContract)
+            : undefined,
         }),
       })
-      if (!publishResponse.ok) {
-        const detail = await parsePayloadError(publishResponse)
-        throw new Error(detail.message)
+      const result = await response.json().catch(() => null)
+      if (!response.ok) {
+        const message = typeof result?.message === "string" ? result.message : `HTTP ${response.status}`
+        const stage = typeof result?.stage === "string" ? result.stage : "save"
+        throw new Error(`${stage}: ${message}`)
       }
+      createdPage = result?.page?.id == null ? null : result.page
+      if (themeWasDirty && normalizedThemeSnapshot) {
+        const savedTheme = (result?.theme ?? normalizedThemeSnapshot) as ThemeTokens
+        setThemeState(savedTheme)
+        setThemeBaseline(savedTheme)
+        pageEditorThemeCache.set(tenantStyleCacheKey, savedTheme)
+      }
+      if (navWasDirty) {
+        setSavedInHeader(navSnapshot.inHeader)
+        setSavedInFooter(navSnapshot.inFooter)
+      }
+      if (chromeWillSave) setChromeBaseline(chromeSnapshot)
     } catch (err) {
       setPending(false)
       const msg = err instanceof Error ? err.message : t("saveFailed")
@@ -1061,7 +943,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         cms_result: "failure",
         cms_object_type: "page",
         cms_object_id: initial?.id ?? createdPage?.id ?? undefined,
-        cms_error_type: "related-write",
+        cms_error_type: msg.split(":", 1)[0] || "save",
         cms_dirty_count: dirtyCount,
         cms_duration_ms: performance.now() - saveStartedAt,
       })
@@ -1570,6 +1452,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
               )}
             </header>
           )}
+
+          {submitError ? (
+            <p className="mx-4 mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+              {submitError}
+            </p>
+          ) : null}
 
           {/* Editor-owned theme toolbar — centered over the canvas column, never inside the renderer frame. */}
           {!readOnly && isDesktop && (

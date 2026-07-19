@@ -72,7 +72,7 @@ describe("publish current tenant state", () => {
     expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
   })
 
-  it("uses the generic current-state publish route from the shared page editor", () => {
+  it("uses the transactional save route from the shared page editor", () => {
     const sources = [
       "src/components/forms/PageForm.tsx",
       "src/components/forms/SettingsForm.tsx",
@@ -80,8 +80,7 @@ describe("publish current tenant state", () => {
     ].map((file) => readFileSync(file, "utf8")).join("\n")
     expect(sources).not.toContain("autoPublishLive")
     expect(sources).not.toContain("publishCurrentTenantStateAction")
-    expect(sources).toContain('fetch("/api/publish"')
-    expect(sources).toContain("includeAllPublishedPages: true")
-    expect(sources).toContain("reason: \"page editor save\"")
+    expect(sources).toContain('fetch("/api/page-editor-save"')
+    expect(sources).not.toContain('fetch("/api/publish"')
   })
 })
