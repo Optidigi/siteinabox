@@ -154,3 +154,26 @@ observations before acting on them.
   provider before closing. Reopen after closure if the consent version,
   generated tenant defaults, public build token, banner, provider setting, or
   event-level browser regressions are removed or weakened.
+
+## SIAB-013 — Page-editor saves can diverge from the active snapshot
+
+- **Classification:** Confirmed defect; implementation complete, production
+  verification pending; **confidence:** high from production database and
+  browser evidence.
+- **Scope:** CMS page editor, tenant themes/settings, snapshot publication, and
+  generated-site consent chrome.
+- **Evidence:** On 2026-07-19 the Ami Care tenant stored the newer
+  `red-confident`/`rounded` theme and a four-block home page while active
+  snapshot version 112 still served `terracotta-warm`/`soft` and five blocks.
+  The former browser save flow committed related writes before a separate
+  publication request, collapsed every related failure to “Save failed,” and
+  logged no publication error. `banner-03` also used a deliberately translucent
+  `bg-primary/10` surface. The replacement route owns page, theme, navigation,
+  chrome, snapshot construction, and activation in one Payload/PostgreSQL
+  transaction, returns and logs the failing stage, and the banner now uses an
+  opaque semantic surface. Focused tests cover commit and rollback behavior and
+  the opaque banner contract.
+- **Resolution requirement:** Deploy both CMS and renderer images, perform one
+  authenticated Ami Care save, and prove the committed page/theme values match
+  the newly active snapshot and live renderer output. Capture desktop/mobile
+  consent chrome showing an opaque surface before closing.

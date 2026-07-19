@@ -31,7 +31,7 @@ function BannerFourCard({ model }: { model: BannerViewModel }) {
 
 function BannerThreeCard({ model }: { model: BannerViewModel }) {
   return (
-    <div className="relative mx-auto flex min-h-10 w-full max-w-2xl flex-wrap items-center justify-between gap-x-3 gap-y-4 rounded-lg bg-primary/10 px-4 py-3 text-center text-sm">
+    <div className="relative mx-auto flex min-h-10 w-full max-w-2xl flex-wrap items-center justify-between gap-x-3 gap-y-4 rounded-lg border bg-background px-4 py-3 text-center text-sm shadow-lg">
       <div className="flex items-center gap-3">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/13 text-primary"><ChartPie className="size-5" /></div>
         <p>{model.title ? <><strong className="font-medium">{model.title}</strong>{" "}</> : null}<span>{model.message}</span></p>

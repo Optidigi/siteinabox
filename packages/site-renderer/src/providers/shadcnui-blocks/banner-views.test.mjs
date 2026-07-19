@@ -32,6 +32,8 @@ test("approved banner-03 exposes accept and reject consent actions", () => {
   assert.match(html, /data-consent-action="reject"/)
   assert.match(html, /data-variant="outline"/)
   assert.match(html, /data-variant="default"/)
+  assert.match(html, /border bg-background/)
+  assert.doesNotMatch(html, /bg-primary\/10/)
 })
 
 test("banner-03 remains a normal content block when consent is disabled", () => {
