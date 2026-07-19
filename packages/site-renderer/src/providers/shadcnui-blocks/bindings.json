@@ -6,7 +6,8 @@
     "contact-02": ["title", "description", "formName", "submitLabel", "fields", "provider"],
     "cta-01": ["headline", "description", "primary"],
     "features-03": ["eyebrow", "title", "intro", "features"],
-    "logo-cloud-01": ["title", "logos"]
+    "logo-cloud-01": ["title", "logos"],
+    "faq-01": ["title", "items"]
   },
   "variants": {
     "blog-01": {

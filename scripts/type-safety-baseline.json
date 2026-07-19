@@ -13001,13 +13001,6 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-01/faq.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-02/faq.tsx",
       "line": 1,
       "column": 4,

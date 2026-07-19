@@ -1948,11 +1948,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-01/faq.tsx",
-          "sha256": "sha256:e8dc6e4976be55fac27cf60758041b6f7489c8a017c051fb9b2da3cef238c823"
+          "sha256": "sha256:1d493dbe09eacf0d1d2958a169f0225117fe80a3d3b84ab36bb13db9ff4544d9"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-01/view.tsx",
-          "sha256": "sha256:10eda6e9c333284430a5327bf0b9df80f8c86f185c53d1908666f115b8d0be11"
+          "sha256": "sha256:4108587f03e2c90f7d025f09031c7565a8db38069ff3d8421343d8eeaaf3c141"
         }
       ]
     },

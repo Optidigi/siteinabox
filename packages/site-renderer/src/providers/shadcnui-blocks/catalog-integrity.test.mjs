@@ -55,6 +55,7 @@ test("every production content view renders the pinned literal or an audited beh
     "shadcnui-blocks.cta-01",
     "shadcnui-blocks.features-03",
     "shadcnui-blocks.logo-cloud-01",
+    "shadcnui-blocks.faq-01",
   ])
   for (const variant of inventory.variants.filter((entry) => entry.role === "block")) {
     const source = await readFile(new URL(`packages/site-renderer/src/providers/shadcnui-blocks/variants/${variant.upstreamName}/view.tsx`, root), "utf8")
