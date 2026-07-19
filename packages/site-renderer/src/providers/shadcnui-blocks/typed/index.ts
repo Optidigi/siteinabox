@@ -8,6 +8,8 @@ export * from "./fixtures/hero-family"
 export * from "./fixtures/logo-cloud-01"
 export * from "./fixtures/stats-01"
 export * from "./fixtures/stats-family"
+export * from "./fixtures/pricing-01"
+export * from "./fixtures/pricing-family"
 export { renderCtaLink, type CtaLinkField } from "./actions"
 export { providerCircuitBoardStyle } from "./grid-pattern"
 export { renderBackgroundImage } from "./images"
@@ -67,6 +69,25 @@ export {
   renderStatValue,
   sliceStatItems,
 } from "./stats-fields"
+export {
+  PRICING_BLOCK_TYPE,
+  type PricingFeatureItem,
+  type PricingPlanItem,
+  parsePriceNumber,
+  planIcon,
+  planIsHighlighted,
+  planTitleText,
+  pricingFeatureTooltip,
+  renderPlanCta,
+  renderPlanDescription,
+  renderPlanFeatureLabel,
+  renderPlanPeriod,
+  renderPlanPrice,
+  renderPlanTitle,
+  renderPricingIntro,
+  renderPricingTitle,
+  slicePricingPlans,
+} from "./pricing-fields"
 export { fieldInlineRichText, renderBlockRichText, renderInlineRichText } from "./rich-text"
 export {
   BEHAVIOR_ADAPTER_IDS,

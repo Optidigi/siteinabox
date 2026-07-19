@@ -71,6 +71,16 @@ import Stats08View from "../variants/stats-08/view"
 import Stats09View from "../variants/stats-09/view"
 import Stats10View from "../variants/stats-10/view"
 import Stats11View from "../variants/stats-11/view"
+import Pricing01View from "../variants/pricing-01/view"
+import Pricing02View from "../variants/pricing-02/view"
+import Pricing03View from "../variants/pricing-03/view"
+import Pricing04View from "../variants/pricing-04/view"
+import Pricing05View from "../variants/pricing-05/view"
+import Pricing06View from "../variants/pricing-06/view"
+import Pricing07View from "../variants/pricing-07/view"
+import Pricing08View from "../variants/pricing-08/view"
+import Pricing09View from "../variants/pricing-09/view"
+import Pricing10View from "../variants/pricing-10/view"
 
 export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-01",
@@ -146,6 +156,16 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.stats-09",
   "shadcnui-blocks.stats-10",
   "shadcnui-blocks.stats-11",
+  "shadcnui-blocks.pricing-01",
+  "shadcnui-blocks.pricing-02",
+  "shadcnui-blocks.pricing-03",
+  "shadcnui-blocks.pricing-04",
+  "shadcnui-blocks.pricing-05",
+  "shadcnui-blocks.pricing-06",
+  "shadcnui-blocks.pricing-07",
+  "shadcnui-blocks.pricing-08",
+  "shadcnui-blocks.pricing-09",
+  "shadcnui-blocks.pricing-10",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -159,7 +179,7 @@ export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[numbe
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -181,6 +201,8 @@ const LOGO_CLOUD_INTRO_LOGOS = ["intro", "logos"] as const
 const LOGO_CLOUD_INTRO_TITLE_LOGOS = ["intro", "title", "logos"] as const
 const LOGO_CLOUD_TITLE_CTA_LOGOS = ["title", "cta", "logos"] as const
 const STATS_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
+const PRICING_TITLE_INTRO_PLANS = ["title", "intro", "plans"] as const
+const PRICING_PLANS_ONLY = ["plans"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -620,6 +642,66 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "stats",
     directFields: STATS_TITLE_INTRO_ITEMS,
     View: Stats11View,
+  },
+  "shadcnui-blocks.pricing-01": {
+    upstreamName: "pricing-01",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing01View,
+  },
+  "shadcnui-blocks.pricing-02": {
+    upstreamName: "pricing-02",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing02View,
+  },
+  "shadcnui-blocks.pricing-03": {
+    upstreamName: "pricing-03",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing03View,
+  },
+  "shadcnui-blocks.pricing-04": {
+    upstreamName: "pricing-04",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing04View,
+  },
+  "shadcnui-blocks.pricing-05": {
+    upstreamName: "pricing-05",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing05View,
+  },
+  "shadcnui-blocks.pricing-06": {
+    upstreamName: "pricing-06",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing06View,
+  },
+  "shadcnui-blocks.pricing-07": {
+    upstreamName: "pricing-07",
+    blockType: "pricing",
+    directFields: PRICING_PLANS_ONLY,
+    View: Pricing07View,
+  },
+  "shadcnui-blocks.pricing-08": {
+    upstreamName: "pricing-08",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing08View,
+  },
+  "shadcnui-blocks.pricing-09": {
+    upstreamName: "pricing-09",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing09View,
+  },
+  "shadcnui-blocks.pricing-10": {
+    upstreamName: "pricing-10",
+    blockType: "pricing",
+    directFields: PRICING_TITLE_INTRO_PLANS,
+    View: Pricing10View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown

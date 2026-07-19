@@ -1,14 +1,11 @@
 import * as React from "react"
-import { TooltipProvider } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import type { ProviderBlockModel } from "./content"
 import { ProviderBlockContent } from "./content"
 import { providerBlockAttributes } from "./block"
 
 type LiteralComponent = (props: Record<string, never>) => React.ReactNode
-const tooltipVariants = new Set(["shadcnui-blocks.pricing-03", "shadcnui-blocks.pricing-04"])
 
-const tooltips = (variant: string, children: React.ReactNode) =>
-  tooltipVariants.has(variant) ? <TooltipProvider>{children}</TooltipProvider> : children
+const tooltips = (_variant: string, children: React.ReactNode) => children
 
 /**
  * Adds renderer metadata to a pinned literal root. Content inside that root is

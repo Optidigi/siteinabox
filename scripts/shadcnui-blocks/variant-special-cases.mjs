@@ -125,11 +125,8 @@ export const VARIANT_SPECIAL_CASES = {
   },
   "pricing-09": {
     adaptLiteral({ contents, filename }) {
-      let adapted = adaptThemeColors(contents, GRID_LINE_REPLACEMENTS)
-      if (filename === "border-beam.tsx") {
-        adapted = adaptThemeColors(adapted, BORDER_BEAM_THEME_REPLACEMENTS)
-      }
-      return adapted
+      if (filename !== "border-beam.tsx") return contents
+      return adaptThemeColors(contents, BORDER_BEAM_THEME_REPLACEMENTS)
     },
   },
 }

@@ -1,110 +1,107 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import { CircleCheck } from "lucide-react";
-import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Separator } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { cn } from "@siteinabox/ui/lib/utils";
+// Owned typed adaptation of upstream shadcnui-blocks pricing-05 (MIT, see ../../LICENSE).
+"use client"
 
-const plans = [
-  {
-    name: "Starter",
-    price: 19,
-    description:
-      "Get 20 AI-generated portraits with 2 unique styles and filters.",
-    features: [
-      "5 hours turnaround time",
-      "20 AI portraits",
-      "Choice of 2 styles",
-      "Choice of 2 filters",
-      "2 retouch credits",
-    ],
-    buttonText: "Get 20 portraits in 5 hours",
-  },
-  {
-    name: "Advanced",
-    price: 29,
-    isRecommended: true,
-    description:
-      "Get 50 AI-generated portraits with 5 unique styles and filters.",
-    features: [
-      "3 hours turnaround time",
-      "50 AI portraits",
-      "Choice of 5 styles",
-      "Choice of 5 filters",
-      "5 retouch credits",
-    ],
-    buttonText: "Get 50 portraits in 3 hours",
-    isPopular: true,
-  },
-  {
-    name: "Premium",
-    price: 49,
-    description:
-      "Get 100 AI-generated portraits with 10 unique styles and filters.",
-    features: [
-      "1-hour turnaround time",
-      "100 AI portraits",
-      "Choice of 10 styles",
-      "Choice of 10 filters",
-      "10 retouch credits",
-    ],
-    buttonText: "Get 100 portraits in 1 hour",
-  },
-];
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import { CircleCheck } from "lucide-react"
+import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Separator } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { cn } from "@siteinabox/ui/lib/utils"
+import { pricing01Literal } from "../../typed/fixtures/pricing-01"
+import {
+  parsePriceNumber,
+  planIsHighlighted,
+  type PricingPlanItem,
+  renderPlanCta,
+  renderPlanDescription,
+  renderPlanFeatureLabel,
+  renderPlanPrice,
+  renderPlanTitle,
+  renderPricingIntro,
+  renderPricingTitle,
+  slicePricingPlans,
+} from "../../typed/pricing-fields"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const Pricing = () => {
+const MAX_PLANS = 3
+
+export type Pricing05Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  plans: PricingPlanItem[]
+}
+
+export function Pricing05({ title, intro, plans, blockIndex, editSlots, rootAttributes }: Pricing05Props) {
+  const titleContent = renderPricingTitle(editSlots, title, blockIndex)
+  const introContent = renderPricingIntro(editSlots, intro, blockIndex)
+  const displayPlans = slicePricingPlans(plans, MAX_PLANS)
+
   return (
-    <div className="px-6 py-20">
-      <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Our Plans
-      </>} inline /></h2>
-      <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl"><ProviderField field="intro" fallback={<>
-        Choose the plan that fits your needs
-      </>} inline /></p>
-
+    <div className="px-6 py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">{titleContent}</h2>
+      ) : null}
+      {introContent ? (
+        <p className="mt-3 text-center text-muted-foreground text-xl -tracking-[0.01em] md:text-2xl">{introContent}</p>
+      ) : null}
       <div className="mx-auto mt-12 grid max-w-(--breakpoint-lg) grid-cols-1 items-center gap-10 sm:mt-16 lg:grid-cols-3 lg:gap-0">
-        {<ProviderItems field="plans" templates={plans}>{(providerItems) => providerItems.map((plan) => (
-          <div
-            className={cn(
-              "relative rounded-lg border bg-card p-7 lg:rounded-none lg:last:rounded-r-xl lg:first:rounded-l-xl",
-              {
-                "border-primary ring-1 ring-primary ring-inset": plan.isPopular,
-              }
-            )}
-            key={plan.name}
-          >
-            {plan.isPopular && (
-              <Badge className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2">
-                Most Popular
-              </Badge>
-            )}
-            <h3 className="font-medium text-lg">{plan.name}</h3>
-            <p className="mt-4 font-satoshi font-semibold text-4xl">
-              ${plan.price}
-            </p>
-            <p className="mt-4 text-muted-foreground">{plan.description}</p>
-            <Separator className="my-6" />
-            <ul className="space-y-2">
-              {plan.features.map((feature) => (
-                <li className="flex items-start gap-2" key={feature}>
-                  <CircleCheck className="mt-1 h-4 w-4 text-green-600" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            <Button
-              className="mt-6 w-full"
-              size="lg"
-              variant={plan.isPopular ? "default" : "outline"}
+        {displayPlans.map((plan, planIndex) => {
+          const highlighted = planIsHighlighted(plan)
+          const priceContent = renderPlanPrice(editSlots, plan.price, blockIndex, planIndex)
+          const priceValue = parsePriceNumber(plan.price)
+          const ctaContent = renderPlanCta(editSlots, plan.cta, blockIndex, planIndex)
+          return (
+            <div
+              className={cn(
+                "relative rounded-lg border bg-card p-7 lg:rounded-none lg:last:rounded-r-xl lg:first:rounded-l-xl",
+                { "border-primary ring-1 ring-primary ring-inset": highlighted },
+              )}
+              key={planIndex}
             >
-              {plan.buttonText}
-            </Button>
-          </div>
-        ))}</ProviderItems>}
+              {highlighted ? (
+                <Badge className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2">
+                  {plan.badge?.trim() || "Most Popular"}
+                </Badge>
+              ) : null}
+              <h3 className="font-medium text-lg">{renderPlanTitle(editSlots, plan.title, blockIndex, planIndex)}</h3>
+              <p className="mt-4 font-satoshi font-semibold text-4xl">
+                {priceContent ?? (priceValue ? `$${priceValue}` : null)}
+              </p>
+              {plan.description ? (
+                <p className="mt-4 text-muted-foreground">
+                  {renderPlanDescription(editSlots, plan.description, blockIndex, planIndex)}
+                </p>
+              ) : null}
+              <Separator className="my-6" />
+              <ul className="space-y-2">
+                {(plan.features ?? []).map((feature, featureIndex) => (
+                  <li className="flex items-start gap-2" key={featureIndex}>
+                    <CircleCheck className="mt-1 h-4 w-4 text-green-600" />
+                    {renderPlanFeatureLabel(editSlots, feature.label, blockIndex, planIndex, featureIndex)}
+                  </li>
+                ))}
+              </ul>
+              {ctaContent ? (
+                <Button className="mt-6 w-full" size="lg" variant={highlighted ? "default" : "outline"} asChild>
+                  {ctaContent}
+                </Button>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Pricing;
+export default function Pricing05Literal() {
+  return (
+    <Pricing05
+      title={pricing01Literal.title}
+      intro={pricing01Literal.intro}
+      plans={pricing01Literal.plans}
+      blockIndex={0}
+    />
+  )
+}

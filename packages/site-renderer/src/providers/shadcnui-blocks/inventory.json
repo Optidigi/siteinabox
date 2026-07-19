@@ -10687,15 +10687,15 @@
           "sha256": "sha256:c1d1b1039ed28a225e0d1ee11cd09532fb55c1cc5f2e8ee657b7082fd8fd4ff9"
         }
       ],
-      "sourceHash": "sha256:8c7d395956f0b9696542951a44602b540cc63cdbe5ba11dd01c90031a60c449f",
+      "sourceHash": "sha256:8f3ccd8d57c8690d570d78b3cd1b729f115264da0134487be556d53cb43e4b2e",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-01/pricing.tsx",
-          "sha256": "sha256:7fca14743112b5417bc2b03a73b46d0be144842771d0760e38f8f4399fc7a188"
+          "sha256": "sha256:70cc58674912a20f7f1edba19b59db4e864d174c1e0aab9ea3aea3443e257a15"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-01/view.tsx",
-          "sha256": "sha256:046aee756cde9278f73039190a8654f0678ffd51d6237114fe44bd8ae8a36b88"
+          "sha256": "sha256:f8d5e9fd9fe0be29298537570f217f1ab462e656d6f244ea53ba2bf856a45996"
         }
       ]
     },
@@ -10947,15 +10947,15 @@
           "sha256": "sha256:6125ca8a8c9d4929f37eeac4fba7f93841aba1531c69efd8cefbde726c647053"
         }
       ],
-      "sourceHash": "sha256:ea7a5a33fa3a13ddfeff720f9f42818cb4fc7a221c951cb008f7b5742f6ef889",
+      "sourceHash": "sha256:2c2e122ff10f666a636edfc330fb18494e974d6cf1217ec9f8fbcdbd72b0757f",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-02/pricing.tsx",
-          "sha256": "sha256:a41515628bfa08a0cc67f018bb5d0a125ea60a8f3ab6847f2e0a7b8918878645"
+          "sha256": "sha256:08d5649517e81a398e8970c273e160fc8a20cdd7f51150f066dbdea9e28fb8bb"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-02/view.tsx",
-          "sha256": "sha256:179ca0cb2fe6ef13ccb4ec4d2da03eda7fc527787720bff5745d21abb3f4e942"
+          "sha256": "sha256:425b7a8883bcaaa01269d789fda58f9fb56ea1437b1dca6ca691e14bda9b047d"
         }
       ]
     },
@@ -11210,15 +11210,15 @@
           "sha256": "sha256:e5a48086bdda03880eea8be8b37aef30484e77c4dc768ddb4615d43eb01bda04"
         }
       ],
-      "sourceHash": "sha256:af69f3da651f65c04ab654d50b177a20dc40260857393dbe9d177581f4de0f38",
+      "sourceHash": "sha256:3c60b98cab582fe3d41e4f2f27316c457b16c1c6cd04f2b3f30e2adb9f9151b1",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-03/pricing.tsx",
-          "sha256": "sha256:0569f126e2a3e8ca7921fed86b3025b94e8470078605a5c8923a2b7800a70d23"
+          "sha256": "sha256:9a0067e946a528ad631a87b2184ed7ffaeee02eb9d8cec40ea9086aa339aff00"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-03/view.tsx",
-          "sha256": "sha256:a8eb6d159ba658e62dea9db529f8f6e12a1a59faf2ec6d58302434f5cb93f57a"
+          "sha256": "sha256:5426e4267a33ad426ce83cbf8b0f2587ec22a6784c3097d8093a871db5eec9b1"
         }
       ]
     },
@@ -11473,15 +11473,15 @@
           "sha256": "sha256:a65da41cd1ba9415817724368b80f848f66b88c7b1b338af19852771541aa8fd"
         }
       ],
-      "sourceHash": "sha256:b4ac9f95b68fe7257631f2f70f81230ee0ecb9a91895f9ddaef7b1ee375d6765",
+      "sourceHash": "sha256:2d3ab5ac8496786c901415c493562a572f64d6e20431be831e07ccaf9c731efc",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-04/pricing.tsx",
-          "sha256": "sha256:5d4f26895032e0b74a76c65017f5af140cf580fbf6ad36aaa6bedb30ba20d36d"
+          "sha256": "sha256:2e3eacef187af3e8cd9d0897eddf3891f3629416787fcba5aba20619f12542b1"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-04/view.tsx",
-          "sha256": "sha256:815920aa99426130621949e6c75ecff78e7eced930c8dd9a0165184fcaecd5d4"
+          "sha256": "sha256:fdde6b2cc2acf47f58ff2368f844b11cc1bf4336023b345954b89cd896a6907b"
         }
       ]
     },
@@ -11733,15 +11733,15 @@
           "sha256": "sha256:9f01ee6b7e3d714a99ee750df1296c6e4963b27ac6c1068ceca029bc4f8e7c3a"
         }
       ],
-      "sourceHash": "sha256:4f34daa9d1d8a8bcb7efafcfeaf0c64a453dfcd4d3e0a9575427771f37cff754",
+      "sourceHash": "sha256:89e1957f1778c93cd728bf04fc4ab174948c0dbda06ce8634f2e5844e50249b7",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-05/pricing.tsx",
-          "sha256": "sha256:b639c3ad1f36c28699aa1e3c2bc1ec8ec401691e9c822f5f588271e91de8ce81"
+          "sha256": "sha256:9990e168b60ca99b84715680982f4377e9228c2d0d6a595bf2efca9ba9d0a152"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-05/view.tsx",
-          "sha256": "sha256:39aa581358b5a432dbbe4f08926a2bc7ec0058b389f25a5092e42f7290d27a5d"
+          "sha256": "sha256:42cd352ef9d16d67f27c69456ee4398e3cbc3332d69aafe70cdc1fd417160f8a"
         }
       ]
     },
@@ -11993,15 +11993,15 @@
           "sha256": "sha256:2dda1a669d3dfdd3ca9fca27eb181fbe5dc06857a7a534f0f8549de4630b953d"
         }
       ],
-      "sourceHash": "sha256:caf12f85ed6aaa87e400d388364f56fdc616d5e232bf052d1c72133ff5cb8867",
+      "sourceHash": "sha256:4a30386579effdfc6e7583c929d7426487a727228fd8e07b0a607d5ba76aa810",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-06/pricing.tsx",
-          "sha256": "sha256:c47ffc94666dcb0f8ae9f243e7e235ae450cb5bafb008ff30ac909bc06c12e08"
+          "sha256": "sha256:d2160798799e487e5aafd239d327f3bf6ed272941e0de8cda2182f40d8d505d4"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-06/view.tsx",
-          "sha256": "sha256:026950c6363ef9184b6a536c8f97dc331dadbbb48013102e4651d6653a8ee026"
+          "sha256": "sha256:da4c600e2e48d0d5c1c9875b9256fa886b9a39159ff1663dc9cfe1927202b0c4"
         }
       ]
     },
@@ -27259,15 +27259,15 @@
           "sha256": "sha256:a46ec18dd19daeba8beefd71a390e4a0b199a61ec47eb8dc34e0f32ba38f8880"
         }
       ],
-      "sourceHash": "sha256:df3600c4381ac07cf26186a13566e96ca8d9799589ff37856ce8f92d7c796dc7",
+      "sourceHash": "sha256:5f09b6bd5b07ad7985ca0e84429d84271130691bc8be14e4e11928753b6d4e2b",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-07/pricing.tsx",
-          "sha256": "sha256:83be5cdbf1889bff947f45d4a277f3523e8bcd77e3261788755c3ee0004ffc30"
+          "sha256": "sha256:18e2ae36e23d26a2a8f35cfaff8ba281ee013224761a812f5d2057f9e1b7e270"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-07/view.tsx",
-          "sha256": "sha256:688abed224f740fdb7d91040ea77c16753d21b779206e21acca5574839af4b1e"
+          "sha256": "sha256:fdefbaec13b979bb3b80db13102f6366fc16b482dc23bedba8f4e95988395eee"
         }
       ]
     },
@@ -27514,15 +27514,15 @@
           "sha256": "sha256:9b556d204f088ac56ead060965a7dd09ab151aea060375ebcef80c086f807cee"
         }
       ],
-      "sourceHash": "sha256:9778484617eee7bf0f7521fcda505cc4c7a92bd860f7e06cbfc7dc333193142b",
+      "sourceHash": "sha256:fff1a724fe02da5675e29693b3d65f9a440a9c9ad81d90beda0b0cc016f3a474",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-08/pricing.tsx",
-          "sha256": "sha256:edbfdcfda9311333249a04f4f8e80b9129ca9867c613c0509eaded3a30bc9a53"
+          "sha256": "sha256:ff77896a0f3eafca074b0afc4eaf5e0c0d3ddab073c3a2ea3917626e0fc0ef2e"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-08/view.tsx",
-          "sha256": "sha256:41d6fe45aeee5e1383376980f0155761ebd85a27020d769e7265550962bb4fa4"
+          "sha256": "sha256:11a86c9ce8200944c56ce1155d8e6435561cb67cce057605e6d15dd5ad12a57a"
         }
       ]
     },
@@ -27778,7 +27778,7 @@
           "sha256": "sha256:cdfba1af09da0a7bbc5db129996055148264b64790c204e8bcaa9da3d67362fd"
         }
       ],
-      "sourceHash": "sha256:9a84d2c28a30905a781d1477c4a7678dc6d2fc3c73d9307193c082f7ebdbd3da",
+      "sourceHash": "sha256:923471a5a6f27780ef88d6bf1971a92177f1a9aa3081447a7caf9abd1c53a763",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-09/border-beam.tsx",
@@ -27786,11 +27786,11 @@
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-09/pricing.tsx",
-          "sha256": "sha256:e1abd1092e58285278547ed37c89fa6f179b485f1082f8e4cafa8097b3dc49dc"
+          "sha256": "sha256:dd0a87c36c8e0dec32afeec8758e3174c8abaf0471e6e0e31c4ccee934425cf3"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-09/view.tsx",
-          "sha256": "sha256:ae1a05ec403116de8d66a83955873d849461f2b7036d24ef523e62c25d36ce80"
+          "sha256": "sha256:2c7f9be81db73b67d1cce832563ad2d54563f94167179d881376a5d48dc8f1be"
         }
       ]
     },
@@ -28041,15 +28041,15 @@
           "sha256": "sha256:3a53e9ecc1e48cf1743dd724256537d500774fa370b871d0c587e83c8190d894"
         }
       ],
-      "sourceHash": "sha256:2ec4ca5972ab24ff2252b86eb0eaeea53cffe2741d4ae45cc620468c5ca86d54",
+      "sourceHash": "sha256:d48c1a002f1f6486b7d81606c1801214ae4c5ef1bac04ef50a48cb5ebbe55b07",
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-10/pricing.tsx",
-          "sha256": "sha256:3b25198e4f7e881134317a44b8fcdf171ffaf6731e16ecf9d268adea3c22dc68"
+          "sha256": "sha256:824d26698130d31b85f16fe5d8b26f05f3d6632981b2b9ff7f10e76280d998fa"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/pricing-10/view.tsx",
-          "sha256": "sha256:15ded55e9a9dc0deca14e7896244dde8a69979ab80a5ed9426457e86f210c556"
+          "sha256": "sha256:2e36b4b3e320af0513e023fbb711a2decc4b5e00a932474edc11689520ad4cb7"
         }
       ]
     },

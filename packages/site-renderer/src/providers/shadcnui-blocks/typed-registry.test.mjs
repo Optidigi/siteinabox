@@ -75,6 +75,16 @@ import Stats08View from "./variants/stats-08/view.tsx"
 import Stats09View from "./variants/stats-09/view.tsx"
 import Stats10View from "./variants/stats-10/view.tsx"
 import Stats11View from "./variants/stats-11/view.tsx"
+import Pricing01View from "./variants/pricing-01/view.tsx"
+import Pricing02View from "./variants/pricing-02/view.tsx"
+import Pricing03View from "./variants/pricing-03/view.tsx"
+import Pricing04View from "./variants/pricing-04/view.tsx"
+import Pricing05View from "./variants/pricing-05/view.tsx"
+import Pricing06View from "./variants/pricing-06/view.tsx"
+import Pricing07View from "./variants/pricing-07/view.tsx"
+import Pricing08View from "./variants/pricing-08/view.tsx"
+import Pricing09View from "./variants/pricing-09/view.tsx"
+import Pricing10View from "./variants/pricing-10/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
   LEGACY_BEHAVIOR_ADAPTER_IDS,
@@ -156,6 +166,16 @@ const viewById = {
   "shadcnui-blocks.stats-09": Stats09View,
   "shadcnui-blocks.stats-10": Stats10View,
   "shadcnui-blocks.stats-11": Stats11View,
+  "shadcnui-blocks.pricing-01": Pricing01View,
+  "shadcnui-blocks.pricing-02": Pricing02View,
+  "shadcnui-blocks.pricing-03": Pricing03View,
+  "shadcnui-blocks.pricing-04": Pricing04View,
+  "shadcnui-blocks.pricing-05": Pricing05View,
+  "shadcnui-blocks.pricing-06": Pricing06View,
+  "shadcnui-blocks.pricing-07": Pricing07View,
+  "shadcnui-blocks.pricing-08": Pricing08View,
+  "shadcnui-blocks.pricing-09": Pricing09View,
+  "shadcnui-blocks.pricing-10": Pricing10View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {
