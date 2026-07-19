@@ -1,6 +1,6 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 import { sql } from '@payloadcms/db-postgres'
-import { queryRows } from '@/lib/record'
+import { queryRows } from '../lib/record'
 
 /**
  * Audit finding #8 (P1, T8) — Pages: missing (tenant_id, slug) unique index.

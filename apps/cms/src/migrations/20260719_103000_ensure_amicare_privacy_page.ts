@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
-import type { Page, PublishedSiteSnapshot, SiteSetting, Tenant } from "@/payload-types"
-import { asRecord, isRecord } from "@/lib/record"
+import type { Page, PublishedSiteSnapshot, SiteSetting, Tenant } from "../payload-types"
+import { asRecord, isRecord } from "../lib/record"
 
 const SLUG = "privacy-en-cookieverklaring"
 const TITLE = "Privacy- en cookieverklaring"

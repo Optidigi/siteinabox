@@ -83,9 +83,11 @@ export const v1FixturePage: Page = {
   blocks: [
     {
       blockType: "hero",
+      eyebrow: inlineText("Just released v1.0.0"),
       headline: inlineText("A data-driven site"),
       subheadline: blockText("Rendered by the shared SIAB renderer."),
       cta: { label: "Contact", href: "#contact" },
+      secondary: { label: "Watch Demo", href: "#demo" },
     },
     {
       blockType: "featureList",

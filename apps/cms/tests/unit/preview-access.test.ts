@@ -99,6 +99,7 @@ const createState = () => {
   mocks.payload.create.mockImplementation(async ({ data }: MockCreateArgs) => ({ id: 901, ...data }))
   mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => {
     const grant = grants.find((entry) => String(entry.id) === String(id)) ?? grants[0]
+    if (!grant) throw new Error(`Missing preview-access-grants ${id}`)
     Object.assign(grant, data)
     return { id, ...grant, ...data }
   })

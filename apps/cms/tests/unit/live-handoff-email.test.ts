@@ -240,12 +240,12 @@ describe("CMS live handoff email", () => {
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
     expect(mocks.signInMagicLink).not.toHaveBeenCalled()
-    expect(payload.logger.warn).toHaveBeenCalledWith("[publish] live handoff email skipped", expect.objectContaining({
+    expect(payload.logger.warn).toHaveBeenCalledWith(expect.objectContaining({
       reason: "missing_recipient",
       tenant: 1,
       generationRun: 500,
       snapshot: 10,
-    }))
+    }), "[publish] live handoff email skipped")
   })
 
   it("keeps activation non-blocking after requesting the live handoff magic-login email", async () => {
@@ -310,12 +310,12 @@ describe("CMS live handoff email", () => {
     })).resolves.toBe("failed")
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
-    expect(payload.logger.warn).toHaveBeenCalledWith("[publish] live handoff email failed after activation", expect.objectContaining({
+    expect(payload.logger.warn).toHaveBeenCalledWith(expect.objectContaining({
       tenant: 1,
       generationRun: 500,
       snapshot: 10,
       error: "auth down",
-    }))
+    }), "[publish] live handoff email failed after activation")
   })
 
   it("does not create CMS access without initial terms acceptance evidence", async () => {
@@ -335,8 +335,8 @@ describe("CMS live handoff email", () => {
     expect(payload.create).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "users" }))
     expect(mocks.signInMagicLink).not.toHaveBeenCalled()
     expect(payload.logger.warn).toHaveBeenCalledWith(
-      "[publish] live handoff email failed after activation",
       expect.objectContaining({ error: "Initial Site in a Box terms acceptance evidence is missing." }),
+      "[publish] live handoff email failed after activation",
     )
   })
 })

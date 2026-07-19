@@ -1,7 +1,7 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
 import crypto from "node:crypto"
-import { queryRows } from "@/lib/record"
+import { queryRows } from "../lib/record"
 
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)

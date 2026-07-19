@@ -1,6 +1,6 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 import { sql } from '@payloadcms/db-postgres'
-import { queryRows } from '@/lib/record'
+import { queryRows } from '../lib/record'
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   const result = await db.execute(sql`

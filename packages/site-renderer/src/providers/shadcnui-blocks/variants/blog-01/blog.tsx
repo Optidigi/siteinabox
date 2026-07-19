@@ -73,7 +73,20 @@ export function Blog01({ title, posts, blockIndex, editSlots, mediaResolver, roo
                 {post.authorRole ? <Badge variant="secondary">{post.authorRole}</Badge> : null}
                 {postTitle ? <h3 className="mt-4 font-medium text-[1.4rem] text-xl tracking-[-0.02em]">{postTitle}</h3> : null}
                 <div className="mt-6 flex items-center justify-between">
-                  {author ? <span className="font-medium text-muted-foreground">{author}</span> : <span />}
+                  {author ? (
+                    <div className="flex items-center gap-2">
+                      <img
+                        alt={typeof author === "string" ? author : "Author"}
+                        className="size-8 rounded-full object-cover"
+                        height={32}
+                        src={`data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3C/svg%3E`}
+                        width={32}
+                      />
+                      <span className="font-medium text-muted-foreground">{author}</span>
+                    </div>
+                  ) : (
+                    <span />
+                  )}
                   {date ? <span className="text-muted-foreground text-sm">{date}</span> : null}
                 </div>
               </CardContent>

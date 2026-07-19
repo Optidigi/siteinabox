@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
-import type { Media, Page, PublishedSiteSnapshot, SiteSetting, Tenant } from "@/payload-types"
-import { asRecord } from "@/lib/record"
+import type { Media, Page, PublishedSiteSnapshot, SiteSetting, Tenant } from "../payload-types"
+import { asRecord } from "../lib/record"
 
 const REQUIRED_MEDIA = ["toys.jpg", "bedroom.jpg", "og-default.png", "favicon.svg", "favicon.ico", "apple-touch-icon.png"] as const
 const THEME = {

@@ -1,6 +1,6 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 import { sql } from '@payloadcms/db-postgres'
-import { queryRows } from '@/lib/record'
+import { queryRows } from '../lib/record'
 
 /**
  * Audit finding #11 (P2, T8) — site_settings: missing UNIQUE on tenant_id.

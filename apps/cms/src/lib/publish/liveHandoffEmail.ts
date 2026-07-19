@@ -80,12 +80,12 @@ async function emailFromLinkedIntake(payload: Payload, run: SiteGenerationRun): 
     })
     return cleanEmail(intake?.contactEmail) ?? emailFromNormalizedIntake(intake?.normalized)
   } catch (error) {
-    payload.logger.warn("[publish] live handoff intake lookup failed", {
+    payload.logger.warn({
       tenant: relationshipId(run.tenant),
       generationRun: run.id,
       intakeSubmission: intakeId,
       error: error instanceof Error ? error.message : "unknown",
-    })
+    }, "[publish] live handoff intake lookup failed")
     return null
   }
 }
@@ -242,12 +242,12 @@ export async function sendLiveHandoffEmailAfterActivation(
 
   const recipient = await resolveLiveHandoffRecipient(payload, input.run)
   if (!recipient) {
-    payload.logger.warn("[publish] live handoff email skipped", {
+    payload.logger.warn({
       reason: "missing_recipient",
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,
-    })
+    }, "[publish] live handoff email skipped")
     return "skipped"
   }
 
@@ -255,12 +255,12 @@ export async function sendLiveHandoffEmailAfterActivation(
   const siteUrl = buildLiveSiteUrl(input.snapshotDoc)
   const adminUrl = buildTenantAdminUrl(input.tenant)
   if (!siteUrl || !adminUrl) {
-    payload.logger.warn("[publish] live handoff email skipped", {
+    payload.logger.warn({
       reason: "missing_urls",
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,
-    })
+    }, "[publish] live handoff email skipped")
     return "skipped"
   }
 
@@ -284,11 +284,11 @@ export async function sendLiveHandoffEmailAfterActivation(
           role: "owner",
         })
       } catch (error) {
-        payload.logger.warn("[publish] default email preference provisioning failed", {
+        payload.logger.warn({
           tenant: input.tenant.id,
           user: customerUserId,
           error: error instanceof Error ? error.message : "unknown",
-        })
+        }, "[publish] default email preference provisioning failed")
       }
     }
     await sendLiveHandoffMagicLink({
@@ -300,12 +300,12 @@ export async function sendLiveHandoffEmailAfterActivation(
     })
     return "sent"
   } catch (error) {
-    payload.logger.warn("[publish] live handoff email failed after activation", {
+    payload.logger.warn({
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,
       error: error instanceof Error ? error.message : "unknown",
-    })
+    }, "[publish] live handoff email failed after activation")
     return "failed"
   }
 }
