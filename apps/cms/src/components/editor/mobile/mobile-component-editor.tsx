@@ -1,6 +1,5 @@
 "use client"
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 import { Check, Image as ImageIcon } from "lucide-react"
 import { Drawer as Vaul } from "vaul"
 import { Button } from "@siteinabox/ui/components/button"
@@ -10,7 +9,7 @@ import { Label } from "@siteinabox/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/blockElements"
 import type { ElementPath } from "@/components/editor/elementPath"
-import { elementPathToName } from "@/components/editor/elementPath"
+import { useElementPathFieldController } from "@/components/editor/fields/fieldController"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
@@ -21,11 +20,22 @@ import { MobileMediaSheet } from "@/components/editor/mobile/mobile-media-sheet"
 import { MobileIconSheet } from "@/components/editor/mobile/mobile-icon-sheet"
 import { resolveLucideIcon } from "@/components/editor/icon-picker"
 import { MobileArrayDrilldown } from "@/components/editor/mobile/mobile-array-drilldown"
+import type { EditorBlock } from "@/lib/editor/editorBlock"
+import {
+  asCtaValue,
+  asIconValue,
+  asRtRootValue,
+  resolveMediaDisplayUrl,
+  updateCtaHref,
+  updateCtaLabel,
+  type EditorIconValue,
+  type EditorMediaValue,
+} from "@/lib/editor/blockFieldValues"
 import { useTranslations } from "next-intl"
 
 export interface MobileComponentEditorProps {
   path: ElementPath
-  block: any
+  block: EditorBlock
   manifest: RtManifest
   theme?: ThemeTokens | null
 }
@@ -38,7 +48,7 @@ export interface MobileComponentEditorProps {
 export const MobileComponentEditor: React.FC<MobileComponentEditorProps> = ({ path, block, manifest, theme }) => {
   const t = useTranslations("editor")
   const { clearSelection, focusPop } = useMobileEditor()
-  const blockType: string | undefined = block?.blockType
+  const blockType = block.blockType
   const specs: ElementSpec[] = getBlockElementSpecs(blockType, manifest)
 
   const parentSpec = specs.find((s) => s.field === path.field)
@@ -101,14 +111,6 @@ export const MobileComponentEditor: React.FC<MobileComponentEditorProps> = ({ pa
           </Button>
         </Vaul.Close>
       </div>
-      {/* Single scroll owner for the sheet — always scrollable so content
-          taller than the active detent can still be reached (FE-74).
-          Vaul's drag arbitration lets a downward pull from scroll-top drag the
-          sheet while normal upward/mid-content gestures keep scrolling here.
-          overscroll-contain reduces scroll-chain escape into Safari refresh.
-          Editable-field focus pops the sheet to the editing detent so the
-          focused field clears the keyboard. Programmatic mount-time focus is
-          ignored for the first frame so selection visibly settles at 0.42. */}
       <div
         className="flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y"
         onPointerDownCapture={onEditorPointerDown}
@@ -125,43 +127,33 @@ const MobileFieldRenderer: React.FC<{
   parentSpec: ElementSpec | undefined
   path: ElementPath
   manifest: RtManifest
-  blockType: string | undefined
+  blockType: string
 }> = ({ spec, parentSpec, path, manifest, blockType }) => {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
-  const { watch, setValue } = useFormContext()
+  const { value, setValue } = useElementPathFieldController(path)
   const { expandTo } = useMobileEditor()
-  const name = elementPathToName(path)
-  const value = watch(name)
 
-  // If the selected element is a sub-field of an array, route through
-  // MobileArrayDrilldown so the user gets the array-list/array-item chrome
-  // (back arrow, item label, trash) wrapping the sub-field editor. The
-  // drill stack was already seeded by SET_SELECTED.
   const isArraySubField = parentSpec?.kind === "array" && path.subField != null
   if (isArraySubField && parentSpec) {
-    const arrayName = `blocks.${path.blockIndex}.${parentSpec.field}`
     return (
       <MobileArrayDrilldown
         spec={parentSpec}
         blockIndex={path.blockIndex}
         manifest={manifest}
-        arrayName={arrayName}
       />
     )
   }
 
   if (!spec) return <p className="text-xs text-muted-foreground">{t("noEditorForElement")}</p>
-  // Inputs below deliberately omit autoFocus: grabbing focus while the bottom
-  // sheet is still animating open pops the keyboard mid-transition, so the
-  // sheet never shifts up. The user taps a field to focus it.
+
   if (spec.kind === "text") {
     return (
       <div className="space-y-2 pb-4" data-mobile-editor-kind="text">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
         <Input
-          value={value ?? ""}
-          onChange={(e) => setValue(name, e.target.value, { shouldDirty: true })}
+          value={typeof value === "string" ? value : value == null ? "" : String(value)}
+          onChange={(e) => setValue(e.target.value)}
           className={roleFontClass(spec.role)}
         />
       </div>
@@ -177,8 +169,8 @@ const MobileFieldRenderer: React.FC<{
           <LexicalField
             key={`mobile-${path.blockIndex}.${spec.field}${path.itemIndex ?? ""}${path.subField ?? ""}`}
             variant={spec.variant ?? "inline"}
-            value={value}
-            onChange={(next) => setValue(name, next, { shouldDirty: true })}
+            value={asRtRootValue(value)}
+            onChange={setValue}
             manifest={manifest}
             placeholder={spec.label}
             allowFontFamily={blockType === "richText"}
@@ -188,14 +180,14 @@ const MobileFieldRenderer: React.FC<{
     )
   }
   if (spec.kind === "cta") {
-    const cta = (value ?? {}) as { label?: string; href?: string }
+    const cta = asCtaValue(value)
     return (
       <div className="space-y-3 pb-4" data-mobile-editor-kind="cta">
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">{t("label")}</Label>
           <Input
             value={cta.label ?? ""}
-            onChange={(e) => setValue(name, { ...cta, label: e.target.value }, { shouldDirty: true })}
+            onChange={(e) => setValue(updateCtaLabel(cta, e.target.value))}
             placeholder={t("buttonText")}
           />
         </div>
@@ -203,7 +195,7 @@ const MobileFieldRenderer: React.FC<{
           <Label className="text-xs text-muted-foreground">{tCommon("url")}</Label>
           <Input
             value={cta.href ?? ""}
-            onChange={(e) => setValue(name, { ...cta, href: e.target.value }, { shouldDirty: true })}
+            onChange={(e) => setValue(updateCtaHref(cta, e.target.value))}
             placeholder={t("urlPlaceholder")}
             inputMode="url"
             autoCapitalize="none"
@@ -218,7 +210,10 @@ const MobileFieldRenderer: React.FC<{
     return (
       <div className="space-y-2 pb-4" data-mobile-editor-kind="select">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
-        <Select value={value ?? ""} onValueChange={(next) => setValue(name, next, { shouldDirty: true })}>
+        <Select
+          value={typeof value === "string" ? value : value == null ? "" : String(value)}
+          onValueChange={setValue}
+        >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={spec.label} />
           </SelectTrigger>
@@ -238,51 +233,38 @@ const MobileFieldRenderer: React.FC<{
       <label className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm" data-mobile-editor-kind="checkbox">
         <Checkbox
           checked={Boolean(value)}
-          onCheckedChange={(checked) => setValue(name, checked === true, { shouldDirty: true })}
+          onCheckedChange={(checked) => setValue(checked === true)}
         />
         <span>{spec.label}</span>
       </label>
     )
   }
   if (spec.kind === "image") {
-    return <ImageEditor value={value} setValue={setValue} name={name} expandTo={expandTo} />
+    return <ImageEditor value={value} setValue={setValue} expandTo={expandTo} />
   }
   if (spec.kind === "icon") {
-    return <IconEditor value={value} setValue={setValue} name={name} expandTo={expandTo} />
+    return <IconEditor value={value} setValue={setValue} expandTo={expandTo} />
   }
   if (spec.kind === "array") {
-    const arrayName = `blocks.${path.blockIndex}.${spec.field}`
     return (
       <MobileArrayDrilldown
         spec={spec}
         blockIndex={path.blockIndex}
         manifest={manifest}
-        arrayName={arrayName}
       />
     )
   }
   return <p className="text-xs text-muted-foreground">{t("unknownFieldKind", { kind: spec.kind })}</p>
 }
 
-const resolveUrl = (v: any): string | null => {
-  if (!v) return null
-  if (typeof v === "string") return v
-  if (typeof v === "object") {
-    if (v.url) return v.url
-    if (v.filename) return `/media/${v.filename}`
-  }
-  return null
-}
-
 const ImageEditor: React.FC<{
-  value: any
-  setValue: (name: string, val: any, opts?: { shouldDirty?: boolean }) => void
-  name: string
+  value: unknown
+  setValue: (next: EditorMediaValue) => void
   expandTo: (snap: MobileSnap) => void
-}> = ({ value, setValue, name, expandTo }) => {
+}> = ({ value, setValue, expandTo }) => {
   const t = useTranslations("editor")
   const [sheetOpen, setSheetOpen] = React.useState(false)
-  const url = resolveUrl(value)
+  const url = resolveMediaDisplayUrl(value)
   return (
     <div className="space-y-3 pb-4" data-mobile-editor-kind="image">
       {url ? (
@@ -307,7 +289,7 @@ const ImageEditor: React.FC<{
             type="button"
             variant="ghost"
             className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => setValue(name, null, { shouldDirty: true })}
+            onClick={() => setValue(null)}
           >
             {t("remove")}
           </Button>
@@ -316,21 +298,20 @@ const ImageEditor: React.FC<{
       <MobileMediaSheet
         open={sheetOpen}
         onOpenChange={(o) => { setSheetOpen(o); if (!o) expandTo(0.42) }}
-        onPick={(m) => setValue(name, m, { shouldDirty: true })}
+        onPick={setValue}
       />
     </div>
   )
 }
 
 const IconEditor: React.FC<{
-  value: any
-  setValue: (name: string, val: any, opts?: { shouldDirty?: boolean }) => void
-  name: string
+  value: unknown
+  setValue: (next: EditorIconValue) => void
   expandTo: (snap: MobileSnap) => void
-}> = ({ value, setValue, name, expandTo }) => {
+}> = ({ value, setValue, expandTo }) => {
   const t = useTranslations("editor")
   const [sheetOpen, setSheetOpen] = React.useState(false)
-  const iconName: string | null = value ?? null
+  const iconName = asIconValue(value)
   const Icon = resolveLucideIcon(iconName)
 
   return (
@@ -349,7 +330,7 @@ const IconEditor: React.FC<{
         open={sheetOpen}
         onOpenChange={(o) => { setSheetOpen(o); if (!o) expandTo(0.42) }}
         value={iconName}
-        onChange={(next) => setValue(name, next, { shouldDirty: true })}
+        onChange={setValue}
       />
     </div>
   )

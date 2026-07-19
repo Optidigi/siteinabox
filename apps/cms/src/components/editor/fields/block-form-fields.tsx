@@ -1,6 +1,5 @@
 "use client"
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 import { LexicalField } from "@/components/editor/richText/LexicalField"
 import { MediaPicker } from "@/components/media/MediaPicker"
 import { Checkbox } from "@siteinabox/ui/components/checkbox"
@@ -10,6 +9,12 @@ import { Label } from "@siteinabox/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { getBlockElementSpecs, type ElementSpec } from "@/components/editor/blockElements"
 import { ArrayItemCard } from "@/components/editor/fields/array-item-card"
+import {
+  useBlockArrayFieldController,
+  useBlockFieldController,
+} from "@/components/editor/fields/fieldController"
+import { isPersistedEditorBlock, type EditorBlock } from "@/lib/editor/editorBlock"
+import { asCtaValue, asIconValue, asRtRootValue, updateCtaHref, updateCtaLabel } from "@/lib/editor/blockFieldValues"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
@@ -18,17 +23,20 @@ import { useTranslations } from "next-intl"
 import { getProviderBlockVariant } from "@siteinabox/contracts"
 
 export interface BlockFormFieldsProps {
-  block: any
+  block: EditorBlock
   blockIndex: number
   manifest: RtManifest
   theme?: ThemeTokens | null
 }
 
+const resolveProviderVariant = (block: EditorBlock) => {
+  if (!isPersistedEditorBlock(block)) return null
+  return getProviderBlockVariant(block)
+}
+
 export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIndex, manifest, theme }) => {
-  const blockType: string | undefined = block?.blockType
-  const providerVariant = blockType && typeof block?.designVariant === "string"
-    ? getProviderBlockVariant({ blockType, designVariant: block.designVariant } as any)
-    : null
+  const blockType = block.blockType
+  const providerVariant = resolveProviderVariant(block)
   const specs: ElementSpec[] = getBlockElementSpecs(blockType, manifest).filter((spec) =>
     !providerVariant || (providerVariant.slots as Record<string, { status: string }>)[spec.field]?.status !== "inactive",
   )
@@ -46,7 +54,6 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
             <ArraySection
               key={spec.field}
               spec={spec}
-              block={block}
               blockIndex={blockIndex}
               manifest={manifest}
             />
@@ -68,17 +75,14 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
 
 const FieldRenderer: React.FC<{
   spec: ElementSpec
-  block: any
+  block: EditorBlock
   blockIndex: number
   manifest: RtManifest
   theme?: ThemeTokens | null
-}> = ({ spec, block: _block, blockIndex, manifest, theme }) => {
+}> = ({ spec, block, blockIndex, manifest, theme }) => {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
-  const { watch, setValue } = useFormContext()
-  const name = `blocks.${blockIndex}.${spec.field}`
-  const value = watch(name)
-  const setShouldDirty = (next: unknown) => setValue(name, next, { shouldDirty: true })
+  const { value, setValue } = useBlockFieldController({ blockIndex, field: spec.field })
 
   if (spec.kind === "richtext") {
     return (
@@ -88,11 +92,11 @@ const FieldRenderer: React.FC<{
           <LexicalField
             key={`${blockIndex}.${spec.field}`}
             variant={spec.variant ?? "inline"}
-            value={value}
-            onChange={setShouldDirty}
+            value={asRtRootValue(value)}
+            onChange={setValue}
             manifest={manifest}
             placeholder={spec.label}
-            allowFontFamily={_block?.blockType === "richText"}
+            allowFontFamily={block.blockType === "richText"}
             theme={theme}
           />
         </div>
@@ -105,8 +109,8 @@ const FieldRenderer: React.FC<{
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
         <Input
-          value={value ?? ""}
-          onChange={(e) => setShouldDirty(e.target.value)}
+          value={typeof value === "string" ? value : value == null ? "" : String(value)}
+          onChange={(e) => setValue(e.target.value)}
           className={roleFontClass(spec.role)}
         />
       </div>
@@ -117,7 +121,7 @@ const FieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
-        <MediaPicker value={value} onChange={setShouldDirty} />
+        <MediaPicker value={value} onChange={setValue} />
       </div>
     )
   }
@@ -126,7 +130,7 @@ const FieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
-        <Select value={value ?? ""} onValueChange={setShouldDirty}>
+        <Select value={typeof value === "string" ? value : value == null ? "" : String(value)} onValueChange={setValue}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder={spec.label} />
           </SelectTrigger>
@@ -147,7 +151,7 @@ const FieldRenderer: React.FC<{
       <label className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
         <Checkbox
           checked={Boolean(value)}
-          onCheckedChange={(checked) => setShouldDirty(checked === true)}
+          onCheckedChange={(checked) => setValue(checked === true)}
         />
         <span>{spec.label}</span>
       </label>
@@ -155,14 +159,14 @@ const FieldRenderer: React.FC<{
   }
 
   if (spec.kind === "icon") {
-    const iconValue: string | null = value ?? null
+    const iconValue = asIconValue(value)
     const Icon = resolveLucideIcon(iconValue)
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
         <IconPicker
           value={iconValue}
-          onChange={setShouldDirty}
+          onChange={setValue}
           trigger={
             <button
               type="button"
@@ -180,7 +184,7 @@ const FieldRenderer: React.FC<{
   }
 
   if (spec.kind === "cta") {
-    const cta = (value ?? {}) as { label?: string; href?: string }
+    const cta = asCtaValue(value)
     return (
       <div className="space-y-2">
         <Label className="text-xs text-muted-foreground">{spec.label}</Label>
@@ -189,7 +193,7 @@ const FieldRenderer: React.FC<{
             <Label className="text-xs text-muted-foreground">{t("label")}</Label>
             <Input
               value={cta.label ?? ""}
-              onChange={(e) => setShouldDirty({ ...cta, label: e.target.value })}
+              onChange={(e) => setValue(updateCtaLabel(cta, e.target.value))}
               placeholder={t("buttonText")}
             />
           </div>
@@ -197,7 +201,7 @@ const FieldRenderer: React.FC<{
             <Label className="text-xs text-muted-foreground">{tCommon("url")}</Label>
             <Input
               value={cta.href ?? ""}
-              onChange={(e) => setShouldDirty({ ...cta, href: e.target.value })}
+              onChange={(e) => setValue(updateCtaHref(cta, e.target.value))}
               placeholder={t("urlPlaceholder")}
               inputMode="url"
             />
@@ -212,17 +216,13 @@ const FieldRenderer: React.FC<{
 
 const ArraySection: React.FC<{
   spec: ElementSpec
-  block: any
   blockIndex: number
   manifest: RtManifest
-}> = ({ spec, block: _block, blockIndex, manifest }) => {
-  const { watch, setValue } = useFormContext()
-  const name = `blocks.${blockIndex}.${spec.field}`
-  const items: any[] = watch(name) ?? []
-
-  function setItems(next: any[]) {
-    setValue(name, next, { shouldDirty: true })
-  }
+}> = ({ spec, blockIndex, manifest }) => {
+  const { items, updateItem, removeItem, appendItem } = useBlockArrayFieldController({
+    blockIndex,
+    field: spec.field,
+  })
 
   return (
     <section className="space-y-2">
@@ -235,21 +235,14 @@ const ArraySection: React.FC<{
             item={item}
             itemIndex={itemIndex}
             blockIndex={blockIndex}
-            onChange={(next) => {
-              const copy = [...items]
-              copy[itemIndex] = next
-              setItems(copy)
-            }}
-            onRemove={() => {
-              const copy = items.filter((_, j) => j !== itemIndex)
-              setItems(copy)
-            }}
+            onChange={(next) => updateItem(itemIndex, next)}
+            onRemove={() => removeItem(itemIndex)}
             manifest={manifest}
           />
         ))}
         <button
           type="button"
-          onClick={() => setItems([...items, {}])}
+          onClick={() => appendItem()}
           className="w-full rounded-md border border-dashed border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent/30"
         >
           + Add {spec.itemLabel ? spec.itemLabel({}, items.length) : "item"}
