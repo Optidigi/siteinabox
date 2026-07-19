@@ -76,6 +76,33 @@ describe("page editor transactional save route", () => {
     expect(mocks.payload.logger.error).toHaveBeenCalledWith(expect.objectContaining({ stage: "publish", tenantId: "7" }), expect.any(String))
   })
 
+  it("rolls back the transaction when a meaningful unsupported CTA field is rejected", async () => {
+    mocks.payload.update.mockRejectedValueOnce(new Error(
+      'Provider variant "shadcnui-blocks.cta-03" does not expose slot "secondary".',
+    ))
+
+    const response = await POST(request({
+      ...body,
+      page: {
+        ...body.page,
+        data: {
+          ...body.page.data,
+          blocks: [{
+            blockType: "cta",
+            designVariant: "shadcnui-blocks.cta-03",
+            secondary: { label: "Unsupported", href: "/unsupported" },
+          }],
+        },
+      },
+    }))
+
+    expect(response.status).toBe(422)
+    expect(await response.json()).toMatchObject({ ok: false, stage: "page" })
+    expect(mocks.payload.db.rollbackTransaction).toHaveBeenCalledWith("tx-1")
+    expect(mocks.payload.db.commitTransaction).not.toHaveBeenCalled()
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
   it("does not start a transaction for an unauthenticated request", async () => {
     mocks.payload.auth.mockResolvedValueOnce({ user: null })
 

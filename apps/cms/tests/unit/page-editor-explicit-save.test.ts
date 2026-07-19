@@ -38,7 +38,8 @@ describe("page editor explicit-save contract", () => {
     expect(source).toContain("theme: themeWasDirty ? normalizedThemeSnapshot : undefined")
     expect(source).not.toContain('fetch("/api/tenant-theme"')
     expect(source).not.toContain('from "@/lib/actions/setTenantTheme"')
-    expect(source).toContain("blocks: normalizePageBlockUploadIds(savedValues.blocks)")
+    expect(source).toContain("const normalizedBlocks = normalizePageBlockUploadIds(savedValues.blocks)")
+    expect(source).toContain("normalizedBlocks.map((block: any) => canonicalizeCtaFields(block))")
     expect(source).toContain("ogImage: normalizeUploadId(savedValues.seo.ogImage)")
   })
 

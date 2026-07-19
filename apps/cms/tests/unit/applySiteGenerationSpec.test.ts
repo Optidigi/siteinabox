@@ -375,6 +375,25 @@ describe("applySiteGenerationSpec", () => {
     fetchMock.mockRestore()
   })
 
+  it("canonicalizes empty CTA link groups before CMS persistence", async () => {
+    const { payload, store } = createPayloadStub()
+    const spec = fixtureSpec()
+    spec.pages[0]!.blocks = [{
+      blockType: "cta",
+      designVariant: "shadcnui-blocks.cta-03",
+      headline: rtInline("Contact"),
+      primary: { label: "Contact", href: "#contact" },
+      secondary: {},
+    } as any]
+    spec.blocks = [{ slug: "cta", label: "CTA" }]
+
+    const result = await applySiteGenerationSpec(payload, spec, { variantScope: "self-serve" })
+
+    expect(result.ok).toBe(true)
+    expect(store.pages[0]!.blocks[0]).not.toHaveProperty("secondary")
+    expect(store.pages[0]!.blocks[0]).toMatchObject({ primary: { label: "Contact", href: "#contact" } })
+  })
+
   it("accepts generated designVariant without writing legacy visual fields", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()

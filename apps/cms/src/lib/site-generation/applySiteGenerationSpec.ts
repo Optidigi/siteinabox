@@ -17,6 +17,7 @@ import {
   SiteGenerationSpecSchema,
 } from "@siteinabox/contracts/generation"
 import { validateProviderBlockInstance } from "@siteinabox/contracts"
+import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
 import {
   SITE_CHROME_CATALOG,
   SITE_BLOCK_CATALOG_BY_SLUG,
@@ -152,7 +153,7 @@ const clonePlain = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
 const canonicalizeGeneratedBlock = (
   block: Record<string, unknown>,
 ): Record<string, unknown> => {
-  const next = { ...block }
+  const next = canonicalizeCtaFields(block)
   const designVariant = typeof next.designVariant === "string" && next.designVariant.trim()
     ? next.designVariant.trim()
     : null

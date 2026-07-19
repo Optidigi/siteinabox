@@ -8,6 +8,7 @@ import {
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
 import { relationshipId } from "@/lib/relationshipId"
+import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
 
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
@@ -61,8 +62,15 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
   originalDoc,
   req,
 }) => {
-  const blocks = Array.isArray((data as any)?.blocks) ? (data as any).blocks : []
+  const blocks = Array.isArray((data as any)?.blocks)
+    ? (data as any).blocks.map((block: unknown) =>
+        block && typeof block === "object" && !Array.isArray(block)
+          ? canonicalizeCtaFields(block as Record<string, unknown>)
+          : block,
+      )
+    : []
   if (blocks.length === 0) return data
+  Object.assign(data as any, { blocks })
 
   const tenant = await findTenant(req, (data as any)?.tenant ?? (originalDoc as any)?.tenant)
   const errors = blocks.flatMap((block: unknown, index: number) => {

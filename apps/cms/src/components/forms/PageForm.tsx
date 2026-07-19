@@ -85,6 +85,7 @@ import {
   type FooterItemType,
 } from "@/lib/footerComposition"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
+import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
 import {
@@ -891,10 +892,13 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       JSON.stringify(chromeComparable(chromeSnapshot, footerContract)) !==
         JSON.stringify(chromeComparable(chromeBaselineRef.current, footerContract))
     const chromeWillSave = chromeWasDirty && Boolean(siteSettingsState?.id) && canEditSettingsResolved
+    const normalizedBlocks = normalizePageBlockUploadIds(savedValues.blocks)
     const pageData = {
       ...savedValues,
       tenant: tenantId,
-      blocks: normalizePageBlockUploadIds(savedValues.blocks),
+      blocks: Array.isArray(normalizedBlocks)
+        ? normalizedBlocks.map((block: any) => canonicalizeCtaFields(block))
+        : [],
       seo: savedValues.seo
         ? { ...savedValues.seo, ogImage: normalizeUploadId(savedValues.seo.ogImage) }
         : savedValues.seo,

@@ -1,6 +1,7 @@
 import crypto from "node:crypto"
 import { isSafeHref } from "@/lib/security/safeHref"
 import { isPopulatedMediaShape, mediaToJson } from "@/lib/projection/media"
+import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
 
 type Json = Record<string, any>
 
@@ -149,7 +150,7 @@ export function pageToJson(
   const pageSlug = String(doc.slug ?? "")
   const pagePath = pagePathForSlug(pageSlug)
   const blocks = ((doc.blocks ?? []) as Json[])
-    .map((b) => sanitizeBlockHrefs(projectField(b, "blocks", options)))
+    .map((b) => canonicalizeCtaFields(sanitizeBlockHrefs(projectField(b, "blocks", options))))
     .map((block, index) => ({
       ...block,
       analytics: blockAnalytics(block, index, pageSlug),

@@ -15,6 +15,7 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { inspectorThemeDeclarations } from "@/lib/theme/inspectorFonts"
 import { useTranslations } from "next-intl"
+import { getProviderBlockVariant } from "@siteinabox/contracts"
 
 export interface BlockFormFieldsProps {
   block: any
@@ -25,7 +26,12 @@ export interface BlockFormFieldsProps {
 
 export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIndex, manifest, theme }) => {
   const blockType: string | undefined = block?.blockType
-  const specs: ElementSpec[] = getBlockElementSpecs(blockType, manifest)
+  const providerVariant = blockType && typeof block?.designVariant === "string"
+    ? getProviderBlockVariant({ blockType, designVariant: block.designVariant } as any)
+    : null
+  const specs: ElementSpec[] = getBlockElementSpecs(blockType, manifest).filter((spec) =>
+    !providerVariant || (providerVariant.slots as Record<string, { status: string }>)[spec.field]?.status !== "inactive",
+  )
   const inspectorFonts = useCspStyleRule(
     "block-form-inspector-fonts",
     inspectorThemeDeclarations(theme),

@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { pageToJson } from "@/lib/projection/pageToJson"
+import { validateProviderBlockInstance } from "@siteinabox/contracts"
 
 describe("pageToJson", () => {
   it("flattens a basic Hero+CTA page", () => {
@@ -39,5 +40,39 @@ describe("pageToJson", () => {
     const doc: any = { id: "x", tenant: "t", title: "Empty", slug: "empty", status: "published" }
     const json = pageToJson(doc)
     expect(json.blocks).toEqual([])
+  })
+
+  it("removes empty Payload CTA groups but preserves meaningful unsupported content for strict validation", () => {
+    const base = {
+      id: "amicare-index",
+      title: "Home",
+      slug: "index",
+      updatedAt: "2026-07-19T00:00:00.000Z",
+    }
+    const canonical = pageToJson({
+      ...base,
+      blocks: [{
+        blockType: "cta",
+        designVariant: "shadcnui-blocks.cta-03",
+        headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Contact" }] },
+        primary: { label: "Neem contact op", href: "#contact" },
+        secondary: { label: null, href: null },
+      }],
+    })
+
+    expect(canonical.blocks[0]).not.toHaveProperty("secondary")
+    expect(validateProviderBlockInstance(canonical.blocks[0] as any)).toEqual([])
+
+    const invalid = pageToJson({
+      ...base,
+      blocks: [{
+        blockType: "cta",
+        designVariant: "shadcnui-blocks.cta-03",
+        headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Contact" }] },
+        secondary: { label: "Meaningful", href: "/meaningful" },
+      }],
+    })
+    expect(invalid.blocks[0].secondary).toEqual({ label: "Meaningful", href: "/meaningful" })
+    expect(validateProviderBlockInstance(invalid.blocks[0] as any).map((issue) => issue.code)).toContain("inactive_slot_value")
   })
 })

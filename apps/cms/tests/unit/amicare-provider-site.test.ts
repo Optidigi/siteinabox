@@ -9,6 +9,7 @@ import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
 } from "@siteinabox/contracts/fixtures/tenants"
+import { pageToJson } from "@/lib/projection/pageToJson"
 
 describe("Ami Care canonical provider site", () => {
   it("uses only globally approved provider blocks and chrome", () => {
@@ -29,5 +30,37 @@ describe("Ami Care canonical provider site", () => {
   it("validates its published snapshot through the one canonical schema", () => {
     expect(schemaForPublishedSiteSnapshot(amicarePublishedSiteSnapshot)).toBe(PublishedSiteSnapshotSchema)
     expect(PublishedSiteSnapshotSchema.safeParse(amicarePublishedSiteSnapshot).success).toBe(true)
+  })
+
+  it("publishes the exact Ami Care page after Payload rehydrates empty CTA groups", () => {
+    const sourcePage = amicareSiteGenerationSpec.pages[0]!
+    const hydratedPage = {
+      ...sourcePage,
+      id: "amicare-index",
+      blocks: sourcePage.blocks.map((block) => block.blockType === "cta"
+        ? {
+            ...block,
+            primary: block.primary ?? { label: null, href: null },
+            secondary: { label: null, href: null },
+          }
+        : block),
+    }
+    const projectedPage: any = {
+      ...pageToJson(hydratedPage),
+      id: "amicare-index",
+      status: "published" as const,
+      updatedAt: sourcePage.updatedAt,
+    }
+    const result = PublishedSiteSnapshotSchema.safeParse({
+      ...amicarePublishedSiteSnapshot,
+      pages: [projectedPage],
+    })
+
+    expect(result.success).toBe(true)
+    expect(projectedPage.blocks.filter((block: any) => block.blockType === "cta"))
+      .toEqual(expect.arrayContaining([
+        expect.not.objectContaining({ secondary: expect.anything() }),
+        expect.not.objectContaining({ secondary: expect.anything() }),
+      ]))
   })
 })
