@@ -52,7 +52,7 @@
         "toolAllowlist": { "required": false, "values": [], "enforcement": null }
       },
       "clientPolicy": {
-        "defaultEnabled": false,
+        "defaultEnabled": true,
         "approval": { "required": true, "mode": "prompt" },
         "enabledTools": { "required": false, "values": [] },
         "disabledTools": { "required": false, "values": [] }
@@ -246,7 +246,7 @@
         "toolAllowlist": { "required": false, "values": [], "enforcement": null }
       },
       "clientPolicy": {
-        "defaultEnabled": false,
+        "defaultEnabled": true,
         "approval": { "required": true, "mode": "prompt" },
         "enabledTools": { "required": false, "values": [] },
         "disabledTools": { "required": false, "values": [] }

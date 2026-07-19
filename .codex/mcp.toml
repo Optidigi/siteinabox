@@ -6,7 +6,7 @@ default_tools_approval_mode = "auto"
 
 [mcp_servers.cloudflare-api]
 url = "https://mcp.cloudflare.com/mcp"
-enabled = false
+enabled = true
 required = false
 default_tools_approval_mode = "prompt"
 
@@ -44,7 +44,7 @@ cwd = "."
 
 [mcp_servers.posthog]
 url = "https://mcp.posthog.com/mcp"
-enabled = false
+enabled = true
 required = false
 default_tools_approval_mode = "prompt"
 
