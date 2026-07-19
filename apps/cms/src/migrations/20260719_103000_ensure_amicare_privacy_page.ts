@@ -103,6 +103,20 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
   const currentLegalLinks = Array.isArray(currentFooter?.legalLinks) ? currentFooter.legalLinks : []
   if (existingPage && existingSnapshotPage && currentLegalLinks.some((link: any) => link?.href === `/${SLUG}`)) return
 
+  await payload.update({
+    collection: "tenants",
+    id: tenant.id,
+    data: {
+      siteManifest: {
+        ...(tenant.siteManifest ?? {}),
+        blockTypes: { ...(tenant.siteManifest?.blockTypes ?? {}), bulletList: true },
+      },
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { skipProjection: true, source: "amicare-privacy-page-migration" },
+  } as any)
+
   const pageData = {
     tenant: tenant.id,
     title: TITLE,

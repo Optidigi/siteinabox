@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { ensureAmicarePrivacyPage } from "@/migrations/20260719_103000_ensure_amicare_privacy_page"
 
-function payloadFixture({ tenants = [{ id: 1, slug: "ami-care", domain: "ami-care.nl" }], privacy = false } = {}) {
+function payloadFixture({ tenants = [{ id: 1, slug: "ami-care", domain: "ami-care.nl", siteManifest: { blockTypes: { paragraph: true } } }], privacy = false } = {}) {
   const pages = [{ id: 10, slug: "index", title: "Home", status: "published", blocks: [] }]
   if (privacy) pages.push({ id: 11, slug: "privacy-en-cookieverklaring", title: "Privacy- en cookieverklaring", status: "published", blocks: [] })
   const settings = [{ id: 20, chrome: { footer: privacy ? { legalLinks: [{ label: "Privacy", href: "/privacy-en-cookieverklaring" }] } : {} } }]
@@ -20,10 +20,17 @@ function payloadFixture({ tenants = [{ id: 1, slug: "ami-care", domain: "ami-car
     },
   }]
   const docs: Record<string, any[]> = { tenants, pages, "site-settings": settings, "published-site-snapshots": snapshots }
+  const events: string[] = []
   const find = vi.fn(async ({ collection }: any) => ({ docs: docs[collection] ?? [] }))
-  const update = vi.fn(async ({ collection, id, data }: any) => ({ ...(docs[collection]?.find((item) => item.id === id) ?? { id }), ...data }))
-  const create = vi.fn(async ({ collection, data }: any) => ({ id: collection === "pages" ? 11 : 31, ...data }))
-  return { find, update, create }
+  const update = vi.fn(async ({ collection, id, data }: any) => {
+    events.push(`update:${collection}`)
+    return { ...(docs[collection]?.find((item) => item.id === id) ?? { id }), ...data }
+  })
+  const create = vi.fn(async ({ collection, data }: any) => {
+    events.push(`create:${collection}`)
+    return { id: collection === "pages" ? 11 : 31, ...data }
+  })
+  return { find, update, create, events }
 }
 
 describe("Ami Care privacy page migration", () => {
@@ -38,6 +45,14 @@ describe("Ami Care privacy page migration", () => {
     await ensureAmicarePrivacyPage(payload as any)
 
     const pageCreate = payload.create.mock.calls.find(([args]) => args.collection === "pages")?.[0]
+    const manifestUpdate = payload.update.mock.calls.find(([args]) =>
+      args.collection === "tenants" && args.data.siteManifest,
+    )?.[0]
+    expect(manifestUpdate.data.siteManifest.blockTypes).toMatchObject({
+      paragraph: true,
+      bulletList: true,
+    })
+    expect(payload.events.indexOf("update:tenants")).toBeLessThan(payload.events.indexOf("create:pages"))
     expect(pageCreate.data).toMatchObject({ slug: "privacy-en-cookieverklaring", status: "published" })
     expect(pageCreate.data.blocks.map((block: any) => block.designVariant)).toEqual([
       "shadcnui-blocks.hero-01",
