@@ -104,7 +104,7 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
         title: "Cookies",
         message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
         dismissible: false,
-        variant: "shadcnui-blocks.banner-04",
+        variant: "shadcnui-blocks.banner-03",
       }
     : banner
   return {

@@ -91,7 +91,7 @@ try {
         "shadcnui-blocks.cta-02",
         "shadcnui-blocks.contact-01",
         "shadcnui-blocks.footer-07",
-        "shadcnui-blocks.banner-04",
+        "shadcnui-blocks.banner-03",
       ]) {
         assert.equal(await page.locator(`[data-provider-variant="${variant}"]`).count(), 1, `${viewport.name} renders ${variant} exactly once`)
       }

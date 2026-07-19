@@ -67,7 +67,7 @@ try {
     try {
       for (const viewport of [{ width: 1440, height: 1200 }, { width: 390, height: 844 }]) {
         const page = await browser.newPage({ viewport, colorScheme: "light" })
-        await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.banner-04&consent=1`, { waitUntil: "load", timeout: 60_000 })
+        await page.goto(`${origin}/provider-parity?variant=shadcnui-blocks.banner-03&consent=1`, { waitUntil: "load", timeout: 60_000 })
         await page.waitForFunction(() => document.documentElement.dataset.providerHydrated === "true", undefined, { timeout: 60_000 })
         const consentChrome = page.locator('[data-siab-cookie-consent="true"]')
         await consentChrome.waitFor({ state: "visible" })

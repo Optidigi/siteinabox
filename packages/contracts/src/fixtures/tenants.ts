@@ -163,7 +163,7 @@ const amicareSettings: GeneratedSiteSettings = {
       ],
     },
     banner: {
-      variant: "shadcnui-blocks.banner-04",
+      variant: "shadcnui-blocks.banner-03",
       visible: true,
       title: "Cookies",
       message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",

@@ -13,7 +13,7 @@ test("consent presentation is owned only by the approved cloned banner variant",
   assert.match(pageSource, /buildAnalyticsConfig/)
   assert.match(pageSource, /id="siab-analytics-config"/)
   assert.doesNotMatch(chromeSource, /settings\.privacyDisclosure/)
-  assert.match(providerChromeSource, /shadcnui-blocks\.banner-04/)
+  assert.match(providerChromeSource, /shadcnui-blocks\.banner-03/)
   assert.match(providerChromeSource, /data-siab-cookie-consent/)
   assert.match(providerChromeSource, /data-consent-action/)
   assert.match(providerChromeSource, /"accept"/)

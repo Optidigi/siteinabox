@@ -228,7 +228,7 @@ describe("legal document synchronization", () => {
     const served = applyTenantAnalyticsConsentPolicy(snapshot, { analyticsConsent: consent }) as any
 
     expect(served.settings.analyticsConsent).toEqual(consent)
-    expect(served.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-04")
+    expect(served.settings.chrome.banner.variant).toBe("shadcnui-blocks.banner-03")
     expect(served.settings.chrome.banner).toMatchObject({
       title: "Cookies",
       message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
@@ -244,7 +244,7 @@ describe("legal document synchronization", () => {
     const served = applyTenantAnalyticsConsentPolicy(snapshot, { analyticsConsent: consent }) as any
 
     expect(served.settings.chrome.banner).toMatchObject({
-      variant: "shadcnui-blocks.banner-04",
+      variant: "shadcnui-blocks.banner-03",
       visible: true,
       dismissible: false,
     })

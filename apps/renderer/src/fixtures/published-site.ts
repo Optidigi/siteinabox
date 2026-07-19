@@ -164,7 +164,7 @@ export const fixturePublishedSiteSnapshot: PublishedSiteSnapshot = {
       header: { variant: "shadcnui-blocks.navbar-01", behavior: "sticky", activeMode: "path", mobileMenu: "drawer" },
       footer: { variant: "shadcnui-blocks.footer-01", tagline: "Published from structured SIAB data." },
       banner: {
-        variant: "shadcnui-blocks.banner-04",
+        variant: "shadcnui-blocks.banner-03",
         visible: true,
         title: "Privacy",
         message: "We measure privacy-friendly visits without analytics cookies. With consent, we also measure interactions to improve this website.",
