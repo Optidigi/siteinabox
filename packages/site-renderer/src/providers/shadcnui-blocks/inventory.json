@@ -932,7 +932,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/blog.tsx",
-          "sha256": "sha256:42aa1d8c2fb982307ddb1ee9721050ce7a5ee4cf5dbc43a3be51c3c1cfcc5ccf"
+          "sha256": "sha256:60e091c604de8443b2ec3810c30fdb751c7724a3933e99cbf77cc33f774bfbd6"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/upstream-literal.upstream.tsx.txt",
@@ -34614,7 +34614,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/blog.tsx",
-          "sha256": "sha256:ddd011ad9dea2f03346a6fd82050e86066bdab989ad28a77231a505219ae7200"
+          "sha256": "sha256:240b6415baec0787fc7f8cdcda4e0e7f36f50e50de08d9217e826d1b00c4c8bd"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/upstream-literal.upstream.tsx.txt",
@@ -34898,7 +34898,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/blog.tsx",
-          "sha256": "sha256:305bbfda9522a174f0fbdb6ad850da0f724c768e6796ebef4ec96d941ab9f081"
+          "sha256": "sha256:317155b0601d7dbfc3a91aeb7eea316685556e1a7126e4bd61c0b388a7c950e2"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/upstream-literal.upstream.tsx.txt",
@@ -35177,7 +35177,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/blog.tsx",
-          "sha256": "sha256:5273dac12dc0a26b4e741afe4da8fcc8542d8ca4f4db374b612867ea2ffea564"
+          "sha256": "sha256:6bad7ac6751c29a5ed1ca330f6ba922649ab69f6257c78427b33b04b15a169b9"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/upstream-literal.upstream.tsx.txt",

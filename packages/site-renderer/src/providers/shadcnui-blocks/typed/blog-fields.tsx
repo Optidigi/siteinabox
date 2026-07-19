@@ -19,6 +19,7 @@ export type BlogPostItem = {
   author?: string | null
   authorRole?: string | null
   readTime?: string | null
+  tags?: string[] | null
   cta?: LinkRef | null
 }
 
