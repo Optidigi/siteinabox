@@ -12230,6 +12230,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -12248,11 +12253,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-01/stats.tsx",
-          "sha256": "sha256:cb7e66e88d93a5891b768999d1b2840ca82f5673c8ed69ab90707ebefcfbce93"
+          "sha256": "sha256:cd148dd33fa977b96c5fd1ed0048e648699f6b2f3164eee1496ba0c0094f01f5"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-01/view.tsx",
-          "sha256": "sha256:2e401610bffe7a6218a4ffc565a8f63d6b618cff1ebae3569a4f2e6d903016e7"
+          "sha256": "sha256:4f5cd2ac7200cf28b9a521054805d4b8d9073cac7c1e11d89583d875a4de3d68"
         }
       ]
     },
@@ -12481,6 +12486,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -12499,11 +12509,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-02/stats.tsx",
-          "sha256": "sha256:ae16b0b317416af7ae5d0b2cbd6852ee29407e285891dd83a76c5db43886dd50"
+          "sha256": "sha256:a1e651815a9d7422b8d4ac438c6f1e5093f0fc8b75598b89aaa8c24427bdbf84"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-02/view.tsx",
-          "sha256": "sha256:ea95ee500126314d1640a2c72a1fa1e72e51e18b9b29a64a43e8b71dd147732d"
+          "sha256": "sha256:fe0bf7e331fd3b5ed95d75738623e714e782fa9632e73e39ec69ad8f9552c9a0"
         }
       ]
     },
@@ -28268,6 +28278,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -28286,11 +28301,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-03/stats.tsx",
-          "sha256": "sha256:977093bdca36bb982bbefba144a9067ac52ca93e2ac9ecc1297a50ea28f1afa1"
+          "sha256": "sha256:756c42ae28b1b94bfe5575e0758d5bc243fc178cf2616fd9831398a5460f056e"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-03/view.tsx",
-          "sha256": "sha256:deb210f4f323661955a765e28e44b6ec5608ce324f40e9ae8044c41062c3e905"
+          "sha256": "sha256:4e38a8f826bfcac1d03d3026a145b5de29d145888d8bd3399b973c3b10aca62a"
         }
       ]
     },
@@ -28519,6 +28534,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -28537,11 +28557,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-04/stats.tsx",
-          "sha256": "sha256:fe1c57968109bfe2df3b41828cf862043a68fc539ee0dd59179a5f572cb61c3b"
+          "sha256": "sha256:40edd0d708038fcdf121b705a1ed95fe5a517fab58e988a36df82dd810574694"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-04/view.tsx",
-          "sha256": "sha256:957c3afcd2b4845a1f159d22b69d99250259587a97cf28f25167b6850a913646"
+          "sha256": "sha256:ac8a3b725c90b3c454f3afe8456a902890ac00bd82a9c8f8dc134168e45b60f2"
         }
       ]
     },
@@ -28770,6 +28790,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -28788,11 +28813,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-05/stats.tsx",
-          "sha256": "sha256:f466ddd41c020c722ef74d67cf416577b295119ae06c9e9d79ff36bda820b5b8"
+          "sha256": "sha256:368de460bada5b15654f2f1c4b657d6f7adf06814097ba5dde27d9b8378f3717"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-05/view.tsx",
-          "sha256": "sha256:0a2eb926bcd0d669e1c67bd3f7e53536198b8ff4b678bc3de2579f1c7733c2dc"
+          "sha256": "sha256:1dc53e71bea3dec812f8dc21f78e27d11f2d7ea80eda08f8c6045ae5da16f4ba"
         }
       ]
     },
@@ -29021,6 +29046,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -29039,11 +29069,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-06/stats.tsx",
-          "sha256": "sha256:e55b46dc803514121dc856770d8eff5f871af647f849f64e0da29d4f7a7e3e31"
+          "sha256": "sha256:12032d547ad756696e500c0abafa079288bf2f2de3bcf434755763e9c11ba746"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-06/view.tsx",
-          "sha256": "sha256:67075d01a71a0121c89442940e54ba42103c68dc7560a7f52a29b2085fb13b6e"
+          "sha256": "sha256:c066e7d597e2985cc175fa8c6cf6da41a32aef0bc7cbad9b76d23a8fda563b72"
         }
       ]
     },
@@ -29272,6 +29302,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -29290,11 +29325,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-07/stats.tsx",
-          "sha256": "sha256:90a6ead1bf9e3d7337c6c7aed570c23b03a564a8d75e5bd254b5b68f53ddd7d8"
+          "sha256": "sha256:d550fd23723c6061ffd15a56dec6a168029f08fca72519be569eaeb36a097609"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-07/view.tsx",
-          "sha256": "sha256:003eaac026cd6248f84e6a869b4d7c1652c59d0f5eb1968c5b80e75aa2424f2d"
+          "sha256": "sha256:e33bdf7cb74abc3476ae62e23703d10d0eab1b95d187186ab521a83066aed5a2"
         }
       ]
     },
@@ -29523,6 +29558,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -29541,11 +29581,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-08/stats.tsx",
-          "sha256": "sha256:038c381075e6b9b1dbb418e0192fbe58d4a8bcc463fc670c6f8b55acc195cf98"
+          "sha256": "sha256:590af7e49c5bf9e451e63c27c0745ef59be4cd64e9ca1af60ec2862e0fe80fc5"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-08/view.tsx",
-          "sha256": "sha256:c32984b3bff832a5dfdb97410864470249d34246aa01868b33d7692e81ee9408"
+          "sha256": "sha256:34968e3981e52f32c404a136895841d201bc745ef118a1b7ef07b56cab14b34e"
         }
       ]
     },
@@ -29774,6 +29814,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -29792,11 +29837,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-09/stats.tsx",
-          "sha256": "sha256:aad44baedd7ef1b16de48eb934c78476070e8bb16a6dabfd4622ced68bef8c3b"
+          "sha256": "sha256:c0c1c456533535aedbe29b702d7d06dbec1d4d9be6e8fd8f28f951b7a379421f"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-09/view.tsx",
-          "sha256": "sha256:690b8a0f2c6c72b2c04fe311bc34d360bd271605b72f68e5d835a40ca4351630"
+          "sha256": "sha256:0c10c125317f6479d699e69287f9fc12d9e337cee50a8b50f6f5c31329b0226e"
         }
       ]
     },
@@ -30025,6 +30070,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -30043,11 +30093,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-10/stats.tsx",
-          "sha256": "sha256:669ef222f206bac005dd097db8b4aa2f49af006e43728623f1bde9383e72b04e"
+          "sha256": "sha256:5c518104c1148ee8cc7e6647412f29d7a513f45fb1aa3df4cbd6b9e8831892a3"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-10/view.tsx",
-          "sha256": "sha256:ba6cb61306a53f6ef9d187fb62acb1b34fe619c0634ba12a9d516616bd501371"
+          "sha256": "sha256:29a54fdb51a914f4b5771f569989cf37d19498cf7423b31e941f17c34b94d103"
         }
       ]
     },
@@ -30276,6 +30326,11 @@
           "feature": "responsive-layout",
           "disposition": "literal-preserved",
           "evidence": "Upstream responsive class names"
+        },
+        {
+          "feature": "repeated-or-interactive-content",
+          "disposition": "structured-adapter",
+          "evidence": "Typed repeated slot"
         }
       ],
       "composition": {
@@ -30294,11 +30349,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-11/stats.tsx",
-          "sha256": "sha256:aaf041796186d39d3a45e9b0c7e1124e5be03200032cb64e432f02394ef09c40"
+          "sha256": "sha256:06eef67ea4734d663f1bf0b3e778bbc52fbf8b582313df45c970dbe184afc90b"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/stats-11/view.tsx",
-          "sha256": "sha256:67f85e2727384218e380d0e662ba454019731cbfe683cf5e46790ee17a88e274"
+          "sha256": "sha256:7e5fb46eb1070bc4f81d680767718ad8cff5fd8ac49163b8343e296ea31257af"
         }
       ]
     },

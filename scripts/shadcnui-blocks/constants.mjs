@@ -92,6 +92,17 @@ export const TYPED_PILOT_UPSTREAM_NAMES = new Set([
   "hero-06",
   "hero-07",
   "hero-08",
+  "stats-01",
+  "stats-02",
+  "stats-03",
+  "stats-04",
+  "stats-05",
+  "stats-06",
+  "stats-07",
+  "stats-08",
+  "stats-09",
+  "stats-10",
+  "stats-11",
 ])
 
 /** Upstream names with audited behavior-adapter views (Provider* literals preserved). */

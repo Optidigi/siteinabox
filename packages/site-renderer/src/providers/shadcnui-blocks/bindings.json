@@ -65,7 +65,18 @@
     "hero-05": ["eyebrow", "headline", "subheadline", "cta", "secondary", "image"],
     "hero-06": ["eyebrow", "headline", "subheadline", "cta", "secondary"],
     "hero-07": ["eyebrow", "headline", "subheadline", "cta", "secondary"],
-    "hero-08": ["headline", "subheadline", "cta", "secondary", "trustLabel", "logos"]
+    "hero-08": ["headline", "subheadline", "cta", "secondary", "trustLabel", "logos"],
+    "stats-01": ["title", "intro", "items"],
+    "stats-02": ["title", "intro", "items"],
+    "stats-03": ["title", "intro", "items"],
+    "stats-04": ["title", "intro", "items"],
+    "stats-05": ["title", "intro", "items"],
+    "stats-06": ["title", "intro", "items"],
+    "stats-07": ["title", "intro", "items"],
+    "stats-08": ["title", "intro", "items"],
+    "stats-09": ["title", "intro", "items"],
+    "stats-10": ["title", "intro", "items"],
+    "stats-11": ["title", "intro", "items"]
   },
   "variants": {
     "blog-01": {

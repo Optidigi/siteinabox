@@ -64,6 +64,17 @@ import LogoCloud12View from "./variants/logo-cloud-12/view.tsx"
 import LogoCloud13View from "./variants/logo-cloud-13/view.tsx"
 import LogoCloud14View from "./variants/logo-cloud-14/view.tsx"
 import LogoCloud15View from "./variants/logo-cloud-15/view.tsx"
+import Stats01View from "./variants/stats-01/view.tsx"
+import Stats02View from "./variants/stats-02/view.tsx"
+import Stats03View from "./variants/stats-03/view.tsx"
+import Stats04View from "./variants/stats-04/view.tsx"
+import Stats05View from "./variants/stats-05/view.tsx"
+import Stats06View from "./variants/stats-06/view.tsx"
+import Stats07View from "./variants/stats-07/view.tsx"
+import Stats08View from "./variants/stats-08/view.tsx"
+import Stats09View from "./variants/stats-09/view.tsx"
+import Stats10View from "./variants/stats-10/view.tsx"
+import Stats11View from "./variants/stats-11/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
   LEGACY_BEHAVIOR_ADAPTER_IDS,
@@ -134,6 +145,17 @@ const viewById = {
   "shadcnui-blocks.hero-06": Hero06View,
   "shadcnui-blocks.hero-07": Hero07View,
   "shadcnui-blocks.hero-08": Hero08View,
+  "shadcnui-blocks.stats-01": Stats01View,
+  "shadcnui-blocks.stats-02": Stats02View,
+  "shadcnui-blocks.stats-03": Stats03View,
+  "shadcnui-blocks.stats-04": Stats04View,
+  "shadcnui-blocks.stats-05": Stats05View,
+  "shadcnui-blocks.stats-06": Stats06View,
+  "shadcnui-blocks.stats-07": Stats07View,
+  "shadcnui-blocks.stats-08": Stats08View,
+  "shadcnui-blocks.stats-09": Stats09View,
+  "shadcnui-blocks.stats-10": Stats10View,
+  "shadcnui-blocks.stats-11": Stats11View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {

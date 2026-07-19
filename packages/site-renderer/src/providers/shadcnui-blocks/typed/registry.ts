@@ -60,6 +60,17 @@ import LogoCloud12View from "../variants/logo-cloud-12/view"
 import LogoCloud13View from "../variants/logo-cloud-13/view"
 import LogoCloud14View from "../variants/logo-cloud-14/view"
 import LogoCloud15View from "../variants/logo-cloud-15/view"
+import Stats01View from "../variants/stats-01/view"
+import Stats02View from "../variants/stats-02/view"
+import Stats03View from "../variants/stats-03/view"
+import Stats04View from "../variants/stats-04/view"
+import Stats05View from "../variants/stats-05/view"
+import Stats06View from "../variants/stats-06/view"
+import Stats07View from "../variants/stats-07/view"
+import Stats08View from "../variants/stats-08/view"
+import Stats09View from "../variants/stats-09/view"
+import Stats10View from "../variants/stats-10/view"
+import Stats11View from "../variants/stats-11/view"
 
 export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-01",
@@ -124,6 +135,17 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.hero-06",
   "shadcnui-blocks.hero-07",
   "shadcnui-blocks.hero-08",
+  "shadcnui-blocks.stats-01",
+  "shadcnui-blocks.stats-02",
+  "shadcnui-blocks.stats-03",
+  "shadcnui-blocks.stats-04",
+  "shadcnui-blocks.stats-05",
+  "shadcnui-blocks.stats-06",
+  "shadcnui-blocks.stats-07",
+  "shadcnui-blocks.stats-08",
+  "shadcnui-blocks.stats-09",
+  "shadcnui-blocks.stats-10",
+  "shadcnui-blocks.stats-11",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -137,7 +159,7 @@ export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[numbe
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -158,6 +180,7 @@ const LOGO_CLOUD_TITLE_INTRO_CTA_LOGOS = ["title", "intro", "cta", "logos"] as c
 const LOGO_CLOUD_INTRO_LOGOS = ["intro", "logos"] as const
 const LOGO_CLOUD_INTRO_TITLE_LOGOS = ["intro", "title", "logos"] as const
 const LOGO_CLOUD_TITLE_CTA_LOGOS = ["title", "cta", "logos"] as const
+const STATS_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -531,6 +554,72 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "hero",
     directFields: HERO_08_FIELDS,
     View: Hero08View,
+  },
+  "shadcnui-blocks.stats-01": {
+    upstreamName: "stats-01",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats01View,
+  },
+  "shadcnui-blocks.stats-02": {
+    upstreamName: "stats-02",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats02View,
+  },
+  "shadcnui-blocks.stats-03": {
+    upstreamName: "stats-03",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats03View,
+  },
+  "shadcnui-blocks.stats-04": {
+    upstreamName: "stats-04",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats04View,
+  },
+  "shadcnui-blocks.stats-05": {
+    upstreamName: "stats-05",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats05View,
+  },
+  "shadcnui-blocks.stats-06": {
+    upstreamName: "stats-06",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats06View,
+  },
+  "shadcnui-blocks.stats-07": {
+    upstreamName: "stats-07",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats07View,
+  },
+  "shadcnui-blocks.stats-08": {
+    upstreamName: "stats-08",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats08View,
+  },
+  "shadcnui-blocks.stats-09": {
+    upstreamName: "stats-09",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats09View,
+  },
+  "shadcnui-blocks.stats-10": {
+    upstreamName: "stats-10",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats10View,
+  },
+  "shadcnui-blocks.stats-11": {
+    upstreamName: "stats-11",
+    blockType: "stats",
+    directFields: STATS_TITLE_INTRO_ITEMS,
+    View: Stats11View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown
