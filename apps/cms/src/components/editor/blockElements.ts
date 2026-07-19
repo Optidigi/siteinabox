@@ -1,6 +1,7 @@
 import type { Field, SelectField } from "payload"
 import { blockBySlug } from "@/blocks/registry"
 import type { RtBlockEditorField, RtManifest } from "@/lib/richText/manifest"
+import { isRecord } from "@/lib/record"
 
 export type ElementKind = "richtext" | "text" | "image" | "icon" | "cta" | "array" | "select" | "checkbox"
 
@@ -18,15 +19,16 @@ export interface ElementSpec {
   role?: ElementRole
   variant?: "block" | "inline"
   itemFields?: ElementSpec[]
-  itemLabel?: (item: any, i: number) => string
+  itemLabel?: (item: unknown, i: number) => string
   options?: ElementOption[]
 }
 
-const fallbackItemLabel = (label: string) => (item: any, index: number) => {
+const fallbackItemLabel = (label: string) => (item: unknown, index: number) => {
+  const record = isRecord(item) ? item : null
   const title =
-    typeof item?.label === "string" ? item.label :
-    typeof item?.title === "string" ? item.title :
-    typeof item?.question === "string" ? item.question :
+    typeof record?.label === "string" ? record.label :
+    typeof record?.title === "string" ? record.title :
+    typeof record?.question === "string" ? record.question :
     ""
   return title.trim() || `${label} ${index + 1}`
 }
@@ -153,7 +155,7 @@ const manifestFieldToSpec = (field: RtBlockEditorField): ElementSpec => {
       field: field.name,
       label,
       kind: "array",
-      itemFields: (field.itemFields ?? []).map(manifestFieldToSpec),
+      itemFields: ((field.itemFields ?? []) as RtBlockEditorField[]).map(manifestFieldToSpec),
       itemLabel: fallbackItemLabel(field.itemLabel ?? label),
     }
   }

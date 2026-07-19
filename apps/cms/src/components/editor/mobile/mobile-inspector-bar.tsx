@@ -15,13 +15,14 @@ import { MobileComponentEditor } from "@/components/editor/mobile/mobile-compone
 import { MobileMediaSheet } from "@/components/editor/mobile/mobile-media-sheet"
 import { BlockFormFields } from "@/components/editor/fields/block-form-fields"
 import { VAUL_BOTTOM_SNAP_CSS } from "@/components/editor/mobile/vaulBottomSnapCss"
+import type { EditorBlock } from "@/lib/editor/editorBlock"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { useTranslations } from "next-intl"
 
 export interface MobileInspectorBarProps {
   /** Block currently displayed in the section view — passed to MobileComponentEditor. */
-  block: any
+  block: unknown
   blockIndex: number
   manifest: RtManifest
   /** Used ONLY to extract font family overrides for editor content; the drawer chrome itself still inherits admin tokens. */
@@ -84,8 +85,9 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, b
   const { state, setSelected, expandTo, clearSelection, restorePreFocusSnap } = useMobileEditor()
   const { setValue } = useFormContext()
   const isIdle = state.selected == null && state.drillStack.length === 0
+  const editorBlock = block as EditorBlock
   const selectedSpec = state.selected
-    ? resolveSelectedSpec(block?.blockType, manifest, state.selected.field, state.selected.subField)
+    ? resolveSelectedSpec(editorBlock?.blockType, manifest, state.selected.field, state.selected.subField)
     : undefined
   const isBlockSelection = state.selected?.field === ""
   const selectedName = state.selected && !isBlockSelection ? elementPathToName(state.selected) : null
@@ -165,7 +167,7 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, b
     >
       {isBlockSelection ? (
         <BlockFormFields
-          block={block}
+          block={editorBlock}
           blockIndex={state.selected.blockIndex}
           manifest={manifest}
           theme={theme}
@@ -173,7 +175,7 @@ export const MobileInspectorBar: React.FC<MobileInspectorBarProps> = ({ block, b
       ) : (
         <MobileComponentEditor
           path={state.selected}
-          block={block}
+          block={editorBlock}
           manifest={manifest}
           theme={theme}
         />

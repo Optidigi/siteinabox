@@ -28,7 +28,7 @@ export class StyledHeadingNode extends HeadingNode {
     this.__style = style
     if (key) {
       // HeadingNode constructor doesn't take key; assign via property.
-      (this as any).__key = key
+      (this).__key = key
     }
   }
 

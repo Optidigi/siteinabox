@@ -123,7 +123,7 @@ export function MediaGrid({
   // Build bulk-delete description
   const buildBulkDescription = () => {
     const ids = Array.from(selectedIds)
-    const selectedItems = items.filter((m) => ids.includes(m.id as any))
+    const selectedItems = items.filter((m) => ids.includes(m.id))
     const MAX_NAMES = 5
     const shownNames = selectedItems.slice(0, MAX_NAMES).map((m) => m.filename ?? String(m.id))
     const extra = selectedItems.length - shownNames.length
@@ -219,10 +219,10 @@ export function MediaGrid({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {items.map((m) => {
           const count = usageCount(m)
-          const isSelected = !selectable && selectedIds.has(m.id as any)
+          const isSelected = !selectable && selectedIds.has(m.id)
           return (
             <Card
-              key={m.id as any}
+              key={m.id}
               className={cn(
                 "relative",
                 selectable && "cursor-pointer hover:ring-2 hover:ring-ring",
@@ -237,8 +237,8 @@ export function MediaGrid({
                 if (!canManage) return
                 // Management mode: tapping the card toggles selection.
                 const next = new Set(selectedIds)
-                if (next.has(m.id as any)) next.delete(m.id as any)
-                else next.add(m.id as any)
+                if (next.has(m.id)) next.delete(m.id)
+                else next.add(m.id)
                 setSelectedIds(next)
               }}
             >

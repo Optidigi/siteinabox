@@ -29,12 +29,12 @@ export const rewriteTenantMediaUrl: CollectionAfterReadHook = ({ doc }) => {
 }
 
 export const forceTenantMediaUploadFilename: CollectionBeforeOperationHook = ({ args, operation }) => {
-  if ((operation === "create" || operation === "update" || operation === "updateByID") && (args as any).req?.file) {
+  if ((operation === "create" || operation === "update" || operation === "updateByID") && (args).req?.file) {
     return {
-      ...(args as any),
+      ...(args),
       overwriteExistingFiles: true,
     }
   }
 
-  return args as any
+  return args
 }

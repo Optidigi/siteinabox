@@ -39,7 +39,7 @@ export default async function PagesIndex({
       />
       <ListSearch placeholder={t("filterPages")} />
       <PagesTable
-        data={result.docs as any}
+        data={result.docs}
         base={`/sites/${slug}/pages`}
         canManage
         emptyState={

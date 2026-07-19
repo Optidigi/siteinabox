@@ -1,7 +1,6 @@
 import type { Address } from "nodemailer/lib/mailer"
 import type { PayloadEmailAdapter, SendEmailOptions } from "payload"
-import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
-import type { MailLogPayload } from "@/lib/email/sendEmail"
+import { asMailLogPayload, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 
 const DEFAULT_FROM_NAME = "Site in a Box"
 
@@ -65,7 +64,7 @@ export const payloadEmailAdapter: PayloadEmailAdapter = ({ payload }) => ({
       html,
       text: explicitText || htmlToPlainText(html),
       intent: "auth.password_reset",
-      payload: payload as unknown as MailLogPayload,
+      payload: asMailLogPayload(payload),
     })
   },
 })

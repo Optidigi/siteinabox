@@ -7,8 +7,8 @@ import {
   type SiteBlockCatalogVariant,
   type SiteGenerationBlockSlug,
 } from "@siteinabox/contracts"
-import { relationshipId } from "@/lib/relationshipId"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
+import { relationshipId } from "@/lib/relationshipId"
 
 const generationBlockSlugs = new Set<string>(SITE_GENERATION_BLOCK_SLUGS)
 
@@ -20,13 +20,13 @@ const findTenant = async (
   if (tenantId == null) return null
   const doc = await req.payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     overrideAccess: true,
   })
   return {
-    slug: typeof (doc as any)?.slug === "string" ? (doc as any).slug : null,
-    domain: typeof (doc as any)?.domain === "string" ? (doc as any).domain : null,
+    slug: typeof (doc)?.slug === "string" ? (doc).slug : null,
+    domain: typeof (doc)?.domain === "string" ? (doc).domain : null,
   }
 }
 
@@ -62,17 +62,17 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
   originalDoc,
   req,
 }) => {
-  const blocks = Array.isArray((data as any)?.blocks)
-    ? (data as any).blocks.map((block: unknown) =>
+  const blocks = Array.isArray((data)?.blocks)
+    ? (data).blocks.map((block: unknown) =>
         block && typeof block === "object" && !Array.isArray(block)
           ? canonicalizeCtaFields(block as Record<string, unknown>)
           : block,
       )
     : []
   if (blocks.length === 0) return data
-  Object.assign(data as any, { blocks })
+  Object.assign(data as Record<string, unknown>, { blocks })
 
-  const tenant = await findTenant(req, (data as any)?.tenant ?? (originalDoc as any)?.tenant)
+  const tenant = await findTenant(req, (data)?.tenant ?? (originalDoc)?.tenant)
   const errors = blocks.flatMap((block: unknown, index: number) => {
     if (!block || typeof block !== "object" || Array.isArray(block)) return []
     const record = block as Record<string, unknown>
@@ -84,7 +84,7 @@ export const enforceTenantBlockVariantScope: CollectionBeforeValidateHook = asyn
       const issue = scopedVariantIssue(blockType, "designVariant", designVariant, tenant)
       if (issue) violations.push({ path: `blocks.${index}.designVariant`, message: issue.message })
     }
-    for (const issue of validateProviderBlockInstance(record as any)) {
+    for (const issue of validateProviderBlockInstance(record as Parameters<typeof validateProviderBlockInstance>[0])) {
       violations.push({
         path: `blocks.${index}.${issue.path.join(".")}`,
         message: issue.message,

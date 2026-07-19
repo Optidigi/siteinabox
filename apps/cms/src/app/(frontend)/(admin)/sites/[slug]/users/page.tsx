@@ -40,7 +40,7 @@ export default async function TenantUsersPage({
       />
       <ListSearch placeholder={t("filterTeam")} />
       <UsersTable
-        data={result.docs as any}
+        data={result.docs}
         canManage={canManage}
         currentUserId={user.id}
         tenantId={tenant.id}

@@ -1,6 +1,7 @@
 import "server-only"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { Media } from "@/payload-types"
 import {
   normalisePagination,
   type PayloadFindResult,
@@ -18,10 +19,10 @@ export async function listMediaPaginated(
   tenantId: number | string,
   opts?: ListMediaOpts,
   payload?: PayloadLikeFindClient,
-): Promise<PayloadFindResult> {
+): Promise<PayloadFindResult<Media>> {
   const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
   const { page, limit } = normalisePagination(opts)
-  return client.find({
+  return client.find<Media>({
     collection: "media",
     overrideAccess: true,
     where: { tenant: { equals: tenantId } },

@@ -1,6 +1,8 @@
 import "server-only"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { Where } from "payload"
+import type { User } from "@/payload-types"
 import {
   normalisePagination,
   type PayloadFindResult,
@@ -29,14 +31,14 @@ export interface ListUsersOpts {
 export async function listUsersPaginated(
   opts?: ListUsersOpts,
   payload?: PayloadLikeFindClient,
-): Promise<PayloadFindResult> {
+): Promise<PayloadFindResult<User>> {
   const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
   const { page, limit } = normalisePagination(opts)
-  const where: Record<string, unknown> = {}
+  const where: Where = {}
   if (opts?.tenantId != null) where["tenants.tenant"] = { equals: opts.tenantId }
   const q = opts?.q?.trim()
   if (q) where.or = [{ name: { like: q } }, { email: { like: q } }]
-  return client.find({
+  return client.find<User>({
     collection: "users",
     overrideAccess: true,
     where,

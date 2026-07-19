@@ -71,7 +71,7 @@ const blockEditorFieldSchema: z.ZodType<{
   role?: z.infer<typeof blockEditorFieldRoleSchema>
   variant?: "block" | "inline"
   itemLabel?: string
-  itemFields?: any[]
+  itemFields?: unknown[]
   options?: { label: string; value: string }[]
 }> = z.lazy(() =>
   z.object({

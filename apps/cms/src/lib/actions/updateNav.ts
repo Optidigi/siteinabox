@@ -2,6 +2,7 @@
 import { headers } from "next/headers"
 import { getPayload } from "payload"
 import { z } from "zod"
+import type { SiteSetting } from "@/payload-types"
 import config from "@/payload.config"
 
 // OBS-20 — persist a tenant's header + footer navigation.
@@ -68,7 +69,7 @@ export const updateNav = async (
   await payload.update({
     collection: "site-settings",
     id: settings.id,
-    data: { navHeader: header.data, navFooter: footer.data } as any,
+    data: { navHeader: header.data, navFooter: footer.data } as Partial<SiteSetting>,
     user,
     overrideAccess: false,
   })

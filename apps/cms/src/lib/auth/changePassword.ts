@@ -69,7 +69,7 @@ export const changePasswordHandler: PayloadHandler = async (req) => {
 
   // 2. Body parse + validation. Payload pre-parses POST bodies into req.data
   // for endpoints (mirroring loginHandler at auth/endpoints/login.js:11-18).
-  const data = (req as any).data as { currentPassword?: unknown; newPassword?: unknown } | undefined
+  const data = (req).data as { currentPassword?: unknown; newPassword?: unknown } | undefined
   const currentPassword = data?.currentPassword
   const newPassword = data?.newPassword
 
@@ -157,7 +157,7 @@ export const changePasswordHandler: PayloadHandler = async (req) => {
   // Payload's own loginHandler uses.
   const usersCollection = req.payload.collections?.users
   const cookie = generatePayloadCookie({
-    collectionAuthConfig: usersCollection?.config?.auth as any,
+    collectionAuthConfig: usersCollection?.config?.auth,
     cookiePrefix: req.payload.config.cookiePrefix ?? "payload",
     token,
   })

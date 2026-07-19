@@ -113,7 +113,7 @@ export const StyleChip: React.FC<StyleChipProps> = ({ manifest }) => {
       if (!block) return
       const isHeading = $isHeadingNode(block) || block instanceof StyledHeadingNode
       if (!isHeading) return
-      const tag = (block as any).getTag() as "h2" | "h3" | "h4"
+      const tag = (block).getTag() as "h2" | "h3" | "h4"
       if (id) {
         if (block instanceof StyledHeadingNode) {
           block.setRtStyle(id)

@@ -1,4 +1,5 @@
 import "server-only"
+import type { Page, SiteSetting } from "@/payload-types"
 import type { WebVitalMetric } from "./queries"
 
 export type WebVitalName = "CLS" | "FCP" | "INP" | "LCP"
@@ -99,8 +100,8 @@ export const scoreSiteQuality = ({
   settings,
   pages,
 }: {
-  settings: any | null
-  pages: any[]
+  settings: SiteSetting | null
+  pages: Page[]
 }): SiteQualityScore => {
   if (!settings && pages.length === 0) {
     return { available: false, score: null, passed: 0, total: 0, checks: [] }

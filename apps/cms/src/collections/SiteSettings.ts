@@ -1,7 +1,10 @@
-import type { CollectionBeforeValidateHook, CollectionConfig } from "payload"
+import type { FieldAdminConditionContext, FieldValidateContext } from "@/lib/payloadFieldContext"
+import type { CollectionBeforeValidateHook, CollectionConfig, Option, PayloadRequest } from "payload"
 import { ValidationError } from "payload"
-import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
-import { SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_TEMPLATES } from "@siteinabox/contracts"
+import { SITE_CHROME_CATALOG, validateSiteChromeCapabilities } from "@siteinabox/contracts/block-catalog"
+import type { SiteSettings as SiteSettingsContract } from "@siteinabox/contracts/site"
+import { SHADCNUI_SYSTEM_TEMPLATES } from "@siteinabox/contracts"
+import type { SiteSetting } from "@/payload-types"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
@@ -12,7 +15,7 @@ import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 // HH:MM 24h matcher. Accepts 00:00–23:59.
 const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 
-const validateHHMM = (val: unknown, { siblingData, req }: any) => {
+const validateHHMM = (val: unknown, { siblingData, req }: FieldValidateContext) => {
   // If the row is marked closed, open/close are ignored — empty is fine.
   if (siblingData?.closed) return true
   if (val == null || val === "") return adminValidationText(req?.i18n?.language, "Required when the day is not closed", "Verplicht wanneer de dag niet gesloten is")
@@ -24,7 +27,7 @@ const validateHHMM = (val: unknown, { siblingData, req }: any) => {
 // 3- or 6-digit hex color (with leading '#'). Empty is allowed (field is
 // optional — the renderer falls back to a default when unset).
 const HEX_COLOR_REGEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
-const validatePrimaryColor = (val: unknown, { req }: any) => {
+const validatePrimaryColor = (val: unknown, { req }: { req?: PayloadRequest }) => {
   if (val == null || val === "") return true
   if (typeof val !== "string" || !HEX_COLOR_REGEX.test(val)) {
     return adminValidationText(req?.i18n?.language, "Use a hex color (e.g. #2563eb or #25b)", "Gebruik een hexkleur (bijv. #2563eb of #25b)")
@@ -71,14 +74,17 @@ const collectTenantSlugs = (value: unknown, slugs = new Set<string>()): Set<stri
   return slugs
 }
 
+const chromeOptionValue = (option: Option): string =>
+  typeof option === "string" ? option : String((option as { value: string }).value)
+
 export const filterChromeVariantOptions = (
   area: "header" | "footer",
-  options: { label: string; value: string }[],
+  options: Option[],
   data: unknown,
-  req?: unknown,
-) => {
+  req?: PayloadRequest,
+): Option[] => {
   const tenantSlugs = collectTenantSlugs(data && typeof data === "object" ? (data as Record<string, unknown>).tenant : null)
-  collectTenantSlugs(req && typeof req === "object" ? (req as any).user?.tenants : null, tenantSlugs)
+  collectTenantSlugs(req?.user?.tenants, tenantSlugs)
   // Payload can invoke select `filterOptions` during internal create/update
   // validation without the root tenant document in `data`. Option filtering is
   // only an admin UX affordance; canonical enforcement lives in
@@ -89,7 +95,7 @@ export const filterChromeVariantOptions = (
 
   return options.filter((option) => {
     const exclusive = tenantExclusiveChromeVariants.find((entry) =>
-      entry.area === area && entry.variant === option.value)
+      entry.area === area && entry.variant === chromeOptionValue(option))
     if (!exclusive) return true
     return exclusive.tenantSlugs.some((tenantSlug) => tenantSlugs.has(tenantSlug))
   })
@@ -103,11 +109,11 @@ const findTenantSlug = async (
   if (tenantId == null) return null
   const doc = await req.payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     overrideAccess: true,
   })
-  return typeof (doc as any)?.slug === "string" ? (doc as any).slug : null
+  return typeof (doc)?.slug === "string" ? (doc).slug : null
 }
 
 export const enforceTenantExclusiveChromeVariants: CollectionBeforeValidateHook = async ({
@@ -144,40 +150,24 @@ export const enforceTenantExclusiveChromeVariants: CollectionBeforeValidateHook 
 }
 
 export const enforceChromeCapabilities: CollectionBeforeValidateHook = ({ collection, data, originalDoc, req }) => {
-  const merged = { ...originalDoc, ...data, chrome: { ...(originalDoc?.chrome ?? {}), ...(data?.chrome ?? {}), header: { ...(originalDoc?.chrome?.header ?? {}), ...(data?.chrome?.header ?? {}) }, footer: { ...(originalDoc?.chrome?.footer ?? {}), ...(data?.chrome?.footer ?? {}) } } } as any
-  const errors: Array<{ path: string; message: string }> = []
-  const header = merged.chrome?.header
-  const headerCapability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === header?.variant)?.capabilities
-  const navigation = Array.isArray(merged.navHeader) ? merged.navHeader : []
-  if (headerCapability) {
-    const groups = navigation.filter((entry: any) => entry?.type === "group")
-    if (navigation.length > headerCapability.primaryItems.max) errors.push({ path: "navHeader", message: `${header.variant} allows at most ${headerCapability.primaryItems.max} primary items.` })
-    if (headerCapability.navigation === "none" && navigation.length) errors.push({ path: "navHeader", message: `${header.variant} has no primary-navigation region.` })
-    if (headerCapability.navigation === "flat" && groups.length) errors.push({ path: "navHeader", message: `${header.variant} does not support flyout groups.` })
-    if (groups.length > headerCapability.groupItems.max) errors.push({ path: "navHeader", message: `${header.variant} allows at most ${headerCapability.groupItems.max} flyout groups.` })
-    groups.forEach((group: any, index: number) => {
-      const childCount = Array.isArray(group.children) ? group.children.length : 0
-      if (childCount < headerCapability.childItems.min || childCount > headerCapability.childItems.max) errors.push({ path: `navHeader.${index}.children`, message: `Flyouts require ${headerCapability.childItems.min}-${headerCapability.childItems.max} links.` })
-    })
-    if (!headerCapability.secondaryAction && nonEmpty(header.secondaryAction?.href)) errors.push({ path: "chrome.header.secondaryAction", message: `${header.variant} has no secondary-action region.` })
-    if (!headerCapability.search && header.search?.enabled) errors.push({ path: "chrome.header.search", message: `${header.variant} has no search region.` })
-    if (header.mobileMenu && !headerCapability.mobileMenu.includes(header.mobileMenu)) errors.push({ path: "chrome.header.mobileMenu", message: `${header.variant} does not support the ${header.mobileMenu} mobile-menu behavior.` })
+  const merged: SiteSetting = {
+    ...(originalDoc ?? {}),
+    ...(data ?? {}),
+    chrome: {
+      ...(originalDoc?.chrome ?? {}),
+      ...(data?.chrome ?? {}),
+      header: { ...(originalDoc?.chrome?.header ?? {}), ...(data?.chrome?.header ?? {}) },
+      footer: { ...(originalDoc?.chrome?.footer ?? {}), ...(data?.chrome?.footer ?? {}) },
+    },
   }
-  const footer = merged.chrome?.footer
-  const footerCapability = (SHADCNUI_CHROME_VARIANTS as readonly any[]).find((entry) => entry.id === footer?.variant)?.capabilities
-  if (footerCapability) {
-    const columns = Array.isArray(footer.columns) ? footer.columns : []
-    if (columns.length > footerCapability.columns.max) errors.push({ path: "chrome.footer.columns", message: `${footer.variant} allows at most ${footerCapability.columns.max} columns.` })
-    columns.forEach((column: any, index: number) => {
-      const links = (Array.isArray(column?.items) ? column.items : []).reduce((count: number, item: any) => count + (Array.isArray(item?.links) ? item.links.length : 0), 0)
-      if (links > footerCapability.linksPerColumn.max) errors.push({ path: `chrome.footer.columns.${index}`, message: `${footer.variant} allows at most ${footerCapability.linksPerColumn.max} links per column.` })
-    })
-    if (!footerCapability.newsletter && nonEmpty(footer.newsletter?.action)) errors.push({ path: "chrome.footer.newsletter", message: `${footer.variant} has no newsletter region.` })
-  }
+  const errors = validateSiteChromeCapabilities(merged as SiteSettingsContract).map((issue) => ({
+    path: issue.path,
+    message: adminValidationText(req.i18n?.language, issue.message, issue.message),
+  }))
   const maintenance = merged.maintenance
-  if (maintenance?.enabled && !nonEmpty(maintenance.variant)) errors.push({ path: "maintenance.variant", message: "Enabled maintenance mode requires an approved banner variant." })
-  if (maintenance?.enabled && !nonEmpty(maintenance.message)) errors.push({ path: "maintenance.message", message: "Enabled maintenance mode requires a message." })
-  if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors: errors.map((error) => ({ ...error, message: adminValidationText(req.i18n?.language, error.message, error.message) })) })
+  if (maintenance?.enabled && !nonEmpty(maintenance.variant)) errors.push({ path: "maintenance.variant", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires an approved banner variant.", "Ingeschakelde onderhoudsmodus vereist een goedgekeurde bannervariant.") })
+  if (maintenance?.enabled && !nonEmpty(maintenance.message)) errors.push({ path: "maintenance.message", message: adminValidationText(req.i18n?.language, "Enabled maintenance mode requires a message.", "Ingeschakelde onderhoudsmodus vereist een bericht.") })
+  if (errors.length) throw new ValidationError({ collection: collection?.slug ?? "site-settings", errors })
   return data
 }
 
@@ -216,10 +206,10 @@ const navEntryFields = () => [
     type: "relationship" as const,
     relationTo: "pages" as const,
     admin: {
-      condition: (_: unknown, sib: any) => sib?.type === "page" || sib?.type === "section",
+      condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "page" || sib?.type === "section",
       description: adminText("Target page. For a section link, the page containing the section (leave blank for the current page).", "Doelpagina. Voor een sectielink: de pagina met de sectie (laat leeg voor de huidige pagina)."),
     },
-    validate: (val: unknown, { siblingData, req }: any) => {
+    validate: (val: unknown, { siblingData, req }: FieldValidateContext) => {
       if (siblingData?.type !== "page") return true
       if (val == null) return adminValidationText(req?.i18n?.language, "Select a target page for a page link", "Selecteer een doelpagina voor een paginalink")
       return true
@@ -229,10 +219,10 @@ const navEntryFields = () => [
     name: "anchor",
     type: "text" as const,
     admin: {
-      condition: (_: unknown, sib: any) => sib?.type === "section",
+      condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "section",
       description: adminText("Section ID without the leading '#' (e.g. 'services').", "Sectie-ID zonder het voorvoegsel '#' (bijv. 'diensten')."),
     },
-    validate: (val: unknown, { siblingData, req }: any) => {
+    validate: (val: unknown, { siblingData, req }: FieldValidateContext) => {
       if (siblingData?.type !== "section") return true
       return nonEmpty(val) ? true : adminValidationText(req?.i18n?.language, "Anchor is required for a section link", "Anker is verplicht voor een sectielink")
     },
@@ -241,10 +231,10 @@ const navEntryFields = () => [
     name: "url",
     type: "text" as const,
     admin: {
-      condition: (_: unknown, sib: any) => sib?.type === "custom",
+      condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "custom",
       description: adminText("Full URL (https://…) or a site-relative path.", "Volledige URL (https://…) of een site-relatief pad."),
     },
-    validate: (val: unknown, { siblingData, req }: any) => {
+    validate: (val: unknown, { siblingData, req }: FieldValidateContext) => {
       if (siblingData?.type !== "custom") return true
       if (!nonEmpty(val)) return adminValidationText(req?.i18n?.language, "URL is required for a custom link", "URL is verplicht voor een aangepaste link")
       const result = validateSafeHref(val)
@@ -258,7 +248,7 @@ const navEntryFields = () => [
     admin: {
       description: adminText("Display text. For a page link, leave blank to use the page title.", "Weergavetekst. Laat bij een paginalink leeg om de paginatitel te gebruiken."),
     },
-    validate: (val: unknown, { siblingData, req }: any) => {
+    validate: (val: unknown, { siblingData, req }: FieldValidateContext) => {
       // Page links may omit the label — it falls back to the page title at
       // projection time. Section/custom links carry no inherent title.
       if (siblingData?.type === "page") return true
@@ -270,7 +260,7 @@ const navEntryFields = () => [
     type: "checkbox" as const,
     defaultValue: false,
     admin: {
-      condition: (_: unknown, sib: any) => sib?.type === "custom",
+      condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "custom",
       description: adminText("Open in a new tab (external site).", "Openen in een nieuw tabblad (externe site)."),
     },
   },
@@ -279,7 +269,7 @@ const navEntryFields = () => [
     type: "textarea" as const,
     maxLength: 90,
     admin: {
-      condition: (_: unknown, sib: any) => sib?.type === "group",
+      condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "group",
       description: adminText("Optional flyout introduction.", "Optionele introductie van het uitklapmenu."),
     },
   },
@@ -289,7 +279,7 @@ const navEntryFields = () => [
     minRows: 1,
     maxRows: 6,
     admin: {
-      condition: (_: unknown, sib: any) => sib?.type === "group",
+      condition: (_: unknown, sib: FieldAdminConditionContext) => sib?.type === "group",
       description: adminText("Flyout links. The selected navbar capability determines whether groups are allowed.", "Links in het uitklapmenu. De gekozen navigatievariant bepaalt of groepen zijn toegestaan."),
     },
     fields: [
@@ -338,7 +328,7 @@ export const SiteSettings: CollectionConfig = {
       fields: [
         { name: "header", type: "group", fields: [
           { name: "variant", type: "select", options: headerChromeVariantOptions,
-            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("header", options as any, data, req),
+            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("header", options, data, req),
             admin: { description: adminText("Approved renderer variant for the header.", "Goedgekeurde renderervariant voor de koptekst.") } },
           { name: "logo", type: "upload", relationTo: "media",
             admin: { description: adminText("Optional header-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de koptekst. Valt terug op het merklogo.") } },
@@ -366,7 +356,7 @@ export const SiteSettings: CollectionConfig = {
         ]},
         { name: "footer", type: "group", fields: [
           { name: "variant", type: "select", options: footerChromeVariantOptions,
-            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("footer", options as any, data, req),
+            filterOptions: ({ options, data, req }) => filterChromeVariantOptions("footer", options, data, req),
             admin: { description: adminText("Approved renderer variant for the footer.", "Goedgekeurde renderervariant voor de voettekst.") } },
           { name: "logo", type: "upload", relationTo: "media",
             admin: { description: adminText("Optional footer-specific logo. Falls back to the branding logo.", "Optioneel logo specifiek voor de voettekst. Valt terug op het merklogo.") } },

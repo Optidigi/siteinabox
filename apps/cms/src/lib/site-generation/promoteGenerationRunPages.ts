@@ -48,7 +48,7 @@ export async function promoteGenerationRunPages(
 ): Promise<GenerationRunPagePromotionResult> {
   const run = await payload.findByID({
     collection: "site-generation-runs",
-    id: generationRunId as any,
+    id: generationRunId,
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
@@ -71,7 +71,7 @@ export async function promoteGenerationRunPages(
     limit: 1000,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
   const pages = (pageResult.docs as Page[]).filter((page) => runPageIds.has(String(page.id)))
   if (pages.length === 0) {
     throw new Error("Generation run linked pages were not found for this tenant.")
@@ -89,12 +89,12 @@ export async function promoteGenerationRunPages(
 
   await Promise.all(draftPages.map((page) => payload.update({
     collection: "pages",
-    id: page.id as any,
+    id: page.id,
     data: { status: "published" },
     depth: 0,
     overrideAccess: true,
     context: PROMOTION_CONTEXT,
-  } as any)))
+  })))
 
   const promotedAt = new Date().toISOString()
   const result: GenerationRunPagePromotionResult = {
@@ -109,13 +109,13 @@ export async function promoteGenerationRunPages(
 
   await payload.update({
     collection: "site-generation-runs",
-    id: run.id as any,
+    id: run.id,
     data: {
       applyResult: runPromotionMetadata(run.applyResult, result),
     },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 
   return result
 }

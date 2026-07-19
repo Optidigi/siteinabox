@@ -40,7 +40,7 @@ export async function provisionPaidDomainOrder(
   if (!tenantId) throw new Error("Cannot provision paid domain without a linked tenant.")
   const tenant = await payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     overrideAccess: true,
   }) as Tenant
@@ -77,7 +77,7 @@ export async function provisionPaidDomainOrder(
   await payload.update({
     collection: "site-generation-runs",
     id: run.id,
-    data: { domainOrder: requested } as any,
+    data: { domainOrder: requested },
     depth: 0,
     overrideAccess: true,
   })
@@ -155,13 +155,13 @@ export async function provisionPaidDomainOrder(
       payload.update({
         collection: "site-generation-runs",
         id: run.id,
-        data: { domainOrder: registered } as any,
+        data: { domainOrder: registered },
         depth: 0,
         overrideAccess: true,
       }) as Promise<SiteGenerationRun>,
       payload.update({
         collection: "tenants",
-        id: tenantId as any,
+        id: tenantId,
         data: {
           domain: normalized.domain,
           domainVerification: {
@@ -170,7 +170,7 @@ export async function provisionPaidDomainOrder(
             notes: "Domain registered with OpenProvider and Cloudflare DNS records created by checkout automation.",
           },
           emailSending,
-        } as any,
+        },
         depth: 0,
         overrideAccess: true,
       }),
@@ -188,7 +188,7 @@ export async function provisionPaidDomainOrder(
     const updatedRun = await payload.update({
       collection: "site-generation-runs",
       id: run.id,
-      data: { domainOrder: failed } as any,
+      data: { domainOrder: failed },
       depth: 0,
       overrideAccess: true,
     }) as SiteGenerationRun

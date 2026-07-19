@@ -4,7 +4,7 @@ import { Pool } from "pg"
 import { magicLink } from "better-auth/plugins"
 import { getMagicLinkRateLimit } from "@/lib/auth/magicLinkRateLimit"
 import { hasActivePreviewGrant } from "@/lib/preview/previewAccess"
-import { sendEmail } from "@/lib/email/sendEmail"
+import { asMailLogPayload, sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { siteReadyPreviewTemplate } from "@/lib/email/templates/siteReadyPreview"
 import { PREVIEW_SESSION_EXPIRES_IN_SECONDS, SESSION_UPDATE_AGE_SECONDS } from "@/lib/auth/sessionDurations"
@@ -129,7 +129,7 @@ export const previewAuth = betterAuth({
           html: message.html,
           text: message.text,
           intent: siteReady ? "preview.site_ready" : "preview.magic_link",
-          payload: payload as any,
+          payload: asMailLogPayload(payload),
         })
       },
     }),

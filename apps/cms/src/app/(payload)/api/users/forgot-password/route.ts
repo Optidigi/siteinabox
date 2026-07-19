@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { User } from "@/payload-types"
 import { SUPER_ADMIN_RESET_TOKEN_TTL_MS } from "@/lib/auth/passwordRecovery"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 
@@ -19,7 +20,7 @@ export async function POST(req: Request) {
   if (!email) return NextResponse.json({ message: "Invalid request" }, { status: 400 })
 
   const payload = await getPayload({ config })
-  let caller: any = null
+  let caller: User | null = null
   try {
     caller = (await payload.auth({ headers: req.headers })).user
   } catch {

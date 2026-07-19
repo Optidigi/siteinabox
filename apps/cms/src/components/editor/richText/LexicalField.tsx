@@ -85,7 +85,7 @@ export const LexicalField: React.FC<LexicalFieldProps> = ({ value, onChange, man
         onChange={(editorState) => {
           editorState.read(() => {
             const json = editorState.toJSON()
-            const rt = lexicalJsonToRt(json as any, variant)
+            const rt = lexicalJsonToRt(json, variant)
             onChange(rt)
           })
         }}

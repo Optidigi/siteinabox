@@ -1,5 +1,7 @@
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
+import { findOneDoc } from "@/lib/payloadCollection"
 import type { Payload } from "payload"
+import type { IntakeSubmission } from "@/payload-types"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
@@ -8,8 +10,6 @@ import { recordIntakeMarketingPreference } from "@/lib/legal/communicationPrefer
 import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 
 type WorkflowStatus = (typeof generationWorkflowStatuses)[number]
-
-type PayloadDoc = Record<string, any>
 
 type Transition = {
   status: WorkflowStatus
@@ -50,23 +50,12 @@ const submittedContactName = (raw: PublicIntakeSubmission): string | null | unde
 const submittedContactEmail = (raw: PublicIntakeSubmission): string | null | undefined =>
   "contactEmail" in raw ? raw.contactEmail : "finalDetails" in raw ? raw.finalDetails.email : undefined
 
-const findOne = async (payload: Payload, collection: string, where: Record<string, unknown>): Promise<PayloadDoc | null> => {
-  const result = await payload.find({
-    collection,
-    where,
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  } as any)
-  return (result.docs[0] as PayloadDoc | undefined) ?? null
-}
-
-const storedResult = (doc: PayloadDoc, reused: boolean): IntakeStorageResult => ({
+const storedResult = (doc: IntakeSubmission, reused: boolean): IntakeStorageResult => ({
   ok: doc.status !== "failed",
   reused,
   status: doc.status as WorkflowStatus,
   intakeSubmissionId: doc.id,
-  normalizedHash: doc.normalizedHash,
+  normalizedHash: doc.normalizedHash ?? undefined,
   error: doc.error as Record<string, unknown> | undefined,
 })
 
@@ -84,7 +73,7 @@ const escapeHtml = (value: string) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
 
-const intakeInternalNotificationTemplate = (doc: PayloadDoc) => {
+const intakeInternalNotificationTemplate = (doc: IntakeSubmission) => {
   const status = cleanText(doc.status) ?? "onbekend"
   const businessName = cleanText(doc.businessName) ?? "Onbekend bedrijf"
   const contactName = cleanText(doc.contactName) ?? "-"
@@ -122,7 +111,7 @@ const intakeInternalNotificationTemplate = (doc: PayloadDoc) => {
   }
 }
 
-export async function notifyAdminOfIntakeStorage(payload: Payload, doc: PayloadDoc) {
+export async function notifyAdminOfIntakeStorage(payload: Payload, doc: IntakeSubmission) {
   try {
     const message = intakeInternalNotificationTemplate(doc)
     await sendEmail({
@@ -151,7 +140,7 @@ export async function storeIntakeSubmission(
     const normalized = normalizeIntakeSubmission(raw)
     const normalizedHash = hashStableValue(normalized)
     const idempotencyKey = `public-intake:normalized:${hashStableValue({ raw, normalized })}`
-    const existing = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
     if (existing) return storedResult(existing, true)
 
     const intake = await payload.create({
@@ -173,7 +162,7 @@ export async function storeIntakeSubmission(
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadDoc
+    })
 
     if ("legal" in raw && normalized.contact?.email) {
       try {
@@ -195,7 +184,7 @@ export async function storeIntakeSubmission(
     return storedResult(intake, false)
   } catch (err) {
     const idempotencyKey = `public-intake:invalid:${hashStableValue(raw)}`
-    const existing = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
     if (existing) return storedResult(existing, true)
 
     const failure = errorPayload(err)
@@ -217,7 +206,7 @@ export async function storeIntakeSubmission(
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadDoc
+    })
 
     await notifyAdminOfIntakeStorage(payload, intake)
     return storedResult(intake, false)

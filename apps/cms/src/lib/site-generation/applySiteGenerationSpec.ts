@@ -26,7 +26,9 @@ import {
 } from "@siteinabox/contracts/block-catalog"
 import { SITE_BLOCK_SLUGS, SITE_GENERATION_BLOCK_SLUGS } from "@siteinabox/contracts/site"
 import type { MediaRef } from "@siteinabox/contracts/site"
-import type { Payload } from "payload"
+import type { Payload, Where } from "payload"
+import type { Media, Page, SiteSetting, Tenant } from "@/payload-types"
+import { asRecord } from "@/lib/record"
 import { assertSafeMediaFilename } from "@/lib/mediaFilename"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
 import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
@@ -137,7 +139,7 @@ const blockVariantScopeIssue = (
   tenantSlug: string | null,
   validationScope: SiteGenerationValidationOptions["variantScope"],
 ): string | null => {
-  if (!SITE_BLOCK_SLUGS.includes(blockType as any)) return null
+  if (!(SITE_BLOCK_SLUGS as readonly string[]).includes(blockType)) return null
   const catalog = validationScope === "self-serve"
     ? SITE_GENERATION_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_GENERATION_BLOCK_CATALOG_BY_SLUG]
     : SITE_BLOCK_CATALOG_BY_SLUG[blockType as keyof typeof SITE_BLOCK_CATALOG_BY_SLUG]
@@ -365,7 +367,7 @@ export const validateSiteGenerationSpecForCms = (
         }
       }
       if (typeof variant === "string" && variant.startsWith("shadcnui-blocks.")) {
-        for (const providerIssue of validateProviderBlockInstance(block as any)) {
+        for (const providerIssue of validateProviderBlockInstance(block)) {
           issues.push(issue(
             providerIssue.code,
             providerIssue.message,
@@ -378,9 +380,11 @@ export const validateSiteGenerationSpecForCms = (
   if (pagesArray && !pagesArray.some((page) => page?.slug === "index")) {
     issues.push(issue("missing_root_page", "Generated specs must include an index page for the root route.", ["pages"]))
   }
-  const disclosure = settings && typeof settings === "object" && !Array.isArray(settings)
-    ? (settings as Record<string, any>).privacyDisclosure
-    : null
+  const disclosure = asRecord(
+    settings && typeof settings === "object" && !Array.isArray(settings)
+      ? (settings as Record<string, unknown>).privacyDisclosure
+      : null,
+  )
   if (Array.isArray(disclosure?.marketingTechnologies) && disclosure.marketingTechnologies.length > 0) {
     issues.push(issue(
       "unsupported_optional_tracking_without_consent_ui",
@@ -435,19 +439,19 @@ export const validateSiteGenerationSpecForCms = (
   }
 }
 
-const findOne = async (
+const findOne = async <T>(
   payload: Payload,
   collection: "tenants" | "pages" | "site-settings" | "media",
-  where: Record<string, unknown>,
-) => {
+  where: Where,
+): Promise<T | undefined> => {
   const found = await payload.find({
     collection,
     where,
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  return found.docs[0] as any | undefined
+  })
+  return found.docs[0] as T | undefined
 }
 
 const relationshipId = (value: unknown): string | number | undefined => {
@@ -663,27 +667,27 @@ const upsertGeneratedMediaRefs = async (
 
   for (const [filename, ref] of refs) {
     const mimeType = mimeTypeForFilename(filename)
-    const data = {
-      tenant: tenantId,
+    const data: Partial<Media> = {
+      tenant: Number(tenantId),
       filename,
       ...(typeof ref.alt === "string" ? { alt: ref.alt } : {}),
       ...(typeof ref.width === "number" ? { width: ref.width } : {}),
       ...(typeof ref.height === "number" ? { height: ref.height } : {}),
       ...(mimeType ? { mimeType } : {}),
     }
-    const existing = await findOne(payload, "media", {
+    const existing = await findOne<Media>(payload, "media", {
       and: [{ tenant: { equals: tenantId } }, { filename: { equals: filename } }],
     })
     if (existing) {
-      const updated = await payload.update({
+      await payload.update({
         collection: "media",
         id: existing.id,
         data,
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
-      } as any)
-      ids.set(filename, (updated as any).id)
+      })
+      ids.set(filename, existing.id)
     } else {
       const createArgs = {
         collection: "media",
@@ -697,9 +701,9 @@ const upsertGeneratedMediaRefs = async (
           ...createArgs,
           filePath,
           overwriteExistingFiles: true,
-        } as any),
+        }),
       )
-      ids.set(filename, (created as any).id)
+      ids.set(filename, (created).id)
     }
   }
 
@@ -797,8 +801,8 @@ const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): 
   return omitNullishCmsValues(normalized) as Record<string, unknown>
 }
 
-const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap) => omitNullishCmsValues({
-  tenant: tenantId,
+const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, mediaIds?: MediaIdMap): Partial<Page> => omitNullishCmsValues({
+  tenant: Number(tenantId),
   title: page.title,
   slug: page.slug,
   status: "draft",
@@ -809,7 +813,7 @@ const normalizePageData = (tenantId: string | number, page: GeneratedPageSpec, m
         ogImage: normalizeMediaRef(page.seo.ogImage, mediaIds),
       }
     : undefined,
-}) as Record<string, unknown>
+}) as Partial<Page>
 
 const hrefToNavEntry = (href: string, label: string | null | undefined, external: boolean | undefined, pageBySlug: Map<string, ExistingPage>): NavEntry => {
   const sectionMatch = href.match(/^\/?([a-z0-9-]+)?#([A-Za-z0-9_-]+)$/)
@@ -870,7 +874,7 @@ const normalizeSettingsData = (
   pageBySlug: Map<string, ExistingPage>,
   mediaIds?: MediaIdMap,
 ) => omitNullishCmsValues({
-  tenant: tenantId,
+  tenant: Number(tenantId),
   siteName: settings.siteName,
   siteUrl: settings.siteUrl,
   description: settings.description,
@@ -909,7 +913,7 @@ const normalizeSettingsData = (
   serviceArea: settings.serviceArea,
   navHeader: normalizeNav(settings.navHeader, pageBySlug),
   navFooter: normalizeNav(settings.navFooter, pageBySlug),
-}) as GeneratedSiteSettings & Record<string, unknown>
+}) as Partial<SiteSetting>
 
 const upsertTenant = async (
   payload: Payload,
@@ -917,8 +921,8 @@ const upsertTenant = async (
   siteManifest: Record<string, unknown>,
   theme: ThemeTokens | null,
 ) => {
-  const bySlug = await findOne(payload, "tenants", { slug: { equals: spec.tenant.slug } })
-  const byDomain = await findOne(payload, "tenants", { domain: { equals: spec.tenant.domain } })
+  const bySlug = await findOne<Tenant>(payload, "tenants", { slug: { equals: spec.tenant.slug } })
+  const byDomain = await findOne<Tenant>(payload, "tenants", { domain: { equals: spec.tenant.domain } })
 
   if (bySlug && byDomain && String(bySlug.id) !== String(byDomain.id)) {
     throw new Error(`Generation spec conflicts with existing tenants: slug "${spec.tenant.slug}" and domain "${spec.tenant.domain}" belong to different tenants.`)
@@ -941,8 +945,8 @@ const upsertTenant = async (
       depth: 0,
       overrideAccess: true,
       context: DRAFT_IMPORT_CONTEXT,
-    } as any)
-    return { doc: updated as any, operation: "updated" as const }
+    })
+    return { doc: updated, operation: "updated" as const }
   }
   const created = await payload.create({
     collection: "tenants",
@@ -950,8 +954,8 @@ const upsertTenant = async (
     depth: 0,
     overrideAccess: true,
     context: DRAFT_IMPORT_CONTEXT,
-  } as any)
-  return { doc: created as any, operation: "created" as const }
+  })
+  return { doc: created, operation: "created" as const }
 }
 
 const upsertPages = async (payload: Payload, tenantId: string | number, pages: GeneratedPageSpec[], mediaIds?: MediaIdMap) => {
@@ -959,7 +963,7 @@ const upsertPages = async (payload: Payload, tenantId: string | number, pages: G
 
   for (const page of pages) {
     const data = normalizePageData(tenantId, page, mediaIds)
-    const existing = await findOne(payload, "pages", {
+    const existing = await findOne<Page>(payload, "pages", {
       and: [{ tenant: { equals: tenantId } }, { slug: { equals: page.slug } }],
     })
     if (existing) {
@@ -970,17 +974,17 @@ const upsertPages = async (payload: Payload, tenantId: string | number, pages: G
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
-      } as any)
-      results.push({ doc: updated as unknown as ExistingPage, operation: "updated" })
+      })
+      results.push({ doc: updated, operation: "updated" })
     } else {
       const created = await payload.create({
         collection: "pages",
-        data,
+        data: data as Page,
         depth: 0,
         overrideAccess: true,
         context: DRAFT_IMPORT_CONTEXT,
-      } as any)
-      results.push({ doc: created as unknown as ExistingPage, operation: "created" })
+      })
+      results.push({ doc: created, operation: "created" })
     }
   }
 
@@ -995,7 +999,7 @@ const upsertSettings = async (
   mediaIds?: MediaIdMap,
 ) => {
   const data = normalizeSettingsData(tenantId, settings, pageBySlug, mediaIds)
-  const existing = await findOne(payload, "site-settings", { tenant: { equals: tenantId } })
+  const existing = await findOne<SiteSetting>(payload, "site-settings", { tenant: { equals: tenantId } })
   if (existing) {
     const updated = await payload.update({
       collection: "site-settings",
@@ -1004,17 +1008,17 @@ const upsertSettings = async (
       depth: 0,
       overrideAccess: true,
       context: DRAFT_IMPORT_CONTEXT,
-    } as any)
-    return { doc: updated as any, operation: "updated" as const }
+    })
+    return { doc: updated, operation: "updated" as const }
   }
-  const created = await payload.create({
-    collection: "site-settings",
-    data,
+    const created = await payload.create({
+      collection: "site-settings",
+      data: data as SiteSetting,
     depth: 0,
     overrideAccess: true,
     context: DRAFT_IMPORT_CONTEXT,
-  } as any)
-  return { doc: created as any, operation: "created" as const }
+  })
+  return { doc: created, operation: "created" as const }
 }
 
 const retainedPagesForTenant = async (
@@ -1028,7 +1032,7 @@ const retainedPagesForTenant = async (
     limit: 1000,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 
   return (result.docs as ExistingPage[])
     .filter((page) => !appliedSlugs.has(page.slug))

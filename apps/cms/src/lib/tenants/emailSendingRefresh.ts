@@ -44,8 +44,8 @@ export async function refreshTenantEmailSendingFromCloudflare(
     )
     return await payload.update({
       collection: "tenants",
-      id: tenant.id as any,
-      data: { emailSending } as any,
+      id: tenant.id,
+      data: { emailSending },
       depth: 0,
       overrideAccess: true,
     }) as Tenant
@@ -59,8 +59,8 @@ export async function refreshTenantEmailSendingFromCloudflare(
     }
     return await payload.update({
       collection: "tenants",
-      id: tenant.id as any,
-      data: { emailSending } as any,
+      id: tenant.id,
+      data: { emailSending },
       depth: 0,
       overrideAccess: true,
     }) as Tenant

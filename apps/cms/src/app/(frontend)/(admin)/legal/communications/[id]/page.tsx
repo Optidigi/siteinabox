@@ -8,8 +8,13 @@ import { CommunicationPreferenceEventsTable, LegalRecordDetail, LegalRouteTabs }
 import { requireRole } from "@/lib/authGate"
 import { getCommunicationPreferenceRecord } from "@/lib/queries/legalOperations"
 
+import { isRecord } from "@/lib/record"
+
 export const dynamic = "force-dynamic"
-const relationLabel = (value: unknown) => value && typeof value === "object" ? String((value as any).name || (value as any).slug || (value as any).email || "") : ""
+const relationLabel = (value: unknown) => {
+  if (!isRecord(value)) return ""
+  return String(value.name || value.slug || value.email || "")
+}
 const yesNo = (value: unknown, locale: string) => value === true ? (locale === "nl" ? "Ja" : "Yes") : (locale === "nl" ? "Nee" : "No")
 
 export default async function CommunicationPreferenceDetailPage({ params }: { params: Promise<{ id: string }> }) {

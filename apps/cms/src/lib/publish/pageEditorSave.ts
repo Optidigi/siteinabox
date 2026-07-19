@@ -1,6 +1,6 @@
 import "server-only"
 
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import type { Page, SiteSetting, User } from "@/payload-types"
 import { relationshipId, relationshipIdSet, relationshipValue } from "@/lib/relationshipId"
 import { navEntryPageId } from "@/lib/nav/membership"
@@ -44,7 +44,7 @@ export class PageSaveConflictError extends Error {
   }
 }
 
-const payloadReq = (req: PageEditorTransactionReq) => req as never
+const payloadReq = (req: PageEditorTransactionReq): PayloadRequest => req as unknown as PayloadRequest
 
 export const userCanEditTenantPages = (user: User, tenantId: string): boolean => {
   if (user.role === "super-admin") return true
@@ -115,18 +115,25 @@ export async function persistPageDocument(
 ): Promise<Page> {
   const pageArgs = {
     collection: "pages" as const,
-    data: { ...options.page.data, tenant: options.tenantId },
+    data: { ...options.page.data, tenant: Number(options.tenantId) } as Page,
+    depth: 2 as const,
+    user: options.user,
+    overrideAccess: false as const,
+    req: payloadReq(options.req),
+  }
+
+  if (options.page.id == null) {
+    return payload.create(pageArgs)
+  }
+  await payload.update({ ...pageArgs, id: options.page.id })
+  const savedPage = await payload.findByID({
+    collection: "pages",
+    id: options.page.id,
     depth: 2,
     user: options.user,
     overrideAccess: false,
     req: payloadReq(options.req),
-  }
-
-  const savedPage =
-    options.page.id == null
-      ? await payload.create(pageArgs)
-      : await payload.update({ ...pageArgs, id: options.page.id })
-
+  })
   const savedTenantId = relationshipValue(savedPage.tenant)
   if (savedTenantId == null || relationshipId(savedTenantId) !== options.tenantId) {
     throw new Error("Saved page tenant mismatch")

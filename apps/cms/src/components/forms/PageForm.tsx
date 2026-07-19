@@ -19,7 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@sitei
 import { usePageEditorCore } from "@/components/editor/usePageEditorCore"
 import { parsePayloadError } from "@/lib/api"
 import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X } from "lucide-react"
-import type { Page } from "@/payload-types"
+import type { Page, SiteSetting } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
 import { SHADCNUI_CHROME_VARIANTS, SITE_CHROME_CATALOG } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
@@ -525,7 +525,7 @@ function SiteChromeDrillDown({
   )
 }
 
-export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: unknown; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
+export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref, tenantOrigin, manifest, theme, siteSettings, rendererNavPages = [], canManageNav, canEditSettings, inHeaderNav, inFooterNav, readOnly = false }: { initial?: Page; tenantId: number | string; tenantSlug?: string | null; tenantDomain?: string | null; baseHref: string; tenantOrigin: string; manifest: RtManifest; theme?: ThemeTokens | null; siteSettings?: SiteSetting | null; rendererNavPages?: NavPage[]; canManageNav?: boolean; canEditSettings?: boolean; inHeaderNav?: boolean; inFooterNav?: boolean; readOnly?: boolean }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
   const router = useRouter()
@@ -868,7 +868,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         blocks: watchedBlocks,
         seo: watchedSeo,
         updatedAt: initial?.updatedAt,
-      },
+      } as Page,
       iframeAnalyticsContext,
       { preserveBlockIds: true },
     ) as ContractPage,

@@ -1,4 +1,5 @@
 import { rtRootSchema } from "@/lib/richText/rtNodeSchema"
+import type { RtRoot } from "@/lib/richText/RtNode"
 import { validateAgainstManifest } from "@/lib/richText/validateAgainstManifest"
 import type { CollectionBeforeValidateHook } from "payload"
 import { blockBySlug } from "@/blocks/registry"
@@ -82,9 +83,10 @@ export const validateRichTextOnSave: CollectionBeforeValidateHook = async ({ dat
   const manifest = await loadTenantManifest(tenantId)
 
   const errors: string[] = []
-  for (const [i, block] of (data.blocks as any[]).entries()) {
+  for (const [i, block] of (data.blocks as unknown[]).entries()) {
     if (!block || typeof block !== "object") continue
-    const blockConfig = blockBySlug[String(block.blockType)]
+    const blockRecord = block as Record<string, unknown>
+    const blockConfig = blockBySlug[String(blockRecord.blockType)]
     if (!blockConfig) continue
     for (const { path, value, variant } of collectRichTextSlots(blockConfig.fields as FieldLike[], block, `blocks[${i}]`)) {
       if (value == null) continue // null is acceptable for non-required fields
@@ -102,7 +104,7 @@ export const validateRichTextOnSave: CollectionBeforeValidateHook = async ({ dat
         )
         continue
       }
-      const m = validateAgainstManifest(parsed.data as any, manifest)
+      const m = validateAgainstManifest(parsed.data as RtRoot, manifest)
       if (!m.ok) {
         errors.push(...m.errors.map((e) => `${path}: ${e}`))
       }

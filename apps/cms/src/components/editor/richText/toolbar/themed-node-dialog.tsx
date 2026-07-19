@@ -26,7 +26,7 @@ export const ThemedNodeDialog: React.FC<ThemedNodeDialogProps> = ({ def, initial
         <DialogHeader><DialogTitle>{def.label}</DialogTitle></DialogHeader>
         <FormProvider {...methods}>
           <form onSubmit={submit} className="space-y-3">
-            {def.fields.map((f, i) => <FieldRenderer key={i} field={f as any} />)}
+            {def.fields.map((f, i) => <FieldRenderer key={i} field={f} />)}
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={onCancel}>{tCommon("cancel")}</Button>
               <Button type="submit">{tCommon("save")}</Button>

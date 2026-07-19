@@ -1,5 +1,6 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 import { sql } from '@payloadcms/db-postgres'
+import { queryRows } from '@/lib/record'
 
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   const result = await db.execute(sql`
@@ -7,12 +8,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
     FROM tenants
     WHERE theme IS NOT NULL
   `)
-  const tenants: Array<{ id: number | string; theme?: Record<string, unknown> | null }> =
-    Array.isArray((result as any)?.rows)
-      ? (result as any).rows
-      : Array.isArray(result as any)
-        ? (result as any)
-        : []
+  const tenants = queryRows<{ id: number | string; theme?: Record<string, unknown> | null }>(result)
 
   for (const tenant of tenants) {
     const theme = (tenant as { theme?: Record<string, unknown> }).theme

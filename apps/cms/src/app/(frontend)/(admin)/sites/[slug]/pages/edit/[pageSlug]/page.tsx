@@ -11,6 +11,7 @@ import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { pageNavMembership } from "@/lib/nav/membership"
 import { sameRelationshipId } from "@/lib/relationshipId"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
 export async function generateMetadata(
@@ -34,8 +35,9 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
     listPages(tenant.id),
   ])
   if (!page) notFound()
+  if (!settings) notFound()
   if (!sameRelationshipId(page.tenant, tenant.id)) notFound()
-  const { inHeader, inFooter } = pageNavMembership(settings as any, Number(page.id))
+  const { inHeader, inFooter } = pageNavMembership(settings, Number(page.id))
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open", managedTenant: tenant })
   return (
     <div className="flex flex-col gap-4">
@@ -46,7 +48,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         />
       </div>
       <PageForm
-        initial={page as any}
+        initial={page}
         tenantId={tenant.id}
         tenantSlug={tenant.slug}
         tenantDomain={tenant.domain}
@@ -55,7 +57,7 @@ export default async function EditPageBySlug({ params }: { params: Promise<{ slu
         manifest={manifest}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
-        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
+        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav
         canEditSettings
         inHeaderNav={inHeader}

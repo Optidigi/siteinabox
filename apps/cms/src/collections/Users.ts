@@ -1,14 +1,5 @@
 import { timingSafeEqual } from "crypto"
-import type {
-  Access,
-  ArrayFieldValidation,
-  CollectionBeforeDeleteHook,
-  CollectionBeforeOperationHook,
-  CollectionBeforeValidateHook,
-  CollectionConfig,
-  FieldAccess,
-  Where,
-} from "payload"
+import type { Access, ArrayFieldValidation, CollectionBeforeDeleteHook, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess, PayloadRequest, Where } from "payload"
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
@@ -35,7 +26,7 @@ const safeEqual = (a: string, b: string): boolean => {
 // field-level canCreateUserField below. Keeping the two paths in lock-step
 // prevents the field gate from stripping `role`/`tenants` on a caller that
 // the collection gate is about to admit.
-const requestHasValidBootstrapToken = (req: any): boolean => {
+const requestHasValidBootstrapToken = (req: PayloadRequest): boolean => {
   const expected = process.env.BOOTSTRAP_TOKEN
   if (!expected) return false
   const provided = req?.headers?.get?.("x-bootstrap-token")
@@ -48,10 +39,14 @@ const requestHasValidBootstrapToken = (req: any): boolean => {
 // export must be an async function, so a sync helper can't be re-exported.
 // Keep the two copies in sync; both resolve user.tenants[0].tenant (which
 // may be a populated doc or a bare FK id depending on auth depth) to its id.
-const ownerTenantIdOf = (user: any): unknown => {
+import type { User } from "@/payload-types"
+
+const ownerTenantIdOf = (user: User | null | undefined): unknown => {
   const first = user?.tenants?.[0]?.tenant
   if (first == null) return null
-  return typeof first === "object" ? first.id : first
+  return typeof first === "object" && first !== null && "id" in first
+    ? (first as { id?: unknown }).id
+    : first
 }
 
 const relationshipId = (value: unknown): unknown => {
@@ -131,7 +126,7 @@ const canCreateUserField: FieldAccess = ({ req, data }) => {
     if (data?.role !== "editor" && data?.role !== "viewer") return false
     const own = ownerTenantIdOf(req.user)
     if (own == null) return false
-    const tenants = (data as any)?.tenants
+    const tenants = (data)?.tenants
     if (!Array.isArray(tenants) || tenants.length !== 1) return false
     const target = tenants[0]?.tenant
     if (target == null) return false
@@ -270,7 +265,7 @@ const rejectNonSuperAdminCredentialWrites: CollectionBeforeOperationHook = ({ ar
 }
 
 export const canDeleteUsers: Access = ({ req }) => {
-  const user = req.user as any
+  const user = req.user
   if (!user) return false
   if (user.role === "super-admin") return true
   if (user.role !== "owner") return false
@@ -381,14 +376,15 @@ const clearSessionsOnPasswordChange: CollectionBeforeValidateHook = ({ data, ope
 // Domain invariant: super-admins have no tenants; all other roles have
 // exactly one. Multiple users may share the same tenant (clients can add
 // team members), but a single user is always scoped to one tenant.
-const validateTenants: ArrayFieldValidation = (value, { siblingData, req }: any) => {
-  const role = siblingData?.role
+const validateTenants: ArrayFieldValidation = (value, { siblingData, req }) => {
+  const role = (siblingData as { role?: unknown } | undefined)?.role
+  const request = req as PayloadRequest | undefined
   const len = Array.isArray(value) ? value.length : 0
   if (role === "super-admin") {
-    if (len !== 0) return adminValidationText(req?.i18n?.language, "A super-admin must not have tenant memberships", "Een superbeheerder mag geen klantomgevingen hebben")
+    if (len !== 0) return adminValidationText(request?.i18n?.language, "A super-admin must not have tenant memberships", "Een superbeheerder mag geen klantomgevingen hebben")
     return true
   }
-  if (len !== 1) return adminValidationText(req?.i18n?.language, "Exactly one tenant is required for users who are not super admins", "Voor gebruikers die geen superbeheerder zijn is precies één klantomgeving verplicht")
+  if (len !== 1) return adminValidationText(request?.i18n?.language, "Exactly one tenant is required for users who are not super admins", "Voor gebruikers die geen superbeheerder zijn is precies één klantomgeving verplicht")
   return true
 }
 
@@ -425,7 +421,7 @@ export const Users: CollectionConfig = {
     useSessions: true,
     forgotPassword: {
       generateEmailHTML: async (args) => {
-        const token = (args as any)?.token as string | undefined
+        const token = (args)?.token as string | undefined
         return resetPasswordTemplate({ resetUrl: buildSuperAdminResetUrl(token ?? "") }).html
       },
       generateEmailSubject: () => resetPasswordTemplate({ resetUrl: "" }).subject,

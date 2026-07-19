@@ -25,10 +25,10 @@ const toPascal = (kebab: string): string =>
   kebab.split("-").map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join("")
 
 /** Returns the lucide React component for a kebab-case icon name, or null. */
-export const resolveLucideIcon = (kebab: string | null | undefined): React.ComponentType<any> | null => {
+export const resolveLucideIcon = (kebab: string | null | undefined): React.ComponentType<{ className?: string }> | null => {
   if (!kebab) return null
   const pascal = toPascal(kebab)
-  const Icon = (LucideIcons as any)[pascal]
+  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[pascal]
   return Icon ?? null
 }
 

@@ -1,12 +1,20 @@
 import "server-only"
 
 import crypto from "node:crypto"
-import type { Payload } from "payload"
+import type { Payload, Where } from "payload"
+import type {
+  AgreementAcceptance,
+  Order,
+  Page,
+  SiteApproval,
+  SiteGenerationRun,
+  SiteReviewRevision,
+  Tenant,
+} from "@/payload-types"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
+import { findOneDoc } from "@/lib/payloadCollection"
 import { legalStatements } from "@/lib/legal/statements"
 import { relationshipId } from "@/lib/relationshipId"
-
-type PayloadRecord = Record<string, any>
 
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)
@@ -18,18 +26,7 @@ const stableStringify = (value: unknown): string => {
 const sha256 = (value: unknown): string =>
   crypto.createHash("sha256").update(stableStringify(value)).digest("hex")
 
-const findOne = async (payload: Payload, collection: string, where: Record<string, unknown>) => {
-  const result = await payload.find({
-    collection: collection as any,
-    where,
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  } as any)
-  return (result.docs[0] as PayloadRecord | undefined) ?? null
-}
-
-const pageEvidence = (page: PayloadRecord) => ({
+const pageEvidence = (page: Page) => ({
   id: page.id,
   slug: page.slug,
   title: page.title,
@@ -41,9 +38,9 @@ const pageEvidence = (page: PayloadRecord) => ({
 
 export async function createSiteApprovalEvidence(input: {
   payload: Payload
-  run: PayloadRecord
-  tenant: PayloadRecord
-  pages: PayloadRecord[]
+  run: SiteGenerationRun
+  tenant: Tenant
+  pages: Page[]
   domain: string
   actorEmail: string
   requestId: string
@@ -69,10 +66,10 @@ export async function createSiteApprovalEvidence(input: {
   }
   const snapshotHash = sha256(snapshot)
   const revisionKey = `run:${input.run.id}:review:${snapshotHash}`
-  let revision = await findOne(input.payload, "site-review-revisions", { revisionKey: { equals: revisionKey } })
+  let revision = await findOneDoc(input.payload, "site-review-revisions", { revisionKey: { equals: revisionKey } })
   if (!revision) {
     revision = await input.payload.create({
-      collection: "site-review-revisions" as any,
+      collection: "site-review-revisions",
       data: {
         revisionKey,
         tenant: input.tenant.id,
@@ -84,15 +81,15 @@ export async function createSiteApprovalEvidence(input: {
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadRecord
+    })
   }
 
   const normalizedEmail = input.actorEmail.trim().toLowerCase()
   const evidenceKey = `approval:${input.run.id}:${snapshotHash}:${sha256(normalizedEmail).slice(0, 16)}`
-  let approval = await findOne(input.payload, "site-approvals", { evidenceKey: { equals: evidenceKey } })
+  let approval = await findOneDoc(input.payload, "site-approvals", { evidenceKey: { equals: evidenceKey } })
   if (!approval) {
     approval = await input.payload.create({
-      collection: "site-approvals" as any,
+      collection: "site-approvals",
       data: {
         evidenceKey,
         tenant: input.tenant.id,
@@ -107,7 +104,7 @@ export async function createSiteApprovalEvidence(input: {
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadRecord
+    })
   }
 
   return { revision, approval, snapshotHash }
@@ -120,9 +117,9 @@ const vatBreakdown = (gross: number, vatRate = 21) => {
 
 export async function createOrderAndAcceptanceEvidence(input: {
   payload: Payload
-  run: PayloadRecord
-  tenant: PayloadRecord
-  approval: PayloadRecord
+  run: SiteGenerationRun
+  tenant: Tenant
+  approval: SiteApproval
   customerEmail: string
   customerName: string
   companyName: string
@@ -157,10 +154,10 @@ export async function createOrderAndAcceptanceEvidence(input: {
     approval: input.approval.snapshotHash,
   }
   const orderNumber = `SIAB-${input.run.id}-${sha256(orderIdentity).slice(0, 12).toUpperCase()}`
-  let order = await findOne(input.payload, "orders", { orderNumber: { equals: orderNumber } })
+  let order = await findOneDoc(input.payload, "orders", { orderNumber: { equals: orderNumber } })
   if (!order) {
     order = await input.payload.create({
-      collection: "orders" as any,
+      collection: "orders",
       data: {
         orderNumber,
         tenant: input.tenant.id,
@@ -191,14 +188,14 @@ export async function createOrderAndAcceptanceEvidence(input: {
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadRecord
+    })
   }
 
   const evidenceKey = `order:${order.id}:terms:${terms.acceptanceVersion}`
-  let acceptance = await findOne(input.payload, "agreement-acceptances", { evidenceKey: { equals: evidenceKey } })
+  let acceptance = await findOneDoc(input.payload, "agreement-acceptances", { evidenceKey: { equals: evidenceKey } })
   if (!acceptance) {
     acceptance = await input.payload.create({
-      collection: "agreement-acceptances" as any,
+      collection: "agreement-acceptances",
       data: {
         evidenceKey,
         tenant: input.tenant.id,
@@ -217,7 +214,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadRecord
+    })
   }
 
   return { order, acceptance, terms, privacy }
@@ -229,19 +226,18 @@ export async function verifyCheckoutEvidence(payload: Payload, input: {
   customerEmail: string
 }) {
   const order = await payload.findByID({
-    collection: "orders" as any,
-    id: input.orderId as any,
+    collection: "orders",
+    id: input.orderId,
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadRecord
+  })
   if (relationshipId(order.generationRun) !== String(input.runId)) {
     throw new Error("Checkout order does not belong to this generation run.")
   }
   if (String(order.customerEmail).toLowerCase() !== input.customerEmail.trim().toLowerCase()) {
     throw new Error("Checkout order does not belong to this customer.")
   }
-  const acceptance = await findOne(payload, "agreement-acceptances", { order: { equals: order.id } })
+  const acceptance = await findOneDoc(payload, "agreement-acceptances", { order: { equals: order.id } } satisfies Where)
   if (!acceptance) throw new Error("Mollie checkout requires recorded terms acceptance.")
-  return { order, acceptance }
+  return { order: order as Order, acceptance: acceptance as AgreementAcceptance }
 }
-

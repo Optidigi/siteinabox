@@ -43,7 +43,7 @@ export async function getSnapshotLifecycleForGenerationRun(run: SiteGenerationRu
   try {
     tenant = await payload.findByID({
       collection: "tenants",
-      id: tenantId as any,
+      id: tenantId,
       depth: 0,
       overrideAccess: true,
     }) as Tenant
@@ -68,22 +68,22 @@ export async function getSnapshotLifecycleForGenerationRun(run: SiteGenerationRu
 
   const [snapshotResult, pageResult] = await Promise.all([
     payload.find({
-      collection: "published-site-snapshots" as any,
+      collection: "published-site-snapshots",
       where: { tenant: { equals: tenantId } },
       sort: "-version",
       limit: 50,
       depth: 1,
       overrideAccess: true,
-    } as any),
+    }),
     pageIds.length > 0
       ? payload.find({
         collection: "pages",
-        where: { and: [{ id: { in: pageIds } }, { tenant: { equals: tenantId } }] } as any,
+        where: { and: [{ id: { in: pageIds } }, { tenant: { equals: tenantId } }] },
         sort: "slug",
         limit: 200,
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
       : Promise.resolve({ docs: [] }),
   ])
 

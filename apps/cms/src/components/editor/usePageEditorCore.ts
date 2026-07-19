@@ -70,6 +70,7 @@ import type { NavPage } from "@/lib/projection/resolveNav"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { captureCmsBrowserEvent } from "@/components/analytics/CmsUsageTracker"
 import type { Page } from "@/payload-types"
+import type { SiteSetting } from "@/payload-types"
 import type { FooterCompositionContract } from "@/lib/footerComposition"
 import type { PageEditorSaveRequest } from "@/lib/publish/pageEditorSaveContract"
 
@@ -104,7 +105,7 @@ export type UsePageEditorCoreOptions = {
   baseHref: string
   manifest: RtManifest
   theme?: ThemeTokens | null
-  siteSettings?: unknown
+  siteSettings?: SiteSetting | null
   rendererNavPages?: NavPage[]
   canManageNav?: boolean
   canEditSettings?: boolean

@@ -1,4 +1,6 @@
-import { sendEmail } from "@/lib/email/sendEmail"
+import type { Payload } from "payload"
+import type { Form, Media, Page, User } from "@/payload-types"
+import { asMailLogPayload, sendEmail } from "@/lib/email/sendEmail"
 import { renderEmailLayout } from "@/lib/email/emailLayout"
 import { emailTheme } from "@/lib/email/emailTheme"
 
@@ -11,7 +13,7 @@ const tenantIdOf = (value: unknown): number | string | null => {
   return typeof value === "number" || typeof value === "string" ? value : null
 }
 
-const safeUser = (user: any) => ({
+const safeUser = (user: User) => ({
   id: user.id,
   email: user.email,
   name: user.name ?? null,
@@ -19,12 +21,12 @@ const safeUser = (user: any) => ({
   language: user.language ?? null,
   createdAt: user.createdAt ?? null,
   updatedAt: user.updatedAt ?? null,
-  tenants: ((user.tenants ?? []) as any[]).map((row) => ({
-    tenant: tenantIdOf(row?.tenant),
+  tenants: (user.tenants ?? []).map((row) => ({
+    tenant: tenantIdOf(row.tenant),
   })),
 })
 
-export async function buildUserDataExport(payload: any, user: any) {
+export async function buildUserDataExport(payload: Payload, user: Pick<User, "id">) {
   const userId = user.id
   const freshUser = await payload.findByID({
     collection: "users",
@@ -32,8 +34,8 @@ export async function buildUserDataExport(payload: any, user: any) {
     depth: 1,
     overrideAccess: true,
   })
-  const tenantIds = ((freshUser.tenants ?? []) as any[])
-    .map((row) => tenantIdOf(row?.tenant))
+  const tenantIds = (freshUser.tenants ?? [])
+    .map((row) => tenantIdOf(row.tenant))
     .filter((id): id is number | string => id != null)
 
   const tenantExports = []
@@ -79,7 +81,7 @@ export async function buildUserDataExport(payload: any, user: any) {
         status: tenant.status,
       },
       siteSettings: settings.docs[0] ?? null,
-      pages: pages.docs.map((page: any) => ({
+      pages: pages.docs.map((page: Page) => ({
         id: page.id,
         title: page.title,
         slug: page.slug,
@@ -87,7 +89,7 @@ export async function buildUserDataExport(payload: any, user: any) {
         createdAt: page.createdAt,
         updatedAt: page.updatedAt,
       })),
-      media: media.docs.map((item: any) => ({
+      media: media.docs.map((item: Media) => ({
         id: item.id,
         filename: item.filename,
         alt: item.alt ?? null,
@@ -96,10 +98,9 @@ export async function buildUserDataExport(payload: any, user: any) {
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
       })),
-      forms: forms.docs.map((form: any) => ({
+      forms: forms.docs.map((form: Form) => ({
         id: form.id,
-        title: form.title,
-        retentionDays: form.retentionDays ?? null,
+        formName: form.formName,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
       })),
@@ -113,7 +114,7 @@ export async function buildUserDataExport(payload: any, user: any) {
   }
 }
 
-export async function emailUserDataExport(payload: any, user: any) {
+export async function emailUserDataExport(payload: Payload, user: Pick<User, "id">) {
   const data = await buildUserDataExport(payload, user)
   const json = JSON.stringify(data, null, 2)
   await sendEmail({
@@ -138,7 +139,7 @@ export async function emailUserDataExport(payload: any, user: any) {
       json,
     ].join("\n"),
     intent: "privacy.data_export",
-    payload,
+    payload: asMailLogPayload(payload),
   })
   return data
 }

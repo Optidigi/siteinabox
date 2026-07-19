@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { useForm, FormProvider, type FieldPath } from "react-hook-form"
+import { useForm, FormProvider, type FieldPath, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
@@ -26,6 +26,7 @@ import { normalizeUploadId } from "@/lib/uploadValues"
 import { DEFAULT_CLIENT_SETTINGS_CONTRACT, type SettingsContract } from "@/lib/settingsContract"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
+import type { SiteSetting } from "@/payload-types"
 import { MediaRefSchema } from "@siteinabox/contracts"
 
 // OBS-81 — Settings is client-facing and intentionally slim by default:
@@ -83,7 +84,7 @@ type SettingsFormField = {
   admin?: { description?: string }
   fields?: SettingsFormField[]
 }
-type SettingsFormInitial = Values & { id: number | string }
+type SettingsFormInitial = (Values | SiteSetting) & { id: number | string }
 
 export function SettingsForm({
   initial,
@@ -100,8 +101,8 @@ export function SettingsForm({
   const status = useStatusFeedback()
   const settingsSchema = createSettingsSchema(t)
   const form = useForm<Values>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: initial
+    resolver: zodResolver(settingsSchema) as Resolver<Values>,
+    defaultValues: initial as Values,
   })
   const [pending, setPending] = useState(false)
   const [section, setSection] = useState<SectionKey>("general")
@@ -189,7 +190,7 @@ export function SettingsForm({
           admin: { description: t("contactEmailDescription") },
         }
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const brandingFields = [
     settingsContract.identity.branding.logo
@@ -198,13 +199,13 @@ export function SettingsForm({
     settingsContract.identity.branding.favicon
       ? { name: "favicon", type: "upload", relationTo: "media", label: t("favicon") }
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const brandFields = [
     brandingFields.length
       ? { type: "group", name: "branding", label: t("branding"), fields: brandingFields }
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const operationsFields = [
     settingsContract.operations.maintenance
@@ -213,7 +214,7 @@ export function SettingsForm({
           { name: "message", type: "textarea", label: t("maintenanceMessage") },
         ]}
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const sections = [
     { key: "general" as const, label: t("general"), Icon: SettingsIcon, fields: generalFields },

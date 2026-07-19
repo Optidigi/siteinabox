@@ -23,7 +23,7 @@ type Props<T> = {
   getRowHref?: (row: T) => string
 }
 
-export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, emptyState, getRowHref }: Props<T>) {
+export function DataTable<T extends { id: string | number }>({ columns, data, filterColumn, filterPlaceholder, emptyState, getRowHref }: Props<T>) {
   const t = useTranslations("common")
   const [sorting, setSorting] = useState<SortingState>([])
   const [filter, setFilter] = useState("")
@@ -160,7 +160,7 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                 // shadow behaviour and `data-slot="card"` attachments.
                 <Card
                   key={row.id}
-                  data-id={(row.original as any).id}
+                  data-id={(row.original).id}
                   className={cn(
                     "flex-row items-center gap-2 px-3 py-3",
                     href && "hover:shadow-md active:scale-[0.99] transition-shadow",
@@ -213,7 +213,7 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                     (c) => c.column.columnDef.meta?.mobilePriority === "primary"
                   )
                   return (
-                    <TableRow key={r.id} data-id={(r.original as any).id}>
+                    <TableRow key={r.id} data-id={(r.original).id}>
                       {cells.map((c, i) => {
                         const content = flexRender(c.column.columnDef.cell, c.getContext())
                         const isPrimary = i === primaryColIdx

@@ -1,5 +1,6 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 import { sql } from '@payloadcms/db-postgres'
+import { queryRows } from '@/lib/record'
 
 /**
  * Audit finding #8 (P1, T8) — Pages: missing (tenant_id, slug) unique index.
@@ -53,12 +54,7 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   `)
   // node-postgres returns { rows: [...] } via the drizzle wrapper; defend
   // against shape variation by reading both `.rows` and the iterable form.
-  const duplicates: Array<{ tenant_id: unknown; slug: unknown; cnt: number }> =
-    Array.isArray((result as any)?.rows)
-      ? (result as any).rows
-      : Array.isArray(result as any)
-        ? (result as any)
-        : []
+  const duplicates = queryRows<{ tenant_id: unknown; slug: unknown; cnt: number }>(result)
   if (duplicates.length > 0) {
     const sample = duplicates
       .slice(0, 10)

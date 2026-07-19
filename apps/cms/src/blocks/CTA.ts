@@ -2,6 +2,7 @@ import { MousePointerClick } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { richBlockField, richInlineField } from "./richTextFields"
 
 export const CTA: BlockWithMeta = {
   slug: "cta",
@@ -9,24 +10,9 @@ export const CTA: BlockWithMeta = {
   description: "Call-to-action with button",
   interfaceName: "CTABlock",
   fields: [
-    { name: "eyebrow", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Short script-font label above the headline."
-      } as any
-    },
-    { name: "headline", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Primary CTA heading."
-      } as any
-    },
-    { name: "description", type: "json",
-      admin: {
-        editor: "richTextBlock",
-        description: "Supporting text below the headline."
-      } as any
-    },
+    richInlineField("eyebrow", "Short script-font label above the headline."),
+    richInlineField("headline", "Primary CTA heading."),
+    richBlockField("description", "Supporting text below the headline."),
     { name: "primary", type: "group", fields: [
       { name: "label", type: "text" },
       { name: "href", type: "text", validate: validateSafeHref }

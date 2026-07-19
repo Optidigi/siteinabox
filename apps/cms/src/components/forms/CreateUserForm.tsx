@@ -58,7 +58,7 @@ export function CreateUserForm() {
   useEffect(() => {
     if (!open) return
     fetch("/api/tenants?limit=200&sort=name").then((r) => r.json()).then((j) => {
-      setTenants((j.docs ?? []).map((t: any) => ({ id: t.id, name: t.name, slug: t.slug })))
+      setTenants((j.docs ?? []).map((t: { id: string | number; name?: string | null; slug?: string | null }) => ({ id: t.id, name: t.name, slug: t.slug })))
     }).catch(() => {})
   }, [open])
 
@@ -68,7 +68,14 @@ export function CreateUserForm() {
       // Step 1: create the user. Payload silently ignores `apiKey` on create
       // (verified during production API-key user setup), so we set it via PATCH
       // immediately afterward when needed.
-      const createBody: any = {
+      const createBody: {
+        email: string
+        name: string
+        password: string
+        role: FormValues["role"]
+        tenants?: Array<{ tenant: number | string }>
+        enableAPIKey?: boolean
+      } = {
         email: v.email, name: v.name, password: v.password, role: v.role
       }
       if (v.role !== "super-admin" && v.tenantId) {

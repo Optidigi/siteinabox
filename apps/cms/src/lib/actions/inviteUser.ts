@@ -1,5 +1,6 @@
 "use server"
-import { getPayload } from "payload"
+import { getPayload, type Payload } from "payload"
+import { asRecord } from "@/lib/record"
 import { headers } from "next/headers"
 import config from "@/payload.config"
 import crypto from "node:crypto"
@@ -39,7 +40,7 @@ function tenantAdminUrl(tenant: InviteTenant): string | null {
   return domain ? `https://admin.${domain}` : null
 }
 
-async function loadInviteTenant(payload: any, tenantId: number | string): Promise<{ tenant: InviteTenant; adminUrl: string }> {
+async function loadInviteTenant(payload: Payload, tenantId: number | string): Promise<{ tenant: InviteTenant; adminUrl: string }> {
   const tenant = await payload.findByID({
     collection: "tenants",
     id: tenantId,
@@ -63,7 +64,7 @@ export async function sendInviteMagicLink(input: {
   adminUrl: string
 }) {
   const url = new URL(input.adminUrl)
-  await (auth.api as any).signInMagicLink({
+  await (auth.api).signInMagicLink({
     body: {
       email: input.email,
       name: input.name,
@@ -103,7 +104,7 @@ export async function inviteUser(input: {
     throw new Error("Forbidden: only super-admin or owner may invite users")
   }
   if (caller.role === "owner") {
-    const ownTenant = ownerTenantId(caller as any)
+    const ownTenant = ownerTenantId(caller)
     if (ownTenant == null || String(ownTenant) !== String(input.tenantId)) {
       throw new Error("Forbidden: owner may only invite into own tenant")
     }
@@ -125,9 +126,9 @@ export async function inviteUser(input: {
         email: input.email,
         name: input.name,
         role: input.role,
-        tenants: [{ tenant: input.tenantId }],
+        tenants: [{ tenant: Number(input.tenantId) }],
         password: tempPassword
-      } as any
+      }
     })
   } catch (err) {
     // fn-batch-6 follow-up — convert Payload validation errors to the
@@ -135,14 +136,18 @@ export async function inviteUser(input: {
     // errors (e.g. duplicate email → set FormMessage on the email
     // field). Auth/permission failures bubble as before; only known-
     // safe validation paths fold into ok:false.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const e = err as any
-    const inner = e?.data?.errors?.[0] ?? e?.errors?.[0]?.data?.errors?.[0] ?? e?.errors?.[0]
-    if (inner?.path && inner?.message) {
-      return { ok: false as const, code: "validation_failed", field: String(inner.path), error: String(inner.message) }
+    const e = asRecord(err)
+    const data = asRecord(e?.data)
+    const errors = Array.isArray(data?.errors) ? data.errors : []
+    const firstError = asRecord(errors[0])
+    const nestedData = asRecord(firstError?.data)
+    const nestedErrors = Array.isArray(nestedData?.errors) ? nestedData.errors : []
+    const innerRecord = asRecord(errors[0]) ?? asRecord(nestedErrors[0])
+    if (typeof innerRecord?.path === "string" && typeof innerRecord?.message === "string") {
+      return { ok: false as const, code: "validation_failed", field: innerRecord.path, error: innerRecord.message }
     }
-    if (e?.message) {
-      return { ok: false as const, code: "validation_failed", error: String(e.message) }
+    if (typeof e?.message === "string") {
+      return { ok: false as const, code: "validation_failed", error: e.message }
     }
     throw err
   }
@@ -185,7 +190,7 @@ export async function resendUserInvitation(input: {
     throw new Error("Forbidden: only super-admin or owner may resend invitations")
   }
   if (caller.role === "owner") {
-    const ownTenant = ownerTenantId(caller as any)
+    const ownTenant = ownerTenantId(caller)
     if (ownTenant == null || String(ownTenant) !== String(input.tenantId)) {
       throw new Error("Forbidden: owner may only resend invitations in their own tenant")
     }
@@ -197,7 +202,7 @@ export async function resendUserInvitation(input: {
     id: input.userId,
     depth: 0,
     user: caller,
-  }) as any
+  })
   const invitedTenant = ownerTenantId(invited)
   if (invited.role === "super-admin" || invitedTenant == null || String(invitedTenant) !== String(input.tenantId)) {
     throw new Error("Forbidden: invitation recipient does not belong to this tenant")

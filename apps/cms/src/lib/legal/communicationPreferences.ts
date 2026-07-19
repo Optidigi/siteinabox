@@ -1,9 +1,9 @@
 import crypto from "node:crypto"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest, Where } from "payload"
+import type { Config, CommunicationPreference, CommunicationPreferenceEvent, TenantNotificationSubscription } from "@/payload-types"
 import type { IntakeLegalMetadata } from "@siteinabox/contracts/generation"
 import { legalStatements } from "@/lib/legal/statements"
 
-type RecordDoc = Record<string, any>
 type ID = string | number
 
 export type SuppressionReason = "user_unsubscribe" | "admin_suppression" | "provider_bounce" | "provider_complaint"
@@ -103,9 +103,17 @@ export async function provisionDefaultTenantEmailPreferences(input: {
   })
 }
 
-const findOne = async (payload: Payload, collection: string, where: Record<string, unknown>, req?: any) => {
-  const result = await payload.find({ collection: collection as any, where: where as any, limit: 1, depth: 0, overrideAccess: true, req } as any)
-  return (result.docs[0] as RecordDoc | undefined) ?? null
+type CollectionSlug = keyof Config["collections"]
+type CollectionDoc<T extends CollectionSlug> = Config["collections"][T]
+
+const findOne = async <T extends CollectionSlug>(
+  payload: Payload,
+  collection: T,
+  where: Where,
+  req?: Partial<PayloadRequest>,
+): Promise<CollectionDoc<T> | null> => {
+  const result = await payload.find({ collection, where, limit: 1, depth: 0, overrideAccess: true, req })
+  return (result.docs[0] as CollectionDoc<T> | undefined) ?? null
 }
 
 export const normalizeCommunicationEmail = (email: string) => email.trim().toLowerCase()
@@ -134,7 +142,7 @@ export async function mutateCommunicationPreference(input: {
   const ownsTransaction = input.transactionID == null
   const transactionID = input.transactionID ?? await input.payload.db.beginTransaction()
   if (!transactionID) throw new Error("De communicatievoorkeurtransactie kon niet worden gestart.")
-  const req = { transactionID } as any
+  const req: Partial<PayloadRequest> = { transactionID: transactionID as string | number }
   try {
     const duplicate = await findOne(input.payload, "communication-preference-events", { eventKey: { equals: input.evidence.eventKey } }, req)
     if (duplicate) {
@@ -149,7 +157,7 @@ export async function mutateCommunicationPreference(input: {
     let staleMarketingDecision = false
     if (preference && input.mutation.type === "marketing" && input.evidence.assertedAt) {
       const newer = await input.payload.find({
-        collection: "communication-preference-events" as any,
+        collection: "communication-preference-events",
         where: {
           and: [
             { preference: { equals: preference.id } },
@@ -161,15 +169,15 @@ export async function mutateCommunicationPreference(input: {
         depth: 0,
         overrideAccess: true,
         req,
-      } as any)
+      })
       staleMarketingDecision = newer.totalDocs > 0
     }
-    const data: RecordDoc = {
+    const data: Partial<CommunicationPreference> = {
       email,
       statementVersion: input.evidence.statementVersion,
       updatedAt: occurredAt,
-      ...(input.userId !== undefined ? { user: input.userId } : {}),
-      ...(input.tenantId !== undefined ? { tenant: input.tenantId } : {}),
+      ...(input.userId !== undefined ? { user: Number(input.userId) } : {}),
+      ...(input.tenantId !== undefined ? { tenant: Number(input.tenantId) } : {}),
     }
     if (input.mutation.type === "marketing") {
       data.marketing = input.mutation.enabled
@@ -186,18 +194,29 @@ export async function mutateCommunicationPreference(input: {
     }
 
     if (!preference) {
+      const { id: _omitId, ...preferenceData } = data
       preference = await input.payload.create({
-        collection: "communication-preferences" as any,
-        data: { subjectKey, marketing: false, productNotifications: false, directory: false, suppressed: false, locale: "nl", ...data },
-        depth: 0, overrideAccess: true, req,
-      } as any) as RecordDoc
+        collection: "communication-preferences",
+        data: {
+          subjectKey,
+          email,
+          statementVersion: input.evidence.statementVersion,
+          marketing: false,
+          productNotifications: false,
+          directory: false,
+          suppressed: false,
+          locale: "nl",
+          ...preferenceData,
+        } as CommunicationPreference,
+        depth: 0, overrideAccess: true, req: req as PayloadRequest,
+      })
     } else if (!staleMarketingDecision) {
       // Marketing opt-in never clears a provider complaint/bounce or an operator suppression.
       const result = await input.payload.update({
-        collection: "communication-preferences" as any,
+        collection: "communication-preferences",
         where: { and: [{ id: { equals: preference.id } }, { updatedAt: { equals: preference.updatedAt } }] },
         data, depth: 0, overrideAccess: true, req,
-      } as any) as any
+      })
       const updated = Array.isArray(result?.docs) ? result.docs[0] : null
       if (!updated) throw new Error("De communicatievoorkeur is ondertussen gewijzigd. Probeer opnieuw.")
       preference = updated
@@ -212,11 +231,11 @@ export async function mutateCommunicationPreference(input: {
         ? "update"
         : (eventMutation.enabled ? "opt_in" : "opt_out")
     await input.payload.create({
-      collection: "communication-preference-events" as any,
+      collection: "communication-preference-events",
       data: {
         eventKey: input.evidence.eventKey, preference: preference.id,
-        ...(input.tenantId !== undefined ? { tenant: input.tenantId } : {}),
-        ...(input.userId !== undefined ? { user: input.userId } : {}),
+        ...(input.tenantId !== undefined ? { tenant: Number(input.tenantId) } : {}),
+        ...(input.userId !== undefined ? { user: Number(input.userId) } : {}),
         preferenceType, action, channel: "email",
         statementVersion: input.evidence.statementVersion, statementText: input.evidence.statementText,
         source: input.evidence.source, occurredAt, assertedAt: input.evidence.assertedAt,
@@ -224,7 +243,7 @@ export async function mutateCommunicationPreference(input: {
         userAgent: input.evidence.userAgent, metadata: input.evidence.metadata,
       },
       depth: 0, overrideAccess: true, req,
-    } as any)
+    })
     if (ownsTransaction) await input.payload.db.commitTransaction(transactionID)
     return preference
   } catch (error) {
@@ -244,7 +263,7 @@ export async function mutateCommunicationPreferenceSet(input: {
   const transactionID = await input.payload.db.beginTransaction()
   if (!transactionID) throw new Error("De communicatievoorkeurtransactie kon niet worden gestart.")
   try {
-    let preference: RecordDoc | null = null
+    let preference: CommunicationPreference | null = null
     for (const item of input.mutations) {
       preference = await mutateCommunicationPreference({
         payload: input.payload,
@@ -299,7 +318,7 @@ export async function upsertTenantNotificationSubscription(input: {
 }) {
   const transactionID = await input.payload.db.beginTransaction()
   if (!transactionID) throw new Error("De tenantmeldingentransactie kon niet worden gestart.")
-  const req = { transactionID } as any
+  const req: Partial<PayloadRequest> = { transactionID: transactionID as string | number }
   try {
     const duplicate = await findOne(input.payload, "communication-preference-events", { eventKey: { equals: input.evidence.eventKey } }, req)
     const key = tenantNotificationSubscriptionKey(input.tenantId, input.userId)
@@ -311,31 +330,44 @@ export async function upsertTenantNotificationSubscription(input: {
     }
     const occurredAt = (input.now ?? new Date()).toISOString()
     const existing = await findOne(input.payload, "tenant-notification-subscriptions", { subscriptionKey: { equals: key } }, req)
-    const data = { tenant: input.tenantId, user: input.userId, email: normalizeCommunicationEmail(input.email), ...input.categories, updatedAt: occurredAt }
-    let subscription: RecordDoc
+    const data: Omit<TenantNotificationSubscription, "id" | "subscriptionKey" | "createdAt" | "collection"> = {
+      tenant: Number(input.tenantId),
+      user: Number(input.userId),
+      email: normalizeCommunicationEmail(input.email),
+      ...input.categories,
+      updatedAt: occurredAt,
+    }
+    let subscription: TenantNotificationSubscription
     if (existing) {
       const result = await input.payload.update({
-        collection: "tenant-notification-subscriptions" as any,
+        collection: "tenant-notification-subscriptions",
         where: { and: [{ id: { equals: existing.id } }, { updatedAt: { equals: existing.updatedAt } }] },
         data, depth: 0, overrideAccess: true, req,
-      } as any) as any
-      subscription = Array.isArray(result?.docs) ? result.docs[0] : null
-      if (!subscription) throw new Error("Het meldingsabonnement is ondertussen gewijzigd. Probeer opnieuw.")
+      })
+      const updated = Array.isArray(result?.docs) ? result.docs[0] : null
+      if (!updated) throw new Error("Het meldingsabonnement is ondertussen gewijzigd. Probeer opnieuw.")
+      subscription = updated
     } else {
-      subscription = await input.payload.create({ collection: "tenant-notification-subscriptions" as any, data: { subscriptionKey: key, ...data }, depth: 0, overrideAccess: true, req } as any) as RecordDoc
+      subscription = await input.payload.create({
+        collection: "tenant-notification-subscriptions",
+        data: { subscriptionKey: key, ...data },
+        depth: 0,
+        overrideAccess: true,
+        req,
+      })
     }
     const preference = await findOne(input.payload, "communication-preferences", { subjectKey: { equals: communicationSubjectKey(input.email) } }, req)
     if (!preference) throw new Error("Maak eerst een persoonlijke communicatievoorkeur aan.")
-    await input.payload.create({ collection: "communication-preference-events" as any, data: {
-      eventKey: input.evidence.eventKey, preference: preference.id, tenant: input.tenantId, user: input.userId,
+    await input.payload.create({ collection: "communication-preference-events", data: {
+      eventKey: input.evidence.eventKey, preference: preference.id, tenant: Number(input.tenantId), user: Number(input.userId),
       preferenceType: "tenant_notification", action: Object.values(input.categories).some(Boolean) ? "subscribe" : "unsubscribe",
       channel: "email", statementVersion: input.evidence.statementVersion, statementText: input.evidence.statementText,
       source: input.evidence.source, occurredAt, assertedAt: input.evidence.assertedAt, requestId: input.evidence.requestId,
       ipAddress: input.evidence.ipAddress, userAgent: input.evidence.userAgent,
       metadata: { ...input.evidence.metadata, categories: input.categories },
-    }, depth: 0, overrideAccess: true, req } as any)
+    }, depth: 0, overrideAccess: true, req })
     await input.payload.db.commitTransaction(transactionID)
-    return subscription as RecordDoc
+    return subscription
   } catch (error) {
     await input.payload.db.rollbackTransaction(transactionID)
     throw error

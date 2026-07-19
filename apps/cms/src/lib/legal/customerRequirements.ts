@@ -1,8 +1,26 @@
 import crypto from "node:crypto"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
+import type { AgreementAcceptance, LegalDocument, LegalRequirement } from "@/payload-types"
 import { relationshipId } from "@/lib/relationshipId"
+import { asRecord } from "@/lib/record"
 
-type RecordLike = Record<string, any>
+type RequirementDocument = Pick<
+  LegalDocument,
+  | "documentType"
+  | "releaseKey"
+  | "documentVersion"
+  | "acceptanceVersion"
+  | "contentHash"
+  | "changeSummary"
+  | "effectiveAt"
+  | "replaces"
+>
+
+const isActionableStatus = (status: LegalRequirement["status"]): status is (typeof actionableStatuses)[number] =>
+  actionableStatuses.includes(status as (typeof actionableStatuses)[number])
+
+const isExplicitlyAcceptableAction = (action: LegalRequirement["action"]): action is (typeof explicitlyAcceptableActions)[number] =>
+  explicitlyAcceptableActions.includes(action as (typeof explicitlyAcceptableActions)[number])
 
 export const CUSTOMER_REACCEPTANCE_STATEMENT_VERSION = "customer-reacceptance-2026-07-11.1"
 export const CUSTOMER_REACCEPTANCE_STATEMENT =
@@ -13,8 +31,10 @@ const acceptanceActions = ["mandatory_reaccept", "reaccept_on_next_transaction"]
 const explicitlyAcceptableActions = [...acceptanceActions, "notice_and_continued_use"] as const
 const noticeAndUseAction = "notice_and_continued_use"
 
-const documentRecord = (requirement: RecordLike): RecordLike | null =>
-  requirement.document && typeof requirement.document === "object" ? requirement.document : null
+const documentRecord = (requirement: LegalRequirement): RequirementDocument | null => {
+  const document = requirement.document
+  return document && typeof document === "object" ? document as unknown as RequirementDocument : null
+}
 
 const relationshipValue = (value: unknown): string | number | null => {
   if (value == null) return null
@@ -62,23 +82,24 @@ export async function getTenantLegalAcceptanceHistory(
   tenantId: string | number,
 ): Promise<CustomerLegalAcceptance[]> {
   const result = await payload.find({
-    collection: "agreement-acceptances" as any,
+    collection: "agreement-acceptances",
     where: { tenant: { equals: tenantId } },
     sort: "-acceptedAt",
     limit: 10,
     depth: 1,
     overrideAccess: true,
-  } as any)
-  return (result.docs as RecordLike[]).flatMap((acceptance) => {
+  })
+  return result.docs.flatMap((acceptance: AgreementAcceptance) => {
     const document = acceptance.document && typeof acceptance.document === "object" ? acceptance.document : null
-    if (!document) return []
+    if (!document || typeof document !== "object") return []
+    const documentRecord = document as RequirementDocument
     return [{
       id: acceptance.id,
       documentVersion: String(acceptance.documentVersion),
       acceptanceVersion: String(acceptance.acceptanceVersion),
       acceptedAt: String(acceptance.acceptedAt),
       actorEmail: String(acceptance.actorEmail),
-      href: legalDocumentHref(String(document.documentType), String(acceptance.documentVersion)),
+      href: legalDocumentHref(String(documentRecord.documentType ?? ""), String(acceptance.documentVersion)),
     }]
   })
 }
@@ -96,7 +117,7 @@ export async function getTenantLegalRequirements(
   now = new Date(),
 ): Promise<CustomerLegalRequirement[]> {
   const result = await payload.find({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: {
       and: [
         { tenant: { equals: tenantId } },
@@ -107,9 +128,9 @@ export async function getTenantLegalRequirements(
     limit: 100,
     depth: 1,
     overrideAccess: true,
-  } as any)
+  })
 
-  const projected = (result.docs as RecordLike[]).flatMap((requirement) => {
+  const projected = result.docs.flatMap((requirement: LegalRequirement) => {
     if (["publish_notice", "direct_notice"].includes(requirement.action) && requirement.status === "notified") return []
     const document = documentRecord(requirement)
     const documentId = relationshipId(requirement.document)
@@ -155,16 +176,16 @@ export async function acceptCustomerLegalRequirement(input: {
   now?: Date
 }) {
   const requirement = await input.payload.findByID({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     id: input.requirementId,
     depth: 1,
     overrideAccess: true,
-  } as any) as RecordLike
+  })
   if (relationshipId(requirement.tenant) !== String(input.tenantId)) throw new Error("Legal requirement does not belong to this tenant.")
   if (requirement.status === "satisfied") return requirement
   if (requirement.status === "waived") return requirement
-  if (!actionableStatuses.includes(requirement.status)) throw new Error("Legal requirement cannot be accepted in its current state.")
-  if (!explicitlyAcceptableActions.includes(requirement.action)) throw new Error("This legal notice does not allow explicit acceptance.")
+  if (!isActionableStatus(requirement.status)) throw new Error("Legal requirement cannot be accepted in its current state.")
+  if (!isExplicitlyAcceptableAction(requirement.action)) throw new Error("This legal notice does not allow explicit acceptance.")
 
   const document = documentRecord(requirement)
   const documentId = relationshipId(requirement.document)
@@ -176,28 +197,28 @@ export async function acceptCustomerLegalRequirement(input: {
 
   const evidenceKey = `${requirement.requirementKey}:acceptance:${document.acceptanceVersion}`
   const existing = await input.payload.find({
-    collection: "agreement-acceptances" as any,
+    collection: "agreement-acceptances",
     where: { evidenceKey: { equals: evidenceKey } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
   const acceptedAt = (input.now ?? new Date()).toISOString()
   let acceptance = existing.docs[0]
   if (!acceptance) {
     try {
       acceptance = await input.payload.create({
-        collection: "agreement-acceptances" as any,
+        collection: "agreement-acceptances",
         data: {
           evidenceKey,
-          tenant: tenantValue,
-          document: documentValue,
-          documentVersion: document.documentVersion,
-          acceptanceVersion: document.acceptanceVersion,
-          contentHash: document.contentHash,
+          tenant: tenantValue as number,
+          document: documentValue as number,
+          documentVersion: document.documentVersion ?? undefined,
+          acceptanceVersion: document.acceptanceVersion ?? undefined,
+          contentHash: document.contentHash ?? undefined,
           statementVersion: CUSTOMER_REACCEPTANCE_STATEMENT_VERSION,
           statementText: CUSTOMER_REACCEPTANCE_STATEMENT,
-          actorUser: input.actorUserId,
+          actorUser: Number(input.actorUserId),
           actorEmail: input.actorEmail,
           acceptedAt,
           requestId: input.requestId ?? crypto.randomUUID(),
@@ -206,22 +227,22 @@ export async function acceptCustomerLegalRequirement(input: {
         },
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
     } catch (error) {
       const raced = await input.payload.find({
-        collection: "agreement-acceptances" as any,
+        collection: "agreement-acceptances",
         where: { evidenceKey: { equals: evidenceKey } },
         limit: 1,
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
       acceptance = raced.docs[0]
       if (!acceptance) throw error
     }
   }
 
   const matching = await input.payload.find({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: {
       and: [
         { tenant: { equals: input.tenantId } },
@@ -233,9 +254,9 @@ export async function acceptCustomerLegalRequirement(input: {
     limit: 100,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  const satisfied = await Promise.all((matching.docs as RecordLike[]).map((item) => input.payload.update({
-    collection: "legal-requirements" as any,
+  })
+  const satisfied = await Promise.all(matching.docs.map((item) => input.payload.update({
+    collection: "legal-requirements",
     id: item.id,
     data: {
       status: "satisfied",
@@ -247,11 +268,11 @@ export async function acceptCustomerLegalRequirement(input: {
     },
     depth: 0,
     overrideAccess: true,
-  } as any)))
-  const requirementIds = (matching.docs as RecordLike[]).map((item) => item.id)
+  })))
+  const requirementIds = matching.docs.map((item) => item.id)
   if (requirementIds.length) {
     const deliveries = await input.payload.find({
-      collection: "legal-notification-deliveries" as any,
+      collection: "legal-notification-deliveries",
       where: {
         and: [
           { requirement: { in: requirementIds } },
@@ -261,16 +282,16 @@ export async function acceptCustomerLegalRequirement(input: {
       limit: 1000,
       depth: 0,
       overrideAccess: true,
-    } as any)
-    await Promise.all((deliveries.docs as RecordLike[]).map((delivery) => input.payload.update({
-      collection: "legal-notification-deliveries" as any,
+    })
+    await Promise.all(deliveries.docs.map((delivery) => input.payload.update({
+      collection: "legal-notification-deliveries",
       id: delivery.id,
       data: { status: "cancelled", leaseUntil: null, lastError: null },
       depth: 0,
       overrideAccess: true,
-    } as any)))
+    })))
   }
-  return satisfied.find((item: RecordLike) => String(item.id) === String(requirement.id)) ?? satisfied[0]
+  return satisfied.find((item) => String(item.id) === String(requirement.id)) ?? satisfied[0]
 }
 
 export async function assertTenantPublicationAllowed(
@@ -294,7 +315,7 @@ export async function satisfyRequirementsFromTransaction(input: {
   acceptedAt: string
 }) {
   const result = await input.payload.find({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: {
       and: [
         { tenant: { equals: input.tenantId } },
@@ -306,21 +327,21 @@ export async function satisfyRequirementsFromTransaction(input: {
     limit: 100,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  await Promise.all((result.docs as RecordLike[]).map((requirement) => input.payload.update({
-    collection: "legal-requirements" as any,
+  })
+  await Promise.all(result.docs.map((requirement) => input.payload.update({
+    collection: "legal-requirements",
     id: requirement.id,
     data: {
       status: "satisfied",
       satisfiedAt: input.acceptedAt,
-      acceptance: input.acceptanceId,
+      acceptance: Number(input.acceptanceId),
       resolutionBasis: "transaction_acceptance",
       resolutionEvidence: { acceptanceId: input.acceptanceId, actorEmail: input.actorEmail },
       lastError: null,
     },
     depth: 0,
     overrideAccess: true,
-  } as any)))
+  })))
 }
 
 export async function objectToNoticeAndContinuedUse(input: {
@@ -334,18 +355,18 @@ export async function objectToNoticeAndContinuedUse(input: {
   now?: Date
 }) {
   const requirement = await input.payload.findByID({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     id: input.requirementId,
     depth: 1,
     overrideAccess: true,
-  } as any) as RecordLike
+  })
   if (relationshipId(requirement.tenant) !== String(input.tenantId)) throw new Error("Legal requirement does not belong to this tenant.")
   if (requirement.action !== noticeAndUseAction) throw new Error("This requirement does not support objection.")
-  if (!actionableStatuses.includes(requirement.status)) throw new Error("Legal requirement cannot be objected to in its current state.")
+  if (!isActionableStatus(requirement.status)) throw new Error("Legal requirement cannot be objected to in its current state.")
 
   const objectedAt = (input.now ?? new Date()).toISOString()
   return input.payload.update({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     id: requirement.id,
     data: {
       status: "objected",
@@ -361,7 +382,7 @@ export async function objectToNoticeAndContinuedUse(input: {
     },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
 export async function recordQualifyingContinuedUse(input: {
@@ -370,12 +391,12 @@ export async function recordQualifyingContinuedUse(input: {
   occurredAt?: Date
   evidenceType: string
   evidenceId: string
-  req?: any
+  req?: PayloadRequest
 }) {
   const request = input.req ? { req: input.req } : {}
   const occurredAt = (input.occurredAt ?? new Date()).toISOString()
   const result = await input.payload.find({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: {
       and: [
         { tenant: { equals: input.tenantId } },
@@ -388,9 +409,9 @@ export async function recordQualifyingContinuedUse(input: {
     depth: 0,
     overrideAccess: true,
     ...request,
-  } as any)
-  return Promise.all((result.docs as RecordLike[]).filter((item) => !item.objectedAt).map((item) => input.payload.update({
-    collection: "legal-requirements" as any,
+  })
+  return Promise.all(result.docs.filter((item) => !item.objectedAt).map((item) => input.payload.update({
+    collection: "legal-requirements",
     id: item.id,
     data: {
       qualifyingUseAt: item.qualifyingUseAt ?? occurredAt,
@@ -402,7 +423,7 @@ export async function recordQualifyingContinuedUse(input: {
     depth: 0,
     overrideAccess: true,
     ...request,
-  } as any)))
+  })))
 }
 
 export async function resolveNoticeAndContinuedUseRequirements(input: {
@@ -412,7 +433,7 @@ export async function resolveNoticeAndContinuedUseRequirements(input: {
   const now = input.now ?? new Date()
   const resolvedAt = now.toISOString()
   const result = await input.payload.find({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: {
       and: [
         { action: { equals: noticeAndUseAction } },
@@ -425,15 +446,15 @@ export async function resolveNoticeAndContinuedUseRequirements(input: {
     limit: 1000,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  return Promise.all((result.docs as RecordLike[]).filter((item) =>
+  })
+  return Promise.all(result.docs.filter((item) =>
     !item.objectedAt &&
     typeof item.noticeDeliveredAt === "string" &&
     typeof item.qualifyingUseAt === "string" &&
     new Date(item.noticeDeliveredAt) <= new Date(item.qualifyingUseAt) &&
     new Date(item.qualifyingUseAt) <= now,
   ).map((item) => input.payload.update({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     id: item.id,
     data: {
       status: "satisfied",
@@ -449,5 +470,5 @@ export async function resolveNoticeAndContinuedUseRequirements(input: {
     },
     depth: 0,
     overrideAccess: true,
-  } as any)))
+  })))
 }

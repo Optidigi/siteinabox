@@ -24,6 +24,7 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { countLeafDirty } from "@/lib/countLeafDirty"
 import type { Page } from "@/payload-types"
+import type { SiteSetting } from "@/payload-types"
 
 export const createPageEditorSchema = (t: (key: string) => string) =>
   z.object({
@@ -122,7 +123,7 @@ export const mergeRestoredChromeDraft = (
   footerContract: FooterCompositionContract | null,
   chromePartial: unknown,
 ): SiteChromeDraft => {
-  const baseline = chromeDraftFromSettings(siteSettings, footerContract)
+  const baseline = chromeDraftFromSettings(siteSettings as SiteSetting | null | undefined, footerContract)
   const partial = chromePartial as Partial<SiteChromeDraft> | null | undefined
   if (!partial) return baseline
   return {

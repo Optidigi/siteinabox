@@ -27,10 +27,10 @@ export const loadTenantManifest = async (tenantId: string | number): Promise<RtM
   const payload = await getPayload({ config })
   const t = await payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     overrideAccess: true,
   })
-  const raw = (t as any).siteManifest
+  const raw = (t).siteManifest
   if (!raw) return DEFAULT_MANIFEST
   const parsed = manifestSchema.safeParse(raw)
   if (!parsed.success) {

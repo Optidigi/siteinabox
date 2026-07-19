@@ -19,7 +19,7 @@ export const fetchTenantManifestFromRepo = async (
 
   const tenant = await payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     user,
     overrideAccess: false,

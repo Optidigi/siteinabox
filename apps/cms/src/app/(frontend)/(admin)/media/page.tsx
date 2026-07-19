@@ -31,7 +31,7 @@ export default async function TenantMediaPage({
         action={canManageMedia ? <MediaUploader tenantId={ctx.tenant.id} refreshOnUploaded /> : undefined}
       />
       <MediaGrid
-        items={result.docs as any}
+        items={result.docs}
         usage={usage}
         pagesBaseHref={canManageMedia ? "/pages" : null}
         canManage={canManageMedia}

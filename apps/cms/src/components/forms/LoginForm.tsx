@@ -84,7 +84,7 @@ export function LoginForm({
   const errorParam = params.get("error")
   const errorCopy = errorParam
     ? ERROR_KEYS[errorParam]
-      ? t(ERROR_KEYS[errorParam] as any)
+      ? t(ERROR_KEYS[errorParam])
       : t("signInError", { error: errorParam })
     : null
   const schema = createSchema(t)

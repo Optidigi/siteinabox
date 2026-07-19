@@ -1,20 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { User } from "@/payload-types"
 import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 import { themeSchema } from "@/lib/theme/schema"
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
-const userTenantIds = (user: any): Set<string> =>
+const userTenantIds = (user: User): Set<string> =>
   relationshipIdSet(
     (user?.tenants ?? []).map((membership: { tenant?: RelationshipIdRef }) =>
       membership.tenant,
     ),
   )
 
-const canUpdateTenantTheme = (user: any, tenantId: string | number | null): boolean => {
+const canUpdateTenantTheme = (user: User | null | undefined, tenantId: string | number | null): boolean => {
   if (user?.role === "super-admin") return tenantId != null
   if (tenantId == null) return false
   if (user?.role !== "owner" && user?.role !== "editor") return false
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest) {
   await payload.update({
     collection: "tenants",
     id: tenantId,
-    data: { theme: parsed.data } as any,
+    data: { theme: parsed.data },
     overrideAccess: true,
   })
 

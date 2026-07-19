@@ -49,8 +49,8 @@ export const setTenantTheme = async (
 
   await payload.update({
     collection: "tenants",
-    id: tenantId as any,
-    data: { theme: parsed.data } as any,
+    id: tenantId,
+    data: { theme: parsed.data },
     overrideAccess: true,
   })
 }

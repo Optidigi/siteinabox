@@ -2,6 +2,7 @@ import { Sparkles } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { richBlockField, richInlineField } from "./richTextFields"
 
 export const Hero: BlockWithMeta = {
   slug: "hero",
@@ -9,24 +10,9 @@ export const Hero: BlockWithMeta = {
   description: "Large headline section with optional image",
   interfaceName: "HeroBlock",
   fields: [
-    { name: "eyebrow", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Short label displayed above the headline."
-      } as any
-    },
-    { name: "headline", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Primary heading text."
-      } as any
-    },
-    { name: "subheadline", type: "json",
-      admin: {
-        editor: "richTextBlock",
-        description: "Supporting text below the headline."
-      } as any
-    },
+    richInlineField("eyebrow", "Short label displayed above the headline."),
+    richInlineField("headline", "Primary heading text."),
+    richBlockField("subheadline", "Supporting text below the headline."),
     { name: "pills", type: "array",
       admin: { description: "Small rounded badge labels shown under the subheadline." },
       defaultValue: [],

@@ -1,6 +1,8 @@
 import "server-only"
 import { getPayload } from "payload"
+import type { Where } from "payload"
 import config from "@/payload.config"
+import type { Tenant } from "@/payload-types"
 import {
   normalisePagination,
   type PayloadFindResult,
@@ -24,10 +26,10 @@ export interface ListTenantsOpts {
 export async function listTenantsPaginated(
   opts?: ListTenantsOpts,
   payload?: PayloadLikeFindClient,
-): Promise<PayloadFindResult> {
+): Promise<PayloadFindResult<Tenant>> {
   const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
   const { page, limit } = normalisePagination(opts)
-  const where: Record<string, unknown> = {}
+  const where: Where = {}
   const q = opts?.q?.trim()
   if (q) {
     where.or = [
@@ -36,7 +38,7 @@ export async function listTenantsPaginated(
       { domain: { like: q } },
     ]
   }
-  return client.find({
+  return client.find<Tenant>({
     collection: "tenants",
     overrideAccess: true,
     where,
@@ -53,7 +55,7 @@ export async function listTenantsPaginated(
  * Lifting the cap for the picker needs a searchable async combobox,
  * not a higher number — tracked alongside FE-63.
  */
-export async function listTenants() {
+export async function listTenants(): Promise<Tenant[]> {
   const payload = await getPayload({ config })
   const res = await payload.find({
     collection: "tenants",

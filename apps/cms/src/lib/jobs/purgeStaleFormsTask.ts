@@ -30,7 +30,7 @@ export const purgeStaleFormSubmissionsTask: TaskConfig<{
   handler: async ({ req }) => {
     const retentionDays = resolveRetentionDays()
     const result = await purgeStaleFormSubmissions({
-      payload: req.payload as any,
+      payload: req.payload,
       retentionDays,
     })
     req.payload.logger.info(

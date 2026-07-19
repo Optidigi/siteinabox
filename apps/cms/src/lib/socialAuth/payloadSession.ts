@@ -56,7 +56,7 @@ export async function issuePayloadSessionCookie(payloadUserId: string | number, 
       req: {
         headers: new Headers(request.headers),
       },
-      user: user as any,
+      user: user,
     },
     payload,
   )
@@ -65,19 +65,19 @@ export async function issuePayloadSessionCookie(payloadUserId: string | number, 
     collectionConfig: collection.config,
     payload,
     req,
-    user: user as any,
+    user: user,
   })
 
   const fieldsToSign = getFieldsToSign({
     collectionConfig: collection.config,
     email: user.email,
     ...(sid ? { sid } : {}),
-    user: user as any,
+    user: user,
   })
 
   const { token } = await jwtSign({
     fieldsToSign,
-    secret: (payload as any).secret,
+    secret: (payload).secret,
     tokenExpiration: collection.config.auth.tokenExpiration,
   })
 

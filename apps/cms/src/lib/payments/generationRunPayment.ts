@@ -163,11 +163,11 @@ export async function recordGenerationRunPaymentState(
   const payment = createOperationalPaymentState(input)
   return payload.update({
     collection: "site-generation-runs",
-    id: generationRunId as any,
-    data: { payment } as any,
+    id: generationRunId,
+    data: { payment },
     depth: 0,
     overrideAccess: true,
-    user: { id: input.actor } as any,
+    user: { id: input.actor },
   }) as Promise<SiteGenerationRun>
 }
 
@@ -189,8 +189,8 @@ export async function recordGenerationRunPostPaymentAutomationState(
 
   return payload.update({
     collection: "site-generation-runs",
-    id: run.id as any,
-    data: { errors } as any,
+    id: run.id,
+    data: { errors },
     depth: 0,
     overrideAccess: true,
   }) as Promise<SiteGenerationRun>

@@ -1,6 +1,6 @@
 import "server-only"
 import crypto from "node:crypto"
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import { validateProviderBlockInstance, type Page as ContractPage, type SiteSettings } from "@siteinabox/contracts"
 import type {
   PublishedSiteSnapshot,
@@ -12,7 +12,14 @@ import {
   schemaForPublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
 import { resolveBlockVariant } from "@siteinabox/site-renderer/blocks/variants"
-import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
+import type {
+  Page,
+  PublishedSiteSnapshot as PublishedSiteSnapshotDoc,
+  SiteGenerationRun,
+  SiteSetting,
+  Tenant,
+} from "@/payload-types"
+import { asRecord } from "@/lib/record"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
@@ -22,6 +29,9 @@ import { resolveSettingsContract } from "@/lib/settingsContract"
 import { isActivationPaymentSatisfied } from "@/lib/payments/generationRunPayment"
 import { hasVerifiedTenantSender } from "@/lib/tenants/emailSending"
 import { refreshTenantEmailSendingFromCloudflare } from "@/lib/tenants/emailSendingRefresh"
+import type { PublicAnalyticsConfigInput } from "@/lib/analytics/config"
+import type { PageAnalyticsProjectionContext } from "@/lib/projection/pageToJson"
+import type { SettingsAnalyticsProjectionContext } from "@/lib/projection/settingsToJson"
 import { sendLiveHandoffEmailAfterActivation } from "@/lib/publish/liveHandoffEmail"
 
 const PUBLISH_SNAPSHOT_MUTATION_CONTEXT = { publishSnapshotLifecycleMutation: true } as const
@@ -35,7 +45,7 @@ export type PublishSiteOptions = {
   manualActivation?: boolean
   publishedBy?: string | number | null
   activationReason?: string | null
-  req?: any
+  req?: PayloadRequest
 }
 
 export type ActivateSnapshotOptions = {
@@ -44,10 +54,10 @@ export type ActivateSnapshotOptions = {
   activatedBy?: string | number | null
   activationReason?: string | null
   rollback?: boolean
-  req?: any
+  req?: PayloadRequest
 }
 
-const requestArgs = (req: any) => req ? { req } : {}
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 
 export type ResolvePublishedSnapshotResult = {
   tenant: Pick<Tenant, "id" | "slug" | "domain" | "status">
@@ -68,15 +78,15 @@ const snapshotHash = (snapshot: PublishedSiteSnapshot): string =>
 const snapshotThemeForTenant = (
   tenant: Pick<Tenant, "theme">,
 ): ThemeTokenSpec | null => {
-  const theme = normalizeThemeForSave((tenant.theme as any) ?? null)
+  const theme = normalizeThemeForSave((tenant.theme) ?? null)
   return theme as ThemeTokenSpec | null
 }
 
 const snapshotThemeForServing = (snapshot: unknown): unknown => {
-  const record = snapshot && typeof snapshot === "object" ? snapshot as Record<string, any> : null
+  const record = snapshot && typeof snapshot === "object" ? snapshot as Record<string, unknown> : null
   const theme = record?.theme
   if (!theme || typeof theme !== "object") return theme
-  return normalizeThemeForSave(theme as any)
+  return normalizeThemeForSave(theme)
 }
 
 const publishedSnapshotForServing = (snapshot: unknown): unknown => {
@@ -93,9 +103,9 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
   if (!consent || typeof consent !== "object" || Array.isArray(consent)) return snapshot
   const settings = (snapshot as Record<string, unknown>).settings
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) return snapshot
-  const settingsRecord = settings as Record<string, any>
+  const settingsRecord = settings as Record<string, unknown>
   const chrome = settingsRecord.chrome && typeof settingsRecord.chrome === "object" && !Array.isArray(settingsRecord.chrome)
-    ? settingsRecord.chrome as Record<string, any>
+    ? settingsRecord.chrome as Record<string, unknown>
     : undefined
   const banner = chrome?.banner && typeof chrome.banner === "object" && !Array.isArray(chrome.banner)
     ? chrome.banner as Record<string, unknown>
@@ -124,8 +134,11 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
   }
 }
 
-const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "name" | "slug" | "domain" | "siteManifest">) => {
-  const manifest = tenant.siteManifest as Record<string, any> | null | undefined
+const tenantAnalyticsContext = (
+  tenant: Pick<Tenant, "id" | "name" | "slug" | "domain" | "siteManifest">,
+): PageAnalyticsProjectionContext & SettingsAnalyticsProjectionContext => {
+  const manifest = asRecord(tenant.siteManifest)
+  const manifestVersion = manifest?.version
   return {
     tenantId: tenant.id,
     tenantSlug: tenant.slug ?? null,
@@ -133,9 +146,10 @@ const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "name" | "slug" | "d
     siteDomain: tenant.domain ?? null,
     themeId: typeof manifest?.themeId === "string" ? manifest.themeId : null,
     siteBuildId: process.env.SIAB_SITE_BUILD_ID ?? null,
-    manifestVersion: typeof manifest?.version !== "undefined" ? manifest.version : null,
-    analytics: manifest?.analytics ?? null,
-    analyticsConsent: manifest?.analyticsConsent ?? null,
+    manifestVersion:
+      typeof manifestVersion === "string" || typeof manifestVersion === "number" ? manifestVersion : null,
+    analytics: (manifest?.analytics ?? null) as PublicAnalyticsConfigInput | null,
+    analyticsConsent: asRecord(manifest?.analyticsConsent),
   }
 }
 
@@ -174,28 +188,28 @@ export function canActivatePublishedSnapshot(
   return { ok: true }
 }
 
-async function getTenant(payload: Payload, tenantId: string | number, req?: any): Promise<Tenant> {
+async function getTenant(payload: Payload, tenantId: string | number, req?: PayloadRequest): Promise<Tenant> {
   return payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(req),
+    ...payloadRequestArgs(req),
   }) as Promise<Tenant>
 }
 
-async function getGenerationRun(payload: Payload, generationRunId: string | number | null | undefined, req?: any): Promise<SiteGenerationRun | null> {
+async function getGenerationRun(payload: Payload, generationRunId: string | number | null | undefined, req?: PayloadRequest): Promise<SiteGenerationRun | null> {
   if (generationRunId == null) return null
   return payload.findByID({
     collection: "site-generation-runs",
-    id: generationRunId as any,
+    id: generationRunId,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(req),
+    ...payloadRequestArgs(req),
   }) as Promise<SiteGenerationRun>
 }
 
-async function latestApprovedRunForTenant(payload: Payload, tenantId: string | number, req?: any): Promise<SiteGenerationRun | null> {
+async function latestApprovedRunForTenant(payload: Payload, tenantId: string | number, req?: PayloadRequest): Promise<SiteGenerationRun | null> {
   const result = await payload.find({
     collection: "site-generation-runs",
     where: { tenant: { equals: tenantId } },
@@ -203,7 +217,7 @@ async function latestApprovedRunForTenant(payload: Payload, tenantId: string | n
     limit: 10,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(req),
+    ...payloadRequestArgs(req),
   })
   return ((result.docs as SiteGenerationRun[]).find((run) => {
     const approval = run.clientApproval as { status?: unknown } | null | undefined
@@ -216,7 +230,7 @@ async function pagesForSnapshot(
   tenantId: string | number,
   run: SiteGenerationRun | null,
   options: { includeAllPublishedPages?: boolean } = {},
-  req?: any,
+  req?: PayloadRequest,
 ): Promise<Page[]> {
   const runPageIds = Array.isArray(run?.pages)
     ? run.pages.map((page) => relationshipId(page)).filter(Boolean)
@@ -232,7 +246,7 @@ async function pagesForSnapshot(
     limit: 200,
     depth: 2,
     overrideAccess: true,
-    ...requestArgs(req),
+    ...payloadRequestArgs(req),
   })
 
   const pages = result.docs as Page[]
@@ -242,16 +256,16 @@ async function pagesForSnapshot(
   return pages.filter((page) => allowed.has(String(page.id)))
 }
 
-async function nextSnapshotVersion(payload: Payload, tenantId: string | number, req?: any): Promise<number> {
+async function nextSnapshotVersion(payload: Payload, tenantId: string | number, req?: PayloadRequest): Promise<number> {
   const result = await payload.find({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     where: { tenant: { equals: tenantId } },
     sort: "-version",
     limit: 1,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(req),
-  } as any)
+    ...payloadRequestArgs(req),
+  })
   const latest = result.docs[0] as { version?: number } | undefined
   return Number.isFinite(latest?.version) ? Number(latest!.version) + 1 : 1
 }
@@ -259,7 +273,7 @@ async function nextSnapshotVersion(payload: Payload, tenantId: string | number, 
 export async function prunePublishedSnapshotsForTenant(
   payload: Payload,
   tenantId: string | number,
-  options: { keepSnapshotId?: string | number | null; limit?: number; req?: any } = {},
+  options: { keepSnapshotId?: string | number | null; limit?: number; req?: PayloadRequest } = {},
 ): Promise<{ deleted: number; kept: number }> {
   const limit = options.limit ?? PUBLISHED_SNAPSHOT_RETENTION_LIMIT
   if (!Number.isInteger(limit) || limit < 1) {
@@ -267,14 +281,14 @@ export async function prunePublishedSnapshotsForTenant(
   }
 
   const result = await payload.find({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     where: { tenant: { equals: tenantId } },
     sort: "-version",
     limit: 1000,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(options.req),
-  } as any)
+    ...payloadRequestArgs(options.req),
+  })
 
   const docs = result.docs as Array<{ id: string | number; status?: string | null }>
   const keepIds = new Set<string>()
@@ -290,12 +304,12 @@ export async function prunePublishedSnapshotsForTenant(
 
   const toDelete = docs.filter((doc) => !keepIds.has(String(doc.id)))
   await Promise.all(toDelete.map((doc) => payload.delete({
-    collection: "published-site-snapshots" as any,
-    id: doc.id as any,
+    collection: "published-site-snapshots",
+    id: doc.id,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(options.req),
-  } as any)))
+    ...payloadRequestArgs(options.req),
+  })))
 
   return { deleted: toDelete.length, kept: docs.length - toDelete.length }
 }
@@ -345,7 +359,7 @@ export async function buildPublishedSiteSnapshot(
   payload: Payload,
   tenantId: string | number,
   run: SiteGenerationRun | null,
-  options: { includeAllPublishedPages?: boolean; req?: any } = {},
+  options: { includeAllPublishedPages?: boolean; req?: PayloadRequest } = {},
 ): Promise<PublishedSiteSnapshot> {
   const tenant = await getTenant(payload, tenantId, options.req)
   if (tenant.status === "archived" || tenant.status === "suspended") {
@@ -372,7 +386,7 @@ export async function buildPublishedSiteSnapshot(
     settingsDoc,
     navPages,
     analyticsContext,
-    { settingsContract: resolveSettingsContract((tenant.siteManifest as any) ?? null) },
+    { settingsContract: resolveSettingsContract((tenant.siteManifest) ?? null) },
   ) as SiteSettings
   const settings: SiteSettings = {
     ...projectedSettings,
@@ -382,6 +396,7 @@ export async function buildPublishedSiteSnapshot(
   const rendererTheme = snapshotThemeForTenant(tenant)
   const now = new Date().toISOString()
 
+  const manifest = asRecord(tenant.siteManifest)
   const snapshot = {
     schemaVersion: 1,
     tenantId: String(tenant.id),
@@ -392,7 +407,7 @@ export async function buildPublishedSiteSnapshot(
     settings,
     pages: publishedPages,
     theme: rendererTheme,
-    blocks: Array.isArray((tenant.siteManifest as any)?.blocks) ? (tenant.siteManifest as any).blocks : undefined,
+    blocks: Array.isArray(manifest?.blocks) ? manifest.blocks : undefined,
     publishedAt: now,
   }
   const parsed = schemaForPublishedSiteSnapshot(snapshot).safeParse(snapshot)
@@ -407,12 +422,12 @@ export async function activatePublishedSnapshot(
   options: ActivateSnapshotOptions,
 ) {
   const snapshotDoc = await payload.findByID({
-    collection: "published-site-snapshots" as any,
-    id: options.snapshotId as any,
+    collection: "published-site-snapshots",
+    id: options.snapshotId,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(options.req),
-  } as any) as any
+    ...payloadRequestArgs(options.req),
+  })
   const tenantId = relationshipId(snapshotDoc.tenant)
   if (!tenantId) throw new Error("Published snapshot is missing a tenant.")
   let tenant = await getTenant(payload, tenantId, options.req)
@@ -429,20 +444,25 @@ export async function activatePublishedSnapshot(
   if (!gate.ok) throw new Error(gate.reason)
 
   const now = new Date().toISOString()
-  const handoffSnapshotDoc = { ...snapshotDoc }
+  const handoffSnapshotDoc: Pick<PublishedSiteSnapshotDoc, "id" | "status" | "domain" | "snapshot"> = {
+    id: snapshotDoc.id,
+    status: snapshotDoc.status,
+    domain: snapshotDoc.domain,
+    snapshot: snapshotDoc.snapshot,
+  }
   const activeSnapshots = await payload.find({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     where: { and: [{ tenant: { equals: tenantId } }, { status: { equals: "active" } }] },
     limit: 100,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(options.req),
-  } as any)
+    ...payloadRequestArgs(options.req),
+  })
 
-  await Promise.all((activeSnapshots.docs as any[])
+  await Promise.all((activeSnapshots.docs as PublishedSiteSnapshotDoc[])
     .filter((doc) => !sameRelationshipId(doc.id, snapshotDoc.id))
     .map((doc) => payload.update({
-      collection: "published-site-snapshots" as any,
+      collection: "published-site-snapshots",
       id: doc.id,
       data: {
         status: options.rollback ? "rolled_back" : "superseded",
@@ -454,11 +474,11 @@ export async function activatePublishedSnapshot(
       depth: 0,
       overrideAccess: true,
       context: PUBLISH_SNAPSHOT_MUTATION_CONTEXT,
-      ...requestArgs(options.req),
-    } as any)))
+      ...payloadRequestArgs(options.req),
+    })))
 
   const activatedSnapshot = await payload.update({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     id: snapshotDoc.id,
     data: {
       status: "active",
@@ -468,20 +488,20 @@ export async function activatePublishedSnapshot(
     depth: 0,
     overrideAccess: true,
     context: PUBLISH_SNAPSHOT_MUTATION_CONTEXT,
-    ...requestArgs(options.req),
-  } as any)
+    ...payloadRequestArgs(options.req),
+  })
 
   await payload.update({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     data: {
       status: "active",
       activeSnapshot: snapshotDoc.id,
       activatedAt: now,
-    } as any,
+    },
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(options.req),
+    ...payloadRequestArgs(options.req),
   })
 
   await sendLiveHandoffEmailAfterActivation(payload, {
@@ -493,7 +513,7 @@ export async function activatePublishedSnapshot(
 
   await prunePublishedSnapshotsForTenant(payload, tenantId, { keepSnapshotId: snapshotDoc.id, req: options.req })
 
-  return activatedSnapshot as any
+  return activatedSnapshot
 }
 
 export async function publishSiteSnapshot(
@@ -508,10 +528,10 @@ export async function publishSiteSnapshot(
   })
   const hash = snapshotHash(snapshot)
   const snapshotDoc = await payload.create({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     data: {
-      tenant: options.tenantId,
-      sourceGenerationRun: run?.id,
+      tenant: Number(options.tenantId),
+      sourceGenerationRun: run?.id ?? undefined,
       snapshotKey: `${snapshot.tenantSlug}-v${snapshot.manifest.version}-${hash.slice(0, 12)}`,
       version: snapshot.manifest.version,
       status: "drafted",
@@ -519,13 +539,13 @@ export async function publishSiteSnapshot(
       snapshotHash: hash,
       snapshot,
       publishedAt: snapshot.publishedAt,
-      publishedBy: options.publishedBy ?? undefined,
+      publishedBy: options.publishedBy != null ? Number(options.publishedBy) : undefined,
       activationReason: options.activationReason ?? undefined,
-    },
+    } as unknown as PublishedSiteSnapshotDoc,
     depth: 0,
     overrideAccess: true,
-    ...requestArgs(options.req),
-  } as any) as any
+    ...payloadRequestArgs(options.req),
+  })
 
   if (!options.activate) {
     await prunePublishedSnapshotsForTenant(payload, options.tenantId, { keepSnapshotId: snapshotDoc.id, req: options.req })
@@ -567,32 +587,35 @@ async function tenantForHost(payload: Payload, host: string): Promise<Tenant | n
     depth: 0,
     overrideAccess: true,
   })
-  const match = (settings.docs as any[]).find((doc) =>
-    (doc.aliases ?? []).some((alias: any) => normalizeRequestHost(alias?.host) === host),
+  const match = (settings.docs as SiteSetting[]).find((doc) =>
+    (doc.aliases ?? []).some((alias) => {
+      const aliasRecord = asRecord(alias)
+      return normalizeRequestHost(typeof aliasRecord?.host === "string" ? aliasRecord.host : null) === host
+    }),
   )
   const tenantId = relationshipId(match?.tenant)
   return tenantId ? getTenant(payload, tenantId) : null
 }
 
-async function activeSnapshotForTenant(payload: Payload, tenant: Tenant): Promise<any | null> {
-  const activeSnapshotId = relationshipId((tenant as any).activeSnapshot)
+async function activeSnapshotForTenant(payload: Payload, tenant: Tenant): Promise<PublishedSiteSnapshotDoc | null> {
+  const activeSnapshotId = relationshipId((tenant).activeSnapshot)
   if (activeSnapshotId) {
     return payload.findByID({
-      collection: "published-site-snapshots" as any,
-      id: activeSnapshotId as any,
+      collection: "published-site-snapshots",
+      id: activeSnapshotId,
       depth: 0,
       overrideAccess: true,
-    } as any)
+    })
   }
 
   const result = await payload.find({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     where: { and: [{ tenant: { equals: tenant.id } }, { status: { equals: "active" } }] },
     sort: "-activatedAt",
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
   return result.docs[0] ?? null
 }
 

@@ -1,6 +1,8 @@
 import "server-only"
 import { getPayload } from "payload"
+import type { Where } from "payload"
 import config from "@/payload.config"
+import type { Form } from "@/payload-types"
 import {
   normalisePagination,
   type PayloadFindResult,
@@ -21,14 +23,14 @@ export async function listFormsPaginated(
   tenantId: number | string,
   opts?: ListFormsOpts,
   payload?: PayloadLikeFindClient,
-): Promise<PayloadFindResult> {
+): Promise<PayloadFindResult<Form>> {
   const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
   const { page, limit } = normalisePagination(opts)
-  const where: Record<string, unknown> = { tenant: { equals: tenantId } }
+  const where: Where = { tenant: { equals: tenantId } }
   if (opts?.status) where.status = { equals: opts.status }
   const q = opts?.q?.trim()
   if (q) where.or = [{ email: { like: q } }, { name: { like: q } }, { formName: { like: q } }]
-  return client.find({
+  return client.find<Form>({
     collection: "forms",
     overrideAccess: true,
     where,

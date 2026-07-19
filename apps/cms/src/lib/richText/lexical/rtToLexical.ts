@@ -1,6 +1,12 @@
 import type { RtRoot, RtBlock, RtInline, RtMark } from "../RtNode"
 import type { RtManifest } from "../manifest"
 
+type LexicalSerializedNode = Record<string, unknown> & {
+  type: string
+  version?: number
+  children?: LexicalSerializedNode[]
+}
+
 const FORMAT_BITS: Record<RtMark, number> = {
   bold: 1, italic: 1 << 1, strikethrough: 1 << 2, underline: 1 << 3, code: 1 << 4,
 }
@@ -18,9 +24,9 @@ const colorForId = (id: string, manifest?: RtManifest): string => {
   return `var(${cssVar})`
 }
 
-const inlineToLexical = (n: RtInline, manifest?: RtManifest): any => {
+const inlineToLexical = (n: RtInline, manifest?: RtManifest): LexicalSerializedNode => {
   if (n.t === "text") {
-    const out: any = { type: "text", text: n.v, format: marksToFormat(n.marks), detail: 0, mode: "normal", style: "", version: 1 }
+    const out: LexicalSerializedNode = { type: "text", text: n.v, format: marksToFormat(n.marks), detail: 0, mode: "normal", style: "", version: 1 }
     if (n.style) out.style = `--rt-style:${n.style};`
     if (n.color) out.style = (out.style ?? "") + `--rt-color:${n.color};color:${colorForId(n.color, manifest)};`
     if (n.font) out.style = (out.style ?? "") + `--rt-font:${n.font};font-family:${fontFamilyForId(n.font, manifest)};`
@@ -38,7 +44,7 @@ const inlineToLexical = (n: RtInline, manifest?: RtManifest): any => {
   }
 }
 
-const blockToLexical = (n: RtBlock, manifest?: RtManifest): any => {
+const blockToLexical = (n: RtBlock, manifest?: RtManifest): LexicalSerializedNode => {
   switch (n.t) {
     case "paragraph":
       if (n.style) {
@@ -61,7 +67,7 @@ const blockToLexical = (n: RtBlock, manifest?: RtManifest): any => {
             const out = blockToLexical(c, manifest)
             if (out.type === "paragraph") return out.children
             return [out]
-          }),
+          }).filter((child): child is LexicalSerializedNode => child != null),
         })),
       }
     case "blockquote":
@@ -82,7 +88,7 @@ const emptyParagraphLexical = () => ({
   type: "paragraph", version: 1, direction: "ltr", format: "", indent: 0, children: [],
 })
 
-export const rtToLexicalJson = (root: RtRoot, manifest?: RtManifest): { root: any } => {
+export const rtToLexicalJson = (root: RtRoot, manifest?: RtManifest): { root: LexicalSerializedNode } => {
   if (root.variant === "inline") {
     return {
       root: {

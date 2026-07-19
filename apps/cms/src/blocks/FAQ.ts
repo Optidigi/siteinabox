@@ -1,6 +1,7 @@
 import { HelpCircle } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { richBlockField, richInlineField } from "./richTextFields"
 
 export const FAQ: BlockWithMeta = {
   slug: "faq",
@@ -8,31 +9,11 @@ export const FAQ: BlockWithMeta = {
   description: "Question/answer accordion",
   interfaceName: "FAQBlock",
   fields: [
-    { name: "title", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Section heading for the FAQ."
-      } as any
-    },
-    { name: "intro", type: "json",
-      admin: {
-        editor: "richTextBlock",
-        description: "Supporting text below the FAQ heading."
-      } as any
-    },
+    richInlineField("title", "Section heading for the FAQ."),
+    richBlockField("intro", "Supporting text below the FAQ heading."),
     { name: "items", type: "array", required: true, fields: [
-      { name: "question", type: "json",
-        admin: {
-          editor: "richTextInline",
-          description: "The FAQ question."
-        } as any
-      },
-      { name: "answer", type: "json",
-        admin: {
-          editor: "richTextBlock",
-          description: "The answer to the question."
-        } as any
-      }
+      richInlineField("question", "The FAQ question."),
+      richBlockField("answer", "The answer to the question."),
     ]},
     ...blockBaseFields("faq"),
   ],

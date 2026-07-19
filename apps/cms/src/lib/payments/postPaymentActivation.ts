@@ -46,7 +46,7 @@ async function loadTenant(payload: Payload, run: SiteGenerationRun): Promise<Ten
   if (!tenantId) throw new Error("Generation run is missing a tenant.")
   return payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     overrideAccess: true,
   }) as Promise<Tenant>
@@ -55,7 +55,7 @@ async function loadTenant(payload: Payload, run: SiteGenerationRun): Promise<Ten
 async function loadRun(payload: Payload, runId: string | number): Promise<SiteGenerationRun> {
   return payload.findByID({
     collection: "site-generation-runs",
-    id: runId as any,
+    id: runId,
     depth: 0,
     overrideAccess: true,
   }) as Promise<SiteGenerationRun>
@@ -72,7 +72,7 @@ const mollieSubscriptionInterval = (env: NodeJS.ProcessEnv = process.env): strin
 
 const automationResultFromRun = (run: SiteGenerationRun): PostPaymentActivationResult => {
   const errors = run.errors && typeof run.errors === "object" && !Array.isArray(run.errors)
-    ? run.errors as Record<string, any>
+    ? run.errors as Record<string, unknown>
     : {}
   const state = errors.postPaymentAutomation && typeof errors.postPaymentAutomation === "object"
     ? errors.postPaymentAutomation as { status?: unknown; message?: unknown; snapshotId?: unknown }
@@ -94,15 +94,18 @@ const automationResultFromRun = (run: SiteGenerationRun): PostPaymentActivationR
 
 async function latestRunSnapshot(payload: Payload, run: SiteGenerationRun): Promise<any | null> {
   const result = await payload.find({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     where: { sourceGenerationRun: { equals: run.id } },
     sort: "-publishedAt",
     limit: 10,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  const docs = result.docs as any[]
-  return docs.find((doc) => doc.status === "active" || doc.status === "drafted") ?? null
+  })
+  const docs = result.docs as unknown[]
+  return docs.find((doc) => {
+    const status = (doc as { status?: string }).status
+    return status === "active" || status === "drafted"
+  }) ?? null
 }
 
 export async function publishAndActivateAfterCompletedPayment(
@@ -222,7 +225,7 @@ async function retryMollieSubscription(payload: Payload, run: SiteGenerationRun)
     })
     return payload.update({
       collection: "site-generation-runs",
-      id: run.id as any,
+      id: run.id,
       data: {
         payment: {
           ...payment,
@@ -231,7 +234,7 @@ async function retryMollieSubscription(payload: Payload, run: SiteGenerationRun)
           note: "Mollie payment completed and monthly renewal subscription created by operator retry.",
           updatedAt: nowIso(),
         },
-      } as any,
+      },
       depth: 0,
       overrideAccess: true,
     }) as Promise<SiteGenerationRun>

@@ -1,5 +1,5 @@
 import { resolvePayloadUserForMagicLink } from "@/lib/socialAuth/payloadUser"
-import { getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
+import { asMailLogPayload, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { magicLinkTemplate } from "@/lib/email/templates/magicLink"
 import { inviteTemplate } from "@/lib/email/templates/invite"
 import { siteLiveNoticeTemplate } from "@/lib/email/templates/siteLiveNotice"
@@ -66,7 +66,7 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
       text: message.text,
       intent: "auth.magic_link",
       tenant: tenantId,
-      payload: await getMailPayload() as any,
+      payload: asMailLogPayload(await getMailPayload()),
     })
     return
   }
@@ -90,7 +90,7 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
       text: message.text,
       intent: "site.live_notice",
       tenant: metadataTenant(input.metadata),
-      payload: await getMailPayload() as any,
+      payload: asMailLogPayload(await getMailPayload()),
     })
     return
   }
@@ -102,6 +102,6 @@ export async function sendCmsMagicLinkEmail(input: { email: string; url: string;
     html: message.html,
     text: message.text,
     intent: "auth.magic_link",
-    payload: await getMailPayload() as any,
+    payload: asMailLogPayload(await getMailPayload()),
   })
 }

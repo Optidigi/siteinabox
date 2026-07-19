@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header"
 import { captureCmsUsageEvent } from "@/lib/analytics/cms"
 import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { sameRelationshipId } from "@/lib/relationshipId"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 export default async function EditTenantPageBySlug({ params }: { params: Promise<{ pageSlug: string }> }) {
   const { ctx, user } = await requireAuth()
@@ -22,9 +23,10 @@ export default async function EditTenantPageBySlug({ params }: { params: Promise
     listPages(ctx.tenant.id),
   ])
   if (!page) notFound()
+  if (!settings) notFound()
   if (!sameRelationshipId(page.tenant, ctx.tenant.id)) notFound()
   const canManageNav = user.role === "owner" || user.role === "super-admin"
-  const { inHeader, inFooter } = pageNavMembership(settings as any, Number(page.id))
+  const { inHeader, inFooter } = pageNavMembership(settings, Number(page.id))
   await captureCmsUsageEvent({ event: "cms_page_editor_opened", user, ctx, surface: "page-editor", action: "open" })
   return (
     <div className="flex flex-col gap-4">
@@ -32,16 +34,16 @@ export default async function EditTenantPageBySlug({ params }: { params: Promise
         <PageHeader title={page.title} />
       </div>
       <PageForm
-        initial={page as any}
+        initial={page}
         tenantId={ctx.tenant.id}
         tenantSlug={ctx.tenant.slug}
         tenantDomain={ctx.tenant.domain}
         baseHref="/pages"
         tenantOrigin={tenantOrigin}
         manifest={manifest}
-        theme={ctx.tenant.theme as any}
+        theme={normalizeThemeForSave(ctx.tenant.theme)}
         siteSettings={settings}
-        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
+        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canManageNav={canManageNav}
         canEditSettings={canManageNav}
         inHeaderNav={inHeader}

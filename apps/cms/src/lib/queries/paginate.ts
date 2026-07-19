@@ -17,9 +17,11 @@
 export const DEFAULT_PAGE_SIZE = 50 as const
 export const MAX_PAGE_SIZE = 250 as const
 
+import type { Where } from "payload"
+
 export interface PayloadFindArgs {
   collection: string
-  where?: Record<string, unknown>
+  where?: Where
   sort?: string
   depth?: number
   overrideAccess?: boolean

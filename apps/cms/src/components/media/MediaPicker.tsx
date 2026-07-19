@@ -8,7 +8,7 @@ import type { Media } from "@/payload-types"
 import { useTranslations } from "next-intl"
 import { fetchTenantMedia, useResolvedMediaTenantId } from "@/components/media/clientMedia"
 
-type Props = { value?: any; onChange: (v: any) => void; relationTo?: string; tenantId?: number | string }
+type Props = { value?: unknown; onChange: (v: unknown) => void; relationTo?: string; tenantId?: number | string }
 
 export function MediaPicker({ value, onChange, tenantId }: Props) {
   const t = useTranslations("media")
@@ -45,7 +45,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   // editor previews can update immediately; submit handlers normalize
   // populated objects to ids before sending them to Payload.
   const [resolvedById, setResolvedById] = useState<Media | null>(null)
-  const valueId = typeof value === "object" && value ? (value as any).id : value
+  const valueId = typeof value === "object" && value ? (value as { id?: string | number }).id : value
   useEffect(() => {
     if (valueId == null) {
       if (resolvedById !== null) setResolvedById(null)
@@ -54,8 +54,8 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
     // Skip lookup if the form already holds the populated object OR if
     // the items grid already has it.
     if (typeof value === "object" && value) return
-    if (items.find((m) => (m.id as any) === valueId)) return
-    if (resolvedById && (resolvedById.id as any) === valueId) return
+    if (items.find((m) => (m.id) === valueId)) return
+    if (resolvedById && (resolvedById.id) === valueId) return
     let cancelled = false
     ;(async () => {
       const res = await fetch(`/api/media/${valueId}`)
@@ -71,8 +71,8 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   // the lazy by-id fetch above.
   const current =
     (typeof value === "object" && value ? (value as Media) : null) ??
-    items.find((m) => (m.id as any) === valueId) ??
-    (resolvedById && (resolvedById.id as any) === valueId ? resolvedById : null)
+    items.find((m) => (m.id) === valueId) ??
+    (resolvedById && (resolvedById.id) === valueId ? resolvedById : null)
 
   return (
     <div className="space-y-2">

@@ -45,7 +45,7 @@ export const PastePlugin: React.FC<{ variant: "block" | "inline" }> = ({ variant
         editor.update(() => {
           const sel = $getSelection()
           if (!$isRangeSelection(sel)) return
-          const nodes = $generateNodesFromSerializedNodes(j.root.children)
+          const nodes = $generateNodesFromSerializedNodes(j.root.children as Parameters<typeof $generateNodesFromSerializedNodes>[0])
           $insertGeneratedNodes(editor, nodes, sel)
         })
         return true

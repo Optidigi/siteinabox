@@ -2,8 +2,12 @@ import {
   GenerationInputSchema,
   NormalizedIntakeSchema,
   type PublicIntakeSubmission,
+  type SiteGenerationSpec,
 } from "@siteinabox/contracts/generation"
-import type { Payload } from "payload"
+import type { Payload, Where } from "payload"
+import type { Config, IntakeSubmission, SiteGenerationRun } from "@/payload-types"
+import { findOneDoc } from "@/lib/payloadCollection"
+import { relationshipId } from "@/lib/relationshipId"
 import { generationWorkflowStatuses } from "@/collections/IntakeSubmissions"
 import {
   applySiteGenerationSpec,
@@ -41,7 +45,10 @@ export type IntakeProcessingResult = {
   error?: Record<string, unknown>
 }
 
-type PayloadDoc = Record<string, any>
+type CollectionSlug = keyof Config["collections"]
+type CollectionDoc<T extends CollectionSlug> = Config["collections"][T]
+
+type PayloadDoc = IntakeSubmission | SiteGenerationRun
 
 const now = () => new Date().toISOString()
 
@@ -93,38 +100,53 @@ const generateWithRetry = async (
   throw lastError
 }
 
-const findOne = async (payload: Payload, collection: string, where: Record<string, unknown>): Promise<PayloadDoc | null> => {
-  const result = await payload.find({
-    collection,
-    where,
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  } as any)
-  return (result.docs[0] as PayloadDoc | undefined) ?? null
-}
-
-const updateDoc = async (
+const updateIntake = async (
   payload: Payload,
-  collection: string,
-  doc: PayloadDoc,
-  data: Record<string, unknown>,
-): Promise<PayloadDoc> =>
+  intake: IntakeSubmission,
+  data: Partial<IntakeSubmission>,
+): Promise<IntakeSubmission> => {
   await payload.update({
-    collection,
-    id: doc.id,
+    collection: "intake-submissions",
+    id: intake.id,
     data,
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadDoc
+  })
+  return payload.findByID({
+    collection: "intake-submissions",
+    id: intake.id,
+    depth: 0,
+    overrideAccess: true,
+  })
+}
+
+const updateRun = async (
+  payload: Payload,
+  run: SiteGenerationRun,
+  data: Partial<SiteGenerationRun>,
+): Promise<SiteGenerationRun> => {
+  await payload.update({
+    collection: "site-generation-runs",
+    id: run.id,
+    data,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return payload.findByID({
+    collection: "site-generation-runs",
+    id: run.id,
+    depth: 0,
+    overrideAccess: true,
+  })
+}
 
 const setIntakeStatus = async (
   payload: Payload,
-  intake: PayloadDoc,
+  intake: IntakeSubmission,
   status: WorkflowStatus,
-  data: Record<string, unknown> = {},
-): Promise<PayloadDoc> =>
-  updateDoc(payload, "intake-submissions", intake, {
+  data: Partial<IntakeSubmission> = {},
+): Promise<IntakeSubmission> =>
+  updateIntake(payload, intake, {
     ...data,
     status,
     statusTransitions: appendTransition(intake, status),
@@ -132,33 +154,35 @@ const setIntakeStatus = async (
 
 const setRunStatus = async (
   payload: Payload,
-  run: PayloadDoc,
+  run: SiteGenerationRun,
   status: WorkflowStatus,
-  data: Record<string, unknown> = {},
-): Promise<PayloadDoc> =>
-  updateDoc(payload, "site-generation-runs", run, {
+  data: Partial<SiteGenerationRun> = {},
+): Promise<SiteGenerationRun> =>
+  updateRun(payload, run, {
     ...data,
     status,
     statusTransitions: appendTransition(run, status),
     ...(status === "preview_ready" || status === "failed" ? { completedAt: now() } : {}),
   })
 
-const terminalResult = (intake: PayloadDoc, run: PayloadDoc | null, reused: boolean): IntakeProcessingResult => ({
+const terminalResult = (intake: IntakeSubmission, run: SiteGenerationRun | null, reused: boolean): IntakeProcessingResult => ({
   ok: intake.status === "preview_ready" || run?.status === "preview_ready",
   reused,
   intakeSubmissionId: intake.id,
   generationRunId: run?.id,
   status: (run?.status ?? intake.status) as WorkflowStatus,
-  tenantId: run?.tenant ?? intake.tenant,
-  pageIds: run?.pages,
-  settingsId: run?.settings,
+  tenantId: relationshipId(run?.tenant ?? intake.tenant) ?? undefined,
+  pageIds: Array.isArray(run?.pages)
+    ? run.pages.map((page) => relationshipId(page)).filter((id): id is string => id != null)
+    : undefined,
+  settingsId: relationshipId(run?.settings) ?? undefined,
   error: (run?.errors ?? intake.error) as Record<string, unknown> | undefined,
 })
 
 const processStoredIntakeGeneration = async (
   payload: Payload,
   input: {
-    intake: PayloadDoc
+    intake: IntakeSubmission
     normalized: SiteGenerationProviderRequest["normalized"]
     normalizedHash: string
     providerRequest: SiteGenerationProviderRequest
@@ -169,7 +193,7 @@ const processStoredIntakeGeneration = async (
   },
 ): Promise<IntakeProcessingResult> => {
   let intake = input.intake
-  const existingRun = await findOne(payload, "site-generation-runs", { idempotencyKey: { equals: input.idempotencyKey } })
+  const existingRun = await findOneDoc(payload, "site-generation-runs", { idempotencyKey: { equals: input.idempotencyKey } })
   if (existingRun) return terminalResult(intake, existingRun, true)
 
   let run = await payload.create({
@@ -190,7 +214,7 @@ const processStoredIntakeGeneration = async (
     },
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadDoc
+  }) 
 
   intake = await setIntakeStatus(payload, intake, "queued", { generationRun: run.id })
 
@@ -204,10 +228,10 @@ const processStoredIntakeGeneration = async (
     if (!providerSpec || typeof providerSpec !== "object" || Array.isArray(providerSpec)) {
       throw new Error("Generation provider returned no SiteGenerationSpec object")
     }
-    const sourceSpec = withDerivedTenantPrivacyDisclosure(providerSpec as any)
-    const sourceValidation = validateSiteGenerationSpecForCms(sourceSpec as any, { variantScope: "self-serve" })
+    const sourceSpec = withDerivedTenantPrivacyDisclosure(providerSpec as SiteGenerationSpec)
+    const sourceValidation = validateSiteGenerationSpecForCms(sourceSpec, { variantScope: "self-serve" })
     const spec = sourceValidation.valid ? materializeTenantPrivacyPage(sourceSpec) : sourceSpec
-    const specHash = siteGenerationSpecHash(spec as any)
+    const specHash = siteGenerationSpecHash(spec)
     run = await setRunStatus(payload, run, "generated", {
       provider: providerResult.provider,
       model: providerResult.model,
@@ -216,7 +240,7 @@ const processStoredIntakeGeneration = async (
       generationInput: providerResult.input,
       generationOutputHash: providerResult.outputHash,
       rawOutput: providerResult.rawOutput,
-      parsedOutput: providerResult.parsedOutput,
+      parsedOutput: providerResult.parsedOutput as SiteGenerationRun["parsedOutput"],
       generationAttempts: generated.attempt,
       spec,
       specHash,
@@ -226,7 +250,7 @@ const processStoredIntakeGeneration = async (
     run = await setRunStatus(payload, run, "validating")
     intake = await setIntakeStatus(payload, intake, "validating")
     const validation = sourceValidation.valid
-      ? validateSiteGenerationSpecForCms(spec as any, { variantScope: "self-serve", allowSystemPages: true })
+      ? validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve", allowSystemPages: true })
       : sourceValidation
     if (!validation.valid) {
       const failure = { message: "Generated SiteGenerationSpec failed validation", validation }
@@ -238,7 +262,7 @@ const processStoredIntakeGeneration = async (
     run = await setRunStatus(payload, run, "applying", { validation })
     intake = await setIntakeStatus(payload, intake, "applying")
     const mediaMode = providerResult.provider === "mock" ? "upload-generated-media" : "skip-generated-placeholders"
-    const applyResult = await applySiteGenerationSpec(payload, sourceSpec as any, {
+    const applyResult = await applySiteGenerationSpec(payload, sourceSpec, {
       variantScope: "self-serve",
       mediaMode,
     })
@@ -250,12 +274,14 @@ const processStoredIntakeGeneration = async (
     }
 
     run = await setRunStatus(payload, run, "draft_ready", {
-      applyResult,
-      tenant: applyResult.tenantId,
-      pages: applyResult.pageIds ?? [],
-      settings: applyResult.settingsId,
+      applyResult: applyResult as SiteGenerationRun["applyResult"],
+      tenant: applyResult.tenantId != null ? Number(applyResult.tenantId) : null,
+      pages: (applyResult.pageIds ?? []).map((id) => Number(id)),
+      settings: applyResult.settingsId != null ? Number(applyResult.settingsId) : null,
     })
-    intake = await setIntakeStatus(payload, intake, "draft_ready", { tenant: applyResult.tenantId })
+    intake = await setIntakeStatus(payload, intake, "draft_ready", {
+      tenant: applyResult.tenantId != null ? Number(applyResult.tenantId) : null,
+    })
 
     run = await setRunStatus(payload, run, "preview_ready")
     intake = await setIntakeStatus(payload, intake, "preview_ready")
@@ -297,7 +323,7 @@ export async function processIntakeSubmission(
   } catch (err) {
     const rawHash = hashStableValue(raw)
     idempotencyKey = `${provider.name}:${provider.model}:${provider.promptVersion}:invalid:${rawHash}`
-    const existing = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+    const existing = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
     if (existing) return terminalResult(existing, null, true)
     const failure = errorPayload(err)
     const intake = await payload.create({
@@ -315,7 +341,7 @@ export async function processIntakeSubmission(
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as PayloadDoc
+    }) 
     return terminalResult(intake, null, false)
   }
 
@@ -323,7 +349,7 @@ export async function processIntakeSubmission(
     throw new Error("Generation provider request was not created")
   }
 
-  const existingIntake = await findOne(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+  const existingIntake = await findOneDoc(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
   let intake = existingIntake ?? await payload.create({
     collection: "intake-submissions",
     data: {
@@ -340,7 +366,7 @@ export async function processIntakeSubmission(
     },
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadDoc
+  }) 
 
   intake = await setIntakeStatus(payload, intake, "normalized", { normalized, normalizedHash })
 
@@ -378,7 +404,7 @@ export async function processStoredIntakeSubmission(
     id: intakeSubmissionId,
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadDoc
+  }) 
 
   const normalized = NormalizedIntakeSchema.parse(intake.normalized)
   const normalizedHash = hashStableValue(normalized)
@@ -434,7 +460,7 @@ export async function processReviewedIntakeSubmission(
     id: intakeSubmissionId,
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadDoc
+  }) 
 
   if (!intake.reviewedGenerationInput) {
     throw new Error("Reviewed GenerationInput is required before draft generation.")

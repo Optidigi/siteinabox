@@ -1,8 +1,8 @@
-import type { CollectionConfig, JSONFieldValidation } from "payload"
+import type { CollectionConfig, JSONFieldValidation, Where } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
-import { sendEmail, type MailLogPayload } from "@/lib/email/sendEmail"
+import { sendEmail, asMailLogPayload, type MailLogPayload } from "@/lib/email/sendEmail"
 import { renderEmailInfoTable, renderEmailLayout } from "@/lib/email/emailLayout"
 import { relationshipId } from "@/lib/relationshipId"
 import { resolveVerifiedTenantSender } from "@/lib/tenants/emailSending"
@@ -24,7 +24,8 @@ import { cleanEmailHeaderText } from "@/lib/email/templateUtils"
 // "read") don't trip the cap.
 const MAX_FORM_DATA_BYTES = 32_768
 
-const validateFormData: JSONFieldValidation = (value, { req } = {} as any) => {
+const validateFormData: JSONFieldValidation = (value, options) => {
+  const req = options?.req
   const serialised = JSON.stringify(value ?? {})
   if (serialised.length > MAX_FORM_DATA_BYTES) {
     return adminValidationText(req?.i18n?.language, `Data exceeds the ${MAX_FORM_DATA_BYTES}-byte limit (${serialised.length} bytes received)`, `Gegevens overschrijden de limiet van ${MAX_FORM_DATA_BYTES} bytes (${serialised.length} bytes ontvangen)`)
@@ -68,7 +69,7 @@ const firstStringFromRecord = (value: unknown, keys: string[]) => {
 type FormNotificationPayload = {
   find(args: {
     collection: "site-settings" | "tenant-notification-subscriptions"
-    where: Record<string, unknown>
+    where: Where
     limit: number
     depth: number
     overrideAccess: true
@@ -170,7 +171,7 @@ export async function notifyTenantOfFormSubmission({
         tenantSubscriptionCategory: "formSubmissions",
         preferenceSubject: recipient,
         tenant: tenantId,
-        payload: payload as unknown as Parameters<typeof sendEmail>[0]["payload"],
+        payload: asMailLogPayload(payload as unknown as MailLogPayload),
       })))
     const failures = deliveries.filter((delivery) => delivery.status === "rejected")
     if (failures.length > 0) {
@@ -281,7 +282,7 @@ export const Forms: CollectionConfig = {
         if (operation === "create") {
           const { captureAcceptedFormAnalytics } = await import("@/lib/analytics/acceptedForm")
           await captureAcceptedFormAnalytics({ doc, payload: req.payload, logger: req.payload.logger })
-          await notifyTenantOfFormSubmission({ doc, payload: req.payload as any })
+          await notifyTenantOfFormSubmission({ doc, payload: req.payload  })
         }
         return doc
       },

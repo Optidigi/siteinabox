@@ -18,13 +18,13 @@ import { blockBaseFields } from "./baseFields"
 const richInline = (name: string, description: string) => ({
   name,
   type: "json" as const,
-  admin: { editor: "richTextInline", description } as any,
+  admin: { editor: "richTextInline", description },
 })
 
 const richBlock = (name: string, description: string) => ({
   name,
   type: "json" as const,
-  admin: { editor: "richTextBlock", description } as any,
+  admin: { editor: "richTextBlock", description },
 })
 
 const linkFields = () => [

@@ -2,6 +2,7 @@ import { Mail } from "lucide-react"
 import { validateSafeHref } from "@/lib/security/safeHref"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { richBlockField, richInlineField } from "./richTextFields"
 
 export const ContactSection: BlockWithMeta = {
   slug: "contactSection",
@@ -9,18 +10,8 @@ export const ContactSection: BlockWithMeta = {
   description: "Contact form or details",
   interfaceName: "ContactSectionBlock",
   fields: [
-    { name: "title", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Section heading for the contact section."
-      } as any
-    },
-    { name: "description", type: "json",
-      admin: {
-        editor: "richTextBlock",
-        description: "Supporting text above the contact form."
-      } as any
-    },
+    richInlineField("title", "Section heading for the contact section."),
+    richBlockField("description", "Supporting text above the contact form."),
     { name: "formName", type: "text", required: true, defaultValue: "Contact form",
       admin: { description: "Used as Forms.formName when storing submissions" } },
     { name: "submitLabel", type: "text", required: true, defaultValue: "Send",

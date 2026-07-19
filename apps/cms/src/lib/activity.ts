@@ -1,6 +1,8 @@
 import "server-only"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { Form, Page } from "@/payload-types"
+import { relationshipId } from "@/lib/relationshipId"
 
 export type ActivityEntry = {
   type: "page" | "media" | "settings" | "form"
@@ -29,26 +31,26 @@ export async function getRecentActivity(opts: { tenantId?: string | number | nul
     payload.find({ collection: "forms", overrideAccess: true, where, limit, sort: "-createdAt", depth: 1 })
   ])
 
-  const pageEntries: ActivityEntry[] = pages.docs.map((p: any) => ({
+  const pageEntries: ActivityEntry[] = pages.docs.map((p: Page): ActivityEntry => ({
     type: "page",
     id: String(p.id),
-    tenantId: String(typeof p.tenant === "object" && p.tenant ? p.tenant.id : p.tenant),
-    tenantSlug: typeof p.tenant === "object" && p.tenant ? p.tenant.slug : undefined,
-    tenantName: typeof p.tenant === "object" && p.tenant ? p.tenant.name : undefined,
+    tenantId: String(relationshipId(p.tenant) ?? ""),
+    tenantSlug: typeof p.tenant === "object" && p.tenant ? p.tenant.slug ?? undefined : undefined,
+    tenantName: typeof p.tenant === "object" && p.tenant ? p.tenant.name ?? undefined : undefined,
     pageSlug: p.slug ?? undefined,
     title: p.title,
-    status: p.status,
+    status: p.status ?? undefined,
     updatedAt: p.updatedAt,
-    updatedBy: typeof p.updatedBy === "object" && p.updatedBy ? p.updatedBy.email : undefined
+    updatedBy: typeof p.updatedBy === "object" && p.updatedBy ? p.updatedBy.email ?? undefined : undefined
   }))
-  const formEntries: ActivityEntry[] = forms.docs.map((f: any) => ({
+  const formEntries: ActivityEntry[] = forms.docs.map((f: Form): ActivityEntry => ({
     type: "form",
     id: String(f.id),
-    tenantId: String(typeof f.tenant === "object" && f.tenant ? f.tenant.id : f.tenant),
-    tenantSlug: typeof f.tenant === "object" && f.tenant ? f.tenant.slug : undefined,
-    tenantName: typeof f.tenant === "object" && f.tenant ? f.tenant.name : undefined,
+    tenantId: String(relationshipId(f.tenant) ?? ""),
+    tenantSlug: typeof f.tenant === "object" && f.tenant ? f.tenant.slug ?? undefined : undefined,
+    tenantName: typeof f.tenant === "object" && f.tenant ? f.tenant.name ?? undefined : undefined,
     title: `Form submission from ${f.email || "unknown"}`,
-    status: f.status,
+    status: f.status ?? undefined,
     updatedAt: f.createdAt
   }))
 
@@ -71,17 +73,17 @@ export async function getDashboardStats(tenantId: string | number | null) {
     payload.count({
       collection: "pages",
       overrideAccess: true,
-      where: { ...(tenantWhere as object), status: { equals: "published" } } as any
+      where: { ...(tenantWhere as object), status: { equals: "published" } }
     }),
     payload.count({
       collection: "pages",
       overrideAccess: true,
-      where: { ...(tenantWhere as object), updatedAt: { greater_than: wkAgo } } as any
+      where: { ...(tenantWhere as object), updatedAt: { greater_than: wkAgo } }
     }),
     payload.count({
       collection: "forms",
       overrideAccess: true,
-      where: { ...(tenantWhere as object), createdAt: { greater_than: monthAgo } } as any
+      where: { ...(tenantWhere as object), createdAt: { greater_than: monthAgo } }
     })
   ])
 
@@ -101,7 +103,7 @@ export async function getEditsTimeseries(tenantId: string | number | null, days 
   const pages = await payload.find({
     collection: "pages",
     overrideAccess: true,
-    where: { ...(tenantWhere as object), updatedAt: { greater_than: since.toISOString() } } as any,
+    where: { ...(tenantWhere as object), updatedAt: { greater_than: since.toISOString() } },
     limit: 1000,
     sort: "-updatedAt"
   })
@@ -111,8 +113,8 @@ export async function getEditsTimeseries(tenantId: string | number | null, days 
     const d = new Date(since.getTime() + i * 86400000).toISOString().slice(0, 10)
     buckets[d] = 0
   }
-  for (const p of pages.docs as any[]) {
-    const k = (p.updatedAt as string).slice(0, 10)
+  for (const p of pages.docs) {
+    const k = p.updatedAt.slice(0, 10)
     if (buckets[k] !== undefined) buckets[k]++
   }
   return Object.entries(buckets).map(([date, count]) => ({ date, count }))

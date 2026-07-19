@@ -1,6 +1,7 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
 import crypto from "node:crypto"
+import { queryRows } from "@/lib/record"
 
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)
@@ -29,8 +30,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   // Recompute them with the same stable serializer as the publisher after the
   // JSON migration; Postgres jsonb::text ordering is not that contract.
   const result = await db.execute(sql`SELECT "id", "snapshot" FROM "published_site_snapshots" WHERE "snapshot" IS NOT NULL`)
-  const rows = Array.isArray((result as any)?.rows) ? (result as any).rows : Array.from(result as any)
-  for (const row of rows as Array<{ id: string | number; snapshot: unknown }>) {
+  const rows = queryRows<{ id: string | number; snapshot: unknown }>(result)
+  for (const row of rows) {
     const hash = crypto.createHash("sha256").update(stableStringify(row.snapshot)).digest("hex")
     await db.execute(sql`UPDATE "published_site_snapshots" SET "snapshot_hash" = ${hash} WHERE "id" = ${row.id}`)
   }

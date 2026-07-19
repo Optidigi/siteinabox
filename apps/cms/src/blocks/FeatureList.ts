@@ -1,6 +1,7 @@
 import { ListChecks } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { richBlockField, richInlineField } from "./richTextFields"
 import { validateSafeHref } from "@/lib/security/safeHref"
 
 export const FeatureList: BlockWithMeta = {
@@ -9,24 +10,9 @@ export const FeatureList: BlockWithMeta = {
   description: "Feature highlights with icons",
   interfaceName: "FeatureListBlock",
   fields: [
-    { name: "eyebrow", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Optional short provider-backed eyebrow text."
-      } as any
-    },
-    { name: "title", type: "json",
-      admin: {
-        editor: "richTextInline",
-        description: "Section heading for the feature list."
-      } as any
-    },
-    { name: "intro", type: "json",
-      admin: {
-        editor: "richTextBlock",
-        description: "Introductory text above the feature items."
-      } as any
-    },
+    richInlineField("eyebrow", "Optional short provider-backed eyebrow text."),
+    richInlineField("title", "Section heading for the feature list."),
+    richBlockField("intro", "Introductory text above the feature items."),
     {
       name: "image",
       type: "upload",
@@ -36,18 +22,8 @@ export const FeatureList: BlockWithMeta = {
       },
     },
     { name: "features", type: "array", required: true, fields: [
-      { name: "title", type: "json",
-        admin: {
-          editor: "richTextInline",
-          description: "Feature heading."
-        } as any
-      },
-      { name: "description", type: "json",
-        admin: {
-          editor: "richTextBlock",
-          description: "Feature description."
-        } as any
-      },
+      richInlineField("title", "Feature heading."),
+      richBlockField("description", "Feature description."),
       { name: "icon", type: "text", admin: { description: "Approved icon name." } },
       { name: "image", type: "upload", relationTo: "media" },
       { name: "cta", type: "group", fields: [

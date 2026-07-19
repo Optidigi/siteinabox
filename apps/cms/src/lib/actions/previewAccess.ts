@@ -53,7 +53,7 @@ export async function sendPreviewAccessAction(
       email,
       clientSlug: grant.clientSlug,
     })
-    await (previewAuth.api as any).signInMagicLink({
+    await (previewAuth.api).signInMagicLink({
       body: {
         email,
         callbackURL: previewUrl,
