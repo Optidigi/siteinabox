@@ -10754,13 +10754,6 @@
       "text": "as any"
     },
     {
-      "file": "apps/cms/tests/unit/page-editor-explicit-save.test.ts",
-      "line": 42,
-      "column": 58,
-      "kind": "annotated-any",
-      "text": ": any"
-    },
-    {
       "file": "apps/cms/tests/unit/page-editor-save-route.test.ts",
       "line": 47,
       "column": 56,

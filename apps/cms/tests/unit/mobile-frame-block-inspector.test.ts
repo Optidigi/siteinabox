@@ -12,6 +12,7 @@ describe("mobile iframe native editor source contract", () => {
   it("hosts the canonical parent-owned section list, focused frame, and two-detent inspector", () => {
     const shell = read("apps/cms/src/components/editor/iframe/MobileFrameEditor.tsx")
     const pageForm = read("apps/cms/src/components/forms/PageForm.tsx")
+    const pageEditorCore = read("apps/cms/src/components/editor/usePageEditorCore.ts")
 
     expect(shell).toContain("export function MobileFrameEditor")
     expect(shell).toContain("<MobileSectionList")
@@ -54,8 +55,8 @@ describe("mobile iframe native editor source contract", () => {
     expect(pageForm).toContain("mobileFocusedSectionIndex")
     expect(pageForm).toContain("setMobileFocusedSectionIndex")
     expect(pageForm).toContain("frameMobileMode")
-    expect(pageForm).toContain("focusedBlockIndex: mobileFocusedSectionIndex")
-    expect(pageForm).toContain("showChrome: false")
+    expect(pageEditorCore).toContain("focusedBlockIndex: mobileFocusedSectionIndex")
+    expect(pageEditorCore).toContain("showChrome: false as const")
     expect(pageForm).not.toContain("showGutters")
     expect(pageForm).not.toContain("allowInlineEditing")
     expect(pageForm).toContain("<MobileFrameEditor")
