@@ -47,37 +47,38 @@ Ami Care uses the same validated provider-block, chrome, theme, media, preview,
 and published-snapshot path as every generated tenant. Tenant identity affects
 content and routing only; it never selects a source-code renderer.
 
-### Typed pilot variants
+### Typed public block variants
 
-A small set of shadcnui-blocks variants are migrating from pinned upstream
-literals with `Provider*` runtime slots to owned typed components under
-`packages/site-renderer/src/providers/shadcnui-blocks/variants/<name>/`.
-Shared helpers for the migrated pilots live in
+All **132** public shadcnui-blocks block variants are direct-bound
+(`bindings.direct` = 132, `bindings.variants` = 0). Each renders through an
+owned typed component under
+`packages/site-renderer/src/providers/shadcnui-blocks/variants/<name>/`
+with a typed `view.tsx` mapper. Shared helpers live in
 `packages/site-renderer/src/providers/shadcnui-blocks/typed/` (rich-text
 preview fixtures, element paths, and edit-slot renderers). The compile-time
-registry in `typed/registry.ts` lists exactly the migrated pilots
-(`cta-01` … `cta-07`, `logo-cloud-01` … `logo-cloud-15`, `faq-01` … `faq-14`,
-`features-01` … `features-18`, `hero-01` … `hero-08`, `stats-01` … `stats-11`) and ties each variant ID to its
-canonical block type, direct bindings, and view module.
+registry in `typed/registry.ts` ties each variant ID to its canonical block
+type, direct bindings, and view module. Catalog integrity asserts that public
+block `view.tsx` files do not use `LiteralProviderVariantView` or `Provider*`
+binding runtime. Generated dispatch in `block-views.generated.tsx` imports
+those typed views; it is not a literal `Provider*` fallback path.
 
-Legacy behavior adapters (`contact-02`) still use audited `Provider*`
-views and are tracked beside the typed registry; they are not forced into
-the shared typed helper surface until a pilot migration needs them.
-All other block variants continue to render through pinned literals and
-`block-views.generated.tsx` dispatch.
+Chrome variants, system templates, and runtime support files may still use
+literal helpers (for example `runtime/literal-view.tsx` and
+`literal-previews.generated.tsx`). Do not describe chrome as fully typed
+unless source and tests prove it.
 
 Re-import and scaffold workflows live under `scripts/shadcnui-blocks/`:
 
 - `node scripts/import-shadcnui-blocks.mjs` acquires the pinned upstream
   commit, applies generic literal normalization, runs legacy binding compilation
-  only for non-`bindings.direct` variants, and refreshes `inventory.json`.
-- Direct-binding and typed-pilot variants keep owned sources on re-import; the
-  importer skips `compileBlockBindings` for every `bindings.direct` entry.
+  only for non-`bindings.direct` variants (currently none public), and
+  refreshes `inventory.json`.
+- Direct-bound variants keep owned sources on re-import; the importer skips
+  `compileBlockBindings` for every `bindings.direct` entry.
 - `node scripts/import-shadcnui-blocks.mjs --scaffold=<upstream-name>
   --upstream-literal=@path/to/literal.tsx` creates a typed adaptation scaffold
   (normalized `upstream-literal.tsx`, stub component, view mapper, fixture stub).
-  It refuses to overwrite typed pilots or direct-bound variants unless `--force`
-  is passed.
+  It refuses to overwrite direct-bound variants unless `--force` is passed.
 - Variant-specific literal surgery is centralized in
   `scripts/shadcnui-blocks/variant-special-cases.mjs`; generic normalization
   in `adapt-literal.mjs` must remain variant-agnostic.
