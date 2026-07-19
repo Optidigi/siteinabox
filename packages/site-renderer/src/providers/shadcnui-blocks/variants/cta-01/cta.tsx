@@ -5,33 +5,12 @@ import * as React from "react"
 import type { LinkRef, RtRoot } from "@siteinabox/contracts"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import type { BlockEditSlots } from "../../../../blocks/types"
+import { renderCtaLink } from "../../typed/actions"
 import { cta01Literal } from "../../typed/fixtures/cta-01"
-import { isExternalHref } from "../../typed/links"
-import { elementPath } from "../../typed/paths"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { fieldInlineRichText } from "../../typed/rich-text"
 
 const BLOCK_TYPE = "cta" as const
-
-const renderPrimary = (editSlots: BlockEditSlots | undefined, primary: LinkRef, blockIndex: number) => {
-  const href = primary.href?.trim()
-  const label = primary.label?.trim()
-  if (!href || !label) return null
-  const path = elementPath(blockIndex, "primary")
-  if (editSlots?.renderCta) {
-    return editSlots.renderCta({
-      name: `${BLOCK_TYPE}.primary`,
-      value: { ...primary, href, label },
-      elementPath: path,
-    })
-  }
-  const external = primary.external ?? isExternalHref(href)
-  return (
-    <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined}>
-      {label}
-    </a>
-  )
-}
 
 export type Cta01Props = TypedVariantBaseProps & {
   headline: RtRoot
@@ -40,7 +19,7 @@ export type Cta01Props = TypedVariantBaseProps & {
 }
 
 export function Cta01({ headline, description, primary, blockIndex, editSlots, rootAttributes }: Cta01Props) {
-  const primaryAction = renderPrimary(editSlots, primary ?? {}, blockIndex)
+  const primaryAction = renderCtaLink(editSlots, primary ?? {}, blockIndex, BLOCK_TYPE, "primary")
 
   return (
     <div className="px-0 py-20 sm:px-6" {...rootAttributes}>

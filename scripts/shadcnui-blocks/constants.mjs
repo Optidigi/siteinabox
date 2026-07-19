@@ -29,7 +29,17 @@ export const publicCategories = new Set([
 ])
 
 /** Upstream names with owned typed components (not upstream literal rewrites). */
-export const TYPED_PILOT_UPSTREAM_NAMES = new Set(["cta-01", "logo-cloud-01", "faq-01"])
+export const TYPED_PILOT_UPSTREAM_NAMES = new Set([
+  "cta-01",
+  "cta-02",
+  "cta-03",
+  "cta-04",
+  "cta-05",
+  "cta-06",
+  "cta-07",
+  "logo-cloud-01",
+  "faq-01",
+])
 
 /** Upstream names with audited behavior-adapter views (Provider* literals preserved). */
 export const LEGACY_BEHAVIOR_ADAPTER_NAMES = new Set(["contact-02", "features-03"])

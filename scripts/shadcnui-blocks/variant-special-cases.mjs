@@ -81,16 +81,6 @@ export const VARIANT_SPECIAL_CASES = {
       ].join("\n")
     },
   },
-  "cta-04": {
-    adaptLiteral({ contents }) {
-      return adaptThemeColors(contents, GRID_LINE_REPLACEMENTS)
-    },
-  },
-  "cta-05": {
-    adaptLiteral({ contents }) {
-      return adaptThemeColors(contents, GRID_LINE_REPLACEMENTS)
-    },
-  },
   "features-03": {
     slotOverrides({ variantSlots }) {
       if (variantSlots.features) {

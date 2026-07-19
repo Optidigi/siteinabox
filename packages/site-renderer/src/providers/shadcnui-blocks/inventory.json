@@ -17704,7 +17704,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-01/cta.tsx",
-          "sha256": "sha256:a921c83d3844be641abc288a2738ca63d68ec47bf03d4a8c1236b32bfb7211b3"
+          "sha256": "sha256:1bac13d68267f4a80813e6e971dcb5414069a5bfa969951d0f6c3b66dfd8cda3"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-01/view.tsx",
@@ -17965,11 +17965,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-02/cta.tsx",
-          "sha256": "sha256:aed89d60a0d3539c57d40d2caa93809f7f1147fecca7c528d1d43c4142b6b8f1"
+          "sha256": "sha256:97e76f9367784241a6a0c04ab7b240e19c0e6e0fdc1e8f639fd96203871b99c9"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-02/view.tsx",
-          "sha256": "sha256:26816bb9782aed0fc01e572139c6ee0aeac5db895a4c63ecf0b63d31e202cf07"
+          "sha256": "sha256:3d3d47748615e55e9d2722ce27d49bc521811ad3983e8250bb8f19a5a0a52db0"
         }
       ]
     },
@@ -18226,11 +18226,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-03/cta.tsx",
-          "sha256": "sha256:5defb8f832d8fa69830ec95e9e9a177399f492cf462cd3a66ce54f8e9d0d0111"
+          "sha256": "sha256:4be1f897dc2a0de26a1f7ab7fb088caa11f02ff9bdd480577a69c6d3a2e7b5d1"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-03/view.tsx",
-          "sha256": "sha256:e30550da280b160c1ccdd2ddf386080675aa8bee3359a36e46c4bc4b67ac52c6"
+          "sha256": "sha256:496409b7103089fc627032978f046602df92cab033dbaf51db4ad4dc4b43906d"
         }
       ]
     },
@@ -18487,11 +18487,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-04/cta.tsx",
-          "sha256": "sha256:732b36ece44f7bf3038e74dc1470949ff2a8ba7b983cf8e1f59e8c07a65da2fc"
+          "sha256": "sha256:9b30133fea49b8d691ca7219c4b10de561379e26779870b6b60124af8626cb54"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-04/view.tsx",
-          "sha256": "sha256:0048adfcea61137304380a5498aad0986049404c6585351b4a11d6b957510bb9"
+          "sha256": "sha256:edaeedc331e115e4eb80dafda2df746e29b847c24d5802240b8c4b8b05eda8e0"
         }
       ]
     },
@@ -18744,11 +18744,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-05/cta.tsx",
-          "sha256": "sha256:17fed4d1c93b5bcae5c3d62ab0c881b3c152bb5934bea377c2ffa94973a19325"
+          "sha256": "sha256:59453f62fa7435241a4f0765e935fbae99602c84dbc59fb31cec0739c25c63f2"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-05/view.tsx",
-          "sha256": "sha256:dfc16f69abb8b90d06445c45d5d47d107936b9f9a9f4f68b8b269153689548aa"
+          "sha256": "sha256:7f05e406ad110421d719ac70f687798bb4da09f4c8758b887ce15b2b654cac2e"
         }
       ]
     },
@@ -19002,11 +19002,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-06/cta.tsx",
-          "sha256": "sha256:7dda4df1b63745ea685c241b7508bd9f48bc9db293e5f18f33d0bc51faebb998"
+          "sha256": "sha256:3b3ca2691a1134a506069eabb5270947d3472d38cc86f6b221808e37fbac638c"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-06/view.tsx",
-          "sha256": "sha256:a0423d15c47724dedab1928a5f97168b3be94242aaedd76e76f79049c2ca68e3"
+          "sha256": "sha256:90e0fc323311b03222b2e82c397ffef7f0b6e608a99bc086b23cfb914b434d2b"
         }
       ]
     },
@@ -19253,11 +19253,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-07/cta.tsx",
-          "sha256": "sha256:2fe22778eab5d58108e890f11194c7c6d343e10d1fe4beb7418bdd455dae31d1"
+          "sha256": "sha256:2238fdc3ee3918b3b50f3feee6a142d514e11e2b57c6007a8d508840a47e15c6"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-07/view.tsx",
-          "sha256": "sha256:f69e0757d9602dd5274038525c8bcf5de35a0d9cb852898fb28e3c9bcd907d2d"
+          "sha256": "sha256:49b1961a39b36d0eb40894eeccff247d1874e539ef830330c8f3d05514d225bb"
         }
       ]
     },

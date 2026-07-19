@@ -12959,48 +12959,6 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-02/cta.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-03/cta.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-04/cta.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-05/cta.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-06/cta.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-07/cta.tsx",
-      "line": 1,
-      "column": 4,
-      "kind": "ts-nocheck",
-      "text": "@ts-nocheck"
-    },
-    {
       "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/faq-02/faq.tsx",
       "line": 1,
       "column": 4,

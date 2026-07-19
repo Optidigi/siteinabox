@@ -5,6 +5,12 @@
   "direct": {
     "contact-02": ["title", "description", "formName", "submitLabel", "fields", "provider"],
     "cta-01": ["headline", "description", "primary"],
+    "cta-02": ["backgroundImage", "headline", "description", "primary"],
+    "cta-03": ["backgroundImage", "headline", "description", "primary"],
+    "cta-04": ["backgroundImage", "headline", "description", "primary"],
+    "cta-05": ["headline", "description", "primary", "secondary"],
+    "cta-06": ["headline", "description", "primary", "secondary"],
+    "cta-07": ["headline", "description", "primary"],
     "features-03": ["eyebrow", "title", "intro", "features"],
     "logo-cloud-01": ["title", "logos"],
     "faq-01": ["title", "items"]

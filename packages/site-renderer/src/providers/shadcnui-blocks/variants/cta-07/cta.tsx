@@ -1,26 +1,16 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-"use client";
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import type { SVGProps } from "react";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+// Owned typed adaptation of upstream shadcnui-blocks cta-07 (MIT, see ../../LICENSE).
+"use client"
 
-const CTA = () => {
-  return (
-    <div className="px-0 py-16 sm:px-6">
-      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center justify-center rounded-3xl bg-foreground py-16 text-background dark:bg-foreground/7 dark:text-foreground">
-        <Logo className="size-14" />
-        <h2 className="mt-10 font-medium text-5xl tracking-tighter"><ProviderField field="headline" fallback={<>
-          Ready to Build Faster?
-        </>} inline /></h2>
-        <p className="mx-auto mt-6 max-w-xl text-center text-muted-foreground text-xl/normal"><ProviderField field="description" fallback={<>
-          Join thousands of developers using our premium component library to
-          ship beautiful UIs in minutes, not hours.
-        </>} inline /></p>
-        <Button className="mt-8" asChild><ProviderAction field="primary" fallback={"Get Started"} decoration="after"></ProviderAction></Button>
-      </div>
-    </div>
-  );
-};
+import * as React from "react"
+import type { SVGProps } from "react"
+import type { LinkRef, RtRoot } from "@siteinabox/contracts"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { renderCtaLink } from "../../typed/actions"
+import { cta07Literal } from "../../typed/fixtures/cta-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import { fieldInlineRichText } from "../../typed/rich-text"
+
+const BLOCK_TYPE = "cta" as const
 
 export const Logo = (props: SVGProps<SVGSVGElement>) => (
   <svg
@@ -80,10 +70,7 @@ export const Logo = (props: SVGProps<SVGSVGElement>) => (
       >
         <feFlood floodOpacity="0" result="BackgroundImageFix" />
         <feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape" />
-        <feGaussianBlur
-          result="effect1_foregroundBlur_748_4624"
-          stdDeviation="31.25"
-        />
+        <feGaussianBlur result="effect1_foregroundBlur_748_4624" stdDeviation="31.25" />
       </filter>
       <clipPath id="cs_clip_1_flower-10">
         <path d="M0 0H200V200H0z" fill="#fff" />
@@ -102,6 +89,46 @@ export const Logo = (props: SVGProps<SVGSVGElement>) => (
       </filter>
     </defs>
   </svg>
-);
+)
 
-export default CTA;
+export type Cta07Props = TypedVariantBaseProps & {
+  headline: RtRoot
+  description?: RtRoot | null
+  primary?: LinkRef | null
+}
+
+export function Cta07({ headline, description, primary, blockIndex, editSlots, rootAttributes }: Cta07Props) {
+  const primaryAction = renderCtaLink(editSlots, primary ?? {}, blockIndex, BLOCK_TYPE, "primary")
+
+  return (
+    <div className="px-0 py-16 sm:px-6" {...rootAttributes}>
+      <div className="relative mx-auto flex w-full max-w-5xl flex-col items-center justify-center rounded-3xl bg-foreground py-16 text-background dark:bg-foreground/7 dark:text-foreground">
+        <Logo className="size-14" />
+        <h2 className="mt-10 font-medium text-5xl tracking-tighter">
+          {fieldInlineRichText(editSlots, BLOCK_TYPE, "headline", headline, blockIndex)}
+        </h2>
+        {description ? (
+          <p className="mx-auto mt-6 max-w-xl text-center text-muted-foreground text-xl/normal">
+            {fieldInlineRichText(editSlots, BLOCK_TYPE, "description", description, blockIndex)}
+          </p>
+        ) : null}
+        {primaryAction ? (
+          <Button className="mt-8" asChild>
+            {primaryAction}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export default function Cta07Literal() {
+  return (
+    <Cta07
+      headline={cta07Literal.headline}
+      description={cta07Literal.description}
+      primary={cta07Literal.primary}
+      blockIndex={0}
+    />
+  )
+}
