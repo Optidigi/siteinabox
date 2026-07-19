@@ -107,6 +107,28 @@ import Testimonials10View from "../variants/testimonials-10/view"
 import Testimonials11View from "../variants/testimonials-11/view"
 import Testimonials12View from "../variants/testimonials-12/view"
 import Testimonials13View from "../variants/testimonials-13/view"
+import Timeline01View from "../variants/timeline-01/view"
+import Timeline02View from "../variants/timeline-02/view"
+import Timeline03View from "../variants/timeline-03/view"
+import Timeline04View from "../variants/timeline-04/view"
+import Timeline05View from "../variants/timeline-05/view"
+import Timeline06View from "../variants/timeline-06/view"
+import Timeline07View from "../variants/timeline-07/view"
+import Integrations01View from "../variants/integrations-01/view"
+import Integrations02View from "../variants/integrations-02/view"
+import Integrations03View from "../variants/integrations-03/view"
+import Integrations04View from "../variants/integrations-04/view"
+import Integrations05View from "../variants/integrations-05/view"
+import Blog01View from "../variants/blog-01/view"
+import Blog02View from "../variants/blog-02/view"
+import Blog03View from "../variants/blog-03/view"
+import Blog04View from "../variants/blog-04/view"
+import Blog05View from "../variants/blog-05/view"
+import Blog06View from "../variants/blog-06/view"
+import Contact01View from "../variants/contact-01/view"
+import Contact03View from "../variants/contact-03/view"
+import CarouselBlock01View from "../variants/carousel-block-01/view"
+import CarouselBlock02View from "../variants/carousel-block-02/view"
 
 export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.cta-01",
@@ -218,6 +240,28 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.testimonials-11",
   "shadcnui-blocks.testimonials-12",
   "shadcnui-blocks.testimonials-13",
+  "shadcnui-blocks.timeline-01",
+  "shadcnui-blocks.timeline-02",
+  "shadcnui-blocks.timeline-03",
+  "shadcnui-blocks.timeline-04",
+  "shadcnui-blocks.timeline-05",
+  "shadcnui-blocks.timeline-06",
+  "shadcnui-blocks.timeline-07",
+  "shadcnui-blocks.integrations-01",
+  "shadcnui-blocks.integrations-02",
+  "shadcnui-blocks.integrations-03",
+  "shadcnui-blocks.integrations-04",
+  "shadcnui-blocks.integrations-05",
+  "shadcnui-blocks.blog-01",
+  "shadcnui-blocks.blog-02",
+  "shadcnui-blocks.blog-03",
+  "shadcnui-blocks.blog-04",
+  "shadcnui-blocks.blog-05",
+  "shadcnui-blocks.blog-06",
+  "shadcnui-blocks.contact-01",
+  "shadcnui-blocks.contact-03",
+  "shadcnui-blocks.carousel-block-01",
+  "shadcnui-blocks.carousel-block-02",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -231,7 +275,7 @@ export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[numbe
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team" | "testimonials"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList" | "hero" | "stats" | "pricing" | "team" | "testimonials" | "timeline" | "blogCards" | "contactDetails" | "gallery"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -257,6 +301,14 @@ const PRICING_TITLE_INTRO_PLANS = ["title", "intro", "plans"] as const
 const PRICING_PLANS_ONLY = ["plans"] as const
 const TEAM_TITLE_INTRO_MEMBERS = ["title", "intro", "members"] as const
 const TESTIMONIALS_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
+const TIMELINE_ITEMS = ["items"] as const
+const INTEGRATIONS_TITLE_INTRO_LOGOS = ["title", "intro", "logos"] as const
+const BLOG_TITLE_POSTS = ["title", "posts"] as const
+const BLOG_POSTS_TITLE = ["posts", "title"] as const
+const BLOG_TITLE_INTRO_CTA_POSTS_SECONDARY = ["title", "intro", "cta", "posts", "secondary"] as const
+const CONTACT_TITLE_DESCRIPTION_ITEMS = ["title", "description", "items"] as const
+const GALLERY_TITLE_INTRO_CTA_IMAGES = ["title", "intro", "cta", "images"] as const
+const GALLERY_TITLE_INTRO_IMAGES = ["title", "intro", "images"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -912,6 +964,138 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "testimonials",
     directFields: TESTIMONIALS_TITLE_INTRO_ITEMS,
     View: Testimonials13View,
+  },
+  "shadcnui-blocks.timeline-01": {
+    upstreamName: "timeline-01",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline01View,
+  },
+  "shadcnui-blocks.timeline-02": {
+    upstreamName: "timeline-02",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline02View,
+  },
+  "shadcnui-blocks.timeline-03": {
+    upstreamName: "timeline-03",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline03View,
+  },
+  "shadcnui-blocks.timeline-04": {
+    upstreamName: "timeline-04",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline04View,
+  },
+  "shadcnui-blocks.timeline-05": {
+    upstreamName: "timeline-05",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline05View,
+  },
+  "shadcnui-blocks.timeline-06": {
+    upstreamName: "timeline-06",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline06View,
+  },
+  "shadcnui-blocks.timeline-07": {
+    upstreamName: "timeline-07",
+    blockType: "timeline",
+    directFields: TIMELINE_ITEMS,
+    View: Timeline07View,
+  },
+  "shadcnui-blocks.integrations-01": {
+    upstreamName: "integrations-01",
+    blockType: "logoCloud",
+    directFields: INTEGRATIONS_TITLE_INTRO_LOGOS,
+    View: Integrations01View,
+  },
+  "shadcnui-blocks.integrations-02": {
+    upstreamName: "integrations-02",
+    blockType: "logoCloud",
+    directFields: INTEGRATIONS_TITLE_INTRO_LOGOS,
+    View: Integrations02View,
+  },
+  "shadcnui-blocks.integrations-03": {
+    upstreamName: "integrations-03",
+    blockType: "logoCloud",
+    directFields: INTEGRATIONS_TITLE_INTRO_LOGOS,
+    View: Integrations03View,
+  },
+  "shadcnui-blocks.integrations-04": {
+    upstreamName: "integrations-04",
+    blockType: "logoCloud",
+    directFields: INTEGRATIONS_TITLE_INTRO_LOGOS,
+    View: Integrations04View,
+  },
+  "shadcnui-blocks.integrations-05": {
+    upstreamName: "integrations-05",
+    blockType: "logoCloud",
+    directFields: INTEGRATIONS_TITLE_INTRO_LOGOS,
+    View: Integrations05View,
+  },
+  "shadcnui-blocks.blog-01": {
+    upstreamName: "blog-01",
+    blockType: "blogCards",
+    directFields: BLOG_TITLE_POSTS,
+    View: Blog01View,
+  },
+  "shadcnui-blocks.blog-02": {
+    upstreamName: "blog-02",
+    blockType: "blogCards",
+    directFields: BLOG_TITLE_POSTS,
+    View: Blog02View,
+  },
+  "shadcnui-blocks.blog-03": {
+    upstreamName: "blog-03",
+    blockType: "blogCards",
+    directFields: BLOG_POSTS_TITLE,
+    View: Blog03View,
+  },
+  "shadcnui-blocks.blog-04": {
+    upstreamName: "blog-04",
+    blockType: "blogCards",
+    directFields: BLOG_TITLE_INTRO_CTA_POSTS_SECONDARY,
+    View: Blog04View,
+  },
+  "shadcnui-blocks.blog-05": {
+    upstreamName: "blog-05",
+    blockType: "blogCards",
+    directFields: BLOG_TITLE_INTRO_CTA_POSTS_SECONDARY,
+    View: Blog05View,
+  },
+  "shadcnui-blocks.blog-06": {
+    upstreamName: "blog-06",
+    blockType: "blogCards",
+    directFields: BLOG_TITLE_INTRO_CTA_POSTS_SECONDARY,
+    View: Blog06View,
+  },
+  "shadcnui-blocks.contact-01": {
+    upstreamName: "contact-01",
+    blockType: "contactDetails",
+    directFields: CONTACT_TITLE_DESCRIPTION_ITEMS,
+    View: Contact01View,
+  },
+  "shadcnui-blocks.contact-03": {
+    upstreamName: "contact-03",
+    blockType: "contactDetails",
+    directFields: CONTACT_TITLE_DESCRIPTION_ITEMS,
+    View: Contact03View,
+  },
+  "shadcnui-blocks.carousel-block-01": {
+    upstreamName: "carousel-block-01",
+    blockType: "gallery",
+    directFields: GALLERY_TITLE_INTRO_CTA_IMAGES,
+    View: CarouselBlock01View,
+  },
+  "shadcnui-blocks.carousel-block-02": {
+    upstreamName: "carousel-block-02",
+    blockType: "gallery",
+    directFields: GALLERY_TITLE_INTRO_IMAGES,
+    View: CarouselBlock02View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown

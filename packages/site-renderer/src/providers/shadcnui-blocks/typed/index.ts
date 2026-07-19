@@ -12,6 +12,14 @@ export * from "./fixtures/pricing-01"
 export * from "./fixtures/pricing-family"
 export * from "./fixtures/team-01"
 export * from "./fixtures/team-family"
+export * from "./fixtures/testimonials-01"
+export * from "./fixtures/testimonials-family"
+export * from "./fixtures/timeline-01"
+export * from "./fixtures/timeline-family"
+export * from "./fixtures/integrations-family"
+export * from "./fixtures/blog-family"
+export * from "./fixtures/contact-family"
+export * from "./fixtures/gallery-family"
 export { renderCtaLink, type CtaLinkField } from "./actions"
 export { providerCircuitBoardStyle } from "./grid-pattern"
 export { renderBackgroundImage } from "./images"
@@ -102,6 +110,75 @@ export {
   renderTeamTitle,
   sliceTeamMembers,
 } from "./team-fields"
+export {
+  TESTIMONIALS_BLOCK_TYPE,
+  type TestimonialItem,
+  renderTestimonialAuthor,
+  renderTestimonialAvatarImage,
+  renderTestimonialAvatarWithImage,
+  renderTestimonialQuote,
+  renderTestimonialRole,
+  renderTestimonialsIntro,
+  renderTestimonialsTitle,
+  sliceTestimonialItems,
+} from "./testimonials-fields"
+export {
+  TIMELINE_BLOCK_TYPE,
+  isTimelineItemCompleted,
+  type TimelineItem,
+  renderTimelineIntro,
+  renderTimelineItemDate,
+  renderTimelineItemDescription,
+  renderTimelineItemLabel,
+  renderTimelineItemTag,
+  renderTimelineItemTitle,
+  renderTimelineTitle,
+  sliceTimelineItems,
+} from "./timeline-fields"
+export {
+  INTEGRATIONS_BLOCK_TYPE,
+  type IntegrationLogoItem,
+  renderIntegrationDescription,
+  renderIntegrationLogo,
+  renderIntegrationName,
+  renderIntegrationsIntro,
+  renderIntegrationsTitle,
+  sliceIntegrationLogos,
+} from "./integrations-fields"
+export {
+  BLOG_BLOCK_TYPE,
+  formatBlogDate,
+  type BlogPostItem,
+  renderBlogCta,
+  renderBlogIntro,
+  renderBlogPostAuthor,
+  renderBlogPostDate,
+  renderBlogPostExcerpt,
+  renderBlogPostImage,
+  renderBlogPostTitle,
+  renderBlogTitle,
+  sliceBlogPosts,
+} from "./blog-fields"
+export {
+  CONTACT_DETAILS_BLOCK_TYPE,
+  type ContactDetailsItem,
+  renderContactDetailsDescription,
+  renderContactDetailsTitle,
+  renderContactItemDescription,
+  renderContactItemLink,
+  renderContactItemTitle,
+  renderContactItemValue,
+  resolveContactIcon,
+} from "./contact-details-fields"
+export {
+  GALLERY_BLOCK_TYPE,
+  type GalleryImageItem,
+  renderGalleryCta,
+  renderGalleryImage,
+  renderGalleryIntro,
+  renderGalleryTitle,
+  sliceGalleryImages,
+} from "./gallery-fields"
 export { fieldInlineRichText, renderBlockRichText, renderInlineRichText } from "./rich-text"
 export {
   BEHAVIOR_ADAPTER_IDS,

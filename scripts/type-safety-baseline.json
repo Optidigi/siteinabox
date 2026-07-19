@@ -12882,63 +12882,63 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-01/blog.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-01/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/blog.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/blog.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-03/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/blog.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-04/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/blog.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-05/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/blog.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-06/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/carousel.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-02/carousel.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-02/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/contact.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
@@ -12952,7 +12952,7 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/contact.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
@@ -13092,35 +13092,35 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-01/integrations.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-01/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-02/integrations.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-02/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-03/integrations.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-03/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-04/integrations.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-04/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-05/integrations.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/integrations-05/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
@@ -13344,49 +13344,49 @@
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-01/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-01/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-02/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-02/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-03/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-03/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-04/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-04/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-05/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-05/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-06/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-06/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",
       "text": "@ts-nocheck"
     },
     {
-      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-07/timeline.tsx",
+      "file": "packages/site-renderer/src/providers/shadcnui-blocks/variants/timeline-07/upstream-literal.tsx",
       "line": 1,
       "column": 4,
       "kind": "ts-nocheck",

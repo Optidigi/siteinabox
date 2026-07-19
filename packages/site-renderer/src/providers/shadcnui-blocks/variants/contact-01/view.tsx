@@ -1,7 +1,24 @@
 import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../../blocks/types"
-import Literal from "./contact"
-import { LiteralProviderVariantView } from "../../runtime/literal-view"
+import { providerBlockAttributes } from "../../runtime/block"
+import type { TypedPilotId } from "../../typed/registry"
+import { Contact01 } from "./contact"
+
 type VariantBlock = Extract<Block, { blockType: "contactDetails" }>
-export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <LiteralProviderVariantView Literal={Literal} model={{ block, options }} variant="shadcnui-blocks.contact-01" /> }
+
+const VARIANT: TypedPilotId = "shadcnui-blocks.contact-01"
+
+export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) {
+  return (
+    <Contact01
+      title={block.title}
+      description={block.description}
+      items={block.items ?? []}
+
+      blockIndex={options.index}
+      editSlots={options.editSlots}
+      rootAttributes={providerBlockAttributes({ block, options }, VARIANT)}
+    />
+  )
+}

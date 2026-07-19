@@ -1,92 +1,87 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import Image from "../../runtime/image";
-import { ArrowUpRight } from "lucide-react";
-import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+// Owned typed adaptation of upstream shadcnui-blocks integrations-02 (MIT, see ../../LICENSE).
+"use client"
 
-export default function Integrations() {
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import type { MediaResolver } from "../../../../media"
+import { ArrowUpRight } from "lucide-react"
+import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { integrations02CmsLike } from "../../typed/fixtures/integrations-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import {
+  renderIntegrationLogo,
+  renderIntegrationName,
+  renderIntegrationsIntro,
+  renderIntegrationsTitle,
+  sliceIntegrationLogos,
+  type IntegrationLogoItem,
+} from "../../typed/integrations-fields"
+
+const MAX_LOGOS = 12
+
+export type Integrations02Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  logos: IntegrationLogoItem[]
+  mediaResolver?: MediaResolver
+}
+
+export function Integrations02({
+  title,
+  intro,
+  logos,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  rootAttributes,
+}: Integrations02Props) {
+  const titleContent = renderIntegrationsTitle(editSlots, title, blockIndex)
+  const introContent = renderIntegrationsIntro(editSlots, intro, blockIndex)
+  const displayLogos = sliceIntegrationLogos(logos, MAX_LOGOS)
+
   return (
-    <div className="my-12 px-6 sm:my-14">
+    <div className="my-12 px-6 sm:my-14" {...rootAttributes}>
       <div className="mx-auto flex w-full max-w-md flex-col rounded-lg border bg-muted p-1 shadow-lg/2">
         <div className="rounded-md border bg-card p-6">
-          <h2 className="font-medium text-2xl tracking-tight"><ProviderField field="title" fallback={<>
-            Our Integrations
-          </>} inline /></h2>
-          <p className="mt-1.5 text-pretty text-muted-foreground"><ProviderField field="intro" fallback={<>
-            Connect your favorite tools and services to your account and start
-            using them in your app.
-          </>} inline /></p>
+          {titleContent ? <h2 className="font-medium text-2xl tracking-tight">{titleContent}</h2> : null}
+          {introContent ? <p className="mt-1.5 text-pretty text-muted-foreground">{introContent}</p> : null}
           <div className="mx-auto mt-8 flex w-full flex-col gap-3">
-            {<ProviderItems field="logos" templates={integrations}>{(providerItems) => providerItems.map((integration) => (
-              <div
-                className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3"
-                key={integration.title}
-              >
-                <Image
-                  alt={integration.title}
-                  className="size-8 rounded"
-                  src={`about:blank#upstream-sha256:af5ee`}
-                />
-                <h3 className="font-medium">{integration.title}</h3>
-
-                {integration.status === "connected" ? (
-                  <Badge className="ms-auto h-7 min-w-26 rounded-lg bg-emerald-600/10 px-3 text-emerald-600 text-sm">
-                    Connected
-                  </Badge>
-                ) : (
-                  <Button
-                    className="ms-auto h-7 min-w-26"
-                    size="sm"
-                    variant="outline"
-                  >
-                    Connect <ArrowUpRight />
-                  </Button>
-                )}
-              </div>
-            ))}</ProviderItems>}
+            {displayLogos.map((logo, itemIndex) => {
+              const name = renderIntegrationName(editSlots, logo.name, blockIndex, itemIndex)
+              if (!name && !logo.image) return null
+              return (
+                <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3" key={itemIndex}>
+                  {renderIntegrationLogo(editSlots, mediaResolver, logo, blockIndex, itemIndex, {
+                    className: "size-8 rounded",
+                  })}
+                  {name ? <h3 className="font-medium">{name}</h3> : null}
+                  {logo.status === "connected" ? (
+                    <Badge className="ms-auto h-7 min-w-26 rounded-lg bg-emerald-600/10 px-3 text-emerald-600 text-sm">
+                      Connected
+                    </Badge>
+                  ) : (
+                    <Button className="ms-auto h-7 min-w-26" size="sm" variant="outline">
+                      Connect <ArrowUpRight />
+                    </Button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-const integrations = [
-  {
-    title: "PostHog",
-    description: "PostHog is an open-source product analytics tool.",
-    url: "about:blank#upstream-sha256:13e1e",
-    status: "connected",
-  },
-  {
-    title: "Mailchimp",
-    description:
-      "Marketing platform for creating, sending, and automating emails.",
-    url: "about:blank#upstream-sha256:846e2",
-  },
-  {
-    title: "Webflow",
-    description: "Website builder for creating and managing websites.",
-    url: "about:blank#upstream-sha256:3b7f0",
-    status: "pending",
-  },
-  {
-    title: "Stripe",
-    description: "Payment processing for online businesses and platforms.",
-    url: "about:blank#upstream-sha256:9abab",
-  },
-  {
-    title: "Sanity",
-    description:
-      "Content management system for creating and managing websites.",
-    url: "about:blank#upstream-sha256:5aff9",
-    status: "pending",
-  },
-  {
-    title: "Zapier",
-    description:
-      "Automation tool for connecting and syncing data between different apps and services.",
-    url: "about:blank#upstream-sha256:0e878",
-  },
-];
+export default function Integrations02Literal() {
+  return (
+    <Integrations02
+      title={integrations02CmsLike.title}
+      intro={integrations02CmsLike.intro}
+      logos={integrations02CmsLike.logos}
+      blockIndex={0}
+    />
+  )
+}

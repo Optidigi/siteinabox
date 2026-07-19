@@ -10,6 +10,7 @@ export type CtaLinkField = "primary" | "secondary"
 
 type RenderCtaLinkOptions = {
   trailingIcon?: React.ReactNode
+  leadingIcon?: React.ReactNode
 }
 
 export const renderCtaLink = (
@@ -17,7 +18,7 @@ export const renderCtaLink = (
   value: LinkRef,
   blockIndex: number,
   blockType: string,
-  field: CtaLinkField,
+  field: string,
   options?: RenderCtaLinkOptions,
 ) => {
   const href = value.href?.trim()
@@ -34,6 +35,7 @@ export const renderCtaLink = (
   const external = value.external ?? isExternalHref(href)
   return (
     <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined}>
+      {options?.leadingIcon}
       {label}
       {options?.trailingIcon}
     </a>

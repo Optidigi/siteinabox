@@ -111,6 +111,28 @@ import Testimonials10View from "./variants/testimonials-10/view.tsx"
 import Testimonials11View from "./variants/testimonials-11/view.tsx"
 import Testimonials12View from "./variants/testimonials-12/view.tsx"
 import Testimonials13View from "./variants/testimonials-13/view.tsx"
+import Timeline01View from "./variants/timeline-01/view.tsx"
+import Timeline02View from "./variants/timeline-02/view.tsx"
+import Timeline03View from "./variants/timeline-03/view.tsx"
+import Timeline04View from "./variants/timeline-04/view.tsx"
+import Timeline05View from "./variants/timeline-05/view.tsx"
+import Timeline06View from "./variants/timeline-06/view.tsx"
+import Timeline07View from "./variants/timeline-07/view.tsx"
+import Integrations01View from "./variants/integrations-01/view.tsx"
+import Integrations02View from "./variants/integrations-02/view.tsx"
+import Integrations03View from "./variants/integrations-03/view.tsx"
+import Integrations04View from "./variants/integrations-04/view.tsx"
+import Integrations05View from "./variants/integrations-05/view.tsx"
+import Blog01View from "./variants/blog-01/view.tsx"
+import Blog02View from "./variants/blog-02/view.tsx"
+import Blog03View from "./variants/blog-03/view.tsx"
+import Blog04View from "./variants/blog-04/view.tsx"
+import Blog05View from "./variants/blog-05/view.tsx"
+import Blog06View from "./variants/blog-06/view.tsx"
+import Contact01View from "./variants/contact-01/view.tsx"
+import Contact03View from "./variants/contact-03/view.tsx"
+import CarouselBlock01View from "./variants/carousel-block-01/view.tsx"
+import CarouselBlock02View from "./variants/carousel-block-02/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
   LEGACY_BEHAVIOR_ADAPTER_IDS,
@@ -228,6 +250,28 @@ const viewById = {
   "shadcnui-blocks.testimonials-11": Testimonials11View,
   "shadcnui-blocks.testimonials-12": Testimonials12View,
   "shadcnui-blocks.testimonials-13": Testimonials13View,
+  "shadcnui-blocks.timeline-01": Timeline01View,
+  "shadcnui-blocks.timeline-02": Timeline02View,
+  "shadcnui-blocks.timeline-03": Timeline03View,
+  "shadcnui-blocks.timeline-04": Timeline04View,
+  "shadcnui-blocks.timeline-05": Timeline05View,
+  "shadcnui-blocks.timeline-06": Timeline06View,
+  "shadcnui-blocks.timeline-07": Timeline07View,
+  "shadcnui-blocks.integrations-01": Integrations01View,
+  "shadcnui-blocks.integrations-02": Integrations02View,
+  "shadcnui-blocks.integrations-03": Integrations03View,
+  "shadcnui-blocks.integrations-04": Integrations04View,
+  "shadcnui-blocks.integrations-05": Integrations05View,
+  "shadcnui-blocks.blog-01": Blog01View,
+  "shadcnui-blocks.blog-02": Blog02View,
+  "shadcnui-blocks.blog-03": Blog03View,
+  "shadcnui-blocks.blog-04": Blog04View,
+  "shadcnui-blocks.blog-05": Blog05View,
+  "shadcnui-blocks.blog-06": Blog06View,
+  "shadcnui-blocks.contact-01": Contact01View,
+  "shadcnui-blocks.contact-03": Contact03View,
+  "shadcnui-blocks.carousel-block-01": CarouselBlock01View,
+  "shadcnui-blocks.carousel-block-02": CarouselBlock02View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {

@@ -120,7 +120,10 @@ test("assertScaffoldAllowed rejects typed pilots and direct bindings without for
     () => assertScaffoldAllowed(bindings, "testimonials-01"),
     /already a typed pilot/i,
   )
-  assert.doesNotThrow(() => assertScaffoldAllowed(bindings, "timeline-01"))
+  assert.throws(
+    () => assertScaffoldAllowed(bindings, "timeline-01"),
+    /already a typed pilot/i,
+  )
 })
 
 test("hasDirectBindings mirrors bindings.direct manifest", () => {
