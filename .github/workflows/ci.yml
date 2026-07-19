@@ -14,8 +14,12 @@ env:
 jobs:
   package-quality:
     runs-on: ubuntu-latest
+    env:
+      TYPE_SAFETY_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -26,6 +30,7 @@ jobs:
         run: |
           pnpm mcp:check
           pnpm docs:check
+          pnpm type-safety:check
       - name: Shared package type checks
         run: pnpm packages:typecheck
       - name: Provider contract and catalog tests

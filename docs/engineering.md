@@ -16,6 +16,16 @@ Use the highest risk level triggered by a change; diff size does not lower risk.
 
 Material findings include evidence, confidence, affected scope, and next action.
 
+## Type safety
+
+First-party TypeScript must not add explicit `any` (including generic forms such as
+`Promise<any>` or `type T<X = any>`), `z.any()`, `@ts-nocheck`, `@ts-ignore`, or
+`@ts-expect-error`. Enforcement is executable via `pnpm type-safety:check`, backed by
+the exact ratchet in `scripts/type-safety-baseline.json`. New violations fail;
+shrinking the baseline requires an intentional `pnpm type-safety:baseline` update
+after cleanup. Any touched `.ts`/`.tsx`/`.mts` file in a diff must be clean.
+Directory-wide exclusions are not allowed.
+
 ## Risk
 
 | Level | Typical triggers | Required handling |
