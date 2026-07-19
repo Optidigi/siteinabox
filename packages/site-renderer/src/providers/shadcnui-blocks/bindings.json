@@ -86,7 +86,20 @@
     "pricing-07": ["plans"],
     "pricing-08": ["title", "intro", "plans"],
     "pricing-09": ["title", "intro", "plans"],
-    "pricing-10": ["title", "intro", "plans"]
+    "pricing-10": ["title", "intro", "plans"],
+    "team-01": ["title", "intro", "members"],
+    "team-02": ["title", "intro", "members"],
+    "team-03": ["title", "intro", "members"],
+    "team-04": ["title", "intro", "members"],
+    "team-05": ["title", "intro", "members"],
+    "team-06": ["title", "intro", "members"],
+    "team-07": ["title", "intro", "members"],
+    "team-08": ["title", "intro", "members"],
+    "team-09": ["title", "intro", "members"],
+    "team-10": ["title", "intro", "members"],
+    "team-11": ["title", "intro", "members"],
+    "team-12": ["title", "intro", "members"],
+    "team-13": ["title", "intro", "members"]
   },
   "variants": {
     "blog-01": {

@@ -50,17 +50,29 @@ test("direct-binding variants skip compileBlockBindings", () => {
 })
 
 test("applyVariantLiteralAdaptations delegates only through the special-case table", () => {
-  const input = "background: rgba(75, 85, 99, 0.08)"
-  const adapted = applyVariantLiteralAdaptations("pricing-09", {
-    contents: input,
-    filename: "pricing.tsx",
+  const passthrough = "background: rgba(75, 85, 99, 0.08)"
+  assert.equal(
+    applyVariantLiteralAdaptations("hero-01", { contents: passthrough, filename: "hero.tsx", isEntryFile: false }),
+    passthrough,
+  )
+  assert.equal(
+    applyVariantLiteralAdaptations("pricing-09", { contents: passthrough, filename: "pricing.tsx", isEntryFile: false }),
+    passthrough,
+  )
+
+  const contactAdapted = applyVariantLiteralAdaptations("contact-02", {
+    contents: "bg-white shadow-none",
+    filename: "contact.tsx",
     isEntryFile: false,
   })
-  assert.match(adapted, /var\(--provider-grid-line/)
-  assert.equal(
-    applyVariantLiteralAdaptations("hero-01", { contents: input, filename: "hero.tsx", isEntryFile: false }),
-    input,
-  )
+  assert.match(contactAdapted, /var\(--provider-surface/)
+
+  const beamAdapted = applyVariantLiteralAdaptations("pricing-09", {
+    contents: 'colorFrom = "#ffaa40"',
+    filename: "border-beam.tsx",
+    isEntryFile: false,
+  })
+  assert.match(beamAdapted, /var\(--provider-accent-400/)
 })
 
 test("buildTypedScaffold emits generic-normalized literal and typed skeleton without ProviderField injection", () => {
@@ -96,7 +108,15 @@ test("assertScaffoldAllowed rejects typed pilots and direct bindings without for
     () => assertScaffoldAllowed(bindings, "hero-02"),
     /already a typed pilot/i,
   )
-  assert.doesNotThrow(() => assertScaffoldAllowed(bindings, "pricing-01"))
+  assert.throws(
+    () => assertScaffoldAllowed(bindings, "pricing-01"),
+    /already a typed pilot/i,
+  )
+  assert.throws(
+    () => assertScaffoldAllowed(bindings, "team-01"),
+    /already a typed pilot/i,
+  )
+  assert.doesNotThrow(() => assertScaffoldAllowed(bindings, "testimonials-01"))
 })
 
 test("hasDirectBindings mirrors bindings.direct manifest", () => {

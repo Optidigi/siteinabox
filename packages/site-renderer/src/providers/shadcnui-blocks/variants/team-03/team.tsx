@@ -7,6 +7,8 @@ import type { MediaResolver } from "../../../../media"
 import { RichTextRenderer } from "../../../../rich-text"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import { DribbbleIcon, TwitchIcon, TwitterIcon } from "../../runtime/social-icons"
+import { team01Literal } from "../../typed/fixtures/team-01"
+import { team03CmsLike } from "../../typed/fixtures/team-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
   renderMemberBio,
@@ -80,11 +82,6 @@ export function Team03({
     </div>
   )
 }
-
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
-import { DribbbleIcon, TwitchIcon, TwitterIcon } from "../../runtime/social-icons"
-import { team03CmsLike } from "../../typed/fixtures/team-family"
-import { team01Literal } from "../../typed/fixtures/team-01"
 
 const IMAGES = [
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1bf22",

@@ -85,6 +85,19 @@ import Pricing07View from "./variants/pricing-07/view.tsx"
 import Pricing08View from "./variants/pricing-08/view.tsx"
 import Pricing09View from "./variants/pricing-09/view.tsx"
 import Pricing10View from "./variants/pricing-10/view.tsx"
+import Team01View from "./variants/team-01/view.tsx"
+import Team02View from "./variants/team-02/view.tsx"
+import Team03View from "./variants/team-03/view.tsx"
+import Team04View from "./variants/team-04/view.tsx"
+import Team05View from "./variants/team-05/view.tsx"
+import Team06View from "./variants/team-06/view.tsx"
+import Team07View from "./variants/team-07/view.tsx"
+import Team08View from "./variants/team-08/view.tsx"
+import Team09View from "./variants/team-09/view.tsx"
+import Team10View from "./variants/team-10/view.tsx"
+import Team11View from "./variants/team-11/view.tsx"
+import Team12View from "./variants/team-12/view.tsx"
+import Team13View from "./variants/team-13/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
   LEGACY_BEHAVIOR_ADAPTER_IDS,
@@ -176,6 +189,19 @@ const viewById = {
   "shadcnui-blocks.pricing-08": Pricing08View,
   "shadcnui-blocks.pricing-09": Pricing09View,
   "shadcnui-blocks.pricing-10": Pricing10View,
+  "shadcnui-blocks.team-01": Team01View,
+  "shadcnui-blocks.team-02": Team02View,
+  "shadcnui-blocks.team-03": Team03View,
+  "shadcnui-blocks.team-04": Team04View,
+  "shadcnui-blocks.team-05": Team05View,
+  "shadcnui-blocks.team-06": Team06View,
+  "shadcnui-blocks.team-07": Team07View,
+  "shadcnui-blocks.team-08": Team08View,
+  "shadcnui-blocks.team-09": Team09View,
+  "shadcnui-blocks.team-10": Team10View,
+  "shadcnui-blocks.team-11": Team11View,
+  "shadcnui-blocks.team-12": Team12View,
+  "shadcnui-blocks.team-13": Team13View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {
