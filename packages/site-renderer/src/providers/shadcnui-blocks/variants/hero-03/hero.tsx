@@ -1,6 +1,5 @@
 // @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import Image from "../../runtime/image";
 import { ArrowUpRight, CirclePlay } from "lucide-react";
 import Link from "../../runtime/link";
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -51,7 +50,7 @@ export default function Hero() {
         </div>
       </div>
       <div className="relative mx-auto mt-20 aspect-video w-full max-w-(--breakpoint-xl) rounded-xl bg-linear-to-br from-indigo-400/90 via-indigo-300 to-sky-400/80 p-2">
-        <ProviderImage field="image" fallback={<Image alt="" className="size-full rounded-lg bg-background object-cover" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E" />} />
+        <ProviderImage field="image" fallback={<div className="size-full rounded-lg bg-background" />} />
         <div
           className="absolute inset-0 isolate z-0"
           style={{

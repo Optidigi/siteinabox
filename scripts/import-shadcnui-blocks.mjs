@@ -127,19 +127,19 @@ function adaptStructuredMediaRegions(name, filename, contents) {
   const replacements = {
     "hero-02": [
       '<div className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
-      `<img alt="" className="mt-auto aspect-video w-full rounded-xl bg-accent object-cover" src="${transparentSquare}" />`,
+      '<div data-provider-image-region="image" className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
     ],
     "hero-03": [
       '<div className="size-full rounded-lg bg-background" />',
-      `<img alt="" className="size-full rounded-lg bg-background object-cover" src="${transparentSquare}" />`,
+      '<div data-provider-image-region="image" className="size-full rounded-lg bg-background" />',
     ],
     "hero-04": [
       '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
-      `<img alt="" className="aspect-video w-full rounded-xl bg-accent object-cover lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" src="${transparentSquare}" />`,
+      '<div data-provider-image-region="image" className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
     ],
     "hero-05": [
       '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
-      `<img alt="" className="aspect-video w-full rounded-xl bg-accent object-cover lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" src="${transparentSquare}" />`,
+      '<div data-provider-image-region="image" className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
     ],
   }
   const replacement = replacements[name]
@@ -224,6 +224,25 @@ function compileBlockBindings(contents, blockType, declaredBindings, label = blo
         bindings.push({ field, kind: "field", fallback })
         needsRuntime = true
         if (declared) remaining.splice(remaining.indexOf(declared), 1)
+        return
+      }
+    }
+    if (ts.isJsxSelfClosingElement(node) && node.tagName.getText(source) === "div" && !insideMap(node)) {
+      const regionAttribute = node.attributes.properties.find((attribute) =>
+        ts.isJsxAttribute(attribute) && attribute.name.getText(source) === "data-provider-image-region"
+      )
+      const regionField = regionAttribute && ts.isStringLiteral(regionAttribute.initializer)
+        ? regionAttribute.initializer.text
+        : null
+      const declared = regionField
+        ? remaining.find((binding) => binding.kind === "image" && binding.field === regionField)
+        : null
+      if (declared?.field && regionAttribute) {
+        const literal = node.getText(source).replace(/\s*data-provider-image-region="[^"]+"/, "")
+        edits.push({ start: node.getStart(source), end: node.end, text: `<ProviderImage field=${JSON.stringify(declared.field)} fallback={${literal}} />` })
+        bindings.push({ field: declared.field, kind: "image" })
+        needsRuntime = true
+        remaining.splice(remaining.indexOf(declared), 1)
         return
       }
     }

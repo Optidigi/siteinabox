@@ -42,7 +42,9 @@ export function ProviderItemLink({ value, fallback }: { value?: LinkRef | null; 
   return <>{withBoundHref(fallback, { ...value, href, external: value.external ?? isExternalHref(href) })}</>
 }
 
-export function ProviderImage({ field, fallback }: { field: string; fallback: React.ReactElement<{ alt?: string; className?: string; src?: unknown }> }) {
+type ProviderImageFallbackProps = { alt?: string; className?: string; src?: unknown }
+
+export function ProviderImage({ field, fallback }: { field: string; fallback: React.ReactElement<ProviderImageFallbackProps> }) {
   const model = useProviderBlockModel()
   if (!model) return fallback
   const value = fieldValue(model.block, field) as MediaRef | undefined
@@ -56,6 +58,15 @@ export function ProviderImage({ field, fallback }: { field: string; fallback: Re
     elementPath: path(model, field),
   })
   if (!resolved?.src) return null
+  if (fallback.type === "div") {
+    return <img
+      alt={resolved.alt ?? fallback.props.alt ?? ""}
+      className={[fallback.props.className, "object-cover"].filter(Boolean).join(" ")}
+      decoding="async"
+      loading="lazy"
+      src={resolved.src}
+    />
+  }
   return React.cloneElement(fallback, { src: resolved.src, alt: resolved.alt ?? fallback.props.alt ?? "" })
 }
 
