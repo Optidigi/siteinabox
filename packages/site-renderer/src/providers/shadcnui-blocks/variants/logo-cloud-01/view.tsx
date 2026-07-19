@@ -1,7 +1,22 @@
 import * as React from "react"
 import type { Block } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../../blocks/types"
-import Literal from "./logo-cloud"
-import { LiteralProviderVariantView } from "../../runtime/literal-view"
+import { providerBlockAttributes } from "../../runtime/block"
+import { LogoCloud01 } from "./logo-cloud"
+
 type VariantBlock = Extract<Block, { blockType: "logoCloud" }>
-export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <LiteralProviderVariantView Literal={Literal} model={{ block, options }} variant="shadcnui-blocks.logo-cloud-01" /> }
+
+const VARIANT = "shadcnui-blocks.logo-cloud-01"
+
+export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) {
+  return (
+    <LogoCloud01
+      title={block.title}
+      logos={block.logos ?? []}
+      blockIndex={options.index}
+      editSlots={options.editSlots}
+      mediaResolver={options.mediaResolver}
+      rootAttributes={providerBlockAttributes({ block, options }, VARIANT)}
+    />
+  )
+}

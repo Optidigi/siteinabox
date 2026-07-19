@@ -8105,15 +8105,11 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/logo-cloud.tsx",
-          "sha256": "sha256:a81b265fe1c783ff88e3438df8bfd2e771c97b47885cb3282fe4cf9400ee90c8"
-        },
-        {
-          "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/logos.tsx",
-          "sha256": "sha256:12d765b3b98adb1c66a2aac06da49452298740b3c29a2b5b5191e71d8e7496a6"
+          "sha256": "sha256:bab0653393ddff4af3379bdb5bb8293064b28bcf9aaa3dbee82c3ce5a78e82d1"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/view.tsx",
-          "sha256": "sha256:2c5b063c578efcb543456f0162cd66503e56cee9b6f26ae6e10be07cdd23d27b"
+          "sha256": "sha256:a3e1d4e17cb3110b00b3203a8fdb227c81561937f55d446741efb54e16052a3a"
         }
       ]
     },
