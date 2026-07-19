@@ -120,6 +120,27 @@ test("feature variants with native media regions bind feature item images", () =
   }
 })
 
+test("feature cards bind approved structured icons instead of demo icons", () => {
+  const source = fixtures.get("featureList")
+  const icons = ["ear", "heart-handshake", "clock"]
+  const block = {
+    ...source,
+    features: icons.map((icon, index) => ({
+      ...source.features[index % source.features.length],
+      icon,
+    })),
+  }
+  const html = renderToStaticMarkup(React.createElement(ShadcnUiExplicitBlockView, {
+    block,
+    variant: "shadcnui-blocks.features-01",
+    options: { index: 0 },
+  }))
+  assert.match(html, /lucide-ear/)
+  assert.match(html, /lucide-heart-handshake/)
+  assert.match(html, /lucide-clock/)
+  assert.doesNotMatch(html, /lucide-settings-2|lucide-blocks|lucide-bot/)
+})
+
 test("team profile links fill only native provider social-link positions", () => {
   const team = fixtures.get("team")
   const block = {

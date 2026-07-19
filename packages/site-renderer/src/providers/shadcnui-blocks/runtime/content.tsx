@@ -4,6 +4,7 @@ import type { BlockRenderOptions } from "../../../blocks/types"
 import { resolveMedia } from "../../../media"
 import { extractRichText, RichTextRenderer } from "../../../rich-text"
 import { Building2, Clock3, Globe2, Mail, MapPin, MessageCircle, Phone } from "lucide-react"
+import { resolveIcon } from "../../../blocks/icons"
 
 export type ProviderBlockModel = { block: Block; options: BlockRenderOptions }
 
@@ -165,7 +166,8 @@ function bindItems(model: ProviderBlockModel, field: string, templates: readonly
     if (block.blockType === "featureList" || (block.blockType === "contentSection" && field === "features")) {
       const cta = link(record.cta)
       const image = mediaSlot(record.image as MediaRef, model, field, index, "image", text(record.title))
-      return overlay(template, { title: text(record.title), name: text(record.title), description: text(record.description), details: text(record.description), content: text(record.description), image, imageUrl: image, src: image, metricValue: record.metricValue, metricLabel: record.metricLabel, value: record.metricValue, cta, href: cta?.href, tutorialLink: cta?.href, buttonText: cta?.label })
+      const icon = resolveIcon(typeof record.icon === "string" ? record.icon : null)
+      return overlay(template, { title: text(record.title), name: text(record.title), description: text(record.description), details: text(record.description), content: text(record.description), ...(icon ? { icon } : {}), image, imageUrl: image, src: image, metricValue: record.metricValue, metricLabel: record.metricLabel, value: record.metricValue, cta, href: cta?.href, tutorialLink: cta?.href, buttonText: cta?.label })
     }
     if (block.blockType === "faq") {
       return overlay(template, { question: text(record.question), title: text(record.question), answer: text(record.answer), content: text(record.answer), description: text(record.answer) })
