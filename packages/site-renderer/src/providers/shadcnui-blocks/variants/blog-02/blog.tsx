@@ -59,7 +59,7 @@ export function Blog02({ title, posts, blockIndex, editSlots, mediaResolver, roo
           return (
             <Card className="gap-0 overflow-hidden rounded-lg py-0 shadow-none" key={itemIndex}>
               <CardHeader className="relative p-0">
-                <div className="relative aspect-video w-full border-b">
+                <div className="relative aspect-video w-full border-b border-border">
                   {renderBlogPostImage(editSlots, mediaResolver, post.image, "Blog post", blockIndex, itemIndex, {
                     className: "object-cover",
                     fill: true,

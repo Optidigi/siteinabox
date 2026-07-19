@@ -669,7 +669,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/blog.tsx",
-          "sha256": "sha256:a56f680ab24bc64f02d02f4805d2f0873cc65a07a4f6e509d1101901279f8ac9"
+          "sha256": "sha256:3791e49a28cedbb3d54f3f7ca705788115ddaf09d733228fe8955b559b077594"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/blog-02/upstream-literal.upstream.tsx.txt",

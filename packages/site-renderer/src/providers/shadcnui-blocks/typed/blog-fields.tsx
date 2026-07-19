@@ -167,12 +167,13 @@ export const renderBlogPostImage = (
   if (!resolved?.src) return null
   return (
     <img
-      className={className}
+      className={[fill ? "absolute inset-0 h-full w-full" : null, className].filter(Boolean).join(" ")}
       src={resolved.src}
       alt={resolved.alt ?? alt}
       sizes={sizes}
-      width={width}
-      height={height}
+      width={fill ? undefined : width}
+      height={fill ? undefined : height}
+      style={fill ? { objectFit: "cover" } : undefined}
     />
   )
 }
