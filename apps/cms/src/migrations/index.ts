@@ -66,6 +66,7 @@ import * as migration_20260717_120000_consolidate_theme_presets from './20260717
 import * as migration_20260717_180000_remove_user_editor_mode from './20260717_180000_remove_user_editor_mode';
 import * as migration_20260718_123000_backfill_public_analytics_consent from './20260718_123000_backfill_public_analytics_consent';
 import * as migration_20260718_230256 from './20260718_230256';
+import * as migration_20260719_103000_ensure_amicare_privacy_page from './20260719_103000_ensure_amicare_privacy_page';
 
 export const migrations = [
   {
@@ -407,5 +408,10 @@ export const migrations = [
     up: migration_20260718_230256.up,
     down: migration_20260718_230256.down,
     name: '20260718_230256'
+  },
+  {
+    up: migration_20260719_103000_ensure_amicare_privacy_page.up,
+    down: migration_20260719_103000_ensure_amicare_privacy_page.down,
+    name: '20260719_103000_ensure_amicare_privacy_page'
   },
 ];
