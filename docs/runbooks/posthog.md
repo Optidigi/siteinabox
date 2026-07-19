@@ -130,10 +130,9 @@ event names.
 Repository implementation covers the platform landing site, dynamic tenant
 sites, and native tenant grouping. Consent version `2026-07-07.1` is approved.
 The runtime contract now uses a minimized cookieless baseline before a choice
-and after refusal, with richer analytics only after acceptance. Commit
-`99dced376397b6ce3cb89a37da4cb9290fd3c798` is deployed to the landing,
-renderer, and CMS production containers. Local and CI intercepted-ingestion
-regressions decode the tiered payloads and prevent real analytics writes. A
+and after refusal, with richer analytics only after acceptance. Local and CI
+intercepted-ingestion regressions decode the tiered payloads and prevent real
+analytics writes. A
 2026-07-18 intercepted production-browser probe decoded one minimized baseline
 `$pageview` for both `siteinabox.nl` and `ami-care.nl`, with no PostHog
 persistence or sensitive query properties. The reviewed production sync then
@@ -145,11 +144,13 @@ Existing PostHog group types still require a provider query; browser capture
 proves emitted group metadata, not provider-side group materialization.
 
 Generated tenant manifests receive this approved consent policy automatically.
-The migration `20260718_123000_backfill_public_analytics_consent` adds it only
-to existing tenant manifests where `analyticsConsent` is absent; explicit
-tenant choices are not overwritten. The landing GHCR workflow separately
-requires the Actions secret `POSTHOG_PROJECT_TOKEN` and fails closed when that
-build input is missing.
+The migrations `20260718_123000_backfill_public_analytics_consent` and
+`20260719_121500_restore_missing_public_analytics_consent` add it only to
+existing non-null tenant manifests where `analyticsConsent` is absent; explicit
+tenant choices are not overwritten. The second pass covers manifests replaced
+by the Ami Care provider rebuild after the first backfill. The landing GHCR
+workflow separately requires the Actions secret `POSTHOG_PROJECT_TOKEN` and
+fails closed when that build input is missing.
 
 The public-site runtime calls
 `posthog.opt_in_capturing({ captureEventName: false })` after accepted consent.
