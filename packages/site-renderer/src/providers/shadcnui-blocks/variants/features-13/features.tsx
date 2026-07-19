@@ -1,5 +1,8 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks features-13 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   Cable,
   Code,
@@ -7,81 +10,29 @@ import {
   MonitorSmartphone,
   SquareDashedMousePointer,
   Zap,
-} from "lucide-react";
+  type LucideIcon,
+} from "lucide-react"
+import {
+  featureItemIcon,
+  renderFeatureIntro,
+  renderFeatureItemDescription,
+  renderFeatureItemTitle,
+  renderFeatureTitle,
+  type FeatureItem,
+} from "../../typed/feature-fields"
+import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const features = [
-  {
-    title: "Blazing Fast Performance",
-    description:
-      "Optimized for speed with minimal loading times and instant interactions, ensuring a smooth experience across devices.",
-    icon: Zap,
-  },
-  {
-    title: "Fully Customizable",
-    description:
-      "Tailor every component to match your brand or workflow — with built-in support for themes, layouts, and configurations.",
-    icon: SquareDashedMousePointer,
-  },
-  {
-    title: "Developer-Friendly",
-    description:
-      "Built with clean, modern code and best practices in mind, making it easy to integrate, extend, and scale.",
-    icon: Code,
-  },
-  {
-    title: "Responsive by Default",
-    description:
-      "Every component is designed to look great on all screen sizes — no extra work needed to make things mobile-friendly.",
-    icon: MonitorSmartphone,
-  },
-  {
-    title: "Accessible for Everyone",
-    description:
-      "Built with accessibility best practices in mind to ensure an inclusive experience for all users, regardless of ability.",
-    icon: Contrast,
-  },
-  {
-    title: "Seamless Integration",
-    description:
-      "Easily connect with your favorite tools, APIs, and services — whether it's authentication, databases, or third-party libraries.",
-    icon: Cable,
-  },
-];
+const ITEM_ICONS: LucideIcon[] = [Zap, SquareDashedMousePointer, Code, MonitorSmartphone, Contrast, Cable]
 
-const Features = () => {
-  return (
-    <div className="mx-auto flex max-w-7xl flex-col px-6 py-20">
-      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Engineered for speed
-      </>} inline /></h2>
-      <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
-        Designed for speed, flexibility, and ease of use
-      </>} inline /></p>
-
-      <div className="mt-20 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
-          <div
-            className="relative overflow-hidden rounded-xl border bg-card p-6 dark:border-card-foreground/7"
-            key={index}
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/10">
-              <feature.icon />
-            </div>
-            <h3 className="mt-5 font-medium text-lg tracking-[-0.005em]">
-              {feature.title}
-            </h3>
-            <p className="mt-2 text-foreground/80">{feature.description}</p>
-
-            <div
-              className="absolute inset-0 -top-px z-0"
-              style={{
-                backgroundImage: `
+const GRID_OVERLAY_STYLE: React.CSSProperties = {
+  backgroundImage: `
         linear-gradient(to right, var(--border) 1px, transparent 1px),
         linear-gradient(to bottom, var(--border) 1px, transparent 1px)
       `,
-                backgroundSize: "20px 20px",
-                backgroundPosition: "0 0, 0 0",
-                maskImage: `
+  backgroundSize: "20px 20px",
+  backgroundPosition: "0 0, 0 0",
+  maskImage: `
           repeating-linear-gradient(
               to right,
               black 0px,
@@ -98,7 +49,7 @@ const Features = () => {
             ),
             radial-gradient(ellipse 100% 80% at 100% 0%, #000 50%, transparent 100%)
       `,
-                WebkitMaskImage: `
+  WebkitMaskImage: `
     repeating-linear-gradient(
               to right,
               black 0px,
@@ -115,15 +66,69 @@ const Features = () => {
             ),
             radial-gradient(ellipse 80% 80% at 100% 0%, #000 50%, transparent 90%)
       `,
-                maskComposite: "intersect",
-                WebkitMaskComposite: "source-in",
-              }}
-            />
-          </div>
-        ))}</ProviderItems>}
+  maskComposite: "intersect",
+  WebkitMaskComposite: "source-in",
+}
+
+export type Features13Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  features: FeatureItem[]
+}
+
+export function Features13({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features13Props) {
+  const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
+  const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
+
+  return (
+    <div className="mx-auto flex max-w-7xl flex-col px-6 py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+          {titleContent}
+        </h2>
+      ) : null}
+      {introContent ? (
+        <p className="mt-3 text-pretty text-center text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">
+          {introContent}
+        </p>
+      ) : null}
+      <div className="mt-20 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {features.map((feature, itemIndex) => {
+          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          return (
+            <div
+              className="relative overflow-hidden rounded-xl border bg-card p-6 dark:border-card-foreground/7"
+              key={itemIndex}
+            >
+              {Icon ? (
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/10">
+                  <Icon />
+                </div>
+              ) : null}
+              <h3 className="mt-5 font-medium text-lg tracking-[-0.005em]">
+                {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
+              </h3>
+              {feature.description ? (
+                <p className="mt-2 text-foreground/80">
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                </p>
+              ) : null}
+              <div className="absolute inset-0 -top-px z-0" style={GRID_OVERLAY_STYLE} />
+            </div>
+          )
+        })}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Features;
+export default function Features13Literal() {
+  return (
+    <Features13
+      title={featureFamilyCmsLike.title}
+      intro={featureFamilyCmsLike.intro}
+      features={featureFamilyCmsLike.features}
+      blockIndex={0}
+    />
+  )
+}

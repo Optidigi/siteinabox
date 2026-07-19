@@ -1,6 +1,8 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import Image from "../../runtime/image";
+// Owned typed adaptation of upstream shadcnui-blocks features-07 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   BookCheck,
   ChartPie,
@@ -8,106 +10,100 @@ import {
   Goal,
   Users,
   Zap,
-} from "lucide-react";
-import Link from "../../runtime/link";
+  type LucideIcon,
+} from "lucide-react"
+import {
+  featureItemIcon,
+  renderFeatureIntro,
+  renderFeatureItemDescription,
+  renderFeatureItemImage,
+  renderFeatureItemTitle,
+  renderFeatureTitle,
+  type FeatureItem,
+} from "../../typed/feature-fields"
+import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import type { MediaResolver } from "../../../../media"
+import Link from "../../runtime/link"
 
-const features = [
-  {
-    icon: Goal,
-    title: "Identify Opportunities",
-    description:
-      "Easily uncover untapped areas to explore and expand your reach.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:85f35",
-  },
-  {
-    icon: BookCheck,
-    title: "Build Authority",
-    description: "Create valuable content that resonates and inspires trust.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:d30fc",
-  },
-  {
-    icon: ChartPie,
-    title: "Instant Insights",
-    description: "Gain immediate, actionable insights with a quick glance.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:07ff9",
-  },
-  {
-    icon: Users,
-    title: "Engage with Your Audience",
-    description: "Boost audience engagement with interactive features.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:c1427",
-  },
-  {
-    icon: FolderSync,
-    title: "Automate Your Workflow",
-    description: "Streamline your processes by automating repetitive tasks.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1218e",
-  },
-  {
-    icon: Zap,
-    title: "Accelerate Growth",
-    description: "Supercharge your growth by implementing strategies.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:003d6",
-  },
-  {
-    icon: BookCheck,
-    title: "Build Authority",
-    description: "Create valuable content that resonates and inspires trust.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:80189",
-  },
-  {
-    icon: ChartPie,
-    title: "Instant Insights",
-    description: "Gain immediate, actionable insights with a quick glance.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:19eb3",
-  },
-  {
-    icon: Goal,
-    title: "Identify Opportunities",
-    description:
-      "Easily uncover untapped areas to explore and expand your reach.",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:ca3a0",
-  },
-];
+const ITEM_ICONS: LucideIcon[] = [Goal, BookCheck, ChartPie, Users, FolderSync, Zap]
 
-const Features = () => {
+export type Features07Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  features: FeatureItem[]
+  mediaResolver?: MediaResolver
+}
+
+export function Features07({
+  title,
+  intro,
+  features,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  rootAttributes,
+}: Features07Props) {
+  const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
+  const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
+
   return (
-    <div className="px-6 py-20">
+    <div className="px-6 py-20" {...rootAttributes}>
       <div className="mx-auto w-full max-w-(--breakpoint-xl)">
-        <h2 className="text-pretty font-medium text-4xl tracking-[-0.04em] sm:mx-auto sm:max-w-xl sm:text-center md:text-[2.75rem] md:leading-[1.2]"><ProviderField field="title" fallback={<>
-          Strengthen your strategy
-        </>} inline /></h2>
-        <p className="mt-3 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-center md:text-2xl"><ProviderField field="intro" fallback={<>
-          No complex configs. Just copy, paste, and start building
-        </>} inline /></p>
+        {titleContent ? (
+          <h2 className="text-pretty font-medium text-4xl tracking-[-0.04em] sm:mx-auto sm:max-w-xl sm:text-center md:text-[2.75rem] md:leading-[1.2]">
+            {titleContent}
+          </h2>
+        ) : null}
+        {introContent ? (
+          <p className="mt-3 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-center md:text-2xl">
+            {introContent}
+          </p>
+        ) : null}
         <div className="mt-12 grid gap-6 sm:mt-18 sm:gap-y-8 md:grid-cols-2 lg:grid-cols-3">
-          {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
-            <Link href="#" key={index}>
-              <div className="-mx-2 flex max-w-lg items-center gap-6 rounded-lg sm:mx-0">
-                <div className="aspect-square h-24 shrink-0 overflow-hidden rounded-lg border border-border/20 bg-muted">
-                  <Image
-                    alt=""
-                    className="size-full object-cover"
-                    height={96}
-                    src={feature.image}
-                    width={96}
-                  />
+          {features.map((feature, itemIndex) => {
+            const href = feature.cta?.href?.trim() || "#"
+            return (
+              <Link href={href} key={itemIndex}>
+                <div className="-mx-2 flex max-w-lg items-center gap-6 rounded-lg sm:mx-0">
+                  <div className="aspect-square h-24 shrink-0 overflow-hidden rounded-lg border border-border/20 bg-muted">
+                    {renderFeatureItemImage(
+                      editSlots,
+                      mediaResolver,
+                      feature.image,
+                      feature.title,
+                      blockIndex,
+                      itemIndex,
+                      { className: "size-full object-cover" },
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium text-lg tracking-[-0.015em]">
+                      {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
+                    </span>
+                    {feature.description ? (
+                      <p className="mt-1 text-pretty text-muted-foreground">
+                        {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="">
-                  <span className="font-medium text-lg tracking-[-0.015em]">
-                    {feature.title}
-                  </span>
-                  <p className="mt-1 text-pretty text-muted-foreground">
-                    {feature.description}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))}</ProviderItems>}
+              </Link>
+            )
+          })}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Features;
+export default function Features07Literal() {
+  return (
+    <Features07
+      title={featureFamilyCmsLike.title}
+      intro={featureFamilyCmsLike.intro}
+      features={featureFamilyCmsLike.features}
+      blockIndex={0}
+    />
+  )
+}

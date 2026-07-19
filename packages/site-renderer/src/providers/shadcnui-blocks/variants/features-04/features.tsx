@@ -1,5 +1,8 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks features-04 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   BookCheck,
   ChartPie,
@@ -7,88 +10,88 @@ import {
   Goal,
   Users,
   Zap,
-} from "lucide-react";
+  type LucideIcon,
+} from "lucide-react"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import {
+  featureItemIcon,
+  renderFeatureItemDescription,
+  renderFeatureItemImage,
+  renderFeatureItemTitle,
+  renderFeatureTitle,
+  type FeatureItem,
+} from "../../typed/feature-fields"
+import { featureFamilyCmsLike } from "../../typed/fixtures/feature-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import type { MediaResolver } from "../../../../media"
 
-const features = [
-  {
-    icon: Goal,
-    title: "Identify Opportunities",
-    description:
-      "Easily uncover untapped areas to explore and expand your reach effortlessly and effectively.",
-  },
-  {
-    icon: BookCheck,
-    title: "Build Authority",
-    description:
-      "Create valuable content that resonates, inspires trust, and positions you as an expert.",
-  },
-  {
-    icon: ChartPie,
-    title: "Instant Insights",
-    description:
-      "Gain immediate, actionable insights with a quick glance, enabling fast decision-making.",
-  },
-  {
-    icon: Users,
-    title: "Engage with Your Audience",
-    description:
-      "Boost audience engagement with interactive features like polls, quizzes, and forms.",
-  },
-  {
-    icon: FolderSync,
-    title: "Automate Your Workflow",
-    description:
-      "Streamline your processes by automating repetitive tasks, saving time and reducing effort.",
-  },
-  {
-    icon: Zap,
-    title: "Accelerate Growth",
-    description:
-      "Supercharge your growth by implementing strategies that drive results quickly and efficiently.",
-  },
-];
+const ITEM_ICONS: LucideIcon[] = [Goal, BookCheck, ChartPie, Users, FolderSync, Zap]
 
-const Features = () => {
+export type Features04Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  features: FeatureItem[]
+  mediaResolver?: MediaResolver
+}
+
+export function Features04({ title, features, blockIndex, editSlots, mediaResolver, rootAttributes }: Features04Props) {
+  const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
+
   return (
-    <div className="mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20">
-      <h2 className="max-w-lg text-pretty font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem] md:leading-14"><ProviderField field="title" fallback={<>
-        Build scalable interfaces with minimal effort
-      </>} inline /></h2>
+    <div className="mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="max-w-lg text-pretty font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem] md:leading-14">
+          {titleContent}
+        </h2>
+      ) : null}
       <div className="mx-auto mt-8 grid w-full gap-12 md:mt-12 md:grid-cols-2">
         <div>
           <Accordion className="w-full" defaultValue="item-0" type="single">
-            {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map(({ title, description, icon: Icon }, index) => (
-              <AccordionItem
-                className="group/accordion-item data-[state=open]:border-primary data-[state=open]:border-b-2"
-                key={index}
-                value={`item-${index}`}
-              >
-                <AccordionTrigger className="text-lg group-first/accordion-item:pt-0 [&>svg]:hidden">
-                  <div className="flex items-center gap-4">
-                    <Icon />
-                    {title}
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="text-[17px] text-muted-foreground leading-relaxed">
-                  {description}
-                  <div className="mt-6 mb-2 aspect-video w-full rounded-xl bg-muted md:hidden" />
-                </AccordionContent>
-              </AccordionItem>
-            ))}</ProviderItems>}
+            {features.map((feature, itemIndex) => {
+              const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+              return (
+                <AccordionItem
+                  className="group/accordion-item data-[state=open]:border-primary data-[state=open]:border-b-2"
+                  key={itemIndex}
+                  value={`item-${itemIndex}`}
+                >
+                  <AccordionTrigger className="text-lg group-first/accordion-item:pt-0 [&>svg]:hidden">
+                    <div className="flex items-center gap-4">
+                      {Icon ? <Icon /> : null}
+                      {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="text-[17px] text-muted-foreground leading-relaxed">
+                    {feature.description
+                      ? renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)
+                      : null}
+                    <div className="mt-6 mb-2 aspect-video w-full rounded-xl bg-muted md:hidden">
+                      {renderFeatureItemImage(
+                        editSlots,
+                        mediaResolver,
+                        feature.image,
+                        feature.title,
+                        blockIndex,
+                        itemIndex,
+                        { className: "size-full rounded-xl object-cover" },
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              )
+            })}
           </Accordion>
         </div>
-
-        {/* Media */}
         <div className="hidden h-full w-full rounded-xl bg-muted md:block" />
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Features;
+export default function Features04Literal() {
+  return <Features04 title={featureFamilyCmsLike.title} features={featureFamilyCmsLike.features} blockIndex={0} />
+}

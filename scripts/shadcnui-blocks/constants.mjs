@@ -52,10 +52,28 @@ export const TYPED_PILOT_UPSTREAM_NAMES = new Set([
   "faq-12",
   "faq-13",
   "faq-14",
+  "features-01",
+  "features-02",
+  "features-03",
+  "features-04",
+  "features-05",
+  "features-06",
+  "features-07",
+  "features-08",
+  "features-09",
+  "features-10",
+  "features-11",
+  "features-12",
+  "features-13",
+  "features-14",
+  "features-15",
+  "features-16",
+  "features-17",
+  "features-18",
 ])
 
 /** Upstream names with audited behavior-adapter views (Provider* literals preserved). */
-export const LEGACY_BEHAVIOR_ADAPTER_NAMES = new Set(["contact-02", "features-03"])
+export const LEGACY_BEHAVIOR_ADAPTER_NAMES = new Set(["contact-02"])
 
 export const categoryFor = (name) => name.replace(/-\d+$/, "")
 export const isPublic = (name) => publicCategories.has(categoryFor(name)) || /^carousel-block-\d+$/.test(name)

@@ -1,5 +1,8 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks features-18 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   ArrowUpRightIcon,
   BinocularsIcon,
@@ -8,90 +11,115 @@ import {
   LockIcon,
   ShieldCheckIcon,
   ZapIcon,
-} from "lucide-react";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { cn } from "@siteinabox/ui/lib/utils";
+  type LucideIcon,
+} from "lucide-react"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { cn } from "@siteinabox/ui/lib/utils"
+import {
+  featureItemIcon,
+  renderFeatureEyebrow,
+  renderFeatureIntro,
+  renderFeatureItemCta,
+  renderFeatureItemDescription,
+  renderFeatureItemTitle,
+  renderFeatureTitle,
+  type FeatureItem,
+} from "../../typed/feature-fields"
+import { featureFamilyWithEyebrow } from "../../typed/fixtures/feature-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const plusPoints = [
-  {
-    icon: ShieldCheckIcon,
-    title: "Real-Time Protection",
-    description:
-      "Stay alert with instant notifications and smart security monitoring.",
-  },
-  {
-    icon: ZapIcon,
-    title: "Smart & Simple Setup",
-    description: "Install easily in minutes with no complex tools or wiring.",
-  },
-  {
-    icon: BinocularsIcon,
-    title: "Peace of Mind Anywhere",
-    description: "Monitor and control your home from anywhere, anytime.",
-  },
-  {
-    icon: HouseIcon,
-    title: "Smart Home Integration",
-    description:
-      "Easily connect with your favorite smart home devices and services.",
-  },
-  {
-    icon: GlobeIcon,
-    title: "Global Coverage",
-    description: "Monitor and control your home from anywhere, anytime.",
-  },
-  {
-    icon: LockIcon,
-    title: "Secure & Reliable",
-    description:
-      "Built with the latest security technologies to protect your home.",
-  },
-];
+const ITEM_ICONS: LucideIcon[] = [
+  ShieldCheckIcon,
+  ZapIcon,
+  BinocularsIcon,
+  HouseIcon,
+  GlobeIcon,
+  LockIcon,
+]
 
-export default function Features() {
+export type Features18Props = TypedVariantBaseProps & {
+  eyebrow?: RtRoot | null
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  features: FeatureItem[]
+}
+
+export function Features18({ eyebrow, title, intro, features, blockIndex, editSlots, rootAttributes }: Features18Props) {
+  const eyebrowContent = renderFeatureEyebrow(editSlots, eyebrow, blockIndex)
+  const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
+  const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
+
   return (
     <div
       className="mx-auto max-w-(--breakpoint-xl) overflow-clip px-8 py-24 text-center"
       id="why-choose-us"
+      {...rootAttributes}
     >
-      <strong className="font-medium text-muted-foreground text-sm uppercase tracking-wide"><ProviderField field="eyebrow" fallback={<>
-        Why Choose Us
-      </>} inline /></strong>
-      <h2 className="mx-auto mt-5 max-w-4xl text-balance font-medium text-4xl leading-[1.3] tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Advanced Home Security Solutions Built for Modern Living
-      </>} inline /></h2>
-      <p className="mt-4 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl"><ProviderField field="intro" fallback={<>
-        We are constantly always keep pace with the time
-      </>} inline /></p>
-
+      {eyebrowContent ? (
+        <strong className="font-medium text-muted-foreground text-sm uppercase tracking-wide">{eyebrowContent}</strong>
+      ) : null}
+      {titleContent ? (
+        <h2 className="mx-auto mt-5 max-w-4xl text-balance font-medium text-4xl leading-[1.3] tracking-[-0.04em] sm:text-[2.75rem]">
+          {titleContent}
+        </h2>
+      ) : null}
+      {introContent ? (
+        <p className="mt-4 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">{introContent}</p>
+      ) : null}
       <div className="relative mx-auto mt-16 grid max-w-5xl grid-cols-1 border nth-3:border sm:grid-cols-2 lg:grid-cols-3">
         <div className="mask-y-from-95% absolute -inset-y-14 left-0 -translate-x-px border-s border-dashed" />
         <div className="mask-y-from-95% absolute -inset-y-14 right-0 translate-x-px border-s border-dashed" />
         <div className="mask-x-from-95% absolute -inset-x-14 top-0 -translate-y-px border-t border-dashed" />
         <div className="mask-x-from-95% absolute -inset-x-14 bottom-0 translate-y-px border-b border-dashed" />
-
-        {<ProviderItems field="features" templates={plusPoints}>{(providerItems) => providerItems.map((plusPoint, index) => (
-          <div
-            className={cn(
-              "relative -mt-px flex w-full flex-col items-center gap-2 border-t p-6 pt-9 odd:bg-muted/40",
-              "lg:not-[&:nth-child(3n+1)]:border-e",
-              "max-sm:odd:border-e-0 max-lg:odd:border-e"
-            )}
-            key={index}
-          >
-            <plusPoint.icon className="size-12 fill-foreground/10 stroke-[1.5px] text-foreground" />
-            <h3 className="mt-6 font-medium text-lg tracking-[-0.005em]">
-              {plusPoint.title}
-            </h3>
-            <p className="mb-6 text-balance text-muted-foreground">
-              {plusPoint.description}
-            </p>
-            <Button className="mt-auto font-medium" variant="link">
-              Learn More <ArrowUpRightIcon />
-            </Button>
-          </div>
-        ))}</ProviderItems>}
+        {features.map((feature, itemIndex) => {
+          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          return (
+            <div
+              className={cn(
+                "relative -mt-px flex w-full flex-col items-center gap-2 border-t p-6 pt-9 odd:bg-muted/40",
+                "lg:not-[&:nth-child(3n+1)]:border-e",
+                "max-sm:odd:border-e-0 max-lg:odd:border-e",
+              )}
+              key={itemIndex}
+            >
+              {Icon ? (
+                <Icon className="size-12 fill-foreground/10 stroke-[1.5px] text-foreground" />
+              ) : null}
+              <h3 className="mt-6 font-medium text-lg tracking-[-0.005em]">
+                {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
+              </h3>
+              {feature.description ? (
+                <p className="mb-6 text-balance text-muted-foreground">
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                </p>
+              ) : null}
+              <Button className="mt-auto font-medium" variant="link">
+                {feature.cta?.label && feature.cta.href ? (
+                  renderFeatureItemCta(editSlots, feature.cta, blockIndex, itemIndex, {
+                    trailingIcon: <ArrowUpRightIcon />,
+                  })
+                ) : (
+                  <>
+                    Learn More <ArrowUpRightIcon />
+                  </>
+                )}
+              </Button>
+            </div>
+          )
+        })}
       </div>
     </div>
-  );
+  )
+}
+
+export default function Features18Literal() {
+  return (
+    <Features18
+      eyebrow={featureFamilyWithEyebrow.eyebrow}
+      title={featureFamilyWithEyebrow.title}
+      intro={featureFamilyWithEyebrow.intro}
+      features={featureFamilyWithEyebrow.features}
+      blockIndex={0}
+    />
+  )
 }

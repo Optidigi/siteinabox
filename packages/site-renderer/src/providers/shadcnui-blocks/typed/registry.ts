@@ -19,6 +19,24 @@ import Faq11View from "../variants/faq-11/view"
 import Faq12View from "../variants/faq-12/view"
 import Faq13View from "../variants/faq-13/view"
 import Faq14View from "../variants/faq-14/view"
+import Features01View from "../variants/features-01/view"
+import Features02View from "../variants/features-02/view"
+import Features03View from "../variants/features-03/view"
+import Features04View from "../variants/features-04/view"
+import Features05View from "../variants/features-05/view"
+import Features06View from "../variants/features-06/view"
+import Features07View from "../variants/features-07/view"
+import Features08View from "../variants/features-08/view"
+import Features09View from "../variants/features-09/view"
+import Features10View from "../variants/features-10/view"
+import Features11View from "../variants/features-11/view"
+import Features12View from "../variants/features-12/view"
+import Features13View from "../variants/features-13/view"
+import Features14View from "../variants/features-14/view"
+import Features15View from "../variants/features-15/view"
+import Features16View from "../variants/features-16/view"
+import Features17View from "../variants/features-17/view"
+import Features18View from "../variants/features-18/view"
 import LogoCloud01View from "../variants/logo-cloud-01/view"
 
 export const TYPED_PILOT_IDS = [
@@ -44,6 +62,24 @@ export const TYPED_PILOT_IDS = [
   "shadcnui-blocks.faq-12",
   "shadcnui-blocks.faq-13",
   "shadcnui-blocks.faq-14",
+  "shadcnui-blocks.features-01",
+  "shadcnui-blocks.features-02",
+  "shadcnui-blocks.features-03",
+  "shadcnui-blocks.features-04",
+  "shadcnui-blocks.features-05",
+  "shadcnui-blocks.features-06",
+  "shadcnui-blocks.features-07",
+  "shadcnui-blocks.features-08",
+  "shadcnui-blocks.features-09",
+  "shadcnui-blocks.features-10",
+  "shadcnui-blocks.features-11",
+  "shadcnui-blocks.features-12",
+  "shadcnui-blocks.features-13",
+  "shadcnui-blocks.features-14",
+  "shadcnui-blocks.features-15",
+  "shadcnui-blocks.features-16",
+  "shadcnui-blocks.features-17",
+  "shadcnui-blocks.features-18",
 ] as const
 
 export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
@@ -51,14 +87,13 @@ export type TypedPilotId = (typeof TYPED_PILOT_IDS)[number]
 /** Pre-typed pilots that still use Provider* runtime adapters instead of the shared typed helpers. */
 export const LEGACY_BEHAVIOR_ADAPTER_IDS = [
   "shadcnui-blocks.contact-02",
-  "shadcnui-blocks.features-03",
 ] as const
 
 export type LegacyBehaviorAdapterId = (typeof LEGACY_BEHAVIOR_ADAPTER_IDS)[number]
 
 export const BEHAVIOR_ADAPTER_IDS = [...TYPED_PILOT_IDS, ...LEGACY_BEHAVIOR_ADAPTER_IDS] as const
 
-type TypedPilotBlockType = "cta" | "logoCloud" | "faq"
+type TypedPilotBlockType = "cta" | "logoCloud" | "faq" | "featureList"
 
 type TypedPilotRegistryMetadata = {
   upstreamName: string
@@ -68,6 +103,9 @@ type TypedPilotRegistryMetadata = {
 
 const FAQ_TITLE_ITEMS = ["title", "items"] as const
 const FAQ_TITLE_INTRO_ITEMS = ["title", "intro", "items"] as const
+const FEATURE_TITLE_INTRO_FEATURES = ["title", "intro", "features"] as const
+const FEATURE_TITLE_FEATURES = ["title", "features"] as const
+const FEATURE_EYEBROW_TITLE_INTRO_FEATURES = ["eyebrow", "title", "intro", "features"] as const
 
 export const TYPED_PILOT_REGISTRY = {
   "shadcnui-blocks.cta-01": {
@@ -201,6 +239,114 @@ export const TYPED_PILOT_REGISTRY = {
     blockType: "faq",
     directFields: FAQ_TITLE_INTRO_ITEMS,
     View: Faq14View,
+  },
+  "shadcnui-blocks.features-01": {
+    upstreamName: "features-01",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features01View,
+  },
+  "shadcnui-blocks.features-02": {
+    upstreamName: "features-02",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features02View,
+  },
+  "shadcnui-blocks.features-03": {
+    upstreamName: "features-03",
+    blockType: "featureList",
+    directFields: FEATURE_EYEBROW_TITLE_INTRO_FEATURES,
+    View: Features03View,
+  },
+  "shadcnui-blocks.features-04": {
+    upstreamName: "features-04",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_FEATURES,
+    View: Features04View,
+  },
+  "shadcnui-blocks.features-05": {
+    upstreamName: "features-05",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features05View,
+  },
+  "shadcnui-blocks.features-06": {
+    upstreamName: "features-06",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features06View,
+  },
+  "shadcnui-blocks.features-07": {
+    upstreamName: "features-07",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features07View,
+  },
+  "shadcnui-blocks.features-08": {
+    upstreamName: "features-08",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features08View,
+  },
+  "shadcnui-blocks.features-09": {
+    upstreamName: "features-09",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features09View,
+  },
+  "shadcnui-blocks.features-10": {
+    upstreamName: "features-10",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features10View,
+  },
+  "shadcnui-blocks.features-11": {
+    upstreamName: "features-11",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features11View,
+  },
+  "shadcnui-blocks.features-12": {
+    upstreamName: "features-12",
+    blockType: "featureList",
+    directFields: FEATURE_EYEBROW_TITLE_INTRO_FEATURES,
+    View: Features12View,
+  },
+  "shadcnui-blocks.features-13": {
+    upstreamName: "features-13",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features13View,
+  },
+  "shadcnui-blocks.features-14": {
+    upstreamName: "features-14",
+    blockType: "featureList",
+    directFields: FEATURE_EYEBROW_TITLE_INTRO_FEATURES,
+    View: Features14View,
+  },
+  "shadcnui-blocks.features-15": {
+    upstreamName: "features-15",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features15View,
+  },
+  "shadcnui-blocks.features-16": {
+    upstreamName: "features-16",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features16View,
+  },
+  "shadcnui-blocks.features-17": {
+    upstreamName: "features-17",
+    blockType: "featureList",
+    directFields: FEATURE_TITLE_INTRO_FEATURES,
+    View: Features17View,
+  },
+  "shadcnui-blocks.features-18": {
+    upstreamName: "features-18",
+    blockType: "featureList",
+    directFields: FEATURE_EYEBROW_TITLE_INTRO_FEATURES,
+    View: Features18View,
   },
 } as const satisfies Record<TypedPilotId, TypedPilotRegistryMetadata & {
   View: unknown

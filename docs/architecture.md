@@ -56,12 +56,13 @@ Shared helpers for the migrated pilots live in
 `packages/site-renderer/src/providers/shadcnui-blocks/typed/` (rich-text
 preview fixtures, element paths, and edit-slot renderers). The compile-time
 registry in `typed/registry.ts` lists exactly the migrated pilots
-(`cta-01` … `cta-07`, `logo-cloud-01`, `faq-01` … `faq-14`) and ties each variant ID to its
+(`cta-01` … `cta-07`, `logo-cloud-01`, `faq-01` … `faq-14`,
+`features-01` … `features-18`) and ties each variant ID to its
 canonical block type, direct bindings, and view module.
 
-Legacy behavior adapters (`contact-02`, `features-03`) still use audited
-`Provider*` views and are tracked beside the typed registry; they are not
-forced into the shared typed helper surface until a pilot migration needs them.
+Legacy behavior adapters (`contact-02`) still use audited `Provider*`
+views and are tracked beside the typed registry; they are not forced into
+the shared typed helper surface until a pilot migration needs them.
 All other block variants continue to render through pinned literals and
 `block-views.generated.tsx` dispatch.
 

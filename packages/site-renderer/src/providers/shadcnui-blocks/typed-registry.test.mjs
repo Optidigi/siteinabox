@@ -23,6 +23,24 @@ import Faq11View from "./variants/faq-11/view.tsx"
 import Faq12View from "./variants/faq-12/view.tsx"
 import Faq13View from "./variants/faq-13/view.tsx"
 import Faq14View from "./variants/faq-14/view.tsx"
+import Features01View from "./variants/features-01/view.tsx"
+import Features02View from "./variants/features-02/view.tsx"
+import Features03View from "./variants/features-03/view.tsx"
+import Features04View from "./variants/features-04/view.tsx"
+import Features05View from "./variants/features-05/view.tsx"
+import Features06View from "./variants/features-06/view.tsx"
+import Features07View from "./variants/features-07/view.tsx"
+import Features08View from "./variants/features-08/view.tsx"
+import Features09View from "./variants/features-09/view.tsx"
+import Features10View from "./variants/features-10/view.tsx"
+import Features11View from "./variants/features-11/view.tsx"
+import Features12View from "./variants/features-12/view.tsx"
+import Features13View from "./variants/features-13/view.tsx"
+import Features14View from "./variants/features-14/view.tsx"
+import Features15View from "./variants/features-15/view.tsx"
+import Features16View from "./variants/features-16/view.tsx"
+import Features17View from "./variants/features-17/view.tsx"
+import Features18View from "./variants/features-18/view.tsx"
 import LogoCloud01View from "./variants/logo-cloud-01/view.tsx"
 import {
   BEHAVIOR_ADAPTER_IDS,
@@ -54,6 +72,24 @@ const viewById = {
   "shadcnui-blocks.faq-12": Faq12View,
   "shadcnui-blocks.faq-13": Faq13View,
   "shadcnui-blocks.faq-14": Faq14View,
+  "shadcnui-blocks.features-01": Features01View,
+  "shadcnui-blocks.features-02": Features02View,
+  "shadcnui-blocks.features-03": Features03View,
+  "shadcnui-blocks.features-04": Features04View,
+  "shadcnui-blocks.features-05": Features05View,
+  "shadcnui-blocks.features-06": Features06View,
+  "shadcnui-blocks.features-07": Features07View,
+  "shadcnui-blocks.features-08": Features08View,
+  "shadcnui-blocks.features-09": Features09View,
+  "shadcnui-blocks.features-10": Features10View,
+  "shadcnui-blocks.features-11": Features11View,
+  "shadcnui-blocks.features-12": Features12View,
+  "shadcnui-blocks.features-13": Features13View,
+  "shadcnui-blocks.features-14": Features14View,
+  "shadcnui-blocks.features-15": Features15View,
+  "shadcnui-blocks.features-16": Features16View,
+  "shadcnui-blocks.features-17": Features17View,
+  "shadcnui-blocks.features-18": Features18View,
 }
 
 test("typed pilot registry is exhaustive for migrated pilots", () => {

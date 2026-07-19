@@ -90,7 +90,7 @@ test("assertScaffoldAllowed rejects typed pilots and direct bindings without for
   )
   assert.throws(
     () => assertScaffoldAllowed(bindings, "features-03"),
-    /bindings\.direct/i,
+    /already a typed pilot/i,
   )
   assert.doesNotThrow(() => assertScaffoldAllowed(bindings, "hero-02"))
 })

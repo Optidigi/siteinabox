@@ -87,36 +87,6 @@ export const VARIANT_SPECIAL_CASES = {
         variantSlots.features = { ...variantSlots.features, minItems: 1, maxItems: 2 }
       }
     },
-    generateView({ semantic, namespace }) {
-      return [
-        'import * as React from "react"',
-        'import type { Block } from "@siteinabox/contracts"',
-        'import type { BlockRenderOptions } from "../../../../blocks/types"',
-        'import { ShadcnUiStaticFeaturesView } from "../../feature-views"',
-        'type VariantBlock = Extract<Block, { blockType: "featureList" }>',
-        `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiStaticFeaturesView block={block} options={options} variant="${namespace}.features-03" /> }`,
-        "",
-      ].join("\n")
-    },
-  },
-  "features-10": {
-    adaptLiteral({ contents, filename, isEntryFile }) {
-      if (filename === "stats-card.tsx") {
-        return contents
-          .replace('import type { ComponentProps } from "react";', 'import type { ComponentProps } from "react";\nimport type { LinkRef } from "@siteinabox/contracts";\nimport { useProviderBlockModel } from "../../runtime/content";')
-          .replace("  className,\n  ...props\n}: ComponentProps<typeof Card>) {", "  className,\n  value,\n  label,\n  action,\n  ...props\n}: ComponentProps<typeof Card> & { value?: string; label?: string; action?: LinkRef }) {\n  const model = useProviderBlockModel();")
-          .replace('<CardTitle className="font-satoshi text-3xl">+2,350</CardTitle>', '<CardTitle className="font-satoshi text-3xl">{model ? value : "+2,350"}</CardTitle>')
-          .replace('<CardDescription>+180.1% from last month</CardDescription>', '<CardDescription>{model ? label : "+180.1% from last month"}</CardDescription>')
-          .replace(/<CardAction>\s*<Button size="sm" variant="ghost">\s*View More\s*<\/Button>\s*<\/CardAction>/, '{model ? action?.href && action.label ? <CardAction><Button size="sm" variant="ghost" asChild><a href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? "noreferrer" : undefined}>{action.label}</a></Button></CardAction> : null : <CardAction><Button size="sm" variant="ghost">View More</Button></CardAction>}')
-      }
-      if (isEntryFile) {
-        return contents.replace(
-          '<StatsCard className="rounded-br-lg" />',
-          '<StatsCard className="rounded-br-lg" value={feature.metricValue} label={feature.metricLabel} action={feature.cta} />',
-        )
-      }
-      return contents
-    },
   },
   "hero-01": {
     adaptLiteral({ contents }) {

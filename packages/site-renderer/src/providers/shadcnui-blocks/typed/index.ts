@@ -3,6 +3,7 @@ export * from "./fixtures/cta-01"
 export * from "./fixtures/cta-family"
 export * from "./fixtures/faq-01"
 export * from "./fixtures/faq-family"
+export * from "./fixtures/feature-family"
 export * from "./fixtures/logo-cloud-01"
 export { renderCtaLink, type CtaLinkField } from "./actions"
 export { providerCircuitBoardStyle } from "./grid-pattern"
@@ -10,6 +11,19 @@ export { renderBackgroundImage } from "./images"
 export { isExternalHref } from "./links"
 export { elementPath } from "./paths"
 export type { TypedVariantBaseProps } from "./props"
+export {
+  FEATURE_BLOCK_TYPE,
+  featureDescriptionLines,
+  featureItemIcon,
+  type FeatureItem,
+  renderFeatureEyebrow,
+  renderFeatureIntro,
+  renderFeatureItemCta,
+  renderFeatureItemDescription,
+  renderFeatureItemImage,
+  renderFeatureItemTitle,
+  renderFeatureTitle,
+} from "./feature-fields"
 export {
   FAQ_BLOCK_TYPE,
   faqAccordionValue,
