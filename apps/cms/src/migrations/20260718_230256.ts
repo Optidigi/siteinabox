@@ -169,6 +169,14 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
   const cmsMedia: MediaBinding = (filename) => mediaByFilename.get(filename)!
   const snapshotMedia: MediaBinding = (filename, alt) => ({ url: `/media/${filename}`, filename, alt })
   const now = new Date().toISOString()
+  await payload.update({
+    collection: "tenants",
+    id: tenant.id,
+    data: { theme: THEME, siteManifest: canonicalManifest() },
+    depth: 0,
+    overrideAccess: true,
+    context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
+  } as any)
   const updatedIndex = await payload.update({
     collection: "pages",
     id: indexPage.id,
@@ -239,15 +247,6 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
   } as any)
-  await payload.update({
-    collection: "tenants",
-    id: tenant.id,
-    data: { theme: THEME, siteManifest: canonicalManifest() },
-    depth: 0,
-    overrideAccess: true,
-    context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
-  } as any)
-
   const snapshotSettings = activeSnapshot.snapshot.settings as Record<string, any>
   const publishedPages = [
     {

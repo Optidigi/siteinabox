@@ -64,6 +64,14 @@ describe("Ami Care provider rebuild migration", () => {
     await rebuildAmicare(payload as any)
 
     const pageUpdate = payload.update.mock.calls.find(([args]) => args.collection === "pages" && args.id === 21)?.[0]
+    const tenantManifestUpdateIndex = payload.update.mock.calls.findIndex(([args]) =>
+      args.collection === "tenants" && args.data.siteManifest,
+    )
+    const indexPageUpdateIndex = payload.update.mock.calls.findIndex(([args]) =>
+      args.collection === "pages" && args.id === 21,
+    )
+    expect(tenantManifestUpdateIndex).toBeGreaterThanOrEqual(0)
+    expect(tenantManifestUpdateIndex).toBeLessThan(indexPageUpdateIndex)
     expect(pageUpdate.data.blocks.map((block: any) => block.designVariant)).toEqual([
       "shadcnui-blocks.hero-02",
       "shadcnui-blocks.features-01",
