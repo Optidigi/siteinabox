@@ -10,6 +10,12 @@ import { DEFER_PAGE_AUTO_PUBLISH_HEADER } from "@/lib/publish/pageEditorSaveCont
 const isRecord = (value: unknown): value is Record<string, any> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
+const relationshipValue = (value: unknown): string | number | null => {
+  if (typeof value === "string" || typeof value === "number") return value
+  if (!isRecord(value)) return null
+  return typeof value.id === "string" || typeof value.id === "number" ? value.id : null
+}
+
 const userCanEditTenant = (user: any, tenantId: string): boolean => {
   if (user?.role === "super-admin") return true
   if (user?.role !== "owner" && user?.role !== "editor") return false
@@ -81,7 +87,8 @@ export async function POST(request: NextRequest) {
       ? await payload.create(pageArgs as any)
       : await payload.update({ ...pageArgs, id: body.page.id } as any)) as any
 
-    if (relationshipId((savedPage as any).tenant) !== tenantId) throw new Error("Saved page tenant mismatch")
+    const savedTenantId = relationshipValue((savedPage as any).tenant)
+    if (savedTenantId == null || relationshipId(savedTenantId) !== tenantId) throw new Error("Saved page tenant mismatch")
 
     if (theme?.success) {
       stage = "theme"
@@ -131,7 +138,10 @@ export async function POST(request: NextRequest) {
 
     stage = "publish"
     const published = await publishCurrentTenantState(payload, {
-      tenantId,
+      // Preserve Payload's native relationship ID type. PostgreSQL-backed
+      // relationship validation rejects the stringified numeric ID when the
+      // snapshot is created inside this request's transaction.
+      tenantId: savedTenantId,
       user,
       reason: `page editor save for page ${String(savedPage.id)}`,
       req,

@@ -45,7 +45,7 @@ describe("page editor transactional save route", () => {
     mocks.payload.db.commitTransaction.mockResolvedValue(undefined)
     mocks.payload.db.rollbackTransaction.mockResolvedValue(undefined)
     mocks.payload.update.mockImplementation(async (args: any) => args.collection === "pages"
-      ? { id: 24, tenant: 7, slug: "index", ...args.data }
+      ? { ...args.data, id: 24, tenant: { id: 7 }, slug: "index" }
       : { id: args.id, ...args.data })
     mocks.payload.find.mockResolvedValue({ docs: [{ id: 5, tenant: 7, navHeader: [], navFooter: [] }] })
     mocks.publish.mockResolvedValue({ activated: true, snapshot: { id: 134, version: 113, status: "active" } })
@@ -60,7 +60,7 @@ describe("page editor transactional save route", () => {
     expect(mocks.payload.db.rollbackTransaction).not.toHaveBeenCalled()
     const transactionRequests = mocks.payload.update.mock.calls.map(([args]) => args.req?.transactionID)
     expect(transactionRequests).toEqual(["tx-1", "tx-1", "tx-1"])
-    expect(mocks.publish).toHaveBeenCalledWith(mocks.payload, expect.objectContaining({ tenantId: "7", req: expect.objectContaining({ transactionID: "tx-1" }) }))
+    expect(mocks.publish).toHaveBeenCalledWith(mocks.payload, expect.objectContaining({ tenantId: 7, req: expect.objectContaining({ transactionID: "tx-1" }) }))
   })
 
   it("rolls back every database write when publication fails", async () => {
