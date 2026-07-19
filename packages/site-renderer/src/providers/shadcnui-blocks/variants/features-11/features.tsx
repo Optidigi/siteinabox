@@ -65,9 +65,9 @@ export function Features11({ title, intro, features, blockIndex, editSlots, root
                   </h3>
                 </div>
                 {feature.description ? (
-                  <p className="my-4 text-foreground/80">
+                  <div className="my-4 text-foreground/80">
                     {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                  </p>
+                  </div>
                 ) : null}
                 {cta?.label && cta.href ? (
                   <Button asChild className="me-auto mt-2" size="sm" variant="secondary">

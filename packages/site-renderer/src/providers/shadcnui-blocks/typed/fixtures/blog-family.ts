@@ -13,12 +13,14 @@ export const blogPost = (
   author: string,
   date: string,
   category?: string,
+  readTime?: string,
 ): BlogPostItem => ({
   title: previewBlockText(title),
   excerpt: previewBlockText(excerpt),
   author,
   authorRole: category ?? null,
   date,
+  readTime: readTime ?? null,
   image: previewImage(title),
   href: "https://example.test/blog/post",
 })
@@ -112,7 +114,72 @@ export const blog01CmsLike = blogFamilyCmsLike
 
 export const blog02CmsLike = {
   title: previewInlineText("Recommended Posts"),
-  posts: blogFamilyCmsLike.posts,
+  posts: [
+    blogPost(
+      "A beginner's guide to blockchain for engineers",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "John Doe",
+      "Nov 30, 2024",
+      "Technology",
+      "5 min read",
+    ),
+    blogPost(
+      "Understanding React Server Components",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "Jane Smith",
+      "Nov 28, 2024",
+      "Business",
+      "8 min read",
+    ),
+    blogPost(
+      "10 Useful Shadcn UI Components You Should Know",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "Akash Moradiya",
+      "Nov 25, 2024",
+      "Finance",
+      "6 min read",
+    ),
+    blogPost(
+      "Building a Personal Blog with Next.js",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "Chris Moore",
+      "Nov 22, 2024",
+      "Health",
+      "10 min read",
+    ),
+    blogPost(
+      "The Complete Guide to TypeScript for Beginners",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "Emily Johnson",
+      "Nov 20, 2024",
+      "Lifestyle",
+      "12 min read",
+    ),
+    blogPost(
+      "Optimizing Web Performance with Next.js",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "John Doe",
+      "Nov 18, 2024",
+      "Politics",
+      "7 min read",
+    ),
+    blogPost(
+      "Deploying Full-Stack Apps on Vercel",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "Bob Smith",
+      "Nov 15, 2024",
+      "Science",
+      "9 min read",
+    ),
+    blogPost(
+      "Getting Started with Modern Web Development",
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse varius enim in eros.",
+      "Sarah Williams",
+      "Nov 12, 2024",
+      "Sports",
+      "11 min read",
+    ),
+  ],
 }
 
 export const blog03CmsLike = {

@@ -93,9 +93,9 @@ export function Faq12({ title, intro, items, blockIndex, editSlots, rootAttribut
           </h2>
         ) : null}
         {introContent ? (
-          <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+          <div className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
             {introContent}
-          </p>
+          </div>
         ) : null}
 
         <div className="mx-auto mt-12 grid max-w-5xl grid-cols-1 sm:mt-16 md:grid-cols-2">

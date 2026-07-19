@@ -43,9 +43,9 @@ export function Features01({ title, intro, features, blockIndex, editSlots, root
         </h2>
       ) : null}
       {introContent ? (
-        <p className="mt-3 text-pretty text-center text-lg text-muted-foreground tracking-[-0.01em] sm:text-2xl">
+        <div className="mt-3 text-pretty text-center text-lg text-muted-foreground tracking-[-0.01em] sm:text-2xl">
           {introContent}
-        </p>
+        </div>
       ) : null}
       <div className="mx-auto mt-10 grid max-w-(--breakpoint-lg) gap-6 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature, itemIndex) => {
@@ -61,9 +61,9 @@ export function Features01({ title, intro, features, blockIndex, editSlots, root
                 {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
               </span>
               {feature.description ? (
-                <p className="mt-1 text-[15px] text-foreground/80">
+                <div className="mt-1 text-[15px] text-foreground/80">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
             </div>
           )

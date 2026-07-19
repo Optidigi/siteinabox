@@ -1,7 +1,17 @@
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
 import crypto from "node:crypto"
-import { queryRows } from "../lib/record"
+
+type JsonRecord = Record<string, unknown>
+const isRecord = (value: unknown): value is JsonRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value)
+const asRecord = (value: unknown): JsonRecord | null => (isRecord(value) ? value : null)
+const queryRows = <T,>(result: unknown): T[] => {
+  const rows = asRecord(result)?.rows
+  if (Array.isArray(rows)) return rows as T[]
+  if (Array.isArray(result)) return result as T[]
+  return []
+}
 
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)

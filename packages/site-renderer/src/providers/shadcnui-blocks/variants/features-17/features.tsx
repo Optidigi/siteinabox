@@ -62,9 +62,9 @@ export function Features17({ title, intro, features, blockIndex, editSlots, root
                 {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
               </h3>
               {feature.description ? (
-                <p className="mt-2 text-foreground/80">
+                <div className="mt-2 text-foreground/80">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
               <Badge
                 className="absolute top-0 right-0 rounded-none border-t-0 border-r-0 bg-muted/30 font-mono dark:border-foreground/15 dark:bg-background"

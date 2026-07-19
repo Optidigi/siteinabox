@@ -57,7 +57,7 @@ export function Team03({
             <div>
               <h3 className="font-medium text-lg">{renderMemberName(editSlots, member.name, blockIndex, itemIndex)}</h3>
               <p className="text-muted-foreground text-sm">{renderMemberRole(editSlots, member.role, blockIndex, itemIndex)}</p>
-              <p className="mt-2 text-foreground/90">{renderMemberBio(editSlots, member.bio, blockIndex, itemIndex)}</p>
+              <div className="mt-2 text-foreground/90">{renderMemberBio(editSlots, member.bio, blockIndex, itemIndex)}</div>
               <div className="mt-4 flex items-center gap-2.5">
                 {renderMemberLink(member.links?.[0], (
                   <Button asChild size="icon" variant="secondary">

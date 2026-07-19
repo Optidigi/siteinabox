@@ -60,9 +60,9 @@ export function Features05({ title, intro, features, blockIndex, editSlots, root
                     {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
                   </h4>
                   {feature.description ? (
-                    <p className="text-[17px] text-muted-foreground">
+                    <div className="text-[17px] text-muted-foreground">
                       {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                    </p>
+                    </div>
                   ) : null}
                 </CardHeader>
                 <CardContent className="mt-auto px-0 pb-0">

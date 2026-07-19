@@ -1,7 +1,33 @@
 import { createHash } from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
-import type { Page, PublishedSiteSnapshot, SiteSetting, Tenant } from "../payload-types"
-import { asRecord, isRecord } from "../lib/record"
+
+type JsonRecord = Record<string, unknown>
+type MigrationPage = { id?: string | number; slug?: string | null; blocks?: unknown; status?: string | null; seo?: unknown; updatedAt?: string | null; title?: string | null }
+type MigrationTenant = { id: string | number; slug?: string | null; domain?: string | null; siteManifest?: unknown }
+type MigrationSiteSetting = {
+  id?: string | number
+  chrome?: { footer?: unknown; banner?: Record<string, unknown> }
+  [key: string]: unknown
+}
+type PayloadClient = MigrateUpArgs["payload"]
+type PayloadWriteArgs = {
+  collection: string
+  id?: string | number
+  data: Record<string, unknown>
+  depth?: number
+  overrideAccess?: boolean
+  context?: Record<string, unknown>
+}
+const updateDoc = (payload: PayloadClient, args: PayloadWriteArgs) =>
+  payload.update(args as Parameters<PayloadClient["update"]>[0])
+const createDoc = (payload: PayloadClient, args: PayloadWriteArgs) =>
+  payload.create(args as Parameters<PayloadClient["create"]>[0])
+
+type MigrationPublishedSiteSnapshot = { id?: string | number; status?: string | null; snapshot?: unknown }
+
+const isRecord = (value: unknown): value is JsonRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value)
+const asRecord = (value: unknown): JsonRecord | null => (isRecord(value) ? value : null)
 
 const SLUG = "privacy-en-cookieverklaring"
 const TITLE = "Privacy- en cookieverklaring"
@@ -87,7 +113,7 @@ const withPrivacyLink = (footer: unknown) => {
   }
 }
 
-const snapshotPagesFrom = (snapshot: PublishedSiteSnapshot["snapshot"]): SnapshotPage[] => {
+const snapshotPagesFrom = (snapshot: unknown): SnapshotPage[] => {
   const record = asRecord(snapshot)
   const pages = record?.pages
   return Array.isArray(pages) ? pages.filter(isRecord).map((page) => page as SnapshotPage) : []
@@ -103,7 +129,7 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
   })
   if (tenants.docs.length === 0) return
   if (tenants.docs.length !== 1) throw new Error(`Ami Care privacy migration requires exactly one matching tenant; found ${tenants.docs.length}.`)
-  const tenant = tenants.docs[0] as Tenant
+  const tenant = tenants.docs[0] as MigrationTenant
 
   const [pagesResult, settingsResult, snapshotsResult] = await Promise.all([
     payload.find({ collection: "pages", where: { tenant: { equals: tenant.id } }, limit: 100, depth: 0, overrideAccess: true }),
@@ -111,12 +137,12 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
     payload.find({ collection: "published-site-snapshots", where: { tenant: { equals: tenant.id } }, limit: 100, sort: "-version", depth: 0, overrideAccess: true }),
   ])
   if (settingsResult.docs.length !== 1) throw new Error(`Ami Care privacy migration requires exactly one site-settings row; found ${settingsResult.docs.length}.`)
-  const activeSnapshot = snapshotsResult.docs.find((snapshot) => snapshot.status === "active") as PublishedSiteSnapshot | undefined
+  const activeSnapshot = snapshotsResult.docs.find((snapshot) => snapshot.status === "active") as MigrationPublishedSiteSnapshot | undefined
   if (!activeSnapshot?.snapshot) throw new Error("Ami Care privacy migration requires an active snapshot.")
   const activePages = snapshotPagesFrom(activeSnapshot.snapshot)
-  const existingPage = pagesResult.docs.find((page) => page.slug === SLUG) as Page | undefined
+  const existingPage = pagesResult.docs.find((page) => page.slug === SLUG) as MigrationPage | undefined
   const existingSnapshotPage = activePages.find((page) => page.slug === SLUG)
-  const existingSettings = settingsResult.docs[0] as SiteSetting
+  const existingSettings = settingsResult.docs[0] as unknown as MigrationSiteSetting
   const currentFooter = existingSettings.chrome?.footer
   const currentLegalLinks = legalLinksFromFooter(currentFooter)
   if (existingPage && existingSnapshotPage && currentLegalLinks.some((link) => link.href === `/${SLUG}`)) return
@@ -138,19 +164,20 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
   })
 
   const pageData = {
-    tenant: tenant.id,
+    tenant: Number(tenant.id),
     title: TITLE,
     slug: SLUG,
     status: "published" as const,
-    blocks: privacyBlocks() as Page["blocks"],
+    blocks: privacyBlocks(),
     seo: {
       title: `${TITLE} | Amicare-Zorg`,
       description: "Lees hoe Amicare-Zorg persoonsgegevens en websitegegevens verwerkt.",
     },
   }
-  let page: Page
+  let page: MigrationPage
   if (existingPage) {
-    await payload.update({
+    if (existingPage.id == null) throw new Error("Ami Care privacy migration found a page without an id.")
+    await updateDoc(payload, {
       collection: "pages",
       id: existingPage.id,
       data: pageData,
@@ -158,22 +185,22 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
       overrideAccess: true,
       context: { skipProjection: true, source: "amicare-privacy-page-migration" },
     })
-    page = await payload.findByID({ collection: "pages", id: existingPage.id, depth: 0, overrideAccess: true })
+    page = await payload.findByID({ collection: "pages", id: existingPage.id, depth: 0, overrideAccess: true }) as unknown as MigrationPage
   } else {
-    page = await payload.create({
+    page = await createDoc(payload, {
       collection: "pages",
       data: pageData,
       depth: 0,
       overrideAccess: true,
       context: { skipProjection: true, source: "amicare-privacy-page-migration" },
-    })
+    }) as unknown as MigrationPage
   }
 
   const footer = withPrivacyLink(currentFooter)
-  await payload.update({
+  await updateDoc(payload, {
     collection: "site-settings",
     id: existingSettings.id,
-    data: { chrome: { ...(existingSettings.chrome ?? {}), footer } },
+    data: { chrome: { ...(asRecord(existingSettings.chrome) ?? {}), footer } },
     depth: 0,
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-privacy-page-migration" },
@@ -223,15 +250,15 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
     publishedAt: now,
   }
   const snapshotHash = createHash("sha256").update(stableStringify(snapshot)).digest("hex")
-  const created = await payload.create({
+  const created = await createDoc(payload, {
     collection: "published-site-snapshots",
     data: {
-      tenant: tenant.id,
+      tenant: Number(tenant.id),
       sourceGenerationRun: null,
       snapshotKey: `${tenant.slug}-v${snapshotVersion}-${snapshotHash.slice(0, 12)}`,
       version: snapshotVersion,
       status: "drafted",
-      domain: tenant.domain,
+      domain: tenant.domain ?? "",
       snapshotHash,
       snapshot,
       publishedAt: now,
@@ -239,11 +266,12 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
     },
     depth: 0,
     overrideAccess: true,
-  })
+  }) as { id: string | number }
   const lifecycleContext = { publishSnapshotLifecycleMutation: true }
-  await payload.update({ collection: "published-site-snapshots", id: activeSnapshot.id, data: { status: "superseded" }, depth: 0, overrideAccess: true, context: lifecycleContext })
-  await payload.update({ collection: "published-site-snapshots", id: created.id, data: { status: "active", activatedAt: now }, depth: 0, overrideAccess: true, context: lifecycleContext })
-  await payload.update({ collection: "tenants", id: tenant.id, data: { activeSnapshot: created.id }, depth: 0, overrideAccess: true, context: lifecycleContext })
+  if (activeSnapshot.id == null) throw new Error("Ami Care privacy migration requires an active snapshot id.")
+  await updateDoc(payload, { collection: "published-site-snapshots", id: activeSnapshot.id, data: { status: "superseded" }, depth: 0, overrideAccess: true, context: lifecycleContext })
+  await updateDoc(payload, { collection: "published-site-snapshots", id: created.id, data: { status: "active", activatedAt: now }, depth: 0, overrideAccess: true, context: lifecycleContext })
+  await updateDoc(payload, { collection: "tenants", id: tenant.id, data: { activeSnapshot: created.id }, depth: 0, overrideAccess: true, context: lifecycleContext })
 }
 
 export async function up({ payload }: MigrateUpArgs): Promise<void> {

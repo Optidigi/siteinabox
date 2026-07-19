@@ -1,8 +1,31 @@
 import { createHash } from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
-import type { Media, Page, PublishedSiteSnapshot, SiteSetting, Tenant } from "../payload-types"
-import { asRecord } from "../lib/record"
+
+type JsonRecord = Record<string, unknown>
+type MigrationPage = { id?: string | number; slug?: string | null; blocks?: unknown; status?: string | null; seo?: unknown; updatedAt?: string | null; title?: string | null }
+type MigrationSiteSetting = {
+  id?: string | number
+  branding?: unknown
+  chrome?: { banner?: Record<string, unknown>; footer?: unknown }
+  [key: string]: unknown
+}
+type PayloadClient = MigrateUpArgs["payload"]
+type PayloadWriteArgs = {
+  collection: string
+  id?: string | number
+  data: Record<string, unknown>
+  depth?: number
+  overrideAccess?: boolean
+  context?: Record<string, unknown>
+}
+const updateDoc = (payload: PayloadClient, args: PayloadWriteArgs) =>
+  payload.update(args as Parameters<PayloadClient["update"]>[0])
+type MigrationPublishedSiteSnapshot = { id?: string | number; status?: string | null; snapshot?: unknown; version?: number }
+
+const isRecord = (value: unknown): value is JsonRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value)
+const asRecord = (value: unknown): JsonRecord | null => (isRecord(value) ? value : null)
 
 const REQUIRED_MEDIA = ["toys.jpg", "bedroom.jpg", "og-default.png", "favicon.svg", "favicon.ico", "apple-touch-icon.png"] as const
 const THEME = {
@@ -179,15 +202,15 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
   })
-  await payload.update({
+  await updateDoc(payload, {
     collection: "pages",
     id: indexPage.id,
     data: {
       title: "Home",
       status: "published",
-      blocks: pageBlocks(cmsMedia) as Page["blocks"],
+      blocks: pageBlocks(cmsMedia),
       seo: { title: "Amicare-Zorg", description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.", ogImage: mediaByFilename.get("og-default.png") ?? undefined },
-    } as Partial<Page>,
+    },
     depth: 0,
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
@@ -198,12 +221,12 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     depth: 0,
     overrideAccess: true,
   })
-  const updatedOtherPages: Page[] = []
+  const updatedOtherPages: MigrationPage[] = []
   for (const page of otherPages) {
-    await payload.update({
+    await updateDoc(payload, {
       collection: "pages",
       id: page.id,
-      data: { status: "published", blocks: providerPrivacyBlocks(page.blocks) as Page["blocks"] },
+      data: { status: "published", blocks: providerPrivacyBlocks(page.blocks) },
       depth: 0,
       overrideAccess: true,
       context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
@@ -213,10 +236,10 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
       id: page.id,
       depth: 0,
       overrideAccess: true,
-    }))
+    }) as unknown as MigrationPage)
   }
 
-  const existingSettings = settingsResult.docs[0] as SiteSetting
+  const existingSettings = settingsResult.docs[0] as unknown as MigrationSiteSetting
   const header = { variant: "shadcnui-blocks.navbar-03", behavior: "sticky", activeMode: "anchor", mobileMenu: "dropdown", cta: { label: "Contact", href: "#contact" } }
   const footer = {
     variant: "shadcnui-blocks.footer-07",
@@ -243,7 +266,7 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     { type: "section", page: indexPage.id, anchor: "wat-telt", label: "Wat telt" },
     { type: "section", page: indexPage.id, anchor: "contact", label: "Contact" },
   ]
-  await payload.update({
+  await updateDoc(payload, {
     collection: "site-settings",
     id: existingSettings.id,
     data: {
@@ -252,11 +275,11 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
       description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
       language: "nl",
       contactEmail: "info@ami-care.nl",
-      branding: { ...(existingSettings.branding ?? {}), primaryColor: "#a04e32", favicon: mediaByFilename.get("favicon.svg") },
+      branding: { ...(asRecord(existingSettings.branding) ?? {}), primaryColor: "#a04e32", favicon: mediaByFilename.get("favicon.svg") },
       chrome: { header, footer, banner },
       navHeader: nav,
       navFooter: nav,
-    } as SiteSetting,
+    },
     depth: 0,
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },

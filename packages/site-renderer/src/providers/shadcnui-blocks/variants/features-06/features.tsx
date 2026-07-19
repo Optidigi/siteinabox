@@ -99,9 +99,9 @@ export function Features06({ title, intro, features, blockIndex, editSlots, root
                     {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
                   </h4>
                   {feature.description ? (
-                    <p className="mb-6 text-lg text-muted-foreground">
+                    <div className="mb-6 text-lg text-muted-foreground">
                       {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                    </p>
+                    </div>
                   ) : null}
                 </div>
               </div>

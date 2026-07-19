@@ -69,7 +69,7 @@ export function Team02({
             })}
             <h3 className="mt-4 font-medium text-lg">{renderMemberName(editSlots, member.name, blockIndex, itemIndex)}</h3>
             <p className="text-muted-foreground text-sm">{renderMemberRole(editSlots, member.role, blockIndex, itemIndex)}</p>
-            <p className="mt-3 text-foreground/90">{renderMemberBio(editSlots, member.bio, blockIndex, itemIndex)}</p>
+            <div className="mt-3 text-foreground/90">{renderMemberBio(editSlots, member.bio, blockIndex, itemIndex)}</div>
           </div>
         ))}
       </div>

@@ -109,9 +109,9 @@ export function Features13({ title, intro, features, blockIndex, editSlots, root
                 {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
               </h3>
               {feature.description ? (
-                <p className="mt-2 text-foreground/80">
+                <div className="mt-2 text-foreground/80">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
               <div className="absolute inset-0 -top-px z-0" style={GRID_OVERLAY_STYLE} />
             </div>

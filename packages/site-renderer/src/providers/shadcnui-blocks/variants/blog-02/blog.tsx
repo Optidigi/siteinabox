@@ -72,9 +72,12 @@ export function Blog02({ title, posts, blockIndex, editSlots, mediaResolver, roo
                   {post.authorRole ? (
                     <Badge className="bg-primary/5 text-primary shadow-none hover:bg-primary/5">{post.authorRole}</Badge>
                   ) : null}
+                  {post.readTime ? (
+                    <span className="font-medium text-muted-foreground text-xs">{post.readTime}</span>
+                  ) : null}
                 </div>
                 {postTitle ? <h3 className="mt-4 font-medium text-[1.4rem] text-xl tracking-[-0.02em]">{postTitle}</h3> : null}
-                {excerpt ? <p className="mt-2 text-muted-foreground">{excerpt}</p> : null}
+                {excerpt ? <div className="mt-2 text-muted-foreground">{excerpt}</div> : null}
                 <Button className="mt-6 shadow-none">Read more <ChevronRight /></Button>
               </CardContent>
             </Card>

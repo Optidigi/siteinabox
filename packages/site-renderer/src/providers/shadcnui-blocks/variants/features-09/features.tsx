@@ -63,9 +63,9 @@ export function Features09({ title, intro, features, blockIndex, editSlots, root
                 </h3>
               </div>
               {feature.description ? (
-                <p className="mt-4 text-base text-foreground/80">
+                <div className="mt-4 text-base text-foreground/80">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
             </div>
           )

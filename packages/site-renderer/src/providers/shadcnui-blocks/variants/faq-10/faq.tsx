@@ -92,9 +92,9 @@ export function Faq10({ title, intro, items, blockIndex, editSlots, rootAttribut
         </h2>
       ) : null}
       {introContent ? (
-        <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+        <div className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
           {introContent}
-        </p>
+        </div>
       ) : null}
 
       <div className="mx-auto mt-12 max-w-5xl sm:mt-16">

@@ -29,7 +29,7 @@ export function Team04({ title, intro, members, blockIndex, editSlots, mediaReso
             {renderMemberImage(editSlots, mediaResolver, member.image, member.name, blockIndex, itemIndex, { alt: member.name, className: "h-16 w-16 shrink-0 rounded-full bg-accent object-cover sm:h-20 sm:w-20", height: 120, width: 120 })}
             <h3 className="mt-5 font-medium text-lg">{renderMemberName(editSlots, member.name, blockIndex, itemIndex)}</h3>
             <p className="text-muted-foreground text-sm">{renderMemberRole(editSlots, member.role, blockIndex, itemIndex)}</p>
-            <p className="mt-3 mb-6 text-pretty">{renderMemberBio(editSlots, member.bio, blockIndex, itemIndex)}</p>
+            <div className="mt-3 mb-6 text-pretty">{renderMemberBio(editSlots, member.bio, blockIndex, itemIndex)}</div>
               <div className="mt-auto flex items-center gap-4">
                 {renderMemberLink(member.links?.[0], (<a href="#"><TwitterIcon className="h-5 w-5 stroke-muted-foreground" /></a>))}
                 {renderMemberLink(member.links?.[1], (<a href="#"><DribbbleIcon className="h-5 w-5 stroke-muted-foreground" /></a>))}

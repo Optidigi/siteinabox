@@ -61,9 +61,9 @@ export function Features08({ title, intro, features, blockIndex, editSlots, root
                 {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
               </h3>
               {feature.description ? (
-                <p className="mt-2 text-base text-foreground/70">
+                <div className="mt-2 text-base text-foreground/70">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
             </div>
           )

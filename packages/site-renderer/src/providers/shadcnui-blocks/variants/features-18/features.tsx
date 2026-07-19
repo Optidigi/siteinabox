@@ -89,9 +89,9 @@ export function Features18({ eyebrow, title, intro, features, blockIndex, editSl
                 {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
               </h3>
               {feature.description ? (
-                <p className="mb-6 text-balance text-muted-foreground">
+                <div className="mb-6 text-balance text-muted-foreground">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
               <Button className="mt-auto font-medium" variant="link">
                 {feature.cta?.label && feature.cta.href ? (

@@ -50,9 +50,9 @@ export function Faq14({ title, intro, items, blockIndex, editSlots, rootAttribut
         </h2>
       ) : null}
       {introContent ? (
-        <p className="mt-2.5 text-balance text-lg text-muted-foreground tracking-normal">
+        <div className="mt-2.5 text-balance text-lg text-muted-foreground tracking-normal">
           {introContent}
-        </p>
+        </div>
       ) : null}
 
       <div className="mx-auto mt-8 max-w-2xl">

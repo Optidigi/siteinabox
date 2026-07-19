@@ -41,9 +41,9 @@ export function Faq07({ title, intro, items, blockIndex, editSlots, rootAttribut
           </h2>
         ) : null}
         {introContent ? (
-          <p className="mt-2 text-muted-foreground text-xl">
+          <div className="mt-2 text-muted-foreground text-xl">
             {introContent}
-          </p>
+          </div>
         ) : null}
 
         <Accordion

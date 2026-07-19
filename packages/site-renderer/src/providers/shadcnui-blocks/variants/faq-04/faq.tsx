@@ -43,9 +43,9 @@ export function Faq04({ title, intro, items, blockIndex, editSlots, rootAttribut
           </h2>
         ) : null}
         {introContent ? (
-          <p className="mt-3 text-center text-muted-foreground text-xl md:text-2xl md:tracking-[-0.015em]">
+          <div className="mt-3 text-center text-muted-foreground text-xl md:text-2xl md:tracking-[-0.015em]">
             {introContent}
-          </p>
+          </div>
         ) : null}
 
         <div className="mt-12 grid gap-4 rounded-xl sm:mt-16 md:grid-cols-2">
@@ -64,9 +64,9 @@ export function Faq04({ title, intro, items, blockIndex, editSlots, rootAttribut
                     {renderFaqQuestion(editSlots, item.question, blockIndex, itemIndex)}
                   </span>
                 </div>
-                <p className="mt-3 text-foreground/70">
+                <div className="mt-3 text-foreground/70">
                   {renderFaqAnswer(editSlots, item.answer, blockIndex, itemIndex)}
-                </p>
+                </div>
               </div>
             )
           })}

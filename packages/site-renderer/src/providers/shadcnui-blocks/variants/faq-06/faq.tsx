@@ -41,9 +41,9 @@ export function Faq06({ title, intro, items, blockIndex, editSlots, rootAttribut
           </h2>
         ) : null}
         {introContent ? (
-          <p className="mt-2 text-muted-foreground text-xl">
+          <div className="mt-2 text-muted-foreground text-xl">
             {introContent}
-          </p>
+          </div>
         ) : null}
 
         <div className="mt-8 rounded-xl border border-border/65 bg-muted p-1 sm:mt-10">

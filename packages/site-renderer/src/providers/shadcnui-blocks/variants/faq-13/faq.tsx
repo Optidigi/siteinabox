@@ -32,9 +32,9 @@ export function Faq13({ title, intro, items, blockIndex, editSlots, rootAttribut
         </h2>
       ) : null}
       {introContent ? (
-        <p className="mt-2 text-lg text-muted-foreground sm:text-xl">
+        <div className="mt-2 text-lg text-muted-foreground sm:text-xl">
           {introContent}
-        </p>
+        </div>
       ) : null}
 
       <div className="mt-8 grid grid-cols-1 gap-1 rounded-lg border border-border/75 bg-muted p-0.75 md:grid-cols-2">

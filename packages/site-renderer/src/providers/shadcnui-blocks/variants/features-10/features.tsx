@@ -68,9 +68,9 @@ export function Features10({ title, intro, features, blockIndex, editSlots, root
                 </h3>
               </div>
               {feature.description ? (
-                <p className="mt-4 text-base text-foreground/80">
+                <div className="mt-4 text-base text-foreground/80">
                   {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                </p>
+                </div>
               ) : null}
               <div className="mt-8 -mr-5">
                 <StatsCard
