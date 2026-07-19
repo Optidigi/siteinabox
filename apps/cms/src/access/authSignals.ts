@@ -28,10 +28,14 @@
 
 const PAYLOAD_TOKEN_COOKIE_RX = /(?:^|;)\s*payload-token=[^;\s]+/
 
+export const hasPayloadSessionCookie = (req: any): boolean => {
+  const cookieHeader: unknown = req?.headers?.get?.("cookie")
+  return typeof cookieHeader === "string" && PAYLOAD_TOKEN_COOKIE_RX.test(cookieHeader)
+}
+
 export const hasUnvalidatedAuthSignal = (req: any): boolean => {
   const auth: unknown = req?.headers?.get?.("authorization")
   if (typeof auth === "string" && auth.length > 0) return true
-  const cookieHeader: unknown = req?.headers?.get?.("cookie")
-  if (typeof cookieHeader === "string" && PAYLOAD_TOKEN_COOKIE_RX.test(cookieHeader)) return true
+  if (hasPayloadSessionCookie(req)) return true
   return false
 }

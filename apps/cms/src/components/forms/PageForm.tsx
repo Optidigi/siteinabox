@@ -71,6 +71,7 @@ import { useTranslations } from "next-intl"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
+import { DEFER_PAGE_AUTO_PUBLISH_HEADER } from "@/lib/publish/pageEditorSaveContract"
 import type { NavPage } from "@/lib/projection/resolveNav"
 import { SiteChromeRow, type SiteChromeSelection, type SiteChromeZone } from "@/components/editor/sidebar/SiteChromeRow"
 import { MediaPicker } from "@/components/media/MediaPicker"
@@ -964,7 +965,14 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     if (pageWasDirty) {
       let res: Response
       try {
-        res = await fetch(url, { method, headers: { "content-type": "application/json" }, body })
+        res = await fetch(url, {
+          method,
+          headers: {
+            "content-type": "application/json",
+            [DEFER_PAGE_AUTO_PUBLISH_HEADER]: "1",
+          },
+          body,
+        })
       } catch (e) {
         setPending(false)
         const msg = e instanceof Error ? e.message : t("networkError")

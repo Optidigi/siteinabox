@@ -9,6 +9,7 @@ import { validateRichTextOnSave } from "@/hooks/validateRichTextOnSave"
 import { enforceTenantBlockMenu } from "@/hooks/enforceTenantBlockMenu"
 import { enforceTenantBlockVariantScope } from "@/hooks/enforceTenantBlockVariantScope"
 import { adminValidationText } from "@/lib/payloadAdminI18n"
+import { publishPageAfterUserSave } from "@/hooks/publishPageAfterUserSave"
 
 // FN-2026-0004 — same client-server validation gap as Tenants.slug. Direct
 // PATCH /api/pages/:id bypassed the form's zod regex; persisted "BAD SLUG!"
@@ -51,7 +52,7 @@ export const Pages: CollectionConfig = {
       if (req.user) data.updatedBy = req.user.id
       return data
     }],
-    afterChange: [projectPageToDisk],
+    afterChange: [projectPageToDisk, publishPageAfterUserSave],
     afterDelete: [deletePageFile]
   }
 }

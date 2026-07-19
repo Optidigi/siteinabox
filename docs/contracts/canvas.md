@@ -14,6 +14,10 @@ is no alternate CMS block renderer or canvas/source tree.
   so a page downloads only its selected provider views.
 - `PageForm` owns fields, saving, add/delete/duplicate/reorder, navigation,
   themes, and the inspector.
+- A successful explicit save persists the page and related theme/navigation/
+  chrome writes before activating one validated current-state snapshot. An
+  authenticated page write from an older already-loaded editor client invokes
+  the server-side publication fallback instead of leaving live output stale.
 - The editor iframe owns rendering and event-delegated selection only. It does
   not mutate fields, render gutters, reorder blocks, or substitute provider DOM.
 
