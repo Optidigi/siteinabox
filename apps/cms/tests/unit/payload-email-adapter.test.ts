@@ -6,14 +6,15 @@ vi.mock("@/lib/email/sendEmail", () => ({
   sendEmail: mocks.sendEmail,
 }))
 
-import { htmlToPlainText, payloadEmailAdapter } from "@/lib/email/payloadEmailAdapter"
+import { asPayload } from "../_helpers/mockPayload"
+import { payloadEmailAdapter, htmlToPlainText } from "@/lib/email/payloadEmailAdapter"
 
 describe("Payload Cloudflare email adapter", () => {
   beforeEach(() => vi.clearAllMocks())
 
   it("delegates lazily to the shared auth.password_reset transport with text and logging", async () => {
     mocks.sendEmail.mockResolvedValue({ provider: "cloudflare-rest" })
-    const payload = { create: vi.fn(), logger: { warn: vi.fn() } } as any
+    const payload = asPayload({ create: vi.fn(), logger: { warn: vi.fn() } })
     const adapter = payloadEmailAdapter({ payload })
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()

@@ -52,7 +52,10 @@ import config from "@/payload.config"
 import { mapHtmlToRt } from "@/lib/richText/mapper"
 import { matchersForManifest } from "@/lib/richText/themedMatchers/index"
 import { rtRootSchema } from "@/lib/richText/rtNodeSchema"
-import { validateAgainstManifest } from "@/lib/richText/validateAgainstManifest"
+import type { Page, Tenant } from "@/payload-types"
+import type { RtRoot } from "@/lib/richText/RtNode"
+
+type BlockRecord = Record<string, unknown> & { blockType: string }
 
 // `loadTenantManifest` lives in a module that imports `server-only`. esbuild
 // inlines the throw into the bundled output, which fires at import time
@@ -118,11 +121,11 @@ const main = async () => {
 
   const tenants = await payload.find({
     collection: "tenants",
-    where: { slug: { equals: args.tenant } } as any,
+    where: { slug: { equals: args.tenant } },
     limit: 1,
     overrideAccess: true,
   })
-  const tenant = tenants.docs[0] as any
+  const tenant = tenants.docs[0] as Tenant | undefined
   if (!tenant) {
     console.error(`[repopulate] tenant slug "${args.tenant}" not found`)
     process.exit(1)
@@ -146,11 +149,11 @@ const main = async () => {
         { tenant: { equals: tenant.id } },
         { slug: { equals: slug } },
       ],
-    } as any,
+    },
     limit: 1,
     overrideAccess: true,
   })
-  const page = pages.docs[0] as any
+  const page = pages.docs[0] as Page | undefined
   if (!page) {
     console.error(`[repopulate] target page tenant=${tenant.id} slug=${slug} not found in DB`)
     process.exit(1)
@@ -159,7 +162,7 @@ const main = async () => {
   let mapCount = 0
   let errors = 0
 
-  const mapField = (blockType: string, field: string, raw: unknown, label: string): any => {
+  const mapField = (blockType: string, field: string, raw: unknown, label: string): unknown => {
     if (typeof raw !== "string") return raw
     const variant = fieldVariant(blockType, field)
     const rt = mapHtmlToRt(raw, { variant, manifest, themedMatchers: matchers })
@@ -169,10 +172,9 @@ const main = async () => {
       console.error(`[repopulate] schema FAIL ${label}: ${struct.error.issues[0]?.message ?? "?"}`)
       return raw
     }
-    const m = validateAgainstManifest(rt as any, manifest)
-    if (!m.ok) {
+    const validation = validateAgainstManifest(struct.data as RtRoot, manifest)
       errors++
-      console.error(`[repopulate] manifest FAIL ${label}: ${m.errors.join("; ")}`)
+      console.error(`[repopulate] manifest FAIL ${label}: ${validation.errors.join("; ")}`)
       return raw
     }
     mapCount++
@@ -188,19 +190,19 @@ const main = async () => {
   // block as the base, find the matching snapshot block by position +
   // blockType, and overlay only the mapped RT fields. Everything else stays
   // as the DB had it.
-  const dbBlocks: any[] = page.blocks ?? []
-  const snapBlocks: any[] = snapshot.blocks ?? []
+  const dbBlocks = (page.blocks ?? []) as BlockRecord[]
+  const snapBlocks = (snapshot.blocks ?? []) as BlockRecord[]
   if (dbBlocks.length !== snapBlocks.length) {
     console.warn(`[repopulate] block-count mismatch: db=${dbBlocks.length} snapshot=${snapBlocks.length} — overlaying by position; trailing blocks unchanged`)
   }
 
-  const newBlocks = dbBlocks.map((dbBlock: any, i: number) => {
+  const newBlocks = dbBlocks.map((dbBlock, i) => {
     const snapBlock = snapBlocks[i]
     if (!snapBlock || snapBlock.blockType !== dbBlock.blockType) {
       console.warn(`[repopulate] block ${i} blockType mismatch (db=${dbBlock.blockType} snap=${snapBlock?.blockType ?? "?"}) — keeping DB block as-is`)
       return dbBlock
     }
-    const out: any = { ...dbBlock }
+    const out: BlockRecord = { ...dbBlock }
 
     for (const f of topLevelFields(dbBlock.blockType)) {
       const rawFromSnap = snapBlock[f]
@@ -208,7 +210,7 @@ const main = async () => {
     }
 
     if (dbBlock.blockType === "featureList" && Array.isArray(dbBlock.features) && Array.isArray(snapBlock.features)) {
-      out.features = dbBlock.features.map((dbFeat: any, j: number) => {
+      out.features = dbBlock.features.map((dbFeat: BlockRecord, j: number) => {
         const snapFeat = snapBlock.features[j]
         if (!snapFeat) return dbFeat
         return {
@@ -220,7 +222,7 @@ const main = async () => {
     }
 
     if (dbBlock.blockType === "faq" && Array.isArray(dbBlock.items) && Array.isArray(snapBlock.items)) {
-      out.items = dbBlock.items.map((dbItem: any, j: number) => {
+      out.items = dbBlock.items.map((dbItem: BlockRecord, j: number) => {
         const snapItem = snapBlock.items[j]
         if (!snapItem) return dbItem
         return {
@@ -251,7 +253,7 @@ const main = async () => {
   await payload.update({
     collection: "pages",
     id: page.id,
-    data: { blocks: newBlocks } as any,
+    data: { blocks: newBlocks as Page["blocks"] },
     overrideAccess: true,
   })
 

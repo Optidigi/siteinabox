@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import {
   materializeTenantPrivacyPage,
   TENANT_PRIVACY_PAGE_SLUG,
@@ -6,7 +7,9 @@ import {
 } from "@/lib/legal/tenantPrivacyPage"
 import { validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 
-const spec = () => ({
+import { cast } from "../_helpers/cast"
+
+const spec = (): SiteGenerationSpec => cast<SiteGenerationSpec>({
   schemaVersion: 1,
   generatedAt: "2026-07-10T10:00:00.000Z",
   intake: {
@@ -64,7 +67,7 @@ const spec = () => ({
       headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Voorbeeldbedrijf" }] },
     }],
   }],
-}) as any
+})
 
 describe("tenant privacy page materialization", () => {
   it("derives controller facts before generation validation", () => {
@@ -116,11 +119,11 @@ describe("tenant privacy page materialization", () => {
 
   it("does not replace an explicitly supplied privacy page or duplicate its link", () => {
     const initial = withDerivedTenantPrivacyDisclosure(spec())
-    initial.pages.push({
+    initial.pages.push(cast<SiteGenerationSpec["pages"][number]>({
       slug: "privacy",
       title: "Ons privacybeleid",
       blocks: [{ blockType: "richText", body: { t: "root", variant: "block", children: [] } }],
-    } as any)
+    }))
     initial.settings.chrome!.footer!.legalLinks = [{ label: "Privacy", href: "/privacy" }]
 
     const once = materializeTenantPrivacyPage(initial)

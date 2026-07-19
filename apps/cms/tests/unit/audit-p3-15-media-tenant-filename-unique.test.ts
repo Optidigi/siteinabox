@@ -7,6 +7,8 @@ import * as migration from "@/migrations/20260509_media_tenant_filename_unique"
 import { ensureUniqueTenantFilename } from "@/hooks/ensureUniqueTenantFilename"
 import { forceTenantMediaUploadFilename, rewriteTenantMediaUrl } from "@/hooks/mediaTenantUrls"
 
+import { asBeforeOperationHook, callBeforeOpHook, type BeforeOperationHook } from "../_helpers/hookFixtures"
+import { cast, errLike, validationErrorData } from "../_helpers/cast"
 // Audit finding #15 (P3, T8) — `media.filename` globally UNIQUE → cross-tenant
 // naming side-channel. Tenant A uploading `logo.png` causes Tenant B's later
 // upload to land at `logo-1.png` — leaks filename existence across tenants
@@ -37,13 +39,9 @@ import { forceTenantMediaUploadFilename, rewriteTenantMediaUrl } from "@/hooks/m
 // Half A — application-level pre-emptive duplicate check on Media
 // -----------------------------------------------------------------------------
 
-const beforeValidateHooks = (Media.hooks?.beforeValidate ?? []) as Array<
-  (args: any) => any
->
-const beforeOperationHooks = (Media.hooks?.beforeOperation ?? []) as Array<
-  (args: any) => any
->
-const afterReadHooks = (Media.hooks?.afterRead ?? []) as Array<(args: any) => any>
+const beforeValidateHooks = Media.hooks?.beforeValidate ?? []
+const beforeOperationHooks = (Media.hooks?.beforeOperation ?? []) as unknown as BeforeOperationHook[]
+const afterReadHooks = Media.hooks?.afterRead ?? []
 
 // Invoke the hook by direct import rather than positional array access.
 // The original `beforeValidateHooks[0]` access silently broke when
@@ -52,9 +50,9 @@ const afterReadHooks = (Media.hooks?.afterRead ?? []) as Array<(args: any) => an
 // a `req` mock missing `findByID` and surfaced as a misleading "Tenant
 // not found" ValidationError. The S1 case below still verifies the hook
 // is wired into the collection chain so registration regressions trip.
-const ensureUniqueFilenameHook = ensureUniqueTenantFilename as unknown as (args: any) => any
+const ensureUniqueFilenameHook = ensureUniqueTenantFilename as unknown as (args: unknown) => unknown
 
-const makeReq = (findResult: { totalDocs: number; docs?: any[] }) => {
+const makeReq = (findResult: { totalDocs: number; docs?: unknown[] }) => {
   const find = vi.fn().mockResolvedValue({
     docs: findResult.docs ?? [],
     totalDocs: findResult.totalDocs,
@@ -66,22 +64,22 @@ const makeReq = (findResult: { totalDocs: number; docs?: any[] }) => {
 }
 
 const callHook = async (opts: {
-  data: any
+  data: unknown
   operation: "create" | "update"
-  originalDoc?: any
-  req: any
+  originalDoc?: unknown
+  req: unknown
 }) =>
   ensureUniqueFilenameHook({
     data: opts.data,
     operation: opts.operation,
     originalDoc: opts.originalDoc,
     req: opts.req,
-    collection: { slug: "media" } as any,
+    collection: { slug: "media" },
     context: {},
   })
 
-const expectValidationError = async (p: Promise<any>) => {
-  let err: any = null
+const expectValidationError = async (p: Promise<unknown>) => {
+  let err: unknown = null
   try {
     await p
   } catch (e) {
@@ -89,10 +87,7 @@ const expectValidationError = async (p: Promise<any>) => {
   }
   expect(err, "expected the hook to throw").not.toBeNull()
   expect(err, "expected ValidationError, not plain Error").toBeInstanceOf(ValidationError)
-  // The errors[] entry must carry path:"filename" so the admin UI binds the
-  // error to the filename field rather than surfacing it as a top-level
-  // form error.
-  expect(err.data?.errors?.[0]?.path).toBe("filename")
+  expect(validationErrorData(err)?.errors?.[0]?.path).toBe("filename")
 }
 
 describe("audit-p3 #15 Half A — ensureUniqueTenantFilename pre-empts unique-violation with clean ValidationError", () => {
@@ -128,7 +123,7 @@ describe("audit-p3 #15 Half A — ensureUniqueTenantFilename pre-empts unique-vi
       totalDocs: 1,
       docs: [{ id: 99, filename: "logo.png", tenant: 42 }],
     })
-    let err: any = null
+    let err: unknown = null
     try {
       await callHook({
         data: { filename: "logo.png", tenant: 42 },
@@ -139,10 +134,8 @@ describe("audit-p3 #15 Half A — ensureUniqueTenantFilename pre-empts unique-vi
       err = e
     }
     expect(err).toBeInstanceOf(ValidationError)
-    expect(err.data?.errors?.[0]?.path).toBe("filename")
-    // Message must mention the filename and "tenant" so the admin user knows
-    // the conflict is per-tenant (not a generic "already exists").
-    const msg = String(err.data?.errors?.[0]?.message ?? "")
+    expect(validationErrorData(err)?.errors?.[0]?.path).toBe("filename")
+    const msg = String(validationErrorData(err)?.errors?.[0]?.message ?? "")
     expect(msg).toContain("logo.png")
     expect(msg.toLowerCase()).toContain("tenant")
   })
@@ -291,15 +284,15 @@ describe("audit-p3 #15 Half B — migration shape", () => {
   })
 
   it("Case 7 — down() throws unconditionally with a destructive-rollback message that names the new index", async () => {
-    let err: any = null
+    let err: unknown = null
     try {
-      await migration.down({ db: {} as any, payload: {} as any, req: {} as any })
+      await migration.down(cast({ db: {}, payload: {}, req: {} }))
     } catch (e) {
       err = e
     }
     expect(err, "down() must throw").not.toBeNull()
     expect(err).toBeInstanceOf(Error)
-    const msg = String(err?.message ?? "")
+    const msg = String(errLike(err).message ?? "")
     expect(msg.toLowerCase()).toContain("destructive")
     expect(msg).toContain("media_tenant_filename_idx")
   })
@@ -340,7 +333,7 @@ describe("audit-p3 #15 Half B — migration shape", () => {
 describe("OBS-17 — media uploads do not leak cross-tenant filename existence through Payload safe-name probing", () => {
   it("Media upload config declares tenant as the filename compound index", () => {
     expect(typeof Media.upload).toBe("object")
-    expect((Media.upload as any).filenameCompoundIndex).toEqual(["tenant", "filename"])
+    expect((Media.upload as Record<string, unknown>).filenameCompoundIndex).toEqual(["tenant", "filename"])
   })
 
   it("forceTenantMediaUploadFilename is registered before Payload generates upload data", () => {
@@ -349,30 +342,34 @@ describe("OBS-17 — media uploads do not leak cross-tenant filename existence t
 
   it("forceTenantMediaUploadFilename sets overwriteExistingFiles only for upload create/update operations", () => {
     const req = { file: { name: "logo.png", data: Buffer.from("x") } }
-    const result = forceTenantMediaUploadFilename({
-      args: { req, collection: { config: Media } },
-      collection: Media as any,
-      context: {},
-      operation: "create",
-      req: req as any,
-    } as any) as any
+    const result = forceTenantMediaUploadFilename(
+      cast<Parameters<typeof forceTenantMediaUploadFilename>[0]>({
+        args: { req, collection: { config: Media } },
+        collection: Media,
+        context: {},
+        operation: "create",
+        req,
+      }),
+    ) as { overwriteExistingFiles?: boolean }
 
     expect(result.overwriteExistingFiles).toBe(true)
 
-    const readResult = forceTenantMediaUploadFilename({
-      args: { req },
-      collection: Media as any,
-      context: {},
-      operation: "find",
-      req: req as any,
-    } as any) as any
+    const readResult = forceTenantMediaUploadFilename(
+      cast<Parameters<typeof forceTenantMediaUploadFilename>[0]>({
+        args: { req },
+        collection: Media,
+        context: {},
+        operation: "find",
+        req,
+      }),
+    ) as { overwriteExistingFiles?: boolean }
     expect(readResult.overwriteExistingFiles).toBeUndefined()
   })
 
   it("rewriteTenantMediaUrl is registered and rewrites populated media URLs to tenant-scoped routes", () => {
     expect(afterReadHooks).toContain(rewriteTenantMediaUrl)
 
-    const doc = rewriteTenantMediaUrl({
+    const doc = rewriteTenantMediaUrl(cast<Parameters<typeof rewriteTenantMediaUrl>[0]>({
       doc: {
         id: 10,
         filename: "logo file.png",
@@ -380,8 +377,10 @@ describe("OBS-17 — media uploads do not leak cross-tenant filename existence t
         thumbnailURL: "/api/media/file/logo%20file.png",
         url: "/api/media/file/logo%20file.png",
       },
-      req: {} as any,
-    } as any) as any
+      req: cast({}),
+      collection: {},
+      context: {},
+    }))
 
     expect(doc.url).toBe("/api/tenant-media/42/logo%20file.png")
     expect(doc.thumbnailURL).toBe("/api/tenant-media/42/logo%20file.png")

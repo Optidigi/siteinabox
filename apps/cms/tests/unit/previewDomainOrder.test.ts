@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { SiteGenerationRun } from "@/payload-types"
+
+import { cast } from "../_helpers/cast"
+import { asPayload, type MockCreateArgs } from "../_helpers/mockPayload"
 vi.mock("@/lib/domains/openprovider", () => ({
   checkOpenProviderDomainAvailability: vi.fn(),
   checkOpenProviderDomainsAvailability: vi.fn(),
@@ -34,7 +38,7 @@ describe("preview domain order", () => {
       domainOrder: null,
     }
     const payload = {
-      update: vi.fn(async ({ data }: any) => {
+      update: vi.fn(async ({ data }: MockCreateArgs) => {
         Object.assign(run, data)
         return { ...run }
       }),
@@ -50,7 +54,7 @@ describe("preview domain order", () => {
     })
     vi.mocked(checkOpenProviderDomainsAvailability).mockImplementation(async () => new Promise(() => {}))
 
-    const result = await checkAndRecordPreviewDomainOrder(payload as any, run as any, "acme.nl")
+    const result = await checkAndRecordPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "acme.nl")
 
     expect(result).toMatchObject({
       messageKey: "checkoutDomainUnavailable",
@@ -263,7 +267,7 @@ describe("preview domain order", () => {
   it("marks available domains above the included cap as ready with an extra fee and no offer cap", async () => {
     const run = { id: 123, domainOrder: null }
     const payload = {
-      update: vi.fn(async ({ data }: any) => {
+      update: vi.fn(async ({ data }: MockCreateArgs) => {
         Object.assign(run, data)
         return { ...run }
       }),
@@ -278,7 +282,7 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    const result = await checkAndRecordPreviewDomainOrder(payload as any, run as any, "levelweb.nl")
+    const result = await checkAndRecordPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "levelweb.nl")
 
     expect(result).toMatchObject({
       messageKey: "checkoutDomainAvailableExtraFee",
@@ -300,7 +304,7 @@ describe("preview domain order", () => {
   it("can return primary check results without recording domain order state", async () => {
     const run = { id: 123, domainOrder: null }
     const payload = {
-      update: vi.fn(async ({ data }: any) => {
+      update: vi.fn(async ({ data }: MockCreateArgs) => {
         Object.assign(run, data)
         return { ...run }
       }),
@@ -315,7 +319,7 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    const result = await checkAndRecordPreviewDomainOrder(payload as any, run as any, "readonly.nl", null, { record: false })
+    const result = await checkAndRecordPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "readonly.nl", null, { record: false })
 
     expect(result).toMatchObject({
       messageKey: "checkoutDomainAvailable",
@@ -357,7 +361,7 @@ describe("preview domain order", () => {
       }),
     }
     const payload = {
-      update: vi.fn(async ({ data }: any) => {
+      update: vi.fn(async ({ data }: MockCreateArgs) => {
         Object.assign(run, data)
         return { ...run }
       }),
@@ -371,7 +375,7 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    const result = await requireReadyPreviewDomainOrder(payload as any, run as any, "levelweb.nl", registrant)
+    const result = await requireReadyPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "levelweb.nl", registrant)
 
     expect(result).toMatchObject({ domain: "levelweb.nl" })
     expect(payload.update).toHaveBeenCalledTimes(1)

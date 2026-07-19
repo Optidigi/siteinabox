@@ -2,6 +2,8 @@ import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fixturePublishedSiteSnapshot } from "../../../renderer/src/fixtures/published-site"
 
+import { errLike, asMockDoc } from "../_helpers/cast"
+import { type MockFindArgs, type MockFindByIdArgs } from "../_helpers/mockPayload"
 const mocks = vi.hoisted(() => ({
   payload: {
     find: vi.fn(),
@@ -65,19 +67,19 @@ function installPayloadState({
   snapshotDoc = activeSnapshot,
   settingsDocs = [siteSettings],
 }: {
-  tenantDoc?: any
-  snapshotDoc?: any
-  settingsDocs?: any[]
+  tenantDoc?: unknown
+  snapshotDoc?: unknown
+  settingsDocs?: unknown[]
 } = {}) {
-  mocks.payload.findByID.mockImplementation(async ({ collection, id }: any) => {
+  mocks.payload.findByID.mockImplementation(async ({ collection, id }: MockFindByIdArgs) => {
     if (collection === "tenants" && String(id) === "1") return tenantDoc
     if (collection === "published-site-snapshots" && String(id) === "10") return snapshotDoc
     throw new Error(`Missing ${collection} ${id}`)
   })
-  mocks.payload.find.mockImplementation(async ({ collection, where }: any) => {
+  mocks.payload.find.mockImplementation(async ({ collection, where }: MockFindArgs) => {
     if (collection === "tenants") {
-      const domain = where?.domain?.equals
-      return { docs: tenantDoc && domain === tenantDoc.domain ? [tenantDoc] : [] }
+      const domain = asMockDoc(asMockDoc(where).domain).equals
+      return { docs: tenantDoc && domain === asMockDoc(tenantDoc).domain ? [tenantDoc] : [] }
     }
     if (collection === "site-settings") return { docs: settingsDocs }
     if (collection === "published-site-snapshots") return { docs: snapshotDoc ? [snapshotDoc] : [] }

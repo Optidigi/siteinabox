@@ -1,24 +1,26 @@
 import { describe, expect, it, vi } from "vitest"
 import { retryLegalDelivery } from "@/lib/legal/retryLegalDelivery"
 
+import { asPayload, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+
 const createPayload = (overrides: Record<string, unknown> = {}) => {
   const delivery = { id: 7, notificationKey: "notice:7", status: "failed", retryState: "retryable", attemptCount: 2, requirement: 11, ...overrides }
   const calls: string[] = []
-  const payload = {
+  const stubs = {
     db: {
       beginTransaction: vi.fn(async () => "tx-1"),
       commitTransaction: vi.fn(async () => undefined),
       rollbackTransaction: vi.fn(async () => undefined),
     },
-    findByID: vi.fn(async ({ collection }: any) => collection === "legal-notification-deliveries" ? delivery : { id: 11, status: "notified" }),
+    findByID: vi.fn(async ({ collection }: MockFindByIdArgs) => collection === "legal-notification-deliveries" ? delivery : { id: 11, status: "notified" }),
     create: vi.fn(async () => { calls.push("audit"); return { id: 1 } }),
-    update: vi.fn(async ({ collection, data, where }: any) => {
+    update: vi.fn(async ({ collection, data }: MockUpdateArgs) => {
       calls.push(collection)
       const updated = { ...delivery, ...data }
-      return where ? { docs: [updated], totalDocs: 1 } : updated
+      return updated
     }),
-  } as any
-  return { payload, calls }
+  }
+  return { payload: Object.assign(asPayload(stubs), stubs), calls }
 }
 
 describe("retryLegalDelivery", () => {

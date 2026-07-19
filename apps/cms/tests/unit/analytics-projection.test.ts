@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
+import { asPageSource, jsonBlockAt } from "../_helpers/pageToJsonFixtures"
 
 describe("analytics projection", () => {
   it("adds page and block analytics metadata without leaking Payload row ids", () => {
     const json = pageToJson(
-      {
+      asPageSource({
         id: 10,
         title: "Home",
         slug: "home",
@@ -20,7 +21,7 @@ describe("analytics projection", () => {
           },
           { id: "row-2", blockType: "cta", headline: "Contact", primary: { label: "Bel", href: "tel:+31612345678" } },
         ],
-      },
+      }),
       {
         tenantId: 7,
         tenantSlug: "amicare",
@@ -40,16 +41,18 @@ describe("analytics projection", () => {
       pagePath: "/",
       manifestVersion: 1,
     })
-    expect(json.blocks[0]).not.toHaveProperty("id")
-    expect(json.blocks[0].analytics).toMatchObject({
+    expect(jsonBlockAt(json, 0)).not.toHaveProperty("id")
+    expect(jsonBlockAt(json, 0).analytics).toMatchObject({
       sectionId: "top",
       sectionType: "hero",
       sectionPosition: 0,
       sectionAnchor: "top",
       providerVariant: "shadcnui-blocks.hero-01",
     })
-    expect(json.blocks[0].analytics.contentSignature).toMatch(/^[a-f0-9]{24}$/)
-    expect(json.blocks[1].analytics).toMatchObject({
+    expect(jsonBlockAt(json, 0).analytics).toMatchObject({
+      contentSignature: expect.stringMatching(/^[a-f0-9]{24}$/),
+    })
+    expect(jsonBlockAt(json, 1).analytics).toMatchObject({
       sectionId: "home:1:cta",
       sectionType: "cta",
       sectionPosition: 1,

@@ -40,10 +40,10 @@ export async function resetTestData(payload: Payload) {
     for (const d of docs.docs) {
       await payload.delete({
         collection: slug,
-        id: (d as any).id,
+        id: d.id,
         overrideAccess: true,
         context: { allowUnsafeUserDelete: true },
-      } as any)
+      })
     }
   }
 }
@@ -62,27 +62,27 @@ export async function seedFixture(payload: Payload) {
 
   const sa = await payload.create({
     collection: "users",
-    data: { email: "sa@test.local", password: "test1234", name: "SA", role: "super-admin" } as any,
+    data: { email: "sa@test.local", password: "test1234", name: "SA", role: "super-admin" },
     overrideAccess: true
   })
   const owner1 = await payload.create({
     collection: "users",
-    data: { email: "owner1@test.local", password: "test1234", name: "Owner1", role: "owner", tenants: [{ tenant: t1.id }] } as any,
+    data: { email: "owner1@test.local", password: "test1234", name: "Owner1", role: "owner", tenants: [{ tenant: t1.id }] },
     overrideAccess: true
   })
   const editor1 = await payload.create({
     collection: "users",
-    data: { email: "editor1@test.local", password: "test1234", name: "Editor1", role: "editor", tenants: [{ tenant: t1.id }] } as any,
+    data: { email: "editor1@test.local", password: "test1234", name: "Editor1", role: "editor", tenants: [{ tenant: t1.id }] },
     overrideAccess: true
   })
   const viewer1 = await payload.create({
     collection: "users",
-    data: { email: "viewer1@test.local", password: "test1234", name: "Viewer1", role: "viewer", tenants: [{ tenant: t1.id }] } as any,
+    data: { email: "viewer1@test.local", password: "test1234", name: "Viewer1", role: "viewer", tenants: [{ tenant: t1.id }] },
     overrideAccess: true
   })
   const owner2 = await payload.create({
     collection: "users",
-    data: { email: "owner2@test.local", password: "test1234", name: "Owner2", role: "owner", tenants: [{ tenant: t2.id }] } as any,
+    data: { email: "owner2@test.local", password: "test1234", name: "Owner2", role: "owner", tenants: [{ tenant: t2.id }] },
     overrideAccess: true
   })
 

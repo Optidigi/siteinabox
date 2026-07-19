@@ -2,6 +2,8 @@ import { promises as fs } from "node:fs"
 import path from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
+import { asPayload } from "../_helpers/mockPayload"
+import { cast } from "../_helpers/cast"
 
 const tenantDir = (tenantId: number | string) =>
   path.join(process.env.DATA_DIR!, "tenants", String(tenantId))
@@ -26,7 +28,7 @@ describe("projectPageToDisk", () => {
       }),
     )
 
-    const payload = {
+    const payload = Object.assign(asPayload({
       find: vi.fn().mockResolvedValue({ docs: [] }),
       findByID: vi.fn().mockResolvedValue({
         id: 7,
@@ -35,9 +37,18 @@ describe("projectPageToDisk", () => {
         siteManifest: { version: 1 },
       }),
       logger: { info: vi.fn() },
-    }
+    }), {
+      find: vi.fn().mockResolvedValue({ docs: [] }),
+      findByID: vi.fn().mockResolvedValue({
+        id: 7,
+        slug: "amicare",
+        domain: "ami-care.nl",
+        siteManifest: { version: 1 },
+      }),
+      logger: { info: vi.fn() },
+    })
 
-    await projectPageToDisk({
+    await projectPageToDisk(cast<Parameters<typeof projectPageToDisk>[0]>({
       doc: {
         id: 10,
         tenant: 7,
@@ -57,7 +68,7 @@ describe("projectPageToDisk", () => {
         updatedAt: "2026-06-05T00:00:00.000Z",
       },
       req: { payload },
-    } as any)
+    }))
 
     await expect(fs.access(path.join(tenantDir(7), "pages", "old-home.json"))).rejects.toThrow()
     await expect(fs.access(path.join(tenantDir(7), "pages", "new-home.json"))).resolves.toBeUndefined()
@@ -69,13 +80,17 @@ describe("projectPageToDisk", () => {
   })
 
   it("does not project draft-import pages when skipProjection context is set", async () => {
-    const payload = {
+    const payload = Object.assign(asPayload({
       find: vi.fn(),
       findByID: vi.fn(),
       logger: { info: vi.fn() },
-    }
+    }), {
+      find: vi.fn(),
+      findByID: vi.fn(),
+      logger: { info: vi.fn() },
+    })
 
-    await projectPageToDisk({
+    await projectPageToDisk(cast<Parameters<typeof projectPageToDisk>[0]>({
       doc: {
         id: 11,
         tenant: 7,
@@ -87,7 +102,7 @@ describe("projectPageToDisk", () => {
       },
       previousDoc: null,
       req: { payload, context: { skipProjection: true } },
-    } as any)
+    }))
 
     await expect(fs.access(path.join(tenantDir(7), "pages", "index.json"))).rejects.toThrow()
     expect(payload.find).not.toHaveBeenCalled()

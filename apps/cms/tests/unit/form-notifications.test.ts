@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("@/lib/email/sendEmail", async () => {
-  const actual = await vi.importActual<any>("@/lib/email/sendEmail")
+  const actual = await vi.importActual<typeof import("payload")>("@/lib/email/sendEmail")
   return {
     ...actual,
     sendEmail: mocks.sendEmail,
@@ -43,7 +43,7 @@ const formDoc = {
 
 const payloadStub = (overrides: {
   subscriptionEmail?: string | null
-  tenant?: any
+  tenant?: unknown
   sendRejects?: boolean
 } = {}) => {
   const payload = {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createEditorFrameNewPagePlaceholder } from "@/lib/editor/editorFramePlaceholderPage"
 
+import { errLike } from "../_helpers/cast"
 describe("createEditorFrameNewPagePlaceholder", () => {
   it("returns an empty draft page the parent can replace via render.snapshot", () => {
     const page = createEditorFrameNewPagePlaceholder()

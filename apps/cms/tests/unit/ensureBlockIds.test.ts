@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import { asMockDoc } from "../_helpers/cast"
 import {
   blockWireId,
   ensureBlockId,
@@ -59,14 +60,14 @@ describe("ensurePageBlockIds", () => {
     ]
     const result = ensurePageBlockIds(blocks)
     expect(result[0]!.id).toBe("keep-me")
-    expect(typeof (result[1] as Record<string, unknown>).id).toBe("string")
-    expect((result[1] as Record<string, unknown>).id).toBeTruthy()
+    expect(typeof asMockDoc(result[1]).id).toBe("string")
+    expect(asMockDoc(result[1]).id).toBeTruthy()
   })
   it("does not mutate the original block objects (copies before assigning)", () => {
-    const original = { blockType: "hero" } as Record<string, unknown>
+    const original: Record<string, unknown> = { blockType: "hero" }
     const [result] = ensurePageBlockIds([original])
     expect(original.id).toBeUndefined()
-    expect((result as Record<string, unknown>).id).toBeTruthy()
+    expect(asMockDoc(result).id).toBeTruthy()
   })
   it("passes through non-object entries unchanged", () => {
     const blocks = [null, "not-a-block", 5] as unknown[]

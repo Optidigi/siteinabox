@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import type { SettingsContract } from "@/lib/settingsContract"
 
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 const fullSettingsContract: SettingsContract = {
   general: {
     description: true,
@@ -56,7 +57,7 @@ describe("settingsToJson", () => {
   })
 
   it("flattens settings with branding/contact + resolves navHeader/navFooter", () => {
-    const doc: any = {
+    const doc: MockDoc = {
       id: "s1", tenant: "t1", siteName: "Client A", siteUrl: "https://clienta.nl",
       contactEmail: "hi@clienta.nl",
       branding: {
@@ -157,7 +158,7 @@ describe("settingsToJson", () => {
   })
 
   it("uses the slim default settings projection contract", () => {
-    const doc: any = {
+    const doc: MockDoc = {
       id: "x",
       tenant: "t",
       siteName: "Bare",
@@ -187,7 +188,7 @@ describe("settingsToJson", () => {
   })
 
   it("projects optional settings fields only when the manifest contract enables them", () => {
-    const doc: any = {
+    const doc: MockDoc = {
       id: "s2", tenant: "t1",
       siteName: "Client B", siteUrl: "https://clientb.nl",
       description: "A pleasant little business in Utrecht.",

@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
+import { cast } from "../_helpers/cast"
+import { hookArgsFor } from "../_helpers/hookFixtures"
+import type { PayloadRequest } from "payload"
 import { validateRichTextOnSave } from "@/hooks/validateRichTextOnSave"
 import type { RtManifest } from "@/lib/richText/manifest"
 
@@ -25,11 +28,11 @@ const blockRoot = (text = "hi") => ({
 })
 
 const runHook = (blocks: unknown[]) =>
-  validateRichTextOnSave({
+  validateRichTextOnSave(hookArgsFor(validateRichTextOnSave, {
     data: { tenant: 1, blocks },
     originalDoc: undefined,
-    req: {} as any,
-  } as any)
+    req: cast<PayloadRequest>({}),
+  }))
 
 describe("validateRichTextOnSave", () => {
   it("validates nested FeatureList rich-text array fields", async () => {

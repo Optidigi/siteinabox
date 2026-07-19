@@ -6,7 +6,9 @@ import {
 } from "@/lib/intake/reviewIntakeSubmission"
 import type { IntakeSubmission } from "@/payload-types"
 
-const normalized = {
+import type { NormalizedIntake } from "@siteinabox/contracts/generation"
+import { cast, errLike } from "../_helpers/cast"
+const normalized = cast<NormalizedIntake>({
   businessName: "Review Demo",
   tenantSlug: "review-demo",
   primaryDomain: "review-demo.nl",
@@ -36,7 +38,7 @@ const normalized = {
     tone: [],
     addOnInterest: [],
   },
-}
+})
 
 const submission = (): IntakeSubmission => ({
   id: 42,
@@ -76,7 +78,7 @@ describe("reviewIntakeSubmission", () => {
     const staged = submission()
     const update = prepareReviewedGenerationInputUpdate({
       submission: staged,
-      generationInputJson: JSON.stringify(buildGenerationInput(normalized as any, "ai-prepared")),
+      generationInputJson: JSON.stringify(buildGenerationInput(normalized, "ai-prepared")),
       reviewNotes: "Ready for generation.",
       reviewerId: 7,
       now: "2026-06-30T09:00:00.000Z",
@@ -95,7 +97,7 @@ describe("reviewIntakeSubmission", () => {
   })
 
   it("rejects reviewed input for a different normalized intake", () => {
-    const input = buildGenerationInput({ ...normalized, tenantSlug: "other-demo" } as any, "ai-prepared")
+    const input = buildGenerationInput({ ...normalized, tenantSlug: "other-demo" }, "ai-prepared")
 
     expect(() =>
       prepareReviewedGenerationInputUpdate({

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { errLike } from "../_helpers/cast"
 const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   issuePayloadSessionCookie: vi.fn(),

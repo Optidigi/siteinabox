@@ -11,6 +11,8 @@ import {
 } from "@siteinabox/contracts/fixtures/tenants"
 import { pageToJson } from "@/lib/projection/pageToJson"
 
+import { asMockDoc, cast } from "../_helpers/cast"
+import { asPageSource, jsonBlocks, type PageJson } from "../_helpers/pageToJsonFixtures"
 describe("Ami Care canonical provider site", () => {
   it("uses only globally approved provider blocks and chrome", () => {
     expect(SiteGenerationSpecSchema.safeParse(amicareSiteGenerationSpec).success).toBe(true)
@@ -45,8 +47,8 @@ describe("Ami Care canonical provider site", () => {
           }
         : block),
     }
-    const projectedPage: any = {
-      ...pageToJson(hydratedPage),
+    const projectedPage = {
+      ...pageToJson(asPageSource(hydratedPage)),
       id: "amicare-index",
       status: "published" as const,
       updatedAt: sourcePage.updatedAt,
@@ -57,7 +59,7 @@ describe("Ami Care canonical provider site", () => {
     })
 
     expect(result.success).toBe(true)
-    expect(projectedPage.blocks.filter((block: any) => block.blockType === "cta"))
+    expect(jsonBlocks(cast<PageJson>(projectedPage)).filter((block) => asMockDoc(block).blockType === "cta"))
       .toEqual(expect.arrayContaining([
         expect.not.objectContaining({ secondary: expect.anything() }),
         expect.not.objectContaining({ secondary: expect.anything() }),

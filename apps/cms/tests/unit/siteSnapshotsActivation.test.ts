@@ -8,11 +8,14 @@ import {
 import { PublishedSiteSnapshots } from "@/collections/PublishedSiteSnapshots"
 import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 
+import { asGenerationRun, asMockDoc, asTenant, cast } from "../_helpers/cast"
+import { hookArgsFor } from "../_helpers/hookFixtures"
+import { asPayload, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
 const approvedPaidRun = {
   id: 500,
   clientApproval: { status: "approved" },
   payment: { status: "completed" },
-} as any
+}
 
 const verifiedTenant = {
   id: 1,
@@ -26,7 +29,7 @@ const verifiedTenant = {
     sendingDomain: "mail.clientsite.nl",
     senderEmail: "noreply@mail.clientsite.nl",
   },
-} as any
+}
 
 const pendingTenant = {
   ...verifiedTenant,
@@ -39,28 +42,28 @@ const pendingTenant = {
     cloudflareZoneId: "zone-123",
     cloudflareSubdomainId: "subdomain-123",
   },
-} as any
+}
 
-const createActivationPayload = (input?: { tenant?: any; run?: any }) => {
-  const tenant = { ...(input?.tenant ?? pendingTenant) }
-  const run = input?.run ?? approvedPaidRun
-  const snapshot = {
+const createActivationPayload = (input?: { tenant?: MockDoc; run?: MockDoc }) => {
+  const tenant: MockDoc = { ...(input?.tenant ?? pendingTenant) }
+  const run: MockDoc = { ...(input?.run ?? approvedPaidRun) }
+  const snapshot: MockDoc = {
     id: 10,
     tenant: tenant.id,
     domain: tenant.domain,
     sourceGenerationRun: run.id,
     status: "drafted",
   }
-  const updates: any[] = []
+  const updates: MockDoc[] = []
   const payload = {
-    findByID: vi.fn(async ({ collection, id }: any) => {
+    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
       if (collection === "published-site-snapshots" && String(id) === String(snapshot.id)) return snapshot
       if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
       if (collection === "site-generation-runs" && String(id) === String(run.id)) return run
       throw new Error(`Missing ${collection} ${id}`)
     }),
     find: vi.fn(async () => ({ docs: [] })),
-    update: vi.fn(async ({ collection, data }: any) => {
+    update: vi.fn(async ({ collection, data }: MockUpdateArgs) => {
       updates.push({ collection, data })
       if (collection === "tenants") {
         Object.assign(tenant, data)
@@ -73,7 +76,7 @@ const createActivationPayload = (input?: { tenant?: any; run?: any }) => {
       return { ...data }
     }),
   }
-  return { payload: payload as any, tenant, snapshot, updates }
+  return { payload: asPayload(payload), tenant, snapshot, updates }
 }
 
 describe("published snapshot activation gate", () => {
@@ -90,8 +93,8 @@ describe("published snapshot activation gate", () => {
   })
 
   it("requires verified tenant email sending for generated-site activation", () => {
-    expect(canActivatePublishedSnapshot(approvedPaidRun, {
-      tenant: {
+    expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
+      tenant: asTenant({
         ...verifiedTenant,
         emailSending: {
           provider: "cloudflare",
@@ -100,7 +103,7 @@ describe("published snapshot activation gate", () => {
           sendingDomain: "mail.clientsite.nl",
           senderEmail: "noreply@mail.clientsite.nl",
         },
-      },
+      }),
     })).toEqual({
       ok: false,
       reason: "Generated-site activation requires verified tenant email sending.",
@@ -108,9 +111,9 @@ describe("published snapshot activation gate", () => {
   })
 
   it("does not let manual generated-site activation bypass tenant email verification", () => {
-    expect(canActivatePublishedSnapshot(approvedPaidRun, {
+    expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
       manualActivation: true,
-      tenant: {
+      tenant: asTenant({
         ...verifiedTenant,
         emailSending: {
           provider: "cloudflare",
@@ -119,7 +122,7 @@ describe("published snapshot activation gate", () => {
           sendingDomain: "mail.clientsite.nl",
           senderEmail: "noreply@mail.clientsite.nl",
         },
-      },
+      }),
     })).toEqual({
       ok: false,
       reason: "Generated-site activation requires verified tenant email sending.",
@@ -127,8 +130,8 @@ describe("published snapshot activation gate", () => {
   })
 
   it("allows generated-site activation after domain, sender, approval, and payment are all satisfied", () => {
-    expect(canActivatePublishedSnapshot(approvedPaidRun, {
-      tenant: verifiedTenant,
+    expect(canActivatePublishedSnapshot(asGenerationRun(approvedPaidRun), {
+      tenant: asTenant(verifiedTenant),
     })).toEqual({ ok: true })
   })
 
@@ -208,9 +211,9 @@ describe("published snapshot activation gate", () => {
       cloudflareZoneId: "zone-123",
       cloudflareSubdomainId: "subdomain-123",
     })
-    expect(tenant.emailSending.lastError).toContain("Bearer [redacted]")
-    expect(tenant.emailSending.lastError).toContain("api_token=[redacted]")
-    expect(tenant.emailSending.lastError).not.toContain("cf-secret")
+    expect(asMockDoc(tenant.emailSending).lastError).toContain("Bearer [redacted]")
+    expect(asMockDoc(tenant.emailSending).lastError).toContain("api_token=[redacted]")
+    expect(asMockDoc(tenant.emailSending).lastError).not.toContain("cf-secret")
     expect(snapshot.status).toBe("drafted")
   })
 
@@ -221,7 +224,7 @@ describe("published snapshot activation gate", () => {
         status: "active",
         domainVerification: { status: "verified" },
         emailSending: { status: "not_configured" },
-      } as any,
+      },
     })).toEqual({ ok: true })
   })
 
@@ -241,7 +244,7 @@ describe("published snapshot activation gate", () => {
     const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
     if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
 
-    const result = beforeValidate({
+    const result = beforeValidate(hookArgsFor(beforeValidate, {
       operation: "update",
       data: {
         status: "superseded",
@@ -252,7 +255,9 @@ describe("published snapshot activation gate", () => {
         snapshot: legacySnapshot,
       },
       context: { publishSnapshotLifecycleMutation: true },
-    } as any)
+      req: {},
+      collection: {},
+    }))
 
     expect(result).toEqual({
       status: "superseded",
@@ -264,7 +269,7 @@ describe("published snapshot activation gate", () => {
     const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
     if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
 
-    const result = beforeValidate({
+    const result = beforeValidate(hookArgsFor(beforeValidate, {
       operation: "create",
       data: {
         snapshot: {
@@ -278,7 +283,10 @@ describe("published snapshot activation gate", () => {
           },
         },
       },
-    } as any) as any
+      req: {},
+      collection: {},
+      context: {},
+    }))
 
     expect(result.snapshot.theme).toEqual({
       version: 3,
@@ -305,7 +313,7 @@ describe("published snapshot activation gate", () => {
     const beforeValidate = PublishedSiteSnapshots.hooks?.beforeValidate?.[0]
     if (!beforeValidate) throw new Error("Missing published snapshot validation hook")
 
-    expect(() => beforeValidate({
+    expect(() => beforeValidate(hookArgsFor(beforeValidate, {
       operation: "update",
       data: {
         status: "superseded",
@@ -319,7 +327,9 @@ describe("published snapshot activation gate", () => {
         snapshot: legacySnapshot,
       },
       context: { publishSnapshotLifecycleMutation: true },
-    } as any)).toThrow("Published site snapshot failed contract validation")
+      req: {},
+      collection: {},
+    }))).toThrow("Published site snapshot failed contract validation")
   })
 
   it("prunes published snapshots to the latest ten while preserving the active snapshot", async () => {
@@ -334,10 +344,10 @@ describe("published snapshot activation gate", () => {
     })
     const payload = {
       find: vi.fn(async () => ({ docs })),
-      delete: vi.fn(async ({ id }: any) => ({ id })),
+      delete: vi.fn(async (args: MockFindByIdArgs) => ({ id: args.id })),
     }
 
-    await expect(prunePublishedSnapshotsForTenant(payload as any, 1)).resolves.toEqual({
+    await expect(prunePublishedSnapshotsForTenant(asPayload(payload), 1)).resolves.toEqual({
       deleted: 2,
       kept: 10,
     })
@@ -349,8 +359,8 @@ describe("published snapshot activation gate", () => {
       limit: 1000,
       overrideAccess: true,
     }))
-    expect(payload.delete.mock.calls.map(([call]) => call.id)).toEqual([2, 1])
-    expect(payload.delete.mock.calls.map(([call]) => call.id)).not.toContain(3)
+    expect(payload.delete.mock.calls.map(([call]: [MockFindByIdArgs]) => call.id)).toEqual([2, 1])
+    expect(payload.delete.mock.calls.map(([call]: [MockFindByIdArgs]) => call.id)).not.toContain(3)
   })
 })
 
@@ -365,10 +375,10 @@ describe("published snapshot theme serving", () => {
       siteManifest: null,
     }
     const payload = {
-      find: vi.fn(async ({ collection }: any) => ({
+      find: vi.fn(async ({ collection }: MockFindArgs) => ({
         docs: collection === "tenants" ? [tenant] : [],
       })),
-      findByID: vi.fn(async ({ collection, id }: any) => {
+      findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
         if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
         if (collection === "published-site-snapshots" && String(id) === "10") {
           return { id: 10, status: "active", snapshot: amicarePublishedSiteSnapshot }
@@ -377,7 +387,7 @@ describe("published snapshot theme serving", () => {
       }),
     }
 
-    const result = await resolvePublishedSnapshotByHost(payload as any, tenant.domain)
+    const result = await resolvePublishedSnapshotByHost(asPayload(payload), tenant.domain)
 
     expect(result?.snapshot.theme).toEqual(amicarePublishedSiteSnapshot.theme)
   })

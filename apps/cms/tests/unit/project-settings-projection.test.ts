@@ -21,6 +21,8 @@ vi.mock("@/lib/projection/manifest", () => ({
 }))
 
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
+import { asPayload } from "../_helpers/mockPayload"
+import { cast } from "../_helpers/cast"
 
 describe("projectSettingsToDisk", () => {
   beforeEach(() => {
@@ -36,9 +38,7 @@ describe("projectSettingsToDisk", () => {
   })
 
   it("projects the fresh hook doc and populates media-backed logos without reloading stale settings", async () => {
-    const payload = {
-      find: vi.fn().mockResolvedValue({ docs: [] }),
-      findByID: vi.fn().mockImplementation(async ({ collection, id }) => {
+    const findByID = vi.fn().mockImplementation(async ({ collection, id }) => {
         if (collection === "tenants") {
           expect(id).toBe("7")
           return {
@@ -69,17 +69,24 @@ describe("projectSettingsToDisk", () => {
           }
         }
         expect(collection).toBe("media")
-        const mediaById: Record<string, any> = {
+        const mediaById: Record<string, unknown> = {
           11: { id: 11, filename: "brand.png", url: "/media/brand.png", alt: "Brand" },
           12: { id: 12, filename: "header.png", url: "/media/header.png", alt: "Header" },
           13: { id: 13, filename: "footer.png", url: "/media/footer.png", alt: "Footer" },
         }
         return mediaById[String(id)]
-      }),
+      })
+    const payload = Object.assign(asPayload({
+      find: vi.fn().mockResolvedValue({ docs: [] }),
+      findByID,
       logger: { info: vi.fn() },
-    }
+    }), {
+      find: vi.fn().mockResolvedValue({ docs: [] }),
+      findByID,
+      logger: { info: vi.fn() },
+    })
 
-    await projectSettingsToDisk({
+    await projectSettingsToDisk(cast<Parameters<typeof projectSettingsToDisk>[0]>({
       doc: {
         id: "settings-1",
         tenant: 7,
@@ -105,7 +112,7 @@ describe("projectSettingsToDisk", () => {
         },
       },
       req: { payload },
-    } as any)
+    }))
 
     expect(payload.findByID).toHaveBeenCalledTimes(4)
     expect(payload.findByID).toHaveBeenCalledWith({

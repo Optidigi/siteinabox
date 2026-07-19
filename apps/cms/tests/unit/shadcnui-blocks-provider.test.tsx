@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest"
+import type { Block } from "@siteinabox/contracts/site"
+import { cast, asMockDoc } from "../_helpers/cast"
 import { SHADCNUI_PROVIDER, SHADCNUI_BLOCK_VARIANTS, SHADCNUI_CHROME_VARIANTS, SHADCNUI_SYSTEM_TEMPLATES } from "@siteinabox/contracts"
 import { SITE_SELF_SERVE_CHROME_VARIANTS, SITE_SELF_SERVE_SOURCE_BACKED_BLOCK_VARIANTS } from "@siteinabox/contracts/block-catalog"
 import { getProviderBlockVariant, validateProviderBlockInstance } from "@siteinabox/contracts"
@@ -28,22 +30,24 @@ describe("shadcnui-blocks canonical provider catalog", () => {
     expect(heroWithLogos.slots.logos.repeated).toBe(true)
   })
   it("fails closed for missing and unknown variants", () => {
-    const block = { blockType: "hero", headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Hello" }] } } as any
+    const block = cast<Block>({ blockType: "hero", headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Hello" }] } })
     expect(validateProviderBlockInstance(block)[0]?.code).toBe("missing_provider_variant")
-    expect(getProviderBlockVariant({ ...block, designVariant: "shadcnui-blocks.hero-99" })).toBeNull()
+    expect(getProviderBlockVariant(cast<Pick<Block, "blockType" | "designVariant">>({ ...block, designVariant: "shadcnui-blocks.hero-99" }))).toBeNull()
   })
   it("uses the imported not-found catalog", () => {
     expect(DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID).toBe("shadcnui-blocks.not-found-01")
     expect(getProviderSystemTemplateRenderer("notFound", DEFAULT_PROVIDER_NOT_FOUND_TEMPLATE_ID)).toBeTypeOf("function")
   })
   it("compiles strict AI output branches from each variant slot manifest", () => {
-    const branches = (siteGenerationJsonSchema.properties.pages.items.properties.blocks.items as any).anyOf
+    const branches = cast<Array<Record<string, unknown>>>((siteGenerationJsonSchema.properties.pages.items.properties.blocks.items as Record<string, unknown>).anyOf)
     expect(branches).toHaveLength(132)
     for (const branch of branches) {
-      expect(branch.properties.designVariant.const).toMatch(/^shadcnui-blocks\./)
-      expect(new Set(branch.required)).toEqual(new Set(Object.keys(branch.properties)))
-      const variant = SHADCNUI_BLOCK_VARIANTS.find((entry) => entry.id === branch.properties.designVariant.const)!
-      const exposed = Object.keys(branch.properties).filter((field) => !["blockType", "designVariant", "anchor"].includes(field))
+      const props = asMockDoc(branch.properties)
+      const required = cast<string[]>(branch.required)
+      expect(asMockDoc(props.designVariant).const).toMatch(/^shadcnui-blocks\./)
+      expect(new Set(required)).toEqual(new Set(Object.keys(props)))
+      const variant = SHADCNUI_BLOCK_VARIANTS.find((entry) => entry.id === asMockDoc(props.designVariant).const)!
+      const exposed = Object.keys(props).filter((field) => !["blockType", "designVariant", "anchor"].includes(field))
       expect(exposed.sort()).toEqual(Object.entries(variant.slots).filter(([, slot]) => slot.status !== "inactive").map(([field]) => field).sort())
     }
   })

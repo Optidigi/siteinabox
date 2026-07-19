@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { cast } from "../_helpers/cast"
 import { describe, expect, it } from "vitest"
 import * as migration from "@/migrations/20260715_120000_migrate_shadcnui_blocks_provider"
 
@@ -11,7 +12,7 @@ const source = readFileSync(
 describe("shadcnui-blocks provider migration", () => {
   it("is wired as a forward-only Payload migration", async () => {
     expect(typeof migration.up).toBe("function")
-    await expect(migration.down({ db: {} as any, payload: {} as any, req: {} as any }))
+    await expect(migration.down(cast({ db: {}, payload: {}, req: {} })))
       .rejects.toThrow(/intentionally irreversible/)
     expect(readFileSync(resolve(process.cwd(), "src/migrations/index.ts"), "utf8"))
       .toContain("20260715_120000_migrate_shadcnui_blocks_provider")

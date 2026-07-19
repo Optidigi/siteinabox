@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { cast } from "../_helpers/cast"
 
 // OBS-64 — setTenantTheme is the authorization boundary for tenant theme writes.
 // Tenants.access.update remains isSuperAdmin (collection-level access is a
@@ -95,7 +96,7 @@ describe("setTenantTheme — OBS-64 authorization boundary", () => {
   })
 
   it("invalid theme is rejected before auth runs", async () => {
-    await expect(setTenantTheme(42, { ...DEFAULT_THEME_TOKEN_SPEC, colors: { schemeId: "not-a-scheme" } } as any)).rejects.toThrow(/Invalid theme data/i)
+    await expect(setTenantTheme(42, cast<typeof DEFAULT_THEME_TOKEN_SPEC>({ ...DEFAULT_THEME_TOKEN_SPEC, colors: { schemeId: "not-a-scheme" } }))).rejects.toThrow(/Invalid theme data/i)
     expect(fakeAuth).not.toHaveBeenCalled()
     expect(fakeUpdate).not.toHaveBeenCalled()
   })

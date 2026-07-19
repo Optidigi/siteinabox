@@ -109,7 +109,7 @@ describe("manifestSchema — typeStyles", () => {
   it("rejects appliesTo outside the enum", () => {
     const r = manifestSchema.safeParse({
       ...base,
-      typeStyles: [{ id: "foo", label: "Foo", appliesTo: "block" as any }],
+      typeStyles: [{ id: "foo", label: "Foo", appliesTo: "block" as unknown }],
     })
     expect(r.success).toBe(false)
   })

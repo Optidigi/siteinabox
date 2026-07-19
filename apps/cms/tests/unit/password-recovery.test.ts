@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
+import { errLike } from "../_helpers/cast"
 const mocks = vi.hoisted(() => ({
   find: vi.fn(),
   auth: vi.fn(),

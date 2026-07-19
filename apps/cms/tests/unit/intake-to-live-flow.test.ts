@@ -4,6 +4,10 @@ import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrd
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
 import { POST as intakePOST } from "@/app/(payload)/api/intake/route"
 
+import { asNextRequest, asGenerationRun, asMockDoc } from "../_helpers/cast"
+import { createArgs, relationId, updateArgs } from "../_helpers/payloadApi"
+import { asFindClient } from "../_helpers/payloadFindClient"
+import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 const mocks = vi.hoisted(() => ({
   getPayload: vi.fn(),
   sendEmail: vi.fn(),
@@ -49,7 +53,7 @@ type CollectionName =
   | "users"
   | "media"
 
-type Store = Record<CollectionName, any[]>
+type Store = Record<CollectionName, MockDoc[]>
 
 const richIntake = () => ({
   submittedAt: "2026-07-02T08:00:00.000Z",
@@ -166,11 +170,11 @@ const registrant = {
   locale: "nl_NL",
 }
 
-const valueAtPath = (doc: any, path: string): unknown =>
-  path.split(".").reduce((current, part) => {
-    if (current == null) return undefined
+const valueAtPath = (doc: unknown, path: string): unknown =>
+  path.split(".").reduce<unknown>((current, part) => {
+    if (current == null || typeof current !== "object") return undefined
     if (Array.isArray(current)) return undefined
-    return current[part]
+    return (current as Record<string, unknown>)[part]
   }, doc)
 
 const sameRelation = (value: unknown, expected: unknown): boolean => {
@@ -187,23 +191,23 @@ const storedValue = (value: unknown): unknown => {
   if (Array.isArray(value)) return value.map(storedValue)
   if (!value || typeof value !== "object") return value
   return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
+    Object.entries(asMockDoc(value))
       .filter(([, entry]) => entry !== undefined)
       .map(([key, entry]) => [key, storedValue(entry)]),
   )
 }
 
-const matchesWhere = (doc: any, where: any): boolean => {
+const matchesWhere = (doc: MockDoc, where: MockWhere | undefined): boolean => {
   if (!where) return true
-  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
-  if (where.or) return where.or.some((entry: any) => matchesWhere(doc, entry))
+  if (where.and) return where.and.every((entry: MockDoc) => matchesWhere(doc, entry))
+  if (where.or) return (where.or as MockWhere[]).some((entry) => matchesWhere(doc, entry))
   return Object.entries(where).every(([field, condition]) => {
     const value = valueAtPath(doc, field)
     if (condition && typeof condition === "object" && "equals" in condition) {
-      return sameRelation(value, (condition as any).equals)
+      return sameRelation(value, asMockDoc(condition).equals)
     }
     if (condition && typeof condition === "object" && "in" in condition) {
-      return Array.isArray((condition as any).in) && (condition as any).in.map(String).includes(String(value))
+      return Array.isArray(asMockDoc(condition).in) && (asMockDoc(condition).in as unknown[]).map(String).includes(String(value))
     }
     return value === condition
   })
@@ -227,33 +231,33 @@ const createPayloadStub = () => {
   }
   const payload = {
     auth: vi.fn(async () => ({ user: null })),
-    find: vi.fn(async (args: any) => {
-      const docs = (store[args.collection as CollectionName] ?? []).filter((doc: any) => matchesWhere(doc, args.where))
+    find: vi.fn(async (args: MockFindArgs) => {
+      const docs = (store[args.collection as CollectionName] ?? []).filter((doc: MockDoc) => matchesWhere(doc, args.where))
       return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }
     }),
-    create: vi.fn(async (args: any) => {
+    create: vi.fn(async (args: MockCreateArgs) => {
       const now = new Date().toISOString()
       const doc = storedValue({ ...args.data, id: nextId++, createdAt: now, updatedAt: now })
       const docs = store[args.collection as CollectionName]
-      docs.unshift(doc)
+      docs.unshift(doc as MockDoc)
       return doc
     }),
-    findByID: vi.fn(async (args: any) => {
-      const doc = (store[args.collection as CollectionName] ?? []).find((entry: any) => String(entry.id) === String(args.id))
+    findByID: vi.fn(async (args: MockFindArgs & { id?: number | string }) => {
+      const doc = (store[args.collection as CollectionName] ?? []).find((entry: MockDoc) => String(entry.id) === String(args.id))
       if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
       return doc
     }),
-    update: vi.fn(async (args: any) => {
+    update: vi.fn(async (args: MockUpdateArgs) => {
       const docs = store[args.collection as CollectionName] ?? []
       const index = docs.findIndex((doc) => String(doc.id) === String(args.id))
       if (index < 0) throw new Error(`Missing ${args.collection} ${args.id}`)
       const existing = docs[index]!
-      docs[index] = storedValue({ ...existing, ...args.data, id: existing.id, updatedAt: new Date().toISOString() })
+      docs[index] = storedValue({ ...existing, ...args.data, id: existing.id, updatedAt: new Date().toISOString() }) as MockDoc
       return docs[index]
     }),
     logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
   }
-  return { payload: payload as any, store }
+  return { payload: asPayload(payload), store }
 }
 
 const installProviderFetch = () => {
@@ -375,11 +379,11 @@ describe("intake-to-live mocked flow", () => {
     const { payload, store } = createPayloadStub()
     mocks.getPayload.mockResolvedValue(payload)
 
-    const response = await intakePOST(new Request("https://admin.siteinabox.nl/api/intake", {
+    const response = await intakePOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/intake", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(richIntake()),
-    }) as any)
+    })))
     const body = await response.json()
     expect(response.status).toBe(202)
     expect(body.status).toBe("preview_ready")
@@ -402,59 +406,39 @@ describe("intake-to-live mocked flow", () => {
     const snapshots = store["published-site-snapshots"]
 
     for (const page of pages) {
-      await payload.update({
-        collection: "pages",
-        id: page.id,
-        data: { status: "published" },
-        depth: 0,
-        overrideAccess: true,
-      })
+      await payload.update(updateArgs("pages", relationId({ id: page.id as number | string }), { status: "published" }, { depth: 0, overrideAccess: true }))
     }
 
-    let run = runs[0]!
+    let run = asGenerationRun(runs[0]!)
     const domain = await checkAndRecordPreviewDomainOrder(payload, run, "flow-live.nl", registrant)
-    run = domain.run
-    run = await payload.update({
-      collection: "site-generation-runs",
-      id: run.id,
-      data: {
-        clientApproval: { status: "approved", approvedAt: "2026-07-02T09:00:00.000Z" },
-      },
-      depth: 0,
-      overrideAccess: true,
-    })
+    run = asGenerationRun(domain.run)
+    run = asGenerationRun(await payload.update(updateArgs("site-generation-runs", run.id!, {
+      clientApproval: { status: "approved", approvedAt: "2026-07-02T09:00:00.000Z" },
+    }, { depth: 0, overrideAccess: true })))
 
-    const order = await payload.create({
-      collection: "orders",
-      data: {
-        generationRun: run.id,
-        tenant: tenants[0]!.id,
-        customerEmail: "demo@example.com",
-        domain: "flow-live.nl",
-        totalGross: 499,
-        currency: "EUR",
-        paymentStatus: "pending",
-      },
-      overrideAccess: true,
-    })
-    await payload.create({
-      collection: "agreement-acceptances",
-      data: {
-        order: order.id,
-        tenant: tenants[0]!.id,
-        actorEmail: "demo@example.com",
-        acceptanceVersion: "platform-terms-2026-07-07",
-      },
-      overrideAccess: true,
-    })
+    const order = await payload.create(createArgs("orders", {
+      generationRun: run.id,
+      tenant: tenants[0]!.id,
+      customerEmail: "demo@example.com",
+      domain: "flow-live.nl",
+      totalGross: 499,
+      currency: "EUR",
+      paymentStatus: "pending",
+    }, { overrideAccess: true }))
+    await payload.create(createArgs("agreement-acceptances", {
+      order: order.id,
+      tenant: tenants[0]!.id,
+      actorEmail: "demo@example.com",
+      acceptanceVersion: "platform-terms-2026-07-07",
+    }, { overrideAccess: true }))
 
     const checkout = await createMollieCheckoutForGenerationRun(payload, {
-      runId: run.id,
+      runId: relationId(run),
       customerEmail: "demo@example.com",
       clientSlug: "flow-demo",
       selectedDomain: "flow-live.nl",
       actor: "demo@example.com",
-      orderId: order.id,
+      orderId: relationId(order),
     })
     expect(checkout.checkoutUrl).toBe("https://www.mollie.com/checkout/flow")
 

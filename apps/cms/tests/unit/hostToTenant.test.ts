@@ -22,7 +22,7 @@ describe("isSuperAdminDomain", () => {
     expect(isSuperAdminDomain("siteinabox.nl", "siteinabox.nl", false)).toBe(true)
     expect(isSuperAdminDomain("clientasite.nl", "siteinabox.nl", false)).toBe(false)
   })
-  it("dev fallback: any 'localhost' is super-admin if env not set", () => {
+  it("dev fallback: unknown 'localhost' is super-admin if env not set", () => {
     expect(isSuperAdminDomain("localhost", undefined, false)).toBe(true)
   })
   it("dev convenience: localhost is super-admin in dev even when configured is set", () => {

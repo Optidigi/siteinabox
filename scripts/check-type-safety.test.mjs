@@ -5,9 +5,6 @@ import { join } from "node:path"
 import test from "node:test"
 
 import {
-  assertDiffBaseResolvable,
-  compareToBaseline,
-  findTouchedFileViolations,
   runTypeSafetyCheck,
   scanSource,
   sortViolations,
@@ -36,6 +33,17 @@ test("scanSource detects explicit any, zod any, and ts directives", () => {
   assert.equal(kinds.has("record-any"), true)
   assert.equal(kinds.has("z-any"), true)
   assert.equal(kinds.has("ts-ignore"), true)
+})
+
+test("scanSource does not flag narrowly scoped @ts-expect-error (review-governed)", () => {
+  const source = [
+    "// Payload importMap is generated at build time; types are not shipped.",
+    "// @ts-expect-error importMap.js exists only after `pnpm generate:importmap`",
+    "import { importMap } from './admin/importMap.js'",
+  ].join("\n")
+
+  const violations = scanSource(source, "layout.tsx")
+  assert.equal(violations.some((violation) => violation.kind === "ts-expect-error"), false)
 })
 
 test("scanSource detects generic any forms", () => {
@@ -70,59 +78,29 @@ test("scanSource detects generic any forms", () => {
   )
 })
 
-test("baseline ratchet rejects added and removed violations", () => {
-  const baseline = [{ file: "a.ts", line: 1, column: 1, kind: "as-any", text: "as any" }]
-  const unchanged = [...baseline]
-  const added = [
-    ...baseline,
-    { file: "b.ts", line: 2, column: 3, kind: "z-any", text: "z.any(" },
-  ]
-  const removed = []
-
-  assert.deepEqual(compareToBaseline(unchanged, baseline).added, [])
-  assert.equal(compareToBaseline(added, baseline).added.length, 1)
-  assert.equal(compareToBaseline(removed, baseline).removed.length, 1)
-})
-
-test("touched files must be clean even when baseline allows violations elsewhere", () => {
-  const current = [
-    { file: "allowed.ts", line: 1, column: 1, kind: "as-any", text: "as any" },
-    { file: "touched.ts", line: 4, column: 8, kind: "annotated-any", text: ": any" },
-  ]
-  const baseline = [current[0]]
-  const touched = findTouchedFileViolations(current, ["touched.ts"])
-
-  assert.equal(touched.length, 1)
-  assert.equal(violationKey(touched[0]), "touched.ts:4:8:annotated-any")
-  assert.equal(compareToBaseline(current, baseline).added.length, 1)
-})
-
-test("assertDiffBaseResolvable fails closed for missing diff base", () => {
-  assert.throws(
-    () => assertDiffBaseResolvable(process.cwd(), "0000000000000000000000000000000000000000"),
-    /TYPE_SAFETY_DIFF_BASE is set/,
-  )
+test("violationKey is stable for deduplication", () => {
+  const violation = { file: "a.ts", line: 1, column: 1, kind: "as-any", text: "as any" }
+  assert.equal(violationKey(violation), "a.ts:1:1:as-any")
 })
 
 test("runTypeSafetyCheck passes for an isolated clean fixture", async () => {
   const root = await mkdtemp(join(tmpdir(), "type-safety-"))
-  const baselinePath = join(root, "scripts")
-  await import("node:fs/promises").then((fs) => fs.mkdir(baselinePath, { recursive: true }))
-
-  await writeFile(
-    join(baselinePath, "type-safety-baseline.json"),
-    `${JSON.stringify({ version: 1, violations: [] }, null, 2)}\n`,
-    "utf8",
-  )
   await writeFile(join(root, "clean.ts"), "export const ok = 1\n", "utf8")
 
   const result = await runTypeSafetyCheck({
     root,
-    touchedFiles: [],
     current: [],
-    baseline: [],
   })
 
   assert.equal(result.ok, true)
   assert.deepEqual(sortViolations(result.current), [])
+})
+
+test("runTypeSafetyCheck fails when violations exist", async () => {
+  const result = await runTypeSafetyCheck({
+    current: [{ file: "dirty.ts", line: 2, column: 3, kind: "as-any", text: "as any" }],
+  })
+
+  assert.equal(result.ok, false)
+  assert.equal(result.current.length, 1)
 })

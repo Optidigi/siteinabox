@@ -6,6 +6,7 @@ import {
   type PageEditorSaveRequest,
 } from "@/lib/publish/pageEditorSaveContract"
 
+import { errLike } from "../_helpers/cast"
 const mocks = vi.hoisted(() => ({
   publish: vi.fn(),
   payload: {

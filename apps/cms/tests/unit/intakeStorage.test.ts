@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PublicIntakeSubmission } from "@siteinabox/contracts/generation"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 
+import { asMockDoc } from "../_helpers/cast"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
 }))
 
 vi.mock("@/lib/email/sendEmail", async () => {
-  const actual = await vi.importActual<any>("@/lib/email/sendEmail")
+  const actual = await vi.importActual<typeof import("@/lib/email/sendEmail")>("@/lib/email/sendEmail")
   return {
     ...actual,
     getPlatformMailSender: () => "noreply@siteinabox.nl",
@@ -17,42 +20,31 @@ vi.mock("@/lib/email/sendEmail", async () => {
 
 import { storeIntakeSubmission } from "@/lib/intake/storeIntakeSubmission"
 
-const matchesWhere = (doc: any, where: any): boolean => {
-  if (!where) return true
-  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
-  return Object.entries(where).every(([field, condition]) => {
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      return String(doc[field]) === String((condition as any).equals)
-    }
-    return doc[field] === condition
-  })
-}
-
 const createPayloadStub = () => {
   let nextId = 1
   type CollectionSlug = "intake-submissions" | "site-generation-runs" | "communication-preferences" | "communication-preference-events"
-  const store: Record<CollectionSlug, any[]> = {
+  const store: Record<CollectionSlug, MockDoc[]> = {
     "intake-submissions": [],
     "site-generation-runs": [],
     "communication-preferences": [],
     "communication-preference-events": [],
   }
-  const payload = {
+  const stubs = {
     db: {
       beginTransaction: async () => "tx-intake",
       commitTransaction: async () => undefined,
       rollbackTransaction: async () => undefined,
     },
-    find: async (args: any) => {
+    find: async (args: MockFindArgs) => {
       const docs = store[args.collection as CollectionSlug].filter((doc) => matchesWhere(doc, args.where))
       return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }
     },
-    create: async (args: any) => {
+    create: async (args: MockCreateArgs) => {
       const doc = { ...args.data, id: nextId++ }
       store[args.collection as CollectionSlug].push(doc)
       return doc
     },
-    update: async (args: any) => {
+    update: async (args: MockUpdateArgs) => {
       const doc = store[args.collection as CollectionSlug].find((entry) => String(entry.id) === String(args.id))
       if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
       Object.assign(doc, args.data)
@@ -60,7 +52,7 @@ const createPayloadStub = () => {
     },
     logger: { warn: vi.fn() },
   }
-  return { payload: payload as any, store }
+  return { payload: Object.assign(asPayload(stubs), stubs), store }
 }
 
 const rawIntake = (): PublicIntakeSubmission => ({
@@ -205,7 +197,7 @@ describe("storeIntakeSubmission", () => {
     })
     expect(store["intake-submissions"][0]?.normalizedHash).toMatch(/^[a-f0-9]{64}$/)
     expect(store["intake-submissions"][0]?.idempotencyKey).toMatch(/^public-intake:normalized:/)
-    expect(store["intake-submissions"][0]?.statusTransitions.map((entry: any) => entry.status)).toEqual([
+    expect((store["intake-submissions"][0]?.statusTransitions as MockDoc[] | undefined)?.map((entry) => asMockDoc(entry).status)).toEqual([
       "submitted",
       "normalized",
     ])

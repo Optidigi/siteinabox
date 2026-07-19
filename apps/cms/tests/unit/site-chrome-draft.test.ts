@@ -8,6 +8,8 @@ import {
   type SiteChromeDraft,
 } from "@/lib/siteChromeDraft"
 import type { FooterCompositionContract } from "@/lib/footerComposition"
+import type { SiteSetting } from "@/payload-types"
+import { cast } from "../_helpers/cast"
 
 const footerContract: FooterCompositionContract = {
   columnCounts: [2, 3],
@@ -22,7 +24,7 @@ const footerContract: FooterCompositionContract = {
 describe("site chrome draft helpers", () => {
   it("builds a draft from existing settings chrome", () => {
     const draft = chromeDraftFromSettings(
-      {
+      cast<SiteSetting>({
         chrome: {
           header: {
             variant: "shadcnui-blocks.navbar-03",
@@ -39,7 +41,7 @@ describe("site chrome draft helpers", () => {
           },
           banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Update" },
         },
-      },
+      }),
       footerContract,
     )
 
@@ -99,7 +101,7 @@ describe("site chrome draft helpers", () => {
       banner: { variant: "shadcnui-blocks.banner-01", visible: false },
     }
 
-    expect(mergeChromeSettings(settings, draft)).toEqual({
+    expect(mergeChromeSettings(cast<SiteSetting>(settings), draft)).toEqual({
       id: 7,
       siteName: "Site",
       chrome: {
@@ -149,7 +151,7 @@ describe("site chrome draft helpers", () => {
       banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Draft banner" },
     }
 
-    const projected = rendererSettingsFromChromeDraft(settings, draft, {
+    const projected = rendererSettingsFromChromeDraft(cast<SiteSetting>(settings), draft, {
       publishedPages: [{ id: 5, slug: "index", title: "Home page" }],
     })
 

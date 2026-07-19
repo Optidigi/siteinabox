@@ -1,3 +1,4 @@
+import { errLike } from "../_helpers/cast"
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest"
 import { promises as fs } from "node:fs"
 import path from "node:path"
@@ -132,7 +133,7 @@ describe("audit-p2 #12 — withManifestLock serializes manifest read-modify-writ
       await writeManifest(tmp, next)
     })
 
-    const reads: Array<Promise<any>> = []
+    const reads: Array<Promise<unknown>> = []
     for (let i = 0; i < 50; i++) {
       reads.push(
         (async () => {
@@ -144,11 +145,11 @@ describe("audit-p2 #12 — withManifestLock serializes manifest read-modify-writ
               "utf8",
             )
             return JSON.parse(buf)
-          } catch (err: any) {
+          } catch (err: unknown) {
             // ENOENT during the brief moment between mkdir and rename is
             // acceptable (file genuinely doesn't exist yet); partial-JSON
             // SyntaxError is NOT acceptable.
-            if (err.code === "ENOENT") return { ok: true }
+            if ((err as NodeJS.ErrnoException).code === "ENOENT") return { ok: true }
             throw err
           }
         })(),
@@ -210,9 +211,9 @@ describe("audit-p2 #12 — withManifestLock serializes manifest read-modify-writ
       await withManifestLock(tmp, "t1", async () => {
         throw new Error("simulated write failure")
       })
-    } catch (e: any) {
+    } catch (e: unknown) {
       firstThrew = true
-      expect(e.message).toBe("simulated write failure")
+      expect(errLike(e).message).toBe("simulated write failure")
     }
     expect(firstThrew).toBe(true)
 

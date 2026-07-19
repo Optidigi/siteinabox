@@ -1,16 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
 import type { Page, SiteGenerationRun } from "@/payload-types"
 
-const matchesWhere = (doc: any, where: any): boolean => {
-  if (!where) return true
-  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
-  return Object.entries(where).every(([field, condition]) => {
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      return String(doc[field]) === String((condition as any).equals)
-    }
-    return doc[field] === condition
-  })
-}
+import { asMockDoc } from "../_helpers/cast"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
 
 const createPayloadStub = () => {
   const pages: Page[] = [
@@ -39,19 +31,19 @@ const createPayloadStub = () => {
       updatedAt: "",
     } as SiteGenerationRun,
   ]
-  const payload = {
-    findByID: vi.fn(async ({ collection, id }: any) => {
+  const stubs = {
+    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
       if (collection !== "site-generation-runs") throw new Error(`Unexpected findByID ${collection}`)
       const run = generationRuns.find((doc) => String(doc.id) === String(id))
       if (!run) throw new Error(`Missing run ${id}`)
       return run
     }),
-    find: vi.fn(async ({ collection, where }: any) => {
+    find: vi.fn(async ({ collection, where }: MockFindArgs) => {
       if (collection !== "pages") return { docs: [], totalDocs: 0 }
-      const docs = pages.filter((page) => matchesWhere(page, where))
+      const docs = pages.filter((page) => matchesWhere(asMockDoc(page), where))
       return { docs, totalDocs: docs.length }
     }),
-    update: vi.fn(async ({ collection, id, data }: any) => {
+    update: vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
       if (collection === "pages") {
         const page = pages.find((doc) => String(doc.id) === String(id))
         if (!page) throw new Error(`Missing page ${id}`)
@@ -67,7 +59,8 @@ const createPayloadStub = () => {
       throw new Error(`Unexpected update ${collection}`)
     }),
   }
-  return { payload: payload as any, pages, generationRuns }
+  const payload = Object.assign(asPayload(stubs), stubs)
+  return { payload, pages, generationRuns }
 }
 
 describe("promoteGenerationRunPages", () => {
@@ -90,8 +83,8 @@ describe("promoteGenerationRunPages", () => {
         promotedPageIds: ["100", "101"],
       },
     })
-    const pageUpdates = payload.update.mock.calls.filter(([args]: any[]) => args.collection === "pages")
-    expect(pageUpdates.every(([args]: any[]) => args.context?.skipProjection === true)).toBe(true)
+    const pageUpdates = payload.update.mock.calls.filter((call) => (call[0] as MockUpdateArgs).collection === "pages")
+    expect(pageUpdates.every((call) => (call[0] as MockUpdateArgs).context?.skipProjection === true)).toBe(true)
   })
 
   it("does not promote stale pages retained after a changed generation spec", async () => {
@@ -106,8 +99,8 @@ describe("promoteGenerationRunPages", () => {
     expect(pages.find((page) => page.id === 101)?.status).toBe("draft")
     expect(pages.find((page) => page.id === 102)?.status).toBe("published")
     const promotedPageUpdateIds = payload.update.mock.calls
-      .filter(([args]: any[]) => args.collection === "pages")
-      .map(([args]: any[]) => String(args.id))
+      .filter((call) => (call[0] as MockUpdateArgs).collection === "pages")
+      .map((call) => String((call[0] as MockUpdateArgs).id))
     expect(promotedPageUpdateIds).toEqual(["100"])
   })
 

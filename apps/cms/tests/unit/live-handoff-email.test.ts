@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { asGenerationRun, asMockDoc, asPublishedSnapshot, asTenant } from "../_helpers/cast"
+import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
 const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
   signInMagicLink: vi.fn(),
@@ -36,7 +38,7 @@ const approvedPaidRun = {
   },
   clientApproval: { status: "approved" },
   payment: { status: "completed" },
-} as any
+}
 
 const verifiedTenant = {
   id: 1,
@@ -50,7 +52,7 @@ const verifiedTenant = {
     sendingDomain: "mail.clientsite.nl",
     senderEmail: "noreply@mail.clientsite.nl",
   },
-} as any
+}
 
 const draftedSnapshot = {
   id: 10,
@@ -61,48 +63,48 @@ const draftedSnapshot = {
   snapshot: {
     siteUrl: "https://clientsite.nl",
   },
-} as any
+}
 
 const createActivationPayload = (input?: {
-  tenant?: any
-  run?: any
-  snapshot?: any
-  intake?: any
-  users?: any[]
+  tenant?: MockDoc
+  run?: MockDoc | null
+  snapshot?: MockDoc
+  intake?: MockDoc
+  users?: MockDoc[]
 }) => {
-  const tenant = { ...(input?.tenant ?? verifiedTenant) }
-  const run = input?.run ?? approvedPaidRun
-  const snapshot = { ...(input?.snapshot ?? draftedSnapshot) }
-  const intake = input?.intake ?? {
+  const tenant: MockDoc = { ...(input?.tenant ?? verifiedTenant) }
+  const run: MockDoc | null = input?.run === null ? null : { ...(input?.run ?? approvedPaidRun) }
+  const snapshot: MockDoc = { ...(input?.snapshot ?? draftedSnapshot) }
+  const intake: MockDoc = input?.intake ?? {
     id: 700,
     contactEmail: "intake@example.com",
     normalized: { contact: { email: "normalized-intake@example.com" } },
   }
-  const users = [...(input?.users ?? [])]
-  const acceptances = [{ id: 880, tenant: tenant.id, actorEmail: "customer@example.com" }]
-  const updates: any[] = []
+  const users: MockDoc[] = [...(input?.users ?? [])]
+  const acceptances: MockDoc[] = [{ id: 880, tenant: tenant.id, actorEmail: "customer@example.com" }]
+  const updates: MockDoc[] = []
   const payload = {
-    findByID: vi.fn(async ({ collection, id }: any) => {
+    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
       if (collection === "published-site-snapshots" && String(id) === String(snapshot.id)) return snapshot
       if (collection === "tenants" && String(id) === String(tenant.id)) return tenant
-      if (collection === "site-generation-runs" && String(id) === String(run.id)) return run
+      if (collection === "site-generation-runs" && run && String(id) === String(run.id)) return run
       if (collection === "intake-submissions" && String(id) === String(intake.id)) return intake
       throw new Error(`Missing ${collection} ${id}`)
     }),
-    find: vi.fn(async ({ collection, where }: any = {}) => {
+    find: vi.fn(async ({ collection, where }: MockFindArgs = { collection: "" }) => {
       if (collection === "users") {
-        const email = where?.email?.equals
+        const email = asMockDoc(asMockDoc(where).email).equals
         return { docs: users.filter((user) => user.email === email) }
       }
       if (collection === "agreement-acceptances") {
-        const clauses = where?.and ?? []
-        const tenantId = clauses.find((clause: any) => clause.tenant)?.tenant?.equals
-        const actorEmail = clauses.find((clause: any) => clause.actorEmail)?.actorEmail?.equals
+        const clauses = (asMockDoc(where).and as MockDoc[]) ?? []
+        const tenantId = asMockDoc(clauses.find((clause) => clause.tenant)?.tenant).equals
+        const actorEmail = asMockDoc(clauses.find((clause) => clause.actorEmail)?.actorEmail).equals
         return { docs: acceptances.filter((item) => String(item.tenant) === String(tenantId) && item.actorEmail === actorEmail) }
       }
       return { docs: [] }
     }),
-    create: vi.fn(async ({ collection, data }: any) => {
+    create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
       if (collection === "users") {
         const created = { id: users.length + 100, ...data }
         users.push(created)
@@ -110,7 +112,7 @@ const createActivationPayload = (input?: {
       }
       return { id: 900, ...data }
     }),
-    update: vi.fn(async ({ collection, id, data }: any) => {
+    update: vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
       updates.push({ collection, data })
       if (collection === "tenants") {
         Object.assign(tenant, data)
@@ -121,7 +123,7 @@ const createActivationPayload = (input?: {
         return snapshot
       }
       if (collection === "users") {
-        const user = users.find((candidate) => String(candidate.id) === String(id))
+        const user = users.find((candidate: MockDoc) => String(candidate.id) === String(id))
         if (!user) throw new Error(`Missing user ${id}`)
         Object.assign(user, data)
         return user
@@ -130,7 +132,7 @@ const createActivationPayload = (input?: {
     }),
     logger: { warn: vi.fn(), error: vi.fn() },
   }
-  return { payload: payload as any, tenant, run, snapshot, updates, users }
+  return { payload: asPayload(payload), tenant, run, snapshot, updates, users }
 }
 
 describe("CMS live handoff email", () => {
@@ -199,9 +201,9 @@ describe("CMS live handoff email", () => {
     })
 
     await expect(sendLiveHandoffEmailAfterActivation(payload, {
-      tenant,
-      run,
-      snapshotDoc: snapshot,
+      tenant: asTenant(tenant),
+      run: asGenerationRun(run),
+      snapshotDoc: asPublishedSnapshot(snapshot),
     })).resolves.toBe("sent")
 
     expect(payload.create).not.toHaveBeenCalled()
@@ -230,9 +232,9 @@ describe("CMS live handoff email", () => {
     })
 
     await expect(sendLiveHandoffEmailAfterActivation(payload, {
-      tenant,
-      run: await payload.findByID({ collection: "site-generation-runs", id: 500 }),
-      snapshotDoc: snapshot,
+      tenant: asTenant(tenant),
+      run: asGenerationRun(await payload.findByID({ collection: "site-generation-runs", id: 500 })),
+      snapshotDoc: asPublishedSnapshot(snapshot),
     })).resolves.toBe("skipped")
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
@@ -301,9 +303,9 @@ describe("CMS live handoff email", () => {
     mocks.signInMagicLink.mockRejectedValue(new Error("auth down"))
 
     await expect(sendLiveHandoffEmailAfterActivation(payload, {
-      tenant,
-      run,
-      snapshotDoc: snapshot,
+      tenant: asTenant(tenant),
+      run: asGenerationRun(run),
+      snapshotDoc: asPublishedSnapshot(snapshot),
     })).resolves.toBe("failed")
 
     expect(mocks.sendEmail).not.toHaveBeenCalled()
@@ -317,16 +319,16 @@ describe("CMS live handoff email", () => {
 
   it("does not create CMS access without initial terms acceptance evidence", async () => {
     const { payload, tenant, snapshot, run } = createActivationPayload()
-    payload.find.mockImplementation(async ({ collection }: any) => {
+    vi.mocked(payload.find as unknown as ReturnType<typeof vi.fn>).mockImplementation(async ({ collection }: MockFindArgs) => {
       if (collection === "agreement-acceptances") return { docs: [] }
       if (collection === "users") return { docs: [] }
       return { docs: [] }
     })
 
     await expect(sendLiveHandoffEmailAfterActivation(payload, {
-      tenant,
-      run,
-      snapshotDoc: snapshot,
+      tenant: asTenant(tenant),
+      run: asGenerationRun(run),
+      snapshotDoc: asPublishedSnapshot(snapshot),
     })).resolves.toBe("failed")
 
     expect(payload.create).not.toHaveBeenCalledWith(expect.objectContaining({ collection: "users" }))

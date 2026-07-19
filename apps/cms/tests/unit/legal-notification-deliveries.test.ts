@@ -3,13 +3,15 @@ import { LegalNotificationDeliveries } from "@/collections/LegalNotificationDeli
 import { legalReacceptanceTemplate } from "@/lib/email/templates/legalReacceptance"
 import { sendLegalRequirementNotificationsTask } from "@/lib/jobs/sendLegalRequirementNotificationsTask"
 
+import { accessArgs } from "../_helpers/accessArgs"
+import { expectNamedField } from "../_helpers/payloadFields"
 describe("legal notification delivery contract", () => {
   it("keeps the outbox system-managed and idempotent", () => {
     expect(LegalNotificationDeliveries.slug).toBe("legal-notification-deliveries")
-    expect(LegalNotificationDeliveries.access?.create?.({} as any)).toBe(false)
-    expect(LegalNotificationDeliveries.access?.update?.({} as any)).toBe(false)
-    expect(LegalNotificationDeliveries.access?.delete?.({} as any)).toBe(false)
-    const key = LegalNotificationDeliveries.fields.find((field: any) => field.name === "notificationKey") as any
+    expect(LegalNotificationDeliveries.access?.create?.(accessArgs({ req: {} }))).toBe(false)
+    expect(LegalNotificationDeliveries.access?.update?.(accessArgs({ req: {} }))).toBe(false)
+    expect(LegalNotificationDeliveries.access?.delete?.(accessArgs({ req: {} }))).toBe(false)
+    const key = expectNamedField(LegalNotificationDeliveries.fields, "notificationKey")
     expect(key).toMatchObject({ required: true, unique: true, index: true })
   })
 

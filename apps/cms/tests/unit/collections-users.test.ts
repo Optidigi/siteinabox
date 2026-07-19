@@ -1,56 +1,55 @@
 import { describe, it, expect } from "vitest"
 import { Users } from "@/collections/Users"
+import { expectNamedField, fieldOptionValues, fieldOptions, fieldRequired, fieldValidator } from "../_helpers/payloadFields"
 
 describe("Users collection config", () => {
   it("uses 'users' slug", () => { expect(Users.slug).toBe("users") })
 
   it("auth is enabled with API key support", () => {
     expect(Users.auth).toBeTruthy()
-    expect((Users.auth as any).useAPIKey).toBe(true)
+    expect(Users.auth && typeof Users.auth === "object" && "useAPIKey" in Users.auth && Users.auth.useAPIKey).toBe(true)
   })
 
   it("has role enum with four values", () => {
-    const f = Users.fields.find((x: any) => x.name === "role") as any
-    expect(f.options.map((o: any) => o.value)).toEqual([
-      "super-admin", "owner", "editor", "viewer"
+    const role = expectNamedField(Users.fields, "role")
+    expect(fieldOptionValues(fieldOptions(role))).toEqual([
+      "super-admin", "owner", "editor", "viewer",
     ])
   })
 
   it("has tenants array field with a `tenant` relationship row", () => {
-    const f = Users.fields.find((x: any) => x.name === "tenants") as any
-    expect(f.type).toBe("array")
-    const row = f.fields.find((x: any) => x.name === "tenant") as any
+    const tenants = expectNamedField(Users.fields, "tenants")
+    expect(tenants.type).toBe("array")
+    const row = expectNamedField("fields" in tenants ? tenants.fields : undefined, "tenant")
     expect(row.type).toBe("relationship")
-    expect(row.relationTo).toBe("tenants")
-    expect(row.required).toBe(true)
+    expect("relationTo" in row && row.relationTo).toBe("tenants")
+    expect(fieldRequired(row)).toBe(true)
   })
 
   it("does not have a singular `tenant` field (plugin-native shape uses tenants[])", () => {
-    const f = (Users.fields as any[]).find((x: any) => x.name === "tenant")
-    expect(f).toBeUndefined()
+    const tenant = Users.fields.find((field) => "name" in field && field.name === "tenant")
+    expect(tenant).toBeUndefined()
   })
 
   it("validates super-admin must have empty tenants[] and others have exactly one", () => {
-    const f = Users.fields.find((x: any) => x.name === "tenants") as any
-    expect(typeof f.validate).toBe("function")
-    // super-admin: empty is OK, any entry is rejected
-    expect(f.validate([],                       { siblingData: { role: "super-admin" }, operation: "create" })).toBe(true)
-    expect(f.validate([{ tenant: "t1" }],       { siblingData: { role: "super-admin" }, operation: "create" })).toMatch(/super-admin/)
-    // editor/owner/viewer: empty rejected, exactly one allowed, more than one rejected
-    expect(f.validate([],                       { siblingData: { role: "editor" },      operation: "create" })).toMatch(/exactly one/i)
-    expect(f.validate([{ tenant: "t1" }],       { siblingData: { role: "editor" },      operation: "create" })).toBe(true)
-    expect(f.validate([{ tenant: "t1" }, { tenant: "t2" }], { siblingData: { role: "editor" }, operation: "create" })).toMatch(/exactly one/i)
+    const tenants = expectNamedField(Users.fields, "tenants")
+    const validate = fieldValidator(tenants)
+    expect(typeof validate).toBe("function")
+    if (!validate) throw new Error("expected tenants validator")
+    expect(validate([], { siblingData: { role: "super-admin" }, operation: "create" })).toBe(true)
+    expect(validate([{ tenant: "t1" }], { siblingData: { role: "super-admin" }, operation: "create" })).toMatch(/super-admin/)
+    expect(validate([], { siblingData: { role: "editor" }, operation: "create" })).toMatch(/exactly one/i)
+    expect(validate([{ tenant: "t1" }], { siblingData: { role: "editor" }, operation: "create" })).toBe(true)
+    expect(validate([{ tenant: "t1" }, { tenant: "t2" }], { siblingData: { role: "editor" }, operation: "create" })).toMatch(/exactly one/i)
   })
 
   it("validator treats undefined/null tenants the same as empty array", () => {
-    // Payload may pass `undefined` (field omitted from update) or `null` (cleared)
-    // — both should funnel through the same len === 0 branch as `[]`.
-    const f = Users.fields.find((x: any) => x.name === "tenants") as any
-    // super-admin: undefined / null both pass (length 0)
-    expect(f.validate(undefined, { siblingData: { role: "super-admin" }, operation: "update" })).toBe(true)
-    expect(f.validate(null,      { siblingData: { role: "super-admin" }, operation: "update" })).toBe(true)
-    // non-super-admin: both fail with the "exactly one" message
-    expect(f.validate(undefined, { siblingData: { role: "editor" },      operation: "update" })).toMatch(/exactly one/i)
-    expect(f.validate(null,      { siblingData: { role: "editor" },      operation: "update" })).toMatch(/exactly one/i)
+    const tenants = expectNamedField(Users.fields, "tenants")
+    const validate = fieldValidator(tenants)
+    if (!validate) throw new Error("expected tenants validator")
+    expect(validate(undefined, { siblingData: { role: "super-admin" }, operation: "update" })).toBe(true)
+    expect(validate(null, { siblingData: { role: "super-admin" }, operation: "update" })).toBe(true)
+    expect(validate(undefined, { siblingData: { role: "editor" }, operation: "update" })).toMatch(/exactly one/i)
+    expect(validate(null, { siblingData: { role: "editor" }, operation: "update" })).toMatch(/exactly one/i)
   })
 })

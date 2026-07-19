@@ -3,6 +3,7 @@ import { GenerationInputSchema, PublicIntakeSubmissionSchema } from "@siteinabox
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { buildGenerationInput, normalizeIntakeSubmission } from "@/lib/intake/normalizeIntake"
 
+import { errLike } from "../_helpers/cast"
 const themeTokens = {
   background: "#ffffff",
   foreground: "#111111",
@@ -191,6 +192,6 @@ describe("normalizeIntakeSubmission", () => {
     expect(input.status).toBe("ai-prepared")
     expect(input.companyFacts.companyName).toBe("Demo Studio")
     expect(input.brief.services).toEqual(["Interieuradvies", "Projectinrichting"])
-    expect((input.brief.visualPreferences as any).tokens).toBeUndefined()
+    expect((input.brief.visualPreferences as Record<string, unknown>).tokens).toBeUndefined()
   })
 })

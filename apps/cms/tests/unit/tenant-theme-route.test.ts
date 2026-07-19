@@ -2,6 +2,7 @@ import { NextRequest } from "next/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
+import { errLike } from "../_helpers/cast"
 const mocks = vi.hoisted(() => ({
   payload: {
     auth: vi.fn(),

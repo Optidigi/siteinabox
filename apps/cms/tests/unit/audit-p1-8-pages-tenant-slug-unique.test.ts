@@ -6,6 +6,9 @@ import { ValidationError } from "payload"
 import * as migration from "@/migrations/20260509_pages_tenant_slug_unique"
 import { ensureUniqueTenantSlug } from "@/hooks/ensureUniqueTenantSlug"
 
+import { asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
+import { cast, errLike, validationErrorData } from "../_helpers/cast"
 // Audit finding #8 (P1, T8) — Pages: missing (tenant_id, slug) unique index.
 //
 // Two coordinated halves:
@@ -36,9 +39,7 @@ import { ensureUniqueTenantSlug } from "@/hooks/ensureUniqueTenantSlug"
 // Half A — application-level pre-emptive duplicate check
 // -----------------------------------------------------------------------------
 
-const beforeValidateHooks = (Pages.hooks?.beforeValidate ?? []) as Array<
-  (args: any) => any
->
+const beforeValidateHooks = (Pages.hooks?.beforeValidate ?? []) as unknown as BeforeValidateHook[]
 
 // Invoke the hook by direct import rather than positional array access.
 // The original `beforeValidateHooks[0]` access silently broke when
@@ -47,9 +48,9 @@ const beforeValidateHooks = (Pages.hooks?.beforeValidate ?? []) as Array<
 // a `req` mock missing `findByID` and surfaced as a misleading "Tenant
 // not found" ValidationError. The S1 case below still verifies the hook
 // is wired into the collection chain so registration regressions trip.
-const ensureUniqueSlugHook = ensureUniqueTenantSlug as unknown as (args: any) => any
+const ensureUniqueSlugHook = ensureUniqueTenantSlug as unknown as (args: unknown) => unknown
 
-const makeReq = (findResult: { totalDocs: number; docs?: any[] }) => {
+const makeReq = (findResult: { totalDocs: number; docs?: unknown[] }) => {
   const find = vi.fn().mockResolvedValue({ docs: findResult.docs ?? [], totalDocs: findResult.totalDocs })
   return {
     req: { payload: { find } },
@@ -58,22 +59,22 @@ const makeReq = (findResult: { totalDocs: number; docs?: any[] }) => {
 }
 
 const callHook = async (opts: {
-  data: any
+  data: unknown
   operation: "create" | "update"
-  originalDoc?: any
-  req: any
+  originalDoc?: unknown
+  req: unknown
 }) =>
   ensureUniqueSlugHook({
     data: opts.data,
     operation: opts.operation,
     originalDoc: opts.originalDoc,
     req: opts.req,
-    collection: { slug: "pages" } as any,
+    collection: { slug: "pages" },
     context: {},
   })
 
-const expectValidationError = async (p: Promise<any>) => {
-  let err: any = null
+const expectValidationError = async (p: Promise<unknown>) => {
+  let err: unknown = null
   try {
     await p
   } catch (e) {
@@ -82,7 +83,7 @@ const expectValidationError = async (p: Promise<any>) => {
   expect(err, "expected the hook to throw").not.toBeNull()
   expect(err, "expected ValidationError, not plain Error").toBeInstanceOf(ValidationError)
   // The errors[] entry must carry path:"slug" so the admin UI binds it to the slug field.
-  expect(err.data?.errors?.[0]?.path).toBe("slug")
+  expect(validationErrorData(err)?.errors?.[0]?.path).toBe("slug")
 }
 
 describe("audit-p1 #8 Half A — ensureUniqueTenantSlug pre-empts unique-violation with clean ValidationError", () => {
@@ -274,9 +275,9 @@ describe("audit-p1 #8 Half B — migration shape", () => {
   it("Case 9 — down() throws when called (refuses destructive rollback)", async () => {
     // The down() must throw unconditionally per audit P0 #3 + the cascade-FK
     // migration's canonical pattern (20260505_202447_cascade_tenant_delete.ts:65-72).
-    let err: any = null
+    let err: unknown = null
     try {
-      await migration.down({ db: {} as any, payload: {} as any, req: {} as any })
+      await migration.down(cast({ db: {}, payload: {}, req: {} }))
     } catch (e) {
       err = e
     }
@@ -285,13 +286,13 @@ describe("audit-p1 #8 Half B — migration shape", () => {
   })
 
   it("Case 10 — down() error message mentions 'destructive' and instructs manual recovery", async () => {
-    let err: any = null
+    let err: unknown = null
     try {
-      await migration.down({ db: {} as any, payload: {} as any, req: {} as any })
+      await migration.down(cast({ db: {}, payload: {}, req: {} }))
     } catch (e) {
       err = e
     }
-    const msg = String(err?.message ?? "")
+    const msg = String(errLike(err).message ?? "")
     expect(msg.toLowerCase()).toContain("destructive")
     // Must reference the index name so an operator who genuinely needs to roll
     // back has the exact identifier to drop manually.

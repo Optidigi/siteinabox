@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { asMockDoc } from "../_helpers/cast"
+import { matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+
 const mocks = vi.hoisted(() => ({
   payload: {
     find: vi.fn(),
@@ -16,19 +19,6 @@ vi.mock("payload", () => ({
 vi.mock("@/payload.config", () => ({
   default: {},
 }))
-
-const matchesWhere = (doc: any, where: any): boolean => {
-  if (!where) return true
-  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
-  return Object.entries(where).every(([field, condition]) => {
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      const value = doc[field]
-      const comparable = value && typeof value === "object" && "id" in value ? value.id : value
-      return String(comparable) === String((condition as any).equals)
-    }
-    return doc[field] === condition
-  })
-}
 
 const createState = () => {
   const tenant = {
@@ -70,7 +60,7 @@ const createState = () => {
     createdAt: "2026-06-26T10:00:00.000Z",
     updatedAt: "2026-06-26T10:00:00.000Z",
   }
-  const grants: any[] = [{
+  const grants: MockDoc[] = [{
     id: 900,
     customerEmail: "customer@example.com",
     tenant,
@@ -84,25 +74,29 @@ const createState = () => {
     updatedAt: "2026-06-26T10:00:00.000Z",
   }]
 
-  mocks.payload.find.mockImplementation(async ({ collection, where }: any) => {
+  mocks.payload.find.mockImplementation(async ({ collection, where }: MockFindArgs) => {
     if (collection === "preview-access-grants") {
       const docs = grants.filter((grant) => matchesWhere(grant, where))
       return { docs, totalDocs: docs.length }
     }
     if (collection === "pages") {
-      const docs = pages.filter((page) => matchesWhere(page, where))
+      const docs = pages.filter((page) => matchesWhere(asMockDoc(page), where))
       return { docs, totalDocs: docs.length }
     }
     return { docs: [], totalDocs: 0 }
   })
-  mocks.payload.findByID.mockImplementation(async ({ collection, id }: any) => {
+  mocks.payload.findByID.mockImplementation(async ({ collection, id }: MockFindByIdArgs) => {
     if (collection === "site-generation-runs" && String(id) === "500") return run
     if (collection === "tenants" && String(id) === "1") return tenant
     if (collection === "tenants" && String(id) === "2") return otherTenant
     throw new Error(`Missing ${collection} ${id}`)
   })
-  mocks.payload.create.mockImplementation(async ({ data }: any) => ({ id: 901, ...data }))
-  mocks.payload.update.mockImplementation(async ({ id, data }: any) => ({ id, ...grants[0], ...data }))
+  mocks.payload.create.mockImplementation(async ({ data }: MockCreateArgs) => ({ id: 901, ...data }))
+  mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => ({
+    id,
+    ...asMockDoc(grants[0]),
+    ...asMockDoc(data),
+  }))
 
   return { tenant, pages, run, grants }
 }

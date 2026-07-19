@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { amicarePublishedSiteSnapshot } from "@siteinabox/contracts/fixtures/tenants"
 import { fixturePublishedSiteSnapshot } from "../../../renderer/src/fixtures/published-site"
+import type { PublishedSiteSnapshot } from "@siteinabox/contracts/generation"
+import { cast } from "../_helpers/cast"
 
 const ORIGINAL_ENV = { ...process.env }
 
@@ -132,9 +134,9 @@ describe("renderer snapshot loader environment gates", () => {
           status: "draft",
         },
       ],
-    } as any
+    }
 
-    expect(findPublishedPage(snapshotWithDraft, "/draft-offer")).toBeNull()
+    expect(findPublishedPage(cast<PublishedSiteSnapshot>(snapshotWithDraft), "/draft-offer")).toBeNull()
 
     process.env = {
       ...ORIGINAL_ENV,

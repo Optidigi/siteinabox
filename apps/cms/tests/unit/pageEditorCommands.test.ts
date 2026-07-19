@@ -19,6 +19,7 @@ import {
   updateEditorBlockField,
 } from "@/lib/editor/pageEditorCommands"
 
+import { asMockDoc } from "../_helpers/cast"
 const heroBlock = (id: string): EditorBlock => ({
   id,
   blockType: "hero",
@@ -90,10 +91,10 @@ describe("cloneEditorBlock", () => {
 
     const cloned = cloneEditorBlock(source)
     expect(cloned).not.toBe(source)
-    expect((cloned as Record<string, unknown>).id).not.toBe("block-a")
-    const features = (cloned as Record<string, unknown>).features as Array<Record<string, unknown>>
+    expect(asMockDoc(cloned).id).not.toBe("block-a")
+    const features = asMockDoc(cloned).features as Array<Record<string, unknown>>
     expect(features[0]!.id).not.toBe("feature-a")
-    expect(cloneEditorValue(source as Record<string, unknown>).features).not.toBe((source as Record<string, unknown>).features)
+    expect(cloneEditorValue(asMockDoc(source)).features).not.toBe(asMockDoc(source).features)
   })
 })
 
@@ -105,8 +106,8 @@ describe("pageEditorCommands", () => {
   ]
 
   it("reorders, removes, inserts, and appends blocks", () => {
-    expect(reorderEditorBlocks(blocks, 0, 2).map((b) => blockWireId(b as Record<string, unknown>))).toEqual(["b", "c", "a"])
-    expect(removeEditorBlock(blocks, 1).map((b) => blockWireId(b as Record<string, unknown>))).toEqual(["a", "c"])
+    expect(reorderEditorBlocks(blocks, 0, 2).map((b) => blockWireId(asMockDoc(b)))).toEqual(["b", "c", "a"])
+    expect(removeEditorBlock(blocks, 1).map((b) => blockWireId(asMockDoc(b)))).toEqual(["a", "c"])
     const inserted = insertEditorBlock(blocks, 1, { blockType: "hero", headline: { type: "root", version: 1, children: [] } })
     expect(inserted).toHaveLength(4)
     expect(blockWireId(inserted[1] as Record<string, unknown>)).toBeTruthy()
@@ -118,7 +119,7 @@ describe("pageEditorCommands", () => {
     const result = cloneEditorBlockAt(blocks, 1)
     expect(result?.insertedIndex).toBe(2)
     expect(result?.blocks).toHaveLength(4)
-    const ids = result!.blocks.map((b) => blockWireId(b as Record<string, unknown>))
+    const ids = result!.blocks.map((b) => blockWireId(asMockDoc(b)))
     expect(ids[1]).toBe("b")
     expect(ids[2]).not.toBe("b")
     expect(ids[2]).toBeTruthy()

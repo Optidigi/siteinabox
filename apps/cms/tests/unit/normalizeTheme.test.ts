@@ -4,7 +4,7 @@ import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
 
 describe("normalizeThemeForSave", () => {
   it("fills missing preset selections with V3 defaults", () => {
-    expect(normalizeThemeForSave({ version: 2 } as any)).toEqual(DEFAULT_THEME_TOKEN_SPEC)
+    expect(normalizeThemeForSave({ version: 2 })).toEqual(DEFAULT_THEME_TOKEN_SPEC)
   })
 
   it("preserves selected preset IDs only", () => {

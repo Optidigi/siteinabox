@@ -1,7 +1,8 @@
 import crypto from "node:crypto"
-import { getPayload } from "payload"
+import { getPayload, type CollectionSlug } from "payload"
 import { getCurrentLegalDocument } from "@siteinabox/legal-content"
 import config from "@/payload.config"
+import type { LegalDocument, Tenant, User } from "@/payload-types"
 
 const TENANT_SLUG = "legal-visual"
 const TENANT_DOMAIN = "legal-visual.localhost"
@@ -19,19 +20,19 @@ if (databaseUrl.pathname.replace(/^\//, "") !== "payload_test") {
 
 const payload = await getPayload({ config })
 
-const findOne = async (collection: string, where: Record<string, unknown>, depth = 0) => {
-  const result = await payload.find({ collection: collection as any, where: where as any, limit: 1, depth, overrideAccess: true } as any)
-  return result.docs[0] as Record<string, any> | undefined
+const findOne = async <T>(collection: CollectionSlug, where: Record<string, unknown>, depth = 0) => {
+  const result = await payload.find({ collection, where, limit: 1, depth, overrideAccess: true })
+  return result.docs[0] as T | undefined
 }
 
-let tenant = await findOne("tenants", { slug: { equals: TENANT_SLUG } })
+let tenant = await findOne<Tenant>("tenants", { slug: { equals: TENANT_SLUG } })
 if (!tenant) {
   tenant = await payload.create({
     collection: "tenants",
     data: { name: "Legal Visual Test", slug: TENANT_SLUG, domain: TENANT_DOMAIN, status: "active" },
     depth: 0,
     overrideAccess: true,
-  }) as any
+  })
 } else {
   tenant = await payload.update({
     collection: "tenants",
@@ -39,14 +40,14 @@ if (!tenant) {
     data: { name: "Legal Visual Test", domain: TENANT_DOMAIN, status: "active" },
     depth: 0,
     overrideAccess: true,
-  }) as any
+  })
 }
 
 const upsertUser = async (email: string, password: string, role: "owner" | "editor", name: string) => {
-  const existing = await findOne("users", { email: { equals: email } })
+  const existing = await findOne<User>("users", { email: { equals: email } })
   const data = { email, password, name, role, tenants: [{ tenant: tenant!.id }] }
   if (!existing) {
-    return payload.create({ collection: "users", data, depth: 0, overrideAccess: true } as any)
+    return payload.create({ collection: "users", data, depth: 0, overrideAccess: true })
   }
   return payload.update({
     collection: "users",
@@ -55,10 +56,10 @@ const upsertUser = async (email: string, password: string, role: "owner" | "edit
     context: { allowSelfPasswordChange: true },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
-const owner = await upsertUser(OWNER_EMAIL, OWNER_PASSWORD, "owner", "Legal Visual Owner") as any
+const owner = await upsertUser(OWNER_EMAIL, OWNER_PASSWORD, "owner", "Legal Visual Owner")
 await upsertUser(EDITOR_EMAIL, EDITOR_PASSWORD, "editor", "Legal Visual Editor")
 
 const settings = await findOne("site-settings", { tenant: { equals: tenant.id } })
@@ -73,11 +74,11 @@ if (!settings) {
     },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
 const release = getCurrentLegalDocument("platform-terms", "nl", new Date())
-let terms = await findOne("legal-documents", { releaseKey: { equals: `${release.documentType}:${release.locale}:${release.documentVersion}` } })
+let terms = await findOne<LegalDocument>("legal-documents", { releaseKey: { equals: `${release.documentType}:${release.locale}:${release.documentVersion}` } })
 if (!terms) {
   terms = await payload.create({
     collection: "legal-documents",
@@ -101,7 +102,7 @@ if (!terms) {
     },
     depth: 0,
     overrideAccess: true,
-  } as any) as any
+  })
 }
 if (!terms?.acceptanceVersion) throw new Error("Current terms document is unavailable for the visual fixture.")
 
@@ -125,7 +126,7 @@ if (!await findOne("agreement-acceptances", { evidenceKey: { equals: historyKey 
     },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
 const requirementData = {
@@ -142,14 +143,14 @@ const requirementData = {
 }
 const requirement = await findOne("legal-requirements", { requirementKey: { equals: REQUIREMENT_KEY } })
 if (requirement) {
-  await payload.update({ collection: "legal-requirements", id: requirement.id, data: requirementData, depth: 0, overrideAccess: true } as any)
+  await payload.update({ collection: "legal-requirements", id: requirement.id, data: requirementData, depth: 0, overrideAccess: true })
 } else {
   await payload.create({
     collection: "legal-requirements",
     data: { requirementKey: REQUIREMENT_KEY, ...requirementData },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
 payload.logger.info(`[legal-visual-fixture] ready tenant=${TENANT_DOMAIN} owner=${OWNER_EMAIL} editor=${EDITOR_EMAIL}`)

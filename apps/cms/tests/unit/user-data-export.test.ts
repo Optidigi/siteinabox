@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { buildUserDataExport, emailUserDataExport } from "@/lib/privacy/userDataExport"
 import { sendEmail } from "@/lib/email/sendEmail"
+import { asPayload, type MockFindByIdArgs } from "../_helpers/mockPayload"
 
 vi.mock("@/lib/email/sendEmail", () => ({
   sendEmail: vi.fn(),
@@ -18,7 +19,7 @@ const user = {
 
 function payloadStub() {
   return {
-    findByID: vi.fn(async ({ collection }) => {
+    findByID: vi.fn(async ({ collection }: MockFindByIdArgs) => {
       if (collection === "users") {
         return {
           ...user,
@@ -50,8 +51,7 @@ describe("user data export", () => {
   })
 
   it("builds a sanitized account export with scoped site summaries", async () => {
-    const payload = payloadStub()
-    const exportData = await buildUserDataExport(payload, user)
+    const exportData = await buildUserDataExport(asPayload(payloadStub()), user)
 
     expect(exportData.user).toMatchObject({
       id: 10,
@@ -71,7 +71,7 @@ describe("user data export", () => {
   })
 
   it("emails the export to the requesting user", async () => {
-    const payload = payloadStub()
+    const payload = asPayload(payloadStub())
     await emailUserDataExport(payload, user)
 
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({
