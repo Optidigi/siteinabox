@@ -1,0 +1,333 @@
+function replaceAll(contents, from, to) {
+  return contents.replaceAll(from, to)
+}
+
+function adaptThemeColors(contents, replacements) {
+  return replacements.reduce((adapted, [from, to]) => replaceAll(adapted, from, to), contents)
+}
+
+function adaptStructuredMediaRegion(contents, from, to) {
+  if (!contents.includes(from)) {
+    throw new Error(`Expected structured media region markup was not found for replacement: ${from.slice(0, 80)}…`)
+  }
+  return contents.replace(from, to)
+}
+
+function scopeNotFound03SvgIds(contents) {
+  return contents
+    .replace("<Number4 />", '<Number4 idPrefix="provider-404-first" />')
+    .replace("<Number4 />", '<Number4 idPrefix="provider-404-second" />')
+    .replace(
+      "export const Number4 = (props: SVGProps<SVGSVGElement>) => (",
+      'export const Number4 = ({ idPrefix = "provider-404", ...props }: SVGProps<SVGSVGElement> & { idPrefix?: string }) => (',
+    )
+    .replaceAll('clipPath="url(#cs_clip_1_number-4)"', 'clipPath={`url(#${idPrefix}-clip)`}')
+    .replaceAll('id="cs_mask_1_number-4"', 'id={`${idPrefix}-mask`}')
+    .replaceAll('mask="url(#cs_mask_1_number-4)"', 'mask={`url(#${idPrefix}-mask)`}')
+    .replaceAll('filter="url(#filter0_f_880_3334)"', 'filter={`url(#${idPrefix}-blur)`}')
+    .replaceAll('filter="url(#cs_noise_1_number-4)"', 'filter={`url(#${idPrefix}-noise)`}')
+    .replaceAll('id="filter0_f_880_3334"', 'id={`${idPrefix}-blur`}')
+    .replaceAll('id="cs_clip_1_number-4"', 'id={`${idPrefix}-clip`}')
+    .replaceAll('id="cs_noise_1_number-4"', 'id={`${idPrefix}-noise`}')
+}
+
+const GRID_LINE_REPLACEMENTS = [
+  ["rgba(75, 85, 99, 0.08)", "var(--provider-grid-line, rgba(75, 85, 99, 0.08))"],
+  ["rgba(55, 65, 81, 0.12)", "var(--provider-grid-dot, rgba(55, 65, 81, 0.12))"],
+]
+
+const BORDER_BEAM_THEME_REPLACEMENTS = [
+  ['colorFrom = "#ffaa40"', 'colorFrom = "var(--provider-accent-400, #ffaa40)"'],
+  ['colorTo = "#9c40ff"', 'colorTo = "var(--provider-accent-700, #9c40ff)"'],
+]
+
+const STRUCTURED_MEDIA_REGIONS = {
+  "hero-02": [
+    '<div className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
+    '<div data-provider-image-region="image" className="mt-auto aspect-video w-full rounded-xl bg-accent" />',
+  ],
+  "hero-03": [
+    '<div className="size-full rounded-lg bg-background" />',
+    '<div data-provider-image-region="image" className="size-full rounded-lg bg-background" />',
+  ],
+  "hero-04": [
+    '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
+    '<div data-provider-image-region="image" className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-[calc(100vh-4rem)] lg:w-[1000px]" />',
+  ],
+  "hero-05": [
+    '<div className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
+    '<div data-provider-image-region="image" className="aspect-video w-full rounded-xl bg-accent lg:aspect-auto lg:h-screen lg:w-[1000px] lg:rounded-none" />',
+  ],
+}
+
+/**
+ * Explicit per-variant transforms. Variant upstream names must appear only here
+ * (plus catalog metadata tables), never inside generic adaptLiteralImports.
+ */
+export const VARIANT_SPECIAL_CASES = {
+  "contact-02": {
+    adaptLiteral({ contents }) {
+      return replaceAll(contents, "bg-white shadow-none", "bg-[var(--provider-surface,#fff)] shadow-none")
+    },
+    generateView({ semantic, namespace }) {
+      return [
+        'import * as React from "react"',
+        'import type { Block } from "@siteinabox/contracts"',
+        'import type { BlockRenderOptions } from "../../../../blocks/types"',
+        'import { ShadcnUiContactView } from "../../contact-views"',
+        `type VariantBlock = Extract<Block, { blockType: "${semantic.blockType}" }>`,
+        `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiContactView block={block} options={options} variant="${namespace}.contact-02" /> }`,
+        "",
+      ].join("\n")
+    },
+  },
+  "cta-04": {
+    adaptLiteral({ contents }) {
+      return adaptThemeColors(contents, GRID_LINE_REPLACEMENTS)
+    },
+  },
+  "cta-05": {
+    adaptLiteral({ contents }) {
+      return adaptThemeColors(contents, GRID_LINE_REPLACEMENTS)
+    },
+  },
+  "features-03": {
+    slotOverrides({ variantSlots }) {
+      if (variantSlots.features) {
+        variantSlots.features = { ...variantSlots.features, minItems: 1, maxItems: 2 }
+      }
+    },
+    generateView({ semantic, namespace }) {
+      return [
+        'import * as React from "react"',
+        'import type { Block } from "@siteinabox/contracts"',
+        'import type { BlockRenderOptions } from "../../../../blocks/types"',
+        'import { ShadcnUiStaticFeaturesView } from "../../feature-views"',
+        'type VariantBlock = Extract<Block, { blockType: "featureList" }>',
+        `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <ShadcnUiStaticFeaturesView block={block} options={options} variant="${namespace}.features-03" /> }`,
+        "",
+      ].join("\n")
+    },
+  },
+  "features-10": {
+    adaptLiteral({ contents, filename, isEntryFile }) {
+      if (filename === "stats-card.tsx") {
+        return contents
+          .replace('import type { ComponentProps } from "react";', 'import type { ComponentProps } from "react";\nimport type { LinkRef } from "@siteinabox/contracts";\nimport { useProviderBlockModel } from "../../runtime/content";')
+          .replace("  className,\n  ...props\n}: ComponentProps<typeof Card>) {", "  className,\n  value,\n  label,\n  action,\n  ...props\n}: ComponentProps<typeof Card> & { value?: string; label?: string; action?: LinkRef }) {\n  const model = useProviderBlockModel();")
+          .replace('<CardTitle className="font-satoshi text-3xl">+2,350</CardTitle>', '<CardTitle className="font-satoshi text-3xl">{model ? value : "+2,350"}</CardTitle>')
+          .replace('<CardDescription>+180.1% from last month</CardDescription>', '<CardDescription>{model ? label : "+180.1% from last month"}</CardDescription>')
+          .replace(/<CardAction>\s*<Button size="sm" variant="ghost">\s*View More\s*<\/Button>\s*<\/CardAction>/, '{model ? action?.href && action.label ? <CardAction><Button size="sm" variant="ghost" asChild><a href={action.href} target={action.external ? "_blank" : undefined} rel={action.external ? "noreferrer" : undefined}>{action.label}</a></Button></CardAction> : null : <CardAction><Button size="sm" variant="ghost">View More</Button></CardAction>}')
+      }
+      if (isEntryFile) {
+        return contents.replace(
+          '<StatsCard className="rounded-br-lg" />',
+          '<StatsCard className="rounded-br-lg" value={feature.metricValue} label={feature.metricLabel} action={feature.cta} />',
+        )
+      }
+      return contents
+    },
+  },
+  "hero-01": {
+    adaptLiteral({ contents }) {
+      return adaptThemeColors(contents, [
+        ["#5E8778", "var(--provider-accent-600, #5E8778)"],
+        ["#78FF86", "var(--provider-accent-300, #78FF86)"],
+        ["#575EFF", "var(--provider-accent-700, #575EFF)"],
+        ["#E478FF", "var(--provider-accent-400, #E478FF)"],
+      ])
+    },
+  },
+  "hero-02": {
+    adaptLiteral({ contents, filename }) {
+      if (filename !== "hero.tsx") return contents
+      const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-02"]
+      return adaptStructuredMediaRegion(contents, from, to)
+    },
+  },
+  "hero-03": {
+    adaptLiteral({ contents, filename, isEntryFile }) {
+      let adapted = contents
+      if (filename === "hero.tsx") {
+        const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-03"]
+        adapted = adaptStructuredMediaRegion(adapted, from, to)
+      }
+      adapted = adaptThemeColors(adapted, [
+        ['colors = ["#5227FF", "#FF9FFC", "#B497CF"]', 'colors = ["var(--provider-accent-700, #5227FF)", "var(--provider-accent-400, #FF9FFC)", "var(--provider-accent-200, #B497CF)"]'],
+        ["rounded-[1.25rem]", "rounded-[var(--provider-radius-hero-gradient,1.25rem)]"],
+      ])
+      if (isEntryFile) {
+        adapted = adapted.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
+      }
+      return adapted
+    },
+    composition: { embedsNavigation: true, suppressesChromeAreas: ["header"] },
+    skipBindingCompilationForFile(filename) {
+      return /^navbar\.(?:ts|tsx)$/.test(filename)
+    },
+  },
+  "hero-04": {
+    adaptLiteral({ contents, filename }) {
+      if (filename !== "hero.tsx") return contents
+      const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-04"]
+      return adaptStructuredMediaRegion(contents, from, to)
+    },
+  },
+  "hero-05": {
+    adaptLiteral({ contents, filename }) {
+      if (filename !== "hero.tsx") return contents
+      const [from, to] = STRUCTURED_MEDIA_REGIONS["hero-05"]
+      return adaptStructuredMediaRegion(contents, from, to)
+    },
+  },
+  "hero-08": {
+    adaptLiteral({ contents, isEntryFile }) {
+      if (!isEntryFile) return contents
+      return contents.replace(/<Navbar\s*\/>/, '<ProviderDemoOnly fallback={<Navbar />} />')
+    },
+    composition: { embedsNavigation: true, suppressesChromeAreas: ["header"] },
+    skipBindingCompilationForFile(filename) {
+      return /^navbar\.(?:ts|tsx)$/.test(filename)
+    },
+  },
+  "logo-cloud-15": {
+    adaptLiteral({ contents, filename }) {
+      if (filename === "border-beam.tsx") {
+        return adaptThemeColors(contents, BORDER_BEAM_THEME_REPLACEMENTS)
+      }
+      if (filename === "logo-cloud.tsx") {
+        return adaptThemeColors(contents, [
+          ["#ffaa40", "var(--provider-accent-400, #ffaa40)"],
+          ["#9c40ff", "var(--provider-accent-700, #9c40ff)"],
+        ])
+      }
+      return contents
+    },
+  },
+  "footer-03": {
+    featureAuditExtras({ sourceText = "" } = {}) {
+      if (!/(?:<form|type=["']email|type=["']submit)/i.test(sourceText)) return []
+      return [{
+        feature: "form",
+        disposition: "structured-adapter",
+        evidence: "Capability-gated footer newsletter contract",
+      }]
+    },
+  },
+  "footer-04": {
+    featureAuditExtras({ sourceText = "" } = {}) {
+      if (!/(?:<form|type=["']email|type=["']submit)/i.test(sourceText)) return []
+      return [{
+        feature: "form",
+        disposition: "structured-adapter",
+        evidence: "Capability-gated footer newsletter contract",
+      }]
+    },
+  },
+  "navbar-02": {
+    featureAuditExtras() {
+      return [{
+        feature: "theme-toggle",
+        disposition: "runtime-derived",
+        evidence: "Accessible provider control backed by the shared persisted color-mode runtime",
+      }]
+    },
+  },
+  "navbar-03": {
+    resolveLiteralFilename(upstreamFilename) {
+      return upstreamFilename === "navbar.ts" ? "navbar-data.ts" : upstreamFilename
+    },
+    adaptLiteral({ contents }) {
+      return replaceAll(contents, 'from "./navbar"', 'from "./navbar-data"')
+    },
+  },
+  "not-found-03": {
+    adaptLiteral({ contents }) {
+      return scopeNotFound03SvgIds(contents)
+    },
+  },
+  "pricing-09": {
+    adaptLiteral({ contents, filename }) {
+      let adapted = adaptThemeColors(contents, GRID_LINE_REPLACEMENTS)
+      if (filename === "border-beam.tsx") {
+        adapted = adaptThemeColors(adapted, BORDER_BEAM_THEME_REPLACEMENTS)
+      }
+      return adapted
+    },
+  },
+}
+
+export function hasDirectBindings(bindingManifest, upstreamName) {
+  return Array.isArray(bindingManifest?.direct?.[upstreamName]) && bindingManifest.direct[upstreamName].length > 0
+}
+
+export function shouldPreserveOwnedVariant(bindingManifest, upstreamName) {
+  return hasDirectBindings(bindingManifest, upstreamName)
+}
+
+export function applyVariantLiteralAdaptations(upstreamName, context) {
+  const specialCase = VARIANT_SPECIAL_CASES[upstreamName]
+  if (!specialCase?.adaptLiteral) return context.contents
+  return specialCase.adaptLiteral({ upstreamName, ...context })
+}
+
+export function resolveLiteralFilename(upstreamName, upstreamFilename) {
+  const specialCase = VARIANT_SPECIAL_CASES[upstreamName]
+  return specialCase?.resolveLiteralFilename?.(upstreamFilename) ?? upstreamFilename
+}
+
+export function shouldSkipBindingCompilation(upstreamName, filename, bindingManifest) {
+  if (hasDirectBindings(bindingManifest, upstreamName)) return true
+  const specialCase = VARIANT_SPECIAL_CASES[upstreamName]
+  return specialCase?.skipBindingCompilationForFile?.(filename) ?? false
+}
+
+export function getVariantComposition(upstreamName) {
+  const specialCase = VARIANT_SPECIAL_CASES[upstreamName]
+  return specialCase?.composition ?? { embedsNavigation: false, suppressesChromeAreas: [] }
+}
+
+export function applyVariantSlotOverrides(upstreamName, variantSlots) {
+  VARIANT_SPECIAL_CASES[upstreamName]?.slotOverrides?.({ variantSlots })
+}
+
+export function buildFormFeatureAudit(sourceText, semantic, upstreamName) {
+  if (!/(?:<form|type=["']email|type=["']submit)/i.test(sourceText)) return []
+  if (semantic.blockType === "contactSection") {
+    return [{
+      feature: "form",
+      disposition: "structured-adapter",
+      evidence: "Validated SIAB form provider contract",
+    }]
+  }
+  const variantForm = getVariantFeatureAuditExtras(upstreamName, { sourceText }).filter((entry) => entry.feature === "form")
+  if (variantForm.length) return variantForm
+  return [{
+    feature: "form",
+    disposition: "inactive",
+    evidence: "Upstream demo capture form is inactive; no arbitrary external submission is retained",
+  }]
+}
+
+export function getVariantFeatureAuditExtras(upstreamName, context = {}) {
+  return VARIANT_SPECIAL_CASES[upstreamName]?.featureAuditExtras?.(context) ?? []
+}
+
+export function generateVariantView(upstreamName, { semantic, mainStem, namespace }) {
+  const specialCase = VARIANT_SPECIAL_CASES[upstreamName]
+  if (specialCase?.generateView) {
+    return specialCase.generateView({ semantic, mainStem, namespace })
+  }
+  return [
+    'import * as React from "react"',
+    'import type { Block } from "@siteinabox/contracts"',
+    'import type { BlockRenderOptions } from "../../../../blocks/types"',
+    `import Literal from "./${mainStem}"`,
+    'import { LiteralProviderVariantView } from "../../runtime/literal-view"',
+    `type VariantBlock = Extract<Block, { blockType: "${semantic.blockType}" }>`,
+    `export default function View({ block, options }: { block: VariantBlock; options: BlockRenderOptions }) { return <LiteralProviderVariantView Literal={Literal} model={{ block, options }} variant="${namespace}.${upstreamName}" /> }`,
+    '',
+  ].join("\n")
+}
+
+export const VARIANT_SPECIAL_CASE_IDS = Object.freeze(Object.keys(VARIANT_SPECIAL_CASES).sort())

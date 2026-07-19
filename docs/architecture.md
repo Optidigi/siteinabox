@@ -65,6 +65,22 @@ forced into the shared typed helper surface until a pilot migration needs them.
 All other block variants continue to render through pinned literals and
 `block-views.generated.tsx` dispatch.
 
+Re-import and scaffold workflows live under `scripts/shadcnui-blocks/`:
+
+- `node scripts/import-shadcnui-blocks.mjs` acquires the pinned upstream
+  commit, applies generic literal normalization, runs legacy binding compilation
+  only for non-`bindings.direct` variants, and refreshes `inventory.json`.
+- Direct-binding and typed-pilot variants keep owned sources on re-import; the
+  importer skips `compileBlockBindings` for every `bindings.direct` entry.
+- `node scripts/import-shadcnui-blocks.mjs --scaffold=<upstream-name>
+  --upstream-literal=@path/to/literal.tsx` creates a typed adaptation scaffold
+  (normalized `upstream-literal.tsx`, stub component, view mapper, fixture stub).
+  It refuses to overwrite typed pilots or direct-bound variants unless `--force`
+  is passed.
+- Variant-specific literal surgery is centralized in
+  `scripts/shadcnui-blocks/variant-special-cases.mjs`; generic normalization
+  in `adapt-literal.mjs` must remain variant-agnostic.
+
 ## Operational ownership
 
 - Payload schemas and migrations own persisted CMS shape and upgrades.
