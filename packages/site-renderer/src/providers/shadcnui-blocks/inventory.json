@@ -1193,7 +1193,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/contact.tsx",
-          "sha256": "sha256:51380c8f2d4e43cc80a49aad3c84e1277031ce16995caa049edbe958074e51c7"
+          "sha256": "sha256:58fe3b2012615afcfb177e5cc73d3d47a6581c49bd4a7000bb928cb20a53226c"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/upstream-literal.upstream.tsx.txt",
@@ -1442,7 +1442,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/contact.tsx",
-          "sha256": "sha256:f96911a8c2b7ffa8e5da5941fe2ebcbd1c62b11dc1a087bcdd2f4d01620698db"
+          "sha256": "sha256:a4929b14d866ffe57d412c6e06af0562d17d6ba032de9dd4f2d795dcc448dbd6"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-02/upstream-literal.upstream.tsx.txt",
@@ -1704,7 +1704,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/contact.tsx",
-          "sha256": "sha256:73eec975c12a98cec94b8c4bbdc600dd764518adef5407fbb5d53cec56ab6bce"
+          "sha256": "sha256:ec0dcf0f2d2f8fb2fe5fc4df0da9e19d29403f4b77361710271bcad5c2c75590"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/upstream-literal.upstream.tsx.txt",

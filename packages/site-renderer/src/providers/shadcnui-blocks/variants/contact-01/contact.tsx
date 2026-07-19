@@ -21,9 +21,18 @@ export type Contact01Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   description?: RtRoot | null
   items: ContactDetailsItem[]
+  showDemoChrome?: boolean
 }
 
-export function Contact01({ title, description, items, blockIndex, editSlots, rootAttributes }: Contact01Props) {
+export function Contact01({
+  title,
+  description,
+  items,
+  blockIndex,
+  editSlots,
+  rootAttributes,
+  showDemoChrome = false,
+}: Contact01Props) {
   const titleContent = renderContactDetailsTitle(editSlots, title, blockIndex)
   const descriptionContent = renderContactDetailsDescription(editSlots, description, blockIndex)
   const displayItems = items.slice(0, MAX_ITEMS)
@@ -31,7 +40,9 @@ export function Contact01({ title, description, items, blockIndex, editSlots, ro
   return (
     <div className="flex min-h-screen items-center justify-center py-16" {...rootAttributes}>
       <div className="text-center">
-        <b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Contact Us</b>
+        {showDemoChrome ? (
+          <b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Contact Us</b>
+        ) : null}
         {titleContent ? <h2 className="mt-3 font-medium text-4xl tracking-tight">{titleContent}</h2> : null}
         {descriptionContent ? (
           <p className="mt-3 text-lg text-muted-foreground md:text-xl">{descriptionContent}</p>
@@ -69,6 +80,7 @@ export default function Contact01Literal() {
       description={contact01CmsLike.description}
       items={contact01CmsLike.items}
       blockIndex={0}
+      showDemoChrome
     />
   )
 }
