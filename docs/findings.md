@@ -157,9 +157,8 @@ observations before acting on them.
 
 ## SIAB-013 — Page-editor saves can diverge from the active snapshot
 
-- **Classification:** Confirmed defect; implementation deployed, authenticated
-  save verification pending; **confidence:** high from production database,
-  release, and browser evidence.
+- **Classification:** Historical/closed; **confidence:** high from production
+  database, release, authenticated-save, and live-renderer evidence.
 - **Scope:** CMS page editor, tenant themes/settings, snapshot publication, and
   generated-site consent chrome.
 - **Evidence:** On 2026-07-19 the Ami Care tenant stored the newer
@@ -178,6 +177,21 @@ observations before acting on them.
   provider parity matrix passed. Both containers were healthy, CMS boot found
   no pending migrations, and desktop/mobile production probes showed the
   consent chrome fixed at the viewport bottom with an opaque semantic surface.
-- **Resolution requirement:** Perform one authenticated Ami Care save and prove
-  the committed page/theme values match the newly active snapshot and live
-  renderer output before closing.
+  A later authenticated save exposed two additional publication defects:
+  Payload rehydrated unset CTA groups as `{ label: null, href: null }`, and the
+  transactional route stringified the PostgreSQL tenant relationship ID before
+  snapshot creation. Commits `b8453c10` and `a99eb2f6` respectively canonicalize
+  only empty CTA groups while preserving strict rejection of meaningful
+  unsupported slots, and preserve Payload's native relationship ID type. After
+  successful CI and CMS image smoke runs, exact CMS revision `a99eb2f6` was
+  deployed on 2026-07-19. An authenticated Ami Care page-24 save committed
+  snapshot 134/version 113 as active. A fresh authenticated comparison proved
+  the current five-block page and normalized `red-confident`/
+  `classic-editorial`/`rounded` theme equal the active snapshot; both `cta-03`
+  and `cta-02` omit `secondary`, while `cta-03` retains `Neem contact op` →
+  `#contact`. The live renderer returned 200 with the same theme and CTA
+  markers.
+- **Review trigger:** Reopen if page/theme/settings publication leaves the
+  transaction, empty CTA group canonicalization is removed, native relationship
+  IDs are stringified before snapshot writes, or current-state/live parity
+  regresses.
