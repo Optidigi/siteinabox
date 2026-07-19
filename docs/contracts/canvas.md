@@ -37,11 +37,11 @@ removed DOM/geometry editing bridge remains retired.
 
 ## Protocol
 
-The parent may send `page.replace`, `theme.patch`, `selection.set`, and mobile
-focused-section mode. The editor may send `renderer.ready`, `renderer.height`,
+The parent sends one versioned `render.snapshot` carrying page, settings, theme,
+selection, and mobile focused-section mode. The editor may send `renderer.ready`, `renderer.height`,
 `selection.changed`, `chrome.select`, and a fail-closed `error`. Legacy block
 mutation, inline-field, geometry, gutter, and view-toggle messages were removed
-from protocol v2.
+from protocol v3.
 
 ## Parity and safety
 

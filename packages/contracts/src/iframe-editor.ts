@@ -3,18 +3,15 @@ import type { Page, SiteSettings } from "./site"
 import type { ThemeTokenSpec } from "./generation"
 import { PageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "./runtime"
 
-export const IFRAME_EDITOR_PROTOCOL_VERSION = 2
+export const IFRAME_EDITOR_PROTOCOL_VERSION = 3
 export const IFRAME_EDITOR_PROTOCOL_NAME = "siab.iframe-editor"
 
 export const IFRAME_EDITOR_MESSAGE_TYPES = [
   "renderer.ready",
   "renderer.height",
-  "page.replace",
-  "theme.patch",
-  "selection.set",
+  "render.snapshot",
   "selection.changed",
   "chrome.select",
-  "editor.mobileMode.set",
   "navigation.requested",
   "error",
 ] as const
@@ -40,34 +37,10 @@ export type RendererHeightMessage = IframeEditorMessageBase<"renderer.height"> &
   height: number
 }
 
-export type PageReplaceMessage = IframeEditorMessageBase<"page.replace"> & {
-  expectedRevision: IframeEditorRevision
-  pageId: string
-  page: Page
-  settings?: SiteSettings
-  theme?: ThemeTokenSpec | null
-}
-
-export type ThemePatchMessage = IframeEditorMessageBase<"theme.patch"> & {
-  theme: ThemeTokenSpec | null
-}
-
 export type IframeEditorSelection = {
   pageId?: string
   blockId?: string
   fieldPath?: IframeEditorFieldPath
-}
-
-export type SelectionSetMessage = IframeEditorMessageBase<"selection.set"> & {
-  selection: IframeEditorSelection | null
-}
-
-export type SelectionChangedMessage = IframeEditorMessageBase<"selection.changed"> & {
-  selection: IframeEditorSelection | null
-}
-
-export type ChromeSelectMessage = IframeEditorMessageBase<"chrome.select"> & {
-  selection: IframeEditorSelection
 }
 
 export type IframeEditorMobileMode = {
@@ -77,7 +50,31 @@ export type IframeEditorMobileMode = {
   showChrome?: boolean
 }
 
-export type EditorMobileModeSetMessage = IframeEditorMessageBase<"editor.mobileMode.set"> & IframeEditorMobileMode
+/**
+ * Atomic host→frame render state. Replaces the v2 split of `page.replace`,
+ * `theme.patch`, `selection.set`, and `editor.mobileMode.set` so page, theme,
+ * settings, selection, and mobile projection apply in one revision-guarded step.
+ *
+ * Preview hosts may omit `selection` and `mobileMode`; editor-frame runtime
+ * treats omitted values as null selection and `{ mode: "fullPage" }`.
+ */
+export type RenderSnapshotMessage = IframeEditorMessageBase<"render.snapshot"> & {
+  expectedRevision: IframeEditorRevision
+  pageId: string
+  page: Page
+  settings: SiteSettings
+  theme: ThemeTokenSpec | null
+  selection?: IframeEditorSelection | null
+  mobileMode?: IframeEditorMobileMode
+}
+
+export type SelectionChangedMessage = IframeEditorMessageBase<"selection.changed"> & {
+  selection: IframeEditorSelection | null
+}
+
+export type ChromeSelectMessage = IframeEditorMessageBase<"chrome.select"> & {
+  selection: IframeEditorSelection
+}
 
 export type NavigationRequestedMessage = IframeEditorMessageBase<"navigation.requested"> & {
   pageId?: string
@@ -93,12 +90,9 @@ export type IframeEditorErrorMessage = IframeEditorMessageBase<"error"> & {
 export type IframeEditorMessage =
   | RendererReadyMessage
   | RendererHeightMessage
-  | PageReplaceMessage
-  | ThemePatchMessage
-  | SelectionSetMessage
+  | RenderSnapshotMessage
   | SelectionChangedMessage
   | ChromeSelectMessage
-  | EditorMobileModeSetMessage
   | NavigationRequestedMessage
   | IframeEditorErrorMessage
 
@@ -130,6 +124,13 @@ const selectionSchema: z.ZodType<IframeEditorSelection> = strictObject({
   message: "Selection must identify a page, block, or field",
 })
 
+const mobileModeShape = {
+  mode: z.enum(["fullPage", "focusedSection"]),
+  focusedBlockId: idSchema.optional(),
+  focusedBlockIndex: z.number().int().nonnegative().optional(),
+  showChrome: z.boolean().optional(),
+}
+
 export const RendererReadyMessageSchema = strictObject({
   ...baseMessageShape,
   type: z.literal("renderer.ready"),
@@ -143,26 +144,16 @@ export const RendererHeightMessageSchema = strictObject({
   height: z.number().int().min(1).max(200_000),
 })
 
-export const PageReplaceMessageSchema = strictObject({
+export const RenderSnapshotMessageSchema = strictObject({
   ...baseMessageShape,
-  type: z.literal("page.replace"),
+  type: z.literal("render.snapshot"),
   expectedRevision: revisionSchema,
   pageId: idSchema,
   page: PageSchema,
-  settings: SiteSettingsSchema.optional(),
-  theme: ThemeTokenSpecSchema.nullable().optional(),
-})
-
-export const ThemePatchMessageSchema = strictObject({
-  ...baseMessageShape,
-  type: z.literal("theme.patch"),
+  settings: SiteSettingsSchema,
   theme: ThemeTokenSpecSchema.nullable(),
-})
-
-export const SelectionSetMessageSchema = strictObject({
-  ...baseMessageShape,
-  type: z.literal("selection.set"),
-  selection: selectionSchema.nullable(),
+  selection: selectionSchema.nullable().optional(),
+  mobileMode: strictObject(mobileModeShape).optional(),
 })
 
 export const SelectionChangedMessageSchema = strictObject({
@@ -175,19 +166,6 @@ export const ChromeSelectMessageSchema = strictObject({
   ...baseMessageShape,
   type: z.literal("chrome.select"),
   selection: selectionSchema,
-})
-
-const mobileModeShape = {
-  mode: z.enum(["fullPage", "focusedSection"]),
-  focusedBlockId: idSchema.optional(),
-  focusedBlockIndex: z.number().int().nonnegative().optional(),
-  showChrome: z.boolean().optional(),
-}
-
-export const EditorMobileModeSetMessageSchema = strictObject({
-  ...baseMessageShape,
-  type: z.literal("editor.mobileMode.set"),
-  ...mobileModeShape,
 })
 
 export const NavigationRequestedMessageSchema = strictObject({
@@ -210,12 +188,9 @@ export const IframeEditorErrorMessageSchema = strictObject({
 export const IframeEditorMessageSchema: z.ZodType<IframeEditorMessage> = z.discriminatedUnion("type", [
   RendererReadyMessageSchema,
   RendererHeightMessageSchema,
-  PageReplaceMessageSchema,
-  ThemePatchMessageSchema,
-  SelectionSetMessageSchema,
+  RenderSnapshotMessageSchema,
   SelectionChangedMessageSchema,
   ChromeSelectMessageSchema,
-  EditorMobileModeSetMessageSchema,
   NavigationRequestedMessageSchema,
   IframeEditorErrorMessageSchema,
 ])
@@ -243,7 +218,7 @@ export const validateIframeEditorMessage = (
 
   if (
     options.currentRevision != null
-    && parsed.data.type === "page.replace"
+    && parsed.data.type === "render.snapshot"
     && parsed.data.expectedRevision !== options.currentRevision
   ) {
     return {
