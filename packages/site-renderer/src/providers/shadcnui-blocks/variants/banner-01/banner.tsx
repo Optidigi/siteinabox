@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import Link from "../../runtime/link";
 
 export default function Banner() {

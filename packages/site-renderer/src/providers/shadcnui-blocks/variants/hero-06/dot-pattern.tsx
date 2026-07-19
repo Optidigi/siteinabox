@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { type ComponentProps, useId } from "react";
 
 import { cn } from "@siteinabox/ui/lib/utils";

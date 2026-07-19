@@ -93,4 +93,4 @@ export type BlockRendererComponent<TBlock extends Block = Block> = (props: {
   options: BlockRenderOptions
 }) => React.ReactNode
 
-export type BlockRegistry = Partial<Record<Block["blockType"], BlockRendererComponent<any>>>
+export type BlockRegistry = Partial<Record<Block["blockType"], BlockRendererComponent>>

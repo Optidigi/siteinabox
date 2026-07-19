@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { OctagonXIcon } from "lucide-react";
 import Link from "../../runtime/link";
 import type { SVGProps } from "react";

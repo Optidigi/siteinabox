@@ -296,12 +296,18 @@ describe('intake payload contract', () => {
       ...defaultIntakeValues,
       legal: { businessUseAccepted: true, termsAccepted: true, marketingOptIn: false },
     }, '2026-07-10T12:00:00.000Z');
-    const withoutTerms = structuredClone(serialized) as Record<string, any>;
-    delete withoutTerms.legal.termsAcceptance;
-    const falseAcceptance = structuredClone(serialized) as Record<string, any>;
-    falseAcceptance.legal.termsAcceptance.accepted = false;
-    const staleAcceptance = structuredClone(serialized) as Record<string, any>;
-    staleAcceptance.legal.termsAcceptance.documentVersion = '2026-01-01.1';
+    const { termsAcceptance: _termsAcceptance, ...legalWithoutTerms } = serialized.legal
+    const withoutTerms = { ...serialized, legal: legalWithoutTerms }
+    const falseAcceptance = structuredClone(serialized)
+    falseAcceptance.legal.termsAcceptance = {
+      ...falseAcceptance.legal.termsAcceptance,
+      accepted: false,
+    } as typeof falseAcceptance.legal.termsAcceptance
+    const staleAcceptance = structuredClone(serialized)
+    staleAcceptance.legal.termsAcceptance = {
+      ...staleAcceptance.legal.termsAcceptance,
+      documentVersion: '2026-01-01.1',
+    } as typeof staleAcceptance.legal.termsAcceptance
 
     expect(PublicIntakeSubmissionSchema.safeParse(withoutTerms).success).toBe(false);
     expect(PublicIntakeSubmissionSchema.safeParse(falseAcceptance).success).toBe(false);

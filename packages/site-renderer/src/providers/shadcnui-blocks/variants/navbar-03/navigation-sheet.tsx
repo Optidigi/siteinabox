@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Menu } from "lucide-react";
 import Link from "../../runtime/link";

@@ -248,7 +248,7 @@ export const visualSchema = z
   .object({
     logo: z.object({
       mode: visualLogoModeSchema,
-      file: z.any().nullable(),
+      file: z.custom<File | null>((value) => value === null || value instanceof File).nullable(),
       text: z.string().trim(),
     }),
     color: z.object({

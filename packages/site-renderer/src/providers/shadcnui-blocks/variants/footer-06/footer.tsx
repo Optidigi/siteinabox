@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { Wheat } from "lucide-react";
 import Link from "../../runtime/link";
 

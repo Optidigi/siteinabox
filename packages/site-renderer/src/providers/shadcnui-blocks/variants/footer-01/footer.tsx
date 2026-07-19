@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import Link from "../../runtime/link";
 import { Separator } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 

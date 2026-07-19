@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 "use client";
 import Link from "../../runtime/link";
 import type { ComponentProps } from "react";

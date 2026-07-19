@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 "use client";
 import type { LucideIcon } from "lucide-react";
 import Link from "../../runtime/link";

@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { Wheat } from "lucide-react";
 import { Dribbble, Github, Twitter } from "../../runtime/social-icons";
 import Link from "../../runtime/link";
