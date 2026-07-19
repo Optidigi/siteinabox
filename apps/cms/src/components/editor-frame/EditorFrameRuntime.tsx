@@ -19,6 +19,7 @@ import {
   type PreparedClientSiteRenderer,
 } from "@siteinabox/site-renderer"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
+import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 
 const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav]'
 const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome'
@@ -61,9 +62,24 @@ export function EditorFrameRuntime({
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
   const variantKey = framePage.blocks.map((block) => `${block.blockType}:${block.designVariant ?? ""}`).join("|")
   const [prepared, setPrepared] = React.useState<{ key: string; renderer: PreparedClientSiteRenderer } | null>(null)
+  const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
+  const embeddedViewportRule = useCspStyleRule(
+    "editor-frame-parent-scroll-viewport",
+    hostViewportHeight != null
+      ? `--siab-preview-viewport-height:${formatCssPx(hostViewportHeight)};`
+      : null,
+  )
 
   const emit = React.useCallback((payload: IframeEditorMessage) => {
     window.parent?.postMessage(payload, window.location.origin)
+  }, [])
+
+  React.useLayoutEffect(() => {
+    const hostWindow = window.parent && window.parent !== window ? window.parent : window
+    const update = () => setHostViewportHeight(hostWindow.innerHeight)
+    update()
+    hostWindow.addEventListener("resize", update)
+    return () => hostWindow.removeEventListener("resize", update)
   }, [])
 
   const patchTheme = React.useCallback((nextTheme: ThemeTokenSpec | null) => {
@@ -178,6 +194,33 @@ export function EditorFrameRuntime({
     }
   }, [emit, page.id, page.slug, prepared, variantKey])
 
+  React.useLayoutEffect(() => {
+    if (!prepared || prepared.key !== variantKey) return
+    let animationFrame: number | null = null
+    const root = document.querySelector<HTMLElement>(".site-frame-root")
+    if (!root) return
+    const reportHeight = () => {
+      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
+      animationFrame = window.requestAnimationFrame(() => {
+        const height = Math.max(1, Math.ceil(root.getBoundingClientRect().height))
+        emit({
+          protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+          schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+          type: "renderer.height",
+          messageId: `renderer-height-${height}`,
+          height,
+        })
+      })
+    }
+    const observer = new ResizeObserver(reportHeight)
+    observer.observe(root)
+    reportHeight()
+    return () => {
+      observer.disconnect()
+      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
+    }
+  }, [emit, framePage, frameSettings, frameTheme, mobileMode, prepared, variantKey])
+
   React.useEffect(() => {
     const pageId = String(framePage.id ?? framePage.slug ?? "page")
     const onClick = (event: MouseEvent) => {
@@ -258,22 +301,29 @@ export function EditorFrameRuntime({
   if (!prepared || prepared.key !== variantKey) return null
 
   return (
-    <div data-siab-editor-frame-runtime>
-      <ClientSitePageRenderer
-        prepared={prepared.renderer}
-        page={visiblePage}
-        settings={frameSettings}
-        theme={frameTheme}
-        tenantSlug={tenantSlug}
-        domain={domain}
-        mediaResolver={mediaResolver}
-        nonce={cspNonce}
-        includeBehaviorScripts={false}
-        formAction="#"
-        banner={showChrome ? undefined : null}
-        header={showChrome ? undefined : null}
-        footer={showChrome ? undefined : null}
-      />
-    </div>
+    <>
+      {embeddedViewportRule.styleElement}
+      <div
+        className={embeddedViewportRule.className}
+        data-siab-editor-frame-runtime
+        data-siab-editor-parent-scroll="true"
+      >
+        <ClientSitePageRenderer
+          prepared={prepared.renderer}
+          page={visiblePage}
+          settings={frameSettings}
+          theme={frameTheme}
+          tenantSlug={tenantSlug}
+          domain={domain}
+          mediaResolver={mediaResolver}
+          nonce={cspNonce}
+          includeBehaviorScripts={false}
+          formAction="#"
+          banner={showChrome ? undefined : null}
+          header={showChrome ? undefined : null}
+          footer={showChrome ? undefined : null}
+        />
+      </div>
+    </>
   )
 }

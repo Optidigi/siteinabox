@@ -48,6 +48,7 @@ export function PageEditorFrameHost({
   const [ready, setReady] = React.useState(false)
   const [failed, setFailed] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
+  const [frameHeight, setFrameHeight] = React.useState<number | null>(null)
   const [retryKey, setRetryKey] = React.useState(0)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   const onChromeSelectRef = React.useRef(onChromeSelect)
@@ -75,6 +76,7 @@ export function PageEditorFrameHost({
     setReady(false)
     setFailed(false)
     setFrameError(null)
+    setFrameHeight(null)
     revisionRef.current = 0
   }, [retryKey, src])
 
@@ -99,6 +101,10 @@ export function PageEditorFrameHost({
         setReady(true)
         setFailed(false)
         setFrameError(null)
+        return
+      }
+      if (message.type === "renderer.height") {
+        setFrameHeight(message.height)
         return
       }
       if (message.type === "selection.changed") {
@@ -179,8 +185,10 @@ export function PageEditorFrameHost({
         className={cn(
           "block w-full border-0 bg-transparent transition-opacity duration-150",
           ready ? "opacity-100" : "pointer-events-none opacity-0",
-          layout === "mobile" ? "h-[calc(100dvh-4.5rem)] min-h-[32rem]" : "h-[calc(100dvh-6.5rem)] min-h-[640px]",
+          layout === "mobile" ? "min-h-[32rem]" : "min-h-[640px]",
         )}
+        height={frameHeight ?? (layout === "mobile" ? 512 : 640)}
+        scrolling="no"
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}
         onError={() => {

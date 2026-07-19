@@ -8,6 +8,7 @@ export const IFRAME_EDITOR_PROTOCOL_NAME = "siab.iframe-editor"
 
 export const IFRAME_EDITOR_MESSAGE_TYPES = [
   "renderer.ready",
+  "renderer.height",
   "page.replace",
   "theme.patch",
   "selection.set",
@@ -33,6 +34,10 @@ export type IframeEditorMessageBase<TType extends IframeEditorMessageType> = {
 export type RendererReadyMessage = IframeEditorMessageBase<"renderer.ready"> & {
   rendererId: string
   pageId?: string
+}
+
+export type RendererHeightMessage = IframeEditorMessageBase<"renderer.height"> & {
+  height: number
 }
 
 export type PageReplaceMessage = IframeEditorMessageBase<"page.replace"> & {
@@ -87,6 +92,7 @@ export type IframeEditorErrorMessage = IframeEditorMessageBase<"error"> & {
 
 export type IframeEditorMessage =
   | RendererReadyMessage
+  | RendererHeightMessage
   | PageReplaceMessage
   | ThemePatchMessage
   | SelectionSetMessage
@@ -129,6 +135,12 @@ export const RendererReadyMessageSchema = strictObject({
   type: z.literal("renderer.ready"),
   rendererId: idSchema,
   pageId: idSchema.optional(),
+})
+
+export const RendererHeightMessageSchema = strictObject({
+  ...baseMessageShape,
+  type: z.literal("renderer.height"),
+  height: z.number().int().min(1).max(200_000),
 })
 
 export const PageReplaceMessageSchema = strictObject({
@@ -197,6 +209,7 @@ export const IframeEditorErrorMessageSchema = strictObject({
 
 export const IframeEditorMessageSchema: z.ZodType<IframeEditorMessage> = z.discriminatedUnion("type", [
   RendererReadyMessageSchema,
+  RendererHeightMessageSchema,
   PageReplaceMessageSchema,
   ThemePatchMessageSchema,
   SelectionSetMessageSchema,

@@ -37,6 +37,11 @@ const validSamplesByType = {
     type: "renderer.ready",
     rendererId: "renderer_1",
   },
+  "renderer.height": {
+    ...baseMessage,
+    type: "renderer.height",
+    height: 2400,
+  },
   "page.replace": {
     ...baseMessage,
     type: "page.replace",

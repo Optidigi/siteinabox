@@ -87,7 +87,7 @@ describe("customer preview UI", () => {
     expect(frameRuntime).toContain("renderer-frame-preview-viewport")
     expect(frameRuntime).toContain("window.parent")
     expect(frameRuntime).toContain("data-siab-preview-viewport")
-    expect(rendererStyles).toContain('[data-siab-preview-viewport="true"] .min-h-screen')
+    expect(rendererStyles).toContain(':is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .min-h-screen')
     expect(rendererStyles).toContain("--siab-preview-viewport-height")
   })
 

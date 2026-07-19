@@ -24,12 +24,15 @@ active provider modules, `window.load`, `document.fonts.ready`, React commit,
 and two animation frames have completed. The frame then emits `renderer.ready`.
 Customer preview uses a viewport-height, internally scrolling iframe so public
 fixed-position chrome remains anchored to the visible preview viewport. The
-removed resize/mutation-observer geometry bridge must not be restored.
+page editor instead receives a height-only renderer signal and expands its
+same-origin iframe, leaving the CMS document as the sole full-page scroll owner.
+That signal cannot mutate fields, selection, block geometry, or ordering; the
+removed DOM/geometry editing bridge remains retired.
 
 ## Protocol
 
 The parent may send `page.replace`, `theme.patch`, `selection.set`, and mobile
-focused-section mode. The editor may send `renderer.ready`,
+focused-section mode. The editor may send `renderer.ready`, `renderer.height`,
 `selection.changed`, `chrome.select`, and a fail-closed `error`. Legacy block
 mutation, inline-field, geometry, gutter, and view-toggle messages were removed
 from protocol v2.

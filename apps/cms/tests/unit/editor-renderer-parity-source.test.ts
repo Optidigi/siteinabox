@@ -44,6 +44,17 @@ describe("page editor renderer parity", () => {
     expect(host).toContain("animate-pulse")
   })
 
+  it("uses the CMS document as the sole full-page scroll owner", () => {
+    const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
+    const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    expect(runtime).toContain('type: "renderer.height"')
+    expect(runtime).toContain("new ResizeObserver(reportHeight)")
+    expect(runtime).toContain('data-siab-editor-parent-scroll="true"')
+    expect(host).toContain('message.type === "renderer.height"')
+    expect(host).toContain('scrolling="no"')
+    expect(host).not.toContain('h-[calc(100dvh-6.5rem)]')
+  })
+
   it("does not retain the removed canvas implementation or preference", () => {
     for (const path of [
       "src/components/editor/canvas/CanvasSurface.tsx",

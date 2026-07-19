@@ -19,11 +19,11 @@
  * relative to the parent browser viewport for deterministic preview sizing.
  * This scope never affects live sites.
  */
-[data-siab-preview-viewport="true"] .min-h-screen {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .min-h-screen {
   min-height: var(--siab-preview-viewport-height);
 }
 
-[data-siab-preview-viewport="true"] .h-screen {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .h-screen {
   height: var(--siab-preview-viewport-height);
 }
 
@@ -35,20 +35,20 @@
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 5.5rem);
 }
 
-[data-siab-preview-viewport="true"] .h-\[calc\(100svh-4rem\)\] {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .h-\[calc\(100svh-4rem\)\] {
   height: calc(var(--siab-preview-viewport-height) - 4rem);
 }
 
-[data-siab-preview-viewport="true"] .max-h-\[calc\(100vh-7rem\)\] {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .max-h-\[calc\(100vh-7rem\)\] {
   max-height: calc(var(--siab-preview-viewport-height) - 7rem);
 }
 
 @media (min-width: 64rem) {
-  [data-siab-preview-viewport="true"] .lg\:h-screen {
+  :is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .lg\:h-screen {
     height: var(--siab-preview-viewport-height);
   }
 
-  [data-siab-preview-viewport="true"] .lg\:h-\[calc\(100vh-4rem\)\] {
+  :is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .lg\:h-\[calc\(100vh-4rem\)\] {
     height: calc(var(--siab-preview-viewport-height) - 4rem);
   }
 }
