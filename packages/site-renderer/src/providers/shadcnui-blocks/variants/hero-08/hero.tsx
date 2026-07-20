@@ -54,6 +54,17 @@ export function Hero08({
   const secondaryAction = renderHeroLink(editSlots, secondary ?? {}, blockIndex, "secondary")
   const trustLabelContent = renderHeroTrustLabel(editSlots, trustLabel, blockIndex)
   const displayLogos = (logos ?? []).slice(0, MAX_LOGOS)
+  const headlineContent = literalPreview && !editSlots?.renderRichText
+    ? (
+      <>
+        Beautifully Designed{" "}
+        <span className="inline-block rounded-md bg-primary px-1.5 py-0.5 text-primary-foreground leading-[1.1] tracking-tight sm:rounded-lg sm:px-3.5">
+          Premium
+        </span>{" "}
+        Shadcn Blocks
+      </>
+    )
+    : renderHeroHeadline(editSlots, headline, blockIndex)
 
   return (
     <div {...rootAttributes} {...rest}>
@@ -61,7 +72,7 @@ export function Hero08({
 
       <div className="mx-auto flex max-w-5xl flex-col items-center px-6 py-12 text-center">
         <h2 className="text-balance font-medium text-4xl leading-[1.4] tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl">
-          {renderHeroHeadline(editSlots, headline, blockIndex)}
+          {headlineContent}
         </h2>
         {subheadline ? (
           <p className="mt-6 text-balance text-center text-muted-foreground text-xl tracking-[-0.01em] sm:text-2xl sm:leading-normal md:text-3xl">

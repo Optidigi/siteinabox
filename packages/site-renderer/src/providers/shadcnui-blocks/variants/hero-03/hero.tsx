@@ -14,8 +14,9 @@ import {
   renderHeroLink,
   renderHeroSubheadline,
 } from "../../typed/hero-fields"
-import { heroFamilyWithImage } from "../../typed/fixtures/hero-family"
+import { hero03LiteralWithImage } from "../../typed/fixtures/hero-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
+import GradientText from "./gradient-text"
 import Navbar from "./navbar"
 
 export type Hero03Props = TypedVariantBaseProps & {
@@ -50,6 +51,26 @@ export function Hero03({
     leadingIcon: <CirclePlay className="h-5! w-5!" />,
   })
   const eyebrowContent = renderHeroEyebrow(editSlots, eyebrow, blockIndex)
+  const headlineContent = literalPreview && !editSlots?.renderRichText
+    ? (
+      <>
+        Ship{" "}
+        <GradientText
+          animationSpeed={2}
+          className="border-b-2 border-dotted sm:border-b-3"
+          colors={[
+            "var(--color-purple-500)",
+            "var(--color-indigo-400)",
+            "var(--color-sky-500)",
+          ]}
+          direction="diagonal"
+        >
+          better UI
+        </GradientText>{" "}
+        without{"\u00a0"}the{"\u00a0"}hassle
+      </>
+    )
+    : renderHeroHeadline(editSlots, headline, blockIndex)
 
   return (
     <div className="flex min-h-screen w-full flex-col items-center justify-center px-6 pt-8 pb-16" {...rootAttributes} {...rest}>
@@ -65,7 +86,7 @@ export function Hero03({
           </Badge>
         ) : null}
         <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem] md:text-6xl/[1.2]">
-          {renderHeroHeadline(editSlots, headline, blockIndex)}
+          {headlineContent}
         </h1>
         {subheadline ? (
           <p className="mx-auto mt-6 max-w-2xl text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal">
@@ -155,11 +176,11 @@ export function Hero03({
 export default function Hero03Literal() {
   return (
     <Hero03
-      eyebrow={heroFamilyWithImage.eyebrow}
-      headline={heroFamilyWithImage.headline}
-      subheadline={heroFamilyWithImage.subheadline}
-      cta={heroFamilyWithImage.cta}
-      secondary={heroFamilyWithImage.secondary}
+      eyebrow={hero03LiteralWithImage.eyebrow}
+      headline={hero03LiteralWithImage.headline}
+      subheadline={hero03LiteralWithImage.subheadline}
+      cta={hero03LiteralWithImage.cta}
+      secondary={hero03LiteralWithImage.secondary}
       blockIndex={0}
       literalPreview
     />

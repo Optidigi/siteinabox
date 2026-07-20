@@ -1,19 +1,34 @@
 import type { LinkRef, MediaRef } from "@siteinabox/contracts"
-import { previewBlockText, previewInlineText } from "../fixtures"
+import { previewBlockText, previewInlineText, previewInlineTextWithLinebreak } from "../fixtures"
 
 const previewMedia = (alt: string): MediaRef => ({
   url: `/images/${alt.toLowerCase().replace(/\s+/g, "-")}.png`,
   alt,
 })
 
-export const heroFamilyCmsLike = {
+const heroSharedEyebrowCta = {
   eyebrow: previewInlineText("Just released v1.0.0"),
-  headline: previewInlineText("Ship better UI without the hassle"),
-  subheadline: previewBlockText(
-    "Instead of starting from scratch every time, use thoughtfully designed blocks that give you a solid foundation for any UI.",
-  ),
   cta: { label: "Get Started", href: "#" } satisfies LinkRef,
   secondary: { label: "Watch Demo", href: "#demo" } satisfies LinkRef,
+}
+
+const heroThoughtfullyDesignedSub = previewBlockText(
+  "Instead of starting from scratch every time, use thoughtfully designed blocks that give you a solid foundation for any UI.",
+)
+
+const heroExploreCollectionSub = previewBlockText(
+  "Explore a collection of Shadcn UI blocks and components, ready to preview and copy. Streamline your development workflow with easy-to-implement examples.",
+)
+
+const heroNbspHassleHeadline = previewInlineText("Ship better UI without\u00a0the\u00a0hassle")
+
+const heroToolkitHeadline = previewInlineTextWithLinebreak("Your complete", " UI building toolkit")
+
+export const heroFamilyCmsLike = {
+  ...heroSharedEyebrowCta,
+  // Match upstream literal line-break control (`without&nbsp;the&nbsp;hassle`).
+  headline: heroNbspHassleHeadline,
+  subheadline: heroThoughtfullyDesignedSub,
 }
 
 export const heroFamilySparse = {
@@ -34,8 +49,50 @@ export const heroFamilySecondaryOnly = {
   secondary: { label: "Watch Demo", href: "#demo" } satisfies LinkRef,
 }
 
+export const hero02Literal = {
+  ...heroSharedEyebrowCta,
+  headline: heroToolkitHeadline,
+  subheadline: heroExploreCollectionSub,
+}
+
+export const hero03Literal = {
+  ...heroSharedEyebrowCta,
+  headline: heroNbspHassleHeadline,
+  subheadline: heroThoughtfullyDesignedSub,
+}
+
+export const hero04Literal = {
+  ...heroSharedEyebrowCta,
+  headline: previewInlineText("A better way to build clean interfaces"),
+  subheadline: heroExploreCollectionSub,
+}
+
+export const hero05Literal = {
+  ...hero02Literal,
+}
+
 export const heroFamilyWithImage = {
   ...heroFamilyCmsLike,
+  image: previewMedia("Hero media"),
+}
+
+export const hero02LiteralWithImage = {
+  ...hero02Literal,
+  image: previewMedia("Hero media"),
+}
+
+export const hero03LiteralWithImage = {
+  ...hero03Literal,
+  image: previewMedia("Hero media"),
+}
+
+export const hero04LiteralWithImage = {
+  ...hero04Literal,
+  image: previewMedia("Hero media"),
+}
+
+export const hero05LiteralWithImage = {
+  ...hero05Literal,
   image: previewMedia("Hero media"),
 }
 

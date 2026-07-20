@@ -14,7 +14,7 @@ import {
   renderHeroLink,
   renderHeroSubheadline,
 } from "../../typed/hero-fields"
-import { heroFamilyWithImage } from "../../typed/fixtures/hero-family"
+import { hero04LiteralWithImage } from "../../typed/fixtures/hero-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 export type Hero04Props = TypedVariantBaseProps & {
@@ -97,11 +97,11 @@ export function Hero04({
 export default function Hero04Literal() {
   return (
     <Hero04
-      eyebrow={heroFamilyWithImage.eyebrow}
-      headline={heroFamilyWithImage.headline}
-      subheadline={heroFamilyWithImage.subheadline}
-      cta={heroFamilyWithImage.cta}
-      secondary={heroFamilyWithImage.secondary}
+      eyebrow={hero04LiteralWithImage.eyebrow}
+      headline={hero04LiteralWithImage.headline}
+      subheadline={hero04LiteralWithImage.subheadline}
+      cta={hero04LiteralWithImage.cta}
+      secondary={hero04LiteralWithImage.secondary}
       blockIndex={0}
       literalPreview
     />

@@ -6417,7 +6417,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-02/hero.tsx",
-          "sha256": "sha256:9ec38fb6bdd1b19d55ccb985f23bf1b6de264ea6406e667bd6424930aacbc04b"
+          "sha256": "sha256:892f786f49160216bacb0098e5be174ea31d3a43e14ba6de1c05a28c593e3846"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-02/view.tsx",
@@ -6724,7 +6724,7 @@
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-03/hero.tsx",
-          "sha256": "sha256:752900d45d91eb05f655937d8e12d0d96190a106e6edbec1174abaf05ee30725"
+          "sha256": "sha256:17021be66b85cdd031cbaf46d5055e5624f8785c0f9632ae8fb241f4c52bbe22"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-03/logo.tsx",
@@ -7012,7 +7012,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-04/hero.tsx",
-          "sha256": "sha256:ab8c6b4bbbe2e1a5790d36cbd0271e20c50aeedd8a116c27ed08dade99f95a2c"
+          "sha256": "sha256:5727b73b80abe0eb0ba08bf922478a84deba76eb92bb6a830e608b950c2b91a5"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-04/view.tsx",
@@ -7284,7 +7284,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-05/hero.tsx",
-          "sha256": "sha256:446697005100e3e6715101f91f74f6b3d8223fb9eaaea1d1b9cca1e3b9e03652"
+          "sha256": "sha256:d79f7a43af277c4d30d965573f5f3d9c0a7e7d474419d41a497c6539cfc4b93e"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-05/view.tsx",
@@ -20123,7 +20123,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-08/hero.tsx",
-          "sha256": "sha256:f4da215d051863c5cb1f556d8fba9ce367a93245ee9d19551169e6386bf33184"
+          "sha256": "sha256:13d93682de9102299e44608d6f92feb9a50d61ca6d4cc9bfa8698e2d2820705d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-08/logos.tsx",

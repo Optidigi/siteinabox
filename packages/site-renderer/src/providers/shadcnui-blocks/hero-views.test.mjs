@@ -4,13 +4,16 @@ import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { previewInlineText } from "./typed/fixtures.ts"
 import {
+  hero02LiteralWithImage,
+  hero03LiteralWithImage,
+  hero04LiteralWithImage,
+  hero05LiteralWithImage,
   hero08FamilyCmsLike,
   hero08FamilySparse,
   heroFamilyCmsLike,
   heroFamilyLong,
   heroFamilySecondaryOnly,
   heroFamilySparse,
-  heroFamilyWithImage,
 } from "./typed/fixtures/hero-family.ts"
 import { Hero01 } from "./variants/hero-01/hero.tsx"
 import Hero01View from "./variants/hero-01/view.tsx"
@@ -31,6 +34,12 @@ import Hero08View from "./variants/hero-08/view.tsx"
 
 globalThis.React = React
 
+const normalizeText = (value) => value
+  .replaceAll("\u00a0", " ")
+  .replaceAll("&nbsp;", " ")
+  .replaceAll(/\s+/g, " ")
+  .trim()
+
 const heroFamily = [
   {
     id: "shadcnui-blocks.hero-01",
@@ -42,51 +51,56 @@ const heroFamily = [
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /paint0_linear_0_1/,
     withImage: false,
+    headlinePattern: /Ship better UI without the hassle/,
   },
   {
     id: "shadcnui-blocks.hero-02",
     Component: Hero02,
     View: Hero02View,
-    cmsLike: heroFamilyWithImage,
+    cmsLike: hero02LiteralWithImage,
     sparse: heroFamilySparse,
     long: heroFamilyLong,
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /lg:grid-cols-2/,
     withImage: true,
+    headlinePattern: /Your complete[\s\S]*UI building toolkit/,
   },
   {
     id: "shadcnui-blocks.hero-03",
     Component: Hero03,
     View: Hero03View,
-    cmsLike: heroFamilyWithImage,
+    cmsLike: hero03LiteralWithImage,
     sparse: heroFamilySparse,
     long: heroFamilyLong,
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /from-indigo-400\/90/,
     withImage: true,
     literalPreviewNavbar: true,
+    headlinePattern: /Ship better UI without the hassle/,
   },
   {
     id: "shadcnui-blocks.hero-04",
     Component: Hero04,
     View: Hero04View,
-    cmsLike: heroFamilyWithImage,
+    cmsLike: hero04LiteralWithImage,
     sparse: heroFamilySparse,
     long: heroFamilyLong,
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /lg:h-\[calc\(100vh-4rem\)\]/,
     withImage: true,
+    headlinePattern: /A better way to build clean interfaces/,
   },
   {
     id: "shadcnui-blocks.hero-05",
     Component: Hero05,
     View: Hero05View,
-    cmsLike: heroFamilyWithImage,
+    cmsLike: hero05LiteralWithImage,
     sparse: heroFamilySparse,
     long: heroFamilyLong,
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /lg:h-screen lg:w-\[1000px\]/,
     withImage: true,
+    headlinePattern: /Your complete[\s\S]*UI building toolkit/,
   },
   {
     id: "shadcnui-blocks.hero-06",
@@ -98,6 +112,7 @@ const heroFamily = [
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /mask-\[radial-gradient\(ellipse/,
     withImage: false,
+    headlinePattern: /Ship better UI without the hassle/,
   },
   {
     id: "shadcnui-blocks.hero-07",
@@ -109,6 +124,7 @@ const heroFamily = [
     secondaryOnly: heroFamilySecondaryOnly,
     distinctive: /skew-y-12/,
     withImage: false,
+    headlinePattern: /Ship better UI without the hassle/,
   },
   {
     id: "shadcnui-blocks.hero-08",
@@ -128,6 +144,7 @@ const heroFamily = [
     distinctive: /Trusted by engineers at|grid-cols-2/,
     withImage: false,
     literalPreviewNavbar: true,
+    headlinePattern: /Beautifully Designed[\s\S]*Premium[\s\S]*Shadcn Blocks/,
   },
 ]
 
@@ -138,7 +155,7 @@ for (const variant of heroFamily) {
       blockIndex: 0,
     }))
     assert.match(html, variant.distinctive)
-    assert.match(html, /Ship better UI without the hassle|Beautifully Designed/)
+    assert.match(normalizeText(html), variant.headlinePattern)
     assert.match(html, /Get Started|Watch Demo|Learn More/)
   })
 
@@ -215,7 +232,7 @@ for (const variant of heroFamily) {
 test("hero-02 editSlots use nested paths for hero image", () => {
   const called = []
   renderToStaticMarkup(React.createElement(Hero02, {
-    ...heroFamilyWithImage,
+    ...hero02LiteralWithImage,
     blockIndex: 4,
     editSlots: {
       renderImage: ({ elementPath, name }) => {
