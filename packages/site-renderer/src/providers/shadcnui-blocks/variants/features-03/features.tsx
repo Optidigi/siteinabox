@@ -41,7 +41,12 @@ export function Features03({
 
   return (
     <div className="mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20" {...rootAttributes}>
-      {titleContent ? (
+      {literalPreview ? (
+        <h2 className="font-medium text-3xl leading-10 tracking-[-0.04em] sm:text-4xl md:text-[40px] md:leading-13">
+          Design and engage: <br />
+          <span className="text-muted-foreground/80">Build smarter spaces and strategies</span>
+        </h2>
+      ) : titleContent ? (
         <h2 className="font-medium text-3xl leading-10 tracking-[-0.04em] sm:text-4xl md:text-[40px] md:leading-13">
           {titleContent}
         </h2>
@@ -119,7 +124,6 @@ export function Features03({
 export default function Features03Literal() {
   return (
     <Features03
-      title={feature03Literal.title}
       features={feature03Literal.features}
       blockIndex={0}
       literalPreview

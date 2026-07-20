@@ -3774,7 +3774,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-01/features.tsx",
-          "sha256": "sha256:18e380bb09df48a6208d35dc3591077c4269e11dcbf394adda51a7f9ec37e946"
+          "sha256": "sha256:a3d696f718212a853a98898df2d3fdf8bf1a232fe50ab6dbebad2a06872b3752"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-01/view.tsx",
@@ -4034,7 +4034,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-02/features.tsx",
-          "sha256": "sha256:291cee171545b5dc788b5587ef4a885a01bcbce3a557ec13e48f7d6626692497"
+          "sha256": "sha256:35d54c7f8fa247e71d28b6e2457d730ee70967826a26a9447ceabf6563be38ec"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-02/view.tsx",
@@ -4281,7 +4281,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-03/features.tsx",
-          "sha256": "sha256:5adb440d67d83115a0125735e8ff9b9ad90372926b3edcbd2d2498eae1a90285"
+          "sha256": "sha256:4796c74ecd4911385a7657571266163f4201eb31919180469e145de0f699e7b0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-03/view.tsx",
@@ -4534,7 +4534,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/features.tsx",
-          "sha256": "sha256:05c377fedb93d1a27b9f48f3e03fa2f7799f7b3ad0fbb66f5f7122274322112f"
+          "sha256": "sha256:08c41f050c423ef1005f8226a2ac390cc4f24081bd202678abe96c73e66cddcb"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/view.tsx",
@@ -4792,7 +4792,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-05/features.tsx",
-          "sha256": "sha256:e1f2ae942f2a67a4b3f12e67b66b09ec7f6dbf1e9768b4c4ee94d4bf15a32a64"
+          "sha256": "sha256:b6a38fb14f65fe89de7c2ed2b7e257e1cf3cfa3d7d3d7fe3df0d4426f1910861"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-05/view.tsx",
@@ -5050,7 +5050,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-06/features.tsx",
-          "sha256": "sha256:5b13df5bae90788777b7bf590f046c24e14962958c10051a8ef8e0514e77eeeb"
+          "sha256": "sha256:29bb5f22d81962f4641404881ace3e372dcf4e2b04181d1726078f339c1d0887"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-06/shapes.tsx",
@@ -20390,7 +20390,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-08/features.tsx",
-          "sha256": "sha256:d51cf382c06958d1dd32c9fd2b7788c5de4578cd9216fdd737d5a34d2f3e45fd"
+          "sha256": "sha256:2ba58bd1201715583200bf2f62354664f8e7b760282e33c690ed2070e09badd2"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-08/view.tsx",
@@ -20645,7 +20645,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-09/features.tsx",
-          "sha256": "sha256:716d57e1a3adaefa92db377d59ca1ceb65cdc829f1214fd098a9cf8a9a0e9fc7"
+          "sha256": "sha256:ceb3cf59b408915c19031849a4031595638be144c2998720d8aaca164e38c5e3"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-09/view.tsx",
@@ -20904,7 +20904,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-10/features.tsx",
-          "sha256": "sha256:f8edbb638ef08a0b7336075510a3c9bd6c9be4cb76e2b2cd30a96247711262c9"
+          "sha256": "sha256:36bac740489d5aca0a1048b0711494757a44b52facbb62b00081310771ec6195"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-10/stats-card.tsx",
@@ -21168,7 +21168,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-11/features.tsx",
-          "sha256": "sha256:d8b22314c7de4b22753819d2cd435e777beaf1ef3d59bb4107cefd78532e5e89"
+          "sha256": "sha256:dcbb73e2666b5551096a241d0e824dee7777aec06df3203aed714da2ad1e5aae"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-11/view.tsx",
@@ -21433,7 +21433,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-12/features.tsx",
-          "sha256": "sha256:d793669686078a2e6c65c47f1b12f9fc9590681d514a4e63714986ac7bc8d2f5"
+          "sha256": "sha256:7b1a6c8b61050a47d864f8f739e36659c3b343f2039ce7d27b6381d81ac3971a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-12/view.tsx",
@@ -21688,7 +21688,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-13/features.tsx",
-          "sha256": "sha256:adc92acb49875e2c4f094c8367460fe433f8556e7dcd89a4251ec5fc38b52e4a"
+          "sha256": "sha256:6b361b24c4d4a775cfc49d905c20e3746c4330d6ab4414e666dc8ff3cafb07f7"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-13/view.tsx",
@@ -22208,7 +22208,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-15/features.tsx",
-          "sha256": "sha256:beb6f71fbcbec1d17e773571855e9c650769735339e3eb45bd99a4b9eed2c39a"
+          "sha256": "sha256:d067590f7c77fc182b74838d2f0e8320dfb006d704b2c4efd3f940af5ed5714d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-15/view.tsx",
@@ -22468,7 +22468,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-16/features.tsx",
-          "sha256": "sha256:4f4a19ba1e01292a4f30e1126a72a9998b49130f9290db6d62616948b1a5819c"
+          "sha256": "sha256:1bc3b0806c5b1a1631c0acef11d81c7c9290f25b49b87c9fb0107a6f8525a019"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-16/view.tsx",
@@ -22726,7 +22726,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-17/features.tsx",
-          "sha256": "sha256:4b1e3e09b9395899a29bad29fd5c8d9391aef61592088118cb82400b0e1b4664"
+          "sha256": "sha256:c111e46b2fd662da3810ea5acaaad94875def0ef3172df026d1cb6301bdda083"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-17/view.tsx",

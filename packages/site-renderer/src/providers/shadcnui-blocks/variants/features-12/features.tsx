@@ -36,9 +36,19 @@ export type Features12Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features12({ eyebrow, title, intro, features, blockIndex, editSlots, rootAttributes }: Features12Props) {
+export function Features12({
+  eyebrow,
+  title,
+  intro,
+  features,
+  blockIndex,
+  editSlots,
+  rootAttributes,
+  literalPreview = false,
+}: Features12Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
   const eyebrowContent = renderFeatureEyebrow(editSlots, eyebrow, blockIndex)
@@ -59,11 +69,11 @@ export function Features12({ eyebrow, title, intro, features, blockIndex, editSl
         <div className="-mr-px flex h-16 items-center border px-6 font-medium text-lg sm:col-span-2 md:col-span-1 border-border">
           {eyebrowContent ? (
             eyebrowContent
-          ) : (
+          ) : literalPreview ? (
             <>
               <Smile className="mr-4 text-primary" /> Features that make you happy
             </>
-          )}
+          ) : null}
         </div>
         <div className="-mr-px hidden h-16 border bg-[repeating-linear-gradient(315deg,var(--muted)_0,var(--muted)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] bg-fixed md:block lg:col-span-2 border-border" />
         {features.map((feature, itemIndex) => {
@@ -108,11 +118,11 @@ export function Features12({ eyebrow, title, intro, features, blockIndex, editSl
 export default function Features12Literal() {
   return (
     <Features12
-      eyebrow={feature12Literal.eyebrow}
       title={feature12Literal.title}
       intro={feature12Literal.intro}
       features={feature12Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

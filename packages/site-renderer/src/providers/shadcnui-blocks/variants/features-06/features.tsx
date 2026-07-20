@@ -10,7 +10,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyLiteral, feature06Literal } from "../../typed/fixtures/feature-family"
+import { feature06Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { Flower10, Moon12, Star1, Triangle14 } from "./shapes"
 

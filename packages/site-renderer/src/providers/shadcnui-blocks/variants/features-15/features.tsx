@@ -11,7 +11,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyLiteral } from "../../typed/fixtures/feature-family"
+import { feature15Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 
@@ -80,9 +80,9 @@ export function Features15({
 export default function Features15Literal() {
   return (
     <Features15
-      title={featureFamilyLiteral.title}
-      intro={featureFamilyLiteral.intro}
-      features={featureFamilyLiteral.features}
+      title={feature15Literal.title}
+      intro={feature15Literal.intro}
+      features={feature15Literal.features}
       blockIndex={0}
     />
   )

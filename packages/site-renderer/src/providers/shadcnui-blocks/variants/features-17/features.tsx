@@ -21,7 +21,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { featureFamilyLiteral } from "../../typed/fixtures/feature-family"
+import { feature17Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 
 const ITEM_ICONS: LucideIcon[] = [Zap, SquareDashedMousePointer, Code, MonitorSmartphone, Contrast, Cable]
@@ -83,9 +83,9 @@ export function Features17({ title, intro, features, blockIndex, editSlots, root
 export default function Features17Literal() {
   return (
     <Features17
-      title={featureFamilyLiteral.title}
-      intro={featureFamilyLiteral.intro}
-      features={featureFamilyLiteral.features}
+      title={feature17Literal.title}
+      intro={feature17Literal.intro}
+      features={feature17Literal.features}
       blockIndex={0}
     />
   )
