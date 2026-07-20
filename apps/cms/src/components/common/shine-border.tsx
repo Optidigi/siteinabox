@@ -29,6 +29,10 @@ function buildShineBorderDeclarations({
 
   if (colors.length === 0) return null
 
+  // Mask punches the interior so only the border ring paints. Do not add
+  // will-change here: a promoted compositor layer often escapes the parent's
+  // overflow+radius clip and reads as a rectangular translucent box outside
+  // the rounded tray (especially over high-contrast iframe content).
   return [
     `--border-width:${formatCssPx(borderWidth)}`,
     `--duration:${duration}s`,
@@ -36,6 +40,8 @@ function buildShineBorderDeclarations({
     "background-size:300% 300%",
     "mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0)",
     "-webkit-mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0)",
+    "mask-clip:content-box,border-box",
+    "-webkit-mask-clip:content-box,border-box",
     "-webkit-mask-composite:xor",
     "mask-composite:exclude",
     "padding:var(--border-width)",
@@ -62,7 +68,7 @@ export function ShineBorder({
         data-siab-shine-border
         className={cn(
           shineStyle.className,
-          "pointer-events-none absolute inset-0 z-10 size-full rounded-[inherit] will-change-[background-position]",
+          "pointer-events-none absolute inset-0 z-10 size-full rounded-[inherit]",
           className,
         )}
         {...props}
