@@ -1,6 +1,9 @@
 import { describe, it, expect } from "vitest"
+import { PricingBlockSchema, TimelineBlockSchema } from "@siteinabox/contracts"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { asPageSource, jsonBlockAt, jsonBlocks, type JsonBlock } from "../_helpers/pageToJsonFixtures"
+
+const rt = { t: "root", variant: "block", children: [] } as const
 
 function pageJson(input: Record<string, unknown>) {
   return pageToJson(asPageSource(input))
@@ -124,5 +127,46 @@ describe("pageToJson — all block types", () => {
     expect(jsonBlocks(json)).toHaveLength(5)
     expect(jsonBlocks(json).every((block) => block.blockType)).toBe(true)
     expect(jsonBlocks(json).every((block) => !("id" in block))).toBe(true)
+  })
+
+  it("strips pricing plan and nested feature ids and passes PricingBlockSchema", () => {
+    const json = pageJson({
+      tenant: "t", title: "T", slug: "t", status: "published", updatedAt: "x",
+      blocks: [{
+        id: "b-pricing",
+        blockType: "pricing",
+        plans: [{
+          id: "plan-1",
+          title: rt,
+          price: "$9",
+          features: [{ id: "feat-1", label: rt }],
+        }],
+      }],
+    })
+    const block = jsonBlockAt(json, 0)
+    const plans = block.plans as JsonBlock[]
+    expect(plans[0]).not.toHaveProperty("id")
+    expect((plans[0]!.features as JsonBlock[])[0]).not.toHaveProperty("id")
+    expect(PricingBlockSchema.safeParse(block).success).toBe(true)
+  })
+
+  it("strips timeline item tag ids and passes TimelineBlockSchema", () => {
+    const json = pageJson({
+      tenant: "t", title: "T", slug: "t", status: "published", updatedAt: "x",
+      blocks: [{
+        id: "b-timeline",
+        blockType: "timeline",
+        items: [{
+          id: "item-1",
+          title: "Launch",
+          tags: [{ id: "tag-1", value: "milestone" }],
+        }],
+      }],
+    })
+    const block = jsonBlockAt(json, 0)
+    const items = block.items as JsonBlock[]
+    expect(items[0]).not.toHaveProperty("id")
+    expect((items[0]!.tags as JsonBlock[])[0]).not.toHaveProperty("id")
+    expect(TimelineBlockSchema.safeParse(block).success).toBe(true)
   })
 })

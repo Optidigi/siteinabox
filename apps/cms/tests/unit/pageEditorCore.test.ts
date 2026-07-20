@@ -5,6 +5,7 @@ import {
   aggregatePageEditorDirty,
   buildPageDraftKey,
   countPageEditorDirtyLeaves,
+  createPageEditorSchema,
   deriveChromeDirty,
   deriveNavDirty,
   deriveThemeDirty,
@@ -176,6 +177,8 @@ describe("block command wiring", () => {
 })
 
 describe("pageEditorDefaultValues", () => {
+  const t = (key: string) => key
+
   it("seeds empty document for new pages", () => {
     expect(pageEditorDefaultValues()).toEqual({
       title: "",
@@ -184,6 +187,28 @@ describe("pageEditorDefaultValues", () => {
       blocks: [],
       seo: {},
     })
+  })
+
+  it("normalizes populated seo.ogImage for editor schema validation", () => {
+    const values = pageEditorDefaultValues({
+      id: 1,
+      title: "Home",
+      slug: "home",
+      seo: {
+        title: "Home SEO",
+        ogImage: {
+          id: 42,
+          url: "/media/og.png",
+          filename: "og.png",
+          alt: "OG",
+          width: 1200,
+          height: 630,
+        },
+      },
+    } as never)
+
+    expect(values.seo?.ogImage).toBe(42)
+    expect(createPageEditorSchema(t).safeParse(values).success).toBe(true)
   })
 })
 

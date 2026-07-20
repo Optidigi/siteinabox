@@ -9,6 +9,7 @@ import {
 import type { SiteChromeSelection } from "@/components/editor/sidebar/SiteChromeRow"
 import { EditorBlockSchema, editorPageSeoSchema, type EditorBlock } from "@/lib/editor/editorBlock"
 import { ensureEditorBlocks } from "@/lib/editor/ensureItemIds"
+import { normalizeUploadId } from "@/lib/uploadValues"
 import type { EditorBlockSeed } from "@/lib/editor/pageEditorCommands"
 import {
   appendEditorBlock,
@@ -46,7 +47,12 @@ export const pageEditorDefaultValues = (initial?: Page): PageEditorFormValues =>
         slug: initial.slug ?? "",
         status: "published",
         blocks: ensureEditorBlocks((initial.blocks ?? []) as EditorBlock[]),
-        seo: initial.seo ?? {},
+        seo: initial.seo
+          ? {
+              ...initial.seo,
+              ogImage: normalizeUploadId(initial.seo.ogImage) ?? undefined,
+            }
+          : {},
       }
     : { title: "", slug: "", status: "published", blocks: [], seo: {} }
 

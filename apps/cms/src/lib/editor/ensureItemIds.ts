@@ -1,3 +1,7 @@
+import {
+  BLOCK_TOP_LEVEL_ARRAYS,
+  NESTED_ARRAY_FIELDS,
+} from "@/lib/editor/blockArrayFields"
 import { ensureBlockId, ensurePageBlockIds } from "@/lib/editor/ensureBlockIds"
 import type { EditorBlock } from "@/lib/editor/editorBlock"
 
@@ -19,30 +23,6 @@ export function ensureItemId(item: Record<string, unknown>, remint = false): str
   const id = crypto.randomUUID()
   item.id = id
   return id
-}
-
-const BLOCK_TOP_LEVEL_ARRAYS: Readonly<Record<string, readonly string[]>> = {
-  hero: ["pills", "logos", "stats", "links"],
-  featureList: ["features"],
-  testimonials: ["items"],
-  faq: ["items"],
-  contactSection: ["fields"],
-  contactDetails: ["items"],
-  newsletter: ["benefits"],
-  pricing: ["plans"],
-  stats: ["items"],
-  logoCloud: ["logos"],
-  gallery: ["images"],
-  bentoGrid: ["items"],
-  contentSection: ["features"],
-  timeline: ["items"],
-  team: ["members"],
-  blogCards: ["posts"],
-}
-
-const NESTED_ARRAY_FIELDS: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
-  pricing: { plans: ["features"] },
-  timeline: { items: ["tags"] },
 }
 
 const ensureArrayItemIds = (
