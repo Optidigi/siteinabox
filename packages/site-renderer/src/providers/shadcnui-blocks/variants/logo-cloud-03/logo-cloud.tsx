@@ -14,7 +14,7 @@ import {
   renderLogoCloudTitle,
   sliceLogoCloudLogos,
 } from "../../typed/logo-cloud-fields"
-import { logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
+import { logoCloud03Literal, logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { Logo01, Logo02, Logo03, Logo04, Logo05 } from "../../runtime/logos"
 
@@ -93,9 +93,9 @@ export function LogoCloud03({
 export default function LogoCloud03Literal() {
   return (
     <LogoCloud03
-      title={logoCloudFamilyCmsLike.title}
-      intro={logoCloudFamilyCmsLike.intro}
-      cta={logoCloudFamilyCmsLike.cta}
+      title={logoCloud03Literal.title}
+      intro={logoCloud03Literal.intro}
+      cta={logoCloud03Literal.cta}
       logos={logoCloudFamilyCmsLike.logos}
       blockIndex={0}
       literalPreview

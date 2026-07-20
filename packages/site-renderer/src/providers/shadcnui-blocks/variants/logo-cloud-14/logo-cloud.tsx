@@ -12,7 +12,7 @@ import {
   renderLogoCloudLogo,
   renderLogoCloudTitle,
 } from "../../typed/logo-cloud-fields"
-import { logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
+import { logoCloud14Literal, logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08 } from "../../runtime/logos"
 
@@ -78,8 +78,8 @@ export function LogoCloud14({
 export default function LogoCloud14Literal() {
   return (
     <LogoCloud14
-      title={logoCloudFamilyCmsLike.title}
-      cta={logoCloudFamilyCmsLike.cta}
+      title={logoCloud14Literal.title}
+      cta={logoCloud14Literal.cta}
       logos={logoCloudFamilyCmsLike.logos}
       blockIndex={0}
       literalPreview

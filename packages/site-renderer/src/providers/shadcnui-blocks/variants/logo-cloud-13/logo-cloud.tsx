@@ -9,7 +9,7 @@ import {
   renderLogoCloudIntro,
   renderLogoCloudLogo,
 } from "../../typed/logo-cloud-fields"
-import { logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
+import { logoCloud13Literal, logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import { Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08 } from "../../runtime/logos"
 import { Marquee } from "./marquee"
@@ -80,5 +80,5 @@ export function LogoCloud13({
 }
 
 export default function LogoCloud13Literal() {
-  return <LogoCloud13 intro={logoCloudFamilyCmsLike.intro} logos={logoCloudFamilyCmsLike.logos} blockIndex={0} literalPreview />
+  return <LogoCloud13 intro={logoCloud13Literal.intro} logos={logoCloudFamilyCmsLike.logos} blockIndex={0} literalPreview />
 }
