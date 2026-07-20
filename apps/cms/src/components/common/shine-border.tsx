@@ -8,18 +8,19 @@ import {
 } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 
-interface ShineBorderProps extends React.HTMLAttributes<HTMLDivElement> {
+interface ShineBorderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
   borderWidth?: number
   duration?: number
   shineColor?: string | string[]
+  /** Classes for the opaque inner lid that punches the ring. */
+  contentClassName?: string
+  children: React.ReactNode
 }
 
-function buildShineBorderDeclarations({
-  borderWidth,
+function buildShineFillDeclarations({
   duration,
   shineColor,
 }: {
-  borderWidth: number
   duration: number
   shineColor: string | string[]
 }): string | null {
@@ -29,24 +30,19 @@ function buildShineBorderDeclarations({
 
   if (colors.length === 0) return null
 
-  // Mask punches the interior so only the border ring paints. Do not add
-  // will-change here: a promoted compositor layer often escapes the parent's
-  // overflow+radius clip and reads as a rectangular translucent box outside
-  // the rounded tray (especially over high-contrast iframe content).
+  // Full-bleed animated fill only. The opaque child lid covers the interior so
+  // only the ring gap shows the shine; overflow+radius on the wrapper clips it
+  // (the old dual-mask punch escaped the rounded tray over the hero).
   return [
-    `--border-width:${formatCssPx(borderWidth)}`,
     `--duration:${duration}s`,
     `background-image:radial-gradient(transparent,transparent,${colors.join(",")},transparent,transparent)`,
     "background-size:300% 300%",
-    "mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0)",
-    "-webkit-mask:linear-gradient(white 0 0) content-box,linear-gradient(white 0 0)",
-    "mask-clip:content-box,border-box",
-    "-webkit-mask-clip:content-box,border-box",
-    "-webkit-mask-composite:xor",
-    "mask-composite:exclude",
-    "padding:var(--border-width)",
     "animation:siab-shine-border var(--duration) infinite linear",
   ].join(";")
+}
+
+function buildShineLidDeclarations(borderWidth: number): string {
+  return `margin:${formatCssPx(borderWidth)}`
 }
 
 export function ShineBorder({
@@ -54,25 +50,28 @@ export function ShineBorder({
   duration = 14,
   shineColor = "black",
   className,
+  contentClassName,
+  children,
   ...props
 }: ShineBorderProps) {
   const shineStyle = useCspStyleRule(
     "shine-border",
-    buildShineBorderDeclarations({ borderWidth, duration, shineColor }),
+    buildShineFillDeclarations({ duration, shineColor }),
   )
+  const lidStyle = useCspStyleRule("shine-border-lid", buildShineLidDeclarations(borderWidth))
 
   return (
-    <>
+    <div className={cn("relative overflow-hidden", className)} {...props}>
       {shineStyle.styleElement}
+      {lidStyle.styleElement}
       <div
         data-siab-shine-border
-        className={cn(
-          shineStyle.className,
-          "pointer-events-none absolute inset-0 z-10 size-full rounded-[inherit]",
-          className,
-        )}
-        {...props}
+        aria-hidden
+        className={cn(shineStyle.className, "pointer-events-none absolute inset-0 rounded-[inherit]")}
       />
-    </>
+      <div className={cn(lidStyle.className, "relative rounded-[inherit]", contentClassName)}>
+        {children}
+      </div>
+    </div>
   )
 }
