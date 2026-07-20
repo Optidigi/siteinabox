@@ -6145,7 +6145,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-01/hero.tsx",
-          "sha256": "sha256:5eadbfa1059caf73235740c26961b60c3c4be6af7f21b7eedf078f7dd7f30452"
+          "sha256": "sha256:a95f73c74d11d6399d0061a6afaaa2bf76694f6cbbe17eb04cd409d8397838b1"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/hero-01/view.tsx",
