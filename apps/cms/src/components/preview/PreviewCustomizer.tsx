@@ -489,8 +489,6 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6"
     >
-      {/* Solid tray. Animated shine (mask or lid-fill) paints a fringe outside
-          this floating bar over the hero; keep a static border instead. */}
       <div className="pointer-events-auto relative grid w-full grid-cols-[auto_1fr] items-center gap-1 overflow-hidden border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border md:border-border md:bg-background md:p-3 md:shadow-none">
         <PreviewDesktopThemeToolbar theme={theme} onThemeChange={onThemeChange} />
 

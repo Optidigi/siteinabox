@@ -47,6 +47,7 @@ describe("customer preview UI", () => {
     expect(customizer).not.toContain("ShineBorder")
     expect(customizer).not.toContain("contentClassName")
     expect(customizer).not.toContain("rgba(255,255,255,0.95)")
+    expect(customizer).not.toContain("shine-border")
     expect(customizer).toContain("md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3")
     expect(customizer).toContain("px-3 py-2")
     expect(customizer).toContain("md:p-3")
