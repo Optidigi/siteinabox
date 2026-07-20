@@ -69,6 +69,10 @@ export function generateStaticThemeCss() {
         values[`--siab-neutral-${shade}`] = mode.neutral[shade]!
         values[`--siab-accent-${shade}`] = mode.accent[shade]!
         if (id !== "monochrome") values[`--provider-accent-${shade}`] = mode.accent[shade]!
+        if (id !== "monochrome" && mode.accentSecondary) {
+          values[`--siab-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
+          values[`--provider-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
+        }
       }
       values["--chart-1"] = dark ? mode.accent[400] : mode.accent[600]
       values["--chart-2"] = dark ? "#34d399" : "#059669"

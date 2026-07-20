@@ -293,6 +293,8 @@ export type ColorRamp = {
 export type ProviderColorSchemeMode = {
   neutral: ColorRamp
   accent: ColorRamp
+  /** Optional companion ramp for dual-tone decorative surfaces (e.g. hero blobs). */
+  accentSecondary?: ColorRamp
   surface: string
   ink: string
   muted: string

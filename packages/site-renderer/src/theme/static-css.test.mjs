@@ -34,6 +34,17 @@ test("colored themes use explicit paired surface values and dark tinting", () =>
   }
 })
 
+test("colored themes emit secondary accent ramps for dual-tone surfaces", () => {
+  const css = generateStaticThemeCss()
+  for (const id of COLOR_SCHEME_IDS.filter((schemeId) => schemeId !== "monochrome")) {
+    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--provider-accent-secondary-600:`))
+  }
+  assert.doesNotMatch(css, /data-theme-color="monochrome"[^}]*--provider-accent-secondary-/)
+  assert.match(css, /data-theme-color="blue-professional"[^}]*--provider-accent-secondary-600:#7c3aed/)
+  assert.match(css, /data-theme-color="emerald-calm"[^}]*--provider-accent-secondary-600:#65a30d/)
+  assert.match(css, /data-theme-color="red-confident"[^}]*--provider-accent-secondary-600:#ea580c/)
+})
+
 test("terracotta uses the Ami-care brand color as its light primary", () => {
   const css = generateStaticThemeCss()
   assert.match(css, /data-theme-color="terracotta-warm"[^}]*--primary:#a04e32/)

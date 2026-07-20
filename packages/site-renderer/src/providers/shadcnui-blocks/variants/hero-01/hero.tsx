@@ -83,15 +83,17 @@ export function Hero01({
 }
 
 function DreamyBackground({ className, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
-  // Keep upstream blob paths + linearGradients; blur with CSS instead of
-  // SVG gaussian filters so preview scroll does not eviction-flash GPU layers.
+  // Upstream blob paths + linearGradients; CSS blur (not SVG gaussian filters)
+  // so preview scroll does not eviction-flash GPU layers. Intentionally wider
+  // than upstream and dual-tone via theme secondary accents.
   const reactId = React.useId().replace(/:/g, "")
   const paint0 = `hero01-paint0-${reactId}`
   const paint1 = `hero01-paint1-${reactId}`
   // stdDeviation 64 in a 1226-wide viewBox ≈ this blur at typical hero widths.
+  // Extra horizontal scale spreads the dreamy wash without rewriting path data.
   const blobStyle: React.CSSProperties = {
     filter: "blur(64px)",
-    transform: "translateZ(0)",
+    transform: "translateZ(0) scale(1.38, 1.12)",
   }
 
   return (
@@ -145,8 +147,8 @@ function DreamyBackground({ className, ...rest }: React.HTMLAttributes<HTMLDivEl
             y1="288.346"
             y2="764.853"
           >
-            <stop stopColor="var(--provider-accent-700, #575EFF)" />
-            <stop offset="1" stopColor="var(--provider-accent-400, #E478FF)" />
+            <stop stopColor="var(--provider-accent-secondary-700, #575EFF)" />
+            <stop offset="1" stopColor="var(--provider-accent-secondary-400, #E478FF)" />
           </linearGradient>
         </defs>
       </svg>
