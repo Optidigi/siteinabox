@@ -11,7 +11,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { feature15Literal } from "../../typed/fixtures/feature-family"
+import { feature15Literal, feature15LiteralImages } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 
@@ -20,6 +20,7 @@ export type Features15Props = TypedVariantBaseProps & {
   intro?: RtRoot | null
   features: FeatureItem[]
   mediaResolver?: MediaResolver
+  literalPreview?: boolean
 }
 
 export function Features15({
@@ -30,6 +31,7 @@ export function Features15({
   editSlots,
   mediaResolver,
   rootAttributes,
+  literalPreview = false,
 }: Features15Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
@@ -50,14 +52,22 @@ export function Features15({
         {features.map((feature, itemIndex) => (
           <div className="rounded-lg border border-border/80" key={itemIndex}>
             <div className="mask-b-from-70% dark:mask-b-from-40% aspect-square w-full rounded-t-lg">
-              {renderFeatureItemImage(
-                editSlots,
-                mediaResolver,
-                feature.image,
-                feature.title,
-                blockIndex,
-                itemIndex,
-                { className: "size-full rounded-t-lg object-cover" },
+              {literalPreview ? (
+                <img
+                  alt=""
+                  className="size-full rounded-t-lg object-cover"
+                  src={feature15LiteralImages[itemIndex]}
+                />
+              ) : (
+                renderFeatureItemImage(
+                  editSlots,
+                  mediaResolver,
+                  feature.image,
+                  feature.title,
+                  blockIndex,
+                  itemIndex,
+                  { className: "size-full rounded-t-lg object-cover" },
+                )
               )}
             </div>
             <div className="-mt-3 p-6 pt-0">
@@ -84,6 +94,7 @@ export default function Features15Literal() {
       intro={feature15Literal.intro}
       features={feature15Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

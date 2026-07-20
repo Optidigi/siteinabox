@@ -27,7 +27,6 @@ import {
 } from "../../typed/feature-fields"
 import { feature12Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
-import { isExternalHref } from "../../typed/links"
 
 const ITEM_ICONS: LucideIcon[] = [Zap, SquareDashedMousePointer, Code, MonitorSmartphone, Contrast, Cable]
 
@@ -79,8 +78,6 @@ export function Features12({
         {features.map((feature, itemIndex) => {
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           const cta = feature.cta
-          const href = cta?.href?.trim() || "#"
-          const external = cta?.external ?? isExternalHref(href)
           return (
             <div className="-mt-px -mr-px border border-border/75 px-5 pt-7 pb-5" key={itemIndex}>
               <div className="flex items-center gap-3">
@@ -99,10 +96,10 @@ export function Features12({
                 </div>
               ) : null}
               <Button asChild className="mt-4 px-0!" variant="link">
-                {cta?.label && cta.href ? (
+                {cta?.label && cta.href && !literalPreview ? (
                   renderFeatureItemCta(editSlots, cta, blockIndex, itemIndex, { trailingIcon: <ArrowUpRight /> })
                 ) : (
-                  <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined}>
+                  <a href="#" target="_blank" rel="noreferrer">
                     Learn more <ArrowUpRight />
                   </a>
                 )}

@@ -36,9 +36,18 @@ export type Features04Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   features: FeatureItem[]
   mediaResolver?: MediaResolver
+  literalPreview?: boolean
 }
 
-export function Features04({ title, features, blockIndex, editSlots, mediaResolver, rootAttributes }: Features04Props) {
+export function Features04({
+  title,
+  features,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  rootAttributes,
+  literalPreview = false,
+}: Features04Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
 
   return (
@@ -70,15 +79,17 @@ export function Features04({ title, features, blockIndex, editSlots, mediaResolv
                       ? renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)
                       : null}
                     <div className="mt-6 mb-2 aspect-video w-full rounded-xl bg-muted md:hidden">
-                      {renderFeatureItemImage(
-                        editSlots,
-                        mediaResolver,
-                        feature.image,
-                        feature.title,
-                        blockIndex,
-                        itemIndex,
-                        { className: "size-full rounded-xl object-cover" },
-                      )}
+                      {literalPreview
+                        ? null
+                        : renderFeatureItemImage(
+                            editSlots,
+                            mediaResolver,
+                            feature.image,
+                            feature.title,
+                            blockIndex,
+                            itemIndex,
+                            { className: "size-full rounded-xl object-cover" },
+                          )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -93,5 +104,12 @@ export function Features04({ title, features, blockIndex, editSlots, mediaResolv
 }
 
 export default function Features04Literal() {
-  return <Features04 title={feature04Literal.title} features={feature04Literal.features} blockIndex={0} />
+  return (
+    <Features04
+      title={feature04Literal.title}
+      features={feature04Literal.features}
+      blockIndex={0}
+      literalPreview
+    />
+  )
 }

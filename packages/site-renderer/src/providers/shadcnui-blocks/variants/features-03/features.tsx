@@ -53,7 +53,12 @@ export function Features03({
       ) : null}
       <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-5 lg:grid-cols-3">
         {cards.flatMap((feature, index) => {
-          const lines = featureDescriptionLines(feature.description)
+          const lines = literalPreview
+            ? [
+                "Design your space with drag-and-drop simplicity—create grids, lists, or galleries in seconds.",
+                "Embed polls, quizzes, or forms to keep your audience engaged.",
+              ]
+            : featureDescriptionLines(feature.description)
           const listSpacing = index === 0 ? "space-y-5" : "space-y-4"
           const card = (
             <div key={`card-${index}`} className="col-span-1 rounded-xl bg-muted p-6 md:col-span-2 lg:col-span-1">

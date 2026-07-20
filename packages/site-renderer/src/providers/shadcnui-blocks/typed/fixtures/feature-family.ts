@@ -38,6 +38,57 @@ const feature02Items = [
   featureItem("Instant Insights", "Get actionable insights instantly at a glance."),
 ]
 
+const literalPlaceholderImage = (hash: string) =>
+  `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:${hash}`
+
+export const feature07LiteralImages = [
+  "85f35",
+  "d30fc",
+  "07ff9",
+  "c1427",
+  "1218e",
+  "003d6",
+  "80189",
+  "19eb3",
+  "ca3a0",
+].map(literalPlaceholderImage)
+
+export const feature15LiteralImages = [
+  "003d6",
+  "85f35",
+  "d30fc",
+  "1218e",
+  "19eb3",
+  "c1427",
+].map(literalPlaceholderImage)
+
+const feature05Items = [
+  featureItem(
+    "Identify Opportunities",
+    "Easily uncover untapped areas to explore and expand your reach effortlessly.",
+  ),
+  featureItem(
+    "Build Authority",
+    "Create valuable content that resonates, inspires trust, and positions you as an expert.",
+  ),
+  featureItem(
+    "Instant Insights",
+    "Gain immediate, actionable insights with a quick glance, enabling fast decision-making.",
+  ),
+  featureItem(
+    "Engage with Your Audience",
+    "Boost audience engagement with interactive features like polls, quizzes, and forms.",
+  ),
+  featureItem(
+    "Automate Your Workflow",
+    "Streamline your processes by automating repetitive tasks, saving time and reducing effort.",
+  ),
+  featureItem(
+    "Accelerate Growth",
+    "Supercharge your growth by implementing strategies that drive results quickly and efficiently.",
+  ),
+]
+
 const featureAccordionItems = [
   featureItem(
     "Identify Opportunities",
@@ -199,7 +250,7 @@ export const feature04Literal = {
 export const feature05Literal = {
   title: previewInlineText("What makes it different"),
   intro: previewInlineText("Minimal setup, clean structure, and easy customization"),
-  features: featureAccordionItems,
+  features: feature05Items,
 }
 
 export const feature06Literal = {

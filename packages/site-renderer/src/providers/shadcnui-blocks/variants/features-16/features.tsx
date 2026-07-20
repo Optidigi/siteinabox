@@ -11,7 +11,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { feature16Literal } from "../../typed/fixtures/feature-family"
+import { feature16Literal, feature15LiteralImages } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 
@@ -20,6 +20,7 @@ export type Features16Props = TypedVariantBaseProps & {
   intro?: RtRoot | null
   features: FeatureItem[]
   mediaResolver?: MediaResolver
+  literalPreview?: boolean
 }
 
 export function Features16({
@@ -30,6 +31,7 @@ export function Features16({
   editSlots,
   mediaResolver,
   rootAttributes,
+  literalPreview = false,
 }: Features16Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
@@ -50,14 +52,22 @@ export function Features16({
         {features.map((feature, itemIndex) => (
           <div className="relative rounded-lg border border-border/80" key={itemIndex}>
             <div className="mask-b-from-50% dark:mask-b-from-40% aspect-4/5 w-full rounded-t-lg">
-              {renderFeatureItemImage(
-                editSlots,
-                mediaResolver,
-                feature.image,
-                feature.title,
-                blockIndex,
-                itemIndex,
-                { className: "size-full rounded-t-lg object-cover" },
+              {literalPreview ? (
+                <img
+                  alt=""
+                  className="size-full rounded-t-lg object-cover"
+                  src={feature15LiteralImages[itemIndex]}
+                />
+              ) : (
+                renderFeatureItemImage(
+                  editSlots,
+                  mediaResolver,
+                  feature.image,
+                  feature.title,
+                  blockIndex,
+                  itemIndex,
+                  { className: "size-full rounded-t-lg object-cover" },
+                )
               )}
             </div>
             <div className="mask-t-from-50% absolute inset-x-0 bottom-0 rounded-b-lg bg-background/80 p-6 pt-20">
@@ -84,6 +94,7 @@ export default function Features16Literal() {
       intro={feature16Literal.intro}
       features={feature16Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

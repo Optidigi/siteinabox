@@ -21,7 +21,7 @@ import {
   renderFeatureTitle,
   type FeatureItem,
 } from "../../typed/feature-fields"
-import { feature07Literal } from "../../typed/fixtures/feature-family"
+import { feature07Literal, feature07LiteralImages } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 import Link from "../../runtime/link"
@@ -33,6 +33,7 @@ export type Features07Props = TypedVariantBaseProps & {
   intro?: RtRoot | null
   features: FeatureItem[]
   mediaResolver?: MediaResolver
+  literalPreview?: boolean
 }
 
 export function Features07({
@@ -43,6 +44,7 @@ export function Features07({
   editSlots,
   mediaResolver,
   rootAttributes,
+  literalPreview = false,
 }: Features07Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
@@ -67,14 +69,24 @@ export function Features07({
               <Link href={href} key={itemIndex}>
                 <div className="-mx-2 flex max-w-lg items-center gap-6 rounded-lg sm:mx-0">
                   <div className="aspect-square h-24 shrink-0 overflow-hidden rounded-lg border border-border/20 bg-muted">
-                    {renderFeatureItemImage(
-                      editSlots,
-                      mediaResolver,
-                      feature.image,
-                      feature.title,
-                      blockIndex,
-                      itemIndex,
-                      { className: "size-full object-cover" },
+                    {literalPreview ? (
+                      <img
+                        alt=""
+                        className="size-full object-cover"
+                        height={96}
+                        src={feature07LiteralImages[itemIndex]}
+                        width={96}
+                      />
+                    ) : (
+                      renderFeatureItemImage(
+                        editSlots,
+                        mediaResolver,
+                        feature.image,
+                        feature.title,
+                        blockIndex,
+                        itemIndex,
+                        { className: "size-full object-cover" },
+                      )
                     )}
                   </div>
                   <div>
@@ -104,6 +116,7 @@ export default function Features07Literal() {
       intro={feature07Literal.intro}
       features={feature07Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

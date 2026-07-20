@@ -24,9 +24,18 @@ export type Features11Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features11({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features11Props) {
+export function Features11({
+  title,
+  intro,
+  features,
+  blockIndex,
+  editSlots,
+  rootAttributes,
+  literalPreview = false,
+}: Features11Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
 
@@ -69,13 +78,17 @@ export function Features11({ title, intro, features, blockIndex, editSlots, root
                     {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
                   </div>
                 ) : null}
-                {cta?.label && cta.href ? (
+                {cta?.label && cta.href && !literalPreview ? (
                   <Button asChild className="me-auto mt-2" size="sm" variant="secondary">
                     {renderFeatureItemCta(editSlots, cta, blockIndex, itemIndex, { trailingIcon: <ArrowUpRight /> })}
                   </Button>
                 ) : (
                   <Button asChild className="me-auto mt-2" size="sm" variant="secondary">
-                    <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined}>
+                    <a
+                      href={literalPreview ? "#" : href}
+                      target={literalPreview || external ? "_blank" : undefined}
+                      rel={literalPreview || external ? "noreferrer" : undefined}
+                    >
                       Learn more <ArrowUpRight />
                     </a>
                   </Button>
@@ -96,6 +109,7 @@ export default function Features11Literal() {
       intro={feature11Literal.intro}
       features={feature11Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }
