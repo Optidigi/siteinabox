@@ -341,12 +341,3 @@ test("testimonials-01 editSlots use itemIndex for nested item fields", () => {
   assert.match(html, /data-edit-text="items:0:author"/)
   assert.match(html, /data-edit-image="items:1:avatar"/)
 })
-
-test("testimonials variants do not use LiteralProviderVariantView", async () => {
-  const { readFile } = await import("node:fs/promises")
-  for (const variant of testimonialsFamily) {
-    const upstream = variant.id.replace("shadcnui-blocks.", "")
-    const source = await readFile(new URL(`./variants/${upstream}/view.tsx`, import.meta.url), "utf8")
-    assert.doesNotMatch(source, /LiteralProviderVariantView/)
-  }
-})

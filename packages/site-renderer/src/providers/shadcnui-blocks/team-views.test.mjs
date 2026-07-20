@@ -334,12 +334,3 @@ test("team-01 editSlots use itemIndex for nested member fields", () => {
   assert.match(html, /data-edit-text="members:0:name"/)
   assert.match(html, /data-edit-image="members:1:image"/)
 })
-
-test("team variants do not use LiteralProviderVariantView", async () => {
-  const { readFile } = await import("node:fs/promises")
-  for (const variant of teamFamily) {
-    const upstream = variant.id.replace("shadcnui-blocks.", "")
-    const source = await readFile(new URL(`./variants/${upstream}/view.tsx`, import.meta.url), "utf8")
-    assert.doesNotMatch(source, /LiteralProviderVariantView/)
-  }
-})

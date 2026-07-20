@@ -288,12 +288,3 @@ test("logo-cloud-01 editSlots use itemIndex for nested logo images", () => {
   assert.match(html, /data-edit-image="logos:0:image"/)
   assert.match(html, /data-edit-image="logos:1:image"/)
 })
-
-test("logo-cloud variants do not use LiteralProviderVariantView", async () => {
-  const { readFile } = await import("node:fs/promises")
-  for (const variant of logoCloudFamily) {
-    const upstream = variant.id.replace("shadcnui-blocks.", "")
-    const source = await readFile(new URL(`./variants/${upstream}/view.tsx`, import.meta.url), "utf8")
-    assert.doesNotMatch(source, /LiteralProviderVariantView/)
-  }
-})

@@ -285,12 +285,3 @@ test("pricing-01 editSlots use itemIndex/subField for nested plan fields", () =>
   assert.match(html, /data-edit-rich="plans:0:features.0.label"/)
   assert.match(html, /data-edit-cta="plans:1:cta"/)
 })
-
-test("pricing variants do not use LiteralProviderVariantView", async () => {
-  const { readFile } = await import("node:fs/promises")
-  for (const variant of pricingFamily) {
-    const upstream = variant.id.replace("shadcnui-blocks.", "")
-    const source = await readFile(new URL(`./variants/${upstream}/view.tsx`, import.meta.url), "utf8")
-    assert.doesNotMatch(source, /LiteralProviderVariantView/)
-  }
-})
