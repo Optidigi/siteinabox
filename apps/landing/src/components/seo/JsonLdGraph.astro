@@ -39,8 +39,8 @@ const faqItems = [
     a: 'Via een korte vragenlijst van ongeveer 15 minuten. Je vertelt ons wat voor bedrijf je hebt, wie je klanten zijn, en welke stijl je aanspreekt. Je levert wat foto’s aan en eventueel je logo. Wij maken op basis daarvan de eerste versie van je website, inclusief teksten. In de feedbackronde stuur jij alles helemaal naar jouw smaak bij.',
   },
   {
-    q: 'Wat zit er bij €19 per maand, en wanneer is €29 logischer?',
-    a: 'Voor €19 krijg je het hele Website-pakket: eigen .nl-domein, hosting, beveiliging, contactformulier, vindbaarheid in Google en ChatGPT, beheeromgeving om zelf aan te passen, en automatische back-ups. Wil je ook vanaf je eigen domein verzenden? Dan kies je Compleet (€29 per maand): zakelijke Gmail via Google Workspace, plus de AI-assistent Gemini, 30 GB Drive, Google Agenda en Meet.',
+    q: 'Wat kost Site in a Box, en wat zit erbij?',
+    a: 'Bij jaarbetaling betaal je €190 per jaar vooraf (ongeveer €16 per maand). Zo bespaar je €38 per jaar (17%). Liever maandelijks? Dan is het €19 per maand, opzegbaar. Erbij: professionele website, klaar voor Google én ChatGPT, snelle laadtijd, veilig online, .nl-domein eerste jaar gratis (of je huidige domein), zelf teksten en foto’s aanpassen, NL-support. Optioneel: zakelijke e-mail.',
   },
   {
     q: 'Wat betekent “alleen betalen als je tevreden bent” precies?',
@@ -56,7 +56,7 @@ const faqItems = [
   },
   {
     q: 'Kan ik per maand opzeggen?',
-    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Daar staat éénmalig €99 aan opstartkosten tegenover. Bij jaarbetaling betaal je het eerste jaar in één keer vooruit, zonder opstartkosten. Na dat jaar wordt het maandelijks en kun je elk moment opzeggen.',
+    a: 'Bij maandelijkse facturatie kun je vanaf dag één per maand opzeggen, met één maand opzegtermijn. Bij jaarbetaling betaal je het eerste jaar in één keer vooruit (€190). Na dat jaar wordt het maandelijks en kun je elk moment opzeggen.',
   },
   {
     q: 'Wie is eigenaar van mijn domein en website?',
@@ -68,25 +68,18 @@ const faqItems = [
   },
 ];
 
-const includedWebsiteFeatures = [
+const includedFeatures = [
   'Professionele website',
   'Klaar voor Google en ChatGPT',
   'Bliksemsnelle laadtijd',
   'Veilig en betrouwbaar online',
-  'Eigen .nl-domein',
+  '.nl-domein eerste jaar gratis',
+  'Zelf teksten en foto’s aanpassen',
   'NL-support',
-  'Beheeromgeving om zelf aan te passen',
-  'Automatische back-ups',
 ];
 
-const completeExtraFeatures = [
-  'Meertalige website',
-  'Zakelijke Gmail via Google Workspace',
-  'AI-assistent Gemini in Gmail',
-  'Chat met AI in de Gemini-app',
-  '30 GB Google Drive',
-  'Google Agenda en Meet',
-  'Google Analytics-setup optioneel',
+const optionalFeatures = [
+  'Zakelijke e-mail',
 ];
 
 const monthlyPriceSpecification = (price: number) => ({
@@ -97,10 +90,12 @@ const monthlyPriceSpecification = (price: number) => ({
   valueAddedTaxIncluded: false,
 });
 
-const setupFeeProperty = (value: string) => ({
-  '@type': 'PropertyValue',
-  name: 'Eenmalige opstartkosten',
-  value,
+const yearlyPriceSpecification = (price: number) => ({
+  '@type': 'UnitPriceSpecification',
+  price,
+  priceCurrency: 'EUR',
+  unitText: 'YEAR',
+  valueAddedTaxIncluded: false,
 });
 
 const graph = [
@@ -182,7 +177,7 @@ const graph = [
     '@type': 'Service',
     '@id': serviceId,
     name: 'Site in a Box website abonnement',
-    alternateName: ['Website pakket', 'Compleet pakket'],
+    alternateName: ['Site in a Box'],
     serviceType: 'Website laten maken, hosting en beheeromgeving',
     category: ['Website laten maken', 'Website abonnement', 'Webdesign', 'Hosting'],
     url: `${baseUrl}/`,
@@ -202,14 +197,14 @@ const graph = [
       { '@id': llmsDocumentId },
     ],
     additionalProperty: [
-      ...includedWebsiteFeatures.map((feature) => ({
+      ...includedFeatures.map((feature) => ({
         '@type': 'PropertyValue',
-        name: 'Inbegrepen in Website',
+        name: 'Inbegrepen',
         value: feature,
       })),
-      ...completeExtraFeatures.map((feature) => ({
+      ...optionalFeatures.map((feature) => ({
         '@type': 'PropertyValue',
-        name: 'Extra inbegrepen in Compleet',
+        name: 'Optioneel',
         value: feature,
       })),
     ],
@@ -218,71 +213,56 @@ const graph = [
   {
     '@type': 'OfferCatalog',
     '@id': offerCatalogId,
-    name: 'Site in a Box pakketten',
+    name: 'Site in a Box facturatie',
     itemListElement: [
-      { '@id': `${baseUrl}/#offer-website-yearly` },
-      { '@id': `${baseUrl}/#offer-website-monthly` },
-      { '@id': `${baseUrl}/#offer-complete-yearly` },
-      { '@id': `${baseUrl}/#offer-complete-monthly` },
+      { '@id': `${baseUrl}/#offer-yearly` },
+      { '@id': `${baseUrl}/#offer-monthly` },
     ],
   },
   {
     '@type': 'Offer',
-    '@id': `${baseUrl}/#offer-website-yearly`,
-    name: 'Website - jaarbetaling',
+    '@id': `${baseUrl}/#offer-yearly`,
+    name: 'Site in a Box - jaarbetaling',
+    url: pricingUrl,
+    price: 190,
+    priceCurrency: 'EUR',
+    priceSpecification: yearlyPriceSpecification(190),
+    availability: 'https://schema.org/InStock',
+    category: 'Website abonnement',
+    description: 'Site in a Box voor €190 per jaar vooraf (ongeveer €16 per maand). Je bespaart €38 per jaar. Alle prijzen excl. btw.',
+    additionalProperty: [
+      {
+        '@type': 'PropertyValue',
+        name: 'Jaarbedrag',
+        value: '€190 vooraf',
+      },
+      {
+        '@type': 'PropertyValue',
+        name: 'Besparing',
+        value: '€38 per jaar ten opzichte van maandelijks',
+      },
+    ],
+    itemOffered: { '@id': serviceId },
+    offeredBy: { '@id': organizationId },
+  },
+  {
+    '@type': 'Offer',
+    '@id': `${baseUrl}/#offer-monthly`,
+    name: 'Site in a Box - maandelijkse facturatie',
     url: pricingUrl,
     price: 19,
     priceCurrency: 'EUR',
     priceSpecification: monthlyPriceSpecification(19),
     availability: 'https://schema.org/InStock',
     category: 'Website abonnement',
-    description: 'Website-pakket vanaf €19 per maand bij jaarbetaling, zonder opstartkosten. Alle prijzen excl. btw.',
-    additionalProperty: [setupFeeProperty('Geen opstartkosten bij jaarbetaling')],
-    itemOffered: { '@id': serviceId },
-    offeredBy: { '@id': organizationId },
-  },
-  {
-    '@type': 'Offer',
-    '@id': `${baseUrl}/#offer-website-monthly`,
-    name: 'Website - maandelijkse facturatie',
-    url: pricingUrl,
-    price: 19,
-    priceCurrency: 'EUR',
-    priceSpecification: monthlyPriceSpecification(19),
-    availability: 'https://schema.org/InStock',
-    category: 'Website abonnement',
-    description: 'Website-pakket vanaf €19 per maand met €99 eenmalige opstartkosten. Alle prijzen excl. btw.',
-    additionalProperty: [setupFeeProperty('€99 bij maandelijkse facturatie')],
-    itemOffered: { '@id': serviceId },
-    offeredBy: { '@id': organizationId },
-  },
-  {
-    '@type': 'Offer',
-    '@id': `${baseUrl}/#offer-complete-yearly`,
-    name: 'Compleet - jaarbetaling',
-    url: pricingUrl,
-    price: 29,
-    priceCurrency: 'EUR',
-    priceSpecification: monthlyPriceSpecification(29),
-    availability: 'https://schema.org/InStock',
-    category: 'Website abonnement met zakelijke Gmail',
-    description: 'Compleet-pakket vanaf €29 per maand bij jaarbetaling, zonder opstartkosten. Alle prijzen excl. btw.',
-    additionalProperty: [setupFeeProperty('Geen opstartkosten bij jaarbetaling')],
-    itemOffered: { '@id': serviceId },
-    offeredBy: { '@id': organizationId },
-  },
-  {
-    '@type': 'Offer',
-    '@id': `${baseUrl}/#offer-complete-monthly`,
-    name: 'Compleet - maandelijkse facturatie',
-    url: pricingUrl,
-    price: 29,
-    priceCurrency: 'EUR',
-    priceSpecification: monthlyPriceSpecification(29),
-    availability: 'https://schema.org/InStock',
-    category: 'Website abonnement met zakelijke Gmail',
-    description: 'Compleet-pakket vanaf €29 per maand met €99 eenmalige opstartkosten. Alle prijzen excl. btw.',
-    additionalProperty: [setupFeeProperty('€99 bij maandelijkse facturatie')],
+    description: 'Site in a Box voor €19 per maand, maandelijks betaald en opzegbaar. Alle prijzen excl. btw.',
+    additionalProperty: [
+      {
+        '@type': 'PropertyValue',
+        name: 'Opzegbaarheid',
+        value: 'Maandelijks opzegbaar',
+      },
+    ],
     itemOffered: { '@id': serviceId },
     offeredBy: { '@id': organizationId },
   },
