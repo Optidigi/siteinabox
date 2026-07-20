@@ -24,7 +24,7 @@ export function Timeline06({ items, blockIndex, editSlots, rootAttributes }: Tim
   return (
     <div className="mx-auto max-w-(--breakpoint-sm) px-6 py-12 md:py-20" {...rootAttributes}>
       <div className="relative ml-6">
-        <div className="absolute inset-y-0 left-0 border-l" />
+        <div className="absolute inset-y-0 left-0 border-l border-border" />
         {displayItems.map((item, itemIndex) => {
           const title = renderTimelineItemTitle(editSlots, item.title, blockIndex, itemIndex)
           const description = renderTimelineItemDescription(editSlots, item.description, blockIndex, itemIndex)
@@ -34,7 +34,7 @@ export function Timeline06({ items, blockIndex, editSlots, rootAttributes }: Tim
             <div className="relative pb-10 pl-10 last:pb-0" key={itemIndex}>
               <div
                 className={cn(
-                  "absolute left-px flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-muted-foreground/40 bg-accent ring-8 ring-background",
+                  "absolute left-px flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-muted-foreground/40 bg-accent ring-8 ring-background border-border",
                   completed ? "border-primary bg-primary text-primary-foreground" : undefined,
                 )}
               >

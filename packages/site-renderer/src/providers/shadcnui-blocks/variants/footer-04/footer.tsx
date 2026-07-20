@@ -33,7 +33,7 @@ const footerLinks = [
 
 const Footer = () => {
   return (
-    <footer className="border-t">
+    <footer className="border-t border-border">
       <div className="mx-auto max-w-(--breakpoint-xl)">
         <div className="flex flex-col items-start justify-between gap-x-8 gap-y-10 px-6 py-12 sm:flex-row xl:px-0">
           <div>

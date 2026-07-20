@@ -100,7 +100,7 @@ export function Features14({ eyebrow, title, intro, features, blockIndex, editSl
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           return (
             <div
-              className="relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-foreground/3 px-6 py-10 sm:max-w-xs"
+              className="relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-foreground/3 px-6 py-10 sm:max-w-xs border-border"
               key={itemIndex}
             >
               <BackgroundPattern />

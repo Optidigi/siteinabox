@@ -43,8 +43,8 @@ export function Stats09({ title, intro, items, blockIndex, editSlots, rootAttrib
         <div className="px-6">
           <div
             className={cn(
-              "mt-16 grid max-w-5xl justify-center gap-y-8 border max-sm:divide-y sm:mt-24 sm:grid-cols-2 sm:gap-y-0 lg:grid-cols-3 lg:divide-x",
-              "sm:*:last:border-t sm:*:first:border-e lg:*:last:border-t-0",
+              "mt-16 grid max-w-5xl justify-center gap-y-8 border max-sm:divide-y sm:mt-24 sm:grid-cols-2 sm:gap-y-0 lg:grid-cols-3 lg:divide-x border-border",
+              "sm:*:last:border-t sm:*:first:border-e lg:*:last:border-t-0 border-border",
             )}
           >
             {displayItems.map((item, itemIndex) => {

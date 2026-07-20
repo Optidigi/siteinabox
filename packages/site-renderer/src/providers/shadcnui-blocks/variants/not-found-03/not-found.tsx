@@ -7,7 +7,7 @@ export default function NotFound() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="flex flex-col items-center justify-center px-8 py-16 lg:items-start lg:px-16">
-        <div className="flex size-10 items-center justify-center rounded-xl border bg-muted">
+        <div className="flex size-10 items-center justify-center rounded-xl border bg-muted border-border">
           <OctagonXIcon className="size-5 text-muted-foreground" />
         </div>
         <h1 className="mt-6 font-medium text-4xl/none tracking-tight">

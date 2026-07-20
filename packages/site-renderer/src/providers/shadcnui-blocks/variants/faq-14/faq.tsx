@@ -65,11 +65,11 @@ export function Faq14({ title, intro, items, blockIndex, editSlots, rootAttribut
             const Icon = ITEM_ICONS[itemIndex % ITEM_ICONS.length] ?? Package
             return (
               <AccordionItem
-                className="border not-last:border-b-0 bg-muted/35 last:border-b"
+                className="border not-last:border-b-0 bg-muted/35 last:border-b border-border"
                 key={itemIndex}
                 value={faqAccordionValue(itemIndex)}
               >
-                <AccordionTrigger className="rounded-none px-5 py-0 ps-0 text-base data-[state=open]:border-b">
+                <AccordionTrigger className="rounded-none px-5 py-0 ps-0 text-base data-[state=open]:border-b border-border">
                   <div className="flex gap-2 divide-x">
                     <div
                       className={cn(

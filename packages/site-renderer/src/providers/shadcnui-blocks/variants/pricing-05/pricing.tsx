@@ -54,7 +54,7 @@ export function Pricing05({ title, intro, plans, blockIndex, editSlots, rootAttr
           return (
             <div
               className={cn(
-                "relative rounded-lg border bg-card p-7 lg:rounded-none lg:last:rounded-r-xl lg:first:rounded-l-xl",
+                "relative rounded-lg border bg-card p-7 lg:rounded-none lg:last:rounded-r-xl lg:first:rounded-l-xl border-border",
                 { "border-primary ring-1 ring-primary ring-inset": highlighted },
               )}
               key={planIndex}

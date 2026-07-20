@@ -48,11 +48,11 @@ export function Features17({ title, intro, features, blockIndex, editSlots, root
           {introContent}
         </p>
       ) : null}
-      <div className="mt-16 grid grid-cols-1 gap-1.5 border bg-muted p-1.5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-16 grid grid-cols-1 gap-1.5 border bg-muted p-1.5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3 border-border">
         {features.map((feature, itemIndex) => {
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           return (
-            <div className="relative -m-px border bg-card px-5 py-7" key={itemIndex}>
+            <div className="relative -m-px border bg-card px-5 py-7 border-border" key={itemIndex}>
               {Icon ? (
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/10">
                   <Icon />

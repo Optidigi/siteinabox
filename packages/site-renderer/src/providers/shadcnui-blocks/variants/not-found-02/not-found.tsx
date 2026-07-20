@@ -27,7 +27,7 @@ export default function NotFound() {
         <p className="mb-3 text-center text-muted-foreground text-sm">
           You might be looking for:
         </p>
-        <ul className="divide-y rounded-xl border">
+        <ul className="divide-y rounded-xl border border-border">
           {suggestions.map((s) => (
             <li className="group" key={s.href}>
               <Link

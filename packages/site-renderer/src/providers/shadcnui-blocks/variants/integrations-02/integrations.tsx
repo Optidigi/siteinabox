@@ -42,8 +42,8 @@ export function Integrations02({
 
   return (
     <div className="my-12 px-6 sm:my-14" {...rootAttributes}>
-      <div className="mx-auto flex w-full max-w-md flex-col rounded-lg border bg-muted p-1 shadow-lg/2">
-        <div className="rounded-md border bg-card p-6">
+      <div className="mx-auto flex w-full max-w-md flex-col rounded-lg border bg-muted p-1 shadow-lg/2 border-border">
+        <div className="rounded-md border bg-card p-6 border-border">
           {titleContent ? <h2 className="font-medium text-2xl tracking-tight">{titleContent}</h2> : null}
           {introContent ? <p className="mt-1.5 text-pretty text-muted-foreground">{introContent}</p> : null}
           <div className="mx-auto mt-8 flex w-full flex-col gap-3">
@@ -51,7 +51,7 @@ export function Integrations02({
               const name = renderIntegrationName(editSlots, logo.name, blockIndex, itemIndex)
               if (!name && !logo.image) return null
               return (
-                <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3" key={itemIndex}>
+                <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-3 border-border" key={itemIndex}>
                   {renderIntegrationLogo(editSlots, mediaResolver, logo, blockIndex, itemIndex, {
                     className: "size-8 rounded",
                   })}

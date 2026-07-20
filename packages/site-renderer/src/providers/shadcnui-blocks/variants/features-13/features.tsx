@@ -97,7 +97,7 @@ export function Features13({ title, intro, features, blockIndex, editSlots, root
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           return (
             <div
-              className="relative overflow-hidden rounded-xl border bg-card p-6 dark:border-card-foreground/7"
+              className="relative overflow-hidden rounded-xl border bg-card p-6 dark:border-card-foreground/7 border-border"
               key={itemIndex}
             >
               {Icon ? (

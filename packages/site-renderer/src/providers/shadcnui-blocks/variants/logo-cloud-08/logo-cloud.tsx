@@ -39,11 +39,11 @@ export function LogoCloud08({
       {introContent ? (
         <p className="text-balance text-center font-medium text-muted-foreground text-sm uppercase">{introContent}</p>
       ) : null}
-      <div className="mt-10 grid grid-cols-2 place-items-center border-t border-l border-dashed grayscale-100 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-10 grid grid-cols-2 place-items-center border-t border-l border-dashed grayscale-100 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 border-border">
         {literalPreview
           ? FALLBACK_LOGOS.map((Logo, itemIndex) => (
               <div
-                className="flex w-full items-center justify-center border-r border-b border-dashed bg-card p-6"
+                className="flex w-full items-center justify-center border-r border-b border-dashed bg-card p-6 border-border"
                 key={itemIndex}
               >
                 <Logo className={LOGO_CLASS} />
@@ -51,7 +51,7 @@ export function LogoCloud08({
             ))
           : logos.map((logo, itemIndex) => (
               <div
-                className="flex w-full items-center justify-center border-r border-b border-dashed bg-card p-6"
+                className="flex w-full items-center justify-center border-r border-b border-dashed bg-card p-6 border-border"
                 key={itemIndex}
               >
                 {renderLogoCloudLogo(logo, itemIndex, blockIndex, editSlots, mediaResolver, {

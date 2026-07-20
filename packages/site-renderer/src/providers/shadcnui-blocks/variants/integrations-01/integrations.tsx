@@ -56,7 +56,7 @@ export function Integrations01({
           const description = renderIntegrationDescription(editSlots, logo.description, blockIndex, itemIndex)
           if (!name && !description && !logo.image) return null
           return (
-            <div className="flex flex-col items-start rounded-lg border bg-card p-6 shadow-xs/3" key={itemIndex}>
+            <div className="flex flex-col items-start rounded-lg border bg-card p-6 shadow-xs/3 border-border" key={itemIndex}>
               <div className="grow">
                 {renderIntegrationLogo(editSlots, mediaResolver, logo, blockIndex, itemIndex, {
                   className: "size-10 rounded",

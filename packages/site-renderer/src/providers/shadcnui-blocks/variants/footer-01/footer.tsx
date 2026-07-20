@@ -180,7 +180,7 @@ const footerSections = [
 
 const Footer = () => {
   return (
-    <footer className="border-t">
+    <footer className="border-t border-border">
       <div className="mx-auto max-w-(--breakpoint-xl)">
         <div className="grid grid-cols-2 gap-x-8 gap-y-10 px-6 py-12 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 xl:px-0">
           {footerSections.map(({ title, links }) => (

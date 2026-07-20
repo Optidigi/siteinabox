@@ -53,7 +53,7 @@ function PlanCard({
 
   return (
     <div
-      className={cn("border bg-card", {
+      className={cn("border bg-card border-border", {
         "relative border border-primary bg-card ring ring-primary ring-inset": highlighted,
       })}
     >

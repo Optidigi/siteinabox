@@ -3,7 +3,7 @@ import Link from "../../runtime/link";
 
 const Footer = () => {
   return (
-    <footer className="flex items-center justify-between border-t bg-background px-6 py-4">
+    <footer className="flex items-center justify-between border-t bg-background px-6 py-4 border-border">
       <Link className="flex items-center gap-2" href="/">
         <Wheat />
         <span className="font-medium text-xl">Bloxxee</span>

@@ -6,7 +6,7 @@ import { Input } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-      <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted">
+      <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted border-border">
         <SearchXIcon className="size-6 text-muted-foreground" />
       </div>
       <h1 className="mt-6 font-medium text-4xl/none tracking-tight">

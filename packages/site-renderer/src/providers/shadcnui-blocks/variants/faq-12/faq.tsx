@@ -104,7 +104,7 @@ export function Faq12({ title, intro, items, blockIndex, editSlots, rootAttribut
             return (
               <div
                 className={cn(
-                  "relative -ms-px -mt-px overflow-hidden border bg-card p-6 text-start",
+                  "relative -ms-px -mt-px overflow-hidden border bg-card p-6 text-start border-border",
                   "first:rounded-t-lg last:rounded-b-lg md:nth-[2]:rounded-tr-lg md:nth-last-[2]:rounded-bl-lg md:last:rounded-bl-none md:first:rounded-tr-none",
                 )}
                 key={itemIndex}

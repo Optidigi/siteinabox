@@ -39,7 +39,7 @@ export function LogoCloud11({
       {introContent ? (
         <p className="text-balance text-center font-medium text-muted-foreground text-sm uppercase">{introContent}</p>
       ) : null}
-      <div className="mt-10 grid grid-cols-2 place-items-center gap-1 rounded-lg border border-dashed bg-muted p-1 grayscale-100 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="mt-10 grid grid-cols-2 place-items-center gap-1 rounded-lg border border-dashed bg-muted p-1 grayscale-100 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 border-border">
         {literalPreview
           ? FALLBACK_LOGOS.map((Logo, itemIndex) => (
               <div

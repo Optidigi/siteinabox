@@ -88,7 +88,7 @@ export function Pricing03({ title, intro, plans, blockIndex, editSlots, rootAttr
             const ctaContent = renderPlanCta(editSlots, plan.cta, blockIndex, planIndex)
             return (
               <div
-                className={cn("relative rounded-xl border p-6", { "border-2 border-primary py-10": highlighted })}
+                className={cn("relative rounded-xl border p-6 border-border", { "border-2 border-primary py-10": highlighted })}
                 key={planIndex}
               >
                 {highlighted ? (

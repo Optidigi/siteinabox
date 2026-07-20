@@ -54,11 +54,11 @@ export function Integrations04({
           const description = renderIntegrationDescription(editSlots, logo.description, blockIndex, itemIndex)
           if (!name && !description && !logo.image) return null
           return (
-            <div className="relative flex flex-col items-start border bg-card p-8" key={itemIndex}>
-              <div className="absolute inset-x-0 bottom-0 h-2 w-full border-t border-dashed bg-muted/75" />
-              <div className="absolute inset-x-0 top-0 h-2 w-full border-b border-dashed bg-muted/75" />
-              <div className="absolute inset-y-0 left-0 h-full w-2 border-e border-dashed bg-muted/75" />
-              <div className="absolute inset-y-0 right-0 h-full w-2 border-s border-dashed bg-muted/75" />
+            <div className="relative flex flex-col items-start border bg-card p-8 border-border" key={itemIndex}>
+              <div className="absolute inset-x-0 bottom-0 h-2 w-full border-t border-dashed bg-muted/75 border-border" />
+              <div className="absolute inset-x-0 top-0 h-2 w-full border-b border-dashed bg-muted/75 border-border" />
+              <div className="absolute inset-y-0 left-0 h-full w-2 border-e border-dashed bg-muted/75 border-border" />
+              <div className="absolute inset-y-0 right-0 h-full w-2 border-s border-dashed bg-muted/75 border-border" />
               {renderIntegrationLogo(editSlots, mediaResolver, logo, blockIndex, itemIndex, {
                 className: "size-10 rounded",
               })}

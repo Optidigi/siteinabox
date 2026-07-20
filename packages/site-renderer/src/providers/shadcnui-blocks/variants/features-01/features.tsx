@@ -51,7 +51,7 @@ export function Features01({ title, intro, features, blockIndex, editSlots, root
         {features.map((feature, itemIndex) => {
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           return (
-            <div className="flex flex-col rounded-xl border bg-card p-6" key={itemIndex}>
+            <div className="flex flex-col rounded-xl border bg-card p-6 border-border" key={itemIndex}>
               {Icon ? (
                 <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                   <Icon className="size-5" />

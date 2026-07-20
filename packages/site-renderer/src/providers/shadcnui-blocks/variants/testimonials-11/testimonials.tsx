@@ -128,7 +128,7 @@ export function Testimonials11({
               if (!quoteContent && !authorContent) return null
               return (
                 <CarouselItem key={itemIndex}>
-                  <div className="relative flex gap-8 rounded-lg border bg-muted/70 p-8 pt-16 pr-8 md:pt-8">
+                  <div className="relative flex gap-8 rounded-lg border bg-muted/70 p-8 pt-16 pr-8 md:pt-8 border-border">
                     <span className="absolute top-3 left-6.5 font-satoshi text-8xl md:hidden">&ldquo;</span>
                     <div className="flex flex-col gap-2">
                       {quoteContent ? (

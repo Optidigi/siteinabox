@@ -59,7 +59,7 @@ export function Integrations03({
               className="flex items-center gap-4 rounded-lg border border-border/85 bg-card pe-4 shadow-xs/2"
               key={itemIndex}
             >
-              <div className="border-e border-dashed p-4">
+              <div className="border-e border-dashed p-4 border-border">
                 {renderIntegrationLogo(editSlots, mediaResolver, logo, blockIndex, itemIndex, {
                   className: "size-8 rounded",
                 })}

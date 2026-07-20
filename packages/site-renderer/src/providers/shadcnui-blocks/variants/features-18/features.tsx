@@ -66,17 +66,17 @@ export function Features18({ eyebrow, title, intro, features, blockIndex, editSl
       {introContent ? (
         <p className="mt-4 text-pretty text-muted-foreground text-xl -tracking-[0.01em] sm:text-2xl">{introContent}</p>
       ) : null}
-      <div className="relative mx-auto mt-16 grid max-w-5xl grid-cols-1 border nth-3:border sm:grid-cols-2 lg:grid-cols-3">
-        <div className="mask-y-from-95% absolute -inset-y-14 left-0 -translate-x-px border-s border-dashed" />
-        <div className="mask-y-from-95% absolute -inset-y-14 right-0 translate-x-px border-s border-dashed" />
-        <div className="mask-x-from-95% absolute -inset-x-14 top-0 -translate-y-px border-t border-dashed" />
-        <div className="mask-x-from-95% absolute -inset-x-14 bottom-0 translate-y-px border-b border-dashed" />
+      <div className="relative mx-auto mt-16 grid max-w-5xl grid-cols-1 border nth-3:border sm:grid-cols-2 lg:grid-cols-3 border-border">
+        <div className="mask-y-from-95% absolute -inset-y-14 left-0 -translate-x-px border-s border-dashed border-border" />
+        <div className="mask-y-from-95% absolute -inset-y-14 right-0 translate-x-px border-s border-dashed border-border" />
+        <div className="mask-x-from-95% absolute -inset-x-14 top-0 -translate-y-px border-t border-dashed border-border" />
+        <div className="mask-x-from-95% absolute -inset-x-14 bottom-0 translate-y-px border-b border-dashed border-border" />
         {features.map((feature, itemIndex) => {
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           return (
             <div
               className={cn(
-                "relative -mt-px flex w-full flex-col items-center gap-2 border-t p-6 pt-9 odd:bg-muted/40",
+                "relative -mt-px flex w-full flex-col items-center gap-2 border-t p-6 pt-9 odd:bg-muted/40 border-border",
                 "lg:not-[&:nth-child(3n+1)]:border-e",
                 "max-sm:odd:border-e-0 max-lg:odd:border-e",
               )}

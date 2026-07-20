@@ -64,12 +64,12 @@ function PlanCard({
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-xl border bg-muted/50 p-1 dark:bg-muted/75",
+        "relative flex flex-col rounded-xl border bg-muted/50 p-1 dark:bg-muted/75 border-border",
         { "shadow/5": highlighted },
       )}
     >
       {highlighted ? <BorderBeam duration={8} size={150} /> : null}
-      <div className="shadow/5 dark:shadow/45 relative overflow-hidden rounded-lg border bg-background px-6 pt-5 pb-4">
+      <div className="shadow/5 dark:shadow/45 relative overflow-hidden rounded-lg border bg-background px-6 pt-5 pb-4 border-border">
         {highlighted ? (
           <Badge className="absolute top-3 right-3 bg-primary/20 text-primary dark:bg-primary/30">
             {plan.badge?.trim() || "Most Popular"}
@@ -93,7 +93,7 @@ function PlanCard({
           </p>
         ) : null}
       </div>
-      <div className="shadow/5 dark:shadow/45 mt-1 grow rounded-lg border bg-background px-6 pt-5 pb-10">
+      <div className="shadow/5 dark:shadow/45 mt-1 grow rounded-lg border bg-background px-6 pt-5 pb-10 border-border">
         <p className="mt-4 font-satoshi font-semibold text-4xl">
           {priceContent ?? (priceValue ? `$${priceValue}` : null)}
         </p>

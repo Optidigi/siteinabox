@@ -47,7 +47,7 @@ export function Stats03({ title, intro, items, blockIndex, editSlots, rootAttrib
           const labelContent = renderStatLabel(editSlots, item.label, blockIndex, itemIndex)
           if (!valueContent && !labelContent) return null
           return (
-            <div key={itemIndex} className="rounded-xl border px-8 py-10">
+            <div key={itemIndex} className="rounded-xl border px-8 py-10 border-border">
               {valueContent ? <span className="font-medium text-5xl">{valueContent}</span> : null}
               {labelContent ? <p className="mt-4 text-foreground/80 text-xl">{labelContent}</p> : null}
             </div>

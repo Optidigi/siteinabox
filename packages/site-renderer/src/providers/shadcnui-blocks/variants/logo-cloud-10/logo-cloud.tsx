@@ -46,8 +46,8 @@ export function LogoCloud10({
       <div className="relative mx-auto mt-10 max-w-4xl">
         <div
           className={cn(
-            "grid grid-cols-2 place-items-center border shadow-xs/1 sm:grid-cols-3",
-            "*:border-e *:border-b *:nth-last-[2]:border-b-0 *:last:border-b-0 *:odd:bg-muted/60 max-sm:*:nth-[2n]:border-e-0 sm:*:nth-[3n]:border-e-0 sm:*:nth-last-[3]:border-b-0",
+            "grid grid-cols-2 place-items-center border shadow-xs/1 sm:grid-cols-3 border-border",
+            "*:border-e *:border-b *:nth-last-[2]:border-b-0 *:last:border-b-0 *:odd:bg-muted/60 max-sm:*:nth-[2n]:border-e-0 sm:*:nth-[3n]:border-e-0 sm:*:nth-last-[3]:border-b-0 border-border",
           )}
         >
           {Array.from({ length: MAX_LOGOS }, (_, itemIndex) => {
@@ -67,14 +67,14 @@ export function LogoCloud10({
           })}
         </div>
 
-        <div className="mask-l-from-0 absolute top-0 left-0 w-6 -translate-x-full border-b border-dashed sm:w-12" />
-        <div className="mask-r-from-0 absolute top-0 right-0 w-6 translate-x-full border-b border-dashed sm:w-12" />
-        <div className="mask-l-from-0 absolute bottom-0 left-0 w-6 -translate-x-full border-b border-dashed sm:w-12" />
-        <div className="mask-r-from-0 absolute right-0 bottom-0 w-6 translate-x-full border-b border-dashed sm:w-12" />
-        <div className="mask-t-from-0 absolute top-0 left-0 h-6 -translate-y-full border-s border-dashed sm:h-12" />
-        <div className="mask-t-from-0 absolute top-0 right-0 h-6 -translate-y-full border-s border-dashed sm:h-12" />
-        <div className="mask-b-from-0 absolute bottom-0 left-0 h-6 translate-y-full border-s border-dashed sm:h-12" />
-        <div className="mask-b-from-0 absolute right-0 bottom-0 h-6 translate-y-full border-s border-dashed sm:h-12" />
+        <div className="mask-l-from-0 absolute top-0 left-0 w-6 -translate-x-full border-b border-dashed sm:w-12 border-border" />
+        <div className="mask-r-from-0 absolute top-0 right-0 w-6 translate-x-full border-b border-dashed sm:w-12 border-border" />
+        <div className="mask-l-from-0 absolute bottom-0 left-0 w-6 -translate-x-full border-b border-dashed sm:w-12 border-border" />
+        <div className="mask-r-from-0 absolute right-0 bottom-0 w-6 translate-x-full border-b border-dashed sm:w-12 border-border" />
+        <div className="mask-t-from-0 absolute top-0 left-0 h-6 -translate-y-full border-s border-dashed sm:h-12 border-border" />
+        <div className="mask-t-from-0 absolute top-0 right-0 h-6 -translate-y-full border-s border-dashed sm:h-12 border-border" />
+        <div className="mask-b-from-0 absolute bottom-0 left-0 h-6 translate-y-full border-s border-dashed sm:h-12 border-border" />
+        <div className="mask-b-from-0 absolute right-0 bottom-0 h-6 translate-y-full border-s border-dashed sm:h-12 border-border" />
       </div>
     </div>
   )

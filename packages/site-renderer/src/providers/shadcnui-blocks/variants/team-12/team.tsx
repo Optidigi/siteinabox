@@ -73,9 +73,9 @@ export function Team12({
           {introContent}
         </p>
       ) : null}
-      <div className="mt-12 grid grid-cols-1 border border-e-0 border-b-0 max-sm:justify-center sm:mt-18 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 border border-e-0 border-b-0 max-sm:justify-center sm:mt-18 sm:grid-cols-2 lg:grid-cols-3 border-border">
         {displayMembers.map((member, itemIndex) => (
-          <div className="flex items-center gap-6 border-e border-b p-4" key={itemIndex}>
+          <div className="flex items-center gap-6 border-e border-b p-4 border-border" key={itemIndex}>
             <div className="aspect-square w-20 shrink-0 overflow-hidden rounded bg-foreground/10 dark:bg-muted/75">
               {renderMemberImage(editSlots, mediaResolver, member.image, member.name, blockIndex, itemIndex, {
                 alt: member.name,
@@ -104,10 +104,10 @@ export default function Team12Literal() {
       <p className="mt-3 text-balance text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl">
         <RichTextRenderer value={team12CmsLike.intro} blockMode="inline" />
       </p>
-      <div className="mt-12 grid grid-cols-1 border border-e-0 border-b-0 max-sm:justify-center sm:mt-18 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 border border-e-0 border-b-0 max-sm:justify-center sm:mt-18 sm:grid-cols-2 lg:grid-cols-3 border-border">
         {LITERAL_MEMBERS.map((member, index) => (
           <div
-            className={cn("flex items-center gap-6 border-e border-b p-4", {
+            className={cn("flex items-center gap-6 border-e border-b p-4 border-border", {
               "bg-[repeating-linear-gradient(315deg,color-mix(in_srgb,var(--muted),transparent_50%)_0,color-mix(in_srgb,var(--muted),transparent_50%)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] bg-fixed":
                 member.isPlaceholder,
             })}

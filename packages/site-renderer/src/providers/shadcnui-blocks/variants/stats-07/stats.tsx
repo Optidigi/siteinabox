@@ -43,7 +43,7 @@ export function Stats07({ title, intro, items, blockIndex, editSlots, rootAttrib
         </p>
       ) : null}
 
-      <div className="mt-14 rounded-2xl border bg-muted p-1">
+      <div className="mt-14 rounded-2xl border bg-muted p-1 border-border">
         <div
           className={cn(
             "grid grid-cols-1 gap-1 overflow-hidden rounded-xl sm:grid-cols-2 md:grid-cols-3",

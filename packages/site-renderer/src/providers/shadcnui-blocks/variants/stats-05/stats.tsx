@@ -54,7 +54,7 @@ export function Stats05({ title, intro, items, blockIndex, editSlots, rootAttrib
           const labelContent = renderStatLabel(editSlots, item.label, blockIndex, itemIndex)
           if (!valueContent && !labelContent) return null
           return (
-            <div key={itemIndex} className="rounded-xl border bg-muted p-6 py-7">
+            <div key={itemIndex} className="rounded-xl border bg-muted p-6 py-7 border-border">
               {Icon ? <Icon className={ICON_CLASS[itemIndex]} /> : null}
               {valueContent ? (
                 <span className="font-medium text-5xl tracking-[-0.01em]">{valueContent}</span>

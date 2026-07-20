@@ -124,7 +124,7 @@ function TestimonialList({
         if (!quoteContent && !authorContent) return null
         return (
           <div className="-mx-1 flex w-full max-w-sm flex-col odd:flex-col-reverse" key={itemIndex}>
-            <div className={cn("rounded-xl border bg-background shadow-xs/3", className)} {...props}>
+            <div className={cn("rounded-xl border bg-background shadow-xs/3 border-border", className)} {...props}>
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -190,7 +190,7 @@ export function Testimonials13({
       {introContent ? (
         <p className="mt-3.5 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl">{introContent}</p>
       ) : null}
-      <div className="mask-x-from-80% mt-14 space-y-px border bg-muted">
+      <div className="mask-x-from-80% mt-14 space-y-px border bg-muted border-border">
         <Marquee className="py-0 [--duration:60s] [--gap:0px]" pauseOnHover>
           <TestimonialList
             blockIndex={blockIndex}

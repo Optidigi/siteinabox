@@ -95,7 +95,7 @@ export function LogoCloud15({
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6" {...rootAttributes}>
-      <div className="relative max-w-(--breakpoint-lg) rounded-lg border" ref={cardRef}>
+      <div className="relative max-w-(--breakpoint-lg) rounded-lg border border-border" ref={cardRef}>
         <BorderBeam className="isolate -z-1" duration={BEAM_DURATION} size={BEAM_SIZE} />
 
         <div className="absolute inset-x-0 top-0 flex -translate-y-1/2 items-center justify-center px-10">

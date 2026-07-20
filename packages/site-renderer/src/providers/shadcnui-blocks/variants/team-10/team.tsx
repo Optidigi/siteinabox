@@ -99,7 +99,7 @@ export function Team10({
           <CarouselContent>
             {displayMembers.map((member, itemIndex) => (
               <CarouselItem className="sm:basis-1/2 md:basis-1/3 lg:basis-1/4" key={itemIndex}>
-                <div className="border bg-muted py-12">
+                <div className="border bg-muted py-12 border-border">
                   <div className="mx-auto aspect-square max-w-40 select-none overflow-hidden rounded-full bg-muted">
                     {renderMemberImage(editSlots, mediaResolver, member.image, member.name, blockIndex, itemIndex, {
                       alt: member.name,
@@ -154,7 +154,7 @@ export default function Team10Literal() {
       </p>
       <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {LITERAL_MEMBERS.map(([name, role], index) => (
-          <div className="border bg-muted py-12" key={index}>
+          <div className="border bg-muted py-12 border-border" key={index}>
             <div className="mx-auto aspect-square max-w-40 overflow-hidden rounded-full bg-muted">
               <img alt={name} className="h-full w-full object-cover" src={LITERAL_IMAGES[index]} />
             </div>

@@ -36,7 +36,7 @@ export const NavigationSheet = () => {
 
           <div>
             <div className="font-bold">Food</div>
-            <ul className="mt-2 ml-1 space-y-3 border-l pl-4">
+            <ul className="mt-2 ml-1 space-y-3 border-l pl-4 border-border">
               {foods.map((foodItem) => (
                 <li key={foodItem.title}>
                   <Link className="flex items-center gap-2" href="#">
@@ -50,7 +50,7 @@ export const NavigationSheet = () => {
 
           <div>
             <div className="font-bold">Travel</div>
-            <ul className="mt-2 ml-1 space-y-3 border-l pl-4">
+            <ul className="mt-2 ml-1 space-y-3 border-l pl-4 border-border">
               {travelMenuItems.map((item) => (
                 <li key={item.title}>
                   <Link className="flex items-center gap-2" href="#">

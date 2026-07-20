@@ -10,7 +10,7 @@ import { NavMenu } from "./nav-menu";
 
 const Navbar = () => {
   return (
-    <div className="h-16 border-b bg-background px-6">
+    <div className="h-16 border-b bg-background px-6 border-border">
       <nav className="mx-auto flex h-full max-w-screen-xl items-center justify-between">
         <div className="flex items-center gap-4">
           {/* Logo */}

@@ -31,7 +31,7 @@ const footerLinks = [
 
 const Footer = () => {
   return (
-    <footer className="border-t">
+    <footer className="border-t border-border">
       <div className="mx-auto max-w-(--breakpoint-xl)">
         <div className="flex flex-col items-center justify-start py-12">
           {/* Logo */}

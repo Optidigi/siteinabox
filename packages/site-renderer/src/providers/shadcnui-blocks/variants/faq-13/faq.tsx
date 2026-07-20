@@ -50,7 +50,7 @@ export function Faq13({ title, intro, items, blockIndex, editSlots, rootAttribut
               <span className="absolute top-0 left-0 rounded-br-md border-border/50 border-e border-b bg-muted px-2 py-0.75 font-mono text-[11px]">
                 {(itemIndex + 1).toString().padStart(2, "0")}
               </span>
-              <div className="flex items-center gap-2 border-b border-dashed px-6 py-3 ps-11 font-medium text-base">
+              <div className="flex items-center gap-2 border-b border-dashed px-6 py-3 ps-11 font-medium text-base border-border">
                 {renderFaqQuestion(editSlots, item.question, blockIndex, itemIndex)}
               </div>
               <div className="px-6 py-5 ps-11 text-start text-foreground/70 text-sm">

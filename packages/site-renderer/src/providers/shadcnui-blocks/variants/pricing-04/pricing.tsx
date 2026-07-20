@@ -69,7 +69,7 @@ export function Pricing04({ title, intro, plans, blockIndex, editSlots, rootAttr
           onValueChange={setSelectedBillingPeriod}
           value={selectedBillingPeriod}
         >
-          <TabsList className="h-11 rounded-full border bg-background">
+          <TabsList className="h-11 rounded-full border bg-background border-border">
             <TabsTrigger
               className="rounded-full px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
               value="monthly"
@@ -96,7 +96,7 @@ export function Pricing04({ title, intro, plans, blockIndex, editSlots, rootAttr
             })
             return (
               <div
-                className={cn("relative rounded-lg border bg-card/50 p-6 px-8", {
+                className={cn("relative rounded-lg border bg-card/50 p-6 px-8 border-border", {
                   "z-1 overflow-hidden bg-card px-10 py-14 shadow-[0px_1px_6px_0px_rgba(0,0,0,0.07)] lg:-mx-2": highlighted,
                 })}
                 key={planIndex}

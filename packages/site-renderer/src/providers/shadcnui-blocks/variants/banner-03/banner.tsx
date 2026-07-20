@@ -20,7 +20,7 @@ export default function Banner() {
           <Button
             className={cn(
               "hover:bg-primary/13 sm:-me-2",
-              "max-sm:absolute max-sm:-top-2.5 max-sm:-right-2.5 max-sm:size-6 max-sm:border max-sm:bg-background max-sm:hover:bg-muted"
+              "max-sm:absolute max-sm:-top-2.5 max-sm:-right-2.5 max-sm:size-6 max-sm:border max-sm:bg-background max-sm:hover:bg-muted border-border"
             )}
             size="icon"
             variant="ghost"

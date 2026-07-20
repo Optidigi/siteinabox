@@ -50,11 +50,11 @@ function PlanCard({
   const ctaContent = renderPlanCta(editSlots, plan.cta, blockIndex, planIndex)
 
   return (
-    <div className="shadow/5 relative rounded-lg border bg-background">
+    <div className="shadow/5 relative rounded-lg border bg-background border-border">
       {highlighted ? (
         <Badge className="absolute top-3 right-3">{plan.badge?.trim() || "Most Popular"}</Badge>
       ) : null}
-      <div className="rounded-t-lg border-b border-dashed p-6">
+      <div className="rounded-t-lg border-b border-dashed p-6 border-border">
         {Icon ? <Icon className="mb-5 text-primary" /> : null}
         <div className="flex items-center gap-1">
           <h3 className="font-medium text-2xl tracking-tight">
@@ -109,7 +109,7 @@ export function Pricing10({ title, intro, plans, blockIndex, editSlots, rootAttr
           {introContent}
         </p>
       ) : null}
-      <div className="mt-12 grid grid-cols-1 gap-1 rounded-xl border bg-muted/40 p-1 sm:mt-16 sm:grid-cols-2 md:mt-15 md:grid-cols-3">
+      <div className="mt-12 grid grid-cols-1 gap-1 rounded-xl border bg-muted/40 p-1 sm:mt-16 sm:grid-cols-2 md:mt-15 md:grid-cols-3 border-border">
         {displayPlans.map((plan, planIndex) => (
           <PlanCard
             blockIndex={blockIndex}

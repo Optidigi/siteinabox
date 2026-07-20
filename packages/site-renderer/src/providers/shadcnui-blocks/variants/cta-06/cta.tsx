@@ -30,7 +30,7 @@ export function Cta06({ headline, description, primary, secondary, blockIndex, e
 
   return (
     <div className="px-0 py-16 sm:px-6" {...rootAttributes}>
-      <div className="relative mx-auto max-w-5xl overflow-hidden border-y p-14 shadow-muted sm:rounded-xl sm:border-x sm:shadow-lg/5">
+      <div className="relative mx-auto max-w-5xl overflow-hidden border-y p-14 shadow-muted sm:rounded-xl sm:border-x sm:shadow-lg/5 border-border">
         <NeuroNoise
           brightness={0}
           className="mask-l-from-30% sm:mask-l-from-10% absolute inset-0"

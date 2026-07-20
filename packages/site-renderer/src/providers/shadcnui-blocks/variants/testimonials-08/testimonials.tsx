@@ -103,7 +103,7 @@ export function Testimonials08({
           const roleContent = renderTestimonialRole(editSlots, item.role, blockIndex, itemIndex)
           if (!quoteContent && !authorContent) return null
           return (
-            <div className="relative flex flex-col rounded-lg border bg-muted/70 px-5 pt-10 pb-3" key={itemIndex}>
+            <div className="relative flex flex-col rounded-lg border bg-muted/70 px-5 pt-10 pb-3 border-border" key={itemIndex}>
               <span className="absolute top-2 left-4 font-satoshi text-8xl text-foreground/30">&ldquo;</span>
               {quoteContent ? <p className="grow py-6 font-medium text-lg">{quoteContent}</p> : null}
               <Separator />

@@ -36,7 +36,7 @@ export function Timeline07({ items, blockIndex, editSlots, rootAttributes }: Tim
                   {version ? <h6 className="font-semibold text-primary text-sm">v{version}</h6> : null}
                   {date ? <span className="text-muted-foreground text-xs sm:text-sm">{date}</span> : null}
                 </div>
-                <div className="relative space-y-1 border-l pb-10 pl-6 group-last:pb-4 sm:pl-8">
+                <div className="relative space-y-1 border-l pb-10 pl-6 group-last:pb-4 sm:pl-8 border-border">
                   <div className="absolute top-4 -left-px h-3 w-3 -translate-x-1/2 rounded-full border-2 border-primary bg-background" />
                   {title ? <h3 className="mt-2 font-medium text-lg tracking-[-0.01em]">{title}</h3> : null}
                   {description ? (

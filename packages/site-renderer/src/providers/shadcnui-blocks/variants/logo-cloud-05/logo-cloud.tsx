@@ -44,7 +44,7 @@ export function LogoCloud05({
           {literalPreview
             ? FALLBACK_LOGOS.map((Logo, itemIndex) => (
                 <div
-                  className="flex items-center justify-center rounded border bg-muted/50 py-6 *:h-8 sm:px-10 sm:py-8 sm:*:h-10"
+                  className="flex items-center justify-center rounded border bg-muted/50 py-6 *:h-8 sm:px-10 sm:py-8 sm:*:h-10 border-border"
                   key={itemIndex}
                 >
                   <Logo className={LOGO_CLASS} />
@@ -52,7 +52,7 @@ export function LogoCloud05({
               ))
             : logos.map((logo, itemIndex) => (
                 <div
-                  className="flex items-center justify-center rounded border bg-muted/50 py-6 *:h-8 sm:px-10 sm:py-8 sm:*:h-10"
+                  className="flex items-center justify-center rounded border bg-muted/50 py-6 *:h-8 sm:px-10 sm:py-8 sm:*:h-10 border-border"
                   key={itemIndex}
                 >
                   {renderLogoCloudLogo(logo, itemIndex, blockIndex, editSlots, mediaResolver, {

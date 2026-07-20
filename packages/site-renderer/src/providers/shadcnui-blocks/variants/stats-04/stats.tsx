@@ -42,7 +42,7 @@ export function Stats04({ title, intro, items, blockIndex, editSlots, rootAttrib
         </p>
       ) : null}
 
-      <div className="mt-14 grid grid-cols-1 overflow-hidden rounded-2xl border sm:grid-cols-2 md:grid-cols-3">
+      <div className="mt-14 grid grid-cols-1 overflow-hidden rounded-2xl border sm:grid-cols-2 md:grid-cols-3 border-border">
         {displayItems.map((item, itemIndex) => {
           const valueContent = renderStatValue(editSlots, item.value, blockIndex, itemIndex)
           const labelContent = renderStatLabel(editSlots, item.label, blockIndex, itemIndex)

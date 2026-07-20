@@ -41,22 +41,22 @@ export function LogoCloud13({
         <p className="text-balance text-center font-medium text-muted-foreground text-sm uppercase">{introContent}</p>
       ) : null}
       <div className="relative mt-14 flex flex-col grayscale-100">
-        <div className="absolute inset-x-0 top-0 w-[calc(100%+4rem)] -translate-x-8 border-t" />
-        <div className="absolute inset-x-0 bottom-0 w-[calc(100%+4rem)] -translate-x-8 border-b" />
-        <div className="absolute inset-y-0 left-0 h-[calc(100%+4rem)] -translate-y-8 border-s" />
-        <div className="absolute inset-y-0 right-0 h-[calc(100%+4rem)] -translate-y-8 border-e" />
+        <div className="absolute inset-x-0 top-0 w-[calc(100%+4rem)] -translate-x-8 border-t border-border" />
+        <div className="absolute inset-x-0 bottom-0 w-[calc(100%+4rem)] -translate-x-8 border-b border-border" />
+        <div className="absolute inset-y-0 left-0 h-[calc(100%+4rem)] -translate-y-8 border-s border-border" />
+        <div className="absolute inset-y-0 right-0 h-[calc(100%+4rem)] -translate-y-8 border-e border-border" />
 
-        <div className="absolute inset-x-0 -top-1 w-[calc(100%+3rem)] -translate-x-6 border-t" />
-        <div className="absolute inset-x-0 -bottom-1 w-[calc(100%+3rem)] -translate-x-6 border-b" />
-        <div className="absolute inset-y-0 -left-1 h-[calc(100%+3rem)] -translate-y-6 border-s" />
-        <div className="absolute inset-y-0 -right-1 h-[calc(100%+3rem)] -translate-y-6 border-e" />
+        <div className="absolute inset-x-0 -top-1 w-[calc(100%+3rem)] -translate-x-6 border-t border-border" />
+        <div className="absolute inset-x-0 -bottom-1 w-[calc(100%+3rem)] -translate-x-6 border-b border-border" />
+        <div className="absolute inset-y-0 -left-1 h-[calc(100%+3rem)] -translate-y-6 border-s border-border" />
+        <div className="absolute inset-y-0 -right-1 h-[calc(100%+3rem)] -translate-y-6 border-e border-border" />
 
         <div className="flex flex-col">
           <Marquee className="p-0 [--gap:0px]">
             {literalPreview
               ? FALLBACK_LOGOS.map((Logo, itemIndex) => (
                   <div
-                    className="flex w-full items-center justify-center border-e px-10 py-6 even:bg-muted/60 dark:even:bg-muted/30"
+                    className="flex w-full items-center justify-center border-e px-10 py-6 even:bg-muted/60 dark:even:bg-muted/30 border-border"
                     key={itemIndex}
                   >
                     <Logo className={LOGO_CLASS} />
@@ -64,7 +64,7 @@ export function LogoCloud13({
                 ))
               : logos.map((logo, itemIndex) => (
                   <div
-                    className="flex w-full items-center justify-center border-e px-10 py-6 even:bg-muted/60 dark:even:bg-muted/30"
+                    className="flex w-full items-center justify-center border-e px-10 py-6 even:bg-muted/60 dark:even:bg-muted/30 border-border"
                     key={itemIndex}
                   >
                     {renderLogoCloudLogo(logo, itemIndex, blockIndex, editSlots, mediaResolver, {

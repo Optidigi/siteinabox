@@ -54,12 +54,12 @@ export function Integrations05({
           const description = renderIntegrationDescription(editSlots, logo.description, blockIndex, itemIndex)
           if (!name && !description && !logo.image) return null
           return (
-            <div className="relative flex flex-col items-start overflow-hidden border bg-card" key={itemIndex}>
-              <div className="absolute inset-x-0 top-7 h-9.5 border-y border-dashed bg-muted/30" />
-              <div className="absolute inset-y-0 left-7 w-9.5 border-x border-dashed bg-muted/30" />
+            <div className="relative flex flex-col items-start overflow-hidden border bg-card border-border" key={itemIndex}>
+              <div className="absolute inset-x-0 top-7 h-9.5 border-y border-dashed bg-muted/30 border-border" />
+              <div className="absolute inset-y-0 left-7 w-9.5 border-x border-dashed bg-muted/30 border-border" />
               <div className="relative isolate flex items-start justify-between gap-5 p-6">
                 <div className="w-fit shrink-0 rounded-3xl bg-transparent p-1">
-                  <div className="relative border bg-background">
+                  <div className="relative border bg-background border-border">
                     {renderIntegrationLogo(editSlots, mediaResolver, logo, blockIndex, itemIndex, {
                       className: "size-9",
                     })}

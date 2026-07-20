@@ -56,7 +56,7 @@ export function Features12({ eyebrow, title, intro, features, blockIndex, editSl
         </p>
       ) : null}
       <div className="mt-20 grid grid-cols-1 bg-card sm:grid-cols-2 lg:grid-cols-3">
-        <div className="-mr-px flex h-16 items-center border px-6 font-medium text-lg sm:col-span-2 md:col-span-1">
+        <div className="-mr-px flex h-16 items-center border px-6 font-medium text-lg sm:col-span-2 md:col-span-1 border-border">
           {eyebrowContent ? (
             eyebrowContent
           ) : (
@@ -65,7 +65,7 @@ export function Features12({ eyebrow, title, intro, features, blockIndex, editSl
             </>
           )}
         </div>
-        <div className="-mr-px hidden h-16 border bg-[repeating-linear-gradient(315deg,var(--muted)_0,var(--muted)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] bg-fixed md:block lg:col-span-2" />
+        <div className="-mr-px hidden h-16 border bg-[repeating-linear-gradient(315deg,var(--muted)_0,var(--muted)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] bg-fixed md:block lg:col-span-2 border-border" />
         {features.map((feature, itemIndex) => {
           const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
           const cta = feature.cta
