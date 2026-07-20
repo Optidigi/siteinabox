@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@siteinabox/ui/components/button"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { Form } from "@siteinabox/ui/components/form"
 import { Input } from "@siteinabox/ui/components/input"
 import { Switch } from "@siteinabox/ui/components/switch"
@@ -44,6 +45,8 @@ import { EditorErrorBoundary } from "@/components/editor/EditorErrorBoundary"
 import { EditorThemeToolbar } from "@/components/editor/theme/editor-theme-toolbar"
 import { MobileSavePill } from "@/components/save-ui/mobile-save-pill"
 import { useStatusFeedback } from "@/components/status-feedback"
+import { useSidebar } from "@siteinabox/ui/components/sidebar"
+import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { useTranslations } from "next-intl"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
 import type { NavPage } from "@/lib/projection/resolveNav"
@@ -555,6 +558,8 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     onDraftRestoreFailed: () => status.error(t("draftRestoreFailed")),
     onDraftRestored: () => status.success(t("draftRestored")),
     onDraftDiscarded: () => status.success(t("draftDiscarded")),
+    // Save failure surfaces via SaveStatusBar + submitError banner (avoid a
+    // third bottom floater colliding with StatusFeedback).
     onSaveFailed: () => {},
     onSaveSuccess: async ({ savedValues, createdPage }) => {
       if (!initial && createdPage != null) {
@@ -615,6 +620,17 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     canManageNavResolved,
     canEditSettingsResolved,
   } = core
+
+  const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar()
+  const saveStatusBarOffset = sidebarIsMobile
+    ? "0px"
+    : sidebarState === "expanded"
+      ? "var(--sidebar-width)"
+      : "var(--sidebar-width-icon)"
+  const pageEditorSaveStatusBarPosition = useCspStyleRule(
+    "page-editor-save-status-bar-position",
+    `left:calc(${saveStatusBarOffset} + 1.5rem);right:1.5rem;bottom:calc(env(safe-area-inset-bottom, 0px) + 4.75rem);`,
+  )
 
   const navigateFromChrome = useCallback(
     (href: string) => guard.guardedNavigate(() => router.push(href)),
@@ -1059,12 +1075,23 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         )}
       </form>
       {isDesktop && !readOnly && (
-        <SaveStatusBar
-          status={saveStatus}
-          errorCount={errorCount}
-          onRetry={retry}
-          onJumpToError={jumpToError}
-        />
+        <div
+          className={cn(
+            "pointer-events-none fixed z-40 grid grid-cols-[minmax(0,1fr)_360px] gap-3",
+            pageEditorSaveStatusBarPosition.className,
+          )}
+        >
+          {pageEditorSaveStatusBarPosition.styleElement}
+          <div className="pointer-events-auto flex justify-center">
+            <SaveStatusBar
+              layout="canvas"
+              status={saveStatus}
+              errorCount={errorCount}
+              onRetry={retry}
+              onJumpToError={jumpToError}
+            />
+          </div>
+        </div>
       )}
         <UnsavedChangesDialog
           open={guard.pending !== null}

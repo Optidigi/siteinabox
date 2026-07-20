@@ -25,7 +25,7 @@ import type { SiteChromeDraft } from "@/lib/siteChromeDraft"
 import type { ThemeTokens } from "@/lib/theme/schema"
 
 const hero = (id: string): EditorBlock =>
-  ({ id, blockType: "hero", headline: { type: "root", version: 1, children: [] } }) as EditorBlock
+  ({ id, blockType: "hero", headline: { t: "root", variant: "block", children: [] } }) as EditorBlock
 
 const emptyChromeDraft = (): SiteChromeDraft => ({
   header: { logo: null },

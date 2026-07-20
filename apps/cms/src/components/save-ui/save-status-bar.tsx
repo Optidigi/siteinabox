@@ -41,6 +41,8 @@ type Props = {
   errorCount?: number
   onRetry?: () => void
   onJumpToError?: () => void
+  /** viewport: fixed centre of main content (default). canvas: inline pill for parent grid centering. */
+  layout?: "viewport" | "canvas"
 }
 
 export function SaveStatusBar({
@@ -48,6 +50,7 @@ export function SaveStatusBar({
   errorCount = 0,
   onRetry,
   onJumpToError,
+  layout = "viewport",
 }: Props) {
   const t = useTranslations("common")
   const { state, isMobile } = useSidebar()
@@ -77,10 +80,16 @@ export function SaveStatusBar({
     : state === "expanded"
       ? "var(--sidebar-width)"
       : "var(--sidebar-width-icon)"
-  const positionClasses = "hidden md:flex fixed z-40 -translate-x-1/2"
+  const isCanvasLayout = layout === "canvas"
+  const positionClasses = cn(
+    "hidden md:flex",
+    !isCanvasLayout && "fixed z-40 -translate-x-1/2",
+  )
   const position = useCspStyleRule(
-    "save-status-bar-position",
-    `bottom:calc(env(safe-area-inset-bottom, 0px) + 4.75rem);left:calc(50% + ${sidebarOffset} / 2);`,
+    isCanvasLayout ? "save-status-bar-canvas" : "save-status-bar-position",
+    isCanvasLayout
+      ? null
+      : `bottom:calc(env(safe-area-inset-bottom, 0px) + 4.75rem);left:calc(50% + ${sidebarOffset} / 2);`,
   )
 
   // Hidden states: idle and dirty render nothing — PublishControls'
@@ -166,8 +175,8 @@ export function SaveStatusBar({
   )
 
   return (
-    <div className={`${position.className} ${positionClasses}`}>
-      {position.styleElement}
+    <div className={cn(position.className, positionClasses)}>
+      {!isCanvasLayout ? position.styleElement : null}
       {retryAction ? (
         <div className={cn("inline-flex items-center gap-2", fadeClass)}>
           {inner}

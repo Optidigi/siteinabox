@@ -17,8 +17,9 @@ describe("page editor explicit-save contract", () => {
     expect(source).toContain("deriveNavDirty(inHeader, inFooter, savedInHeader, savedInFooter")
     expect(source).toContain("siteDesign.navigation = navSnapshot")
     expect(source).toContain('fetch("/api/page-editor-save"')
-    expect(source).toContain("expectedUpdatedAt: initial.updatedAt")
+    expect(source).toContain("expectedUpdatedAt: baselineUpdatedAtRef.current")
     expect(source).toContain("publish: true")
+    expect(source).toContain("baselineUpdatedAtRef.current = result.page.updatedAt")
 
     const toggleNavStart = source.indexOf("const toggleNav = useCallback(")
     const toggleNavEnd = source.indexOf("const setSavedNav = useCallback", toggleNavStart)

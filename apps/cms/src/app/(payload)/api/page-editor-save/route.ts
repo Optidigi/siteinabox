@@ -130,7 +130,11 @@ export async function POST(request: NextRequest) {
 
     const response: PageEditorSaveSuccessResponse = {
       ok: true,
-      page: { id: savedPage.id, slug: savedPage.slug },
+      page: {
+        id: savedPage.id,
+        slug: savedPage.slug,
+        ...(savedPage.updatedAt ? { updatedAt: savedPage.updatedAt } : {}),
+      },
       ...(snapshot ? { snapshot } : {}),
       ...(savedTheme ? { theme: savedTheme } : {}),
     }

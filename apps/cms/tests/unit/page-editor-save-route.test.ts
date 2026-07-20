@@ -65,14 +65,24 @@ describe("page editor transactional save route", () => {
     mocks.payload.db.beginTransaction.mockResolvedValue("tx-1")
     mocks.payload.db.commitTransaction.mockResolvedValue(undefined)
     mocks.payload.db.rollbackTransaction.mockResolvedValue(undefined)
-    mocks.payload.findByID.mockResolvedValue({
-      id: 24,
-      tenant: 7,
-      updatedAt: "2026-07-19T10:00:00.000Z",
+    let pagesFindByIdCalls = 0
+    mocks.payload.findByID.mockImplementation(async (args: { collection?: string; id?: number }) => {
+      if (args?.collection === "pages") {
+        pagesFindByIdCalls += 1
+        return {
+          id: 24,
+          tenant: 7,
+          updatedAt:
+            pagesFindByIdCalls === 1
+              ? "2026-07-19T10:00:00.000Z"
+              : "2026-07-19T10:05:00.000Z",
+        }
+      }
+      return { id: args.id }
     })
     mocks.payload.update.mockImplementation(async (args: { collection: string; data?: Record<string, unknown>; id?: number }) =>
       args.collection === "pages"
-        ? { ...args.data, id: 24, tenant: { id: 7 }, slug: "index" }
+        ? { ...args.data, id: 24, tenant: { id: 7 }, slug: "index", updatedAt: "2026-07-19T10:05:00.000Z" }
         : { id: args.id, ...args.data },
     )
     mocks.payload.find.mockResolvedValue({ docs: [{ id: 5, tenant: 7, navHeader: [], navFooter: [] }] })
@@ -87,7 +97,11 @@ describe("page editor transactional save route", () => {
     const response = await POST(request(body))
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ ok: true, page: { id: 24 }, snapshot: { id: 134, status: "active" } })
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      page: { id: 24, updatedAt: "2026-07-19T10:05:00.000Z" },
+      snapshot: { id: 134, status: "active" },
+    })
     expect(mocks.payload.db.commitTransaction).toHaveBeenCalledWith("tx-1")
     expect(mocks.payload.db.rollbackTransaction).not.toHaveBeenCalled()
     const transactionRequests = mocks.payload.update.mock.calls.map(([args]) => args.req?.transactionID)
@@ -139,10 +153,15 @@ describe("page editor transactional save route", () => {
   })
 
   it("returns 409 without starting a transaction when expectedUpdatedAt is stale", async () => {
-    mocks.payload.findByID.mockResolvedValueOnce({
-      id: 24,
-      tenant: 7,
-      updatedAt: "2026-07-19T11:00:00.000Z",
+    mocks.payload.findByID.mockImplementation(async (args: { collection?: string }) => {
+      if (args?.collection === "pages") {
+        return {
+          id: 24,
+          tenant: 7,
+          updatedAt: "2026-07-19T11:00:00.000Z",
+        }
+      }
+      return { id: 24 }
     })
 
     const response = await POST(request(body))

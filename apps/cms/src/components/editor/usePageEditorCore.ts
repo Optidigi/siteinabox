@@ -95,7 +95,7 @@ export function useIsDesktopEditor(): boolean | null {
 }
 
 export type PageEditorSaveResult = {
-  page: { id: string | number; slug?: string | null } | null
+  page: { id: string | number; slug?: string | null; updatedAt?: string } | null
   theme?: ThemeTokens
 }
 
@@ -585,7 +585,9 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       page: {
         id: initial?.id,
         data: pageData,
-        ...(initial?.updatedAt ? { expectedUpdatedAt: initial.updatedAt } : {}),
+        ...(baselineUpdatedAtRef.current
+          ? { expectedUpdatedAt: baselineUpdatedAtRef.current }
+          : {}),
       },
       ...(Object.keys(siteDesign).length > 0 ? { siteDesign } : {}),
     }
@@ -597,11 +599,17 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       })
       const result = await response.json().catch(() => null)
       if (!response.ok) {
+        if (response.status === 409 && typeof result?.message === "string") {
+          throw new Error(result.message)
+        }
         const message = typeof result?.message === "string" ? result.message : `HTTP ${response.status}`
         const stage = typeof result?.stage === "string" ? result.stage : "save"
         throw new Error(`${stage}: ${message}`)
       }
       createdPage = result?.page?.id == null ? null : result.page
+      if (typeof result?.page?.updatedAt === "string") {
+        baselineUpdatedAtRef.current = result.page.updatedAt
+      }
       if (themeWasDirty && normalizedThemeSnapshot) {
         const savedTheme = (result?.theme ?? normalizedThemeSnapshot) as ThemeTokens
         setThemeState(savedTheme)

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   asCtaValue,
   asIconValue,
+  asRtRootValue,
   resolveMediaDisplayUrl,
   updateCtaHref,
   updateCtaLabel,
@@ -19,6 +20,19 @@ describe("blockFieldValues", () => {
     expect(asIconValue("star")).toBe("star")
     expect(asIconValue("  ")).toBeNull()
     expect(asIconValue(42)).toBeNull()
+  })
+
+  it("accepts canonical wire RtRoot values", () => {
+    const blockRoot = { t: "root", variant: "block" as const, children: [] }
+    const inlineRoot = { t: "root", variant: "inline" as const, children: [] }
+    expect(asRtRootValue(blockRoot)).toBe(blockRoot)
+    expect(asRtRootValue(inlineRoot)).toBe(inlineRoot)
+  })
+
+  it("rejects Lexical-shaped root JSON", () => {
+    expect(asRtRootValue({ type: "root", version: 1, children: [] })).toBeUndefined()
+    expect(asRtRootValue(null)).toBeUndefined()
+    expect(asRtRootValue({ t: "root", variant: "block" })).toBeUndefined()
   })
 
   it("resolves media display URLs", () => {

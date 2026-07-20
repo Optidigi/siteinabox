@@ -23,7 +23,7 @@ import { asMockDoc } from "../_helpers/cast"
 const heroBlock = (id: string): EditorBlock => ({
   id,
   blockType: "hero",
-  headline: { type: "root", version: 1, children: [] },
+  headline: { t: "root", variant: "block", children: [] },
 } as EditorBlock)
 
 describe("itemWireId / ensureItemId", () => {
@@ -46,7 +46,7 @@ describe("ensureBlockItemIds", () => {
   it("assigns ids to faq items and pricing plan features", () => {
     const block: Record<string, unknown> = {
       blockType: "faq",
-      items: [{ question: { type: "root", version: 1, children: [] }, answer: { type: "root", version: 1, children: [] } }],
+      items: [{ question: { t: "root", variant: "block", children: [] }, answer: { t: "root", variant: "block", children: [] } }],
     }
     ensureBlockItemIds(block)
     const items = block.items as Array<Record<string, unknown>>
@@ -55,8 +55,8 @@ describe("ensureBlockItemIds", () => {
     const pricing: Record<string, unknown> = {
       blockType: "pricing",
       plans: [{
-        title: { type: "root", version: 1, children: [] },
-        features: [{ label: { type: "root", version: 1, children: [] } }],
+        title: { t: "root", variant: "block", children: [] },
+        features: [{ label: { t: "root", variant: "block", children: [] } }],
       }],
     }
     ensureBlockItemIds(pricing)
@@ -85,7 +85,7 @@ describe("cloneEditorBlock", () => {
       blockType: "featureList",
       features: [{
         id: "feature-a",
-        title: { type: "root", version: 1, children: [{ type: "paragraph", version: 1, children: [] }] },
+        title: { t: "root", variant: "block", children: [{ t: "paragraph", children: [] }] },
       }],
     } as EditorBlock
 
@@ -108,10 +108,10 @@ describe("pageEditorCommands", () => {
   it("reorders, removes, inserts, and appends blocks", () => {
     expect(reorderEditorBlocks(blocks, 0, 2).map((b) => blockWireId(asMockDoc(b)))).toEqual(["b", "c", "a"])
     expect(removeEditorBlock(blocks, 1).map((b) => blockWireId(asMockDoc(b)))).toEqual(["a", "c"])
-    const inserted = insertEditorBlock(blocks, 1, { blockType: "hero", headline: { type: "root", version: 1, children: [] } })
+    const inserted = insertEditorBlock(blocks, 1, { blockType: "hero", headline: { t: "root", variant: "block", children: [] } })
     expect(inserted).toHaveLength(4)
     expect(blockWireId(inserted[1] as Record<string, unknown>)).toBeTruthy()
-    const appended = appendEditorBlock(blocks, { blockType: "cta", headline: { type: "root", version: 1, children: [] } })
+    const appended = appendEditorBlock(blocks, { blockType: "cta", headline: { t: "root", variant: "block", children: [] } })
     expect(appended).toHaveLength(4)
   })
 

@@ -47,7 +47,7 @@ export type PageEditorSiteDesignSection = z.infer<typeof siteDesignSectionSchema
 
 export type PageEditorSaveSuccessResponse = {
   ok: true
-  page: { id: string | number; slug?: string | null }
+  page: { id: string | number; slug?: string | null; updatedAt?: string }
   snapshot?: { id: string | number; version: number; status: string }
   theme?: z.infer<typeof themeSchema>
 }

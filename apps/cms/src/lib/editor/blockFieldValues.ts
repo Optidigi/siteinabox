@@ -1,4 +1,5 @@
 import type { LinkRef, MediaRef } from "@siteinabox/contracts"
+import { isRtRoot } from "@siteinabox/contracts/rich-text"
 import type { RtRoot } from "@/lib/richText/RtNode"
 
 /** CTA / link-group value edited in block inspectors. */
@@ -17,9 +18,6 @@ export type EditorArrayItem = Record<string, unknown> & {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value)
-
-const isRtRoot = (value: unknown): value is RtRoot =>
-  isRecord(value) && value.type === "root" && typeof value.version === "number"
 
 export const asRtRootValue = (value: unknown): RtRoot | undefined =>
   isRtRoot(value) ? value : undefined
