@@ -1,12 +1,16 @@
 /**
  * Structural class extraction and normalization for shadcnui-blocks fidelity checks.
  *
- * SIAB adaptation deltas intentionally allowed before compare:
+ * Owned typed variants must preserve upstream layout/structure/classes. SIAB
+ * adaptation deltas intentionally allowed before compare (see also
+ * docs/contracts/canvas-parity.md):
  * - Semantic border tokens (`border-border`, `dark:border-border/*`) when a structural
  *   border utility (`border`, `border-b`, `border-t`, `border-e`, `border-s`, `border-*`)
  *   remains in the adapted class set.
  * - Theme/remap color and typography tokens listed in DECORATIVE_IGNORE (upstream may pin
  *   literal palette classes; SIAB maps them through semantic tokens).
+ * - CMS/editSlots, rich-text renderers, media wiring, and shared Button/Badge primitives
+ *   (not class strings — structure around them must still match).
  * - Provider/runtime-only utilities prefixed in SIAB_ONLY_PREFIXES when needed for green CI.
  */
 

@@ -876,9 +876,23 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   )
   const frameSettings = rendererSettingsState as ContractSiteSettings | null
   const frameTheme = useMemo(() => normalizeThemeForSave(themeState), [themeState])
-  const frameEditorLayout = isDesktop ? "desktop" : "mobile"
+  const frameEditorLayout = isDesktop === false ? "mobile" : "desktop"
   const canRenderEditorFrame = frameSettings != null
   const framePageId = initial?.id ?? "new"
+
+  const pageEditorBreakpointSkeleton = (
+    <div className="w-full bg-background p-4" aria-live="polite" data-siab-editor-breakpoint-skeleton>
+      <div className="space-y-4 animate-pulse" aria-label="Loading editor layout">
+        <div className="h-16 rounded-lg bg-muted" />
+        <div className="h-72 rounded-lg bg-muted" />
+        <div className="grid grid-cols-3 gap-4">
+          <div className="h-40 rounded-lg bg-muted" />
+          <div className="h-40 rounded-lg bg-muted" />
+          <div className="h-40 rounded-lg bg-muted" />
+        </div>
+      </div>
+    </div>
+  )
 
   const pageEditorFrame = canRenderEditorFrame ? (
     <PageEditorFrameHost
@@ -952,7 +966,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             </div>
           )}
 
-          {!isDesktop && !readOnly && (
+          {isDesktop === null && !readOnly ? pageEditorBreakpointSkeleton : null}
+
+          {isDesktop === false && !readOnly && (
             <MobileMediaSheetProvider>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
                 <MobileFrameEditor
@@ -971,7 +987,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           )}
 
           {/* Desktop/read-only: exact renderer beside the one inspector. */}
-          {(isDesktop || readOnly) && (
+          {(isDesktop || readOnly) && isDesktop !== null && (
             <>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
               <div className="flex w-full min-w-0 items-start gap-3 pt-2">
@@ -1031,7 +1047,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           icon is always visible in mobile views — visual state (amber/
           spinner/error/muted) carries the dirty signal across all views.
         */}
-        {!isDesktop && !readOnly && (
+        {isDesktop === false && !readOnly && (
           <div className="[&_[data-mobile-save-pill]]:!inline-flex">
             <MobileSavePill
               status={saveStatus}

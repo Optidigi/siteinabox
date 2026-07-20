@@ -50,6 +50,7 @@ export function PageEditorFrameHost({
   const [frameError, setFrameError] = React.useState<string | null>(null)
   const [frameHeight, setFrameHeight] = React.useState<number | null>(null)
   const [retryKey, setRetryKey] = React.useState(0)
+  const readyRef = React.useRef(false)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   const onChromeSelectRef = React.useRef(onChromeSelect)
   onSelectionChangedRef.current = onSelectionChanged
@@ -73,6 +74,7 @@ export function PageEditorFrameHost({
   }, [])
 
   React.useEffect(() => {
+    readyRef.current = false
     setReady(false)
     setFailed(false)
     setFrameError(null)
@@ -98,7 +100,13 @@ export function PageEditorFrameHost({
       const message = parsed.message
 
       if (message.type === "renderer.ready") {
-        setReady(true)
+        // Resync host revision on the false→true ready transition so a remounted
+        // iframe is not stuck rejecting theme/page snapshots.
+        if (!readyRef.current) {
+          revisionRef.current = 0
+          readyRef.current = true
+          setReady(true)
+        }
         setFailed(false)
         setFrameError(null)
         return

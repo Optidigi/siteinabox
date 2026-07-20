@@ -82,8 +82,8 @@ const settingsRecordId = (settings: unknown): string | number | null => {
   return typeof id === "string" || typeof id === "number" ? id : null
 }
 
-export function useIsDesktopEditor() {
-  const [isDesktop, setIsDesktop] = useState(false)
+export function useIsDesktopEditor(): boolean | null {
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
   useEffect(() => {
     const mq = window.matchMedia(`(min-width: ${EDITOR_DESKTOP_BREAKPOINT}px)`)
     setIsDesktop(mq.matches)
@@ -127,7 +127,7 @@ export type UsePageEditorCoreOptions = {
 export type PageEditorCoreApi = {
   form: ReturnType<typeof useForm<PageEditorFormValues>>
   schema: ReturnType<typeof createPageEditorSchema>
-  isDesktop: boolean
+  isDesktop: boolean | null
   selected: ElementPath | null
   selectedChrome: SiteChromeSelection | null
   selectElement: Dispatch<SetStateAction<ElementPath | null>>
@@ -774,7 +774,8 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     [framePageId, selected, watchedBlocks],
   )
   const frameMobileMode = useMemo(() => {
-    if (isDesktop || mobileFocusedSectionIndex == null) return undefined
+    // Unresolved breakpoint (null) and desktop must not prepare a focused mobile iframe.
+    if (isDesktop !== false || mobileFocusedSectionIndex == null) return undefined
     const focusedBlock = watchedBlocks[mobileFocusedSectionIndex]
     const focusedBlockId =
       focusedBlock && typeof focusedBlock === "object"

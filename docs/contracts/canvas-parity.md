@@ -5,7 +5,26 @@ All surfaces use `packages/site-renderer` and validated explicit
 preview and editor use the generated active-variant client entrypoint. They
 differ only in module loading, not markup, adapters, chrome, theme, or media.
 
-Release gates:
+## Owned literal fidelity
+
+Owned typed variants under
+`packages/site-renderer/src/providers/shadcnui-blocks/variants/` must keep
+upstream **layout, structure, and structural classes** identical to the pinned
+`akash3444/shadcn-ui-blocks` commit recorded in `inventory.json`.
+
+Allowed deltas only:
+
+- theme tokens (`border-border`, semantic color/typography utilities,
+  `--provider-accent-*` and related CSS variables)
+- CMS / editSlots / rich-text field renderers and media wiring
+- shared UI primitives (`Button`, `Badge`, etc.) substituted for equivalent
+  upstream components without changing surrounding layout classes
+
+Decorative palette remaps and the structural-class normalization rules live in
+`structural-classes.mjs`. Release gate:
+`structural-fidelity.test.mjs` (including the Provider Smoke variant set).
+
+## Release gates
 
 - 148 public variants and eight not-found templates preserve upstream structural
   layout classes (committed fingerprints in

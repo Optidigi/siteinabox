@@ -311,6 +311,7 @@ function PreviewRendererFrame({
   const frameRef = React.useRef<HTMLIFrameElement | null>(null)
   const [ready, setReady] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
+  const readyRef = React.useRef(false)
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
     const target = frameRef.current?.contentWindow
@@ -319,6 +320,7 @@ function PreviewRendererFrame({
   }, [])
 
   React.useEffect(() => {
+    readyRef.current = false
     setReady(false)
     setFrameError(null)
     revisionRef.current = 0
@@ -330,7 +332,11 @@ function PreviewRendererFrame({
       if (event.source !== frameRef.current?.contentWindow) return
       const parsed = validateIframeEditorMessage(event.data)
       if (parsed.ok && parsed.message.type === "renderer.ready") {
-        setReady(true)
+        if (!readyRef.current) {
+          revisionRef.current = 0
+          readyRef.current = true
+          setReady(true)
+        }
         setFrameError(null)
         return
       }

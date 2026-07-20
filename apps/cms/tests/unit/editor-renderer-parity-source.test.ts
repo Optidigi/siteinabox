@@ -1,7 +1,10 @@
 import { existsSync, readFileSync } from "node:fs"
+import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 const read = (path: string) => readFileSync(path, "utf8")
+const repoRoot = path.resolve(process.cwd(), process.cwd().endsWith(`${path.sep}apps${path.sep}cms`) ? "../.." : ".")
+const readRepo = (relativePath: string) => readFileSync(path.join(repoRoot, relativePath), "utf8")
 
 describe("page editor renderer parity", () => {
   it("renders the exact shared page renderer without an alternate canvas tree", () => {
@@ -42,6 +45,29 @@ describe("page editor renderer parity", () => {
     expect(runtime).toContain("await waitForAnimationFrame()\n      await waitForAnimationFrame()")
     expect(host).toContain('ready ? "opacity-100" : "pointer-events-none opacity-0"')
     expect(host).toContain("animate-pulse")
+  })
+
+  it("waits for breakpoint resolution before mounting mobile or desktop editor chrome", () => {
+    const core = read("src/components/editor/usePageEditorCore.ts")
+    const form = read("src/components/forms/PageForm.tsx")
+    expect(core).toContain("useState<boolean | null>(null)")
+    expect(core).toContain("isDesktop: boolean | null")
+    expect(core).toContain("if (isDesktop !== false || mobileFocusedSectionIndex == null) return undefined")
+    expect(form).toContain("data-siab-editor-breakpoint-skeleton")
+    expect(form).toContain("isDesktop === null && !readOnly")
+    expect(form).toContain("isDesktop === false && !readOnly")
+    expect(form).toContain("(isDesktop || readOnly) && isDesktop !== null")
+  })
+
+  it("resyncs iframe snapshot revision on ready and rejects only stale revisions", () => {
+    const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    const preview = read("src/components/preview/PreviewCustomizer.tsx")
+    const contract = readRepo("packages/contracts/src/iframe-editor.ts")
+    expect(host).toContain("if (!readyRef.current)")
+    expect(host).toContain("revisionRef.current = 0")
+    expect(preview).toContain("if (!readyRef.current)")
+    expect(preview).toContain("revisionRef.current = 0")
+    expect(contract).toContain("parsed.data.expectedRevision < options.currentRevision")
   })
 
   it("uses the CMS document as the sole full-page scroll owner", () => {

@@ -216,16 +216,18 @@ export const validateIframeEditorMessage = (
     }
   }
 
+  // Accept equal or ahead so a remounted iframe (revision 0) can resync from a
+  // host that already advanced. Reject only truly stale (behind) snapshots.
   if (
     options.currentRevision != null
     && parsed.data.type === "render.snapshot"
-    && parsed.data.expectedRevision !== options.currentRevision
+    && parsed.data.expectedRevision < options.currentRevision
   ) {
     return {
       ok: false,
       issues: [{
         path: ["expectedRevision"],
-        message: `Stale revision ${parsed.data.expectedRevision}; expected ${options.currentRevision}`,
+        message: `Stale revision ${parsed.data.expectedRevision}; expected >= ${options.currentRevision}`,
       }],
     }
   }

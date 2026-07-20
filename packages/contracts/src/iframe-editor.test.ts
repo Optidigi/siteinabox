@@ -132,7 +132,7 @@ describe("iframe renderer protocol", () => {
     expect(result.ok).toBe(false)
     expect(result.ok ? [] : result.issues).toContainEqual({
       path: ["expectedRevision"],
-      message: "Stale revision 4; expected 5",
+      message: "Stale revision 4; expected >= 5",
     })
   })
 
@@ -141,6 +141,18 @@ describe("iframe renderer protocol", () => {
       ...validSamplesByType["render.snapshot"],
       expectedRevision: 5,
     }, { currentRevision: 5 })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.message.type).toBe("render.snapshot")
+    }
+  })
+
+  it("accepts render snapshots ahead of the frame revision so remounts can resync", () => {
+    const result = validateIframeEditorMessage({
+      ...validSamplesByType["render.snapshot"],
+      expectedRevision: 7,
+    }, { currentRevision: 0 })
 
     expect(result.ok).toBe(true)
     if (result.ok) {
