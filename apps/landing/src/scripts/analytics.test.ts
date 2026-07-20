@@ -18,7 +18,7 @@ describe("landing analytics contract", () => {
     expect(source).toContain('analytics_surface: "site"')
     expect(source).toContain('site_kind: "platform"')
     expect(source).toContain("delete properties.$elements")
-    expect(source).toContain('posthog.capture("site_conversion_completed"')
+    expect(source).toContain('posthog?.capture("site_conversion_completed"')
   })
 
   it("loads GA4 only through accepted analytics consent", () => {
@@ -29,5 +29,8 @@ describe("landing analytics contract", () => {
     expect(source).toContain('allow_google_signals: false')
     expect(source).toContain('allow_ad_personalization_signals: false')
     expect(source).toContain('disableGoogleAnalytics()')
+    expect(source).toContain("dataLayer!.push(arguments)")
+    expect(source).not.toContain("dataLayer?.push(args)")
+    expect(source).not.toContain("((...args: unknown[]) => analyticsWindow.dataLayer?.push(args))")
   })
 })

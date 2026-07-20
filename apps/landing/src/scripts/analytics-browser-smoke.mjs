@@ -241,10 +241,15 @@ try {
     )
     await waitFor(() => googleAnalyticsRequests.length === 2, "stored consent did not reload gtag.js")
     const googleCommands = await acceptedPage.evaluate(() => (window.dataLayer ?? []).map((entry) => ({
+      shape: Object.prototype.toString.call(entry),
       command: entry[0],
       target: entry[1],
       options: entry[2],
     })))
+    assert.ok(
+      googleCommands.every(({ shape }) => shape === "[object Arguments]"),
+      `gtag queue rows must be Arguments objects, not Arrays: ${JSON.stringify(googleCommands)}`,
+    )
     assert.ok(googleCommands.some(({ command, target, options }) =>
       command === "consent"
       && target === "default"

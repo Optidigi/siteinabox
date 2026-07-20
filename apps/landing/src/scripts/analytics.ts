@@ -25,7 +25,7 @@ let recentAction: Record<string, unknown> | null = null
 let googleAnalyticsStarted = false
 
 type AnalyticsWindow = Window & {
-  dataLayer?: unknown[][]
+  dataLayer?: Array<IArguments | Record<string, unknown>>
   gtag?: (...args: unknown[]) => void
 }
 
@@ -143,7 +143,13 @@ const initializeGoogleAnalytics = () => {
   googleAnalyticsStarted = true
 
   analyticsWindow.dataLayer = analyticsWindow.dataLayer ?? []
-  analyticsWindow.gtag = analyticsWindow.gtag ?? ((...args: unknown[]) => analyticsWindow.dataLayer?.push(args))
+  // Official gtag stub pushes the Arguments object, not a rest Array.
+  // gtag.js / Tag Assistant only treat Arguments-shaped queue rows as commands.
+  function gtag(this: void) {
+    // eslint-disable-next-line prefer-rest-params -- required by Google's gtag.js contract
+    analyticsWindow.dataLayer!.push(arguments)
+  }
+  analyticsWindow.gtag = analyticsWindow.gtag ?? gtag
   analyticsWindow.gtag("consent", "default", {
     analytics_storage: "granted",
     ad_storage: "denied",
