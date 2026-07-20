@@ -21,7 +21,6 @@ import { BorderBeam } from "./border-beam"
 const BEAM_DURATION = 8
 const BEAM_SIZE = 100
 const MAX_LOGOS = 8
-const LOGO_CLASS = "h-14"
 const FALLBACK_LOGOS = [Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08] as const
 
 const WAVE_SPAN_STYLE: React.CSSProperties = {
@@ -119,11 +118,12 @@ export function LogoCloud15({
           <div className="flex min-w-0 items-center justify-center gap-x-14 gap-y-10 p-10 pt-12 *:h-14">
             <Marquee className="mask-x-from-75% [--duration:20s] [&_svg]:mr-10" pauseOnHover>
               {literalPreview
-                ? FALLBACK_LOGOS.map((Logo, itemIndex) => <Logo className={LOGO_CLASS} key={itemIndex} />)
+                // Match upstream bare <LogoN /> — height comes from wrapper *:h-14 + Marquee flex stretch.
+                ? FALLBACK_LOGOS.map((Logo, itemIndex) => <Logo key={itemIndex} />)
                 : displayLogos.map((logo, itemIndex) => (
                     <React.Fragment key={itemIndex}>
                       {renderLogoCloudLogo(logo, itemIndex, blockIndex, editSlots, mediaResolver, {
-                        className: LOGO_CLASS,
+                        className: "h-14",
                       })}
                     </React.Fragment>
                   ))}

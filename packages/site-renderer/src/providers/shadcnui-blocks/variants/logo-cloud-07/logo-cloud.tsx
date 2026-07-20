@@ -16,7 +16,6 @@ import type { TypedVariantBaseProps } from "../../typed/props"
 import { Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08 } from "../../runtime/logos"
 
 const MAX_LOGOS = 8
-const LOGO_CLASS = "h-10"
 const FALLBACK_LOGOS = [Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08] as const
 
 const renderMarqueeLogos = (
@@ -38,13 +37,14 @@ const renderMarqueeLogos = (
       reverse={reverse}
     >
       {literalPreview
-        ? orderedFallback.map((Logo, itemIndex) => <Logo className={LOGO_CLASS} key={itemIndex} />)
+        // Match upstream bare <LogoN /> — height comes from Marquee *:h-10 flex stretch.
+        ? orderedFallback.map((Logo, itemIndex) => <Logo key={itemIndex} />)
         : ordered.map((logo, itemIndex) => {
             const sourceIndex = reverse ? displayLogos.length - 1 - itemIndex : itemIndex
             return (
               <React.Fragment key={itemIndex}>
                 {renderLogoCloudLogo(logo, sourceIndex, blockIndex, editSlots, mediaResolver, {
-                  className: LOGO_CLASS,
+                  className: "h-10",
                 })}
               </React.Fragment>
             )
