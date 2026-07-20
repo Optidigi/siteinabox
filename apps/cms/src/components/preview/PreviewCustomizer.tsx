@@ -490,9 +490,10 @@ export function PreviewCommandBar({
       data-siab-cms-sticky-chrome
       className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-0 md:bottom-6 md:flex md:justify-center md:px-6"
     >
-      {/* Opaque bar: glass (/90 + backdrop-blur) + ShineBorder over the iframe
-          composited into a translucent slab; keep Magic border on a solid surface. */}
-      <div className="pointer-events-auto relative grid w-full grid-cols-[auto_1fr] items-center gap-1 overflow-hidden border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background md:p-3 md:shadow-2xl">
+      {/* Opaque bar + ShineBorder. No md:shadow-*: design-system shadow-2xl is a
+          ~60% opacity halo that paints outside the rounded tray (overflow does not
+          clip box-shadow) and reads as a second translucent box around the bar. */}
+      <div className="pointer-events-auto relative grid w-full grid-cols-[auto_1fr] items-center gap-1 overflow-hidden border-t bg-background px-3 py-2 shadow-lg md:inline-flex md:w-auto md:grid-cols-none md:items-center md:gap-3 md:rounded-lg md:border-0 md:bg-background md:p-3 md:shadow-none">
         <ShineBorder
           borderWidth={1}
           duration={14}
