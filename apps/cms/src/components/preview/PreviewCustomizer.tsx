@@ -377,6 +377,8 @@ function PreviewRendererFrame({
     return () => window.removeEventListener("blur", closeWhenFrameTakesFocus)
   }, [onFrameInteraction])
 
+  const themeKey = React.useMemo(() => JSON.stringify(theme ?? null), [theme])
+
   React.useEffect(() => {
     if (!ready) return
     const expectedRevision = revisionRef.current
@@ -392,7 +394,7 @@ function PreviewRendererFrame({
       theme,
     })
     revisionRef.current = expectedRevision + 1
-  }, [page, pageId, postToFrame, ready, revisionRef, settings, theme])
+  }, [page, pageId, postToFrame, ready, revisionRef, settings, theme, themeKey])
 
   const visible = ready
 

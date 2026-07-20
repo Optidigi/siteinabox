@@ -91,15 +91,26 @@ export const MobileFloatingPill: React.FC<MobileFloatingPillProps> = ({
     variant === "success" && "border-transparent bg-success text-success-foreground shadow-success/25",
     contrastBorder && "border-foreground",
   )
-  const hiddenMotionClass = position.endsWith("right") ? "translate-x-3" : "-translate-x-3"
+  const hiddenMotionClass = position.endsWith("right")
+    // Slide under the sibling top-right save pill (offset 3.75rem) instead of
+    // shrinking in place — matches the mobile editor trash/save stacking.
+    ? "translate-x-[3.75rem]"
+    : "-translate-x-3"
   const isInteractive = !isLoading && !disabled && visible
   const useLink = Boolean(href && isInteractive)
   const sharedClassName = cn(
     cspPosition.className,
-    "md:hidden fixed z-50 inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
+    "md:hidden fixed inline-flex items-center justify-center rounded-full transition-all duration-200 ease-out",
     sizeClassName,
-    visible ? "pointer-events-auto opacity-100 scale-100 translate-x-0" : cn("pointer-events-none opacity-0 scale-75", hiddenMotionClass),
-    !isInteractive && "pointer-events-none opacity-50",
+    // Keep full opacity when merely disabled (e.g. clean save pill). Only the
+    // visibility flag fades/slides the control away.
+    visible
+      ? "pointer-events-auto opacity-100 scale-100 translate-x-0"
+      : cn("pointer-events-none opacity-0 scale-100", hiddenMotionClass),
+    !isInteractive && "pointer-events-none",
+    disabled && visible && "cursor-default",
+    // Trash (and other under-save siblings) stay below the save pill while sliding.
+    dataAttrs?.["data-mobile-trash-pill"] != null ? "z-40" : "z-50",
     positionClasses,
     variantClasses,
   )

@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
+import { ThemeTokenSpecSchema } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
@@ -96,12 +97,41 @@ export function EditorFrameRuntime({
     return () => themeCleanupRef.current?.()
   }, [patchTheme, theme])
 
+  // Re-apply after the canvas mounts (prepare can finish after the first theme patch).
+  React.useLayoutEffect(() => {
+    if (!prepared || prepared.key !== variantKey) return
+    themeCleanupRef.current?.()
+    themeCleanupRef.current = applyThemeAttributes(document, frameTheme)
+  }, [frameTheme, prepared, variantKey])
+
   React.useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
       if (event.source !== window.parent) return
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
-      if (!parsed.ok) return
+      if (!parsed.ok) {
+        // Keep the token bridge live even when the full snapshot contract fails
+        // (page/settings drift, rare revision races). Theme is scheme-id data only.
+        const raw = event.data
+        if (
+          raw
+          && typeof raw === "object"
+          && (raw as { protocol?: unknown }).protocol === IFRAME_EDITOR_PROTOCOL_NAME
+          && (raw as { schemaVersion?: unknown }).schemaVersion === IFRAME_EDITOR_PROTOCOL_VERSION
+          && (raw as { type?: unknown }).type === "render.snapshot"
+        ) {
+          const themeParsed = ThemeTokenSpecSchema.nullable().safeParse((raw as { theme?: unknown }).theme)
+          if (themeParsed.success) {
+            patchTheme(themeParsed.data)
+            const expected = (raw as { expectedRevision?: unknown }).expectedRevision
+            if (typeof expected === "number" && Number.isFinite(expected) && expected >= revisionRef.current) {
+              revisionRef.current = expected + 1
+            }
+            receivedParentCommandRef.current = true
+          }
+        }
+        return
+      }
 
       receivedParentCommandRef.current = true
       const message = parsed.message

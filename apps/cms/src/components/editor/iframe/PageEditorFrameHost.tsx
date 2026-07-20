@@ -133,6 +133,8 @@ export function PageEditorFrameHost({
     return () => window.removeEventListener("message", onMessage)
   }, [])
 
+  const themeKey = React.useMemo(() => JSON.stringify(theme ?? null), [theme])
+
   React.useEffect(() => {
     if (!ready) return
     const expectedRevision = revisionRef.current
@@ -150,7 +152,7 @@ export function PageEditorFrameHost({
       mobileMode: mobileMode ?? { mode: "fullPage" },
     })
     revisionRef.current = expectedRevision + 1
-  }, [mobileMode, page, pageId, postToFrame, ready, selection, settings, theme])
+  }, [mobileMode, page, pageId, postToFrame, ready, selection, settings, theme, themeKey])
 
   return (
     <div className="relative w-full overflow-hidden bg-background" data-siab-editor-frame-host data-siab-editor-frame-layout={layout}>

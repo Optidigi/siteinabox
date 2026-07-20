@@ -63,11 +63,17 @@ describe("page editor renderer parity", () => {
     const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
     const preview = read("src/components/preview/PreviewCustomizer.tsx")
     const contract = readRepo("packages/contracts/src/iframe-editor.ts")
+    const editorRuntime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
+    const rendererRuntime = read("src/components/renderer-frame/RendererFrameRuntime.tsx")
     expect(host).toContain("if (!readyRef.current)")
     expect(host).toContain("revisionRef.current = 0")
     expect(preview).toContain("if (!readyRef.current)")
     expect(preview).toContain("revisionRef.current = 0")
     expect(contract).toContain("parsed.data.expectedRevision < options.currentRevision")
+    expect(editorRuntime).toContain("ThemeTokenSpecSchema.nullable().safeParse")
+    expect(rendererRuntime).toContain("ThemeTokenSpecSchema.nullable().safeParse")
+    expect(editorRuntime).toContain("applyThemeAttributes(document, frameTheme)")
+    expect(rendererRuntime).toContain("applyThemeAttributes(document, frameTheme)")
   })
 
   it("uses the CMS document as the sole full-page scroll owner", () => {
