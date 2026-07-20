@@ -107,9 +107,12 @@ test("hero-01 keeps the upstream root layout class string", async () => {
   )
 })
 
-test("hero-01 DreamyBackground uses unique per-instance SVG ids", async () => {
+test("hero-01 DreamyBackground uses CSS gradients instead of SVG filters", async () => {
   const source = await readFile(new URL("./hero-01/hero.tsx", variantsRoot), "utf8")
-  assert.match(source, /React\.useId\(/)
-  assert.doesNotMatch(source, /id="filter0_f_0_1"/)
-  assert.doesNotMatch(source, /id="paint0_linear_0_1"/)
+  assert.match(source, /function DreamyBackground/)
+  assert.match(source, /--provider-accent-/)
+  assert.match(source, /radial-gradient/)
+  assert.doesNotMatch(source, /feGaussianBlur/)
+  assert.doesNotMatch(source, /React\.useId\(/)
+  assert.doesNotMatch(source, /hero01-paint0-/)
 })
