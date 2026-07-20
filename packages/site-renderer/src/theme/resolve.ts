@@ -35,6 +35,49 @@ const grayDark: ColorRamp = {
   950: "#ffffff",
 }
 
+/** Cool neutrals for monochrome dual-tone washes (primary + companion). */
+const slate: ColorRamp = {
+  50: "#f8fafc",
+  100: "#f1f5f9",
+  200: "#e2e8f0",
+  300: "#cbd5e1",
+  400: "#94a3b8",
+  500: "#64748b",
+  600: "#475569",
+  700: "#334155",
+  800: "#1e293b",
+  900: "#0f172a",
+  950: "#020617",
+}
+
+const slateDark: ColorRamp = {
+  50: slate[900],
+  100: slate[800],
+  200: slate[700],
+  300: slate[600],
+  400: slate[500],
+  500: slate[400],
+  600: slate[300],
+  700: slate[200],
+  800: slate[100],
+  900: slate[50],
+  950: "#ffffff",
+}
+
+const zinc: ColorRamp = {
+  50: "#fafafa",
+  100: "#f4f4f5",
+  200: "#e4e4e7",
+  300: "#d4d4d8",
+  400: "#a1a1aa",
+  500: "#71717a",
+  600: "#52525b",
+  700: "#3f3f46",
+  800: "#27272a",
+  900: "#18181b",
+  950: "#09090b",
+}
+
 const indigo: ColorRamp = {
   50: "#eef2ff",
   100: "#e0e7ff",
@@ -242,9 +285,9 @@ export const colorSchemes = {
     source: "builtin",
     light: {
       neutral: gray,
-      accent: gray,
-      // Cool indigo companion — slate + soft blue dual-tone for decorative washes.
-      accentSecondary: indigo,
+      // Slate + zinc dual-tone for decorative washes (no chromatic companion).
+      accent: slate,
+      accentSecondary: zinc,
       surface: "oklch(1 0 0)",
       ink: "oklch(0.145 0 0)",
       muted: "oklch(0.556 0 0)",
@@ -253,8 +296,8 @@ export const colorSchemes = {
     },
     dark: {
       neutral: grayDark,
-      accent: grayDark,
-      accentSecondary: indigo,
+      accent: slateDark,
+      accentSecondary: zinc,
       surface: "oklch(0.145 0 0)",
       ink: "oklch(0.985 0 0)",
       muted: "oklch(0.708 0 0)",
