@@ -4281,7 +4281,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-03/features.tsx",
-          "sha256": "sha256:4796c74ecd4911385a7657571266163f4201eb31919180469e145de0f699e7b0"
+          "sha256": "sha256:6010b18ab98ff5078f3cd3b7c4134e8cab0fd6b394674d5a5940e6ecb537584d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-03/view.tsx",

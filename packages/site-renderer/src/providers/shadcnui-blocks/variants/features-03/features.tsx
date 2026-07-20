@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
-import { ArrowRightIcon, BlocksIcon, Settings2Icon } from "lucide-react"
+import { ArrowRight, Blocks, Settings2 } from "lucide-react"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import { extractRichText } from "../../../../rich-text"
 import {
@@ -18,7 +18,7 @@ import { feature03Literal } from "../../typed/fixtures/feature-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 
-const CARD_ICONS = [Settings2Icon, BlocksIcon] as const
+const CARD_ICONS = [Settings2, Blocks] as const
 
 export type Features03Props = TypedVariantBaseProps & {
   title?: RtRoot | null
@@ -54,24 +54,29 @@ export function Features03({
       <div className="mt-8 grid gap-6 sm:grid-cols-2 md:grid-cols-5 lg:grid-cols-3">
         {cards.flatMap((feature, index) => {
           const lines = featureDescriptionLines(feature.description)
+          const listSpacing = index === 0 ? "space-y-5" : "space-y-4"
           const card = (
             <div key={`card-${index}`} className="col-span-1 rounded-xl bg-muted p-6 md:col-span-2 lg:col-span-1">
-              <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl bg-background md:hidden">
-                {renderFeatureItemImage(
-                  editSlots,
-                  mediaResolver,
-                  feature.image,
-                  feature.title,
-                  blockIndex,
-                  index,
-                  { className: "h-full w-full object-cover" },
-                )}
+              <div className="mb-6 aspect-video w-full rounded-xl bg-background md:hidden">
+                {literalPreview
+                  ? null
+                  : renderFeatureItemImage(
+                      editSlots,
+                      mediaResolver,
+                      feature.image,
+                      feature.title,
+                      blockIndex,
+                      index,
+                      { className: "h-full w-full object-cover" },
+                    )}
               </div>
               <span className="font-medium text-xl tracking-[-0.01em]">
-                {renderFeatureItemTitle(editSlots, feature.title, blockIndex, index)}
+                {literalPreview
+                  ? "Plan Smarter"
+                  : renderFeatureItemTitle(editSlots, feature.title, blockIndex, index)}
               </span>
               {lines.length ? (
-                <ul className="mt-6 space-y-5">
+                <ul className={`mt-6 ${listSpacing}`}>
                   {lines.map((line, lineIndex) => {
                     const Icon = CARD_ICONS[lineIndex % CARD_ICONS.length]!
                     return (
@@ -85,15 +90,15 @@ export function Features03({
                   })}
                 </ul>
               ) : null}
-              {feature.cta?.label && feature.cta.href ? (
+              {literalPreview ? (
+                <Button className="mt-8 w-full">
+                  Build your strategy <ArrowRight />
+                </Button>
+              ) : feature.cta?.label && feature.cta.href ? (
                 <Button className="mt-8 w-full" asChild>
                   {renderFeatureItemCta(editSlots, feature.cta, blockIndex, index, {
-                    trailingIcon: <ArrowRightIcon />,
+                    trailingIcon: <ArrowRight />,
                   })}
-                </Button>
-              ) : literalPreview ? (
-                <Button className="mt-8 w-full">
-                  Build your strategy <ArrowRightIcon />
                 </Button>
               ) : null}
             </div>
@@ -101,17 +106,19 @@ export function Features03({
           const desktopMedia = (
             <div
               key={`media-${index}`}
-              className="col-span-1 hidden overflow-hidden rounded-xl bg-muted md:col-span-3 md:block lg:col-span-2"
+              className="col-span-1 hidden rounded-xl bg-muted md:col-span-3 md:block lg:col-span-2"
             >
-              {renderFeatureItemImage(
-                editSlots,
-                mediaResolver,
-                feature.image,
-                feature.title,
-                blockIndex,
-                index,
-                { alt: extractRichText(feature.title), className: "h-full w-full object-cover" },
-              )}
+              {literalPreview
+                ? null
+                : renderFeatureItemImage(
+                    editSlots,
+                    mediaResolver,
+                    feature.image,
+                    feature.title,
+                    blockIndex,
+                    index,
+                    { alt: extractRichText(feature.title), className: "h-full w-full object-cover" },
+                  )}
             </div>
           )
           return index % 2 === 0 ? [card, desktopMedia] : [desktopMedia, card]
