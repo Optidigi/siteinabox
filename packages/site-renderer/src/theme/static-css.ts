@@ -68,8 +68,8 @@ export function generateStaticThemeCss() {
       for (const shade of shades) {
         values[`--siab-neutral-${shade}`] = mode.neutral[shade]!
         values[`--siab-accent-${shade}`] = mode.accent[shade]!
-        if (id !== "monochrome") values[`--provider-accent-${shade}`] = mode.accent[shade]!
-        if (id !== "monochrome" && mode.accentSecondary) {
+        values[`--provider-accent-${shade}`] = mode.accent[shade]!
+        if (mode.accentSecondary) {
           values[`--siab-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
           values[`--provider-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
         }

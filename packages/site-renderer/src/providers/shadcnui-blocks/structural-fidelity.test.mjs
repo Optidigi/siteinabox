@@ -116,7 +116,7 @@ test("hero-01 DreamyBackground keeps upstream blobs with CSS blur (no SVG feGaus
   assert.match(source, /M291\.402 416\.77/)
   assert.match(source, /M811\.933 441\.279/)
   assert.match(source, /blur\(64px\)/)
-  assert.match(source, /scale\(1\.38, 1\.12\)/)
+  assert.match(source, /scale\(1\.58, 1\.2\)/)
   assert.doesNotMatch(source, /feGaussianBlur/)
   assert.doesNotMatch(source, /radial-gradient/)
 })

@@ -243,6 +243,8 @@ export const colorSchemes = {
     light: {
       neutral: gray,
       accent: gray,
+      // Cool indigo companion — slate + soft blue dual-tone for decorative washes.
+      accentSecondary: indigo,
       surface: "oklch(1 0 0)",
       ink: "oklch(0.145 0 0)",
       muted: "oklch(0.556 0 0)",
@@ -252,6 +254,7 @@ export const colorSchemes = {
     dark: {
       neutral: grayDark,
       accent: grayDark,
+      accentSecondary: indigo,
       surface: "oklch(0.145 0 0)",
       ink: "oklch(0.985 0 0)",
       muted: "oklch(0.708 0 0)",

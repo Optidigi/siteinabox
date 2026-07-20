@@ -93,7 +93,7 @@ function DreamyBackground({ className, ...rest }: React.HTMLAttributes<HTMLDivEl
   // Extra horizontal scale spreads the dreamy wash without rewriting path data.
   const blobStyle: React.CSSProperties = {
     filter: "blur(64px)",
-    transform: "translateZ(0) scale(1.38, 1.12)",
+    transform: "translateZ(0) scale(1.58, 1.2)",
   }
 
   return (
@@ -122,8 +122,8 @@ function DreamyBackground({ className, ...rest }: React.HTMLAttributes<HTMLDivEl
             y1="200.271"
             y2="696.271"
           >
-            <stop stopColor="var(--provider-accent-600, #5E8778)" />
-            <stop offset="1" stopColor="var(--provider-accent-300, #78FF86)" />
+            <stop stopColor="var(--provider-accent-600, #4b5563)" />
+            <stop offset="1" stopColor="var(--provider-accent-300, #d1d5db)" />
           </linearGradient>
         </defs>
       </svg>
@@ -147,8 +147,8 @@ function DreamyBackground({ className, ...rest }: React.HTMLAttributes<HTMLDivEl
             y1="288.346"
             y2="764.853"
           >
-            <stop stopColor="var(--provider-accent-secondary-700, #575EFF)" />
-            <stop offset="1" stopColor="var(--provider-accent-secondary-400, #E478FF)" />
+            <stop stopColor="var(--provider-accent-secondary-700, #4338ca)" />
+            <stop offset="1" stopColor="var(--provider-accent-secondary-400, #818cf8)" />
           </linearGradient>
         </defs>
       </svg>
