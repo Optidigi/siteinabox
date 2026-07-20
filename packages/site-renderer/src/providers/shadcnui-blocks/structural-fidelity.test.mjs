@@ -107,12 +107,14 @@ test("hero-01 keeps the upstream root layout class string", async () => {
   )
 })
 
-test("hero-01 DreamyBackground uses CSS gradients instead of SVG filters", async () => {
+test("hero-01 DreamyBackground keeps upstream blobs with CSS blur (no SVG feGaussianBlur)", async () => {
   const source = await readFile(new URL("./hero-01/hero.tsx", variantsRoot), "utf8")
   assert.match(source, /function DreamyBackground/)
   assert.match(source, /--provider-accent-/)
-  assert.match(source, /radial-gradient/)
+  assert.match(source, /linearGradient/)
+  assert.match(source, /M291\.402 416\.77/)
+  assert.match(source, /M811\.933 441\.279/)
+  assert.match(source, /blur\(64px\)/)
   assert.doesNotMatch(source, /feGaussianBlur/)
-  assert.doesNotMatch(source, /React\.useId\(/)
-  assert.doesNotMatch(source, /hero01-paint0-/)
+  assert.doesNotMatch(source, /radial-gradient/)
 })
