@@ -4,7 +4,7 @@
 import * as React from "react"
 import type { LinkRef, RtRoot } from "@siteinabox/contracts"
 import { ArrowUpRight } from "lucide-react"
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { SharedButton as Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import type { MediaResolver } from "../../../../media"
 import {
   type LogoCloudLogoItem,
