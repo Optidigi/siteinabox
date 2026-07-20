@@ -92,7 +92,7 @@ export function Features12({
               </div>
               {feature.description ? (
                 <div className="mt-4 text-foreground/80">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
               <Button asChild className="mt-4 px-0!" variant="link">

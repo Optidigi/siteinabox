@@ -30,9 +30,18 @@ export type Features05Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features05({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features05Props) {
+export function Features05({
+  title,
+  intro,
+  features,
+  blockIndex,
+  editSlots,
+  rootAttributes,
+  literalPreview = false,
+}: Features05Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
 
@@ -60,9 +69,17 @@ export function Features05({ title, intro, features, blockIndex, editSlots, root
                     {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
                   </h4>
                   {feature.description ? (
-                    <div className="text-[17px] text-muted-foreground">
-                      {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
-                    </div>
+                    literalPreview ? (
+                      <p className="text-[17px] text-muted-foreground">
+                        {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, {
+                          literalPreview,
+                        })}
+                      </p>
+                    ) : (
+                      <div className="text-[17px] text-muted-foreground">
+                        {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                      </div>
+                    )
                   ) : null}
                 </CardHeader>
                 <CardContent className="mt-auto px-0 pb-0">
@@ -84,6 +101,7 @@ export default function Features05Literal() {
       intro={feature05Literal.intro}
       features={feature05Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

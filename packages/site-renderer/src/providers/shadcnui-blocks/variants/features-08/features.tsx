@@ -29,9 +29,10 @@ export type Features08Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features08({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features08Props) {
+export function Features08({ title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features08Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
 
@@ -62,7 +63,7 @@ export function Features08({ title, intro, features, blockIndex, editSlots, root
               </h3>
               {feature.description ? (
                 <div className="mt-2 text-base text-foreground/70">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
             </div>
@@ -80,6 +81,7 @@ export default function Features08Literal() {
       intro={feature08Literal.intro}
       features={feature08Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

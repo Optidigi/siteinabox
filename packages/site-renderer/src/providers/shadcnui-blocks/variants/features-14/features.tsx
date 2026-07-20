@@ -75,9 +75,10 @@ export type Features14Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features14({ eyebrow, title, intro, features, blockIndex, editSlots, rootAttributes }: Features14Props) {
+export function Features14({ eyebrow, title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features14Props) {
   const eyebrowContent = renderFeatureEyebrow(editSlots, eyebrow, blockIndex)
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
@@ -111,7 +112,7 @@ export function Features14({ eyebrow, title, intro, features, blockIndex, editSl
                 </h3>
                 {feature.description ? (
                   <div className="text-balance text-base text-muted-foreground">
-                    {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                    {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                   </div>
                 ) : null}
                 <Button className="mt-6">
@@ -142,6 +143,7 @@ export default function Features14Literal() {
       intro={feature14Literal.intro}
       features={feature14Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

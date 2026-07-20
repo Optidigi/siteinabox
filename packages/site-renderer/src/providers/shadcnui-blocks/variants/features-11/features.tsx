@@ -75,7 +75,7 @@ export function Features11({
                 </div>
                 {feature.description ? (
                   <div className="my-4 text-foreground/80">
-                    {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                    {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                   </div>
                 ) : null}
                 {cta?.label && cta.href && !literalPreview ? (

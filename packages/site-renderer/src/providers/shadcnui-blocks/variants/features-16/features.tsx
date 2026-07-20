@@ -76,7 +76,7 @@ export function Features16({
               </h3>
               {feature.description ? (
                 <div className="mt-2 text-foreground/80 text-lg">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
             </div>

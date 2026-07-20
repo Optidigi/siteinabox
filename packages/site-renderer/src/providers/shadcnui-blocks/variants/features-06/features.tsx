@@ -65,9 +65,10 @@ export type Features06Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features06({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features06Props) {
+export function Features06({ title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features06Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
 
@@ -100,7 +101,7 @@ export function Features06({ title, intro, features, blockIndex, editSlots, root
                   </h4>
                   {feature.description ? (
                     <div className="mb-6 text-lg text-muted-foreground">
-                      {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                      {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                     </div>
                   ) : null}
                 </div>
@@ -120,6 +121,7 @@ export default function Features06Literal() {
       intro={feature06Literal.intro}
       features={feature06Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

@@ -95,7 +95,7 @@ export function Features07({
                     </span>
                     {feature.description ? (
                       <div className="mt-1 text-pretty text-muted-foreground">
-                        {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                        {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                       </div>
                     ) : null}
                   </div>

@@ -69,7 +69,7 @@ export function Features10({ title, intro, features, blockIndex, editSlots, root
               </div>
               {feature.description ? (
                 <div className="mt-4 text-base text-foreground/80">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
               <div className="mt-8 -mr-5">

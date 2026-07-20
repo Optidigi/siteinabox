@@ -77,8 +77,13 @@ export const renderFeatureItemDescription = (
   description: RtRoot | null | undefined,
   blockIndex: number,
   itemIndex: number,
+  options?: { literalPreview?: boolean },
 ) => {
   if (!description) return null
+  if (options?.literalPreview && !editSlots?.renderRichText) {
+    const text = extractRichText(description)
+    return text || null
+  }
   return renderBlockRichText(editSlots, {
     name: `${FEATURE_BLOCK_TYPE}.features.description`,
     value: description,

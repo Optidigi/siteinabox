@@ -74,9 +74,10 @@ export type Features13Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features13({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features13Props) {
+export function Features13({ title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features13Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
 
@@ -110,7 +111,7 @@ export function Features13({ title, intro, features, blockIndex, editSlots, root
               </h3>
               {feature.description ? (
                 <div className="mt-2 text-foreground/80">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
               <div className="absolute inset-0 -top-px z-0" style={GRID_OVERLAY_STYLE} />
@@ -129,6 +130,7 @@ export default function Features13Literal() {
       intro={feature13Literal.intro}
       features={feature13Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

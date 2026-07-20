@@ -42,9 +42,10 @@ export type Features18Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features18({ eyebrow, title, intro, features, blockIndex, editSlots, rootAttributes }: Features18Props) {
+export function Features18({ eyebrow, title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features18Props) {
   const eyebrowContent = renderFeatureEyebrow(editSlots, eyebrow, blockIndex)
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
@@ -90,7 +91,7 @@ export function Features18({ eyebrow, title, intro, features, blockIndex, editSl
               </h3>
               {feature.description ? (
                 <div className="mb-6 text-balance text-muted-foreground">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
               <Button className="mt-auto font-medium" variant="link">
@@ -120,6 +121,7 @@ export default function Features18Literal() {
       intro={feature18Literal.intro}
       features={feature18Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }

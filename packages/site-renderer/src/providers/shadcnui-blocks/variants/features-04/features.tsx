@@ -76,7 +76,9 @@ export function Features04({
                   </AccordionTrigger>
                   <AccordionContent className="text-[17px] text-muted-foreground leading-relaxed">
                     {feature.description
-                      ? renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)
+                      ? renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, {
+                          literalPreview,
+                        })
                       : null}
                     <div className="mt-6 mb-2 aspect-video w-full rounded-xl bg-muted md:hidden">
                       {literalPreview

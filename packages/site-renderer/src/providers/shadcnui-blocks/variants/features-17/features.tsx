@@ -30,9 +30,10 @@ export type Features17Props = TypedVariantBaseProps & {
   title?: RtRoot | null
   intro?: RtRoot | null
   features: FeatureItem[]
+  literalPreview?: boolean
 }
 
-export function Features17({ title, intro, features, blockIndex, editSlots, rootAttributes }: Features17Props) {
+export function Features17({ title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features17Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
   const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
 
@@ -63,7 +64,7 @@ export function Features17({ title, intro, features, blockIndex, editSlots, root
               </h3>
               {feature.description ? (
                 <div className="mt-2 text-foreground/80">
-                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex)}
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
                 </div>
               ) : null}
               <Badge
@@ -87,6 +88,7 @@ export default function Features17Literal() {
       intro={feature17Literal.intro}
       features={feature17Literal.features}
       blockIndex={0}
+      literalPreview
     />
   )
 }
