@@ -52,6 +52,7 @@ import config from "@/payload.config"
 import { mapHtmlToRt } from "@/lib/richText/mapper"
 import { matchersForManifest } from "@/lib/richText/themedMatchers/index"
 import { rtRootSchema } from "@/lib/richText/rtNodeSchema"
+import { validateAgainstManifest } from "@/lib/richText/validateAgainstManifest"
 import type { Page, Tenant } from "@/payload-types"
 import type { RtRoot } from "@/lib/richText/RtNode"
 
@@ -173,6 +174,7 @@ const main = async () => {
       return raw
     }
     const validation = validateAgainstManifest(struct.data as RtRoot, manifest)
+    if (!validation.ok) {
       errors++
       console.error(`[repopulate] manifest FAIL ${label}: ${validation.errors.join("; ")}`)
       return raw
