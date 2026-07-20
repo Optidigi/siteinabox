@@ -100,7 +100,7 @@ export default async function AnalyticsPage({
   if (ctx.mode === "super-admin") {
     const view = parseAdminAnalyticsView(params.view)
     const tenants = await listTenants()
-    const tenantOptions = tenants.map((tenant: any) => ({
+    const tenantOptions = tenants.map((tenant) => ({
       id: String(tenant.id),
       name: String(tenant.name ?? tenant.slug ?? tenant.id),
       slug: String(tenant.slug ?? tenant.id),

@@ -3,6 +3,7 @@ import { rtToLexicalJson } from "@/lib/richText/lexical/rtToLexical"
 import { lexicalJsonToRt } from "@/lib/richText/lexical/lexicalToRt"
 import type { RtRoot } from "@/lib/richText/RtNode"
 
+import { asMockDoc } from "../../../_helpers/cast"
 describe("heading style roundtrip", () => {
   it("preserves heading style through rt → lexical → rt", () => {
     const original: RtRoot = {
@@ -12,7 +13,7 @@ describe("heading style roundtrip", () => {
       ],
     }
     const lexical = rtToLexicalJson(original)
-    const roundtripped = lexicalJsonToRt(lexical as any, "block")
+    const roundtripped = lexicalJsonToRt(lexical, "block")
     expect(roundtripped).toEqual(original)
   })
 
@@ -24,20 +25,20 @@ describe("heading style roundtrip", () => {
       ],
     }
     const lexical = rtToLexicalJson(original)
-    const roundtripped = lexicalJsonToRt(lexical as any, "block")
+    const roundtripped = lexicalJsonToRt(lexical, "block")
     expect(roundtripped).toEqual(original)
-    expect((roundtripped.children[0] as any).style).toBeUndefined()
+    expect(asMockDoc((asMockDoc(roundtripped).children as unknown[])[0]).style).toBeUndefined()
   })
 
   it("emits 'styled-heading' type when style is present, 'heading' when absent", () => {
     const styled = rtToLexicalJson({ t: "root", variant: "block", children: [
       { t: "heading", level: 2, style: "foo", children: [{ t: "text", v: "x" }] },
     ] })
-    expect((styled as any).root.children[0].type).toBe("styled-heading")
+    expect(asMockDoc((asMockDoc(asMockDoc(styled).root).children as unknown[])[0]).type).toBe("styled-heading")
 
     const plain = rtToLexicalJson({ t: "root", variant: "block", children: [
       { t: "heading", level: 2, children: [{ t: "text", v: "x" }] },
     ] })
-    expect((plain as any).root.children[0].type).toBe("heading")
+    expect(asMockDoc((asMockDoc(asMockDoc(plain).root).children as unknown[])[0]).type).toBe("heading")
   })
 })

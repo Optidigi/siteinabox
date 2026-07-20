@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { ArrowLeftIcon, OctagonXIcon } from "lucide-react";
 import Link from "../../runtime/link";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -6,7 +5,7 @@ import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-5 px-6 text-center">
-      <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted">
+      <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted border-border">
         <OctagonXIcon className="size-6 text-muted-foreground" />
       </div>
       <h1 className="font-medium text-4xl tracking-tight">

@@ -31,6 +31,16 @@ const samplePage = {
   updatedAt: "2026-07-02T00:00:00.000Z",
 }
 
+const sampleSettings = {
+  siteName: "Example",
+  siteUrl: "https://example.invalid",
+  language: "en",
+  chrome: {
+    header: { variant: "shadcnui-blocks.navbar-01" },
+    footer: { variant: "shadcnui-blocks.footer-01" },
+  },
+}
+
 const validSamplesByType = {
   "renderer.ready": {
     ...baseMessage,
@@ -42,22 +52,21 @@ const validSamplesByType = {
     type: "renderer.height",
     height: 2400,
   },
-  "page.replace": {
+  "render.snapshot": {
     ...baseMessage,
-    type: "page.replace",
+    type: "render.snapshot",
     expectedRevision: 1,
     pageId: "home",
     page: samplePage,
-  },
-  "theme.patch": {
-    ...baseMessage,
-    type: "theme.patch",
+    settings: sampleSettings,
     theme: null,
-  },
-  "selection.set": {
-    ...baseMessage,
-    type: "selection.set",
     selection: { pageId: "home", blockId: "block_1" },
+    mobileMode: {
+      mode: "focusedSection",
+      focusedBlockId: "block_1",
+      focusedBlockIndex: 0,
+      showChrome: false,
+    },
   },
   "selection.changed": {
     ...baseMessage,
@@ -68,14 +77,6 @@ const validSamplesByType = {
     ...baseMessage,
     type: "chrome.select",
     selection: { pageId: "home", fieldPath: ["chrome", "header"] },
-  },
-  "editor.mobileMode.set": {
-    ...baseMessage,
-    type: "editor.mobileMode.set",
-    mode: "focusedSection",
-    focusedBlockId: "block_1",
-    focusedBlockIndex: 0,
-    showChrome: false,
   },
   "navigation.requested": {
     ...baseMessage,
@@ -100,7 +101,17 @@ describe("iframe renderer protocol", () => {
   })
 
   it("rejects removed mutation and canvas messages", () => {
-    for (const type of ["block.patch", "blocks.reorder", "geometry.changed", "field.commit", "editor.view.set"]) {
+    for (const type of [
+      "block.patch",
+      "blocks.reorder",
+      "geometry.changed",
+      "field.commit",
+      "editor.view.set",
+      "page.replace",
+      "theme.patch",
+      "selection.set",
+      "editor.mobileMode.set",
+    ]) {
       expect(IframeEditorMessageSchema.safeParse({ ...baseMessage, type }).success, type).toBe(false)
     }
   })
@@ -108,13 +119,13 @@ describe("iframe renderer protocol", () => {
   it("rejects wrong protocol versions", () => {
     expect(IframeEditorMessageSchema.safeParse({
       ...validSamplesByType["renderer.ready"],
-      schemaVersion: 1,
+      schemaVersion: 2,
     }).success).toBe(false)
   })
 
-  it("rejects stale page revisions", () => {
+  it("rejects stale render snapshot revisions", () => {
     const result = validateIframeEditorMessage({
-      ...validSamplesByType["page.replace"],
+      ...validSamplesByType["render.snapshot"],
       expectedRevision: 4,
     }, { currentRevision: 5 })
 
@@ -125,25 +136,35 @@ describe("iframe renderer protocol", () => {
     })
   })
 
-  it("keeps theme updates independent from the page revision stream", () => {
+  it("accepts render snapshots at the current revision", () => {
     const result = validateIframeEditorMessage({
-      ...baseMessage,
-      type: "theme.patch",
-      theme: {
-        version: 3,
-        appearance: { mode: "light" },
-        colors: { schemeId: "blue-professional" },
-        fonts: { schemeId: "clear-modern" },
-        shape: { schemeId: "soft" },
-      },
-    }, { currentRevision: 9 })
+      ...validSamplesByType["render.snapshot"],
+      expectedRevision: 5,
+    }, { currentRevision: 5 })
 
     expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.message.type).toBe("render.snapshot")
+    }
+  })
+
+  it("accepts preview snapshots without editor-only fields", () => {
+    const result = IframeEditorMessageSchema.safeParse({
+      ...baseMessage,
+      type: "render.snapshot",
+      expectedRevision: 0,
+      pageId: "home",
+      page: samplePage,
+      settings: sampleSettings,
+      theme: null,
+    })
+
+    expect(result.success).toBe(true)
   })
 
   it("rejects unvalidated page contracts", () => {
     expect(IframeEditorMessageSchema.safeParse({
-      ...validSamplesByType["page.replace"],
+      ...validSamplesByType["render.snapshot"],
       page: { ...samplePage, blocks: [{ blockType: "unknown" }] },
     }).success).toBe(false)
   })

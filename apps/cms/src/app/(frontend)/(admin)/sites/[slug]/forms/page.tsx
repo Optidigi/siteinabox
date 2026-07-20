@@ -36,7 +36,7 @@ export default async function FormsPage({
       />
       <ListSearch placeholder={t("filterByEmail")} />
       <FormsTable
-        data={result.docs as any}
+        data={result.docs}
         emptyState={
           q ? (
             <EmptyState

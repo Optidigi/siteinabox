@@ -1,162 +1,181 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import { MailIcon, MapPinIcon, MessageCircle, PhoneIcon } from "lucide-react";
-import Link from "../../runtime/link";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+// Owned typed adaptation of upstream shadcnui-blocks contact-02 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot, SiteSettings } from "@siteinabox/contracts"
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Checkbox, Input, Label, Textarea } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { contact02CmsLike } from "../../typed/fixtures/contact-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Checkbox } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Input } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Label } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Textarea } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+  contact02LiteralDetails,
+  renderContactFieldLabel,
+  renderContactSectionDescription,
+  renderContactSectionTitle,
+  renderContactSubmitLabel,
+  renderRuntimeContactDetailValue,
+  resolveRuntimeContactDetails,
+  type ContactSectionField,
+  type RuntimeContactDetail,
+} from "../../typed/contact-section-fields"
 
-const Contact = () => (
-  <div className="py-20">
-    <div className="mx-auto w-full max-w-(--breakpoint-xl) px-6 xl:px-0">
-      <ProviderDemoOnly fallback={<><b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">
-        Contact Us
-      </b></>} />
-      <h2 className="mt-3 font-medium text-4xl tracking-[-0.035em]"><ProviderField field="title" fallback={<>
-        Chat with our friendly team!
-      </>} inline /></h2>
-      <p className="mt-3 text-lg text-muted-foreground md:text-xl"><ProviderField field="description" fallback={<>
-        We&apos;d love to hear from you. Please fill out this form or shoot us
-        an email.
-      </>} inline /></p>
-      <div className="mt-16 flex flex-col gap-16 md:gap-10 lg:flex-row">
-        <div className="grid w-full max-w-3xl grid-cols-1 gap-1 rounded-xl border bg-muted p-1 *:rounded-lg *:border *:bg-background *:p-6 sm:grid-cols-2 lg:col-span-2 dark:*:border-foreground/20">
-          <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:border-foreground/20 dark:bg-foreground/10">
-              <MailIcon />
-            </div>
-            <h3 className="mt-6 font-medium text-xl">Email</h3>
-            <p className="my-2.5 text-muted-foreground">
-              Our friendly team is here to help.
-            </p>
-            <Link
-              className="font-medium text-primary"
-              href="mailto:akashmoradiya3444@gmail.com"
-            >
-              akashmoradiya3444@gmail.com
-            </Link>
-          </div>
-          <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:bg-foreground/10">
-              <MessageCircle />
-            </div>
-            <h3 className="mt-6 font-medium text-xl">Live chat</h3>
-            <p className="my-2.5 text-muted-foreground">
-              Our friendly team is here to help.
-            </p>
-            <Link className="font-medium text-primary" href="#">
-              Start new chat
-            </Link>
-          </div>
-          <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:bg-foreground/10">
-              <MapPinIcon />
-            </div>
-            <h3 className="mt-6 font-medium text-xl">Office</h3>
-            <p className="my-2.5 text-muted-foreground">
-              Come say hello at our office HQ.
-            </p>
-            <Link
-              className="font-medium text-primary"
-              href="about:blank#upstream-sha256:45172"
-              target="_blank"
-            >
-              100 Smith Street Collingwood <br /> VIC 3066 AU
-            </Link>
-          </div>
-          <div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:bg-foreground/10">
-              <PhoneIcon />
-            </div>
-            <h3 className="mt-6 font-medium text-xl">Phone</h3>
-            <p className="my-2.5 text-muted-foreground">
-              Mon-Fri from 8am to 5pm.
-            </p>
-            <Link
-              className="font-medium text-primary"
-              href="tel:akashmoradiya3444@gmail.com"
-            >
-              +1 (555) 000-0000
-            </Link>
-          </div>
-        </div>
+export type Contact02Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  description?: RtRoot | null
+  formName: string
+  formDescription?: string | null
+  submitLabel?: string | null
+  fields: ContactSectionField[]
+  formAction?: string
+  siteSettings?: SiteSettings
+  details?: RuntimeContactDetail[]
+  showDemoChrome?: boolean
+}
 
-        {/* Form */}
-        <div className="w-full max-w-lg rounded-xl border bg-muted p-1">
-          <Card className="relative isolate rounded-lg bg-background shadow-none lg:ms-auto dark:border-foreground/20">
-            <CardHeader className="gap-1">
-              <CardTitle className="font-medium text-xl">Contact Us</CardTitle>
-              <CardDescription className="text-base">
-                We'd love to hear from you. Please fill out this form.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="mt-2">
-              <form>
-                <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
-                  <div className="col-span-2 sm:col-span-1">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none"
-                      id="firstName"
-                      placeholder="First name"
-                    />
-                  </div>
-                  <div className="col-span-2 sm:col-span-1">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none"
-                      id="lastName"
-                      placeholder="Last name"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none"
-                      id="email"
-                      placeholder="Email"
-                      type="email"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Label htmlFor="message">Message</Label>
-                    <Textarea
-                      className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none"
-                      id="message"
-                      placeholder="Message"
-                      rows={6}
-                    />
-                  </div>
-                  <div className="col-span-2 flex items-center gap-2">
-                    <Checkbox className="bg-background" id="acceptTerms" />
-                    <Label className="gap-0" htmlFor="acceptTerms">
-                      You agree to our
-                      <Link className="ml-1 underline" href="#">
-                        terms and conditions
-                      </Link>
-                      <span>.</span>
-                    </Label>
-                  </div>
+export function Contact02({
+  title,
+  description,
+  formName,
+  formDescription,
+  submitLabel,
+  fields,
+  formAction,
+  siteSettings,
+  details: detailsProp,
+  showDemoChrome = false,
+  blockIndex,
+  editSlots,
+  rootAttributes,
+}: Contact02Props) {
+  const titleContent = renderContactSectionTitle(editSlots, title, blockIndex)
+  const descriptionContent = renderContactSectionDescription(editSlots, description, blockIndex)
+  const runtimeDetails = resolveRuntimeContactDetails(siteSettings)
+  const details = detailsProp ?? runtimeDetails
+
+  return (
+    <div className="py-20" {...rootAttributes}>
+      <div className="mx-auto w-full max-w-(--breakpoint-xl) px-6 xl:px-0">
+        {showDemoChrome ? (
+          <b className="font-medium text-muted-foreground text-sm uppercase tracking-wide">Contact Us</b>
+        ) : null}
+        {titleContent ? <h2 className="mt-3 font-medium text-4xl tracking-[-0.035em]">{titleContent}</h2> : null}
+        {descriptionContent ? (
+          <p className="mt-3 text-lg text-muted-foreground md:text-xl">{descriptionContent}</p>
+        ) : null}
+        <div className="mt-16 flex flex-col gap-16 md:gap-10 lg:flex-row">
+          <div className="grid w-full max-w-3xl grid-cols-1 gap-1 rounded-xl border border-border bg-muted p-1 *:rounded-lg *:border *:border-border *:bg-background *:p-6 sm:grid-cols-2 lg:col-span-2 dark:*:border-foreground/20">
+            {details.map(({ title: detailTitle, description: detailDescription, value, href, target, Icon }) => (
+              <div key={detailTitle}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-foreground/3 bg-foreground/5 text-foreground dark:border-foreground/20 dark:bg-foreground/10">
+                  <Icon />
                 </div>
-                <ProviderDemoOnly fallback={<><Button className="mt-6 w-full" size="lg">
-                  Submit
-                </Button></>} />
-              </form>
-            </CardContent>
-          </Card>
+                <h3 className="mt-6 font-medium text-xl">{detailTitle}</h3>
+                <p className="my-2.5 text-muted-foreground">{detailDescription}</p>
+                {href ? (
+                  <a className="font-medium text-primary" href={href} target={target}>
+                    {renderRuntimeContactDetailValue(value)}
+                  </a>
+                ) : (
+                  <span className="font-medium text-primary">{renderRuntimeContactDetailValue(value)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="w-full max-w-lg rounded-xl border border-border bg-muted p-1">
+            <Card className="relative isolate rounded-lg border-border bg-background shadow-none lg:ms-auto dark:border-foreground/20">
+              <CardHeader className="gap-1">
+                <CardTitle className="font-medium text-xl">{formName}</CardTitle>
+                {formDescription ? (
+                  <CardDescription className="text-base">{formDescription}</CardDescription>
+                ) : null}
+              </CardHeader>
+              <CardContent className="mt-2">
+                <form action={formAction} method="post">
+                  <input type="hidden" name="formName" value={formName} />
+                  <div className="grid gap-x-8 gap-y-6 md:grid-cols-2">
+                    {fields.map((field, index) => (
+                      <div
+                        key={field.name}
+                        className={
+                          field.name === "acceptTerms" || field.type === "textarea" || field.type === "select"
+                            ? "col-span-2"
+                            : "col-span-2 sm:col-span-1"
+                        }
+                      >
+                        {field.type === "checkbox" ? (
+                          <div className="flex items-center gap-2">
+                            <Checkbox className="bg-background" id={field.name} name={field.name} />
+                            <Label className="gap-0" htmlFor={field.name}>
+                              You agree to our
+                              <a className="ml-1 underline" href="#">
+                                terms and conditions
+                              </a>
+                              <span>.</span>
+                            </Label>
+                          </div>
+                        ) : (
+                          <>
+                            <Label htmlFor={field.name}>
+                              {renderContactFieldLabel(editSlots, field.label, blockIndex, index)}
+                            </Label>
+                            {field.type === "textarea" ? (
+                              <Textarea
+                                className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none"
+                                id={field.name}
+                                name={field.name}
+                                placeholder={field.placeholder ?? undefined}
+                                rows={6}
+                                maxLength={field.maxLength ?? undefined}
+                              />
+                            ) : field.type === "select" ? (
+                              <select
+                                className="mt-2 h-10 w-full rounded-md border border-border bg-[var(--provider-surface,#fff)] px-3 shadow-none"
+                                id={field.name}
+                                name={field.name}
+                              >
+                                {field.options?.map((option) => (
+                                  <option key={option.value} value={option.value}>{option.label}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <Input
+                                className="mt-2 bg-[var(--provider-surface,#fff)] shadow-none"
+                                id={field.name}
+                                name={field.name}
+                                placeholder={field.placeholder ?? undefined}
+                                type={field.type}
+                                maxLength={field.maxLength ?? undefined}
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Button className="mt-6 w-full" size="lg" type="submit">
+                    {renderContactSubmitLabel(editSlots, submitLabel || "Submit", blockIndex)}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  )
+}
 
-export default Contact;
+export default function Contact02Literal() {
+  return (
+    <Contact02
+      title={contact02CmsLike.title}
+      description={contact02CmsLike.description}
+      formName={contact02CmsLike.formName}
+      formDescription="We'd love to hear from you. Please fill out this form."
+      submitLabel={contact02CmsLike.submitLabel}
+      fields={contact02CmsLike.fields}
+      details={contact02LiteralDetails}
+      blockIndex={0}
+      showDemoChrome
+    />
+  )
+}

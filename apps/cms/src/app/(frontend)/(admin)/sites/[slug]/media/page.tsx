@@ -32,7 +32,7 @@ export default async function MediaPage({
         beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
         action={<MediaUploader tenantId={tenant.id} refreshOnUploaded />}
       />
-      <MediaGrid items={result.docs as any} usage={usage} pagesBaseHref={`/sites/${slug}/pages`} canManage />
+      <MediaGrid items={result.docs} usage={usage} pagesBaseHref={`/sites/${slug}/pages`} canManage />
       <ListPagination
         page={result.page}
         totalPages={result.totalPages}

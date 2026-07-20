@@ -241,7 +241,7 @@ function bindItems(model: ProviderBlockModel, field: string, templates: readonly
   })
 }
 
-export function ProviderItems({ field, templates, children }: { field: string; templates: readonly unknown[]; children: (items: any[]) => React.ReactNode }) {
+export function ProviderItems({ field, templates, children }: { field: string; templates: readonly unknown[]; children: (items: unknown[]) => React.ReactNode }) {
   const model = useProviderBlockModel()
   return <>{children(model ? bindItems(model, field, templates) : [...templates])}</>
 }

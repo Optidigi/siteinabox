@@ -9,16 +9,17 @@ import { Label } from "@siteinabox/ui/components/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@siteinabox/ui/components/select"
 import { IconPicker, resolveLucideIcon } from "@/components/editor/icon-picker"
 import type { ElementSpec } from "@/components/editor/blockElements"
+import { asIconValue, asRtRootValue, type EditorArrayItem } from "@/lib/editor/blockFieldValues"
 import type { RtManifest } from "@/lib/richText/manifest"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 export interface ArrayItemCardProps {
   spec: ElementSpec
-  item: any
+  item: EditorArrayItem
   itemIndex: number
   blockIndex: number
-  onChange: (next: any) => void
+  onChange: (next: EditorArrayItem) => void
   onRemove: () => void
   manifest: RtManifest
 }
@@ -78,8 +79,8 @@ export const ArrayItemCard: React.FC<ArrayItemCardProps> = ({
 
 const SubFieldRenderer: React.FC<{
   sub: ElementSpec
-  value: any
-  onChange: (next: any) => void
+  value: unknown
+  onChange: (next: unknown) => void
   blockIndex: number
   itemIndex: number
   manifest: RtManifest
@@ -92,7 +93,7 @@ const SubFieldRenderer: React.FC<{
         <LexicalField
           key={`${blockIndex}.${itemIndex}.${sub.field}`}
           variant={sub.variant ?? "inline"}
-          value={value}
+          value={asRtRootValue(value)}
           onChange={onChange}
           manifest={manifest}
           placeholder={sub.label}
@@ -104,7 +105,10 @@ const SubFieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{sub.label}</Label>
-        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+        <Input
+          value={typeof value === "string" ? value : value == null ? "" : String(value)}
+          onChange={(e) => onChange(e.target.value)}
+        />
       </div>
     )
   }
@@ -120,7 +124,10 @@ const SubFieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         <Label className="text-xs text-muted-foreground">{sub.label}</Label>
-        <Select value={value ?? ""} onValueChange={onChange}>
+        <Select
+          value={typeof value === "string" ? value : value == null ? "" : String(value)}
+          onValueChange={onChange}
+        >
           <SelectTrigger className="w-full">
             <SelectValue placeholder={sub.label} />
           </SelectTrigger>
@@ -147,7 +154,7 @@ const SubFieldRenderer: React.FC<{
     )
   }
   if (sub.kind === "icon") {
-    const iconValue: string | null = value ?? null
+    const iconValue = asIconValue(value)
     const Icon = resolveLucideIcon(iconValue)
     return (
       <div className="space-y-1">

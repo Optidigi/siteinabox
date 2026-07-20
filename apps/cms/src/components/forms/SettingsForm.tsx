@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useTranslations } from "next-intl"
-import { useForm, FormProvider } from "react-hook-form"
+import { useForm, FormProvider, type FieldPath, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
@@ -26,6 +26,8 @@ import { normalizeUploadId } from "@/lib/uploadValues"
 import { DEFAULT_CLIENT_SETTINGS_CONTRACT, type SettingsContract } from "@/lib/settingsContract"
 import { useStatusFeedback } from "@/components/status-feedback"
 import { deriveSaveStatus } from "@/lib/deriveSaveStatus"
+import type { SiteSetting } from "@/payload-types"
+import { MediaRefSchema } from "@siteinabox/contracts"
 
 // OBS-81 — Settings is client-facing and intentionally slim by default:
 // General, Brand, and Operations. Legal details, opening hours, and
@@ -52,8 +54,8 @@ const createSettingsSchema = (t: (key: string, values?: Record<string, string | 
     z.null()
   ]).optional(),
   branding: z.object({
-    logo: z.any().nullish(),
-    favicon: z.any().nullish(),
+    logo: MediaRefSchema.nullish(),
+    favicon: MediaRefSchema.nullish(),
     primaryColor: z.union([
       z.string().regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i, t("validation.hexInvalid")), // lint:no-css:ignore — hex in validation message string, not CSS
       z.literal(""),
@@ -74,13 +76,22 @@ const createSettingsSchema = (t: (key: string, values?: Record<string, string | 
 
 type Values = z.infer<ReturnType<typeof createSettingsSchema>>
 type SectionKey = "general" | "brand" | "operations"
+type SettingsFormField = {
+  name?: string
+  type: string
+  label: string
+  relationTo?: string
+  admin?: { description?: string }
+  fields?: SettingsFormField[]
+}
+type SettingsFormInitial = (Values | SiteSetting) & { id: number | string }
 
 export function SettingsForm({
   initial,
   canEdit,
   settingsContract = DEFAULT_CLIENT_SETTINGS_CONTRACT,
 }: {
-  initial: any
+  initial: SettingsFormInitial
   canEdit: boolean
   settingsContract?: SettingsContract
 }) {
@@ -90,8 +101,8 @@ export function SettingsForm({
   const status = useStatusFeedback()
   const settingsSchema = createSettingsSchema(t)
   const form = useForm<Values>({
-    resolver: zodResolver(settingsSchema),
-    defaultValues: initial
+    resolver: zodResolver(settingsSchema) as Resolver<Values>,
+    defaultValues: initial as Values,
   })
   const [pending, setPending] = useState(false)
   const [section, setSection] = useState<SectionKey>("general")
@@ -146,8 +157,7 @@ export function SettingsForm({
       const detail = await parsePayloadError(res)
       if (detail.field) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          form.setError(detail.field as any, { type: "server", message: detail.message })
+          form.setError(detail.field as FieldPath<Values>, { type: "server", message: detail.message })
         } catch {
           // RHF rejects unknown paths; the save-status badge still shows failure.
         }
@@ -180,7 +190,7 @@ export function SettingsForm({
           admin: { description: t("contactEmailDescription") },
         }
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const brandingFields = [
     settingsContract.identity.branding.logo
@@ -189,13 +199,13 @@ export function SettingsForm({
     settingsContract.identity.branding.favicon
       ? { name: "favicon", type: "upload", relationTo: "media", label: t("favicon") }
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const brandFields = [
     brandingFields.length
       ? { type: "group", name: "branding", label: t("branding"), fields: brandingFields }
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const operationsFields = [
     settingsContract.operations.maintenance
@@ -204,7 +214,7 @@ export function SettingsForm({
           { name: "message", type: "textarea", label: t("maintenanceMessage") },
         ]}
       : null,
-  ].filter(Boolean)
+  ].filter(Boolean) as SettingsFormField[]
 
   const sections = [
     { key: "general" as const, label: t("general"), Icon: SettingsIcon, fields: generalFields },
@@ -274,7 +284,7 @@ export function SettingsForm({
           <CardContent className="space-y-3">
             {sections.map(({ key, fields }) => (
               <div key={key} className={cn("space-y-3", key !== section && "hidden")}>
-                {fields.map((f: any, i: number) => <FieldRenderer key={i} field={f} />)}
+                {fields.map((field: SettingsFormField, index: number) => <FieldRenderer key={index} field={field} />)}
                 {key === "operations" && (
                   <section className="rounded-md border border-border p-3">
                     <div className="flex items-start justify-between gap-3">

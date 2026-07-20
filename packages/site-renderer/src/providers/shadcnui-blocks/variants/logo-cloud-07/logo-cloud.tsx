@@ -1,57 +1,98 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks logo-cloud-07 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import { Marquee } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import type { MediaResolver } from "../../../../media"
 import {
-  Logo01,
-  Logo02,
-  Logo03,
-  Logo04,
-  Logo05,
-  Logo06,
-  Logo07,
-  Logo08,
-} from "../../runtime/logos";
-import { Marquee } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+  type LogoCloudLogoItem,
+  renderLogoCloudLogo,
+  renderLogoCloudTitle,
+  sliceLogoCloudLogos,
+} from "../../typed/logo-cloud-fields"
+import { logoCloud07Literal, logoCloudFamilyCmsLike } from "../../typed/fixtures/logo-cloud-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import { Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08 } from "../../runtime/logos"
 
-const LogoCloud = () => {
+const MAX_LOGOS = 8
+const FALLBACK_LOGOS = [Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08] as const
+
+const renderMarqueeLogos = (
+  logos: LogoCloudLogoItem[],
+  blockIndex: number,
+  editSlots: LogoCloud07Props["editSlots"],
+  mediaResolver: MediaResolver | undefined,
+  literalPreview: boolean,
+  reverse = false,
+) => {
+  const displayLogos = sliceLogoCloudLogos(logos, MAX_LOGOS)
+  const ordered = reverse ? [...displayLogos].reverse() : displayLogos
+  const orderedFallback = reverse ? [...FALLBACK_LOGOS].reverse() : FALLBACK_LOGOS
+
   return (
-    <div className="flex min-h-screen items-center justify-center px-6">
-      <div className="overflow-hidden">
-        <p className="text-center font-medium text-foreground/80 text-xl"><ProviderField field="title" fallback={<>
-          More than 2.2 million companies worldwide already trust us
-        </>} inline /></p>
+    <Marquee
+      className="mask-x-from-75% [--duration:40s] *:h-10 [&_svg]:mr-10"
+      pauseOnHover
+      reverse={reverse}
+    >
+      {literalPreview
+        // Match upstream bare <LogoN /> — height comes from Marquee *:h-10 flex stretch.
+        ? orderedFallback.map((Logo, itemIndex) => <Logo key={itemIndex} />)
+        : ordered.map((logo, itemIndex) => {
+            const sourceIndex = reverse ? displayLogos.length - 1 - itemIndex : itemIndex
+            return (
+              <React.Fragment key={itemIndex}>
+                {renderLogoCloudLogo(logo, sourceIndex, blockIndex, editSlots, mediaResolver, {
+                  className: "h-10",
+                })}
+              </React.Fragment>
+            )
+          })}
+    </Marquee>
+  )
+}
 
+export type LogoCloud07Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  logos: LogoCloudLogoItem[]
+  mediaResolver?: MediaResolver
+  literalPreview?: boolean
+}
+
+export function LogoCloud07({
+  title,
+  logos,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  rootAttributes,
+  literalPreview = false,
+}: LogoCloud07Props) {
+  const titleContent = renderLogoCloudTitle(editSlots, title, blockIndex)
+
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6" {...rootAttributes}>
+      <div className="overflow-hidden">
+        {titleContent ? (
+          <p className="text-center font-medium text-foreground/80 text-xl">{titleContent}</p>
+        ) : null}
         <div className="mt-14 max-w-(--breakpoint-lg) space-y-8">
-          <Marquee
-            className="mask-x-from-75% [--duration:40s] *:h-10 [&_svg]:mr-10"
-            pauseOnHover
-          >
-            <ProviderLogo field="logos" index={0} fallback={<Logo01 />} />
-            <ProviderLogo field="logos" index={1} fallback={<Logo02 />} />
-            <ProviderLogo field="logos" index={2} fallback={<Logo03 />} />
-            <ProviderLogo field="logos" index={3} fallback={<Logo04 />} />
-            <ProviderLogo field="logos" index={4} fallback={<Logo05 />} />
-            <ProviderLogo field="logos" index={5} fallback={<Logo06 />} />
-            <ProviderLogo field="logos" index={6} fallback={<Logo07 />} />
-            <ProviderLogo field="logos" index={7} fallback={<Logo08 />} />
-          </Marquee>
-          <Marquee
-            className="mask-x-from-75% [--duration:40s] *:h-10 [&_svg]:mr-10"
-            pauseOnHover
-            reverse
-          >
-            <ProviderLogo field="logos" index={7} fallback={<Logo08 />} />
-            <ProviderLogo field="logos" index={6} fallback={<Logo07 />} />
-            <ProviderLogo field="logos" index={5} fallback={<Logo06 />} />
-            <ProviderLogo field="logos" index={4} fallback={<Logo05 />} />
-            <ProviderLogo field="logos" index={3} fallback={<Logo04 />} />
-            <ProviderLogo field="logos" index={2} fallback={<Logo03 />} />
-            <ProviderLogo field="logos" index={1} fallback={<Logo02 />} />
-            <ProviderLogo field="logos" index={0} fallback={<Logo01 />} />
-          </Marquee>
+          {renderMarqueeLogos(logos, blockIndex, editSlots, mediaResolver, literalPreview)}
+          {renderMarqueeLogos(logos, blockIndex, editSlots, mediaResolver, literalPreview, true)}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default LogoCloud;
+export default function LogoCloud07Literal() {
+  return (
+    <LogoCloud07
+      title={logoCloud07Literal.title}
+      logos={logoCloudFamilyCmsLike.logos}
+      blockIndex={0}
+      literalPreview
+    />
+  )
+}

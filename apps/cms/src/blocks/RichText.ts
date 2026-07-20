@@ -1,6 +1,7 @@
 import { Type } from "lucide-react"
 import { firstRichText, truncate, type BlockWithMeta } from "./_summary"
 import { blockBaseFields } from "./baseFields"
+import { richBlockField } from "./richTextFields"
 
 export const RichText: BlockWithMeta = {
   slug: "richText",
@@ -8,12 +9,7 @@ export const RichText: BlockWithMeta = {
   description: "Long-form text content",
   interfaceName: "RichTextBlock",
   fields: [
-    { name: "body", type: "json",
-      admin: {
-        editor: "richTextBlock",
-        description: "Rich text content rendered by the site theme."
-      } as any
-    },
+    richBlockField("body", "Rich text content rendered by the site theme."),
     ...blockBaseFields("overview"),
   ],
   summary: (v) => {

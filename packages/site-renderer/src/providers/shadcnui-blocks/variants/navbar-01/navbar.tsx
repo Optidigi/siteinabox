@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { Logo } from "./logo";
 import { NavMenu } from "./nav-menu";

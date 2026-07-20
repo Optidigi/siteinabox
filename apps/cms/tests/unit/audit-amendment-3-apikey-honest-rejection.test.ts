@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest"
 import { Users } from "@/collections/Users"
+import { expectAccessField } from "../_helpers/payloadFields"
 
+import { asBeforeOperationHook, callBeforeOpHook, type BeforeOperationHook } from "../_helpers/hookFixtures"
+import { cast, errLike } from "../_helpers/cast"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit AMENDMENT AMD-3 (T2 secondary) — `ApiKeyManager` UI silently no-ops
 // for non-super-admin (regression introduced by AMD-2 commit f6957af).
 //
@@ -54,9 +58,7 @@ import { Users } from "@/collections/Users"
 // Server-side hook extraction
 // -----------------------------------------------------------------------------
 
-const beforeOperationHooks = (Users.hooks?.beforeOperation ?? []) as Array<
-  (args: any) => any
->
+const beforeOperationHooks = (Users.hooks?.beforeOperation ?? []) as unknown as BeforeOperationHook[]
 // AMD-3 fix adds the FIRST (and currently ONLY) beforeOperation hook on Users.
 // If a future change appends more hooks, this index assumption needs revisiting
 // — guarded by the structural canary S1 below.
@@ -82,10 +84,10 @@ const reqAuthed = (role: string, tenantId?: number | string | null, id = "u1") =
 // `async` IIFE so a synchronous throw (e.g. when the hook isn't installed
 // yet, in the TDD-red baseline) surfaces as a promise rejection that
 // `expect(...).rejects.toThrow()` can match.
-const callHook = async (opts: { operation: "update" | "create"; req: any; data: any }) =>
-  (apiKeyHonestRejectHook as (a: any) => any)({
+const callHook = async (opts: { operation: "update" | "create"; req: unknown; data: unknown }) =>
+  (apiKeyHonestRejectHook as (a: unknown) => unknown)({
     args: { data: opts.data, req: opts.req },
-    collection: {} as any,
+    collection: {},
     context: {},
     operation: opts.operation,
     overrideAccess: false,
@@ -97,15 +99,15 @@ const callHook = async (opts: { operation: "update" | "create"; req: any; data: 
 // httpStatus.FORBIDDEN === 403. Asserting status === 403 is more specific
 // than `.rejects.toThrow()` (which would also match a generic TypeError in
 // the TDD-red baseline before the hook exists).
-const expectForbidden = async (promise: Promise<any>) => {
-  let err: any = null
+const expectForbidden = async (promise: Promise<unknown>) => {
+  let err: unknown = null
   try {
     await promise
   } catch (e) {
     err = e
   }
   expect(err, "expected the hook to throw").not.toBeNull()
-  expect(err?.status, "expected a 403 Forbidden, not a generic Error").toBe(403)
+  expect(errLike(err).status, "expected a 403 Forbidden, not a generic Error").toBe(403)
 }
 
 // -----------------------------------------------------------------------------
@@ -240,12 +242,11 @@ describe("AMD-3 — re-arm guards (AMD-1 / AMD-2 must remain closed)", () => {
     else process.env.BOOTSTRAP_TOKEN = orig
   })
 
-  const fields = Users.fields as any[]
-  const apiKeyField = fields.find((f) => f.name === "apiKey")
-  const enableAPIKeyField = fields.find((f) => f.name === "enableAPIKey")
-  const apiKeyIndexField = fields.find((f) => f.name === "apiKeyIndex")
-  const roleField = fields.find((f) => f.name === "role")
-  const tenantsField = fields.find((f) => f.name === "tenants")
+  const apiKeyField = expectAccessField(Users.fields, "apiKey")
+  const enableAPIKeyField = expectAccessField(Users.fields, "enableAPIKey")
+  const apiKeyIndexField = expectAccessField(Users.fields, "apiKeyIndex")
+  const roleField = expectAccessField(Users.fields, "role")
+  const tenantsField = expectAccessField(Users.fields, "tenants")
 
   it("R1 (AMD-1): owner can still invite editor/viewer into own tenant — role.access.create + tenants.access.create unchanged", () => {
     // Mirrors AMD-1 Case 1/2. AMD-3's changes must not regress these.
@@ -358,31 +359,32 @@ vi.mock("next-intl/server", () => ({
 }))
 
 // Walk a React element tree and report whether any node has `type === target`.
-const treeContains = (node: any, target: any): boolean => {
+const treeContains = (node: unknown, target: unknown): boolean => {
   if (node == null || typeof node !== "object") return false
   if (Array.isArray(node)) return node.some((n) => treeContains(n, target))
-  if (node.type === target) return true
-  return treeContains(node.props?.children, target)
+  const element = node as { type?: unknown; props?: { children?: unknown } }
+  if (element.type === target) return true
+  return treeContains(element.props?.children, target)
 }
 
 describe("AMD-3 — /api-key page renders ApiKeyManager only for super-admin; non-super-admin sees a placeholder (no silent fake-success UI)", () => {
-  let ApiKeyPage: any
-  let ApiKeyManagerMock: any
-  let requireAuthMock: any
-  let requireRoleMock: any
+  let ApiKeyPage: () => Promise<unknown>
+  let ApiKeyManagerMock: unknown
+  let requireAuthMock: ReturnType<typeof vi.fn>
+  let requireRoleMock: ReturnType<typeof vi.fn>
 
   beforeEach(async () => {
     vi.clearAllMocks()
     const auth = await import("@/lib/authGate")
-    requireAuthMock = auth.requireAuth as any
-    requireRoleMock = auth.requireRole as any
+    requireAuthMock = cast<ReturnType<typeof vi.fn>>(auth.requireAuth)
+    requireRoleMock = cast<ReturnType<typeof vi.fn>>(auth.requireRole)
     const apiKeyManagerModule = await import("@/components/forms/ApiKeyManager")
     ApiKeyManagerMock = apiKeyManagerModule.ApiKeyManager
     const pageModule = await import("@/app/(frontend)/(admin)/api-key/page")
-    ApiKeyPage = pageModule.default
+    ApiKeyPage = cast<() => Promise<unknown>>(pageModule.default)
   })
 
-  const synthCtx = { tenant: null, host: "admin.test" } as any
+  const synthCtx = { tenant: null, host: "admin.test" }
 
   // Helper: stub BOTH requireAuth (post-fix call) and requireRole (legacy
   // pre-fix call) with the same return shape, so the test asserts the
@@ -390,7 +392,7 @@ describe("AMD-3 — /api-key page renders ApiKeyManager only for super-admin; no
   // Pre-fix the page calls requireRole and renders ApiKeyManager unconditionally
   // (the test for non-super-admin then fails — TDD red); post-fix the page
   // calls requireAuth and branches (test passes — TDD green).
-  const stubGate = (user: { id: string; role: string; tenants: any[] }) => {
+  const stubGate = (user: { id: string; role: string; tenants: unknown[] }) => {
     const result = { user, ctx: synthCtx }
     requireAuthMock.mockResolvedValue(result)
     requireRoleMock.mockResolvedValue(result)

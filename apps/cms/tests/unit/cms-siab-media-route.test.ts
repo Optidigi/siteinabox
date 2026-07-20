@@ -3,6 +3,7 @@ import { join } from "node:path"
 import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { errLike } from "../_helpers/cast"
 const mocks = vi.hoisted(() => ({
   payload: {
     auth: vi.fn(),

@@ -1,5 +1,9 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks blog-03 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import type { MediaResolver } from "../../../../media"
 import {
   BadgeDollarSign,
   Bike,
@@ -11,186 +15,96 @@ import {
   FlaskRound,
   HeartPulse,
   Scale,
-} from "lucide-react";
-import Image from "../../runtime/image";
-import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Card, CardContent } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+  type LucideIcon,
+} from "lucide-react"
+import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Card, CardContent } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { blog03CmsLike } from "../../typed/fixtures/blog-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import {
+  renderBlogPostDate,
+  renderBlogPostExcerpt,
+  renderBlogPostImage,
+  renderBlogPostTitle,
+  renderBlogTitle,
+  sliceBlogPosts,
+  type BlogPostItem,
+} from "../../typed/blog-fields"
 
-const blogPosts = [
-  {
-    category: "Technology",
-    title: "A beginner's guide to blockchain for engineers",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "5 min read",
-    date: "Nov 20, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:3bf03",
-  },
-  {
-    category: "Business",
-    title: "Understanding React Server Components",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "8 min read",
-    date: "Nov 18, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2fa0b",
-  },
-  {
-    category: "Finance",
-    title: "10 Useful Shadcn UI Components You Should Know",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "6 min read",
-    date: "Nov 15, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5b9d1",
-  },
-  {
-    category: "Health",
-    title: "Building a Personal Blog with Next.js",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "10 min read",
-    date: "Nov 12, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:5f7e8",
-  },
-  {
-    category: "Lifestyle",
-    title: "The Complete Guide to TypeScript for Beginners",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "12 min read",
-    date: "Nov 10, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:d11ce",
-  },
-  {
-    category: "Politics",
-    title: "Optimizing Web Performance with Next.js",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "7 min read",
-    date: "Nov 8, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:2dcd5",
-  },
-  {
-    category: "Science",
-    title: "Deploying Full-Stack Apps on Vercel",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "9 min read",
-    date: "Nov 5, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:0ac53",
-  },
-  {
-    category: "Sports",
-    title: "Getting Started with Modern Web Development",
-    description:
-      "Lorem ipsum dolor sit, amet consectetur adipisicing elit. Ipsa consequatur minus dicta accusantium quos, ratione suscipit id adipisci voluptatibus. Nulla sint repudiandae fugiat tenetur dolores.",
-    readTime: "11 min read",
-    date: "Nov 2, 2024",
-    image:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:dfcf6",
-  },
-];
+const MAX_POSTS = 12
 
-const categories = [
-  {
-    name: "Technology",
-    totalPosts: 10,
-    icon: Cpu,
-  },
-  {
-    name: "Business",
-    totalPosts: 5,
-    icon: BriefcaseBusiness,
-  },
-  {
-    name: "Finance",
-    totalPosts: 8,
-    icon: BadgeDollarSign,
-  },
-  {
-    name: "Health",
-    totalPosts: 12,
-    icon: HeartPulse,
-  },
-  {
-    name: "Lifestyle",
-    totalPosts: 15,
-    icon: BookHeart,
-  },
-  {
-    name: "Politics",
-    totalPosts: 20,
-    icon: Scale,
-  },
-  {
-    name: "Science",
-    totalPosts: 25,
-    icon: FlaskRound,
-  },
-  {
-    name: "Sports",
-    totalPosts: 30,
-    icon: Bike,
-  },
-];
+const BLOG03_CATEGORIES: Array<{ name: string; totalPosts: number; icon: LucideIcon }> = [
+  { name: "Technology", totalPosts: 10, icon: Cpu },
+  { name: "Business", totalPosts: 5, icon: BriefcaseBusiness },
+  { name: "Finance", totalPosts: 8, icon: BadgeDollarSign },
+  { name: "Health", totalPosts: 12, icon: HeartPulse },
+  { name: "Lifestyle", totalPosts: 15, icon: BookHeart },
+  { name: "Politics", totalPosts: 20, icon: Scale },
+  { name: "Science", totalPosts: 25, icon: FlaskRound },
+  { name: "Sports", totalPosts: 30, icon: Bike },
+]
 
-const Blog = () => {
+export type Blog03Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  posts: BlogPostItem[]
+  mediaResolver?: MediaResolver
+}
+
+export function Blog03({ title, posts, blockIndex, editSlots, mediaResolver, rootAttributes }: Blog03Props) {
+  const titleContent = renderBlogTitle(editSlots, title, blockIndex)
+  const displayPosts = sliceBlogPosts(posts, MAX_POSTS)
+
   return (
-    <div className="mx-auto flex max-w-(--breakpoint-xl) flex-col items-start gap-12 px-6 py-10 lg:flex-row lg:py-16 xl:px-0">
+    <div className="mx-auto flex max-w-(--breakpoint-xl) flex-col items-start gap-12 px-6 py-10 lg:flex-row lg:py-16 xl:px-0" {...rootAttributes}>
       <div>
         <div className="space-y-12">
-          {<ProviderItems field="posts" templates={blogPosts}>{(providerItems) => providerItems.map((post) => (
-            <Card
-              className="flex flex-col overflow-hidden rounded-md border-none bg-background py-0 shadow-none sm:flex-row sm:items-center"
-              key={post.title}
-            >
-              <div className="relative aspect-video shrink-0 grow overflow-hidden rounded-lg sm:aspect-square sm:w-56">
-                <Image
-                  alt={post.title}
-                  className="object-cover"
-                  fill
-                  sizes="(max-width: 640px) 100vw, 224px"
-                  src={post.image}
-                />
-              </div>
-              <CardContent className="flex flex-col px-0 py-0 sm:px-6">
-                <div className="flex items-center gap-6">
-                  <Badge className="bg-primary/5 text-primary shadow-none hover:bg-primary/5">
-                    {post.category}
-                  </Badge>
+          {displayPosts.map((post, itemIndex) => {
+            const postTitle = renderBlogPostTitle(editSlots, post.title, blockIndex, itemIndex)
+            const excerpt = renderBlogPostExcerpt(editSlots, post.excerpt, blockIndex, itemIndex)
+            const date = renderBlogPostDate(editSlots, post.date, blockIndex, itemIndex)
+            if (!postTitle && !excerpt && !post.image) return null
+            return (
+              <Card
+                className="flex flex-col overflow-hidden rounded-md border-none bg-background py-0 shadow-none sm:flex-row sm:items-center"
+                key={itemIndex}
+              >
+                <div className="relative aspect-video shrink-0 grow overflow-hidden rounded-lg sm:aspect-square sm:w-56">
+                  {renderBlogPostImage(editSlots, mediaResolver, post.image, "Blog post", blockIndex, itemIndex, {
+                    className: "object-cover",
+                    fill: true,
+                    sizes: "(max-width: 640px) 100vw, 224px",
+                  })}
                 </div>
-
-                <h3 className="mt-4 font-medium text-[1.5rem] tracking-tight">
-                  {post.title}
-                </h3>
-                <p className="mt-2 line-clamp-3 text-ellipsis text-muted-foreground">
-                  {post.description}
-                </p>
-                <div className="mt-4 flex items-center gap-6 font-medium text-muted-foreground text-sm">
-                  <div className="flex items-center gap-2">
-                    <ClockIcon className="h-4 w-4" /> {post.readTime}
+                <CardContent className="flex flex-col px-0 py-0 sm:px-6">
+                  {post.authorRole ? (
+                    <div className="flex items-center gap-6">
+                      <Badge className="bg-primary/5 text-primary shadow-none hover:bg-primary/5">{post.authorRole}</Badge>
+                    </div>
+                  ) : null}
+                  {postTitle ? <h3 className="mt-4 font-medium text-[1.5rem] tracking-tight">{postTitle}</h3> : null}
+                  {excerpt ? <p className="mt-2 line-clamp-3 text-ellipsis text-muted-foreground">{excerpt}</p> : null}
+                  <div className="mt-4 flex items-center gap-6 font-medium text-muted-foreground text-sm">
+                    {post.readTime ? (
+                      <div className="flex items-center gap-2">
+                        <ClockIcon className="h-4 w-4" /> {post.readTime}
+                      </div>
+                    ) : null}
+                    {date ? (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4" /> {date}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" /> {post.date}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}</ProviderItems>}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </div>
       <aside className="sticky top-8 w-full shrink-0 lg:max-w-sm">
-        <h3 className="font-medium text-xl tracking-tight"><ProviderField field="title" fallback={<>Categories</>} inline /></h3>
+        {titleContent ? <h3 className="font-medium text-xl tracking-tight">{titleContent}</h3> : null}
         <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-1">
-          {categories.map((category) => (
+          {BLOG03_CATEGORIES.map((category) => (
             <div
               className="flex items-center justify-between gap-2 rounded-lg bg-muted bg-opacity-15 p-3 ps-4 dark:bg-muted/70 dark:bg-opacity-25"
               key={category.name}
@@ -207,7 +121,9 @@ const Blog = () => {
         </div>
       </aside>
     </div>
-  );
-};
+  )
+}
 
-export default Blog;
+export default function Blog03Literal() {
+  return <Blog03 title={blog03CmsLike.title} posts={blog03CmsLike.posts} blockIndex={0} />
+}

@@ -1,3 +1,4 @@
+import { cast } from "../_helpers/cast"
 import { describe, it, expect } from "vitest"
 import { validateNextRedirect } from "@/lib/auth/validateNextRedirect"
 
@@ -74,11 +75,11 @@ describe("audit-p2 #9 — validateNextRedirect", () => {
   })
 
   it("Case 8 — non-string types (number, boolean, object, array) fall back to '/'", () => {
-    expect(validateNextRedirect(42 as unknown)).toBe("/")
-    expect(validateNextRedirect(true as unknown)).toBe("/")
-    expect(validateNextRedirect({} as unknown)).toBe("/")
-    expect(validateNextRedirect([] as unknown)).toBe("/")
-    expect(validateNextRedirect(["/legit"] as unknown)).toBe("/")
+    expect(validateNextRedirect(42 as unknown as string)).toBe("/")
+    expect(validateNextRedirect(true as unknown as string)).toBe("/")
+    expect(validateNextRedirect({})).toBe("/")
+    expect(validateNextRedirect(cast<unknown>([]))).toBe("/")
+    expect(validateNextRedirect(cast<unknown>(["/legit"]))).toBe("/")
   })
 
   // -------------------------------------------------------------------------

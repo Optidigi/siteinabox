@@ -1,9 +1,17 @@
 import { describe, it, expect } from "vitest"
+import type { Field } from "payload"
 import { SiteSettings, enforceChromeCapabilities, enforceTenantExclusiveChromeVariants, filterChromeVariantOptions } from "@/collections/SiteSettings"
 import { validateTenantExists } from "@/hooks/validateTenantExists"
 import { SITE_CHROME_CATALOG } from "@siteinabox/contracts/block-catalog"
+import { expectNamedField, findNamedSubField, fieldOptionValues, fieldOptions, fieldRequired, fieldValidator } from "../_helpers/payloadFields"
+import { argsFor } from "../_helpers/argsFor"
 
-const findField = (name: string): any => SiteSettings.fields.find((f: any) => f.name === name)
+const findField = (name: string) => expectNamedField(SiteSettings.fields, name)
+const findSubField = (fields: Field[] | undefined, name: string) => {
+  const field = findNamedSubField(fields, name)
+  if (!field) throw new Error(`Sub-field "${name}" not found`)
+  return field
+}
 const globalVariants = (area: "header" | "footer" | "banner") => SITE_CHROME_CATALOG.filter((entry) => entry.area === area && entry.scope.kind === "global").map((entry) => entry.variant)
 const officialVariants = (area: "header" | "footer") => SITE_CHROME_CATALOG.filter((entry) => entry.area === area).map((entry) => entry.variant)
 
@@ -21,33 +29,34 @@ describe("SiteSettings collection config", () => {
     const f = findField("description")
     expect(f).toBeDefined()
     expect(f.type).toBe("textarea")
-    expect(f.required).not.toBe(true)
+    expect(fieldRequired(f)).not.toBe(true)
   })
 
   it("exposes contactEmail as the editable public site contact address", () => {
     const f = findField("contactEmail")
     expect(f).toMatchObject({ type: "email" })
-    expect(f.admin.description).toBeDefined()
+    expect("admin" in f && f.admin && typeof f.admin === "object" && "description" in f.admin).toBe(true)
   })
 
   it("adds language text with default 'nl'", () => {
     const f = findField("language")
     expect(f).toBeDefined()
     expect(f.type).toBe("text")
-    expect(f.defaultValue).toBe("nl")
+    expect("defaultValue" in f && f.defaultValue).toBe("nl")
   })
 
   it("adds aliases array with required host", () => {
     const f = findField("aliases")
     expect(f.type).toBe("array")
-    const host = f.fields.find((x: any) => x.name === "host")
+    const host = findSubField("fields" in f ? f.fields : undefined, "host")
     expect(host).toMatchObject({ type: "text", required: true })
   })
 
   it("adds nap group with the expected sub-fields", () => {
     const f = findField("nap")
     expect(f.type).toBe("group")
-    const subNames = f.fields.map((x: any) => x.name).sort()
+    const fields = "fields" in f ? f.fields ?? [] : []
+    const subNames = fields.map((field) => ("name" in field ? field.name : "")).sort()
     expect(subNames).toEqual([
       "city",
       "country",
@@ -58,58 +67,58 @@ describe("SiteSettings collection config", () => {
       "region",
       "streetAddress",
     ])
-    const country = f.fields.find((x: any) => x.name === "country")
-    expect(country.defaultValue).toBe("NL")
+    const country = findSubField(fields, "country")
+    expect("defaultValue" in country && country.defaultValue).toBe("NL")
   })
 
   it("adds hours array with day/open/close/closed", () => {
     const f = findField("hours")
     expect(f.type).toBe("array")
-    const day = f.fields.find((x: any) => x.name === "day")
+    const fields = "fields" in f ? f.fields ?? [] : []
+    const day = findSubField(fields, "day")
     expect(day.type).toBe("select")
-    expect(day.required).toBe(true)
-    expect(day.options.map((o: any) => o.value)).toEqual([
+    expect(fieldRequired(day)).toBe(true)
+    expect("options" in day ? fieldOptionValues(day.options) : []).toEqual([
       "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"
     ])
-    expect(f.fields.find((x: any) => x.name === "open")?.type).toBe("text")
-    expect(f.fields.find((x: any) => x.name === "close")?.type).toBe("text")
-    const closed = f.fields.find((x: any) => x.name === "closed")
+    expect(findSubField(fields, "open").type).toBe("text")
+    expect(findSubField(fields, "close").type).toBe("text")
+    const closed = findSubField(fields, "closed")
     expect(closed.type).toBe("checkbox")
-    expect(closed.defaultValue).toBe(false)
+    expect("defaultValue" in closed && closed.defaultValue).toBe(false)
   })
 
   it("hours.open/close validate skips when row is closed and rejects bad strings", () => {
     const f = findField("hours")
-    const openField = f.fields.find((x: any) => x.name === "open")
-    // Closed row: any value (or none) is fine.
-    expect(openField.validate(undefined, { siblingData: { closed: true } })).toBe(true)
-    // Open row: empty / missing is rejected.
-    expect(openField.validate("", { siblingData: { closed: false } })).not.toBe(true)
-    expect(openField.validate(undefined, { siblingData: { closed: false } })).not.toBe(true)
-    // Open row: malformed strings rejected.
-    expect(openField.validate("9:00", { siblingData: { closed: false } })).not.toBe(true)
-    expect(openField.validate("24:00", { siblingData: { closed: false } })).not.toBe(true)
-    expect(openField.validate("12:60", { siblingData: { closed: false } })).not.toBe(true)
-    // Open row: well-formed HH:MM accepted.
-    expect(openField.validate("09:00", { siblingData: { closed: false } })).toBe(true)
-    expect(openField.validate("23:59", { siblingData: { closed: false } })).toBe(true)
-    expect(openField.validate("00:00", { siblingData: { closed: false } })).toBe(true)
+    const fields = "fields" in f ? f.fields ?? [] : []
+    const openField = findSubField(fields, "open")
+    const validate = fieldValidator(openField)
+    expect(validate).toBeDefined()
+    expect(validate!(undefined, { siblingData: { closed: true } })).toBe(true)
+    expect(validate!("", { siblingData: { closed: false } })).not.toBe(true)
+    expect(validate!(undefined, { siblingData: { closed: false } })).not.toBe(true)
+    expect(validate!("9:00", { siblingData: { closed: false } })).not.toBe(true)
+    expect(validate!("24:00", { siblingData: { closed: false } })).not.toBe(true)
+    expect(validate!("12:60", { siblingData: { closed: false } })).not.toBe(true)
+    expect(validate!("09:00", { siblingData: { closed: false } })).toBe(true)
+    expect(validate!("23:59", { siblingData: { closed: false } })).toBe(true)
+    expect(validate!("00:00", { siblingData: { closed: false } })).toBe(true)
   })
 
   it("adds serviceArea array with required name", () => {
     const f = findField("serviceArea")
     expect(f.type).toBe("array")
-    const name = f.fields.find((x: any) => x.name === "name")
+    const name = findSubField("fields" in f ? f.fields : undefined, "name")
     expect(name).toMatchObject({ type: "text", required: true })
   })
 
   it("adds favicon, footer content, business identifiers, and maintenance fields", () => {
     const branding = findField("branding")
-    const favicon = branding.fields.find((x: any) => x.name === "favicon")
+    const favicon = findSubField("fields" in branding ? branding.fields : undefined, "favicon")
     expect(favicon).toMatchObject({ type: "upload", relationTo: "media" })
 
     const nap = findField("nap")
-    expect(nap.fields.map((x: any) => x.name)).toEqual([
+    expect(("fields" in nap ? nap.fields ?? [] : []).map((field) => ("name" in field ? field.name : ""))).toEqual([
       "legalName",
       "kvkNumber",
       "establishmentNumber",
@@ -122,28 +131,32 @@ describe("SiteSettings collection config", () => {
 
     const chrome = findField("chrome")
     expect(chrome.type).toBe("group")
-    const header = chrome.fields.find((x: any) => x.name === "header")
-    const footer = chrome.fields.find((x: any) => x.name === "footer")
-    const banner = chrome.fields.find((x: any) => x.name === "banner")
-    expect(chrome.fields.map((x: any) => x.name)).toEqual(["header", "footer", "banner"])
-    expect(header.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "behavior", "activeMode", "mobileMenu", "cta", "secondaryAction", "search"])
-    expect(header.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(header.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(officialVariants("header"))
-    expect(footer.fields.map((x: any) => x.name)).toEqual(["variant", "logo", "tagline", "copyright", "legalLinks", "columns", "newsletter"])
-    expect(footer.fields.find((x: any) => x.name === "logo")).toMatchObject({ type: "upload", relationTo: "media" })
-    expect(footer.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(officialVariants("footer"))
-    expect(footer.fields.find((x: any) => x.name === "columns")).toMatchObject({ type: "json" })
-    expect(banner.fields.map((x: any) => x.name)).toEqual(["variant", "visible", "title", "message", "link", "dismissible"])
-    expect(banner.fields.find((x: any) => x.name === "variant")?.options.map((x: any) => x.value)).toEqual(globalVariants("banner"))
-    expect(banner.fields.find((x: any) => x.name === "link")).toMatchObject({ type: "group" })
+    const chromeFields = "fields" in chrome ? chrome.fields ?? [] : []
+    const header = findSubField(chromeFields, "header")
+    const footer = findSubField(chromeFields, "footer")
+    const banner = findSubField(chromeFields, "banner")
+    expect(chromeFields.map((field) => ("name" in field ? field.name : ""))).toEqual(["header", "footer", "banner"])
+    const headerFields = "fields" in header ? header.fields ?? [] : []
+    const footerFields = "fields" in footer ? footer.fields ?? [] : []
+    const bannerFields = "fields" in banner ? banner.fields ?? [] : []
+    expect(headerFields.map((field) => ("name" in field ? field.name : ""))).toEqual(["variant", "logo", "behavior", "activeMode", "mobileMenu", "cta", "secondaryAction", "search"])
+    expect(findSubField(headerFields, "logo")).toMatchObject({ type: "upload", relationTo: "media" })
+    expect(fieldOptionValues("options" in findSubField(headerFields, "variant") ? fieldOptions(findSubField(headerFields, "variant")) : undefined)).toEqual(officialVariants("header"))
+    expect(footerFields.map((field) => ("name" in field ? field.name : ""))).toEqual(["variant", "logo", "tagline", "copyright", "legalLinks", "columns", "newsletter"])
+    expect(findSubField(footerFields, "logo")).toMatchObject({ type: "upload", relationTo: "media" })
+    expect(fieldOptionValues("options" in findSubField(footerFields, "variant") ? fieldOptions(findSubField(footerFields, "variant")) : undefined)).toEqual(officialVariants("footer"))
+    expect(findSubField(footerFields, "columns")).toMatchObject({ type: "json" })
+    expect(bannerFields.map((field) => ("name" in field ? field.name : ""))).toEqual(["variant", "visible", "title", "message", "link", "dismissible"])
+    expect(fieldOptionValues("options" in findSubField(bannerFields, "variant") ? fieldOptions(findSubField(bannerFields, "variant")) : undefined)).toEqual(globalVariants("banner"))
+    expect(findSubField(bannerFields, "link")).toMatchObject({ type: "group" })
 
     const maintenance = findField("maintenance")
     expect(maintenance.type).toBe("group")
-    expect(maintenance.fields.find((x: any) => x.name === "enabled")).toMatchObject({
+    expect(findSubField("fields" in maintenance ? maintenance.fields : undefined, "enabled")).toMatchObject({
       type: "checkbox",
       defaultValue: false,
     })
-    expect(maintenance.fields.find((x: any) => x.name === "message")?.type).toBe("textarea")
+    expect(findSubField("fields" in maintenance ? maintenance.fields : undefined, "message").type).toBe("textarea")
   })
 
   it("registers server-side tenant-exclusive chrome variant validation", () => {
@@ -153,58 +166,67 @@ describe("SiteSettings collection config", () => {
   })
 
   it("rejects settings that the selected literal chrome cannot render", async () => {
-    const validate = async (data: any) => enforceChromeCapabilities({
-      collection: { slug: "site-settings" },
+    const validate = async (data: Record<string, unknown>) => enforceChromeCapabilities(argsFor(enforceChromeCapabilities, {
+      collection: SiteSettings,
       data,
       originalDoc: undefined,
-      req: { i18n: { language: "en" } },
-    } as any)
+      req: { i18n: { language: "en" } } as Parameters<typeof enforceChromeCapabilities>[0]["req"],
+    }))
 
     await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-01" } }, navHeader: [{ type: "group", children: [{ label: "A", href: "/a" }] }] })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "navHeader" })]) } })
-    await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-05", mobileMenu: "drawer" } } })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "chrome.header.mobileMenu" })]) } })
+    await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-01", search: { enabled: true, action: "/search" } } } })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "chrome.header.search" })]) } })
     await expect(validate({ chrome: { footer: { variant: "shadcnui-blocks.footer-01", newsletter: { action: "/subscribe" } } } })).rejects.toMatchObject({ data: { errors: expect.arrayContaining([expect.objectContaining({ path: "chrome.footer.newsletter" })]) } })
     await expect(validate({ chrome: { header: { variant: "shadcnui-blocks.navbar-03" } }, navHeader: [{ type: "group", children: [{ label: "A", href: "/a" }] }] })).resolves.toBeTruthy()
   })
 
   it("filters tenant-exclusive chrome variants out of generic tenant admin options", () => {
     const chrome = findField("chrome")
-    const header = chrome.fields.find((x: any) => x.name === "header")
-    const footer = chrome.fields.find((x: any) => x.name === "footer")
-    const headerVariant = header.fields.find((x: any) => x.name === "variant")
-    const footerVariant = footer.fields.find((x: any) => x.name === "variant")
+    const chromeFields = "fields" in chrome ? chrome.fields ?? [] : []
+    const header = findSubField(chromeFields, "header")
+    const footer = findSubField(chromeFields, "footer")
+    const headerFields = "fields" in header ? header.fields ?? [] : []
+    const footerFields = "fields" in footer ? footer.fields ?? [] : []
+    const headerVariant = findSubField(headerFields, "variant")
+    const footerVariant = findSubField(footerFields, "variant")
 
-    expect(headerVariant.filterOptions).toBeTypeOf("function")
-    expect(footerVariant.filterOptions).toBeTypeOf("function")
-    expect(filterChromeVariantOptions("header", headerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
+    expect("filterOptions" in headerVariant && headerVariant.filterOptions).toBeTypeOf("function")
+    expect("filterOptions" in footerVariant && footerVariant.filterOptions).toBeTypeOf("function")
+    expect(fieldOptionValues(filterChromeVariantOptions("header", fieldOptions(headerVariant) ?? [], { tenant: { slug: "future-generated" } })))
       .toEqual(globalVariants("header"))
-    expect(filterChromeVariantOptions("footer", footerVariant.options, { tenant: { slug: "future-generated" } }).map((x) => x.value))
+    expect(fieldOptionValues(filterChromeVariantOptions("footer", fieldOptions(footerVariant) ?? [], { tenant: { slug: "future-generated" } })))
       .toEqual(globalVariants("footer"))
   })
 
   it("does not let admin option filtering reject internal writes without tenant context", () => {
     const chrome = findField("chrome")
-    const header = chrome.fields.find((x: any) => x.name === "header")
-    const footer = chrome.fields.find((x: any) => x.name === "footer")
-    const headerVariant = header.fields.find((x: any) => x.name === "variant")
-    const footerVariant = footer.fields.find((x: any) => x.name === "variant")
+    const chromeFields = "fields" in chrome ? chrome.fields ?? [] : []
+    const header = findSubField(chromeFields, "header")
+    const footer = findSubField(chromeFields, "footer")
+    const headerFields = "fields" in header ? header.fields ?? [] : []
+    const footerFields = "fields" in footer ? footer.fields ?? [] : []
+    const headerVariant = findSubField(headerFields, "variant")
+    const footerVariant = findSubField(footerFields, "variant")
 
-    expect(filterChromeVariantOptions("header", headerVariant.options, {}).map((x) => x.value))
+    expect(fieldOptionValues(filterChromeVariantOptions("header", fieldOptions(headerVariant) ?? [], {})))
       .toEqual(officialVariants("header"))
-    expect(filterChromeVariantOptions("footer", footerVariant.options, {}).map((x) => x.value))
+    expect(fieldOptionValues(filterChromeVariantOptions("footer", fieldOptions(footerVariant) ?? [], {})))
       .toEqual(officialVariants("footer"))
   })
   it("gives Ami Care the same canonical chrome options as every tenant", () => {
     const chrome = findField("chrome")
-    const header = chrome.fields.find((x: any) => x.name === "header")
-    const footer = chrome.fields.find((x: any) => x.name === "footer")
-    const headerOptions = header.fields.find((x: any) => x.name === "variant").options
-    const footerOptions = footer.fields.find((x: any) => x.name === "variant").options
+    const chromeFields = "fields" in chrome ? chrome.fields ?? [] : []
+    const header = findSubField(chromeFields, "header")
+    const footer = findSubField(chromeFields, "footer")
+    const headerFields = "fields" in header ? header.fields ?? [] : []
+    const footerFields = "fields" in footer ? footer.fields ?? [] : []
+    const headerOptions = fieldOptions(findSubField(headerFields, "variant"))
+    const footerOptions = fieldOptions(findSubField(footerFields, "variant"))
 
-    expect(filterChromeVariantOptions("header", headerOptions, { tenant: { slug: "ami-care" } }).map((x) => x.value))
+    expect(fieldOptionValues(filterChromeVariantOptions("header", headerOptions ?? [], { tenant: { slug: "ami-care" } })))
       .toEqual(globalVariants("header"))
-    expect(filterChromeVariantOptions("footer", footerOptions, { tenant: { slug: "ami-care" } }).map((x) => x.value))
+    expect(fieldOptionValues(filterChromeVariantOptions("footer", footerOptions ?? [], { tenant: { slug: "ami-care" } })))
       .toEqual(globalVariants("footer"))
-    expect(headerOptions.map((x: any) => x.value)).not.toContain("amicareZen")
-    expect(footerOptions.map((x: any) => x.value)).not.toContain("amicareZen")
+    expect(fieldOptionValues(headerOptions)).not.toContain("amicareZen")
+    expect(fieldOptionValues(footerOptions)).not.toContain("amicareZen")
   })
 })

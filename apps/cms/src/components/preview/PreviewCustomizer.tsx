@@ -377,26 +377,16 @@ function PreviewRendererFrame({
     postToFrame({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "page.replace",
-      messageId: `page-${expectedRevision}`,
+      type: "render.snapshot",
+      messageId: `snapshot-${expectedRevision}`,
       expectedRevision,
       pageId,
       page,
       settings,
-    })
-    revisionRef.current = expectedRevision + 1
-  }, [page, pageId, postToFrame, ready, revisionRef, settings])
-
-  React.useEffect(() => {
-    if (!ready) return
-    postToFrame({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "theme.patch",
-      messageId: `theme-${revisionRef.current}`,
       theme,
     })
-  }, [postToFrame, ready, revisionRef, theme])
+    revisionRef.current = expectedRevision + 1
+  }, [page, pageId, postToFrame, ready, revisionRef, settings, theme])
 
   const visible = ready
 

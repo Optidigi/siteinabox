@@ -11,10 +11,10 @@ import {
 
 const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 
-const tenantIdOf = (doc: any): string | undefined => {
+const tenantIdOf = (doc: { tenant?: unknown }): string | undefined => {
   const t = doc.tenant
   if (t == null) return undefined
-  if (typeof t === "object") return String(t.id)
+  if (typeof t === "object" && t !== null && "id" in t) return String((t as { id: unknown }).id)
   return String(t)
 }
 

@@ -1,13 +1,17 @@
 import "server-only"
+import type { Payload } from "payload"
+import type { Tenant } from "@/payload-types"
 import { analyticsEnvironment } from "./config"
 import { captureAnalyticsEvent, identifyPostHogTenantGroup } from "./posthogClient"
 import type { AnalyticsBaseProperties } from "./events"
 import { POSTHOG_TENANT_GROUP_TYPE, tenantAnalyticsProperties } from "./identity"
 
-const tenantIdOf = (doc: any): string | null => {
+import { asRecord } from "@/lib/record"
+
+const tenantIdOf = (doc: { tenant?: unknown }): string | null => {
   const tenant = doc?.tenant
   if (tenant == null) return null
-  if (typeof tenant === "object") return String(tenant.id)
+  if (typeof tenant === "object" && tenant !== null && "id" in tenant) return String((tenant as { id: unknown }).id)
   return String(tenant)
 }
 
@@ -22,14 +26,14 @@ const safePathFromUrl = (raw: unknown): string | null => {
 }
 
 export const captureAcceptedFormAnalytics = async (args: {
-  doc: any
-  payload: any
+  doc: Record<string, unknown>
+  payload: Payload
   logger?: { warn?: (input: unknown, message?: string) => void }
 }): Promise<void> => {
   const tenantId = tenantIdOf(args.doc)
   if (!tenantId) return
 
-  let tenant: any = null
+  let tenant: Tenant | null = null
   try {
     tenant = await args.payload.findByID({
       collection: "tenants",
@@ -57,7 +61,11 @@ export const captureAcceptedFormAnalytics = async (args: {
     page_path: safePathFromUrl(args.doc?.pageUrl),
     theme_id: null,
     site_build_id: null,
-    manifest_version: typeof tenant?.siteManifest?.version !== "undefined" ? tenant.siteManifest.version : null,
+    manifest_version: (() => {
+      const manifest = asRecord(tenant?.siteManifest)
+      const version = manifest?.version
+      return typeof version === "string" || typeof version === "number" ? version : null
+    })(),
   }
 
   const properties = {

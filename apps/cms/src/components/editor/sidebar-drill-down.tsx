@@ -1,4 +1,5 @@
 "use client"
+import { useTranslations } from "next-intl"
 import * as React from "react"
 import {
   DndContext,
@@ -34,7 +35,8 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { BlockFormFields } from "@/components/editor/fields/block-form-fields"
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { useTranslations } from "next-intl"
+import type { EditorBlock } from "@/lib/editor/editorBlock"
+import { isEditorBlock } from "@/lib/editor/editorBlock"
 
 type Mode =
   | { kind: "list" }
@@ -42,7 +44,7 @@ type Mode =
   | { kind: "page-settings" }
 
 export interface SidebarDrillDownProps {
-  blocks: any[]
+  blocks: EditorBlock[]
   selectedBlockIndex: number | null
   onSelectBlock: (i: number | null) => void
   onReorder: (from: number, to: number) => void
@@ -59,7 +61,7 @@ export interface SidebarDrillDownProps {
 }
 
 export interface SidebarListSlotContext {
-  blocks: any[]
+  blocks: EditorBlock[]
   isEmpty: boolean
   openPageSettings: () => void
   openAddBlock: () => void
@@ -79,7 +81,7 @@ export interface SidebarListLayoutProps {
 }
 
 export interface SidebarBlockFormSlotContext {
-  block: any
+  block: EditorBlock
   blockIndex: number
   label: string
   manifest: RtManifest
@@ -360,7 +362,7 @@ export const SidebarListLayout: React.FC<SidebarListLayoutProps> = ({
 
 const BlockListRow: React.FC<{
   id: string
-  block: any
+  block: EditorBlock
   blockIndex: number
   onSelect: () => void
   onDuplicate: () => void
@@ -392,7 +394,7 @@ const BlockListRow: React.FC<{
 
   const cfg = blockBySlug[block.blockType]
   const label = cfg ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug) : block.blockType
-  const summary = cfg?.summary ? cfg.summary(block) : undefined
+  const summary = cfg?.summary ? cfg.summary(block as Record<string, unknown>) : undefined
   const Icon = cfg?.icon
   return (
     <>
@@ -480,12 +482,13 @@ const BlockListRow: React.FC<{
   )
 }
 
-const BlockListRowGhost: React.FC<{ block: any }> = ({ block }) => {
-  const cfg = blockBySlug[block?.blockType]
+const BlockListRowGhost: React.FC<{ block: EditorBlock | undefined }> = ({ block }) => {
+  if (!block) return null
+  const cfg = blockBySlug[block.blockType]
   const label = cfg
     ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug)
-    : block?.blockType
-  const summary = cfg?.summary ? cfg.summary(block) : undefined
+    : block.blockType
+  const summary = cfg?.summary ? cfg.summary(block as Record<string, unknown>) : undefined
   const Icon = cfg?.icon
   return (
     <div className="flex items-center gap-2 rounded-md border border-border bg-background/95 backdrop-blur-sm px-2 py-1.5 shadow-lg cursor-grabbing">
@@ -503,7 +506,7 @@ const BlockListRowGhost: React.FC<{ block: any }> = ({ block }) => {
 }
 
 const BlockFormState: React.FC<{
-  block: any
+  block: EditorBlock
   blockIndex: number
   manifest: RtManifest
   theme?: ThemeTokens | null

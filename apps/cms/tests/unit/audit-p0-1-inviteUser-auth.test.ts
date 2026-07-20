@@ -32,7 +32,7 @@ const fakePayload = {
   logger: { warn: vi.fn(), info: vi.fn(), error: vi.fn() }
 }
 vi.mock("payload", async () => {
-  const actual = await vi.importActual<any>("payload")
+  const actual = await vi.importActual<typeof import("payload")>("payload")
   return { ...actual, getPayload: vi.fn(async () => fakePayload) }
 })
 

@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 export const Logo = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
     fill="none"

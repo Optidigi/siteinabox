@@ -15,6 +15,9 @@ import {
   workflowSummaryForIntakeSubmission,
 } from "@/lib/queries/generationOperations"
 
+import { asGenerationRun, cast } from "../_helpers/cast"
+import { asFindClient } from "../_helpers/payloadFindClient"
+import { asPayload, type MockFindArgs } from "../_helpers/mockPayload"
 const root = process.cwd()
 const read = (path: string) => readFileSync(join(root, path), "utf8")
 
@@ -77,9 +80,9 @@ describe("generation operations UI helpers", () => {
   })
 
   it("queries runs and intake submissions with the same pagination and filter", async () => {
-    const calls: any[] = []
-    const client = {
-      async find(args: any) {
+    const calls: MockFindArgs[] = []
+    const client = asFindClient({
+      async find(args: MockFindArgs) {
         calls.push(args)
         return {
           docs: [],
@@ -93,7 +96,7 @@ describe("generation operations UI helpers", () => {
           prevPage: null,
         }
       },
-    }
+    })
 
     await listGenerationOperations({ page: 3, pageSize: 20, filter: "preview-ready", q: "" }, client)
 
@@ -114,8 +117,8 @@ describe("generation operations UI helpers", () => {
       depth: 2,
       sort: "-updatedAt",
     })
-    expect(calls[0].where).toEqual(generationRunWhere("preview-ready", ""))
-    expect(calls[1].where).toEqual(intakeSubmissionWhere("preview-ready", ""))
+    expect(calls[0]!.where).toEqual(generationRunWhere("preview-ready", ""))
+    expect(calls[1]!.where).toEqual(intakeSubmissionWhere("preview-ready", ""))
   })
 
   it("redacts secret-looking and raw provider fields in JSON summaries", () => {
@@ -152,38 +155,38 @@ describe("generation operations UI helpers", () => {
   })
 
   it("maps intake submissions to manager-facing workflow labels", () => {
-    expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null } as any)).toMatchObject({
+    expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null })).toMatchObject({
       state: "Needs attention",
       label: "Intake not processed",
       primaryAction: "Open client",
     })
-    expect(workflowSummaryForIntakeSubmission({ status: "submitted", generationRun: null } as any)).toMatchObject({
+    expect(workflowSummaryForIntakeSubmission({ status: "submitted", generationRun: null })).toMatchObject({
       state: "Needs attention",
       label: "Intake not processed",
       primaryAction: "Open client",
     })
-    expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null, reviewedGenerationInput: { status: "admin-approved" } } as any)).toMatchObject({
+    expect(workflowSummaryForIntakeSubmission({ status: "normalized", generationRun: null, reviewedGenerationInput: { status: "admin-approved" } })).toMatchObject({
       state: "Needs attention",
       label: "Generation recovery",
       primaryAction: "Open client",
     })
-    expect(workflowSummaryForIntakeSubmission({ status: "queued", generationRun: null } as any)).toMatchObject({
+    expect(workflowSummaryForIntakeSubmission({ status: "queued", generationRun: null })).toMatchObject({
       state: "Needs attention",
       label: "Not actionable",
     })
-    expect(workflowSummaryForIntakeSubmission({ status: "failed", generationRun: null } as any)).toMatchObject({
+    expect(workflowSummaryForIntakeSubmission({ status: "failed", generationRun: null })).toMatchObject({
       state: "Needs attention",
       primaryAction: "Open client",
     })
   })
 
   it("maps generation runs to manager-facing workflow labels", () => {
-    expect(workflowSummaryForGenerationRun({ status: "draft_ready", tenant: null } as any)).toMatchObject({
+    expect(workflowSummaryForGenerationRun({ status: "draft_ready", tenant: null })).toMatchObject({
       state: "Preview ready",
       label: "Prepare preview",
       primaryAction: "Open client",
     })
-    expect(workflowSummaryForGenerationRun({ status: "preview_ready", clientApproval: null, payment: null, tenant: null } as any)).toMatchObject({
+    expect(workflowSummaryForGenerationRun({ status: "preview_ready", clientApproval: null, payment: null, tenant: null })).toMatchObject({
       state: "Preview ready",
       label: "Send preview",
       primaryAction: "Send preview",
@@ -193,7 +196,7 @@ describe("generation operations UI helpers", () => {
       clientApproval: { status: "approved" },
       payment: null,
       tenant: null,
-    } as any)).toMatchObject({
+    })).toMatchObject({
       state: "Preview ready",
       label: "Checkout open",
       primaryAction: "Open client",
@@ -202,8 +205,8 @@ describe("generation operations UI helpers", () => {
       status: "preview_ready",
       clientApproval: { status: "approved" },
       payment: { status: "completed" },
-      tenant: { domainVerification: { status: "not_checked" } },
-    } as any)).toMatchObject({
+      tenant: cast({ domainVerification: { status: "not_checked" } }),
+    })).toMatchObject({
       state: "Checkout completed",
       label: "Provisioning",
       primaryAction: "Open client",
@@ -212,16 +215,16 @@ describe("generation operations UI helpers", () => {
       status: "preview_ready",
       clientApproval: { status: "approved" },
       payment: { status: "completed" },
-      tenant: { domainVerification: { status: "verified" } },
-    } as any)).toMatchObject({
+      tenant: cast({ domainVerification: { status: "verified" } }),
+    })).toMatchObject({
       state: "Checkout completed",
       label: "Activating",
       primaryAction: "Open client",
     })
     expect(workflowSummaryForGenerationRun({
       status: "preview_ready",
-      tenant: { activeSnapshot: 42 },
-    } as any)).toMatchObject({
+      tenant: cast({ activeSnapshot: 42 }),
+    })).toMatchObject({
       state: "Live",
       label: "Live",
       primaryAction: "Open client",
@@ -459,18 +462,18 @@ describe("generation operations route access", () => {
 })
 
 describe("operations overview and registers", () => {
-  const result = (docs: any[]) => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 250, hasNextPage: false, hasPrevPage: false, nextPage: null, prevPage: null })
+  const result = (docs: unknown[]) => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 250, hasNextPage: false, hasPrevPage: false, nextPage: null, prevPage: null })
 
   it("computes overview metrics from the complete active data set", async () => {
-    const client = {
-      async find(args: any) {
+    const client = asFindClient({
+      async find(args: MockFindArgs) {
         if (args.collection === "site-generation-runs") return result([
           { id: 1, status: "draft_ready", updatedAt: "2026-07-14T10:00:00Z", tenant: { name: "Preview site" } },
           { id: 2, status: "failed", updatedAt: "2026-07-14T11:00:00Z", tenant: { name: "Broken site" } },
         ])
         return result([{ id: 3, status: "failed", businessName: "Broken intake", updatedAt: "2026-07-14T12:00:00Z" }])
       },
-    }
+    })
     const overview = await getGenerationOperationsOverview(client)
     expect(overview.metrics.map((metric) => [metric.key, metric.value])).toEqual([
       ["preview-ready", 1], ["checkout-completed", 0], ["live", 0], ["needs-attention", 2],
@@ -479,11 +482,11 @@ describe("operations overview and registers", () => {
   })
 
   it("filters site runs by derived workflow state before paginating", async () => {
-    const client = { async find() { return result([
+    const client = asFindClient({ async find() { return result([
       { id: 1, status: "preview_ready", tenant: { activeSnapshot: 5 } },
       { id: 2, status: "failed", tenant: { name: "Broken" } },
       { id: 3, status: "draft_ready", tenant: { name: "Preview" } },
-    ]) } }
+    ]) } })
     const runs = await listOperationRuns({ filter: "needs-attention", page: 1, pageSize: 1 }, client)
     expect(runs.totalDocs).toBe(1)
     expect(runs.docs[0]?.id).toBe(2)

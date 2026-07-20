@@ -2,21 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 import type { SiteGenerationSpec } from "@siteinabox/contracts/generation"
 import { applySiteGenerationSpec, validateSiteGenerationSpecForCms } from "@/lib/site-generation/applySiteGenerationSpec"
 import { pageToJson } from "@/lib/projection/pageToJson"
+import { rtBlock, rtInline } from "../_helpers/rtFixtures"
+import { asMockDoc, cast } from "../_helpers/cast"
+import { asPayload, docAt, matchesWhere, type CreateArgs, type FindArgs, type MockDoc, type StoredDoc, type UpdateArgs } from "../_helpers/mockPayload"
 
-const rtInline = (text: string) =>
-  ({
-    t: "root",
-    variant: "inline",
-    children: [{ t: "text", v: text }],
-  }) as any
-
-const rtBlock = (text: string) =>
-  ({
-    t: "root",
-    variant: "block",
-    children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
-  }) as any
-
+import { errLike } from "../_helpers/cast"
 const fixtureSpec = (): SiteGenerationSpec => ({
   schemaVersion: 1,
   intake: {
@@ -95,46 +85,39 @@ const fixtureSpec = (): SiteGenerationSpec => ({
   generator: { name: "fixture", version: "1.0.0" },
 })
 
-const matchesWhere = (doc: any, where: any): boolean => {
-  if (!where) return true
-  if (where.and) return where.and.every((entry: any) => matchesWhere(doc, entry))
-  return Object.entries(where).every(([field, condition]) => {
-    if (condition && typeof condition === "object" && "equals" in condition) {
-      return String(doc[field]) === String((condition as any).equals)
-    }
-    return doc[field] === condition
-  })
-}
+type CollectionSlug = "tenants" | "pages" | "site-settings" | "media"
+type LocalFindArgs = FindArgs & { collection: CollectionSlug }
+type LocalCreateArgs = CreateArgs & { collection: CollectionSlug }
+type LocalUpdateArgs = UpdateArgs & { collection: CollectionSlug }
 
 const createPayloadStub = () => {
   let nextId = 1
-  type CollectionSlug = "tenants" | "pages" | "site-settings" | "media"
-  const store: Record<CollectionSlug, any[]> = {
+  const store: Record<CollectionSlug, StoredDoc[]> = {
     tenants: [],
     pages: [],
     "site-settings": [],
     media: [],
   }
   const calls = {
-    create: [] as any[],
-    update: [] as any[],
-    find: [] as any[],
+    create: [] as LocalCreateArgs[],
+    update: [] as LocalUpdateArgs[],
+    find: [] as LocalFindArgs[],
   }
   const payload = {
-    find: async (args: any) => {
+    find: async (args: LocalFindArgs) => {
       calls.find.push(args)
-      const docs = store[args.collection as CollectionSlug].filter((doc) => matchesWhere(doc, args.where))
+      const docs = store[args.collection].filter((doc) => matchesWhere(doc, args.where))
       return { docs: typeof args.limit === "number" ? docs.slice(0, args.limit) : docs, totalDocs: docs.length }
     },
-    create: async (args: any) => {
+    create: async (args: LocalCreateArgs) => {
       calls.create.push(args)
       const doc = { ...args.data, id: nextId++ }
-      store[args.collection as CollectionSlug].push(doc)
+      store[args.collection].push(doc)
       return doc
     },
-    update: async (args: any) => {
+    update: async (args: LocalUpdateArgs) => {
       calls.update.push(args)
-      const docs = store[args.collection as CollectionSlug]
+      const docs = store[args.collection]
       const index = docs.findIndex((doc) => String(doc.id) === String(args.id))
       if (index < 0) throw new Error(`Missing ${args.collection} ${args.id}`)
       const current = docs[index]!
@@ -142,7 +125,7 @@ const createPayloadStub = () => {
       return docs[index]!
     },
   }
-  return { payload: payload as any, store, calls }
+  return { payload: asPayload(payload), store, calls }
 }
 
 describe("applySiteGenerationSpec", () => {
@@ -156,9 +139,11 @@ describe("applySiteGenerationSpec", () => {
     expect(store.tenants).toHaveLength(1)
     expect(store.pages).toHaveLength(1)
     expect(store["site-settings"]).toHaveLength(1)
-    const page = store.pages[0]!
-    const tenant = store.tenants[0]!
-    const settings = store["site-settings"][0]!
+    const page = docAt(store.pages)
+    const tenant = docAt(store.tenants)
+    const settings = docAt(store["site-settings"])
+    const siteManifest = tenant.siteManifest as MockDoc
+    const headerNav = settings.navHeader as MockDoc[]
     expect(tenant.status).toBe("provisioning")
     expect(page.status).toBe("draft")
     expect(tenant.theme).toEqual({
@@ -168,16 +153,16 @@ describe("applySiteGenerationSpec", () => {
       fonts: { schemeId: "clear-modern" },
       shape: { schemeId: "soft" },
     })
-    expect(tenant.siteManifest.generation.hash).toBe(result.idempotencyKey)
-    expect(tenant.siteManifest.analyticsConsent).toEqual({
+    expect((siteManifest.generation as MockDoc).hash).toBe(result.idempotencyKey)
+    expect(siteManifest.analyticsConsent).toEqual({
       enabled: true,
       provider: "posthog",
       consentStorageKey: "siab_cookie_consent_v1",
       consentVersion: "2026-07-07.1",
     })
-    expect(settings.navHeader[0]).toMatchObject({ type: "page", page: page.id })
-    expect(settings.navHeader[1]).toMatchObject({ type: "section", page: page.id, anchor: "contact" })
-    expect([...calls.create, ...calls.update].every((call) => call.context?.skipProjection === true)).toBe(true)
+    expect(headerNav[0]).toMatchObject({ type: "page", page: page.id })
+    expect(headerNav[1]).toMatchObject({ type: "section", page: page.id, anchor: "contact" })
+    expect([...calls.create, ...calls.update].every((call: LocalCreateArgs | LocalUpdateArgs) => call.context?.skipProjection === true)).toBe(true)
   })
 
   it("enables manifest capabilities required by generated rich-text content", async () => {
@@ -228,11 +213,12 @@ describe("applySiteGenerationSpec", () => {
     } as SiteGenerationSpec)
 
     expect(result.ok).toBe(true)
-    expect(store.tenants[0]!.siteManifest.blockTypes.blockquote).toBe(true)
-    expect(store.tenants[0]!.siteManifest.blockTypes.bulletList).toBe(true)
-    expect(store.tenants[0]!.siteManifest.blockTypes.orderedList).toBe(true)
-    expect(store.tenants[0]!.siteManifest.blockTypes.divider).toBe(true)
-    expect(store.tenants[0]!.siteManifest.themedNodes).toEqual([
+    const tenantManifest = docAt(store.tenants).siteManifest as MockDoc
+    expect((tenantManifest.blockTypes as MockDoc).blockquote).toBe(true)
+    expect((tenantManifest.blockTypes as MockDoc).bulletList).toBe(true)
+    expect((tenantManifest.blockTypes as MockDoc).orderedList).toBe(true)
+    expect((tenantManifest.blockTypes as MockDoc).divider).toBe(true)
+    expect(tenantManifest.themedNodes).toEqual([
       { id: "eyebrow", label: "Eyebrow", fields: [{ name: "text", type: "text", required: true }] },
     ])
   })
@@ -255,14 +241,14 @@ describe("applySiteGenerationSpec", () => {
           branding: {
             logo: { id: "generated-logo", url: "https://assets.example/logo.png", filename: "logo.png", alt: "Logo" },
             favicon: "/favicon.ico",
-          } as any,
+          },
         },
         pages: [
           {
             ...spec.pages[0]!,
             seo: {
               ...spec.pages[0]!.seo,
-              ogImage: "/og-default.png" as any,
+              ogImage: "/og-default.png",
             },
             blocks: [
               spec.pages[0]!.blocks[0]!,
@@ -273,7 +259,7 @@ describe("applySiteGenerationSpec", () => {
                   { image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" } },
                   { image: { id: "generated-logo", url: "https://assets.example/logo.png", filename: "logo.png", alt: "Logo" } },
                 ],
-              } as any,
+              },
             ],
           },
         ],
@@ -286,36 +272,40 @@ describe("applySiteGenerationSpec", () => {
       const logoMedia = store.media.find((media) => media.filename === "logo.png")!
       expect(heroMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "hero.jpg", alt: "Hero", mimeType: "image/jpeg" })
       expect(logoMedia).toMatchObject({ tenant: store.tenants[0]!.id, filename: "logo.png", alt: "Logo", mimeType: "image/png" })
-      expect(store.pages[0]!.seo.ogImage).toBeUndefined()
-      expect(store.pages[0]!.blocks[1].images).toEqual([
+      expect(asMockDoc(store.pages[0]).seo).not.toHaveProperty("ogImage")
+      expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[1]!.images).toEqual([
         { image: heroMedia.id },
         { image: logoMedia.id },
       ])
-      expect(store["site-settings"][0]!.branding.logo).toBe(logoMedia.id)
-      expect(store["site-settings"][0]!.branding.favicon).toBeUndefined()
+      expect(asMockDoc(asMockDoc(store["site-settings"][0]).branding).logo).toBe(logoMedia.id)
+      expect(asMockDoc(asMockDoc(store["site-settings"][0]).branding).favicon).toBeUndefined()
     } finally {
       fetchMock.mockRestore()
     }
   })
 
   it("downloads generated media and retries upload when Payload requires a file", async () => {
-    const { payload, store, calls } = createPayloadStub()
-    const originalCreate = payload.create
+    const { payload: basePayload, store, calls } = createPayloadStub()
+    const originalCreate = basePayload.create.bind(basePayload)
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
       new Response(new Uint8Array([0xff, 0xd8, 0xff, 0xd9]), {
         status: 200,
         headers: { "content-type": "image/jpeg" },
       }),
     )
-    ;(payload as any).create = async (args: any) => {
-      if (args.collection === "media" && !args.filePath) {
-        const error = new Error("No files were uploaded.") as Error & { status?: number }
-        error.name = "MissingFile"
-        error.status = 400
-        throw error
-      }
-      return originalCreate(args)
-    }
+    const payload = asPayload({
+      find: basePayload.find.bind(basePayload),
+      update: basePayload.update.bind(basePayload),
+      create: async (args: LocalCreateArgs) => {
+        if (args.collection === "media" && !args.filePath) {
+          const error = new Error("No files were uploaded.") as Error & { status?: number }
+          error.name = "MissingFile"
+          error.status = 400
+          throw error
+        }
+        return originalCreate(args)
+      },
+    })
 
     try {
       const spec = fixtureSpec()
@@ -329,7 +319,7 @@ describe("applySiteGenerationSpec", () => {
                 blockType: "gallery",
                 designVariant: "shadcnui-blocks.carousel-block-01",
                 images: [{ image: { id: "generated-hero", url: "https://assets.example/hero.jpg", filename: "hero.jpg", alt: "Hero" } }],
-              } as any,
+              },
             ],
           },
         ],
@@ -338,7 +328,7 @@ describe("applySiteGenerationSpec", () => {
       expect(result.ok).toBe(true)
       expect(fetchMock).toHaveBeenCalledWith("https://assets.example/hero.jpg")
       expect(store.media).toHaveLength(1)
-      expect(store.pages[0]!.blocks[0].images).toEqual([{ image: store.media[0]!.id }])
+      expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[0]!.images).toEqual([{ image: store.media[0]!.id }])
       const mediaCreate = calls.create.find((call) => call.collection === "media")
       expect(mediaCreate?.filePath).toContain("hero.jpg")
       expect(mediaCreate?.overwriteExistingFiles).toBe(true)
@@ -358,10 +348,10 @@ describe("applySiteGenerationSpec", () => {
         {
           ...spec.pages[0]!,
           blocks: [
-            {
+            cast({
               ...spec.pages[0]!.blocks[1]!,
               backgroundImage: { id: "generated-contact", url: "https://assets.example/contact.jpg", filename: "contact.jpg", alt: "Contact" },
-            } as any,
+            }),
           ],
         },
       ],
@@ -384,38 +374,39 @@ describe("applySiteGenerationSpec", () => {
       headline: rtInline("Contact"),
       primary: { label: "Contact", href: "#contact" },
       secondary: {},
-    } as any]
+    }]
     spec.blocks = [{ slug: "cta", label: "CTA" }]
 
     const result = await applySiteGenerationSpec(payload, spec, { variantScope: "self-serve" })
 
     expect(result.ok).toBe(true)
-    expect(store.pages[0]!.blocks[0]).not.toHaveProperty("secondary")
-    expect(store.pages[0]!.blocks[0]).toMatchObject({ primary: { label: "Contact", href: "#contact" } })
+    expect(asMockDoc(store.pages[0]).blocks).toBeDefined()
+    expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[0]).not.toHaveProperty("secondary")
+    expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[0]).toMatchObject({ primary: { label: "Contact", href: "#contact" } })
   })
 
   it("accepts generated designVariant without writing legacy visual fields", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
-    spec.pages[0]!.blocks[0] = {
+    spec.pages[0]!.blocks[0] = cast<SiteGenerationSpec["pages"][number]["blocks"][number]>({
       ...spec.pages[0]!.blocks[0]!,
       designVariant: "shadcnui-blocks.hero-02",
       eyebrow: undefined,
       subheadline: rtBlock("Editable CMS draft content."),
       cta: undefined,
       secondary: undefined,
-    } as any
+    })
     spec.pages[0]!.blocks = [spec.pages[0]!.blocks[0]!]
     spec.blocks = [{ slug: "hero", label: "Hero" }]
 
     const result = await applySiteGenerationSpec(payload, spec, { variantScope: "self-serve" })
 
     expect(result.ok).toBe(true)
-    expect(store.pages[0]!.blocks[0]).toMatchObject({
+    expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[0]).toMatchObject({
       designVariant: "shadcnui-blocks.hero-02",
     })
-    expect(store.pages[0]!.blocks[0]).not.toHaveProperty("variant")
-    expect(store.pages[0]!.blocks[0].analytics ?? {}).toEqual({})
+    expect((asMockDoc(store.pages[0]).blocks as MockDoc[])[0]).not.toHaveProperty("variant")
+    expect(asMockDoc((asMockDoc(store.pages[0]).blocks as MockDoc[])[0]).analytics ?? {}).toEqual({})
   })
 
   it("updates existing records on repeat apply instead of creating duplicates", async () => {
@@ -517,14 +508,14 @@ describe("applySiteGenerationSpec", () => {
         {
           ...spec.pages[0]!,
           blocks: [
-            {
+            cast({
               ...spec.pages[0]!.blocks[0]!,
               blockType: "pricingTable",
-            } as any,
+            }),
           ],
         },
       ],
-      blocks: [{ slug: "pricingTable" as any, label: "Pricing" }],
+      blocks: [{ slug: cast("pricingTable"), label: "Pricing" }],
     })
 
     expect(report.valid).toBe(false)
@@ -536,7 +527,7 @@ describe("applySiteGenerationSpec", () => {
   it("rejects missing required block fields before mutating CMS state", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
-    delete (spec.pages[0]!.blocks[0]! as any).headline
+    delete (spec.pages[0]!.blocks[0]! as Record<string, unknown>).headline
 
     const result = await applySiteGenerationSpec(payload, spec)
 
@@ -550,7 +541,7 @@ describe("applySiteGenerationSpec", () => {
   it("rejects invalid rich text before mutating CMS state", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
-    ;(spec.pages[0]!.blocks[0]! as any).headline = {
+    ;(spec.pages[0]!.blocks[0]! as Record<string, unknown>).headline = {
       t: "root",
       variant: "inline",
       children: [{ t: "paragraph", children: [{ t: "text", v: "Not inline" }] }],
@@ -568,13 +559,13 @@ describe("applySiteGenerationSpec", () => {
   it("rejects invalid theme tokens before mutating CMS state", async () => {
     const { payload, store } = createPayloadStub()
     const spec = fixtureSpec()
-    spec.theme = {
+    spec.theme = cast({
       ...spec.theme,
       colors: {
-        ...(spec.theme as any).colors,
+        ...(asMockDoc(spec.theme).colors as Record<string, unknown>),
         accent: "not-a-color",
       },
-    } as any
+    })
 
     const result = await applySiteGenerationSpec(payload, spec)
 
@@ -591,7 +582,7 @@ describe("applySiteGenerationSpec", () => {
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
       designVariant: "unknown-provider.cta-01",
-    } as any
+    }
 
     const result = await applySiteGenerationSpec(payload, spec)
 
@@ -606,8 +597,8 @@ describe("applySiteGenerationSpec", () => {
     const spec = fixtureSpec()
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      analytics: { legacyVisualIdentity: "retired-provider-alias" },
-    } as any
+      analytics: cast({ legacyVisualIdentity: "retired-provider-alias" }),
+    }
 
     const report = validateSiteGenerationSpecForCms(spec)
 
@@ -620,7 +611,7 @@ describe("applySiteGenerationSpec", () => {
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
       source: "ai",
-    } as any
+    }
 
     const report = validateSiteGenerationSpecForCms(spec)
 
@@ -629,22 +620,22 @@ describe("applySiteGenerationSpec", () => {
 
   it("requires canonical provider IDs in every generation scope", () => {
     const canonicalSpec = fixtureSpec()
-    canonicalSpec.pages[0]!.blocks[0] = {
+    canonicalSpec.pages[0]!.blocks[0] = cast<SiteGenerationSpec["pages"][number]["blocks"][number]>({
       ...canonicalSpec.pages[0]!.blocks[0]!,
       designVariant: "shadcnui-blocks.hero-02",
       eyebrow: undefined,
       subheadline: rtBlock("Editable CMS draft content."),
       cta: undefined,
       secondary: undefined,
-    } as any
+    })
     canonicalSpec.pages[0]!.blocks = [canonicalSpec.pages[0]!.blocks[0]!]
     canonicalSpec.blocks = [{ slug: "hero", label: "Hero" }]
 
     const legacySpec = fixtureSpec()
-    legacySpec.pages[0]!.blocks[0] = {
+    legacySpec.pages[0]!.blocks[0] = cast<SiteGenerationSpec["pages"][number]["blocks"][number]>({
       ...canonicalSpec.pages[0]!.blocks[0]!,
-      designVariant: "retired-provider.hero",
-    } as any
+      designVariant: cast("retired-provider.hero"),
+    })
     legacySpec.pages[0]!.blocks = [legacySpec.pages[0]!.blocks[0]!]
     legacySpec.blocks = [{ slug: "hero", label: "Hero" }]
 
@@ -731,32 +722,32 @@ describe("applySiteGenerationSpec", () => {
           badge: "Populair",
           highlighted: true,
         }],
-      } as any,
+      },
       {
         blockType: "stats",
         designVariant: "shadcnui-blocks.stats-01",
         title: rtInline("Resultaten"),
         intro: rtBlock("Meetbare impact."),
         items: [{ value: "24", label: "Projecten", description: rtBlock("Opgeleverd dit jaar.") }],
-      } as any,
+      },
       {
         blockType: "logoCloud",
         designVariant: "shadcnui-blocks.testimonials-01",
         title: rtInline("Partners"),
         logos: [{ name: "Partner", image: 12, href: "https://example.com" }],
-      } as any,
+      },
       {
         blockType: "team",
         designVariant: "shadcnui-blocks.team-01",
         title: rtInline("Team"),
         members: [{ name: "Alex", role: "Founder", bio: rtBlock("Helpt klanten groeien."), image: 14, links: [{ label: "LinkedIn", href: "https://example.com" }] }],
-      } as any,
+      },
       {
         blockType: "blogCards",
         designVariant: "shadcnui-blocks.blog-01",
         title: rtInline("Updates"),
         posts: [{ title: rtInline("Nieuwe site"), excerpt: rtBlock("Wat er verbeterde."), image: 15, href: "/blog/nieuwe-site", date: "2026-06-27", author: "Alex", cta: { label: "Lees", href: "/blog/nieuwe-site" } }],
-      } as any,
+      },
     ]
     spec.blocks = [
       { slug: "pricing", label: "Pricing" },
@@ -784,15 +775,15 @@ describe("applySiteGenerationSpec", () => {
     spec.settings = {
       ...spec.settings,
       chrome: {
-        header: { variant: "amicareZen" },
-        footer: { variant: "amicareZen" },
+        header: { variant: cast("amicareZen") },
+        footer: { variant: cast("amicareZen") },
         banner: { variant: "shadcnui-blocks.banner-01", visible: false, message: "Preview ready" },
       },
-    } as any
+    }
     spec.pages[0]!.blocks[0] = {
       ...spec.pages[0]!.blocks[0]!,
-      designVariant: "amicareZenHero",
-    } as any
+      designVariant: cast("amicareZenHero"),
+    }
 
     const report = validateSiteGenerationSpecForCms(spec, { variantScope: "self-serve" })
 
@@ -819,7 +810,7 @@ describe("applySiteGenerationSpec", () => {
     for (const field of blockedFields) {
       const { payload, store } = createPayloadStub()
       const spec = fixtureSpec()
-      ;(spec.pages[0]!.blocks[0]! as any)[field.key] = field.value
+      ;(spec.pages[0]!.blocks[0]! as Record<string, unknown>)[field.key] = field.value
 
       const result = await applySiteGenerationSpec(payload, spec)
 
@@ -843,7 +834,7 @@ describe("applySiteGenerationSpec", () => {
     for (const field of blockedStructuredFields) {
       const { payload, store } = createPayloadStub()
       const spec = fixtureSpec()
-      ;(spec.pages[0]!.blocks[0]! as any)[field.key] = field.value
+      ;(spec.pages[0]!.blocks[0]! as Record<string, unknown>)[field.key] = field.value
 
       const result = await applySiteGenerationSpec(payload, spec)
 

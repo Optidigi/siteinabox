@@ -1,6 +1,7 @@
 import "server-only"
 import type { Page as ContractPage, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
 import type { Tenant } from "@/payload-types"
+import { asRecord } from "@/lib/record"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
@@ -47,12 +48,17 @@ export type PreviewCustomizerData = {
 export type PreviewCustomizerAccess = { type: "grant"; clientSlug: string }
 
 const tenantAnalyticsContext = (tenant: Pick<Tenant, "id" | "slug" | "domain" | "siteManifest">) => {
-  const manifest = tenant.siteManifest as Record<string, any> | null | undefined
+  const manifest = asRecord(tenant.siteManifest)
+  const manifestVersion = manifest?.version
   return {
     tenantId: tenant.id,
     tenantSlug: tenant.slug ?? null,
     siteDomain: tenant.domain ?? null,
-    analyticsConsent: manifest?.analyticsConsent ?? null,
+    themeId: typeof manifest?.themeId === "string" ? manifest.themeId : null,
+    siteBuildId: process.env.SIAB_SITE_BUILD_ID ?? null,
+    manifestVersion:
+      typeof manifestVersion === "string" || typeof manifestVersion === "number" ? manifestVersion : null,
+    analyticsConsent: asRecord(manifest?.analyticsConsent),
   }
 }
 
@@ -138,8 +144,8 @@ export async function persistPreviewThemeForGrant(input: {
   const normalized = normalizePreviewThemeForSave(parsed.data)
   await payload.update({
     collection: "tenants",
-    id: tenant.id as any,
-    data: { theme: normalized } as any,
+    id: tenant.id,
+    data: { theme: normalized },
     overrideAccess: true,
     depth: 0,
   })
@@ -168,7 +174,7 @@ export async function approvePreviewForGrant(input: {
   await payload.update({
     collection: "site-generation-runs",
     id: run.id,
-    data: { clientApproval: approval, payment } as any,
+    data: { clientApproval: approval, payment },
     overrideAccess: true,
     depth: 0,
   })

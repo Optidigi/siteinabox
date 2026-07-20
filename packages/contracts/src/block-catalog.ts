@@ -209,11 +209,28 @@ export const SITE_CHROME_CATALOG: SiteChromeCatalogVariant[] = [
 ]
 
 export type ChromeCapabilityIssue = { path: string; message: string }
+
+type ShadcnUiHeaderChromeVariant = Extract<(typeof SHADCNUI_CHROME_VARIANTS)[number], { area: "header" }>
+type ShadcnUiFooterChromeVariant = Extract<(typeof SHADCNUI_CHROME_VARIANTS)[number], { area: "footer" }>
+
+const findHeaderCapabilities = (variantId: string | null | undefined) => {
+  if (!variantId) return undefined
+  const entry = SHADCNUI_CHROME_VARIANTS.find((candidate): candidate is ShadcnUiHeaderChromeVariant =>
+    candidate.id === variantId && candidate.area === "header")
+  return entry?.capabilities
+}
+
+const findFooterCapabilities = (variantId: string | null | undefined) => {
+  if (!variantId) return undefined
+  const entry = SHADCNUI_CHROME_VARIANTS.find((candidate): candidate is ShadcnUiFooterChromeVariant =>
+    candidate.id === variantId && candidate.area === "footer")
+  return entry?.capabilities
+}
+
 export function validateSiteChromeCapabilities(settings: SiteSettings): ChromeCapabilityIssue[] {
   const issues: ChromeCapabilityIssue[] = []
   const header = settings.chrome?.header
-  const headerSource = SHADCNUI_CHROME_VARIANTS.find((entry) => entry.id === header?.variant) as any
-  const headerCapability = headerSource?.capabilities
+  const headerCapability = findHeaderCapabilities(header?.variant)
   if (header?.variant?.startsWith("shadcnui-blocks.") && !headerCapability) issues.push({ path: "chrome.header.variant", message: `No capability contract exists for ${header.variant}.` })
   if (headerCapability && header) {
     const navigation = settings.navHeader ?? []
@@ -228,11 +245,10 @@ export function validateSiteChromeCapabilities(settings: SiteSettings): ChromeCa
     })
     if (!headerCapability.secondaryAction && header.secondaryAction?.href) issues.push({ path: "chrome.header.secondaryAction", message: `${header.variant} has no secondary-action region.` })
     if (!headerCapability.search && header.search?.enabled) issues.push({ path: "chrome.header.search", message: `${header.variant} has no search region.` })
-    if (header.mobileMenu && !headerCapability.mobileMenu.includes(header.mobileMenu)) issues.push({ path: "chrome.header.mobileMenu", message: `${header.variant} does not support the ${header.mobileMenu} mobile-menu behavior.` })
+    if (header.mobileMenu && headerCapability.mobileMenu.length > 0 && !(headerCapability.mobileMenu as readonly string[]).includes(header.mobileMenu)) issues.push({ path: "chrome.header.mobileMenu", message: `${header.variant} does not support the ${header.mobileMenu} mobile-menu behavior.` })
   }
   const footer = settings.chrome?.footer
-  const footerSource = SHADCNUI_CHROME_VARIANTS.find((entry) => entry.id === footer?.variant) as any
-  const footerCapability = footerSource?.capabilities
+  const footerCapability = findFooterCapabilities(footer?.variant)
   if (footer?.variant?.startsWith("shadcnui-blocks.") && !footerCapability) issues.push({ path: "chrome.footer.variant", message: `No capability contract exists for ${footer.variant}.` })
   if (footerCapability && footer) {
     const columns = footer.columns ?? []

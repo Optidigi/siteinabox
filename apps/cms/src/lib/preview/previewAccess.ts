@@ -40,16 +40,21 @@ const relationIds = (items: unknown): string[] =>
     ? items.map((item) => relationshipId(item)).filter((id): id is string => Boolean(id))
     : []
 
-const payloadRelationIds = (items: unknown): Array<string | number> =>
+const payloadRelationIds = (items: unknown): number[] =>
   Array.isArray(items)
     ? items
       .map((item) => {
         const id = item && typeof item === "object" && "id" in item
           ? (item as { id?: string | number | null }).id
           : item
-        return typeof id === "number" || typeof id === "string" ? id : null
+        if (typeof id === "number" && Number.isFinite(id)) return id
+        if (typeof id === "string" && id.trim()) {
+          const numeric = Number(id)
+          return Number.isFinite(numeric) ? numeric : null
+        }
+        return null
       })
-      .filter((id): id is string | number => id != null)
+      .filter((id): id is number => id != null)
     : []
 
 const grantIsActive = (grant: PreviewAccessGrant, now: Date): boolean => {
@@ -216,12 +221,14 @@ export async function createOrRefreshPreviewGrant(input: {
 
   const tenant = typeof run.tenant === "object" && run.tenant
     ? run.tenant as Tenant
-    : await payload.findByID({
-        collection: "tenants",
-        id: run.tenant as any,
-        depth: 0,
-        overrideAccess: true,
-      }) as Tenant
+    : run.tenant != null
+      ? await payload.findByID({
+          collection: "tenants",
+          id: run.tenant,
+          depth: 0,
+          overrideAccess: true,
+        }) as Tenant
+      : null
   if (!tenant || tenant.status === "archived" || tenant.status === "suspended") {
     throw new Error("Preview tenant is not available")
   }
@@ -249,7 +256,7 @@ export async function createOrRefreshPreviewGrant(input: {
   const now = new Date().toISOString()
   const current = existing.docs[0] as PreviewAccessGrant | undefined
   if (current) {
-    return await payload.update({
+    await payload.update({
       collection: "preview-access-grants",
       id: current.id,
       data: {
@@ -260,9 +267,15 @@ export async function createOrRefreshPreviewGrant(input: {
         expiresAt,
         revokedAt: null,
         ...(input.sendEmail ? { lastSentAt: now, sentCount: (current.sentCount ?? 0) + 1 } : {}),
-      } as any,
+      },
       overrideAccess: true,
       depth: 0,
+    })
+    return await payload.findByID({
+      collection: "preview-access-grants",
+      id: current.id,
+      depth: 0,
+      overrideAccess: true,
     }) as PreviewAccessGrant
   }
 
@@ -276,7 +289,7 @@ export async function createOrRefreshPreviewGrant(input: {
       pages: pageIds,
       expiresAt,
       ...(input.sendEmail ? { lastSentAt: now, sentCount: 1 } : {}),
-    } as any,
+    },
     overrideAccess: true,
     depth: 0,
   }) as PreviewAccessGrant

@@ -6,6 +6,8 @@ import {
   DEFAULT_CLIENT_SETTINGS_CONTRACT,
   type SettingsContract,
 } from "@/lib/settingsContract"
+import type { SiteSetting } from "@/payload-types"
+import { asRecord } from "@/lib/record"
 
 export type SettingsProjectionContext = {
   settingsContract?: SettingsContract | null
@@ -13,28 +15,30 @@ export type SettingsProjectionContext = {
 
 const when = <T>(enabled: boolean, value: T): T | undefined => enabled ? value : undefined
 
-const linkRefToJson = (link: any) => {
-  if (!link || !isSafeHref(link.href)) return undefined
+const linkRefToJson = (link: unknown) => {
+  const record = asRecord(link)
+  if (!record || !isSafeHref(record.href)) return undefined
   return {
-    label: link.label,
-    href: link.href,
-    external: !!link.external,
+    label: record.label,
+    href: record.href,
+    external: !!record.external,
   }
 }
 
 const isNonEmptyString = (value: unknown) => typeof value === "string" && value.trim() !== ""
 
-const bannerToJson = (banner: any) => {
-  if (!banner?.visible) return undefined
-  const link = linkRefToJson(banner.link)
-  if (!isNonEmptyString(banner.title) && !isNonEmptyString(banner.message) && !link) return undefined
+const bannerToJson = (banner: unknown) => {
+  const record = asRecord(banner)
+  if (!record?.visible) return undefined
+  const link = linkRefToJson(record.link)
+  if (!isNonEmptyString(record.title) && !isNonEmptyString(record.message) && !link) return undefined
   return {
-    variant: banner.variant,
+    variant: record.variant,
     visible: true,
-    title: banner.title,
-    message: banner.message,
+    title: record.title,
+    message: record.message,
     link,
-    dismissible: banner.dismissible,
+    dismissible: record.dismissible,
   }
 }
 
@@ -44,7 +48,7 @@ const bannerToJson = (banner: any) => {
  * canvas bundle.
  */
 export function settingsToJsonWithoutAnalytics(
-  doc: any,
+  doc: SiteSetting,
   publishedPages: NavPage[] = [],
   projectionContext: SettingsProjectionContext = {},
 ) {
@@ -57,7 +61,7 @@ export function settingsToJsonWithoutAnalytics(
     siteUrl: doc.siteUrl,
     description: when(contract.general.description, doc.description),
     language: when(contract.general.language, doc.language),
-    aliases: (doc.aliases ?? []).map((a: any) => ({ host: a.host })),
+    aliases: (doc.aliases ?? []).map((a) => ({ host: a.host })),
     contactEmail: when(contract.general.contactEmail, doc.contactEmail),
     branding: doc.branding ? {
       logo: when(contract.identity.branding.logo, mediaToJson(doc.branding.logo)),
@@ -113,8 +117,8 @@ export function settingsToJsonWithoutAnalytics(
       address: when(contract.details.contact.address, contact.address),
       social: contract.details.contact.social
         ? (contact.social ?? [])
-        .filter((s: any) => isSafeHref(s?.url))
-        .map((s: any) => ({ platform: s.platform, url: s.url.trim() }))
+        .filter((s) => isSafeHref(s.url))
+        .map((s) => ({ platform: s.platform, url: s.url.trim() }))
         : undefined
     } : undefined,
     nap: nap && Object.values(contract.details.business).some(Boolean) ? {
@@ -127,14 +131,14 @@ export function settingsToJsonWithoutAnalytics(
       postalCode: when(contract.details.business.postalCode, nap.postalCode),
       country: when(contract.details.business.country, nap.country)
     } : undefined,
-    hours: contract.details.hours ? (doc.hours ?? []).map((h: any) => ({
+    hours: contract.details.hours ? (doc.hours ?? []).map((h) => ({
       day: h.day,
       open: h.open,
       close: h.close,
       closed: !!h.closed
     })) : [],
     serviceArea: contract.details.serviceArea
-      ? (doc.serviceArea ?? []).map((s: any) => ({ name: s.name }))
+      ? (doc.serviceArea ?? []).map((s) => ({ name: s.name }))
       : [],
     navHeader: resolveNav(doc.navHeader, publishedPages),
     navFooter: resolveNav(doc.navFooter, publishedPages),

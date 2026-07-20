@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { DribbbleIcon, GithubIcon, TwitchIcon, TwitterIcon } from "../../runtime/social-icons";
 import Link from "../../runtime/link";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -34,7 +33,7 @@ const footerLinks = [
 
 const Footer = () => {
   return (
-    <footer className="border-t">
+    <footer className="border-t border-border">
       <div className="mx-auto max-w-(--breakpoint-xl)">
         <div className="flex flex-col items-start justify-between gap-x-8 gap-y-10 px-6 py-12 sm:flex-row xl:px-0">
           <div>

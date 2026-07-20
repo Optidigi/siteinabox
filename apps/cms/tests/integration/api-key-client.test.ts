@@ -14,13 +14,13 @@ describe("API-key client flow", () => {
         email: "api-client@test.local", password: "test1234", name: "API Client",
         role: "super-admin", enableAPIKey: true,
         apiKey: "test-api-key-12345678901234567890"
-      } as any
+      }
     })
 
     const tenant = await payload.create({
       collection: "tenants", user: apiKeyClient,
       data: { name: "Client X", slug: "clientx", domain: "clientx.test", status: "provisioning" }
-    } as any)
+    })
     expect(tenant.id).toBeTruthy()
 
     // Page seed (must include tenant explicitly because super-admin writes aren't auto-scoped).
@@ -38,10 +38,11 @@ describe("API-key client flow", () => {
           headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Welcome", marks: [] }] },
         }]
       }
-    } as any)
+    })
     expect(page.id).toBeTruthy()
-    const pageTenant = (page as any).tenant
-    const tenantId = typeof pageTenant === "object" ? pageTenant.id : pageTenant
+    const pageTenant = page.tenant
+    expect(pageTenant).not.toBeNull()
+    const tenantId = typeof pageTenant === "object" && pageTenant ? pageTenant.id : pageTenant
     expect(tenantId).toBe(tenant.id)
   })
 })

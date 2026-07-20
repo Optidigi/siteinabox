@@ -1,6 +1,6 @@
 import "server-only"
 
-import type { Payload } from "payload"
+import type { Payload, PayloadRequest } from "payload"
 import { relationshipId, relationshipIdSet, type RelationshipIdRef } from "@/lib/relationshipId"
 import { publishSiteSnapshot } from "@/lib/publish/siteSnapshots"
 import { assertTenantPublicationAllowed, recordQualifyingContinuedUse } from "@/lib/legal/customerRequirements"
@@ -15,7 +15,7 @@ export type PublishCurrentTenantStateOptions = {
   tenantId: string | number
   user: PublishCurrentStateUser
   reason?: string | null
-  req?: any
+  req?: PayloadRequest
 }
 
 const userTenantIds = (user: PublishCurrentStateUser): Set<string> =>

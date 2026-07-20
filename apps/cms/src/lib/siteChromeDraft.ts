@@ -1,3 +1,4 @@
+import type { SiteSetting } from "@/payload-types"
 import type { FooterCompositionColumn, FooterCompositionContract } from "@/lib/footerComposition"
 import {
   comparableFooterColumns,
@@ -33,7 +34,7 @@ export type SiteChromeDraft = {
 }
 
 export const chromeDraftFromSettings = (
-  settings: any,
+  settings: SiteSetting | null | undefined,
   footerContract: FooterCompositionContract | null,
 ): SiteChromeDraft => ({
   header: {
@@ -110,7 +111,7 @@ export const chromePatchFromDraft = (
   banner: draft.banner ?? undefined,
 })
 
-export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
+export const mergeChromeSettings = (settings: SiteSetting | null | undefined, draft: SiteChromeDraft) => ({
   ...(settings ?? {}),
   chrome: {
     ...(settings?.chrome ?? {}),
@@ -140,7 +141,7 @@ export const mergeChromeSettings = (settings: any, draft: SiteChromeDraft) => ({
 })
 
 export const rendererSettingsFromChromeDraft = (
-  settings: any,
+  settings: SiteSetting | null | undefined,
   draft: SiteChromeDraft,
   options: {
     publishedPages?: NavPage[]
@@ -148,7 +149,7 @@ export const rendererSettingsFromChromeDraft = (
   } = {},
 ) => settings
   ? settingsToJsonWithoutAnalytics(
-      mergeChromeSettings(settings, draft),
+      mergeChromeSettings(settings, draft) as SiteSetting,
       options.publishedPages ?? [],
       { settingsContract: options.settingsContract ?? null },
     )

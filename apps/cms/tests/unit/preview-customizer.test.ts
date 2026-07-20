@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
+import type { ThemeTokenSpecV3 } from "@siteinabox/contracts/generation"
 import type { Page, SiteGenerationRun, Tenant } from "@/payload-types"
 
+import { cast } from "../_helpers/cast"
+import { type MockUpdateArgs } from "../_helpers/mockPayload"
 const mocks = vi.hoisted(() => ({
   loadPreviewGrantContext: vi.fn(),
   payload: { update: vi.fn() },
@@ -86,7 +89,7 @@ const createState = () => {
     payment: { status: "not_started" },
   } as unknown as SiteGenerationRun
 
-  mocks.payload.update.mockImplementation(async ({ id, data }: any) => ({ id, ...data }))
+  mocks.payload.update.mockImplementation(async ({ id, data }: MockUpdateArgs) => ({ id, ...data }))
   mocks.loadPreviewGrantContext.mockResolvedValue({
     clientSlug: "preview-studio",
     customerEmail: "customer@example.com",
@@ -107,9 +110,9 @@ describe("grant preview customizer service", () => {
 
   it("loads preview data with grant-scoped page navigation, theme, approval, and payment state", async () => {
     const { tenant, run } = createState()
-    tenant.theme = DEFAULT_THEME_TOKEN_SPEC as any
-    run.clientApproval = { status: "pending" } as any
-    run.payment = { status: "not_started" } as any
+    tenant.theme = DEFAULT_THEME_TOKEN_SPEC
+    run.clientApproval = { status: "pending" }
+    run.payment = { status: "not_started" }
     const { getPreviewCustomizerDataForGrant } = await import("@/lib/preview/customizer")
 
     const data = await getPreviewCustomizerDataForGrant({
@@ -156,7 +159,7 @@ describe("grant preview customizer service", () => {
     await expect(persistPreviewThemeForGrant({
       clientSlug: "preview-studio",
       customerEmail: "customer@example.com",
-      theme: { stylePreset: "bad;}" } as any,
+      theme: cast<ThemeTokenSpecV3>({ stylePreset: "bad;}" }),
     })).rejects.toThrow("Invalid theme data")
     expect(mocks.payload.update).not.toHaveBeenCalled()
   })
@@ -196,7 +199,7 @@ describe("grant preview customizer service", () => {
       waivedAt: null,
       updatedAt: "2026-06-26T10:00:00.000Z",
       note: "Paid before approval",
-    } as any
+    }
     const { approvePreviewForGrant } = await import("@/lib/preview/customizer")
 
     const result = await approvePreviewForGrant({

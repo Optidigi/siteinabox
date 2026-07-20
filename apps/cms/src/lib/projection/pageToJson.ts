@@ -1,9 +1,13 @@
+import type { Page } from "@/payload-types"
+import { asRecord } from "@/lib/record"
 import crypto from "node:crypto"
 import { isSafeHref } from "@/lib/security/safeHref"
 import { isPopulatedMediaShape, mediaToJson } from "@/lib/projection/media"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
 
-type Json = Record<string, any>
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
+type Json = { [key: string]: JsonValue }
+type PageSource = Json | Page
 
 export type PageAnalyticsProjectionContext = {
   tenantId?: string | number | null
@@ -46,11 +50,11 @@ const ARRAY_ROW_KEYS = new Set([
  *   - drops `blockName` when it's null/undefined (Payload sets it to null
  *     when unset in the admin form; that null leaks into JSON noisily)
  */
-const projectField = (v: any, parentArrayKey?: string, options?: { preserveBlockIds?: boolean }): any => {
-  if (v == null) return v
+const projectField = (v: unknown, parentArrayKey?: string, options?: { preserveBlockIds?: boolean }): JsonValue => {
+  if (v == null) return null
   if (Array.isArray(v)) return v.map((item) => projectField(item, parentArrayKey, options))
   if (typeof v === "object") {
-    if (isPopulatedMediaShape(v)) return mediaToJson(v)
+    if (isPopulatedMediaShape(v)) return mediaToJson(v) as JsonValue
 
     const insideArrayRow = parentArrayKey && ARRAY_ROW_KEYS.has(parentArrayKey)
     const out: Json = {}
@@ -74,10 +78,12 @@ const projectField = (v: any, parentArrayKey?: string, options?: { preserveBlock
     }
     return out
   }
-  return v
+  return v as JsonValue
 }
 
-const pruneUnsafeLinkGroup = (group: any) => {
+type LinkGroup = { href?: string | null; [key: string]: unknown }
+
+const pruneUnsafeLinkGroup = (group: LinkGroup | null | undefined) => {
   if (!group || typeof group !== "object" || group.href == null) return group
   if (isSafeHref(group.href)) return { ...group, href: group.href.trim() }
 
@@ -87,14 +93,17 @@ const pruneUnsafeLinkGroup = (group: any) => {
 
 const sanitizeBlockHrefs = (block: Json): Json => {
   if (block.blockType === "hero") {
-    return { ...block, cta: pruneUnsafeLinkGroup(block.cta) }
+    const cta = pruneUnsafeLinkGroup(asRecord(block.cta) as LinkGroup | null | undefined)
+    return { ...block, ...(cta ? { cta } : {}) } as Json
   }
   if (block.blockType === "cta") {
+    const primary = pruneUnsafeLinkGroup(asRecord(block.primary) as LinkGroup | null | undefined)
+    const secondary = pruneUnsafeLinkGroup(asRecord(block.secondary) as LinkGroup | null | undefined)
     return {
       ...block,
-      primary: pruneUnsafeLinkGroup(block.primary),
-      secondary: pruneUnsafeLinkGroup(block.secondary),
-    }
+      ...(primary ? { primary } : {}),
+      ...(secondary ? { secondary } : {}),
+    } as Json
   }
   return block
 }
@@ -116,7 +125,7 @@ const blockAnalytics = (block: Json, index: number, pageSlug: string) => {
   const sectionType = typeof block.blockType === "string" ? block.blockType : "unknown"
   const anchor = typeof block.anchor === "string" && block.anchor.trim() ? block.anchor.trim() : null
   const stored = block.analytics && typeof block.analytics === "object" && !Array.isArray(block.analytics)
-    ? block.analytics
+    ? block.analytics as Record<string, JsonValue>
     : {}
   return {
     ...stored,
@@ -143,14 +152,17 @@ export type PageToJsonOptions = {
 }
 
 export function pageToJson(
-  doc: Json,
+  doc: PageSource,
   analyticsContext: PageAnalyticsProjectionContext = {},
   options: PageToJsonOptions = {},
 ): Json {
   const pageSlug = String(doc.slug ?? "")
   const pagePath = pagePathForSlug(pageSlug)
   const blocks = ((doc.blocks ?? []) as Json[])
-    .map((b) => canonicalizeCtaFields(sanitizeBlockHrefs(projectField(b, "blocks", options))))
+    .map((b) => {
+      const projected = projectField(b, "blocks", options)
+      return sanitizeBlockHrefs(canonicalizeCtaFields(asRecord(projected) ?? {}) as Json)
+    })
     .map((block, index) => ({
       ...block,
       analytics: blockAnalytics(block, index, pageSlug),
@@ -173,7 +185,7 @@ export function pageToJson(
       manifestVersion: analyticsContext.manifestVersion ?? null,
     },
     blocks,
-    seo: doc.seo ? projectField(doc.seo) : undefined,
+    ...(doc.seo ? { seo: projectField(doc.seo) } : {}),
     updatedAt: doc.updatedAt
   }
 }

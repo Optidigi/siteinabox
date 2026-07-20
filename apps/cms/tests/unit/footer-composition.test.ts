@@ -4,8 +4,11 @@ import {
   normalizeFooterColumns,
   resolveFooterContract,
 } from "@/lib/footerComposition"
+import type { RtManifest } from "@/lib/richText/manifest"
 
-const manifest: any = {
+import { cast } from "../_helpers/cast"
+
+const manifest = cast<RtManifest>({
   version: 1,
   inlineMarks: {},
   blockTypes: { paragraph: true },
@@ -19,7 +22,7 @@ const manifest: any = {
       { type: "text", label: "Text" },
     ],
   },
-}
+})
 
 describe("footer composition", () => {
   it("resolves a manifest footer contract", () => {

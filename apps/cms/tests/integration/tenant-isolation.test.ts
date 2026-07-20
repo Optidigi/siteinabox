@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, beforeEach } from "vitest"
+import { errLike } from "../_helpers/cast"
 import { getTestPayload, resetTestData, seedFixture } from "./_helpers"
 import type { Payload } from "payload"
 
@@ -13,11 +14,11 @@ beforeEach(async () => {
   // Add content to t1 and t2 so the isolation queries have something to find/miss.
   await payload.create({
     collection: "pages", overrideAccess: true,
-    data: { tenant: fx.t1.id, title: "T1 page", slug: "t1-page", status: "published" } as any
+    data: { tenant: fx.t1.id, title: "T1 page", slug: "t1-page", status: "published" }
   })
   await payload.create({
     collection: "pages", overrideAccess: true,
-    data: { tenant: fx.t2.id, title: "T2 page", slug: "t2-page", status: "published" } as any
+    data: { tenant: fx.t2.id, title: "T2 page", slug: "t2-page", status: "published" }
   })
 }, 30000)
 
@@ -30,9 +31,9 @@ async function expectNoCrossTenantRead(promise: Promise<{ docs: unknown[] }>) {
   try {
     const res = await promise
     expect(res.docs.length).toBe(0)
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Forbidden / access denied — also acceptable, even stronger.
-    expect(String(e?.message ?? e)).toMatch(/forbidden|not allowed|access/i)
+    expect(String(errLike(e).message ?? e)).toMatch(/forbidden|not allowed|access/i)
   }
 }
 
@@ -46,7 +47,7 @@ describe("tenant isolation — scoped collections", () => {
           overrideAccess: false,
           where: { tenant: { equals: fx.t2.id } },
           limit: 100
-        } as any))
+        }))
       })
 
       it("editor in t1 only sees own-tenant docs in unfiltered list", async () => {
@@ -55,8 +56,8 @@ describe("tenant isolation — scoped collections", () => {
         // tenant. We expect every returned doc to be in t1.
         const res = await payload.find({
           collection: slug, user: fx.editor1, overrideAccess: false, limit: 100
-        } as any)
-        for (const d of res.docs as any[]) {
+        })
+        for (const d of res.docs) {
           const tenantId = typeof d.tenant === "object" && d.tenant ? d.tenant.id : d.tenant
           if (tenantId != null) expect(tenantId).toBe(fx.t1.id)
         }
@@ -73,7 +74,7 @@ describe("tenant isolation — write attempts", () => {
     })).docs[0]!
     expect(t2Page).toBeTruthy()
     await expect(
-      payload.update({ collection: "pages", id: t2Page.id, user: fx.editor1, overrideAccess: false, data: { title: "hacked" } } as any)
+      payload.update({ collection: "pages", id: t2Page.id, user: fx.editor1, overrideAccess: false, data: { title: "hacked" } })
     ).rejects.toThrow()
   })
 
@@ -83,7 +84,7 @@ describe("tenant isolation — write attempts", () => {
       where: { tenant: { equals: fx.t2.id } }, limit: 1
     })).docs[0]!
     await expect(
-      payload.delete({ collection: "pages", id: t2Page.id, user: fx.editor1, overrideAccess: false } as any)
+      payload.delete({ collection: "pages", id: t2Page.id, user: fx.editor1, overrideAccess: false })
     ).rejects.toThrow()
   })
 
@@ -91,7 +92,7 @@ describe("tenant isolation — write attempts", () => {
     await expect(
       payload.create({
         collection: "pages", user: fx.editor1, overrideAccess: false,
-        data: { tenant: fx.t2.id, title: "leak", slug: "leak", status: "draft" } as any
+        data: { tenant: fx.t2.id, title: "leak", slug: "leak", status: "draft" }
       })
     ).rejects.toThrow()
   })
@@ -100,7 +101,7 @@ describe("tenant isolation — write attempts", () => {
     await expect(
       payload.create({
         collection: "pages", user: fx.viewer1, overrideAccess: false,
-        data: { tenant: fx.t1.id, title: "v", slug: "v", status: "draft" } as any
+        data: { tenant: fx.t1.id, title: "v", slug: "v", status: "draft" }
       })
     ).rejects.toThrow()
   })
@@ -108,24 +109,24 @@ describe("tenant isolation — write attempts", () => {
 
 describe("tenant isolation — super-admin and user mgmt", () => {
   it("super-admin sees all tenants' pages", async () => {
-    const res = await payload.find({ collection: "pages", user: fx.sa, overrideAccess: false, limit: 100 } as any)
+    const res = await payload.find({ collection: "pages", user: fx.sa, overrideAccess: false, limit: 100 })
     expect(res.docs.length).toBeGreaterThanOrEqual(2)
   })
 
   it("owner in t1 cannot delete users in t2", async () => {
     const t2User = await payload.create({
       collection: "users", overrideAccess: true,
-      data: { email: "edit2@test.local", password: "test1234", name: "E2", role: "editor", tenants: [{ tenant: fx.t2.id }] } as any
+      data: { email: "edit2@test.local", password: "test1234", name: "E2", role: "editor", tenants: [{ tenant: fx.t2.id }] }
     })
     await expect(
-      payload.delete({ collection: "users", id: t2User.id, user: fx.owner1, overrideAccess: false } as any)
+      payload.delete({ collection: "users", id: t2User.id, user: fx.owner1, overrideAccess: false })
     ).rejects.toThrow()
   })
 
   it("owner in t1 can manage users in own tenant", async () => {
     const created = await payload.create({
       collection: "users", user: fx.owner1, overrideAccess: false,
-      data: { email: "new@test.local", password: "test1234", name: "N", role: "editor", tenants: [{ tenant: fx.t1.id }] } as any
+      data: { email: "new@test.local", password: "test1234", name: "N", role: "editor", tenants: [{ tenant: fx.t1.id }] }
     })
     expect(created.id).toBeTruthy()
   })

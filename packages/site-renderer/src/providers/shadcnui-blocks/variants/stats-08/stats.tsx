@@ -1,51 +1,80 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-const Stats = () => {
+// Owned typed adaptation of upstream shadcnui-blocks stats-08 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import { stats01Literal } from "../../typed/fixtures/stats-01"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import {
+  renderStatLabel,
+  renderStatsIntro,
+  renderStatsTitle,
+  renderStatValue,
+  sliceStatItems,
+  type StatItem,
+} from "../../typed/stats-fields"
+
+const MAX_ITEMS = 3
+
+export type Stats08Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: StatItem[]
+}
+
+export function Stats08({ title, intro, items, blockIndex, editSlots, rootAttributes }: Stats08Props) {
+  const titleContent = renderStatsTitle(editSlots, title, blockIndex)
+  const introContent = renderStatsIntro(editSlots, intro, blockIndex)
+  const displayItems = sliceStatItems(items, MAX_ITEMS)
+
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center" {...rootAttributes}>
       <div className="mx-auto max-w-(--breakpoint-xl) py-12 text-center">
-        <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
-          Why Should You Choose Us?
-        </>} inline /></h2>
-        <p className="mt-3.5 text-muted-foreground text-xl md:text-2xl"><ProviderField field="intro" fallback={<>
-          Because after switching to us...
-        </>} inline /></p>
+        {titleContent ? (
+          <h2 className="font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">{titleContent}</h2>
+        ) : null}
+        {introContent ? <p className="mt-3.5 text-muted-foreground text-xl md:text-2xl">{introContent}</p> : null}
 
         <div className="px-6">
           <div className="mx-auto mt-16 grid max-w-5xl justify-center gap-x-8 gap-y-8 sm:mt-24 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5">
-              <Shape1 className="size-14" />
-              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground"><ProviderItemField field="items" index={0} subField="value" fallback={<>
-                96%
-              </>} /></span>
-              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80"><ProviderItemField field="items" index={0} subField="label" fallback={<>
-                of customers say they have a better brand experience
-              </>} /></p>
-            </div>
-            <div className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5">
-              <Shape2 className="size-14" />
-              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground"><ProviderItemField field="items" index={1} subField="value" fallback={<>
-                95%
-              </>} /></span>
-              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80"><ProviderItemField field="items" index={1} subField="label" fallback={<>
-                of customers say they gather more data, more easily
-              </>} /></p>
-            </div>
-            <div className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5">
-              <Shape3 className="size-14" />
-              <span className="mt-10 font-medium text-5xl text-background dark:text-foreground"><ProviderItemField field="items" index={2} subField="value" fallback={<>
-                87%
-              </>} /></span>
-              <p className="mt-6 text-background/80 text-lg dark:text-foreground/80"><ProviderItemField field="items" index={2} subField="label" fallback={<>
-                of customers say they reveal deeper insights from data
-              </>} /></p>
-            </div>
+            {displayItems.map((item, itemIndex) => {
+              const valueContent = renderStatValue(editSlots, item.value, blockIndex, itemIndex)
+              const labelContent = renderStatLabel(editSlots, item.label, blockIndex, itemIndex)
+              if (!valueContent && !labelContent) return null
+              return (
+                <div
+                  key={itemIndex}
+                  className="flex flex-col items-center rounded-xl bg-foreground/95 px-6 py-12 dark:bg-foreground/5"
+                >
+                  {itemIndex === 0 ? <Shape1 className="size-14" /> : null}
+                  {itemIndex === 1 ? <Shape2 className="size-14" /> : null}
+                  {itemIndex === 2 ? <Shape3 className="size-14" /> : null}
+                  {valueContent ? (
+                    <span className="mt-10 font-medium text-5xl text-background dark:text-foreground">{valueContent}</span>
+                  ) : null}
+                  {labelContent ? (
+                    <p className="mt-6 text-background/80 text-lg dark:text-foreground/80">{labelContent}</p>
+                  ) : null}
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
+
+export default function Stats08Literal() {
+  return (
+    <Stats08
+      title={stats01Literal.title}
+      intro={stats01Literal.intro}
+      items={stats01Literal.items}
+      blockIndex={0}
+    />
+  )
+}
 
 export const Shape1 = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -301,4 +330,4 @@ export const Shape3 = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export default Stats;
+

@@ -120,8 +120,11 @@ const EMPTY_SETTINGS_CONTRACT: SettingsContract = {
   },
 }
 
-export function resolveSettingsContract(manifest: Pick<RtManifest, "settings"> | null | undefined): SettingsContract {
-  const settings = manifest?.settings
+export function resolveSettingsContract(manifest: unknown): SettingsContract {
+  const root = manifest && typeof manifest === "object" && !Array.isArray(manifest)
+    ? manifest as Pick<RtManifest, "settings">
+    : null
+  const settings = root?.settings
   if (!settings) return DEFAULT_CLIENT_SETTINGS_CONTRACT
 
   return {

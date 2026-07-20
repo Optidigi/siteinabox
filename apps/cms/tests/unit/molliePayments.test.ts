@@ -1,3 +1,5 @@
+import { asMockDoc, asNextRequest, cast } from "../_helpers/cast"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockFindByIdArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 import crypto from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -114,9 +116,9 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     currency: "EUR",
     paymentStatus: "pending",
   }
-  const acceptance = { id: 700, order: 600, acceptanceVersion: "platform-terms-2026-07-07" }
-  const snapshots: any[] = []
-  const update = vi.fn(async ({ collection, id, data }: any) => {
+  const acceptance = { id: 700, tenant: 1, actorEmail: "client@example.com", order: 600, acceptanceVersion: "platform-terms-2026-07-07" }
+  const snapshots: MockDoc[] = []
+  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
     if (collection === "site-generation-runs") Object.assign(run, data)
     if (collection === "tenants") Object.assign(tenant, data)
     if (collection === "orders") {
@@ -124,7 +126,8 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       return { ...order }
     }
     if (collection === "published-site-snapshots") {
-      const snapshot = snapshots.find((entry) => String(entry.id) === String(id)) ?? snapshots[0]
+      const snapshot = snapshots.find((entry) => String(entry.id) === String(id))
+      if (!snapshot) throw new Error(`Missing published-site-snapshots ${id}`)
       Object.assign(snapshot, data)
       return { ...snapshot }
     }
@@ -132,7 +135,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     return { ...run }
   })
   const payload = {
-    findByID: vi.fn(async ({ collection, id }: any) => {
+    findByID: vi.fn(async ({ collection, id }: MockFindByIdArgs) => {
       if (collection === "site-generation-runs" && String(id) === "500") return run
       if (collection === "tenants" && String(id) === "1") return tenant
       if (collection === "orders" && String(id) === "600") return order
@@ -142,23 +145,45 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       }
       throw new Error(`Missing ${collection} ${id}`)
     }),
-    find: vi.fn(async ({ collection, where }: any) => {
+    find: vi.fn(async ({ collection, where }: MockFindArgs) => {
       if (collection === "published-site-snapshots") {
-        if (where?.sourceGenerationRun?.equals != null) {
-          return { docs: snapshots.filter((snapshot) => String(snapshot.sourceGenerationRun) === String(where.sourceGenerationRun.equals)) }
+        if (where?.and) {
+          return { docs: snapshots.filter((snapshot) => matchesWhere(snapshot, where)) }
         }
-        if (where?.tenant?.equals != null) {
-          return { docs: snapshots.filter((snapshot) => String(snapshot.tenant) === String(where.tenant.equals)) }
+        const clause = (where ?? {}) as MockWhere
+        const sourceRun = asMockDoc(clause.sourceGenerationRun)?.equals
+        if (sourceRun != null) {
+          return { docs: snapshots.filter((snapshot) => String(snapshot.sourceGenerationRun) === String(sourceRun)) }
         }
-        if (where?.and) return { docs: [] }
+        const tenantId = asMockDoc(clause.tenant)?.equals
+        if (tenantId != null) {
+          return { docs: snapshots.filter((snapshot) => String(snapshot.tenant) === String(tenantId)) }
+        }
         return { docs: snapshots }
       }
       if (collection === "pages") return { docs: [page] }
       if (collection === "site-settings") return { docs: [settings] }
-      if (collection === "agreement-acceptances") return { docs: [acceptance] }
+      if (collection === "agreement-acceptances") {
+        const orderEquals = asMockDoc((where as MockWhere)?.order)?.equals
+        if (orderEquals != null) {
+          return { docs: String(acceptance.order) === String(orderEquals) ? [acceptance] : [] }
+        }
+        const clauses = (where as MockWhere)?.and
+        if (!clauses) return { docs: [acceptance] }
+        const tenantId = asMockDoc(clauses.find((clause) => clause.tenant)?.tenant)?.equals
+        const actorEmail = asMockDoc(clauses.find((clause) => clause.actorEmail)?.actorEmail)?.equals
+        if (tenantId != null && actorEmail != null) {
+          return {
+            docs: String(acceptance.tenant) === String(tenantId) && acceptance.actorEmail === actorEmail
+              ? [acceptance]
+              : [],
+          }
+        }
+        return { docs: [acceptance] }
+      }
       return { docs: [] }
     }),
-    create: vi.fn(async ({ collection, data }: any) => {
+    create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
       if (collection === "published-site-snapshots") {
         const snapshot = { id: snapshots.length + 10, ...data }
         snapshots.unshift(snapshot)
@@ -167,10 +192,11 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       if (collection === "site-settings") return settings
       throw new Error(`Unexpected create ${collection}`)
     }),
+    logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
     update,
   }
-  vi.mocked(getPayload).mockResolvedValue(payload as any)
-  return { payload: payload as any, run, tenant, update, snapshots }
+  vi.mocked(getPayload).mockResolvedValue(asPayload(payload))
+  return { payload: asPayload(payload), run, tenant, update, snapshots }
 }
 
 describe("Mollie payment flow", () => {
@@ -639,10 +665,10 @@ describe("Mollie payment flow", () => {
   })
 
   it("rejects invalid webhook payloads and invalid optional signatures", async () => {
-    const invalidBodyResponse = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const invalidBodyResponse = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       body: "not-an-id=1",
-    }) as any)
+    })))
     expect(invalidBodyResponse.status).toBe(400)
 
     const raw = "id=tr_test_123"
@@ -650,10 +676,10 @@ describe("Mollie payment flow", () => {
     expect(verifyMollieWebhookSignature(raw, null)).toBe(false)
     expect(verifyMollieWebhookSignature(raw, "bad-signature")).toBe(false)
 
-    const missingSignatureResponse = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const missingSignatureResponse = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       body: raw,
-    }) as any)
+    })))
     expect(missingSignatureResponse.status).toBe(401)
 
     const signature = crypto.createHmac("sha256", "secret").update(raw).digest("hex")
@@ -667,11 +693,11 @@ describe("Mollie payment flow", () => {
       metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }), { status: 200 })))
 
-    const okResponse = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const okResponse = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       headers: { "x-mollie-signature": signature },
       body: raw,
-    }) as any)
+    })))
     expect(okResponse.status).toBe(200)
     expect(await okResponse.json()).toEqual({ ok: true })
   })
@@ -698,10 +724,10 @@ describe("Mollie payment flow", () => {
       metadata: { generationRunId: 500, tenantId: 1, orderId: 600 },
     }), { status: 200 })))
 
-    const response = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const response = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       body: "id=tr_unknown",
-    }) as any)
+    })))
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true })
@@ -713,10 +739,10 @@ describe("Mollie payment flow", () => {
     vi.mocked(getPayload).mockResolvedValue(payload)
     vi.stubGlobal("fetch", vi.fn(async () => new Response("Not found", { status: 404 })))
 
-    const response = await mollieWebhookPOST(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
+    const response = await mollieWebhookPOST(asNextRequest(new Request("https://admin.siteinabox.nl/api/payments/mollie/webhook", {
       method: "POST",
       body: "id=tr_missing",
-    }) as any)
+    })))
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ok: true })

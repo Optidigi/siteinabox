@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from "vitest"
 
+import { asMockDoc } from "../_helpers/cast"
+import { asFindClient } from "../_helpers/payloadFindClient"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Stub the real payload config (it fail-fast-throws on missing env
 // vars). Same pattern as audit-p0-1-inviteUser-auth.test.ts.
 vi.mock("@/payload.config", () => ({ default: {} }))
@@ -52,16 +55,16 @@ import { listFormsPaginated } from "@/lib/queries/forms"
 // Mock payload client supporting paginated find
 // -----------------------------------------------------------------------------
 
-type MockDoc = { id: number; tenant: number; title?: string; updatedAt?: string }
+type PaginatedDoc = { id: number; tenant: number; title?: string; updatedAt?: string }
 
-const makePaginatedFind = (corpus: MockDoc[]) => {
-  const calls: any[] = []
-  const find = vi.fn(async (args: any) => {
+const makePaginatedFind = (corpus: PaginatedDoc[]) => {
+  const calls: MockFindArgs[] = []
+  const find = vi.fn(async (args: MockFindArgs) => {
     calls.push(args)
     const where = args.where ?? {}
     let docs = corpus.slice()
     if (where.tenant?.equals !== undefined) {
-      docs = docs.filter((d) => d.tenant === where.tenant.equals)
+      docs = docs.filter((d) => d.tenant === where.tenant!.equals)
     }
     const limit = args.limit ?? DEFAULT_PAGE_SIZE
     const page = args.page ?? 1
@@ -82,10 +85,10 @@ const makePaginatedFind = (corpus: MockDoc[]) => {
       prevPage: page > 1 ? page - 1 : null,
     }
   })
-  return { client: { find } as any, calls }
+  return { client: asFindClient({ find }), calls }
 }
 
-const seedCorpus = (n: number, tenant: number, baseId = 1): MockDoc[] =>
+const seedCorpus = (n: number, tenant: number, baseId = 1): PaginatedDoc[] =>
   Array.from({ length: n }, (_, i) => ({
     id: baseId + i,
     tenant,
@@ -111,7 +114,7 @@ describe("audit-p2 #13 — findAllPaginated (full-walk)", () => {
 
     expect(docs).toHaveLength(600)
     // Pin sort stability: ids appear in order 1..600.
-    expect(docs.map((d: any) => d.id)).toEqual(Array.from({ length: 600 }, (_, i) => i + 1))
+    expect((docs as PaginatedDoc[]).map((d) => d.id)).toEqual(Array.from({ length: 600 }, (_, i) => i + 1))
     // The walker MUST have made multiple find calls — not relied on a
     // single huge limit. With 600 docs and pageSize 300 we expect at
     // least 2 calls; a third call may happen as the "is there more?"
@@ -182,7 +185,7 @@ describe("audit-p2 #13 — listing queries (page + pageSize + result shape)", ()
 
   it("Case 3 — listPagesPaginated defaults to page=1, pageSize=DEFAULT_PAGE_SIZE when no opts", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(120, 1))
-    await listPagesPaginated(1, undefined, client as any)
+    await listPagesPaginated(1, undefined, asFindClient(client))
     expect(calls).toHaveLength(1)
     expect(calls[0]!.page).toBe(1)
     expect(calls[0]!.limit).toBe(DEFAULT_PAGE_SIZE)
@@ -191,7 +194,7 @@ describe("audit-p2 #13 — listing queries (page + pageSize + result shape)", ()
 
   it("Case 2 — listPagesPaginated respects page when provided", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(120, 1))
-    await listPagesPaginated(1, { page: 2, pageSize: 25 }, client as any)
+    await listPagesPaginated(1, { page: 2, pageSize: 25 }, asFindClient(client))
     expect(calls).toHaveLength(1)
     expect(calls[0]!.page).toBe(2)
     expect(calls[0]!.limit).toBe(25)
@@ -199,7 +202,7 @@ describe("audit-p2 #13 — listing queries (page + pageSize + result shape)", ()
 
   it("Case 4 — listing queries return totalDocs + totalPages (UI can render pagination)", async () => {
     const { client } = makePaginatedFind(seedCorpus(120, 1))
-    const result = await listPagesPaginated(1, { pageSize: 50 }, client as any)
+    const result = await listPagesPaginated(1, { pageSize: 50 }, asFindClient(client))
     expect(result.totalDocs).toBe(120)
     expect(result.totalPages).toBe(3)
     expect(result.page).toBe(1)
@@ -210,14 +213,14 @@ describe("audit-p2 #13 — listing queries (page + pageSize + result shape)", ()
 
   it("Case 2b — listMediaPaginated respects page+pageSize", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(60, 1))
-    await listMediaPaginated(1, { page: 3, pageSize: 20 }, client as any)
+    await listMediaPaginated(1, { page: 3, pageSize: 20 }, asFindClient(client))
     expect(calls[0]!.page).toBe(3)
     expect(calls[0]!.limit).toBe(20)
   })
 
   it("Case 2c — listFormsPaginated respects page+pageSize", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(80, 1))
-    await listFormsPaginated(1, { page: 2, pageSize: 30, status: "new" }, client as any)
+    await listFormsPaginated(1, { page: 2, pageSize: 30, status: "new" }, asFindClient(client))
     expect(calls[0]!.page).toBe(2)
     expect(calls[0]!.limit).toBe(30)
     // status filter stacks alongside the tenant scope.
@@ -226,7 +229,7 @@ describe("audit-p2 #13 — listing queries (page + pageSize + result shape)", ()
 
   it("Case 4b — listMediaPaginated returns totalDocs/totalPages", async () => {
     const { client } = makePaginatedFind(seedCorpus(75, 1))
-    const result = await listMediaPaginated(1, { pageSize: 25 }, client as any)
+    const result = await listMediaPaginated(1, { pageSize: 25 }, asFindClient(client))
     expect(result.totalDocs).toBe(75)
     expect(result.totalPages).toBe(3)
     expect(result.page).toBe(1)
@@ -234,7 +237,7 @@ describe("audit-p2 #13 — listing queries (page + pageSize + result shape)", ()
 
   it("Case 4c — listFormsPaginated returns totalDocs/totalPages", async () => {
     const { client } = makePaginatedFind(seedCorpus(100, 1))
-    const result = await listFormsPaginated(1, { pageSize: 50 }, client as any)
+    const result = await listFormsPaginated(1, { pageSize: 50 }, asFindClient(client))
     expect(result.totalDocs).toBe(100)
     expect(result.totalPages).toBe(2)
   })
@@ -251,15 +254,15 @@ describe("audit-p2 #13 — cross-tenant isolation", () => {
     const { client } = makePaginatedFind([...tenantA, ...tenantB])
 
     // Walk all pages of tenant A's listing.
-    const page1 = await listPagesPaginated(100, { page: 1, pageSize: 25 }, client as any)
-    const page2 = await listPagesPaginated(100, { page: 2, pageSize: 25 }, client as any)
+    const page1 = await listPagesPaginated(100, { page: 1, pageSize: 25 }, asFindClient(client))
+    const page2 = await listPagesPaginated(100, { page: 2, pageSize: 25 }, asFindClient(client))
 
     expect(page1.totalDocs).toBe(40)
     expect(page2.totalDocs).toBe(40)
-    const allTenants = [...page1.docs, ...page2.docs].map((d: any) => d.tenant)
+    const allTenants = ([...page1.docs, ...page2.docs] as PaginatedDoc[]).map((d) => d.tenant)
     expect(allTenants.every((t) => t === 100)).toBe(true)
     // Pin: NONE of the returned ids belong to tenant B's id range.
-    const allIds = [...page1.docs, ...page2.docs].map((d: any) => d.id)
+    const allIds = ([...page1.docs, ...page2.docs] as PaginatedDoc[]).map((d) => d.id)
     expect(allIds.some((id) => id >= 1000)).toBe(false)
   })
 
@@ -268,16 +271,16 @@ describe("audit-p2 #13 — cross-tenant isolation", () => {
     const tenantB = seedCorpus(120, 200, 1000)
     const { client } = makePaginatedFind([...tenantA, ...tenantB])
 
-    const all = await findAllPaginated(client as any, {
+    const all = (await findAllPaginated(client, {
       collection: "pages",
       overrideAccess: true,
       where: { tenant: { equals: 100 } },
       pageSize: 50,
-    })
+    })) as PaginatedDoc[]
 
     expect(all).toHaveLength(120)
-    expect(all.every((d: any) => d.tenant === 100)).toBe(true)
-    expect(all.some((d: any) => d.id >= 1000)).toBe(false)
+    expect(all.every((d) => d.tenant === 100)).toBe(true)
+    expect(all.some((d) => d.id >= 1000)).toBe(false)
   })
 
   it("FE-63 — listPages walks every tenant page for the navigation picker", async () => {
@@ -285,11 +288,11 @@ describe("audit-p2 #13 — cross-tenant isolation", () => {
     const tenantB = seedCorpus(80, 200, 1000)
     const { client, calls } = makePaginatedFind([...tenantA, ...tenantB])
 
-    const all = await listPages(100, client as any)
+    const all = (await listPages(100, asFindClient(client))) as PaginatedDoc[]
 
     expect(all).toHaveLength(120)
-    expect(all.every((d: any) => d.tenant === 100)).toBe(true)
-    expect(all.some((d: any) => d.id >= 1000)).toBe(false)
+    expect(all.every((d) => d.tenant === 100)).toBe(true)
+    expect(all.some((d) => d.id >= 1000)).toBe(false)
     expect(calls).toHaveLength(3)
     expect(calls.map((c) => c.page)).toEqual([1, 2, 3])
     for (const c of calls) {
@@ -309,19 +312,19 @@ describe("audit-p2 #13 — cross-tenant isolation", () => {
 describe("audit-p2 #13 — pagination param hardening", () => {
   it("Case H7a — page=-1 is normalised to 1", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { page: -1, pageSize: 10 }, client as any)
+    await listPagesPaginated(1, { page: -1, pageSize: 10 }, asFindClient(client))
     expect(calls[0]!.page).toBe(1)
   })
 
   it("Case H7b — page=0 is normalised to 1", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { page: 0, pageSize: 10 }, client as any)
+    await listPagesPaginated(1, { page: 0, pageSize: 10 }, asFindClient(client))
     expect(calls[0]!.page).toBe(1)
   })
 
   it("Case H7c — pageSize=99999 is clamped to a safe MAX_PAGE_SIZE", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { page: 1, pageSize: 99_999 }, client as any)
+    await listPagesPaginated(1, { page: 1, pageSize: 99_999 }, asFindClient(client))
     // We don't pin the exact MAX, but it must NOT be 99999 — that
     // would re-arm the truncation/over-fetch problem in reverse.
     expect(calls[0]!.limit).toBeLessThan(99_999)
@@ -330,17 +333,17 @@ describe("audit-p2 #13 — pagination param hardening", () => {
 
   it("Case H7d — pageSize=0 / negative is normalised to default", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { page: 1, pageSize: 0 }, client as any)
+    await listPagesPaginated(1, { page: 1, pageSize: 0 }, asFindClient(client))
     expect(calls[0]!.limit).toBe(DEFAULT_PAGE_SIZE)
-    await listPagesPaginated(1, { page: 1, pageSize: -10 }, client as any)
+    await listPagesPaginated(1, { page: 1, pageSize: -10 }, asFindClient(client))
     expect(calls[1]!.limit).toBe(DEFAULT_PAGE_SIZE)
   })
 
   it("Case H7e — non-integer page (NaN, Infinity) normalised to 1", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { page: Number.NaN, pageSize: 10 }, client as any)
+    await listPagesPaginated(1, { page: Number.NaN, pageSize: 10 }, asFindClient(client))
     expect(calls[0]!.page).toBe(1)
-    await listPagesPaginated(1, { page: Number.POSITIVE_INFINITY, pageSize: 10 }, client as any)
+    await listPagesPaginated(1, { page: Number.POSITIVE_INFINITY, pageSize: 10 }, asFindClient(client))
     expect(calls[1]!.page).toBe(1)
   })
 })
@@ -353,7 +356,7 @@ describe("audit-p2 #13 — pagination param hardening", () => {
 describe("OBS-7 — list search (q param → where.or)", () => {
   it("listPagesPaginated with q searches title + slug, tenant scope preserved", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { q: "about" }, client as any)
+    await listPagesPaginated(1, { q: "about" }, asFindClient(client))
     expect(calls[0]!.where).toEqual({
       tenant: { equals: 1 },
       or: [{ title: { like: "about" } }, { slug: { like: "about" } }],
@@ -362,7 +365,7 @@ describe("OBS-7 — list search (q param → where.or)", () => {
 
   it("listFormsPaginated with q searches email + name + formName, stacks with status", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listFormsPaginated(1, { q: "jane", status: "new" }, client as any)
+    await listFormsPaginated(1, { q: "jane", status: "new" }, asFindClient(client))
     expect(calls[0]!.where).toEqual({
       tenant: { equals: 1 },
       status: { equals: "new" },
@@ -376,8 +379,8 @@ describe("OBS-7 — list search (q param → where.or)", () => {
 
   it("q is trimmed before it reaches the where-clause", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { q: "  spaced  " }, client as any)
-    expect(calls[0]!.where.or).toEqual([
+    await listPagesPaginated(1, { q: "  spaced  " }, asFindClient(client))
+    expect(asMockDoc(calls[0]!.where).or).toEqual([
       { title: { like: "spaced" } },
       { slug: { like: "spaced" } },
     ])
@@ -385,14 +388,14 @@ describe("OBS-7 — list search (q param → where.or)", () => {
 
   it("blank / whitespace-only q adds no or-clause (no accidental match-all)", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { q: "   " }, client as any)
+    await listPagesPaginated(1, { q: "   " }, asFindClient(client))
     expect(calls[0]!.where).toEqual({ tenant: { equals: 1 } })
-    expect(calls[0]!.where.or).toBeUndefined()
+    expect(asMockDoc(calls[0]!.where).or).toBeUndefined()
   })
 
   it("no q leaves the where-clause tenant-only (regression guard)", async () => {
     const { client, calls } = makePaginatedFind(seedCorpus(20, 1))
-    await listPagesPaginated(1, { page: 2 }, client as any)
+    await listPagesPaginated(1, { page: 2 }, asFindClient(client))
     expect(calls[0]!.where).toEqual({ tenant: { equals: 1 } })
   })
 })

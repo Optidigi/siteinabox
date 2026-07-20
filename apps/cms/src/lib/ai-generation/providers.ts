@@ -676,14 +676,21 @@ const selfServeBlockJsonSchemas = SHADCNUI_BLOCK_VARIANTS.filter((variant) => se
   }
 })
 
-const extractOpenAIOutputText = (response: any): string => {
-  if (typeof response?.output_text === "string") return response.output_text
+import { asRecord, isRecord } from "@/lib/record"
 
-  const text = response?.output
-    ?.flatMap((item: any) => item?.content ?? [])
-    ?.filter((content: any) => content?.type === "output_text" && typeof content.text === "string")
-    ?.map((content: any) => content.text)
-    ?.join("")
+const extractOpenAIOutputText = (response: unknown): string => {
+  const record = asRecord(response)
+  if (typeof record?.output_text === "string") return record.output_text
+
+  const output = Array.isArray(record?.output) ? record.output : []
+  const text = output.flatMap((item) => {
+    const itemRecord = asRecord(item)
+    const content = Array.isArray(itemRecord?.content) ? itemRecord.content : []
+    return content.flatMap((entry) => {
+      const entryRecord = asRecord(entry)
+      return entryRecord?.type === "output_text" && typeof entryRecord.text === "string" ? [entryRecord.text] : []
+    })
+  }).join("")
 
   if (typeof text === "string" && text.trim()) return text
   throw new Error("OpenAI response did not include output text")

@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { ArrowUpRight, ChartPie, X } from "lucide-react";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { cn } from "@siteinabox/ui/lib/utils";
@@ -21,7 +20,7 @@ export default function Banner() {
           <Button
             className={cn(
               "hover:bg-primary/13 sm:-me-2",
-              "max-sm:absolute max-sm:-top-2.5 max-sm:-right-2.5 max-sm:size-6 max-sm:border max-sm:bg-background max-sm:hover:bg-muted"
+              "max-sm:absolute max-sm:-top-2.5 max-sm:-right-2.5 max-sm:size-6 max-sm:border max-sm:bg-background max-sm:hover:bg-muted border-border"
             )}
             size="icon"
             variant="ghost"

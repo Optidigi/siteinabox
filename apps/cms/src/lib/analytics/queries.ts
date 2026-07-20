@@ -1,4 +1,5 @@
 import "server-only"
+import type { Where } from "payload"
 import { getPostHogAnalyticsConfig } from "./config"
 import { queryPostHog } from "./posthogClient"
 import { WEB_VITAL_NAMES, combineSiteScore, getSiteQualityScore, webVitalRating, webVitalScore } from "./scoring"

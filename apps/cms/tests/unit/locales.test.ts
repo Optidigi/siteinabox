@@ -2,15 +2,16 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
+import { asMockDoc } from "../_helpers/cast"
 const root = join(process.cwd(), "src", "locales")
 
 function readMessages(locale: "en" | "nl") {
-  return JSON.parse(readFileSync(join(root, `${locale}.json`), "utf8")) as Record<string, unknown>
+  return JSON.parse(readFileSync(join(root, `${locale}.json`), "utf8"))
 }
 
 function keysOf(value: unknown, prefix = ""): string[] {
   if (value == null || typeof value !== "object" || Array.isArray(value)) return [prefix]
-  return Object.entries(value as Record<string, unknown>).flatMap(([key, nested]) =>
+  return Object.entries(asMockDoc(value)).flatMap(([key, nested]) =>
     keysOf(nested, prefix ? `${prefix}.${key}` : key),
   )
 }
@@ -18,12 +19,12 @@ function keysOf(value: unknown, prefix = ""): string[] {
 function valuesOf(value: unknown): string[] {
   if (typeof value === "string") return [value]
   if (value == null || typeof value !== "object" || Array.isArray(value)) return []
-  return Object.values(value as Record<string, unknown>).flatMap(valuesOf)
+  return Object.values(asMockDoc(value)).flatMap(valuesOf)
 }
 
 function entriesOf(value: unknown, prefix = ""): Array<[string, unknown]> {
   if (value == null || typeof value !== "object" || Array.isArray(value)) return [[prefix, value]]
-  return Object.entries(value as Record<string, unknown>).flatMap(([key, nested]) =>
+  return Object.entries(asMockDoc(value)).flatMap(([key, nested]) =>
     entriesOf(nested, prefix ? `${prefix}.${key}` : key),
   )
 }

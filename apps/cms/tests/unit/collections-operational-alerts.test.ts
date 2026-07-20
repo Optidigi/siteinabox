@@ -6,7 +6,8 @@ import {
   operationalAlertStatuses,
 } from "@/collections/OperationalAlerts"
 
-const findField = (name: string): any => OperationalAlerts.fields.find((field: any) => field.name === name)
+import { asMockDoc } from "../_helpers/cast"
+import { expectNamedField, fieldOptionValues, fieldOptions } from "../_helpers/payloadFields"
 
 describe("OperationalAlerts collection config", () => {
   it("is a super-admin operational queue with filterable metadata fields", () => {
@@ -22,17 +23,17 @@ describe("OperationalAlerts collection config", () => {
     ])
     expect(OperationalAlerts.admin?.listSearchableFields).toEqual(["message", "dedupeKey"])
 
-    expect(findField("severity")).toMatchObject({ type: "select", index: true })
-    expect(findField("severity").options.map((option: any) => option.value)).toEqual([...operationalAlertSeverities])
-    expect(findField("status")).toMatchObject({ type: "select", index: true })
-    expect(findField("status").options.map((option: any) => option.value)).toEqual([...operationalAlertStatuses])
-    expect(findField("source")).toMatchObject({ type: "select", index: true })
-    expect(findField("source").options.map((option: any) => option.value)).toEqual([...operationalAlertSources])
+    expect(expectNamedField(OperationalAlerts.fields, "severity")).toMatchObject({ type: "select", index: true })
+    expect(fieldOptionValues(fieldOptions(expectNamedField(OperationalAlerts.fields, "severity")))).toEqual([...operationalAlertSeverities])
+    expect(expectNamedField(OperationalAlerts.fields, "status")).toMatchObject({ type: "select", index: true })
+    expect(fieldOptionValues(fieldOptions(expectNamedField(OperationalAlerts.fields, "status")))).toEqual([...operationalAlertStatuses])
+    expect(expectNamedField(OperationalAlerts.fields, "source")).toMatchObject({ type: "select", index: true })
+    expect(fieldOptionValues(fieldOptions(expectNamedField(OperationalAlerts.fields, "source")))).toEqual([...operationalAlertSources])
 
     for (const fieldName of ["dedupeKey", "tenant", "firstSeenAt", "lastSeenAt"]) {
-      expect(findField(fieldName), fieldName).toMatchObject({ index: true })
+      expect(expectNamedField(OperationalAlerts.fields, fieldName), fieldName).toMatchObject({ index: true })
     }
-    expect(findField("metadata").admin.description).toEqual({
+    expect(asMockDoc(expectNamedField(OperationalAlerts.fields, "metadata").admin).description).toEqual({
       en: "Non-secret operational metadata only.",
       nl: "Alleen niet-geheime operationele metadata.",
     })

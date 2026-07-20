@@ -3,6 +3,7 @@ import { getPayload } from "payload"
 import config from "@/payload.config"
 import { readdirSync, readFileSync, statSync } from "node:fs"
 import { resolve } from "node:path"
+import type { Page } from "@/payload-types"
 
 const main = async () => {
   const dir = process.argv[2]
@@ -14,11 +15,11 @@ const main = async () => {
   const files = readdirSync(abs).filter((f) => f.endsWith(".json") && !f.includes("scout") && !f.includes("dry-run") && !f.includes("apply"))
 
   for (const f of files) {
-    const raw = JSON.parse(readFileSync(resolve(abs, f), "utf-8"))
+    const raw = JSON.parse(readFileSync(resolve(abs, f), "utf-8")) as Pick<Page, "id" | "slug" | "blocks">
     await payload.update({
       collection: "pages",
-      id: raw.id as any,
-      data: { blocks: raw.blocks } as any,
+      id: raw.id,
+      data: { blocks: raw.blocks },
       overrideAccess: true,
     })
     console.log(`restored page ${raw.slug}`)

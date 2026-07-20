@@ -1,8 +1,9 @@
 "use client"
+import type { PayloadRequest } from "payload"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef, CellContext } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { roleVariant } from "@/lib/badge-helpers"
@@ -106,7 +107,7 @@ export function UsersTable({
           id: "actions",
           header: "",
           meta: { mobilePriority: "action" },
-          cell: ({ row }: any) => {
+          cell: ({ row }: CellContext<User, unknown>) => {
             const u = row.original as User
             const isSelf = currentUserId != null && String(currentUserId) === String(u.id)
             return (

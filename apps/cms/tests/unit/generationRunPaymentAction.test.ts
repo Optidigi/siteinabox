@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { cast } from "../_helpers/cast"
+import type { GateResult } from "@/lib/authGate"
+import type { User } from "@/payload-types"
+import { asPayload, type MockCreateArgs } from "../_helpers/mockPayload"
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }))
@@ -27,9 +31,12 @@ describe("generation run payment action", () => {
   })
 
   it("requires super-admin access before recording completed payment", async () => {
-    const update = vi.fn(async ({ data }: any) => ({ id: 500, ...data }))
-    vi.mocked(requireRole).mockResolvedValue({ user: { id: 42, role: "super-admin" } } as any)
-    vi.mocked(getPayload).mockResolvedValue({ update } as any)
+    const update = vi.fn(async ({ data }: MockCreateArgs) => ({ id: 500, ...data }))
+    vi.mocked(requireRole).mockResolvedValue(cast<GateResult>({
+      user: cast<User>({ id: 42, role: "super-admin", updatedAt: "", createdAt: "", email: "admin@test.local" }),
+      ctx: { mode: "super-admin", tenant: null },
+    }))
+    vi.mocked(getPayload).mockResolvedValue(asPayload({ update }))
 
     const form = new FormData()
     form.set("provider", "invoice")
@@ -59,7 +66,7 @@ describe("generation run payment action", () => {
 
   it("does not mutate payment when the super-admin gate rejects", async () => {
     vi.mocked(requireRole).mockRejectedValue(new Error("forbidden"))
-    vi.mocked(getPayload).mockResolvedValue({ update: vi.fn() } as any)
+    vi.mocked(getPayload).mockResolvedValue(asPayload({ update: vi.fn() }))
 
     await expect(recordGenerationRunPaymentAction(500, "waived", new FormData())).rejects.toThrow("forbidden")
 

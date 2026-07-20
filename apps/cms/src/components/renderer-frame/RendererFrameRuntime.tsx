@@ -100,18 +100,15 @@ export function RendererFrameRuntime({
       if (!parsed.ok) return
       const message = parsed.message
 
-      if (mode === "preview" && message.type !== "page.replace" && message.type !== "theme.patch") return
+      // Preview runtime only accepts atomic render snapshots from the host.
+      // Editor interaction (selection, mobile projection) stays on editor-frame.
+      if (mode === "preview" && message.type !== "render.snapshot") return
 
-      if (message.type === "theme.patch") {
-        setFrameTheme(message.theme)
-        return
-      }
-
-      if (message.type === "page.replace") {
+      if (message.type === "render.snapshot") {
         setFramePage(message.page)
-        if (message.settings) setFrameSettings(message.settings)
-        if ("theme" in message) setFrameTheme(message.theme ?? null)
-        revisionRef.current += 1
+        setFrameSettings(message.settings)
+        setFrameTheme(message.theme)
+        revisionRef.current = message.expectedRevision + 1
       }
     }
 

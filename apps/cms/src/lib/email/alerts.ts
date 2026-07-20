@@ -1,4 +1,6 @@
-import type { MailIntent, MailRetryState, MailTenantRef } from "@/lib/email/sendEmail"
+import type { MailIntent, MailLogPayload, MailRetryState, MailTenantRef } from "@/lib/email/sendEmail"
+import type { OperationalAlert } from "@/payload-types"
+import type { Where } from "payload"
 
 const ALERT_WINDOW_MINUTES = 15
 const REPEATED_FAILURE_THRESHOLD = 3
@@ -15,25 +17,9 @@ const importantFailureIntents = new Set<MailIntent>([
 ])
 
 export type MailAlertPayload = {
-  create?: (args: {
-    collection: "operational-alerts"
-    data: Record<string, unknown>
-    overrideAccess: true
-  }) => Promise<unknown>
-  find?: (args: {
-    collection: "mail-logs" | "operational-alerts"
-    where: Record<string, unknown>
-    limit: number
-    depth: 0
-    overrideAccess: true
-  }) => Promise<{ totalDocs?: number; docs?: unknown[] }>
-  update?: (args: {
-    collection: "operational-alerts"
-    id: string | number
-    data: Record<string, unknown>
-    depth: 0
-    overrideAccess: true
-  }) => Promise<unknown>
+  create?: MailLogPayload["create"]
+  find?: MailLogPayload["find"]
+  update?: MailLogPayload["update"]
   logger?: {
     warn?: (message: string | Record<string, unknown>, meta?: string | Record<string, unknown>) => void
     error?: (message: string | Record<string, unknown>, meta?: string | Record<string, unknown>) => void
@@ -206,7 +192,7 @@ async function upsertOperationalAlert(
         occurrenceCount: 1,
         firstSeenAt: input.now,
         lastSeenAt: input.now,
-      }),
+      }) as Omit<OperationalAlert, "id" | "updatedAt" | "createdAt">,
     })
   } catch (error) {
     payload.logger?.warn?.("[mail] failed to write operational alert", {

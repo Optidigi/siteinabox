@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { Users } from "@/collections/Users"
+import { expectAccessField } from "../_helpers/payloadFields"
 
 // Audit finding #2 (P0, T2) — Editor/viewer self-promote to super-admin via PATCH
 //                              /api/users/{self} (no field-level access on role).
@@ -16,14 +17,14 @@ import { Users } from "@/collections/Users"
 // API would require an `.env` we don't provision in unit-test runs.
 
 const reqFor = (role: string | null, id: string = "u1") =>
-  ({ req: { user: role ? { id, role } : null } }) as any
+  ({ req: { user: role ? { id, role } : null } })
 
 const ownerReqFor = (tenant: unknown, id: string = "owner-1") =>
-  ({ req: { user: { id, role: "owner", tenants: [{ tenant }] } } }) as any
+  ({ req: { user: { id, role: "owner", tenants: [{ tenant }] } } })
 
 describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation", () => {
   describe("`role` field", () => {
-    const roleField = (Users.fields as any[]).find((f) => f.name === "role")
+    const roleField = expectAccessField(Users.fields, "role")
 
     it("declares an `access.update` function (field-level update gate)", () => {
       expect(roleField).toBeTruthy()
@@ -93,7 +94,7 @@ describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation",
   })
 
   describe("`tenants` field", () => {
-    const tenantsField = (Users.fields as any[]).find((f) => f.name === "tenants")
+    const tenantsField = expectAccessField(Users.fields, "tenants")
 
     it("declares an `access.update` function on the array field", () => {
       expect(tenantsField).toBeTruthy()

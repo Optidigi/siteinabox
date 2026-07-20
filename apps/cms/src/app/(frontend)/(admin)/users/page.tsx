@@ -31,7 +31,7 @@ export default async function UsersPage({
         <PageHeader title={t("users.title")} action={<CreateUserForm />} />
         <ListSearch placeholder={t("filterUsers")} />
         <UsersTable
-          data={result.docs as any}
+          data={result.docs}
           canManage
           currentUserId={user.id}
           emptyState={
@@ -73,7 +73,7 @@ export default async function UsersPage({
       />
       <ListSearch placeholder={t("filterTeam")} />
       <UsersTable
-        data={result.docs as any}
+        data={result.docs}
         canManage
         currentUserId={user.id}
         tenantId={tenantId}

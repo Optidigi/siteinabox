@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type { IntakeSubmission } from "@/payload-types"
 import { requireRole } from "@/lib/authGate"
 import { processReviewedIntakeSubmission } from "@/lib/intake/processIntakeSubmission"
 import { prepareReviewedGenerationInputUpdate } from "@/lib/intake/reviewIntakeSubmission"
 import { relationId } from "@/lib/queries/generationOperations"
-import type { IntakeSubmission } from "@/payload-types"
 
 export async function approveIntakeGenerationInputAction(
   intakeSubmissionId: string | number,
@@ -33,7 +33,7 @@ export async function approveIntakeGenerationInputAction(
   await payload.update({
     collection: "intake-submissions",
     id: intakeSubmissionId,
-    data: update as any,
+    data: update as Partial<IntakeSubmission>,
     user,
     depth: 0,
   })

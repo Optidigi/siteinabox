@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest"
 import { Users } from "@/collections/Users"
+import { expectAccessField, type FieldAccessArgs } from "../_helpers/payloadFields"
 
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit AMENDMENT AMD-2 (T2 primary, T5 secondary) — `apiKey` mass-assignment.
 //
 // Background: Payload v3.84.1 auto-injects three fields when a collection
@@ -77,15 +79,14 @@ const reqAuthed = (role: string, tenantId?: number | string | null, id = "u1") =
   headers: { get: () => null },
 })
 
-const fields = Users.fields as any[]
-const apiKeyField = fields.find((f) => f.name === "apiKey")
-const enableAPIKeyField = fields.find((f) => f.name === "enableAPIKey")
-const apiKeyIndexField = fields.find((f) => f.name === "apiKeyIndex")
-const roleField = fields.find((f) => f.name === "role")
-const tenantsField = fields.find((f) => f.name === "tenants")
+const apiKeyField = expectAccessField(Users.fields, "apiKey")
+const enableAPIKeyField = expectAccessField(Users.fields, "enableAPIKey")
+const apiKeyIndexField = expectAccessField(Users.fields, "apiKeyIndex")
+const roleField = expectAccessField(Users.fields, "role")
+const tenantsField = expectAccessField(Users.fields, "tenants")
 
 // Walk all three apiKey-related fields with the same args; same verdict.
-const callAllApiKey = (op: "create" | "update", args: any) => ({
+const callAllApiKey = (op: "create" | "update", args: FieldAccessArgs) => ({
   apiKey: apiKeyField?.access?.[op]?.(args),
   enableAPIKey: enableAPIKeyField?.access?.[op]?.(args),
   apiKeyIndex: apiKeyIndexField?.access?.[op]?.(args),

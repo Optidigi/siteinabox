@@ -7,8 +7,8 @@ import { PageHeader } from "@/components/page-header"
 import { requireRole } from "@/lib/authGate"
 import { getLegalRecord } from "@/lib/queries/legalOperations"
 import { getLocale, getTranslations } from "next-intl/server"
+import { recordLabel } from "@/lib/legal/recordLabel"
 
-const label = (value: any, keys: string[]) => value && typeof value === "object" ? keys.map((key) => value[key]).find(Boolean) : value
 export const dynamic = "force-dynamic"
 
 export default async function LegalAcceptanceDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,11 +18,11 @@ export default async function LegalAcceptanceDetailPage({ params }: { params: Pr
   const record = await getLegalRecord("agreement-acceptances", id)
   if (!record) notFound()
   return <div className="flex flex-col gap-4">
-    <PageHeader title={t("acceptanceDetail.title")} subtitle={label(record.tenant, ["name", "slug"]) || t("unknownTenant")} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/acceptances"><ArrowLeft />{t("detail.back")}</Link></Button>} />
+    <PageHeader title={t("acceptanceDetail.title")} subtitle={recordLabel(record.tenant, ["name", "slug"]) || t("unknownTenant")} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/acceptances"><ArrowLeft />{t("detail.back")}</Link></Button>} />
     <LegalRouteTabs activePath="/legal/acceptances" />
     <LegalRecordDetail title={t("acceptanceDetail.recordTitle")} fields={[
-      { label: t("fields.tenant"), value: label(record.tenant, ["name", "slug", "domain"]) }, { label: t("fields.acceptedBy"), value: record.actorEmail },
-      { label: t("fields.document"), value: label(record.document, ["title", "releaseKey"]) }, { label: t("fields.documentVersion"), value: record.documentVersion },
+      { label: t("fields.tenant"), value: recordLabel(record.tenant, ["name", "slug", "domain"]) }, { label: t("fields.acceptedBy"), value: record.actorEmail },
+      { label: t("fields.document"), value: recordLabel(record.document, ["title", "releaseKey"]) }, { label: t("fields.documentVersion"), value: record.documentVersion },
       { label: t("fields.acceptanceVersion"), value: record.acceptanceVersion }, { label: t("fields.accepted"), value: formatDate(record.acceptedAt, locale) },
       { label: t("fields.statement"), value: record.statementText }, { label: t("fields.statementVersion"), value: record.statementVersion },
       { label: t("fields.contentHash"), value: record.contentHash, mono: true }, { label: t("fields.evidenceKey"), value: record.evidenceKey, mono: true },

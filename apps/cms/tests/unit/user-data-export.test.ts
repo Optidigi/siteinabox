@@ -1,10 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest"
 import { buildUserDataExport, emailUserDataExport } from "@/lib/privacy/userDataExport"
 import { sendEmail } from "@/lib/email/sendEmail"
+import { asPayload, type MockFindByIdArgs } from "../_helpers/mockPayload"
 
-vi.mock("@/lib/email/sendEmail", () => ({
-  sendEmail: vi.fn(),
-}))
+vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/email/sendEmail")>()
+  return {
+    ...actual,
+    sendEmail: vi.fn(),
+  }
+})
 
 const user = {
   id: 10,
@@ -18,7 +23,7 @@ const user = {
 
 function payloadStub() {
   return {
-    findByID: vi.fn(async ({ collection }) => {
+    findByID: vi.fn(async ({ collection }: MockFindByIdArgs) => {
       if (collection === "users") {
         return {
           ...user,
@@ -38,7 +43,7 @@ function payloadStub() {
       if (collection === "site-settings") return { docs: [{ id: 20, siteName: "Amicare" }] }
       if (collection === "pages") return { docs: [{ id: 30, title: "Home", slug: "home", status: "published" }] }
       if (collection === "media") return { docs: [{ id: 40, filename: "logo.png", alt: "Logo" }] }
-      if (collection === "forms") return { docs: [{ id: 50, title: "Contact", retentionDays: 90 }] }
+      if (collection === "forms") return { docs: [{ id: 50, formName: "Contact" }] }
       throw new Error(`unexpected collection ${collection}`)
     }),
   }
@@ -50,8 +55,7 @@ describe("user data export", () => {
   })
 
   it("builds a sanitized account export with scoped site summaries", async () => {
-    const payload = payloadStub()
-    const exportData = await buildUserDataExport(payload, user)
+    const exportData = await buildUserDataExport(asPayload(payloadStub()), user)
 
     expect(exportData.user).toMatchObject({
       id: 10,
@@ -66,12 +70,12 @@ describe("user data export", () => {
       siteSettings: { id: 20, siteName: "Amicare" },
       pages: [{ id: 30, title: "Home", slug: "home", status: "published" }],
       media: [{ id: 40, filename: "logo.png", alt: "Logo" }],
-      forms: [{ id: 50, title: "Contact", retentionDays: 90 }],
+      forms: [{ id: 50, formName: "Contact" }],
     })
   })
 
   it("emails the export to the requesting user", async () => {
-    const payload = payloadStub()
+    const payload = asPayload(payloadStub())
     await emailUserDataExport(payload, user)
 
     expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({

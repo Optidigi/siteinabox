@@ -4,6 +4,8 @@ import { listPages } from "@/lib/queries/pages"
 import { PageHeader } from "@/components/page-header"
 import { TenantPill } from "@/components/layout/TenantPill"
 import { NavigationManager } from "@/components/navigation/NavigationManager"
+import type { Page, SiteSetting } from "@/payload-types"
+import { isRecord } from "@/lib/record"
 import type { NavEntry, NavPageOption, NavZone } from "@/components/navigation/navTypes"
 import { getAdminTranslations } from "@/i18n/admin"
 
@@ -20,9 +22,11 @@ const idOf = (ref: unknown): number | null => {
   return typeof ref === "number" ? ref : Number(ref)
 }
 
+type NavRow = NonNullable<SiteSetting["navHeader"]>[number]
+
 // Normalise a stored nav row (Payload may populate `page` to an object at
 // the query's depth) into the flat shape the client component consumes.
-const normaliseEntry = (row: any): NavEntry => ({
+const normaliseEntry = (row: NavRow | null | undefined): NavEntry => ({
   type: row?.type ?? "custom",
   page: idOf(row?.page),
   anchor: typeof row?.anchor === "string" ? row.anchor : null,
@@ -30,7 +34,7 @@ const normaliseEntry = (row: any): NavEntry => ({
   label: typeof row?.label === "string" ? row.label : null,
   external: !!row?.external,
   description: typeof row?.description === "string" ? row.description : null,
-  children: Array.isArray(row?.children) ? row.children.map((child: any) => ({
+  children: Array.isArray(row?.children) ? row.children.map((child) => ({
     label: typeof child?.label === "string" ? child.label : "",
     href: typeof child?.href === "string" ? child.href : "",
     description: typeof child?.description === "string" ? child.description : null,
@@ -58,20 +62,20 @@ export default async function NavigationPage({
 
   // Page options for the picker — plus each page's block anchors so a
   // "section link" can offer an auto-enumerated anchor list.
-  const pageOptions: NavPageOption[] = (pages as any[]).map((p) => ({
+  const pageOptions: NavPageOption[] = pages.map((p: Page) => ({
     id: Number(p.id),
     title: p.title,
     slug: p.slug,
     status: p.status,
     anchors: Array.isArray(p.blocks)
-      ? (p.blocks as any[])
-          .map((b) => (typeof b?.anchor === "string" ? b.anchor.trim() : ""))
-          .filter((a: string) => a.length > 0)
+      ? p.blocks
+          .map((b) => (isRecord(b) && typeof b.anchor === "string" ? b.anchor.trim() : ""))
+          .filter((a) => a.length > 0)
       : [],
   }))
 
-  const navHeader = ((settings as any).navHeader ?? []).map(normaliseEntry)
-  const navFooter = ((settings as any).navFooter ?? []).map(normaliseEntry)
+  const navHeader = (settings?.navHeader ?? []).map(normaliseEntry)
+  const navFooter = (settings?.navFooter ?? []).map(normaliseEntry)
 
   return (
     <div className="flex flex-col gap-4">

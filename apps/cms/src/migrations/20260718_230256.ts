@@ -2,6 +2,31 @@ import { createHash } from "node:crypto"
 import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
 
+type JsonRecord = Record<string, unknown>
+type MigrationPage = { id?: string | number; slug?: string | null; blocks?: unknown; status?: string | null; seo?: unknown; updatedAt?: string | null; title?: string | null }
+type MigrationSiteSetting = {
+  id?: string | number
+  branding?: unknown
+  chrome?: { banner?: Record<string, unknown>; footer?: unknown }
+  [key: string]: unknown
+}
+type PayloadClient = MigrateUpArgs["payload"]
+type PayloadWriteArgs = {
+  collection: string
+  id?: string | number
+  data: Record<string, unknown>
+  depth?: number
+  overrideAccess?: boolean
+  context?: Record<string, unknown>
+}
+const updateDoc = (payload: PayloadClient, args: PayloadWriteArgs) =>
+  payload.update(args as Parameters<PayloadClient["update"]>[0])
+type MigrationPublishedSiteSnapshot = { id?: string | number; status?: string | null; snapshot?: unknown; version?: number }
+
+const isRecord = (value: unknown): value is JsonRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value)
+const asRecord = (value: unknown): JsonRecord | null => (isRecord(value) ? value : null)
+
 const REQUIRED_MEDIA = ["toys.jpg", "bedroom.jpg", "og-default.png", "favicon.svg", "favicon.ico", "apple-touch-icon.png"] as const
 const THEME = {
   version: 3,
@@ -141,29 +166,29 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     limit: 10,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
   if (tenants.docs.length === 0) return
   if (tenants.docs.length !== 1) throw new Error(`Ami Care rebuild requires exactly one matching tenant; found ${tenants.docs.length}.`)
-  const tenant = tenants.docs[0] as any
+  const tenant = tenants.docs[0]!
 
   const [mediaResult, pageResult, settingsResult, snapshotResult] = await Promise.all([
-    payload.find({ collection: "media", where: { tenant: { equals: tenant.id } }, limit: 100, depth: 0, overrideAccess: true } as any),
-    payload.find({ collection: "pages", where: { tenant: { equals: tenant.id } }, limit: 100, depth: 0, overrideAccess: true } as any),
-    payload.find({ collection: "site-settings", where: { tenant: { equals: tenant.id } }, limit: 2, depth: 0, overrideAccess: true } as any),
-    payload.find({ collection: "published-site-snapshots", where: { tenant: { equals: tenant.id } }, limit: 100, sort: "-version", depth: 0, overrideAccess: true } as any),
+    payload.find({ collection: "media", where: { tenant: { equals: tenant.id } }, limit: 100, depth: 0, overrideAccess: true }),
+    payload.find({ collection: "pages", where: { tenant: { equals: tenant.id } }, limit: 100, depth: 0, overrideAccess: true }),
+    payload.find({ collection: "site-settings", where: { tenant: { equals: tenant.id } }, limit: 2, depth: 0, overrideAccess: true }),
+    payload.find({ collection: "published-site-snapshots", where: { tenant: { equals: tenant.id } }, limit: 100, sort: "-version", depth: 0, overrideAccess: true }),
   ])
   const mediaByFilename = new Map<string, string | number>()
-  for (const item of mediaResult.docs as any[]) if (typeof item.filename === "string") mediaByFilename.set(item.filename, item.id)
+  for (const item of mediaResult.docs) if (typeof item.filename === "string") mediaByFilename.set(item.filename, item.id)
   const missing = REQUIRED_MEDIA.filter((filename) => !mediaByFilename.has(filename))
   if (missing.length) throw new Error(`Ami Care rebuild is missing required tenant media: ${missing.join(", ")}.`)
   if (settingsResult.docs.length !== 1) throw new Error(`Ami Care rebuild requires exactly one site-settings row; found ${settingsResult.docs.length}.`)
-  const indexPage = (pageResult.docs as any[]).find((page) => page.slug === "index")
-  const otherPages = (pageResult.docs as any[]).filter((page) => page.slug !== "index")
+  const indexPage = pageResult.docs.find((page) => page.slug === "index")
+  const otherPages = pageResult.docs.filter((page) => page.slug !== "index")
   if (!indexPage) throw new Error("Ami Care rebuild requires an index page.")
   if (otherPages.some((page) => page.slug !== "privacy-en-cookieverklaring")) {
     throw new Error(`Ami Care rebuild found unexpected pages: ${otherPages.map((page) => page.slug).join(", ")}.`)
   }
-  const activeSnapshot = (snapshotResult.docs as any[]).find((snapshot) => snapshot.status === "active")
+  const activeSnapshot = snapshotResult.docs.find((snapshot) => snapshot.status === "active")
   if (!activeSnapshot?.snapshot) throw new Error("Ami Care rebuild requires an active snapshot to preserve governed settings.")
 
   const cmsMedia: MediaBinding = (filename) => mediaByFilename.get(filename)!
@@ -176,33 +201,45 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     depth: 0,
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
-  } as any)
-  const updatedIndex = await payload.update({
+  })
+  await updateDoc(payload, {
     collection: "pages",
     id: indexPage.id,
     data: {
       title: "Home",
       status: "published",
       blocks: pageBlocks(cmsMedia),
-      seo: { title: "Amicare-Zorg", description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.", ogImage: mediaByFilename.get("og-default.png") },
+      seo: { title: "Amicare-Zorg", description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.", ogImage: mediaByFilename.get("og-default.png") ?? undefined },
     },
     depth: 0,
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
-  } as any) as any
-  const updatedOtherPages = [] as any[]
+  })
+  const updatedIndex = await payload.findByID({
+    collection: "pages",
+    id: indexPage.id,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const updatedOtherPages: MigrationPage[] = []
   for (const page of otherPages) {
-    updatedOtherPages.push(await payload.update({
+    await updateDoc(payload, {
       collection: "pages",
       id: page.id,
       data: { status: "published", blocks: providerPrivacyBlocks(page.blocks) },
       depth: 0,
       overrideAccess: true,
       context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
-    } as any))
+    })
+    updatedOtherPages.push(await payload.findByID({
+      collection: "pages",
+      id: page.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as unknown as MigrationPage)
   }
 
-  const existingSettings = settingsResult.docs[0] as any
+  const existingSettings = settingsResult.docs[0] as unknown as MigrationSiteSetting
   const header = { variant: "shadcnui-blocks.navbar-03", behavior: "sticky", activeMode: "anchor", mobileMenu: "dropdown", cta: { label: "Contact", href: "#contact" } }
   const footer = {
     variant: "shadcnui-blocks.footer-07",
@@ -229,7 +266,7 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     { type: "section", page: indexPage.id, anchor: "wat-telt", label: "Wat telt" },
     { type: "section", page: indexPage.id, anchor: "contact", label: "Contact" },
   ]
-  await payload.update({
+  await updateDoc(payload, {
     collection: "site-settings",
     id: existingSettings.id,
     data: {
@@ -238,7 +275,7 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
       description: "Amicare-Zorg - werken in de jeugdzorg met hart en toewijding.",
       language: "nl",
       contactEmail: "info@ami-care.nl",
-      branding: { ...(existingSettings.branding ?? {}), primaryColor: "#a04e32", favicon: mediaByFilename.get("favicon.svg") },
+      branding: { ...(asRecord(existingSettings.branding) ?? {}), primaryColor: "#a04e32", favicon: mediaByFilename.get("favicon.svg") },
       chrome: { header, footer, banner },
       navHeader: nav,
       navFooter: nav,
@@ -246,8 +283,8 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     depth: 0,
     overrideAccess: true,
     context: { skipProjection: true, source: "amicare-provider-rebuild-migration" },
-  } as any)
-  const snapshotSettings = activeSnapshot.snapshot.settings as Record<string, any>
+  })
+  const snapshotSettings = asRecord(asRecord(activeSnapshot.snapshot)?.settings) ?? {}
   const publishedPages = [
     {
       id: String(updatedIndex.id), slug: "index", title: "Home", status: "published", updatedAt: now,
@@ -259,7 +296,7 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
       ...(page.seo ? { seo: page.seo } : {}), blocks: providerPrivacyBlocks(page.blocks),
     })),
   ]
-  const snapshotVersion = Math.max(0, ...(snapshotResult.docs as any[]).map((snapshot) => Number(snapshot.version) || 0)) + 1
+  const snapshotVersion = Math.max(0, ...snapshotResult.docs.map((snapshot) => Number(snapshot.version) || 0)) + 1
   const snapshot = {
     schemaVersion: 1,
     tenantId: String(tenant.id),
@@ -307,11 +344,11 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     },
     depth: 0,
     overrideAccess: true,
-  } as any) as any
+  })
   const lifecycleContext = { publishSnapshotLifecycleMutation: true }
-  await payload.update({ collection: "published-site-snapshots", id: activeSnapshot.id, data: { status: "superseded" }, depth: 0, overrideAccess: true, context: lifecycleContext } as any)
-  await payload.update({ collection: "published-site-snapshots", id: created.id, data: { status: "active", activatedAt: now }, depth: 0, overrideAccess: true, context: lifecycleContext } as any)
-  await payload.update({ collection: "tenants", id: tenant.id, data: { activeSnapshot: created.id }, depth: 0, overrideAccess: true, context: lifecycleContext } as any)
+  await payload.update({ collection: "published-site-snapshots", id: activeSnapshot.id, data: { status: "superseded" }, depth: 0, overrideAccess: true, context: lifecycleContext })
+  await payload.update({ collection: "published-site-snapshots", id: created.id, data: { status: "active", activatedAt: now }, depth: 0, overrideAccess: true, context: lifecycleContext })
+  await payload.update({ collection: "tenants", id: tenant.id, data: { activeSnapshot: created.id }, depth: 0, overrideAccess: true, context: lifecycleContext })
 }
 
 export async function up({ db, payload }: MigrateUpArgs): Promise<void> {

@@ -1,37 +1,42 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { asMockDoc, cast } from "../_helpers/cast"
+import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 vi.mock("server-only", () => ({}))
 
 import { communicationSubjectKey, mutateCommunicationPreference, recordIntakeMarketingPreference } from "@/lib/legal/communicationPreferences"
 
-const createPayload = (initial?: Record<string, any>) => {
+const createPayload = (initial?: Record<string, unknown>) => {
   let preference = initial ?? null
-  const events: Record<string, any>[] = []
-  const payload = {
+  const events: Record<string, unknown>[] = []
+  const stubs = {
     db: { beginTransaction: vi.fn(async () => "tx-1"), commitTransaction: vi.fn(), rollbackTransaction: vi.fn() },
-    find: vi.fn(async ({ collection, where }: any) => {
+    find: vi.fn(async ({ collection, where }: MockFindArgs) => {
+      const clause = (where ?? {}) as MockWhere
       if (collection === "communication-preferences") {
-        return { docs: preference && preference.subjectKey === where.subjectKey.equals ? [preference] : [] }
+        const subjectKey = asMockDoc(clause.subjectKey).equals
+        return { docs: preference && preference.subjectKey === subjectKey ? [preference] : [] }
       }
-      if (where.eventKey) {
-        const docs = events.filter((event) => event.eventKey === where.eventKey.equals)
+      if (clause.eventKey) {
+        const docs = events.filter((event) => event.eventKey === asMockDoc(clause.eventKey).equals)
         return { docs, totalDocs: docs.length }
       }
-      const assertedAfter = where.and?.find((clause: any) => clause.assertedAt)?.assertedAt?.greater_than
-      const docs = assertedAfter ? events.filter((event) => event.assertedAt > assertedAfter) : []
+      const assertedClause = clause.and?.find((entry: MockDoc) => entry.assertedAt)?.assertedAt as { greater_than?: string } | undefined
+      const assertedAfter = assertedClause?.greater_than
+      const docs = assertedAfter ? events.filter((event) => String(asMockDoc(event).assertedAt) > assertedAfter) : []
       return { docs, totalDocs: docs.length }
     }),
-    create: vi.fn(async ({ collection, data }: any) => {
+    create: vi.fn(async ({ collection, data }: MockCreateArgs) => {
       if (collection === "communication-preferences") preference = { id: "pref-1", ...data }
       else events.push({ id: `event-${events.length + 1}`, ...data })
       return collection === "communication-preferences" ? preference : events.at(-1)
     }),
-    update: vi.fn(async ({ data }: any) => {
+    update: vi.fn(async ({ data }: MockUpdateArgs) => {
       preference = { ...preference, ...data }
       return { docs: [preference] }
     }),
-  } as any
-  return { payload, events, getPreference: () => preference }
+  }
+  return { payload: Object.assign(asPayload(stubs), stubs), events, getPreference: () => preference }
 }
 
 describe("communication preferences", () => {
@@ -41,7 +46,7 @@ describe("communication preferences", () => {
     const { payload, events, getPreference } = createPayload()
     await recordIntakeMarketingPreference({
       payload, intakeId: "intake-1", email: " Client@Example.nl ", now: new Date("2026-07-12T12:00:00.000Z"),
-      legal: { marketingConsent: { granted: true, statementVersion: "marketing-v1", recordedAt: "2026-07-11T10:00:00.000Z" } } as any,
+      legal: cast({ marketingConsent: { granted: true, statementVersion: "marketing-v1", recordedAt: "2026-07-11T10:00:00.000Z" } }),
     })
     expect(getPreference()).toMatchObject({ email: "client@example.nl", marketing: true, updatedAt: "2026-07-12T12:00:00.000Z" })
     expect(events[0]).toMatchObject({ occurredAt: "2026-07-12T12:00:00.000Z", assertedAt: "2026-07-11T10:00:00.000Z", source: "public-intake" })
@@ -64,7 +69,7 @@ describe("communication preferences", () => {
 
   it("rolls back preference and evidence together when event creation fails", async () => {
     const { payload } = createPayload()
-    payload.create.mockImplementationOnce(async ({ data }: any) => ({ id: "pref-1", ...data }))
+    payload.create.mockImplementationOnce(async ({ data }: MockCreateArgs) => ({ id: "pref-1", ...data }))
       .mockRejectedValueOnce(new Error("event failed"))
     await expect(mutateCommunicationPreference({
       payload, email: "client@example.nl", mutation: { type: "marketing", enabled: false },
@@ -86,7 +91,7 @@ describe("communication preferences", () => {
     })
     await recordIntakeMarketingPreference({
       payload, intakeId: "old", email, now: new Date("2026-07-12T13:00:00.000Z"),
-      legal: { marketingConsent: { granted: true, statementVersion: "old", recordedAt: "2026-07-11T10:00:00.000Z" } } as any,
+      legal: cast({ marketingConsent: { granted: true, statementVersion: "old", recordedAt: "2026-07-11T10:00:00.000Z" } }),
     })
     expect(getPreference()?.marketing).toBe(false)
     expect(events.some((event) => event.eventKey === "intake:old:marketing" && event.action === "opt_in")).toBe(true)

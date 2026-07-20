@@ -16,6 +16,26 @@ Use the highest risk level triggered by a change; diff size does not lower risk.
 
 Material findings include evidence, confidence, affected scope, and next action.
 
+## Type safety
+
+Forbidden in first-party TypeScript:
+
+- explicit `any` (including generic forms such as `Promise<any>` or `type T<X = any>`)
+- `as any`
+- `z.any()`
+- `@ts-nocheck`
+- `@ts-ignore`
+
+`@ts-expect-error` is allowed only when narrowly scoped to a single unavoidable
+line, paired with a comment that names the real external typing defect (library,
+generated artifact, or platform API) and why a typed alternative is not feasible.
+It is not a substitute for `any`, local stubs, or broad suppression.
+
+Enforcement is executable via `pnpm type-safety:check`, which scans all tracked
+first-party `.ts`/`.tsx`/`.mts` files and fails on the forbidden constructs above.
+The gate does not scan for `@ts-expect-error`; permitted uses are governed by
+review against the policy here. Directory-wide exclusions are not allowed.
+
 ## Risk
 
 | Level | Typical triggers | Required handling |

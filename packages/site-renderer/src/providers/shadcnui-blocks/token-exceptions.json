@@ -4,13 +4,6 @@
   "policy": "Tenant UI must use semantic tokens. Only brand assets, non-visible masks, on-media contrast, structural shadows, and authored illustrations may retain literal visual values.",
   "exceptions": [
     {
-      "variantPattern": "logo-cloud-*",
-      "file": "logos.tsx",
-      "category": "brand-asset",
-      "values": "*",
-      "reason": "Company marks retain their official brand colors and are not tenant-theme artwork."
-    },
-    {
       "variant": "hero-08",
       "file": "logos.tsx",
       "category": "brand-asset",
@@ -20,6 +13,13 @@
     {
       "variant": "features-06",
       "file": "features.tsx",
+      "category": "authored-illustration",
+      "values": ["from-indigo-400", "to-orange-300", "#000"],
+      "reason": "Pinned gradient frame around the abstract illustration uses upstream accent hues; the illustration masks remain in shapes.tsx."
+    },
+    {
+      "variant": "features-06",
+      "file": "shapes.tsx",
       "category": "authored-illustration",
       "values": ["#000", "#fff", "fill=\"gray\""],
       "reason": "Black masks and white vector layers define the pinned abstract illustration; its surrounding gradient is tenant-tokenized."

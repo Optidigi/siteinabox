@@ -1,6 +1,10 @@
 import { describe, it, expect, afterEach } from "vitest"
 import { Users } from "@/collections/Users"
+import { expectAccessField } from "../_helpers/payloadFields"
+import { cast } from "../_helpers/cast"
+import type { FieldAccessArgs } from "../_helpers/payloadFields"
 
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit AMENDMENT AMD-1 (T2 secondary) — Owner cannot invite team members.
 //
 // Background: P0 batch-1 commit cb00e47 wired `isSuperAdminField` onto
@@ -72,14 +76,16 @@ const inviteData = (
   ...(tenantId == null ? { tenants: [] } : { tenants: [{ tenant: tenantId }] }),
 })
 
-const roleField = (Users.fields as any[]).find((f) => f.name === "role")
-const tenantsField = (Users.fields as any[]).find((f) => f.name === "tenants")
+const roleField = expectAccessField(Users.fields, "role")
+const tenantsField = expectAccessField(Users.fields, "tenants")
 
-// Run both field gates with the same args; both must agree on the verdict.
-const callBoth = (args: any) => ({
-  role: roleField.access.create(args),
-  tenants: tenantsField.access.create(args),
-})
+const callBoth = (partial: Record<string, unknown>) => {
+  const args = partial as FieldAccessArgs
+  return {
+    role: roleField.access.create(args),
+    tenants: tenantsField.access.create(args),
+  }
+}
 
 describe("AMD-1 — owner can invite editor/viewer into own tenant; everything else stays closed", () => {
   const orig = process.env.BOOTSTRAP_TOKEN

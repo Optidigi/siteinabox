@@ -1,6 +1,7 @@
 import { createTransport } from "nodemailer"
 import type { SendMailOptions, Transporter } from "nodemailer"
-import type { Payload } from "payload"
+import type { Payload, Where } from "payload"
+import type { MailLog } from "@/payload-types"
 import { recordMailFailureAlert } from "@/lib/email/alerts"
 import { findCommunicationPreference } from "@/lib/legal/communicationPreferences"
 import { legalStatements } from "@/lib/legal/statements"
@@ -102,30 +103,12 @@ export type MailTransportProvider = {
   send(input: MailProviderSendInput): Promise<MailProviderSuccess>
 }
 
-export type MailLogPayload = {
-  create(args: {
-    collection: "mail-logs" | "operational-alerts"
-    data: Record<string, unknown>
-    overrideAccess: true
-  }): Promise<unknown>
-  find?: (args: {
-    collection: "mail-logs" | "operational-alerts"
-    where: Record<string, unknown>
-    limit: number
-    depth: 0
-    overrideAccess: true
-  }) => Promise<{ totalDocs?: number; docs?: unknown[] }>
-  update?: (args: {
-    collection: "operational-alerts"
-    id: string | number
-    data: Record<string, unknown>
-    depth: 0
-    overrideAccess: true
-  }) => Promise<unknown>
-  logger?: {
-    warn?: (message: string | Record<string, unknown>, meta?: string | Record<string, unknown>) => void
-    error?: (message: string | Record<string, unknown>, meta?: string | Record<string, unknown>) => void
-  }
+export type MailLogPayload = Pick<Payload, "create" | "logger"> & Partial<Pick<Payload, "find" | "update">>
+
+export function asMailLogPayload(
+  payload: Pick<Payload, "create"> & Partial<Pick<Payload, "find" | "update" | "logger">>,
+): MailLogPayload {
+  return payload as MailLogPayload
 }
 
 export type SendEmailDeps = {
@@ -434,7 +417,7 @@ async function enforceMailPolicy(opts: SendEmailOptions, category: MailCategory,
     const recipient = normalizePolicyEmail(opts.to)
     const payload = opts.payload as unknown as Payload
     const subscriptions = await payload.find({
-      collection: "tenant-notification-subscriptions" as any,
+      collection: "tenant-notification-subscriptions",
       where: { and: [
         { tenant: { equals: formatTenantRef(opts.tenant) } },
         { email: { equals: recipient } },
@@ -443,10 +426,15 @@ async function enforceMailPolicy(opts: SendEmailOptions, category: MailCategory,
       limit: 1,
       depth: 1,
       overrideAccess: true,
-    } as any)
-    const subscription = subscriptions.docs[0] as any
-    const memberEmail = normalizePolicyEmail(subscription?.user?.email)
-    const memberTenant = subscription?.user?.tenants?.[0]?.tenant
+    })
+    const subscription = subscriptions.docs[0]
+    const subscriptionUser = subscription?.user
+    const memberEmail = normalizePolicyEmail(
+      typeof subscriptionUser === "object" && subscriptionUser ? subscriptionUser.email : undefined,
+    )
+    const memberTenant = typeof subscriptionUser === "object" && subscriptionUser
+      ? subscriptionUser.tenants?.[0]?.tenant
+      : undefined
     const memberTenantId = memberTenant && typeof memberTenant === "object" ? memberTenant.id : memberTenant
     if (!subscription || memberEmail !== recipient || String(memberTenantId) !== String(formatTenantRef(opts.tenant))) {
       throw new MailPolicyBlockedError("missing_subscription", "Recipient has no active tenant notification subscription")
@@ -528,12 +516,10 @@ async function logMailDelivery(payload: MailLogPayload | undefined, data: Record
     await payload.create({
       collection: "mail-logs",
       overrideAccess: true,
-      data: compactLogData(data),
+      data: compactLogData(data) as Omit<MailLog, "id" | "updatedAt" | "createdAt">,
     })
   } catch (error) {
-    payload.logger?.warn?.("Failed to write outbound mail metadata log", {
-      error: redactOperationalMessage(error),
-    })
+    payload.logger?.warn?.({ error: redactOperationalMessage(error) }, "Failed to write outbound mail metadata log")
   }
 }
 

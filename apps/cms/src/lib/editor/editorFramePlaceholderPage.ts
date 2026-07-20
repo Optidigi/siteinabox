@@ -2,7 +2,7 @@ import type { Page as ContractPage } from "@siteinabox/contracts"
 
 /**
  * Minimal contract page for `/editor-frame/pages/new`. The parent `PageForm`
- * owns the real draft and replaces this placeholder via `page.replace` once the
+ * owns the real draft and replaces this placeholder via `render.snapshot` once the
  * iframe reports `renderer.ready`.
  */
 export function createEditorFrameNewPagePlaceholder(): ContractPage {

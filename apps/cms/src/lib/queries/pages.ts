@@ -1,6 +1,8 @@
 import "server-only"
 import { getPayload } from "payload"
+import type { Where } from "payload"
 import config from "@/payload.config"
+import type { Page } from "@/payload-types"
 import {
   findAllPaginated,
   normalisePagination,
@@ -34,13 +36,13 @@ export async function listPagesPaginated(
   tenantId: number | string,
   opts?: ListOpts,
   payload?: PayloadLikeFindClient,
-): Promise<PayloadFindResult> {
+): Promise<PayloadFindResult<Page>> {
   const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
   const { page, limit } = normalisePagination(opts)
-  const where: Record<string, unknown> = { tenant: { equals: tenantId } }
+  const where: Where = { tenant: { equals: tenantId } }
   const q = opts?.q?.trim()
   if (q) where.or = [{ title: { like: q } }, { slug: { like: q } }]
-  return client.find({
+  return client.find<Page>({
     collection: "pages",
     overrideAccess: true,
     where,
@@ -60,9 +62,9 @@ export async function listPagesPaginated(
 export async function listPages(
   tenantId: number | string,
   payload?: PayloadLikeFindClient,
-) {
+): Promise<Page[]> {
   const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
-  return findAllPaginated(client, {
+  return findAllPaginated<Page>(client, {
     collection: "pages",
     overrideAccess: true,
     where: { tenant: { equals: tenantId } },

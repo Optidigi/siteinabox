@@ -17,7 +17,7 @@ export async function retryLegalDelivery(input: {
   const requestId = input.requestId || crypto.randomUUID()
   const transactionID = await input.payload.db.beginTransaction()
   if (!transactionID) throw new Error("De hersteltransactie kon niet worden gestart.")
-  const req = { transactionID } as any
+  const req = { transactionID }
   try {
     const delivery = await input.payload.findByID({ collection: "legal-notification-deliveries", id: input.deliveryId, depth: 0, overrideAccess: true, req })
     if (delivery.status !== "failed") throw new Error("Alleen een mislukte verzending kan handmatig opnieuw worden geprobeerd.")
@@ -27,19 +27,19 @@ export async function retryLegalDelivery(input: {
       where: { and: [{ id: { equals: delivery.id } }, { status: { equals: "failed" } }, { retryState: { not_equals: "permanent" } }] },
       data: { status: "queued", nextAttemptAt: occurredAt, leaseUntil: null, retryState: "none", lastError: null },
       depth: 0, overrideAccess: true, req,
-    } as any)
-    const updated = Array.isArray((result as any).docs) ? (result as any).docs[0] : null
+    })
+    const updated = Array.isArray((result).docs) ? (result).docs[0] : null
     if (!updated) throw new Error("De verzending is al door een andere beheeractie gewijzigd.")
     await input.payload.create({
-      collection: "legal-operator-events" as any,
+      collection: "legal-operator-events",
       data: {
         eventKey: `delivery-retry:${delivery.id}:${requestId}`, action: "delivery_retry_requested",
-        targetCollection: "legal-notification-deliveries", targetId: String(delivery.id), actorUser: input.actorUserId,
+        targetCollection: "legal-notification-deliveries", targetId: String(delivery.id), actorUser: Number(input.actorUserId),
         actorEmail: input.actorEmail, reason, occurredAt, requestId,
         metadata: { notificationKey: delivery.notificationKey, previousStatus: delivery.status, previousAttemptCount: delivery.attemptCount },
       },
       depth: 0, overrideAccess: true, req,
-    } as any)
+    })
     const requirementId = relationshipId(delivery.requirement)
     if (requirementId) {
       const requirement = await input.payload.findByID({ collection: "legal-requirements", id: requirementId, depth: 0, overrideAccess: true, req })

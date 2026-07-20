@@ -6,6 +6,7 @@ import { loadTenantManifest } from "@/lib/richText/loadManifest"
 import { getAdminTranslations } from "@/i18n/admin"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { listPages } from "@/lib/queries/pages"
+import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 
 export default async function NewTenantPage() {
   const { ctx, user } = await requireAuth()
@@ -29,9 +30,9 @@ export default async function NewTenantPage() {
         baseHref="/pages"
         tenantOrigin={`https://${ctx.tenant.domain}`}
         manifest={manifest}
-        theme={ctx.tenant.theme as any}
+        theme={normalizeThemeForSave(ctx.tenant.theme)}
         siteSettings={settings}
-        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
+        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canEditSettings={user.role === "owner" || user.role === "super-admin"}
       />
     </div>

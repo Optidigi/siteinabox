@@ -31,7 +31,7 @@ export default async function TenantFormsPage({
       <PageHeader title={t("forms.title")} />
       <ListSearch placeholder={t("filterByEmail")} />
       <FormsTable
-        data={result.docs as any}
+        data={result.docs}
         emptyState={
           q ? (
             <EmptyState

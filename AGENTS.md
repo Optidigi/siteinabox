@@ -11,6 +11,8 @@ app-local agent instruction files. Start work from the repository root.
 - Root `mcp.registry.json` is the canonical MCP policy registry. Root client
   projections, including `.mcp.json`, are checked with `pnpm mcp:check` and
   updated with `pnpm mcp:sync`.
+- Type-safety policy is enforced by `pnpm type-safety:check`; see
+  `docs/engineering.md` for forbidden constructs and `@ts-expect-error` rules.
 - Runtime content, migrations, fixtures, and source-owned configuration stay
   with the code that consumes them; they are not general documentation.
 - Do not commit temporary plans, transcripts, personal machine paths, secrets,

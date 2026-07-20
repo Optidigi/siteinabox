@@ -1,56 +1,118 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import { ArrowUpRight, CirclePlay } from "lucide-react";
-import Link from "../../runtime/link";
-import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import GradientText from "./gradient-text";
-import Navbar from "./navbar";
+// Owned typed adaptation of upstream shadcnui-blocks hero-03 (MIT, see ../../LICENSE).
+"use client"
 
-export default function Hero() {
+import * as React from "react"
+import type { LinkRef, MediaRef, RtRoot } from "@siteinabox/contracts"
+import { ArrowUpRight, CirclePlay } from "lucide-react"
+import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import type { MediaResolver } from "../../../../media"
+import {
+  renderHeroEyebrow,
+  renderHeroHeadline,
+  renderHeroImage,
+  renderHeroLink,
+  renderHeroSubheadline,
+} from "../../typed/hero-fields"
+import { hero03LiteralWithImage } from "../../typed/fixtures/hero-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import GradientText from "./gradient-text"
+import Navbar from "./navbar"
+
+export type Hero03Props = TypedVariantBaseProps & {
+  eyebrow?: RtRoot | null
+  headline: RtRoot
+  subheadline?: RtRoot | null
+  cta?: LinkRef | null
+  secondary?: LinkRef | null
+  image?: MediaRef | null
+  mediaResolver?: MediaResolver
+  literalPreview?: boolean
+}
+
+export function Hero03({
+  eyebrow,
+  headline,
+  subheadline,
+  cta,
+  secondary,
+  image,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  rootAttributes,
+  literalPreview = false,
+  ...rest
+}: Hero03Props & React.HTMLAttributes<HTMLDivElement>) {
+  const primaryAction = renderHeroLink(editSlots, cta ?? {}, blockIndex, "cta", {
+    trailingIcon: <ArrowUpRight className="h-5! w-5!" />,
+  })
+  const secondaryAction = renderHeroLink(editSlots, secondary ?? {}, blockIndex, "secondary", {
+    leadingIcon: <CirclePlay className="h-5! w-5!" />,
+  })
+  const eyebrowContent = renderHeroEyebrow(editSlots, eyebrow, blockIndex)
+  const headlineContent = literalPreview && !editSlots?.renderRichText
+    ? (
+      <>
+        Ship{" "}
+        <GradientText
+          animationSpeed={2}
+          className="border-b-2 border-dotted sm:border-b-3"
+          colors={[
+            "var(--color-purple-500)",
+            "var(--color-indigo-400)",
+            "var(--color-sky-500)",
+          ]}
+          direction="diagonal"
+        >
+          better UI
+        </GradientText>{" "}
+        without{"\u00a0"}the{"\u00a0"}hassle
+      </>
+    )
+    : renderHeroHeadline(editSlots, headline, blockIndex)
+
   return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center px-6 pt-8 pb-16">
-      <ProviderDemoOnly fallback={<Navbar />} />
+    <div className="flex min-h-screen w-full flex-col items-center justify-center px-6 pt-8 pb-16" {...rootAttributes} {...rest}>
+      {literalPreview ? <Navbar /> : null}
 
       <div className="mt-16 max-w-3xl text-center">
-        <Badge
-          asChild
-          className="rounded-full border-border py-1"
-          variant="secondary"
-        >
-          <span><ProviderField field="eyebrow" fallback={"Just released v1.0.0"} inline /><ArrowUpRight className="ml-1 size-4" /></span>
-        </Badge>
-        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem] md:text-6xl/[1.2]"><ProviderField field="headline" fallback={<>
-          Ship{" "}
-          <GradientText
-            animationSpeed={2}
-            className="border-b-2 border-dotted sm:border-b-3"
-            colors={[
-              "var(--color-purple-500)",
-              "var(--color-indigo-400)",
-              "var(--color-sky-500)",
-            ]}
-            direction="diagonal"
-          >
-            better UI
-          </GradientText>{" "}
-          without&nbsp;the&nbsp;hassle
-        </>} inline /></h1>
-        <p className="mx-auto mt-6 max-w-2xl text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal"><ProviderField field="subheadline" fallback={<>
-          Instead of starting from scratch every time, use thoughtfully designed
-          blocks that give you a solid foundation for any UI.
-        </>} inline /></p>
-        <div className="mt-10 flex items-center justify-center gap-4">
-          <Button className="rounded-full" size="lg" asChild><ProviderAction field="cta" fallback={"Get Started"} decoration="after"><ArrowUpRight className="h-5! w-5!" /></ProviderAction></Button>
-          <Button
-            className="rounded-full shadow-none"
-            size="lg"
-            variant="outline"
-           asChild><ProviderAction field="secondary" fallback={"Watch Demo"} decoration="before"><CirclePlay className="h-5! w-5!" /></ProviderAction></Button>
-        </div>
+        {eyebrowContent ? (
+          <Badge asChild className="rounded-full border-border py-1" variant="secondary">
+            <span>
+              {eyebrowContent}
+              <ArrowUpRight className="ml-1 size-4" />
+            </span>
+          </Badge>
+        ) : null}
+        <h1 className="mx-auto mt-6 max-w-xl font-medium text-4xl tracking-[-0.045em] sm:text-[2.75rem] md:text-6xl/[1.2]">
+          {headlineContent}
+        </h1>
+        {subheadline ? (
+          <p className="mx-auto mt-6 max-w-2xl text-muted-foreground text-xl tracking-[-0.01em] md:text-2xl/normal">
+            {renderHeroSubheadline(editSlots, subheadline, blockIndex)}
+          </p>
+        ) : null}
+        {primaryAction || secondaryAction ? (
+          <div className="mt-10 flex items-center justify-center gap-4">
+            {primaryAction ? (
+              <Button className="rounded-full" size="lg" asChild>
+                {primaryAction}
+              </Button>
+            ) : null}
+            {secondaryAction ? (
+              <Button className="rounded-full shadow-none" size="lg" variant="outline" asChild>
+                {secondaryAction}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
       <div className="relative mx-auto mt-20 aspect-video w-full max-w-(--breakpoint-xl) rounded-xl bg-linear-to-br from-indigo-400/90 via-indigo-300 to-sky-400/80 p-2">
-        <ProviderImage field="image" fallback={<div className="size-full rounded-lg bg-background" />} />
+        {renderHeroImage(editSlots, mediaResolver, image, blockIndex, {
+          className: "size-full rounded-lg bg-background",
+          literalPreview,
+        })}
         <div
           className="absolute inset-0 isolate z-0"
           style={{
@@ -108,5 +170,19 @@ export default function Hero() {
         }}
       />
     </div>
-  );
+  )
+}
+
+export default function Hero03Literal() {
+  return (
+    <Hero03
+      eyebrow={hero03LiteralWithImage.eyebrow}
+      headline={hero03LiteralWithImage.headline}
+      subheadline={hero03LiteralWithImage.subheadline}
+      cta={hero03LiteralWithImage.cta}
+      secondary={hero03LiteralWithImage.secondary}
+      blockIndex={0}
+      literalPreview
+    />
+  )
 }

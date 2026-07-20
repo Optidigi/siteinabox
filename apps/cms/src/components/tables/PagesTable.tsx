@@ -1,8 +1,9 @@
 "use client"
+import type { PayloadRequest } from "payload"
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef, CellContext } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
 import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
@@ -84,7 +85,7 @@ export function PagesTable({
           id: "actions",
           header: "",
           meta: { mobilePriority: "action" },
-          cell: ({ row }: any) => {
+          cell: ({ row }: CellContext<Page, unknown>) => {
             const p = row.original as Page
             return (
               <DropdownMenu>

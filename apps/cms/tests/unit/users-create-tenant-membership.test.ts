@@ -17,9 +17,9 @@ import { Users } from "@/collections/Users"
 // We test the actual access function attached to Users.access.create, not
 // a copy — so a future refactor that swaps the function still goes through
 // these cases.
-const createAccess = (Users.access as any).create as (args: {
-  req: any
-  data?: any
+const createAccess = (Users.access as Record<string, unknown>).create as (args: {
+  req: unknown
+  data?: unknown
 }) => boolean | Promise<boolean>
 
 // Fake `req.payload.count` for the bootstrap path. Each test that touches
@@ -30,9 +30,9 @@ beforeEach(() => {
   fakeCount.mockResolvedValue({ totalDocs: 0 })
 })
 
-const makeReq = (role: string | undefined, tenants: any[] = [], extras: any = {}) => ({
+const makeReq = (role: string | undefined, tenants: unknown[] = [], extras: Record<string, unknown> = {}) => ({
   user: role === undefined ? null : { id: 1, role, tenants },
-  payload: { count: fakeCount } as any,
+  payload: { count: fakeCount },
   headers: new Headers(),
   ...extras,
 })

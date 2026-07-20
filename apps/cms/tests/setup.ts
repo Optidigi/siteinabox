@@ -19,8 +19,14 @@ async function loadEnv() {
     // No .env — assume CI sets vars directly
   }
 
+  if (!process.env.PAYLOAD_SECRET) {
+    process.env.PAYLOAD_SECRET = "test-secret"
+  }
+  if (!process.env.DATABASE_URI) {
+    process.env.DATABASE_URI = "postgresql://127.0.0.1:5432/payload_test"
+  }
+
   // Override DATABASE_URI to point at the test database. Same Postgres instance,
-  // different DB name. PAYLOAD_SECRET stays the same so existing API keys still
   // hash to the right index — but the test DB starts empty, so this only matters
   // if any test fixture uses a pre-seeded API key.
   if (process.env.DATABASE_URI && !process.env.DATABASE_URI_OVERRIDDEN) {

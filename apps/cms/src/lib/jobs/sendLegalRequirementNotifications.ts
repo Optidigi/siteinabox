@@ -1,10 +1,15 @@
 import type { Payload } from "payload"
-import { MailSendError, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
+import type { LegalDocument, LegalNotificationDelivery, LegalRequirement, Tenant } from "@/payload-types"
+import { MailSendError, asMailLogPayload, getPlatformMailSender, sendEmail } from "@/lib/email/sendEmail"
 import { LEGAL_REACCEPTANCE_TEMPLATE_VERSION, legalContinuedUseNoticeTemplate, legalDirectNoticeTemplate, legalReacceptanceTemplate } from "@/lib/email/templates/legalReacceptance"
 import { relationshipId } from "@/lib/relationshipId"
 import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
+import { asRecord } from "@/lib/record"
 
-type RecordLike = Record<string, any>
+type RequirementDoc = LegalRequirement & {
+  tenant?: Tenant | number | null
+  document?: LegalDocument | number | null
+}
 const ACTIVE_STATUSES = ["pending", "notified", "failed"]
 const REACCEPT_ACTIONS = ["mandatory_reaccept", "reaccept_on_next_transaction"]
 const NOTICE_AND_USE_ACTION = "notice_and_continued_use"
@@ -14,15 +19,16 @@ const REMINDER_LEAD_MS = 7 * 24 * 60 * 60_000
 const RETRY_DELAYS_MS = [60 * 60_000, 6 * 60 * 60_000, 24 * 60 * 60_000]
 const PUBLIC_SITE_URL = process.env.NEXT_PUBLIC_SIAB_SITE_URL ?? "https://www.siteinabox.nl"
 
-const relation = (value: unknown): RecordLike | null => value && typeof value === "object" ? value as RecordLike : null
+const relation = <T extends object>(value: unknown): T | null =>
+  value && typeof value === "object" ? value as T : null
 const normalizedHost = (value: unknown) => typeof value === "string"
   ? value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "")
   : ""
-const tenantAdminUrl = (tenant: RecordLike) => {
+const tenantAdminUrl = (tenant: Tenant) => {
   const domain = normalizedHost(tenant.domain)
   return domain ? `https://admin.${domain}` : null
 }
-const documentUrl = (document: RecordLike) => document.documentType === "platform-terms"
+const documentUrl = (document: LegalDocument) => document.documentType === "platform-terms"
   ? `${PUBLIC_SITE_URL}/juridisch/algemene-voorwaarden/${document.documentVersion}`
   : `${PUBLIC_SITE_URL}/juridisch/privacy-en-cookieverklaring/${document.documentVersion}`
 const retryAt = (now: Date, attemptCount: number) =>
@@ -30,8 +36,8 @@ const retryAt = (now: Date, attemptCount: number) =>
 
 type NotificationKind = "initial" | "reminder" | "enforcement"
 
-const promisedObjectionDeadline = (requirement: RecordLike, deliveredAt: string): string | null => {
-  const document = relation(requirement.document)
+const promisedObjectionDeadline = (requirement: RequirementDoc, deliveredAt: string): string | null => {
+  const document = relation<LegalDocument>(requirement.document)
   const noticeDays = Number(document?.noticeDays ?? 0)
   const deliveryDeadline = noticeDays > 0
     ? new Date(new Date(deliveredAt).getTime() + noticeDays * 24 * 60 * 60_000).toISOString()
@@ -40,7 +46,7 @@ const promisedObjectionDeadline = (requirement: RecordLike, deliveredAt: string)
   return [existingDeadline, deliveryDeadline].filter((value): value is string => Boolean(value)).sort().at(-1) ?? null
 }
 
-export const dueFollowupKindForRequirement = (requirement: RecordLike, now: Date): NotificationKind | null => {
+export const dueFollowupKindForRequirement = (requirement: RequirementDoc, now: Date): NotificationKind | null => {
   if (requirement.action === NOTICE_AND_USE_ACTION && requirement.objectionDeadlineAt) {
     const remaining = new Date(requirement.objectionDeadlineAt).getTime() - now.getTime()
     if (remaining <= 0) return null
@@ -53,31 +59,31 @@ export const dueFollowupKindForRequirement = (requirement: RecordLike, now: Date
   return "initial"
 }
 
-export const legalNotificationKey = (requirement: RecordLike, kind: NotificationKind = "initial") =>
+export const legalNotificationKey = (requirement: RequirementDoc, kind: NotificationKind = "initial") =>
   `${requirement.requirementKey}:${kind}:${LEGAL_REACCEPTANCE_TEMPLATE_VERSION}`
 
 async function findDelivery(payload: Payload, notificationKey: string) {
   const result = await payload.find({
-    collection: "legal-notification-deliveries" as any,
+    collection: "legal-notification-deliveries",
     where: { notificationKey: { equals: notificationKey } },
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  return result.docs[0] as RecordLike | undefined
+  })
+  return result.docs[0]
 }
 
-async function ensureDelivery(payload: Payload, requirement: RecordLike, now: Date, kind: NotificationKind) {
+async function ensureDelivery(payload: Payload, requirement: RequirementDoc, now: Date, kind: NotificationKind) {
   const notificationKey = legalNotificationKey(requirement, kind)
   const existing = await findDelivery(payload, notificationKey)
   if (existing) return existing
   try {
     return await payload.create({
-      collection: "legal-notification-deliveries" as any,
+      collection: "legal-notification-deliveries",
       data: {
         notificationKey,
         requirement: requirement.id,
-        tenant: relationshipId(requirement.tenant),
+        tenant: Number(relationshipId(requirement.tenant)),
         recipient: requirement.subjectEmail,
         kind,
         templateVersion: LEGAL_REACCEPTANCE_TEMPLATE_VERSION,
@@ -87,7 +93,7 @@ async function ensureDelivery(payload: Payload, requirement: RecordLike, now: Da
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as RecordLike
+    })
   } catch (error) {
     const raced = await findDelivery(payload, notificationKey)
     if (raced) return raced
@@ -95,15 +101,15 @@ async function ensureDelivery(payload: Payload, requirement: RecordLike, now: Da
   }
 }
 
-const canAttempt = (delivery: RecordLike, now: Date) => {
+const canAttempt = (delivery: LegalNotificationDelivery, now: Date) => {
   if (delivery.status === "sent" || delivery.status === "cancelled") return false
   if (delivery.status === "processing" && delivery.leaseUntil && new Date(delivery.leaseUntil) > now) return false
   return !delivery.nextAttemptAt || new Date(delivery.nextAttemptAt) <= now
 }
 
-async function claimDelivery(payload: Payload, delivery: RecordLike, now: Date, attemptCount: number) {
+async function claimDelivery(payload: Payload, delivery: LegalNotificationDelivery, now: Date, attemptCount: number) {
   const claimed = await payload.update({
-    collection: "legal-notification-deliveries" as any,
+    collection: "legal-notification-deliveries",
     where: {
       and: [
         { id: { equals: delivery.id } },
@@ -124,16 +130,16 @@ async function claimDelivery(payload: Payload, delivery: RecordLike, now: Date, 
     },
     depth: 0,
     overrideAccess: true,
-  } as any) as any
+  })
   return Array.isArray(claimed?.docs) ? claimed.docs[0] : null
 }
 
-async function markRequirementNotified(payload: Payload, requirement: RecordLike, sentAt: string) {
+async function markRequirementNotified(payload: Payload, requirement: RequirementDoc, sentAt: string) {
   const objectionDeadlineAt = requirement.action === NOTICE_AND_USE_ACTION
     ? promisedObjectionDeadline(requirement, sentAt)
     : undefined
   await payload.update({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: {
       and: [
         { id: { equals: requirement.id } },
@@ -152,15 +158,15 @@ async function markRequirementNotified(payload: Payload, requirement: RecordLike
     },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
 async function loadActionableRequirements(payload: Payload) {
-  const docs: RecordLike[] = []
+  const docs: RequirementDoc[] = []
   const pageSize = 100
   for (let page = 1; ; page += 1) {
     const result = await payload.find({
-      collection: "legal-requirements" as any,
+      collection: "legal-requirements",
       where: { or: [
         { and: [{ action: { in: REACCEPT_ACTIONS } }, { status: { in: ACTIVE_STATUSES } }] },
         { and: [{ action: { equals: "direct_notice" } }, { status: { in: ["pending", "failed"] } }] },
@@ -171,8 +177,8 @@ async function loadActionableRequirements(payload: Payload) {
       limit: pageSize,
       depth: 2,
       overrideAccess: true,
-    } as any)
-    docs.push(...result.docs as RecordLike[])
+    })
+    docs.push(...result.docs as RequirementDoc[])
     if (!result.hasNextPage && result.docs.length < pageSize) break
   }
   return docs
@@ -192,18 +198,18 @@ export async function processLegalRequirementNotifications(input: {
   let skipped = 0
   for (const requirement of requirements) {
     if (sent + failed >= sendLimit) break
-    const tenant = relation(requirement.tenant)
-    const document = relation(requirement.document)
+    const tenant = relation<Tenant>(requirement.tenant)
+    const document = relation<LegalDocument>(requirement.document)
     const adminUrl = tenant ? tenantAdminUrl(tenant) : null
     if (!tenant || !document || !adminUrl || !requirement.subjectEmail) {
       skipped += 1
       await input.payload.update({
-        collection: "legal-requirements" as any,
+        collection: "legal-requirements",
         id: requirement.id,
         data: { status: "failed", lastError: "Legal notification is missing tenant, document, admin URL, or recipient data." },
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
       continue
     }
 
@@ -228,19 +234,19 @@ export async function processLegalRequirementNotifications(input: {
     }
 
     const currentRequirement = await input.payload.findByID({
-      collection: "legal-requirements" as any,
+      collection: "legal-requirements",
       id: requirement.id,
       depth: 0,
       overrideAccess: true,
-    } as any) as RecordLike
-    if (!ACTIVE_STATUSES.includes(currentRequirement.status) || !NOTIFIABLE_ACTIONS.includes(currentRequirement.action)) {
+    })
+    if (!currentRequirement.status || !ACTIVE_STATUSES.includes(currentRequirement.status) || !currentRequirement.action || !NOTIFIABLE_ACTIONS.includes(currentRequirement.action)) {
       await input.payload.update({
-        collection: "legal-notification-deliveries" as any,
+        collection: "legal-notification-deliveries",
         id: delivery.id,
         data: { status: "cancelled", leaseUntil: null, lastError: null },
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
       skipped += 1
       continue
     }
@@ -259,7 +265,7 @@ export async function processLegalRequirementNotifications(input: {
           ...commonMessage,
           objectionDeadlineAt: effectiveObjectionDeadline,
           settingsUrl: `${adminUrl}/settings#agreements`,
-          documentContent: String(document.markdown ?? document.plainText ?? ""),
+          documentContent: String(document.content ?? ""),
           kind: kind === "reminder" ? "reminder" : "initial",
         })
       : requirement.action === "direct_notice"
@@ -282,11 +288,11 @@ export async function processLegalRequirementNotifications(input: {
         text: message.text,
         intent: "legal.reacceptance",
         tenant: tenant.id,
-        payload: input.payload as any,
+        payload: asMailLogPayload(input.payload),
       })
       const sentAt = now.toISOString()
       const marked = await input.payload.update({
-        collection: "legal-notification-deliveries" as any,
+        collection: "legal-notification-deliveries",
         where: {
           and: [
             { id: { equals: delivery.id } },
@@ -304,7 +310,7 @@ export async function processLegalRequirementNotifications(input: {
         },
         depth: 0,
         overrideAccess: true,
-      } as any) as any
+      })
       if (Array.isArray(marked?.docs) && marked.docs.length > 0) {
         await markRequirementNotified(input.payload, requirement, sentAt)
       }
@@ -314,7 +320,7 @@ export async function processLegalRequirementNotifications(input: {
       const permanent = normalized?.retryState === "permanent"
       const message = redactOperationalMessage(normalized?.providerErrorMessage ?? (error instanceof Error ? error.message : "Unknown email delivery error"))
       await input.payload.update({
-        collection: "legal-notification-deliveries" as any,
+        collection: "legal-notification-deliveries",
         id: delivery.id,
         data: {
           status: "failed",
@@ -326,14 +332,14 @@ export async function processLegalRequirementNotifications(input: {
         },
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
       await input.payload.update({
-        collection: "legal-requirements" as any,
+        collection: "legal-requirements",
         id: requirement.id,
         data: { status: "failed", lastError: message },
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
       failed += 1
     }
   }

@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest"
 import { Users } from "@/collections/Users"
+import { expectAccessField } from "../_helpers/payloadFields"
 
 // Audit finding #6 (P1, T2) — Bootstrap re-opens super-admin signup whenever
 // the users table is empty. Replace the in-band count-only gate with a
@@ -12,8 +13,8 @@ import { Users } from "@/collections/Users"
 // req shape mirroring Payload's AccessArgs ({req, data}) — same pattern as
 // audit-p0-2-3-role-tenants-field-access.test.ts and audit-p0-1.
 
-const accessCreate = (Users.access as any).create as (
-  args: { req: any; data?: any }
+const accessCreate = (Users.access as Record<string, unknown>).create as (
+  args: { req: unknown; data?: unknown }
 ) => boolean | Promise<boolean>
 
 const reqFor = (opts: {
@@ -70,7 +71,7 @@ describe("audit-p1 #6 — bootstrap path requires BOOTSTRAP_TOKEN header + super
     for (const role of ["owner", "editor", "viewer", undefined, null, "admin"]) {
       const result = await accessCreate({
         req: reqFor({ user: null, bootstrapHeader: "secret-1234", totalDocs: 0 }),
-        data: { role: role as any, email: "a@b", password: "x" },
+        data: { role: role, email: "a@b", password: "x" },
       })
       expect(result, `role=${String(role)}`).toBe(false)
     }
@@ -202,13 +203,13 @@ describe("audit-p1 #6 — field-level role/tenants create permits bootstrap path
     else process.env.BOOTSTRAP_TOKEN = orig
   })
 
-  const roleField = (Users.fields as any[]).find((f) => f.name === "role")
-  const tenantsField = (Users.fields as any[]).find((f) => f.name === "tenants")
+  const roleField = expectAccessField(Users.fields, "role")
+  const tenantsField = expectAccessField(Users.fields, "tenants")
 
   const fieldReq = (opts: {
-    user?: any | null
+    user?: unknown | null
     bootstrapHeader?: string | null
-    data?: any
+    data?: unknown
   }) => ({
     req: {
       user: opts.user ?? null,

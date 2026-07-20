@@ -4,6 +4,7 @@ import { Readable } from "node:stream"
 import { NextRequest, NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { nodeErrorCode } from "@/lib/record"
 
 const DATA_DIR = process.env.DATA_DIR ?? resolve(process.cwd(), ".data-out")
 
@@ -85,8 +86,8 @@ export const GET = async (
   let stats
   try {
     stats = await fs.stat(filePath)
-  } catch (err: any) {
-    if (err?.code === "ENOENT") return new NextResponse("not found", { status: 404 })
+  } catch (err: unknown) {
+    if (nodeErrorCode(err) === "ENOENT") return new NextResponse("not found", { status: 404 })
     return new NextResponse("read error", { status: 500 })
   }
 

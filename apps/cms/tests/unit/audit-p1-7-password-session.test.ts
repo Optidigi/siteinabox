@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { Users } from "@/collections/Users"
 
+import { errLike, cast } from "../_helpers/cast"
+import { asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
+import { expectAccessField } from "../_helpers/payloadFields"
+import { asFindClient } from "../_helpers/payloadFindClient"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit finding #7 (P1, T5) — stolen-session → permanent takeover via password
 // PATCH; no server-side current-password verification; no session invalidation
 // on password change. Two coordinated sub-fixes:
@@ -105,12 +110,8 @@ import { Users } from "@/collections/Users"
 // Hook extraction
 // -----------------------------------------------------------------------------
 
-const beforeOperationHooks = (Users.hooks?.beforeOperation ?? []) as Array<
-  (args: any) => any
->
-const beforeValidateHooks = (Users.hooks?.beforeValidate ?? []) as Array<
-  (args: any) => any
->
+const beforeOperationHooks = (Users.hooks?.beforeOperation ?? []) as unknown as BeforeOperationHook[]
+const beforeValidateHooks = (Users.hooks?.beforeValidate ?? []) as unknown as BeforeValidateHook[]
 
 // Existing hook order (per AMD-3 and audit-p1 #5 batches):
 //   beforeOperation[0] = rejectNonSuperAdminApiKeyWrites (AMD-3)
@@ -123,13 +124,12 @@ const beforeValidateHooks = (Users.hooks?.beforeValidate ?? []) as Array<
 // in the sub-fix-B block). If a future change reorders or drops a hook,
 // those assertions trip first — much louder than a `!`-assertion silently
 // crashing on undefined.
-type AnyHook = (args: any) => any
-const apiKeyHonestRejectHook = beforeOperationHooks[0] as AnyHook
-const bogusAuthForgotHook = beforeOperationHooks[1] as AnyHook
-const passwordWriteRejectHook = beforeOperationHooks[2] as AnyHook
-const clearSessionsHook = beforeValidateHooks[0] as AnyHook
+const apiKeyHonestRejectHook = asBeforeOperationHook(beforeOperationHooks[0])
+const bogusAuthForgotHook = asBeforeOperationHook(beforeOperationHooks[1])
+const passwordWriteRejectHook = asBeforeOperationHook(beforeOperationHooks[2])
+const clearSessionsHook = asBeforeValidateHook(beforeValidateHooks[0])
 
-const reqAuthed = (role: string, tenantId: number | string | null = 42, id = "u1", email = "u1@x") => ({
+const reqAuthed = (role: string, tenantId: number | string | null = 42, id = "u1", email = "u1@x"): Record<string, unknown> => ({
   user: { id, role, email, tenants: tenantId == null ? [] : [{ tenant: tenantId }] },
   headers: { get: () => null },
   // Forbidden's i18n fallback path tolerates an identity `t`.
@@ -137,32 +137,19 @@ const reqAuthed = (role: string, tenantId: number | string | null = 42, id = "u1
   context: {},
 })
 
-const reqAnon = () => ({
+const reqAnon = (): Record<string, unknown> => ({
   user: null,
   headers: { get: () => null },
   t: (k: string) => k,
   context: {},
 })
 
-const callBeforeOpHook = async (
-  hook: (a: any) => any,
-  opts: { operation: "create" | "update" | "forgotPassword" | "delete" | "login"; req: any; data?: any; context?: any },
-) =>
-  hook({
-    args: { data: opts.data ?? null, req: opts.req },
-    collection: {} as any,
-    context: opts.context ?? opts.req.context,
-    operation: opts.operation,
-    overrideAccess: false,
-    req: opts.req,
-  })
-
-const expectForbidden = async (p: Promise<any>) => {
-  let err: any = null
+const expectForbidden = async (p: Promise<unknown>) => {
+  let err: { status?: number } | null = null
   try {
     await p
   } catch (e) {
-    err = e
+    err = e as { status?: number }
   }
   expect(err, "expected the hook to throw").not.toBeNull()
   expect(err?.status, "expected HTTP 403 (Forbidden), not a generic Error").toBe(403)
@@ -374,7 +361,7 @@ describe("audit-p1 #7 sub-fix A — rejectNonSuperAdminPasswordWrites locks the 
 // -----------------------------------------------------------------------------
 
 const findChangePasswordEndpoint = () => {
-  const endpoints = (Users.endpoints ?? []) as Array<{ path: string; method: string; handler: (req: any) => Promise<Response> }>
+  const endpoints = (Users.endpoints ?? []) as Array<{ path: string; method: string; handler: (req: unknown) => Promise<Response> }>
   return endpoints.find((e) => e.path === "/change-password" && e.method.toLowerCase() === "post")
 }
 
@@ -390,18 +377,18 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   // a PayloadRequest with `.user`, `.payload`, `.data` (pre-parsed body),
   // `.t`, `.i18n`, etc. We pass the minimal subset the handler will read.
   const buildReq = (opts: {
-    user: any
-    body: any
-    payloadStubs?: { login?: any; update?: any; findByID?: any }
+    user: MockDoc | null
+    body: Record<string, unknown>
+    payloadStubs?: { login?: (...args: unknown[]) => unknown; update?: (...args: unknown[]) => unknown; findByID?: (...args: unknown[]) => unknown }
   }) => {
-    const updateCalls: any[] = []
-    const loginCalls: any[] = []
-    const defaultLogin = vi.fn(async ({ data }: any) => ({
+    const updateCalls: MockUpdateArgs[] = []
+    const loginCalls: MockCreateArgs[] = []
+    const defaultLogin = vi.fn(async ({ data }: MockCreateArgs) => ({
       user: { id: opts.user?.id, email: opts.user?.email },
-      token: `freshly.signed.jwt-for-${data.email}`,
+      token: `freshly.signed.jwt-for-${String((data as MockDoc).email)}`,
       exp: Math.floor(Date.now() / 1000) + 7200,
     }))
-    const defaultUpdate = vi.fn(async ({ id, data }: any) => ({ id, ...data }))
+    const defaultUpdate = vi.fn(async ({ id, data }: MockUpdateArgs) => ({ id, ...data }))
     const login = opts.payloadStubs?.login ?? defaultLogin
     const update = opts.payloadStubs?.update ?? defaultUpdate
     const findByID = opts.payloadStubs?.findByID ?? vi.fn(async () => opts.user)
@@ -413,14 +400,14 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
         headers: new Headers(),
         t: (k: string) => k,
         context: {},
-        payload: {
-          login: async (...args: any[]) => {
+        payload: asPayload({
+          login: async (args: MockCreateArgs) => {
             loginCalls.push(args)
-            return login(...args)
+            return login(args)
           },
-          update: async (...args: any[]) => {
+          update: async (args: MockUpdateArgs) => {
             updateCalls.push(args)
-            return update(...args)
+            return update(args)
           },
           findByID,
           config: {
@@ -441,8 +428,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
               },
             },
           },
-        },
-      } as any,
+        }),
+      },
       updateCalls,
       loginCalls,
     }
@@ -458,9 +445,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
   it("Case 6 — wrong currentPassword (payload.login throws) → 403", async () => {
     const ep = findChangePasswordEndpoint()!
     const failingLogin = vi.fn(async () => {
-      const e: any = new Error("AuthenticationError")
-      e.status = 401
-      throw e
+      throw Object.assign(new Error("AuthenticationError"), { status: 401 })
     })
     const { req } = buildReq({
       user: { id: "u1", email: "u1@x", role: "editor" },
@@ -489,17 +474,16 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
     // Verification: caller was logged in TWICE — once to verify currentPassword,
     // once to issue the post-rotation fresh session. Both with caller's email.
     expect(loginCalls.length).toBe(2)
-    expect(loginCalls[0][0]?.data?.password).toBe("right-now")
-    expect(loginCalls[1][0]?.data?.password).toBe("newpass-1234")
+    expect(loginCalls[0]?.data).toMatchObject({ password: "right-now" })
+    expect(loginCalls[1]?.data).toMatchObject({ password: "newpass-1234" })
 
-    // The update writes the new password with overrideAccess + context-flag.
     expect(updateCalls.length).toBe(1)
-    const updateArgs = updateCalls[0][0]
-    expect(updateArgs.collection).toBe("users")
-    expect(updateArgs.id).toBe("u1")
-    expect(updateArgs.data).toEqual({ password: "newpass-1234" })
-    expect(updateArgs.overrideAccess).toBe(true)
-    expect(updateArgs.context?.allowSelfPasswordChange).toBe(true)
+    const updateCall = updateCalls[0]!
+    expect(updateCall.collection).toBe("users")
+    expect(updateCall.id).toBe("u1")
+    expect(updateCall.data).toEqual({ password: "newpass-1234" })
+    expect(updateCall.overrideAccess).toBe(true)
+    expect(updateCall.context?.allowSelfPasswordChange).toBe(true)
   })
 
   it("Case 10 — super-admin can also use the endpoint (positive control)", async () => {
@@ -526,7 +510,7 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
     const ep = findChangePasswordEndpoint()!
     const { req } = buildReq({
       user: { id: "u1", email: "u1@x", role: "editor" },
-      body: { currentPassword: 42, newPassword: { evil: true } } as any,
+      body: { currentPassword: 42, newPassword: { evil: true } },
     })
     const res = await ep.handler(req)
     expect(res.status).toBe(400)
@@ -549,8 +533,8 @@ describe("audit-p1 #7 sub-fix A — POST /api/users/change-password endpoint", (
 
 describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordChange hook", () => {
   it("Case 13 — Users.auth.useSessions === true (enables Payload's built-in session-based JWT invalidation)", () => {
-    const auth = (Users as any).auth
-    expect(auth?.useSessions).toBe(true)
+    expect(Users.auth).toBeTruthy()
+    expect(Users.auth && typeof Users.auth === "object" && "useSessions" in Users.auth && Users.auth.useSessions).toBe(true)
   })
 
   it("Hook installed: Users.hooks.beforeValidate has at least one hook (the session-clearer)", () => {
@@ -559,27 +543,25 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
   })
 
   it("Case 14 — operation:'update' with data.password set → hook returns data with sessions=[] AND mutates in place", async () => {
-    const data: any = { password: "anything", name: "Y" }
+    const data: MockDoc = { password: "anything", name: "Y" }
     const result = await clearSessionsHook({
       data,
+      originalDoc: undefined,
       operation: "update",
       req: { context: {} },
       collection: {},
       context: {},
     })
-    // In-place mutation (covers resetPassword.js's pass-by-reference path)
     expect(data.sessions).toEqual([])
-    // Returned data has sessions=[] (covers regular update path)
-    expect(result?.sessions).toEqual([])
-    // Other fields untouched
-    expect(result?.name).toBe("Y")
+    expect((result as MockDoc | undefined)?.sessions).toEqual([])
+    expect((result as MockDoc | undefined)?.name).toBe("Y")
   })
 
   it("Case 15 — operation:'update' with data.hash CHANGED vs originalDoc.hash (resetPassword path) → sessions cleared in place", async () => {
     // resetPassword.js writes a newly-derived hash onto the user object and
     // passes it to beforeValidate. The new hash differs from originalDoc.hash,
     // which is the authoritative discriminator for a real password rotation.
-    const data: any = {
+    const data: MockDoc = {
       id: "u1",
       email: "u1@x",
       hash: "newly-generated-hash-bytes",
@@ -607,7 +589,7 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
     // The fix compares against originalDoc.hash; when the hash is unchanged it
     // is NOT a credential rotation and sessions must be preserved.
     const existingHash = "the-unchanged-stored-hash"
-    const data: any = {
+    const data: MockDoc = {
       id: "u1",
       email: "u1@x",
       hash: existingHash, // same as stored — not a rotation
@@ -629,7 +611,7 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
   it("Case 15c — fail-secure: originalDoc absent (undefined) and data.hash present → sessions cleared (safe direction)", async () => {
     // If for any reason originalDoc is missing on an update, we treat the hash
     // as having changed (conservative/safe) rather than skipping the clear.
-    const data: any = {
+    const data: MockDoc = {
       hash: "some-hash",
       salt: "some-salt",
       sessions: [{ id: "old-session" }],
@@ -646,7 +628,7 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
   })
 
   it("Case 16 — operation:'update' with NEITHER password NOR changed hash → sessions untouched (collateral pass-through)", async () => {
-    const data: any = {
+    const data: MockDoc = {
       name: "Y",
       sessions: [{ id: "keep-this-session" }],
     }
@@ -662,9 +644,10 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
   })
 
   it("Case 17 — operation:'create' with data.password → does NOT clear sessions (create-time has no prior sessions to invalidate)", async () => {
-    const data: any = { password: "newuser-pw", email: "n@x" }
+    const data: MockDoc = { password: "newuser-pw", email: "n@x" }
     await clearSessionsHook({
       data,
+      originalDoc: undefined,
       operation: "create",
       req: { context: {} },
       collection: {},
@@ -679,12 +662,11 @@ describe("audit-p1 #7 sub-fix B — useSessions:true + clearSessionsOnPasswordCh
 // -----------------------------------------------------------------------------
 
 describe("audit-p1 #7 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 / P1 #5 must remain closed)", () => {
-  const fields = Users.fields as any[]
-  const apiKeyField = fields.find((f) => f.name === "apiKey")
-  const enableAPIKeyField = fields.find((f) => f.name === "enableAPIKey")
-  const apiKeyIndexField = fields.find((f) => f.name === "apiKeyIndex")
-  const roleField = fields.find((f) => f.name === "role")
-  const tenantsField = fields.find((f) => f.name === "tenants")
+  const apiKeyField = expectAccessField(Users.fields, "apiKey")
+  const enableAPIKeyField = expectAccessField(Users.fields, "enableAPIKey")
+  const apiKeyIndexField = expectAccessField(Users.fields, "apiKeyIndex")
+  const roleField = expectAccessField(Users.fields, "role")
+  const tenantsField = expectAccessField(Users.fields, "tenants")
 
   it("R1 (AMD-1): owner→editor invite into own tenant still admitted by role/tenants field-access", () => {
     const args = {

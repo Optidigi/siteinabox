@@ -1,62 +1,106 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import Image from "../../runtime/image";
-import Link from "../../runtime/link";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+// Owned typed adaptation of upstream shadcnui-blocks carousel-block-01 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { LinkRef, RtRoot } from "@siteinabox/contracts"
+import type { MediaResolver } from "../../../../media"
+import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { carouselBlock01CmsLike } from "../../typed/fixtures/gallery-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import {
+  renderGalleryCta,
+  renderGalleryImage,
+  renderGalleryIntro,
+  renderGalleryTitle,
+  sliceGalleryImages,
+  type GalleryImageItem,
+} from "../../typed/gallery-fields"
 
-const images = [
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:6eb8f",
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:83463",
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:78241",
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:c8511",
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1b495",
-];
+const MAX_IMAGES = 12
 
-export default function CarouselDemo() {
+export type CarouselBlock01Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  cta?: LinkRef | null
+  images: GalleryImageItem[]
+  mediaResolver?: MediaResolver
+}
+
+export function CarouselBlock01({
+  title,
+  intro,
+  cta,
+  images,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  rootAttributes,
+}: CarouselBlock01Props) {
+  const titleContent = renderGalleryTitle(editSlots, title, blockIndex)
+  const introContent = renderGalleryIntro(editSlots, intro, blockIndex)
+  const ctaContent = renderGalleryCta(editSlots, cta, blockIndex)
+  const displayImages = sliceGalleryImages(images, MAX_IMAGES)
+
   return (
-    <div className="mx-auto max-w-5xl px-14 py-20">
+    <div className="mx-auto max-w-5xl px-14 py-20" {...rootAttributes}>
       <div className="flex items-end justify-between">
         <div>
-          <h2 className="font-medium text-3xl tracking-tight"><ProviderField field="title" fallback={<>dddepth</>} inline /></h2>
-          <p className="mt-2 text-pretty text-lg text-muted-foreground leading-snug"><ProviderField field="intro" fallback={<>
-            A Curated Collection of AI-generated Abstract 3D Shapes
-          </>} inline /></p>
+          {titleContent ? <h2 className="font-medium text-3xl tracking-tight">{titleContent}</h2> : null}
+          {introContent ? (
+            <p className="mt-2 text-pretty text-lg text-muted-foreground leading-snug">{introContent}</p>
+          ) : null}
         </div>
-        <Button className="max-sm:hidden" size="sm" variant="outline" asChild><ProviderAction field="cta" fallback={"View all"} decoration="after"></ProviderAction></Button>
+        {ctaContent ? (
+          <Button className="max-sm:hidden" size="sm" variant="outline">
+            {ctaContent}
+          </Button>
+        ) : null}
       </div>
       <Carousel className="mt-6 w-full" opts={{ loop: true, align: "start" }}>
         <CarouselContent>
-          {<ProviderItems field="images" templates={images}>{(providerItems) => providerItems.map((image, index) => (
-            <CarouselItem
-              className="basis-1/2 md:basis-1/3 lg:basis-1/4"
-              key={index}
-            >
+          {displayImages.map((image, itemIndex) => (
+            <CarouselItem className="basis-1/2 md:basis-1/3 lg:basis-1/4" key={itemIndex}>
               <div className="p-1">
                 <div className="aspect-square">
-                  <Image className="rounded-lg object-cover" src={image} />
+                  {renderGalleryImage(editSlots, mediaResolver, image.image, "Gallery image", blockIndex, itemIndex, {
+                    className: "rounded-lg object-cover",
+                  })}
                 </div>
               </div>
             </CarouselItem>
-          ))}</ProviderItems>}
+          ))}
         </CarouselContent>
         <div className="mt-4 flex items-center justify-between sm:justify-end">
           <div className="flex items-center justify-end gap-1.5">
             <CarouselPrevious className="-left-10 max-md:static max-md:translate-y-0" />
             <CarouselNext className="-right-10 max-md:static max-md:translate-y-0" />
           </div>
-
-          <ProviderDemoOnly fallback={<><Button className="sm:hidden" size="sm" variant="outline">
-            <Link href="about:blank#upstream-sha256:92c87">View all</Link>
-          </Button></>} />
+          {ctaContent ? (
+            <Button className="sm:hidden" size="sm" variant="outline">
+              {ctaContent}
+            </Button>
+          ) : null}
         </div>
       </Carousel>
     </div>
-  );
+  )
+}
+
+export default function CarouselBlock01Literal() {
+  return (
+    <CarouselBlock01
+      title={carouselBlock01CmsLike.title}
+      intro={carouselBlock01CmsLike.intro}
+      cta={carouselBlock01CmsLike.cta}
+      images={carouselBlock01CmsLike.images}
+      blockIndex={0}
+    />
+  )
 }

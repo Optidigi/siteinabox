@@ -2,11 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { promises as fs } from "node:fs"
 import os from "node:os"
 import path from "node:path"
+import type { PayloadRequest } from "payload"
 import { ValidationError } from "payload"
 import { assertSafeMediaFilename, isSafeMediaFilename, resolveMediaPath } from "@/lib/mediaFilename"
 import { ensureUniqueTenantFilename } from "@/hooks/ensureUniqueTenantFilename"
 import { deleteMediaFile } from "@/hooks/deleteFileFromDisk"
 import { projectMediaToDisk } from "@/hooks/projectToDisk"
+
+import { cast } from "../_helpers/cast"
+import { asPayload } from "../_helpers/mockPayload"
 
 vi.mock("@/lib/projection/manifest", () => ({
   readManifest: vi.fn(async () => ({ entries: [] })),
@@ -20,13 +24,21 @@ let tmpDir: string
 
 const unsafeFilenames = ["../manifest.json", "../../2/site.json", "nested/file.png", "nested\\file.png", "..", ""]
 
-const reqWithLogger = () => ({
-  payload: {
+const reqWithLogger = () => {
+  const stubs = {
     logger: {
       info: vi.fn(),
       warn: vi.fn(),
     },
-  },
+  }
+  return cast<PayloadRequest>({ payload: Object.assign(asPayload(stubs), stubs) })
+}
+
+const testFile = (data: string) => cast<File>({
+  data: Buffer.from(data),
+  name: "file.png",
+  mimetype: "image/png",
+  size: Buffer.byteLength(data),
 })
 
 const writeSentinels = async () => {
@@ -76,11 +88,11 @@ describe("media filename traversal guard", () => {
     const find = vi.fn().mockResolvedValue({ docs: [], totalDocs: 0 })
 
     await expect(
-      ensureUniqueTenantFilename({
+      ensureUniqueTenantFilename(cast<Parameters<typeof ensureUniqueTenantFilename>[0]>({
         data: { filename: "../manifest.json", tenant: 1 },
         operation: "create",
-        req: { payload: { find } },
-      } as any),
+        req: cast<PayloadRequest>({ payload: asPayload({ find }) }),
+      })),
     ).rejects.toBeInstanceOf(ValidationError)
 
     expect(find).not.toHaveBeenCalled()
@@ -90,14 +102,14 @@ describe("media filename traversal guard", () => {
     await writeSentinels()
     const req = reqWithLogger()
 
-    await projectMediaToDisk({
+    await projectMediaToDisk(cast<Parameters<typeof projectMediaToDisk>[0]>({
       doc: { id: 10, tenant: 1, filename, updatedAt: "2026-06-03T00:00:00.000Z" },
       operation: "update",
       req: {
         ...req,
-        file: { data: Buffer.from("evil") },
+        file: cast<NonNullable<Parameters<typeof projectMediaToDisk>[0]["req"]["file"]>>(testFile("evil")),
       },
-    } as any)
+    }))
 
     await expectSentinelsUntouched()
     expect(req.payload.logger.warn).toHaveBeenCalledWith(
@@ -110,10 +122,10 @@ describe("media filename traversal guard", () => {
     await writeSentinels()
     const req = reqWithLogger()
 
-    await deleteMediaFile({
+    await deleteMediaFile(cast<Parameters<typeof deleteMediaFile>[0]>({
       doc: { id: 10, tenant: 1, filename },
       req,
-    } as any)
+    }))
 
     await expectSentinelsUntouched()
     expect(req.payload.logger.warn).toHaveBeenCalledWith(
@@ -125,22 +137,22 @@ describe("media filename traversal guard", () => {
   it("still writes and deletes ordinary tenant media filenames", async () => {
     const req = reqWithLogger()
 
-    await projectMediaToDisk({
+    await projectMediaToDisk(cast<Parameters<typeof projectMediaToDisk>[0]>({
       doc: { id: 10, tenant: 1, filename: "logo.png", updatedAt: "2026-06-03T00:00:00.000Z" },
       operation: "create",
       req: {
         ...req,
-        file: { data: Buffer.from("safe") },
+        file: cast<NonNullable<Parameters<typeof projectMediaToDisk>[0]["req"]["file"]>>(testFile("safe")),
       },
-    } as any)
+    }))
 
     const projectedFile = path.join(tmpDir, "tenants", "1", "media", "logo.png")
     await expect(fs.readFile(projectedFile, "utf8")).resolves.toBe("safe")
 
-    await deleteMediaFile({
+    await deleteMediaFile(cast<Parameters<typeof deleteMediaFile>[0]>({
       doc: { id: 10, tenant: 1, filename: "logo.png" },
       req,
-    } as any)
+    }))
 
     await expect(fs.access(projectedFile)).rejects.toMatchObject({ code: "ENOENT" })
   })

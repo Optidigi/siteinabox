@@ -1,67 +1,123 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks faq-01 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import type { BlockEditSlots } from "../../../../blocks/types"
+import { faq01Literal } from "../../typed/fixtures/faq-01"
+import { elementPath } from "../../typed/paths"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import { renderBlockRichText, renderInlineRichText } from "../../typed/rich-text"
 
-const faq = [
-  {
-    question: "What is your return policy?",
-    answer:
-      "You can return unused items in their original packaging within 30 days for a refund or exchange. Contact support for assistance.",
-  },
-  {
-    question: "How do I track my order?",
-    answer:
-      "Track your order using the link provided in your confirmation email, or log into your account to view tracking details.",
-  },
-  {
-    question: "Do you ship internationally?",
-    answer:
-      "Yes, we ship worldwide. Shipping fees and delivery times vary by location, and customs duties may apply for some countries.",
-  },
-  {
-    question: "What payment methods do you accept?",
-    answer:
-      "We accept Visa, MasterCard, American Express, PayPal, Apple Pay, and Google Pay, ensuring secure payment options for all customers.",
-  },
-  {
-    question: "What if I receive a damaged item?",
-    answer:
-      "Please contact our support team within 48 hours of delivery with photos of the damaged item. We’ll arrange a replacement or refund.",
-  },
-];
+const BLOCK_TYPE = "faq" as const
 
-const FAQ = () => {
+type FaqItem = {
+  question: RtRoot
+  answer: RtRoot
+}
+
+const renderTitle = (
+  editSlots: BlockEditSlots | undefined,
+  title: RtRoot | null | undefined,
+  blockIndex: number,
+) => {
+  if (title) {
+    return renderInlineRichText(editSlots, {
+      name: `${BLOCK_TYPE}.title`,
+      value: title,
+      elementPath: elementPath(blockIndex, "title"),
+    })
+  }
+  if (!editSlots?.renderRichText) return null
+  return editSlots.renderRichText({
+    name: `${BLOCK_TYPE}.title`,
+    value: title ?? null,
+    variant: "inline",
+    as: "span",
+    className: "contents",
+    elementPath: elementPath(blockIndex, "title"),
+    blockMode: "inline",
+  })
+}
+
+const renderQuestion = (
+  editSlots: BlockEditSlots | undefined,
+  question: RtRoot,
+  blockIndex: number,
+  itemIndex: number,
+) => {
+  const path = elementPath(blockIndex, "items", itemIndex, "question")
+  return renderInlineRichText(editSlots, {
+    name: `${BLOCK_TYPE}.items.question`,
+    value: question,
+    elementPath: path,
+  })
+}
+
+const renderAnswer = (
+  editSlots: BlockEditSlots | undefined,
+  answer: RtRoot,
+  blockIndex: number,
+  itemIndex: number,
+) => {
+  const path = elementPath(blockIndex, "items", itemIndex, "answer")
+  return renderBlockRichText(editSlots, {
+    name: `${BLOCK_TYPE}.items.answer`,
+    value: answer,
+    elementPath: path,
+  })
+}
+
+export type Faq01Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  items: FaqItem[]
+}
+
+export function Faq01({ title, items, blockIndex, editSlots, rootAttributes }: Faq01Props) {
+  const titleContent = renderTitle(editSlots, title, blockIndex)
+
   return (
-    <div className="px-6 py-20">
+    <div className="px-6 py-20" {...rootAttributes}>
       <div className="mx-auto w-full max-w-xl">
-        <h2 className="font-medium text-4xl leading-[1.15]! tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
-          Questions & Answers
-        </>} inline /></h2>
+        {titleContent ? (
+          <h2 className="font-medium text-4xl leading-[1.15]! tracking-[-0.04em] md:text-[2.75rem]">
+            {titleContent}
+          </h2>
+        ) : null}
 
         <Accordion
           className="mt-6"
-          defaultValue={["question-0"]}
+          defaultValue={items.length > 0 ? ["question-0"] : undefined}
           type="multiple"
         >
-          {<ProviderItems field="items" templates={faq}>{(providerItems) => providerItems.map(({ question, answer }, index) => (
-            <AccordionItem key={question} value={`question-${index}`}>
+          {items.map((item, itemIndex) => (
+            <AccordionItem key={itemIndex} value={`question-${itemIndex}`}>
               <AccordionTrigger className="text-left text-lg">
-                {question}
+                {renderQuestion(editSlots, item.question, blockIndex, itemIndex)}
               </AccordionTrigger>
               <AccordionContent className="text-base text-muted-foreground">
-                {answer}
+                {renderAnswer(editSlots, item.answer, blockIndex, itemIndex)}
               </AccordionContent>
             </AccordionItem>
-          ))}</ProviderItems>}
+          ))}
         </Accordion>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default FAQ;
+export default function Faq01Literal() {
+  return (
+    <Faq01
+      title={faq01Literal.title}
+      items={faq01Literal.items}
+      blockIndex={0}
+    />
+  )
+}

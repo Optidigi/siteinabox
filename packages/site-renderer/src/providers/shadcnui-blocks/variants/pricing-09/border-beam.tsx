@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 "use client";
 import { type MotionStyle, motion, type Transition } from "motion/react";
 

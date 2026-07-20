@@ -1,6 +1,7 @@
 import "server-only"
 
-import type { Payload } from "payload"
+import type { Payload, Where } from "payload"
+import type { LegalDocument as LegalDocumentDoc, LegalRequirement, User } from "@/payload-types"
 import {
   createPublicLegalManifest,
   getLegalReleases,
@@ -8,9 +9,9 @@ import {
   type LegalDocumentType,
   type PublicLegalManifest,
 } from "@siteinabox/legal-content"
+import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId } from "@/lib/relationshipId"
-
-type PayloadRecord = Record<string, any>
+import { asRecord } from "@/lib/record"
 
 const releaseKey = (release: Pick<LegalDocument, "documentType" | "locale" | "documentVersion">) =>
   `${release.documentType}:${release.locale}:${release.documentVersion}`
@@ -18,33 +19,18 @@ const releaseKey = (release: Pick<LegalDocument, "documentType" | "locale" | "do
 const eventKey = (release: LegalDocument, eventType: string) =>
   `${releaseKey(release)}:${eventType}`
 
-const findOne = async (
-  payload: Payload,
-  collection: string,
-  where: Record<string, unknown>,
-): Promise<PayloadRecord | null> => {
-  const result = await payload.find({
-    collection: collection as any,
-    where: where as any,
-    limit: 1,
-    depth: 0,
-    overrideAccess: true,
-  })
-  return (result.docs[0] as PayloadRecord | undefined) ?? null
-}
-
 const ensurePublicationEvent = async (
   payload: Payload,
-  document: PayloadRecord,
+  document: LegalDocumentDoc,
   release: LegalDocument,
   eventType: "registered" | "scheduled" | "activated",
   occurredAt: string,
 ) => {
   const key = eventKey(release, eventType)
-  const existing = await findOne(payload, "legal-publication-events", { eventKey: { equals: key } })
+  const existing = await findOneDoc(payload, "legal-publication-events", { eventKey: { equals: key } })
   if (existing) return existing
   return payload.create({
-    collection: "legal-publication-events" as any,
+    collection: "legal-publication-events",
     data: {
       eventKey: key,
       document: document.id,
@@ -58,16 +44,16 @@ const ensurePublicationEvent = async (
     },
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
 }
 
 export async function ensureLegalRequirementsForRelease(
   payload: Payload,
-  document: PayloadRecord,
+  document: LegalDocumentDoc,
   release: LegalDocument,
 ) {
   if (release.change.customerAction === "none" || release.change.customerAction === "publish_notice") return []
-  const ownerDocs: PayloadRecord[] = []
+  const ownerDocs: User[] = []
   for (let page = 1; ; page += 1) {
     const users = await payload.find({
       collection: "users",
@@ -77,23 +63,23 @@ export async function ensureLegalRequirementsForRelease(
       depth: 1,
       overrideAccess: true,
     })
-    ownerDocs.push(...users.docs as PayloadRecord[])
+    ownerDocs.push(...users.docs)
     if (!users.hasNextPage && users.docs.length < 100) break
   }
-  const requirements: PayloadRecord[] = []
+  const requirements: LegalRequirement[] = []
   for (const user of ownerDocs) {
     if (typeof user.email !== "string") continue
     for (const membership of user.tenants ?? []) {
       const tenantId = relationshipId(membership?.tenant)
       if (!tenantId) continue
       const key = `${releaseKey(release)}:user:${user.id}:tenant:${tenantId}:${release.change.customerAction}`
-      let requirement = await findOne(payload, "legal-requirements", { requirementKey: { equals: key } })
+      let requirement = await findOneDoc(payload, "legal-requirements", { requirementKey: { equals: key } })
       if (!requirement) {
         requirement = await payload.create({
-          collection: "legal-requirements" as any,
+          collection: "legal-requirements",
           data: {
             requirementKey: key,
-            tenant: tenantId,
+            tenant: Number(tenantId),
             subjectEmail: user.email,
             document: document.id,
             action: release.change.customerAction,
@@ -107,7 +93,7 @@ export async function ensureLegalRequirementsForRelease(
           },
           depth: 0,
           overrideAccess: true,
-        } as any) as PayloadRecord
+        })
       }
       requirements.push(requirement)
     }
@@ -129,7 +115,7 @@ export async function ensureConsentRenewalsForRelease(
   if (new Date(release.effectiveAt) > at) return []
 
   const consentVersion = analyticsConsentVersionForRelease(release)
-  const renewed: PayloadRecord[] = []
+  const renewed = []
   for (let page = 1; ; page += 1) {
     const tenants = await payload.find({
       collection: "tenants",
@@ -138,10 +124,10 @@ export async function ensureConsentRenewalsForRelease(
       depth: 0,
       overrideAccess: true,
     })
-    for (const tenant of tenants.docs as PayloadRecord[]) {
-      const manifest = tenant.siteManifest
-      const consent = manifest?.analyticsConsent
-      if (!manifest || typeof manifest !== "object" || !consent || typeof consent !== "object" || consent.enabled === false) continue
+    for (const tenant of tenants.docs) {
+      const manifest = asRecord(tenant.siteManifest)
+      const consent = asRecord(manifest?.analyticsConsent)
+      if (!manifest || !consent || consent.enabled === false) continue
       if (consent.consentVersion === consentVersion) continue
       renewed.push(await payload.update({
         collection: "tenants",
@@ -154,7 +140,7 @@ export async function ensureConsentRenewalsForRelease(
         },
         depth: 0,
         overrideAccess: true,
-      } as any) as PayloadRecord)
+      }))
     }
     if (!tenants.hasNextPage && tenants.docs.length < 100) break
   }
@@ -208,17 +194,17 @@ export async function syncLegalDocuments(input: {
     })
   }
 
-  const documents: PayloadRecord[] = []
+  const documents: LegalDocumentDoc[] = []
   for (const release of releases) {
     const key = releaseKey(release)
-    let document = await findOne(input.payload, "legal-documents", { releaseKey: { equals: key } })
+    let document = await findOneDoc(input.payload, "legal-documents", { releaseKey: { equals: key } })
     if (document) {
       if (document.contentHash !== release.contentHash || document.content !== release.markdown) {
         throw new Error(`Immutable legal release mismatch for ${key}. Publish a corrective version instead.`)
       }
     } else {
       document = await input.payload.create({
-        collection: "legal-documents" as any,
+        collection: "legal-documents",
         data: {
           releaseKey: key,
           documentType: release.documentType,
@@ -231,17 +217,17 @@ export async function syncLegalDocuments(input: {
           sourceCommit: input.sourceCommit ?? process.env.SIAB_GIT_SHA ?? "development",
           publishedAt: release.publishedAt,
           effectiveAt: release.effectiveAt,
-          changeCategory: release.change.category,
+          changeCategory: release.change.category as LegalDocumentDoc["changeCategory"],
           changeSummary: release.change.summary,
           changeRationale: release.change.rationale,
-          customerAction: release.change.customerAction,
-          consentAction: release.change.consentAction,
+          customerAction: release.change.customerAction as LegalDocumentDoc["customerAction"],
+          consentAction: release.change.consentAction as LegalDocumentDoc["consentAction"],
           audience: release.change.audience,
           noticeDays: release.change.noticeDays,
         },
         depth: 0,
         overrideAccess: true,
-      } as any) as PayloadRecord
+      })
     }
 
     await ensurePublicationEvent(input.payload, document, release, "registered", nowIso)
@@ -263,9 +249,9 @@ export async function getCurrentLegalDocumentRecord(
   documentType: LegalDocumentType,
   locale = "nl",
   at = new Date(),
-): Promise<PayloadRecord> {
+): Promise<LegalDocumentDoc> {
   const result = await payload.find({
-    collection: "legal-documents" as any,
+    collection: "legal-documents",
     where: {
       and: [
         { documentType: { equals: documentType } },
@@ -278,8 +264,8 @@ export async function getCurrentLegalDocumentRecord(
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
-  const document = result.docs[0] as PayloadRecord | undefined
+  })
+  const document = result.docs[0]
   if (!document) throw new Error(`No effective ${documentType}/${locale} legal document is registered.`)
   return document
 }

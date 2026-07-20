@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto"
 import Module from "node:module"
 import { pathToFileURL } from "node:url"
-import type { Payload } from "payload"
+import type { CollectionSlug, DataFromCollectionSlug, Payload, Where } from "payload"
+import type { IntakeSubmission, PublishedSiteSnapshot as PayloadPublishedSiteSnapshot, SiteGenerationRun } from "@/payload-types"
 import {
   amicarePublishedSiteSnapshot,
   amicareSiteGenerationSpec,
@@ -255,7 +256,7 @@ function absolutizeGeneratedMediaUrls(value: unknown, baseUrl: string): unknown 
   if (Array.isArray(value)) return value.map((item) => absolutizeGeneratedMediaUrls(item, baseUrl))
   if (!value || typeof value !== "object") return value
 
-  const record = value as Record<string, unknown>
+  const record = value
   return Object.fromEntries(
     Object.entries(record).map(([key, entry]) => {
       if (key === "url" && typeof entry === "string") return [key, absolutizeRootRelativeUrl(entry, baseUrl)]
@@ -269,13 +270,13 @@ const nextPublishedSnapshotVersion = async (
   tenantId: string | number,
 ): Promise<number> => {
   const result = await payload.find({
-    collection: "published-site-snapshots" as any,
+    collection: "published-site-snapshots",
     where: { tenant: { equals: tenantId } },
     sort: "-version",
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
   const latest = result.docs[0] as { version?: number } | undefined
   return Number.isFinite(latest?.version) ? Number(latest!.version) + 1 : 1
 }
@@ -357,30 +358,58 @@ export const parseRendererSeedSpecForCms = (
 
 const findOne = async <T>(
   payload: Payload,
-  collection: string,
+  collection: CollectionSlug,
   where: Record<string, unknown>,
 ): Promise<T | undefined> => {
   const result = await payload.find({
-    collection: collection as any,
-    where,
+    collection,
+    where: where as Where,
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any)
+  })
   return result.docs[0] as T | undefined
 }
 
-const transition = (status: string, message: string, at: string) => ({ status, message, at })
+type PipelineStatus = NonNullable<IntakeSubmission["statusTransitions"]>[number]["status"]
+
+const createRecord = <C extends CollectionSlug>(
+  payload: Payload,
+  collection: C,
+  data: Record<string, unknown>,
+  extra: Omit<Parameters<Payload["create"]>[0], "collection" | "data"> = {},
+) =>
+  payload.create({
+    collection,
+    data: data as unknown as DataFromCollectionSlug<C>,
+    ...extra,
+  } as Parameters<Payload["create"]>[0])
+
+const updateRecord = <C extends CollectionSlug>(
+  payload: Payload,
+  collection: C,
+  id: string | number,
+  data: Record<string, unknown>,
+  extra: Omit<Parameters<Payload["update"]>[0], "collection" | "id" | "data"> = {},
+) =>
+  payload.update({
+    collection,
+    id,
+    data: data as unknown as Partial<DataFromCollectionSlug<C>>,
+    ...extra,
+  } as Parameters<Payload["update"]>[0])
+
+const transition = (status: PipelineStatus, message: string, at: string): NonNullable<IntakeSubmission["statusTransitions"]>[number] => ({ status, message, at })
 
 const upsertIntakeSubmission = async (
   payload: Payload,
   fixture: RendererSeedFixture,
   spec: SiteGenerationSpec,
   now: string,
-) => {
+): Promise<{ doc: IntakeSubmission; operation: "created" | "updated" }> => {
   const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:intake:v1`
   const normalizedHash = stableHash(spec.intake)
-  const data = {
+  const data: Partial<IntakeSubmission> = {
     businessName: spec.intake.businessName,
     contactName: spec.intake.contact?.name ?? null,
     contactEmail: spec.intake.contact?.email ?? spec.settings.contactEmail ?? null,
@@ -404,7 +433,7 @@ const upsertIntakeSubmission = async (
     ],
     error: null,
   }
-  const existing = await findOne<any>(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
+  const existing = await findOne<IntakeSubmission>(payload, "intake-submissions", { idempotencyKey: { equals: idempotencyKey } })
   if (existing) {
     const doc = await payload.update({
       collection: "intake-submissions",
@@ -412,16 +441,14 @@ const upsertIntakeSubmission = async (
       data,
       depth: 0,
       overrideAccess: true,
-    } as any)
-    return { doc: doc as any, operation: "updated" as const }
+    })
+    return { doc: doc as IntakeSubmission, operation: "updated" as const }
   }
-  const doc = await payload.create({
-    collection: "intake-submissions",
-    data,
+  const doc = await createRecord(payload, "intake-submissions", data, {
     depth: 0,
     overrideAccess: true,
-  } as any)
-  return { doc: doc as any, operation: "created" as const }
+  })
+  return { doc: doc as IntakeSubmission, operation: "created" as const }
 }
 
 const upsertGenerationRun = async (
@@ -432,7 +459,7 @@ const upsertGenerationRun = async (
   applyResult: ApplySuccessResult,
   specHash: string,
   now: string,
-) => {
+): Promise<{ doc: SiteGenerationRun; operation: "created" | "updated" }> => {
   const idempotencyKey = `renderer-${fixture.profile}:${fixture.key}:run:v1`
   const normalizedIntakeHash = stableHash(spec.intake)
   const runData: Record<string, unknown> = {
@@ -477,24 +504,22 @@ const upsertGenerationRun = async (
     errors: null,
   }
 
-  const existing = await findOne<any>(payload, "site-generation-runs", { idempotencyKey: { equals: idempotencyKey } })
+  const existing = await findOne<SiteGenerationRun>(payload, "site-generation-runs", { idempotencyKey: { equals: idempotencyKey } })
   if (existing) {
     const doc = await payload.update({
       collection: "site-generation-runs",
       id: existing.id,
-      data: runData,
+      data: runData as Partial<SiteGenerationRun>,
       depth: 0,
       overrideAccess: true,
-    } as any)
-    return { doc: doc as any, operation: "updated" as const }
+    })
+    return { doc: doc as SiteGenerationRun, operation: "updated" as const }
   }
-  const doc = await payload.create({
-    collection: "site-generation-runs",
-    data: runData,
+  const doc = await createRecord(payload, "site-generation-runs", runData as Record<string, unknown>, {
     depth: 0,
     overrideAccess: true,
-  } as any)
-  return { doc: doc as any, operation: "created" as const }
+  })
+  return { doc: doc as SiteGenerationRun, operation: "created" as const }
 }
 
 const linkIntake = async (
@@ -503,13 +528,10 @@ const linkIntake = async (
   runId: string | number,
   tenantId: string | number | undefined,
 ) => {
-  await payload.update({
-    collection: "intake-submissions",
-    id: intakeId as any,
-    data: {
-      generationRun: runId,
-      tenant: tenantId,
-    } as any,
+  await updateRecord(payload, "intake-submissions", intakeId, {
+    generationRun: runId,
+    ...(tenantId !== undefined ? { tenant: tenantId } : {}),
+  }, {
     depth: 0,
     overrideAccess: true,
   })
@@ -523,14 +545,14 @@ const markApproved = async (
 ) => {
   await payload.update({
     collection: "site-generation-runs",
-    id: runId as any,
+    id: runId,
     data: {
       clientApproval: {
         status: "approved",
         approvedAt: now,
         source: operatorActor(fixture.profile),
       },
-    } as any,
+    },
     depth: 0,
     overrideAccess: true,
   })
@@ -544,14 +566,14 @@ const verifyDomain = async (
 ) => {
   await payload.update({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     data: {
       domainVerification: {
         status: "verified",
         checkedAt: now,
         notes: `Manually verified for ${fixture.profileLabel} host ${fixture.domain}. DNS/proxy routing remains operator-owned.`,
       },
-    } as any,
+    },
     depth: 0,
     overrideAccess: true,
   })
@@ -644,7 +666,7 @@ export const injectRendererSeedAnalytics = (
       const pagePath = pagePathForSlug(pageSlug)
       const existingAnalytics =
         page.analytics && typeof page.analytics === "object" && !Array.isArray(page.analytics)
-          ? page.analytics as Record<string, unknown>
+          ? page.analytics
           : {}
       return {
         ...page,
@@ -683,25 +705,23 @@ const createStagingPublishedSnapshot = async (
   )
   const snapshotWithAnalytics = injectRendererSeedAnalytics(snapshot, fixture, tenantId, version)
   const hash = stableHash(snapshotWithAnalytics)
-  const snapshotDoc = await payload.create({
-    collection: "published-site-snapshots" as any,
-    data: {
-      tenant: tenantId,
-      sourceGenerationRun: generationRunId,
-      snapshotKey: `${snapshotWithAnalytics.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
-      version,
-      status: "drafted",
-      domain: snapshotWithAnalytics.domain,
-      snapshotHash: hash,
-      snapshot: snapshotWithAnalytics,
-      publishedAt: snapshotWithAnalytics.publishedAt,
-      activationReason: options.activate
-        ? `Renderer ${fixture.profileLabel} activation for ${fixture.domain}`
-        : `Renderer ${fixture.profileLabel} parity snapshot for ${fixture.domain}`,
-    },
+  const snapshotDoc = await createRecord(payload, "published-site-snapshots", {
+    tenant: typeof tenantId === "number" ? tenantId : Number(tenantId),
+    sourceGenerationRun: typeof generationRunId === "number" ? generationRunId : Number(generationRunId),
+    snapshotKey: `${snapshotWithAnalytics.tenantSlug}-v${version}-${hash.slice(0, 12)}`,
+    version,
+    status: "drafted",
+    domain: snapshotWithAnalytics.domain,
+    snapshotHash: hash,
+    snapshot: snapshotWithAnalytics as unknown as PayloadPublishedSiteSnapshot["snapshot"],
+    publishedAt: snapshotWithAnalytics.publishedAt,
+    activationReason: options.activate
+      ? `Renderer ${fixture.profileLabel} activation for ${fixture.domain}`
+      : `Renderer ${fixture.profileLabel} parity snapshot for ${fixture.domain}`,
+  }, {
     depth: 0,
     overrideAccess: true,
-  } as any) as any
+  }) as PayloadPublishedSiteSnapshot
 
   if (!options.activate) return { snapshot: snapshotDoc, activated: false }
   const activated = await helpers.activatePublishedSnapshot(payload, {
@@ -783,7 +803,7 @@ const runFixture = async (
       options,
       now,
     )
-    const snapshotId = (result.snapshot as any)?.id
+    const snapshotId = result.snapshot?.id
     console.log(`  snapshot: ${snapshotId ?? "(unknown)"}${result.activated ? " activated" : " drafted"}`)
   }
 

@@ -37,7 +37,7 @@ export default async function TenantPagesIndex({
       />
       <ListSearch placeholder={t("filterPages")} />
       <PagesTable
-        data={result.docs as any}
+        data={result.docs}
         base="/pages"
         canManage={canManagePages}
         emptyState={

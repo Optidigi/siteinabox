@@ -34,7 +34,7 @@ export async function requestPreviewMagicLinkAction(
       return { ok: false, message: t("emailRequired") }
     }
 
-    await (previewAuth.api as any).signInMagicLink({
+    await (previewAuth.api).signInMagicLink({
       body: {
         email,
         callbackURL: callbackPath,

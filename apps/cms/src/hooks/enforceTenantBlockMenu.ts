@@ -33,7 +33,7 @@ const extractTenantId = (raw: unknown): string | number | null => {
 
 export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ data, originalDoc }) => {
   const tenantId = extractTenantId(
-    (data as any)?.tenant ?? (originalDoc as any)?.tenant,
+    (data)?.tenant ?? (originalDoc)?.tenant,
   )
   if (tenantId == null) return data
   // Dynamic import to break the payload.config ↔ Pages ↔ enforceTenantBlockMenu
@@ -45,7 +45,7 @@ export const enforceTenantBlockMenu: CollectionBeforeValidateHook = async ({ dat
       ? manifest.blocks.map((b) => b.slug)
       : ALL_BLOCKS.map((b) => b.slug),
   )
-  const blocks = ((data as any)?.blocks ?? []) as { blockType: string }[]
+  const blocks = ((data)?.blocks ?? []) as { blockType: string }[]
   const violations = blocks
     .map((b, i) => ({ i, slug: b.blockType }))
     .filter((b) => !allowed.has(b.slug))

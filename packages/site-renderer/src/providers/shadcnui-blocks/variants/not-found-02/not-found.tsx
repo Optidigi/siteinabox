@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { ArrowRightIcon } from "lucide-react";
 import Link from "../../runtime/link";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
@@ -28,7 +27,7 @@ export default function NotFound() {
         <p className="mb-3 text-center text-muted-foreground text-sm">
           You might be looking for:
         </p>
-        <ul className="divide-y rounded-xl border">
+        <ul className="divide-y rounded-xl border border-border">
           {suggestions.map((s) => (
             <li className="group" key={s.href}>
               <Link

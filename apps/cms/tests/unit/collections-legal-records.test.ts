@@ -13,6 +13,9 @@ import {
   SiteReviewRevisions,
 } from "@/collections/LegalRecords"
 
+import { accessArgs } from "../_helpers/accessArgs"
+import { hookArgsFor } from "../_helpers/hookFixtures"
+
 const appendOnly = [
   LegalDocuments,
   LegalPublicationEvents,
@@ -49,30 +52,34 @@ describe("legal record collections", () => {
 
   it("makes legal evidence append-only", () => {
     for (const collection of appendOnly) {
-      expect(collection.access?.update?.({} as any), collection.slug).toBe(false)
-      expect(collection.access?.delete?.({} as any), collection.slug).toBe(false)
-      expect(() => rejectRecordMutation({ operation: "update", data: {} } as any), collection.slug).toThrow("immutable")
+      expect(collection.access?.update?.(accessArgs({ req: {} })), collection.slug).toBe(false)
+      expect(collection.access?.delete?.(accessArgs({ req: {} })), collection.slug).toBe(false)
+      expect(() => rejectRecordMutation(hookArgsFor(rejectRecordMutation, { operation: "update", data: {}, req: {}, collection: {}, context: {} })), collection.slug).toThrow("immutable")
     }
   })
 
   it("only permits trusted payment lifecycle changes to frozen orders", () => {
-    expect(() => protectFrozenOrder({ operation: "update", data: { paymentStatus: "paid" }, req: { context: {} } } as any)).toThrow("frozen")
-    expect(protectFrozenOrder({
+    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, { operation: "update", data: { paymentStatus: "paid" }, req: { context: {} }, collection: {}, context: {} }))).toThrow("frozen")
+    expect(protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { paymentStatus: "paid", paidAt: "2026-07-10T12:00:00.000Z" },
       req: { context: { legalOrderLifecycleMutation: true } },
-    } as any)).toEqual({ paymentStatus: "paid", paidAt: "2026-07-10T12:00:00.000Z" })
-    expect(() => protectFrozenOrder({
+      collection: {},
+      context: { legalOrderLifecycleMutation: true },
+    }))).toEqual({ paymentStatus: "paid", paidAt: "2026-07-10T12:00:00.000Z" })
+    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
       operation: "update",
       data: { totalGross: 1 },
       req: { context: { legalOrderLifecycleMutation: true } },
-    } as any)).toThrow('field "totalGross" is immutable')
+      collection: {},
+      context: { legalOrderLifecycleMutation: true },
+    }))).toThrow('field "totalGross" is immutable')
   })
 
   it("does not permit evidence deletion or frozen order deletion", () => {
-    expect(Orders.access?.delete?.({} as any)).toBe(false)
-    expect(CommunicationPreferences.access?.delete?.({} as any)).toBe(false)
-    expect(LegalRequirements.access?.delete?.({} as any)).toBe(false)
-    expect(LegalRequirements.access?.update?.({} as any)).toBe(false)
+    expect(Orders.access?.delete?.(accessArgs({ req: {} }))).toBe(false)
+    expect(CommunicationPreferences.access?.delete?.(accessArgs({ req: {} }))).toBe(false)
+    expect(LegalRequirements.access?.delete?.(accessArgs({ req: {} }))).toBe(false)
+    expect(LegalRequirements.access?.update?.(accessArgs({ req: {} }))).toBe(false)
   })
 })

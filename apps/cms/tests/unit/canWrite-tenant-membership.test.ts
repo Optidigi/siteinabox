@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest"
+import type { User } from "@/payload-types"
 import { canWrite } from "@/access/roleHelpers"
+
+import { cast } from "../_helpers/cast"
+import { accessArgs } from "../_helpers/accessArgs"
 
 // OBS-67 — `canWrite` is the access function applied to create/update/delete
 // on Pages, Media, Forms (update only), and BlockPresets. Pre-fix it gated
@@ -12,15 +16,17 @@ import { canWrite } from "@/access/roleHelpers"
 const callCanWrite = (args: {
   role: string | undefined
   tenants?: Array<{ tenant: number | string | { id: number | string } | null }>
-  data?: any
+  data?: unknown
   id?: string | number
 }) => {
-  const user = args.role === undefined ? null : { id: 1, role: args.role, tenants: args.tenants ?? [] }
-  return canWrite({
-    req: { user } as any,
+  const user = args.role === undefined
+    ? null
+    : cast<User>({ id: 1, role: args.role, tenants: args.tenants ?? [], updatedAt: "", createdAt: "", email: "test@test.local" })
+  return canWrite(accessArgs({
+    req: { user },
     data: args.data,
-    id: args.id,
-  } as any)
+    id: typeof args.id === "string" ? Number(args.id) : args.id,
+  }))
 }
 
 describe("canWrite — OBS-67 tenant-membership enforcement", () => {

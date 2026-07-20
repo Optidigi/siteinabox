@@ -5,6 +5,7 @@ import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { describe, it, expect, beforeEach, afterEach } from "vitest"
 
+import { errLike } from "../_helpers/cast"
 /**
  * Tests for `scripts/migrate-on-boot.mjs`. We can't run the real script
  * against a real Postgres in unit tests (no DB), so we instead spawn `node`

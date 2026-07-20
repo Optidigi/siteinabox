@@ -274,9 +274,9 @@ export async function startPreviewCheckoutPaymentAction(
     const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || null
     const approvalEvidence = await createSiteApprovalEvidence({
       payload: context.payload,
-      run: ready.run as any,
-      tenant: context.tenant as any,
-      pages: context.pages as any[],
+      run: ready.run,
+      tenant: context.tenant,
+      pages: context.pages,
       domain: ready.domain,
       actorEmail: context.customerEmail,
       requestId,
@@ -295,8 +295,8 @@ export async function startPreviewCheckoutPaymentAction(
     })
     const legalEvidence = await createOrderAndAcceptanceEvidence({
       payload: context.payload,
-      run: ready.run as any,
-      tenant: context.tenant as any,
+      run: ready.run,
+      tenant: context.tenant,
       approval: approvalEvidence.approval,
       customerEmail: context.customerEmail,
       customerName: [registrant.firstName, registrant.lastName].filter(Boolean).join(" "),
@@ -338,7 +338,7 @@ export async function startPreviewCheckoutPaymentAction(
           snapshotHash: approvalEvidence.snapshotHash,
           actorEmail: context.customerEmail,
         },
-      } as any,
+      },
       depth: 0,
       overrideAccess: true,
     }) as typeof context.run

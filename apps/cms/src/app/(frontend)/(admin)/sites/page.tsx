@@ -26,7 +26,7 @@ export default async function SitesPage({
       <PageHeader title={t("sites.title")} action={<TenantCreateDialog />} />
       <ListSearch placeholder={t("filterSites")} />
       <TenantsTable
-        data={result.docs as any}
+        data={result.docs}
         emptyState={
           q ? (
             <EmptyState

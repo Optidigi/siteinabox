@@ -131,49 +131,18 @@ export function PageEditorFrameHost({
     postToFrame({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "page.replace",
-      messageId: `page-${expectedRevision}`,
+      type: "render.snapshot",
+      messageId: `snapshot-${expectedRevision}`,
       expectedRevision,
       pageId: String(pageId),
       page,
       settings,
+      theme,
+      selection: selection ?? null,
+      mobileMode: mobileMode ?? { mode: "fullPage" },
     })
     revisionRef.current = expectedRevision + 1
-  }, [page, pageId, postToFrame, ready, settings])
-
-  React.useEffect(() => {
-    if (!ready) return
-    postToFrame({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "theme.patch",
-      messageId: `theme-${revisionRef.current}`,
-      theme,
-    })
-  }, [postToFrame, ready, theme])
-
-  React.useEffect(() => {
-    if (!ready) return
-    postToFrame({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "selection.set",
-      messageId: `selection-${selection?.blockId ?? selection?.fieldPath?.join(".") ?? "none"}`,
-      selection: selection ?? null,
-    })
-  }, [postToFrame, ready, selection])
-
-  React.useEffect(() => {
-    if (!ready) return
-    const nextMode = mobileMode ?? { mode: "fullPage" as const }
-    postToFrame({
-      protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-      schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-      type: "editor.mobileMode.set",
-      messageId: `mobile-${nextMode.mode}-${nextMode.focusedBlockId ?? nextMode.focusedBlockIndex ?? "all"}`,
-      ...nextMode,
-    })
-  }, [mobileMode, postToFrame, ready])
+  }, [mobileMode, page, pageId, postToFrame, ready, selection, settings, theme])
 
   return (
     <div className="relative w-full overflow-hidden bg-background" data-siab-editor-frame-host data-siab-editor-frame-layout={layout}>

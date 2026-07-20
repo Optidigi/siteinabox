@@ -1,6 +1,9 @@
 import "server-only"
 import { getPayload } from "payload"
+import type { PayloadRequest } from "payload"
+import type { SiteSetting } from "@/payload-types"
 import config from "@/payload.config"
+import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 
 // Audit finding #11 (P2, T8) — find-then-create race resolution.
 //
@@ -55,10 +58,10 @@ const isUniqueViolation = (err: unknown): boolean => {
 
 export async function getOrCreateSiteSettings(
   tenantId: number | string,
-  options: { payload?: Awaited<ReturnType<typeof getPayload>>; req?: any } = {},
-) {
+  options: { payload?: Awaited<ReturnType<typeof getPayload>>; req?: PayloadRequest } = {},
+): Promise<SiteSetting> {
   const payload = options.payload ?? await getPayload({ config })
-  const request = options.req ? { req: options.req } : {}
+  const request = payloadRequestArgs(options.req)
   const found = await payload.find({
     collection: "site-settings",
     overrideAccess: true,
@@ -66,12 +69,12 @@ export async function getOrCreateSiteSettings(
     limit: 1,
     ...request,
   })
-  if (found.docs.length) return found.docs[0]
+  if (found.docs.length) return found.docs[0]!
   try {
     return await payload.create({
       collection: "site-settings",
       overrideAccess: true,
-      data: { tenant: tenantId, siteName: "Untitled", siteUrl: "https://example.com" } as any,
+      data: { tenant: Number(tenantId), siteName: "Untitled", siteUrl: "https://example.com" } as SiteSetting,
       ...request,
     })
   } catch (err) {
@@ -89,6 +92,6 @@ export async function getOrCreateSiteSettings(
     // error so the caller learns something genuinely unexpected happened —
     // never an infinite retry loop, never a silent undefined return.
     if (!refetched.docs.length) throw err
-    return refetched.docs[0]
+    return refetched.docs[0]!
   }
 }

@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { Search } from "lucide-react";
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
 import { Input } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";

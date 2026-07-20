@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, beforeEach } from "vitest"
 import type { Payload } from "payload"
 import { getTestPayload, resetTestData } from "./_helpers"
 
+import { createArgs, relationId, asDocRecord } from "../_helpers/payloadApi"
 let payload: Payload
 
 const inlineRoot = (text: string) => ({
@@ -36,22 +37,17 @@ beforeEach(async () => {
 describe("CMS integration smoke", () => {
   it("persists a renderer-ready tenant, V2 theme, settings, and source-backed page", async () => {
     const suffix = `${Date.now()}-${Math.floor(Math.random() * 100000)}`
-    const tenant = await payload.create({
-      collection: "tenants",
-      data: {
-        name: "Smoke Studio",
-        slug: `smoke-studio-${suffix}`,
-        domain: `smoke-studio-${suffix}.test`,
-        status: "active",
-        theme: smokeTheme,
-      } as any,
-      overrideAccess: true,
-    })
+    const domain = `smoke-studio-${suffix}.test`
+    const tenant = await payload.create(createArgs("tenants", {
+      name: "Smoke Studio",
+      slug: `smoke-studio-${suffix}`,
+      domain,
+      status: "active",
+      theme: smokeTheme,
+    }, { overrideAccess: true }))
 
-    const page = await payload.create({
-      collection: "pages",
-      data: {
-        tenant: tenant.id,
+    const page = await payload.create(createArgs("pages", {
+      tenant: relationId(tenant),
         title: "Home",
         slug: "index",
         status: "published",
@@ -90,16 +86,12 @@ describe("CMS integration smoke", () => {
             },
           },
         ],
-      } as any,
-      overrideAccess: true,
-    })
+    }, { overrideAccess: true }))
 
-    const settings = await payload.create({
-      collection: "site-settings",
-      data: {
-        tenant: tenant.id,
+    const settings = await payload.create(createArgs("site-settings", {
+      tenant: relationId(tenant),
         siteName: "Smoke Studio",
-        siteUrl: `https://${tenant.domain}`,
+        siteUrl: `https://${domain}`,
         description: "Smoke coverage for renderer-ready tenant settings.",
         language: "nl",
         chrome: {
@@ -117,9 +109,7 @@ describe("CMS integration smoke", () => {
         },
         navHeader: [{ type: "page", page: page.id, label: "Home" }],
         navFooter: [{ type: "custom", url: "/privacy", label: "Privacy" }],
-      } as any,
-      overrideAccess: true,
-    })
+    }, { overrideAccess: true }))
 
     const storedTenant = await payload.findByID({
       collection: "tenants",
@@ -150,17 +140,17 @@ describe("CMS integration smoke", () => {
       slug: "index",
       status: "published",
     })
-    expect((storedPages.docs[0] as any).blocks.map((block: any) => block.designVariant)).toEqual([
-      "shadcnui-blocks.hero-01",
-      "shadcnui-blocks.contact-02",
-    ])
+    expect(asDocRecord(storedPages.docs[0]!).blocks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ designVariant: "shadcnui-blocks.hero-01" }),
+      expect.objectContaining({ designVariant: "shadcnui-blocks.contact-02" }),
+    ]))
 
     expect(storedSettings.docs).toHaveLength(1)
     expect(storedSettings.docs[0]).toMatchObject({
       id: settings.id,
       siteName: "Smoke Studio",
-      siteUrl: `https://${tenant.domain}`,
+      siteUrl: `https://${domain}`,
     })
-    expect((storedSettings.docs[0] as any).navHeader).toHaveLength(1)
+    expect(asDocRecord(storedSettings.docs[0]!).navHeader).toHaveLength(1)
   })
 })

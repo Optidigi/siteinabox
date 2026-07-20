@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest"
 import { NextRequest } from "next/server"
 import { proxy as middleware } from "@/proxy"
 
+import { errLike } from "../_helpers/cast"
 // Audit finding #4 (P1, T12) — Admin responses ship with no CSP /
 // frame-ancestors / HSTS / nosniff / Referrer-Policy. Admin app is
 // iframable from any origin; future XSS has no CSP fallback.

@@ -1,5 +1,8 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks features-17 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   Cable,
   Code,
@@ -7,79 +10,85 @@ import {
   MonitorSmartphone,
   SquareDashedMousePointer,
   Zap,
-} from "lucide-react";
-import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+  type LucideIcon,
+} from "lucide-react"
+import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import {
+  featureItemIcon,
+  renderFeatureIntro,
+  renderFeatureItemDescription,
+  renderFeatureItemTitle,
+  renderFeatureTitle,
+  type FeatureItem,
+} from "../../typed/feature-fields"
+import { feature17Literal } from "../../typed/fixtures/feature-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const features = [
-  {
-    title: "Blazing Fast Performance",
-    description:
-      "Optimized for speed with minimal loading times and instant interactions, ensuring a smooth experience across devices.",
-    icon: Zap,
-  },
-  {
-    title: "Fully Customizable",
-    description:
-      "Tailor every component to match your brand or workflow — with built-in support for themes, layouts, and configurations.",
-    icon: SquareDashedMousePointer,
-  },
-  {
-    title: "Developer-Friendly",
-    description:
-      "Built with clean, modern code and best practices in mind, making it easy to integrate, extend, and scale.",
-    icon: Code,
-  },
-  {
-    title: "Responsive by Default",
-    description:
-      "Every component is designed to look great on all screen sizes — no extra work needed to make things mobile-friendly.",
-    icon: MonitorSmartphone,
-  },
-  {
-    title: "Accessible for Everyone",
-    description:
-      "Built with accessibility best practices in mind to ensure an inclusive experience for all users, regardless of ability.",
-    icon: Contrast,
-  },
-  {
-    title: "Seamless Integration",
-    description:
-      "Easily connect with your favorite tools, APIs, and services — whether it's authentication, databases, or third-party libraries.",
-    icon: Cable,
-  },
-];
+const ITEM_ICONS: LucideIcon[] = [Zap, SquareDashedMousePointer, Code, MonitorSmartphone, Contrast, Cable]
 
-const Features = () => {
+export type Features17Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  features: FeatureItem[]
+  literalPreview?: boolean
+}
+
+export function Features17({ title, intro, features, blockIndex, editSlots, rootAttributes, literalPreview = false }: Features17Props) {
+  const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
+  const introContent = renderFeatureIntro(editSlots, intro, blockIndex)
+
   return (
-    <div className="mx-auto flex max-w-7xl flex-col px-6 py-20">
-      <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Simplify your stack
-      </>} inline /></h2>
-      <p className="-tracking[0.01em] mt-3 text-pretty text-center text-muted-foreground text-xl sm:text-2xl"><ProviderField field="intro" fallback={<>
-        Reduce dependencies and keep things easy
-      </>} inline /></p>
-
-      <div className="mt-16 grid grid-cols-1 gap-1.5 border bg-muted p-1.5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
-        {<ProviderItems field="features" templates={features}>{(providerItems) => providerItems.map((feature, index) => (
-          <div className="relative -m-px border bg-card px-5 py-7" key={index}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/10">
-              <feature.icon />
+    <div className="mx-auto flex max-w-7xl flex-col px-6 py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="text-pretty text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+          {titleContent}
+        </h2>
+      ) : null}
+      {introContent ? (
+        <p className="-tracking[0.01em] mt-3 text-pretty text-center text-muted-foreground text-xl sm:text-2xl">
+          {introContent}
+        </p>
+      ) : null}
+      <div className="mt-16 grid grid-cols-1 gap-1.5 border bg-muted p-1.5 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3 border-border">
+        {features.map((feature, itemIndex) => {
+          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          return (
+            <div className="relative -m-px border bg-card px-5 py-7 border-border" key={itemIndex}>
+              {Icon ? (
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/10">
+                  <Icon />
+                </div>
+              ) : null}
+              <h3 className="mt-5 font-medium text-lg tracking-[-0.005em]">
+                {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
+              </h3>
+              {feature.description ? (
+                <div className="mt-2 text-foreground/80">
+                  {renderFeatureItemDescription(editSlots, feature.description, blockIndex, itemIndex, { literalPreview })}
+                </div>
+              ) : null}
+              <Badge
+                className="absolute top-0 right-0 rounded-none border-t-0 border-r-0 bg-muted/30 font-mono dark:border-foreground/15 dark:bg-background"
+                variant="outline"
+              >
+                {(itemIndex + 1).toString().padStart(2, "0")}
+              </Badge>
             </div>
-            <h3 className="mt-5 font-medium text-lg tracking-[-0.005em]">
-              {feature.title}
-            </h3>
-            <p className="mt-2 text-foreground/80">{feature.description}</p>
-            <Badge
-              className="absolute top-0 right-0 rounded-none border-t-0 border-r-0 bg-muted/30 font-mono dark:border-foreground/15 dark:bg-background"
-              variant="outline"
-            >
-              {(index + 1).toString().padStart(2, "0")}
-            </Badge>
-          </div>
-        ))}</ProviderItems>}
+          )
+        })}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Features;
+export default function Features17Literal() {
+  return (
+    <Features17
+      title={feature17Literal.title}
+      intro={feature17Literal.intro}
+      features={feature17Literal.features}
+      blockIndex={0}
+      literalPreview
+    />
+  )
+}

@@ -12,8 +12,15 @@ is no alternate CMS block renderer or canvas/source tree.
   delayed behind a client loading shell.
 - `/renderer-frame` and `/editor-frame` use the generated active-variant loader,
   so a page downloads only its selected provider views.
-- `PageForm` owns fields, saving, add/delete/duplicate/reorder, navigation,
-  themes, and the inspector.
+- `pageEditorCore.ts` and `usePageEditorCore.ts` own authoritative editor
+  logic: form state, fields, add/delete/duplicate/reorder, navigation
+  membership, theme and site-chrome dirty tracking, selection, draft recovery,
+  and save orchestration. `PageForm` composes the shared core with desktop and
+  mobile shells (inspector, theme bar, and layout chrome).
+- Explicit save posts to `/api/page-editor-save` through the typed
+  `pageEditorSaveContract` (`page`, optional `siteDesign`, optional `publish`).
+  Page writes may include `expectedUpdatedAt` for optimistic concurrency;
+  stale clients receive a conflict response instead of silently overwriting.
 - A successful explicit save commits the page, related theme/navigation/chrome
   writes, and one validated active current-state snapshot through one database
   transaction. A validation or publication failure rolls the transaction back
@@ -37,11 +44,11 @@ removed DOM/geometry editing bridge remains retired.
 
 ## Protocol
 
-The parent may send `page.replace`, `theme.patch`, `selection.set`, and mobile
-focused-section mode. The editor may send `renderer.ready`, `renderer.height`,
+The parent sends one versioned `render.snapshot` carrying page, settings, theme,
+selection, and mobile focused-section mode. The editor may send `renderer.ready`, `renderer.height`,
 `selection.changed`, `chrome.select`, and a fail-closed `error`. Legacy block
 mutation, inline-field, geometry, gutter, and view-toggle messages were removed
-from protocol v2.
+from protocol v3.
 
 ## Parity and safety
 

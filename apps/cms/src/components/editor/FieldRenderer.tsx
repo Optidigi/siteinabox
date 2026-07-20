@@ -11,8 +11,7 @@ import { LexicalField } from "@/components/editor/richText/LexicalField"
 import { useRtManifest } from "@/components/editor/RtManifestContext"
 import { EMPTY_BLOCK, EMPTY_INLINE } from "@/lib/richText/RtNode"
 import { useTranslations } from "next-intl"
-
-type AnyField = any
+import type { EditorField } from "@/components/editor/editorField"
 
 // Extracted subcomponent so hooks are called at the top level of a component, not
 // inside a render-prop callback. This satisfies the react-hooks/rules-of-hooks lint rule.
@@ -22,7 +21,7 @@ function RichTextFormField({
   control,
   variant,
 }: {
-  field: AnyField
+  field: EditorField
   fieldName: string
   control: Control
   variant: "block" | "inline"
@@ -44,9 +43,9 @@ function RichTextFormField({
             <LexicalField
               variant={variant}
               manifest={manifest}
-              value={(f.value as any) ?? empty}
+              value={(f.value) ?? empty}
               onChange={(v) => f.onChange(v)}
-              placeholder={(field.admin as any)?.placeholder}
+              placeholder={(field.admin)?.placeholder}
             />
           </FormControl>
           {field.admin?.description && (
@@ -59,7 +58,7 @@ function RichTextFormField({
   )
 }
 
-export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; namePrefix?: string }) {
+export function FieldRenderer({ field, namePrefix = "" }: { field: EditorField; namePrefix?: string }) {
   const t = useTranslations("editor")
   const fieldName = field.name ? (namePrefix ? `${namePrefix}.${field.name}` : field.name) : namePrefix
   const { control } = useFormContext()
@@ -148,7 +147,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
             <Select value={f.value ?? ""} onValueChange={f.onChange}>
               <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
               <SelectContent data-siab-editor-ui>
-                {field.options.map((opt: any) => (
+                {field.options?.map((opt) => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -162,7 +161,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
         <Controller name={fieldName} control={control} render={({ field: f }) => (
           <FormItem>
             <FormLabel>{field.label ?? field.name}</FormLabel>
-            <FormControl><MediaPicker value={f.value} onChange={f.onChange} relationTo={field.relationTo}/></FormControl>
+            <FormControl><MediaPicker value={f.value} onChange={f.onChange} relationTo={Array.isArray(field.relationTo) ? field.relationTo[0] : field.relationTo}/></FormControl>
             <FormMessage />
           </FormItem>
         )}/>
@@ -171,7 +170,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
       return (
         <fieldset className="rounded-md border p-3 space-y-3">
           <legend className="px-1 text-sm font-medium">{field.label ?? field.name}</legend>
-          {field.fields.map((sub: AnyField, i: number) => (
+          {field.fields?.map((sub, i: number) => (
             <FieldRenderer key={i} field={sub} namePrefix={fieldName} />
           ))}
         </fieldset>
@@ -179,7 +178,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
     case "array":
       return <ArrayFieldRenderer field={field} namePrefix={fieldName} />
     case "json": {
-      const fieldEditor = (field.admin as any)?.editor
+      const fieldEditor = (field.admin)?.editor
       if (fieldEditor === "richTextBlock" || fieldEditor === "richTextInline") {
         const variant = fieldEditor === "richTextBlock" ? "block" : "inline"
         return (
@@ -192,17 +191,17 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
         )
       }
       // Plain JSON field (no editor annotation) — defensive fallback, none exist today.
-      return <div className="text-xs text-muted-foreground">{t("jsonField", { name: field.name })}</div>
+      return <div className="text-xs text-muted-foreground">{t("jsonField", { name: field.name ?? "field" })}</div>
     }
     default:
       return <div className="text-xs text-muted-foreground">{t("unsupportedFieldType", { type: String(field.type) })}</div>
   }
 }
 
-function ArrayFieldRenderer({ field, namePrefix }: { field: any; namePrefix: string }) {
+function ArrayFieldRenderer({ field, namePrefix }: { field: EditorField; namePrefix: string }) {
   const t = useTranslations("editor")
   const { getValues, setValue } = useFormContext()
-  const items: any[] = getValues(namePrefix) ?? []
+  const items: unknown[] = getValues(namePrefix) ?? []
 
   const append = () => setValue(namePrefix, [...items, {}], { shouldDirty: true })
   const removeAt = (i: number) => setValue(namePrefix, items.filter((_, j) => j !== i), { shouldDirty: true })
@@ -213,7 +212,7 @@ function ArrayFieldRenderer({ field, namePrefix }: { field: any; namePrefix: str
       {items.map((_, i) => (
         <div key={i} className="rounded-md border p-3 max-md:p-2 max-md:space-y-2 space-y-3 relative">
           <button type="button" className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => removeAt(i)}>{t("remove")}</button>
-          {field.fields.map((sub: any, j: number) => (
+          {field.fields?.map((sub, j: number) => (
             <FieldRenderer key={j} field={sub} namePrefix={`${namePrefix}.${i}`} />
           ))}
         </div>

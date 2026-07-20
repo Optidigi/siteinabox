@@ -3,12 +3,19 @@ import { NextRequest } from "next/server"
 import { proxy as middleware, __resetRateLimitersForTests } from "@/proxy"
 import { Forms } from "@/collections/Forms"
 import { Users } from "@/collections/Users"
+import { expectAccessField, expectNamedField, fieldValidator } from "../_helpers/payloadFields"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
 import {
   __resetForgotPasswordLimiterForTests,
   rateLimitForgotPasswordByTargetEmail,
 } from "@/hooks/rateLimitForgotPassword"
 
+import { errLike } from "../_helpers/cast"
+import { accessArgs } from "../_helpers/accessArgs"
+import { argsFor } from "../_helpers/argsFor"
+import { asBeforeOperationHook, asBeforeValidateHook, callBeforeOpHook, hookArgsFor, type BeforeOperationHook, type BeforeValidateHook } from "../_helpers/hookFixtures"
+import { asFindClient } from "../_helpers/payloadFindClient"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit finding #5 (P1, T4) — Public form-submit/contact + forgot-password
 // unrate-limited; Forms.data has no size cap. This batch lands BOTH sub-
 // fixes (audit's suggested-fix items 1 + 2; item 3 hCaptcha is deferred
@@ -514,14 +521,14 @@ describe("audit-p1 #5 sub-fix 1 — anonymous POST rate-limit (T4)", () => {
 // Sub-fix 2 — Forms.data 32 KB cap (beforeValidate field hook)
 // -----------------------------------------------------------------------------
 
-const dataField = (Forms.fields as any[]).find((f) => f.name === "data")
-const dataValidate = dataField?.validate as
-  | ((value: unknown, ctx: any) => true | string | Promise<true | string>)
+const dataField = expectNamedField(Forms.fields, "data")
+const dataValidate = fieldValidator(dataField) as
+  | ((value: unknown, ctx: unknown) => true | string | Promise<true | string>)
   | undefined
 
 const validateData = async (value: unknown) => {
   expect(dataValidate, "Forms.data field must declare a `validate` function (audit-p1 #5 sub-fix 2)").toBeTypeOf("function")
-  return await dataValidate!(value, { req: { user: null } as any, siblingData: {}, operation: "create" })
+  return await dataValidate!(value, { req: { user: null }, siblingData: {}, operation: "create" })
 }
 
 describe("audit-p1 #5 sub-fix 2 — Forms.data 32 KB size cap (T4 payload-DoS sibling)", () => {
@@ -551,8 +558,8 @@ describe("audit-p1 #5 sub-fix 2 — Forms.data 32 KB size cap (T4 payload-DoS si
     // Defensive: Payload may invoke validate with value=undefined on partial
     // updates of the parent doc. The hook must not blow up on that — empty
     // serializes to `{}` (2 chars), which is well under 32 KB.
-    expect(await validateData(undefined as any)).toBe(true)
-    expect(await validateData(null as any)).toBe(true)
+    expect(await validateData(undefined)).toBe(true)
+    expect(await validateData(null)).toBe(true)
     expect(await validateData({})).toBe(true)
   })
 })
@@ -568,12 +575,11 @@ describe("audit-p1 #5 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 #1-#3 / P1 #
     else process.env.BOOTSTRAP_TOKEN = orig
   })
 
-  const fields = Users.fields as any[]
-  const roleField = fields.find((f) => f.name === "role")
-  const tenantsField = fields.find((f) => f.name === "tenants")
-  const apiKeyField = fields.find((f) => f.name === "apiKey")
-  const enableAPIKeyField = fields.find((f) => f.name === "enableAPIKey")
-  const apiKeyIndexField = fields.find((f) => f.name === "apiKeyIndex")
+  const roleField = expectAccessField(Users.fields, "role")
+  const tenantsField = expectAccessField(Users.fields, "tenants")
+  const apiKeyField = expectAccessField(Users.fields, "apiKey")
+  const enableAPIKeyField = expectAccessField(Users.fields, "enableAPIKey")
+  const apiKeyIndexField = expectAccessField(Users.fields, "apiKeyIndex")
 
   it("R1 (AMD-1): owner can still invite editor/viewer into own tenant — role.access.create + tenants.access.create unchanged", () => {
     const ownerArgs = {
@@ -661,10 +667,10 @@ describe("audit-p1 #5 — re-arm guards (AMD-1 / AMD-2 / AMD-3 / P0 #1-#3 / P1 #
 // L-Form-1..6: Forms.access.create gate
 // L-Users-1..5: Users.hooks.beforeOperation forgotPassword bogus-auth gate
 
-const formsCreateAccess = Forms.access?.create as (args: any) => boolean
+const formsCreateAccess = Forms.access?.create as (args: ReturnType<typeof accessArgs>) => boolean
 
 const reqShape = (opts: {
-  user?: any
+  user?: unknown
   authorization?: string
   cookie?: string
 }) => {
@@ -680,7 +686,7 @@ const reqShape = (opts: {
 
 describe("audit-p1 #5 sub-fix 1 layer-2 — Forms.access.create rejects bogus-auth attempts (closes middleware bypass)", () => {
   it("L-Form-1: anonymous (no req.user, no auth signals) → admit", () => {
-    expect(formsCreateAccess({ req: reqShape({}) })).toBe(true)
+    expect(formsCreateAccess(accessArgs({ req: reqShape({}) }))).toBe(true)
   })
 
   it("L-Form-2: authed (req.user set, even with bogus headers) → admit (real auth wins)", () => {
@@ -688,14 +694,14 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Forms.access.create rejects bogus-au
     // of any other header noise — the gate is for closing the *bypass*, not
     // adding new restrictions on legitimate authed paths.
     expect(
-      formsCreateAccess({
+      formsCreateAccess(accessArgs({
         req: reqShape({ user: { id: "u1", role: "editor" }, authorization: "users API-Key real" }),
-      })
+      }))
     ).toBe(true)
   })
 
   it("L-Form-3: bogus Authorization (req.user=null, Authorization='x') → REJECT (the reviewer's H1 attack closed)", () => {
-    expect(formsCreateAccess({ req: reqShape({ authorization: "x" }) })).toBe(false)
+    expect(formsCreateAccess(accessArgs({ req: reqShape({ authorization: "x" }) }))).toBe(false)
   })
 
   it("L-Form-4: bogus apiKey-shape Authorization (req.user=null, Authorization='users API-Key bogus') → REJECT", () => {
@@ -703,74 +709,51 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Forms.access.create rejects bogus-au
     // because Payload's apiKey strategy didn't validate it (req.user=null),
     // so the gate's bypass-attempt detection fires.
     expect(
-      formsCreateAccess({ req: reqShape({ authorization: "users API-Key attacker-fake" }) })
+      formsCreateAccess(accessArgs({ req: reqShape({ authorization: "users API-Key attacker-fake" }) }))
     ).toBe(false)
   })
 
   it("L-Form-5: bogus payload-token cookie (req.user=null, Cookie='payload-token=garbage') → REJECT (the reviewer's H2 attack closed)", () => {
-    expect(formsCreateAccess({ req: reqShape({ cookie: "payload-token=garbage" }) })).toBe(false)
+    expect(formsCreateAccess(accessArgs({ req: reqShape({ cookie: "payload-token=garbage" }) }))).toBe(false)
   })
 
   it("L-Form-6: empty Authorization header value → admit (not a bypass attempt; matches middleware polarity)", () => {
     // The middleware's anonymous-detector treats Authorization='' as
     // anonymous (rate-limited). The gate must agree: empty is not a signal.
-    expect(formsCreateAccess({ req: reqShape({ authorization: "" }) })).toBe(true)
+    expect(formsCreateAccess(accessArgs({ req: reqShape({ authorization: "" }) }))).toBe(true)
   })
 
   it("L-Form-7: cookie present without payload-token (e.g. 'session=x') → admit (not the gated cookie name)", () => {
-    expect(formsCreateAccess({ req: reqShape({ cookie: "session=irrelevant" }) })).toBe(true)
+    expect(formsCreateAccess(accessArgs({ req: reqShape({ cookie: "session=irrelevant" }) }))).toBe(true)
   })
 
   it("L-Form-8: cookie with empty payload-token value ('payload-token=;...') → admit (non-empty value is the signal)", () => {
-    expect(formsCreateAccess({ req: reqShape({ cookie: "payload-token=; other=x" }) })).toBe(true)
+    expect(formsCreateAccess(accessArgs({ req: reqShape({ cookie: "payload-token=; other=x" }) }))).toBe(true)
   })
 })
 
-const usersBeforeOpHooks = (Users.hooks?.beforeOperation ?? []) as Array<(args: any) => any>
+const usersBeforeOpHooks = (Users.hooks?.beforeOperation ?? []).map(asBeforeOperationHook)
 // The AMD-3 apiKey hook is at index 0 (registered first); the audit-p1 #5
 // layer-2 forgot-password hook is at index 1 (registered second). The
 // AMD-3 test asserts the index-0 invariant; we assert the index-1 hook's
 // behaviour here, with a behavioral fallback in case the order ever drifts.
-const findForgotPasswordHook = () => {
-  for (const h of usersBeforeOpHooks) {
-    let threw = false
-    try {
-      h({
-        args: {},
-        collection: {} as any,
-        context: {},
-        operation: "forgotPassword",
-        overrideAccess: false,
-        req: reqShape({ authorization: "x" }) as any,
-      })
-    } catch {
-      threw = true
-    }
-    if (threw) return h
-  }
-  return undefined
+  const forgotPasswordHook = usersBeforeOpHooks[1]
+
+const callForgotHook = async (req: Record<string, unknown>, operation: "forgotPassword" | "create" | "update" = "forgotPassword") => {
+  if (!forgotPasswordHook) return undefined
+  return callBeforeOpHook(forgotPasswordHook, { operation, req })
 }
-const forgotPasswordHook = findForgotPasswordHook()
 
-const callForgotHook = async (req: any, operation: "forgotPassword" | "create" | "update" = "forgotPassword") =>
-  (forgotPasswordHook as any)?.({
-    args: {},
-    collection: {} as any,
-    context: {},
-    operation,
-    overrideAccess: false,
-    req,
-  })
-
-const expectForbiddenStatus = async (promise: Promise<any> | undefined) => {
-  let err: any = null
+const expectForbiddenStatus = async (promise: Promise<unknown> | undefined) => {
+  let err: unknown = null
   try {
     await promise
   } catch (e) {
     err = e
   }
   expect(err, "expected hook to throw Forbidden").not.toBeNull()
-  expect(err?.status, "expected HTTP 403 Forbidden").toBe(403)
+  const errDoc = err as { status?: number }
+  expect(errDoc.status, "expected HTTP 403 Forbidden").toBe(403)
 }
 
 describe("audit-p1 #5 sub-fix 1 layer-2 — Users.hooks.beforeOperation forgot-password bogus-auth gate", () => {
@@ -836,12 +819,12 @@ describe("audit-p1 #5 sub-fix 1 layer-2 — Users.hooks.beforeOperation forgot-p
 })
 
 describe("OBS-5 — forgot-password target-email limiter after Payload auth", () => {
-  const callTargetLimiter = (email: string, user: any = { id: "editor1", role: "editor" }) =>
-    rateLimitForgotPasswordByTargetEmail({
+  const callTargetLimiter = (email: string, user: unknown = { id: "editor1", role: "editor" }) =>
+    rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
       args: { data: { email } },
       operation: "forgotPassword",
       req: reqShape({ user }),
-    } as any)
+    }))
 
   it("allows the first three reset attempts for the same target email", async () => {
     await expect(callTargetLimiter("Victim@Example.com")).resolves.toBeTruthy()
@@ -854,7 +837,7 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
     await callTargetLimiter("victim@example.com")
     await callTargetLimiter("victim@example.com")
 
-    let err: any = null
+    let err: unknown = null
     try {
       await callTargetLimiter("victim@example.com")
     } catch (e) {
@@ -862,8 +845,9 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
     }
 
     expect(err, "expected target-email limiter to throw").not.toBeNull()
-    expect(err.status).toBe(429)
-    expect(err.data?.retryAfterSeconds).toBeGreaterThan(0)
+    const errDoc = err as { status?: number; data?: { retryAfterSeconds?: number } }
+    expect(errDoc.status).toBe(429)
+    expect(errDoc.data?.retryAfterSeconds).toBeGreaterThan(0)
   })
 
   it("keeps different target emails isolated so API-key invite bursts can continue", async () => {
@@ -878,19 +862,19 @@ describe("OBS-5 — forgot-password target-email limiter after Payload auth", ()
 
   it("is operation-scoped and ignores calls without a concrete target email", async () => {
     await expect(
-      rateLimitForgotPasswordByTargetEmail({
+      rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
         args: { data: { email: "victim@example.com" } },
         operation: "create",
         req: reqShape({ user: { id: "editor1", role: "editor" } }),
-      } as any),
+      })),
     ).resolves.toBeTruthy()
 
     await expect(
-      rateLimitForgotPasswordByTargetEmail({
+      rateLimitForgotPasswordByTargetEmail(argsFor(rateLimitForgotPasswordByTargetEmail, {
         args: { data: {} },
         operation: "forgotPassword",
         req: reqShape({ user: { id: "editor1", role: "editor" } }),
-      } as any),
+      })),
     ).resolves.toBeTruthy()
   })
 })

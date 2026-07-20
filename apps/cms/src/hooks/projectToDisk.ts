@@ -1,11 +1,14 @@
 import path from "node:path"
 import { promises as fs } from "node:fs"
-import type { CollectionAfterChangeHook } from "payload"
+import type { CollectionAfterChangeHook, Payload } from "payload"
+import type { Media, Page, SiteSetting, Tenant } from "@/payload-types"
 import { writeAtomic } from "@/lib/atomicWrite"
 import { isSafeMediaFilename, resolveMediaPath } from "@/lib/mediaFilename"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
-import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import type { PublicAnalyticsConfigInput } from "@/lib/analytics/config"
+import { asRecord } from "@/lib/record"
+import { relationshipId, sameRelationshipId, type RelationshipIdRef } from "@/lib/relationshipId"
 import { resolveSettingsContract } from "@/lib/settingsContract"
 import {
   readManifest,
@@ -17,14 +20,15 @@ import {
 
 const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 
-const tenantIdOf = (doc: any): string | undefined => relationshipId(doc.tenant) ?? undefined
+type TenantScopedDoc = { tenant?: unknown; updatedAt?: string }
+type MediaRef = Media | string | number | null | undefined
+
+const tenantIdOf = (doc: TenantScopedDoc): string | undefined =>
+  relationshipId(doc.tenant as RelationshipIdRef) ?? undefined
 const shouldSkipProjection = (req: { context?: Record<string, unknown> } | undefined): boolean =>
   req?.context?.skipProjection === true
 
-// OBS-20 — nav `page`/`section` entries resolve their href + label from the
-// tenant's published pages, so site.json projection needs that set. Fetch
-// the minimal shape (id/slug/title) once per projection.
-const fetchPublishedPages = async (payload: any, tenantId: string) => {
+const fetchPublishedPages = async (payload: Payload, tenantId: string) => {
   const res = await payload.find({
     collection: "pages",
     where: { and: [{ tenant: { equals: tenantId } }, { status: { equals: "published" } }] },
@@ -32,10 +36,10 @@ const fetchPublishedPages = async (payload: any, tenantId: string) => {
     depth: 0,
     overrideAccess: true,
   })
-  return (res.docs as any[]).map((p) => ({ id: p.id, slug: p.slug, title: p.title }))
+  return res.docs.map((p: Page) => ({ id: p.id, slug: p.slug, title: p.title }))
 }
 
-const populateMedia = async (payload: any, value: unknown) => {
+const populateMedia = async (payload: Payload, value: MediaRef): Promise<Media | null> => {
   if (value == null) return null
   if (typeof value === "object") return value
   try {
@@ -45,20 +49,21 @@ const populateMedia = async (payload: any, value: unknown) => {
       depth: 0,
       overrideAccess: true,
     })
-  } catch (err: any) {
-    if (err?.name !== "NotFound" && err?.status !== 404) throw err
-    return value
+  } catch (err: unknown) {
+    const error = err as { name?: string; status?: number }
+    if (error?.name !== "NotFound" && error?.status !== 404) throw err
+    return null
   }
 }
 
-const mergePopulatedMedia = async (payload: any, fresh: unknown, fallback: unknown) => {
+const mergePopulatedMedia = async (payload: Payload, fresh: MediaRef, fallback: Media | null) => {
   if (fresh == null) return null
   if (typeof fresh === "object") return fresh
-  if (fallback && typeof fallback === "object" && sameRelationshipId((fallback as any).id, fresh as string | number)) return fallback
+  if (fallback && sameRelationshipId(fallback.id, fresh)) return fallback
   return populateMedia(payload, fresh)
 }
 
-const settingsDocForProjection = async (payload: any, settingsDoc: any) => {
+const settingsDocForProjection = async (payload: Payload, settingsDoc: SiteSetting) => {
   const branding = {
     ...(settingsDoc.branding ?? {}),
     logo: await populateMedia(payload, settingsDoc.branding?.logo),
@@ -78,7 +83,7 @@ const settingsDocForProjection = async (payload: any, settingsDoc: any) => {
   return { ...settingsDoc, branding, chrome }
 }
 
-const tenantForAnalytics = async (payload: any, tenantId: string) => {
+const tenantForAnalytics = async (payload: Payload, tenantId: string): Promise<Tenant | null> => {
   try {
     return await payload.findByID({
       collection: "tenants",
@@ -91,23 +96,24 @@ const tenantForAnalytics = async (payload: any, tenantId: string) => {
   }
 }
 
-const analyticsContextForTenant = (tenantId: string, tenant: any) => {
-  const manifest = tenant?.siteManifest ?? null
+const analyticsContextForTenant = (tenantId: string, tenant: Tenant | null) => {
+  const manifest = asRecord(tenant?.siteManifest)
+  const manifestVersion = manifest?.version
   return {
     tenantId,
     tenantSlug: typeof tenant?.slug === "string" ? tenant.slug : null,
+    tenantName: typeof tenant?.name === "string" ? tenant.name : null,
     siteDomain: typeof tenant?.domain === "string" ? tenant.domain : null,
     themeId: typeof manifest?.themeId === "string" ? manifest.themeId : null,
     siteBuildId: process.env.SIAB_SITE_BUILD_ID ?? null,
-    manifestVersion: typeof manifest?.version !== "undefined" ? manifest.version : null,
-    analytics: manifest?.analytics ?? null,
-    analyticsConsent: manifest?.analyticsConsent ?? null,
+    manifestVersion:
+      typeof manifestVersion === "string" || typeof manifestVersion === "number" ? manifestVersion : null,
+    analytics: (manifest?.analytics ?? null) as PublicAnalyticsConfigInput | null,
+    analyticsConsent: asRecord(manifest?.analyticsConsent),
   }
 }
 
-// Shared writer: serialise a SiteSettings doc (nav resolved against the
-// tenant's published pages) to site.json + record it in the manifest.
-const writeSiteJson = async (payload: any, tenantId: string, settingsDoc: any) => {
+const writeSiteJson = async (payload: Payload, tenantId: string, settingsDoc: SiteSetting) => {
   const tenantDir = path.join(dataDir(), "tenants", tenantId)
   const pages = await fetchPublishedPages(payload, tenantId)
   const projectedSettingsDoc = await settingsDocForProjection(payload, settingsDoc)
@@ -128,7 +134,7 @@ const writeSiteJson = async (payload: any, tenantId: string, settingsDoc: any) =
   )
   await withManifestLock(dataDir(), tenantId, async () => {
     let m = await readManifest(dataDir(), tenantId)
-    m = upsertEntry(m, { type: "settings", key: "site", updatedAt: projectedSettingsDoc.updatedAt as string })
+    m = upsertEntry(m, { type: "settings", key: "site", updatedAt: projectedSettingsDoc.updatedAt })
     await writeManifest(dataDir(), m)
   })
 }
@@ -145,15 +151,15 @@ const removeProjectedPage = async (tenantId: string, slug: string) => {
 
 export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previousDoc, req }) => {
   if (shouldSkipProjection(req)) return doc
-  const tenantId = tenantIdOf(doc)
+  const tenantId = tenantIdOf(doc as TenantScopedDoc)
   if (!tenantId) return doc
   const tenantDir = path.join(dataDir(), "tenants", tenantId)
 
   const wasPublished = previousDoc?.status === "published"
   const isPublished = doc.status === "published"
-  const slug = doc.slug as string
-  const oldTenantId = previousDoc ? tenantIdOf(previousDoc) : undefined
-  const oldSlug = (previousDoc?.slug || slug) as string
+  const slug = String(doc.slug)
+  const oldTenantId = previousDoc ? tenantIdOf(previousDoc as TenantScopedDoc) : undefined
+  const oldSlug = String(previousDoc?.slug || slug)
 
   if (isPublished) {
     if (wasPublished && oldTenantId && (oldTenantId !== tenantId || oldSlug !== slug)) {
@@ -161,11 +167,11 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
       req.payload.logger.info({ tenantId: oldTenantId, slug: oldSlug }, "[projection] old page projection removed")
     }
     const tenant = await tenantForAnalytics(req.payload, tenantId)
-    const json = pageToJson(doc, analyticsContextForTenant(tenantId, tenant))
+    const json = pageToJson(doc as Page, analyticsContextForTenant(tenantId, tenant))
     await writeAtomic(path.join(tenantDir, "pages", `${slug}.json`), JSON.stringify(json, null, 2))
     await withManifestLock(dataDir(), tenantId, async () => {
       let m = await readManifest(dataDir(), tenantId)
-      m = upsertEntry(m, { type: "page", key: slug, updatedAt: doc.updatedAt as string })
+      m = upsertEntry(m, { type: "page", key: slug, updatedAt: String(doc.updatedAt) })
       await writeManifest(dataDir(), m)
     })
     req.payload.logger.info({ tenantId, slug }, "[projection] page published to disk")
@@ -175,11 +181,6 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
     req.payload.logger.info({ tenantId: removeTenantId, slug: oldSlug }, "[projection] page unpublished — file removed")
   }
 
-  // OBS-20 — a nav `page`/`section` entry referencing this page resolves its
-  // href (slug) and label (title) at projection time. Publishing, unpublishing,
-  // or editing a published page can therefore change site.json's nav, so
-  // re-project the tenant's settings. Draft→draft edits don't affect nav
-  // output (draft pages never appear) so are skipped.
   if (isPublished || wasPublished) {
     const settings = await req.payload.find({
       collection: "site-settings",
@@ -199,16 +200,16 @@ export const projectPageToDisk: CollectionAfterChangeHook = async ({ doc, previo
 
 export const projectSettingsToDisk: CollectionAfterChangeHook = async ({ doc, req }) => {
   if (shouldSkipProjection(req)) return doc
-  const tenantId = tenantIdOf(doc)
+  const tenantId = tenantIdOf(doc as TenantScopedDoc)
   if (!tenantId) return doc
-  await writeSiteJson(req.payload, tenantId, doc)
+  await writeSiteJson(req.payload, tenantId, doc as SiteSetting)
   req.payload.logger.info({ tenantId }, "[projection] site settings projected")
   return doc
 }
 
 export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
   if (shouldSkipProjection(req)) return doc
-  const tenantId = tenantIdOf(doc)
+  const tenantId = tenantIdOf(doc as TenantScopedDoc)
   if (!tenantId || doc.filename == null) return doc
   if (!isSafeMediaFilename(doc.filename)) {
     req.payload.logger.warn({ tenantId, filename: doc.filename }, "[projection] unsafe media filename skipped")
@@ -220,9 +221,6 @@ export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, opera
   const tenantMediaDir = path.join(dataDir(), "tenants", tenantId, "media")
   await fs.mkdir(tenantMediaDir, { recursive: true })
 
-  // Prefer the request's upload buffer over Payload's global staticDir. The
-  // staticDir is shared across tenants, so copying from it can race when two
-  // tenants upload the same filename at the same time.
   const staging = resolveMediaPath(path.join(dataDir(), "_uploads-tmp"), filename)
   const final = resolveMediaPath(tenantMediaDir, filename)
   if (operation === "create" || operation === "update") {
@@ -237,8 +235,9 @@ export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, opera
         await fs.copyFile(staging, final)
       }
       await fs.rm(staging, { force: true })
-    } catch (err: any) {
-      if (err?.code !== "ENOENT") {
+    } catch (err: unknown) {
+      const error = err as { code?: string }
+      if (error?.code !== "ENOENT") {
         req.payload.logger.warn({ err, tenantId, filename }, "[projection] media copy failed")
       }
     }
@@ -246,7 +245,7 @@ export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, opera
 
   await withManifestLock(dataDir(), tenantId, async () => {
     let m = await readManifest(dataDir(), tenantId)
-    m = upsertEntry(m, { type: "media", key: filename, updatedAt: doc.updatedAt as string })
+    m = upsertEntry(m, { type: "media", key: filename, updatedAt: String(doc.updatedAt) })
     await writeManifest(dataDir(), m)
   })
   return doc

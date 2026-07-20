@@ -1,188 +1,119 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-"use client";
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks faq-11 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import { useState } from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   BanknoteArrowDown,
   CircleDollarSign,
   Package,
   Users,
-} from "lucide-react";
-import { useState } from "react";
-import { cn } from "@siteinabox/ui/lib/utils";
+  type LucideIcon,
+} from "lucide-react"
+import { cn } from "@siteinabox/ui/lib/utils"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
+  Button,
+} from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import {
+  faqAccordionValue,
+  type FaqItem,
+  renderFaqAnswer,
+  renderFaqIntro,
+  renderFaqQuestion,
+  renderFaqTitle,
+} from "../../typed/faq-fields"
+import { faq11Literal } from "../../typed/fixtures/faq-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
 
-const categorizedFaqs = [
-  {
-    category: "Orders & Shipping",
-    icon: Package,
-    faqs: [
-      {
-        question: "How long does shipping take?",
-        answer:
-          "Shipping typically takes 3-7 business days depending on your location.",
-      },
-      {
-        question: "Can I cancel or change my order?",
-        answer:
-          "You can cancel or modify your order within 2 hours of placing it. After that, it may be processed for shipment.",
-      },
-      {
-        question: "Do you ship internationally?",
-        answer:
-          "Yes, we offer international shipping. Delivery times and charges vary depending on the destination.",
-      },
-      {
-        question: "How can I track my order?",
-        answer:
-          "Once your order is shipped, a tracking link will be sent via email. You can also view it in your account.",
-      },
-      {
-        question: "What should I do if my order is delayed?",
-        answer:
-          "If your order is delayed, please contact our support team and we'll look into it immediately.",
-      },
-    ],
-  },
-  {
-    category: "Returns & Refunds",
-    icon: BanknoteArrowDown,
-    faqs: [
-      {
-        question: "What is your return policy?",
-        answer:
-          "We offer a 30-day return policy on unused items in their original packaging.",
-      },
-      {
-        question: "How do I initiate a return?",
-        answer:
-          "Log into your account, go to 'Orders', and select the return option or contact support for help.",
-      },
-      {
-        question: "How long does it take to process a refund?",
-        answer:
-          "Refunds are usually processed within 5-7 business days after we receive the returned item.",
-      },
-      {
-        question: "Can I return a used product?",
-        answer:
-          "No, we only accept returns for unused products in original condition.",
-      },
-      {
-        question: "Are return shipping charges covered?",
-        answer:
-          "Return shipping is free for defective or incorrect items. For other returns, the cost is deducted from the refund.",
-      },
-    ],
-  },
-  {
-    category: "Payments",
-    icon: CircleDollarSign,
-    faqs: [
-      {
-        question: "What payment methods do you accept?",
-        answer:
-          "We accept credit/debit cards, UPI, PayPal, Apple Pay, and net banking.",
-      },
-      {
-        question: "Is my payment information secure?",
-        answer:
-          "Absolutely. We use SSL encryption and secure payment gateways to protect your data.",
-      },
-      {
-        question: "Why was my payment declined?",
-        answer:
-          "Payments may be declined due to incorrect info or issues with the card issuer. Try again or contact your bank.",
-      },
-      {
-        question: "Do you offer cash on delivery (COD)?",
-        answer:
-          "Currently, we do not offer COD. All payments must be made online.",
-      },
-      {
-        question: "Will I receive an invoice for my purchase?",
-        answer:
-          "Yes, an invoice will be emailed to you after successful payment.",
-      },
-    ],
-  },
-  {
-    category: "Account & Support",
-    icon: Users,
-    faqs: [
-      {
-        question: "Do I need an account to place an order?",
-        answer:
-          "No, you can check out as a guest. However, having an account gives you access to order tracking and faster checkouts.",
-      },
-      {
-        question: "I forgot my password. What should I do?",
-        answer:
-          "Click on 'Forgot password' on the login page and follow the instructions to reset it.",
-      },
-      {
-        question: "How can I contact customer support?",
-        answer:
-          "You can reach us via email at support@example.com or through live chat on our website.",
-      },
-      {
-        question: "How do I update my profile information?",
-        answer:
-          "Log in to your account and go to 'Profile Settings' to update your personal details.",
-      },
-      {
-        question: "Do you offer 24/7 support?",
-        answer:
-          "Yes, our customer support team is available around the clock to help you.",
-      },
-    ],
-  },
-];
+type FaqCategory = {
+  category: string
+  icon: LucideIcon
+}
 
-const FAQ = () => {
-  const [activeCategory, setActiveCategory] = useState<string | null>(
-    categorizedFaqs[0]?.category ?? null
-  );
-  const activeFaqs = categorizedFaqs.find(
-    ({ category }) => category === activeCategory
-  )?.faqs;
+const CATEGORIES: FaqCategory[] = [
+  { category: "Orders & Shipping", icon: Package },
+  { category: "Returns & Refunds", icon: BanknoteArrowDown },
+  { category: "Payments", icon: CircleDollarSign },
+  { category: "Account & Support", icon: Users },
+]
+
+const FAQList = ({
+  items,
+  blockIndex,
+  editSlots,
+}: {
+  items: FaqItem[]
+  blockIndex: number
+  editSlots: Faq11Props["editSlots"]
+}) => (
+  <Accordion className="space-y-4" collapsible type="single">
+    {items.map((item, itemIndex) => (
+      <AccordionItem
+        className="rounded-xl not-last:border-b-0 bg-muted px-5"
+        key={itemIndex}
+        value={faqAccordionValue(itemIndex)}
+      >
+        <AccordionTrigger className="font-medium text-lg">
+          <div className="flex items-center gap-2">
+            {renderFaqQuestion(editSlots, item.question, blockIndex, itemIndex)}
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="text-base">
+          {renderFaqAnswer(editSlots, item.answer, blockIndex, itemIndex)}
+        </AccordionContent>
+      </AccordionItem>
+    ))}
+  </Accordion>
+)
+
+export type Faq11Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: FaqItem[]
+}
+
+export function Faq11({ title, intro, items, blockIndex, editSlots, rootAttributes }: Faq11Props) {
+  const [activeCategory, setActiveCategory] = useState<string | null>(CATEGORIES[0]?.category ?? null)
+  const titleContent = renderFaqTitle(editSlots, title, blockIndex)
+  const introContent = renderFaqIntro(editSlots, intro, blockIndex)
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12 sm:py-20">
-      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Frequently Asked Questions
-      </>} inline /></h2>
-      <p className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]"><ProviderField field="intro" fallback={<>
-        Find answers to common questions about our products and services
-      </>} inline /></p>
+    <div className="mx-auto max-w-7xl px-6 py-12 sm:py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] sm:text-[2.75rem]">
+          {titleContent}
+        </h2>
+      ) : null}
+      {introContent ? (
+        <div className="mt-3 text-balance text-center text-lg text-muted-foreground md:text-2xl md:tracking-[-0.015em]">
+          {introContent}
+        </div>
+      ) : null}
 
       <div className="mx-auto mt-12 max-w-4xl sm:mt-16">
-        {/* Mobile FAQs */}
         <div className="flex flex-col divide-y sm:hidden">
-          {categorizedFaqs.map(({ category, icon: Icon, faqs }) => (
+          {CATEGORIES.map(({ category, icon: Icon }) => (
             <div className="pt-8 pb-10" key={category}>
               <div className="mb-2 flex items-center gap-3 pb-3 pl-2">
                 <Icon className="size-6" />
                 <span className="font-medium text-lg">{category}</span>
               </div>
-              <FAQList faqs={faqs} />
+              <FAQList blockIndex={blockIndex} editSlots={editSlots} items={items} />
             </div>
           ))}
         </div>
 
-        {/* Desktop FAQs */}
         <div className="hidden gap-8 sm:flex">
           <div className="flex flex-col gap-4">
-            {categorizedFaqs.map(({ category, icon: Icon }) => (
+            {CATEGORIES.map(({ category, icon: Icon }) => (
               <Button
                 className={cn("h-11 justify-start gap-1 font-semibold", {
-                  "text-foreground/70 hover:text-foreground":
-                    activeCategory !== category,
+                  "text-foreground/70 hover:text-foreground": activeCategory !== category,
                 })}
                 key={category}
                 onClick={() => setActiveCategory(category)}
@@ -195,33 +126,21 @@ const FAQ = () => {
           </div>
 
           <div className="flex grow flex-col gap-4">
-            <FAQList faqs={activeFaqs ?? []} />
+            <FAQList blockIndex={blockIndex} editSlots={editSlots} items={items} />
           </div>
         </div>
       </div>
     </div>
-  );
-};
-
-function FAQList({ faqs }: { faqs: (typeof categorizedFaqs)[0]["faqs"] }) {
-  return (
-    <Accordion className="space-y-4" collapsible type="single">
-      {<ProviderItems field="items" templates={faqs}>{(providerItems) => providerItems.map((faq, index) => (
-        <AccordionItem
-          className="rounded-xl not-last:border-b-0 bg-muted px-5"
-          key={index}
-          value={faq.question}
-        >
-          <AccordionTrigger className="font-medium text-lg">
-            <div className="flex items-center gap-2">{faq.question}</div>
-          </AccordionTrigger>
-          <AccordionContent className="text-base">
-            {faq.answer}
-          </AccordionContent>
-        </AccordionItem>
-      ))}</ProviderItems>}
-    </Accordion>
-  );
+  )
 }
 
-export default FAQ;
+export default function Faq11Literal() {
+  return (
+    <Faq11
+      title={faq11Literal.title}
+      intro={faq11Literal.intro}
+      items={faq11Literal.items}
+      blockIndex={0}
+    />
+  )
+}

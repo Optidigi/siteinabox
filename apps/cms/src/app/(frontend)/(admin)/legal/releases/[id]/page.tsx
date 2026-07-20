@@ -17,7 +17,7 @@ export default async function LegalReleaseDetailPage({ params }: { params: Promi
   const record = await getLegalRecord("legal-documents", id)
   if (!record) notFound()
   return <div className="flex flex-col gap-4">
-    <PageHeader title={record.title || t("releaseDetail.title")} subtitle={record.changeSummary} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/releases"><ArrowLeft />{t("detail.back")}</Link></Button>} />
+    <PageHeader title={record.releaseKey || t("releaseDetail.title")} subtitle={record.changeSummary} beforeTitle={<Button asChild variant="ghost" size="sm"><Link href="/legal/releases"><ArrowLeft />{t("detail.back")}</Link></Button>} />
     <LegalRouteTabs activePath="/legal/releases" />
     <LegalRecordDetail title={t("releaseDetail.recordTitle")} fields={[
       { label: t("fields.documentType"), value: record.documentType }, { label: t("fields.language"), value: record.locale },

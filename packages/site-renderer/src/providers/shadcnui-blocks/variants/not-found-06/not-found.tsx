@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import {
   ArrowLeft,
   ArrowRightIcon,
@@ -41,7 +40,7 @@ const pages = [
 export default function NotFound() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-      <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted">
+      <div className="flex size-12 items-center justify-center rounded-2xl border bg-muted border-border">
         <OctagonXIcon className="size-6 text-muted-foreground" />
       </div>
       <h1 className="mt-6 font-medium text-[2rem] tracking-tight">
@@ -54,11 +53,11 @@ export default function NotFound() {
       <div className="mt-10 grid w-full max-w-lg gap-3 sm:grid-cols-2">
         {pages.map((page) => (
           <Link
-            className="group flex items-center gap-4 rounded-xl border p-4 text-left transition-colors hover:bg-muted/50"
+            className="group flex items-center gap-4 rounded-xl border p-4 text-left transition-colors hover:bg-muted/50 border-border"
             href={page.href}
             key={page.href}
           >
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background border-border">
               <page.icon className="size-4 text-muted-foreground" />
             </div>
             <div className="min-w-0 flex-1">

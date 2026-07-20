@@ -1,6 +1,5 @@
 "use client"
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 import {
   DndContext,
   KeyboardSensor,
@@ -32,48 +31,37 @@ import { useMobileEditor, type DrillFrame } from "@/components/editor/mobile/Mob
 import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
+import { useBlockArrayFieldController } from "@/components/editor/fields/fieldController"
+import {
+  asCtaValue,
+  asIconValue,
+  asRtRootValue,
+  resolveMediaDisplayUrl,
+  type EditorArrayItem,
+  type EditorIconValue,
+  type EditorMediaValue,
+} from "@/lib/editor/blockFieldValues"
 
 export interface MobileArrayDrilldownProps {
   spec: ElementSpec
   blockIndex: number
   manifest: RtManifest
-  /** Top-level field name in RHF, e.g. `blocks.0.features`. */
-  arrayName: string
 }
 
-/**
- * Three-state drill inside the inspector bar for array fields:
- *   - "list" — sortable list of items, "+ Add" row.
- *   - "item" — Level 2: per-sub-field rows (label + preview + chevron).
- *   - "subField" — Level 3: single sub-field editor (richtext / icon / image / text).
- *
- * The active drill frame lives in MobileEditorContext.drillStack — the LAST
- * frame's `itemIndex` identifies the item being edited; if that frame ALSO
- * has `subField`, we're at Level 3.
- */
-export const MobileArrayDrilldown: React.FC<MobileArrayDrilldownProps> = ({ spec, blockIndex, manifest, arrayName }) => {
+export const MobileArrayDrilldown: React.FC<MobileArrayDrilldownProps> = ({ spec, blockIndex, manifest }) => {
   const { state, pushDrill, popDrill, clearSelection } = useMobileEditor()
-  const { watch, setValue } = useFormContext()
-  const items: any[] = watch(arrayName) ?? []
+  const { items, updateItem, removeItem, reorderItems, appendItem } = useBlockArrayFieldController({
+    blockIndex,
+    field: spec.field,
+  })
   const activeFrame: DrillFrame | undefined = state.drillStack[state.drillStack.length - 1]
   const inItemMode = activeFrame != null && activeFrame.field === spec.field
 
-  const setItems = React.useCallback((next: any[]) => {
-    setValue(arrayName, next, { shouldDirty: true })
-  }, [arrayName, setValue])
-
   if (inItemMode && activeFrame) {
     const item = items[activeFrame.itemIndex] ?? {}
-    const onChange = (next: any) => {
-      const copy = [...items]
-      copy[activeFrame.itemIndex] = next
-      setItems(copy)
-    }
+    const onChange = (next: EditorArrayItem) => updateItem(activeFrame.itemIndex, next)
     const onRemove = () => {
-      const copy = items.filter((_, j) => j !== activeFrame.itemIndex)
-      setItems(copy)
-      // Removing the item invalidates the current path entirely — drop both
-      // frames AND the selection in one shot.
+      removeItem(activeFrame.itemIndex)
       clearSelection()
     }
 
@@ -116,12 +104,7 @@ export const MobileArrayDrilldown: React.FC<MobileArrayDrilldownProps> = ({ spec
       <SortableArrayList
         items={items}
         spec={spec}
-        onReorder={(from, to) => {
-          const copy = [...items]
-          const [moved] = copy.splice(from, 1)
-          copy.splice(to, 0, moved)
-          setItems(copy)
-        }}
+        onReorder={reorderItems}
         onOpenItem={(i) => pushDrill({ blockIndex, field: spec.field, itemIndex: i })}
       />
       <Button
@@ -129,9 +112,8 @@ export const MobileArrayDrilldown: React.FC<MobileArrayDrilldownProps> = ({ spec
         variant="outline"
         className="mt-3 gap-1.5"
         onClick={() => {
-          const next = [...items, {}]
-          setItems(next)
-          pushDrill({ blockIndex, field: spec.field, itemIndex: next.length - 1 })
+          const { insertedIndex } = appendItem()
+          pushDrill({ blockIndex, field: spec.field, itemIndex: insertedIndex })
         }}
       >
         <Plus className="size-4" />
@@ -142,7 +124,7 @@ export const MobileArrayDrilldown: React.FC<MobileArrayDrilldownProps> = ({ spec
 }
 
 const SortableArrayList: React.FC<{
-  items: any[]
+  items: EditorArrayItem[]
   spec: ElementSpec
   onReorder: (from: number, to: number) => void
   onOpenItem: (i: number) => void
@@ -167,7 +149,7 @@ const SortableArrayList: React.FC<{
         <div className="flex flex-col gap-1">
           {items.map((item, i) => (
             <SortableArrayRow
-              key={item?.id ?? i}
+              key={item.id ?? i}
               id={String(i)}
               label={spec.itemLabel ? spec.itemLabel(item, i) : `${spec.label} ${i + 1}`}
               onOpen={() => onOpenItem(i)}
@@ -221,15 +203,11 @@ const SortableArrayRow: React.FC<{ id: string; label: string; onOpen: () => void
   )
 }
 
-// ---------------------------------------------------------------------------
-// Level 2 — per-sub-field rows for one item.
-// ---------------------------------------------------------------------------
-
 const MobileArrayItemEditor: React.FC<{
   spec: ElementSpec
-  item: any
+  item: EditorArrayItem
   itemIndex: number
-  onChange: (next: any) => void
+  onChange: (next: EditorArrayItem) => void
   onRemove: () => void
   onBack: () => void
   onOpenSubField: (subField: string) => void
@@ -279,7 +257,7 @@ const MobileArrayItemEditor: React.FC<{
 
 const SubFieldRow: React.FC<{
   sub: ElementSpec
-  value: any
+  value: unknown
   onOpen: () => void
 }> = ({ sub, value, onOpen }) => {
   const preview = subFieldPreview(sub, value)
@@ -301,11 +279,7 @@ const SubFieldRow: React.FC<{
   )
 }
 
-// ---------------------------------------------------------------------------
-// Sub-field preview helpers — plain-text or small element for the row preview.
-// ---------------------------------------------------------------------------
-
-function subFieldPreview(sub: ElementSpec, value: any): React.ReactNode {
+function subFieldPreview(sub: ElementSpec, value: unknown): React.ReactNode {
   if (value == null || value === "") return null
   if (sub.kind === "text") {
     return String(value)
@@ -314,39 +288,46 @@ function subFieldPreview(sub: ElementSpec, value: any): React.ReactNode {
     return rtPreview(value)
   }
   if (sub.kind === "icon") {
-    if (typeof value !== "string" || value === "") return null
-    const Icon = resolveLucideIcon(value)
+    const iconName = asIconValue(value)
+    if (!iconName) return null
+    const Icon = resolveLucideIcon(iconName)
     return (
       <span className="inline-flex items-center gap-1.5">
         {Icon && <Icon className="size-4 text-muted-foreground" />}
-        <span>{value}</span>
+        <span>{iconName}</span>
       </span>
     )
   }
   if (sub.kind === "image") {
-    if (typeof value === "object" && value !== null) {
-      if (value.filename) return value.filename
-      if (value.url) return value.url
+    const url = resolveMediaDisplayUrl(value)
+    if (url) return url
+    if (typeof value === "object" && value !== null && "filename" in value && typeof value.filename === "string") {
+      return value.filename
     }
     return String(value)
   }
   if (sub.kind === "cta") {
-    if (typeof value === "object" && value !== null) {
-      return value.label || value.href || null
-    }
-    return null
+    const cta = asCtaValue(value)
+    return cta.label || cta.href || null
   }
   return null
 }
 
-/** Plain-text extraction from an RtRoot — walk children, concat text nodes, truncate. */
-function rtPreview(value: any): string | null {
+type RtPreviewNode = {
+  t?: string
+  v?: string
+  children?: RtPreviewNode[]
+  items?: RtPreviewNode[]
+}
+
+function rtPreview(value: unknown): string | null {
   if (!value || typeof value !== "object") {
     if (typeof value === "string") return truncate(value, 80)
     return null
   }
+  const root = value as RtPreviewNode
   const collected: string[] = []
-  const walk = (node: any) => {
+  const walk = (node: RtPreviewNode) => {
     if (!node) return
     if (node.t === "text" && typeof node.v === "string") {
       collected.push(node.v)
@@ -355,12 +336,11 @@ function rtPreview(value: any): string | null {
     if (Array.isArray(node.children)) {
       node.children.forEach(walk)
     }
-    // RtList has items[]; RtListItem has children[] handled above.
     if (Array.isArray(node.items)) {
       node.items.forEach(walk)
     }
   }
-  if (Array.isArray(value.children)) value.children.forEach(walk)
+  if (Array.isArray(root.children)) root.children.forEach(walk)
   const joined = collected.join(" ").trim()
   return joined ? truncate(joined, 80) : null
 }
@@ -370,14 +350,10 @@ function truncate(s: string, n: number): string {
   return s.slice(0, n - 1) + "…"
 }
 
-// ---------------------------------------------------------------------------
-// Level 3 — single sub-field editor.
-// ---------------------------------------------------------------------------
-
 const MobileArraySubFieldEditor: React.FC<{
   sub: ElementSpec
-  value: any
-  onChange: (next: any) => void
+  value: unknown
+  onChange: (next: unknown) => void
   blockIndex: number
   itemIndex: number
   manifest: RtManifest
@@ -417,8 +393,8 @@ const MobileArraySubFieldEditor: React.FC<{
 
 const SubFieldRenderer: React.FC<{
   sub: ElementSpec
-  value: any
-  onChange: (next: any) => void
+  value: unknown
+  onChange: (next: unknown) => void
   blockIndex: number
   itemIndex: number
   manifest: RtManifest
@@ -431,7 +407,7 @@ const SubFieldRenderer: React.FC<{
         <LexicalField
           key={`mobile-${blockIndex}.${itemIndex}.${sub.field}`}
           variant={sub.variant ?? "inline"}
-          value={value}
+          value={asRtRootValue(value)}
           onChange={onChange}
           manifest={manifest}
           placeholder={sub.label}
@@ -443,7 +419,10 @@ const SubFieldRenderer: React.FC<{
     return (
       <div className="space-y-1">
         {!hideLabel && <Label className="text-xs text-muted-foreground">{sub.label}</Label>}
-        <Input value={value ?? ""} onChange={(e) => onChange(e.target.value)} />
+        <Input
+          value={typeof value === "string" ? value : value == null ? "" : String(value)}
+          onChange={(e) => onChange(e.target.value)}
+        />
       </div>
     )
   }
@@ -458,13 +437,13 @@ const SubFieldRenderer: React.FC<{
 
 const SubFieldIcon: React.FC<{
   label: string
-  value: any
-  onChange: (next: string | null) => void
+  value: unknown
+  onChange: (next: EditorIconValue) => void
   hideLabel?: boolean
 }> = ({ label, value, onChange, hideLabel }) => {
   const t = useTranslations("editor")
   const [open, setOpen] = React.useState(false)
-  const iconName: string | null = value ?? null
+  const iconName = asIconValue(value)
   const Icon = resolveLucideIcon(iconName)
   return (
     <div className="space-y-1">
@@ -482,25 +461,15 @@ const SubFieldIcon: React.FC<{
   )
 }
 
-const resolveImageUrl = (v: any): string | null => {
-  if (!v) return null
-  if (typeof v === "string") return v
-  if (typeof v === "object") {
-    if (v.url) return v.url
-    if (v.filename) return `/media/${v.filename}`
-  }
-  return null
-}
-
 const SubFieldImage: React.FC<{
   label: string
-  value: any
-  onChange: (next: any) => void
+  value: unknown
+  onChange: (next: EditorMediaValue) => void
   hideLabel?: boolean
 }> = ({ label, value, onChange, hideLabel }) => {
   const t = useTranslations("editor")
   const [open, setOpen] = React.useState(false)
-  const url = resolveImageUrl(value)
+  const url = resolveMediaDisplayUrl(value)
   return (
     <div className="space-y-1.5">
       {!hideLabel && <Label className="text-xs text-muted-foreground">{label}</Label>}

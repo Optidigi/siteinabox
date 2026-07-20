@@ -1,61 +1,122 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
+// Owned typed adaptation of upstream shadcnui-blocks stats-06 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
 import {
   FastForward,
   HeartHandshake,
   MonitorSmartphone,
   TrendingUp,
   Users,
-} from "lucide-react";
+} from "lucide-react"
+import { stats06CmsLike } from "../../typed/fixtures/stats-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import {
+  renderStatLabel,
+  renderStatsIntro,
+  renderStatsTitle,
+  renderStatValue,
+  sliceStatItems,
+  type StatItem,
+} from "../../typed/stats-fields"
 
-function Stats() {
+const MAX_ITEMS = 5
+
+const CARD_CLASS = [
+  "rounded-xl border border-blue-200 bg-blue-50 p-6 py-7 dark:border-blue-400/30 dark:bg-blue-500/15",
+  "rounded-xl border border-green-600/30 bg-green-50 p-6 py-7 dark:border-green-500/30 dark:bg-green-500/15",
+  "row-span-2 flex flex-col overflow-hidden rounded-xl border border-red-200 bg-red-50 p-6 py-7 pb-0 dark:border-red-400/30 dark:bg-red-400/15",
+  "rounded-xl border border-amber-600/30 bg-amber-50 p-6 py-7 dark:border-amber-500/30 dark:bg-amber-500/15",
+  "rounded-xl border border-purple-200 bg-purple-50 p-6 py-7 dark:border-purple-400/30 dark:bg-purple-400/15",
+] as const
+
+const ICONS = [MonitorSmartphone, FastForward, HeartHandshake, TrendingUp, Users] as const
+const ICON_CLASS = [
+  "mb-7 h-10 w-10 stroke-[1.75px] text-blue-500",
+  "mb-7 h-10 w-10 stroke-[1.75px] text-green-600",
+  "mb-7 h-10 w-10 stroke-[1.75px] text-red-500",
+  "mb-7 h-10 w-10 stroke-[1.75px] text-amber-600",
+  "mb-7 h-10 w-10 stroke-[1.75px] text-purple-500",
+] as const
+
+export type Stats06Props = TypedVariantBaseProps & {
+  title?: RtRoot | null
+  intro?: RtRoot | null
+  items: StatItem[]
+}
+
+function StatCell({
+  item,
+  itemIndex,
+  blockIndex,
+  editSlots,
+}: {
+  item: StatItem
+  itemIndex: number
+  blockIndex: number
+  editSlots: Stats06Props["editSlots"]
+}) {
+  const Icon = ICONS[itemIndex]
+  const valueContent = renderStatValue(editSlots, item.value, blockIndex, itemIndex)
+  const labelContent = renderStatLabel(editSlots, item.label, blockIndex, itemIndex)
+  if (!valueContent && !labelContent) return null
   return (
-    <div className="mx-auto max-w-5xl px-6 py-20">
-      <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Numbers that matter
-      </>} inline /></h2>
-      <p className="mt-3.5 text-pretty text-center text-muted-foreground text-xl tracking-[-0.015em] sm:text-lg md:text-2xl"><ProviderField field="intro" fallback={<>
-        A quick look at the impact and adoption of our UI components
-      </>} inline /></p>
+    <div className={CARD_CLASS[itemIndex]}>
+      {Icon ? <Icon className={ICON_CLASS[itemIndex]} /> : null}
+      {valueContent ? <span className="font-medium text-5xl">{valueContent}</span> : null}
+      {labelContent ? (
+        <p className={itemIndex === 2 ? "mt-4 mb-2 text-foreground/80 text-xl" : "mt-4 text-foreground/80 text-xl"}>
+          {labelContent}
+        </p>
+      ) : null}
+      {itemIndex === 2 ? <PersonalGoalsIllustration className="mt-auto -mb-2 h-auto w-full" /> : null}
+    </div>
+  )
+}
+
+export function Stats06({ title, intro, items, blockIndex, editSlots, rootAttributes }: Stats06Props) {
+  const titleContent = renderStatsTitle(editSlots, title, blockIndex)
+  const introContent = renderStatsIntro(editSlots, intro, blockIndex)
+  const displayItems = sliceStatItems(items, MAX_ITEMS)
+
+  return (
+    <div className="mx-auto max-w-5xl px-6 py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="text-balance text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">
+          {titleContent}
+        </h2>
+      ) : null}
+      {introContent ? (
+        <p className="mt-3.5 text-pretty text-center text-muted-foreground text-xl tracking-[-0.015em] sm:text-lg md:text-2xl">
+          {introContent}
+        </p>
+      ) : null}
 
       <div className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-        <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 py-7 dark:border-blue-400/30 dark:bg-blue-500/15">
-          <MonitorSmartphone className="mb-7 h-10 w-10 stroke-[1.75px] text-blue-500" />
-          <span className="font-medium text-5xl"><ProviderItemField field="items" index={0} subField="value" fallback={<>70%</>} /></span>
-          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={0} subField="label" fallback={<>
-            Faster UI development
-          </>} /></p>
-        </div>
-        <div className="rounded-xl border border-green-600/30 bg-green-50 p-6 py-7 dark:border-green-500/30 dark:bg-green-500/15">
-          <FastForward className="mb-7 h-10 w-10 stroke-[1.75px] text-green-600" />
-          <span className="font-medium text-5xl"><ProviderItemField field="items" index={1} subField="value" fallback={<>5x</>} /></span>
-          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={1} subField="label" fallback={<>
-            Increase in productivity
-          </>} /></p>
-        </div>
-        <div className="row-span-2 flex flex-col overflow-hidden rounded-xl border border-red-200 bg-red-50 p-6 py-7 pb-0 dark:border-red-400/30 dark:bg-red-400/15">
-          <HeartHandshake className="mb-7 h-10 w-10 stroke-[1.75px] text-red-500" />
-          <span className="font-medium text-5xl"><ProviderItemField field="items" index={2} subField="value" fallback={<>98%</>} /></span>
-          <p className="mt-4 mb-2 text-foreground/80 text-xl"><ProviderItemField field="items" index={2} subField="label" fallback={<>
-            Customer satisfaction
-          </>} /></p>
-          <PersonalGoalsIllustration className="mt-auto -mb-2 h-auto w-full" />
-        </div>
-        <div className="rounded-xl border border-amber-600/30 bg-amber-50 p-6 py-7 dark:border-amber-500/30 dark:bg-amber-500/15">
-          <TrendingUp className="mb-7 h-10 w-10 stroke-[1.75px] text-amber-600" />
-          <span className="font-medium text-5xl"><ProviderItemField field="items" index={3} subField="value" fallback={<>300%</>} /></span>
-          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={3} subField="label" fallback={<>
-            Growth in last 6 months
-          </>} /></p>
-        </div>
-        <div className="rounded-xl border border-purple-200 bg-purple-50 p-6 py-7 dark:border-purple-400/30 dark:bg-purple-400/15">
-          <Users className="mb-7 h-10 w-10 stroke-[1.75px] text-purple-500" />
-          <span className="font-medium text-5xl"><ProviderItemField field="items" index={4} subField="value" fallback={<>120K+</>} /></span>
-          <p className="mt-4 text-foreground/80 text-xl"><ProviderItemField field="items" index={4} subField="label" fallback={<>Daily active users</>} /></p>
-        </div>
+        {displayItems.map((item, itemIndex) => (
+          <StatCell
+            key={itemIndex}
+            item={item}
+            itemIndex={itemIndex}
+            blockIndex={blockIndex}
+            editSlots={editSlots}
+          />
+        ))}
       </div>
     </div>
-  );
+  )
+}
+
+export default function Stats06Literal() {
+  return (
+    <Stats06
+      title={stats06CmsLike.title}
+      intro={stats06CmsLike.intro}
+      items={stats06CmsLike.items}
+      blockIndex={0}
+    />
+  )
 }
 
 const PersonalGoalsIllustration = (props: React.SVGProps<SVGSVGElement>) => (
@@ -481,4 +542,4 @@ const PersonalGoalsIllustration = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export default Stats;
+

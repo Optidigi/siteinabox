@@ -202,7 +202,7 @@ export async function checkAndRecordPreviewDomainOrder(
     : await payload.update({
       collection: "site-generation-runs",
       id: run.id,
-      data: { domainOrder } as any,
+      data: { domainOrder },
       depth: 0,
       overrideAccess: true,
     }) as SiteGenerationRun

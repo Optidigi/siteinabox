@@ -1,3 +1,4 @@
+import type { SiteSetting } from "@/payload-types"
 import {
   settingsToJsonWithoutAnalytics,
   type SettingsProjectionContext as SettingsProjectionCoreContext,
@@ -32,12 +33,12 @@ export { settingsToJsonWithoutAnalytics }
  * array is valid: page/section entries simply resolve to nothing.
  */
 export function settingsToJson(
-  doc: any,
+  doc: unknown,
   publishedPages: NavPage[] = [],
   analyticsContext: SettingsAnalyticsProjectionContext = {},
   projectionContext: SettingsProjectionContext = {},
 ) {
-  const projected = settingsToJsonWithoutAnalytics(doc, publishedPages, projectionContext)
+  const projected = settingsToJsonWithoutAnalytics(doc as SiteSetting, publishedPages, projectionContext)
   const includeAnalytics = projectionContext.analytics ?? true
 
   return {

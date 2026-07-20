@@ -7,6 +7,7 @@ import {
   type PayloadFindResult,
   type PayloadLikeFindClient,
 } from "./paginate"
+import type { Where } from "payload"
 import type { IntakeSubmission, SiteGenerationRun } from "@/payload-types"
 
 export type GenerationRunFilter =
@@ -72,8 +73,8 @@ const previewCandidateWhere = {
 }
 const dashboardRunWhere = { or: [failedWhere, previewCandidateWhere] }
 
-export function generationRunWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
-  const clauses: Record<string, unknown>[] = []
+export function generationRunWhere(filter: GenerationRunFilter = "all", q?: string): Where {
+  const clauses: Where[] = []
   if (filter === "all") clauses.push(dashboardRunWhere)
   if (filter === "needs-attention") clauses.push(failedWhere)
   if (filter === "preview-ready" || filter === "checkout-completed" || filter === "live") clauses.push(previewCandidateWhere)
@@ -96,8 +97,8 @@ export function generationRunWhere(filter: GenerationRunFilter = "all", q?: stri
   return { and: clauses }
 }
 
-export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: string): Record<string, unknown> {
-  const clauses: Record<string, unknown>[] = []
+export function intakeSubmissionWhere(filter: GenerationRunFilter = "all", q?: string): Where {
+  const clauses: Where[] = []
   if (filter === "all" || filter === "needs-attention") clauses.push(failedWhere)
   if (filter === "preview-ready" || filter === "checkout-completed" || filter === "live") clauses.push({ id: { equals: "__none__" } })
 

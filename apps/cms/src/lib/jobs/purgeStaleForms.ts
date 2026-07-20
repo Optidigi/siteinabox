@@ -1,3 +1,5 @@
+import type { Where } from "payload"
+
 // Audit-p2 #10 (T11) — Forms GDPR retention.
 //
 // Pure logic for the daily purge task. The Payload task wrapper lives
@@ -13,7 +15,7 @@ export const DEFAULT_RETENTION_DAYS = 90 as const
 export interface PayloadLikeClient {
   delete(args: {
     collection: "forms"
-    where: Record<string, unknown>
+    where: Where
     overrideAccess: true
   }): Promise<{ docs: unknown[]; deletedCount?: number }>
 }

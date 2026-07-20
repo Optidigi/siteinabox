@@ -2,24 +2,13 @@ import "server-only"
 
 import crypto from "node:crypto"
 import type { Payload } from "payload"
-import type { SiteGenerationRun, Tenant } from "@/payload-types"
+import type { SiteGenerationRun, Tenant, User } from "@/payload-types"
 import { auth } from "@/lib/betterAuth"
 import { relationshipId } from "@/lib/relationshipId"
 import { provisionDefaultTenantEmailPreferences } from "@/lib/legal/communicationPreferences"
 import { signPrivilegedMagicLinkMetadata } from "@/lib/auth/privilegedMagicLinkMetadata"
 
-type SnapshotDoc = {
-  id?: string | number | null
-  status?: string | null
-  domain?: string | null
-  snapshot?: {
-    siteUrl?: string | null
-    domain?: string | null
-    settings?: {
-      siteUrl?: string | null
-    } | null
-  } | null
-}
+import type { PublishedSiteSnapshot as PublishedSiteSnapshotDoc } from "@/payload-types"
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -85,18 +74,18 @@ async function emailFromLinkedIntake(payload: Payload, run: SiteGenerationRun): 
   try {
     const intake = await payload.findByID({
       collection: "intake-submissions",
-      id: intakeId as any,
+      id: intakeId,
       depth: 0,
       overrideAccess: true,
-    } as any) as any
+    })
     return cleanEmail(intake?.contactEmail) ?? emailFromNormalizedIntake(intake?.normalized)
   } catch (error) {
-    ;(payload as any).logger?.warn?.("[publish] live handoff intake lookup failed", {
+    payload.logger.warn({
       tenant: relationshipId(run.tenant),
       generationRun: run.id,
       intakeSubmission: intakeId,
       error: error instanceof Error ? error.message : "unknown",
-    })
+    }, "[publish] live handoff intake lookup failed")
     return null
   }
 }
@@ -109,11 +98,13 @@ export async function resolveLiveHandoffRecipient(
   return emailFromRun(run) ?? (await emailFromLinkedIntake(payload, run))
 }
 
-export function buildLiveSiteUrl(snapshotDoc: SnapshotDoc): string | null {
-  const explicit = cleanText(snapshotDoc.snapshot?.siteUrl) ?? cleanText(snapshotDoc.snapshot?.settings?.siteUrl)
+export function buildLiveSiteUrl(snapshotDoc: Pick<PublishedSiteSnapshotDoc, "domain" | "snapshot">): string | null {
+  const snapshot = asRecord(snapshotDoc.snapshot)
+  const settings = asRecord(snapshot?.settings)
+  const explicit = cleanText(snapshot?.siteUrl) ?? cleanText(settings?.siteUrl)
   if (explicit) return explicit
 
-  const domain = normalizeHandoffHost(snapshotDoc.snapshot?.domain ?? snapshotDoc.domain)
+  const domain = normalizeHandoffHost(snapshot?.domain as string | null | undefined ?? snapshotDoc.domain)
   return domain ? `https://${domain}` : null
 }
 
@@ -142,12 +133,12 @@ async function ensureLiveHandoffCustomerUser(payload: Payload, input: {
     limit: 2,
     depth: 0,
     overrideAccess: true,
-  } as any) as { docs?: any[] }
+  })
 
-  const docs = existing.docs ?? []
+  const docs = existing.docs
   if (docs.length > 1) throw new Error("Multiple CMS users match live handoff recipient.")
 
-  const desiredTenants = [{ tenant: input.tenantId }]
+  const desiredTenants: User["tenants"] = [{ tenant: Number(input.tenantId) }]
   const user = docs[0]
   if (!user) {
     const created = await payload.create({
@@ -161,7 +152,7 @@ async function ensureLiveHandoffCustomerUser(payload: Payload, input: {
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as unknown as { id: string | number }
+    })
     return created.id
   }
 
@@ -185,7 +176,7 @@ async function ensureLiveHandoffCustomerUser(payload: Payload, input: {
       },
       depth: 0,
       overrideAccess: true,
-    } as any) as unknown as { id: string | number }
+    })
     return updated.id
   }
 
@@ -197,7 +188,7 @@ async function assertInitialTermsAcceptance(payload: Payload, input: {
   tenantId: string | number
 }) {
   const result = await payload.find({
-    collection: "agreement-acceptances" as any,
+    collection: "agreement-acceptances",
     where: {
       and: [
         { tenant: { equals: input.tenantId } },
@@ -208,7 +199,7 @@ async function assertInitialTermsAcceptance(payload: Payload, input: {
     limit: 1,
     depth: 0,
     overrideAccess: true,
-  } as any) as { docs?: Array<{ id?: unknown }> }
+  }) as { docs?: Array<{ id?: unknown }> }
   if (!result.docs?.[0]?.id) {
     throw new Error("Initial Site in a Box terms acceptance evidence is missing.")
   }
@@ -221,7 +212,7 @@ async function sendLiveHandoffMagicLink(input: {
   adminUrl: string
   tenantId: string | number
 }) {
-  await (auth.api as any).signInMagicLink({
+  await (auth.api).signInMagicLink({
     body: {
       email: input.email,
       ...(input.name ? { name: input.name } : {}),
@@ -243,7 +234,7 @@ export async function sendLiveHandoffEmailAfterActivation(
   input: {
     tenant: Pick<Tenant, "id" | "domain">
     run: SiteGenerationRun | null
-    snapshotDoc: SnapshotDoc
+    snapshotDoc: Pick<PublishedSiteSnapshotDoc, "id" | "status" | "domain" | "snapshot">
     rollback?: boolean
   },
 ): Promise<"sent" | "skipped" | "failed"> {
@@ -251,12 +242,12 @@ export async function sendLiveHandoffEmailAfterActivation(
 
   const recipient = await resolveLiveHandoffRecipient(payload, input.run)
   if (!recipient) {
-    ;(payload as any).logger?.warn?.("[publish] live handoff email skipped", {
+    payload.logger.warn({
       reason: "missing_recipient",
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,
-    })
+    }, "[publish] live handoff email skipped")
     return "skipped"
   }
 
@@ -264,12 +255,12 @@ export async function sendLiveHandoffEmailAfterActivation(
   const siteUrl = buildLiveSiteUrl(input.snapshotDoc)
   const adminUrl = buildTenantAdminUrl(input.tenant)
   if (!siteUrl || !adminUrl) {
-    ;(payload as any).logger?.warn?.("[publish] live handoff email skipped", {
+    payload.logger.warn({
       reason: "missing_urls",
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,
-    })
+    }, "[publish] live handoff email skipped")
     return "skipped"
   }
 
@@ -283,7 +274,7 @@ export async function sendLiveHandoffEmailAfterActivation(
       name: customerName,
       tenantId: input.tenant.id,
     })
-    if ((payload as any).db?.beginTransaction) {
+    if (typeof payload.db?.beginTransaction === "function") {
       try {
         await provisionDefaultTenantEmailPreferences({
           payload,
@@ -293,11 +284,11 @@ export async function sendLiveHandoffEmailAfterActivation(
           role: "owner",
         })
       } catch (error) {
-        ;(payload as any).logger?.warn?.("[publish] default email preference provisioning failed", {
+        payload.logger.warn({
           tenant: input.tenant.id,
           user: customerUserId,
           error: error instanceof Error ? error.message : "unknown",
-        })
+        }, "[publish] default email preference provisioning failed")
       }
     }
     await sendLiveHandoffMagicLink({
@@ -309,12 +300,12 @@ export async function sendLiveHandoffEmailAfterActivation(
     })
     return "sent"
   } catch (error) {
-    ;(payload as any).logger?.warn?.("[publish] live handoff email failed after activation", {
+    payload.logger.warn({
       tenant: input.tenant.id,
       generationRun: input.run.id,
       snapshot: input.snapshotDoc.id,
       error: error instanceof Error ? error.message : "unknown",
-    })
+    }, "[publish] live handoff email failed after activation")
     return "failed"
   }
 }

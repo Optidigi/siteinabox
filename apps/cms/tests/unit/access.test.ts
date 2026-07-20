@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import { accessArgs } from "../_helpers/accessArgs"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import { isTenantMember } from "@/access/isTenantMember"
 import { isOwnerInTenant } from "@/access/isOwnerInTenant"
@@ -7,11 +8,11 @@ import { canManageUsers } from "@/access/canManageUsers"
 // Fixtures match Payload's actual call shape: access functions receive { req, ... }
 // where req contains the authenticated user (or null). After Wave 1 the user's
 // tenant lives in `tenants[].tenant` (plugin-multi-tenant native shape).
-const su = { req: { user: { id: "su1", role: "super-admin", tenants: [] } } } as any
-const owner = { req: { user: { id: "ow1", role: "owner", tenants: [{ tenant: { id: "t1" } }] } } } as any
-const editor = { req: { user: { id: "ed1", role: "editor", tenants: [{ tenant: { id: "t1" } }] } } } as any
-const viewer = { req: { user: { id: "vi1", role: "viewer", tenants: [{ tenant: { id: "t1" } }] } } } as any
-const anon = { req: { user: null } } as any
+const su = accessArgs({ req: { user: { id: "su1", role: "super-admin", tenants: [] } } })
+const owner = accessArgs({ req: { user: { id: "ow1", role: "owner", tenants: [{ tenant: { id: "t1" } }] } } })
+const editor = accessArgs({ req: { user: { id: "ed1", role: "editor", tenants: [{ tenant: { id: "t1" } }] } } })
+const viewer = accessArgs({ req: { user: { id: "vi1", role: "viewer", tenants: [{ tenant: { id: "t1" } }] } } })
+const anon = accessArgs({ req: { user: null } })
 
 describe("isSuperAdmin", () => {
   it("true only for super-admin role", () => {

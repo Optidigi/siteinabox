@@ -4,6 +4,7 @@ import { Readable } from "node:stream"
 import { NextRequest, NextResponse } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import { nodeErrorCode } from "@/lib/record"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { hasActivePreviewGrantForTenant } from "@/lib/preview/previewAccess"
@@ -126,15 +127,15 @@ async function mediaResponse(
   let stats
   try {
     stats = await fs.stat(filePath)
-  } catch (err: any) {
-    if (err?.code === "ENOENT") {
+  } catch (err: unknown) {
+    if (nodeErrorCode(err) === "ENOENT") {
       const stagingPath = resolve(DATA_DIR, "_uploads-tmp", filename)
       try {
         await fs.mkdir(dirname(filePath), { recursive: true })
         await fs.copyFile(stagingPath, filePath)
         stats = await fs.stat(filePath)
-      } catch (copyErr: any) {
-        if (copyErr?.code === "ENOENT") return new NextResponse("not found", { status: 404 })
+      } catch (copyErr: unknown) {
+        if (nodeErrorCode(copyErr) === "ENOENT") return new NextResponse("not found", { status: 404 })
         return new NextResponse("read error", { status: 500 })
       }
     } else {

@@ -24,7 +24,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
       <SettingsForm
         initial={settings}
         canEdit={canEdit}
-        settingsContract={resolveSettingsContract(tenant.siteManifest as any)}
+        settingsContract={resolveSettingsContract(tenant.siteManifest)}
       />
     </div>
   )

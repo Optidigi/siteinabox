@@ -1,11 +1,21 @@
 import "server-only"
 
-import type { Payload } from "payload"
+import type { PaginatedDocs, Payload, Where } from "payload"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import type {
+  AgreementAcceptance,
+  CommunicationPreference,
+  CommunicationPreferenceEvent,
+  LegalDocument,
+  LegalNotificationDelivery,
+  LegalOperatorEvent,
+  LegalRequirement,
+  TenantNotificationSubscription,
+} from "@/payload-types"
 import { normalisePagination, type PayloadFindResult } from "./paginate"
 
-type RecordLike = Record<string, any>
+type RecordLike = Record<string, unknown>
 type Tone = "neutral" | "info" | "success" | "warning" | "destructive"
 
 export type LegalStatusMetric = {
@@ -172,14 +182,14 @@ export function maskEmailRecipient(email: string): string {
   return `${visible}${"*".repeat(Math.max(2, Math.min(6, local.length - visible.length)))}@${domain}`
 }
 
-const clauses = (...values: Array<Record<string, unknown> | null>): Record<string, unknown> => {
-  const active = values.filter(Boolean) as Record<string, unknown>[]
+const clauses = (...values: Array<Where | null>): Where => {
+  const active = values.filter((value): value is Where => value != null)
   if (!active.length) return {}
   return active.length === 1 ? active[0]! : { and: active }
 }
 
-const count = async (payload: LegalPayload, collection: string, where: Record<string, unknown>) =>
-  (await payload.count({ collection: collection as any, where, overrideAccess: true } as any)).totalDocs
+const count = async (payload: LegalPayload, collection: Parameters<LegalPayload["count"]>[0]["collection"], where: Where) =>
+  (await payload.count({ collection: collection, where, overrideAccess: true })).totalDocs
 
 const clientFor = async (payload?: LegalPayload): Promise<LegalPayload> => payload ?? await getPayload({ config })
 
@@ -191,33 +201,33 @@ export async function getLegalAttentionItems(
   const limit = options.limit ?? 12
   const [deliveries, requirements, scheduled] = await Promise.all([
     payload.find({
-      collection: "legal-notification-deliveries" as any,
+      collection: "legal-notification-deliveries",
       where: { status: { equals: "failed" } },
       sort: "-lastAttemptAt",
       limit,
       depth: 1,
       overrideAccess: true,
-    } as any),
+    }),
     payload.find({
-      collection: "legal-requirements" as any,
+      collection: "legal-requirements",
       where: { status: { in: ["pending", "notified", "failed"] } },
       sort: "enforceAt",
       limit,
       depth: 1,
       overrideAccess: true,
-    } as any),
+    }),
     payload.find({
-      collection: "legal-documents" as any,
+      collection: "legal-documents",
       where: { effectiveAt: { greater_than: now.toISOString() } },
       sort: "effectiveAt",
       limit,
       depth: 0,
       overrideAccess: true,
-    } as any),
+    }),
   ])
 
   const ranked: Array<LegalAttentionRow & { rank: number; time: number }> = []
-  for (const item of deliveries.docs as RecordLike[]) {
+  for (const item of deliveries.docs) {
     const permanent = item.retryState === "permanent"
     ranked.push({
       id: `delivery-${item.id}`,
@@ -234,7 +244,7 @@ export async function getLegalAttentionItems(
       time: new Date(item.lastAttemptAt ?? 0).getTime(),
     })
   }
-  for (const item of requirements.docs as RecordLike[]) {
+  for (const item of requirements.docs) {
     const noticeAndUse = item.action === "notice_and_continued_use"
     const deadline = noticeAndUse ? iso(item.objectionDeadlineAt) : iso(item.enforceAt)
     const elapsed = Boolean(deadline && new Date(deadline) <= now)
@@ -257,7 +267,7 @@ export async function getLegalAttentionItems(
       time: new Date(deadline ?? 0).getTime(),
     })
   }
-  for (const item of scheduled.docs as RecordLike[]) {
+  for (const item of scheduled.docs) {
     ranked.push({
       id: `release-${item.id}`,
       kind: "release",
@@ -306,9 +316,16 @@ export async function getLegalOperationsOverview(
   }
 }
 
-const mapResult = <T, U>(result: PayloadFindResult<T>, mapper: (item: T) => U): PayloadFindResult<U> => ({
-  ...result,
+const mapResult = <T, U>(result: PaginatedDocs<T>, mapper: (item: T) => U): PayloadFindResult<U> => ({
   docs: result.docs.map(mapper),
+  totalDocs: result.totalDocs,
+  totalPages: result.totalPages,
+  page: result.page ?? 1,
+  limit: result.limit,
+  hasNextPage: result.hasNextPage,
+  hasPrevPage: result.hasPrevPage,
+  nextPage: result.nextPage ?? null,
+  prevPage: result.prevPage ?? null,
 })
 
 export async function listLegalReleases(options: LegalListOptions = {}, payload?: LegalPayload): Promise<LegalListResult<LegalReleaseRow>> {
@@ -316,14 +333,14 @@ export async function listLegalReleases(options: LegalListOptions = {}, payload?
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
   const result = await client.find({
-    collection: "legal-documents" as any,
+    collection: "legal-documents",
     where: clauses(query ? { or: [{ releaseKey: { like: query } }, { changeSummary: { like: query } }, { sourceCommit: { like: query } }] } : null),
     sort: "-publishedAt",
     page,
     limit,
     depth: 0,
     overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
+  })
   const now = new Date()
   return mapResult(result, (item): LegalReleaseRow => ({
     id: String(item.id), title: documentLabel(item), documentType: text(item.documentType), locale: text(item.locale),
@@ -337,16 +354,16 @@ export async function listLegalRequirements(options: LegalListOptions = {}, payl
   const client = await clientFor(payload)
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
-  const statusWhere = options.status === "open"
+  const statusWhere: Where | null = options.status === "open"
     ? { status: { in: ["pending", "notified", "failed"] } }
     : options.status === "deemed"
       ? { deemedAcceptedAt: { exists: true } }
       : options.status && options.status !== "all" ? { status: { equals: options.status } } : null
   const result = await client.find({
-    collection: "legal-requirements" as any,
+    collection: "legal-requirements",
     where: clauses(statusWhere, query ? { or: [{ subjectEmail: { like: query } }, { requirementKey: { like: query } }] } : null),
     sort: "enforceAt", page, limit, depth: 1, overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
+  })
   return mapResult(result, (item): LegalRequirementRow => ({
     id: String(item.id), tenant: tenantLabel(item.tenant), subjectEmail: maskEmailRecipient(text(item.subjectEmail)), documentLabel: documentLabel(item.document),
     action: text(item.action), status: text(item.status), enforceAt: iso(item.enforceAt), objectionDeadlineAt: iso(item.objectionDeadlineAt),
@@ -361,10 +378,10 @@ export async function listLegalDeliveries(options: LegalListOptions = {}, payloa
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
   const result = await client.find({
-    collection: "legal-notification-deliveries" as any,
+    collection: "legal-notification-deliveries",
     where: clauses(options.status && options.status !== "all" ? { status: { equals: options.status } } : null, query ? { or: [{ recipient: { like: query } }, { notificationKey: { like: query } }] } : null),
     sort: "-lastAttemptAt", page, limit, depth: 1, overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
+  })
   return mapResult(result, (item): LegalDeliveryRow => ({
     id: String(item.id), tenant: tenantLabel(item.tenant), recipientMasked: maskEmailRecipient(text(item.recipient)), kind: text(item.kind), status: text(item.status),
     attemptCount: Number(item.attemptCount ?? 0), nextAttemptAt: iso(item.nextAttemptAt), lastAttemptAt: iso(item.lastAttemptAt), sentAt: iso(item.sentAt),
@@ -377,10 +394,10 @@ export async function listLegalAcceptances(options: LegalListOptions = {}, paylo
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
   const result = await client.find({
-    collection: "agreement-acceptances" as any,
+    collection: "agreement-acceptances",
     where: clauses(query ? { or: [{ actorEmail: { like: query } }, { evidenceKey: { like: query } }] } : null),
     sort: "-acceptedAt", page, limit, depth: 1, overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
+  })
   return mapResult(result, (item): LegalAcceptanceRow => ({
     id: String(item.id), tenant: tenantLabel(item.tenant), actorEmailMasked: maskEmailRecipient(text(item.actorEmail)), documentLabel: documentLabel(item.document),
     documentVersion: text(item.documentVersion), acceptedAt: text(item.acceptedAt), statementVersion: text(item.statementVersion), href: `/legal/acceptances/${item.id}`,
@@ -392,10 +409,10 @@ export async function listLegalAuditEvents(options: LegalListOptions = {}, paylo
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
   const result = await client.find({
-    collection: "legal-operator-events" as any,
+    collection: "legal-operator-events",
     where: clauses(query ? { or: [{ actorEmail: { like: query } }, { targetId: { like: query } }, { requestId: { like: query } }] } : null),
     sort: "-occurredAt", page, limit, depth: 0, overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
+  })
   return mapResult(result, (item): LegalAuditRow => ({
     id: String(item.id), action: text(item.action), target: `${text(item.targetCollection)}:${text(item.targetId)}`,
     actorEmailMasked: maskEmailRecipient(text(item.actorEmail)), reason: text(item.reason), occurredAt: text(item.occurredAt),
@@ -407,14 +424,14 @@ export async function listCommunicationPreferences(options: LegalListOptions = {
   const client = await clientFor(payload)
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
-  const statusWhere = options.status === "opted_in" ? { marketing: { equals: true } }
+  const statusWhere: Where | null = options.status === "opted_in" ? { marketing: { equals: true } }
     : options.status === "opted_out" ? { marketing: { equals: false } }
       : options.status === "suppressed" ? { suppressed: { equals: true } } : null
   const result = await client.find({
-    collection: "communication-preferences" as any,
+    collection: "communication-preferences",
     where: clauses(statusWhere, query ? { or: [{ email: { like: query } }, { subjectKey: { like: query } }, { marketingConsentSource: { like: query } }] } : null),
     sort: "-updatedAt", page, limit, depth: 1, overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
+  })
   return mapResult(result, (item): CommunicationPreferenceRow => ({
     id: String(item.id), emailMasked: maskEmailRecipient(text(item.email)), tenant: tenantLabel(item.tenant),
     marketing: item.marketing === true, productNotifications: item.productNotifications === true, suppressed: item.suppressed === true,
@@ -428,11 +445,11 @@ export async function listTenantNotificationSubscriptions(options: LegalListOpti
   const { page, limit } = normalisePagination(options)
   const query = options.q?.trim()
   const result = await client.find({
-    collection: "tenant-notification-subscriptions" as any,
+    collection: "tenant-notification-subscriptions",
     where: clauses(query ? { or: [{ email: { like: query } }, { subscriptionKey: { like: query } }] } : null),
     sort: "tenant", page, limit, depth: 1, overrideAccess: true,
-  } as any) as PayloadFindResult<RecordLike>
-  const categoryFields = ["formSubmissions", "publishingAndSiteStatus", "domainAndDns", "billingAndPayments", "teamAndAccess", "operationalDigest"]
+  })
+  const categoryFields = ["formSubmissions", "publishingAndSiteStatus", "domainAndDns", "billingAndPayments", "teamAndAccess", "operationalDigest"] as const
   return mapResult(result, (item): TenantNotificationRow => ({
     id: String(item.id), tenant: tenantLabel(item.tenant), member: relationLabel(item.user, ["name", "email"]) ?? maskEmailRecipient(text(item.email)),
     emailMasked: maskEmailRecipient(text(item.email)), categories: categoryFields.filter((field) => item[field] === true), updatedAt: text(item.updatedAt),
@@ -440,12 +457,12 @@ export async function listTenantNotificationSubscriptions(options: LegalListOpti
   }))
 }
 
-export async function getCommunicationPreferenceRecord(id: string | number): Promise<{ preference: RecordLike; events: CommunicationPreferenceEventRow[] } | null> {
+export async function getCommunicationPreferenceRecord(id: string | number): Promise<{ preference: CommunicationPreference; events: CommunicationPreferenceEventRow[] } | null> {
   const payload = await getPayload({ config })
   try {
-    const preference = await payload.findByID({ collection: "communication-preferences", id, depth: 1, overrideAccess: true } as any) as RecordLike
-    const events = await payload.find({ collection: "communication-preference-events" as any, where: { preference: { equals: id } }, sort: "-occurredAt", limit: 100, depth: 0, overrideAccess: true } as any)
-    return { preference, events: (events.docs as RecordLike[]).map((event) => ({
+    const preference = await payload.findByID({ collection: "communication-preferences", id, depth: 1, overrideAccess: true })
+    const events = await payload.find({ collection: "communication-preference-events", where: { preference: { equals: id } }, sort: "-occurredAt", limit: 100, depth: 0, overrideAccess: true })
+    return { preference, events: events.docs.map((event): CommunicationPreferenceEventRow => ({
       id: String(event.id), preferenceType: text(event.preferenceType), action: text(event.action), category: text(event.category) || null,
       source: text(event.source), statementVersion: text(event.statementVersion), assertedAt: iso(event.assertedAt), occurredAt: text(event.occurredAt),
     })) }
@@ -456,10 +473,23 @@ export async function getCommunicationPreferenceRecord(id: string | number): Pro
   }
 }
 
-export async function getLegalRecord(collection: "legal-documents" | "legal-requirements" | "legal-notification-deliveries" | "agreement-acceptances", id: string | number): Promise<RecordLike | null> {
+export type LegalDetailRecord =
+  | LegalDocument
+  | LegalRequirement
+  | LegalNotificationDelivery
+  | AgreementAcceptance
+
+export async function getLegalRecord(collection: "legal-documents", id: string | number): Promise<LegalDocument | null>
+export async function getLegalRecord(collection: "legal-requirements", id: string | number): Promise<LegalRequirement | null>
+export async function getLegalRecord(collection: "legal-notification-deliveries", id: string | number): Promise<LegalNotificationDelivery | null>
+export async function getLegalRecord(collection: "agreement-acceptances", id: string | number): Promise<AgreementAcceptance | null>
+export async function getLegalRecord(
+  collection: "legal-documents" | "legal-requirements" | "legal-notification-deliveries" | "agreement-acceptances",
+  id: string | number,
+): Promise<LegalDetailRecord | null> {
   const payload = await getPayload({ config })
   try {
-    return await payload.findByID({ collection, id, depth: 2, overrideAccess: true } as any) as RecordLike
+    return await payload.findByID({ collection, id, depth: 2, overrideAccess: true })
   } catch (error) {
     const status = (error as { status?: unknown })?.status
     if (status === 404 || (error as { name?: unknown })?.name === "NotFound") return null

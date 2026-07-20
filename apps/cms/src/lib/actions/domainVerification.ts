@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { requireRole } from "@/lib/authGate"
+import type { Tenant } from "@/payload-types"
 
 const allowedStatuses = new Set(["not_checked", "verified", "failed"])
 
@@ -26,19 +27,19 @@ export async function updateTenantDomainVerificationAction(
   const payload = await getPayload({ config })
   await payload.update({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     data: {
       domainVerification: {
-        status,
+        status: status as NonNullable<Tenant["domainVerification"]>["status"],
         checkedAt: new Date().toISOString(),
-        checkedBy: user.id,
+        checkedBy: Number(user.id),
         notes: text(formData.get("notes")),
       },
-    } as any,
+    },
     depth: 0,
     overrideAccess: false,
     user,
-  } as any)
+  })
 
   revalidatePath(`/operations/runs/${generationRunId}`)
 }

@@ -1,6 +1,7 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-"use client";
-import { type MotionStyle, motion, type Transition } from "motion/react";
+"use client"
+
+import * as React from "react"
+import { type MotionStyle, motion, type Transition } from "motion/react"
 
 import { cn } from "@siteinabox/ui/lib/utils";
 

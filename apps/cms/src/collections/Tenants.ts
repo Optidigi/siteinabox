@@ -1,4 +1,4 @@
-import type { CollectionConfig } from "payload"
+import type { CollectionConfig, PayloadRequest } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import {
   archiveTenantDir,
@@ -19,7 +19,7 @@ import { adminText, adminValidationText } from "@/lib/payloadAdminI18n"
 // + `TenantEditForm.tsx` so the message is consistent everywhere the user
 // might see it.
 const SLUG_REGEX = /^[a-z0-9-]+$/
-const validateSlug = (val: unknown, { req }: any) => {
+const validateSlug = (val: unknown, { req }: { req?: PayloadRequest }) => {
   if (val == null || val === "") return adminValidationText(req?.i18n?.language, "Slug is required", "Slug is verplicht")
   if (typeof val !== "string" || !SLUG_REGEX.test(val)) {
     return adminValidationText(req?.i18n?.language, "Use lowercase letters, digits, and hyphens only", "Gebruik alleen kleine letters, cijfers en koppeltekens")
@@ -42,7 +42,7 @@ const validateSlug = (val: unknown, { req }: any) => {
 // or "1.2.3.4" as valid hostnames, which would silently never match a
 // real Host header lookup.
 const DOMAIN_REGEX = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
-const validateDomain = (val: unknown, { req }: any) => {
+const validateDomain = (val: unknown, { req }: { req?: PayloadRequest }) => {
   const language = req?.i18n?.language
   if (val == null || val === "") return adminValidationText(language, "Domain is required", "Domein is verplicht")
   if (typeof val !== "string") return adminValidationText(language, "Domain must be text", "Domein moet tekst zijn")
@@ -152,7 +152,7 @@ export const Tenants: CollectionConfig = {
       admin: {
         description: adminText("Per-tenant rich-text editor configuration. JSON is validated against the RtManifest schema.", "Rich-text-editorconfiguratie per klantomgeving. JSON wordt gevalideerd tegen het RtManifest-schema."),
       },
-      validate: (val: unknown, { req }: any) => {
+      validate: (val: unknown, { req }: { req?: PayloadRequest }) => {
         if (val == null) return true
         const r = manifestSchema.safeParse(val)
         if (r.success) return true

@@ -14,7 +14,7 @@ export function MediaUploader({
   refreshOnUploaded = false,
 }: {
   tenantId: number | string
-  onUploaded?: (m: any) => void
+  onUploaded?: (m: unknown) => void
   refreshOnUploaded?: boolean
 }) {
   const router = useRouter()

@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 "use client";
 import { motion } from "motion/react";
 import { useEffect, useId, useRef, useState } from "react";

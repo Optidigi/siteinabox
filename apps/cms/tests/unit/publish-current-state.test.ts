@@ -19,11 +19,16 @@ import {
   canPublishCurrentTenantState,
   publishCurrentTenantState,
 } from "@/lib/publish/currentState"
+import { asPayload } from "../_helpers/mockPayload"
 
-const payload = (tenant: { id: number; slug: string; domain: string }) => ({
-  findByID: vi.fn(async () => tenant),
-  find: vi.fn(async () => ({ docs: [] })),
-})
+const payload = (tenant: { id: number; slug: string; domain: string }) =>
+  Object.assign(asPayload({
+    findByID: vi.fn(async () => tenant),
+    find: vi.fn(async () => ({ docs: [] })),
+  }), {
+    findByID: vi.fn(async () => tenant),
+    find: vi.fn(async () => ({ docs: [] })),
+  })
 
 describe("publish current tenant state", () => {
   beforeEach(() => {
@@ -38,8 +43,8 @@ describe("publish current tenant state", () => {
     const p = payload({ id: 7, slug: "ami-care", domain: "ami-care.nl" })
     const user = { id: 2, role: "editor", tenants: [{ tenant: { id: 7 } }] }
 
-    await expect(canPublishCurrentTenantState(p as any, user, 7)).resolves.toBe(true)
-    const result = await publishCurrentTenantState(p as any, {
+    await expect(canPublishCurrentTenantState(p, user, 7)).resolves.toBe(true)
+    const result = await publishCurrentTenantState(p, {
       tenantId: 7,
       user,
       reason: "page editor save",
@@ -67,14 +72,15 @@ describe("publish current tenant state", () => {
     const p = payload({ id: 7, slug: "customer-preview", domain: "customer.example" })
     const user = { id: 2, role: "owner", tenants: [{ tenant: 8 }] }
 
-    await expect(canPublishCurrentTenantState(p as any, user, 7)).resolves.toBe(false)
-    await expect(publishCurrentTenantState(p as any, { tenantId: 7, user })).rejects.toThrow(/not authorized/i)
+    await expect(canPublishCurrentTenantState(p, user, 7)).resolves.toBe(false)
+    await expect(publishCurrentTenantState(p, { tenantId: 7, user })).rejects.toThrow(/not authorized/i)
     expect(mocks.publishSiteSnapshot).not.toHaveBeenCalled()
   })
 
   it("uses the transactional save route from the shared page editor", () => {
     const sources = [
       "src/components/forms/PageForm.tsx",
+      "src/components/editor/usePageEditorCore.ts",
       "src/components/forms/SettingsForm.tsx",
       "src/components/navigation/NavigationManager.tsx",
     ].map((file) => readFileSync(file, "utf8")).join("\n")

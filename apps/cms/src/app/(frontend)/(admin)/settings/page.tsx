@@ -14,6 +14,7 @@ import {
   findCommunicationPreference,
   findTenantNotificationSubscription,
 } from "@/lib/legal/communicationPreferences"
+import type { User } from "@/payload-types"
 import { EmailPreferencesSection, type TenantNotificationMemberView } from "@/components/email/EmailPreferencesSection"
 
 export default async function TenantSettingsPage({
@@ -45,13 +46,15 @@ export default async function TenantSettingsPage({
   ])
 
   const payload = await payloadPromise
-  const members: TenantNotificationMemberView[] = await Promise.all(tenantMembers.docs.map(async (member: any) => {
+  const members: TenantNotificationMemberView[] = await Promise.all(tenantMembers.docs
+    .filter((member: User) => member.role === "owner" || member.role === "editor" || member.role === "viewer")
+    .map(async (member) => {
     const subscription = await findTenantNotificationSubscription(payload, ctx.tenant.id, member.id)
     return {
       userId: String(member.id),
       name: member.name || member.email,
       email: member.email,
-      role: member.role,
+      role: member.role as "owner" | "editor" | "viewer",
       categories: {
         formSubmissions: subscription?.formSubmissions === true,
         publishingAndSiteStatus: subscription?.publishingAndSiteStatus === true,
@@ -79,7 +82,7 @@ export default async function TenantSettingsPage({
         <SettingsForm
           initial={settings}
           canEdit
-          settingsContract={resolveSettingsContract(ctx.tenant.siteManifest as any)}
+          settingsContract={resolveSettingsContract(ctx.tenant.siteManifest)}
         />
       )}
       {isOwner && <LegalAgreementsSection requirements={legalRequirements} acceptanceHistory={acceptanceHistory} locale={resolveLocale(user.language)} result={query.legal} />}

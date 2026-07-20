@@ -46,7 +46,7 @@ export async function submitPreviewReviewAction(
           reviewedAt: new Date().toISOString(),
           reviewedBy: context.customerEmail,
         },
-      } as any,
+      },
       depth: 0,
       overrideAccess: true,
     })

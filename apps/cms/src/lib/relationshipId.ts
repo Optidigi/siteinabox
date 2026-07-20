@@ -5,6 +5,13 @@ export type RelationshipIdRef =
   | null
   | undefined
 
+export const relationshipValue = (value: unknown): string | number | null => {
+  if (typeof value === "string" || typeof value === "number") return value
+  if (value == null || typeof value !== "object" || Array.isArray(value)) return null
+  const id = (value as { id?: unknown }).id
+  return typeof id === "string" || typeof id === "number" ? id : null
+}
+
 export const relationshipId = (value: RelationshipIdRef): string | null => {
   if (value == null) return null
   if (typeof value === "object") {

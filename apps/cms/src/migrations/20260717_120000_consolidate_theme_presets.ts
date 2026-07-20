@@ -2,6 +2,17 @@ import type { MigrateDownArgs, MigrateUpArgs } from "@payloadcms/db-postgres"
 import { sql } from "@payloadcms/db-postgres"
 import crypto from "node:crypto"
 
+type JsonRecord = Record<string, unknown>
+const isRecord = (value: unknown): value is JsonRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value)
+const asRecord = (value: unknown): JsonRecord | null => (isRecord(value) ? value : null)
+const queryRows = <T,>(result: unknown): T[] => {
+  const rows = asRecord(result)?.rows
+  if (Array.isArray(rows)) return rows as T[]
+  if (Array.isArray(result)) return result as T[]
+  return []
+}
+
 const stableStringify = (value: unknown): string => {
   if (value == null || typeof value !== "object") return JSON.stringify(value)
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
@@ -29,8 +40,8 @@ export async function up({ db }: MigrateUpArgs): Promise<void> {
   // Recompute them with the same stable serializer as the publisher after the
   // JSON migration; Postgres jsonb::text ordering is not that contract.
   const result = await db.execute(sql`SELECT "id", "snapshot" FROM "published_site_snapshots" WHERE "snapshot" IS NOT NULL`)
-  const rows = Array.isArray((result as any)?.rows) ? (result as any).rows : Array.from(result as any)
-  for (const row of rows as Array<{ id: string | number; snapshot: unknown }>) {
+  const rows = queryRows<{ id: string | number; snapshot: unknown }>(result)
+  for (const row of rows) {
     const hash = crypto.createHash("sha256").update(stableStringify(row.snapshot)).digest("hex")
     await db.execute(sql`UPDATE "published_site_snapshots" SET "snapshot_hash" = ${hash} WHERE "id" = ${row.id}`)
   }

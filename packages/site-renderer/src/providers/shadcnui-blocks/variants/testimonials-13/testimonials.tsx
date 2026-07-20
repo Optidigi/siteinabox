@@ -1,7 +1,12 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import Link from "../../runtime/link";
-import type { ComponentProps } from "react";
+// Owned typed adaptation of upstream shadcnui-blocks testimonials-13 (MIT, see ../../LICENSE).
+"use client"
+
+import * as React from "react"
+import type { ComponentProps } from "react"
+import { Button, Marquee } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
+import { cn } from "@siteinabox/ui/lib/utils"
+import type { MediaResolver } from "../../../../media"
+import Link from "../../runtime/link"
 import {
   Logo01,
   Logo02,
@@ -9,148 +14,43 @@ import {
   Logo04,
   Logo05,
   Logo06,
-} from "../../runtime/logos";
-import { Avatar, AvatarFallback, AvatarImage } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { Marquee } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova";
-import { cn } from "@siteinabox/ui/lib/utils";
+} from "../../runtime/logos"
+import { testimonials01Literal } from "../../typed/fixtures/testimonials-01"
+import { testimonials13CmsLike } from "../../typed/fixtures/testimonials-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import {
+  renderTestimonialAuthor,
+  renderTestimonialAvatarWithImage,
+  renderTestimonialQuote,
+  renderTestimonialRole,
+  renderTestimonialsIntro,
+  renderTestimonialsTitle,
+  sliceTestimonialItems,
+  TwitterLogo,
+  type TestimonialItem,
+} from "../../typed/testimonials-fields"
 
-const testimonials = [
-  {
-    id: 1,
-    name: "John Doe",
-    designation: "Software Engineer",
-    company: "TechCorp",
-    testimonial:
-      "This product has completely transformed the way we work. The efficiency and ease of use are unmatched!",
-    avatar:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1bf22",
-    logo: Logo01,
-  },
-  {
-    id: 2,
-    name: "Sophia Lee",
-    designation: "Data Analyst",
-    company: "InsightTech",
-    testimonial:
-      "This tool has saved me hours of work! The analytics and reporting features are incredibly powerful.",
-    avatar:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:488d6",
-    logo: Logo02,
-  },
-  {
-    id: 3,
-    name: "Michael Johnson",
-    designation: "UX Designer",
-    company: "DesignPro",
-    testimonial:
-      "An amazing tool that simplifies complex tasks. Highly recommended for professionals in the industry.",
-    avatar:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:41bea",
-    logo: Logo03,
-  },
-  {
-    id: 4,
-    name: "Emily Davis",
-    designation: "Marketing Specialist",
-    company: "BrandBoost",
-    testimonial:
-      "I've seen a significant improvement in our team's productivity since we started using this service.",
-    avatar:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:b20ed",
-    logo: Logo04,
-  },
-  {
-    id: 5,
-    name: "Daniel Martinez",
-    designation: "Full-Stack Developer",
-    company: "CodeCrafters",
-    testimonial:
-      "The best investment we've made! The support team is also super responsive and helpful.",
-    avatar:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:61bb8",
-    logo: Logo05,
-  },
-  {
-    id: 6,
-    name: "Jane Smith",
-    designation: "Product Manager",
-    company: "InnovateX",
-    testimonial:
-      "The user experience is top-notch! The interface is clean, intuitive, and easy to navigate.",
-    avatar:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:02613",
-    logo: Logo06,
-  },
-];
+const MAX_ITEMS = 6
 
-const Testimonials = () => (
-  <div className="px-6 py-20">
-    <h2 className="text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]"><ProviderField field="title" fallback={<>
-      Success Stories
-    </>} inline /></h2>
-    <p className="mt-3.5 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl"><ProviderField field="intro" fallback={<>
-      Real stories from people who use and love our product every day
-    </>} inline /></p>
-    <div className="mask-x-from-80% mt-14 space-y-px border bg-muted">
-      <Marquee className="py-0 [--duration:60s] [--gap:0px]" pauseOnHover>
-        <TestimonialList />
-      </Marquee>
-    </div>
-  </div>
-);
+const LITERAL_IMAGES = [
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1bf22",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:488d6",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:41bea",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:b20ed",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:61bb8",
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:02613",
+]
 
-const TestimonialList = ({ className, ...props }: ComponentProps<"div">) =>
-  <ProviderItems field="items" templates={testimonials}>{(providerItems) => providerItems.map((testimonial) => (
-    <div
-      className="-mx-1 flex w-full max-w-sm flex-col odd:flex-col-reverse"
-      key={testimonial.id}
-    >
-      <div
-        className={cn("rounded-xl border bg-background shadow-xs/3", className)}
-        {...props}
-      >
-        <div className="p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Avatar className="size-10">
-                <AvatarImage
-                  className="object-cover"
-                  src={testimonial.avatar}
-                />
-                <AvatarFallback className="bg-primary font-medium text-primary-foreground text-xl">
-                  {testimonial.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-medium">{testimonial.name}</p>
-                <p className="text-muted-foreground text-sm">
-                  {testimonial.designation}
-                </p>
-              </div>
-            </div>
-            <Button asChild size="icon" variant="ghost">
-              <Link href="#" target="_blank">
-                <TwitterLogo className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-          <p className="mt-5 text-[17px]">{testimonial.testimonial}</p>
-        </div>
-      </div>
-      <div className="mask-y-from-75% mask-x-from-75% relative flex h-42 w-96 items-center justify-center p-6">
-        <testimonial.logo className="h-20 w-50 text-muted-foreground" />
+const LITERAL_LOGOS = [Logo01, Logo02, Logo03, Logo04, Logo05, Logo06]
 
-        <div
-          className="absolute inset-0 isolate -z-1 opacity-15"
-          style={{
-            backgroundImage: `
+const logoGridStyle: React.CSSProperties = {
+  backgroundImage: `
         linear-gradient(to right, var(--color-muted-foreground) 1px, transparent 1px),
         linear-gradient(to bottom, var(--color-muted-foreground) 1px, transparent 1px)
       `,
-            backgroundSize: "20px 20px",
-            backgroundPosition: "0 0, 0 0",
-            maskImage: `
+  backgroundSize: "20px 20px",
+  backgroundPosition: "0 0, 0 0",
+  maskImage: `
         repeating-linear-gradient(
           to right,
           black 0px,
@@ -166,7 +66,7 @@ const TestimonialList = ({ className, ...props }: ComponentProps<"div">) =>
           transparent 8px
         )
       `,
-            WebkitMaskImage: `
+  WebkitMaskImage: `
         repeating-linear-gradient(
           to right,
           black 0px,
@@ -182,27 +82,139 @@ const TestimonialList = ({ className, ...props }: ComponentProps<"div">) =>
           transparent 8px
         )
       `,
-            maskComposite: "intersect",
-            WebkitMaskComposite: "source-in",
-          }}
-        />
+  maskComposite: "intersect",
+  WebkitMaskComposite: "source-in",
+}
+
+export type Testimonials13Props = TypedVariantBaseProps & {
+  title?: string | null
+  intro?: string | null
+  items: TestimonialItem[]
+  mediaResolver?: MediaResolver
+  literalPreviewImages?: string[]
+  literalLogos?: React.ComponentType<ComponentProps<"svg">>[]
+}
+
+function TestimonialList({
+  items,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  literalPreviewImages,
+  literalLogos,
+  className,
+  ...props
+}: {
+  items: TestimonialItem[]
+  blockIndex: number
+  editSlots?: Testimonials13Props["editSlots"]
+  mediaResolver?: MediaResolver
+  literalPreviewImages?: string[]
+  literalLogos?: React.ComponentType<ComponentProps<"svg">>[]
+} & ComponentProps<"div">) {
+  const displayItems = sliceTestimonialItems(items, MAX_ITEMS)
+
+  return (
+    <>
+      {displayItems.map((item, itemIndex) => {
+        const quoteContent = renderTestimonialQuote(editSlots, item.quote, blockIndex, itemIndex)
+        const authorContent = renderTestimonialAuthor(editSlots, item.author, blockIndex, itemIndex)
+        const roleContent = renderTestimonialRole(editSlots, item.role, blockIndex, itemIndex)
+        const Logo = literalLogos?.[itemIndex]
+        if (!quoteContent && !authorContent) return null
+        return (
+          <div className="-mx-1 flex w-full max-w-sm flex-col odd:flex-col-reverse" key={itemIndex}>
+            <div className={cn("rounded-xl border bg-background shadow-xs/3 border-border", className)} {...props}>
+              <div className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {renderTestimonialAvatarWithImage(
+                      editSlots,
+                      mediaResolver,
+                      item.avatar,
+                      item.author,
+                      blockIndex,
+                      itemIndex,
+                      {
+                        className: "size-10",
+                        imageClassName: "object-cover",
+                        literalPreviewSrc: literalPreviewImages?.[itemIndex],
+                      },
+                    )}
+                    <div>
+                      {authorContent ? <p className="font-medium">{authorContent}</p> : null}
+                      {roleContent ? <p className="text-muted-foreground text-sm">{roleContent}</p> : null}
+                    </div>
+                  </div>
+                  <Button asChild size="icon" variant="ghost">
+                    <Link href="#" target="_blank">
+                      <TwitterLogo className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
+                {quoteContent ? <p className="mt-5 text-[17px]">{quoteContent}</p> : null}
+              </div>
+            </div>
+            {Logo ? (
+              <div className="mask-y-from-75% mask-x-from-75% relative flex h-42 w-96 items-center justify-center p-6">
+                <Logo className="h-20 w-50 text-muted-foreground" />
+                <div className="absolute inset-0 isolate -z-1 opacity-15" style={logoGridStyle} />
+              </div>
+            ) : null}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+export function Testimonials13({
+  title,
+  intro,
+  items,
+  blockIndex,
+  editSlots,
+  mediaResolver,
+  literalPreviewImages,
+  literalLogos,
+  rootAttributes,
+}: Testimonials13Props) {
+  const titleContent = renderTestimonialsTitle(editSlots, title, blockIndex)
+  const introContent = renderTestimonialsIntro(editSlots, intro, blockIndex)
+
+  return (
+    <div className="px-6 py-20" {...rootAttributes}>
+      {titleContent ? (
+        <h2 className="text-center font-medium text-4xl tracking-[-0.04em] md:text-[2.75rem]">{titleContent}</h2>
+      ) : null}
+      {introContent ? (
+        <p className="mt-3.5 text-center text-muted-foreground text-xl tracking-[-0.015em] md:text-2xl">{introContent}</p>
+      ) : null}
+      <div className="mask-x-from-80% mt-14 space-y-px border bg-muted border-border">
+        <Marquee className="py-0 [--duration:60s] [--gap:0px]" pauseOnHover>
+          <TestimonialList
+            blockIndex={blockIndex}
+            editSlots={editSlots}
+            items={items}
+            literalLogos={literalLogos}
+            literalPreviewImages={literalPreviewImages}
+            mediaResolver={mediaResolver}
+          />
+        </Marquee>
       </div>
     </div>
-  ))}</ProviderItems>;
+  )
+}
 
-const TwitterLogo = (props: ComponentProps<"svg">) => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    {...props}
-  >
-    <title>X</title>
-    <path
-      d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"
-      fill="currentColor"
+export default function Testimonials13Literal() {
+  return (
+    <Testimonials13
+      title={testimonials13CmsLike.title}
+      intro={testimonials13CmsLike.intro}
+      items={testimonials01Literal.items}
+      literalPreviewImages={LITERAL_IMAGES}
+      literalLogos={LITERAL_LOGOS}
+      blockIndex={0}
     />
-  </svg>
-);
-
-export default Testimonials;
+  )
+}

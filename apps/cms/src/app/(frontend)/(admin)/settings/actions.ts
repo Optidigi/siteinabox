@@ -102,18 +102,18 @@ export async function updateTenantNotificationSubscriptionAction(formData: FormD
     operationalDigest: false,
   }
   const currentSubscription = await payload.find({
-      collection: "tenant-notification-subscriptions" as any,
+      collection: "tenant-notification-subscriptions",
       where: { and: [{ tenant: { equals: tenantId } }, { user: { equals: target.id } }] },
       limit: 1,
       depth: 0,
       overrideAccess: true,
-    } as any)
+    })
   const currentId = currentSubscription.docs[0]?.id
   const criticalCategories = ["publishingAndSiteStatus", "domainAndDns", "billingAndPayments", "teamAndAccess"] as const
   for (const category of criticalCategories) {
     if (categories[category]) continue
     const alternatives = await payload.find({
-        collection: "tenant-notification-subscriptions" as any,
+        collection: "tenant-notification-subscriptions",
         where: {
           and: [
             { tenant: { equals: tenantId } },
@@ -124,7 +124,7 @@ export async function updateTenantNotificationSubscriptionAction(formData: FormD
         limit: 1,
         depth: 0,
         overrideAccess: true,
-      } as any)
+      })
     if (alternatives.totalDocs === 0) {
       redirect("/settings?emailPreferences=critical-recipient-required#tenant-notifications")
     }

@@ -1,18 +1,24 @@
 import type { MigrateUpArgs, MigrateDownArgs } from '@payloadcms/db-postgres'
 import { sql } from '@payloadcms/db-postgres'
 
+type JsonRecord = Record<string, unknown>
+const isRecord = (value: unknown): value is JsonRecord =>
+  value != null && typeof value === "object" && !Array.isArray(value)
+const asRecord = (value: unknown): JsonRecord | null => (isRecord(value) ? value : null)
+const queryRows = <T,>(result: unknown): T[] => {
+  const rows = asRecord(result)?.rows
+  if (Array.isArray(rows)) return rows as T[]
+  if (Array.isArray(result)) return result as T[]
+  return []
+}
+
 export async function up({ db }: MigrateUpArgs): Promise<void> {
   const result = await db.execute(sql`
     SELECT id, theme
     FROM tenants
     WHERE theme IS NOT NULL
   `)
-  const tenants: Array<{ id: number | string; theme?: Record<string, unknown> | null }> =
-    Array.isArray((result as any)?.rows)
-      ? (result as any).rows
-      : Array.isArray(result as any)
-        ? (result as any)
-        : []
+  const tenants = queryRows<{ id: number | string; theme?: Record<string, unknown> | null }>(result)
 
   for (const tenant of tenants) {
     const theme = (tenant as { theme?: Record<string, unknown> }).theme

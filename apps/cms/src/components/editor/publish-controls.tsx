@@ -1,10 +1,11 @@
 "use client"
+import type { FieldValues } from "react-hook-form"
 import type { Control } from "react-hook-form"
 import { SaveButton } from "@/components/save-ui/save-button"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 type Props = {
-  control: Control<any>
+  control: Control<FieldValues>
   pending: boolean
   isDirty?: boolean
   errorCount?: number

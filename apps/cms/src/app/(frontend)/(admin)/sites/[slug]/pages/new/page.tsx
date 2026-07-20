@@ -37,7 +37,7 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
         manifest={manifest}
         theme={tenant.theme as ThemeTokens | null}
         siteSettings={settings}
-        rendererNavPages={(rendererNavPages as any[]).filter((page) => page.status === "published").map((page) => ({ id: page.id, slug: page.slug, title: page.title }))}
+        rendererNavPages={rendererNavPages.filter((navPage) => navPage.status === "published").map((navPage) => ({ id: navPage.id, slug: navPage.slug, title: navPage.title }))}
         canEditSettings
       />
     </div>

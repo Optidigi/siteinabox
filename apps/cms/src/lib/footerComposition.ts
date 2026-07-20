@@ -1,4 +1,5 @@
 import type { RtManifest } from "@/lib/richText/manifest"
+import { asRecord, isRecord } from "@/lib/record"
 
 export const FOOTER_ITEM_TYPES = ["brand", "text", "links", "contact", "business", "navigation"] as const
 export type FooterItemType = (typeof FOOTER_ITEM_TYPES)[number]
@@ -45,20 +46,20 @@ const normalizeColumnCounts = (value: unknown): number[] => {
 }
 
 export const resolveFooterContract = (manifest?: RtManifest | null): FooterCompositionContract | null => {
-  const raw = (manifest as any)?.footer
+  const raw = manifest?.footer
   if (!raw || typeof raw !== "object") return null
   const columnCounts = normalizeColumnCounts(raw.columnCounts)
   if (!columnCounts.length) return null
   const items = Array.isArray(raw.items)
     ? raw.items
-        .filter((item: any) => item && typeof item === "object" && typeSet.has(item.type))
-        .map((item: any) => ({
-          type: item.type as FooterItemType,
-          label: stringOrNull(item.label) ?? defaultFooterItemLabel(item.type),
+        .filter((item) => isRecord(item) && typeSet.has(String(item.type)))
+        .map((item) => ({
+          type: String(item.type) as FooterItemType,
+          label: stringOrNull(item.label) ?? defaultFooterItemLabel(item.type as FooterItemType),
         }))
     : []
   if (!items.length) return null
-  const defaultColumnCount = columnCounts.includes(raw.defaultColumnCount)
+  const defaultColumnCount = typeof raw.defaultColumnCount === "number" && columnCounts.includes(raw.defaultColumnCount)
     ? raw.defaultColumnCount
     : columnCounts[columnCounts.length - 1]!
   return { columnCounts, defaultColumnCount, items }
@@ -117,25 +118,27 @@ export const normalizeFooterColumns = (
   contract?: FooterCompositionContract | null,
 ): FooterCompositionColumn[] => {
   if (!Array.isArray(value)) return []
-  const allowed = new Set((contract?.items ?? FOOTER_ITEM_TYPES.map((type) => ({ type, label: defaultFooterItemLabel(type) }))).map((item) => item.type))
+  const allowed = new Set<string>((contract?.items ?? FOOTER_ITEM_TYPES.map((type) => ({ type, label: defaultFooterItemLabel(type) }))).map((item) => item.type))
   return value
-    .map((column: any) => {
-      const items = Array.isArray(column?.items) ? column.items : []
+    .map((column) => {
+      const columnRecord = isRecord(column) ? column : {}
+      const items = Array.isArray(columnRecord.items) ? columnRecord.items : []
       return {
-        id: stringOrNull(column?.id),
+        id: stringOrNull(columnRecord.id),
         items: items
-          .filter((item: any) => item && typeof item === "object" && allowed.has(item.type))
-          .map((item: any) => ({
+          .filter((item): item is Record<string, unknown> => isRecord(item) && allowed.has(String(item.type)))
+          .map((item) => ({
             id: stringOrNull(item.id),
             type: item.type as FooterItemType,
             label: stringOrNull(item.label) ?? (item.type === "text" ? "Info" : null),
             text: stringOrNull(item.text) ?? (item.type === "text" ? "Text" : null),
             links: Array.isArray(item.links)
               ? item.links
-                  .map((link: any) => ({
-                    label: stringOrNull(link?.label) ?? "",
-                    href: stringOrNull(link?.href) ?? "",
-                    external: !!link?.external,
+                  .filter(isRecord)
+                  .map((link) => ({
+                    label: stringOrNull(link.label) ?? "",
+                    href: stringOrNull(link.href) ?? "",
+                    external: !!link.external,
                   }))
                   .filter((link: FooterLink) => link.label || link.href)
               : [],
@@ -167,7 +170,7 @@ export const setFooterColumnCount = (
 }
 
 export const defaultFooterColumns = (
-  settings: any,
+  settings: { chrome?: { footer?: { columns?: unknown; tagline?: string | null } } } | null | undefined,
   contract: FooterCompositionContract | null,
 ): FooterCompositionColumn[] => {
   const existing = normalizeFooterColumns(settings?.chrome?.footer?.columns, contract)

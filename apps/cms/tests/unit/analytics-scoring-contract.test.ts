@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
+import type { Page, SiteSetting } from "@/payload-types"
 import { ANALYTICS_EVENT_CONTRACT, analyticsEventContractByName } from "@/lib/analytics/contract"
 import { combineSiteScore, scoreSiteQuality, webVitalRating, webVitalScore } from "@/lib/analytics/scoring"
+
+import { cast } from "../_helpers/cast"
+import type { SiabAnalyticsEventName } from "@/lib/analytics/events"
 
 describe("analytics event contract", () => {
   it("keeps native PostHog page lifecycle events SDK-owned and duplicate-safe", () => {
@@ -19,8 +23,8 @@ describe("analytics event contract", () => {
     expect(analyticsEventContractByName.get("$pageleave")?.duplicatePrevention).toContain("keeps SDK scroll properties enabled")
     expect(analyticsEventContractByName.get("$pageleave")?.queryConsumers).toContain("getScrollDepth")
     expect(analyticsEventContractByName.get("site_scroll_depth_reached")?.queryConsumers).not.toContain("getScrollDepth")
-    expect(analyticsEventContractByName.has("site_page_viewed" as any)).toBe(false)
-    expect(analyticsEventContractByName.has("site_page_left" as any)).toBe(false)
+    expect(analyticsEventContractByName.has(cast<SiabAnalyticsEventName>("site_page_viewed"))).toBe(false)
+    expect(analyticsEventContractByName.has(cast<SiabAnalyticsEventName>("site_page_left"))).toBe(false)
   })
 
   it("documents every contract event once", () => {
@@ -45,7 +49,7 @@ describe("analytics scoring", () => {
 
   it("scores CMS site-quality checks from settings and published pages", () => {
     const score = scoreSiteQuality({
-      settings: {
+      settings: cast<SiteSetting>({
         siteName: "Amicare",
         siteUrl: "https://ami-care.nl",
         description: "Care site",
@@ -53,11 +57,11 @@ describe("analytics scoring", () => {
         branding: { logo: 1, favicon: 2 },
         navHeader: [{ type: "page" }],
         contact: { phone: "+31" },
-      },
+      }),
       pages: [
-        { slug: "home", status: "published", seo: { title: "Home", description: "Welcome", ogImage: 3 } },
-        { slug: "about", status: "published", seo: { title: "About", description: "About us" } },
-        { slug: "draft", status: "draft", seo: {} },
+        cast<Page>({ slug: "home", status: "published", seo: { title: "Home", description: "Welcome", ogImage: 3 } }),
+        cast<Page>({ slug: "about", status: "published", seo: { title: "About", description: "About us" } }),
+        cast<Page>({ slug: "draft", status: "draft", seo: {} }),
       ],
     })
 

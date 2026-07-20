@@ -1,4 +1,7 @@
-type Translator = (key: any) => string
+type Translator = {
+  (key: string): string
+  (key: string, values?: Record<string, string | number | Date>): string
+}
 
 export function statusLabel(t: Translator, status: string) {
   const key = `status.${status}`

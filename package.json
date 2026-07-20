@@ -30,9 +30,12 @@
     "renderer:test": "pnpm --dir apps/renderer test",
     "renderer:typecheck": "pnpm --dir apps/renderer typecheck",
     "provider:visual-parity": "pnpm renderer:build && pnpm --dir packages/site-renderer visual:provider-parity",
+    "provider:structural:fingerprint": "node scripts/shadcnui-blocks/structural-fingerprint.mjs",
     "site-renderer:typecheck": "pnpm --dir packages/site-renderer typecheck",
     "site:build": "pnpm landing:build",
     "site:test": "pnpm landing:test",
+    "type-safety:check": "node --test scripts/check-type-safety.test.mjs && node scripts/check-type-safety.mjs",
+    "type-safety:test": "node --test scripts/check-type-safety.test.mjs",
     "ui:typecheck": "pnpm --dir packages/ui typecheck"
   }
 }

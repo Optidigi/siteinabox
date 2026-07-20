@@ -1,4 +1,4 @@
-import type { CollectionConfig } from "payload"
+import type { CollectionConfig, PayloadRequest } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { ALL_BLOCKS } from "@/blocks/registry"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
@@ -15,7 +15,7 @@ import { publishPageAfterUserSave } from "@/hooks/publishPageAfterUserSave"
 // PATCH /api/pages/:id bypassed the form's zod regex; persisted "BAD SLUG!"
 // in the audit. Mirror of `src/components/forms/PageForm.tsx` + `TenantForm`.
 const PAGE_SLUG_REGEX = /^[a-z0-9-]+$/
-const validatePageSlug = (val: unknown, { req }: any) => {
+const validatePageSlug = (val: unknown, { req }: { req?: PayloadRequest }) => {
   if (val == null || val === "") return adminValidationText(req?.i18n?.language, "Slug is required", "Slug is verplicht")
   if (typeof val !== "string" || !PAGE_SLUG_REGEX.test(val)) {
     return adminValidationText(req?.i18n?.language, "Use lowercase letters, digits, and hyphens only", "Gebruik alleen kleine letters, cijfers en koppeltekens")

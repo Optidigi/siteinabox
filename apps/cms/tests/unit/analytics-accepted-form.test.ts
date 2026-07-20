@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { captureAcceptedFormAnalytics } from "@/lib/analytics/acceptedForm"
 
+import { asPayload } from "../_helpers/mockPayload"
+
 const ORIGINAL_ENV = { ...process.env }
 
 afterEach(() => {
@@ -15,7 +17,7 @@ describe("captureAcceptedFormAnalytics", () => {
 
     await captureAcceptedFormAnalytics({
       doc: { id: 1, tenant: 7, formName: "Contact", pageUrl: "https://ami-care.nl/contact" },
-      payload: { findByID: vi.fn() },
+      payload: asPayload({ findByID: vi.fn() }),
     })
 
     expect(fetchMock).not.toHaveBeenCalled()
@@ -37,7 +39,7 @@ describe("captureAcceptedFormAnalytics", () => {
         email: "person@example.com",
         data: { message: "private" },
       },
-      payload: {
+      payload: asPayload({
         findByID: vi.fn().mockResolvedValue({
           id: 7,
           name: "Amicare",
@@ -45,7 +47,7 @@ describe("captureAcceptedFormAnalytics", () => {
           domain: "ami-care.nl",
           siteManifest: { version: 1 },
         }),
-      },
+      }),
     })
 
     expect(fetchMock).toHaveBeenCalledTimes(3)

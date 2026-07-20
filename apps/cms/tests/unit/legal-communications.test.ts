@@ -3,7 +3,7 @@ import path from "node:path"
 import { describe, expect, it, vi } from "vitest"
 import { listCommunicationPreferences, listTenantNotificationSubscriptions } from "@/lib/queries/legalOperations"
 
-const result = (docs: any[]) => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 20, pagingCounter: 1, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null })
+const result = (docs: unknown[]) => ({ docs, totalDocs: docs.length, totalPages: 1, page: 1, limit: 20, pagingCounter: 1, hasPrevPage: false, hasNextPage: false, prevPage: null, nextPage: null })
 
 describe("legal communications operator view", () => {
   it("maps and masks preference state while applying the selected status filter", async () => {

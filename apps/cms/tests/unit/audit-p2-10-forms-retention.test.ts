@@ -1,11 +1,16 @@
 import { describe, it, expect, vi } from "vitest"
 import { Forms } from "@/collections/Forms"
+import { expectAccessField, fieldValidator } from "../_helpers/payloadFields"
+import { accessArgs } from "../_helpers/accessArgs"
 import {
   purgeStaleFormSubmissions,
   resolveRetentionDays,
   DEFAULT_RETENTION_DAYS,
 } from "@/lib/jobs/purgeStaleForms"
 
+import { asMockDoc } from "../_helpers/cast"
+import { asFindClient } from "../_helpers/payloadFindClient"
+import { asPayload, matchesWhere, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockUpdateArgs, type MockWhere } from "../_helpers/mockPayload"
 // Audit finding #10 (P2, T11) — Forms GDPR retention gap.
 //
 // Forms collection accumulates submissions with PII (`email`, `name`,
@@ -49,12 +54,12 @@ type MockForm = {
 }
 
 const makeMockPayload = (forms: MockForm[]) => {
-  const findCalls: any[] = []
-  const deleteCalls: any[] = []
-  const find = vi.fn(async (args: any) => {
+  const findCalls: MockDoc[] = []
+  const deleteCalls: MockDoc[] = []
+  const find = vi.fn(async (args: MockFindArgs) => {
     findCalls.push(args)
     if (args.collection !== "forms") throw new Error(`unexpected find ${args.collection}`)
-    const where = args.where ?? {}
+    const where = (args.where ?? {}) as MockWhere
     let docs = forms.slice()
     if (where.createdAt?.less_than) {
       const cutoff = new Date(where.createdAt.less_than).getTime()
@@ -62,10 +67,10 @@ const makeMockPayload = (forms: MockForm[]) => {
     }
     return { docs, totalDocs: docs.length }
   })
-  const del = vi.fn(async (args: any) => {
+  const del = vi.fn(async (args: MockFindArgs) => {
     deleteCalls.push(args)
     if (args.collection !== "forms") throw new Error(`unexpected delete ${args.collection}`)
-    const where = args.where ?? {}
+    const where = (args.where ?? {}) as MockWhere
     const before = forms.length
     if (where.createdAt?.less_than) {
       const cutoff = new Date(where.createdAt.less_than).getTime()
@@ -91,7 +96,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
     const fresh = { id: 3, tenant: 1, email: "fresh@x", createdAt: daysAgo(10, NOW) }
     const { client, store, deleteCalls } = makeMockPayload([old1, old2, fresh])
 
-    const result = await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    const result = await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
 
     expect(result.deleted).toBe(2)
     expect(store).toEqual([fresh])
@@ -107,7 +112,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
     const fresh3 = { id: 3, tenant: 1, email: "c@x", createdAt: daysAgo(89, NOW) }
     const { client, store } = makeMockPayload([fresh1, fresh2, fresh3])
 
-    const result = await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    const result = await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
 
     expect(result.deleted).toBe(0)
     expect(store).toHaveLength(3)
@@ -119,7 +124,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
     const justOver = { id: 2, tenant: 1, email: "over@x", createdAt: new Date(NOW - (90 * 86400_000 + 1)).toISOString() }
     const { client, store } = makeMockPayload([onBoundary, justOver])
 
-    const result = await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    const result = await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
 
     expect(result.deleted).toBe(1)
     expect(store).toEqual([onBoundary])
@@ -134,7 +139,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
     const b_new2 = { id: 4, tenant: 200, email: "new.b2@x", createdAt: daysAgo(89, NOW) }
     const { client, store } = makeMockPayload([a_old, a_new, b_new1, b_new2])
 
-    const result = await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    const result = await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
 
     expect(result.deleted).toBe(1)
     expect(store).toEqual([a_new, b_new1, b_new2])
@@ -145,7 +150,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
   it("Case 5 — empty Forms table → no errors, deleted=0", async () => {
     const { client, store, deleteCalls } = makeMockPayload([])
 
-    const result = await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    const result = await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
 
     expect(result.deleted).toBe(0)
     expect(store).toEqual([])
@@ -207,7 +212,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
     const { client, deleteCalls } = makeMockPayload([
       { id: 1, tenant: 1, email: "old@x", createdAt: daysAgo(120, NOW) },
     ])
-    await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
     expect(deleteCalls[0]!.overrideAccess).toBe(true)
   })
 
@@ -219,7 +224,7 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
     const justInside = { id: 1, tenant: 1, email: "inside@x", createdAt: new Date(NOW - (90 * 86400_000 - 1)).toISOString() }
     const justOutside = { id: 2, tenant: 1, email: "outside@x", createdAt: new Date(NOW - (90 * 86400_000 + 1)).toISOString() }
     const { client, store } = makeMockPayload([justInside, justOutside])
-    await purgeStaleFormSubmissions({ payload: client as any, retentionDays: 90, now: new Date(NOW) })
+    await purgeStaleFormSubmissions({ payload: client, retentionDays: 90, now: new Date(NOW) })
     expect(store).toEqual([justInside])
   })
 })
@@ -232,32 +237,29 @@ describe("audit-p2 #10 — purgeStaleFormSubmissions (pure function)", () => {
 
 describe("audit-p2 #10 — re-arm guards", () => {
   it("R1 — Forms.fields[data].validate is still wired (P1 #5 sub-fix 2 size cap)", () => {
-    const dataField = (Forms.fields as any[]).find((f) => f.name === "data")
-    expect(dataField).toBeTruthy()
-    expect(typeof dataField.validate).toBe("function")
-    // Call with oversized payload — must reject (preserves the 32 KB cap).
+    const dataField = expectAccessField(Forms.fields, "data")
+    const validate = fieldValidator(dataField)
+    expect(validate).toBeTruthy()
     const oversized = { x: "a".repeat(40_000) }
-    const result = dataField.validate(oversized, { req: { i18n: { language: "en" } } })
+    const result = validate!(oversized, { req: { i18n: { language: "en" } } })
     expect(result).toMatch(/exceeds the .*byte limit/)
   })
 
   it("R2 — Forms.access.create is still the layer-2 bogus-auth gate (P1 #5 sub-fix 1)", () => {
     const create = Forms.access?.create
     expect(typeof create).toBe("function")
-    // user present -> permitted (API-key client path)
-    expect((create as any)({ req: { user: { role: "super-admin" } } })).toBe(true)
-    // user null + no auth signal → permitted (legitimate anon submit)
-    expect((create as any)({ req: { user: null, headers: new Headers() } })).toBe(true)
+    expect(create!(accessArgs({ req: { user: { role: "super-admin" } } }))).toBe(true)
+    expect(create!(accessArgs({ req: { user: null, headers: new Headers() } }))).toBe(true)
   })
 
   it("R3 — Forms.access.delete still admits owner + super-admin only", () => {
     const del = Forms.access?.delete
     expect(typeof del).toBe("function")
-    expect((del as any)({ req: { user: { role: "super-admin" } } })).toBe(true)
-    expect((del as any)({ req: { user: { role: "owner" } } })).toBe(true)
-    expect((del as any)({ req: { user: { role: "editor" } } })).toBe(false)
-    expect((del as any)({ req: { user: { role: "viewer" } } })).toBe(false)
-    expect((del as any)({ req: { user: null } })).toBeFalsy()
+    expect(del!(accessArgs({ req: { user: { role: "super-admin" } } }))).toBe(true)
+    expect(del!(accessArgs({ req: { user: { role: "owner" } } }))).toBe(true)
+    expect(del!(accessArgs({ req: { user: { role: "editor" } } }))).toBe(false)
+    expect(del!(accessArgs({ req: { user: { role: "viewer" } } }))).toBe(false)
+    expect(del!(accessArgs({ req: { user: null } }))).toBeFalsy()
   })
 
   it("R4 — task wrapper is registered on payload.config.ts (file inspection)", async () => {

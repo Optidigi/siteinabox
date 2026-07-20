@@ -5,9 +5,11 @@ import {
   verifyCheckoutEvidence,
 } from "@/lib/legal/checkoutEvidence"
 
+import { asGenerationRun, asTenant, cast } from "../_helpers/cast"
+import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockWhere } from "../_helpers/mockPayload"
 const createPayload = () => {
   let id = 100
-  const stores: Record<string, any[]> = {
+  const stores: Record<string, Array<Record<string, unknown>>> = {
     "site-settings": [{ id: 1, tenant: 10, siteName: "Demo", updatedAt: "2026-07-10T10:00:00.000Z" }],
     "site-review-revisions": [],
     "site-approvals": [],
@@ -36,37 +38,39 @@ const createPayload = () => {
       },
     ],
   }
-  const matches = (doc: any, where: any): boolean => {
+  const matches = (doc: MockDoc, where: MockWhere | undefined): boolean => {
     const clauses = where?.and ?? Object.entries(where ?? {}).map(([key, value]) => ({ [key]: value }))
-    return clauses.every((clause: any) => {
-      const [field, condition] = Object.entries(clause)[0] as [string, any]
+    return clauses.every((clause: MockDoc) => {
+      const [field, condition] = Object.entries(clause)[0] as [string, Record<string, unknown>]
       if (condition?.equals !== undefined) return String(doc[field]) === String(condition.equals)
-      if (condition?.less_than_equal !== undefined) return new Date(doc[field]) <= new Date(condition.less_than_equal)
+      if (condition?.less_than_equal !== undefined) return new Date(String(doc[field])) <= new Date(String(condition.less_than_equal))
       return true
     })
   }
-  const find = vi.fn(async ({ collection, where, sort }: any) => {
+  const find = vi.fn(async ({ collection, where, sort }: MockFindArgs & { sort?: string }) => {
     let docs = (stores[collection] ?? []).filter((doc) => matches(doc, where))
-    if (sort === "-effectiveAt") docs = docs.sort((a, b) => new Date(b.effectiveAt).valueOf() - new Date(a.effectiveAt).valueOf())
+    if (sort === "-effectiveAt") docs = docs.sort((a, b) => new Date(String(b.effectiveAt)).valueOf() - new Date(String(a.effectiveAt)).valueOf())
     return { docs }
   })
-  const create = vi.fn(async ({ collection, data }: any) => {
+  const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
     const doc = { id: id++, ...data }
     stores[collection] ??= []
     stores[collection].push(doc)
     return doc
   })
-  const findByID = vi.fn(async ({ collection, id: requestedId }: any) =>
+  const findByID = vi.fn(async ({ collection, id: requestedId }: MockFindArgs & { id: number | string }) =>
     (stores[collection] ?? []).find((doc) => String(doc.id) === String(requestedId)))
-  return { payload: { find, create, findByID } as any, stores }
+  return { payload: asPayload({ find, create, findByID }), stores }
 }
 
 describe("checkout legal evidence", () => {
   it("freezes review, approval, order, documents, and terms acceptance idempotently", async () => {
     const { payload, stores } = createPayload()
-    const run = { id: 30, specHash: "spec", updatedAt: "2026-07-10T10:00:00.000Z" }
-    const tenant = { id: 10, name: "Demo", theme: { primary: "#000" }, siteManifest: { version: 1 } }
-    const pages = [{ id: 40, slug: "index", title: "Home", status: "published", blocks: [{ blockType: "hero" }] }]
+    const run = asGenerationRun({ id: 30, specHash: "spec", updatedAt: "2026-07-10T10:00:00.000Z" })
+    const tenant = asTenant({ id: 10, name: "Demo", theme: { primary: "#000" }, siteManifest: { version: 1 } })
+    const pages = cast<Parameters<typeof createSiteApprovalEvidence>[0]["pages"]>([
+      { id: 40, slug: "index", title: "Home", status: "published", blocks: [{ blockType: "hero" }] },
+    ])
 
     const approval = await createSiteApprovalEvidence({
       payload, run, tenant, pages, domain: "demo.nl", actorEmail: "Client@Example.com", requestId: "req-1",

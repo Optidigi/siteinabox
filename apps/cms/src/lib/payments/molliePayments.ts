@@ -1,6 +1,6 @@
 import "server-only"
 import type { Payload } from "payload"
-import type { SiteGenerationRun, Tenant } from "@/payload-types"
+import type { Order, SiteGenerationRun, Tenant } from "@/payload-types"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
 import { domainCheckoutPrice, fixedDomainOrderPriceFromEnv, maxDomainProviderPriceFromEnv, normalizeDomainOrderState } from "@/lib/domains/orderState"
@@ -86,7 +86,7 @@ const isApproved = (run: SiteGenerationRun): boolean =>
 const loadRunAndTenant = async (payload: Payload, runId: string | number): Promise<{ run: SiteGenerationRun; tenant: Tenant }> => {
   const run = await payload.findByID({
     collection: "site-generation-runs",
-    id: runId as any,
+    id: runId,
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
@@ -96,7 +96,7 @@ const loadRunAndTenant = async (payload: Payload, runId: string | number): Promi
   if (!tenantId) throw new Error("Generation run is missing a tenant.")
   const tenant = await payload.findByID({
     collection: "tenants",
-    id: tenantId as any,
+    id: tenantId,
     depth: 0,
     overrideAccess: true,
   }) as Tenant
@@ -268,19 +268,19 @@ export async function createMollieCheckoutForGenerationRun(
   await payload.update({
     collection: "site-generation-runs",
     id: run.id,
-    data: { payment } as any,
+    data: { payment },
     depth: 0,
     overrideAccess: true,
-    user: input.actor ? ({ id: input.actor } as any) : undefined,
+    user: input.actor ? ({ id: input.actor }) : undefined,
   })
   await payload.update({
-    collection: "orders" as any,
+    collection: "orders",
     id: order.id,
     data: { paymentStatus: "open", providerPaymentId: molliePayment.id },
     depth: 0,
     overrideAccess: true,
     context: { legalOrderLifecycleMutation: true },
-  } as any)
+  })
   return { payment, checkoutUrl, reused: false }
 }
 
@@ -314,7 +314,7 @@ export async function applyMollieWebhookPayment(
 
   const run = await payload.findByID({
     collection: "site-generation-runs",
-    id: runId as any,
+    id: runId,
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
@@ -357,16 +357,16 @@ export async function applyMollieWebhookPayment(
   let updatedRun = await payload.update({
     collection: "site-generation-runs",
     id: run.id,
-    data: { payment: next } as any,
+    data: { payment: next },
     depth: 0,
     overrideAccess: true,
   }) as SiteGenerationRun
   const order = await payload.findByID({
-    collection: "orders" as any,
-    id: orderId as any,
+    collection: "orders",
+    id: orderId,
     depth: 0,
     overrideAccess: true,
-  } as any) as any
+  })
   if (!sameRelationshipId(order.generationRun, run.id) || !sameRelationshipId(order.tenant, tenantId)) {
     throw new IgnorableMollieWebhookError("Mollie order metadata does not match the generation run.")
   }
@@ -378,10 +378,10 @@ export async function applyMollieWebhookPayment(
         ? "open"
         : nextStatus
   await payload.update({
-    collection: "orders" as any,
+    collection: "orders",
     id: order.id,
     data: {
-      paymentStatus: orderPaymentStatus,
+      paymentStatus: orderPaymentStatus as Order["paymentStatus"],
       providerPaymentId: molliePayment.id,
       paidAt: nextStatus === "completed" ? now : undefined,
       cancelledAt: nextStatus === "canceled" ? now : undefined,
@@ -389,7 +389,7 @@ export async function applyMollieWebhookPayment(
     depth: 0,
     overrideAccess: true,
     context: { legalOrderLifecycleMutation: true },
-  } as any)
+  })
   let canAttemptActivation = next.status === "completed"
   if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
     try {
@@ -421,7 +421,7 @@ export async function applyMollieWebhookPayment(
       updatedRun = await payload.update({
         collection: "site-generation-runs",
         id: run.id,
-        data: { payment: subscribedPayment } as any,
+        data: { payment: subscribedPayment },
         depth: 0,
         overrideAccess: true,
       }) as SiteGenerationRun
@@ -458,7 +458,7 @@ export async function applyMollieWebhookPayment(
     updatedRun = await payload.update({
       collection: "site-generation-runs",
       id: run.id,
-      data: { payment: skippedProvisioningPayment } as any,
+      data: { payment: skippedProvisioningPayment },
       depth: 0,
       overrideAccess: true,
     }) as SiteGenerationRun

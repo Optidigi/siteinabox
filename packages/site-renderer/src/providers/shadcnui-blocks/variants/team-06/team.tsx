@@ -1,72 +1,35 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
-import { ProviderAction, ProviderContactLink, ProviderDemoOnly, ProviderField, ProviderImage, ProviderItemField, ProviderItemLink, ProviderItems, ProviderLogo } from "../../runtime/content";
-import Image from "../../runtime/image";
-const teamMembers = [
-  {
-    name: "Liam Martinez",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:9e883",
-    role: "Chief Technology Officer",
-  },
-  {
-    name: "Ava Thompson",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1afc9",
-    role: "Chief Executive Officer",
-  },
-  {
-    name: "Sophia Patel",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4dca5",
-    role: "Head of Design",
-  },
-  {
-    name: "Noah Chen",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4da3c",
-    role: "Product Manager",
-  },
-  {
-    name: "Emma Garcia",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:3e0f4",
-    role: "Software Engineer",
-  },
-  {
-    name: "Ethan Kim",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:e4121",
-    role: "DevOps Engineer",
-  },
-  {
-    name: "Mia Johnson",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4d5d6",
-    role: "Marketing Lead",
-  },
-  {
-    name: "Oliver Singh",
-    image: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:6f6a8",
-    role: "Customer Success Manager",
-  },
-];
-
-const Team = () => {
+// Owned typed adaptation of upstream shadcnui-blocks team-06 (MIT, see ../../LICENSE).
+"use client"
+import * as React from "react"
+import type { RtRoot } from "@siteinabox/contracts"
+import type { MediaResolver } from "../../../../media"
+import { RichTextRenderer } from "../../../../rich-text"
+import { team06CmsLike } from "../../typed/fixtures/team-family"
+import type { TypedVariantBaseProps } from "../../typed/props"
+import { renderMemberBio, renderMemberImage, renderMemberLink, renderMemberName, renderMemberRole, renderTeamIntro, renderTeamTitle, sliceTeamMembers, type TeamMemberItem } from "../../typed/team-fields"
+const MAX_MEMBERS = 8
+export type Team06Props = TypedVariantBaseProps & { title?: RtRoot | null; intro?: RtRoot | null; members: TeamMemberItem[]; mediaResolver?: MediaResolver }
+export function Team06({ title, intro, members, blockIndex, editSlots, mediaResolver, rootAttributes }: Team06Props) {
+  const titleContent = renderTeamTitle(editSlots, title, blockIndex)
+  const introContent = renderTeamIntro(editSlots, intro, blockIndex)
+  const displayMembers = sliceTeamMembers(members, MAX_MEMBERS)
   return (
-    <div className="mx-auto max-w-7xl px-6 py-20">
-      <h2 className="text-balance text-center font-medium text-3xl capitalize tracking-[-0.04em] sm:text-4xl md:text-[2.75rem]"><ProviderField field="title" fallback={<>
-        Our core team
-      </>} inline /></h2>
-      <p className="mt-3 text-balance text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl"><ProviderField field="intro" fallback={<>
-        Passionate people building great products
-      </>} inline /></p>
-
+    <div className="mx-auto max-w-7xl px-6 py-20" {...rootAttributes}>
+      {titleContent ? <h2 className="text-balance text-center font-medium text-3xl capitalize tracking-[-0.04em] sm:text-4xl md:text-[2.75rem]">{titleContent}</h2> : null}
+      {introContent ? <p className="mt-3 text-balance text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl">{introContent}</p> : null}
       <div className="mt-12 grid grid-cols-1 gap-10 sm:mt-16 sm:grid-cols-2 lg:grid-cols-4">
-        {<ProviderItems field="members" templates={teamMembers}>{(providerItems) => providerItems.map((member, index) => (
-          <div key={index}>
-            <div className="aspect-square overflow-hidden rounded-lg">
-              <Image alt={member.name} src={member.image} />
-            </div>
-            <p className="mt-4 font-medium text-lg">{member.name}</p>
-            <p className="text-muted-foreground">{member.role}</p>
+        {displayMembers.map((member, itemIndex) => (
+          <div key={itemIndex}>
+            <div className="aspect-square overflow-hidden rounded-lg">{renderMemberImage(editSlots, mediaResolver, member.image, member.name, blockIndex, itemIndex, { alt: member.name, className: "h-full w-full object-cover" })}</div>
+            <p className="mt-4 font-medium text-lg">{renderMemberName(editSlots, member.name, blockIndex, itemIndex)}</p>
+            <p className="text-muted-foreground">{renderMemberRole(editSlots, member.role, blockIndex, itemIndex)}</p>
           </div>
-        ))}</ProviderItems>}
+        ))}
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Team;
+const I=["data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:9e883","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:1afc9","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4dca5","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4da3c","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:3e0f4","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:e4121","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:4d5d6","data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3C/svg%3E#sha256:6f6a8"]
+const F=[["Liam Martinez","Chief Technology Officer"],["Ava Thompson","Chief Executive Officer"],["Sophia Patel","Head of Design"],["Noah Chen","Product Manager"],["Emma Garcia","Software Engineer"],["Ethan Kim","DevOps Engineer"],["Mia Johnson","Marketing Lead"],["Oliver Singh","Customer Success Manager"]]
+export default function Team06Literal(){return(<div className="mx-auto max-w-7xl px-6 py-20"><h2 className="text-balance text-center font-medium text-3xl capitalize tracking-[-0.04em] sm:text-4xl md:text-[2.75rem]"><RichTextRenderer value={team06CmsLike.title} blockMode="inline"/></h2><p className="mt-3 text-balance text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl"><RichTextRenderer value={team06CmsLike.intro} blockMode="inline"/></p><div className="mt-12 grid grid-cols-1 gap-10 sm:mt-16 sm:grid-cols-2 lg:grid-cols-4">{F.map((m,i)=>(<div key={i}><div className="aspect-square overflow-hidden rounded-lg"><img alt={m[0]} className="h-full w-full object-cover" src={I[i]}/></div><p className="mt-4 font-medium text-lg">{m[0]}</p><p className="text-muted-foreground">{m[1]}</p></div>))}</div></div>)}

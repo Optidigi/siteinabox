@@ -19,8 +19,9 @@ export async function readManifest(dataDir: string, tenantId: string): Promise<M
       updatedAt: typeof parsed.updatedAt === "string" ? parsed.updatedAt : new Date(0).toISOString(),
       entries: Array.isArray(parsed.entries) ? parsed.entries : [],
     }
-  } catch (err: any) {
-    if (err.code === "ENOENT") {
+  } catch (err: unknown) {
+    const error = err as { code?: string }
+    if (error.code === "ENOENT") {
       return { tenantId, version: 0, updatedAt: new Date(0).toISOString(), entries: [] }
     }
     throw err

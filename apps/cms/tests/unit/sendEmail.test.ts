@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import type { MailTransportProvider } from "@/lib/email/sendEmail"
+import type { MailTransportProvider, MailLogPayload } from "@/lib/email/sendEmail"
+import { asMailLogPayload } from "@/lib/email/sendEmail"
+import { cast } from "../_helpers/cast"
 
 const mocks = vi.hoisted(() => ({
   sendMail: vi.fn(),
@@ -290,9 +292,9 @@ describe("sendEmail", () => {
         sentAt: "2026-07-01T12:00:00.000Z",
       },
     })
-    const loggedData = (payload.create.mock.calls as unknown as Array<[{
-      data: Record<string, unknown>
-    }]>)[0]?.[0].data
+    const createMock = payload.create as unknown as ReturnType<typeof vi.fn>
+    expect(createMock.mock.calls.length).toBeGreaterThan(0)
+    const loggedData = cast<{ data: Record<string, unknown> }>(createMock.mock.calls[0]![0]).data
     expect(JSON.stringify(loggedData)).not.toContain("Magic link")
     expect(JSON.stringify(loggedData)).not.toContain("Secret login body")
   })
@@ -580,7 +582,7 @@ describe("sendEmail", () => {
     process.env.CLOUDFLARE_ACCOUNT_ID = "account"
     process.env.CLOUDFLARE_API_TOKEN = "api-token"
     await sendEmail({ to: "customer@example.com", subject: "Mail", html: "<p>Mail</p>", listUnsubscribe: links })
-    const request = mocks.fetch.mock.calls.at(-1)?.[1]
+    const request = cast<{ body: string }>(mocks.fetch.mock.calls.at(-1)?.[1])
     expect(JSON.parse(request.body).headers).toMatchObject({
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
     })
@@ -644,7 +646,7 @@ function mockProvider(result?: { providerMessageId?: string }, error?: unknown):
 }
 
 function mockPayload(options: { totalDocs?: number } = {}) {
-  return {
+  const stubs = {
     create: vi.fn(async () => ({})),
     find: vi.fn(async (args: { collection: string }) => {
       if (args.collection === "operational-alerts" && options.totalDocs != null) {
@@ -655,4 +657,5 @@ function mockPayload(options: { totalDocs?: number } = {}) {
     update: vi.fn(async () => ({})),
     logger: { warn: vi.fn(), error: vi.fn() },
   }
+  return Object.assign(asMailLogPayload(cast(stubs)), stubs)
 }

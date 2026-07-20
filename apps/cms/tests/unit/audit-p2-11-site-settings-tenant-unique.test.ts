@@ -51,8 +51,13 @@ beforeEach(() => {
 // error has NO `.code` property and the top-level `.message` is "The
 // following field is invalid: tenant" (or similar). This was the gap caught
 // by adversarial review of the first iteration of this fix.
+import { cast, errLike } from "../_helpers/cast"
+
 const makeWrappedUniqueViolation = (path = "tenant") => {
-  const err: any = new Error(`The following field is invalid: ${path}`)
+  const err = new Error(`The following field is invalid: ${path}`) as Error & {
+    status?: number
+    data?: { collection: string; errors: Array<{ message: string; path: string }> }
+  }
   err.name = "ValidationError"
   err.status = 400
   err.data = {
@@ -62,12 +67,10 @@ const makeWrappedUniqueViolation = (path = "tenant") => {
   return err
 }
 
-// Raw pg-shaped unique-violation. Defense-in-depth channel; covers direct-
-// driver paths or a future adapter that strips wrapping.
 const makeRawPgUniqueViolation = (constraint = "site_settings_tenant_idx") => {
-  const err: any = new Error(
+  const err = new Error(
     `duplicate key value violates unique constraint "${constraint}"`,
-  )
+  ) as Error & { code?: string; constraint?: string }
   err.code = "23505"
   err.constraint = constraint
   return err
@@ -189,11 +192,11 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
 
   it("Case 6 — real (non-race) error in create propagates uncaught", async () => {
     fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
-    const dbDownErr: any = new Error("ECONNREFUSED 127.0.0.1:5432")
+    const dbDownErr = new Error("ECONNREFUSED 127.0.0.1:5432") as Error & { code?: string }
     dbDownErr.code = "ECONNREFUSED"
     fakeCreate.mockRejectedValueOnce(dbDownErr)
 
-    let caught: any = null
+    let caught: unknown = null
     try {
       await getOrCreateSiteSettings(42)
     } catch (e) {
@@ -201,7 +204,7 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
     }
 
     expect(caught, "non-23505 error must propagate").not.toBeNull()
-    expect(caught.code).toBe("ECONNREFUSED")
+    expect((caught as Error & { code?: string }).code).toBe("ECONNREFUSED")
     // Critical: catch MUST NOT swallow non-unique-violation errors.
     // Re-fetch must NOT have happened on a non-race error.
     expect(fakeFind).toHaveBeenCalledTimes(1)
@@ -218,7 +221,7 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
     fakeCreate.mockRejectedValueOnce(violation)
     fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
 
-    let caught: any = null
+    let caught: unknown = null
     try {
       await getOrCreateSiteSettings(42)
     } catch (e) {
@@ -252,7 +255,10 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
     // path-based check keeps detection intact regardless of i18n config.
     fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
     const winnerRow = { id: 1, tenant: 42, siteName: "Untitled" }
-    const translated: any = new Error("Het volgende veld is ongeldig: tenant")
+    const translated = new Error("Het volgende veld is ongeldig: tenant") as Error & {
+      status?: number
+      data?: { collection: string; errors: Array<{ message: string; path: string }> }
+    }
     translated.name = "ValidationError"
     translated.status = 400
     translated.data = {
@@ -271,7 +277,7 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
     // the original Postgres message text intact. Covered by channel 3.
     fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
     const winnerRow = { id: 1, tenant: 42, siteName: "Untitled" }
-    const messageOnly: any = new Error(
+    const messageOnly: unknown = new Error(
       `duplicate key value violates unique constraint "site_settings_tenant_idx"`,
     )
     fakeCreate.mockRejectedValueOnce(messageOnly)
@@ -340,15 +346,15 @@ describe("audit-p2 #11 Half B — migration shape", () => {
   })
 
   it("Case 8 — down() throws unconditionally", async () => {
-    let err: any = null
+    let err: unknown = null
     try {
-      await migration.down({ db: {} as any, payload: {} as any, req: {} as any })
+      await migration.down(cast({ db: {}, payload: {}, req: {} }))
     } catch (e) {
       err = e
     }
     expect(err, "down() must throw").not.toBeNull()
     expect(err).toBeInstanceOf(Error)
-    const msg = String(err?.message ?? "")
+    const msg = String(errLike(err).message ?? "")
     // Mention destructive + name the index so an operator who genuinely needs
     // to roll back has the exact identifier.
     expect(msg.toLowerCase()).toContain("destructive")

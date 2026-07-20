@@ -106,27 +106,12 @@ export function EditorFrameRuntime({
       receivedParentCommandRef.current = true
       const message = parsed.message
 
-      if (message.type === "selection.set") {
-        setActiveSelection(message.selection)
-        return
-      }
-      if (message.type === "editor.mobileMode.set") {
-        setMobileMode({
-          mode: message.mode,
-          focusedBlockId: message.focusedBlockId,
-          focusedBlockIndex: message.focusedBlockIndex,
-          showChrome: message.showChrome,
-        })
-        return
-      }
-      if (message.type === "theme.patch") {
+      if (message.type === "render.snapshot") {
         patchTheme(message.theme)
-        return
-      }
-      if (message.type === "page.replace") {
-        if ("theme" in message) patchTheme(message.theme ?? null)
         setFramePage(message.page)
-        if (message.settings) setFrameSettings(message.settings)
+        setFrameSettings(message.settings)
+        setActiveSelection(message.selection ?? null)
+        setMobileMode(message.mobileMode ?? { mode: "fullPage" })
         revisionRef.current = message.expectedRevision + 1
       }
     }
@@ -227,6 +212,8 @@ export function EditorFrameRuntime({
       const target = event.target instanceof Element ? event.target : null
       if (!target) return
 
+      // Edit-mode iframe: links/forms are inert; clicks delegate selection or chrome
+      // to the parent. Preview runtime (renderer-frame) instead emits navigation.requested.
       if (target.closest("a[href], button, form")) event.preventDefault()
 
       const headerNode = target.closest<HTMLElement>(HEADER_CHROME_SELECTOR)

@@ -1,4 +1,3 @@
-// @ts-nocheck -- pinned upstream literal with SIAB runtime-only import adaptations
 import { Wheat } from "lucide-react";
 import { Dribbble, Github, Twitter } from "../../runtime/social-icons";
 import Link from "../../runtime/link";
@@ -24,7 +23,7 @@ const links = [
 
 const Footer = () => {
   return (
-    <footer className="border-t bg-background px-6 py-2">
+    <footer className="border-t bg-background px-6 py-2 border-border">
       <div className="mx-auto w-full max-w-screen-2xl divide-y">
         <div className="flex flex-col items-center justify-between gap-4 px-2 pt-3 pb-5 sm:flex-row">
           <Link className="flex items-center gap-2" href="/">

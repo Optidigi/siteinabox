@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest"
 import { mapHtmlToRt } from "@/lib/richText/mapper"
 import type { RtManifest } from "@/lib/richText/manifest"
 
+import { asMockDoc, rtParagraphChildren } from "../_helpers/cast"
+import type { MockDoc } from "../_helpers/mockPayload"
 const m: RtManifest = {
   version: 1,
   inlineMarks: { bold: true, italic: true },
@@ -30,11 +32,11 @@ describe("mapHtmlToRt — paragraphs + headings", () => {
 
   it("clamps <h1> to lowest allowed level", () => {
     const r = mapHtmlToRt("<h1>X</h1>", { variant: "block", manifest: m })
-    expect((r as any).children[0].level).toBe(2)
+    expect(asMockDoc((asMockDoc(r).children as unknown[])[0]).level).toBe(2)
   })
 
   it("clamps <h5>/<h6> to highest allowed level (4)", () => {
     const r = mapHtmlToRt("<h5>X</h5>", { variant: "block", manifest: m })
-    expect((r as any).children[0].level).toBe(4)
+    expect(asMockDoc((asMockDoc(r).children as unknown[])[0]).level).toBe(4)
   })
 })

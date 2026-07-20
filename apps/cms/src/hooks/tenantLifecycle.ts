@@ -47,8 +47,9 @@ export const archiveTenantDir: CollectionAfterChangeHook = async ({ doc, previou
   try {
     await fs.rename(live, archived)
     req.payload.logger.info({ tenantId: id }, "[tenants] data dir archived")
-  } catch (err: any) {
-    if (err?.code !== "ENOENT") throw err
+  } catch (err: unknown) {
+    const error = err as { code?: string }
+    if (error.code !== "ENOENT") throw err
     req.payload.logger.warn({ tenantId: id }, "[tenants] archive: live dir missing (already archived?)")
   }
   return doc
@@ -72,10 +73,9 @@ export const restoreTenantDir: CollectionAfterChangeHook = async ({ doc, previou
   try {
     await fs.rename(archived, live)
     req.payload.logger.info({ tenantId: id }, "[tenants] data dir restored from archive")
-  } catch (err: any) {
-    // Source dir gone (e.g., manually purged). Don't fail the status update —
-    // the tenant is conceptually re-activated even without on-disk content.
-    if (err?.code !== "ENOENT") throw err
+  } catch (err: unknown) {
+    const error = err as { code?: string }
+    if (error.code !== "ENOENT") throw err
     req.payload.logger.warn({ tenantId: id }, "[tenants] restore: archived dir missing (manually purged?)")
   }
   return doc
