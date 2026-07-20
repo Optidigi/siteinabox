@@ -14,4 +14,4 @@ role: home
 order: 0
 ---
 
-Site in a Box biedt complete bedrijfswebsites voor net-gestarte ondernemers: eigen .nl-domein, hosting, beveiliging, vindbaarheid in Google en ChatGPT en een beheeromgeving om alles zelf aan te passen. Pakketten beginnen bij €19/maand, met de optie om uit te breiden naar zakelijke Gmail (€29/maand). Je betaalt pas zodra je de eerste versie goedkeurt.
+Site in a Box biedt complete bedrijfswebsites voor net-gestarte ondernemers: professionele website, klaar voor Google én ChatGPT, zelf teksten en foto’s aanpassen, .nl-domein eerste jaar gratis, hosting en NL-support. Vanaf €19 per maand, of €190 per jaar. Optioneel: zakelijke e-mail. Je betaalt pas zodra je de eerste versie goedkeurt.

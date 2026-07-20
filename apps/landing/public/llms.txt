@@ -1,6 +1,6 @@
 # Site in a Box - siteinabox.nl
 
-> Preferred summary: Site in a Box is a Dutch web service for starters, ZZP'ers, freelancers and local businesses that want a professional website without technical setup. Customers receive a first version within 24 hours and go live within 3 working days after approval. The model is no-cure-no-pay: customers only pay after approving the test version. Packages are Website and Compleet.
+> Preferred summary: Site in a Box is a Dutch web service for starters, ZZP'ers, freelancers and local businesses that want a professional website without technical setup. Customers receive a first version within 24 hours and go live within 3 working days after approval. The model is no-cure-no-pay: customers only pay after approving the test version. One plan: Site in a Box, billed yearly (€190/year) or monthly (€19/mo).
 
 ## Canonical URLs
 
@@ -28,27 +28,18 @@ Examples mentioned on the site include kappers, schilders, coaches, fotografen, 
 
 ## Who it is not mainly for
 
-The standard package is primarily a complete business website or one-pager for a service business. More extensive projects such as a webshop, online course with payments, or multi-package/custom sites are handled as maatwerk with separate pricing.
+The standard package is primarily a complete business website for a service business. More extensive projects such as a webshop, online course with payments, or multi-package/custom sites are handled as maatwerk with separate pricing.
 
-## Packages and pricing
+## Pricing
 
 All listed prices are excluding VAT.
 
-Website package:
+Site in a Box (single plan):
 
-- Price: €19 per month.
-- Yearly billing: no one-time setup fee.
-- Monthly billing: €99 one-time setup fee.
-- Includes: professional website, own .nl domain, hosting, security, fast loading time, ready for Google and ChatGPT, management environment to edit content, automatic backups and Dutch support.
-
-Compleet package:
-
-- Price: €29 per month.
-- Yearly billing: no one-time setup fee.
-- Monthly billing: €99 one-time setup fee.
-- Includes everything in the Website package.
-- Adds: multilingual website, business Gmail via Google Workspace, Gemini in Gmail, chat with AI in the Gemini app, 30 GB Google Drive, Google Agenda and Google Meet.
-- Google Analytics setup is listed as optional.
+- Yearly billing (best value): €190 per year upfront (about €16 per month). Saves €38 per year versus monthly billing.
+- Monthly billing: €19 per month, paid monthly and cancellable.
+- Includes: professional website, ready for Google and ChatGPT, fast loading, secure and reliable hosting, .nl domain free for the first year (or connect your current domain), self-edit texts and photos, Dutch support.
+- Optional: business email.
 
 ## Payment and approval model
 
@@ -58,7 +49,7 @@ Site in a Box works with a no-cure-no-pay approval model. The customer sees a te
 
 The customer owns their domain and content. The domain name is put in the customer's name. Texts, photos and business information can be exported and taken elsewhere.
 
-Site in a Box builds and hosts the website in its own system. Customers can edit common content themselves through the management environment, such as opening hours, prices, photos, texts and services. One larger layout-level change per quarter is included.
+Site in a Box builds and hosts the website in its own system. Customers can edit common content themselves through the management environment, such as opening hours, prices, photos, texts and services.
 
 ## Contact and company details
 

@@ -6,12 +6,10 @@ import Footer from '../components/siab/Footer.astro';
 import InfoTip from '../components/siab/InfoTip.astro';
 import FaqSection from '../components/siab/FaqSection.astro';
 
-const STARTUP_FEE_TIP = 'Eenmalig voor de bouw, domeinregistratie en inrichting. Daarna alleen je maandbedrag.';
-const TIP_PROFESSIONAL = 'Een complete one-pager met je bedrijfsinfo, diensten, contact en een offerte- of afspraakknop.';
+const TIP_PROFESSIONAL = 'Homepage en contactpagina, met je bedrijfsinfo, diensten en een duidelijke call-to-action.';
 const TIP_FINDABLE = 'Je website wordt gevonden door zoekmachines én door AI-tools die mensen voor advies gebruiken.';
-const TIP_MULTILANG = 'Je site komt in Nederlands en Engels, AI-vertaald met behoud van context en stijl.';
-const TIP_GMAIL = 'Een volwaardige zakelijke mailbox: ontvangen én versturen vanaf je eigen domein.';
-const TIP_GEMINI = 'Gemini helpt je e-mails schrijven, samenvatten en beantwoorden, direct in Gmail.';
+const TIP_DOMAIN = 'Nieuw .nl-domein op jouw naam: het eerste jaar gratis. Daarna verlengingskosten. Of we koppelen je huidige domein.';
+const TIP_EMAIL = 'Een zakelijk adres zoals info@jouwbedrijf.nl. Ontvangen én versturen vanaf je eigen domein.';
 
 const home = await getEntry('pages', 'index');
 if (!home) {
@@ -39,9 +37,8 @@ const ctaSignup = '/intake/';
         <div class="col-lg-6 d-flex flex-column justify-content-center">
           {/* Space before <br /> is intentional: the <br /> is hidden on mobile via siab-overrides.css so the heading wraps as one string; the space preserves natural word spacing in that mode. */}
           <h1 class="hero-heading">Een website voor je bedrijf. <br />Zonder gedoe.</h1>
-          <p class="fs-24 text-dark pt-35 lg-pt-30 pe-xxl-5">Online binnen 3 werkdagen · Geen verrassingen ·<span class="d-block d-sm-inline"> Alleen betalen als je tevreden bent.</span></p>
-          <p class="fs-22 pt-30 lg-pt-20 mb-0">Vanaf <span class="fw-500 text-dark">€19</span>/maand</p>
-          <div class="siab-cta-group d-flex align-items-center flex-wrap gap-3 pt-15">
+          <p class="fs-24 text-dark pt-35 lg-pt-30 pe-xxl-5">Voorbeeld binnen 24 uur · Geen startkosten · €19 p/m</p>
+          <div class="siab-cta-group d-flex align-items-center flex-wrap gap-3 pt-30 lg-pt-20">
             <a href={ctaSignup} class="btn-eighteen">Maak mijn website</a>
             <a href="#zo-werkt-het" class="siab-see-how">Hoe werkt het? →</a>
           </div>
@@ -61,37 +58,81 @@ const ctaSignup = '/intake/';
   </section>
 
   <!-- ============================== Promise cards (purple strip, seamless with reassurance below) ============================== -->
-  <section class="hero-cards-strip" aria-labelledby="onze-belofte-heading">
-    <h2 id="onze-belofte-heading" class="visually-hidden">Onze belofte</h2>
+  <section class="hero-cards-strip" aria-labelledby="eerst-zien-hero-heading">
+    <h2 id="eerst-zien-hero-heading" class="visually-hidden">Eerst zien, dan betalen</h2>
     <div class="container lg">
-      <div class="row gx-xxl-5">
-        <div class="col-lg-4">
+      <div class="row gx-xxl-5 align-items-stretch">
+        <div class="col-lg-4 d-flex">
           <div class="card-style-eleven">
-            <div class="card-icon-circle card-icon-cyan"><img src="/theme/images/icon/tabler-tools.svg" alt="" /></div>
-            <h3 class="card-style-eleven-heading">Wij regelen het</h3>
-            <p class="m0">Een korte vragenlijst, een paar foto's en wat tekst. Wij doen de rest.</p>
-            <div class="d-flex justify-content-end">
-              <a href="#zo-werkt-het" class="stretched-link" aria-label="Bekijk hoe het werkt"><img src="/theme/images/icon/icon_49.svg" alt="" /></a>
+            <div class="card-style-eleven-top">
+              <div class="card-icon-circle card-icon-cyan" aria-hidden="true">1</div>
+              <h3 class="card-style-eleven-heading">Jij vult in</h3>
+            </div>
+            <p class="card-style-eleven-text">Een vragenlijst van een kwartier en wat foto’s. Meer niet.</p>
+            <div class="siab-risk-visual siab-risk-visual--intake" aria-hidden="true">
+              <div class="siab-risk-form">
+                <div class="siab-risk-form__title">
+                  <img src="/theme/images/icon/tabler-clipboard-list.svg" alt="" width="20" height="20" />
+                  <span>Vragenlijst</span>
+                </div>
+                <div class="siab-risk-form__field">
+                  <span class="siab-risk-form__label">Bedrijfsnaam</span>
+                  <span class="siab-risk-form__input is-active">Jouw Bedrijf<span class="siab-risk-form__caret"></span></span>
+                </div>
+                <div class="siab-risk-form__field">
+                  <span class="siab-risk-form__label">Wat doe je?</span>
+                  <span class="siab-risk-form__input is-filled">Diensten &amp; aanpak</span>
+                </div>
+                <div class="siab-risk-form__uploads">
+                  <span class="siab-risk-form__label">Foto’s</span>
+                  <div class="siab-risk-form__photos">
+                    <span class="siab-risk-form__photo is-done"><img src="/theme/images/icon/tabler-check.svg" alt="" /></span>
+                    <span class="siab-risk-form__photo is-done"><img src="/theme/images/icon/tabler-check.svg" alt="" /></span>
+                    <span class="siab-risk-form__photo is-add"><img src="/theme/images/icon/tabler-plus.svg" alt="" /></span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="col-lg-4">
+        <div class="col-lg-4 d-flex">
           <div class="card-style-eleven md-mt-30">
-            <div class="card-icon-circle card-icon-orange"><img src="/theme/images/icon/tabler-adjustments-horizontal.svg" alt="" /></div>
-            <h3 class="card-style-eleven-heading">Jij hebt de regie</h3>
-            <p class="m0">Van je foto's tot je openingstijden: allemaal gemakkelijk zelf aan te passen.</p>
-            <div class="d-flex justify-content-end">
-              <a href="#zo-werkt-het" class="stretched-link" aria-label="Bekijk hoe het werkt"><img src="/theme/images/icon/icon_49.svg" alt="" /></a>
+            <div class="card-style-eleven-top">
+              <div class="card-icon-circle card-icon-orange" aria-hidden="true">2</div>
+              <h3 class="card-style-eleven-heading">Wij maken je site</h3>
+            </div>
+            <p class="card-style-eleven-text">Binnen 24 uur zie je hoe jouw website eruitziet.</p>
+            <div class="siab-risk-visual siab-risk-visual--preview" aria-hidden="true">
+              <div class="siab-risk-browser">
+                <div class="siab-risk-browser__bar">
+                  <span class="siab-risk-browser__dots" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <span class="siab-risk-browser__url">jouwbedrijf.nl/preview</span>
+                </div>
+                <div class="siab-risk-browser__screen">
+                  <img src="/theme/images/assets/example-desktop.webp" alt="" width="600" height="375" loading="eager" decoding="async" />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="col-lg-4">
+        <div class="col-lg-4 d-flex">
           <div class="card-style-eleven md-mt-30">
-            <div class="card-icon-circle card-icon-green"><img src="/theme/images/icon/tabler-shield-check.svg" alt="" /></div>
-            <h3 class="card-style-eleven-heading">Geen onderhoud</h3>
-            <p class="m0">Updates, beveiliging en back-ups verzorgen wij. Geen zorgen voor jou.</p>
-            <div class="d-flex justify-content-end">
-              <a href="#zo-werkt-het" class="stretched-link" aria-label="Bekijk hoe het werkt"><img src="/theme/images/icon/icon_49.svg" alt="" /></a>
+            <div class="card-style-eleven-top">
+              <div class="card-icon-circle card-icon-green" aria-hidden="true">3</div>
+              <h3 class="card-style-eleven-heading">Jij beslist</h3>
+            </div>
+            <p class="card-style-eleven-text">Tevreden? Live. Zo niet? Niks betalen.</p>
+            <div class="siab-risk-visual siab-risk-visual--decide" aria-hidden="true">
+              <div class="siab-risk-decide-stage">
+                <div class="siab-risk-decide siab-risk-decide--yes">
+                  <span class="siab-risk-decide__rays" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div class="siab-risk-decide siab-risk-decide--no">
+                  <span class="siab-risk-decide__rays" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -155,6 +196,11 @@ const ctaSignup = '/intake/';
       </ul>
     </div>
   </section>
+
+  <!-- Waarde / Sterke indruk section temporarily hidden from homepage.
+       Restore from git history (siab-value-section) when needed. -->
+
+  <!-- Eerst-zien step copy now fills the hero promise cards above. -->
 
   <!-- ============================== Zo werkt het ============================== -->
   <section id="zo-werkt-het" class="block-feature-twentySix mt-180 xl-mt-150 lg-mt-80" aria-labelledby="zo-werkt-het-heading">
@@ -290,117 +336,69 @@ const ctaSignup = '/intake/';
   </section>
 
   <!-- ============================== Prijzen ============================== -->
-  <section id="prijzen" class="pricing-section-six mt-170 lg-mt-80" aria-labelledby="prijzen-heading">
+  <section id="prijzen" class="pricing-section-six siab-pricing-billing mt-170 lg-mt-80" aria-labelledby="prijzen-heading">
     <div class="container lg">
-      <div class="row">
-        <div class="col-xl-4 col-lg-6 m-auto m-xl-0 text-center text-xl-start">
+      <div class="row justify-content-center align-items-xl-start gx-xl-5">
+        <div class="col-xl-5 col-lg-6 m-auto m-xl-0 text-center text-xl-start">
           <div class="title-eleven">
             <h2 id="prijzen-heading">Eén prijs. Alles inbegrepen.</h2>
-            <p class="fs-20 text-dark opacity-75 pt-25 pe-xxl-5">Eén ding minder om te regelen voor je nieuwe bedrijf. Wij doen de techniek, jij houdt je bezig met je klanten.</p>
+            <p class="fs-20 text-dark opacity-75 pt-25">Eén ding minder om te regelen voor je nieuwe bedrijf.<br class="d-none d-xl-inline" /> Wij doen de techniek, jij houdt je bezig met je klanten.</p>
           </div>
           <div class="fs-20 fw-500 text-dark mt-55 lg-mt-40 mb-15">Facturatie</div>
           <nav class="pricing-nav-four d-flex justify-content-center justify-content-xl-start">
-            <div class="nav nav-tabs justify-content-between" role="tablist">
-              <a class="nav-link" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="false">Maandelijks</a>
-              <a class="nav-link active" id="yearly-tab" data-bs-toggle="tab" data-bs-target="#yearly" type="button" role="tab" aria-controls="yearly" aria-selected="true">Jaarlijks</a>
+            <div class="nav nav-tabs" role="tablist">
+              <a class="nav-link active" id="monthly-tab" data-bs-toggle="tab" data-bs-target="#monthly" type="button" role="tab" aria-controls="monthly" aria-selected="true">Maandelijks</a>
+              <a class="nav-link" id="yearly-tab" data-bs-toggle="tab" data-bs-target="#yearly" type="button" role="tab" aria-controls="yearly" aria-selected="false">Jaarlijks <span class="pricing-save-hint">−17%</span></a>
             </div>
           </nav>
           <p class="fs-14 opacity-75 mt-2 mb-0 text-center text-xl-start lg-mb-40">Alle prijzen excl. btw</p>
         </div>
-        <div class="col-xl-8">
-          <div class="tab-content ps-xxl-5">
-            <!-- Monthly -->
-            <div class="tab-pane fade" id="monthly" role="tabpanel" aria-labelledby="monthly-tab" tabindex="0">
-              <div class="row">
-                <div class="col-lg-6 d-flex">
-                  <div class="pr-column w-100">
-                    <div class="pr-header text-center mb-25">
-                      <div class="plane-name">Website</div>
-                      <div class="plan-tagline">Jouw bedrijfswebsite, helemaal verzorgd</div>
-                      <div class="save-line fs-20 fw-500">Maandelijks opzegbaar</div>
-                      <div class="price">€19<sub>/maand*</sub></div>
-                      <div class="info2 fs-14 opacity-75">* €99 eenmalige opstartkosten <InfoTip title={STARTUP_FEE_TIP} label="Meer info over opstartkosten" /></div>
-                    </div>
-                    <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
-                    <h3 class="pricing-section-heading">Inbegrepen</h3>
-                    <ul class="style-none package-feature">
-                      <li>Professionele website <InfoTip title={TIP_PROFESSIONAL} /></li>
-                      <li>Klaar voor Google én ChatGPT <InfoTip title={TIP_FINDABLE} /></li>
-                      <li>Bliksemsnelle laadtijd</li>
-                      <li>Veilig en betrouwbaar online</li>
-                      <li>Eigen .nl-domein</li>
-                      <li>NL-support</li>
-                    </ul>
-                  </div>
+        <div class="col-xl-5 col-lg-6">
+          <div class="tab-content">
+            <!-- Monthly (default) -->
+            <div class="tab-pane show active fade" id="monthly" role="tabpanel" aria-labelledby="monthly-tab" tabindex="0">
+              <div class="pr-column w-100">
+                <div class="pr-header text-center mb-25">
+                  <div class="plane-name">Site in a Box</div>
+                  <div class="plan-tagline">Jouw bedrijfswebsite, helemaal verzorgd</div>
+                  <div class="save-line fs-20 fw-500">Maandelijks opzegbaar</div>
+                  <div class="price">€19<sub>/maand</sub></div>
                 </div>
-                <div class="col-lg-6 d-flex">
-                  <div class="pr-column pr-column-recommended w-100 md-mt-30">
-                    <div class="pr-header text-center mb-25">
-                      <div class="plane-name">Compleet</div>
-                      <div class="plan-tagline">Website én zakelijke Gmail</div>
-                      <div class="save-line fs-20 fw-500">Maandelijks opzegbaar</div>
-                      <div class="price">€29<sub>/maand*</sub></div>
-                      <div class="info2 fs-14 opacity-75">* €99 eenmalige opstartkosten <InfoTip title={STARTUP_FEE_TIP} label="Meer info over opstartkosten" /></div>
-                    </div>
-                    <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
-                    <h3 class="pricing-section-heading plus-header">Alles van Website, plus:</h3>
-                    <ul class="style-none package-feature">
-                      <li>Meertalige website <InfoTip title={TIP_MULTILANG} /></li>
-                      <li>Zakelijke Gmail (info@jouwbedrijf.nl) <InfoTip title={TIP_GMAIL} /></li>
-                      <li>AI-assistent Gemini in Gmail <InfoTip title={TIP_GEMINI} /></li>
-                      <li>Chat met AI in de Gemini-app</li>
-                      <li>30 GB Google Drive</li>
-                      <li>Google Agenda + Meet</li>
-                      <li class="optional">Google Analytics-setup</li>
-                    </ul>
-                  </div>
-                </div>
+                <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
+                <h3 class="pricing-section-heading">Inbegrepen</h3>
+                <ul class="style-none package-feature">
+                  <li>Professionele website <InfoTip title={TIP_PROFESSIONAL} /></li>
+                  <li>Klaar voor Google én ChatGPT <InfoTip title={TIP_FINDABLE} /></li>
+                  <li>Bliksemsnelle laadtijd</li>
+                  <li>Veilig en betrouwbaar online</li>
+                  <li>.nl-domein eerste jaar gratis <InfoTip title={TIP_DOMAIN} /></li>
+                  <li>Zelf teksten en foto’s aanpassen</li>
+                  <li>NL-support</li>
+                  <li class="optional">Zakelijke e-mail <InfoTip title={TIP_EMAIL} /></li>
+                </ul>
               </div>
             </div>
-            <!-- Yearly (default active) -->
-            <div class="tab-pane show active fade" id="yearly" role="tabpanel" aria-labelledby="yearly-tab" tabindex="0">
-              <div class="row">
-                <div class="col-lg-6 d-flex">
-                  <div class="pr-column w-100">
-                    <div class="pr-header text-center mb-25">
-                      <div class="plane-name">Website</div>
-                      <div class="plan-tagline">Jouw bedrijfswebsite, helemaal verzorgd</div>
-                      <div class="save-line fs-20 fw-500">Geen opstartkosten</div>
-                      <div class="price">€19<sub>/maand</sub></div>
-                    </div>
-                    <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
-                    <h3 class="pricing-section-heading">Inbegrepen</h3>
-                    <ul class="style-none package-feature">
-                      <li>Professionele website <InfoTip title={TIP_PROFESSIONAL} /></li>
-                      <li>Klaar voor Google én ChatGPT <InfoTip title={TIP_FINDABLE} /></li>
-                      <li>Bliksemsnelle laadtijd</li>
-                      <li>Veilig en betrouwbaar online</li>
-                      <li>Eigen .nl-domein</li>
-                      <li>NL-support</li>
-                    </ul>
-                  </div>
+            <!-- Yearly -->
+            <div class="tab-pane fade" id="yearly" role="tabpanel" aria-labelledby="yearly-tab" tabindex="0">
+              <div class="pr-column pr-column-recommended w-100">
+                <div class="pr-header text-center mb-25">
+                  <div class="plane-name">Site in a Box</div>
+                  <div class="plan-tagline">Jouw bedrijfswebsite, helemaal verzorgd</div>
+                  <div class="save-line fs-20 fw-500">Je bespaart €38 per jaar</div>
+                  <div class="price">€190<sub>/jaar</sub></div>
                 </div>
-                <div class="col-lg-6 d-flex">
-                  <div class="pr-column pr-column-recommended w-100 md-mt-30">
-                    <div class="pr-header text-center mb-25">
-                      <div class="plane-name">Compleet</div>
-                      <div class="plan-tagline">Website én zakelijke Gmail</div>
-                      <div class="save-line fs-20 fw-500">Geen opstartkosten</div>
-                      <div class="price">€29<sub>/maand</sub></div>
-                    </div>
-                    <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
-                    <h3 class="pricing-section-heading plus-header">Alles van Website, plus:</h3>
-                    <ul class="style-none package-feature">
-                      <li>Meertalige website <InfoTip title={TIP_MULTILANG} /></li>
-                      <li>Zakelijke Gmail (info@jouwbedrijf.nl) <InfoTip title={TIP_GMAIL} /></li>
-                      <li>AI-assistent Gemini in Gmail <InfoTip title={TIP_GEMINI} /></li>
-                      <li>Chat met AI in de Gemini-app</li>
-                      <li>30 GB Google Drive</li>
-                      <li>Google Agenda + Meet</li>
-                      <li class="optional">Google Analytics-setup</li>
-                    </ul>
-                  </div>
-                </div>
+                <a href={ctaSignup} class="btn-eleven w-100 d-flex justify-content-between align-items-center">Start vrijblijvend<span class="icon tran3s d-flex align-items-center justify-content-center"><svg class="cta-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6l-6 6"/></svg></span></a>
+                <h3 class="pricing-section-heading">Inbegrepen</h3>
+                <ul class="style-none package-feature">
+                  <li>Professionele website <InfoTip title={TIP_PROFESSIONAL} /></li>
+                  <li>Klaar voor Google én ChatGPT <InfoTip title={TIP_FINDABLE} /></li>
+                  <li>Bliksemsnelle laadtijd</li>
+                  <li>Veilig en betrouwbaar online</li>
+                  <li>.nl-domein eerste jaar gratis <InfoTip title={TIP_DOMAIN} /></li>
+                  <li>Zelf teksten en foto’s aanpassen</li>
+                  <li>NL-support</li>
+                  <li class="optional">Zakelijke e-mail <InfoTip title={TIP_EMAIL} /></li>
+                </ul>
               </div>
             </div>
           </div>
@@ -419,6 +417,16 @@ const ctaSignup = '/intake/';
     </div>
     <div class="wrapper">
       <div class="feedback-slider-six">
+        <div class="item">
+          <div class="feedback-block">
+            <img src="/theme/images/logo/clients/amblast.png" alt="AMBLAST Facility Services" class="logo" />
+            <blockquote>"Professioneel en strak, precies wat ik zocht. Meerdere mensen merken hoe overzichtelijk de site is. Absoluut een aanrader."</blockquote>
+            <div class="d-flex align-items-center justify-content-between">
+              <div class="name text-white"><span class="fw-500">AMBLAST</span> Facility Services</div>
+              <img src="/theme/images/icon/icon_56.svg" alt="" class="icon" />
+            </div>
+          </div>
+        </div>
         <div class="item">
           <div class="feedback-block">
             <img src="/theme/images/logo/clients/quitantie.png" alt="Quitantie Inkomensbeheer & Bewindvoering" class="logo" />
@@ -461,6 +469,121 @@ const ctaSignup = '/intake/';
       </ul>
     </div>
     <img src="/theme/images/shape/shape_81.svg" alt="" class="shapes shape_01" />
+  </section>
+
+  <!-- ============================== Vergelijking ============================== -->
+  <section id="vergelijking" class="siab-compare-section mt-180 lg-mt-80" aria-labelledby="vergelijking-heading">
+    <div class="container lg">
+      <div class="siab-compare-intro">
+        <h2 id="vergelijking-heading">Wat past bij jou?</h2>
+        <p class="siab-compare-lead">Niet elke route past bij elk bedrijf. Vergelijk tijd, verantwoordelijkheid en investering.</p>
+      </div>
+
+      <div class="siab-compare-scroll" tabindex="0" role="region" aria-label="Vergelijkingstabel">
+        <table class="siab-compare-table">
+          <thead>
+            <tr>
+              <th scope="col" class="siab-compare-table__corner"><span class="visually-hidden">Criterium</span></th>
+              <th scope="col">
+                <span class="siab-compare-colhead">
+                  <span class="siab-compare-colhead__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h4l13 -13a1.5 1.5 0 0 0 -4 -4l-13 13v4"/><path d="M14.5 5.5l4 4"/><path d="M12 8l-5 -5l-4 4l5 5"/><path d="M7 8l-1.5 1.5"/><path d="M16 12l5 5l-4 4l-5 -5"/><path d="M16 17l-1.5 1.5"/></svg>
+                  </span>
+                  <span class="siab-compare-colhead__label">Zelf bouwen</span>
+                </span>
+              </th>
+              <th scope="col">
+                <span class="siab-compare-colhead">
+                  <span class="siab-compare-colhead__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l18 0"/><path d="M5 21v-14l8 -4v18"/><path d="M19 21v-10l-6 -4"/><path d="M9 9v.01"/><path d="M9 12v.01"/><path d="M9 15v.01"/><path d="M9 18v.01"/></svg>
+                  </span>
+                  <span class="siab-compare-colhead__label">Webbureau</span>
+                </span>
+              </th>
+              <th scope="col" class="siab-compare-table__siab">
+                <span class="siab-compare-colhead">
+                  <img
+                    class="siab-compare-logo"
+                    src="/theme/images/logo/siab_logo.svg"
+                    alt="Site in a Box"
+                    width="160"
+                    height="40"
+                  />
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">
+                <span class="siab-compare-criterion">
+                  <span class="siab-compare-criterion__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
+                  </span>
+                  <span>Tijd van jou</span>
+                </span>
+              </th>
+              <td>Veel</td>
+              <td>Intake + feedback</td>
+              <td class="siab-compare-table__siab"><strong>± 15 minuten</strong></td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <span class="siab-compare-criterion">
+                  <span class="siab-compare-criterion__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
+                  </span>
+                  <span>Tijd tot livegang</span>
+                </span>
+              </th>
+              <td>Wanneer jij klaar bent</td>
+              <td>Vaak meerdere weken</td>
+              <td class="siab-compare-table__siab"><strong>Binnen 3 werkdagen</strong></td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <span class="siab-compare-criterion">
+                  <span class="siab-compare-criterion__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"/><path d="M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/></svg>
+                  </span>
+                  <span>Investering vooraf</span>
+                </span>
+              </th>
+              <td>Laag in geld, hoog in tijd</td>
+              <td>Hoger projectbedrag</td>
+              <td class="siab-compare-table__siab"><strong>Geen opstartkosten</strong></td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <span class="siab-compare-criterion">
+                  <span class="siab-compare-criterion__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"/><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/></svg>
+                  </span>
+                  <span>Techniek na oplevering</span>
+                </span>
+              </th>
+              <td>Zelf regelen</td>
+              <td>Afhankelijk van afspraken</td>
+              <td class="siab-compare-table__siab"><strong>Inbegrepen</strong></td>
+            </tr>
+            <tr>
+              <th scope="row">
+                <span class="siab-compare-criterion">
+                  <span class="siab-compare-criterion__icon" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/></svg>
+                  </span>
+                  <span>Beste keuze voor</span>
+                </span>
+              </th>
+              <td>Handige doeners</td>
+              <td>Complex maatwerk</td>
+              <td class="siab-compare-table__siab"><strong>Snel en zorgeloos online</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
   </section>
 
   <!-- ============================== FAQ ============================== -->

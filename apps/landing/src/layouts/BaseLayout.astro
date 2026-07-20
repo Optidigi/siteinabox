@@ -374,7 +374,8 @@ const analyticsConfig = posthogProjectToken && matchesApprovedPublicAnalyticsCon
       }
     </script>
 
-    <!-- Slick init + slick aria-hidden-focus fix -->
+    <!-- Slick init + slick aria-hidden-focus fix.
+         One centered slide with side peeks — works with few items and keeps the wide wrapper. -->
     <script is:inline>
       window.addEventListener('load', function () {
         if (window.jQuery && window.jQuery.fn.slick) {
@@ -384,15 +385,17 @@ const analyticsConfig = posthogProjectToken && matchesApprovedPublicAnalyticsCon
             prevArrow: window.jQuery('.prev_b'),
             nextArrow: window.jQuery('.next_b'),
             lazyLoad: 'ondemand',
-            centerPadding: '0px',
-            slidesToShow: 3,
+            slidesToShow: 1,
             slidesToScroll: 1,
             centerMode: true,
+            centerPadding: '26%',
+            infinite: true,
             autoplay: true,
             autoplaySpeed: 10000,
             responsive: [
-              { breakpoint: 768, settings: { slidesToShow: 2 } },
-              { breakpoint: 576, settings: { slidesToShow: 1 } },
+              { breakpoint: 1200, settings: { centerPadding: '16%' } },
+              { breakpoint: 768, settings: { centerPadding: '8%' } },
+              { breakpoint: 576, settings: { centerMode: false, centerPadding: '0px' } },
             ],
           });
         }
