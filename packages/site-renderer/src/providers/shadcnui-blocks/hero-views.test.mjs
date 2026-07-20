@@ -49,7 +49,7 @@ const heroFamily = [
     sparse: heroFamilySparse,
     long: heroFamilyLong,
     secondaryOnly: heroFamilySecondaryOnly,
-    distinctive: /DreamyBackground|--provider-accent-|linearGradient|blur\(64px\)|min-h-screen/,
+    distinctive: /DreamyBackground|--provider-accent-|radial-gradient|min-h-screen/,
     withImage: false,
     headlinePattern: /Ship better UI without the hassle/,
   },

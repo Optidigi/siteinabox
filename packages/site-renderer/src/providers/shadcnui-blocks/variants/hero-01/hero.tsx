@@ -83,75 +83,18 @@ export function Hero01({
 }
 
 function DreamyBackground({ className, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
-  // Upstream blob paths + linearGradients; CSS blur (not SVG gaussian filters)
-  // so preview scroll does not eviction-flash GPU layers. Intentionally wider
-  // than upstream and dual-tone via theme secondary accents.
-  const reactId = React.useId().replace(/:/g, "")
-  const paint0 = `hero01-paint0-${reactId}`
-  const paint1 = `hero01-paint1-${reactId}`
-  // stdDeviation 64 in a 1226-wide viewBox ≈ this blur at typical hero widths.
-  // Extra horizontal scale spreads the dreamy wash without rewriting path data.
-  const blobStyle: React.CSSProperties = {
-    filter: "blur(64px)",
-    transform: "translateZ(0) scale(1.58, 1.2)",
-  }
-
+  // Soft dual-tone wash via CSS radials only — no CSS filter:blur and no SVG
+  // gaussian filters. Live filters promote GPU layers that flash semi-transparent
+  // rects when sibling buttons hover/transition (and can eviction-flash on scroll).
+  // Wider than upstream; dual-tone via theme secondary accents.
   return (
     <div
       aria-hidden
       className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}
       {...rest}
     >
-      <svg
-        className="absolute inset-0 m-auto h-full w-full"
-        fill="none"
-        style={blobStyle}
-        viewBox="0 0 1226 1065"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M291.402 416.77C291.402 346.77 244.735 285.603 221.402 263.77C111.902 141.27 448.902 207.27 636.402 359.77C823.902 512.27 618.902 613.27 448.902 740.27C278.902 867.27 291.402 504.27 291.402 416.77Z"
-          fill={`url(#${paint0})`}
-        />
-        <defs>
-          <linearGradient
-            gradientUnits="userSpaceOnUse"
-            id={paint0}
-            x1="155.902"
-            x2="592.902"
-            y1="200.271"
-            y2="696.271"
-          >
-            <stop stopColor="var(--provider-accent-600, #4b5563)" />
-            <stop offset="1" stopColor="var(--provider-accent-300, #d1d5db)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <svg
-        className="absolute inset-0 m-auto h-full w-full"
-        fill="none"
-        style={blobStyle}
-        viewBox="0 0 1226 1065"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M811.933 441.279C881.694 435.492 938.793 383.929 958.623 358.87C1071.65 239.618 1033.74 580.921 897.259 780.386C760.781 979.851 643.18 783.902 502.561 624.983C361.942 466.063 724.733 448.512 811.933 441.279Z"
-          fill={`url(#${paint1})`}
-        />
-        <defs>
-          <linearGradient
-            gradientUnits="userSpaceOnUse"
-            id={paint1}
-            x1="1016.49"
-            x2="558.314"
-            y1="288.346"
-            y2="764.853"
-          >
-            <stop stopColor="var(--provider-accent-secondary-700, #4338ca)" />
-            <stop offset="1" stopColor="var(--provider-accent-secondary-400, #818cf8)" />
-          </linearGradient>
-        </defs>
-      </svg>
+      <div className="absolute top-[2%] left-[-10%] h-[100%] w-[90%] bg-[radial-gradient(ellipse_at_35%_45%,var(--provider-accent-600,#4b5563)_0%,var(--provider-accent-300,#d1d5db)_38%,transparent_70%)] opacity-90" />
+      <div className="absolute top-[6%] right-[-14%] h-[95%] w-[85%] bg-[radial-gradient(ellipse_at_62%_48%,var(--provider-accent-secondary-700,#4338ca)_0%,var(--provider-accent-secondary-400,#818cf8)_42%,transparent_72%)] opacity-90" />
     </div>
   )
 }
