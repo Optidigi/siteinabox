@@ -95,7 +95,7 @@ const BLOB_PATH_0 =
 const BLOB_PATH_1 =
   "M811.933 441.279C881.694 435.492 938.793 383.929 958.623 358.87C1071.65 239.618 1033.74 580.921 897.259 780.386C760.781 979.851 643.18 783.902 502.561 624.983C361.942 466.063 724.733 448.512 811.933 441.279Z"
 
-type BlobStop = { offset: number; cssVar: string; fallback: string }
+type BlobStop = { offset: number; cssVar: string }
 type BlobPaint = {
   path: string
   x1: number
@@ -113,8 +113,8 @@ const BLOB_PAINTS: readonly BlobPaint[] = [
     x2: 592.902,
     y2: 696.271,
     stops: [
-      { offset: 0, cssVar: "--provider-accent-600", fallback: "#4b5563" },
-      { offset: 1, cssVar: "--provider-accent-300", fallback: "#d1d5db" },
+      { offset: 0, cssVar: "--provider-accent-600" },
+      { offset: 1, cssVar: "--provider-accent-300" },
     ],
   },
   {
@@ -124,15 +124,15 @@ const BLOB_PAINTS: readonly BlobPaint[] = [
     x2: 558.314,
     y2: 764.853,
     stops: [
-      { offset: 0, cssVar: "--provider-accent-secondary-700", fallback: "#4338ca" },
-      { offset: 1, cssVar: "--provider-accent-secondary-400", fallback: "#818cf8" },
+      { offset: 0, cssVar: "--provider-accent-secondary-700" },
+      { offset: 1, cssVar: "--provider-accent-secondary-400" },
     ],
   },
 ]
 
-function readCssVar(el: Element, name: string, fallback: string): string {
+function readCssVar(el: Element, name: string): string | null {
   const value = getComputedStyle(el).getPropertyValue(name).trim()
-  return value || fallback
+  return value || null
 }
 
 function paintDreamyBackground(canvas: HTMLCanvasElement, scope: Element) {
@@ -170,10 +170,11 @@ function paintDreamyBackground(canvas: HTMLCanvasElement, scope: Element) {
   ctx.filter = `blur(${BLOB_BLUR_PX * dpr}px)`
 
   for (const paint of BLOB_PAINTS) {
+    const [start, end] = paint.stops.map((stop) => readCssVar(scope, stop.cssVar))
+    if (!start || !end) continue
     const gradient = ctx.createLinearGradient(paint.x1, paint.y1, paint.x2, paint.y2)
-    for (const stop of paint.stops) {
-      gradient.addColorStop(stop.offset, readCssVar(scope, stop.cssVar, stop.fallback))
-    }
+    gradient.addColorStop(paint.stops[0].offset, start)
+    gradient.addColorStop(paint.stops[1].offset, end)
     ctx.fillStyle = gradient
     ctx.fill(new Path2D(paint.path))
   }
