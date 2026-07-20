@@ -54,3 +54,21 @@ export const integrations02CmsLike = {
     index === 0 ? { ...logo, status: "connected" as const } : logo,
   ),
 }
+
+export const integrations03CmsLike = {
+  title: previewInlineText("Connect your tools"),
+  intro: previewInlineText("Connect your favorite tools and services to your account"),
+  logos: integrationsFamilyCmsLike.logos,
+}
+
+export const integrations04CmsLike = {
+  title: previewInlineText("Easy integrations"),
+  intro: previewInlineText("Connect your favorite tools and services to your account"),
+  logos: integrationsFamilyCmsLike.logos,
+}
+
+export const integrations05CmsLike = {
+  title: previewInlineText("Plug into your stack"),
+  intro: previewInlineText("Connect your favorite tools and services to your account"),
+  logos: integrationsFamilyCmsLike.logos,
+}

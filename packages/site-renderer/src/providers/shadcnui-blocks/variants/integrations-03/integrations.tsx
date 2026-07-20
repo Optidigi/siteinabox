@@ -7,7 +7,7 @@ import type { MediaResolver } from "../../../../media"
 import { ArrowUpRight } from "lucide-react"
 import { Badge } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
-import { integrationsFamilyCmsLike } from "../../typed/fixtures/integrations-family"
+import { integrations03CmsLike } from "../../typed/fixtures/integrations-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
   renderIntegrationLogo,
@@ -85,9 +85,9 @@ export function Integrations03({
 export default function Integrations03Literal() {
   return (
     <Integrations03
-      title={integrationsFamilyCmsLike.title}
-      intro={integrationsFamilyCmsLike.intro}
-      logos={integrationsFamilyCmsLike.logos}
+      title={integrations03CmsLike.title}
+      intro={integrations03CmsLike.intro}
+      logos={integrations03CmsLike.logos}
       blockIndex={0}
     />
   )

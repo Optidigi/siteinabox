@@ -4,7 +4,8 @@ import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import {
   integrations01CmsLike,
-  integrationsFamilyCmsLike,
+  integrations03CmsLike,
+  integrations05CmsLike,
   integrationsFamilyEmptyItems,
   integrationsFamilyLong,
   integrationsFamilySparse,
@@ -36,7 +37,7 @@ const integrationsFamily = [
     id: "shadcnui-blocks.integrations-03",
     Component: Integrations03,
     View: Integrations03View,
-    cmsLike: integrationsFamilyCmsLike,
+    cmsLike: integrations03CmsLike,
     sparse: integrationsFamilySparse,
     long: integrationsFamilyLong,
     emptyItems: integrationsFamilyEmptyItems,
@@ -47,7 +48,7 @@ const integrationsFamily = [
     id: "shadcnui-blocks.integrations-05",
     Component: Integrations05,
     View: Integrations05View,
-    cmsLike: integrationsFamilyCmsLike,
+    cmsLike: integrations05CmsLike,
     sparse: integrationsFamilySparse,
     long: integrationsFamilyLong,
     emptyItems: integrationsFamilyEmptyItems,

@@ -4,7 +4,7 @@
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
 import type { MediaResolver } from "../../../../media"
-import { integrationsFamilyCmsLike } from "../../typed/fixtures/integrations-family"
+import { integrations04CmsLike } from "../../typed/fixtures/integrations-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
   renderIntegrationDescription,
@@ -77,9 +77,9 @@ export function Integrations04({
 export default function Integrations04Literal() {
   return (
     <Integrations04
-      title={integrationsFamilyCmsLike.title}
-      intro={integrationsFamilyCmsLike.intro}
-      logos={integrationsFamilyCmsLike.logos}
+      title={integrations04CmsLike.title}
+      intro={integrations04CmsLike.intro}
+      logos={integrations04CmsLike.logos}
       blockIndex={0}
     />
   )

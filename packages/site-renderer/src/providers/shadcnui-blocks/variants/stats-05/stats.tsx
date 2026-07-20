@@ -4,7 +4,7 @@
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
 import { FastForward, HeartHandshake, MonitorSmartphone } from "lucide-react"
-import { statsFamilyCmsLike } from "../../typed/fixtures/stats-family"
+import { stats05CmsLike } from "../../typed/fixtures/stats-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
   renderStatLabel,
@@ -71,9 +71,9 @@ export function Stats05({ title, intro, items, blockIndex, editSlots, rootAttrib
 export default function Stats05Literal() {
   return (
     <Stats05
-      title={statsFamilyCmsLike.title}
-      intro={statsFamilyCmsLike.intro}
-      items={statsFamilyCmsLike.items}
+      title={stats05CmsLike.title}
+      intro={stats05CmsLike.intro}
+      items={stats05CmsLike.items}
       blockIndex={0}
     />
   )

@@ -39,6 +39,24 @@ export const stats02CmsLike = {
   ],
 }
 
+export const stats04CmsLike = {
+  title: previewInlineText("Our Impact"),
+  intro: previewInlineText("Trusted by thousands to build modern UIs faster"),
+  items: statsFamilyCmsLike.items,
+}
+
+export const stats05CmsLike = {
+  title: previewInlineText("Built with scale in mind"),
+  intro: previewInlineText("Trusted by thousands to build modern UIs faster"),
+  items: statsFamilyCmsLike.items,
+}
+
+export const stats07CmsLike = {
+  title: previewInlineText("Built with scale in mind"),
+  intro: previewInlineText("A quick look at the impact and adoption of our UI components"),
+  items: statsFamilyCmsLike.items,
+}
+
 export const stats11CmsLike = {
   title: previewInlineText("Reliable by Design"),
   intro: previewInlineText("Trusted by thousands to build modern UIs faster"),

@@ -56,6 +56,22 @@ export const team03CmsLike = {
   ],
 }
 
+const teamHiringIntro = previewInlineText(
+  "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work.",
+)
+
+export const team04CmsLike = {
+  title: previewInlineText("Team behind the product"),
+  intro: teamHiringIntro,
+  members: team03CmsLike.members,
+}
+
+export const team05CmsLike = {
+  title: previewInlineText("A team of creators"),
+  intro: teamHiringIntro,
+  members: team03CmsLike.members,
+}
+
 export const team06CmsLike = {
   title: previewInlineText("Our core team"),
   intro: previewInlineText("Passionate people building great products"),

@@ -4,7 +4,7 @@
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
 import { cn } from "@siteinabox/ui/lib/utils"
-import { statsFamilyCmsLike } from "../../typed/fixtures/stats-family"
+import { stats07CmsLike } from "../../typed/fixtures/stats-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
   renderStatLabel,
@@ -70,9 +70,9 @@ export function Stats07({ title, intro, items, blockIndex, editSlots, rootAttrib
 export default function Stats07Literal() {
   return (
     <Stats07
-      title={statsFamilyCmsLike.title}
-      intro={statsFamilyCmsLike.intro}
-      items={statsFamilyCmsLike.items}
+      title={stats07CmsLike.title}
+      intro={stats07CmsLike.intro}
+      items={stats07CmsLike.items}
       blockIndex={0}
     />
   )

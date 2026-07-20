@@ -20,7 +20,6 @@ import {
 
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import Link from "../../runtime/link"
-import { testimonials01Literal } from "../../typed/fixtures/testimonials-01"
 import { testimonials02CmsLike } from "../../typed/fixtures/testimonials-family"
 
 const MAX_ITEMS = 6
@@ -78,5 +77,12 @@ export function Testimonials02({ title, intro, items, blockIndex, editSlots, med
 }
 
 export default function Testimonials02Literal() {
-  return <Testimonials02 title={testimonials01Literal.title} intro={testimonials01Literal.intro} items={testimonials01Literal.items} blockIndex={0} />
+  return (
+    <Testimonials02
+      title={testimonials02CmsLike.title}
+      intro={testimonials02CmsLike.intro}
+      items={testimonials02CmsLike.items}
+      blockIndex={0}
+    />
+  )
 }

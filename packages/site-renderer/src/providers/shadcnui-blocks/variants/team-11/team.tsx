@@ -5,7 +5,7 @@ import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
 import type { MediaResolver } from "../../../../media"
 import { RichTextRenderer } from "../../../../rich-text"
-import { team06CmsLike } from "../../typed/fixtures/team-family"
+import { teamFamilyCmsLike } from "../../typed/fixtures/team-family"
 import type { TypedVariantBaseProps } from "../../typed/props"
 import {
   renderMemberImage,
@@ -95,10 +95,10 @@ export default function Team11Literal() {
   return (
     <div className="mx-auto max-w-7xl px-6 py-20">
       <h2 className="text-balance text-center font-medium text-3xl tracking-[-0.04em] sm:text-4xl md:text-[2.75rem]">
-        <RichTextRenderer value={team06CmsLike.title} blockMode="inline" />
+        <RichTextRenderer value={teamFamilyCmsLike.title} blockMode="inline" />
       </h2>
       <p className="mt-3 text-balance text-center text-lg text-muted-foreground tracking-[-0.01em] md:text-2xl">
-        <RichTextRenderer value={team06CmsLike.intro} blockMode="inline" />
+        <RichTextRenderer value={teamFamilyCmsLike.intro} blockMode="inline" />
       </p>
       <div className="mt-12 grid grid-cols-1 gap-10 max-sm:justify-center sm:mt-18 sm:grid-cols-2 lg:grid-cols-3">
         {LITERAL_MEMBERS.map(([name, role], index) => (
