@@ -236,22 +236,22 @@ test("cta-02 literal preview renders fallback background image", () => {
   assert.match(html, /src="\/images\/ascii-art\.png"/)
 })
 
-test("cta-03 empty media still renders dock illustration fallback", () => {
+test("cta-03 empty media renders no background image", () => {
   const html = renderToStaticMarkup(React.createElement(Cta03, {
     headline: cta04Sparse.headline,
     blockIndex: 0,
   }))
-  assert.match(html, /cta-mobile\.png/)
-  assert.match(html, /object-cover object-center/)
+  assert.doesNotMatch(html, /<img /)
+  assert.doesNotMatch(html, /cta-mobile\.png/)
 })
 
-test("cta-04 empty media still renders dock illustration fallback", () => {
+test("cta-04 empty media renders no background image", () => {
   const html = renderToStaticMarkup(React.createElement(Cta04, {
     headline: cta04Sparse.headline,
     blockIndex: 0,
   }))
-  assert.match(html, /cta-mobile\.png/)
-  assert.match(html, /object-cover object-center/)
+  assert.doesNotMatch(html, /<img /)
+  assert.doesNotMatch(html, /cta-mobile\.png/)
 })
 
 test("cta-02 with background image uses resolved media in public render", () => {

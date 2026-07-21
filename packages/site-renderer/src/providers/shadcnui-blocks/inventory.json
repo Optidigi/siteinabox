@@ -18248,7 +18248,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-03/cta.tsx",
-          "sha256": "sha256:9b2fc07c72dec655011a99f4b4638e7cec51ae36c974626890aa5423cece4abf"
+          "sha256": "sha256:cb6607cbc6d82b15661646ee4276726466559163230c82affebe96019ec22621"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-03/view.tsx",
@@ -18509,7 +18509,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-04/cta.tsx",
-          "sha256": "sha256:e79a0206e91d2dd0bf2330d423c674e37d7820cbc5cb2fe3781ca4cf61aa2854"
+          "sha256": "sha256:96d48f9707fc9c1638db204c25f77bbdb1bed08ab3258f2e1b047b1f662d1783"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-04/view.tsx",
