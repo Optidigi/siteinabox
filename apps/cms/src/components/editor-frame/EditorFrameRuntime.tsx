@@ -259,7 +259,7 @@ export function EditorFrameRuntime({
           : headerNode
             ? "header"
             : "footer"
-        const selection = { pageId, fieldPath: ["chrome", zone] as string[] }
+        const selection = { pageId, fieldPath: ["chrome", zone] as const }
         setActiveSelection(selection)
         emit({
           protocol: IFRAME_EDITOR_PROTOCOL_NAME,
