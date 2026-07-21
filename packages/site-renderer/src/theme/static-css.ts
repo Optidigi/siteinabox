@@ -7,13 +7,14 @@ const declarations = (values: Record<string, string>) => Object.entries(values).
 const hues: Record<string, number> = { monochrome: 0, "blue-professional": 264, "red-confident": 25, "emerald-calm": 165, "amber-warm": 75, "terracotta-warm": 35 }
 /** Soft pastel dark brand (pre-500-lift) for schemes that read better at 400. */
 const softDarkBrand = new Set(["red-confident", "amber-warm"])
-/** Amber should stay yellow in both modes — light uses a bright stop with dark ink. */
+/** Amber stays yellow in both modes, with only a modest light→dark lift. */
 const yellowBrand = new Set(["amber-warm"])
 
 const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSchemes]["light"], dark: boolean) => {
   const hue = hues[id] ?? 0
   const darkBrand = softDarkBrand.has(id) ? mode.accent[400]! : mode.accent[500]!
-  const lightPrimary = yellowBrand.has(id) ? mode.accent[400]! : mode.accent[700]!
+  // Amber light: yellow-gold 500 (not brown 700). Dark: brighter 400. Same family, small lift.
+  const lightPrimary = yellowBrand.has(id) ? mode.accent[500]! : mode.accent[700]!
   const lightColorAccent = yellowBrand.has(id) ? mode.accent[500]! : mode.accent[600]!
   const primaryForeground = dark || yellowBrand.has(id)
     ? `oklch(0.145 0.012 ${hue})`
