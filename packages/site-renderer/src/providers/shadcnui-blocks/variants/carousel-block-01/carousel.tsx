@@ -68,9 +68,9 @@ export function CarouselBlock01({
           {displayImages.map((image, itemIndex) => (
             <CarouselItem className="basis-1/2 md:basis-1/3 lg:basis-1/4" key={itemIndex}>
               <div className="p-1">
-                <div className="aspect-square">
+                <div className="aspect-square overflow-hidden">
                   {renderGalleryImage(editSlots, mediaResolver, image.image, "Gallery image", blockIndex, itemIndex, {
-                    className: "rounded-lg object-cover",
+                    className: "size-full rounded-lg object-cover",
                   })}
                 </div>
               </div>

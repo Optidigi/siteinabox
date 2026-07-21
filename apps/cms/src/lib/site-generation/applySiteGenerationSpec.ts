@@ -31,6 +31,7 @@ import type { Media, Page, SiteSetting, Tenant } from "@/payload-types"
 import { asRecord } from "@/lib/record"
 import { assertSafeMediaFilename } from "@/lib/mediaFilename"
 import { DEFAULT_FONT_FAMILIES, manifestSchema, type RtManifest } from "@/lib/richText/manifest"
+import { DEFAULT_CLIENT_SETTINGS_CONTRACT } from "@/lib/settingsContract"
 import { buildDefaultTenantEmailSending } from "@/lib/tenants/emailSending"
 import { materializeTenantPrivacyPage } from "@/lib/legal/tenantPrivacyPage"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -527,9 +528,29 @@ const manifestCapabilitiesForSpec = (spec: SiteGenerationSpec): Pick<RtManifest,
   }
 }
 
+const specIncludesContactSection = (spec: SiteGenerationSpec) =>
+  (spec.pages ?? []).some((page) =>
+    (page.blocks ?? []).some((block) => block.blockType === "contactSection"),
+  )
+
+/** Keep the slim client defaults, then enable contact fields contact-02 needs. */
+const settingsContractForContactSection = (): NonNullable<RtManifest["settings"]> => ({
+  general: {
+    ...DEFAULT_CLIENT_SETTINGS_CONTRACT.general,
+    contactEmail: true,
+  },
+  identity: DEFAULT_CLIENT_SETTINGS_CONTRACT.identity,
+  details: {
+    ...DEFAULT_CLIENT_SETTINGS_CONTRACT.details,
+    contact: { phone: true, address: true, social: true },
+  },
+  operations: DEFAULT_CLIENT_SETTINGS_CONTRACT.operations,
+})
+
 const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): RtManifest & Record<string, unknown> => {
   const capabilities = manifestCapabilitiesForSpec(spec)
   const analyticsConsent = approvedPublicAnalyticsConsent()
+  const settings = specIncludesContactSection(spec) ? settingsContractForContactSection() : undefined
   const manifest = {
     ...DEFAULT_GENERATION_MANIFEST,
     ...capabilities,
@@ -545,6 +566,7 @@ const siteManifestForSpec = (spec: SiteGenerationSpec, idempotencyKey: string): 
       generatedAt: spec.generatedAt ?? null,
       generator: spec.generator ?? null,
     },
+    ...(settings ? { settings } : {}),
     ...(analyticsConsent ? { analyticsConsent } : {}),
   }
 

@@ -55,6 +55,9 @@ test("composition CSS neutralizes stacked min-h-screen and densifies logo clouds
   assert.match(styles, /logo-cloud-02"\] :is\(img, svg\)/)
   assert.match(styles, /height:\s*3\.5rem/)
   assert.match(styles, /\.gap-14 \{\s*gap:\s*2\.5rem/)
+  assert.match(styles, /cta-03"\] img/)
+  assert.match(styles, /cta-04"\] img/)
+  assert.match(styles, /align-self:\s*center/)
 })
 
 test("every color scheme emits secondary accent ramps for dual-tone surfaces", () => {

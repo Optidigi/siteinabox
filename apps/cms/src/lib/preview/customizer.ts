@@ -4,6 +4,7 @@ import type { Tenant } from "@/payload-types"
 import { asRecord } from "@/lib/record"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
+import { resolveSettingsContract } from "@/lib/settingsContract"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { sameRelationshipId } from "@/lib/relationshipId"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -104,10 +105,12 @@ export async function getPreviewCustomizerDataForGrant(input: {
   }))
   const analyticsContext = tenantAnalyticsContext(tenant)
   const currentPage = pageToJson(selected, analyticsContext) as ContractPage
-  const settings = settingsToJson(settingsDoc, navPages, analyticsContext) as SiteSettings
   const theme = normalizePreviewThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
   const parsedManifest = manifestSchema.safeParse(tenant.siteManifest)
   const manifest = parsedManifest.success ? parsedManifest.data : DEFAULT_MANIFEST
+  const settings = settingsToJson(settingsDoc, navPages, analyticsContext, {
+    settingsContract: resolveSettingsContract(manifest),
+  }) as SiteSettings
 
   return {
     access: { type: "grant", clientSlug },

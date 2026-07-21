@@ -130,6 +130,14 @@ describe("grant preview customizer service", () => {
     expect(data.theme).toEqual(DEFAULT_THEME_TOKEN_SPEC)
     expect(data.approval).toEqual({ status: "pending" })
     expect(data.payment).toEqual({ status: "not_started" })
+
+    const { settingsToJson } = await import("@/lib/projection/settingsToJson")
+    expect(settingsToJson).toHaveBeenCalledWith(
+      mocks.settingsDoc,
+      expect.any(Array),
+      expect.any(Object),
+      expect.objectContaining({ settingsContract: expect.any(Object) }),
+    )
   })
 
   it("persists only schema-approved theme tokens through the grant context", async () => {

@@ -160,6 +160,10 @@ describe("applySiteGenerationSpec", () => {
       consentStorageKey: "siab_cookie_consent_v1",
       consentVersion: "2026-07-07.1",
     })
+    expect(siteManifest.settings).toMatchObject({
+      general: { contactEmail: true, description: true },
+      details: { contact: { phone: true, address: true, social: true } },
+    })
     expect(headerNav[0]).toMatchObject({ type: "page", page: page.id })
     expect(headerNav[1]).toMatchObject({ type: "section", page: page.id, anchor: "contact" })
     expect([...calls.create, ...calls.update].every((call: LocalCreateArgs | LocalUpdateArgs) => call.context?.skipProjection === true)).toBe(true)

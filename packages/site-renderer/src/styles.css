@@ -222,3 +222,14 @@ body {
 .rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] .gap-y-12 {
   row-gap: 2rem;
 }
+
+/*
+ * CTA-03/04: upstream docks a phone mockup with mt-auto. Plain CMS photos look
+ * odd bottom-aligned — keep class strings for fidelity, center via composition.
+ */
+.rt-canvas [data-provider-variant="shadcnui-blocks.cta-03"] img,
+.rt-canvas [data-provider-variant="shadcnui-blocks.cta-04"] img {
+  align-self: center;
+  margin-block: 1.5rem;
+  object-fit: cover;
+}

@@ -4534,7 +4534,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/features.tsx",
-          "sha256": "sha256:340e5fddbc085194b70ccfeed4098c7fe1258e9ba82b980878097c3e2ce6b044"
+          "sha256": "sha256:6600c390580c3e6554e502774abefea67e8e3ac551d75d9a4ebdff9c2d01a071"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/view.tsx",
@@ -19553,7 +19553,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/carousel.tsx",
-          "sha256": "sha256:1ace4637e65873767be93625b8f005a788d85bbf1f69a0a5680e75303b0b1442"
+          "sha256": "sha256:031d95882dc7d108eeb4782733c4319e1673314021ba57ac558bd38043cc121a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/carousel-block-01/upstream-literal.upstream.tsx.txt",

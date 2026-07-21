@@ -214,7 +214,10 @@ function blockForVariant(
         ...optional(variant, "description", prose("Bekijk dezelfde sectie op desktop en mobiel, in licht en donker, en controleer daarna de focus- en hoverstatussen.")),
         ...optional(variant, "primary", { label: "Naar contact", href: "/contact" }),
         ...optional(variant, "secondary", { label: "Terug naar overzicht", href: "/" }),
-        ...optional(variant, "backgroundImage", smokeAsset(0, `${label} achtergrond`)),
+        ...optional(variant, "backgroundImage", smokeAsset(
+          variant.id === "shadcnui-blocks.cta-03" || variant.id === "shadcnui-blocks.cta-04" ? 2 : 0,
+          `${label} achtergrond`,
+        )),
       } as GeneratedBlockSpec
 
     case "contactSection":
@@ -444,6 +447,7 @@ export function loadMockSiteGenerationSpec(
       navFooter: nav,
       contact: {
         phone: normalized.contact?.phone ?? null,
+        address: normalized.contact?.address ?? "Stationsplein 1, Amsterdam",
         social: [
           { platform: "LinkedIn", url: "https://www.linkedin.com/company/siteinabox" },
           { platform: "Instagram", url: "https://www.instagram.com/siteinabox" },

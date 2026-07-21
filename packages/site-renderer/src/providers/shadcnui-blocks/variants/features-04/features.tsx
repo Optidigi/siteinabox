@@ -49,6 +49,9 @@ export function Features04({
   literalPreview = false,
 }: Features04Props) {
   const titleContent = renderFeatureTitle(editSlots, title, blockIndex)
+  const [openItem, setOpenItem] = React.useState("item-0")
+  const activeIndex = Number.parseInt(openItem.replace(/^item-/, ""), 10)
+  const activeFeature = features[Number.isFinite(activeIndex) ? activeIndex : 0] ?? features[0]
 
   return (
     <div className="mx-auto w-full max-w-(--breakpoint-lg) px-6 py-20" {...rootAttributes}>
@@ -59,7 +62,14 @@ export function Features04({
       ) : null}
       <div className="mx-auto mt-8 grid w-full gap-12 md:mt-12 md:grid-cols-2">
         <div>
-          <Accordion className="w-full" defaultValue="item-0" type="single">
+          <Accordion
+            className="w-full"
+            type="single"
+            value={openItem}
+            onValueChange={(value) => {
+              if (value) setOpenItem(value)
+            }}
+          >
             {features.map((feature, itemIndex) => {
               const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
               return (
@@ -80,7 +90,7 @@ export function Features04({
                           literalPreview,
                         })
                       : null}
-                    <div className="mt-6 mb-2 aspect-video w-full rounded-xl bg-muted md:hidden">
+                    <div className="mt-6 mb-2 aspect-video w-full overflow-hidden rounded-xl bg-muted md:hidden">
                       {literalPreview
                         ? null
                         : renderFeatureItemImage(
@@ -99,7 +109,19 @@ export function Features04({
             })}
           </Accordion>
         </div>
-        <div className="hidden h-full w-full rounded-xl bg-muted md:block" />
+        <div className="relative hidden h-full min-h-80 w-full overflow-hidden rounded-xl bg-muted md:block">
+          {literalPreview || !activeFeature
+            ? null
+            : renderFeatureItemImage(
+                editSlots,
+                mediaResolver,
+                activeFeature.image,
+                activeFeature.title,
+                blockIndex,
+                Number.isFinite(activeIndex) ? activeIndex : 0,
+                { className: "absolute inset-0 size-full object-cover" },
+              )}
+        </div>
       </div>
     </div>
   )

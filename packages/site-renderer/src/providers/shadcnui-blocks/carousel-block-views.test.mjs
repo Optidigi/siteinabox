@@ -25,7 +25,7 @@ const carouselFamily = [
     cmsLike: carouselBlock01CmsLike,
     sparse: galleryFamilySparse,
     emptyItems: galleryFamilyEmptyItems,
-    distinctive: /max-w-5xl px-14/,
+    distinctive: /aspect-square overflow-hidden|size-full rounded-lg object-cover/,
     itemMatch: /dddepth|Abstract 3D Shapes/,
   },
   {

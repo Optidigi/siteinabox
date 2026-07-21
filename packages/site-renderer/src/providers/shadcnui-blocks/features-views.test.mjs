@@ -89,7 +89,7 @@ const featuresFamily = [
     sparse: featureFamilySparse,
     long: featureFamilyLong,
     emptyFeatures: { title: featureFamilyCmsLike.title, features: [] },
-    distinctive: /data-slot="accordion"/,
+    distinctive: /min-h-80|data-slot="accordion"/,
   },
   {
     id: "shadcnui-blocks.features-05",

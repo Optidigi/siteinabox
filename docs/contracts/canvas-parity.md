@@ -21,7 +21,8 @@ Allowed deltas only:
   upstream components without changing surrounding layout classes
 - page-composition CSS in `packages/site-renderer/src/styles.css` that keeps
   upstream class strings but remaps stacked `min-h-screen` on multi-block
-  pages (`data-siab-composed-sections`) and logo-cloud-01/02 mark density
+  pages (`data-siab-composed-sections`), logo-cloud-01/02 mark density, and
+  cta-03/04 image vertical centering (`mt-auto` phone dock vs CMS photos)
 
 Decorative palette remaps and the structural-class normalization rules live in
 `structural-classes.mjs`. Release gate:
