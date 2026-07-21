@@ -189,8 +189,10 @@ body {
  * and system not-found templates (typically one root) keep full-viewport mins.
  *
  * First-viewport heroes are the exception: chrome header (in-flow h-16) + hero
- * should fill one viewport → min-height: 100dvh − header. Fixed/floating
- * navbars (no border-b) leave --siab-chrome-header-height at 0.
+ * should fill one viewport. Prefer --siab-preview-viewport-height when the CMS
+ * editor/preview frame sets it (parent browser viewport) so live/preview/editor
+ * stay aligned; fall back to 100dvh on public sites. Fixed/floating navbars
+ * (no border-b) leave --siab-chrome-header-height at 0.
  */
 .rt-canvas {
   --siab-chrome-header-height: 0px;
@@ -206,7 +208,9 @@ body {
 
 .rt-canvas[data-siab-composed-sections="true"]
   [data-block-index="0"][data-provider-variant^="shadcnui-blocks.hero-"].min-h-screen {
-  min-height: calc(100dvh - var(--siab-chrome-header-height, 0px));
+  min-height: calc(
+    var(--siab-preview-viewport-height, 100dvh) - var(--siab-chrome-header-height, 0px)
+  );
 }
 
 /* Viewport demos without their own py-/pt-/pb- need ordinary section rhythm. */

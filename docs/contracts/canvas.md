@@ -39,8 +39,11 @@ Customer preview uses a viewport-height, internally scrolling iframe so public
 fixed-position chrome remains anchored to the visible preview viewport. The
 page editor instead receives a height-only renderer signal and expands its
 same-origin iframe, leaving the CMS document as the sole full-page scroll owner.
-That signal cannot mutate fields, selection, block geometry, or ordering; the
-removed DOM/geometry editing bridge remains retired.
+Both frames set `--siab-preview-viewport-height` to the parent browser viewport
+so composed first-hero height (`site-renderer` composition CSS) matches live
+`100dvh` sizing without an iframe growth loop. That height signal cannot mutate
+fields, selection, block geometry, or ordering; the removed DOM/geometry
+editing bridge remains retired.
 
 ## Protocol
 

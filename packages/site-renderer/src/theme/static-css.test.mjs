@@ -58,7 +58,10 @@ test("composition CSS neutralizes stacked min-h-screen and densifies logo clouds
     styles,
     /\[data-block-index="0"\]\[data-provider-variant\^="shadcnui-blocks\.hero-"\]\.min-h-screen/,
   )
-  assert.match(styles, /min-height:\s*calc\(100dvh - var\(--siab-chrome-header-height/)
+  assert.match(
+    styles,
+    /min-height:\s*calc\(\s*var\(--siab-preview-viewport-height,\s*100dvh\)\s*-\s*var\(--siab-chrome-header-height/,
+  )
   assert.match(styles, /hero-01"\]\.min-h-screen/)
   assert.match(styles, /hero-02"\]\.min-h-screen/)
   assert.match(styles, /padding-block:\s*6rem/)

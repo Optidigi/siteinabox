@@ -22,9 +22,10 @@ Allowed deltas only:
 - page-composition CSS in `packages/site-renderer/src/styles.css` that keeps
   upstream class strings but remaps stacked `min-h-screen` on multi-block
   pages (`data-siab-composed-sections`), restores the first hero to
-  `calc(100dvh − in-flow header)` via `--siab-chrome-header-height`, slight
-  hero-01/02 padding bumps, logo-cloud-01/02 mark density, and cta-03/04
-  image vertical centering (`mt-auto` phone dock vs CMS photos)
+  `calc(var(--siab-preview-viewport-height, 100dvh) − in-flow header)` so
+  live/preview/editor share one height contract, slight hero-01/02 padding
+  bumps, logo-cloud-01/02 mark density, and cta-03/04 image vertical
+  centering (`mt-auto` phone dock vs CMS photos)
 
 Decorative palette remaps and the structural-class normalization rules live in
 `structural-classes.mjs`. Release gate:
