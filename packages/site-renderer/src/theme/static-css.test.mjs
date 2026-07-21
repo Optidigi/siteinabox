@@ -51,6 +51,18 @@ test("composition CSS neutralizes stacked min-h-screen and densifies logo clouds
   const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8")
   assert.match(styles, /data-siab-composed-sections="true"\] \.min-h-screen/)
   assert.match(styles, /min-height:\s*auto/)
+  assert.match(styles, /--siab-chrome-header-height:\s*0px/)
+  assert.match(styles, /--siab-chrome-header-height:\s*4rem/)
+  assert.match(styles, /nav\.h-16\.border-b/)
+  assert.match(
+    styles,
+    /\[data-block-index="0"\]\[data-provider-variant\^="shadcnui-blocks\.hero-"\]\.min-h-screen/,
+  )
+  assert.match(styles, /min-height:\s*calc\(100dvh - var\(--siab-chrome-header-height/)
+  assert.match(styles, /hero-01"\]\.min-h-screen/)
+  assert.match(styles, /hero-02"\]\.min-h-screen/)
+  assert.match(styles, /padding-block:\s*6rem/)
+  assert.match(styles, /padding-block:\s*3\.5rem/)
   assert.match(styles, /logo-cloud-01"\] :is\(img, svg\)/)
   assert.match(styles, /logo-cloud-02"\] :is\(img, svg\)/)
   assert.match(styles, /height:\s*3\.5rem/)
