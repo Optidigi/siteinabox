@@ -112,6 +112,9 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     expect(byVariant["shadcnui-blocks.team-01"].members.every((member: { image?: unknown }) => Boolean(member.image))).toBe(true)
     expect(byVariant["shadcnui-blocks.testimonials-01"].items.every((item: { avatar?: unknown }) => Boolean(item.avatar))).toBe(true)
     expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos.every((logo: { image?: unknown }) => Boolean(logo.image))).toBe(true)
-    expect(spec.pages.every((page) => page.seo.ogImage?.url)).toBe(true)
+    expect(spec.pages.every((page) => {
+      const ogImage = page.seo?.ogImage
+      return typeof ogImage === "object" && ogImage !== null && Boolean(ogImage.url)
+    })).toBe(true)
   })
 })
