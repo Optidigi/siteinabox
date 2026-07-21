@@ -262,7 +262,12 @@ const createPayloadStub = () => {
 
 const installProviderFetch = () => {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    if (url.startsWith("https://www.siteinabox.nl/theme/images/") || url === "https://www.siteinabox.nl/og-default.png") {
+    if (
+      url.startsWith("https://www.siteinabox.nl/theme/images/")
+      || url === "https://www.siteinabox.nl/og-default.png"
+      || url.startsWith("https://images.unsplash.com/")
+      || url.startsWith("https://cdn.jsdelivr.net/")
+    ) {
       return new Response(new Uint8Array([0x53, 0x49, 0x41, 0x42]), { status: 200 })
     }
     if (url === "https://api.mollie.com/v2/customers") {
@@ -392,11 +397,23 @@ describe("intake-to-live mocked flow", () => {
     expect(store.tenants).toHaveLength(1)
     expect(store.pages).toHaveLength(6)
     expect(store.media.map((entry) => entry.filename).sort()).toEqual([
-      "smoke-avatar.webp",
-      "smoke-client-logo.png",
-      "smoke-example-desktop.webp",
-      "smoke-example-mobile.webp",
-      "smoke-social-preview.png",
+      "smoke-analytics-desk.jpg",
+      "smoke-logo-aws.svg",
+      "smoke-logo-docker.svg",
+      "smoke-logo-github.svg",
+      "smoke-logo-nextjs.svg",
+      "smoke-logo-nodejs.svg",
+      "smoke-logo-react.svg",
+      "smoke-logo-slack.svg",
+      "smoke-logo-vercel.svg",
+      "smoke-office-interior.jpg",
+      "smoke-portrait-a.jpg",
+      "smoke-portrait-b.jpg",
+      "smoke-portrait-c.jpg",
+      "smoke-portrait-d.jpg",
+      "smoke-portrait-professional.jpg",
+      "smoke-team-collaboration.jpg",
+      "smoke-workshop-session.jpg",
     ])
     expect(store.pages.some((page) => page.slug === "privacy-en-cookieverklaring")).toBe(true)
 
