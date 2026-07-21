@@ -779,11 +779,11 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   }, [mobileFocusedSectionIndex, watchedBlocks])
 
   const framePageId = initial?.id ?? "new"
-  const frameSelection = useMemo(() => {
+  const frameSelection = useMemo((): IframeEditorSelection | null => {
     if (selectedChrome) {
       return {
         pageId: String(framePageId),
-        fieldPath: ["chrome", selectedChrome.zone],
+        fieldPath: ["chrome", selectedChrome.zone] as const,
       }
     }
     return elementPathToIframeSelection(selected, watchedBlocks, framePageId)

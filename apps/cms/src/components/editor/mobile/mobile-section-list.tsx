@@ -139,6 +139,7 @@ const SortableSectionCard: React.FC<SortableCardProps> = ({ id, block, index, ma
 
 export const MobileSectionList: React.FC<MobileSectionListProps> = ({
   api,
+  manifest,
   onOpenSection,
   pageTitle,
   onOpenPageSettings,

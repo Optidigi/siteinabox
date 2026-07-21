@@ -26,7 +26,7 @@ export function resolveBlockLabel(
 
   const cfg = blockBySlug[blockType]
   const raw = cfg?.labels?.singular
-  if (typeof raw === "string" && raw.trim() && raw !== cfg.slug) return raw.trim()
+  if (typeof raw === "string" && raw.trim() && raw !== cfg?.slug) return raw.trim()
   if (raw != null && typeof raw === "object") {
     const localized = (raw as Record<string, string>).nl
       ?? (raw as Record<string, string>).en
