@@ -37,6 +37,7 @@ export function SitePageShell({
         {...canvasAttributes}
         className={cn("rt-canvas w-full", canvasClassName)}
         data-page-slug={page.slug}
+        data-siab-composed-sections={page.blocks.length > 1 ? "true" : undefined}
       >
         <div className="site-frame-root">
           {banner === undefined

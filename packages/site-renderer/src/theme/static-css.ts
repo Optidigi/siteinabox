@@ -26,9 +26,11 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   "--popover-foreground": mode.ink,
   "--primary": dark ? darkBrand : lightPrimary,
   "--primary-foreground": dark ? `oklch(0.150 0.030 ${hue})` : mode.onAccent,
-  "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.97 0.012 ${hue})`,
+  // Recessed panels (`bg-muted` / `bg-secondary`) must sit below the canvas wash
+  // by ~monochrome’s ΔL (≥0.03). Pre-wash muted at L 0.97 vanished on L 0.980 wash.
+  "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.945 0.018 ${hue})`,
   "--secondary-foreground": mode.ink,
-  "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.97 0.012 ${hue})`,
+  "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.945 0.018 ${hue})`,
   "--muted-foreground": mode.muted,
   // Soft brand wash both modes (light tint / dark shade) — not a generic muted surface.
   "--accent": dark ? mode.accent[900]! : mode.accent[100]!,

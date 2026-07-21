@@ -19,6 +19,9 @@ Allowed deltas only:
 - CMS / editSlots / rich-text field renderers and media wiring
 - shared UI primitives (`Button`, `Badge`, etc.) substituted for equivalent
   upstream components without changing surrounding layout classes
+- page-composition CSS in `packages/site-renderer/src/styles.css` that keeps
+  upstream class strings but remaps stacked `min-h-screen` on multi-block
+  pages (`data-siab-composed-sections`) and logo-cloud-01/02 mark density
 
 Decorative palette remaps and the structural-class normalization rules live in
 `structural-classes.mjs`. Release gate:

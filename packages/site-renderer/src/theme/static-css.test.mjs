@@ -36,6 +36,27 @@ test("colored themes use a perceptible canvas wash with elevated cards", () => {
   }
 })
 
+test("colored themes keep recessed muted panels below the canvas wash", () => {
+  const css = generateStaticThemeCss()
+  for (const id of COLOR_SCHEME_IDS.filter((id) => id !== "monochrome")) {
+    // Light wash L 0.980 → muted/secondary L 0.945 (ΔL 0.035 ≥ monochrome’s ~0.03).
+    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--muted:oklch\\(0\\.945 0\\.018`))
+    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--secondary:oklch\\(0\\.945 0\\.018`))
+  }
+  // Monochrome keeps the exact upstream muted reference (L 0.97 on white).
+  assert.match(css, /data-theme-color="monochrome"[^}]*--muted:oklch\(0\.97 0 0\)/)
+})
+
+test("composition CSS neutralizes stacked min-h-screen and densifies logo clouds", async () => {
+  const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8")
+  assert.match(styles, /data-siab-composed-sections="true"\] \.min-h-screen/)
+  assert.match(styles, /min-height:\s*auto/)
+  assert.match(styles, /logo-cloud-01"\] :is\(img, svg\)/)
+  assert.match(styles, /logo-cloud-02"\] :is\(img, svg\)/)
+  assert.match(styles, /height:\s*3\.5rem/)
+  assert.match(styles, /\.gap-14 \{\s*gap:\s*2\.5rem/)
+})
+
 test("every color scheme emits secondary accent ramps for dual-tone surfaces", () => {
   const css = generateStaticThemeCss()
   // Shared slate secondary across every scheme; primary stays scheme-specific.

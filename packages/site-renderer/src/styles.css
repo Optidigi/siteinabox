@@ -181,3 +181,44 @@ body {
 .site-frame-root {
   overflow-x: clip;
 }
+
+/*
+ * Multi-block pages: upstream demos pin min-h-screen for standalone full-bleed.
+ * Stacked on a real page that forces a viewport per section. Keep the class
+ * strings for structural fidelity; neutralize height here. Single-block pages
+ * and system not-found templates (typically one root) keep full-viewport mins.
+ */
+.rt-canvas[data-siab-composed-sections="true"] .min-h-screen {
+  min-height: auto;
+}
+
+/* Viewport demos without their own py-/pt-/pb- need ordinary section rhythm. */
+.rt-canvas[data-siab-composed-sections="true"] .min-h-screen:not([class*="py-"]):not([class*="pt-"]):not([class*="pb-"]) {
+  padding-block: 5rem;
+}
+
+/*
+ * Logo-cloud-01/02 density: taller marks + tighter gaps. Upstream source keeps
+ * h-10 / gap-14 for fidelity; this is a deliberate composition override.
+ */
+.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-01"] :is(img, svg) {
+  height: 3.5rem;
+  width: auto;
+}
+
+.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-01"] .gap-14 {
+  gap: 2.5rem;
+}
+
+.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] :is(img, svg) {
+  height: 3.5rem;
+  width: auto;
+}
+
+.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] .gap-x-14 {
+  column-gap: 2.5rem;
+}
+
+.rt-canvas [data-provider-variant="shadcnui-blocks.logo-cloud-02"] .gap-y-12 {
+  row-gap: 2rem;
+}
