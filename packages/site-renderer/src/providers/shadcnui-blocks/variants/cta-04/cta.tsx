@@ -14,6 +14,7 @@ import type { TypedVariantBaseProps } from "../../typed/props"
 import { fieldInlineRichText } from "../../typed/rich-text"
 
 const BLOCK_TYPE = "cta" as const
+/** Packaged phone illustration for empty media / literal preview. */
 const BACKGROUND_FALLBACK = "/images/cta-mobile.png"
 
 export type Cta04Props = TypedVariantBaseProps & {
@@ -65,8 +66,10 @@ export function Cta04({
           </div>
           {renderBackgroundImage(editSlots, mediaResolver, backgroundImage, blockIndex, BLOCK_TYPE, {
             alt: "",
-            className: "mask-b-from-75% relative isolate mt-auto aspect-square w-full max-w-xs md:h-76 md:w-auto md:max-w-none",
+            className:
+              "mask-b-from-75% relative isolate mt-auto aspect-square w-full max-w-xs object-cover object-center md:h-76 md:w-auto md:max-w-none",
             fallbackSrc: BACKGROUND_FALLBACK,
+            emptyFallback: true,
             literalPreview,
           })}
         </div>

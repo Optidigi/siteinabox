@@ -123,8 +123,9 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     expect(byVariant["shadcnui-blocks.features-04"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)
     expect((spec.assets ?? []).every((asset) => typeof asset === "object" && asset !== null && !String(asset.url).includes("siteinabox.nl"))).toBe(true)
     expect(spec.settings.contact?.address).toBeTruthy()
-    expect(String(byVariant["shadcnui-blocks.cta-03"].backgroundImage?.url)).toContain("photo-1573496359142")
-    expect(String(byVariant["shadcnui-blocks.cta-04"].backgroundImage?.url)).toContain("photo-1573496359142")
+    expect(String(byVariant["shadcnui-blocks.cta-03"].backgroundImage?.url)).toContain("cta-mobile.png")
+    expect(String(byVariant["shadcnui-blocks.cta-04"].backgroundImage?.url)).toContain("cta-mobile.png")
+    expect(String(byVariant["shadcnui-blocks.cta-02"].backgroundImage?.url)).toContain("photo-1497366216548")
     expect(spec.pages.every((page) => {
       const ogImage = page.seo?.ogImage
       return typeof ogImage === "object" && ogImage !== null && Boolean(ogImage.url)

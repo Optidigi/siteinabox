@@ -10,6 +10,8 @@ type RenderBackgroundImageOptions = {
   alt?: string
   className?: string
   fallbackSrc?: string
+  /** When true, render fallbackSrc if media is empty (live + literal). Default: literalPreview only. */
+  emptyFallback?: boolean
   literalPreview?: boolean
 }
 
@@ -19,12 +21,23 @@ export const renderBackgroundImage = (
   backgroundImage: MediaRef | null | undefined,
   blockIndex: number,
   blockType: string,
-  { alt = "", className, fallbackSrc, literalPreview = false }: RenderBackgroundImageOptions,
+  {
+    alt = "",
+    className,
+    fallbackSrc,
+    emptyFallback = false,
+    literalPreview = false,
+  }: RenderBackgroundImageOptions,
 ) => {
   if (literalPreview && fallbackSrc) {
     return <img alt={alt} className={className} src={fallbackSrc} />
   }
-  if (!backgroundImage) return null
+  if (!backgroundImage) {
+    if (emptyFallback && fallbackSrc) {
+      return <img alt={alt} className={className} src={fallbackSrc} decoding="async" loading="lazy" />
+    }
+    return null
+  }
   const resolved = resolveMedia(backgroundImage, mediaResolver)
   const path = elementPath(blockIndex, "backgroundImage")
   if (editSlots?.renderImage) {

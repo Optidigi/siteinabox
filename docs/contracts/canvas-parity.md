@@ -24,8 +24,9 @@ Allowed deltas only:
   pages (`data-siab-composed-sections`), restores the first hero to
   `calc(var(--siab-preview-viewport-height, 100dvh) − in-flow header)` so
   live/preview/editor share one height contract, slight hero-01/02 padding
-  bumps, logo-cloud-01/02 mark density, and cta-03/04 image vertical
-  centering (`mt-auto` phone dock vs CMS photos)
+  bumps, and logo-cloud-01/02 mark density. CTA-03/04 keep the upstream
+  docked phone frame (`mt-auto` + fixed aspect) and use `object-cover` so
+  both illustrations and user photos fill the frame without composition CSS
 
 Decorative palette remaps and the structural-class normalization rules live in
 `structural-classes.mjs`. Release gate:

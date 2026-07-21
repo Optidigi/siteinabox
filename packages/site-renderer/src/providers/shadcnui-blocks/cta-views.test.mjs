@@ -82,7 +82,7 @@ const ctaFamily = [
     long: cta02Long,
     distinctive: {
       markup: /bg-linear-to-r from-muted/,
-      className: "mt-auto aspect-square",
+      className: "mt-auto aspect-square w-full max-w-xs object-cover object-center",
     },
   },
   {
@@ -97,7 +97,7 @@ const ctaFamily = [
     long: cta02Long,
     distinctive: {
       markup: /--provider-grid-line/,
-      className: "mask-b-from-75%",
+      className: "mask-b-from-75% relative isolate mt-auto aspect-square w-full max-w-xs object-cover object-center",
     },
   },
   {
@@ -234,6 +234,24 @@ test("cta-02 literal preview renders fallback background image", () => {
     literalPreview: true,
   }))
   assert.match(html, /src="\/images\/ascii-art\.png"/)
+})
+
+test("cta-03 empty media still renders dock illustration fallback", () => {
+  const html = renderToStaticMarkup(React.createElement(Cta03, {
+    headline: cta04Sparse.headline,
+    blockIndex: 0,
+  }))
+  assert.match(html, /cta-mobile\.png/)
+  assert.match(html, /object-cover object-center/)
+})
+
+test("cta-04 empty media still renders dock illustration fallback", () => {
+  const html = renderToStaticMarkup(React.createElement(Cta04, {
+    headline: cta04Sparse.headline,
+    blockIndex: 0,
+  }))
+  assert.match(html, /cta-mobile\.png/)
+  assert.match(html, /object-cover object-center/)
 })
 
 test("cta-02 with background image uses resolved media in public render", () => {

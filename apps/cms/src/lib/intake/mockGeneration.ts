@@ -7,6 +7,8 @@ import {
   type SiteGenerationSpec,
 } from "@siteinabox/contracts"
 
+import { generationMediaIntent } from "./generationMediaIntent"
+
 export type MockGenerationFixture = "generic" | "invalid"
 
 type ProviderBlockVariant = (typeof SHADCNUI_BLOCK_VARIANTS)[number]
@@ -38,6 +40,15 @@ const SMOKE_GALLERY_MEDIA = [
   { url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-c.jpg", alt: "Portret teamlid C", width: 800, height: 800 },
   { url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-d.jpg", alt: "Portret teamlid D", width: 800, height: 800 },
 ] as const
+
+/** Upstream phone illustration (pinned inventory commit) for CTA-03/04 dock frames. */
+const SMOKE_CTA_DEVICE_ILLUSTRATION = {
+  url: "https://raw.githubusercontent.com/akash3444/shadcn-ui-blocks/46c2e50bb538c9bc7a8927979d38bae178ae4452/public/images/cta-mobile.png",
+  filename: "smoke-cta-mobile.png",
+  alt: "Mobiele app illustratie",
+  width: 512,
+  height: 1024,
+} as const
 
 /** Full brand logos (symbol + wordmark) via Devicon; readable on light, forced white in dark via logo-cloud invert. */
 const SMOKE_LOGO_MEDIA = [
@@ -214,10 +225,13 @@ function blockForVariant(
         ...optional(variant, "description", prose("Bekijk dezelfde sectie op desktop en mobiel, in licht en donker, en controleer daarna de focus- en hoverstatussen.")),
         ...optional(variant, "primary", { label: "Naar contact", href: "/contact" }),
         ...optional(variant, "secondary", { label: "Terug naar overzicht", href: "/" }),
-        ...optional(variant, "backgroundImage", smokeAsset(
-          variant.id === "shadcnui-blocks.cta-03" || variant.id === "shadcnui-blocks.cta-04" ? 2 : 0,
-          `${label} achtergrond`,
-        )),
+        ...optional(variant, "backgroundImage", (() => {
+          const intent = generationMediaIntent(variant.id, "backgroundImage")
+          if (intent?.kind === "illustration") {
+            return { ...SMOKE_CTA_DEVICE_ILLUSTRATION, alt: `${label} achtergrond` }
+          }
+          return smokeAsset(0, `${label} achtergrond`)
+        })()),
       } as GeneratedBlockSpec
 
     case "contactSection":
@@ -458,7 +472,7 @@ export function loadMockSiteGenerationSpec(
     },
     pages,
     blocks,
-    assets: [...SMOKE_GALLERY_MEDIA, ...SMOKE_LOGO_MEDIA],
+    assets: [...SMOKE_GALLERY_MEDIA, SMOKE_CTA_DEVICE_ILLUSTRATION, ...SMOKE_LOGO_MEDIA],
     generatedAt: new Date().toISOString(),
     generator: {
       name: "mock-site-generation",
