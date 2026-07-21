@@ -41,14 +41,14 @@ const SMOKE_GALLERY_MEDIA = [
 
 /** Monochrome wordmarks: readable on light; logo-cloud variants invert in dark mode. */
 const SMOKE_LOGO_MEDIA = [
-  { url: "https://cdn.simpleicons.org/react/111827", filename: "smoke-logo-react.svg", alt: "React", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/vercel/111827", filename: "smoke-logo-vercel.svg", alt: "Vercel", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/github/111827", filename: "smoke-logo-github.svg", alt: "GitHub", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/typescript/111827", filename: "smoke-logo-typescript.svg", alt: "TypeScript", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/figma/111827", filename: "smoke-logo-figma.svg", alt: "Figma", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/stripe/111827", filename: "smoke-logo-stripe.svg", alt: "Stripe", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/nextdotjs/111827", filename: "smoke-logo-nextdotjs.svg", alt: "Next.js", width: 200, height: 200 },
-  { url: "https://cdn.simpleicons.org/linear/111827", filename: "smoke-logo-linear.svg", alt: "Linear", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/react.svg", filename: "smoke-logo-react.svg", alt: "React", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/vercel.svg", filename: "smoke-logo-vercel.svg", alt: "Vercel", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/github.svg", filename: "smoke-logo-github.svg", alt: "GitHub", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/typescript.svg", filename: "smoke-logo-typescript.svg", alt: "TypeScript", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/figma.svg", filename: "smoke-logo-figma.svg", alt: "Figma", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/stripe.svg", filename: "smoke-logo-stripe.svg", alt: "Stripe", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/nextdotjs.svg", filename: "smoke-logo-nextdotjs.svg", alt: "Next.js", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/linear.svg", filename: "smoke-logo-linear.svg", alt: "Linear", width: 200, height: 200 },
 ] as const
 
 
