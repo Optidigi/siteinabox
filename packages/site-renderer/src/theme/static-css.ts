@@ -5,8 +5,19 @@ const selector = (kind: string, id: string) => `:where(.rt-canvas,[data-siab-the
 const declarations = (values: Record<string, string>) => Object.entries(values).map(([name, value]) => `${name}:${value}`).join(";")
 
 const hues: Record<string, number> = { monochrome: 0, "blue-professional": 264, "red-confident": 25, "emerald-calm": 165, "amber-warm": 75, "terracotta-warm": 35 }
+/** Soft pastel dark brand (pre-500-lift) for schemes that read better at 400. */
+const softDarkBrand = new Set(["red-confident", "amber-warm"])
+/** Amber should stay yellow in both modes — light uses a bright stop with dark ink. */
+const yellowBrand = new Set(["amber-warm"])
+
 const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSchemes]["light"], dark: boolean) => {
   const hue = hues[id] ?? 0
+  const darkBrand = softDarkBrand.has(id) ? mode.accent[400]! : mode.accent[500]!
+  const lightPrimary = yellowBrand.has(id) ? mode.accent[400]! : mode.accent[700]!
+  const lightColorAccent = yellowBrand.has(id) ? mode.accent[500]! : mode.accent[600]!
+  const primaryForeground = dark || yellowBrand.has(id)
+    ? `oklch(0.145 0.012 ${hue})`
+    : mode.onAccent
   return ({
   "--background": mode.surface,
   "--foreground": mode.ink,
@@ -14,18 +25,18 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   "--card-foreground": mode.ink,
   "--popover": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.998 0.003 ${hue})`,
   "--popover-foreground": mode.ink,
-  "--primary": dark ? mode.accent[500] : mode.accent[700],
-  "--primary-foreground": dark ? `oklch(0.145 0.012 ${hue})` : mode.onAccent,
+  "--primary": dark ? darkBrand : lightPrimary,
+  "--primary-foreground": primaryForeground,
   "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.97 0.012 ${hue})`,
   "--secondary-foreground": mode.ink,
   "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.97 0.012 ${hue})`,
   "--muted-foreground": mode.muted,
   // Soft brand wash both modes (light tint / dark shade) — not a generic muted surface.
-  "--accent": dark ? mode.accent[900] : mode.accent[100],
+  "--accent": dark ? mode.accent[900]! : mode.accent[100]!,
   "--accent-foreground": mode.ink,
   "--border": mode.rule,
   "--input": mode.rule,
-  "--ring": mode.accent[500],
+  "--ring": yellowBrand.has(id) ? mode.accent[400]! : mode.accent[500]!,
   "--destructive": dark ? "#f87171" : "#dc2626",
   "--destructive-foreground": "#ffffff",
   "--success": dark ? "#34d399" : "#059669",
@@ -38,7 +49,7 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   "--color-bg": mode.surface,
   "--color-ink": mode.ink,
   "--color-ink-muted": mode.muted,
-  "--color-accent": dark ? mode.accent[500] : mode.accent[600],
+  "--color-accent": dark ? darkBrand : lightColorAccent,
   })
 }
 
