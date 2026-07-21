@@ -26,11 +26,13 @@ test("monochrome is the exact upstream light and dark semantic token reference",
   assert.match(css, /data-theme-color="monochrome"\]\[data-rt-mode="dark"\][^}]*--background:oklch\(0\.145 0 0\)[^}]*--card:oklch\(0\.205 0 0\)[^}]*--provider-surface:var\(--background\)/)
 })
 
-test("colored themes use explicit paired surface values and dark tinting", () => {
+test("colored themes use a perceptible canvas wash with elevated cards", () => {
   const css = generateStaticThemeCss()
   for (const id of COLOR_SCHEME_IDS.filter((id) => id !== "monochrome")) {
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--background:oklch\\(0\\.992 0\\.006`))
-    assert.match(css, new RegExp(`data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^}]*--background:oklch\\(0\\.145 0\\.012`))
+    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--background:oklch\\(0\\.980 0\\.025`))
+    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--card:oklch\\(0\\.994 0\\.012`))
+    assert.match(css, new RegExp(`data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^}]*--background:oklch\\(0\\.150 0\\.030`))
+    assert.match(css, new RegExp(`data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^}]*--card:oklch\\(0\\.210 0\\.022`))
   }
 })
 

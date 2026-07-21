@@ -166,6 +166,12 @@ const semanticColors = (accent: ColorRamp, dark: boolean): SemanticColors => ({
   onMedia: "#ffffff",
 })
 
+// Colored canvas wash (page `--background`): perceptible brand tint without
+ // competing with content. Monochrome stays pure white/near-black.
+ // Light ≈ soft pastel paper; dark ≈ slightly lifted chroma on the same L.
+const TINTED_SURFACE_LIGHT = (hue: number) => `oklch(0.980 0.025 ${hue})`
+const TINTED_SURFACE_DARK = (hue: number) => `oklch(0.150 0.030 ${hue})`
+
 const tintedMode = (
   accent: ColorRamp,
   accentSecondary: ColorRamp,
@@ -176,7 +182,7 @@ const tintedMode = (
       neutral: grayDark,
       accent,
       accentSecondary,
-      surface: `oklch(0.145 0.012 ${hue})`,
+      surface: TINTED_SURFACE_DARK(hue),
       ink: "oklch(0.985 0.002 260)",
       muted: "oklch(0.708 0.012 260)",
       rule: `oklch(0.985 0.01 ${hue} / 12%)`,
@@ -186,7 +192,7 @@ const tintedMode = (
       neutral: gray,
       accent,
       accentSecondary,
-      surface: `oklch(0.992 0.006 ${hue})`,
+      surface: TINTED_SURFACE_LIGHT(hue),
       ink: "oklch(0.145 0.004 260)",
       muted: "oklch(0.48 0.012 260)",
       rule: `oklch(0.89 0.012 ${hue})`,

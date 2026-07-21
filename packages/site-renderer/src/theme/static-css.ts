@@ -18,12 +18,14 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   return ({
   "--background": mode.surface,
   "--foreground": mode.ink,
-  "--card": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.998 0.003 ${hue})`,
+  // Cards sit slightly above the canvas wash (higher L / lower C) so panels
+  // stay readable while the page still carries the brand tint.
+  "--card": dark ? `oklch(0.210 0.022 ${hue})` : `oklch(0.994 0.012 ${hue})`,
   "--card-foreground": mode.ink,
-  "--popover": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.998 0.003 ${hue})`,
+  "--popover": dark ? `oklch(0.210 0.022 ${hue})` : `oklch(0.994 0.012 ${hue})`,
   "--popover-foreground": mode.ink,
   "--primary": dark ? darkBrand : lightPrimary,
-  "--primary-foreground": dark ? `oklch(0.145 0.012 ${hue})` : mode.onAccent,
+  "--primary-foreground": dark ? `oklch(0.150 0.030 ${hue})` : mode.onAccent,
   "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.97 0.012 ${hue})`,
   "--secondary-foreground": mode.ink,
   "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.97 0.012 ${hue})`,

@@ -88,12 +88,16 @@ runtime CSS.
 Generated-site CSS wires Tailwind's native `dark:` variant to
 `[data-rt-mode="dark"]`. Provider source that includes `dark:` utilities may use
 that native path and should compute from Tailwind's default palette values.
-Monochrome retains exact upstream palette values. Colored presets scope neutral
-and decorative palette families to the tenant color; status palettes remain
-independent. Provider sources that do not include `dark:`
-utilities may be themed only through renderer-owned bridge rules
-for explicit semantic roles: ambient surfaces, ambient ink, accent affordances,
-borders, shape, and reviewed tokenized decoration.
+Monochrome retains exact upstream palette values (pure white / near-black
+canvas). Colored presets keep a soft brand **canvas wash** on
+`--background` / `--color-bg` (`oklch(0.980 0.025 <hue>)` light,
+`oklch(0.150 0.030 <hue>)` dark) so the page reads tinted without competing
+with content; elevated panels use a slightly higher-L / lower-C `--card`.
+Colored presets also scope neutral and decorative palette families to the
+tenant color; status palettes remain independent. Provider sources that do not
+include `dark:` utilities may be themed only through renderer-owned bridge
+rules for explicit semantic roles: ambient surfaces, ambient ink, accent
+affordances, borders, shape, and reviewed tokenized decoration.
 `bg-gray-900` remains a source-owned dark panel unless an explicit bridge says
 otherwise.
 
