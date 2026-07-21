@@ -36,13 +36,14 @@ test("colored themes use explicit paired surface values and dark tinting", () =>
 
 test("every color scheme emits secondary accent ramps for dual-tone surfaces", () => {
   const css = generateStaticThemeCss()
+  // Shared slate secondary across every scheme; primary stays scheme-specific.
   for (const id of COLOR_SCHEME_IDS) {
-    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--provider-accent-secondary-600:`))
+    assert.match(css, new RegExp(`data-theme-color="${id}"[^}]*--provider-accent-secondary-600:#475569`))
   }
-  assert.match(css, /data-theme-color="monochrome"[^}]*--provider-accent-600:#475569[^}]*--provider-accent-secondary-600:#52525b/)
-  assert.match(css, /data-theme-color="blue-professional"[^}]*--provider-accent-secondary-600:#7c3aed/)
-  assert.match(css, /data-theme-color="emerald-calm"[^}]*--provider-accent-secondary-600:#65a30d/)
-  assert.match(css, /data-theme-color="red-confident"[^}]*--provider-accent-secondary-600:#ea580c/)
+  assert.match(css, /data-theme-color="monochrome"[^}]*--provider-accent-600:#475569/)
+  assert.match(css, /data-theme-color="blue-professional"[^}]*--provider-accent-600:#4f46e5/)
+  assert.match(css, /data-theme-color="red-confident"[^}]*--provider-accent-600:#dc2626/)
+  assert.match(css, /data-theme-color="emerald-calm"[^}]*--provider-accent-600:#059669/)
 })
 
 test("terracotta uses the Ami-care brand color as its light primary", () => {

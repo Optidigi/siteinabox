@@ -64,20 +64,6 @@ const slateDark: ColorRamp = {
   950: "#ffffff",
 }
 
-const zinc: ColorRamp = {
-  50: "#fafafa",
-  100: "#f4f4f5",
-  200: "#e4e4e7",
-  300: "#d4d4d8",
-  400: "#a1a1aa",
-  500: "#71717a",
-  600: "#52525b",
-  700: "#3f3f46",
-  800: "#27272a",
-  900: "#18181b",
-  950: "#09090b",
-}
-
 const indigo: ColorRamp = {
   50: "#eef2ff",
   100: "#e0e7ff",
@@ -162,63 +148,6 @@ const terracotta: ColorRamp = {
   950: "#371811",
 }
 
-/** Companion ramps for dual-tone decorative surfaces (hero blobs, beams). */
-const violet: ColorRamp = {
-  50: "#f5f3ff",
-  100: "#ede9fe",
-  200: "#ddd6fe",
-  300: "#c4b5fd",
-  400: "#a78bfa",
-  500: "#8b5cf6",
-  600: "#7c3aed",
-  700: "#6d28d9",
-  800: "#5b21b6",
-  900: "#4c1d95",
-  950: "#2e1065",
-}
-
-const orange: ColorRamp = {
-  50: "#fff7ed",
-  100: "#ffedd5",
-  200: "#fed7aa",
-  300: "#fdba74",
-  400: "#fb923c",
-  500: "#f97316",
-  600: "#ea580c",
-  700: "#c2410c",
-  800: "#9a3412",
-  900: "#7c2d12",
-  950: "#431407",
-}
-
-const lime: ColorRamp = {
-  50: "#f7fee7",
-  100: "#ecfccb",
-  200: "#d9f99d",
-  300: "#bef264",
-  400: "#a3e635",
-  500: "#84cc16",
-  600: "#65a30d",
-  700: "#4d7c0f",
-  800: "#3f6212",
-  900: "#365314",
-  950: "#1a2e05",
-}
-
-const rose: ColorRamp = {
-  50: "#fff1f2",
-  100: "#ffe4e6",
-  200: "#fecdd3",
-  300: "#fda4af",
-  400: "#fb7185",
-  500: "#f43f5e",
-  600: "#e11d48",
-  700: "#be123c",
-  800: "#9f1239",
-  900: "#881337",
-  950: "#4c0519",
-}
-
 const modernSansStack = "Inter Variable, Inter, ui-sans-serif, system-ui, sans-serif"
 const editorialSerifStack = "Fraunces Variable, ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif"
 const humanistSansStack = "\"Nunito Variable\", Nunito, ui-sans-serif, system-ui, sans-serif"
@@ -285,9 +214,9 @@ export const colorSchemes = {
     source: "builtin",
     light: {
       neutral: gray,
-      // Slate + zinc dual-tone for decorative washes (no chromatic companion).
+      // Theme primary + shared slate secondary for decorative dual-tone washes.
       accent: slate,
-      accentSecondary: zinc,
+      accentSecondary: slate,
       surface: "oklch(1 0 0)",
       ink: "oklch(0.145 0 0)",
       muted: "oklch(0.556 0 0)",
@@ -297,7 +226,7 @@ export const colorSchemes = {
     dark: {
       neutral: grayDark,
       accent: slateDark,
-      accentSecondary: zinc,
+      accentSecondary: slate,
       surface: "oklch(0.145 0 0)",
       ink: "oklch(0.985 0 0)",
       muted: "oklch(0.708 0 0)",
@@ -309,36 +238,36 @@ export const colorSchemes = {
     id: "blue-professional",
     label: "Blue Professional",
     source: "builtin",
-    light: tintedMode(indigo, violet, 264, false),
-    dark: tintedMode(indigo, violet, 264, true),
+    light: tintedMode(indigo, slate, 264, false),
+    dark: tintedMode(indigo, slate, 264, true),
   },
   "red-confident": {
     id: "red-confident",
     label: "Red Confident",
     source: "builtin",
-    light: tintedMode(red, orange, 25, false),
-    dark: tintedMode(red, orange, 25, true),
+    light: tintedMode(red, slate, 25, false),
+    dark: tintedMode(red, slate, 25, true),
   },
   "emerald-calm": {
     id: "emerald-calm",
     label: "Emerald Calm",
     source: "builtin",
-    light: tintedMode(emerald, lime, 165, false),
-    dark: tintedMode(emerald, lime, 165, true),
+    light: tintedMode(emerald, slate, 165, false),
+    dark: tintedMode(emerald, slate, 165, true),
   },
   "amber-warm": {
     id: "amber-warm",
     label: "Amber Warm",
     source: "builtin",
-    light: tintedMode(amber, orange, 75, false),
-    dark: tintedMode(amber, orange, 75, true),
+    light: tintedMode(amber, slate, 75, false),
+    dark: tintedMode(amber, slate, 75, true),
   },
   "terracotta-warm": {
     id: "terracotta-warm",
     label: "Terracotta Warm",
     source: "builtin",
-    light: tintedMode(terracotta, rose, 35, false),
-    dark: tintedMode(terracotta, rose, 35, true),
+    light: tintedMode(terracotta, slate, 35, false),
+    dark: tintedMode(terracotta, slate, 35, true),
   },
 } as const satisfies Record<string, ProviderColorScheme>
 
