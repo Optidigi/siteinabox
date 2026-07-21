@@ -94,8 +94,8 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     expect(byVariant["shadcnui-blocks.cta-05"]).not.toHaveProperty("backgroundImage")
 
     expect(byVariant["shadcnui-blocks.logo-cloud-01"]).toMatchObject({ logos: expect.any(Array) })
-    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos).toHaveLength(3)
-    expect(byVariant["shadcnui-blocks.logo-cloud-02"].logos).toHaveLength(6)
+    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos).toHaveLength(4)
+    expect(byVariant["shadcnui-blocks.logo-cloud-02"].logos).toHaveLength(8)
     expect(byVariant["shadcnui-blocks.features-01"].features).toHaveLength(3)
     expect(byVariant["shadcnui-blocks.features-03"].features).toHaveLength(2)
     expect(byVariant["shadcnui-blocks.features-04"].features).toHaveLength(4)
