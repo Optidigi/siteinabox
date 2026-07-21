@@ -447,7 +447,8 @@ export function loadMockSiteGenerationSpec(
       navFooter: nav,
       contact: {
         phone: normalized.contact?.phone ?? null,
-        address: normalized.contact?.address ?? "Stationsplein 1, Amsterdam",
+        // Intake contact has no address field; smoke still needs one for contact-02 detail cards.
+        address: "Stationsplein 1, Amsterdam",
         social: [
           { platform: "LinkedIn", url: "https://www.linkedin.com/company/siteinabox" },
           { platform: "Instagram", url: "https://www.instagram.com/siteinabox" },
