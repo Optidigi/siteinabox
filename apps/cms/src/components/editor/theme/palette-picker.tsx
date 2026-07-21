@@ -7,6 +7,8 @@ import { formatCssColorValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-sty
 import type { ColorSchemeId, ThemeMode } from "@siteinabox/contracts"
 import type { ColorPreset } from "@/lib/theme/presets"
 import { DEFAULT_THEME_TOKEN_SPEC } from "@siteinabox/contracts"
+import { resolveColorMode } from "@siteinabox/site-renderer/theme"
+import { useSystemPrefersDark } from "@/lib/theme/use-system-prefers-dark"
 import { useTranslations } from "next-intl"
 import { MobilePickerOption } from "@/components/common/mobile-picker-option"
 import { InlineToolbarDivider, InlineToolbarGroup, InlineToolbarOption } from "@/components/common/inline-toolbar-group"
@@ -20,8 +22,10 @@ export const PalettePicker: React.FC<{
   swatchSizeClassName?: string
 }> = ({ palettes, value, mode, onChange, layout = "default", swatchSizeClassName }) => {
   const t = useTranslations("editor")
+  const systemPrefersDark = useSystemPrefersDark()
   const activeId = value ?? DEFAULT_THEME_TOKEN_SPEC.colors.schemeId
-  const activeMode = mode === "system" ? DEFAULT_THEME_TOKEN_SPEC.appearance.mode : mode
+  // Match ThemeCanvas: when preference is "system", show the OS-resolved mode.
+  const activeMode = resolveColorMode(mode, null, systemPrefersDark)
   const iconSize = layout === "mobile" ? "size-5" : "size-3.5"
   const mobileSwatchSize = swatchSizeClassName ?? "size-12"
   const inlineSwatchSize = swatchSizeClassName ?? "size-8"

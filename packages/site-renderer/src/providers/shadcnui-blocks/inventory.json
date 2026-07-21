@@ -4247,7 +4247,7 @@
           "file": "features.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Design your space with drag-and-drop simplicity—create grids, lists, or galleries in seconds."
+          "fallback": "Design your space with drag-and-drop simplicity\u2014create grids, lists, or galleries in seconds."
         }
       ],
       "featureAudit": [
@@ -8121,7 +8121,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/logo-cloud.tsx",
-          "sha256": "sha256:aa4b529af837c4ae53dde111f67736018cd843b69f846617734fbd88479f5022"
+          "sha256": "sha256:23f12042be76058b65389ea02681229b46be6671e80225c4f985b1bcff9e0f63"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/view.tsx",
@@ -8371,7 +8371,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/logo-cloud.tsx",
-          "sha256": "sha256:5f10210a9f0d0e6d8a2affe5163a06976af5d2850449591229cb938821ee6869"
+          "sha256": "sha256:014a2cd74e099cddc6b2f783027ff4c49e1a833f67fb2777c3f16fbf23229d58"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/view.tsx",
@@ -12734,7 +12734,7 @@
           "file": "team.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Our philosophy is simple — hire a team of passionate people and foster a culture that empowers you to do you best work."
+          "fallback": "Our philosophy is simple \u2014 hire a team of passionate people and foster a culture that empowers you to do you best work."
         },
         {
           "file": "team.tsx",
@@ -13522,7 +13522,7 @@
           "file": "team.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
+          "fallback": "Our philosophy is simple \u2014 hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
         },
         {
           "file": "team.tsx",
@@ -13790,7 +13790,7 @@
           "file": "team.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
+          "fallback": "Our philosophy is simple \u2014 hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
         },
         {
           "file": "team.tsx",

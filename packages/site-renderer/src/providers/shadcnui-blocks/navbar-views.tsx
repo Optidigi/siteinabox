@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Search, SunIcon } from "lucide-react"
+import { MoonIcon, Search, SunIcon } from "lucide-react"
 import { validateSiteChromeCapabilities, type SiteSettings } from "@siteinabox/contracts"
 import { Button, Input } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import type { MediaResolver } from "../../media"
@@ -31,7 +31,7 @@ function Navbar({ model, variant }: { model: NavbarViewModel; variant: string })
 
   const nav = <ProviderNavMenu className="hidden items-center gap-6 md:flex" model={model} variant={variant} />
   const pill = variant === "shadcnui-blocks.navbar-04"
-  const actions = <div className="flex items-center gap-3"><SecondaryAction model={model} pill={pill} /><PrimaryAction model={model} pill={pill} />{variant === "shadcnui-blocks.navbar-02" ? <Button aria-label={model.themeToggleLabel} data-theme-toggle size="icon" type="button" variant="outline"><SunIcon /></Button> : null}<div className="md:hidden"><ProviderNavigationSheet model={model} variant={variant} /></div></div>
+  const actions = <div className="flex items-center gap-3"><SecondaryAction model={model} pill={pill} /><PrimaryAction model={model} pill={pill} />{variant === "shadcnui-blocks.navbar-02" ? <Button aria-label={model.themeToggleLabel} data-theme-toggle size="icon" type="button" variant="outline"><SunIcon className="dark:hidden" /><MoonIcon className="hidden dark:block" /></Button> : null}<div className="md:hidden"><ProviderNavigationSheet model={model} variant={variant} /></div></div>
 
   if (variant === "shadcnui-blocks.navbar-04") return <nav className="fixed inset-x-4 top-6 mx-auto h-16 max-w-(--breakpoint-xl) rounded-full border bg-background"><div className="mx-auto flex h-full items-center justify-between px-4"><ProviderLogo model={model} />{nav}{actions}</div></nav>
   const width = variant === "shadcnui-blocks.navbar-03" ? "max-w-(--breakpoint-lg)" : "max-w-(--breakpoint-xl)"

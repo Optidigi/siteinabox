@@ -39,16 +39,16 @@ const SMOKE_GALLERY_MEDIA = [
   { url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-d.jpg", alt: "Portret teamlid D", width: 800, height: 800 },
 ] as const
 
-/** Monochrome wordmarks: readable on light; logo-cloud variants invert in dark mode. */
+/** Full brand logos (symbol + wordmark) via Devicon; readable on light, forced white in dark via logo-cloud invert. */
 const SMOKE_LOGO_MEDIA = [
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/react.svg", filename: "smoke-logo-react.svg", alt: "React", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/vercel.svg", filename: "smoke-logo-vercel.svg", alt: "Vercel", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/github.svg", filename: "smoke-logo-github.svg", alt: "GitHub", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/typescript.svg", filename: "smoke-logo-typescript.svg", alt: "TypeScript", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/figma.svg", filename: "smoke-logo-figma.svg", alt: "Figma", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/stripe.svg", filename: "smoke-logo-stripe.svg", alt: "Stripe", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/nextdotjs.svg", filename: "smoke-logo-nextdotjs.svg", alt: "Next.js", width: 200, height: 200 },
-  { url: "https://cdn.jsdelivr.net/npm/simple-icons@11.14.0/icons/linear.svg", filename: "smoke-logo-linear.svg", alt: "Linear", width: 200, height: 200 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original-wordmark.svg", filename: "smoke-logo-react.svg", alt: "React", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original-wordmark.svg", filename: "smoke-logo-github.svg", alt: "GitHub", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original-wordmark.svg", filename: "smoke-logo-nextjs.svg", alt: "Next.js", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vercel/vercel-original-wordmark.svg", filename: "smoke-logo-vercel.svg", alt: "Vercel", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nodejs/nodejs-original-wordmark.svg", filename: "smoke-logo-nodejs.svg", alt: "Node.js", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/docker/docker-original-wordmark.svg", filename: "smoke-logo-docker.svg", alt: "Docker", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-original-wordmark.svg", filename: "smoke-logo-aws.svg", alt: "AWS", width: 200, height: 80 },
+  { url: "https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/slack/slack-original-wordmark.svg", filename: "smoke-logo-slack.svg", alt: "Slack", width: 200, height: 80 },
 ] as const
 
 

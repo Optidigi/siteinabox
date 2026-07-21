@@ -19,6 +19,7 @@ import {
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
+import { useSystemPrefersDark } from "@/lib/theme/use-system-prefers-dark"
 import { PREVIEW_THEME_TOOLBAR_CLOSE_EVENT } from "@/lib/preview/preview-theme-events"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { cn } from "@siteinabox/ui/lib/utils"
@@ -45,6 +46,7 @@ export function PreviewMobileThemeBar({
 }) {
   const t = useTranslations("editor")
   const previewT = useTranslations("preview")
+  const systemPrefersDark = useSystemPrefersDark()
   const [openSegment, setOpenSegment] = React.useState<Segment | null>(null)
   const lastOpenSegmentRef = React.useRef<Segment | null>(null)
   const segmentRefs = React.useRef<Record<Segment, HTMLButtonElement | null>>({
@@ -120,7 +122,7 @@ export function PreviewMobileThemeBar({
           align="center"
           sideOffset={12}
           className={cn(
-            previewMobileChromeToneClass(theme),
+            previewMobileChromeToneClass(theme, systemPrefersDark),
             "w-[calc(100vw-1.5rem)] max-w-none",
             "rounded-2xl border border-border/50 bg-popover p-4 text-popover-foreground shadow-xl",
           )}

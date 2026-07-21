@@ -15,7 +15,7 @@ import type { TypedVariantBaseProps } from "../../typed/props"
 import { Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08 } from "../../runtime/logos"
 
 const MAX_LOGOS = 8
-const LOGO_CLASS = "h-10 dark:invert"
+const LOGO_CLASS = "h-10 w-auto dark:brightness-0 dark:invert"
 const FALLBACK_LOGOS = [Logo01, Logo02, Logo03, Logo04, Logo05, Logo06, Logo07, Logo08] as const
 
 export type LogoCloud02Props = TypedVariantBaseProps & {

@@ -9,6 +9,7 @@ import {
   previewMobileChromeWrapperClass,
 } from "@/components/preview/preview-mobile-chrome-tone"
 import type { ThemeTokens } from "@/lib/theme/schema"
+import { useSystemPrefersDark } from "@/lib/theme/use-system-prefers-dark"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
@@ -91,8 +92,9 @@ export function PreviewMobileChrome({
   reviewHref: string
   customerNavigationBlocked: boolean
 }) {
+  const systemPrefersDark = useSystemPrefersDark()
   return (
-    <div className={cn("md:hidden", previewMobileChromeWrapperClass(theme))}>
+    <div className={cn("md:hidden", previewMobileChromeWrapperClass(theme, systemPrefersDark))}>
       <PreviewMobileNavPills
         theme={theme}
         canCompleteOrder={canCompleteOrder}

@@ -112,6 +112,8 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     expect(byVariant["shadcnui-blocks.team-01"].members.every((member: { image?: unknown }) => Boolean(member.image))).toBe(true)
     expect(byVariant["shadcnui-blocks.testimonials-01"].items.every((item: { avatar?: unknown }) => Boolean(item.avatar))).toBe(true)
     expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos.every((logo: { image?: { url?: string } }) => Boolean(logo.image?.url))).toBe(true)
+    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos.every((logo: { image?: { url?: string } }) => String(logo.image?.url).includes("wordmark.svg"))).toBe(true)
+    expect(spec.assets.filter((asset) => String(asset.filename).startsWith("smoke-logo-")).every((asset) => String(asset.url).includes("wordmark.svg"))).toBe(true)
     expect(byVariant["shadcnui-blocks.features-02"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)
     expect(byVariant["shadcnui-blocks.features-03"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)
     expect(byVariant["shadcnui-blocks.features-04"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)

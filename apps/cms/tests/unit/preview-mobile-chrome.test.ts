@@ -27,7 +27,8 @@ describe("preview mobile chrome", () => {
 
     expect(tone).toContain("previewMobileChromeToneClass")
     expect(tone).not.toContain("previewMobileChromeShineColor")
-    expect(tone).toContain('=== "light" ? "dark"')
+    expect(tone).toContain("resolveColorMode")
+    expect(tone).toContain("systemPrefersDark")
     expect(tone).toContain("preview-mobile-chrome-light")
 
     expect(themeBar).toContain("MobileInlinePill")
