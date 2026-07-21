@@ -787,6 +787,16 @@ const normalizeBlock = (block: Record<string, unknown>, mediaIds?: MediaIdMap): 
         : item,
     )
   }
+  if (Array.isArray(normalized.features)) {
+    normalized.features = normalized.features.map((item) =>
+      item && typeof item === "object"
+        ? {
+            ...(item as Record<string, unknown>),
+            image: normalizeMediaRef((item as Record<string, unknown>).image, mediaIds),
+          }
+        : item,
+    )
+  }
   if (Array.isArray(normalized.pairs)) {
     normalized.pairs = normalized.pairs.map((pair) =>
       pair && typeof pair === "object"

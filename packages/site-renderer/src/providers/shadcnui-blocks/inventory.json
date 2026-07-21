@@ -8121,7 +8121,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/logo-cloud.tsx",
-          "sha256": "sha256:d9688598ec7676ec54ba1bb23ae45317a1d221656919fe6a7b74843a9f604b78"
+          "sha256": "sha256:aa4b529af837c4ae53dde111f67736018cd843b69f846617734fbd88479f5022"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-01/view.tsx",
@@ -8371,7 +8371,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/logo-cloud.tsx",
-          "sha256": "sha256:51d471b5cd5d2f66b45bcbd68259bb2be8ae56bf749e3c7c4e651f5d56bc6ed0"
+          "sha256": "sha256:5f10210a9f0d0e6d8a2affe5163a06976af5d2850449591229cb938821ee6869"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/logo-cloud-02/view.tsx",

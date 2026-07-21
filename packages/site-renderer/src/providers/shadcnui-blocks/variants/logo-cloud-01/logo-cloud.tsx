@@ -15,7 +15,7 @@ import { Logo01, Logo02, Logo03, Logo04 } from "../../runtime/logos"
 
 const BLOCK_TYPE = "logoCloud" as const
 const MAX_LOGOS = 4
-const LOGO_CLASS = "h-10"
+const LOGO_CLASS = "h-10 dark:invert"
 
 type LogoItem = {
   name: string

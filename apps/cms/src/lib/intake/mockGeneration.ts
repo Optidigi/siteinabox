@@ -28,12 +28,29 @@ const PAGE_SECTION_VARIANTS = [
 ] as const
 
 const SMOKE_GALLERY_MEDIA = [
-  { url: "https://www.siteinabox.nl/theme/images/assets/example-desktop.webp", filename: "smoke-example-desktop.webp", alt: "Voorbeeldwebsite op desktop", width: 1600, height: 1000 },
-  { url: "https://www.siteinabox.nl/theme/images/assets/example-mobile.webp", filename: "smoke-example-mobile.webp", alt: "Voorbeeldwebsite op mobiel", width: 780, height: 1688 },
-  { url: "https://www.siteinabox.nl/theme/images/assets/avatar_4.webp", filename: "smoke-avatar.webp", alt: "Voorbeeld van een klantprofiel", width: 480, height: 520 },
-  { url: "https://www.siteinabox.nl/og-default.png", filename: "smoke-social-preview.png", alt: "Site in a Box social preview", width: 1200, height: 630 },
-  { url: "https://www.siteinabox.nl/theme/images/logo/clients/kbkc.png", filename: "smoke-client-logo.png", alt: "Voorbeeld van een klantlogo", width: 1024, height: 334 },
+  { url: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1600&h=1000&q=80", filename: "smoke-office-interior.jpg", alt: "Lichte kantoorruimte met glazen wanden", width: 1600, height: 1000 },
+  { url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1600&h=1000&q=80", filename: "smoke-team-collaboration.jpg", alt: "Team aan het werk rond een tafel", width: 1600, height: 1000 },
+  { url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=800&h=1000&q=80", filename: "smoke-portrait-professional.jpg", alt: "Portret van een professional", width: 800, height: 1000 },
+  { url: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1600&h=900&q=80", filename: "smoke-analytics-desk.jpg", alt: "Laptop met analyticsdashboard", width: 1600, height: 900 },
+  { url: "https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1600&h=900&q=80", filename: "smoke-workshop-session.jpg", alt: "Workshop met sticky notes op glas", width: 1600, height: 900 },
+  { url: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-a.jpg", alt: "Portret teamlid A", width: 800, height: 800 },
+  { url: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-b.jpg", alt: "Portret teamlid B", width: 800, height: 800 },
+  { url: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-c.jpg", alt: "Portret teamlid C", width: 800, height: 800 },
+  { url: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=800&h=800&q=80", filename: "smoke-portrait-d.jpg", alt: "Portret teamlid D", width: 800, height: 800 },
 ] as const
+
+/** Monochrome wordmarks: readable on light; logo-cloud variants invert in dark mode. */
+const SMOKE_LOGO_MEDIA = [
+  { url: "https://cdn.simpleicons.org/react/111827", filename: "smoke-logo-react.svg", alt: "React", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/vercel/111827", filename: "smoke-logo-vercel.svg", alt: "Vercel", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/github/111827", filename: "smoke-logo-github.svg", alt: "GitHub", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/typescript/111827", filename: "smoke-logo-typescript.svg", alt: "TypeScript", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/figma/111827", filename: "smoke-logo-figma.svg", alt: "Figma", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/stripe/111827", filename: "smoke-logo-stripe.svg", alt: "Stripe", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/nextdotjs/111827", filename: "smoke-logo-nextdotjs.svg", alt: "Next.js", width: 200, height: 200 },
+  { url: "https://cdn.simpleicons.org/linear/111827", filename: "smoke-logo-linear.svg", alt: "Linear", width: 200, height: 200 },
+] as const
+
 
 const inline = (value: string): RtInlineRoot => ({
   t: "root",
@@ -98,6 +115,14 @@ const smokeAsset = (index: number, alt?: string) => {
   return alt ? { ...asset, alt } : { ...asset }
 }
 
+const smokeLogo = (index: number, name: string) => {
+  const asset = SMOKE_LOGO_MEDIA[index % SMOKE_LOGO_MEDIA.length]!
+  return { ...asset, alt: `${name} logo` }
+}
+
+const smokePortrait = (index: number, alt: string) => smokeAsset(5 + (index % 4), alt)
+
+
 const variantLabel = (variant: ProviderBlockVariant) => variant.id.replace("shadcnui-blocks.", "")
 const pageHref = (pageIndex: number) => pageIndex === 0 ? "/" : `/${LANDING_PAGES[pageIndex]!.slug}`
 
@@ -144,10 +169,10 @@ function blockForVariant(
         ...base,
         blockType: "featureList",
         features: fitPreferred(variant, "features", [
-          { title: inline("Snel te scannen"), description: prose("Heldere hiërarchie op desktop en mobiel."), icon: "sparkles" },
-          { title: inline("Tokenbewust"), description: prose("Semantische kleuren blijven leesbaar in licht en donker."), icon: "palette" },
-          { title: inline("Contractgestuurd"), description: prose("Alle inhoud komt uit gevalideerde velden."), icon: "shield-check" },
-          { title: inline("Responsief"), description: prose("Rasters, kaarten en tekst lopen gecontroleerd om."), icon: "panels-top-left" },
+          { title: inline("Snel te scannen"), description: prose("Heldere hiërarchie op desktop en mobiel."), icon: "sparkles", image: smokeAsset(0, "Snel te scannen") },
+          { title: inline("Tokenbewust"), description: prose("Semantische kleuren blijven leesbaar in licht en donker."), icon: "palette", image: smokeAsset(1, "Tokenbewust") },
+          { title: inline("Contractgestuurd"), description: prose("Alle inhoud komt uit gevalideerde velden."), icon: "shield-check", image: smokeAsset(3, "Contractgestuurd") },
+          { title: inline("Responsief"), description: prose("Rasters, kaarten en tekst lopen gecontroleerd om."), icon: "panels-top-left", image: smokeAsset(4, "Responsief") },
         ]),
         ...optional(variant, "eyebrow", inline(`Mogelijkheden · ${label}`)),
         ...optional(variant, "title", inline("Een complete basis voor iedere landingspagina")),
@@ -160,10 +185,10 @@ function blockForVariant(
         blockType: "testimonials",
         title: active(variant, "title") ? `Ervaringen met ${label}` : null,
         items: fitPreferred(variant, "items", [
-          { quote: "De pagina voelt rustig en blijft op ieder scherm overzichtelijk.", author: "Noor de Vries", role: "Product lead", avatar: smokeAsset(2, "Noor de Vries") },
-          { quote: "De visuele hiërarchie maakt de belangrijkste actie direct duidelijk.", author: "Sam Jansen", role: "Ondernemer", avatar: smokeAsset(2, "Sam Jansen") },
-          { quote: "Licht en donker sluiten zichtbaar op elkaar aan.", author: "Mila Smit", role: "Designer", avatar: smokeAsset(2, "Mila Smit") },
-          { quote: "Ook lange Nederlandse tekst blijft goed leesbaar.", author: "Daan Bakker", role: "Contentstrateeg", avatar: smokeAsset(2, "Daan Bakker") },
+          { quote: "De pagina voelt rustig en blijft op ieder scherm overzichtelijk.", author: "Noor de Vries", role: "Product lead", avatar: smokePortrait(0, "Noor de Vries") },
+          { quote: "De visuele hiërarchie maakt de belangrijkste actie direct duidelijk.", author: "Sam Jansen", role: "Ondernemer", avatar: smokePortrait(1, "Sam Jansen") },
+          { quote: "Licht en donker sluiten zichtbaar op elkaar aan.", author: "Mila Smit", role: "Designer", avatar: smokePortrait(2, "Mila Smit") },
+          { quote: "Ook lange Nederlandse tekst blijft goed leesbaar.", author: "Daan Bakker", role: "Contentstrateeg", avatar: smokePortrait(3, "Daan Bakker") },
         ]),
       }
 
@@ -258,7 +283,7 @@ function blockForVariant(
         blockType: "logoCloud",
         logos: fitPreferred(variant, "logos", ["Acme", "Northstar", "Lumen", "Vertex", "Harbor", "Orbit", "Pioneer", "Summit"].map((name, index) => ({
           name,
-          image: smokeAsset(4, `${name} testlogo`),
+          image: smokeLogo(index, name),
           href: index % 2 === 0 ? `/partners/${name.toLowerCase()}` : null,
         }))),
         ...optional(variant, "title", inline(`Partners en integraties · ${label}`)),
@@ -270,11 +295,11 @@ function blockForVariant(
         ...base,
         blockType: "gallery",
         images: fitPreferred(variant, "images", [
-          { image: smokeAsset(0), caption: prose("Brede projectweergave 16:9"), link: { label: "Bekijk project", href: "/ervaringen" } },
-          { image: smokeAsset(1), caption: prose("Portretweergave voor mobiele controle") },
-          { image: smokeAsset(2), caption: prose("Detailweergave met transparantie") },
-          { image: smokeAsset(3), caption: prose("Social-previewverhouding") },
-          { image: smokeAsset(4), caption: prose("Breed klantlogo") },
+          { image: smokeAsset(0), caption: prose("Kantoorinterieur voor brede projectweergave"), link: { label: "Bekijk project", href: "/ervaringen" } },
+          { image: smokeAsset(2), caption: prose("Portretweergave voor mobiele controle") },
+          { image: smokeAsset(1), caption: prose("Teamsamenwerking in context") },
+          { image: smokeAsset(3), caption: prose("Product- en analyticsweergave") },
+          { image: smokeAsset(4), caption: prose("Workshop- en procesweergave") },
         ]),
         ...optional(variant, "title", inline(`Projectgalerij · ${label}`)),
         ...optional(variant, "intro", prose("SIAB-eigen testassets worden door de normale importer als tenantmedia opgeslagen en behouden hun bronafmetingen.")),
@@ -300,10 +325,10 @@ function blockForVariant(
         ...base,
         blockType: "team",
         members: fitPreferred(variant, "members", [
-          { name: "Noor de Vries", role: "Strategie", bio: prose("Brengt doelen en inhoud samen."), image: smokeAsset(2, "Noor de Vries"), links: [{ label: "Profiel", href: "/team/noor" }] },
-          { name: "Sam Jansen", role: "Ontwerp", bio: prose("Bewaakt ritme, contrast en toegankelijkheid."), image: smokeAsset(2, "Sam Jansen"), links: [{ label: "Profiel", href: "/team/sam" }] },
-          { name: "Mila Smit", role: "Content", bio: prose("Schrijft duidelijke en menselijke teksten."), image: smokeAsset(2, "Mila Smit"), links: [{ label: "Profiel", href: "/team/mila" }] },
-          { name: "Daan Bakker", role: "Techniek", bio: prose("Zorgt voor betrouwbare rendering op ieder scherm."), image: smokeAsset(2, "Daan Bakker"), links: [{ label: "Profiel", href: "/team/daan" }] },
+          { name: "Noor de Vries", role: "Strategie", bio: prose("Brengt doelen en inhoud samen."), image: smokePortrait(0, "Noor de Vries"), links: [{ label: "Profiel", href: "/team/noor" }] },
+          { name: "Sam Jansen", role: "Ontwerp", bio: prose("Bewaakt ritme, contrast en toegankelijkheid."), image: smokePortrait(1, "Sam Jansen"), links: [{ label: "Profiel", href: "/team/sam" }] },
+          { name: "Mila Smit", role: "Content", bio: prose("Schrijft duidelijke en menselijke teksten."), image: smokePortrait(2, "Mila Smit"), links: [{ label: "Profiel", href: "/team/mila" }] },
+          { name: "Daan Bakker", role: "Techniek", bio: prose("Zorgt voor betrouwbare rendering op ieder scherm."), image: smokePortrait(3, "Daan Bakker"), links: [{ label: "Profiel", href: "/team/daan" }] },
         ]),
         ...optional(variant, "title", inline(`Ons team · ${label}`)),
         ...optional(variant, "intro", prose("Namen, rollen en biografieën hebben bewust verschillende tekstlengtes.")),
@@ -315,9 +340,9 @@ function blockForVariant(
         blockType: "blogCards",
         posts: fitPreferred(variant, "posts", [
           { title: inline("Zo bouw je een duidelijke landingspagina"), excerpt: prose("Een praktische blik op hiërarchie, ritme en conversie."), image: smokeAsset(0, "Landingspagina artikel"), href: "/inzichten/landingspagina", date: "15 juli 2026", author: "Noor de Vries", authorRole: "Strategie", cta: { label: "Lees verder", href: "/inzichten/landingspagina" } },
-          { title: inline("Donkere modus zonder verrassingen"), excerpt: prose("Waarom semantische tokens meer doen dan kleuren omkeren."), image: smokeAsset(1, "Donkere modus artikel"), href: "/inzichten/donkere-modus", date: "8 juli 2026", author: "Sam Jansen", authorRole: "Ontwerp" },
-          { title: inline("Responsief testen op inhoud"), excerpt: prose("Lange koppen en echte veldlengtes vinden andere fouten dan lorem ipsum."), image: smokeAsset(3, "Responsief artikel"), href: "/inzichten/responsief", date: "1 juli 2026", author: "Mila Smit", authorRole: "Content" },
-          { title: inline("Waarom varianten expliciet zijn"), excerpt: prose("Fail-closed rendering houdt gegenereerde pagina’s voorspelbaar."), image: smokeAsset(0, "Varianten artikel"), href: "/inzichten/varianten", date: "24 juni 2026", author: "Daan Bakker", authorRole: "Techniek" },
+          { title: inline("Donkere modus zonder verrassingen"), excerpt: prose("Waarom semantische tokens meer doen dan kleuren omkeren."), image: smokeAsset(3, "Donkere modus artikel"), href: "/inzichten/donkere-modus", date: "8 juli 2026", author: "Sam Jansen", authorRole: "Ontwerp" },
+          { title: inline("Responsief testen op inhoud"), excerpt: prose("Lange koppen en echte veldlengtes vinden andere fouten dan lorem ipsum."), image: smokeAsset(1, "Responsief artikel"), href: "/inzichten/responsief", date: "1 juli 2026", author: "Mila Smit", authorRole: "Content" },
+          { title: inline("Waarom varianten expliciet zijn"), excerpt: prose("Fail-closed rendering houdt gegenereerde pagina’s voorspelbaar."), image: smokeAsset(4, "Varianten artikel"), href: "/inzichten/varianten", date: "24 juni 2026", author: "Daan Bakker", authorRole: "Techniek" },
         ]),
         ...optional(variant, "title", inline(`Inzichten · ${label}`)),
         ...optional(variant, "intro", prose("Controleer kaarten met uiteenlopende titels, metadata, links en tekstlengtes.")),
@@ -428,7 +453,7 @@ export function loadMockSiteGenerationSpec(
     },
     pages,
     blocks,
-    assets: [...SMOKE_GALLERY_MEDIA],
+    assets: [...SMOKE_GALLERY_MEDIA, ...SMOKE_LOGO_MEDIA],
     generatedAt: new Date().toISOString(),
     generator: {
       name: "mock-site-generation",

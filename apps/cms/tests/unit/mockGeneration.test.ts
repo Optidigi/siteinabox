@@ -111,7 +111,11 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
     expect(byVariant["shadcnui-blocks.blog-01"].posts.every((post: { image?: unknown }) => Boolean(post.image))).toBe(true)
     expect(byVariant["shadcnui-blocks.team-01"].members.every((member: { image?: unknown }) => Boolean(member.image))).toBe(true)
     expect(byVariant["shadcnui-blocks.testimonials-01"].items.every((item: { avatar?: unknown }) => Boolean(item.avatar))).toBe(true)
-    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos.every((logo: { image?: unknown }) => Boolean(logo.image))).toBe(true)
+    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos.every((logo: { image?: { url?: string } }) => Boolean(logo.image?.url))).toBe(true)
+    expect(byVariant["shadcnui-blocks.features-02"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)
+    expect(byVariant["shadcnui-blocks.features-03"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)
+    expect(byVariant["shadcnui-blocks.features-04"].features.every((feature: { image?: unknown }) => Boolean(feature.image))).toBe(true)
+    expect(spec.assets.every((asset) => !String(asset.url).includes("siteinabox.nl"))).toBe(true)
     expect(spec.pages.every((page) => {
       const ogImage = page.seo?.ogImage
       return typeof ogImage === "object" && ogImage !== null && Boolean(ogImage.url)
