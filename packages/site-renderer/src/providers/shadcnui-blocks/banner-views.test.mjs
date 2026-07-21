@@ -20,11 +20,13 @@ test("all four banner variants dispatch explicitly from structured chrome data",
     const html = renderToStaticMarkup(React.createElement(ShadcnUiBannerView, { variant, settings }))
     assert.match(html, /Structured consent copy/)
     assert.match(html, new RegExp(`data-provider-variant="${variant}"`))
+    assert.match(html, /data-site-chrome="banner"/)
   }
 })
 
 test("approved banner-03 exposes accept and reject consent actions", () => {
   const html = renderToStaticMarkup(React.createElement(ShadcnUiBannerView, { variant: "shadcnui-blocks.banner-03", settings }))
+  assert.match(html, /data-site-chrome="banner"/)
   assert.match(html, /data-siab-cookie-consent="true"/)
   assert.match(html, /pointer-events-none fixed inset-x-0 z-50/)
   assert.doesNotMatch(html, /px-6 py-10/)

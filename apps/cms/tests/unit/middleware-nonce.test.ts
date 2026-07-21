@@ -6,10 +6,13 @@ const importMiddleware = async () => {
 }
 
 describe("middleware CSP nonce", () => {
-  beforeEach(() => { vi.unstubAllEnvs() })
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    // Strict CSP assertions assume non-development; local shells often export NODE_ENV=development.
+    vi.stubEnv("NODE_ENV", "test")
+  })
 
   it("emits a fresh nonce per request and no unsafe-* on script-src in prod/test mode", async () => {
-    // Default NODE_ENV in vitest is "test" — strict CSP applies.
     const mw = await importMiddleware()
     const req1 = new NextRequest("https://admin.localhost/")
     const req2 = new NextRequest("https://admin.localhost/")

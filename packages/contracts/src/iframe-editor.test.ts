@@ -100,6 +100,14 @@ describe("iframe renderer protocol", () => {
     }
   })
 
+  it("accepts chrome.select for banner zone", () => {
+    expect(IframeEditorMessageSchema.safeParse({
+      ...baseMessage,
+      type: "chrome.select",
+      selection: { pageId: "home", fieldPath: ["chrome", "banner"] },
+    }).success).toBe(true)
+  })
+
   it("rejects removed mutation and canvas messages", () => {
     for (const type of [
       "block.patch",

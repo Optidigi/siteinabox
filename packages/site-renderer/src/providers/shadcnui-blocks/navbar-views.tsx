@@ -47,5 +47,5 @@ export function ShadcnUiNavbarView({ variant, settings, currentSlug, mediaResolv
   const model = adaptNavbar(effectiveSettings, currentSlug, mediaResolver)
   if (!model) return null
   const nav = <Navbar model={model} variant={variant} />
-  return <header className={model.behavior === "sticky" ? "sticky top-0 z-50" : undefined} data-header-behavior={model.behavior} data-provider-token-mode="theme" data-provider-variant={variant}>{nav}</header>
+  return <header className={model.behavior === "sticky" ? "sticky top-0 z-50" : undefined} data-site-chrome="header" data-header-behavior={model.behavior} data-provider-token-mode="theme" data-provider-variant={variant}>{nav}</header>
 }

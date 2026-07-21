@@ -1,11 +1,21 @@
 "use client"
 
-import { ChevronRight, PanelBottom, PanelTop } from "lucide-react"
+import { ChevronRight, Cookie, PanelBottom, PanelTop } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@siteinabox/ui/components/button"
 
-export type SiteChromeZone = "header" | "footer"
+export type SiteChromeZone = "header" | "footer" | "banner"
 export type SiteChromeSelection = { zone: SiteChromeZone }
+
+export function siteChromeZoneLabel(
+  zone: SiteChromeZone,
+  t: (key: "siteHeader" | "siteFooter" | "siteBanner") => string,
+): string {
+  if (zone === "header") return t("siteHeader")
+  if (zone === "footer") return t("siteFooter")
+  return t("siteBanner")
+}
+
 export function SiteChromeRow({
   zone,
   selected,
@@ -18,8 +28,8 @@ export function SiteChromeRow({
   onSelect?: (selection: SiteChromeSelection) => void
 }) {
   const t = useTranslations("editor")
-  const label = zone === "header" ? "Header" : "Footer"
-  const Icon = zone === "header" ? PanelTop : PanelBottom
+  const label = siteChromeZoneLabel(zone, t)
+  const Icon = zone === "header" ? PanelTop : zone === "footer" ? PanelBottom : Cookie
 
   return (
     <Button

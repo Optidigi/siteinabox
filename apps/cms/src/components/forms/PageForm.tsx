@@ -19,7 +19,8 @@ import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
 import { usePageEditorCore } from "@/components/editor/usePageEditorCore"
 import { parsePayloadError } from "@/lib/api"
-import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X } from "lucide-react"
+import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, Cookie } from "lucide-react"
+import Link from "next/link"
 import type { Page, SiteSetting } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
 import { SHADCNUI_CHROME_VARIANTS, SITE_CHROME_CATALOG } from "@siteinabox/contracts"
@@ -50,7 +51,7 @@ import { useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
 import { useTranslations } from "next-intl"
 import { pageEditorHref } from "@/lib/pageEditorUrls"
 import type { NavPage } from "@/lib/projection/resolveNav"
-import { SiteChromeRow, type SiteChromeSelection, type SiteChromeZone } from "@/components/editor/sidebar/SiteChromeRow"
+import { SiteChromeRow, siteChromeZoneLabel, type SiteChromeSelection, type SiteChromeZone } from "@/components/editor/sidebar/SiteChromeRow"
 import { MediaPicker } from "@/components/media/MediaPicker"
 import {
   createFooterItem,
@@ -315,6 +316,106 @@ function SiteChromeInspectorFields({
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
+
+  if (zone === "banner") {
+    const banner = asDraftRecord(draft.banner)
+    const variant = String(banner.variant ?? "")
+    const variantOptions = SITE_CHROME_CATALOG.filter((entry) =>
+      entry.area === "banner" && (entry.scope.kind === "global" || entry.variant === variant),
+    )
+    const setBanner = (patch: DraftRecord) => {
+      if (!canEditSettings) return
+      setDraft((current) => ({
+        ...current,
+        banner: { ...asDraftRecord(current.banner), ...patch },
+      }))
+    }
+    return (
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground px-0.5">{t("bannerCookieHint")}</p>
+        <section className="space-y-2 rounded-md border border-border bg-card p-4">
+          <Label htmlFor="site-chrome-banner-variant">{t("layoutVariant")}</Label>
+          <Select
+            value={variant || undefined}
+            disabled={!canEditSettings}
+            onValueChange={(value) => setBanner({ variant: value })}
+          >
+            <SelectTrigger id="site-chrome-banner-variant"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {variantOptions.map((option) => (
+                <SelectItem key={option.variant} value={option.variant}>{option.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center justify-between pt-2">
+            <Label htmlFor="site-chrome-banner-visible">{t("bannerVisible")}</Label>
+            <Switch
+              id="site-chrome-banner-visible"
+              disabled={!canEditSettings}
+              checked={banner.visible === true}
+              onCheckedChange={(visible) => setBanner({ visible })}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="site-chrome-banner-dismissible">{t("bannerDismissible")}</Label>
+            <Switch
+              id="site-chrome-banner-dismissible"
+              disabled={!canEditSettings}
+              checked={banner.dismissible !== false}
+              onCheckedChange={(dismissible) => setBanner({ dismissible })}
+            />
+          </div>
+        </section>
+        <section className="space-y-3 rounded-md border border-border bg-card p-4">
+          <div className="space-y-2">
+            <Label htmlFor="site-chrome-banner-title">{t("bannerTitle")}</Label>
+            <Input
+              id="site-chrome-banner-title"
+              disabled={!canEditSettings}
+              value={typeof banner.title === "string" ? banner.title : ""}
+              onChange={(event) => setBanner({ title: event.target.value || null })}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="site-chrome-banner-message">{t("bannerMessage")}</Label>
+            <Textarea
+              id="site-chrome-banner-message"
+              disabled={!canEditSettings}
+              value={typeof banner.message === "string" ? banner.message : ""}
+              onChange={(event) => setBanner({ message: event.target.value || null })}
+            />
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label>{t("bannerLinkLabel")}</Label>
+              <Input
+                disabled={!canEditSettings}
+                value={draftFieldString(banner.link, "label")}
+                onChange={(event) => setBanner({
+                  link: mergeDraftGroup(banner.link, { label: event.target.value || null }),
+                })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>{t("bannerLinkUrl")}</Label>
+              <Input
+                disabled={!canEditSettings}
+                value={draftFieldString(banner.link, "href")}
+                inputMode="url"
+                onChange={(event) => setBanner({
+                  link: mergeDraftGroup(banner.link, { href: event.target.value || null }),
+                })}
+              />
+            </div>
+          </div>
+        </section>
+        {canEditSettings && (
+          <p className="text-xs text-muted-foreground">{tCommon("save")}: {t("siteChromeSaveHint")}</p>
+        )}
+      </div>
+    )
+  }
+
   const logo = zone === "header" ? draft.header.logo : draft.footer.logo
   const variant = String(zone === "header" ? draft.header.variant ?? "" : draft.footer.variant ?? "")
   const capability = chromeVariantCapabilities(variant)
@@ -483,8 +584,8 @@ function SiteChromeDrillDown({
 }) {
   const t = useTranslations("editor")
   const zone = selection.zone
-  const label = zone === "header" ? "Header" : "Footer"
-  const Icon = zone === "header" ? PanelTop : PanelBottom
+  const label = siteChromeZoneLabel(zone, t)
+  const Icon = zone === "header" ? PanelTop : zone === "footer" ? PanelBottom : Cookie
   const header = (
     <>
       <header className="flex items-center border-b border-border px-3 py-2">
@@ -777,7 +878,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const navigationHref = canManageNavResolved ? baseHref.replace(/\/pages$/, "/navigation") : null
   const navigationHrefFor = useCallback(
     (zone: SiteChromeZone) => {
-      if (!navigationHref) return null
+      if (!navigationHref || zone === "banner") return null
       const separator = navigationHref.includes("?") ? "&" : "?"
       return `${navigationHref}${separator}zone=${zone}`
     },
@@ -790,6 +891,13 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         header={ctx.header}
         body={
           <>
+            {siteSettingsState && (
+              <SiteChromeRow
+                zone="banner"
+                selected={selectedChrome?.zone === "banner"}
+                onSelect={selectChrome}
+              />
+            )}
             {siteSettingsState && (
               <SiteChromeRow
                 zone="header"
@@ -926,7 +1034,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     />
   ) : (
     <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-      Site settings are required before the editor frame can load.
+      {t("editorFrameRequiresSettings")}
     </p>
   )
 
@@ -941,6 +1049,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           {/* Shared sticky header — sits below SiteHeader, above the editor theme toolbar. */}
           {isDesktop && (
             <header data-siab-cms-sticky-chrome className="sticky top-12 z-20 flex shrink-0 items-center gap-4 border-b bg-background px-4 py-3">
+              <Button asChild type="button" variant="secondary" size="sm" className="h-8 shrink-0 gap-1">
+                <Link href={baseHref} aria-label={t("backToPages")}>
+                  <ChevronLeft className="size-4" aria-hidden />
+                  {t("backToPages")}
+                </Link>
+              </Button>
               {readOnly ? (
                 <h1 className="min-w-0 truncate text-sm font-medium text-foreground">
                   {pageTitle}
@@ -987,6 +1101,15 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           {isDesktop === false && !readOnly && (
             <MobileMediaSheetProvider>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
+                <div className="mb-3 flex flex-col gap-2">
+                  <Button asChild type="button" variant="secondary" size="sm" className="h-9 w-fit gap-1">
+                    <Link href={baseHref}>
+                      <ChevronLeft className="size-4" aria-hidden />
+                      {t("backToPages")}
+                    </Link>
+                  </Button>
+                  <p className="text-xs text-muted-foreground">{t("mobileListHint")}</p>
+                </div>
                 <MobileFrameEditor
                   api={mobileFrameBlocksApi}
                   manifest={manifest}
@@ -1033,6 +1156,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                         <SidebarDrillDown
                           blocks={watchedBlocks}
                           selectedBlockIndex={selected?.blockIndex ?? null}
+                          selectedPath={selected}
                           onSelectBlock={(i) => {
                             clearChromeSelection()
                             selectElement(i != null ? { blockIndex: i, field: "" } : null)

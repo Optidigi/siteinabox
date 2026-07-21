@@ -15,6 +15,7 @@ import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
+import { localizePageEditorSaveError } from "@/lib/editor/localizePageEditorSaveError"
 import { EDITOR_DESKTOP_BREAKPOINT } from "@/lib/editor/constants"
 import { blockWireId } from "@/lib/editor/ensureBlockIds"
 import type { EditorBlock } from "@/lib/editor/editorBlock"
@@ -179,7 +180,7 @@ export type PageEditorCoreApi = {
   onSubmit: (values: PageEditorFormValues) => Promise<void>
   onInvalid: (errors: FieldErrors<PageEditorFormValues>) => void
   handleFrameSelectionChanged: (selection: IframeEditorSelection | null) => void
-  handleFrameChromeSelect: (zone: "header" | "footer") => void
+  handleFrameChromeSelect: (zone: "header" | "footer" | "banner") => void
   frameSelection: IframeEditorSelection | null
   frameMobileMode:
     | {
@@ -600,11 +601,10 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       const result = await response.json().catch(() => null)
       if (!response.ok) {
         if (response.status === 409 && typeof result?.message === "string") {
-          throw new Error(result.message)
+          throw new Error(localizePageEditorSaveError(result.message, t))
         }
         const message = typeof result?.message === "string" ? result.message : `HTTP ${response.status}`
-        const stage = typeof result?.stage === "string" ? result.stage : "save"
-        throw new Error(`${stage}: ${message}`)
+        throw new Error(localizePageEditorSaveError(message, t))
       }
       createdPage = result?.page?.id == null ? null : result.page
       if (typeof result?.page?.updatedAt === "string") {
@@ -622,7 +622,9 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       if (chromeWillSave) setChromeBaseline(chromeSnapshot)
     } catch (err) {
       setPending(false)
-      const msg = err instanceof Error ? err.message : t("saveFailed")
+      const msg = err instanceof Error
+        ? localizePageEditorSaveError(err.message, t)
+        : t("saveFailed")
       setSubmitError(msg)
       onSaveFailed(msg)
       captureCmsBrowserEvent({
@@ -777,10 +779,15 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   }, [mobileFocusedSectionIndex, watchedBlocks])
 
   const framePageId = initial?.id ?? "new"
-  const frameSelection = useMemo(
-    () => elementPathToIframeSelection(selected, watchedBlocks, framePageId),
-    [framePageId, selected, watchedBlocks],
-  )
+  const frameSelection = useMemo(() => {
+    if (selectedChrome) {
+      return {
+        pageId: String(framePageId),
+        fieldPath: ["chrome", selectedChrome.zone],
+      }
+    }
+    return elementPathToIframeSelection(selected, watchedBlocks, framePageId)
+  }, [framePageId, selected, selectedChrome, watchedBlocks])
   const frameMobileMode = useMemo(() => {
     // Unresolved breakpoint (null) and desktop must not prepare a focused mobile iframe.
     if (isDesktop !== false || mobileFocusedSectionIndex == null) return undefined
@@ -814,7 +821,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   )
 
   const handleFrameChromeSelect = useCallback(
-    (zone: "header" | "footer") => {
+    (zone: "header" | "footer" | "banner") => {
       selectChrome({ zone })
     },
     [selectChrome],

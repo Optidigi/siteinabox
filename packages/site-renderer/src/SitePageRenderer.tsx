@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { BlockRenderer, type BlockRegistry } from "./blocks"
+import { BlockRenderer, type BlockEditSlots, type BlockRegistry } from "./blocks"
 import type { MediaResolver } from "./media"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import { SitePageShell } from "./SitePageShell"
@@ -17,6 +17,13 @@ export type SitePageRendererProps = {
   registry?: BlockRegistry
   mediaResolver?: MediaResolver
   formAction?: string
+  /** Editor-only field markers / inline edit hooks. Never set for public renderer output. */
+  editSlots?: BlockEditSlots
+  /**
+   * When the page is a sliced view (e.g. mobile focused section with one block),
+   * add this offset so `data-block-index` / element paths stay page-canonical.
+   */
+  blockIndexOffset?: number
   className?: string
   canvasClassName?: string
   canvasAttributes?: React.HTMLAttributes<HTMLDivElement>
@@ -37,6 +44,8 @@ export function SitePageRenderer({
   registry,
   mediaResolver,
   formAction,
+  editSlots,
+  blockIndexOffset = 0,
   className,
   canvasClassName,
   canvasAttributes,
@@ -53,9 +62,9 @@ export function SitePageRenderer({
     <BlockRenderer
       key={`${block.blockType}-${index}`}
       block={block}
-      index={index}
+      index={blockIndexOffset + index}
       registry={registry}
-      options={{ mediaResolver, formAction, siteSettings: settings }}
+      options={{ mediaResolver, formAction, editSlots, siteSettings: settings }}
     />
   ))
   return (

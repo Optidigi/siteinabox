@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog"
 import { MobileFloatingPill } from "@/components/common/mobile-floating-pill"
 import { MobileBackPill } from "@/components/common/mobile-back-pill"
 import { blockBySlug } from "@/blocks/registry"
+import { resolveBlockLabel } from "@/lib/editor/blockLabels"
 import { blockWireId } from "@/lib/editor/ensureBlockIds"
 import type { MobileBlocksApi } from "@/components/editor/mobile/MobileBlocksApi"
 import type { ElementPath } from "@/components/editor/elementPath"
@@ -99,6 +100,8 @@ function MobileFrameEditorInner({
       clearSelection()
       return
     }
+    // Keep MobileEditorContext snap/drill in sync with core.selected, including
+    // same-block field deep-links from the canvas.
     setSelected(selected)
   }, [clearSelection, screen, selected, setSelected])
 
@@ -200,14 +203,15 @@ function MobileFocusedSection({
   onJumpToSection: (index: number) => void
 }) {
   const t = useTranslations("editor")
+  const tLabels = useTranslations("editor.blockLabels")
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [trashPillVisible, setTrashPillVisible] = React.useState(true)
   const { state: editorState } = useMobileEditor()
   const isInspectorIdle = editorState.selected == null && editorState.drillStack.length === 0
   const cfg = blockBySlug[String(block.blockType)]
-  const label = cfg
-    ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug)
-    : String(block.blockType ?? "?")
+  const label = resolveBlockLabel(String(block.blockType), manifest, (slug) =>
+    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+  )
 
   React.useEffect(() => {
     let frame = 0
@@ -262,9 +266,9 @@ function MobileFocusedSection({
             >
               {api.blocks.map((entry, i) => {
                 const config = blockBySlug[String(entry?.blockType)]
-                const itemLabel = config
-                  ? (typeof config.labels?.singular === "string" ? config.labels.singular : config.slug)
-                  : String(entry?.blockType ?? "?")
+                const itemLabel = resolveBlockLabel(String(entry?.blockType ?? ""), manifest, (slug) =>
+                  tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+                )
                 const Icon = config?.icon
                 return (
                   <DropdownMenuItem
@@ -294,6 +298,9 @@ function MobileFocusedSection({
         </div>
       </header>
       <div className="min-h-0">
+        <p className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
+          {t("mobilePreviewHint")}
+        </p>
         {focusedFrame}
       </div>
       <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />

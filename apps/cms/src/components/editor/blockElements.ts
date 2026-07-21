@@ -191,6 +191,56 @@ export const getBlockElementSpecs = (
   return block ? elementSpecsFromFields(block.fields as Field[]) : []
 }
 
+/** Always buried under Advanced in the merchant inspector. */
+export const ADVANCED_BLOCK_FIELDS = new Set([
+  "designVariant",
+  "anchor",
+  "metadata",
+  "trustLabel",
+])
+
+/**
+ * Optional arrays that belong in Content only when the active provider variant
+ * consumes them; otherwise Advanced (or omitted if the spec was never present).
+ */
+export const VARIANT_OPTIONAL_CONTENT_FIELDS = new Set([
+  "pills",
+  "links",
+  "stats",
+  "logos",
+])
+
+export type ProviderSlotMap = Record<string, { status: string }> | null | undefined
+
+export const partitionBlockElementSpecs = (
+  specs: readonly ElementSpec[],
+  providerSlots?: ProviderSlotMap,
+): { content: ElementSpec[]; advanced: ElementSpec[] } => {
+  const content: ElementSpec[] = []
+  const advanced: ElementSpec[] = []
+
+  for (const spec of specs) {
+    const slotStatus = providerSlots?.[spec.field]?.status
+    if (ADVANCED_BLOCK_FIELDS.has(spec.field)) {
+      advanced.push(spec)
+      continue
+    }
+    if (VARIANT_OPTIONAL_CONTENT_FIELDS.has(spec.field)) {
+      if (slotStatus === "inactive") {
+        advanced.push(spec)
+        continue
+      }
+      // Active / unknown → content when present in specs.
+      content.push(spec)
+      continue
+    }
+    if (slotStatus === "inactive") continue
+    content.push(spec)
+  }
+
+  return { content, advanced }
+}
+
 export const BLOCK_ELEMENTS: Record<string, ElementSpec[]> = Object.fromEntries(
   Object.entries(blockBySlug).map(([slug, block]) => [slug, elementSpecsFromFields(block.fields as Field[])]),
 )

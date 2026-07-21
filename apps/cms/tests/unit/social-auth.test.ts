@@ -120,6 +120,8 @@ describe("social auth host validation", () => {
     delete process.env.BETTER_AUTH_URL
     delete process.env.SITE_URL
     process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN = "siteinabox.nl"
+    // Production protocol expectations must not depend on the developer shell.
+    vi.stubEnv("NODE_ENV", "test")
   })
 
   it("allows the configured super-admin admin host", async () => {
@@ -143,13 +145,11 @@ describe("social auth host validation", () => {
   })
 
   it("allows localhost dynamic auth bases only in development", () => {
-    const originalNodeEnv = process.env.NODE_ENV
     vi.stubEnv("NODE_ENV", "development")
     expect(getBetterAuthBaseURL()).toEqual({
       allowedHosts: ["admin.*", "localhost:*", "127.0.0.1:*"],
       protocol: "http",
     })
-    vi.stubEnv("NODE_ENV", originalNodeEnv)
   })
 
   it("allows generated tenant admin hosts from Payload tenant domains", async () => {

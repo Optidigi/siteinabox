@@ -37,6 +37,8 @@ import { formatRuntimeCssValue, useCspStyleRule } from "@siteinabox/ui/lib/csp-s
 import { cn } from "@siteinabox/ui/lib/utils"
 import type { EditorBlock } from "@/lib/editor/editorBlock"
 import { isEditorBlock } from "@/lib/editor/editorBlock"
+import type { ElementPath } from "@/components/editor/elementPath"
+import { resolveBlockLabel } from "@/lib/editor/blockLabels"
 
 type Mode =
   | { kind: "list" }
@@ -46,6 +48,8 @@ type Mode =
 export interface SidebarDrillDownProps {
   blocks: EditorBlock[]
   selectedBlockIndex: number | null
+  /** Full canvas selection path — used to deep-link/highlight inspector fields. */
+  selectedPath?: ElementPath | null
   onSelectBlock: (i: number | null) => void
   onReorder: (from: number, to: number) => void
   onDeleteBlock: (i: number) => void
@@ -123,6 +127,7 @@ export interface SidebarPageSettingsLayoutProps {
 export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
   blocks,
   selectedBlockIndex,
+  selectedPath,
   onSelectBlock,
   onReorder,
   onDeleteBlock,
@@ -226,6 +231,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
               id={String(i)}
               block={block}
               blockIndex={i}
+              manifest={manifest}
               onSelect={() => {
                 onSelectBlock(i)
                 setMode({ kind: "block", blockIndex: i })
@@ -237,7 +243,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
         </SortableContext>
         <DragOverlay>
           {activeDragId != null ? (
-            <BlockListRowGhost block={blocks[Number(activeDragId)]} />
+            <BlockListRowGhost block={blocks[Number(activeDragId)]} manifest={manifest} />
           ) : null}
         </DragOverlay>
       </DndContext>
@@ -312,6 +318,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
           blockIndex={mode.blockIndex}
           manifest={manifest}
           theme={theme}
+          highlightPath={selectedPath}
           renderBlockForm={renderBlockForm}
           onBack={() => setMode({ kind: "list" })}
           onDelete={() => {
@@ -364,12 +371,14 @@ const BlockListRow: React.FC<{
   id: string
   block: EditorBlock
   blockIndex: number
+  manifest: RtManifest
   onSelect: () => void
   onDuplicate: () => void
   onDelete: () => void
-}> = ({ id, block, onSelect, onDuplicate, onDelete }) => {
+}> = ({ id, block, manifest, onSelect, onDuplicate, onDelete }) => {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
+  const tLabels = useTranslations("editor.blockLabels")
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const transformValue = formatRuntimeCssValue(CSS.Transform.toString(transform))
   const transitionValue = formatRuntimeCssValue(transition)
@@ -393,7 +402,9 @@ const BlockListRow: React.FC<{
   }, [isDragging])
 
   const cfg = blockBySlug[block.blockType]
-  const label = cfg ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug) : block.blockType
+  const label = resolveBlockLabel(block.blockType, manifest, (slug) =>
+    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+  )
   const summary = cfg?.summary ? cfg.summary(block as Record<string, unknown>) : undefined
   const Icon = cfg?.icon
   return (
@@ -482,12 +493,13 @@ const BlockListRow: React.FC<{
   )
 }
 
-const BlockListRowGhost: React.FC<{ block: EditorBlock | undefined }> = ({ block }) => {
+const BlockListRowGhost: React.FC<{ block: EditorBlock | undefined; manifest: RtManifest }> = ({ block, manifest }) => {
+  const tLabels = useTranslations("editor.blockLabels")
   if (!block) return null
   const cfg = blockBySlug[block.blockType]
-  const label = cfg
-    ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug)
-    : block.blockType
+  const label = resolveBlockLabel(block.blockType, manifest, (slug) =>
+    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+  )
   const summary = cfg?.summary ? cfg.summary(block as Record<string, unknown>) : undefined
   const Icon = cfg?.icon
   return (
@@ -510,15 +522,17 @@ const BlockFormState: React.FC<{
   blockIndex: number
   manifest: RtManifest
   theme?: ThemeTokens | null
+  highlightPath?: ElementPath | null
   renderBlockForm?: (context: SidebarBlockFormSlotContext) => React.ReactNode
   onBack: () => void
   onDelete: () => void
-}> = ({ block, blockIndex, manifest, theme, renderBlockForm, onBack, onDelete }) => {
+}> = ({ block, blockIndex, manifest, theme, highlightPath, renderBlockForm, onBack, onDelete }) => {
   const t = useTranslations("editor")
+  const tLabels = useTranslations("editor.blockLabels")
   const cfg = blockBySlug[block.blockType]
-  const label = cfg
-    ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug)
-    : block.blockType
+  const label = resolveBlockLabel(block.blockType, manifest, (slug) =>
+    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+  )
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const backButton = (
     <Button
@@ -546,7 +560,15 @@ const BlockFormState: React.FC<{
     </Button>
   )
   const title = <span className="text-xs font-medium truncate">{label}</span>
-  const fields = <BlockFormFields block={block} blockIndex={blockIndex} manifest={manifest} theme={theme} />
+  const fields = (
+    <BlockFormFields
+      block={block}
+      blockIndex={blockIndex}
+      manifest={manifest}
+      theme={theme}
+      highlightPath={highlightPath}
+    />
+  )
   const deleteDialog = (
     <ConfirmDialog
       open={deleteOpen}

@@ -9,7 +9,7 @@ import { Badge } from "@siteinabox/ui/components/badge"
 import { statusVariant } from "@/lib/badge-helpers"
 import { Button } from "@siteinabox/ui/components/button"
 import { PageHeader } from "@/components/page-header"
-import { Pencil, FileCheck2, Activity, Inbox, BadgeCheck, Eye, Target, Percent, Gauge } from "lucide-react"
+import { Pencil, FileCheck2, Activity, Inbox, BadgeCheck, Eye, Target, Percent, Gauge, FileText } from "lucide-react"
 import Link from "next/link"
 import { requireSuperAdminSelectedSite } from "@/lib/routePolicy"
 import { getTranslations } from "next-intl/server"
@@ -53,9 +53,14 @@ export default async function TenantOverviewPage({ params }: { params: Promise<{
           </span>
         }
         action={
-          <Button asChild variant="outline">
-            <Link href={`/sites/${tenant.slug}/edit`}><Pencil className="mr-1 h-4 w-4"/> {t("editSite")}</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild>
+              <Link href={`/sites/${tenant.slug}/pages`}><FileText className="mr-1 h-4 w-4"/> {t("editPages")}</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href={`/sites/${tenant.slug}/edit`}><Pencil className="mr-1 h-4 w-4"/> {t("editSite")}</Link>
+            </Button>
+          </div>
         }
       />
       <StatCards stats={[

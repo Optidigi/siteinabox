@@ -72,6 +72,7 @@ export function ShadcnUiBannerView({ variant, settings }: { variant: string; set
   return (
     <aside
       className={isConsentChrome ? "pointer-events-none fixed inset-x-0 z-50 px-3 sm:px-6" : undefined}
+      data-site-chrome="banner"
       data-provider-variant={variant}
       data-provider-token-mode="theme"
       data-siab-cookie-consent={isConsentChrome ? "true" : undefined}

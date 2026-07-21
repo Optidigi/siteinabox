@@ -164,8 +164,12 @@ export function canActivatePublishedSnapshot(
     return { ok: false, reason: "Cannot activate a suspended or archived tenant." }
   }
 
+  // First go-live requires verified domain ownership. Content republish for an
+  // already-active tenant (page editor Opslaan = live update) must not re-block
+  // on domain verification — that gate already applied when the site went live.
   const domainVerificationStatus = (options.tenant?.domainVerification as { status?: unknown } | null | undefined)?.status
-  if (options.tenant && domainVerificationStatus !== "verified") {
+  const tenantAlreadyLive = options.tenant?.status === "active"
+  if (options.tenant && domainVerificationStatus !== "verified" && !tenantAlreadyLive) {
     return { ok: false, reason: "Activation requires verified domain ownership." }
   }
 

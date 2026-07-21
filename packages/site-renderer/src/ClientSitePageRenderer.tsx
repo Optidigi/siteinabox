@@ -42,6 +42,7 @@ function PreparedProviderBlock({
   settings,
   mediaResolver,
   formAction,
+  editSlots,
   prepared,
 }: {
   block: Block
@@ -49,13 +50,14 @@ function PreparedProviderBlock({
   settings: SiteSettings
   mediaResolver?: MediaResolver
   formAction?: string
+  editSlots?: BlockRenderOptions["editSlots"]
   prepared: Extract<PreparedClientSiteRenderer, { kind: "generic" }>
 }) {
   const definition = getProviderBlockVariant(block)
   if (!definition) throw new Error(`Block type "${block.blockType}" requires an approved explicit provider variant.`)
   const View = prepared.views.get(definition.id)
   if (!View) throw new Error(`Unresolved provider block variant "${definition.id}" for block type "${block.blockType}".`)
-  const options: BlockRenderOptions = { index, mediaResolver, formAction, siteSettings: settings }
+  const options: BlockRenderOptions = { index, mediaResolver, formAction, editSlots, siteSettings: settings }
   const headerVariant = settings.chrome?.header?.variant
 
   return (
@@ -76,6 +78,8 @@ export function ClientSitePageRenderer({
   registry,
   mediaResolver,
   formAction,
+  editSlots,
+  blockIndexOffset = 0,
   className,
   canvasClassName,
   canvasAttributes,
@@ -88,12 +92,30 @@ export function ClientSitePageRenderer({
   footer,
 }: SitePageRendererProps & { prepared: PreparedClientSiteRenderer }) {
   const blocks = page.blocks.map((block, index) => {
+    const pageIndex = blockIndexOffset + index
     const explicitRenderer = registry?.[block.blockType]
     if (explicitRenderer && !block.designVariant) {
       const Renderer = explicitRenderer
-      return <Renderer key={`${block.blockType}-${index}`} block={block} options={{ index, mediaResolver, formAction, siteSettings: settings }} />
+      return (
+        <Renderer
+          key={`${block.blockType}-${index}`}
+          block={block}
+          options={{ index: pageIndex, mediaResolver, formAction, editSlots, siteSettings: settings }}
+        />
+      )
     }
-    return <PreparedProviderBlock key={`${block.blockType}-${index}`} block={block} index={index} settings={settings} mediaResolver={mediaResolver} formAction={formAction} prepared={prepared} />
+    return (
+      <PreparedProviderBlock
+        key={`${block.blockType}-${index}`}
+        block={block}
+        index={pageIndex}
+        settings={settings}
+        mediaResolver={mediaResolver}
+        formAction={formAction}
+        editSlots={editSlots}
+        prepared={prepared}
+      />
+    )
   })
   return (
     <SitePageShell {...{ page, settings, theme, mediaResolver, className, canvasClassName, canvasAttributes, header, banner, footer }}>

@@ -35,5 +35,5 @@ export function ShadcnUiFooterView({ variant, settings, mediaResolver }: { varia
   if (issues.length) throw new Error(`Invalid ${variant} settings: ${issues.map((issue) => `${issue.path}: ${issue.message}`).join("; ")}`)
   const model = adaptFooter(effectiveSettings, mediaResolver)
   if (!model) return null
-  return <footer className={`border-t bg-background provider-footer-${variant.slice(-2)}`} data-provider-token-mode="theme" data-provider-variant={variant}><Footer model={model} variant={variant} /></footer>
+  return <footer className={`border-t bg-background provider-footer-${variant.slice(-2)}`} data-site-chrome="footer" data-provider-token-mode="theme" data-provider-variant={variant}><Footer model={model} variant={variant} /></footer>
 }

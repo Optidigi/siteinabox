@@ -12,6 +12,7 @@ import config from "@/payload.config"
 import { getTenantLegalRequirements } from "@/lib/legal/customerRequirements"
 import { tenantAnalyticsDashboardVisible } from "@/lib/analytics/config"
 import { LegalRequirementBanner } from "@/components/legal/LegalRequirementBanner"
+import { listTenants } from "@/lib/queries/tenants"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, ctx } = await requireAuth()
@@ -22,6 +23,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const legalRequirements = tenant
     ? await getTenantLegalRequirements(await getPayload({ config }), tenant.id)
     : []
+  const sites = tenant
+    ? [{ name: tenant.name, slug: tenant.slug }]
+    : user.role === "super-admin"
+      ? (await listTenants()).map((entry) => ({ name: entry.name, slug: entry.slug }))
+      : []
 
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
@@ -31,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <SidebarProvider>
         <AppSidebar mode={ctx.mode} role={user.role} analyticsVisible={analyticsVisible} />
         <SidebarInset className="min-w-0">
-          <SiteHeader user={user} />
+          <SiteHeader user={user} sites={sites} />
           <LegalRequirementBanner requirements={legalRequirements} canAccept={user.role === "owner"} locale={locale} />
           {/* U2 / methodology §1 16-px content-inset floor — `max-md:p-4`
               keeps Cards from touching the viewport edge on phones (Cards

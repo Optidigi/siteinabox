@@ -229,6 +229,31 @@ describe("published snapshot activation gate", () => {
     })).toEqual({ ok: true })
   })
 
+  it("allows content republish for an already-active tenant without re-checking domain verification", () => {
+    expect(canActivatePublishedSnapshot(null, {
+      manualActivation: true,
+      tenant: {
+        status: "active",
+        domainVerification: { status: "not_checked" },
+        emailSending: { status: "not_configured" },
+      },
+    })).toEqual({ ok: true })
+  })
+
+  it("still requires verified domain ownership for first go-live of a non-active tenant", () => {
+    expect(canActivatePublishedSnapshot(null, {
+      manualActivation: true,
+      tenant: {
+        status: "provisioning",
+        domainVerification: { status: "not_checked" },
+        emailSending: { status: "not_configured" },
+      },
+    })).toEqual({
+      ok: false,
+      reason: "Activation requires verified domain ownership.",
+    })
+  })
+
   it("lets internal lifecycle updates supersede unchanged legacy snapshots", () => {
     const legacySnapshot = {
       schemaVersion: 1,

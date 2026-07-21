@@ -22,6 +22,9 @@ export interface ArrayItemCardProps {
   onChange: (next: EditorArrayItem) => void
   onRemove: () => void
   manifest: RtManifest
+  /** When true (e.g. canvas deep-link), expand the card on mount/update. */
+  forceOpen?: boolean
+  highlightSubField?: string | null
 }
 
 export const ArrayItemCard: React.FC<ArrayItemCardProps> = ({
@@ -32,10 +35,16 @@ export const ArrayItemCard: React.FC<ArrayItemCardProps> = ({
   onChange,
   onRemove,
   manifest,
+  forceOpen = false,
+  highlightSubField = null,
 }) => {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(forceOpen)
   const previewLabel = spec.itemLabel ? spec.itemLabel(item, itemIndex) : `${spec.label} ${itemIndex + 1}`
   const subFields = spec.itemFields ?? []
+
+  React.useEffect(() => {
+    if (forceOpen) setOpen(true)
+  }, [forceOpen])
 
   return (
     <div className="group/card rounded-md border border-border bg-background">
@@ -61,15 +70,23 @@ export const ArrayItemCard: React.FC<ArrayItemCardProps> = ({
       {open && subFields.length > 0 && (
         <div className="space-y-2 border-t border-border px-3 py-2">
           {subFields.map((sub) => (
-            <SubFieldRenderer
+            <div
               key={sub.field}
-              sub={sub}
-              value={item[sub.field]}
-              onChange={(next) => onChange({ ...item, [sub.field]: next })}
-              blockIndex={blockIndex}
-              itemIndex={itemIndex}
-              manifest={manifest}
-            />
+              data-siab-inspector-sub-field={sub.field}
+              className={cn(
+                "rounded-md transition-[box-shadow,background-color] duration-300",
+                highlightSubField === sub.field && "bg-accent/20 ring-2 ring-accent/50",
+              )}
+            >
+              <SubFieldRenderer
+                sub={sub}
+                value={item[sub.field]}
+                onChange={(next) => onChange({ ...item, [sub.field]: next })}
+                blockIndex={blockIndex}
+                itemIndex={itemIndex}
+                manifest={manifest}
+              />
+            </div>
           ))}
         </div>
       )}

@@ -34,8 +34,9 @@ emitted DOM matches this contract.
 Generated blocks are rendered only by `packages/site-renderer`. Public output,
 customer preview, and the CMS editor frame consume the same provider view and
 structured rich-text renderer. The CMS does not maintain an editable mirror of
-provider DOM; editing happens in the parent inspector and selection is attached
-to provider roots through stable `data-block-index` attributes.
+provider DOM; editing happens in the parent inspector. Block selection uses
+stable `data-block-index` attributes. Field deep-link in the editor frame adds
+editor-only `data-siab-field` markers via `editSlots` (never on public output).
 
 Canonical references:
 

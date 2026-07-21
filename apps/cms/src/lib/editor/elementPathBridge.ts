@@ -2,6 +2,20 @@ import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
 import type { ElementPath } from "@/components/editor/elementPath"
 import { blockWireId } from "@/lib/editor/ensureBlockIds"
 
+/** Build an ElementPath from a canvas `[data-siab-field]` marker. */
+export function elementPathFromFieldElement(blockIndex: number, el: HTMLElement): ElementPath {
+  const field = el.dataset.siabField ?? ""
+  const rawItemIndex = el.dataset.siabItemIndex
+  const parsedItemIndex = rawItemIndex != null ? Number.parseInt(rawItemIndex, 10) : Number.NaN
+  const subField = el.dataset.siabSubField
+  return {
+    blockIndex,
+    field,
+    ...(Number.isFinite(parsedItemIndex) && parsedItemIndex >= 0 ? { itemIndex: parsedItemIndex } : {}),
+    ...(subField ? { subField } : {}),
+  }
+}
+
 export function iframeSelectionToElementPath(
   selection: IframeEditorSelection | null | undefined,
   blocks: unknown[],

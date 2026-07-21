@@ -23,6 +23,7 @@ import { Button } from "@siteinabox/ui/components/button"
 import { BlockTypePicker } from "@/components/editor/block-type-picker"
 import { useBlockPresets } from "@/components/editor/BlockPresetsContext"
 import { blockBySlug } from "@/blocks/registry"
+import { resolveBlockLabel } from "@/lib/editor/blockLabels"
 import { blockWireId } from "@/lib/editor/ensureBlockIds"
 import type { EditorBlock } from "@/lib/editor/editorBlock"
 import type { MobileBlocksApi } from "@/components/editor/mobile/MobileBlocksApi"
@@ -72,11 +73,13 @@ interface SortableCardProps {
   id: string
   block: EditorBlock
   index: number
+  manifest: RtManifest
   onOpen: () => void
 }
 
-const SortableSectionCard: React.FC<SortableCardProps> = ({ id, block, index, onOpen }) => {
+const SortableSectionCard: React.FC<SortableCardProps> = ({ id, block, index, manifest, onOpen }) => {
   const t = useTranslations("editor")
+  const tLabels = useTranslations("editor.blockLabels")
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const transformValue = formatRuntimeCssValue(CSS.Transform.toString(transform))
   const transitionValue = formatRuntimeCssValue(transition)
@@ -85,9 +88,9 @@ const SortableSectionCard: React.FC<SortableCardProps> = ({ id, block, index, on
     `${transformValue ? `transform:${transformValue};` : ""}${transitionValue ? `transition:${transitionValue};` : ""}`,
   )
   const cfg = blockBySlug[block?.blockType]
-  const label = cfg
-    ? (typeof cfg.labels?.singular === "string" ? cfg.labels.singular : cfg.slug)
-    : (block?.blockType ?? "?")
+  const label = resolveBlockLabel(block?.blockType, manifest, (slug) =>
+    tLabels.has(slug as never) ? tLabels(slug as never) : undefined,
+  )
   const preview = cfg?.summary ? cfg.summary(block) : undefined
   const Icon = cfg?.icon
 
@@ -195,6 +198,7 @@ export const MobileSectionList: React.FC<MobileSectionListProps> = ({
               id={String(i)}
               block={block}
               index={i}
+              manifest={manifest}
               onOpen={() => onOpenSection(i)}
             />
           ))}

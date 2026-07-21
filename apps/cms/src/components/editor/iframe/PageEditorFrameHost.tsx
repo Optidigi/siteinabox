@@ -39,7 +39,7 @@ export function PageEditorFrameHost({
   tenantSlug?: string | null
   selection?: IframeEditorSelection | null
   onSelectionChanged?: (selection: IframeEditorSelection | null) => void
-  onChromeSelect?: (zone: "header" | "footer") => void
+  onChromeSelect?: (zone: "header" | "footer" | "banner") => void
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
@@ -121,7 +121,7 @@ export function PageEditorFrameHost({
       }
       if (message.type === "chrome.select") {
         const zone = message.selection?.fieldPath?.[1]
-        if (zone === "header" || zone === "footer") onChromeSelectRef.current?.(zone)
+        if (zone === "header" || zone === "footer" || zone === "banner") onChromeSelectRef.current?.(zone)
         return
       }
       if (message.type === "error") {

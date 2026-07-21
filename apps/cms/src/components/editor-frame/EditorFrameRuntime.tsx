@@ -21,9 +21,12 @@ import {
 } from "@siteinabox/site-renderer"
 import { useCspNonce } from "@siteinabox/ui/lib/csp-nonce"
 import { formatCssPx, useCspStyleRule } from "@siteinabox/ui/lib/csp-style"
+import { createEditorSelectSlots } from "@/lib/editor/createEditorSelectSlots"
+import { elementPathFromFieldElement, elementPathToIframeSelection } from "@/lib/editor/elementPathBridge"
 
-const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav]'
-const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome'
+const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav], header[data-provider-variant]'
+const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome, footer[data-provider-variant]'
+const BANNER_CHROME_SELECTOR = '[data-site-chrome="banner"], [data-siab-cookie-consent="true"]'
 
 function waitForWindowLoad(): Promise<void> {
   if (document.readyState === "complete") return Promise.resolve()
@@ -61,6 +64,7 @@ export function EditorFrameRuntime({
   const receivedParentCommandRef = React.useRef(false)
   const themeCleanupRef = React.useRef<(() => void) | null>(null)
   const mediaResolver = React.useMemo(() => createRendererMediaResolver(String(tenantId)), [tenantId])
+  const selectSlots = React.useMemo(() => createEditorSelectSlots(), [])
   const variantKey = framePage.blocks.map((block) => `${block.blockType}:${block.designVariant ?? ""}`).join("|")
   const [prepared, setPrepared] = React.useState<{ key: string; renderer: PreparedClientSiteRenderer } | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
@@ -246,73 +250,132 @@ export function EditorFrameRuntime({
       // to the parent. Preview runtime (renderer-frame) instead emits navigation.requested.
       if (target.closest("a[href], button, form")) event.preventDefault()
 
+      const bannerNode = target.closest<HTMLElement>(BANNER_CHROME_SELECTOR)
       const headerNode = target.closest<HTMLElement>(HEADER_CHROME_SELECTOR)
       const footerNode = target.closest<HTMLElement>(FOOTER_CHROME_SELECTOR)
-      if (headerNode || footerNode) {
-        const zone: "header" | "footer" = headerNode ? "header" : "footer"
+      if (bannerNode || headerNode || footerNode) {
+        const zone: "header" | "footer" | "banner" = bannerNode
+          ? "banner"
+          : headerNode
+            ? "header"
+            : "footer"
+        const selection = { pageId, fieldPath: ["chrome", zone] as string[] }
+        setActiveSelection(selection)
         emit({
           protocol: IFRAME_EDITOR_PROTOCOL_NAME,
           schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
           type: "chrome.select",
           messageId: `chrome-select-${pageId}-${zone}`,
-          selection: { pageId, fieldPath: ["chrome", zone] },
+          selection,
         })
         return
       }
 
-      if (mobileMode.mode === "focusedSection") return
       const blockNode = target.closest<HTMLElement>("[data-block-index]")
       const rawBlockIndex = blockNode?.dataset.blockIndex
       if (rawBlockIndex == null) return
       const blockIndex = Number.parseInt(rawBlockIndex, 10)
       if (!Number.isInteger(blockIndex) || blockIndex < 0) return
-      const pageBlock = framePage.blocks?.[blockIndex]
-      const blockId = pageBlock && typeof pageBlock === "object" && "id" in pageBlock && typeof pageBlock.id === "string"
-        ? pageBlock.id
-        : undefined
 
+      const fieldNode = target.closest<HTMLElement>("[data-siab-field]")
+      const path = fieldNode
+        ? elementPathFromFieldElement(blockIndex, fieldNode)
+        : { blockIndex, field: "" }
+      const selection = elementPathToIframeSelection(path, framePage.blocks ?? [], pageId)
+      if (!selection) return
+
+      setActiveSelection(selection)
       emit({
         protocol: IFRAME_EDITOR_PROTOCOL_NAME,
         schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
         type: "selection.changed",
-        messageId: `selection-${pageId}-${blockIndex}`,
-        selection: {
-          pageId,
-          ...(blockId ? { blockId } : {}),
-          fieldPath: ["blocks", String(blockIndex)],
-        },
+        messageId: `selection-${pageId}-${blockIndex}-${path.field || "block"}`,
+        selection,
       })
     }
 
     document.addEventListener("click", onClick)
     return () => document.removeEventListener("click", onClick)
-  }, [emit, framePage, mobileMode.mode])
+  }, [emit, framePage])
 
   React.useEffect(() => {
     document.querySelectorAll("[data-siab-editor-selected]").forEach((node) => {
       node.removeAttribute("data-siab-editor-selected")
     })
-    if (!activeSelection || mobileMode.mode === "focusedSection") return
-    const blockIndex = activeSelection.fieldPath?.[0] === "blocks" ? activeSelection.fieldPath[1] : undefined
+    document.querySelectorAll("[data-siab-editor-field-selected]").forEach((node) => {
+      node.removeAttribute("data-siab-editor-field-selected")
+    })
+    if (!activeSelection) return
+    const fieldPath = activeSelection.fieldPath
+    if (fieldPath?.[0] === "chrome") {
+      const zone = fieldPath[1]
+      const selector = zone === "banner"
+        ? BANNER_CHROME_SELECTOR
+        : zone === "header"
+          ? HEADER_CHROME_SELECTOR
+          : zone === "footer"
+            ? FOOTER_CHROME_SELECTOR
+            : null
+      const chromeNode = selector ? document.querySelector<HTMLElement>(selector) : null
+      if (chromeNode) {
+        chromeNode.setAttribute("data-siab-editor-selected", "true")
+        chromeNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      }
+      return
+    }
+    if (fieldPath?.[0] !== "blocks") return
+    const blockIndex = fieldPath[1]
     const blockNode = blockIndex == null
       ? null
       : document.querySelector(`[data-block-index="${CSS.escape(String(blockIndex))}"]`)
     if (!(blockNode instanceof HTMLElement)) return
+
+    const field = fieldPath[2]
+    if (field) {
+      const itemIndex = fieldPath[3]
+      const subField = fieldPath[4]
+      const candidates = Array.from(blockNode.querySelectorAll<HTMLElement>(`[data-siab-field="${CSS.escape(field)}"]`))
+      const fieldNode = candidates.find((node) => {
+        const nodeItem = node.dataset.siabItemIndex
+        const nodeSub = node.dataset.siabSubField
+        if (itemIndex != null && nodeItem !== String(itemIndex)) return false
+        if (itemIndex == null && nodeItem != null) return false
+        if (subField != null && nodeSub !== subField) return false
+        if (subField == null && nodeSub != null) return false
+        return true
+      }) ?? null
+      if (fieldNode) {
+        fieldNode.setAttribute("data-siab-editor-field-selected", "true")
+        fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        return
+      }
+    }
+
     blockNode.setAttribute("data-siab-editor-selected", "true")
     blockNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
   }, [activeSelection, framePage, mobileMode.mode])
 
-  const focusedBlock = mobileMode.mode === "focusedSection"
-    ? framePage.blocks?.find((block, index) => {
-        if (mobileMode.focusedBlockId && typeof block === "object" && block && "id" in block) {
-          return block.id === mobileMode.focusedBlockId
-        }
-        return index === mobileMode.focusedBlockIndex
-      })
+  const focusedBlockIndex = mobileMode.mode === "focusedSection"
+    ? (
+        mobileMode.focusedBlockId
+          ? framePage.blocks?.findIndex((block) =>
+              typeof block === "object" && block && "id" in block && block.id === mobileMode.focusedBlockId,
+            )
+          : mobileMode.focusedBlockIndex
+      )
+    : undefined
+  const resolvedFocusedIndex = typeof focusedBlockIndex === "number" && focusedBlockIndex >= 0
+    ? focusedBlockIndex
+    : mobileMode.mode === "focusedSection" && typeof mobileMode.focusedBlockIndex === "number"
+      ? mobileMode.focusedBlockIndex
+      : undefined
+  const focusedBlock = resolvedFocusedIndex != null
+    ? framePage.blocks?.[resolvedFocusedIndex]
     : undefined
   const visiblePage = focusedBlock
     ? { ...framePage, blocks: [focusedBlock] }
     : framePage
+  const blockIndexOffset = focusedBlock ? (resolvedFocusedIndex ?? 0) : 0
   const showChrome = mobileMode.showChrome !== false
 
   if (!prepared || prepared.key !== variantKey) return null
@@ -333,6 +396,8 @@ export function EditorFrameRuntime({
           tenantSlug={tenantSlug}
           domain={domain}
           mediaResolver={mediaResolver}
+          editSlots={selectSlots}
+          blockIndexOffset={blockIndexOffset}
           nonce={cspNonce}
           includeBehaviorScripts={false}
           formAction="#"

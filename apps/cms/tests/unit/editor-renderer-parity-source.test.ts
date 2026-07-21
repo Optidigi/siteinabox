@@ -27,6 +27,7 @@ describe("page editor renderer parity", () => {
   it("keeps editing in the parent sidebar and the iframe transport read-only", () => {
     const form = read("src/components/forms/PageForm.tsx")
     const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
     expect(form).toContain("<SidebarDrillDown")
     expect(form).not.toContain("CanvasSelectionProvider")
     expect(form).not.toContain("<ModeBar")
@@ -35,6 +36,10 @@ describe("page editor renderer parity", () => {
     expect(host).not.toContain("onFieldCommit")
     expect(host).not.toContain("MutationObserver")
     expect(host).not.toContain("ResizeObserver")
+    // Field deep-link uses select-only editSlots markers — no canvas commit path.
+    expect(runtime).toContain("editSlots={selectSlots}")
+    expect(runtime).toContain("createEditorSelectSlots")
+    expect(runtime).not.toContain("onFieldCommit")
   })
 
   it("reveals the iframe only after renderer, load, fonts, and layout are ready", () => {

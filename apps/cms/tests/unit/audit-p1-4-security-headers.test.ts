@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, beforeEach, vi } from "vitest"
 import { NextRequest } from "next/server"
 import { proxy as middleware } from "@/proxy"
 
@@ -26,6 +26,11 @@ const reqAt = (path: string, host = "admin.example.com") =>
 const headerOf = (res: Response, name: string) => res.headers.get(name)
 
 describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.stubEnv("NODE_ENV", "test")
+  })
+
   // The middleware became async in audit-p1 #5 (T4) — rate-limit gate must
   // `await limiter.consume()`. The header-stamping branch is unaffected
   // semantically; just adding `await` to each call site here.

@@ -17,18 +17,38 @@ is no alternate CMS block renderer or canvas/source tree.
   membership, theme and site-chrome dirty tracking, selection, draft recovery,
   and save orchestration. `PageForm` composes the shared core with desktop and
   mobile shells (inspector, theme bar, and layout chrome).
-- Explicit save posts to `/api/page-editor-save` through the typed
-  `pageEditorSaveContract` (`page`, optional `siteDesign`, optional `publish`).
-  Page writes may include `expectedUpdatedAt` for optimistic concurrency;
-  stale clients receive a conflict response instead of silently overwriting.
+- Explicit save (**Opslaan**) posts to `/api/page-editor-save` with
+  `publish: true`. There is no operator draft/publish split and no autosave.
+  The only “draft” is browser IndexedDB recovery when leaving before a
+  successful save. Page writes may include `expectedUpdatedAt` for optimistic
+  concurrency; stale clients receive a conflict response instead of silently
+  overwriting.
 - A successful explicit save commits the page, related theme/navigation/chrome
   writes, and one validated active current-state snapshot through one database
   transaction. A validation or publication failure rolls the transaction back
-  and the editor shows the failing stage and server message. An
-  authenticated page write from an older already-loaded editor client invokes
-  the server-side publication fallback instead of leaving live output stale.
+  and the editor shows the failing stage and localized server message. For
+  tenants that are already `active`, content republish does not re-require
+  domain verification; first go-live still does. An authenticated page write
+  from an older already-loaded editor client invokes the server-side
+  publication fallback instead of leaving live output stale.
 - The editor iframe owns rendering and event-delegated selection only. It does
   not mutate fields, render gutters, reorder blocks, or substitute provider DOM.
+  Canvas clicks select blocks/fields (and header/footer/banner chrome); editing
+  happens in the parent inspector. There is no true click-to-type WYSIWYG in
+  the iframe.
+
+## Selection and inspector
+
+- Editor-frame-only `editSlots` wrap live provider output with
+  `data-siab-field` markers so `selection.changed` can carry a full
+  `ElementPath` (block + field + optional item/sub-field). Public and preview
+  frames omit `editSlots`.
+- Desktop sidebar and mobile Vaul inspector share `BlockFormFields`. Content
+  fields show first; Advanced (design variant, anchor, metadata, unused
+  optional arrays) stays collapsed until opened.
+- Site chrome zones are `header` | `footer` | `banner`. Cookie/consent chrome
+  uses `data-site-chrome="banner"` (and `data-siab-cookie-consent` when the
+  consent variant is active); clicking it opens the banner inspector.
 
 ## Readiness
 
@@ -45,11 +65,16 @@ so composed first-hero height (`site-renderer` composition CSS) matches live
 fields, selection, block geometry, or ordering; the removed DOM/geometry
 editing bridge remains retired.
 
+At ≤768px the editor keeps the mobile section-list / focused-section shell. It
+does not pretend a full WYSIWYG canvas exists; preview is select-only and
+editing stays in the inspector panel.
+
 ## Protocol
 
 The parent sends one versioned `render.snapshot` carrying page, settings, theme,
-selection, and mobile focused-section mode. The editor may send `renderer.ready`, `renderer.height`,
-`selection.changed`, `chrome.select`, and a fail-closed `error`. Legacy block
+selection, and mobile focused-section mode. The editor may send `renderer.ready`,
+`renderer.height`, `selection.changed`, `chrome.select` (including
+`fieldPath: ["chrome","banner"]`), and a fail-closed `error`. Legacy block
 mutation, inline-field, geometry, gutter, and view-toggle messages were removed
 from protocol v3.
 
@@ -69,4 +94,6 @@ from protocol v3.
 Run `pnpm --dir apps/cms typecheck`, CMS and site-renderer tests, provider
 source/hash audits, and fixed-viewport light/dark Playwright parity. Inspect the
 composed fixture network graph: only variants active on the current page may
-load.
+load. Targeted editor unit coverage includes `elementPathBridge`,
+`createEditorSelectSlots`, `blockElementPartition`, and
+`editor-renderer-parity-source`.
