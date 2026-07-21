@@ -398,6 +398,7 @@ describe("intake-to-live mocked flow", () => {
     expect(store.pages).toHaveLength(6)
     expect(store.media.map((entry) => entry.filename).sort()).toEqual([
       "smoke-analytics-desk.jpg",
+      "smoke-cta-mobile.png",
       "smoke-logo-aws.svg",
       "smoke-logo-docker.svg",
       "smoke-logo-github.svg",

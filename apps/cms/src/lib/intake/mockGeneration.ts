@@ -43,7 +43,7 @@ const SMOKE_GALLERY_MEDIA = [
 
 /** Upstream phone illustration (pinned inventory commit) for CTA-03/04 dock frames. */
 const SMOKE_CTA_DEVICE_ILLUSTRATION = {
-  url: "https://raw.githubusercontent.com/akash3444/shadcn-ui-blocks/46c2e50bb538c9bc7a8927979d38bae178ae4452/public/images/cta-mobile.png",
+  url: "https://cdn.jsdelivr.net/gh/akash3444/shadcn-ui-blocks@46c2e50bb538c9bc7a8927979d38bae178ae4452/public/images/cta-mobile.png",
   filename: "smoke-cta-mobile.png",
   alt: "Mobiele app illustratie",
   width: 512,
