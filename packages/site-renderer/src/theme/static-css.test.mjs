@@ -72,12 +72,12 @@ test("colored themes keep brand continuity with a modest dark lift", () => {
   // Red / amber keep the previous soft dark 400 lift.
   assert.equal(token(block("red-confident", true), "primary"), "#f87171")
   assert.equal(token(block("red-confident", true), "color-accent"), "#f87171")
-  // Amber stays yellow in both modes with a modest lift (500 light → 400 dark).
+  // Amber stays yellow-gold in both modes (#f59e0b); surfaces carry the mode difference.
   assert.equal(token(block("amber-warm", false), "primary"), "#f59e0b")
   assert.equal(token(block("amber-warm", false), "color-accent"), "#f59e0b")
   assert.equal(token(block("amber-warm", false), "primary-foreground"), "oklch(0.145 0.012 75)")
-  assert.equal(token(block("amber-warm", true), "primary"), "#fbbf24")
-  assert.equal(token(block("amber-warm", true), "color-accent"), "#fbbf24")
+  assert.equal(token(block("amber-warm", true), "primary"), "#f59e0b")
+  assert.equal(token(block("amber-warm", true), "color-accent"), "#f59e0b")
 })
 
 test("monochrome provider accents stay on the same slate ramp in dark mode", () => {
