@@ -72,10 +72,10 @@ test("colored themes keep brand continuity with a modest dark lift", () => {
   // Red / amber keep the previous soft dark 400 lift.
   assert.equal(token(block("red-confident", true), "primary"), "#f87171")
   assert.equal(token(block("red-confident", true), "color-accent"), "#f87171")
-  // Amber: light 600 / dark 500 yellow-gold (dark ink on light primary for contrast).
+  // Amber: light 600 / dark 500 yellow-gold; light mode uses light (white) button ink.
   assert.equal(token(block("amber-warm", false), "primary"), "#d97706")
   assert.equal(token(block("amber-warm", false), "color-accent"), "#d97706")
-  assert.equal(token(block("amber-warm", false), "primary-foreground"), "oklch(0.145 0.012 75)")
+  assert.equal(token(block("amber-warm", false), "primary-foreground"), "#ffffff")
   assert.equal(token(block("amber-warm", true), "primary"), "#f59e0b")
   assert.equal(token(block("amber-warm", true), "color-accent"), "#f59e0b")
 })

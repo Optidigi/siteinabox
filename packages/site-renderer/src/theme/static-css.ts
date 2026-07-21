@@ -15,9 +15,6 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   const darkBrand = softDarkBrand.has(id) ? mode.accent[400]! : mode.accent[500]!
   const lightPrimary = yellowBrand.has(id) ? mode.accent[600]! : mode.accent[700]!
   const lightColorAccent = mode.accent[600]!
-  const primaryForeground = dark || yellowBrand.has(id)
-    ? `oklch(0.145 0.012 ${hue})`
-    : mode.onAccent
   return ({
   "--background": mode.surface,
   "--foreground": mode.ink,
@@ -26,7 +23,7 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   "--popover": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.998 0.003 ${hue})`,
   "--popover-foreground": mode.ink,
   "--primary": dark ? darkBrand : lightPrimary,
-  "--primary-foreground": primaryForeground,
+  "--primary-foreground": dark ? `oklch(0.145 0.012 ${hue})` : mode.onAccent,
   "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.97 0.012 ${hue})`,
   "--secondary-foreground": mode.ink,
   "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.97 0.012 ${hue})`,
