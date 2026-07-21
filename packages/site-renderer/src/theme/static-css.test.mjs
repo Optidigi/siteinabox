@@ -46,6 +46,50 @@ test("every color scheme emits secondary accent ramps for dual-tone surfaces", (
   assert.match(css, /data-theme-color="emerald-calm"[^}]*--provider-accent-600:#059669/)
 })
 
+test("colored themes keep brand continuity with a modest dark lift", () => {
+  const css = generateStaticThemeCss()
+  const block = (id, dark) => {
+    const re = dark
+      ? new RegExp(`\\[data-theme-color="${id}"\\]\\[data-rt-mode="dark"\\][^{]*\\{([^}]+)\\}`)
+      : new RegExp(`\\[data-theme-color="${id}"\\]:not\\(\\[data-rt-mode="dark"\\]\\)\\{([^}]+)\\}`)
+    const match = css.match(re)
+    assert.ok(match, `${id} ${dark ? "dark" : "light"} block`)
+    return match[1]
+  }
+  const token = (source, name) => {
+    const match = source.match(new RegExp(`--${name}:([^;]+)`))
+    assert.ok(match, `--${name}`)
+    return match[1]
+  }
+
+  assert.equal(token(block("blue-professional", false), "primary"), "#4338ca")
+  assert.equal(token(block("blue-professional", false), "color-accent"), "#4f46e5")
+  assert.equal(token(block("blue-professional", true), "primary"), "#6366f1")
+  assert.equal(token(block("blue-professional", true), "color-accent"), "#6366f1")
+  assert.equal(token(block("blue-professional", true), "accent"), "#312e81")
+  assert.equal(token(block("red-confident", true), "primary"), "#ef4444")
+  assert.equal(token(block("emerald-calm", true), "primary"), "#10b981")
+  assert.equal(token(block("amber-warm", true), "primary"), "#f59e0b")
+  assert.equal(token(block("terracotta-warm", true), "primary"), "#c45f41")
+})
+
+test("monochrome provider accents stay on the same slate ramp in dark mode", () => {
+  const css = generateStaticThemeCss()
+  const block = (dark) => {
+    const re = dark
+      ? /\[data-theme-color="monochrome"\]\[data-rt-mode="dark"\][^{]*\{([^}]+)\}/
+      : /\[data-theme-color="monochrome"\]:not\(\[data-rt-mode="dark"\]\)\{([^}]+)\}/
+    const match = css.match(re)
+    assert.ok(match, `monochrome ${dark ? "dark" : "light"} block`)
+    return match[1]
+  }
+  const token = (source, name) => source.match(new RegExp(`--${name}:([^;]+)`))[1]
+
+  assert.equal(token(block(false), "provider-accent-600"), "#475569")
+  assert.equal(token(block(true), "provider-accent-600"), "#475569")
+  assert.equal(token(block(true), "color-accent"), "#64748b")
+})
+
 test("terracotta uses the Ami-care brand color as its light primary", () => {
   const css = generateStaticThemeCss()
   assert.match(css, /data-theme-color="terracotta-warm"[^}]*--primary:#a04e32/)

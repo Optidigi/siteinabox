@@ -14,13 +14,14 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   "--card-foreground": mode.ink,
   "--popover": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.998 0.003 ${hue})`,
   "--popover-foreground": mode.ink,
-  "--primary": dark ? mode.accent[400] : mode.accent[700],
+  "--primary": dark ? mode.accent[500] : mode.accent[700],
   "--primary-foreground": dark ? `oklch(0.145 0.012 ${hue})` : mode.onAccent,
   "--secondary": dark ? `oklch(0.269 0.016 ${hue})` : `oklch(0.97 0.012 ${hue})`,
   "--secondary-foreground": mode.ink,
   "--muted": dark ? `oklch(0.205 0.014 ${hue})` : `oklch(0.97 0.012 ${hue})`,
   "--muted-foreground": mode.muted,
-  "--accent": dark ? `oklch(0.269 0.032 ${hue})` : mode.accent[100],
+  // Soft brand wash both modes (light tint / dark shade) — not a generic muted surface.
+  "--accent": dark ? mode.accent[900] : mode.accent[100],
   "--accent-foreground": mode.ink,
   "--border": mode.rule,
   "--input": mode.rule,
@@ -37,7 +38,7 @@ const semantic = (id: string, mode: (typeof colorSchemes)[keyof typeof colorSche
   "--color-bg": mode.surface,
   "--color-ink": mode.ink,
   "--color-ink-muted": mode.muted,
-  "--color-accent": dark ? mode.accent[400] : mode.accent[600],
+  "--color-accent": dark ? mode.accent[500] : mode.accent[600],
   })
 }
 
@@ -74,7 +75,7 @@ export function generateStaticThemeCss() {
           values[`--provider-accent-secondary-${shade}`] = mode.accentSecondary[shade]!
         }
       }
-      values["--chart-1"] = dark ? mode.accent[400] : mode.accent[600]
+      values["--chart-1"] = dark ? mode.accent[500] : mode.accent[600]
       values["--chart-2"] = dark ? "#34d399" : "#059669"
       values["--chart-3"] = dark ? "#fbbf24" : "#d97706"
       values["--chart-4"] = dark ? "#f87171" : "#dc2626"

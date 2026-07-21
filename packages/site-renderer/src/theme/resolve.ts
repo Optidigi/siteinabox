@@ -50,20 +50,6 @@ const slate: ColorRamp = {
   950: "#020617",
 }
 
-const slateDark: ColorRamp = {
-  50: slate[900],
-  100: slate[800],
-  200: slate[700],
-  300: slate[600],
-  400: slate[500],
-  500: slate[400],
-  600: slate[300],
-  700: slate[200],
-  800: slate[100],
-  900: slate[50],
-  950: "#ffffff",
-}
-
 const indigo: ColorRamp = {
   50: "#eef2ff",
   100: "#e0e7ff",
@@ -225,7 +211,8 @@ export const colorSchemes = {
     },
     dark: {
       neutral: grayDark,
-      accent: slateDark,
+      // Same slate ramp as light — dark mode only flips surfaces/ink, not the brand family.
+      accent: slate,
       accentSecondary: slate,
       surface: "oklch(0.145 0 0)",
       ink: "oklch(0.985 0 0)",
