@@ -79,4 +79,39 @@ describe("mock shadcnui-blocks five-page smoke site", () => {
       issue.path?.some((segment) => String(segment).toLowerCase().includes("slug")),
     )).toBe(true)
   })
+
+  it("fills active media slots and prefers full laptop rows for repeaters", () => {
+    const spec = loadMockSiteGenerationSpec(normalized)
+    const byVariant = Object.fromEntries(
+      spec.pages.flatMap((page) => page.blocks.map((block) => [block.designVariant, block])),
+    )
+
+    expect(byVariant["shadcnui-blocks.hero-01"]).not.toHaveProperty("image")
+    expect(byVariant["shadcnui-blocks.hero-02"]).toMatchObject({ image: { url: expect.any(String) } })
+    expect(byVariant["shadcnui-blocks.hero-05"]).toMatchObject({ image: { url: expect.any(String) } })
+    expect(byVariant["shadcnui-blocks.cta-01"]).not.toHaveProperty("backgroundImage")
+    expect(byVariant["shadcnui-blocks.cta-02"]).toMatchObject({ backgroundImage: { url: expect.any(String) } })
+    expect(byVariant["shadcnui-blocks.cta-05"]).not.toHaveProperty("backgroundImage")
+
+    expect(byVariant["shadcnui-blocks.logo-cloud-01"]).toMatchObject({ logos: expect.any(Array) })
+    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.logo-cloud-02"].logos).toHaveLength(6)
+    expect(byVariant["shadcnui-blocks.features-01"].features).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.features-03"].features).toHaveLength(2)
+    expect(byVariant["shadcnui-blocks.features-04"].features).toHaveLength(4)
+    expect(byVariant["shadcnui-blocks.stats-01"].items).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.stats-02"].items).toHaveLength(4)
+    expect(byVariant["shadcnui-blocks.team-01"].members).toHaveLength(4)
+    expect(byVariant["shadcnui-blocks.team-03"].members).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.blog-01"].posts).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.testimonials-01"].items).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.pricing-01"].plans).toHaveLength(3)
+    expect(byVariant["shadcnui-blocks.carousel-block-01"].images).toHaveLength(5)
+
+    expect(byVariant["shadcnui-blocks.blog-01"].posts.every((post: { image?: unknown }) => Boolean(post.image))).toBe(true)
+    expect(byVariant["shadcnui-blocks.team-01"].members.every((member: { image?: unknown }) => Boolean(member.image))).toBe(true)
+    expect(byVariant["shadcnui-blocks.testimonials-01"].items.every((item: { avatar?: unknown }) => Boolean(item.avatar))).toBe(true)
+    expect(byVariant["shadcnui-blocks.logo-cloud-01"].logos.every((logo: { image?: unknown }) => Boolean(logo.image))).toBe(true)
+    expect(spec.pages.every((page) => page.seo.ogImage?.url)).toBe(true)
+  })
 })

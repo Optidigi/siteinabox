@@ -60,6 +60,44 @@ const fitRepeated = <T>(variant: ProviderBlockVariant, field: string, values: T[
   return fitted
 }
 
+/** Preferred smoke counts: full last row at laptop+ column count, then clipped by catalog max. */
+const SMOKE_REPEATER_PREFER: Record<string, number> = {
+  "shadcnui-blocks.features-01": 3,
+  "shadcnui-blocks.features-02": 3,
+  "shadcnui-blocks.features-03": 2,
+  "shadcnui-blocks.features-04": 4,
+  "shadcnui-blocks.stats-01": 3,
+  "shadcnui-blocks.stats-02": 4,
+  "shadcnui-blocks.stats-03": 3,
+  "shadcnui-blocks.testimonials-01": 3,
+  "shadcnui-blocks.testimonials-02": 3,
+  "shadcnui-blocks.testimonials-03": 3,
+  "shadcnui-blocks.blog-01": 3,
+  "shadcnui-blocks.blog-02": 3,
+  "shadcnui-blocks.pricing-01": 3,
+  "shadcnui-blocks.pricing-02": 3,
+  "shadcnui-blocks.team-01": 4,
+  "shadcnui-blocks.team-02": 4,
+  "shadcnui-blocks.team-03": 3,
+  "shadcnui-blocks.logo-cloud-01": 3,
+  "shadcnui-blocks.logo-cloud-02": 6,
+  "shadcnui-blocks.carousel-block-01": 5,
+  "shadcnui-blocks.timeline-01": 4,
+  "shadcnui-blocks.timeline-02": 4,
+  "shadcnui-blocks.faq-01": 4,
+  "shadcnui-blocks.faq-02": 4,
+}
+
+const fitPreferred = <T>(variant: ProviderBlockVariant, field: string, values: T[]) => {
+  const prefer = SMOKE_REPEATER_PREFER[variant.id]
+  return fitRepeated(variant, field, prefer == null ? values : values.slice(0, prefer))
+}
+
+const smokeAsset = (index: number, alt?: string) => {
+  const asset = SMOKE_GALLERY_MEDIA[index % SMOKE_GALLERY_MEDIA.length]!
+  return alt ? { ...asset, alt } : { ...asset }
+}
+
 const variantLabel = (variant: ProviderBlockVariant) => variant.id.replace("shadcnui-blocks.", "")
 const pageHref = (pageIndex: number) => pageIndex === 0 ? "/" : `/${LANDING_PAGES[pageIndex]!.slug}`
 
@@ -98,13 +136,14 @@ function blockForVariant(
           { value: "4", label: "viewportmodi" },
           { value: "100%", label: "expliciet" },
         ]),
+        ...optional(variant, "image", smokeAsset(0, `${page.title} hero`)),
       } as GeneratedBlockSpec
 
     case "featureList":
       return {
         ...base,
         blockType: "featureList",
-        features: fitRepeated(variant, "features", [
+        features: fitPreferred(variant, "features", [
           { title: inline("Snel te scannen"), description: prose("Heldere hiërarchie op desktop en mobiel."), icon: "sparkles" },
           { title: inline("Tokenbewust"), description: prose("Semantische kleuren blijven leesbaar in licht en donker."), icon: "palette" },
           { title: inline("Contractgestuurd"), description: prose("Alle inhoud komt uit gevalideerde velden."), icon: "shield-check" },
@@ -120,11 +159,11 @@ function blockForVariant(
         ...base,
         blockType: "testimonials",
         title: active(variant, "title") ? `Ervaringen met ${label}` : null,
-        items: fitRepeated(variant, "items", [
-          { quote: "De pagina voelt rustig en blijft op ieder scherm overzichtelijk.", author: "Noor de Vries", role: "Product lead" },
-          { quote: "De visuele hiërarchie maakt de belangrijkste actie direct duidelijk.", author: "Sam Jansen", role: "Ondernemer" },
-          { quote: "Licht en donker sluiten zichtbaar op elkaar aan.", author: "Mila Smit", role: "Designer" },
-          { quote: "Ook lange Nederlandse tekst blijft goed leesbaar.", author: "Daan Bakker", role: "Contentstrateeg" },
+        items: fitPreferred(variant, "items", [
+          { quote: "De pagina voelt rustig en blijft op ieder scherm overzichtelijk.", author: "Noor de Vries", role: "Product lead", avatar: smokeAsset(2, "Noor de Vries") },
+          { quote: "De visuele hiërarchie maakt de belangrijkste actie direct duidelijk.", author: "Sam Jansen", role: "Ondernemer", avatar: smokeAsset(2, "Sam Jansen") },
+          { quote: "Licht en donker sluiten zichtbaar op elkaar aan.", author: "Mila Smit", role: "Designer", avatar: smokeAsset(2, "Mila Smit") },
+          { quote: "Ook lange Nederlandse tekst blijft goed leesbaar.", author: "Daan Bakker", role: "Contentstrateeg", avatar: smokeAsset(2, "Daan Bakker") },
         ]),
       }
 
@@ -132,12 +171,12 @@ function blockForVariant(
       return {
         ...base,
         blockType: "faq",
-        items: [
+        items: fitPreferred(variant, "items", [
           { question: inline("Werkt deze variant ook op mobiel?"), answer: prose("Ja. Controleer de accordeon, focusvolgorde en tekstomloop op smalle schermen.") },
           { question: inline("Kan ik licht en donker vergelijken?"), answer: prose("Ja. De fixture gebruikt de systeemmodus en de navigatie bevat de ondersteunde themaschakelaar.") },
           { question: inline("Komt alle inhoud uit het CMS?"), answer: prose("Ja. De providerweergave ontvangt uitsluitend gevalideerde gestructureerde data.") },
           { question: inline("Wat gebeurt er met onbekende varianten?"), answer: prose("Die worden afgewezen; de renderer valt nooit terug op een standaardvariant.") },
-        ],
+        ]),
         ...optional(variant, "title", inline(`Veelgestelde vragen · ${label}`)),
       } as GeneratedBlockSpec
 
@@ -150,6 +189,7 @@ function blockForVariant(
         ...optional(variant, "description", prose("Bekijk dezelfde sectie op desktop en mobiel, in licht en donker, en controleer daarna de focus- en hoverstatussen.")),
         ...optional(variant, "primary", { label: "Naar contact", href: "/contact" }),
         ...optional(variant, "secondary", { label: "Terug naar overzicht", href: "/" }),
+        ...optional(variant, "backgroundImage", smokeAsset(0, `${label} achtergrond`)),
       } as GeneratedBlockSpec
 
     case "contactSection":
@@ -188,11 +228,11 @@ function blockForVariant(
       return {
         ...base,
         blockType: "pricing",
-        plans: [
+        plans: fitPreferred(variant, "plans", [
           { title: inline("Basis"), description: prose("Voor een duidelijke start."), price: "€499", period: "eenmalig", features: [{ label: inline("Eén landingspagina"), included: true }, { label: inline("Responsief ontwerp"), included: true }, { label: inline("CMS-toegang"), included: true }], cta: { label: "Kies Basis", href: "/contact" } },
           { title: inline("Groei"), description: prose("Voor een breder verhaal."), price: "€899", period: "eenmalig", badge: "Populair", highlighted: true, features: [{ label: inline("Vijf pagina’s"), included: true }, { label: inline("Conversieblokken"), included: true }, { label: inline("SEO-basis"), included: true }], cta: { label: "Kies Groei", href: "/contact" } },
           { title: inline("Maatwerk"), description: prose("Voor aanvullende wensen."), price: "Op aanvraag", period: null, features: [{ label: inline("Persoonlijke begeleiding"), included: true }, { label: inline("Extra integraties"), included: true }, { label: inline("Uitgebreide inhoud"), included: true }], cta: { label: "Plan overleg", href: contactHref, external: true } },
-        ],
+        ]),
         ...optional(variant, "eyebrow", inline(`Aanbod · ${label}`)),
         ...optional(variant, "title", inline("Een passend pakket voor iedere fase")),
         ...optional(variant, "intro", prose("Controleer kaarten, nadruk, badges, lange prijzen en actieknoppen.")),
@@ -202,7 +242,7 @@ function blockForVariant(
       return {
         ...base,
         blockType: "stats",
-        items: fitRepeated(variant, "items", [
+        items: fitPreferred(variant, "items", [
           { value: "148", label: "varianten", description: prose("Uit de vastgepinde publieke catalogus.") },
           { value: "132", label: "catalogusblokken", description: prose("Beschikbaar in de vastgepinde provider.") },
           { value: "16", label: "chromevarianten", description: prose("Voor banner, navigatie en footer.") },
@@ -213,15 +253,14 @@ function blockForVariant(
       } as GeneratedBlockSpec
 
     case "logoCloud":
-      const logoSlot = (variant.slots as Record<string, { maxItems?: number }>).logos
       return {
         ...base,
         blockType: "logoCloud",
-        logos: ["Acme", "Northstar", "Lumen", "Vertex", "Harbor", "Orbit", "Pioneer", "Summit"].slice(0, logoSlot?.maxItems ?? 8).map((name, index) => ({
+        logos: fitPreferred(variant, "logos", ["Acme", "Northstar", "Lumen", "Vertex", "Harbor", "Orbit", "Pioneer", "Summit"].map((name, index) => ({
           name,
-          image: { ...SMOKE_GALLERY_MEDIA[4], alt: `${name} testlogo` },
+          image: smokeAsset(4, `${name} testlogo`),
           href: index % 2 === 0 ? `/partners/${name.toLowerCase()}` : null,
-        })),
+        }))),
         ...optional(variant, "title", inline(`Partners en integraties · ${label}`)),
         ...optional(variant, "intro", prose("Controleer rasterdichtheid, marquees, randen en contrast zonder externe demo-data.")),
       } as GeneratedBlockSpec
@@ -230,13 +269,13 @@ function blockForVariant(
       return {
         ...base,
         blockType: "gallery",
-        images: [
-          { image: SMOKE_GALLERY_MEDIA[0], caption: prose("Brede projectweergave 16:9"), link: { label: "Bekijk project", href: "/ervaringen" } },
-          { image: SMOKE_GALLERY_MEDIA[1], caption: prose("Portretweergave voor mobiele controle") },
-          { image: SMOKE_GALLERY_MEDIA[2], caption: prose("Detailweergave met transparantie") },
-          { image: SMOKE_GALLERY_MEDIA[3], caption: prose("Social-previewverhouding") },
-          { image: SMOKE_GALLERY_MEDIA[4], caption: prose("Breed klantlogo") },
-        ],
+        images: fitPreferred(variant, "images", [
+          { image: smokeAsset(0), caption: prose("Brede projectweergave 16:9"), link: { label: "Bekijk project", href: "/ervaringen" } },
+          { image: smokeAsset(1), caption: prose("Portretweergave voor mobiele controle") },
+          { image: smokeAsset(2), caption: prose("Detailweergave met transparantie") },
+          { image: smokeAsset(3), caption: prose("Social-previewverhouding") },
+          { image: smokeAsset(4), caption: prose("Breed klantlogo") },
+        ]),
         ...optional(variant, "title", inline(`Projectgalerij · ${label}`)),
         ...optional(variant, "intro", prose("SIAB-eigen testassets worden door de normale importer als tenantmedia opgeslagen en behouden hun bronafmetingen.")),
         ...optional(variant, "cta", { label: "Bekijk ervaringen", href: "/ervaringen" }),
@@ -246,12 +285,12 @@ function blockForVariant(
       return {
         ...base,
         blockType: "timeline",
-        items: [
+        items: fitPreferred(variant, "items", [
           { title: "Intake", description: "Gestructureerde bedrijfs- en inhoudsgegevens.", label: "Stap 1", date: "Dag 1", tags: [{ value: "Content" }] },
           { title: "Validatie", description: "Alleen goedgekeurde varianten en actieve slots.", label: "Stap 2", date: "Dag 2", tags: [{ value: "Contract" }] },
           { title: "Voorbeeld", description: "Dezelfde renderer in canvas, preview en publiek.", label: "Stap 3", date: "Dag 3", tags: [{ value: "UI" }] },
           { title: "Publicatie", description: "Een expliciet gecontroleerde snapshot.", label: "Stap 4", date: "Dag 4", tags: [{ value: "Live" }] },
-        ],
+        ]),
         ...optional(variant, "title", inline(`Werkwijze · ${label}`)),
         ...optional(variant, "intro", prose("Deze tijdlijn controleert lange tekst, herhaalde stappen en de verticale pagina-opbouw.")),
       } as GeneratedBlockSpec
@@ -260,12 +299,12 @@ function blockForVariant(
       return {
         ...base,
         blockType: "team",
-        members: [
-          { name: "Noor de Vries", role: "Strategie", bio: prose("Brengt doelen en inhoud samen."), links: [{ label: "Profiel", href: "/team/noor" }] },
-          { name: "Sam Jansen", role: "Ontwerp", bio: prose("Bewaakt ritme, contrast en toegankelijkheid."), links: [{ label: "Profiel", href: "/team/sam" }] },
-          { name: "Mila Smit", role: "Content", bio: prose("Schrijft duidelijke en menselijke teksten."), links: [{ label: "Profiel", href: "/team/mila" }] },
-          { name: "Daan Bakker", role: "Techniek", bio: prose("Zorgt voor betrouwbare rendering op ieder scherm."), links: [{ label: "Profiel", href: "/team/daan" }] },
-        ],
+        members: fitPreferred(variant, "members", [
+          { name: "Noor de Vries", role: "Strategie", bio: prose("Brengt doelen en inhoud samen."), image: smokeAsset(2, "Noor de Vries"), links: [{ label: "Profiel", href: "/team/noor" }] },
+          { name: "Sam Jansen", role: "Ontwerp", bio: prose("Bewaakt ritme, contrast en toegankelijkheid."), image: smokeAsset(2, "Sam Jansen"), links: [{ label: "Profiel", href: "/team/sam" }] },
+          { name: "Mila Smit", role: "Content", bio: prose("Schrijft duidelijke en menselijke teksten."), image: smokeAsset(2, "Mila Smit"), links: [{ label: "Profiel", href: "/team/mila" }] },
+          { name: "Daan Bakker", role: "Techniek", bio: prose("Zorgt voor betrouwbare rendering op ieder scherm."), image: smokeAsset(2, "Daan Bakker"), links: [{ label: "Profiel", href: "/team/daan" }] },
+        ]),
         ...optional(variant, "title", inline(`Ons team · ${label}`)),
         ...optional(variant, "intro", prose("Namen, rollen en biografieën hebben bewust verschillende tekstlengtes.")),
       } as GeneratedBlockSpec
@@ -274,12 +313,12 @@ function blockForVariant(
       return {
         ...base,
         blockType: "blogCards",
-        posts: [
-          { title: inline("Zo bouw je een duidelijke landingspagina"), excerpt: prose("Een praktische blik op hiërarchie, ritme en conversie."), href: "/inzichten/landingspagina", date: "15 juli 2026", author: "Noor de Vries", authorRole: "Strategie", cta: { label: "Lees verder", href: "/inzichten/landingspagina" } },
-          { title: inline("Donkere modus zonder verrassingen"), excerpt: prose("Waarom semantische tokens meer doen dan kleuren omkeren."), href: "/inzichten/donkere-modus", date: "8 juli 2026", author: "Sam Jansen", authorRole: "Ontwerp" },
-          { title: inline("Responsief testen op inhoud"), excerpt: prose("Lange koppen en echte veldlengtes vinden andere fouten dan lorem ipsum."), href: "/inzichten/responsief", date: "1 juli 2026", author: "Mila Smit", authorRole: "Content" },
-          { title: inline("Waarom varianten expliciet zijn"), excerpt: prose("Fail-closed rendering houdt gegenereerde pagina’s voorspelbaar."), href: "/inzichten/varianten", date: "24 juni 2026", author: "Daan Bakker", authorRole: "Techniek" },
-        ],
+        posts: fitPreferred(variant, "posts", [
+          { title: inline("Zo bouw je een duidelijke landingspagina"), excerpt: prose("Een praktische blik op hiërarchie, ritme en conversie."), image: smokeAsset(0, "Landingspagina artikel"), href: "/inzichten/landingspagina", date: "15 juli 2026", author: "Noor de Vries", authorRole: "Strategie", cta: { label: "Lees verder", href: "/inzichten/landingspagina" } },
+          { title: inline("Donkere modus zonder verrassingen"), excerpt: prose("Waarom semantische tokens meer doen dan kleuren omkeren."), image: smokeAsset(1, "Donkere modus artikel"), href: "/inzichten/donkere-modus", date: "8 juli 2026", author: "Sam Jansen", authorRole: "Ontwerp" },
+          { title: inline("Responsief testen op inhoud"), excerpt: prose("Lange koppen en echte veldlengtes vinden andere fouten dan lorem ipsum."), image: smokeAsset(3, "Responsief artikel"), href: "/inzichten/responsief", date: "1 juli 2026", author: "Mila Smit", authorRole: "Content" },
+          { title: inline("Waarom varianten expliciet zijn"), excerpt: prose("Fail-closed rendering houdt gegenereerde pagina’s voorspelbaar."), image: smokeAsset(0, "Varianten artikel"), href: "/inzichten/varianten", date: "24 juni 2026", author: "Daan Bakker", authorRole: "Techniek" },
+        ]),
         ...optional(variant, "title", inline(`Inzichten · ${label}`)),
         ...optional(variant, "intro", prose("Controleer kaarten met uiteenlopende titels, metadata, links en tekstlengtes.")),
       } as GeneratedBlockSpec
@@ -294,7 +333,7 @@ function smokeTestPages(normalized: NormalizedIntake): SiteGenerationSpec["pages
     seo: {
       title: `${page.title} | ${normalized.businessName}`,
       description: `${page.purpose} voor de shadcnui-blocks smoketest.`,
-      ogImage: null,
+      ogImage: smokeAsset(3, `${page.title} social preview`),
     },
     blocks: PAGE_SECTION_VARIANTS[pageIndex]!.map((name) => {
       const id = `shadcnui-blocks.${name}`
