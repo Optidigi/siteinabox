@@ -84,10 +84,19 @@ consent through `applyTenantAnalyticsConsentPolicy` (stored Settings copy with
 NL defaults as fallback). Desktop editor parent-scroll (`parentScroll=true` +
 `renderer.height`) remains for canvas sizing only.
 
-Inspector edits push `render.snapshot` into the frame. Theme, settings/chrome,
-selection, and mobile mode flush immediately; rapid page-body text updates are
-debounced (~80ms). While provider modules prepare for a new `variantKey`, the
-last painted frame stays visible under a light overlay instead of blanking.
+Inspector edits push `render.snapshot` into the frame so the canvas acts as a
+live preview: text, variants, section order, chrome, and theme update without
+save or refresh. Host payloads are normalized with `ensureCanvasWirePage` /
+`ensureCanvasWireSettings` (e.g. required `language`, `updatedAt`) so snapshots
+pass `PageSchema` / `SiteSettingsSchema`. If the full envelope still fails, the
+editor frame applies each of page / settings / theme that independently parses.
+Theme, settings/chrome, selection, and mobile mode flush immediately; rapid
+page-body text updates are debounced (~80ms). While provider modules prepare
+for a new `variantKey`, the last painted frame stays visible under a light
+overlay instead of blanking.
+
+Canvas clicks select and paint without scrolling the frame. Sidebar / inspector
+selection changes reveal the target via `scrollIntoView` (`block: "nearest"`).
 
 At ≤768px the editor keeps the mobile section-list / focused-section shell.
 Preview remains select-only; editing stays in the inspector panel.

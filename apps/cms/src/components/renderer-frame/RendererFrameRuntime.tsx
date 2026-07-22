@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { ThemeTokenSpecSchema } from "@siteinabox/contracts"
+import { PageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
@@ -118,8 +118,8 @@ export function RendererFrameRuntime({
       if (event.source !== window.parent) return
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
       if (!parsed.ok) {
-        // Theme-only recovery when the full snapshot fails validation — keeps
-        // preview token bridge live without relaxing the page/settings contract.
+        // Apply each snapshot part that still parses so preview is not stuck
+        // when only one of page/settings fails the full envelope.
         const raw = event.data
         if (
           raw
@@ -128,13 +128,20 @@ export function RendererFrameRuntime({
           && (raw as { schemaVersion?: unknown }).schemaVersion === IFRAME_EDITOR_PROTOCOL_VERSION
           && (raw as { type?: unknown }).type === "render.snapshot"
         ) {
+          const expected = (raw as { expectedRevision?: unknown }).expectedRevision
+          const revisionOk = typeof expected !== "number"
+            || !Number.isFinite(expected)
+            || expected >= revisionRef.current
+          if (!revisionOk) return
+
           const themeParsed = ThemeTokenSpecSchema.nullable().safeParse((raw as { theme?: unknown }).theme)
-          if (themeParsed.success) {
-            patchTheme(themeParsed.data)
-            const expected = (raw as { expectedRevision?: unknown }).expectedRevision
-            if (typeof expected === "number" && Number.isFinite(expected) && expected >= revisionRef.current) {
-              revisionRef.current = expected + 1
-            }
+          if (themeParsed.success) patchTheme(themeParsed.data)
+          const pageParsed = PageSchema.safeParse((raw as { page?: unknown }).page)
+          if (pageParsed.success) setFramePage(pageParsed.data)
+          const settingsParsed = SiteSettingsSchema.safeParse((raw as { settings?: unknown }).settings)
+          if (settingsParsed.success) setFrameSettings(settingsParsed.data)
+          if (typeof expected === "number" && Number.isFinite(expected) && expected >= revisionRef.current) {
+            revisionRef.current = expected + 1
           }
         }
         return

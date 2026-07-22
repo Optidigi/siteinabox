@@ -9,6 +9,7 @@ import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { getTenantById, getTenantBySlug } from "@/lib/queries/tenants"
 import { asRecord } from "@/lib/record"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import { ensureCanvasWirePage, ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { resolveSettingsContract } from "@/lib/settingsContract"
@@ -120,14 +121,14 @@ export default async function EditorFramePage({
 
   const framePage: ContractPage = isNewPage
     ? createEditorFrameNewPagePlaceholder()
-    : pageToJson(page!, analyticsContext, { preserveBlockIds: true }) as ContractPage
+    : ensureCanvasWirePage(pageToJson(page!, analyticsContext, { preserveBlockIds: true }) as ContractPage)
 
   return (
     <EditorFrameRuntime
       page={framePage}
-      settings={stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
+      settings={ensureCanvasWireSettings(stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
         settingsContract: resolveSettingsContract(tenant.siteManifest ?? null),
-      }) as ContractSiteSettings)}
+      }) as ContractSiteSettings))}
       theme={normalizeThemeForSave(tenant.theme as ThemeTokens | null | undefined)}
       tenantId={tenant.id}
       tenantSlug={tenant.slug}

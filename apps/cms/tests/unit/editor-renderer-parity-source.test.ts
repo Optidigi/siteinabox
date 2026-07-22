@@ -76,9 +76,36 @@ describe("page editor renderer parity", () => {
     expect(preview).toContain("revisionRef.current = 0")
     expect(contract).toContain("parsed.data.expectedRevision < options.currentRevision")
     expect(editorRuntime).toContain("ThemeTokenSpecSchema.nullable().safeParse")
+    expect(editorRuntime).toContain("PageSchema.safeParse")
+    expect(editorRuntime).toContain("SiteSettingsSchema.safeParse")
     expect(rendererRuntime).toContain("ThemeTokenSpecSchema.nullable().safeParse")
+    expect(rendererRuntime).toContain("PageSchema.safeParse")
+    expect(rendererRuntime).toContain("SiteSettingsSchema.safeParse")
     expect(editorRuntime).toContain("applyThemeAttributes(document, frameTheme)")
     expect(rendererRuntime).toContain("applyThemeAttributes(document, frameTheme)")
+  })
+
+  it("scrolls canvas only for parent/inspector selection, not local canvas clicks", () => {
+    const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
+    expect(runtime).toContain('selectionOriginRef = React.useRef<"local" | "parent">("parent")')
+    expect(runtime).toContain('selectionOriginRef.current = "local"')
+    expect(runtime).toContain('selectionOriginRef.current = "parent"')
+    expect(runtime).toContain('const shouldScroll = !skipScroll && selectionOriginRef.current === "parent"')
+    expect(runtime).toContain("if (shouldScroll) blockNode.scrollIntoView")
+  })
+
+  it("normalizes canvas wire page/settings before live snapshots", () => {
+    const form = read("src/components/forms/PageForm.tsx")
+    const core = read("src/components/editor/usePageEditorCore.ts")
+    const framePage = read("src/app/(editor-frame)/editor-frame/pages/[id]/page.tsx")
+    const wire = read("src/lib/projection/ensureCanvasWire.ts")
+    expect(wire).toContain("export function ensureCanvasWireSettings")
+    expect(wire).toContain("export function ensureCanvasWirePage")
+    expect(wire).toContain("language.trim()")
+    expect(wire).toContain('"nl"')
+    expect(form).toContain("ensureCanvasWirePage(pageToJson(")
+    expect(core).toContain("ensureCanvasWireSettings(stripCanvasConsent(projected)")
+    expect(framePage).toContain("ensureCanvasWireSettings(stripCanvasConsent(")
   })
 
   it("uses parent scroll with renderer.height sync without cookie chrome", () => {

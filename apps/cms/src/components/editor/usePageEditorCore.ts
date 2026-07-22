@@ -12,6 +12,7 @@ import {
 import { useForm, type FieldErrors, type Resolver } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { IframeEditorSelection } from "@siteinabox/contracts/iframe-editor"
+import type { SiteSettings } from "@siteinabox/contracts"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -65,6 +66,7 @@ import {
   rendererSettingsFromChromeDraft,
   type SiteChromeDraft,
 } from "@/lib/siteChromeDraft"
+import { ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
 import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
@@ -144,7 +146,7 @@ export type PageEditorCoreApi = {
   setChromeDraft: Dispatch<SetStateAction<SiteChromeDraft>>
   chromeDirty: boolean
   chromeSettingsState: ReturnType<typeof mergeChromeSettings> | null
-  rendererSettingsState: ReturnType<typeof rendererSettingsFromChromeDraft>
+  rendererSettingsState: SiteSettings | null
   footerContract: FooterCompositionContract | null
   inHeader: boolean
   inFooter: boolean
@@ -300,7 +302,10 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
         publishedPages: rendererNavPages,
         settingsContract,
       })
-      return projected ? stripCanvasConsent(projected) : null
+      if (!projected) return null
+      // Canvas snapshots validate against SiteSettingsSchema; fill wire-required
+      // fields the UI contract may omit (e.g. language) before strip + post.
+      return ensureCanvasWireSettings(stripCanvasConsent(projected) as SiteSettings)
     },
     [chromeDraft, rendererNavPages, settingsContract, siteSettingsState],
   )

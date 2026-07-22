@@ -2,6 +2,7 @@ import "server-only"
 import type { Page as ContractPage, SiteSettings, ThemeTokenSpec } from "@siteinabox/contracts"
 import type { Tenant } from "@/payload-types"
 import { asRecord } from "@/lib/record"
+import { ensureCanvasWireSettings } from "@/lib/projection/ensureCanvasWire"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { resolveSettingsContract } from "@/lib/settingsContract"
@@ -109,9 +110,9 @@ export async function getPreviewCustomizerDataForGrant(input: {
   const theme = normalizePreviewThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
   const parsedManifest = manifestSchema.safeParse(tenant.siteManifest)
   const manifest = parsedManifest.success ? parsedManifest.data : DEFAULT_MANIFEST
-  const settings = stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
+  const settings = ensureCanvasWireSettings(stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
     settingsContract: resolveSettingsContract(manifest),
-  }) as SiteSettings)
+  }) as SiteSettings))
 
   return {
     access: { type: "grant", clientSlug },

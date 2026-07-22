@@ -29,6 +29,7 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { FONT_PRESETS, PALETTE_PRESETS, RADIUS_PRESETS } from "@/lib/theme/presets"
 import { PageEditorFrameHost } from "@/components/editor/iframe/PageEditorFrameHost"
 import { MobileFrameEditor } from "@/components/editor/iframe/MobileFrameEditor"
+import { ensureCanvasWirePage } from "@/lib/projection/ensureCanvasWire"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import { BlockPresetsProvider } from "@/components/editor/BlockPresetsContext"
@@ -878,7 +879,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     [tenantId, tenantSlug, tenantDomain],
   )
   const framePage = useMemo(
-    () => pageToJson(
+    () => ensureCanvasWirePage(pageToJson(
       {
         id: initial?.id,
         title: pageTitle,
@@ -889,7 +890,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       } as Page,
       iframeAnalyticsContext,
       { preserveBlockIds: true },
-    ) as ContractPage,
+    ) as ContractPage),
     [initial?.id, initial?.updatedAt, pageTitle, watchedSlug, watchedBlocks, watchedSeo, iframeAnalyticsContext],
   )
   const frameSettings = rendererSettingsState as ContractSiteSettings | null

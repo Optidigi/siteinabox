@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { ThemeTokenSpecSchema } from "@siteinabox/contracts"
+import { PageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
@@ -85,6 +85,7 @@ export function EditorFrameRuntime({
     showChrome: boolean
   } | null>(null)
   const appliedSelectionKeyRef = React.useRef<string>("")
+  const selectionOriginRef = React.useRef<"local" | "parent">("parent")
   const hoverNodeRef = React.useRef<HTMLElement | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
   const embeddedViewportRule = useCspStyleRule(
@@ -145,8 +146,8 @@ export function EditorFrameRuntime({
       if (event.source !== window.parent) return
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
       if (!parsed.ok) {
-        // Keep the token bridge live even when the full snapshot contract fails
-        // (page/settings drift, rare revision races). Theme is scheme-id data only.
+        // Full envelope failed (often one of page/settings). Apply each part that
+        // still parses so live canvas preview is not stuck on theme-only updates.
         const raw = event.data
         if (
           raw
@@ -155,15 +156,44 @@ export function EditorFrameRuntime({
           && (raw as { schemaVersion?: unknown }).schemaVersion === IFRAME_EDITOR_PROTOCOL_VERSION
           && (raw as { type?: unknown }).type === "render.snapshot"
         ) {
+          const expected = (raw as { expectedRevision?: unknown }).expectedRevision
+          const revisionOk = typeof expected !== "number"
+            || !Number.isFinite(expected)
+            || expected >= revisionRef.current
+          if (!revisionOk) return
+
+          let applied = false
           const themeParsed = ThemeTokenSpecSchema.nullable().safeParse((raw as { theme?: unknown }).theme)
           if (themeParsed.success) {
             patchTheme(themeParsed.data)
-            const expected = (raw as { expectedRevision?: unknown }).expectedRevision
-            if (typeof expected === "number" && Number.isFinite(expected) && expected >= revisionRef.current) {
-              revisionRef.current = expected + 1
-            }
-            receivedParentCommandRef.current = true
+            applied = true
           }
+          const pageParsed = PageSchema.safeParse((raw as { page?: unknown }).page)
+          if (pageParsed.success) {
+            setFramePage(pageParsed.data)
+            applied = true
+          }
+          const settingsParsed = SiteSettingsSchema.safeParse((raw as { settings?: unknown }).settings)
+          if (settingsParsed.success) {
+            setFrameSettings(settingsParsed.data)
+            applied = true
+          }
+          const selectionRaw = (raw as { selection?: unknown }).selection
+          if (selectionRaw !== undefined) {
+            selectionOriginRef.current = "parent"
+            const nextSelection = (selectionRaw ?? null) as IframeEditorSelection | null
+            setActiveSelection((current) => (
+              selectionKey(current) === selectionKey(nextSelection) ? current : nextSelection
+            ))
+          }
+          const mobileRaw = (raw as { mobileMode?: unknown }).mobileMode
+          if (mobileRaw && typeof mobileRaw === "object") {
+            setMobileMode(mobileRaw as IframeEditorMobileMode)
+          }
+          if (typeof expected === "number" && Number.isFinite(expected) && expected >= revisionRef.current) {
+            revisionRef.current = expected + 1
+          }
+          if (applied) receivedParentCommandRef.current = true
         }
         return
       }
@@ -175,6 +205,7 @@ export function EditorFrameRuntime({
         patchTheme(message.theme)
         setFramePage(message.page)
         setFrameSettings(message.settings)
+        selectionOriginRef.current = "parent"
         const nextSelection = message.selection ?? null
         setActiveSelection((current) => (
           selectionKey(current) === selectionKey(nextSelection) ? current : nextSelection
@@ -317,6 +348,7 @@ export function EditorFrameRuntime({
       if (headerNode || footerNode) {
         const zone: "header" | "footer" = headerNode ? "header" : "footer"
         const selection = { pageId, fieldPath: ["chrome", zone] as const }
+        selectionOriginRef.current = "local"
         setActiveSelection(selection)
         emit({
           protocol: IFRAME_EDITOR_PROTOCOL_NAME,
@@ -341,6 +373,7 @@ export function EditorFrameRuntime({
       const selection = elementPathToIframeSelection(path, framePage.blocks ?? [], pageId)
       if (!selection) return
 
+      selectionOriginRef.current = "local"
       setActiveSelection(selection)
       emit({
         protocol: IFRAME_EDITOR_PROTOCOL_NAME,
@@ -358,6 +391,7 @@ export function EditorFrameRuntime({
   React.useEffect(() => {
     const nextKey = selectionKey(activeSelection)
     const skipScroll = nextKey === appliedSelectionKeyRef.current && Boolean(activeSelection)
+    const shouldScroll = !skipScroll && selectionOriginRef.current === "parent"
     appliedSelectionKeyRef.current = nextKey
 
     if (hoverNodeRef.current) {
@@ -383,7 +417,7 @@ export function EditorFrameRuntime({
       const chromeNode = selector ? document.querySelector<HTMLElement>(selector) : null
       if (chromeNode) {
         chromeNode.setAttribute("data-siab-editor-selected", "true")
-        if (!skipScroll) chromeNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        if (shouldScroll) chromeNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
       }
       return
     }
@@ -410,13 +444,13 @@ export function EditorFrameRuntime({
       }) ?? null
       if (fieldNode) {
         fieldNode.setAttribute("data-siab-editor-field-selected", "true")
-        if (!skipScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        if (shouldScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
         return
       }
     }
 
     blockNode.setAttribute("data-siab-editor-selected", "true")
-    if (!skipScroll) blockNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    if (shouldScroll) blockNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
   }, [activeSelection, framePage, mobileMode.mode])
 
   const focusedBlockIndex = mobileMode.mode === "focusedSection"
