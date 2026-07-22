@@ -271,6 +271,14 @@ export function EditorFrameRuntime({
       if (hoverNodeRef.current === node) return
       clearHover()
       if (!node) return
+      // Do not paint hover over the active selection — solid selected chrome wins.
+      if (
+        node.hasAttribute("data-siab-editor-selected")
+        || node.hasAttribute("data-siab-editor-field-selected")
+        || node.closest("[data-siab-editor-field-selected=\"true\"]")
+      ) {
+        return
+      }
       node.setAttribute("data-siab-editor-hover", kind)
       hoverNodeRef.current = node
     }
@@ -370,6 +378,11 @@ export function EditorFrameRuntime({
     const skipScroll = nextKey === appliedSelectionKeyRef.current && Boolean(activeSelection)
     appliedSelectionKeyRef.current = nextKey
 
+    if (hoverNodeRef.current) {
+      hoverNodeRef.current.removeAttribute("data-siab-editor-hover")
+      hoverNodeRef.current = null
+    }
+
     document.querySelectorAll("[data-siab-editor-selected]").forEach((node) => {
       node.removeAttribute("data-siab-editor-selected")
     })
@@ -417,6 +430,9 @@ export function EditorFrameRuntime({
       }) ?? null
       if (fieldNode) {
         fieldNode.setAttribute("data-siab-editor-field-selected", "true")
+        // Parent block stays marked so large sections remain obvious while a
+        // small field ring is active.
+        blockNode.setAttribute("data-siab-editor-selected", "true")
         if (!skipScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
         return
       }

@@ -176,22 +176,53 @@ body { font-family: var(--font-sans); }
   --spacing: 0.25rem;
 }
 
-/* Page-editor inspector: canvas deep-link pulse (attr set ~1.6s in BlockFormFields). */
+/* Page-editor chrome: fixed SIAB selection tokens (not tenant --accent wash). */
+:root {
+  --siab-ed-hover: #3b82f6;
+  --siab-ed-selected: #2563eb;
+  --siab-ed-field: #ea580c;
+  --siab-ed-fill: color-mix(in oklab, var(--siab-ed-selected) 14%, transparent);
+  --siab-ed-field-fill: color-mix(in oklab, var(--siab-ed-field) 12%, transparent);
+}
+
+.dark {
+  --siab-ed-hover: #60a5fa;
+  --siab-ed-selected: #93c5fd;
+  --siab-ed-field: #fb923c;
+  --siab-ed-fill: color-mix(in oklab, var(--siab-ed-selected) 22%, transparent);
+  --siab-ed-field-fill: color-mix(in oklab, var(--siab-ed-field) 18%, transparent);
+}
+
+.siab-inspector-field-highlight {
+  border-radius: var(--radius);
+  background-color: var(--siab-ed-fill);
+  box-shadow:
+    inset 3px 0 0 var(--siab-ed-selected),
+    inset 0 0 0 2px color-mix(in oklab, var(--siab-ed-selected) 75%, transparent);
+}
+
 @keyframes siab-inspector-field-pulse {
   0% {
-    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--ring) 90%, transparent);
-    background-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    background-color: color-mix(in oklab, var(--siab-ed-selected) 28%, transparent);
+    box-shadow:
+      inset 3px 0 0 var(--siab-ed-selected),
+      inset 0 0 0 2px var(--siab-ed-selected);
   }
   100% {
-    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--ring) 40%, transparent);
-    background-color: color-mix(in oklab, var(--accent) 25%, transparent);
+    background-color: var(--siab-ed-fill);
+    box-shadow:
+      inset 3px 0 0 var(--siab-ed-selected),
+      inset 0 0 0 2px color-mix(in oklab, var(--siab-ed-selected) 75%, transparent);
   }
 }
 
 [data-siab-inspector-field-selected="true"] {
-  animation: siab-inspector-field-pulse 1.4s ease-out;
-  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--ring) 70%, transparent);
-  background-color: color-mix(in oklab, var(--accent) 35%, transparent);
+  animation: siab-inspector-field-pulse 1.2s ease-out;
   border-radius: var(--radius);
+  background-color: var(--siab-ed-fill);
+  box-shadow:
+    inset 3px 0 0 var(--siab-ed-selected),
+    inset 0 0 0 2px color-mix(in oklab, var(--siab-ed-selected) 75%, transparent);
 }
+
 

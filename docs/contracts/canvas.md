@@ -44,11 +44,14 @@ is no alternate CMS block renderer or canvas/source tree.
   `ElementPath` (block + field + optional item/sub-field). Public and preview
   frames omit `editSlots`.
 - Canvas hover uses pointer-tracked `data-siab-editor-hover` on the deepest
-  field, block, or chrome target (not nested CSS `:hover`).
+  field, block, or chrome target (not nested CSS `:hover`). Selection chrome
+  uses fixed SIAB editor tokens (`--siab-ed-*`) and inset box-shadow rings —
+  never tenant `--accent` / `--color-accent` (those are surface washes and
+  vanish on monochrome).
 - Desktop sidebar and mobile Vaul inspector share `BlockFormFields`. Content
   fields show first; Advanced (design variant, anchor, metadata, unused
   optional arrays) stays collapsed until opened. Canvas deep-link sets
-  `data-siab-inspector-field-selected` for a short accent pulse.
+  `data-siab-inspector-field-selected` for a short SIAB-token pulse.
 - Site chrome zones are `header` | `footer` | `banner`. Cookie/consent chrome
   uses `data-site-chrome="banner"` (and `data-siab-cookie-consent` when the
   consent variant is active); clicking it opens the banner inspector.
