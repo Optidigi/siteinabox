@@ -233,8 +233,8 @@ function MobileFocusedSection({
   }, [])
 
   return (
-    <div data-mobile-frame-section-edit className="-mx-4 flex min-h-[calc(100dvh-4.5rem)] flex-col">
-      <header className="sticky top-0 z-30 flex min-w-0 items-center justify-center border-b border-border bg-background px-16 py-3">
+    <div data-mobile-frame-section-edit className="-mx-4 flex h-[calc(100dvh-4.5rem)] min-h-[calc(100dvh-4.5rem)] flex-col">
+      <header className="sticky top-0 z-30 flex min-w-0 shrink-0 items-center justify-center border-b border-border bg-background px-16 py-3">
         <div className="flex min-w-0 max-w-full items-center justify-center gap-2">
           <Button
             type="button"
@@ -297,8 +297,8 @@ function MobileFocusedSection({
           </Button>
         </div>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="h-full min-h-0 w-full">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="absolute inset-0 min-h-0">
           {focusedFrame}
         </div>
       </div>

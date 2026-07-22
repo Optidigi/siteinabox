@@ -22,3 +22,11 @@ export function adaptBanner(settings: SiteSettings): BannerViewModel | null {
     consent: settings.analyticsConsent?.enabled === true,
   }
 }
+
+/** Consent chrome that live/editor pin to the visible viewport (`banner-03` + consent on). */
+export function isViewportFixedConsentBanner(settings: SiteSettings): boolean {
+  const variant = settings.chrome?.banner?.variant?.trim()
+  if (variant !== "shadcnui-blocks.banner-03") return false
+  if (settings.analyticsConsent?.enabled !== true) return false
+  return adaptBanner(settings) != null
+}

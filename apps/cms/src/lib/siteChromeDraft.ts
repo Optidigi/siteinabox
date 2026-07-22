@@ -56,7 +56,12 @@ export const chromeDraftFromSettings = (
     columns: defaultFooterColumns(settings, footerContract),
     newsletter: settings?.chrome?.footer?.newsletter ?? undefined,
   },
-  banner: settings?.chrome?.banner ?? undefined,
+  banner: settings?.chrome?.banner
+    ? {
+        ...settings.chrome.banner,
+        variant: "shadcnui-blocks.banner-03",
+      }
+    : undefined,
 })
 
 export const chromeComparable = (
@@ -108,10 +113,19 @@ export const chromePatchFromDraft = (
     columns: normalizeFooterColumns(draft.footer.columns, footerContract),
     newsletter: draft.footer.newsletter ?? undefined,
   },
-  banner: draft.banner ?? undefined,
+  banner: (() => {
+    const banner = draft.banner
+    if (!banner || typeof banner !== "object" || Array.isArray(banner)) return draft.banner ?? undefined
+    return { ...banner, variant: "shadcnui-blocks.banner-03" }
+  })(),
 })
 
-export const mergeChromeSettings = (settings: SiteSetting | null | undefined, draft: SiteChromeDraft) => ({
+export const mergeChromeSettings = (settings: SiteSetting | null | undefined, draft: SiteChromeDraft) => {
+  const bannerDraft = draft.banner
+  const banner = bannerDraft && typeof bannerDraft === "object" && !Array.isArray(bannerDraft)
+    ? { ...bannerDraft, variant: "shadcnui-blocks.banner-03" }
+    : bannerDraft
+  return {
   ...(settings ?? {}),
   chrome: {
     ...(settings?.chrome ?? {}),
@@ -136,9 +150,10 @@ export const mergeChromeSettings = (settings: SiteSetting | null | undefined, dr
       columns: draft.footer.columns,
       newsletter: draft.footer.newsletter,
     },
-    banner: draft.banner,
+    banner,
   },
-})
+}
+}
 
 export const rendererSettingsFromChromeDraft = (
   settings: SiteSetting | null | undefined,
@@ -146,11 +161,44 @@ export const rendererSettingsFromChromeDraft = (
   options: {
     publishedPages?: NavPage[]
     settingsContract?: SettingsContract | null
+    analyticsConsent?: Record<string, unknown> | null
   } = {},
-) => settings
-  ? settingsToJsonWithoutAnalytics(
-      mergeChromeSettings(settings, draft) as SiteSetting,
-      options.publishedPages ?? [],
-      { settingsContract: options.settingsContract ?? null },
-    )
-  : null
+) => {
+  if (!settings) return null
+  const projected = settingsToJsonWithoutAnalytics(
+    mergeChromeSettings(settings, draft) as SiteSetting,
+    options.publishedPages ?? [],
+    { settingsContract: options.settingsContract ?? null },
+  )
+  const consent = options.analyticsConsent
+  if (!consent || typeof consent !== "object" || Array.isArray(consent)) return projected
+
+  const consentEnabled = consent.enabled === true
+  const existingBanner = projected.chrome?.banner
+  const consentBanner = consentEnabled
+    ? {
+        ...(existingBanner ?? {}),
+        visible: true as const,
+        title: typeof existingBanner?.title === "string" && existingBanner.title.trim()
+          ? existingBanner.title
+          : "Cookies",
+        message: typeof existingBanner?.message === "string" && existingBanner.message.trim()
+          ? existingBanner.message
+          : "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
+        dismissible: false,
+        variant: "shadcnui-blocks.banner-03" as const,
+      }
+    : existingBanner
+
+  const withConsent = {
+    ...projected,
+    analyticsConsent: consent,
+    chrome: projected.chrome
+      ? { ...projected.chrome, banner: consentBanner }
+      : consentBanner
+        ? { banner: consentBanner }
+        : projected.chrome,
+  }
+  // Consent banner may widen chrome.banner; keep projected chrome shape for callers.
+  return withConsent as typeof projected & { analyticsConsent: Record<string, unknown> }
+}

@@ -298,8 +298,9 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
       rendererSettingsFromChromeDraft(siteSettingsState, chromeDraft, {
         publishedPages: rendererNavPages,
         settingsContract,
+        analyticsConsent: (manifest as { analyticsConsent?: Record<string, unknown> | null }).analyticsConsent ?? null,
       }),
-    [chromeDraft, rendererNavPages, settingsContract, siteSettingsState],
+    [chromeDraft, manifest, rendererNavPages, settingsContract, siteSettingsState],
   )
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {

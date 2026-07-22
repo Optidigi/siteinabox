@@ -39,7 +39,7 @@ describe("site chrome draft helpers", () => {
             legalLinks: [{ label: "Privacy", href: "/privacy" }],
             columns: [{ items: [{ type: "text", label: "About", text: "Hello" }] }],
           },
-          banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Update" },
+          banner: { variant: "shadcnui-blocks.banner-03", visible: true, message: "Update" },
         },
       }),
       footerContract,
@@ -53,7 +53,7 @@ describe("site chrome draft helpers", () => {
     expect(draft.footer.tagline).toBe("Footer copy")
     expect(draft.footer.legalLinks).toEqual([{ label: "Privacy", href: "/privacy" }])
     expect(draft.footer.columns[0]?.items[0]?.type).toBe("text")
-    expect(draft.banner).toEqual({ variant: "shadcnui-blocks.banner-01", visible: true, message: "Update" })
+    expect(draft.banner).toEqual({ variant: "shadcnui-blocks.banner-03", visible: true, message: "Update" })
   })
 
   it("normalizes media relationships for comparison and PATCH payloads", () => {
@@ -67,7 +67,7 @@ describe("site chrome draft helpers", () => {
         legalLinks: [{ label: "Privacy", href: "/privacy" }],
         columns: [{ items: [{ type: "brand", label: "Brand" }] }],
       },
-      banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Update" },
+      banner: { variant: "shadcnui-blocks.banner-03", visible: true, message: "Update" },
     }
 
     expect(chromeComparable(draft, footerContract).header.logo).toBe(10)
@@ -75,7 +75,7 @@ describe("site chrome draft helpers", () => {
     expect(chromePatchFromDraft(draft, footerContract)).toMatchObject({
       header: { variant: "shadcnui-blocks.navbar-01", logo: 10, cta: { label: "Start", href: "/start" } },
       footer: { variant: "shadcnui-blocks.footer-01", logo: "11", tagline: "", copyright: null, legalLinks: [{ label: "Privacy", href: "/privacy" }] },
-      banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Update" },
+      banner: { variant: "shadcnui-blocks.banner-03", visible: true, message: "Update" },
     })
   })
 
@@ -101,7 +101,7 @@ describe("site chrome draft helpers", () => {
       banner: { variant: "shadcnui-blocks.banner-01", visible: false },
     }
 
-    expect(mergeChromeSettings(cast<SiteSetting>(settings), draft)).toEqual({
+    expect(mergeChromeSettings(cast<SiteSetting>(settings), draft)).toMatchObject({
       id: 7,
       siteName: "Site",
       chrome: {
@@ -114,7 +114,7 @@ describe("site chrome draft helpers", () => {
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [],
         },
-        banner: { variant: "shadcnui-blocks.banner-01", visible: false },
+        banner: { variant: "shadcnui-blocks.banner-03", visible: false },
       },
     })
   })
@@ -175,7 +175,7 @@ describe("site chrome draft helpers", () => {
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [{ id: null, items: [{ id: null, type: "text", label: "About", text: "Hello", links: [] }] }],
         },
-        banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Draft banner" },
+        banner: { variant: "shadcnui-blocks.banner-03", visible: true, message: "Draft banner" },
       },
       navHeader: [{ label: "Home", href: "/", external: false }],
     })

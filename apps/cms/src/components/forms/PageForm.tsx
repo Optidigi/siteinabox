@@ -304,6 +304,7 @@ function SiteChromeInspectorFields({
   navigationHref,
   onNavigate,
   footerContract,
+  analyticsConsentEnabled = false,
 }: {
   zone: SiteChromeZone
   draft: SiteChromeDraft
@@ -313,46 +314,45 @@ function SiteChromeInspectorFields({
   navigationHref?: string | null
   onNavigate?: (href: string) => void
   footerContract?: FooterCompositionContract | null
+  analyticsConsentEnabled?: boolean
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
 
   if (zone === "banner") {
+    const COOKIE_BANNER_VARIANT = "shadcnui-blocks.banner-03"
     const banner = asDraftRecord(draft.banner)
-    const variant = String(banner.variant ?? "")
-    const variantOptions = SITE_CHROME_CATALOG.filter((entry) =>
-      entry.area === "banner" && (entry.scope.kind === "global" || entry.variant === variant),
-    )
     const setBanner = (patch: DraftRecord) => {
       if (!canEditSettings) return
       setDraft((current) => ({
         ...current,
-        banner: { ...asDraftRecord(current.banner), ...patch },
+        banner: {
+          ...asDraftRecord(current.banner),
+          ...patch,
+          // Cookie chrome is locked to banner-03; announcement/maintenance variants stay elsewhere.
+          variant: COOKIE_BANNER_VARIANT,
+        },
       }))
     }
     return (
       <div className="space-y-4">
         <p className="text-xs text-muted-foreground px-0.5">{t("bannerCookieHint")}</p>
         <section className="space-y-2 rounded-md border border-border bg-card p-4">
-          <Label htmlFor="site-chrome-banner-variant">{t("layoutVariant")}</Label>
-          <Select
-            value={variant || undefined}
-            disabled={!canEditSettings}
-            onValueChange={(value) => setBanner({ variant: value })}
-          >
-            <SelectTrigger id="site-chrome-banner-variant"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {variantOptions.map((option) => (
-                <SelectItem key={option.variant} value={option.variant}>{option.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-1">
+            <Label htmlFor="site-chrome-banner-variant">{t("layoutVariant")}</Label>
+            <Input
+              id="site-chrome-banner-variant"
+              value="banner-03"
+              disabled
+              readOnly
+            />
+          </div>
           <div className="flex items-center justify-between pt-2">
             <Label htmlFor="site-chrome-banner-visible">{t("bannerVisible")}</Label>
             <Switch
               id="site-chrome-banner-visible"
-              disabled={!canEditSettings}
-              checked={banner.visible === true}
+              disabled={!canEditSettings || analyticsConsentEnabled}
+              checked={analyticsConsentEnabled || banner.visible === true}
               onCheckedChange={(visible) => setBanner({ visible })}
             />
           </div>
@@ -360,8 +360,8 @@ function SiteChromeInspectorFields({
             <Label htmlFor="site-chrome-banner-dismissible">{t("bannerDismissible")}</Label>
             <Switch
               id="site-chrome-banner-dismissible"
-              disabled={!canEditSettings}
-              checked={banner.dismissible !== false}
+              disabled={!canEditSettings || analyticsConsentEnabled}
+              checked={analyticsConsentEnabled ? false : banner.dismissible !== false}
               onCheckedChange={(dismissible) => setBanner({ dismissible })}
             />
           </div>
@@ -570,6 +570,7 @@ function SiteChromeDrillDown({
   navigationHref,
   onNavigate,
   footerContract,
+  analyticsConsentEnabled = false,
   onBack,
 }: {
   selection: SiteChromeSelection
@@ -580,6 +581,7 @@ function SiteChromeDrillDown({
   navigationHref?: string | null
   onNavigate?: (href: string) => void
   footerContract?: FooterCompositionContract | null
+  analyticsConsentEnabled?: boolean
   onBack: () => void
 }) {
   const t = useTranslations("editor")
@@ -617,6 +619,7 @@ function SiteChromeDrillDown({
       navigationHref={navigationHref}
       onNavigate={onNavigate}
       footerContract={footerContract}
+      analyticsConsentEnabled={analyticsConsentEnabled}
     />
   )
 
@@ -1121,9 +1124,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
             <>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
               <div className="flex w-full min-w-0 min-h-0 items-stretch gap-3 pt-2">
-                <div className="flex h-[calc(100dvh-6.5rem)] min-h-0 flex-1 min-w-0 overflow-hidden">
+                <div className="flex min-w-0 flex-1 pb-24">
                   <MobileMediaSheetProvider>
-                    <div className="h-full min-h-0 w-full">
+                    <div className="w-full">
                       {pageEditorFrame}
                     </div>
                   </MobileMediaSheetProvider>
@@ -1143,6 +1146,9 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                           navigationHref={navigationHrefFor(selectedChrome.zone)}
                           onNavigate={navigateFromChrome}
                           footerContract={footerContract}
+                          analyticsConsentEnabled={
+                            (manifest as { analyticsConsent?: { enabled?: unknown } | null }).analyticsConsent?.enabled === true
+                          }
                           onBack={() => clearChromeSelection()}
                         />
                       ) : (

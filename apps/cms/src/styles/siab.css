@@ -176,12 +176,24 @@ body { font-family: var(--font-sans); }
   --spacing: 0.25rem;
 }
 
-/* Inspector field highlight — achromatic left rail (not tenant accent wash). */
+/* Inspector field highlight — left rail using shared editor ink tokens. */
+:root {
+  --siab-ed-ink: color-mix(in oklab, var(--foreground) 72%, transparent);
+  --siab-ed-ink-soft: color-mix(in oklab, var(--foreground) 28%, transparent);
+  --siab-ed-field: color-mix(in oklab, #b45309 70%, var(--foreground) 30%);
+}
+
 .siab-inspector-field-highlight,
 [data-siab-inspector-field-selected="true"] {
   border-radius: var(--radius);
   background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
-  box-shadow: inset 3px 0 0 0 color-mix(in oklab, var(--foreground) 55%, transparent);
+  box-shadow: inset 3px 0 0 0 var(--siab-ed-ink);
+}
+
+/* Parent-mounted consent overlay — outer ring matches editor achromatic ink. */
+[data-siab-editor-consent-overlay] [data-siab-editor-selected="true"] {
+  outline: 2px solid var(--siab-ed-ink);
+  outline-offset: 2px;
 }
 
 

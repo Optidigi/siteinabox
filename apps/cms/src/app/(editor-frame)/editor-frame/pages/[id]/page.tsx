@@ -7,6 +7,7 @@ import { createEditorFrameNewPagePlaceholder } from "@/lib/editor/editorFramePla
 import { getPageById, listPages } from "@/lib/queries/pages"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { getTenantById, getTenantBySlug } from "@/lib/queries/tenants"
+import { asRecord } from "@/lib/record"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
@@ -21,6 +22,7 @@ type RouteParams = {
 
 type RouteSearchParams = {
   tenantSlug?: string
+  parentScroll?: string
   mobileMode?: string
   focusedBlockId?: string
   focusedBlockIndex?: string
@@ -82,6 +84,7 @@ export default async function EditorFramePage({
   const resolvedSearchParams = await searchParams
   const { tenantSlug: tenantSlugParam } = resolvedSearchParams
   const initialMobileMode = parseInitialMobileMode(resolvedSearchParams)
+  const parentScroll = parseBooleanParam(resolvedSearchParams.parentScroll) === true
 
   const { id } = await params
   const isNewPage = id === "new"
@@ -101,10 +104,12 @@ export default async function EditorFramePage({
   if (!isNewPage && !sameRelationshipId(page!.tenant, tenant.id)) notFound()
   if (!settingsDoc) notFound()
 
+  const manifest = asRecord(tenant.siteManifest)
   const analyticsContext = {
     tenantId: tenant.id,
     tenantSlug: tenant.slug,
     siteDomain: tenant.domain,
+    analyticsConsent: asRecord(manifest?.analyticsConsent),
   }
   const navPages = (allPages as Array<{ id: number | string; slug: string; title: string }>).map((entry) => ({
     id: entry.id,
@@ -127,6 +132,7 @@ export default async function EditorFramePage({
       tenantSlug={tenant.slug}
       domain={tenant.domain}
       initialMobileMode={initialMobileMode}
+      parentScroll={parentScroll}
     />
   )
 }

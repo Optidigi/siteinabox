@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { SiteSettings } from "@siteinabox/contracts"
-import { ArrowUpRight, ChartPie, UserPlusIcon, X } from "lucide-react"
+import { ArrowUpRight, Cookie, UserPlusIcon, X } from "lucide-react"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import { adaptBanner, type BannerViewModel } from "./runtime/banner"
 
@@ -31,10 +31,13 @@ function BannerFourCard({ model }: { model: BannerViewModel }) {
 
 function BannerThreeCard({ model }: { model: BannerViewModel }) {
   return (
-    <div className="relative mx-auto flex min-h-10 w-full max-w-2xl flex-wrap items-center justify-between gap-x-3 gap-y-4 rounded-lg border bg-background px-4 py-3 text-center text-sm shadow-lg">
-      <div className="flex items-center gap-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/13 text-primary"><ChartPie className="size-5" /></div>
-        <p>{model.title ? <><strong className="font-medium">{model.title}</strong>{" "}</> : null}<span>{model.message}</span></p>
+    <div className="relative mx-auto flex min-h-10 w-full max-w-2xl flex-wrap items-center justify-between gap-x-3 gap-y-4 rounded-lg border bg-background px-4 py-3 text-sm shadow-lg">
+      <div className="flex min-w-0 items-center gap-3 text-left">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/13 text-primary"><Cookie className="size-5" aria-hidden /></div>
+        <div className="min-w-0">
+          {model.title ? <p className="font-medium">{model.title}</p> : null}
+          <p className={model.title ? "text-muted-foreground" : undefined}>{model.message}</p>
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {model.consent ? <><Button data-consent-action="reject" size="sm" type="button" variant="outline">Weigeren</Button><Button data-consent-action="accept" size="sm" type="button">Accepteren</Button></> : <>{model.link ? <Button asChild size="sm"><a href={model.link.href}>{model.link.label}<ArrowUpRight /></a></Button> : null}{model.dismissible ? <Button aria-label="Sluiten" className="hover:bg-primary/13 max-sm:absolute max-sm:-top-2.5 max-sm:-right-2.5 max-sm:size-6 max-sm:border max-sm:bg-background max-sm:hover:bg-muted sm:-me-2" data-banner-dismiss size="icon" type="button" variant="ghost"><X /></Button> : null}</>}

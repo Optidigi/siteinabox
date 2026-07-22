@@ -3,6 +3,8 @@ import { getProviderChromeVariant, type SiteBannerChromeVariant, type SiteSettin
 import type { MediaResolver } from "./media"
 import { ShadcnUiChromeView } from "./providers/shadcnui-blocks/views"
 
+export { isViewportFixedConsentBanner } from "./providers/shadcnui-blocks/runtime/banner"
+
 export type SiteChromeProps = { settings: SiteSettings; currentSlug?: string; mediaResolver?: MediaResolver }
 
 function renderChrome(area: "header" | "footer" | "banner", props: SiteChromeProps) {

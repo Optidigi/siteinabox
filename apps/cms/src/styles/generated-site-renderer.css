@@ -36,45 +36,48 @@
   [data-siab-cookie-consent="true"]
 ) {
   cursor: pointer;
-  transition: box-shadow 120ms ease;
+  transition: outline-color 120ms ease, outline-offset 120ms ease;
 }
 
-/* Pointer-tracked hover (deepest target). Achromatic soft ink — not tenant accent. */
+/*
+ * Outer rings (not inset box-shadow) so full-bleed children cannot hide paint.
+ * outline is not clipped by the painted node's own overflow:hidden.
+ */
 [data-siab-editor-hover="block"],
 [data-siab-editor-hover="chrome"],
 [data-siab-editor-hover="field"] {
-  box-shadow: inset 0 0 0 1px var(--siab-ed-ink-soft);
-  outline: none;
+  outline: 2px solid var(--siab-ed-ink-soft);
+  outline-offset: 2px;
 }
 
 /* Block / chrome selected */
 [data-siab-editor-selected="true"] {
-  box-shadow: inset 0 0 0 2px var(--siab-ed-ink);
-  outline: none;
+  outline: 2px solid var(--siab-ed-ink);
+  outline-offset: 2px;
 }
 
 /* Field selected — muted copper, distinct from block ink */
 [data-siab-editor-field-selected="true"] {
-  box-shadow: inset 0 0 0 2px var(--siab-ed-field);
-  outline: none;
+  outline: 2px solid var(--siab-ed-field);
+  outline-offset: 2px;
 }
 
 /* Field selection inside a block suppresses the parent block ring */
 [data-siab-editor-frame-runtime] [data-block-index][data-siab-editor-selected="true"]:has([data-siab-field][data-siab-editor-field-selected="true"]) {
-  box-shadow: none;
   outline: none;
+  outline-offset: 0;
   background: transparent;
 }
 
 /* Selected state suppresses hover paint on the same node */
 [data-siab-editor-selected="true"][data-siab-editor-hover] {
-  box-shadow: inset 0 0 0 2px var(--siab-ed-ink);
-  outline: none;
+  outline: 2px solid var(--siab-ed-ink);
+  outline-offset: 2px;
 }
 
 [data-siab-editor-field-selected="true"][data-siab-editor-hover] {
-  box-shadow: inset 0 0 0 2px var(--siab-ed-field);
-  outline: none;
+  outline: 2px solid var(--siab-ed-field);
+  outline-offset: 2px;
 }
 
 /*
@@ -83,11 +86,11 @@
  * the editor; parent innerHeight in customer preview) for deterministic sizing.
  * This scope never affects live sites.
  */
-[data-siab-preview-viewport="true"] .min-h-screen {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .min-h-screen {
   min-height: var(--siab-preview-viewport-height);
 }
 
-[data-siab-preview-viewport="true"] .h-screen {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .h-screen {
   height: var(--siab-preview-viewport-height);
 }
 
@@ -99,20 +102,20 @@
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 5.5rem);
 }
 
-[data-siab-preview-viewport="true"] .h-\[calc\(100svh-4rem\)\] {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .h-\[calc\(100svh-4rem\)\] {
   height: calc(var(--siab-preview-viewport-height) - 4rem);
 }
 
-[data-siab-preview-viewport="true"] .max-h-\[calc\(100vh-7rem\)\] {
+:is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .max-h-\[calc\(100vh-7rem\)\] {
   max-height: calc(var(--siab-preview-viewport-height) - 7rem);
 }
 
 @media (min-width: 64rem) {
-  [data-siab-preview-viewport="true"] .lg\:h-screen {
+  :is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .lg\:h-screen {
     height: var(--siab-preview-viewport-height);
   }
 
-  [data-siab-preview-viewport="true"] .lg\:h-\[calc\(100vh-4rem\)\] {
+  :is([data-siab-preview-viewport="true"], [data-siab-editor-parent-scroll="true"]) .lg\:h-\[calc\(100vh-4rem\)\] {
     height: calc(var(--siab-preview-viewport-height) - 4rem);
   }
 }

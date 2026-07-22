@@ -13,6 +13,7 @@ import {
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
+import { EditorConsentBannerOverlay } from "@/components/editor/iframe/EditorConsentBannerOverlay"
 
 export type PageEditorFrameLayout = "desktop" | "mobile"
 
@@ -56,16 +57,21 @@ export function PageEditorFrameHost({
   const [failed, setFailed] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
   const [retryKey, setRetryKey] = React.useState(0)
+  const [frameHeight, setFrameHeight] = React.useState<number | null>(null)
   const readyRef = React.useRef(false)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   const onChromeSelectRef = React.useRef(onChromeSelect)
   onSelectionChangedRef.current = onSelectionChanged
   onChromeSelectRef.current = onChromeSelect
+  const isDesktopLayout = layout === "desktop"
+  const bannerSelected = selection?.fieldPath?.[0] === "chrome" && selection?.fieldPath?.[1] === "banner"
 
   const src = React.useMemo(() => {
     const base = `/editor-frame/pages/${encodeURIComponent(String(pageId))}`
     const query = new URLSearchParams()
     if (tenantSlug) query.set("tenantSlug", tenantSlug)
+    // Desktop parent-scroll only: frame sizes to content + parent paints fixed consent.
+    if (layout === "desktop") query.set("parentScroll", "true")
     if (mobileMode) {
       query.set("mobileMode", mobileMode.mode)
       if (mobileMode.focusedBlockId) query.set("focusedBlockId", mobileMode.focusedBlockId)
@@ -73,7 +79,7 @@ export function PageEditorFrameHost({
       if (mobileMode.showChrome != null) query.set("showChrome", String(mobileMode.showChrome))
     }
     return query.size ? `${base}?${query.toString()}` : base
-  }, [mobileMode, pageId, tenantSlug])
+  }, [layout, mobileMode, pageId, tenantSlug])
 
   const postToFrame = React.useCallback((payload: IframeEditorMessage) => {
     frameRef.current?.contentWindow?.postMessage(payload, window.location.origin)
@@ -84,6 +90,7 @@ export function PageEditorFrameHost({
     setReady(false)
     setFailed(false)
     setFrameError(null)
+    setFrameHeight(null)
     revisionRef.current = 0
   }, [retryKey, src])
 
@@ -114,6 +121,10 @@ export function PageEditorFrameHost({
         }
         setFailed(false)
         setFrameError(null)
+        return
+      }
+      if (message.type === "renderer.height") {
+        setFrameHeight((current) => (current === message.height ? current : message.height))
         return
       }
       if (message.type === "selection.changed") {
@@ -203,17 +214,24 @@ export function PageEditorFrameHost({
 
   return (
     <div
-      className="relative h-full min-h-0 w-full overflow-hidden bg-background"
+      className={cn(
+        "relative w-full bg-background",
+        isDesktopLayout ? "min-h-0" : "h-full min-h-0 overflow-hidden",
+      )}
       data-siab-editor-frame-host
       data-siab-editor-frame-layout={layout}
+      data-siab-editor-parent-scroll={isDesktopLayout ? "true" : undefined}
     >
       <iframe
         key={`${src}:${retryKey}`}
         ref={frameRef}
         src={src}
         title={t("pageEditorFrameTitle")}
+        scrolling={isDesktopLayout ? "no" : undefined}
+        style={isDesktopLayout && frameHeight != null ? { height: frameHeight } : undefined}
         className={cn(
-          "block h-full min-h-0 w-full border-0 bg-transparent transition-opacity duration-150",
+          "block w-full border-0 bg-transparent transition-opacity duration-150",
+          isDesktopLayout ? "min-h-0" : "h-full min-h-0",
           ready ? "opacity-100" : "pointer-events-none opacity-0",
         )}
         data-siab-editor-frame
@@ -223,8 +241,22 @@ export function PageEditorFrameHost({
           setFrameError(t("editorFrameLoadFailedDescription"))
         }}
       />
+      {isDesktopLayout ? (
+        <EditorConsentBannerOverlay
+          settings={settings}
+          theme={theme}
+          selected={bannerSelected}
+          onSelect={() => onChromeSelect?.("banner")}
+        />
+      ) : null}
       {!ready && (
-        <div className="absolute inset-0 bg-background p-4" aria-live="polite">
+        <div
+          className={cn(
+            "bg-background p-4",
+            isDesktopLayout ? "relative" : "absolute inset-0",
+          )}
+          aria-live="polite"
+        >
           {!failed ? (
             <div className="space-y-4 animate-pulse" aria-label={t("editorFrameLoading")}>
               <div className="h-16 rounded-lg bg-muted" />
@@ -236,7 +268,7 @@ export function PageEditorFrameHost({
               </div>
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-center">
+            <div className={cn("flex text-center", isDesktopLayout ? "min-h-[24rem] items-center justify-center" : "h-full items-center justify-center")}>
               <div className="max-w-sm rounded-lg border border-border bg-card p-4 text-card-foreground shadow-sm">
                 <p className="text-sm font-medium">{t("editorFrameLoadFailed")}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{frameError ?? t("editorFrameNotReady")}</p>

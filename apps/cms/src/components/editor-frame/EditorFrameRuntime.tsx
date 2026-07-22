@@ -16,6 +16,7 @@ import {
   ClientSitePageRenderer,
   applyThemeAttributes,
   createRendererMediaResolver,
+  isViewportFixedConsentBanner,
   prepareClientSiteRenderer,
   type PreparedClientSiteRenderer,
 } from "@siteinabox/site-renderer"
@@ -51,6 +52,7 @@ export function EditorFrameRuntime({
   tenantSlug,
   domain,
   initialMobileMode,
+  parentScroll = false,
 }: {
   page: Page
   settings: SiteSettings
@@ -59,6 +61,8 @@ export function EditorFrameRuntime({
   tenantSlug?: string | null
   domain?: string | null
   initialMobileMode?: IframeEditorMobileMode | null
+  /** Desktop editor: parent document scrolls; frame reports height and suppresses fixed consent. */
+  parentScroll?: boolean
 }) {
   const cspNonce = useCspNonce()
   const [framePage, setFramePage] = React.useState(page)
@@ -96,17 +100,25 @@ export function EditorFrameRuntime({
     window.parent?.postMessage(payload, window.location.origin)
   }, [])
 
-  // Use the iframe's own viewport height (not the parent CMS window). The
-  // desktop editor iframe is shorter than the browser chrome stack.
+  // Parent-scroll (desktop): size viewport utilities from the CMS window.
+  // Mobile iframe-internal scroll: measure this frame so heroes match the phone shell.
   React.useLayoutEffect(() => {
+    let hostWindow: Window = window
+    if (parentScroll) {
+      try {
+        if (window.parent && window.parent !== window) hostWindow = window.parent
+      } catch {
+        hostWindow = window
+      }
+    }
     const update = () => {
-      const next = window.innerHeight
+      const next = hostWindow.innerHeight
       setHostViewportHeight((current) => (current === next ? current : next))
     }
     update()
-    window.addEventListener("resize", update)
-    return () => window.removeEventListener("resize", update)
-  }, [])
+    hostWindow.addEventListener("resize", update)
+    return () => hostWindow.removeEventListener("resize", update)
+  }, [parentScroll])
 
   const patchTheme = React.useCallback((nextTheme: ThemeTokenSpec | null) => {
     setFrameTheme(nextTheme)
@@ -439,6 +451,53 @@ export function EditorFrameRuntime({
   const blockIndexOffset = focusedBlock ? (resolvedFocusedIndex ?? 0) : 0
   const showChrome = mobileMode.showChrome !== false
   const readyForVariant = Boolean(prepared && prepared.key === variantKey)
+  // Only suppress when the parent paints EditorConsentBannerOverlay (desktop parent-scroll).
+  const suppressInFrameConsentBanner =
+    parentScroll && isViewportFixedConsentBanner(frameSettings) && showChrome
+
+  React.useLayoutEffect(() => {
+    if (!parentScroll || !readyForVariant) return
+    const root = document.querySelector<HTMLElement>(".site-frame-root")
+    if (!root) return
+
+    let rafId: number | null = null
+    let pendingHeight: number | null = null
+    let lastEmitted = 0
+
+    const flushHeight = () => {
+      rafId = null
+      if (pendingHeight == null) return
+      const height = pendingHeight
+      pendingHeight = null
+      if (height === lastEmitted) return
+      lastEmitted = height
+      emit({
+        protocol: IFRAME_EDITOR_PROTOCOL_NAME,
+        schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
+        type: "renderer.height",
+        messageId: `renderer-height-${height}`,
+        height,
+      })
+    }
+
+    const reportHeight = () => {
+      const next = Math.ceil(root.getBoundingClientRect().height)
+      if (next < 1) return
+      pendingHeight = next
+      if (rafId == null) {
+        rafId = window.requestAnimationFrame(flushHeight)
+      }
+    }
+
+    const observer = new ResizeObserver(reportHeight)
+    observer.observe(root)
+    reportHeight()
+
+    return () => {
+      observer.disconnect()
+      if (rafId != null) window.cancelAnimationFrame(rafId)
+    }
+  }, [emit, framePage, frameSettings, parentScroll, readyForVariant, variantKey])
 
   if (readyForVariant && prepared) {
     lastPaintedRef.current = {
@@ -481,6 +540,7 @@ export function EditorFrameRuntime({
         className={embeddedViewportRule.className}
         data-siab-editor-frame-runtime
         data-siab-preview-viewport="true"
+        data-siab-editor-parent-scroll={parentScroll ? "true" : undefined}
         data-siab-editor-preparing={readyForVariant ? undefined : "true"}
       >
         <ClientSitePageRenderer
@@ -496,7 +556,7 @@ export function EditorFrameRuntime({
           nonce={cspNonce}
           includeBehaviorScripts={false}
           formAction="#"
-          banner={paint.showChrome ? undefined : null}
+          banner={suppressInFrameConsentBanner ? null : paint.showChrome ? undefined : null}
           header={paint.showChrome ? undefined : null}
           footer={paint.showChrome ? undefined : null}
         />
