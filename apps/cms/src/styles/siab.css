@@ -176,53 +176,12 @@ body { font-family: var(--font-sans); }
   --spacing: 0.25rem;
 }
 
-/* Page-editor chrome: fixed SIAB selection tokens (not tenant --accent wash). */
-:root {
-  --siab-ed-hover: #3b82f6;
-  --siab-ed-selected: #2563eb;
-  --siab-ed-field: #ea580c;
-  --siab-ed-fill: color-mix(in oklab, var(--siab-ed-selected) 14%, transparent);
-  --siab-ed-field-fill: color-mix(in oklab, var(--siab-ed-field) 12%, transparent);
-}
-
-.dark {
-  --siab-ed-hover: #60a5fa;
-  --siab-ed-selected: #93c5fd;
-  --siab-ed-field: #fb923c;
-  --siab-ed-fill: color-mix(in oklab, var(--siab-ed-selected) 22%, transparent);
-  --siab-ed-field-fill: color-mix(in oklab, var(--siab-ed-field) 18%, transparent);
-}
-
-.siab-inspector-field-highlight {
-  border-radius: var(--radius);
-  background-color: var(--siab-ed-fill);
-  box-shadow:
-    inset 3px 0 0 var(--siab-ed-selected),
-    inset 0 0 0 2px color-mix(in oklab, var(--siab-ed-selected) 75%, transparent);
-}
-
-@keyframes siab-inspector-field-pulse {
-  0% {
-    background-color: color-mix(in oklab, var(--siab-ed-selected) 28%, transparent);
-    box-shadow:
-      inset 3px 0 0 var(--siab-ed-selected),
-      inset 0 0 0 2px var(--siab-ed-selected);
-  }
-  100% {
-    background-color: var(--siab-ed-fill);
-    box-shadow:
-      inset 3px 0 0 var(--siab-ed-selected),
-      inset 0 0 0 2px color-mix(in oklab, var(--siab-ed-selected) 75%, transparent);
-  }
-}
-
+/* Inspector field highlight — achromatic left rail (not tenant accent wash). */
+.siab-inspector-field-highlight,
 [data-siab-inspector-field-selected="true"] {
-  animation: siab-inspector-field-pulse 1.2s ease-out;
   border-radius: var(--radius);
-  background-color: var(--siab-ed-fill);
-  box-shadow:
-    inset 3px 0 0 var(--siab-ed-selected),
-    inset 0 0 0 2px color-mix(in oklab, var(--siab-ed-selected) 75%, transparent);
+  background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
+  box-shadow: inset 3px 0 0 0 color-mix(in oklab, var(--foreground) 55%, transparent);
 }
 
 

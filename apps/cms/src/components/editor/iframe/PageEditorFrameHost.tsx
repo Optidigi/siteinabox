@@ -55,7 +55,6 @@ export function PageEditorFrameHost({
   const [ready, setReady] = React.useState(false)
   const [failed, setFailed] = React.useState(false)
   const [frameError, setFrameError] = React.useState<string | null>(null)
-  const [frameHeight, setFrameHeight] = React.useState<number | null>(null)
   const [retryKey, setRetryKey] = React.useState(0)
   const readyRef = React.useRef(false)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
@@ -85,7 +84,6 @@ export function PageEditorFrameHost({
     setReady(false)
     setFailed(false)
     setFrameError(null)
-    setFrameHeight(null)
     revisionRef.current = 0
   }, [retryKey, src])
 
@@ -116,10 +114,6 @@ export function PageEditorFrameHost({
         }
         setFailed(false)
         setFrameError(null)
-        return
-      }
-      if (message.type === "renderer.height") {
-        setFrameHeight(message.height)
         return
       }
       if (message.type === "selection.changed") {
@@ -208,19 +202,20 @@ export function PageEditorFrameHost({
   }, [pageKey, pageId, postSnapshot, ready])
 
   return (
-    <div className="relative w-full overflow-hidden bg-background" data-siab-editor-frame-host data-siab-editor-frame-layout={layout}>
+    <div
+      className="relative h-full min-h-0 w-full overflow-hidden bg-background"
+      data-siab-editor-frame-host
+      data-siab-editor-frame-layout={layout}
+    >
       <iframe
         key={`${src}:${retryKey}`}
         ref={frameRef}
         src={src}
         title={t("pageEditorFrameTitle")}
         className={cn(
-          "block w-full border-0 bg-transparent transition-opacity duration-150",
+          "block h-full min-h-0 w-full border-0 bg-transparent transition-opacity duration-150",
           ready ? "opacity-100" : "pointer-events-none opacity-0",
-          layout === "mobile" ? "min-h-[32rem]" : "min-h-[640px]",
         )}
-        height={frameHeight ?? (layout === "mobile" ? 512 : 640)}
-        scrolling="no"
         data-siab-editor-frame
         data-tenant-id={String(tenantId)}
         onError={() => {

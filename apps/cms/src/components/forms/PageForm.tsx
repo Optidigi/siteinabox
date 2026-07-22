@@ -1101,14 +1101,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           {isDesktop === false && !readOnly && (
             <MobileMediaSheetProvider>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-                <div className="mb-3 flex flex-col gap-2">
-                  <Button asChild type="button" variant="secondary" size="sm" className="h-9 w-fit gap-1">
-                    <Link href={baseHref}>
-                      <ChevronLeft className="size-4" aria-hidden />
-                      {t("backToPages")}
-                    </Link>
-                  </Button>
-                </div>
                 <MobileFrameEditor
                   api={mobileFrameBlocksApi}
                   manifest={manifest}
@@ -1128,10 +1120,12 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
           {(isDesktop || readOnly) && isDesktop !== null && (
             <>
               <BlockPresetsProvider tenantId={tenantId} manifest={manifest}>
-              <div className="flex w-full min-w-0 items-start gap-3 pt-2">
-                <div className="flex-1 min-w-0 pb-24">
+              <div className="flex w-full min-w-0 min-h-0 items-stretch gap-3 pt-2">
+                <div className="flex h-[calc(100dvh-6.5rem)] min-h-0 flex-1 min-w-0 overflow-hidden">
                   <MobileMediaSheetProvider>
+                    <div className="h-full min-h-0 w-full">
                       {pageEditorFrame}
+                    </div>
                   </MobileMediaSheetProvider>
                 </div>
                 {isDesktop && !readOnly && (

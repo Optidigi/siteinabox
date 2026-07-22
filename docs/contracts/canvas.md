@@ -45,13 +45,15 @@ is no alternate CMS block renderer or canvas/source tree.
   frames omit `editSlots`.
 - Canvas hover uses pointer-tracked `data-siab-editor-hover` on the deepest
   field, block, or chrome target (not nested CSS `:hover`). Selection chrome
-  uses fixed SIAB editor tokens (`--siab-ed-*`) and inset box-shadow rings —
-  never tenant `--accent` / `--color-accent` (those are surface washes and
-  vanish on monochrome).
+  uses achromatic ink rails (`--siab-ed-ink` / `--siab-ed-ink-soft`) and a
+  muted copper field ring (`--siab-ed-field`) as inset box-shadows with no
+  fill wash — never tenant `--accent` / `--color-accent` (those are surface
+  washes and vanish on monochrome). Field selection does not also paint the
+  parent block.
 - Desktop sidebar and mobile Vaul inspector share `BlockFormFields`. Content
   fields show first; Advanced (design variant, anchor, metadata, unused
   optional arrays) stays collapsed until opened. Canvas deep-link sets
-  `data-siab-inspector-field-selected` for a short SIAB-token pulse.
+  `data-siab-inspector-field-selected` for a quiet left-rail highlight.
 - Site chrome zones are `header` | `footer` | `banner`. Cookie/consent chrome
   uses `data-site-chrome="banner"` (and `data-siab-cookie-consent` when the
   consent variant is active); clicking it opens the banner inspector.
@@ -61,20 +63,21 @@ is no alternate CMS block renderer or canvas/source tree.
 Preview/editor hosts keep the iframe transparent behind a CMS skeleton until
 active provider modules, `window.load`, `document.fonts.ready`, React commit,
 and two animation frames have completed. The frame then emits `renderer.ready`.
-Customer preview uses a viewport-height, internally scrolling iframe so public
-fixed-position chrome remains anchored to the visible preview viewport. The
-page editor instead receives a height-only renderer signal and expands its
-same-origin iframe, leaving the CMS document as the sole full-page scroll owner.
-Both frames set `--siab-preview-viewport-height` to the parent browser viewport
-so composed first-hero height (`site-renderer` composition CSS) matches live
-`100dvh` sizing without an iframe growth loop. That height signal cannot mutate
-fields, selection, block geometry, or ordering; the removed DOM/geometry
-editing bridge remains retired.
+Customer preview and the page editor both use a constrained-height,
+internally scrolling iframe so public fixed-position chrome (including the
+cookie consent banner) stays anchored to the visible frame viewport — matching
+live output. Both frames set `--siab-preview-viewport-height` for composed
+first-hero height (`site-renderer` composition CSS) so it matches live
+`100dvh` sizing without an iframe growth loop: preview measures the parent
+browser viewport (iframe fills it); the editor measures the iframe's own
+`window.innerHeight` (shorter than the CMS chrome stack). That height signal
+cannot mutate fields, selection, block geometry, or ordering; the removed
+DOM/geometry editing bridge remains retired.
 
-Under editor parent-scroll, consent chrome is demoted from viewport-`fixed` to
-`absolute` within `.site-frame-root` so the cookie banner sits at the page
-bottom instead of the tall iframe viewport bottom. Public and customer-preview
-frames keep `position: fixed`.
+Cookie consent uses normal `position: fixed` inside the editor iframe (same
+base offset as live). Customer preview adds extra bottom offset for the
+in-frame `PreviewCommandBar`; the editor does not apply that lift because its
+save chrome lives outside the iframe.
 
 Inspector edits push `render.snapshot` into the frame. Theme, settings/chrome,
 selection, and mobile mode flush immediately; rapid page-body text updates are
@@ -88,10 +91,12 @@ Preview remains select-only; editing stays in the inspector panel.
 
 The parent sends one versioned `render.snapshot` carrying page, settings, theme,
 selection, and mobile focused-section mode. The editor may send `renderer.ready`,
-`renderer.height`, `selection.changed`, `chrome.select` (including
-`fieldPath: ["chrome","banner"]`), and a fail-closed `error`. Legacy block
-mutation, inline-field, geometry, gutter, and view-toggle messages were removed
-from protocol v3.
+`selection.changed`, `chrome.select` (including
+`fieldPath: ["chrome","banner"]`), and a fail-closed `error`. The legacy
+`renderer.height` message type remains in the contract schema for compatibility
+but is no longer emitted by the editor frame (iframe-internal scroll replaced
+parent-document height sync). Legacy block mutation, inline-field, geometry,
+gutter, and view-toggle messages were removed from protocol v3.
 
 ## Parity and safety
 

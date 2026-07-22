@@ -86,7 +86,7 @@ export function EditorFrameRuntime({
   const hoverNodeRef = React.useRef<HTMLElement | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
   const embeddedViewportRule = useCspStyleRule(
-    "editor-frame-parent-scroll-viewport",
+    "renderer-frame-preview-viewport",
     hostViewportHeight != null
       ? `--siab-preview-viewport-height:${formatCssPx(hostViewportHeight)};`
       : null,
@@ -96,12 +96,16 @@ export function EditorFrameRuntime({
     window.parent?.postMessage(payload, window.location.origin)
   }, [])
 
+  // Use the iframe's own viewport height (not the parent CMS window). The
+  // desktop editor iframe is shorter than the browser chrome stack.
   React.useLayoutEffect(() => {
-    const hostWindow = window.parent && window.parent !== window ? window.parent : window
-    const update = () => setHostViewportHeight(hostWindow.innerHeight)
+    const update = () => {
+      const next = window.innerHeight
+      setHostViewportHeight((current) => (current === next ? current : next))
+    }
     update()
-    hostWindow.addEventListener("resize", update)
-    return () => hostWindow.removeEventListener("resize", update)
+    window.addEventListener("resize", update)
+    return () => window.removeEventListener("resize", update)
   }, [])
 
   const patchTheme = React.useCallback((nextTheme: ThemeTokenSpec | null) => {
@@ -232,33 +236,6 @@ export function EditorFrameRuntime({
       if (readyInterval != null) window.clearInterval(readyInterval)
     }
   }, [emit, page.id, page.slug, prepared, variantKey])
-
-  React.useLayoutEffect(() => {
-    if (!prepared || prepared.key !== variantKey) return
-    let animationFrame: number | null = null
-    const root = document.querySelector<HTMLElement>(".site-frame-root")
-    if (!root) return
-    const reportHeight = () => {
-      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
-      animationFrame = window.requestAnimationFrame(() => {
-        const height = Math.max(1, Math.ceil(root.getBoundingClientRect().height))
-        emit({
-          protocol: IFRAME_EDITOR_PROTOCOL_NAME,
-          schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
-          type: "renderer.height",
-          messageId: `renderer-height-${height}`,
-          height,
-        })
-      })
-    }
-    const observer = new ResizeObserver(reportHeight)
-    observer.observe(root)
-    reportHeight()
-    return () => {
-      observer.disconnect()
-      if (animationFrame != null) window.cancelAnimationFrame(animationFrame)
-    }
-  }, [emit, framePage, frameSettings, frameTheme, mobileMode, prepared, variantKey])
 
   React.useEffect(() => {
     const clearHover = () => {
@@ -430,9 +407,6 @@ export function EditorFrameRuntime({
       }) ?? null
       if (fieldNode) {
         fieldNode.setAttribute("data-siab-editor-field-selected", "true")
-        // Parent block stays marked so large sections remain obvious while a
-        // small field ring is active.
-        blockNode.setAttribute("data-siab-editor-selected", "true")
         if (!skipScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
         return
       }
@@ -506,7 +480,7 @@ export function EditorFrameRuntime({
       <div
         className={embeddedViewportRule.className}
         data-siab-editor-frame-runtime
-        data-siab-editor-parent-scroll="true"
+        data-siab-preview-viewport="true"
         data-siab-editor-preparing={readyForVariant ? undefined : "true"}
       >
         <ClientSitePageRenderer

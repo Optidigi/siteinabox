@@ -297,8 +297,10 @@ function MobileFocusedSection({
           </Button>
         </div>
       </header>
-      <div className="min-h-0">
-        {focusedFrame}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="h-full min-h-0 w-full">
+          {focusedFrame}
+        </div>
       </div>
       <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />
       <MobileBackPill onBack={onBack} />
