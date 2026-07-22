@@ -912,8 +912,6 @@
     "pageActions": "Pagina-acties",
     "backToBlockList": "Terug naar blokkenlijst",
     "backToPages": "Terug naar pagina's",
-    "mobilePreviewHint": "Voorbeeld — selecteer op het canvas; bewerk in het paneel eronder.",
-    "mobileListHint": "Kies een sectie om te bewerken. Op deze breedte is er geen volledige WYSIWYG-canvas.",
     "editorFrameRequiresSettings": "Site-instellingen zijn nodig voordat het voorbeeld kan laden.",
     "back": "Terug",
     "deleteBlock": "Blok verwijderen",

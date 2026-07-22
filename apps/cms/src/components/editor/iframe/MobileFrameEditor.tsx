@@ -298,9 +298,6 @@ function MobileFocusedSection({
         </div>
       </header>
       <div className="min-h-0">
-        <p className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
-          {t("mobilePreviewHint")}
-        </p>
         {focusedFrame}
       </div>
       <MobileInspectorBar block={block} blockIndex={index} manifest={manifest} theme={theme} />

@@ -9,13 +9,38 @@
 @source "../../../../packages/site-renderer/src";
 @source "../../../../packages/ui/src/providers/shadcnui-blocks";
 
-[data-siab-editor-frame-runtime] [data-block-index] {
+[data-siab-editor-frame-runtime] {
+  position: relative;
+}
+
+[data-siab-editor-frame-runtime] [data-block-index],
+[data-siab-editor-frame-runtime] [data-siab-field],
+[data-siab-editor-frame-runtime] :is(
+  [data-site-chrome="header"],
+  [data-siab-site-header],
+  .site-header,
+  header.site-chrome,
+  [data-amicare-nav],
+  [data-site-chrome="footer"],
+  [data-siab-site-footer],
+  .site-footer,
+  footer.site-chrome,
+  [data-site-chrome="banner"],
+  [data-siab-cookie-consent="true"]
+) {
   cursor: pointer;
   transition: outline-color 120ms ease, outline-offset 120ms ease;
 }
 
-[data-siab-editor-frame-runtime] [data-block-index]:hover {
+/* Pointer-tracked hover (deepest target only). CSS :hover is intentionally unused. */
+[data-siab-editor-hover="block"],
+[data-siab-editor-hover="chrome"] {
   outline: 2px dashed color-mix(in oklab, var(--color-accent, #2563eb) 45%, transparent);
+  outline-offset: 2px;
+}
+
+[data-siab-editor-hover="field"] {
+  outline: 2px dashed color-mix(in oklab, var(--color-accent, #2563eb) 55%, transparent);
   outline-offset: 2px;
 }
 
@@ -34,52 +59,27 @@
   outline-offset: 3px;
 }
 
-[data-siab-editor-frame-runtime] [data-siab-field] {
-  cursor: pointer;
-  transition: outline-color 120ms ease, outline-offset 120ms ease;
-}
-
-[data-siab-editor-frame-runtime] [data-siab-field]:hover {
-  outline: 2px dashed color-mix(in oklab, var(--color-accent, #2563eb) 55%, transparent);
-  outline-offset: 2px;
-}
-
 [data-siab-editor-field-selected="true"] {
   outline: 2px solid color-mix(in oklab, var(--color-accent, #2563eb) 85%, transparent);
   outline-offset: 2px;
 }
 
-/* Header / footer / cookie chrome: selectable affordance in the editor frame only */
-[data-siab-editor-frame-runtime] :is(
-  [data-site-chrome="header"],
-  [data-siab-site-header],
-  .site-header,
-  header.site-chrome,
-  [data-amicare-nav],
-  [data-site-chrome="footer"],
-  [data-siab-site-footer],
-  .site-footer,
-  footer.site-chrome,
-  [data-siab-cookie-consent="true"]
-) {
-  cursor: pointer;
-  transition: outline-color 120ms ease, outline-offset 120ms ease;
+/*
+ * Parent-scroll editor: iframe height ≈ document height, so viewport-fixed
+ * consent chrome pins to the document bottom (invisible while editing the top).
+ * Demote to absolute within .site-frame-root so the banner sits at page bottom.
+ * Public/preview keep position:fixed unchanged.
+ */
+[data-siab-editor-parent-scroll="true"] .site-frame-root {
+  position: relative;
 }
 
-[data-siab-editor-frame-runtime] :is(
-  [data-site-chrome="header"],
-  [data-siab-site-header],
-  .site-header,
-  header.site-chrome,
-  [data-amicare-nav],
-  [data-site-chrome="footer"],
-  [data-siab-site-footer],
-  .site-footer,
-  footer.site-chrome,
-  [data-siab-cookie-consent="true"]
-):hover {
-  outline: 2px dashed color-mix(in oklab, var(--color-accent, #2563eb) 45%, transparent);
-  outline-offset: 2px;
+[data-siab-editor-parent-scroll="true"] [data-siab-cookie-consent="true"] {
+  position: absolute;
+  inset-inline: 0;
+  top: auto;
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 50;
 }
 
 /*

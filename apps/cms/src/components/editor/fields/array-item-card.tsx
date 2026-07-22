@@ -75,7 +75,7 @@ export const ArrayItemCard: React.FC<ArrayItemCardProps> = ({
               data-siab-inspector-sub-field={sub.field}
               className={cn(
                 "rounded-md transition-[box-shadow,background-color] duration-300",
-                highlightSubField === sub.field && "bg-accent/20 ring-2 ring-accent/50",
+                highlightSubField === sub.field && "bg-accent/35 ring-2 ring-ring/70 shadow-[inset_3px_0_0_color-mix(in_oklab,var(--ring)_70%,transparent)]",
               )}
             >
               <SubFieldRenderer

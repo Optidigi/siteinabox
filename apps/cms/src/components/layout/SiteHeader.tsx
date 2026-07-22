@@ -23,7 +23,8 @@ export function SiteHeader({
   sites?: SiteSwitcherSite[]
 }) {
   const pathname = usePathname() ?? "/"
-  const hideMobileNavTrigger = isPageEditorPath(pathname)
+  const onPageEditor = isPageEditorPath(pathname)
+  const hideMobileNavTrigger = onPageEditor
   const mobileNavClass = hideMobileNavTrigger ? "max-md:hidden" : undefined
   const slugMatch = pathname.match(/^\/sites\/([^/]+)/)
   const rawSlug = slugMatch?.[1]
@@ -38,7 +39,7 @@ export function SiteHeader({
         <SidebarTrigger />
       </div>
       <Separator orientation="vertical" className={mobileNavClass ? `${mobileNavClass} mx-2 h-4` : "mx-2 h-4"} />
-      {currentSite ? (
+      {currentSite && !onPageEditor ? (
         <div className="min-w-0">
           <SiteSwitcher current={currentSite} sites={sites} />
         </div>

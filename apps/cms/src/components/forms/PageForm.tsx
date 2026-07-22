@@ -1108,7 +1108,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                       {t("backToPages")}
                     </Link>
                   </Button>
-                  <p className="text-xs text-muted-foreground">{t("mobileListHint")}</p>
                 </div>
                 <MobileFrameEditor
                   api={mobileFrameBlocksApi}

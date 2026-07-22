@@ -175,3 +175,23 @@ body { font-family: var(--font-sans); }
   --letter-spacing: 0em;
   --spacing: 0.25rem;
 }
+
+/* Page-editor inspector: canvas deep-link pulse (attr set ~1.6s in BlockFormFields). */
+@keyframes siab-inspector-field-pulse {
+  0% {
+    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--ring) 90%, transparent);
+    background-color: color-mix(in oklab, var(--accent) 55%, transparent);
+  }
+  100% {
+    box-shadow: inset 3px 0 0 color-mix(in oklab, var(--ring) 40%, transparent);
+    background-color: color-mix(in oklab, var(--accent) 25%, transparent);
+  }
+}
+
+[data-siab-inspector-field-selected="true"] {
+  animation: siab-inspector-field-pulse 1.4s ease-out;
+  box-shadow: inset 3px 0 0 color-mix(in oklab, var(--ring) 70%, transparent);
+  background-color: color-mix(in oklab, var(--accent) 35%, transparent);
+  border-radius: var(--radius);
+}
+

@@ -16,6 +16,13 @@ import { useTranslations } from "next-intl"
 
 export type PageEditorFrameLayout = "desktop" | "mobile"
 
+const PAGE_SNAPSHOT_DEBOUNCE_MS = 80
+
+function selectionIdentity(selection: IframeEditorSelection | null | undefined): string {
+  if (!selection) return ""
+  return `${selection.pageId ?? ""}|${selection.blockId ?? ""}|${(selection.fieldPath ?? []).join(".")}`
+}
+
 export function PageEditorFrameHost({
   pageId,
   page,
@@ -134,25 +141,71 @@ export function PageEditorFrameHost({
   }, [])
 
   const themeKey = React.useMemo(() => JSON.stringify(theme ?? null), [theme])
+  const settingsKey = React.useMemo(() => JSON.stringify(settings ?? null), [settings])
+  const mobileModeKey = React.useMemo(() => JSON.stringify(mobileMode ?? null), [mobileMode])
+  const selectionKeyValue = React.useMemo(() => selectionIdentity(selection), [selection])
+  const pageKey = React.useMemo(() => JSON.stringify(page ?? null), [page])
 
-  React.useEffect(() => {
-    if (!ready) return
+  const latestSnapshotRef = React.useRef({
+    page,
+    settings,
+    theme,
+    selection: selection ?? null,
+    mobileMode: mobileMode ?? { mode: "fullPage" as const },
+    pageId: String(pageId),
+  })
+  latestSnapshotRef.current = {
+    page,
+    settings,
+    theme,
+    selection: selection ?? null,
+    mobileMode: mobileMode ?? { mode: "fullPage" },
+    pageId: String(pageId),
+  }
+
+  const postSnapshot = React.useCallback(() => {
+    if (!readyRef.current) return
     const expectedRevision = revisionRef.current
+    const snap = latestSnapshotRef.current
     postToFrame({
       protocol: IFRAME_EDITOR_PROTOCOL_NAME,
       schemaVersion: IFRAME_EDITOR_PROTOCOL_VERSION,
       type: "render.snapshot",
       messageId: `snapshot-${expectedRevision}`,
       expectedRevision,
-      pageId: String(pageId),
-      page,
-      settings,
-      theme,
-      selection: selection ?? null,
-      mobileMode: mobileMode ?? { mode: "fullPage" },
+      pageId: snap.pageId,
+      page: snap.page,
+      settings: snap.settings,
+      theme: snap.theme,
+      selection: snap.selection,
+      mobileMode: snap.mobileMode,
     })
     revisionRef.current = expectedRevision + 1
-  }, [mobileMode, page, pageId, postToFrame, ready, selection, settings, theme, themeKey])
+  }, [postToFrame])
+
+  // Immediate flush: theme / chrome settings / selection / mobile mode / first ready.
+  React.useEffect(() => {
+    if (!ready) return
+    postSnapshot()
+  }, [mobileModeKey, postSnapshot, ready, selectionKeyValue, settingsKey, themeKey])
+
+  // Debounced page body updates (typing / RT) so keystrokes do not flood the iframe.
+  // Skip the ready transition — the immediate effect already posts a full snapshot.
+  const pageDebounceArmedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!ready) {
+      pageDebounceArmedRef.current = false
+      return
+    }
+    if (!pageDebounceArmedRef.current) {
+      pageDebounceArmedRef.current = true
+      return
+    }
+    const timer = window.setTimeout(() => {
+      postSnapshot()
+    }, PAGE_SNAPSHOT_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [pageKey, pageId, postSnapshot, ready])
 
   return (
     <div className="relative w-full overflow-hidden bg-background" data-siab-editor-frame-host data-siab-editor-frame-layout={layout}>

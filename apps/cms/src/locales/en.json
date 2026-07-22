@@ -912,8 +912,6 @@
     "pageActions": "Page actions",
     "backToBlockList": "Back to block list",
     "backToPages": "Back to pages",
-    "mobilePreviewHint": "Preview — select on the canvas; edit in the panel below.",
-    "mobileListHint": "Choose a section to edit. There is no full WYSIWYG canvas at this width.",
     "editorFrameRequiresSettings": "Site settings are required before the preview can load.",
     "back": "Back",
     "deleteBlock": "Delete block",

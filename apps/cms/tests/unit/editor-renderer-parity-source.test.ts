@@ -84,12 +84,19 @@ describe("page editor renderer parity", () => {
   it("uses the CMS document as the sole full-page scroll owner", () => {
     const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
     const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    const css = read("src/styles/generated-site-renderer.css")
     expect(runtime).toContain('type: "renderer.height"')
     expect(runtime).toContain("new ResizeObserver(reportHeight)")
     expect(runtime).toContain('data-siab-editor-parent-scroll="true"')
     expect(host).toContain('message.type === "renderer.height"')
     expect(host).toContain('scrolling="no"')
     expect(host).not.toContain('h-[calc(100dvh-6.5rem)]')
+    expect(css).toContain('[data-siab-editor-parent-scroll="true"] [data-siab-cookie-consent="true"]')
+    expect(css).toContain("position: absolute")
+    expect(css).toContain('data-siab-editor-hover="field"')
+    expect(host).toContain("PAGE_SNAPSHOT_DEBOUNCE_MS")
+    expect(runtime).toContain("lastPaintedRef")
+    expect(runtime).toContain("data-siab-editor-hover")
   })
 
   it("does not retain the removed canvas implementation or preference", () => {

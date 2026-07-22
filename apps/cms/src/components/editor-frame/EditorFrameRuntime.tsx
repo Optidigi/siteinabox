@@ -27,6 +27,12 @@ import { elementPathFromFieldElement, elementPathToIframeSelection } from "@/lib
 const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav], header[data-provider-variant]'
 const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome, footer[data-provider-variant]'
 const BANNER_CHROME_SELECTOR = '[data-site-chrome="banner"], [data-siab-cookie-consent="true"]'
+const CHROME_HOVER_SELECTOR = `${HEADER_CHROME_SELECTOR}, ${FOOTER_CHROME_SELECTOR}, ${BANNER_CHROME_SELECTOR}`
+
+function selectionKey(selection: IframeEditorSelection | null): string {
+  if (!selection) return ""
+  return `${selection.pageId ?? ""}|${selection.blockId ?? ""}|${(selection.fieldPath ?? []).join(".")}`
+}
 
 function waitForWindowLoad(): Promise<void> {
   if (document.readyState === "complete") return Promise.resolve()
@@ -67,6 +73,17 @@ export function EditorFrameRuntime({
   const selectSlots = React.useMemo(() => createEditorSelectSlots(), [])
   const variantKey = framePage.blocks.map((block) => `${block.blockType}:${block.designVariant ?? ""}`).join("|")
   const [prepared, setPrepared] = React.useState<{ key: string; renderer: PreparedClientSiteRenderer } | null>(null)
+  const lastPaintedRef = React.useRef<{
+    key: string
+    renderer: PreparedClientSiteRenderer
+    page: Page
+    settings: SiteSettings
+    theme: ThemeTokenSpec | null
+    blockIndexOffset: number
+    showChrome: boolean
+  } | null>(null)
+  const appliedSelectionKeyRef = React.useRef<string>("")
+  const hoverNodeRef = React.useRef<HTMLElement | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
   const embeddedViewportRule = useCspStyleRule(
     "editor-frame-parent-scroll-viewport",
@@ -144,7 +161,10 @@ export function EditorFrameRuntime({
         patchTheme(message.theme)
         setFramePage(message.page)
         setFrameSettings(message.settings)
-        setActiveSelection(message.selection ?? null)
+        const nextSelection = message.selection ?? null
+        setActiveSelection((current) => (
+          selectionKey(current) === selectionKey(nextSelection) ? current : nextSelection
+        ))
         setMobileMode(message.mobileMode ?? { mode: "fullPage" })
         revisionRef.current = message.expectedRevision + 1
       }
@@ -241,6 +261,53 @@ export function EditorFrameRuntime({
   }, [emit, framePage, frameSettings, frameTheme, mobileMode, prepared, variantKey])
 
   React.useEffect(() => {
+    const clearHover = () => {
+      if (hoverNodeRef.current) {
+        hoverNodeRef.current.removeAttribute("data-siab-editor-hover")
+        hoverNodeRef.current = null
+      }
+    }
+    const setHover = (node: HTMLElement | null, kind: "field" | "block" | "chrome") => {
+      if (hoverNodeRef.current === node) return
+      clearHover()
+      if (!node) return
+      node.setAttribute("data-siab-editor-hover", kind)
+      hoverNodeRef.current = node
+    }
+    const onPointerMove = (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null
+      if (!target) {
+        clearHover()
+        return
+      }
+      const fieldNode = target.closest<HTMLElement>("[data-siab-field]")
+      if (fieldNode) {
+        setHover(fieldNode, "field")
+        return
+      }
+      const blockNode = target.closest<HTMLElement>("[data-block-index]")
+      if (blockNode) {
+        setHover(blockNode, "block")
+        return
+      }
+      const chromeNode = target.closest<HTMLElement>(CHROME_HOVER_SELECTOR)
+      if (chromeNode) {
+        setHover(chromeNode, "chrome")
+        return
+      }
+      clearHover()
+    }
+    const onPointerLeave = () => clearHover()
+    document.addEventListener("pointermove", onPointerMove)
+    document.documentElement.addEventListener("pointerleave", onPointerLeave)
+    return () => {
+      document.removeEventListener("pointermove", onPointerMove)
+      document.documentElement.removeEventListener("pointerleave", onPointerLeave)
+      clearHover()
+    }
+  }, [])
+
+  React.useEffect(() => {
     const pageId = String(framePage.id ?? framePage.slug ?? "page")
     const onClick = (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : null
@@ -299,6 +366,10 @@ export function EditorFrameRuntime({
   }, [emit, framePage])
 
   React.useEffect(() => {
+    const nextKey = selectionKey(activeSelection)
+    const skipScroll = nextKey === appliedSelectionKeyRef.current && Boolean(activeSelection)
+    appliedSelectionKeyRef.current = nextKey
+
     document.querySelectorAll("[data-siab-editor-selected]").forEach((node) => {
       node.removeAttribute("data-siab-editor-selected")
     })
@@ -319,7 +390,7 @@ export function EditorFrameRuntime({
       const chromeNode = selector ? document.querySelector<HTMLElement>(selector) : null
       if (chromeNode) {
         chromeNode.setAttribute("data-siab-editor-selected", "true")
-        chromeNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        if (!skipScroll) chromeNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
       }
       return
     }
@@ -346,13 +417,13 @@ export function EditorFrameRuntime({
       }) ?? null
       if (fieldNode) {
         fieldNode.setAttribute("data-siab-editor-field-selected", "true")
-        fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        if (!skipScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
         return
       }
     }
 
     blockNode.setAttribute("data-siab-editor-selected", "true")
-    blockNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    if (!skipScroll) blockNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
   }, [activeSelection, framePage, mobileMode.mode])
 
   const focusedBlockIndex = mobileMode.mode === "focusedSection"
@@ -377,8 +448,41 @@ export function EditorFrameRuntime({
     : framePage
   const blockIndexOffset = focusedBlock ? (resolvedFocusedIndex ?? 0) : 0
   const showChrome = mobileMode.showChrome !== false
+  const readyForVariant = Boolean(prepared && prepared.key === variantKey)
 
-  if (!prepared || prepared.key !== variantKey) return null
+  if (readyForVariant && prepared) {
+    lastPaintedRef.current = {
+      key: prepared.key,
+      renderer: prepared.renderer,
+      page: visiblePage,
+      settings: frameSettings,
+      theme: frameTheme,
+      blockIndexOffset,
+      showChrome,
+    }
+  }
+
+  const paint = readyForVariant && prepared
+    ? {
+        renderer: prepared.renderer,
+        page: visiblePage,
+        settings: frameSettings,
+        theme: frameTheme,
+        blockIndexOffset,
+        showChrome,
+      }
+    : lastPaintedRef.current
+      ? {
+          renderer: lastPaintedRef.current.renderer,
+          page: lastPaintedRef.current.page,
+          settings: lastPaintedRef.current.settings,
+          theme: lastPaintedRef.current.theme,
+          blockIndexOffset: lastPaintedRef.current.blockIndexOffset,
+          showChrome: lastPaintedRef.current.showChrome,
+        }
+      : null
+
+  if (!paint) return null
 
   return (
     <>
@@ -387,24 +491,32 @@ export function EditorFrameRuntime({
         className={embeddedViewportRule.className}
         data-siab-editor-frame-runtime
         data-siab-editor-parent-scroll="true"
+        data-siab-editor-preparing={readyForVariant ? undefined : "true"}
       >
         <ClientSitePageRenderer
-          prepared={prepared.renderer}
-          page={visiblePage}
-          settings={frameSettings}
-          theme={frameTheme}
+          prepared={paint.renderer}
+          page={paint.page}
+          settings={paint.settings}
+          theme={paint.theme}
           tenantSlug={tenantSlug}
           domain={domain}
           mediaResolver={mediaResolver}
           editSlots={selectSlots}
-          blockIndexOffset={blockIndexOffset}
+          blockIndexOffset={paint.blockIndexOffset}
           nonce={cspNonce}
           includeBehaviorScripts={false}
           formAction="#"
-          banner={showChrome ? undefined : null}
-          header={showChrome ? undefined : null}
-          footer={showChrome ? undefined : null}
+          banner={paint.showChrome ? undefined : null}
+          header={paint.showChrome ? undefined : null}
+          footer={paint.showChrome ? undefined : null}
         />
+        {!readyForVariant ? (
+          <div
+            className="pointer-events-none absolute inset-0 bg-background/40"
+            aria-hidden
+            data-siab-editor-prepare-overlay
+          />
+        ) : null}
       </div>
     </>
   )

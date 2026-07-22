@@ -34,8 +34,8 @@ is no alternate CMS block renderer or canvas/source tree.
 - The editor iframe owns rendering and event-delegated selection only. It does
   not mutate fields, render gutters, reorder blocks, or substitute provider DOM.
   Canvas clicks select blocks/fields (and header/footer/banner chrome); editing
-  happens in the parent inspector. There is no true click-to-type WYSIWYG in
-  the iframe.
+  happens only in the parent inspector (desktop rail or mobile Vaul). There is
+  no click-to-type / contenteditable path in the iframe; that track is cancelled.
 
 ## Selection and inspector
 
@@ -43,14 +43,17 @@ is no alternate CMS block renderer or canvas/source tree.
   `data-siab-field` markers so `selection.changed` can carry a full
   `ElementPath` (block + field + optional item/sub-field). Public and preview
   frames omit `editSlots`.
+- Canvas hover uses pointer-tracked `data-siab-editor-hover` on the deepest
+  field, block, or chrome target (not nested CSS `:hover`).
 - Desktop sidebar and mobile Vaul inspector share `BlockFormFields`. Content
   fields show first; Advanced (design variant, anchor, metadata, unused
-  optional arrays) stays collapsed until opened.
+  optional arrays) stays collapsed until opened. Canvas deep-link sets
+  `data-siab-inspector-field-selected` for a short accent pulse.
 - Site chrome zones are `header` | `footer` | `banner`. Cookie/consent chrome
   uses `data-site-chrome="banner"` (and `data-siab-cookie-consent` when the
   consent variant is active); clicking it opens the banner inspector.
 
-## Readiness
+## Readiness and live preview
 
 Preview/editor hosts keep the iframe transparent behind a CMS skeleton until
 active provider modules, `window.load`, `document.fonts.ready`, React commit,
@@ -65,9 +68,18 @@ so composed first-hero height (`site-renderer` composition CSS) matches live
 fields, selection, block geometry, or ordering; the removed DOM/geometry
 editing bridge remains retired.
 
-At ≤768px the editor keeps the mobile section-list / focused-section shell. It
-does not pretend a full WYSIWYG canvas exists; preview is select-only and
-editing stays in the inspector panel.
+Under editor parent-scroll, consent chrome is demoted from viewport-`fixed` to
+`absolute` within `.site-frame-root` so the cookie banner sits at the page
+bottom instead of the tall iframe viewport bottom. Public and customer-preview
+frames keep `position: fixed`.
+
+Inspector edits push `render.snapshot` into the frame. Theme, settings/chrome,
+selection, and mobile mode flush immediately; rapid page-body text updates are
+debounced (~80ms). While provider modules prepare for a new `variantKey`, the
+last painted frame stays visible under a light overlay instead of blanking.
+
+At ≤768px the editor keeps the mobile section-list / focused-section shell.
+Preview remains select-only; editing stays in the inspector panel.
 
 ## Protocol
 

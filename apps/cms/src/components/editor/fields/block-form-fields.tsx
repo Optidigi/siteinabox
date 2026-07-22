@@ -127,7 +127,7 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
         className={cn(
           "rounded-md transition-[box-shadow,background-color] duration-300",
           highlightField === spec.field && highlightItemIndex == null
-            && "bg-accent/20 ring-2 ring-accent/50",
+            && "bg-accent/35 ring-2 ring-ring/70 shadow-[inset_3px_0_0_color-mix(in_oklab,var(--ring)_70%,transparent)]",
         )}
       >
         <FieldRenderer
@@ -359,7 +359,7 @@ const ArraySection: React.FC<{
             className={cn(
               "rounded-md transition-[box-shadow,background-color] duration-300",
               highlightPath?.field === spec.field && highlightPath.itemIndex === itemIndex
-                && "bg-accent/20 ring-2 ring-accent/50",
+                && "bg-accent/35 ring-2 ring-ring/70 shadow-[inset_3px_0_0_color-mix(in_oklab,var(--ring)_70%,transparent)]",
             )}
           >
             <ArrayItemCard
