@@ -16,7 +16,7 @@ import {
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import { cn } from "@siteinabox/ui/lib/utils"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureEyebrow,
   renderFeatureIntro,
   renderFeatureItemCta,
@@ -73,7 +73,7 @@ export function Features18({ eyebrow, title, intro, features, blockIndex, editSl
         <div className="mask-x-from-95% absolute -inset-x-14 top-0 -translate-y-px border-t border-dashed border-border" />
         <div className="mask-x-from-95% absolute -inset-x-14 bottom-0 translate-y-px border-b border-dashed border-border" />
         {features.map((feature, itemIndex) => {
-          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex, { className: "size-12 fill-foreground/10 stroke-[1.5px] text-foreground" })
           return (
             <div
               className={cn(
@@ -83,9 +83,7 @@ export function Features18({ eyebrow, title, intro, features, blockIndex, editSl
               )}
               key={itemIndex}
             >
-              {Icon ? (
-                <Icon className="size-12 fill-foreground/10 stroke-[1.5px] text-foreground" />
-              ) : null}
+              {icon}
               <h3 className="mt-6 font-medium text-lg tracking-[-0.005em]">
                 {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
               </h3>

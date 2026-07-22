@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureEyebrow,
   renderFeatureIntro,
   renderFeatureItemCta,
@@ -76,14 +76,14 @@ export function Features12({
         </div>
         <div className="-mr-px hidden h-16 border bg-[repeating-linear-gradient(315deg,var(--muted)_0,var(--muted)_1px,transparent_0,transparent_50%)] bg-size-[10px_10px] bg-fixed md:block lg:col-span-2 border-border" />
         {features.map((feature, itemIndex) => {
-          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex, { className: "h-5 w-5" })
           const cta = feature.cta
           return (
             <div className="-mt-px -mr-px border border-border/75 px-5 pt-7 pb-5" key={itemIndex}>
               <div className="flex items-center gap-3">
-                {Icon ? (
+                {icon ? (
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/7 text-primary dark:bg-primary/10">
-                    <Icon className="h-5 w-5" />
+                    {icon}
                   </div>
                 ) : null}
                 <h3 className="font-medium text-lg tracking-[-0.005em]">

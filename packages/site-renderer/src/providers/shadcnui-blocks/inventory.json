@@ -1193,7 +1193,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/contact.tsx",
-          "sha256": "sha256:58fe3b2012615afcfb177e5cc73d3d47a6581c49bd4a7000bb928cb20a53226c"
+          "sha256": "sha256:eee95d3a11d922e42ddfc64631597e9daa94492f06743beaf6a810864213e9ec"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-01/upstream-literal.upstream.tsx.txt",
@@ -1704,7 +1704,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/contact.tsx",
-          "sha256": "sha256:ec0dcf0f2d2f8fb2fe5fc4df0da9e19d29403f4b77361710271bcad5c2c75590"
+          "sha256": "sha256:4b6136f2bcc8d1eb8c81c7005a945b1dc9e0afa3c7f12d7b454cffe68ab94d97"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/contact-03/upstream-literal.upstream.tsx.txt",
@@ -3774,7 +3774,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-01/features.tsx",
-          "sha256": "sha256:a3d696f718212a853a98898df2d3fdf8bf1a232fe50ab6dbebad2a06872b3752"
+          "sha256": "sha256:80d90c307641b4095ba50a25834b10e7a1ece175cc0148b7b2c2cc56deedf1d7"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-01/view.tsx",
@@ -4247,7 +4247,7 @@
           "file": "features.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Design your space with drag-and-drop simplicity\u2014create grids, lists, or galleries in seconds."
+          "fallback": "Design your space with drag-and-drop simplicity—create grids, lists, or galleries in seconds."
         }
       ],
       "featureAudit": [
@@ -4534,7 +4534,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/features.tsx",
-          "sha256": "sha256:6600c390580c3e6554e502774abefea67e8e3ac551d75d9a4ebdff9c2d01a071"
+          "sha256": "sha256:17a2073120c40de9c7fa8be0a9a944ed188587c7ceace46e7c3af02a4e02b681"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-04/view.tsx",
@@ -4792,7 +4792,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-05/features.tsx",
-          "sha256": "sha256:5ea4bff5c48f8578ebd364bef0eaea17d0f1fc96d32552729a35bb04d25b6f10"
+          "sha256": "sha256:7076660fa3a3d33be64259fedab71b188593a49a2f0350312fa63eae3dc78252"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-05/view.tsx",
@@ -5321,7 +5321,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-07/features.tsx",
-          "sha256": "sha256:2bff3a74bc5f23b0666c576393ef882cdbf4df100be8608e4ca121778dac5896"
+          "sha256": "sha256:e266bd6cf3ac86bc52c28cd8185d88e659bec70cac8758a0648e50b7a283d82d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-07/view.tsx",
@@ -12734,7 +12734,7 @@
           "file": "team.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Our philosophy is simple \u2014 hire a team of passionate people and foster a culture that empowers you to do you best work."
+          "fallback": "Our philosophy is simple — hire a team of passionate people and foster a culture that empowers you to do you best work."
         },
         {
           "file": "team.tsx",
@@ -13522,7 +13522,7 @@
           "file": "team.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Our philosophy is simple \u2014 hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
+          "fallback": "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
         },
         {
           "file": "team.tsx",
@@ -13790,7 +13790,7 @@
           "file": "team.tsx",
           "field": "intro",
           "kind": "field",
-          "fallback": "Our philosophy is simple \u2014 hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
+          "fallback": "Our philosophy is simple — hire a team of diverse, passionate people and foster a culture that empowers you to do you best work."
         },
         {
           "file": "team.tsx",
@@ -17987,7 +17987,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-02/cta.tsx",
-          "sha256": "sha256:97e76f9367784241a6a0c04ab7b240e19c0e6e0fdc1e8f639fd96203871b99c9"
+          "sha256": "sha256:7f198d8d65e660b5c0180cd395a7511b3a9a67a36df8b3068db64f529310cb2b"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/cta-02/view.tsx",
@@ -20390,7 +20390,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-08/features.tsx",
-          "sha256": "sha256:c539a0a5e56c6dc26fd01add920a0ab82d951d6ca08f6dfd2c86678479d103b9"
+          "sha256": "sha256:baca381e1719dadbee86dad577b77d1bd74ce4cad80327b68030aba2fcd6a14a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-08/view.tsx",
@@ -20645,7 +20645,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-09/features.tsx",
-          "sha256": "sha256:0e2633f47452dce7aa816f621ae18a1debf4872ff2ebcdf5dcd20368ed14659a"
+          "sha256": "sha256:519f4accb31c6d6802cc7faf52c675e27e0dd029aeb00cae06055a15ee35ae7d"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-09/view.tsx",
@@ -20904,7 +20904,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-10/features.tsx",
-          "sha256": "sha256:8c13258872ea1eb615b05bb962062d9a6333d9732647e053bc204c4ffc4e02fb"
+          "sha256": "sha256:0ccd5a629a90b774051e8591f6ad8551ab941a79baa93ea08637d0429d3e451a"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-10/stats-card.tsx",
@@ -21168,7 +21168,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-11/features.tsx",
-          "sha256": "sha256:d84b8be03c021a240e2960c2c0f1fd1f0f83f70baad04c92887bff904f8417f2"
+          "sha256": "sha256:e1673b6d2fdf8d64a0daa2e54822304fd1e0481e072a9a9a96989d86c79bb257"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-11/view.tsx",
@@ -21433,7 +21433,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-12/features.tsx",
-          "sha256": "sha256:2d5747b166b5c2dcb58590a54f98c5170e30e23e778f05eac230bfbc2e6ec1ad"
+          "sha256": "sha256:5e92dd502209aa6e3bbb31568b8ca201a1a6d067dab336dc82ab22c37a03cc84"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-12/view.tsx",
@@ -21688,7 +21688,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-13/features.tsx",
-          "sha256": "sha256:a87894c9b2d3920fff41ca801b018bd15cd6cb442c677f3f86877eb703abef03"
+          "sha256": "sha256:80159e5a5617683cb6559099d05bd36a64dcf055c4df6d6b9bc0177e14fd64f2"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-13/view.tsx",
@@ -21948,7 +21948,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-14/features.tsx",
-          "sha256": "sha256:ecd7b85e58ba8b77a5534aa688ae6b42bd3cb61ce6e0bd74bf1775434bc97ca8"
+          "sha256": "sha256:6c6b574ceebad647e20a81b2e38795ce6ce2fafeed7c0c5ab6137ab83843afcd"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-14/view.tsx",
@@ -22726,7 +22726,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-17/features.tsx",
-          "sha256": "sha256:98a75ac3001cb6e0972c08504552015d65773d7c8bf410a8141a5c0503d242c0"
+          "sha256": "sha256:3e5dcb9039b761f4f6a778374bf74cd1f34703e7e8f04fb0471b0ceda8c64471"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-17/view.tsx",
@@ -22989,7 +22989,7 @@
       "adaptedFiles": [
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-18/features.tsx",
-          "sha256": "sha256:1b7a19e9d5412542c7e81389d76cfdc39ff5cf57e0844fc38c717ffe27468dc5"
+          "sha256": "sha256:8fe11dee3281ecd59137c8e3838ed0099f5b1d8169e66afe6a9d174a2d0f0ef0"
         },
         {
           "path": "packages/site-renderer/src/providers/shadcnui-blocks/variants/features-18/view.tsx",

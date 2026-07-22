@@ -55,4 +55,24 @@ describe("createEditorSelectSlots", () => {
     expect(image).toContain('data-siab-item-index="2"')
     expect(image).toContain("https://example.test/a.jpg")
   })
+
+  it("emits data-siab-field on icon slots", () => {
+    const slots = createEditorSelectSlots()
+    const Icon = (props: { className?: string }) => <svg className={props.className} data-testid="icon" />
+    const icon = renderToStaticMarkup(
+      <>
+        {slots.renderIcon?.({
+          name: "featureList.features.icon",
+          value: "heart",
+          icon: Icon as never,
+          className: "size-5",
+          elementPath: { blockIndex: 0, field: "features", itemIndex: 1, subField: "icon" },
+        })}
+      </>,
+    )
+    expect(icon).toContain('data-siab-field="features"')
+    expect(icon).toContain('data-siab-item-index="1"')
+    expect(icon).toContain('data-siab-sub-field="icon"')
+    expect(icon).toContain("size-5")
+  })
 })

@@ -48,18 +48,18 @@ export function Cta02({
           fallbackSrc: BACKGROUND_FALLBACK,
           literalPreview,
         })}
-        <div className="relative isolate bg-linear-to-r from-black to-black/50 px-10 py-14">
-          <h2 className="font-medium text-4xl text-white tracking-[-0.04em] sm:text-[2.85rem]">
+        <div className="pointer-events-none relative isolate bg-linear-to-r from-black to-black/50 px-10 py-14">
+          <h2 className="pointer-events-auto font-medium text-4xl text-white tracking-[-0.04em] sm:text-[2.85rem]">
             {fieldInlineRichText(editSlots, BLOCK_TYPE, "headline", headline, blockIndex)}
           </h2>
           {description ? (
-            <p className="mt-4 max-w-md text-lg text-white/85 md:text-xl/normal">
+            <p className="pointer-events-auto mt-4 max-w-md text-lg text-white/85 md:text-xl/normal">
               {fieldInlineRichText(editSlots, BLOCK_TYPE, "description", description, blockIndex)}
             </p>
           ) : null}
           {primaryAction ? (
             <Button
-              className="mt-10 bg-white text-black ring-4 ring-white/30 hover:bg-white/90"
+              className="pointer-events-auto mt-10 bg-white text-black ring-4 ring-white/30 hover:bg-white/90"
               size="lg"
               asChild
             >

@@ -30,9 +30,9 @@ import type { SiteSetting } from "@/payload-types"
 import { MediaRefSchema } from "@siteinabox/contracts"
 
 // OBS-81 — Settings is client-facing and intentionally slim by default:
-// General, Brand, and Operations. Legal details, opening hours, and
-// header/footer-specific content stay out of this surface until there is a
-// clearer SIAB-wide contract for them.
+// General, Brand, and Operations (including cookie banner copy). Legal details,
+// opening hours, and header/footer-specific content stay out of this surface
+// until there is a clearer SIAB-wide contract for them.
 //
 // FN-2026-0067 — Navigation tab removed; nav management is moving to a
 // dedicated /sites/<slug>/nav route (header + footer scopes, page-driven
@@ -66,6 +66,10 @@ const createSettingsSchema = (t: (key: string, values?: Record<string, string | 
     footer: z.object({
       tagline: z.string().nullish(),
       copyright: z.string().nullish(),
+    }).passthrough().optional(),
+    banner: z.object({
+      title: z.string().nullish(),
+      message: z.string().nullish(),
     }).passthrough().optional(),
   }).passthrough().optional(),
   maintenance: z.object({
@@ -208,6 +212,23 @@ export function SettingsForm({
   ].filter(Boolean) as SettingsFormField[]
 
   const operationsFields = [
+    {
+      type: "group",
+      name: "chrome",
+      label: t("cookies"),
+      admin: { description: t("cookiesDescription") },
+      fields: [
+        {
+          type: "group",
+          name: "banner",
+          label: t("cookies"),
+          fields: [
+            { name: "title", type: "text", label: t("cookieTitle") },
+            { name: "message", type: "textarea", label: t("cookieMessage") },
+          ],
+        },
+      ],
+    },
     settingsContract.operations.maintenance
       ? { type: "group", name: "maintenance", label: t("maintenance"), fields: [
           { name: "enabled", type: "checkbox", label: t("maintenanceEnabled") },

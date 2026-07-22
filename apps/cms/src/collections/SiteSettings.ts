@@ -324,7 +324,7 @@ export const SiteSettings: CollectionConfig = {
         admin: { description: adminText("Hex (e.g. #2563eb).", "Hex (bijv. #2563eb).") } }
     ]},
     { name: "chrome", type: "group",
-      admin: { description: adminText("Non-navigation header/footer content edited from the page editor chrome inspector.", "Niet-navigatie-inhoud van kop- en voettekst, bewerkt via de chrome-inspector van de pagina-editor.") },
+      admin: { description: adminText("Header/footer chrome and cookie banner copy. Cookie title/message are edited in tenant Settings; header/footer non-navigation content can also be edited from the page editor.", "Kop-/voettekst-chrome en cookie-bannertekst. Cookie-titel/-bericht worden in tenantinstellingen bewerkt; niet-navigatie-inhoud van kop- en voettekst kan ook via de pagina-editor.") },
       fields: [
         { name: "header", type: "group", fields: [
           { name: "variant", type: "select", options: headerChromeVariantOptions,
@@ -375,10 +375,12 @@ export const SiteSettings: CollectionConfig = {
         ]},
         { name: "banner", type: "group", fields: [
           { name: "variant", type: "select", options: bannerChromeVariantOptions,
-            admin: { description: adminText("Approved renderer variant for the announcement banner.", "Goedgekeurde renderervariant voor de aankondigingsbanner.") } },
+            admin: { description: adminText("Approved renderer variant. Live cookie consent forces banner-03 when analytics consent is enabled.", "Goedgekeurde renderervariant. Live cookie-toestemming forceert banner-03 wanneer analytics-toestemming is ingeschakeld.") } },
           { name: "visible", type: "checkbox", defaultValue: false },
-          { name: "title", type: "text" },
-          { name: "message", type: "textarea" },
+          { name: "title", type: "text",
+            admin: { description: adminText("Cookie/announcement banner title. Edited in tenant Settings.", "Titel van cookie-/aankondigingsbanner. Bewerkt in tenantinstellingen.") } },
+          { name: "message", type: "textarea",
+            admin: { description: adminText("Cookie/announcement banner message. Edited in tenant Settings.", "Bericht van cookie-/aankondigingsbanner. Bewerkt in tenantinstellingen.") } },
           { name: "link", type: "group", fields: linkRefFields() },
           { name: "dismissible", type: "checkbox", defaultValue: true },
         ]},

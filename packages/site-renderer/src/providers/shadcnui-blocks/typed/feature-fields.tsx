@@ -102,6 +102,29 @@ export const featureItemIcon = (
   return fallbackIcons[itemIndex % fallbackIcons.length] ?? fallbackIcons[0] ?? null
 }
 
+export const renderFeatureItemIcon = (
+  editSlots: BlockEditSlots | undefined,
+  iconName: string | null | undefined,
+  fallbackIcons: readonly LucideIcon[],
+  blockIndex: number,
+  itemIndex: number,
+  { className }: { className?: string } = {},
+) => {
+  const Icon = featureItemIcon(iconName, fallbackIcons, itemIndex)
+  if (!Icon) return null
+  const path = elementPath(blockIndex, "features", itemIndex, "icon")
+  if (editSlots?.renderIcon) {
+    return editSlots.renderIcon({
+      name: `${FEATURE_BLOCK_TYPE}.features.icon`,
+      value: iconName ?? null,
+      icon: Icon,
+      className,
+      elementPath: path,
+    })
+  }
+  return <Icon className={className} />
+}
+
 export const renderFeatureItemImage = (
   editSlots: BlockEditSlots | undefined,
   mediaResolver: MediaResolver | undefined,

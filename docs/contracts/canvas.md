@@ -33,7 +33,7 @@ is no alternate CMS block renderer or canvas/source tree.
   publication fallback instead of leaving live output stale.
 - The editor iframe owns rendering and event-delegated selection only. It does
   not mutate fields, render gutters, reorder blocks, or substitute provider DOM.
-  Canvas clicks select blocks/fields (and header/footer/banner chrome); editing
+  Canvas clicks select blocks/fields (and header/footer chrome); editing
   happens only in the parent inspector (desktop rail or mobile Vaul). There is
   no click-to-type / contenteditable path in the iframe; that track is cancelled.
 
@@ -53,10 +53,12 @@ is no alternate CMS block renderer or canvas/source tree.
 - Desktop sidebar and mobile Vaul inspector share `BlockFormFields`. Content
   fields show first; Advanced (design variant, anchor, metadata, unused
   optional arrays) stays collapsed until opened. Canvas deep-link sets
-  `data-siab-inspector-field-selected` for a quiet left-rail highlight.
-- Site chrome zones are `header` | `footer` | `banner`. Cookie/consent chrome
-  uses `data-site-chrome="banner"` (and `data-siab-cookie-consent` when the
-  consent variant is active); clicking it opens the banner inspector.
+  `data-siab-inspector-field-selected` for a quiet selected wash (and matching
+  hover). Cookie consent is not page-editor chrome: viewport-fixed cookie
+  banners are stripped from the editor and customer preview canvases; title/
+  message are edited under Settings. Non-cookie announcement banners may still
+  render when consent is off. Site chrome zones selectable in the page editor
+  are `header` | `footer`.
 
 ## Readiness and live preview
 
@@ -75,15 +77,12 @@ viewport (`window.parent.innerHeight` with iframe fallback). That height signal
 cannot mutate fields, selection, block geometry, or ordering; the removed
 DOM/geometry editing bridge remains retired.
 
-Viewport-fixed cookie consent (`banner-03` + analytics consent on) is painted
-in the parent editor document via `EditorConsentBannerOverlay` on desktop
-parent-scroll only, so it stays pinned to the visible CMS viewport while the
-page scrolls. The desktop iframe suppresses the in-frame banner for that
-variant (`parentScroll=true`). The mobile editor shell keeps iframe-internal
-scroll and paints consent inside the frame. Customer preview still renders
-consent inside the iframe and adds extra bottom offset for the in-frame
-`PreviewCommandBar`; the editor does not apply that lift because its save
-chrome lives outside the iframe.
+Viewport-fixed cookie consent (`banner-03` + analytics consent on) is omitted
+from the page editor and customer preview via `stripCanvasConsent` so those
+surfaces stay focused on page content. Live published sites still materialize
+consent through `applyTenantAnalyticsConsentPolicy` (stored Settings copy with
+NL defaults as fallback). Desktop editor parent-scroll (`parentScroll=true` +
+`renderer.height`) remains for canvas sizing only.
 
 Inspector edits push `render.snapshot` into the frame. Theme, settings/chrome,
 selection, and mobile mode flush immediately; rapid page-body text updates are

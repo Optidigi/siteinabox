@@ -176,7 +176,7 @@ body { font-family: var(--font-sans); }
   --spacing: 0.25rem;
 }
 
-/* Inspector field highlight — left rail using shared editor ink tokens. */
+/* Inspector field highlight — shared editor ink wash (no left rail). */
 :root {
   --siab-ed-ink: color-mix(in oklab, var(--foreground) 72%, transparent);
   --siab-ed-ink-soft: color-mix(in oklab, var(--foreground) 28%, transparent);
@@ -184,16 +184,10 @@ body { font-family: var(--font-sans); }
 }
 
 .siab-inspector-field-highlight,
-[data-siab-inspector-field-selected="true"] {
+[data-siab-inspector-field-selected="true"],
+[data-siab-inspector-field]:hover {
   border-radius: var(--radius);
   background-color: color-mix(in oklab, var(--foreground) 6%, transparent);
-  box-shadow: inset 3px 0 0 0 var(--siab-ed-ink);
-}
-
-/* Parent-mounted consent overlay — outer ring matches editor achromatic ink. */
-[data-siab-editor-consent-overlay] [data-siab-editor-selected="true"] {
-  outline: 2px solid var(--siab-ed-ink);
-  outline-offset: 2px;
 }
 
 

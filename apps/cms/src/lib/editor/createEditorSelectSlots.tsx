@@ -73,10 +73,23 @@ export function createEditorSelectSlots(): BlockEditSlots {
         {props.value ?? props.placeholder ?? null}
       </span>
     ),
-    renderIcon: (props) => (
-      <span className={props.className === "contents" ? undefined : props.className} {...fieldSelectAttributes(props.elementPath)}>
-        {props.value ?? null}
-      </span>
-    ),
+    renderIcon: (props) => {
+      const Icon = props.icon
+      return (
+        <span
+          className={props.triggerClassName === "contents" ? undefined : props.triggerClassName}
+          {...fieldSelectAttributes(props.elementPath)}
+        >
+          {Icon ? (
+            <Icon
+              className={props.className}
+              size={props.size}
+              strokeWidth={props.strokeWidth}
+              aria-hidden
+            />
+          ) : null}
+        </span>
+      )
+    },
   }
 }

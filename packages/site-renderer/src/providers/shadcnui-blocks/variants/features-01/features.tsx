@@ -14,8 +14,8 @@ import {
 } from "lucide-react"
 import {
   type FeatureItem,
-  featureItemIcon,
   renderFeatureIntro,
+  renderFeatureItemIcon,
   renderFeatureItemDescription,
   renderFeatureItemTitle,
   renderFeatureTitle,
@@ -49,12 +49,12 @@ export function Features01({ title, intro, features, blockIndex, editSlots, root
       ) : null}
       <div className="mx-auto mt-10 grid max-w-(--breakpoint-lg) gap-6 sm:mt-16 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature, itemIndex) => {
-          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex, { className: "size-5" })
           return (
             <div className="flex flex-col rounded-xl border bg-card p-6 border-border" key={itemIndex}>
-              {Icon ? (
+              {icon ? (
                 <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                  <Icon className="size-5" />
+                  {icon}
                 </div>
               ) : null}
               <span className="font-medium text-lg">

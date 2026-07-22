@@ -31,6 +31,27 @@ export const resolveContactIcon = (icon: string | null | undefined, fallback: Lu
   return CONTACT_ICONS[key] ?? fallback
 }
 
+export const renderContactItemIcon = (
+  editSlots: BlockEditSlots | undefined,
+  iconName: string | null | undefined,
+  blockIndex: number,
+  itemIndex: number,
+  { className, fallback }: { className?: string; fallback?: LucideIcon } = {},
+) => {
+  const Icon = resolveContactIcon(iconName, fallback)
+  const path = elementPath(blockIndex, "items", itemIndex, "icon")
+  if (editSlots?.renderIcon) {
+    return editSlots.renderIcon({
+      name: `${CONTACT_DETAILS_BLOCK_TYPE}.items.icon`,
+      value: iconName ?? null,
+      icon: Icon,
+      className,
+      elementPath: path,
+    })
+  }
+  return <Icon className={className} />
+}
+
 const renderPlainContactValue = (value: string) => {
   if (!value.includes("\n")) return value
   return value.split("\n").map((part, index) => (

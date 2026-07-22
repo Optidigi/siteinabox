@@ -114,7 +114,7 @@ describe("site chrome draft helpers", () => {
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [],
         },
-        banner: { variant: "shadcnui-blocks.banner-03", visible: false },
+        banner: { variant: "shadcnui-blocks.banner-01", visible: false },
       },
     })
   })
@@ -175,7 +175,7 @@ describe("site chrome draft helpers", () => {
           legalLinks: [{ label: "Privacy", href: "/privacy" }],
           columns: [{ id: null, items: [{ id: null, type: "text", label: "About", text: "Hello", links: [] }] }],
         },
-        banner: { variant: "shadcnui-blocks.banner-03", visible: true, message: "Draft banner" },
+        banner: { variant: "shadcnui-blocks.banner-01", visible: true, message: "Draft banner" },
       },
       navHeader: [{ label: "Home", href: "/", external: false }],
     })

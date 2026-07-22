@@ -6,7 +6,7 @@ import type { RtRoot } from "@siteinabox/contracts"
 import { ArrowUpRight, Cable, Code, Contrast, MonitorSmartphone, SquareDashedMousePointer, Zap, type LucideIcon } from "lucide-react"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureIntro,
   renderFeatureItemCta,
   renderFeatureItemDescription,
@@ -53,7 +53,7 @@ export function Features11({
       ) : null}
       <div className="mt-20 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature, itemIndex) => {
-          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex, { className: "h-5 w-5" })
           const cta = feature.cta
           const href = cta?.href?.trim() || "#"
           const external = cta?.external ?? isExternalHref(href)
@@ -64,9 +64,9 @@ export function Features11({
             >
               <div className="flex h-full flex-col rounded-lg border border-border/75 bg-card px-6 py-7 shadow-xs/1 dark:border-foreground/13">
                 <div className="flex items-center gap-3">
-                  {Icon ? (
+                  {icon ? (
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/7 text-primary dark:bg-primary/10">
-                      <Icon className="h-5 w-5" />
+                      {icon}
                     </div>
                   ) : null}
                   <h3 className="font-medium text-lg tracking-[-0.005em]">

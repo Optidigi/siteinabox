@@ -239,7 +239,7 @@ describe("legal document synchronization", () => {
     expect(asMockDoc(asMockDoc(served.settings).chrome).banner).toMatchObject({
       variant: "shadcnui-blocks.banner-03",
       title: "Cookies",
-      message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
+      message: "Cookies",
     })
     expect((snapshot.settings as MockDoc).analyticsConsent).toMatchObject({ consentVersion: "old" })
     expect((((snapshot.settings as MockDoc).chrome as MockDoc).banner as MockDoc).variant).toBe("shadcnui-blocks.banner-01")

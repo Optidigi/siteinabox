@@ -11,7 +11,7 @@ import {
   renderContactItemDescription,
   renderContactItemLink,
   renderContactItemTitle,
-  resolveContactIcon,
+  renderContactItemIcon,
   type ContactDetailsItem,
 } from "../../typed/contact-details-fields"
 
@@ -51,12 +51,12 @@ export function Contact01({
           {displayItems.map((item, itemIndex) => {
             const itemTitle = renderContactItemTitle(editSlots, item.title, blockIndex, itemIndex)
             const itemDescription = renderContactItemDescription(editSlots, item.description, blockIndex, itemIndex)
-            const ContactIcon = resolveContactIcon(item.icon)
+            const icon = renderContactItemIcon(editSlots, item.icon, blockIndex, itemIndex)
             if (!itemTitle && !itemDescription && !item.value) return null
             return (
               <div className="flex flex-col items-center text-center" key={itemIndex}>
                 <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border/30 bg-primary/5 text-primary shadow-xl/2 dark:bg-primary/10">
-                  <ContactIcon />
+                  {icon}
                 </div>
                 {itemTitle ? <h3 className="mt-6 font-medium text-xl">{itemTitle}</h3> : null}
                 {itemDescription ? <p className="mt-2 text-muted-foreground">{itemDescription}</p> : null}

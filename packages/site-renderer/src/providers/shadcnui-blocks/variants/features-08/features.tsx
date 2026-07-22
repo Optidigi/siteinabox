@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureIntro,
   renderFeatureItemDescription,
   renderFeatureItemTitle,
@@ -50,12 +50,12 @@ export function Features08({ title, intro, features, blockIndex, editSlots, root
       ) : null}
       <div className="mt-16 grid grid-cols-1 gap-6 sm:mt-20 sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature, itemIndex) => {
-          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex)
           return (
             <div className="rounded-xl border bg-card px-6 py-7 border-border" key={itemIndex}>
-              {Icon ? (
+              {icon ? (
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/5 text-primary dark:bg-primary/15">
-                  <Icon />
+                  {icon}
                 </div>
               ) : null}
               <h3 className="mt-5 font-medium text-lg tracking-[-0.005em]">

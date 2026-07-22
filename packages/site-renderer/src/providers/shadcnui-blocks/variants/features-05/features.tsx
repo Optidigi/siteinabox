@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureIntro,
   renderFeatureItemDescription,
   renderFeatureItemTitle,
@@ -60,11 +60,11 @@ export function Features05({
         ) : null}
         <div className="mx-auto mt-18 grid w-full gap-x-6 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, itemIndex) => {
-            const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+            const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex)
             return (
               <Card className="flex flex-col overflow-hidden rounded-xl pb-0 shadow-none" key={itemIndex}>
                 <CardHeader>
-                  {Icon ? <Icon /> : null}
+                  {icon}
                   <h4 className="mt-3! font-medium text-xl tracking-tight">
                     {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
                   </h4>

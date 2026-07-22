@@ -4,16 +4,6 @@
 import * as React from "react"
 import type { RtRoot } from "@siteinabox/contracts"
 import {
-  BookCheck,
-  ChartPie,
-  FolderSync,
-  Goal,
-  Users,
-  Zap,
-  type LucideIcon,
-} from "lucide-react"
-import {
-  featureItemIcon,
   renderFeatureIntro,
   renderFeatureItemDescription,
   renderFeatureItemImage,
@@ -25,8 +15,6 @@ import { feature07Literal, feature07LiteralImages } from "../../typed/fixtures/f
 import type { TypedVariantBaseProps } from "../../typed/props"
 import type { MediaResolver } from "../../../../media"
 import Link from "../../runtime/link"
-
-const ITEM_ICONS: LucideIcon[] = [Goal, BookCheck, ChartPie, Users, FolderSync, Zap]
 
 export type Features07Props = TypedVariantBaseProps & {
   title?: RtRoot | null

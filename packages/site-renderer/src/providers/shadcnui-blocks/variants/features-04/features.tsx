@@ -19,7 +19,7 @@ import {
   AccordionTrigger,
 } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureItemDescription,
   renderFeatureItemImage,
   renderFeatureItemTitle,
@@ -71,7 +71,7 @@ export function Features04({
             }}
           >
             {features.map((feature, itemIndex) => {
-              const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+              const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex)
               return (
                 <AccordionItem
                   className="group/accordion-item data-[state=open]:border-primary data-[state=open]:border-b-2"
@@ -80,7 +80,7 @@ export function Features04({
                 >
                   <AccordionTrigger className="text-lg group-first/accordion-item:pt-0 [&>svg]:hidden">
                     <div className="flex items-center gap-4">
-                      {Icon ? <Icon /> : null}
+                      {icon}
                       {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
                     </div>
                   </AccordionTrigger>

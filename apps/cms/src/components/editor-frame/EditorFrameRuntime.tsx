@@ -16,7 +16,6 @@ import {
   ClientSitePageRenderer,
   applyThemeAttributes,
   createRendererMediaResolver,
-  isViewportFixedConsentBanner,
   prepareClientSiteRenderer,
   type PreparedClientSiteRenderer,
 } from "@siteinabox/site-renderer"
@@ -27,8 +26,7 @@ import { elementPathFromFieldElement, elementPathToIframeSelection } from "@/lib
 
 const HEADER_CHROME_SELECTOR = '[data-site-chrome="header"], [data-siab-site-header], .site-header, header.site-chrome, [data-amicare-nav], header[data-provider-variant]'
 const FOOTER_CHROME_SELECTOR = '[data-site-chrome="footer"], [data-siab-site-footer], .site-footer, footer.site-chrome, footer[data-provider-variant]'
-const BANNER_CHROME_SELECTOR = '[data-site-chrome="banner"], [data-siab-cookie-consent="true"]'
-const CHROME_HOVER_SELECTOR = `${HEADER_CHROME_SELECTOR}, ${FOOTER_CHROME_SELECTOR}, ${BANNER_CHROME_SELECTOR}`
+const CHROME_HOVER_SELECTOR = `${HEADER_CHROME_SELECTOR}, ${FOOTER_CHROME_SELECTOR}`
 
 function selectionKey(selection: IframeEditorSelection | null): string {
   if (!selection) return ""
@@ -314,15 +312,10 @@ export function EditorFrameRuntime({
       // to the parent. Preview runtime (renderer-frame) instead emits navigation.requested.
       if (target.closest("a[href], button, form")) event.preventDefault()
 
-      const bannerNode = target.closest<HTMLElement>(BANNER_CHROME_SELECTOR)
       const headerNode = target.closest<HTMLElement>(HEADER_CHROME_SELECTOR)
       const footerNode = target.closest<HTMLElement>(FOOTER_CHROME_SELECTOR)
-      if (bannerNode || headerNode || footerNode) {
-        const zone: "header" | "footer" | "banner" = bannerNode
-          ? "banner"
-          : headerNode
-            ? "header"
-            : "footer"
+      if (headerNode || footerNode) {
+        const zone: "header" | "footer" = headerNode ? "header" : "footer"
         const selection = { pageId, fieldPath: ["chrome", zone] as const }
         setActiveSelection(selection)
         emit({
@@ -382,13 +375,11 @@ export function EditorFrameRuntime({
     const fieldPath = activeSelection.fieldPath
     if (fieldPath?.[0] === "chrome") {
       const zone = fieldPath[1]
-      const selector = zone === "banner"
-        ? BANNER_CHROME_SELECTOR
-        : zone === "header"
-          ? HEADER_CHROME_SELECTOR
-          : zone === "footer"
-            ? FOOTER_CHROME_SELECTOR
-            : null
+      const selector = zone === "header"
+        ? HEADER_CHROME_SELECTOR
+        : zone === "footer"
+          ? FOOTER_CHROME_SELECTOR
+          : null
       const chromeNode = selector ? document.querySelector<HTMLElement>(selector) : null
       if (chromeNode) {
         chromeNode.setAttribute("data-siab-editor-selected", "true")
@@ -451,9 +442,6 @@ export function EditorFrameRuntime({
   const blockIndexOffset = focusedBlock ? (resolvedFocusedIndex ?? 0) : 0
   const showChrome = mobileMode.showChrome !== false
   const readyForVariant = Boolean(prepared && prepared.key === variantKey)
-  // Only suppress when the parent paints EditorConsentBannerOverlay (desktop parent-scroll).
-  const suppressInFrameConsentBanner =
-    parentScroll && isViewportFixedConsentBanner(frameSettings) && showChrome
 
   React.useLayoutEffect(() => {
     if (!parentScroll || !readyForVariant) return
@@ -556,7 +544,7 @@ export function EditorFrameRuntime({
           nonce={cspNonce}
           includeBehaviorScripts={false}
           formAction="#"
-          banner={suppressInFrameConsentBanner ? null : paint.showChrome ? undefined : null}
+          banner={paint.showChrome ? undefined : null}
           header={paint.showChrome ? undefined : null}
           footer={paint.showChrome ? undefined : null}
         />

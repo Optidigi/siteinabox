@@ -5,6 +5,7 @@ import { asRecord } from "@/lib/record"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { resolveSettingsContract } from "@/lib/settingsContract"
+import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { sameRelationshipId } from "@/lib/relationshipId"
 import { normalizePreviewThemeForSave } from "@/lib/theme/normalizeTheme"
@@ -108,9 +109,9 @@ export async function getPreviewCustomizerDataForGrant(input: {
   const theme = normalizePreviewThemeForSave((tenant.theme as ThemeTokens | null | undefined) ?? null)
   const parsedManifest = manifestSchema.safeParse(tenant.siteManifest)
   const manifest = parsedManifest.success ? parsedManifest.data : DEFAULT_MANIFEST
-  const settings = settingsToJson(settingsDoc, navPages, analyticsContext, {
+  const settings = stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
     settingsContract: resolveSettingsContract(manifest),
-  }) as SiteSettings
+  }) as SiteSettings)
 
   return {
     access: { type: "grant", clientSlug },

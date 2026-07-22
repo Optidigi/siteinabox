@@ -111,12 +111,15 @@ export function applyTenantAnalyticsConsentPolicy(snapshot: unknown, siteManifes
     ? chrome.banner as Record<string, unknown>
     : undefined
   const consentEnabled = (consent as Record<string, unknown>).enabled === true
+  const storedTitle = typeof banner?.title === "string" ? banner.title.trim() : ""
+  const storedMessage = typeof banner?.message === "string" ? banner.message.trim() : ""
   const consentBanner = consentEnabled
     ? {
         ...(banner ?? {}),
         visible: true,
-        title: "Cookies",
-        message: "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
+        title: storedTitle || "Cookies",
+        message: storedMessage
+          || "Wij en onze partners gebruiken cookies en vergelijkbare technologieën om uw ervaring te verbeteren en te analyseren hoe deze website wordt gebruikt.",
         dismissible: false,
         variant: "shadcnui-blocks.banner-03",
       }

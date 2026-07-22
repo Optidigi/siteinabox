@@ -19,7 +19,7 @@ import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@siteinabox/ui/components/tooltip"
 import { usePageEditorCore } from "@/components/editor/usePageEditorCore"
 import { parsePayloadError } from "@/lib/api"
-import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X, Cookie } from "lucide-react"
+import { ChevronLeft, Trash2, ExternalLink, Copy, Navigation, PanelBottom, PanelTop, Plus, X } from "lucide-react"
 import Link from "next/link"
 import type { Page, SiteSetting } from "@/payload-types"
 import type { Page as ContractPage, SiteSettings as ContractSiteSettings } from "@siteinabox/contracts"
@@ -304,7 +304,6 @@ function SiteChromeInspectorFields({
   navigationHref,
   onNavigate,
   footerContract,
-  analyticsConsentEnabled = false,
 }: {
   zone: SiteChromeZone
   draft: SiteChromeDraft
@@ -314,107 +313,9 @@ function SiteChromeInspectorFields({
   navigationHref?: string | null
   onNavigate?: (href: string) => void
   footerContract?: FooterCompositionContract | null
-  analyticsConsentEnabled?: boolean
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
-
-  if (zone === "banner") {
-    const COOKIE_BANNER_VARIANT = "shadcnui-blocks.banner-03"
-    const banner = asDraftRecord(draft.banner)
-    const setBanner = (patch: DraftRecord) => {
-      if (!canEditSettings) return
-      setDraft((current) => ({
-        ...current,
-        banner: {
-          ...asDraftRecord(current.banner),
-          ...patch,
-          // Cookie chrome is locked to banner-03; announcement/maintenance variants stay elsewhere.
-          variant: COOKIE_BANNER_VARIANT,
-        },
-      }))
-    }
-    return (
-      <div className="space-y-4">
-        <p className="text-xs text-muted-foreground px-0.5">{t("bannerCookieHint")}</p>
-        <section className="space-y-2 rounded-md border border-border bg-card p-4">
-          <div className="space-y-1">
-            <Label htmlFor="site-chrome-banner-variant">{t("layoutVariant")}</Label>
-            <Input
-              id="site-chrome-banner-variant"
-              value="banner-03"
-              disabled
-              readOnly
-            />
-          </div>
-          <div className="flex items-center justify-between pt-2">
-            <Label htmlFor="site-chrome-banner-visible">{t("bannerVisible")}</Label>
-            <Switch
-              id="site-chrome-banner-visible"
-              disabled={!canEditSettings || analyticsConsentEnabled}
-              checked={analyticsConsentEnabled || banner.visible === true}
-              onCheckedChange={(visible) => setBanner({ visible })}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="site-chrome-banner-dismissible">{t("bannerDismissible")}</Label>
-            <Switch
-              id="site-chrome-banner-dismissible"
-              disabled={!canEditSettings || analyticsConsentEnabled}
-              checked={analyticsConsentEnabled ? false : banner.dismissible !== false}
-              onCheckedChange={(dismissible) => setBanner({ dismissible })}
-            />
-          </div>
-        </section>
-        <section className="space-y-3 rounded-md border border-border bg-card p-4">
-          <div className="space-y-2">
-            <Label htmlFor="site-chrome-banner-title">{t("bannerTitle")}</Label>
-            <Input
-              id="site-chrome-banner-title"
-              disabled={!canEditSettings}
-              value={typeof banner.title === "string" ? banner.title : ""}
-              onChange={(event) => setBanner({ title: event.target.value || null })}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="site-chrome-banner-message">{t("bannerMessage")}</Label>
-            <Textarea
-              id="site-chrome-banner-message"
-              disabled={!canEditSettings}
-              value={typeof banner.message === "string" ? banner.message : ""}
-              onChange={(event) => setBanner({ message: event.target.value || null })}
-            />
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <div className="space-y-1">
-              <Label>{t("bannerLinkLabel")}</Label>
-              <Input
-                disabled={!canEditSettings}
-                value={draftFieldString(banner.link, "label")}
-                onChange={(event) => setBanner({
-                  link: mergeDraftGroup(banner.link, { label: event.target.value || null }),
-                })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label>{t("bannerLinkUrl")}</Label>
-              <Input
-                disabled={!canEditSettings}
-                value={draftFieldString(banner.link, "href")}
-                inputMode="url"
-                onChange={(event) => setBanner({
-                  link: mergeDraftGroup(banner.link, { href: event.target.value || null }),
-                })}
-              />
-            </div>
-          </div>
-        </section>
-        {canEditSettings && (
-          <p className="text-xs text-muted-foreground">{tCommon("save")}: {t("siteChromeSaveHint")}</p>
-        )}
-      </div>
-    )
-  }
 
   const logo = zone === "header" ? draft.header.logo : draft.footer.logo
   const variant = String(zone === "header" ? draft.header.variant ?? "" : draft.footer.variant ?? "")
@@ -570,7 +471,6 @@ function SiteChromeDrillDown({
   navigationHref,
   onNavigate,
   footerContract,
-  analyticsConsentEnabled = false,
   onBack,
 }: {
   selection: SiteChromeSelection
@@ -581,13 +481,12 @@ function SiteChromeDrillDown({
   navigationHref?: string | null
   onNavigate?: (href: string) => void
   footerContract?: FooterCompositionContract | null
-  analyticsConsentEnabled?: boolean
   onBack: () => void
 }) {
   const t = useTranslations("editor")
   const zone = selection.zone
   const label = siteChromeZoneLabel(zone, t)
-  const Icon = zone === "header" ? PanelTop : zone === "footer" ? PanelBottom : Cookie
+  const Icon = zone === "header" ? PanelTop : PanelBottom
   const header = (
     <>
       <header className="flex items-center border-b border-border px-3 py-2">
@@ -619,7 +518,6 @@ function SiteChromeDrillDown({
       navigationHref={navigationHref}
       onNavigate={onNavigate}
       footerContract={footerContract}
-      analyticsConsentEnabled={analyticsConsentEnabled}
     />
   )
 
@@ -881,7 +779,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
   const navigationHref = canManageNavResolved ? baseHref.replace(/\/pages$/, "/navigation") : null
   const navigationHrefFor = useCallback(
     (zone: SiteChromeZone) => {
-      if (!navigationHref || zone === "banner") return null
+      if (!navigationHref) return null
       const separator = navigationHref.includes("?") ? "&" : "?"
       return `${navigationHref}${separator}zone=${zone}`
     },
@@ -894,13 +792,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
         header={ctx.header}
         body={
           <>
-            {siteSettingsState && (
-              <SiteChromeRow
-                zone="banner"
-                selected={selectedChrome?.zone === "banner"}
-                onSelect={selectChrome}
-              />
-            )}
             {siteSettingsState && (
               <SiteChromeRow
                 zone="header"
@@ -1146,9 +1037,6 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                           navigationHref={navigationHrefFor(selectedChrome.zone)}
                           onNavigate={navigateFromChrome}
                           footerContract={footerContract}
-                          analyticsConsentEnabled={
-                            (manifest as { analyticsConsent?: { enabled?: unknown } | null }).analyticsConsent?.enabled === true
-                          }
                           onBack={() => clearChromeSelection()}
                         />
                       ) : (

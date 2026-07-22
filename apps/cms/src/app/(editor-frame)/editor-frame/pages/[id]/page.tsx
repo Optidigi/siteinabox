@@ -12,6 +12,7 @@ import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import { pageToJson } from "@/lib/projection/pageToJson"
 import { settingsToJson } from "@/lib/projection/settingsToJson"
 import { resolveSettingsContract } from "@/lib/settingsContract"
+import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { Tenant } from "@/payload-types"
@@ -124,9 +125,9 @@ export default async function EditorFramePage({
   return (
     <EditorFrameRuntime
       page={framePage}
-      settings={settingsToJson(settingsDoc, navPages, analyticsContext, {
+      settings={stripCanvasConsent(settingsToJson(settingsDoc, navPages, analyticsContext, {
         settingsContract: resolveSettingsContract(tenant.siteManifest ?? null),
-      }) as ContractSiteSettings}
+      }) as ContractSiteSettings)}
       theme={normalizeThemeForSave(tenant.theme as ThemeTokens | null | undefined)}
       tenantId={tenant.id}
       tenantSlug={tenant.slug}

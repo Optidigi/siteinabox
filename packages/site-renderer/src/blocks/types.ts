@@ -1,4 +1,5 @@
 import type * as React from "react"
+import type { LucideIcon } from "lucide-react"
 import type { Block, MediaRef, RtRoot, SiteSettings } from "@siteinabox/contracts"
 import type { MediaResolver } from "../media"
 
@@ -55,6 +56,8 @@ export type RendererImageSlotProps = {
 export type RendererIconSlotProps = {
   name: string
   value?: string | null
+  /** Pre-resolved Lucide icon (preferred when variants use catalog fallbacks). */
+  icon?: LucideIcon | null
   className?: string
   triggerClassName?: string
   size?: number

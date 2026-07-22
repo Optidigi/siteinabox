@@ -13,7 +13,6 @@ import {
 import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
-import { EditorConsentBannerOverlay } from "@/components/editor/iframe/EditorConsentBannerOverlay"
 
 export type PageEditorFrameLayout = "desktop" | "mobile"
 
@@ -47,7 +46,7 @@ export function PageEditorFrameHost({
   tenantSlug?: string | null
   selection?: IframeEditorSelection | null
   onSelectionChanged?: (selection: IframeEditorSelection | null) => void
-  onChromeSelect?: (zone: "header" | "footer" | "banner") => void
+  onChromeSelect?: (zone: "header" | "footer") => void
 }) {
   const t = useTranslations("editor")
   const tCommon = useTranslations("common")
@@ -64,13 +63,12 @@ export function PageEditorFrameHost({
   onSelectionChangedRef.current = onSelectionChanged
   onChromeSelectRef.current = onChromeSelect
   const isDesktopLayout = layout === "desktop"
-  const bannerSelected = selection?.fieldPath?.[0] === "chrome" && selection?.fieldPath?.[1] === "banner"
 
   const src = React.useMemo(() => {
     const base = `/editor-frame/pages/${encodeURIComponent(String(pageId))}`
     const query = new URLSearchParams()
     if (tenantSlug) query.set("tenantSlug", tenantSlug)
-    // Desktop parent-scroll only: frame sizes to content + parent paints fixed consent.
+    // Desktop parent-scroll: frame sizes to content; parent document scrolls.
     if (layout === "desktop") query.set("parentScroll", "true")
     if (mobileMode) {
       query.set("mobileMode", mobileMode.mode)
@@ -133,7 +131,7 @@ export function PageEditorFrameHost({
       }
       if (message.type === "chrome.select") {
         const zone = message.selection?.fieldPath?.[1]
-        if (zone === "header" || zone === "footer" || zone === "banner") onChromeSelectRef.current?.(zone)
+        if (zone === "header" || zone === "footer") onChromeSelectRef.current?.(zone)
         return
       }
       if (message.type === "error") {
@@ -241,14 +239,6 @@ export function PageEditorFrameHost({
           setFrameError(t("editorFrameLoadFailedDescription"))
         }}
       />
-      {isDesktopLayout ? (
-        <EditorConsentBannerOverlay
-          settings={settings}
-          theme={theme}
-          selected={bannerSelected}
-          onSelect={() => onChromeSelect?.("banner")}
-        />
-      ) : null}
       {!ready && (
         <div
           className={cn(

@@ -6,7 +6,7 @@ import type { RtRoot } from "@siteinabox/contracts"
 import { ArrowUpRightIcon, BinocularsIcon, CogIcon, ShieldCheckIcon, type LucideIcon } from "lucide-react"
 import { Button } from "@siteinabox/ui/providers/shadcnui-blocks/radix-nova"
 import {
-  featureItemIcon,
+  renderFeatureItemIcon,
   renderFeatureEyebrow,
   renderFeatureIntro,
   renderFeatureItemCta,
@@ -98,7 +98,7 @@ export function Features14({ eyebrow, title, intro, features, blockIndex, editSl
       ) : null}
       <div className="mt-16 flex flex-wrap justify-center gap-4">
         {features.map((feature, itemIndex) => {
-          const Icon = featureItemIcon(feature.icon, ITEM_ICONS, itemIndex)
+          const icon = renderFeatureItemIcon(editSlots, feature.icon, ITEM_ICONS, blockIndex, itemIndex, { className: "size-14 stroke-[1.5px] text-foreground" })
           return (
             <div
               className="relative w-full overflow-hidden rounded-lg border bg-linear-to-b from-foreground/3 px-6 py-10 sm:max-w-xs border-border"
@@ -106,7 +106,7 @@ export function Features14({ eyebrow, title, intro, features, blockIndex, editSl
             >
               <BackgroundPattern />
               <div className="isolate flex flex-col items-center gap-2">
-                {Icon ? <Icon className="size-14 stroke-[1.5px] text-foreground" /> : null}
+                {icon}
                 <h3 className="mt-8 font-medium text-xl tracking-[-0.005em]">
                   {renderFeatureItemTitle(editSlots, feature.title, blockIndex, itemIndex)}
                 </h3>

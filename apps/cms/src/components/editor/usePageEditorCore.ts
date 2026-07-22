@@ -65,6 +65,7 @@ import {
   rendererSettingsFromChromeDraft,
   type SiteChromeDraft,
 } from "@/lib/siteChromeDraft"
+import { stripCanvasConsent } from "@/lib/stripCanvasConsent"
 import { normalizePageBlockUploadIds, normalizeUploadId } from "@/lib/uploadValues"
 import { canonicalizeCtaFields } from "@/lib/projection/canonicalizeCtaFields"
 import type { NavPage } from "@/lib/projection/resolveNav"
@@ -180,7 +181,7 @@ export type PageEditorCoreApi = {
   onSubmit: (values: PageEditorFormValues) => Promise<void>
   onInvalid: (errors: FieldErrors<PageEditorFormValues>) => void
   handleFrameSelectionChanged: (selection: IframeEditorSelection | null) => void
-  handleFrameChromeSelect: (zone: "header" | "footer" | "banner") => void
+  handleFrameChromeSelect: (zone: "header" | "footer") => void
   frameSelection: IframeEditorSelection | null
   frameMobileMode:
     | {
@@ -294,13 +295,14 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     [siteSettingsState, chromeDraft],
   )
   const rendererSettingsState = useMemo(
-    () =>
-      rendererSettingsFromChromeDraft(siteSettingsState, chromeDraft, {
+    () => {
+      const projected = rendererSettingsFromChromeDraft(siteSettingsState, chromeDraft, {
         publishedPages: rendererNavPages,
         settingsContract,
-        analyticsConsent: (manifest as { analyticsConsent?: Record<string, unknown> | null }).analyticsConsent ?? null,
-      }),
-    [chromeDraft, manifest, rendererNavPages, settingsContract, siteSettingsState],
+      })
+      return projected ? stripCanvasConsent(projected) : null
+    },
+    [chromeDraft, rendererNavPages, settingsContract, siteSettingsState],
   )
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {
@@ -822,7 +824,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   )
 
   const handleFrameChromeSelect = useCallback(
-    (zone: "header" | "footer" | "banner") => {
+    (zone: "header" | "footer") => {
       selectChrome({ zone })
     },
     [selectChrome],
