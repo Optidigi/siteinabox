@@ -66,6 +66,12 @@ export type RenderSnapshotMessage = IframeEditorMessageBase<"render.snapshot"> &
   theme: ThemeTokenSpec | null
   selection?: IframeEditorSelection | null
   mobileMode?: IframeEditorMobileMode
+  /**
+   * When true, the editor frame should scroll the selected node into view.
+   * Host sets this for inspector/sidebar selection only — never when echoing a
+   * canvas click (`selection.changed` / `chrome.select`).
+   */
+  revealSelection?: boolean
 }
 
 export type SelectionChangedMessage = IframeEditorMessageBase<"selection.changed"> & {
@@ -154,6 +160,7 @@ export const RenderSnapshotMessageSchema = strictObject({
   theme: ThemeTokenSpecSchema.nullable(),
   selection: selectionSchema.nullable().optional(),
   mobileMode: strictObject(mobileModeShape).optional(),
+  revealSelection: z.boolean().optional(),
 })
 
 export const SelectionChangedMessageSchema = strictObject({

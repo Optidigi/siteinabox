@@ -85,7 +85,7 @@ export function EditorFrameRuntime({
     showChrome: boolean
   } | null>(null)
   const appliedSelectionKeyRef = React.useRef<string>("")
-  const selectionOriginRef = React.useRef<"local" | "parent">("parent")
+  const revealSelectionRef = React.useRef(false)
   const hoverNodeRef = React.useRef<HTMLElement | null>(null)
   const [hostViewportHeight, setHostViewportHeight] = React.useState<number | null>(null)
   const embeddedViewportRule = useCspStyleRule(
@@ -180,7 +180,7 @@ export function EditorFrameRuntime({
           }
           const selectionRaw = (raw as { selection?: unknown }).selection
           if (selectionRaw !== undefined) {
-            selectionOriginRef.current = "parent"
+            revealSelectionRef.current = (raw as { revealSelection?: unknown }).revealSelection === true
             const nextSelection = (selectionRaw ?? null) as IframeEditorSelection | null
             setActiveSelection((current) => (
               selectionKey(current) === selectionKey(nextSelection) ? current : nextSelection
@@ -205,7 +205,7 @@ export function EditorFrameRuntime({
         patchTheme(message.theme)
         setFramePage(message.page)
         setFrameSettings(message.settings)
-        selectionOriginRef.current = "parent"
+        revealSelectionRef.current = message.revealSelection === true
         const nextSelection = message.selection ?? null
         setActiveSelection((current) => (
           selectionKey(current) === selectionKey(nextSelection) ? current : nextSelection
@@ -348,7 +348,6 @@ export function EditorFrameRuntime({
       if (headerNode || footerNode) {
         const zone: "header" | "footer" = headerNode ? "header" : "footer"
         const selection = { pageId, fieldPath: ["chrome", zone] as const }
-        selectionOriginRef.current = "local"
         setActiveSelection(selection)
         emit({
           protocol: IFRAME_EDITOR_PROTOCOL_NAME,
@@ -373,7 +372,6 @@ export function EditorFrameRuntime({
       const selection = elementPathToIframeSelection(path, framePage.blocks ?? [], pageId)
       if (!selection) return
 
-      selectionOriginRef.current = "local"
       setActiveSelection(selection)
       emit({
         protocol: IFRAME_EDITOR_PROTOCOL_NAME,
@@ -391,7 +389,8 @@ export function EditorFrameRuntime({
   React.useEffect(() => {
     const nextKey = selectionKey(activeSelection)
     const skipScroll = nextKey === appliedSelectionKeyRef.current && Boolean(activeSelection)
-    const shouldScroll = !skipScroll && selectionOriginRef.current === "parent"
+    const shouldScroll = !skipScroll && revealSelectionRef.current
+    revealSelectionRef.current = false
     appliedSelectionKeyRef.current = nextKey
 
     if (hoverNodeRef.current) {

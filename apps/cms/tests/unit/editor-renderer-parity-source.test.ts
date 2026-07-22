@@ -85,13 +85,18 @@ describe("page editor renderer parity", () => {
     expect(rendererRuntime).toContain("applyThemeAttributes(document, frameTheme)")
   })
 
-  it("scrolls canvas only for parent/inspector selection, not local canvas clicks", () => {
+  it("scrolls canvas only when host sets revealSelection on snapshot", () => {
     const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
-    expect(runtime).toContain('selectionOriginRef = React.useRef<"local" | "parent">("parent")')
-    expect(runtime).toContain('selectionOriginRef.current = "local"')
-    expect(runtime).toContain('selectionOriginRef.current = "parent"')
-    expect(runtime).toContain('const shouldScroll = !skipScroll && selectionOriginRef.current === "parent"')
-    expect(runtime).toContain("if (shouldScroll) blockNode.scrollIntoView")
+    const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
+    const contract = readRepo("packages/contracts/src/iframe-editor.ts")
+    expect(contract).toContain("revealSelection?: boolean")
+    expect(contract).toContain("revealSelection: z.boolean().optional()")
+    expect(host).toContain("selectionFromCanvasRef")
+    expect(host).toContain("revealSelection: true")
+    expect(runtime).toContain("revealSelectionRef")
+    expect(runtime).toContain("message.revealSelection === true")
+    expect(runtime).toContain("const shouldScroll = !skipScroll && revealSelectionRef.current")
+    expect(runtime).not.toContain("selectionOriginRef")
   })
 
   it("normalizes canvas wire page/settings before live snapshots", () => {
@@ -101,6 +106,8 @@ describe("page editor renderer parity", () => {
     const wire = read("src/lib/projection/ensureCanvasWire.ts")
     expect(wire).toContain("export function ensureCanvasWireSettings")
     expect(wire).toContain("export function ensureCanvasWirePage")
+    expect(wire).toContain("sanitizeCanvasWireBlock")
+    expect(wire).toContain("getProviderBlockVariant")
     expect(wire).toContain("language.trim()")
     expect(wire).toContain('"nl"')
     expect(form).toContain("ensureCanvasWirePage(pageToJson(")

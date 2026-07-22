@@ -87,16 +87,18 @@ NL defaults as fallback). Desktop editor parent-scroll (`parentScroll=true` +
 Inspector edits push `render.snapshot` into the frame so the canvas acts as a
 live preview: text, variants, section order, chrome, and theme update without
 save or refresh. Host payloads are normalized with `ensureCanvasWirePage` /
-`ensureCanvasWireSettings` (e.g. required `language`, `updatedAt`) so snapshots
-pass `PageSchema` / `SiteSettingsSchema`. If the full envelope still fails, the
-editor frame applies each of page / settings / theme that independently parses.
-Theme, settings/chrome, selection, and mobile mode flush immediately; rapid
-page-body text updates are debounced (~80ms). While provider modules prepare
-for a new `variantKey`, the last painted frame stays visible under a light
-overlay instead of blanking.
+`ensureCanvasWireSettings` (required `language` / `updatedAt`, strip `blockName`,
+analytics extras, and inactive provider slots) so snapshots pass `PageSchema` /
+`SiteSettingsSchema`. If the full envelope still fails, the editor frame applies
+each of page / settings / theme that independently parses. Theme, settings/chrome,
+selection, and mobile mode flush immediately; rapid page-body text updates are
+debounced (~80ms). While provider modules prepare for a new `variantKey`, the
+last painted frame stays visible under a light overlay instead of blanking.
 
-Canvas clicks select and paint without scrolling the frame. Sidebar / inspector
-selection changes reveal the target via `scrollIntoView` (`block: "nearest"`).
+Canvas clicks select and paint without scrolling. Sidebar / inspector selection
+sets `revealSelection: true` on `render.snapshot` so the frame
+`scrollIntoView`s the target (`block: "nearest"`). Canvas-echoed selection
+snapshots omit that flag.
 
 At ≤768px the editor keeps the mobile section-list / focused-section shell.
 Preview remains select-only; editing stays in the inspector panel.

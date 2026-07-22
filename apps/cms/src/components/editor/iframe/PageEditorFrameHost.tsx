@@ -60,6 +60,9 @@ export function PageEditorFrameHost({
   const readyRef = React.useRef(false)
   const onSelectionChangedRef = React.useRef(onSelectionChanged)
   const onChromeSelectRef = React.useRef(onChromeSelect)
+  /** Next selection flush came from the canvas — do not ask the frame to scroll. */
+  const selectionFromCanvasRef = React.useRef(false)
+  const lastPostedSelectionKeyRef = React.useRef("")
   onSelectionChangedRef.current = onSelectionChanged
   onChromeSelectRef.current = onChromeSelect
   const isDesktopLayout = layout === "desktop"
@@ -90,6 +93,8 @@ export function PageEditorFrameHost({
     setFrameError(null)
     setFrameHeight(null)
     revisionRef.current = 0
+    lastPostedSelectionKeyRef.current = ""
+    selectionFromCanvasRef.current = false
   }, [retryKey, src])
 
   React.useEffect(() => {
@@ -126,10 +131,12 @@ export function PageEditorFrameHost({
         return
       }
       if (message.type === "selection.changed") {
+        selectionFromCanvasRef.current = true
         onSelectionChangedRef.current?.(message.selection)
         return
       }
       if (message.type === "chrome.select") {
+        selectionFromCanvasRef.current = true
         const zone = message.selection?.fieldPath?.[1]
         if (zone === "header" || zone === "footer") onChromeSelectRef.current?.(zone)
         return
@@ -166,7 +173,7 @@ export function PageEditorFrameHost({
     pageId: String(pageId),
   }
 
-  const postSnapshot = React.useCallback(() => {
+  const postSnapshot = React.useCallback((options?: { revealSelection?: boolean }) => {
     if (!readyRef.current) return
     const expectedRevision = revisionRef.current
     const snap = latestSnapshotRef.current
@@ -182,6 +189,7 @@ export function PageEditorFrameHost({
       theme: snap.theme,
       selection: snap.selection,
       mobileMode: snap.mobileMode,
+      ...(options?.revealSelection ? { revealSelection: true } : {}),
     })
     revisionRef.current = expectedRevision + 1
   }, [postToFrame])
@@ -189,7 +197,13 @@ export function PageEditorFrameHost({
   // Immediate flush: theme / chrome settings / selection / mobile mode / first ready.
   React.useEffect(() => {
     if (!ready) return
-    postSnapshot()
+    const selectionChanged = selectionKeyValue !== lastPostedSelectionKeyRef.current
+    const revealSelection = selectionChanged && !selectionFromCanvasRef.current
+    if (selectionChanged) {
+      lastPostedSelectionKeyRef.current = selectionKeyValue
+      selectionFromCanvasRef.current = false
+    }
+    postSnapshot(revealSelection ? { revealSelection: true } : undefined)
   }, [mobileModeKey, postSnapshot, ready, selectionKeyValue, settingsKey, themeKey])
 
   // Debounced page body updates (typing / RT) so keystrokes do not flood the iframe.

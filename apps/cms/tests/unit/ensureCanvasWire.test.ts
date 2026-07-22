@@ -3,6 +3,7 @@ import { PageSchema, SiteSettingsSchema } from "@siteinabox/contracts"
 import {
   ensureCanvasWirePage,
   ensureCanvasWireSettings,
+  sanitizeCanvasWireBlock,
 } from "@/lib/projection/ensureCanvasWire"
 
 describe("ensureCanvasWireSettings", () => {
@@ -40,6 +41,25 @@ describe("ensureCanvasWireSettings", () => {
 })
 
 describe("ensureCanvasWirePage", () => {
+  const heroBase = {
+    id: "b1",
+    blockType: "hero",
+    designVariant: "shadcnui-blocks.hero-02",
+    headline: { t: "root", variant: "inline", children: [{ t: "text", v: "Hi" }] },
+    analytics: {
+      sectionId: "home:0:hero",
+      sectionType: "hero",
+      sectionPosition: 0,
+      sectionAnchor: null,
+      providerVariant: "shadcnui-blocks.hero-02",
+      blockPresetId: null,
+      contentSignature: "abc",
+      extraJunk: true,
+    },
+    blockName: "Hero",
+    pills: [{ label: "A", id: null }],
+  }
+
   it("fills updatedAt / title / slug so PageSchema accepts editor drafts", () => {
     const page = ensureCanvasWirePage({
       title: "",
@@ -54,5 +74,26 @@ describe("ensureCanvasWirePage", () => {
     expect(page.slug).toBe("draft")
     expect(typeof page.updatedAt).toBe("string")
     expect(PageSchema.safeParse(page).success).toBe(true)
+  })
+
+  it("strips blockName, analytics extras, and inactive slots for PageSchema", () => {
+    const page = ensureCanvasWirePage({
+      title: "Home",
+      slug: "home",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      blocks: [heroBase],
+    } as never)
+    const block = page.blocks[0] as Record<string, unknown>
+    expect(block.blockName).toBeUndefined()
+    expect(block.pills).toBeUndefined()
+    expect((block.analytics as Record<string, unknown>).extraJunk).toBeUndefined()
+    expect(PageSchema.safeParse(page).success).toBe(true)
+  })
+})
+
+describe("sanitizeCanvasWireBlock", () => {
+  it("returns null for non-objects", () => {
+    expect(sanitizeCanvasWireBlock(null)).toBeNull()
+    expect(sanitizeCanvasWireBlock("x")).toBeNull()
   })
 })
