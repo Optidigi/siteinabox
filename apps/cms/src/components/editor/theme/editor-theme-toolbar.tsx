@@ -16,6 +16,8 @@ import type { ThemeTokens } from "@/lib/theme/schema"
 import { normalizeThemeForSave } from "@/lib/theme/normalizeTheme"
 import type { RtManifest } from "@/lib/richText/manifest"
 import type { ColorPreset, FontPreset, ShapePreset } from "@/lib/theme/presets"
+import { FLOATING_PILL_CLASS } from "@/components/editor/floating-pill"
+import { cn } from "@siteinabox/ui/lib/utils"
 import { useTranslations } from "next-intl"
 
 type Segment = "colors" | "fonts" | "shape"
@@ -128,8 +130,12 @@ export function EditorThemeToolbar({
         <Popover open={openSegment != null} onOpenChange={(open) => !open && setOpenSegment(null)}>
           <PopoverAnchor asChild>
             <div className="flex justify-center py-2">
-              <div className="rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur-sm">
-                <div className="inline-flex items-center gap-1" role="group" aria-label={t("themeControls")}>
+              <div className={cn(FLOATING_PILL_CLASS, "inline-flex")}>
+                <div
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/30 p-0.5"
+                  role="group"
+                  aria-label={t("themeControls")}
+                >
                   {([
                     ["colors", t("colours"), t("colourPalette"), Palette],
                     ["fonts", t("fonts"), t("fontPairings"), Type],
