@@ -1053,6 +1053,10 @@ const PageSchemaBase = strictObject({
 })
 
 export const PageSchema: z.ZodType<Page> = PageSchemaBase
+/** Renderer-safe editor/preview page; save and publish still require PageSchema's non-empty blocks. */
+export const CanvasPageSchema: z.ZodType<Page> = PageSchemaBase.extend({
+  blocks: z.array(BlockSchema),
+})
 
 const GeneratedPageSpecSchemaBase = PageSchemaBase.omit({ updatedAt: true, blocks: true }).extend({
   blocks: z.array(GeneratedBlockSpecSchema).min(1),

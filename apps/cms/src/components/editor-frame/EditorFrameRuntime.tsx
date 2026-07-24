@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { PageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "@siteinabox/contracts"
+import { CanvasPageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
@@ -146,6 +146,9 @@ export function EditorFrameRuntime({
       if (event.source !== window.parent) return
       const parsed = validateIframeEditorMessage(event.data, { currentRevision: revisionRef.current })
       if (!parsed.ok) {
+        if (process.env.NODE_ENV !== "production") {
+          console.warn("[editor-frame] rejected iframe editor message", parsed.issues)
+        }
         // Full envelope failed (often one of page/settings). Apply each part that
         // still parses so live canvas preview is not stuck on theme-only updates.
         const raw = event.data
@@ -168,7 +171,7 @@ export function EditorFrameRuntime({
             patchTheme(themeParsed.data)
             applied = true
           }
-          const pageParsed = PageSchema.safeParse((raw as { page?: unknown }).page)
+          const pageParsed = CanvasPageSchema.safeParse((raw as { page?: unknown }).page)
           if (pageParsed.success) {
             setFramePage(pageParsed.data)
             applied = true
@@ -348,6 +351,7 @@ export function EditorFrameRuntime({
       if (headerNode || footerNode) {
         const zone: "header" | "footer" = headerNode ? "header" : "footer"
         const selection = { pageId, fieldPath: ["chrome", zone] as const }
+        revealSelectionRef.current = false
         setActiveSelection(selection)
         emit({
           protocol: IFRAME_EDITOR_PROTOCOL_NAME,
@@ -372,6 +376,7 @@ export function EditorFrameRuntime({
       const selection = elementPathToIframeSelection(path, framePage.blocks ?? [], pageId)
       if (!selection) return
 
+      revealSelectionRef.current = false
       setActiveSelection(selection)
       emit({
         protocol: IFRAME_EDITOR_PROTOCOL_NAME,

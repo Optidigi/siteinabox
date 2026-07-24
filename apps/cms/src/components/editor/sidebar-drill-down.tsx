@@ -50,6 +50,7 @@ export interface SidebarDrillDownProps {
   selectedBlockIndex: number | null
   /** Full canvas selection path — used to deep-link/highlight inspector fields. */
   selectedPath?: ElementPath | null
+  revealSelectedPath?: boolean
   onSelectBlock: (i: number | null) => void
   onReorder: (from: number, to: number) => void
   onDeleteBlock: (i: number) => void
@@ -128,6 +129,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
   blocks,
   selectedBlockIndex,
   selectedPath,
+  revealSelectedPath,
   onSelectBlock,
   onReorder,
   onDeleteBlock,
@@ -319,6 +321,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
           manifest={manifest}
           theme={theme}
           highlightPath={selectedPath}
+          revealHighlight={revealSelectedPath}
           renderBlockForm={renderBlockForm}
           onBack={() => setMode({ kind: "list" })}
           onDelete={() => {
@@ -523,10 +526,11 @@ const BlockFormState: React.FC<{
   manifest: RtManifest
   theme?: ThemeTokens | null
   highlightPath?: ElementPath | null
+  revealHighlight?: boolean
   renderBlockForm?: (context: SidebarBlockFormSlotContext) => React.ReactNode
   onBack: () => void
   onDelete: () => void
-}> = ({ block, blockIndex, manifest, theme, highlightPath, renderBlockForm, onBack, onDelete }) => {
+}> = ({ block, blockIndex, manifest, theme, highlightPath, revealHighlight, renderBlockForm, onBack, onDelete }) => {
   const t = useTranslations("editor")
   const tLabels = useTranslations("editor.blockLabels")
   const cfg = blockBySlug[block.blockType]
@@ -567,6 +571,7 @@ const BlockFormState: React.FC<{
       manifest={manifest}
       theme={theme}
       highlightPath={highlightPath}
+      revealHighlight={revealHighlight}
     />
   )
   const deleteDialog = (

@@ -88,17 +88,22 @@ Inspector edits push `render.snapshot` into the frame so the canvas acts as a
 live preview: text, variants, section order, chrome, and theme update without
 save or refresh. Host payloads are normalized with `ensureCanvasWirePage` /
 `ensureCanvasWireSettings` (required `language` / `updatedAt`, strip `blockName`,
-analytics extras, and inactive provider slots) so snapshots pass `PageSchema` /
-`SiteSettingsSchema`. If the full envelope still fails, the editor frame applies
-each of page / settings / theme that independently parses. Theme, settings/chrome,
-selection, and mobile mode flush immediately; rapid page-body text updates are
-debounced (~80ms). While provider modules prepare for a new `variantKey`, the
-last painted frame stays visible under a light overlay instead of blanking.
+analytics extras, and inactive provider slots). Complete blocks are parsed with
+`BlockSchema`; incomplete rows use the existing shared renderer fixture for
+their block type while retaining order and stable id. `CanvasPageSchema` permits
+an explicit zero-block editor canvas, while save/publish `PageSchema` retains its
+non-empty requirement. If the full envelope still fails, the editor frame applies
+each of page / settings / theme that independently parses and reports the
+rejection in development. Theme, settings/chrome, selection, and mobile mode
+flush immediately; rapid page-body text updates are debounced (~80ms). While
+provider modules prepare for a new `variantKey`, the last painted frame stays
+visible under a light overlay instead of blanking.
 
-Canvas clicks select and paint without scrolling. Sidebar / inspector selection
-sets `revealSelection: true` on `render.snapshot` so the frame
-`scrollIntoView`s the target (`block: "nearest"`). Canvas-echoed selection
-snapshots omit that flag.
+Canvas clicks select and paint both frame and inspector highlights without
+scrolling either document. Sidebar / inspector selection sets
+`revealSelection: true` on `render.snapshot` so the frame `scrollIntoView`s the
+target (`block: "nearest"`). Canvas-echoed selection snapshots omit that flag,
+and a local frame click synchronously clears any pending reveal permission.
 
 At ≤768px the editor keeps the mobile section-list / focused-section shell.
 Preview remains select-only; editing stays in the inspector panel.

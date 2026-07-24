@@ -133,6 +133,7 @@ export type PageEditorCoreApi = {
   schema: ReturnType<typeof createPageEditorSchema>
   isDesktop: boolean | null
   selected: ElementPath | null
+  revealInspectorSelection: boolean
   selectedChrome: SiteChromeSelection | null
   selectElement: Dispatch<SetStateAction<ElementPath | null>>
   selectChrome: (selection: SiteChromeSelection) => void
@@ -263,6 +264,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   }, [tenantStyleCacheKey, theme])
 
   const [selected, setSelected] = useState<ElementPath | null>(null)
+  const [revealInspectorSelection, setRevealInspectorSelection] = useState(false)
   const [mobileFocusedSectionIndex, setMobileFocusedSectionIndex] = useState<number | null>(null)
   const [selectedChrome, setSelectedChrome] = useState<SiteChromeSelection | null>(null)
   const siteSettingsState = siteSettings ?? null
@@ -311,6 +313,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   )
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {
+    setRevealInspectorSelection(true)
     setSelected((current) => {
       const resolved = selectElementPath(readOnly, current, next)
       if (!resolved) return current
@@ -710,6 +713,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const applyBlocks = useCallback(
     (blocks: EditorBlock[], selection: ElementPath | null) => {
       form.setValue("blocks", blocks, { shouldDirty: true })
+      setRevealInspectorSelection(true)
       setSelected(selection)
     },
     [form],
@@ -815,6 +819,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
   const handleFrameSelectionChanged = useCallback(
     (selection: IframeEditorSelection | null) => {
       if (readOnly) return
+      setRevealInspectorSelection(false)
       if (!selection) {
         setSelectedChrome(null)
         setSelected(null)
@@ -830,6 +835,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
 
   const handleFrameChromeSelect = useCallback(
     (zone: "header" | "footer") => {
+      setRevealInspectorSelection(false)
       selectChrome({ zone })
     },
     [selectChrome],
@@ -840,6 +846,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     schema,
     isDesktop,
     selected,
+    revealInspectorSelection,
     selectedChrome,
     selectElement,
     selectChrome,

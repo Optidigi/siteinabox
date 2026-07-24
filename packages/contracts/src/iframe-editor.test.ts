@@ -182,6 +182,17 @@ describe("iframe renderer protocol", () => {
     expect(result.success).toBe(true)
   })
 
+  it("accepts an explicit empty canvas page without relaxing block validation", () => {
+    expect(IframeEditorMessageSchema.safeParse({
+      ...validSamplesByType["render.snapshot"],
+      page: { ...samplePage, blocks: [] },
+    }).success).toBe(true)
+    expect(IframeEditorMessageSchema.safeParse({
+      ...validSamplesByType["render.snapshot"],
+      page: { ...samplePage, blocks: [{ blockType: "unknown" }] },
+    }).success).toBe(false)
+  })
+
   it("rejects unvalidated page contracts", () => {
     expect(IframeEditorMessageSchema.safeParse({
       ...validSamplesByType["render.snapshot"],

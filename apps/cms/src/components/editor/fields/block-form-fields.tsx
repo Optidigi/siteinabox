@@ -41,6 +41,8 @@ export interface BlockFormFieldsProps {
   theme?: ThemeTokens | null
   /** When set, scroll/highlight the matching inspector field (canvas deep-link). */
   highlightPath?: ElementPath | null
+  /** Parent navigation may reveal; canvas-originated highlighting never scrolls. */
+  revealHighlight?: boolean
 }
 
 const ADVANCED_LABEL_KEYS = new Set(["designVariant", "anchor", "metadata", "trustLabel"])
@@ -59,7 +61,14 @@ function useLocalizedSpecLabel() {
   }, [t])
 }
 
-export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIndex, manifest, theme, highlightPath }) => {
+export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({
+  block,
+  blockIndex,
+  manifest,
+  theme,
+  highlightPath,
+  revealHighlight = true,
+}) => {
   const t = useTranslations("editor")
   const localizeLabel = useLocalizedSpecLabel()
   const blockType = block.blockType
@@ -97,7 +106,7 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
     const node = document.querySelector<HTMLElement>(selector)
     if (!node) return
     node.setAttribute("data-siab-inspector-field-selected", "true")
-    node.scrollIntoView({ behavior: "smooth", block: "center" })
+    if (revealHighlight) node.scrollIntoView({ behavior: "smooth", block: "center" })
     const timer = window.setTimeout(() => {
       node.removeAttribute("data-siab-inspector-field-selected")
     }, 1600)
@@ -105,7 +114,7 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({ block, blockIn
       window.clearTimeout(timer)
       node.removeAttribute("data-siab-inspector-field-selected")
     }
-  }, [highlightField, highlightItemIndex, highlightKey, advancedOpen])
+  }, [highlightField, highlightItemIndex, highlightKey, advancedOpen, revealHighlight])
 
   const renderSpec = (spec: ElementSpec) => {
     const labeled = { ...spec, label: localizeLabel(spec) }

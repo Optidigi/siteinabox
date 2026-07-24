@@ -1,5 +1,13 @@
 import type { Block, Page, SiteSettings } from "@siteinabox/contracts"
-import { getProviderBlockVariant } from "@siteinabox/contracts"
+import {
+  BlockSchema,
+  CanvasPageSchema,
+  SHADCNUI_BLOCK_VARIANTS,
+  SHADCNUI_SYSTEM_BLOCK_VARIANTS,
+  SITE_BLOCK_CATALOG,
+  SiteSettingsSchema,
+} from "@siteinabox/contracts"
+import { v1FixturePage } from "@siteinabox/site-renderer"
 import { asRecord } from "@/lib/record"
 
 const SLUG_RE = /^[a-z0-9-]+$/
@@ -35,11 +43,27 @@ function sanitizeCanvasWireAnalytics(value: unknown): Record<string, unknown> | 
   return out
 }
 
-/**
- * Strip editor/Payload artifacts that fail strict `BlockSchema` on live canvas
- * snapshots: `blockName`, analytics extras, and inactive provider slots.
- */
-export function sanitizeCanvasWireBlock(block: unknown): Block | null {
+const PROVIDER_BLOCK_VARIANTS = [
+  ...SHADCNUI_BLOCK_VARIANTS,
+  ...SHADCNUI_SYSTEM_BLOCK_VARIANTS,
+]
+
+const PREVIEW_BLOCK_FIXTURES = new Map<string, Block>()
+for (const block of v1FixturePage.blocks) {
+  if (!PREVIEW_BLOCK_FIXTURES.has(block.blockType)) {
+    PREVIEW_BLOCK_FIXTURES.set(block.blockType, block)
+  }
+}
+
+function reportCanvasFallback(scope: string, issues: Array<{ path: PropertyKey[]; message: string }>): void {
+  if (process.env.NODE_ENV === "production") return
+  console.warn(`[canvas-wire] ${scope} used a renderer-safe preview fallback`, issues.map((issue) => ({
+    path: issue.path.join("."),
+    message: issue.message,
+  })))
+}
+
+function sanitizeCanvasWireBlockRecord(block: unknown): Record<string, unknown> | null {
   const record = asRecord(block)
   if (!record || typeof record.blockType !== "string") return null
 
@@ -51,17 +75,77 @@ export function sanitizeCanvasWireBlock(block: unknown): Block | null {
     else next.analytics = analytics
   }
 
-  const variant = getProviderBlockVariant({
-    blockType: next.blockType as Block["blockType"],
-    designVariant: typeof next.designVariant === "string" ? next.designVariant : null,
-  })
+  const designVariant = typeof next.designVariant === "string" ? next.designVariant.trim() : ""
+  const variant = PROVIDER_BLOCK_VARIANTS.find((candidate) =>
+    candidate.blockType === next.blockType && candidate.id === designVariant,
+  )
   if (variant) {
     for (const [field, slot] of Object.entries(variant.slots)) {
       if (slot.status === "inactive") delete next[field]
     }
   }
 
-  return next as Block
+  return next
+}
+
+function previewFallbackBlock(block: unknown): Block {
+  const record = asRecord(block)
+  const requestedType = typeof record?.blockType === "string" ? record.blockType : "hero"
+  const requestedFixture = PREVIEW_BLOCK_FIXTURES.get(requestedType)
+  const heroFixture = PREVIEW_BLOCK_FIXTURES.get("hero")
+  if (!heroFixture) throw new Error("Canvas preview fixture for hero is missing.")
+
+  const id = typeof record?.id === "string" && record.id.trim()
+    ? record.id.trim()
+    : typeof record?.id === "number" && Number.isFinite(record.id)
+      ? String(record.id)
+      : undefined
+  const analytics = sanitizeCanvasWireAnalytics(record?.analytics)
+
+  const fixtures = requestedFixture && requestedFixture.blockType !== heroFixture.blockType
+    ? [requestedFixture, heroFixture]
+    : [heroFixture]
+  for (const fixture of fixtures) {
+    const catalog = SITE_BLOCK_CATALOG.find((entry) => entry.slug === fixture.blockType)
+    const requestedVariant = fixture === requestedFixture
+      && typeof record?.designVariant === "string"
+      && PROVIDER_BLOCK_VARIANTS.some((variant) =>
+        variant.blockType === fixture.blockType && variant.id === record.designVariant)
+      ? record.designVariant
+      : null
+    const variants = [
+      requestedVariant,
+      ...(catalog?.variants.map((variant) => variant.providerVariantId ?? variant.variant) ?? []),
+    ].filter((variant, index, all): variant is string =>
+      typeof variant === "string" && variant.length > 0 && all.indexOf(variant) === index,
+    )
+
+    for (const designVariant of variants) {
+      const candidate = sanitizeCanvasWireBlockRecord({
+        ...fixture,
+        ...(id ? { id } : {}),
+        designVariant,
+        ...(analytics !== undefined ? { analytics } : {}),
+      })
+      const parsed = BlockSchema.safeParse(candidate)
+      if (parsed.success) return parsed.data
+    }
+  }
+
+  throw new Error("Canvas preview fixture for hero has no valid provider variant.")
+}
+
+/**
+ * Parse a strict contract block. Incomplete active rows keep their type, index,
+ * and stable id; unsupported legacy rows still keep their index and id.
+ */
+export function sanitizeCanvasWireBlock(block: unknown): Block {
+  const candidate = sanitizeCanvasWireBlockRecord(block)
+  const parsed = BlockSchema.safeParse(candidate)
+  if (parsed.success) return parsed.data
+
+  reportCanvasFallback("block", parsed.error.issues)
+  return previewFallbackBlock(block)
 }
 
 /**
@@ -69,60 +153,79 @@ export function sanitizeCanvasWireBlock(block: unknown): Block | null {
  * `SiteSettingsSchema` on every `render.snapshot`. UI settings contracts may
  * omit `language` from the form, but the wire schema still requires it.
  */
-export function ensureCanvasWireSettings(settings: SiteSettings): SiteSettings {
-  const record = settings as SiteSettings & Record<string, unknown>
+export function ensureCanvasWireSettings(settings: unknown): SiteSettings {
+  const record = asRecord(settings) ?? {}
   const language = typeof record.language === "string" && record.language.trim()
     ? record.language.trim()
     : "nl"
 
   const chrome = asRecord(record.chrome)
-  if (!chrome) return { ...record, language }
-
-  const banner = asRecord(chrome.banner)
-  if (!banner) return { ...record, language }
-
-  const message = typeof banner.message === "string" ? banner.message.trim() : ""
-  if (message) {
-    return {
-      ...record,
-      language,
-      chrome: {
-        ...chrome,
-        banner: { ...banner, message },
-      },
-    } as SiteSettings
-  }
-
-  // Banner present without a message fails `message.min(1)` even when hidden.
-  const { banner: _banner, ...chromeWithoutBanner } = chrome
-  return {
+  const banner = asRecord(chrome?.banner)
+  const message = typeof banner?.message === "string" ? banner.message.trim() : ""
+  const candidate = {
     ...record,
     language,
-    chrome: chromeWithoutBanner,
-  } as SiteSettings
+    ...(chrome
+      ? {
+          chrome: {
+            ...chrome,
+            ...(banner && message ? { banner: { ...banner, message } } : {}),
+          },
+        }
+      : {}),
+  }
+  if (chrome && banner && !message && candidate.chrome) {
+    delete candidate.chrome.banner
+  }
+
+  const parsed = SiteSettingsSchema.safeParse(candidate)
+  if (parsed.success) return parsed.data
+  reportCanvasFallback("settings", parsed.error.issues)
+
+  const { chrome: _chrome, ...withoutChrome } = candidate
+  const withoutChromeParsed = SiteSettingsSchema.safeParse(withoutChrome)
+  if (withoutChromeParsed.success) return withoutChromeParsed.data
+
+  return SiteSettingsSchema.parse({
+    siteName: typeof record.siteName === "string" && record.siteName.trim()
+      ? record.siteName.trim()
+      : "Preview",
+    siteUrl: typeof record.siteUrl === "string" && URL.canParse(record.siteUrl)
+      ? record.siteUrl
+      : "https://preview.invalid",
+    language,
+  })
 }
 
 /**
- * Page projection for live canvas snapshots must satisfy `PageSchema`.
- * Fills mid-edit gaps and strips editor artifacts that reject strict blocks.
- * Does not invent blocks — empty drafts still fail until the operator adds one.
+ * Page projection for live canvas snapshots is genuinely parsed. The canvas
+ * schema permits an explicit empty page; save/publish PageSchema remains strict.
  */
-export function ensureCanvasWirePage(page: Page): Page {
-  const title = typeof page.title === "string" && page.title.trim()
-    ? page.title
+export function ensureCanvasWirePage(page: unknown): Page {
+  const record = asRecord(page) ?? {}
+  const title = typeof record.title === "string" && record.title.trim()
+    ? record.title
     : "—"
-  const slug = typeof page.slug === "string" && SLUG_RE.test(page.slug)
-    ? page.slug
+  const slug = typeof record.slug === "string" && SLUG_RE.test(record.slug)
+    ? record.slug
     : "draft"
-  const blocks = (Array.isArray(page.blocks) ? page.blocks : [])
-    .map((block) => sanitizeCanvasWireBlock(block))
-    .filter((block): block is Block => block != null)
+  const blocks = (Array.isArray(record.blocks) ? record.blocks : [])
+    .map(sanitizeCanvasWireBlock)
 
-  return {
-    ...page,
+  const candidate = {
+    ...(typeof record.id === "string" && record.id.trim() ? { id: record.id.trim() } : {}),
     title,
     slug,
-    updatedAt: asIsoTimestamp(page.updatedAt),
+    ...(record.status === "draft" || record.status === "published" ? { status: record.status } : {}),
+    ...(record.analytics === null || asRecord(record.analytics) ? { analytics: record.analytics } : {}),
     blocks,
+    ...(asRecord(record.seo) ? { seo: record.seo } : {}),
+    updatedAt: asIsoTimestamp(record.updatedAt),
   }
+  const parsed = CanvasPageSchema.safeParse(candidate)
+  if (parsed.success) return parsed.data
+
+  reportCanvasFallback("page", parsed.error.issues)
+  const { seo: _seo, ...withoutSeo } = candidate
+  return CanvasPageSchema.parse(withoutSeo)
 }

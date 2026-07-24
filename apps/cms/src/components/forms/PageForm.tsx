@@ -579,6 +579,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     form,
     isDesktop,
     selected,
+    revealInspectorSelection,
     selectedChrome,
     selectElement,
     selectChrome,
@@ -1045,6 +1046,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                           blocks={watchedBlocks}
                           selectedBlockIndex={selected?.blockIndex ?? null}
                           selectedPath={selected}
+                          revealSelectedPath={revealInspectorSelection}
                           onSelectBlock={(i) => {
                             clearChromeSelection()
                             selectElement(i != null ? { blockIndex: i, field: "" } : null)

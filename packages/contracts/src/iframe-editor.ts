@@ -1,7 +1,7 @@
 import { z } from "zod"
 import type { Page, SiteSettings } from "./site"
 import type { ThemeTokenSpec } from "./generation"
-import { PageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "./runtime"
+import { CanvasPageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "./runtime"
 
 export const IFRAME_EDITOR_PROTOCOL_VERSION = 3
 export const IFRAME_EDITOR_PROTOCOL_NAME = "siab.iframe-editor"
@@ -155,7 +155,7 @@ export const RenderSnapshotMessageSchema = strictObject({
   type: z.literal("render.snapshot"),
   expectedRevision: revisionSchema,
   pageId: idSchema,
-  page: PageSchema,
+  page: CanvasPageSchema,
   settings: SiteSettingsSchema,
   theme: ThemeTokenSpecSchema.nullable(),
   selection: selectionSchema.nullable().optional(),

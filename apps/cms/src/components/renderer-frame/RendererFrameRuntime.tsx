@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import type { Page, SiteSettings } from "@siteinabox/contracts"
-import { PageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "@siteinabox/contracts"
+import { CanvasPageSchema, SiteSettingsSchema, ThemeTokenSpecSchema } from "@siteinabox/contracts"
 import type { ThemeTokenSpec } from "@siteinabox/contracts/generation"
 import {
   IFRAME_EDITOR_PROTOCOL_NAME,
@@ -136,7 +136,7 @@ export function RendererFrameRuntime({
 
           const themeParsed = ThemeTokenSpecSchema.nullable().safeParse((raw as { theme?: unknown }).theme)
           if (themeParsed.success) patchTheme(themeParsed.data)
-          const pageParsed = PageSchema.safeParse((raw as { page?: unknown }).page)
+          const pageParsed = CanvasPageSchema.safeParse((raw as { page?: unknown }).page)
           if (pageParsed.success) setFramePage(pageParsed.data)
           const settingsParsed = SiteSettingsSchema.safeParse((raw as { settings?: unknown }).settings)
           if (settingsParsed.success) setFrameSettings(settingsParsed.data)
