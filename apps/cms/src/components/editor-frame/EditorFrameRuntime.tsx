@@ -421,7 +421,7 @@ export function EditorFrameRuntime({
       const chromeNode = selector ? document.querySelector<HTMLElement>(selector) : null
       if (chromeNode) {
         chromeNode.setAttribute("data-siab-editor-selected", "true")
-        if (shouldScroll) chromeNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        if (shouldScroll) chromeNode.scrollIntoView({ behavior: "smooth", block: "center" })
       }
       return
     }
@@ -448,13 +448,13 @@ export function EditorFrameRuntime({
       }) ?? null
       if (fieldNode) {
         fieldNode.setAttribute("data-siab-editor-field-selected", "true")
-        if (shouldScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+        if (shouldScroll) fieldNode.scrollIntoView({ behavior: "smooth", block: "center" })
         return
       }
     }
 
     blockNode.setAttribute("data-siab-editor-selected", "true")
-    if (shouldScroll) blockNode.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    if (shouldScroll) blockNode.scrollIntoView({ behavior: "smooth", block: "center" })
   }, [activeSelection, framePage, mobileMode.mode])
 
   const focusedBlockIndex = mobileMode.mode === "focusedSection"

@@ -68,17 +68,23 @@ function Inspector({
 
 describe("BlockFormFields canvas selection highlighting", () => {
   const scrolled: Element[] = []
+  const scrollOptions: Array<ScrollIntoViewOptions | boolean | undefined> = []
 
   beforeEach(() => {
     scrolled.length = 0
+    scrollOptions.length = 0
     Object.defineProperty(globalThis, "CSS", {
       configurable: true,
       value: { escape: (value: string) => value },
     })
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
-      value: vi.fn(function (this: Element) {
+      value: vi.fn(function (
+        this: Element,
+        options?: ScrollIntoViewOptions | boolean,
+      ) {
         scrolled.push(this)
+        scrollOptions.push(options)
       }),
     })
   })
@@ -90,11 +96,13 @@ describe("BlockFormFields canvas selection highlighting", () => {
   it("highlights without scrolling for canvas origin and still reveals parent origin", async () => {
     const { container, rerender } = render(<Inspector blockIndex={0} revealHighlight />)
     await waitFor(() => expect(scrolled).toHaveLength(1))
+    expect(scrollOptions).toEqual([{ behavior: "smooth", block: "center" }])
 
     const inspectorRoot = container.querySelector<HTMLElement>("[data-testid=inspector-scroll-root]")!
     inspectorRoot.scrollTop = 31
     document.documentElement.scrollTop = 47
     scrolled.length = 0
+    scrollOptions.length = 0
 
     rerender(<Inspector blockIndex={1} revealHighlight={false} />)
 
@@ -102,6 +110,7 @@ describe("BlockFormFields canvas selection highlighting", () => {
       expect(container.querySelector('[data-siab-inspector-field-selected="true"]')).toBeTruthy()
     })
     expect(scrolled).toEqual([])
+    expect(scrollOptions).toEqual([])
     expect(inspectorRoot.scrollTop).toBe(31)
     expect(document.documentElement.scrollTop).toBe(47)
   })

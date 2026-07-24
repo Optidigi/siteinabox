@@ -102,7 +102,7 @@ visible under a light overlay instead of blanking.
 Canvas clicks select and paint both frame and inspector highlights without
 scrolling either document. Sidebar / inspector selection sets
 `revealSelection: true` on `render.snapshot` so the frame `scrollIntoView`s the
-target (`block: "nearest"`). Canvas-echoed selection snapshots omit that flag,
+target (`block: "center"`). Canvas-echoed selection snapshots omit that flag,
 and a local frame click synchronously clears any pending reveal permission.
 
 At ≤768px the editor keeps the mobile section-list / focused-section shell.

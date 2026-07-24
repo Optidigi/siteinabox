@@ -29,6 +29,7 @@ vi.mock("@siteinabox/site-renderer", () => ({
     settings: SiteSettings
   }) => (
     <main className="site-frame-root" data-testid="rendered-page" data-site-name={settings.siteName}>
+      <header data-site-chrome="header">Header</header>
       {page.blocks.map((block, index) => (
         <section
           key={("id" in block && typeof block.id === "string") ? block.id : index}
@@ -200,17 +201,23 @@ describe("EditorFrameRuntime live snapshots", () => {
 
 describe("EditorFrameRuntime reveal intent", () => {
   const scrolled: Element[] = []
+  const scrollOptions: Array<ScrollIntoViewOptions | boolean | undefined> = []
 
   beforeEach(() => {
     scrolled.length = 0
+    scrollOptions.length = 0
     Object.defineProperty(globalThis, "CSS", {
       configurable: true,
       value: { escape: (value: string) => value },
     })
     Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
       configurable: true,
-      value: vi.fn(function (this: Element) {
+      value: vi.fn(function (
+        this: Element,
+        options?: ScrollIntoViewOptions | boolean,
+      ) {
         scrolled.push(this)
+        scrollOptions.push(options)
       }),
     })
     Object.defineProperty(document, "fonts", {
@@ -227,6 +234,62 @@ describe("EditorFrameRuntime reveal intent", () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+  })
+
+  it("centers intentional parent reveals for blocks, fields, and chrome", async () => {
+    render(
+      <EditorFrameRuntime
+        page={page("A")}
+        settings={settings()}
+        theme={null}
+        tenantId="tenant-1"
+      />,
+    )
+    await screen.findByText("A")
+    const blockA = document.querySelector<HTMLElement>('[data-block-id="a"]')!
+    const headline = blockA.querySelector<HTMLElement>('[data-siab-field="headline"]')!
+    const header = document.querySelector<HTMLElement>('[data-site-chrome="header"]')!
+
+    act(() => {
+      dispatchSnapshot(snapshot({
+        expectedRevision: 0,
+        page: page("A"),
+        selection: selection(0, "a"),
+        revealSelection: true,
+      }))
+    })
+    await waitFor(() => expect(scrolled).toEqual([blockA]))
+
+    act(() => {
+      dispatchSnapshot(snapshot({
+        expectedRevision: 1,
+        page: page("A"),
+        selection: {
+          ...selection(0, "a"),
+          fieldPath: ["blocks", "0", "headline"],
+        },
+        revealSelection: true,
+      }))
+    })
+    await waitFor(() => expect(scrolled).toEqual([blockA, headline]))
+
+    act(() => {
+      dispatchSnapshot(snapshot({
+        expectedRevision: 2,
+        page: page("A"),
+        selection: {
+          pageId: "page-1",
+          fieldPath: ["chrome", "header"],
+        },
+        revealSelection: true,
+      }))
+    })
+    await waitFor(() => expect(scrolled).toEqual([blockA, headline, header]))
+    expect(scrollOptions).toEqual([
+      { behavior: "smooth", block: "center" },
+      { behavior: "smooth", block: "center" },
+      { behavior: "smooth", block: "center" },
+    ])
   })
 
   it("reveals parent selection but never consumes stale reveal intent for a canvas click", async () => {
@@ -251,6 +314,7 @@ describe("EditorFrameRuntime reveal intent", () => {
       }))
     })
     await waitFor(() => expect(scrolled).toEqual([blockA]))
+    expect(scrollOptions).toEqual([{ behavior: "smooth", block: "center" }])
 
     act(() => {
       dispatchSnapshot(snapshot({
@@ -261,6 +325,7 @@ describe("EditorFrameRuntime reveal intent", () => {
     })
     await waitFor(() => expect(blockA.hasAttribute("data-siab-editor-selected")).toBe(false))
     scrolled.length = 0
+    scrollOptions.length = 0
 
     const frameScrollBefore = document.documentElement.scrollTop
     const parentScrollBefore = window.scrollY
@@ -287,6 +352,7 @@ describe("EditorFrameRuntime reveal intent", () => {
       }))
     })
     expect(scrolled).toEqual([])
+    expect(scrollOptions).toEqual([])
     expect(document.documentElement.scrollTop).toBe(frameScrollBefore)
     expect(window.scrollY).toBe(parentScrollBefore)
 
