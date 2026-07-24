@@ -54,11 +54,11 @@ is no alternate CMS block renderer or canvas/source tree.
   fields show first; Advanced (design variant, anchor, metadata, unused
   optional arrays) stays collapsed until opened. Canvas deep-link sets
   `data-siab-inspector-field-selected` for a quiet selected wash (and matching
-  hover). Cookie consent is not page-editor chrome: viewport-fixed cookie
-  banners are stripped from the editor and customer preview canvases; title/
-  message are edited under Settings. Non-cookie announcement banners may still
-  render when consent is off. Site chrome zones selectable in the page editor
-  are `header` | `footer`.
+  hover). Settings-owned cookie and announcement banners are not page-editor
+  chrome: the editor omits `chrome.banner` entirely, and banner copy is edited
+  under Settings. Customer preview also omits viewport-fixed cookie consent;
+  non-cookie announcements may still render there. Site chrome zones selectable
+  in the page editor are `header` | `footer`.
 
 ## Readiness and live preview
 
@@ -77,9 +77,10 @@ viewport (`window.parent.innerHeight` with iframe fallback). That height signal
 cannot mutate fields, selection, block geometry, or ordering; the removed
 DOM/geometry editing bridge remains retired.
 
-Viewport-fixed cookie consent (`banner-03` + analytics consent on) is omitted
-from the page editor and customer preview via `stripCanvasConsent` so those
-surfaces stay focused on page content. Live published sites still materialize
+The page editor omits the settings-owned `chrome.banner` for both cookie consent
+and announcements, while the separate operational maintenance banner remains.
+Customer preview omits viewport-fixed cookie consent (`banner-03` + analytics
+consent on) via `stripCanvasConsent`; live published sites still materialize
 consent through `applyTenantAnalyticsConsentPolicy` (stored Settings copy with
 NL defaults as fallback). Desktop editor parent-scroll (`parentScroll=true` +
 `renderer.height`) remains for canvas sizing only.

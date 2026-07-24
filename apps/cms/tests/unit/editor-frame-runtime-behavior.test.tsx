@@ -24,11 +24,16 @@ vi.mock("@siteinabox/site-renderer", () => ({
   ClientSitePageRenderer: ({
     page,
     settings,
+    banner,
   }: {
     page: Page
     settings: SiteSettings
+    banner?: React.ReactNode
   }) => (
     <main className="site-frame-root" data-testid="rendered-page" data-site-name={settings.siteName}>
+      {banner === undefined && settings.chrome?.banner?.message
+        ? <aside data-testid="rendered-banner">{settings.chrome.banner.message}</aside>
+        : banner}
       <header data-site-chrome="header">Header</header>
       {page.blocks.map((block, index) => (
         <section
@@ -196,6 +201,43 @@ describe("EditorFrameRuntime live snapshots", () => {
     })
 
     await screen.findByText("Recovered")
+  })
+
+  it("omits settings-owned banners while page and settings snapshots keep updating", async () => {
+    const settingsWithBanner = (siteName: string, message: string): SiteSettings => ({
+      ...settings(siteName),
+      chrome: {
+        banner: {
+          variant: "shadcnui-blocks.banner-01",
+          visible: true,
+          message,
+        },
+      },
+    })
+
+    render(
+      <EditorFrameRuntime
+        page={page("Initial")}
+        settings={settingsWithBanner("Initial settings", "Initial announcement")}
+        theme={null}
+        tenantId="tenant-1"
+      />,
+    )
+
+    await screen.findByText("Initial")
+    expect(screen.queryByTestId("rendered-banner")).toBeNull()
+
+    act(() => {
+      dispatchSnapshot(snapshot({
+        expectedRevision: 0,
+        page: page("Updated"),
+        settings: settingsWithBanner("Updated settings", "Updated announcement"),
+      }))
+    })
+
+    await screen.findByText("Updated")
+    expect(screen.getByTestId("rendered-page").getAttribute("data-site-name")).toBe("Updated settings")
+    expect(screen.queryByTestId("rendered-banner")).toBeNull()
   })
 })
 

@@ -116,7 +116,7 @@ describe("page editor renderer parity", () => {
     expect(framePage).toContain("ensureCanvasWireSettings(stripCanvasConsent(")
   })
 
-  it("uses parent scroll with renderer.height sync without cookie chrome", () => {
+  it("uses parent scroll with renderer.height sync without settings-owned banner chrome", () => {
     const runtime = read("src/components/editor-frame/EditorFrameRuntime.tsx")
     const host = read("src/components/editor/iframe/PageEditorFrameHost.tsx")
     const form = read("src/components/forms/PageForm.tsx")
@@ -130,6 +130,7 @@ describe("page editor renderer parity", () => {
     expect(runtime).toContain("if (!parentScroll || !readyForVariant) return")
     expect(runtime).not.toContain("isViewportFixedConsentBanner")
     expect(runtime).not.toContain("suppressInFrameConsentBanner")
+    expect(runtime).toContain("banner={null}")
     expect(runtime).toContain("renderer-frame-preview-viewport")
     expect(host).toContain('message.type === "renderer.height"')
     expect(host).toContain('scrolling={isDesktopLayout ? "no" : undefined}')

@@ -59,7 +59,7 @@ export function EditorFrameRuntime({
   tenantSlug?: string | null
   domain?: string | null
   initialMobileMode?: IframeEditorMobileMode | null
-  /** Desktop editor: parent document scrolls; frame reports height and suppresses fixed consent. */
+  /** Desktop editor: parent document scrolls and the frame reports its content height. */
   parentScroll?: boolean
 }) {
   const cspNonce = useCspNonce()
@@ -582,7 +582,7 @@ export function EditorFrameRuntime({
           nonce={cspNonce}
           includeBehaviorScripts={false}
           formAction="#"
-          banner={paint.showChrome ? undefined : null}
+          banner={null}
           header={paint.showChrome ? undefined : null}
           footer={paint.showChrome ? undefined : null}
         />
