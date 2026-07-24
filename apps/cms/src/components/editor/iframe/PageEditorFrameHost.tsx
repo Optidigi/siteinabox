@@ -33,6 +33,7 @@ export function PageEditorFrameHost({
   tenantId,
   tenantSlug,
   selection,
+  revealSelection = true,
   onSelectionChanged,
   onChromeSelect,
 }: {
@@ -45,6 +46,7 @@ export function PageEditorFrameHost({
   tenantId: string | number
   tenantSlug?: string | null
   selection?: IframeEditorSelection | null
+  revealSelection?: boolean
   onSelectionChanged?: (selection: IframeEditorSelection | null) => void
   onChromeSelect?: (zone: "header" | "footer") => void
 }) {
@@ -198,13 +200,14 @@ export function PageEditorFrameHost({
   React.useEffect(() => {
     if (!ready) return
     const selectionChanged = selectionKeyValue !== lastPostedSelectionKeyRef.current
-    const revealSelection = selectionChanged && !selectionFromCanvasRef.current
+    const shouldRevealSelection =
+      selectionChanged && !selectionFromCanvasRef.current && revealSelection
     if (selectionChanged) {
       lastPostedSelectionKeyRef.current = selectionKeyValue
       selectionFromCanvasRef.current = false
     }
-    postSnapshot(revealSelection ? { revealSelection: true } : undefined)
-  }, [mobileModeKey, postSnapshot, ready, selectionKeyValue, settingsKey, themeKey])
+    postSnapshot(shouldRevealSelection ? { revealSelection: true } : undefined)
+  }, [mobileModeKey, postSnapshot, ready, revealSelection, selectionKeyValue, settingsKey, themeKey])
 
   // Debounced page body updates (typing / RT) so keystrokes do not flood the iframe.
   // Skip the ready transition — the immediate effect already posts a full snapshot.

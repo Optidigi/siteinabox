@@ -134,8 +134,10 @@ export type PageEditorCoreApi = {
   isDesktop: boolean | null
   selected: ElementPath | null
   revealInspectorSelection: boolean
+  revealFrameSelection: boolean
   selectedChrome: SiteChromeSelection | null
   selectElement: Dispatch<SetStateAction<ElementPath | null>>
+  selectInspectorElement: (selection: ElementPath) => void
   selectChrome: (selection: SiteChromeSelection) => void
   clearChromeSelection: () => void
   mobileFocusedSectionIndex: number | null
@@ -265,6 +267,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
 
   const [selected, setSelected] = useState<ElementPath | null>(null)
   const [revealInspectorSelection, setRevealInspectorSelection] = useState(false)
+  const [revealFrameSelection, setRevealFrameSelection] = useState(false)
   const [mobileFocusedSectionIndex, setMobileFocusedSectionIndex] = useState<number | null>(null)
   const [selectedChrome, setSelectedChrome] = useState<SiteChromeSelection | null>(null)
   const siteSettingsState = siteSettings ?? null
@@ -314,6 +317,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
 
   const selectElement = useCallback<Dispatch<SetStateAction<ElementPath | null>>>((next) => {
     setRevealInspectorSelection(true)
+    setRevealFrameSelection(true)
     setSelected((current) => {
       const resolved = selectElementPath(readOnly, current, next)
       if (!resolved) return current
@@ -322,9 +326,18 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     })
   }, [readOnly])
 
+  const selectInspectorElement = useCallback((selection: ElementPath) => {
+    if (readOnly) return
+    setRevealInspectorSelection(false)
+    setRevealFrameSelection(false)
+    setSelectedChrome(null)
+    setSelected(selection)
+  }, [readOnly])
+
   const selectChrome = useCallback((selection: SiteChromeSelection) => {
     const resolved = selectChromeZone(readOnly, selection)
     if (!resolved) return
+    setRevealFrameSelection(true)
     setSelected(resolved.selection)
     setSelectedChrome(resolved.chromeSelection)
   }, [readOnly])
@@ -820,6 +833,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     (selection: IframeEditorSelection | null) => {
       if (readOnly) return
       setRevealInspectorSelection(false)
+      setRevealFrameSelection(false)
       if (!selection) {
         setSelectedChrome(null)
         setSelected(null)
@@ -837,6 +851,7 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     (zone: "header" | "footer") => {
       setRevealInspectorSelection(false)
       selectChrome({ zone })
+      setRevealFrameSelection(false)
     },
     [selectChrome],
   )
@@ -847,8 +862,10 @@ export function usePageEditorCore(options: UsePageEditorCoreOptions): PageEditor
     isDesktop,
     selected,
     revealInspectorSelection,
+    revealFrameSelection,
     selectedChrome,
     selectElement,
+    selectInspectorElement,
     selectChrome,
     clearChromeSelection,
     mobileFocusedSectionIndex,

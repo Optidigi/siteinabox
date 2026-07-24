@@ -24,6 +24,7 @@ import {
   useBlockArrayFieldController,
   useBlockFieldController,
 } from "@/components/editor/fields/fieldController"
+import { elementPathFromInspectorElement } from "@/lib/editor/elementPathBridge"
 import { isPersistedEditorBlock, type EditorBlock } from "@/lib/editor/editorBlock"
 import { asCtaValue, asIconValue, asRtRootValue, updateCtaHref, updateCtaLabel } from "@/lib/editor/blockFieldValues"
 import type { RtManifest } from "@/lib/richText/manifest"
@@ -43,6 +44,8 @@ export interface BlockFormFieldsProps {
   highlightPath?: ElementPath | null
   /** Parent navigation may reveal; canvas-originated highlighting never scrolls. */
   revealHighlight?: boolean
+  /** Keep canvas selection in sync when an inspector control receives focus. */
+  onSelectPath?: (path: ElementPath) => void
 }
 
 const ADVANCED_LABEL_KEYS = new Set(["designVariant", "anchor", "metadata", "trustLabel"])
@@ -68,6 +71,7 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({
   theme,
   highlightPath,
   revealHighlight = true,
+  onSelectPath,
 }) => {
   const t = useTranslations("editor")
   const localizeLabel = useLocalizedSpecLabel()
@@ -93,6 +97,11 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({
     highlightField && advanced.some((spec) => spec.field === highlightField),
   )
   const [advancedOpen, setAdvancedOpen] = React.useState(highlightInAdvanced)
+  const selectFocusedField = React.useCallback((event: React.FocusEvent<HTMLDivElement>) => {
+    if (!onSelectPath || !(event.target instanceof Element)) return
+    const path = elementPathFromInspectorElement(blockIndex, event.target)
+    if (path) onSelectPath(path)
+  }, [blockIndex, onSelectPath])
 
   React.useEffect(() => {
     if (highlightInAdvanced) setAdvancedOpen(true)
@@ -153,7 +162,7 @@ export const BlockFormFields: React.FC<BlockFormFieldsProps> = ({
   return (
     <>
       {inspectorFonts.styleElement}
-      <div className={`${inspectorFonts.className} space-y-4`}>
+      <div className={`${inspectorFonts.className} space-y-4`} onFocusCapture={selectFocusedField}>
         {content.map(renderSpec)}
         {advanced.length > 0 ? (
           <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>

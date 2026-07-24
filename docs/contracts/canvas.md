@@ -100,10 +100,12 @@ provider modules prepare for a new `variantKey`, the last painted frame stays
 visible under a light overlay instead of blanking.
 
 Canvas clicks select and paint both frame and inspector highlights without
-scrolling either document. Sidebar / inspector selection sets
+scrolling either document. Sidebar block / chrome navigation sets
 `revealSelection: true` on `render.snapshot` so the frame `scrollIntoView`s the
-target (`block: "center"`). Canvas-echoed selection snapshots omit that flag,
-and a local frame click synchronously clears any pending reveal permission.
+target (`block: "center"`). Focusing an inspector field updates the same
+selection and canvas highlight without reveal or scroll. Canvas-echoed
+selection snapshots also omit that flag, and a local frame click synchronously
+clears any pending reveal permission.
 
 At ≤768px the editor keeps the mobile section-list / focused-section shell.
 Preview remains select-only; editing stays in the inspector panel.

@@ -16,6 +16,29 @@ export function elementPathFromFieldElement(blockIndex: number, el: HTMLElement)
   }
 }
 
+/** Build an ElementPath from an inspector control and its field wrappers. */
+export function elementPathFromInspectorElement(
+  blockIndex: number,
+  el: Element,
+): ElementPath | null {
+  const fieldNode = el.closest<HTMLElement>("[data-siab-inspector-field]")
+  const field = fieldNode?.dataset.siabInspectorField
+  if (!field) return null
+
+  const itemNode = el.closest<HTMLElement>("[data-siab-inspector-item-index]")
+  const rawItemIndex = itemNode?.dataset.siabInspectorItemIndex
+  const parsedItemIndex = rawItemIndex != null ? Number.parseInt(rawItemIndex, 10) : Number.NaN
+  const subField = el.closest<HTMLElement>("[data-siab-inspector-sub-field]")
+    ?.dataset.siabInspectorSubField
+
+  return {
+    blockIndex,
+    field,
+    ...(Number.isFinite(parsedItemIndex) && parsedItemIndex >= 0 ? { itemIndex: parsedItemIndex } : {}),
+    ...(subField ? { subField } : {}),
+  }
+}
+
 export function iframeSelectionToElementPath(
   selection: IframeEditorSelection | null | undefined,
   blocks: unknown[],

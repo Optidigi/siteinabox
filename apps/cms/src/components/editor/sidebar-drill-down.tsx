@@ -52,6 +52,7 @@ export interface SidebarDrillDownProps {
   selectedPath?: ElementPath | null
   revealSelectedPath?: boolean
   onSelectBlock: (i: number | null) => void
+  onSelectPath: (path: ElementPath) => void
   onReorder: (from: number, to: number) => void
   onDeleteBlock: (i: number) => void
   onDuplicateBlock: (i: number) => void
@@ -131,6 +132,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
   selectedPath,
   revealSelectedPath,
   onSelectBlock,
+  onSelectPath,
   onReorder,
   onDeleteBlock,
   onDuplicateBlock,
@@ -322,6 +324,7 @@ export const SidebarDrillDown: React.FC<SidebarDrillDownProps> = ({
           theme={theme}
           highlightPath={selectedPath}
           revealHighlight={revealSelectedPath}
+          onSelectPath={onSelectPath}
           renderBlockForm={renderBlockForm}
           onBack={() => setMode({ kind: "list" })}
           onDelete={() => {
@@ -527,10 +530,11 @@ const BlockFormState: React.FC<{
   theme?: ThemeTokens | null
   highlightPath?: ElementPath | null
   revealHighlight?: boolean
+  onSelectPath: (path: ElementPath) => void
   renderBlockForm?: (context: SidebarBlockFormSlotContext) => React.ReactNode
   onBack: () => void
   onDelete: () => void
-}> = ({ block, blockIndex, manifest, theme, highlightPath, revealHighlight, renderBlockForm, onBack, onDelete }) => {
+}> = ({ block, blockIndex, manifest, theme, highlightPath, revealHighlight, onSelectPath, renderBlockForm, onBack, onDelete }) => {
   const t = useTranslations("editor")
   const tLabels = useTranslations("editor.blockLabels")
   const cfg = blockBySlug[block.blockType]
@@ -572,6 +576,7 @@ const BlockFormState: React.FC<{
       theme={theme}
       highlightPath={highlightPath}
       revealHighlight={revealHighlight}
+      onSelectPath={onSelectPath}
     />
   )
   const deleteDialog = (

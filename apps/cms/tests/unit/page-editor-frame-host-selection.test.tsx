@@ -52,9 +52,20 @@ const selection = (index: number, blockId: string): IframeEditorSelection => ({
 
 function Harness() {
   const [selected, setSelected] = React.useState<IframeEditorSelection | null>(null)
+  const [revealSelection, setRevealSelection] = React.useState(true)
   return (
     <>
-      <button type="button" onClick={() => setSelected(selection(0, "a"))}>Select A</button>
+      <button type="button" onClick={() => {
+        setRevealSelection(true)
+        setSelected(selection(0, "a"))
+      }}>Select A</button>
+      <button type="button" onClick={() => {
+        setRevealSelection(false)
+        setSelected({
+          ...selection(1, "b"),
+          fieldPath: ["blocks", "1", "headline"],
+        })
+      }}>Select B field without reveal</button>
       <output data-testid="selected-block">{selected?.blockId ?? ""}</output>
       <PageEditorFrameHost
         pageId="page-1"
@@ -63,6 +74,7 @@ function Harness() {
         theme={null}
         tenantId="tenant-1"
         selection={selected}
+        revealSelection={revealSelection}
         onSelectionChanged={setSelected}
       />
     </>
@@ -109,6 +121,23 @@ describe("PageEditorFrameHost selection origin", () => {
         && "revealSelection" in message
         && message.revealSelection === true,
       )).toBe(true)
+    })
+
+    postMessage.mockClear()
+    fireEvent.click(screen.getByRole("button", { name: "Select B field without reveal" }))
+    await waitFor(() => {
+      const fieldSnapshot = postMessage.mock.calls
+        .map(([message]) => message)
+        .find((message) =>
+          typeof message === "object"
+          && message != null
+          && "type" in message
+          && message.type === "render.snapshot"
+          && "selection" in message
+          && (message.selection as IframeEditorSelection | null)?.fieldPath?.[2] === "headline",
+        )
+      expect(fieldSnapshot).toBeTruthy()
+      expect(fieldSnapshot).not.toHaveProperty("revealSelection")
     })
 
     postMessage.mockClear()

@@ -580,8 +580,10 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
     isDesktop,
     selected,
     revealInspectorSelection,
+    revealFrameSelection,
     selectedChrome,
     selectElement,
+    selectInspectorElement,
     selectChrome,
     clearChromeSelection,
     mobileFocusedSectionIndex,
@@ -924,6 +926,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
       tenantId={tenantId}
       tenantSlug={tenantSlug}
       selection={frameSelection}
+      revealSelection={revealFrameSelection}
       mobileMode={frameMobileMode}
       onSelectionChanged={handleFrameSelectionChanged}
       onChromeSelect={handleFrameChromeSelect}
@@ -1051,6 +1054,7 @@ export function PageForm({ initial, tenantId, tenantSlug, tenantDomain, baseHref
                             clearChromeSelection()
                             selectElement(i != null ? { blockIndex: i, field: "" } : null)
                           }}
+                          onSelectPath={selectInspectorElement}
                           onReorder={reorderBlocks}
                           onDeleteBlock={deleteBlock}
                           onDuplicateBlock={duplicateBlock}

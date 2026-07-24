@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import * as React from "react"
-import { render, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { FormProvider, useForm } from "react-hook-form"
 import type { RtManifest } from "@/lib/richText/manifest"
@@ -42,9 +42,11 @@ const block = {
 function Inspector({
   blockIndex,
   revealHighlight,
+  onSelectPath,
 }: {
   blockIndex: number
   revealHighlight: boolean
+  onSelectPath?: React.ComponentProps<typeof BlockFormFields>["onSelectPath"]
 }) {
   const form = useForm({
     defaultValues: {
@@ -60,6 +62,7 @@ function Inspector({
           manifest={manifest}
           highlightPath={{ blockIndex, field: "headline" }}
           revealHighlight={revealHighlight}
+          onSelectPath={onSelectPath}
         />
       </div>
     </FormProvider>
@@ -113,5 +116,25 @@ describe("BlockFormFields canvas selection highlighting", () => {
     expect(scrollOptions).toEqual([])
     expect(inspectorRoot.scrollTop).toBe(31)
     expect(document.documentElement.scrollTop).toBe(47)
+  })
+
+  it("selects a focused inspector input without scrolling", () => {
+    const onSelectPath = vi.fn()
+    render(
+      <Inspector
+        blockIndex={1}
+        revealHighlight={false}
+        onSelectPath={onSelectPath}
+      />,
+    )
+
+    fireEvent.focus(screen.getByRole("textbox"))
+
+    expect(onSelectPath).toHaveBeenCalledWith({
+      blockIndex: 1,
+      field: "headline",
+    })
+    expect(scrolled).toEqual([])
+    expect(scrollOptions).toEqual([])
   })
 })

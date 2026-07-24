@@ -292,6 +292,57 @@ describe("EditorFrameRuntime reveal intent", () => {
     ])
   })
 
+  it("replaces a block highlight with a field highlight without scrolling when reveal is omitted", async () => {
+    render(
+      <EditorFrameRuntime
+        page={page("A")}
+        settings={settings()}
+        theme={null}
+        tenantId="tenant-1"
+      />,
+    )
+    await screen.findByText("A")
+    const blockA = document.querySelector<HTMLElement>('[data-block-id="a"]')!
+    const blockB = document.querySelector<HTMLElement>('[data-block-id="b"]')!
+    const headlineB = blockB.querySelector<HTMLElement>('[data-siab-field="headline"]')!
+
+    act(() => {
+      dispatchSnapshot(snapshot({
+        expectedRevision: 0,
+        page: page("A"),
+        selection: selection(0, "a"),
+        revealSelection: true,
+      }))
+    })
+    await waitFor(() => expect(blockA.getAttribute("data-siab-editor-selected")).toBe("true"))
+
+    scrolled.length = 0
+    scrollOptions.length = 0
+    document.documentElement.scrollTop = 23
+    const parentScrollBefore = window.scrollY
+
+    act(() => {
+      dispatchSnapshot(snapshot({
+        expectedRevision: 1,
+        page: page("A"),
+        selection: {
+          ...selection(1, "b"),
+          fieldPath: ["blocks", "1", "headline"],
+        },
+      }))
+    })
+
+    await waitFor(() => {
+      expect(blockA.hasAttribute("data-siab-editor-selected")).toBe(false)
+      expect(blockB.hasAttribute("data-siab-editor-selected")).toBe(false)
+      expect(headlineB.getAttribute("data-siab-editor-field-selected")).toBe("true")
+    })
+    expect(scrolled).toEqual([])
+    expect(scrollOptions).toEqual([])
+    expect(document.documentElement.scrollTop).toBe(23)
+    expect(window.scrollY).toBe(parentScrollBefore)
+  })
+
   it("reveals parent selection but never consumes stale reveal intent for a canvas click", async () => {
     render(
       <EditorFrameRuntime

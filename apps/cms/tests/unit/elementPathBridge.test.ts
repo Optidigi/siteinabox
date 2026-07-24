@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   elementPathFromFieldElement,
+  elementPathFromInspectorElement,
   elementPathToIframeSelection,
   iframeSelectionToElementPath,
 } from "@/lib/editor/elementPathBridge"
@@ -44,6 +45,29 @@ describe("elementPathBridge", () => {
     expect(elementPathFromFieldElement(0, el)).toEqual({
       blockIndex: 0,
       field: "cta",
+    })
+  })
+
+  it("parses nested array-item inspector controls", () => {
+    const nodes = {
+      field: { dataset: { siabInspectorField: "features" } },
+      item: { dataset: { siabInspectorItemIndex: "2" } },
+      subField: { dataset: { siabInspectorSubField: "title" } },
+    }
+    const el = {
+      closest: (selector: string) => {
+        if (selector === "[data-siab-inspector-field]") return nodes.field
+        if (selector === "[data-siab-inspector-item-index]") return nodes.item
+        if (selector === "[data-siab-inspector-sub-field]") return nodes.subField
+        return null
+      },
+    } as unknown as Element
+
+    expect(elementPathFromInspectorElement(1, el)).toEqual({
+      blockIndex: 1,
+      field: "features",
+      itemIndex: 2,
+      subField: "title",
     })
   })
 })
