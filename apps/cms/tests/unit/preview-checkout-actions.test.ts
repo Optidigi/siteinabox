@@ -7,8 +7,17 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
   checkAndRecordPreviewDomainOrder: vi.fn(),
+  requireReadyPreviewDomainOrder: vi.fn(),
   loginOpenProvider: vi.fn(),
   suggestAvailablePreviewDomainBatch: vi.fn(),
+  saveCheckoutProfileVersion: vi.fn(),
+  loadLatestCheckoutProfile: vi.fn(),
+  domainRegistrantFromCheckoutProfile: vi.fn(),
+  payloadUpdate: vi.fn(),
+  createSiteApprovalEvidence: vi.fn(),
+  createOrderAndAcceptanceEvidence: vi.fn(),
+  satisfyRequirementsFromTransaction: vi.fn(),
+  createMollieCheckoutForGenerationRun: vi.fn(),
 }))
 
 vi.mock("next/headers", () => ({
@@ -45,13 +54,72 @@ vi.mock("@/lib/domains/openprovider", () => ({
 
 vi.mock("@/lib/domains/previewDomainOrder", () => ({
   checkAndRecordPreviewDomainOrder: mocks.checkAndRecordPreviewDomainOrder,
-  requireReadyPreviewDomainOrder: vi.fn(),
+  requireReadyPreviewDomainOrder: mocks.requireReadyPreviewDomainOrder,
   suggestAvailablePreviewDomainBatch: mocks.suggestAvailablePreviewDomainBatch,
 }))
 
 vi.mock("@/lib/payments/molliePayments", () => ({
-  createMollieCheckoutForGenerationRun: vi.fn(),
+  createMollieCheckoutForGenerationRun: mocks.createMollieCheckoutForGenerationRun,
 }))
+
+vi.mock("@/lib/checkout/checkoutProfile", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/checkout/checkoutProfile")>()
+  return {
+    ...original,
+    saveCheckoutProfileVersion: mocks.saveCheckoutProfileVersion,
+    loadLatestCheckoutProfile: mocks.loadLatestCheckoutProfile,
+    domainRegistrantFromCheckoutProfile: mocks.domainRegistrantFromCheckoutProfile,
+  }
+})
+
+vi.mock("@/lib/legal/checkoutEvidence", () => ({
+  createSiteApprovalEvidence: mocks.createSiteApprovalEvidence,
+  createOrderAndAcceptanceEvidence: mocks.createOrderAndAcceptanceEvidence,
+}))
+
+vi.mock("@/lib/legal/customerRequirements", () => ({
+  satisfyRequirementsFromTransaction: mocks.satisfyRequirementsFromTransaction,
+}))
+
+const validPaymentForm = () => {
+  const formData = new FormData()
+  formData.set("domain", "ami-care.nl")
+  formData.set("previewApproval", "accepted")
+  formData.set("termsAcceptance", "accepted")
+  formData.set("businessUseAcceptance", "accepted")
+  formData.set("expectedProfileVersion", "1")
+  formData.set("expectedProfileKey", "run:500:checkout-profile:1")
+  formData.set("expectedTermsVersion", "2026-07-07.1")
+  formData.set("expectedPrivacyVersion", "2026-07-18.1")
+  formData.set(
+    "expectedBusinessUseDeclarationVersion",
+    "business-use-declaration-2026-07-26.1",
+  )
+  formData.set("billingPeriod", "annual")
+  return formData
+}
+
+const validProfileForm = () => {
+  const formData = new FormData()
+  formData.set("expectedProfileVersion", "0")
+  formData.set("requestToken", "profile-request-1")
+  formData.set("partyType", "business_in_formation")
+  formData.set("firstName", "Customer")
+  formData.set("lastName", "Owner")
+  formData.set("registeredBusinessName", "")
+  formData.set("kvkNumber", "")
+  formData.set("intendedCompanyName", "Ami Care")
+  formData.set("street", "Markt")
+  formData.set("number", "1")
+  formData.set("suffix", "")
+  formData.set("zipcode", "1234AB")
+  formData.set("city", "Utrecht")
+  formData.set("country", "NL")
+  formData.set("phoneCountryCode", "+31")
+  formData.set("phoneAreaCode", "30")
+  formData.set("phoneSubscriberNumber", "1234567")
+  return formData
+}
 
 describe("preview checkout domain suggestion action", () => {
   beforeEach(() => {
@@ -60,8 +128,10 @@ describe("preview checkout domain suggestion action", () => {
     vi.spyOn(console, "error").mockImplementation(() => {})
     mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
     mocks.loadPreviewGrantContext.mockResolvedValue({
-      payload: { update: vi.fn() },
+      payload: { update: mocks.payloadUpdate },
       run: { id: 500 },
+      tenant: { id: 12, name: "Ami Care" },
+      pages: [],
       customerEmail: "customer@example.com",
       clientSlug: "ami-care",
     })
@@ -89,6 +159,107 @@ describe("preview checkout domain suggestion action", () => {
       nextCursor: 5,
       done: false,
     })
+    const profile = {
+      id: 70,
+      profileKey: "run:500:checkout-profile:1",
+      profileVersion: 1,
+      generationRun: 500,
+      customerName: "Customer Owner",
+      customerEmail: "customer@example.com",
+      partyType: "registered_business",
+      contractingPartyName: "Ami Care B.V.",
+      kvkNumber: "12345678",
+      domainRegistrantSource: "contracting_party",
+      billingAddress: {
+        schemaVersion: 1,
+        street: "Markt",
+        number: "1",
+        suffix: null,
+        zipcode: "1234AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+      },
+      createdAt: "2026-07-26T12:00:00.000Z",
+    }
+    mocks.loadLatestCheckoutProfile.mockResolvedValue(profile)
+    mocks.domainRegistrantFromCheckoutProfile.mockReturnValue({
+      companyName: "Ami Care B.V.",
+      firstName: "Customer",
+      lastName: "Owner",
+      email: "customer@example.com",
+      street: "Markt",
+      number: "1",
+      suffix: null,
+      zipcode: "1234AB",
+      city: "Utrecht",
+      country: "NL",
+      state: null,
+      phoneCountryCode: "+31",
+      phoneAreaCode: "30",
+      phoneSubscriberNumber: "1234567",
+      locale: "nl_NL",
+    })
+    mocks.requireReadyPreviewDomainOrder.mockResolvedValue({
+      run: {
+        id: 500,
+        domainOrder: {
+          domain: "ami-care.nl",
+          providerPriceAmount: "10.00",
+          providerPriceCurrency: "EUR",
+          maxProviderPriceAmount: "10.00",
+          maxProviderPriceCurrency: "EUR",
+        },
+      },
+      domain: "ami-care.nl",
+    })
+    mocks.createSiteApprovalEvidence.mockResolvedValue({
+      approval: { id: 80, approvedAt: "2026-07-26T12:01:00.000Z", snapshotHash: "snapshot" },
+      revision: { id: 81 },
+      snapshotHash: "snapshot",
+    })
+    mocks.createOrderAndAcceptanceEvidence.mockResolvedValue({
+      order: { id: 90 },
+      terms: { id: 91 },
+      acceptance: { id: 92, acceptedAt: "2026-07-26T12:02:00.000Z" },
+    })
+    mocks.createMollieCheckoutForGenerationRun.mockResolvedValue({
+      checkoutUrl: "https://payments.example.test/checkout",
+    })
+    mocks.payloadUpdate.mockResolvedValue({ id: 500 })
+    mocks.saveCheckoutProfileVersion.mockResolvedValue({
+      status: "saved",
+      created: true,
+      profile: {
+        profileKey: "run:500:checkout-profile:1",
+        profileVersion: 1,
+        customerEmail: "customer@example.com",
+        customerName: "Customer Owner",
+        contractingPartyName: "Customer Owner",
+        partyType: "business_in_formation",
+        firstName: "Customer",
+        lastName: "Owner",
+        registeredBusinessName: "",
+        kvkNumber: "",
+        intendedCompanyName: "Ami Care",
+        street: "Markt",
+        number: "1",
+        suffix: "",
+        zipcode: "1234AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+        supersedesProfileKey: null,
+        revisionReason: "initial_capture",
+        actorEmail: "customer@example.com",
+        sourceRequestId: "request",
+        createdAt: "2026-07-26T12:00:00.000Z",
+      },
+    })
   })
 
   it("blocks payment before explicit preview approval", async () => {
@@ -101,6 +272,35 @@ describe("preview checkout domain suggestion action", () => {
     expect(result).toMatchObject({ ok: false, message: "checkoutPreviewApprovalRequired" })
   })
 
+  it("saves profile identity only after the authenticated preview grant check", async () => {
+    const { savePreviewCheckoutProfileAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+
+    const result = await savePreviewCheckoutProfileAction(
+      "ami-care",
+      { ok: false, message: "" },
+      validProfileForm(),
+    )
+
+    expect(result).toMatchObject({
+      ok: true,
+      status: "saved",
+      requestToken: "profile-request-1",
+      profile: { profileVersion: 1 },
+    })
+    expect(mocks.saveCheckoutProfileVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        generationRunId: 500,
+        tenantId: 12,
+        actorEmail: "customer@example.com",
+        expectedProfileVersion: 0,
+        draft: expect.objectContaining({
+          partyType: "business_in_formation",
+          kvkNumber: "",
+        }),
+      }),
+    )
+  })
+
   it("blocks payment before explicit terms acceptance", async () => {
     const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
     const formData = new FormData()
@@ -109,6 +309,67 @@ describe("preview checkout domain suggestion action", () => {
 
     const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
     expect(result).toMatchObject({ ok: false, message: "checkoutTermsAcceptanceRequired" })
+  })
+
+  it("blocks payment before the governed business-use declaration is accepted", async () => {
+    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+    const formData = new FormData()
+    formData.set("domain", "ami-care.nl")
+    formData.set("previewApproval", "accepted")
+    formData.set("termsAcceptance", "accepted")
+
+    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
+    expect(result).toMatchObject({ ok: false, message: "checkoutBusinessUseRequired" })
+  })
+
+  it("rejects a stale authoritative profile before any domain or payment write", async () => {
+    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+    const formData = validPaymentForm()
+    formData.set("expectedProfileVersion", "0")
+
+    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
+
+    expect(result).toMatchObject({ ok: false, status: "profile_conflict" })
+    expect(mocks.requireReadyPreviewDomainOrder).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("uses only the persisted profile to construct registrant identity", async () => {
+    const { startPreviewCheckoutPaymentAction } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions")
+    const formData = validPaymentForm()
+    formData.set("companyName", "Attacker B.V.")
+    formData.set("registrantEmail", "attacker@example.test")
+    formData.set("firstName", "Mallory")
+
+    const result = await startPreviewCheckoutPaymentAction("ami-care", { ok: false, message: "" }, formData)
+
+    expect(result).toMatchObject({
+      ok: true,
+      checkoutUrl: "https://payments.example.test/checkout",
+    })
+    expect(mocks.domainRegistrantFromCheckoutProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ profileKey: "run:500:checkout-profile:1" }),
+    )
+    expect(mocks.requireReadyPreviewDomainOrder).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      "ami-care.nl",
+      expect.objectContaining({
+        companyName: "Ami Care B.V.",
+        email: "customer@example.com",
+        firstName: "Customer",
+      }),
+      {
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+      },
+    )
+    expect(mocks.requireReadyPreviewDomainOrder).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ email: "attacker@example.test" }),
+      expect.anything(),
+    )
   })
 
   it("checks the primary typed domain without recording auto-check state", async () => {
@@ -130,7 +391,10 @@ describe("preview checkout domain suggestion action", () => {
       context.run,
       "ami-care.nl",
       null,
-      { record: false },
+      {
+        record: false,
+        includedProviderPrice: { amount: "10.00", currency: "EUR" },
+      },
     )
     expect(context.payload.update).not.toHaveBeenCalled()
   })

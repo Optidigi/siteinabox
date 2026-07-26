@@ -3,13 +3,29 @@
 import crypto from "node:crypto"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
+import {
+  BUSINESS_USE_DECLARATION_VERSION,
+  getCurrentLegalDocument,
+} from "@siteinabox/legal-content"
+import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
+import type { CheckoutProfile } from "@/payload-types"
+import {
+  checkoutProfileDraftFromFormData,
+  checkoutProfileView,
+  domainRegistrantFromCheckoutProfile,
+  loadLatestCheckoutProfile,
+  saveCheckoutProfileVersion,
+  type CheckoutProfileView,
+} from "@/lib/checkout/checkoutProfile"
+import {
+  buildCheckoutQuote,
+  decimalMoneyToMinor,
+  type CheckoutBillingPeriod,
+} from "@/lib/checkout/checkoutQuote"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import {
   fixedDomainOrderPriceFromEnv,
-  domainCheckoutPrice,
   normalizeDomainOrderState,
-  maxDomainProviderPriceFromEnv,
-  normalizeDomainRegistrantDetails,
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
 import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/lib/legal/checkoutEvidence"
@@ -30,7 +46,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting"
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -38,7 +54,20 @@ export type PreviewCheckoutActionState = {
   extraFeeCurrency?: string | null
   extraFeeLabel?: string | null
   totalPriceLabel?: string | null
+  domainSurchargeNetMinor?: number
+  requestToken?: string
+  currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
+}
+
+export type PreviewCheckoutProfileActionState = {
+  ok: boolean
+  message: string
+  status?: "idle" | "saved" | "conflict" | "invalid"
+  requestToken?: string
+  profile?: CheckoutProfileView
+  currentProfile?: CheckoutProfileView
+  fieldErrors?: Record<string, string>
 }
 
 export type PreviewCheckoutSuggestionsState = {
@@ -48,30 +77,6 @@ export type PreviewCheckoutSuggestionsState = {
   cursor?: number
   done?: boolean
 }
-
-const textField = (formData: FormData, key: string): string | null => {
-  const value = String(formData.get(key) ?? "").trim()
-  return value || null
-}
-
-const registrantFromFormData = (formData: FormData) =>
-  normalizeDomainRegistrantDetails({
-    companyName: textField(formData, "companyName"),
-    firstName: textField(formData, "firstName"),
-    lastName: textField(formData, "lastName"),
-    email: textField(formData, "registrantEmail"),
-    street: textField(formData, "street"),
-    number: textField(formData, "number"),
-    suffix: textField(formData, "suffix"),
-    zipcode: textField(formData, "zipcode"),
-    city: textField(formData, "city"),
-    country: textField(formData, "country") ?? "NL",
-    state: textField(formData, "state"),
-    phoneCountryCode: textField(formData, "phoneCountryCode") ?? "+31",
-    phoneAreaCode: textField(formData, "phoneAreaCode"),
-    phoneSubscriberNumber: textField(formData, "phoneSubscriberNumber"),
-    locale: "nl_NL",
-  })
 
 const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): string | null => {
   if (!price) return null
@@ -94,6 +99,11 @@ const addMoney = (base: FixedDomainOrderPrice, extra: FixedDomainOrderPrice | nu
     currency: base.currency,
   }
 }
+
+const catalogDomainAllowance = (): FixedDomainOrderPrice => ({
+  amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
+  currency: COMMERCIAL_CATALOG.currency,
+})
 
 const safeCheckoutErrorMessage = (
   error: unknown,
@@ -144,13 +154,22 @@ export async function checkPreviewCheckoutDomainAction(
   logPreviewCheckoutTiming("primary_check_auth", authStart, { clientSlug: context.clientSlug })
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
-  if (!domain) return { ok: false, message: t("checkoutDomainRequired") }
-  const registrant = registrantFromFormData(formData)
+  const requestToken = String(formData.get("requestToken") ?? "").trim() || undefined
+  if (!domain) return { ok: false, message: t("checkoutDomainRequired"), requestToken }
 
   try {
     const locale = await getLocale()
     const providerStart = startPreviewCheckoutTimer()
-    const result = await checkAndRecordPreviewDomainOrder(context.payload, context.run, domain, registrant, { record: false })
+    const result = await checkAndRecordPreviewDomainOrder(
+      context.payload,
+      context.run,
+      domain,
+      null,
+      {
+        record: false,
+        includedProviderPrice: catalogDomainAllowance(),
+      },
+    )
     logPreviewCheckoutTiming("primary_check_provider", providerStart, { clientSlug: context.clientSlug, domain: result.domain }, {
       status: result.messageKey,
     })
@@ -171,6 +190,10 @@ export async function checkPreviewCheckoutDomainAction(
       extraFeeCurrency: result.extraFeeCurrency,
       extraFeeLabel: formatMoney(locale, extraFee),
       totalPriceLabel: formatMoney(locale, totalPrice),
+      domainSurchargeNetMinor: result.extraFeeAmount
+        ? decimalMoneyToMinor(result.extraFeeAmount)
+        : 0,
+      requestToken,
       suggestions: [],
     }
     logPreviewCheckoutTiming("primary_check_total", totalStart, { clientSlug: context.clientSlug, domain: result.domain }, {
@@ -187,7 +210,88 @@ export async function checkPreviewCheckoutDomainAction(
       ok: false,
       status: domainErrorStatus(error),
       message: safeCheckoutErrorMessage(error, t, domain),
+      requestToken,
     }
+  }
+}
+
+const versionField = (formData: FormData, key: string): number | null => {
+  const rawValue = String(formData.get(key) ?? "").trim()
+  if (!/^\d+$/.test(rawValue)) return null
+  const value = Number(rawValue)
+  return Number.isSafeInteger(value) && value >= 0 ? value : null
+}
+
+const requestAudit = async () => {
+  const requestHeaders = await headers()
+  return {
+    requestId: requestHeaders.get("x-request-id") ?? crypto.randomUUID(),
+    ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
+    userAgent: requestHeaders.get("user-agent"),
+  }
+}
+
+export async function savePreviewCheckoutProfileAction(
+  clientSlug: string,
+  _previousState: PreviewCheckoutProfileActionState,
+  formData: FormData,
+): Promise<PreviewCheckoutProfileActionState> {
+  const t = await getTranslations("preview")
+  const context = await requirePreviewCheckoutContext(clientSlug)
+  const requestToken = String(formData.get("requestToken") ?? "").trim() || undefined
+  const expectedProfileVersion = versionField(formData, "expectedProfileVersion")
+  if (expectedProfileVersion == null) {
+    return {
+      ok: false,
+      status: "invalid",
+      message: t("checkoutProfileVersionInvalid"),
+      requestToken,
+    }
+  }
+  const parsed = checkoutProfileDraftFromFormData(formData)
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {}
+    for (const issue of parsed.error.issues) {
+      const field = String(issue.path[0] ?? "form")
+      fieldErrors[field] ??= issue.message
+    }
+    return {
+      ok: false,
+      status: "invalid",
+      message: t("checkoutDetailsInvalid"),
+      requestToken,
+      fieldErrors,
+    }
+  }
+  const audit = await requestAudit()
+  const saved = await saveCheckoutProfileVersion({
+    payload: context.payload,
+    generationRunId: context.run.id,
+    tenantId: context.tenant.id,
+    actorEmail: context.customerEmail,
+    expectedProfileVersion,
+    draft: parsed.data,
+    requestId: audit.requestId,
+    ipAddress: audit.ipAddress,
+    userAgent: audit.userAgent,
+  })
+  if (saved.status === "conflict") {
+    return {
+      ok: false,
+      status: "conflict",
+      message: t("checkoutProfileConflict"),
+      requestToken,
+      currentProfile: saved.currentProfile,
+    }
+  }
+  return {
+    ok: true,
+    status: "saved",
+    message: saved.created
+      ? t("checkoutProfileSaved")
+      : t("checkoutProfileAlreadyCurrent"),
+    requestToken,
+    profile: saved.profile,
   }
 }
 
@@ -207,7 +311,7 @@ export async function suggestPreviewCheckoutDomainsAction(
     if (previousSuggestions.length >= 5 || (previousState.domain === domain && previousState.done)) {
       return { ok: true, domain, suggestions: previousSuggestions.slice(0, 5), cursor: previousState.cursor ?? 0, done: true }
     }
-    const batch = await suggestAvailablePreviewDomainBatch(domain, maxDomainProviderPriceFromEnv(), {
+    const batch = await suggestAvailablePreviewDomainBatch(domain, catalogDomainAllowance(), {
       cursor: previousState.domain === domain ? previousState.cursor ?? 0 : 0,
       batchSize: 5,
       existingDomains: previousSuggestions.map((suggestion) => suggestion.domain),
@@ -262,16 +366,56 @@ export async function startPreviewCheckoutPaymentAction(
   if (formData.get("termsAcceptance") !== "accepted") {
     return { ok: false, message: t("checkoutTermsAcceptanceRequired") }
   }
-  const registrant = registrantFromFormData(formData)
-  if (!registrant) return { ok: false, message: t("checkoutRegistrantRequired") }
+  if (formData.get("businessUseAcceptance") !== "accepted") {
+    return { ok: false, message: t("checkoutBusinessUseRequired") }
+  }
+  const expectedProfileVersion = versionField(formData, "expectedProfileVersion")
+  const expectedProfileKey = String(formData.get("expectedProfileKey") ?? "").trim()
+  if (expectedProfileVersion == null || !expectedProfileKey) {
+    return { ok: false, status: "profile_conflict", message: t("checkoutProfileRequired") }
+  }
+  const currentTerms = getCurrentLegalDocument("platform-terms", "nl")
+  const currentPrivacy = getCurrentLegalDocument("platform-privacy", "nl")
+  if (
+    String(formData.get("expectedTermsVersion") ?? "") !== currentTerms.documentVersion ||
+    String(formData.get("expectedPrivacyVersion") ?? "") !== currentPrivacy.documentVersion ||
+    String(formData.get("expectedBusinessUseDeclarationVersion") ?? "") !== BUSINESS_USE_DECLARATION_VERSION
+  ) {
+    return { ok: false, status: "version_conflict", message: t("checkoutLegalVersionConflict") }
+  }
+  const billingPeriodValue = String(formData.get("billingPeriod") ?? "")
+  if (billingPeriodValue !== "monthly" && billingPeriodValue !== "annual") {
+    return { ok: false, message: t("checkoutBillingPeriodRequired") }
+  }
+  const billingPeriod: CheckoutBillingPeriod = billingPeriodValue
+  const checkoutProfile = await loadLatestCheckoutProfile(context.payload, context.run.id)
+  if (
+    !checkoutProfile ||
+    checkoutProfile.profileVersion !== expectedProfileVersion ||
+    checkoutProfile.profileKey !== expectedProfileKey ||
+    checkoutProfile.customerEmail.trim().toLowerCase() !==
+      context.customerEmail.trim().toLowerCase()
+  ) {
+    return {
+      ok: false,
+      status: "profile_conflict",
+      message: t("checkoutProfileConflict"),
+      currentProfile: checkoutProfile ? checkoutProfileView(checkoutProfile) : undefined,
+    }
+  }
+  const registrant = domainRegistrantFromCheckoutProfile(checkoutProfile)
 
   try {
     const domainStart = startPreviewCheckoutTimer()
-    const ready = await requireReadyPreviewDomainOrder(context.payload, context.run, domain, registrant)
+    const ready = await requireReadyPreviewDomainOrder(
+      context.payload,
+      context.run,
+      domain,
+      registrant,
+      { includedProviderPrice: catalogDomainAllowance() },
+    )
     logPreviewCheckoutTiming("payment_domain_check", domainStart, { clientSlug: context.clientSlug, domain: ready.domain })
-    const requestHeaders = await headers()
-    const requestId = requestHeaders.get("x-request-id") ?? crypto.randomUUID()
-    const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || null
+    const audit = await requestAudit()
     const approvalEvidence = await createSiteApprovalEvidence({
       payload: context.payload,
       run: ready.run,
@@ -279,43 +423,31 @@ export async function startPreviewCheckoutPaymentAction(
       pages: context.pages,
       domain: ready.domain,
       actorEmail: context.customerEmail,
-      requestId,
+      requestId: audit.requestId,
     })
     const orderState = normalizeDomainOrderState(ready.run.domainOrder)
     const providerPrice = orderState.providerPriceAmount && orderState.providerPriceCurrency
       ? { amount: orderState.providerPriceAmount, currency: orderState.providerPriceCurrency }
       : null
-    const includedPrice = orderState.maxProviderPriceAmount && orderState.maxProviderPriceCurrency
-      ? { amount: orderState.maxProviderPriceAmount, currency: orderState.maxProviderPriceCurrency }
-      : maxDomainProviderPriceFromEnv()
-    const totalPrice = domainCheckoutPrice({
-      basePrice: fixedDomainOrderPriceFromEnv(),
-      providerPrice,
-      includedProviderPrice: includedPrice,
+    if (!providerPrice || providerPrice.currency !== "EUR") {
+      throw new Error("Checkout domain price is unavailable for the commercial quote.")
+    }
+    const quote = buildCheckoutQuote({
+      billingPeriod,
+      providerOperationPriceNetMinor: decimalMoneyToMinor(providerPrice.amount),
     })
     const legalEvidence = await createOrderAndAcceptanceEvidence({
       payload: context.payload,
       run: ready.run,
       tenant: context.tenant,
       approval: approvalEvidence.approval,
-      customerEmail: context.customerEmail,
-      customerName: [registrant.firstName, registrant.lastName].filter(Boolean).join(" "),
-      companyName: registrant.companyName || String(context.tenant.name),
-      billingAddress: {
-        street: registrant.street,
-        number: registrant.number,
-        suffix: registrant.suffix,
-        zipcode: registrant.zipcode,
-        city: registrant.city,
-        country: registrant.country,
-      },
+      checkoutProfile: checkoutProfile as CheckoutProfile,
+      quote,
       domainRegistrant: registrant,
       domain: ready.domain,
-      totalAmount: totalPrice.amount,
-      currency: totalPrice.currency,
-      requestId,
-      ipAddress: forwardedFor,
-      userAgent: requestHeaders.get("user-agent"),
+      requestId: audit.requestId,
+      ipAddress: audit.ipAddress,
+      userAgent: audit.userAgent,
     })
     await satisfyRequirementsFromTransaction({
       payload: context.payload,

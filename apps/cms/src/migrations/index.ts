@@ -69,6 +69,7 @@ import * as migration_20260718_230256 from './20260718_230256';
 import * as migration_20260719_103000_ensure_amicare_privacy_page from './20260719_103000_ensure_amicare_privacy_page';
 import * as migration_20260719_121500_restore_missing_public_analytics_consent from './20260719_121500_restore_missing_public_analytics_consent';
 import * as migration_20260726_181209_commerce_records from './20260726_181209_commerce_records';
+import * as migration_20260726_191919_checkout_profile_audit from './20260726_191919_checkout_profile_audit';
 
 export const migrations = [
   {
@@ -424,6 +425,11 @@ export const migrations = [
   {
     up: migration_20260726_181209_commerce_records.up,
     down: migration_20260726_181209_commerce_records.down,
-    name: '20260726_181209_commerce_records'
+    name: '20260726_181209_commerce_records',
+  },
+  {
+    up: migration_20260726_191919_checkout_profile_audit.up,
+    down: migration_20260726_191919_checkout_profile_audit.down,
+    name: '20260726_191919_checkout_profile_audit'
   },
 ];

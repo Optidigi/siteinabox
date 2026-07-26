@@ -157,7 +157,10 @@ export async function checkAndRecordPreviewDomainOrder(
   run: SiteGenerationRun,
   domainInput: string,
   registrant?: DomainRegistrantDetails | null,
-  options?: { record?: boolean },
+  options?: {
+    record?: boolean
+    includedProviderPrice?: FixedDomainOrderPrice
+  },
 ): Promise<PreviewDomainOrderResult> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
@@ -165,7 +168,8 @@ export async function checkAndRecordPreviewDomainOrder(
   }
 
   const fixedPrice = fixedDomainOrderPriceFromEnv()
-  const includedProviderPrice = maxDomainProviderPriceFromEnv()
+  const includedProviderPrice =
+    options?.includedProviderPrice ?? maxDomainProviderPriceFromEnv()
   const availability = await checkOpenProviderDomainAvailability(normalized.domain)
   const now = new Date().toISOString()
   const providerPrice = availability.price
@@ -231,11 +235,18 @@ export async function requireReadyPreviewDomainOrder(
   run: SiteGenerationRun,
   domainInput: string,
   registrant?: DomainRegistrantDetails | null,
+  options?: { includedProviderPrice?: FixedDomainOrderPrice },
 ): Promise<{ run: SiteGenerationRun; domain: string }> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) throw new Error(`Invalid domain: ${normalized.reason}`)
   const state = normalizeDomainOrderState(run.domainOrder)
-  const result = await checkAndRecordPreviewDomainOrder(payload, run, normalized.domain, registrant)
+  const result = await checkAndRecordPreviewDomainOrder(
+    payload,
+    run,
+    normalized.domain,
+    registrant,
+    options,
+  )
   if (result.messageKey !== "checkoutDomainAvailable" && result.messageKey !== "checkoutDomainAvailableExtraFee") {
     throw new Error(result.messageKey)
   }

@@ -29,6 +29,8 @@ export function CheckoutStepper<T extends string = string>({ steps, activeStep }
         return (
           <li
             key={entry.id}
+            aria-label={entry.label}
+            aria-current={active ? "step" : undefined}
             className={cn(
               "flex h-10 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-muted-foreground",
               (active || complete) && "bg-primary text-primary-foreground",

@@ -133,6 +133,16 @@ describe("Phase 2 commerce record schemas", () => {
   })
 
   it("enforces the two contracting-party classifications on immutable profile versions", () => {
+    for (const field of [
+      "supersedesProfileKey",
+      "revisionReason",
+      "actorEmail",
+      "sourceRequestId",
+      "sourceIpAddress",
+      "sourceUserAgent",
+    ]) {
+      expect(expectNamedField(CheckoutProfiles.fields, field)).toBeDefined()
+    }
     expect(validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
       operation: "create",
       data: {
@@ -190,6 +200,22 @@ describe("Phase 2 commerce record schemas", () => {
       collection: {},
       context: {},
     }))).toThrow("immutable")
+    expect(() => validateCheckoutProfile(hookArgsFor(validateCheckoutProfile, {
+      operation: "create",
+      data: {
+        profileVersion: 2,
+        partyType: "registered_business",
+        kvkNumber: "12345678",
+        domainRegistrantSource: "contracting_party",
+        customerEmail: "owner@example.test",
+        revisionReason: "customer_correction",
+        actorEmail: "owner@example.test",
+        sourceRequestId: "req-2",
+      },
+      req: {},
+      collection: {},
+      context: {},
+    }))).toThrow("superseded profile")
   })
 
   it("canonicalizes managed-domain identity before database uniqueness is applied", () => {

@@ -4,6 +4,8 @@ import {
   createSiteApprovalEvidence,
   verifyCheckoutEvidence,
 } from "@/lib/legal/checkoutEvidence"
+import { buildCheckoutQuote } from "@/lib/checkout/checkoutQuote"
+import type { CheckoutProfile } from "@/payload-types"
 
 import { asGenerationRun, asTenant, cast } from "../_helpers/cast"
 import { asPayload, type MockCreateArgs, type MockDoc, type MockFindArgs, type MockWhere } from "../_helpers/mockPayload"
@@ -80,14 +82,26 @@ describe("checkout legal evidence", () => {
       run,
       tenant,
       approval: approval.approval,
-      customerEmail: "Client@Example.com",
-      customerName: "Client Name",
-      companyName: "Demo",
-      billingAddress: { city: "Roermond" },
+      checkoutProfile: cast<CheckoutProfile>({
+        id: 50,
+        profileKey: "run:30:checkout-profile:1",
+        profileVersion: 1,
+        generationRun: 30,
+        customerName: "Client Name",
+        customerEmail: "Client@Example.com",
+        partyType: "registered_business",
+        contractingPartyName: "Demo B.V.",
+        kvkNumber: "12345678",
+        domainRegistrantSource: "contracting_party",
+        billingAddress: { city: "Roermond" },
+        createdAt: "2026-07-10T11:00:00.000Z",
+      }),
+      quote: buildCheckoutQuote({
+        billingPeriod: "annual",
+        providerOperationPriceNetMinor: 1_000,
+      }),
       domainRegistrant: { email: "client@example.com" },
       domain: "demo.nl",
-      totalAmount: "499.00",
-      currency: "EUR",
       requestId: "req-1",
       now: new Date("2026-07-10T12:00:00.000Z"),
     })
@@ -96,14 +110,26 @@ describe("checkout legal evidence", () => {
       run,
       tenant,
       approval: approval.approval,
-      customerEmail: "client@example.com",
-      customerName: "Client Name",
-      companyName: "Demo",
-      billingAddress: { city: "Roermond" },
+      checkoutProfile: cast<CheckoutProfile>({
+        id: 50,
+        profileKey: "run:30:checkout-profile:1",
+        profileVersion: 1,
+        generationRun: 30,
+        customerName: "Client Name",
+        customerEmail: "client@example.com",
+        partyType: "registered_business",
+        contractingPartyName: "Demo B.V.",
+        kvkNumber: "12345678",
+        domainRegistrantSource: "contracting_party",
+        billingAddress: { city: "Roermond" },
+        createdAt: "2026-07-10T11:00:00.000Z",
+      }),
+      quote: buildCheckoutQuote({
+        billingPeriod: "annual",
+        providerOperationPriceNetMinor: 1_000,
+      }),
       domainRegistrant: { email: "client@example.com" },
       domain: "demo.nl",
-      totalAmount: "499.00",
-      currency: "EUR",
       requestId: "req-2",
       now: new Date("2026-07-10T12:00:00.000Z"),
     })
@@ -114,6 +140,17 @@ describe("checkout legal evidence", () => {
     expect(stores["agreement-acceptances"]).toHaveLength(1)
     expect(first.order.id).toBe(second.order.id)
     expect(first.order.legalDocuments).toEqual([20, 21])
+    expect(first.order).toMatchObject({
+      state: "accepted",
+      checkoutProfileKey: "run:30:checkout-profile:1",
+      catalogVersion: "2026-07-26.1",
+      subtotalNetMinor: 19_000,
+      vatAmountMinor: 3_990,
+      totalGrossMinor: 22_990,
+      contractingPartyProfileVersion: 1,
+      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
+      totalGross: 229.9,
+    })
     expect(first.acceptance).toMatchObject({
       documentVersion: "2026-07-07.1",
       acceptanceVersion: "platform-terms-2026-07-07",
@@ -127,4 +164,3 @@ describe("checkout legal evidence", () => {
     })).resolves.toMatchObject({ order: { domain: "demo.nl" } })
   })
 })
-

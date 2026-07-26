@@ -4,6 +4,7 @@ import crypto from "node:crypto"
 import type { Payload, Where } from "payload"
 import type {
   AgreementAcceptance,
+  CheckoutProfile,
   Order,
   Page,
   SiteApproval,
@@ -11,6 +12,12 @@ import type {
   SiteReviewRevision,
   Tenant,
 } from "@/payload-types"
+import {
+  BUSINESS_USE_DECLARATION_TEXT_NL,
+  BUSINESS_USE_DECLARATION_VERSION,
+} from "@siteinabox/legal-content"
+import { businessUseDeclarationAcceptanceSchema } from "@siteinabox/contracts/commerce"
+import type { CheckoutQuote } from "@/lib/checkout/checkoutQuote"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { legalStatements } from "@/lib/legal/statements"
@@ -110,25 +117,15 @@ export async function createSiteApprovalEvidence(input: {
   return { revision, approval, snapshotHash }
 }
 
-const vatBreakdown = (gross: number, vatRate = 21) => {
-  const net = Math.round((gross / (1 + vatRate / 100)) * 100) / 100
-  return { net, vat: Math.round((gross - net) * 100) / 100 }
-}
-
 export async function createOrderAndAcceptanceEvidence(input: {
   payload: Payload
   run: SiteGenerationRun
   tenant: Tenant
   approval: SiteApproval
-  customerEmail: string
-  customerName: string
-  companyName: string
-  billingAddress: Record<string, unknown>
+  checkoutProfile: CheckoutProfile
+  quote: CheckoutQuote
   domainRegistrant: Record<string, unknown>
   domain: string
-  totalAmount: string
-  currency: string
-  packageCode?: string
   requestId: string
   ipAddress?: string | null
   userAgent?: string | null
@@ -141,16 +138,23 @@ export async function createOrderAndAcceptanceEvidence(input: {
   ])
   if (!terms.acceptanceVersion) throw new Error("Current platform terms are missing an acceptance version.")
 
-  const totalGross = Number(input.totalAmount)
-  if (!Number.isFinite(totalGross) || totalGross <= 0) throw new Error("Checkout total must be a positive amount.")
-  const totals = vatBreakdown(totalGross)
+  businessUseDeclarationAcceptanceSchema.parse({
+    declarationVersion: BUSINESS_USE_DECLARATION_VERSION,
+    accepted: true,
+  })
+  const totalGross = input.quote.grossAmountMinor / 100
+  const subtotalNet = input.quote.netAmountMinor / 100
+  const vatAmount = input.quote.vatAmountMinor / 100
+  const acceptedAt = now.toISOString()
   const orderIdentity = {
     runId: input.run.id,
     domain: input.domain,
-    totalAmount: input.totalAmount,
-    currency: input.currency,
+    checkoutProfileKey: input.checkoutProfile.profileKey,
+    checkoutProfileVersion: input.checkoutProfile.profileVersion,
+    quote: input.quote,
     terms: terms.contentHash,
     privacy: privacy.contentHash,
+    businessUseDeclaration: BUSINESS_USE_DECLARATION_VERSION,
     approval: input.approval.snapshotHash,
   }
   const orderNumber = `SIAB-${input.run.id}-${sha256(orderIdentity).slice(0, 12).toUpperCase()}`
@@ -162,22 +166,51 @@ export async function createOrderAndAcceptanceEvidence(input: {
         orderNumber,
         tenant: input.tenant.id,
         generationRun: input.run.id,
-        customerName: input.customerName,
-        customerEmail: input.customerEmail.trim().toLowerCase(),
-        companyName: input.companyName,
-        billingAddress: input.billingAddress,
-        packageCode: input.packageCode ?? process.env.SIAB_SITE_PACKAGE_CODE ?? "siteinabox-website",
-        billingPeriod: "annual",
-        renewalTerms: "Eerste jaar vooraf betaald; daarna maandelijkse verlenging met een opzegtermijn van een maand.",
-        lineItems: [{
-          code: "siteinabox-first-year",
-          description: `Site in a Box website inclusief domein voor ${input.domain}`,
-          quantity: 1,
-          totalGross,
-        }],
-        currency: input.currency,
-        subtotalNet: totals.net,
-        vatAmount: totals.vat,
+        state: "accepted",
+        checkoutProfileKey: input.checkoutProfile.profileKey,
+        catalogVersion: input.quote.catalogVersion,
+        quoteEvidence: {
+          schemaVersion: 1,
+          catalogVersion: input.quote.catalogVersion,
+          checkoutProfileKey: input.checkoutProfile.profileKey,
+          checkoutProfileVersion: input.checkoutProfile.profileVersion,
+          domain: input.domain,
+          domainIncludedAllowanceNetMinor: input.quote.domainIncludedAllowanceNetMinor,
+          providerOperationPriceNetMinor: input.quote.providerOperationPriceNetMinor,
+          domainSurchargeNetMinor: input.quote.domainSurchargeNetMinor,
+          businessUseDeclaration: {
+            version: BUSINESS_USE_DECLARATION_VERSION,
+            text: BUSINESS_USE_DECLARATION_TEXT_NL,
+            accepted: true,
+          },
+        },
+        netLineItems: input.quote.lineItems,
+        vatRateBasisPoints: 2_100,
+        subtotalNetMinor: input.quote.netAmountMinor,
+        vatAmountMinor: input.quote.vatAmountMinor,
+        totalGrossMinor: input.quote.grossAmountMinor,
+        contractingPartyProfileVersion: input.checkoutProfile.profileVersion,
+        termsVersion: terms.acceptanceVersion,
+        privacyVersion: privacy.documentVersion,
+        businessUseDeclarationVersion: BUSINESS_USE_DECLARATION_VERSION,
+        acceptedAt,
+        acceptanceIpAddress: input.ipAddress ?? undefined,
+        acceptanceUserAgent: input.userAgent ?? undefined,
+        customerName: input.checkoutProfile.customerName,
+        customerEmail: input.checkoutProfile.customerEmail.trim().toLowerCase(),
+        companyName: input.checkoutProfile.partyType === "registered_business"
+          ? input.checkoutProfile.contractingPartyName
+          : input.checkoutProfile.intendedCompanyName || input.checkoutProfile.customerName,
+        billingAddress: input.checkoutProfile.billingAddress,
+        packageCode: input.quote.packageCode,
+        billingPeriod: input.quote.billingPeriod,
+        renewalTerms: input.quote.billingPeriod === "annual"
+          ? "Jaarabonnement met verlengingsintentie; opzegging annuleert alleen nog niet betaalde of vastgelegde toekomstige cycli."
+          : "Maandabonnement met verlengingsintentie; opzegging annuleert alleen nog niet betaalde of vastgelegde toekomstige cycli.",
+        lineItems: input.quote.lineItems,
+        currency: input.quote.currency,
+        subtotalNet,
+        vatAmount,
         totalGross,
         domain: input.domain,
         domainRegistrant: input.domainRegistrant,
@@ -206,8 +239,8 @@ export async function createOrderAndAcceptanceEvidence(input: {
         contentHash: terms.contentHash,
         statementVersion: legalStatements.termsAcceptance.version,
         statementText: legalStatements.termsAcceptance.text,
-        actorEmail: input.customerEmail.trim().toLowerCase(),
-        acceptedAt: now.toISOString(),
+        actorEmail: input.checkoutProfile.customerEmail.trim().toLowerCase(),
+        acceptedAt,
         requestId: input.requestId,
         ipAddress: input.ipAddress ?? undefined,
         userAgent: input.userAgent ?? undefined,

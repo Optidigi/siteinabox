@@ -2,20 +2,31 @@ import type { Metadata } from "next"
 import { headers } from "next/headers"
 import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
-import { getCurrentLegalDocument } from "@siteinabox/legal-content"
+import {
+  BUSINESS_USE_DECLARATION_TEXT_NL,
+  BUSINESS_USE_DECLARATION_VERSION,
+  getCurrentLegalDocument,
+} from "@siteinabox/legal-content"
+import { COMMERCIAL_CATALOG } from "@siteinabox/contracts/commerce"
 import { PreviewCheckout } from "@/components/preview/PreviewCheckout"
 import { PreviewLoginShell } from "@/components/preview/PreviewLoginShell"
 import { previewAuth } from "@/lib/preview/betterAuth"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import {
-  domainCheckoutPrice,
   domainExtraFeeForProviderPrice,
   normalizeDomainOrderState,
   type DomainRegistrantDetails,
 } from "@/lib/domains/orderState"
 import {
+  checkoutProfileView,
+  loadLatestCheckoutProfile,
+  type CheckoutProfileDraft,
+} from "@/lib/checkout/checkoutProfile"
+import { decimalMoneyToMinor } from "@/lib/checkout/checkoutQuote"
+import {
   checkPreviewCheckoutDomainAction,
+  savePreviewCheckoutProfileAction,
   startPreviewCheckoutPaymentAction,
 } from "./actions"
 
@@ -64,38 +75,67 @@ export default async function PreviewCheckoutPage({
     const payment = context.run.payment && typeof context.run.payment === "object"
       ? context.run.payment as { status?: string | null }
       : null
-    const approval = context.run.clientApproval && typeof context.run.clientApproval === "object"
-      ? context.run.clientApproval as { status?: string | null }
-      : null
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
     const selectedDomain = domainOrder.status === "ready_to_register" ? domainOrder.domain : null
-    const initialPrice = domainPriceLabels(locale, domainOrder)
     const terms = getCurrentLegalDocument("platform-terms", "nl")
     const privacy = getCurrentLegalDocument("platform-privacy", "nl")
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
       run: context.run,
     })
+    const profileRecord = await loadLatestCheckoutProfile(context.payload, context.run.id)
+    const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
+    const initialDetails = initialProfile ?? deriveCheckoutDetails({
+      run: context.run,
+      registrant,
+      tenantName: String(context.tenant.name),
+    })
+    const initialDomainSurchargeNetMinor = domainSurchargeNetMinor(domainOrder)
 
     return (
       <PreviewCheckout
         customerEmail={context.customerEmail}
-        tenantName={String(context.tenant.name)}
         currentDomain={selectedDomain}
         domainReady={Boolean(selectedDomain)}
-        registrant={registrant}
-        priceLabel={formatCheckoutPrice(locale)}
-        initialExtraFeeLabel={initialPrice.extraFeeLabel}
-        initialTotalPriceLabel={initialPrice.totalPriceLabel}
+        initialProfile={initialProfile}
+        initialDetails={initialDetails}
+        initialDomainSurchargeNetMinor={initialDomainSurchargeNetMinor}
+        catalog={{
+          version: COMMERCIAL_CATALOG.catalogVersion,
+          currency: COMMERCIAL_CATALOG.currency,
+          vatRateBasisPoints: COMMERCIAL_CATALOG.vat.rateBasisPoints,
+          plans: {
+            monthly: {
+              code: COMMERCIAL_CATALOG.subscriptions.monthly.code,
+              netAmountMinor: COMMERCIAL_CATALOG.subscriptions.monthly.netAmountMinor,
+            },
+            annual: {
+              code: COMMERCIAL_CATALOG.subscriptions.annual.code,
+              netAmountMinor: COMMERCIAL_CATALOG.subscriptions.annual.netAmountMinor,
+            },
+          },
+          domainIncludedAllowanceNetMinor:
+            COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
+          migrations: {
+            automaticNetAmountMinor:
+              COMMERCIAL_CATALOG.migrations.automatic.netAmountMinor,
+            assistedStandardNetAmountMinor:
+              COMMERCIAL_CATALOG.migrations.assisted_standard.netAmountMinor,
+          },
+        }}
         paymentStatus={payment?.status ?? "not_started"}
-        approvalStatus={approval?.status ?? "pending"}
         previewHref={`/${context.clientSlug}`}
         prewarmHref={`/${context.clientSlug}/checkout/prewarm`}
         suggestionsHref={`/${context.clientSlug}/checkout/suggestions`}
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
+        saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
         termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
         privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}
         termsVersion={terms.documentVersion}
+        privacyVersion={privacy.documentVersion}
+        businessUseDeclarationVersion={BUSINESS_USE_DECLARATION_VERSION}
+        businessUseDeclarationText={BUSINESS_USE_DECLARATION_TEXT_NL}
+        locale={locale}
       />
     )
   } catch {
@@ -107,6 +147,51 @@ export default async function PreviewCheckoutPage({
         description={t("accessUnavailableDescription")}
       />
     )
+  }
+}
+
+function deriveCheckoutDetails(input: {
+  run: Awaited<ReturnType<typeof loadPreviewGrantContext>>["run"]
+  registrant: DomainRegistrantDetails | null
+  tenantName: string
+}): CheckoutProfileDraft {
+  const normalizedIntake = readObject(input.run.normalizedIntake)
+  const generationInput = readObject(input.run.generationInput)
+  const generationNormalized = nestedObject(generationInput, "normalizedIntake")
+  const companyFacts =
+    nestedObject(normalizedIntake, "companyFacts") ??
+    nestedObject(generationInput, "companyFacts")
+  const intake = asRecord(input.run.intakeSubmission)
+  const raw = asRecord(intake?.raw)
+  const rawCompany = nestedObject(raw, "company")
+  const kvkNumber = (
+    readText(rawCompany, ["kvkNumber"]) ??
+    readText(companyFacts, ["kvkNumber"]) ??
+    readText(normalizedIntake, ["kvkNumber"]) ??
+    readText(generationNormalized, ["kvkNumber"]) ??
+    ""
+  ).replace(/\D/g, "")
+  const isRegistered = /^\d{8}$/.test(kvkNumber)
+  const companyName =
+    input.registrant?.companyName ??
+    readText(intake, ["businessName"]) ??
+    input.tenantName
+  return {
+    partyType: isRegistered ? "registered_business" : "business_in_formation",
+    firstName: input.registrant?.firstName ?? "",
+    lastName: input.registrant?.lastName ?? "",
+    registeredBusinessName: isRegistered ? companyName : "",
+    kvkNumber: isRegistered ? kvkNumber : "",
+    intendedCompanyName: isRegistered ? "" : companyName,
+    street: input.registrant?.street ?? "",
+    number: input.registrant?.number ?? "",
+    suffix: input.registrant?.suffix ?? "",
+    zipcode: input.registrant?.zipcode ?? "",
+    city: input.registrant?.city ?? "",
+    country: input.registrant?.country ?? "NL",
+    phoneCountryCode: input.registrant?.phoneCountryCode ?? "+31",
+    phoneAreaCode: input.registrant?.phoneAreaCode ?? "",
+    phoneSubscriberNumber: input.registrant?.phoneSubscriberNumber ?? "",
   }
 }
 
@@ -235,46 +320,18 @@ function deriveRegistrantDefaults(input: {
   }
 }
 
-function formatMoney(locale: string, amount: string | null | undefined, currency = "EUR"): string | null {
-  if (!amount) return null
-
-  const numericAmount = Number(amount)
-  if (!Number.isFinite(numericAmount)) return `${currency} ${amount}`
-
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(numericAmount)
-}
-
-function formatCheckoutPrice(locale: string): string {
-  return formatMoney(
-    locale,
-    process.env.MOLLIE_SITE_PAYMENT_AMOUNT?.trim(),
-    process.env.MOLLIE_SITE_PAYMENT_CURRENCY?.trim() || "EUR",
-  ) ?? "EUR --"
-}
-
-function domainPriceLabels(locale: string, domainOrder: ReturnType<typeof normalizeDomainOrderState>) {
-  const baseAmount = process.env.MOLLIE_SITE_PAYMENT_AMOUNT?.trim()
-  const baseCurrency = process.env.MOLLIE_SITE_PAYMENT_CURRENCY?.trim() || "EUR"
+function domainSurchargeNetMinor(
+  domainOrder: ReturnType<typeof normalizeDomainOrderState>,
+): number {
   const providerPrice = domainOrder.providerPriceAmount && domainOrder.providerPriceCurrency
     ? { amount: domainOrder.providerPriceAmount, currency: domainOrder.providerPriceCurrency }
     : null
-  const includedProviderPrice = domainOrder.maxProviderPriceAmount && domainOrder.maxProviderPriceCurrency
-    ? { amount: domainOrder.maxProviderPriceAmount, currency: domainOrder.maxProviderPriceCurrency }
-    : null
-  if (!baseAmount || !includedProviderPrice) return { extraFeeLabel: null, totalPriceLabel: null }
-  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
-  const totalPrice = domainCheckoutPrice({
-    basePrice: { amount: baseAmount, currency: baseCurrency },
-    providerPrice,
-    includedProviderPrice,
-  })
-  return {
-    extraFeeLabel: formatMoney(locale, extraFee?.amount, extraFee?.currency ?? baseCurrency),
-    totalPriceLabel: formatMoney(locale, totalPrice.amount, totalPrice.currency),
+  const includedProviderPrice = {
+    amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
+    currency: COMMERCIAL_CATALOG.currency,
   }
+  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
+  return extraFee?.currency === "EUR" ? decimalMoneyToMinor(extraFee.amount) : 0
 }
 
 function PreviewCheckoutAccessScreen({

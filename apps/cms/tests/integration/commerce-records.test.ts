@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import type { PaymentAttempt } from "@/payload-types"
 
+import {
+  loadLatestCheckoutProfile,
+  saveCheckoutProfileVersion,
+} from "@/lib/checkout/checkoutProfile"
 import { asDocRecord, createArgs, relationId, updateArgs } from "../_helpers/payloadApi"
 import { getTestPayload } from "./_helpers"
 
@@ -57,25 +61,79 @@ describe("commerce records on migrated PostgreSQL", () => {
       },
       { overrideAccess: true },
     )))
-    const profile = remember("checkout-profiles", await payload.create(createArgs(
-      "checkout-profiles",
-      {
-        profileKey: `run:${run.id}:profile:1`,
+    const customerEmail = `owner-${suffix}@example.test`
+    const profileDraft = {
+      partyType: "business_in_formation" as const,
+      firstName: "Fixture",
+      lastName: "Owner",
+      registeredBusinessName: "",
+      kvkNumber: "",
+      intendedCompanyName: "Fixture Studio",
+      street: "Teststraat",
+      number: "1",
+      suffix: "",
+      zipcode: "1234AB",
+      city: "Utrecht",
+      country: "NL",
+      phoneCountryCode: "+31",
+      phoneAreaCode: "30",
+      phoneSubscriberNumber: "1234567",
+    }
+    const initialProfile = await saveCheckoutProfileVersion({
+      payload,
+      generationRunId: run.id,
+      actorEmail: customerEmail,
+      expectedProfileVersion: 0,
+      draft: profileDraft,
+      requestId: `profile-request-initial-${suffix}`,
+      ipAddress: "192.0.2.10",
+      userAgent: "phase3-integration-test",
+      now: new Date("2026-07-26T12:00:00.000Z"),
+    })
+    expect(initialProfile).toMatchObject({
+      status: "saved",
+      created: true,
+      profile: {
         profileVersion: 1,
-        generationRun: run.id,
-        customerName: "Fixture Owner",
-        customerEmail: `owner-${suffix}@example.test`,
-        partyType: "business_in_formation",
-        contractingPartyName: "Fixture Owner",
-        kvkNumber: null,
-        contractingPartyKind: "natural_person",
-        domainRegistrantSource: "contracting_party",
-        intendedCompanyName: "Fixture Studio",
-        billingAddress: { country: "NL", postalCode: "1234AB", houseNumber: "1" },
-        createdAt: "2026-07-26T12:00:00.000Z",
+        revisionReason: "initial_capture",
+        actorEmail: customerEmail,
+        sourceRequestId: `profile-request-initial-${suffix}`,
       },
-      { overrideAccess: true },
-    )))
+    })
+    if (initialProfile.status !== "saved") throw new Error("Expected saved initial profile.")
+    const persistedInitialProfile = await loadLatestCheckoutProfile(payload, run.id)
+    if (!persistedInitialProfile) throw new Error("Expected initial checkout profile.")
+    remember("checkout-profiles", persistedInitialProfile)
+
+    const correctedProfile = await saveCheckoutProfileVersion({
+      payload,
+      generationRunId: run.id,
+      actorEmail: customerEmail,
+      expectedProfileVersion: 1,
+      draft: {
+        ...profileDraft,
+        city: "Amsterdam",
+      },
+      requestId: `profile-request-correction-${suffix}`,
+      ipAddress: "192.0.2.11",
+      userAgent: "phase3-integration-test",
+      now: new Date("2026-07-26T12:01:00.000Z"),
+    })
+    expect(correctedProfile).toMatchObject({
+      status: "saved",
+      created: true,
+      profile: {
+        profileVersion: 2,
+        revisionReason: "customer_correction",
+        supersedesProfileKey: initialProfile.profile.profileKey,
+        actorEmail: customerEmail,
+        sourceRequestId: `profile-request-correction-${suffix}`,
+        city: "Amsterdam",
+      },
+    })
+    const profile = await loadLatestCheckoutProfile(payload, run.id)
+    if (!profile) throw new Error("Expected corrected checkout profile.")
+    remember("checkout-profiles", profile)
     await expect(payload.create(createArgs(
       "checkout-profiles",
       {

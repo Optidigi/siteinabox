@@ -7,7 +7,9 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   isPreviewHost: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
+  loadLatestCheckoutProfile: vi.fn(),
   checkDomainAction: vi.fn(),
+  saveProfileAction: vi.fn(),
   startPaymentAction: vi.fn(),
 }))
 
@@ -53,14 +55,24 @@ vi.mock("@/lib/preview/previewAccess", () => ({
 
 vi.mock("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions", () => ({
   checkPreviewCheckoutDomainAction: mocks.checkDomainAction,
+  savePreviewCheckoutProfileAction: mocks.saveProfileAction,
   startPreviewCheckoutPaymentAction: mocks.startPaymentAction,
 }))
+
+vi.mock("@/lib/checkout/checkoutProfile", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/checkout/checkoutProfile")>()
+  return {
+    ...original,
+    loadLatestCheckoutProfile: mocks.loadLatestCheckoutProfile,
+  }
+})
 
 type PreviewCheckoutProps = ComponentProps<typeof PreviewCheckout>
 
 const baseContext = (overrides: Record<string, unknown> = {}) => ({
   customerEmail: "customer@example.com",
   clientSlug: "ami-care",
+  payload: {},
   tenant: {
     name: "Ami Care",
     domain: "ami-care.siteinabox.test",
@@ -74,11 +86,15 @@ const baseContext = (overrides: Record<string, unknown> = {}) => ({
   },
 })
 
-async function renderCheckoutProps(overrides: Record<string, unknown> = {}): Promise<PreviewCheckoutProps> {
+async function renderCheckoutProps(
+  overrides: Record<string, unknown> = {},
+  profile: Record<string, unknown> | null = null,
+): Promise<PreviewCheckoutProps> {
   vi.clearAllMocks()
   mocks.isPreviewHost.mockResolvedValue(true)
   mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
   mocks.loadPreviewGrantContext.mockResolvedValue(baseContext(overrides))
+  mocks.loadLatestCheckoutProfile.mockResolvedValue(profile)
 
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")
   const element = await PreviewCheckoutPage({
@@ -107,5 +123,50 @@ describe("preview checkout page domain initialization", () => {
 
     expect(props.currentDomain).toBe("customer-selected.nl")
     expect(props.domainReady).toBe(true)
+  })
+
+  it("loads the latest checkout profile as the authoritative details version", async () => {
+    const profile = {
+      id: 44,
+      profileKey: "run:123:checkout-profile:2",
+      profileVersion: 2,
+      generationRun: 123,
+      customerName: "Ada Lovelace",
+      customerEmail: "customer@example.com",
+      partyType: "registered_business",
+      contractingPartyName: "Analytical Engines B.V.",
+      kvkNumber: "12345678",
+      domainRegistrantSource: "contracting_party",
+      billingAddress: {
+        schemaVersion: 1,
+        street: "Markt",
+        number: "1",
+        suffix: null,
+        zipcode: "1234AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+      },
+      revisionReason: "customer_correction",
+      createdAt: "2026-07-26T12:00:00.000Z",
+    }
+
+    const props = await renderCheckoutProps({}, profile)
+
+    expect(props.initialProfile).toMatchObject({
+      profileVersion: 2,
+      profileKey: "run:123:checkout-profile:2",
+      partyType: "registered_business",
+      registeredBusinessName: "Analytical Engines B.V.",
+    })
+    expect(props.businessUseDeclarationVersion).toBe(
+      "business-use-declaration-2026-07-26.1",
+    )
+    expect(props.catalog.plans).toMatchObject({
+      monthly: { netAmountMinor: 1_900 },
+      annual: { netAmountMinor: 19_000 },
+    })
   })
 })

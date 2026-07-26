@@ -153,6 +153,39 @@ export const validateCheckoutProfile: CollectionBeforeValidateHook = ({ data }) 
         .join("; ")}`,
     )
   }
+  const hasAuditMetadata = [
+    data.revisionReason,
+    data.supersedesProfileKey,
+    data.actorEmail,
+    data.sourceRequestId,
+    data.sourceIpAddress,
+    data.sourceUserAgent,
+  ].some((value) => value != null && String(value).trim().length > 0)
+  if (hasAuditMetadata) {
+    if (!data.revisionReason || !data.actorEmail || !data.sourceRequestId) {
+      throw new Error(
+        "Audited checkout profile versions require a revision reason, actor email, and request ID.",
+      )
+    }
+    if (
+      typeof data.customerEmail === "string" &&
+      String(data.actorEmail).trim().toLowerCase() !== data.customerEmail.trim().toLowerCase()
+    ) {
+      throw new Error("Checkout profile audit actor must match the authenticated customer.")
+    }
+    const profileVersion = Number(data.profileVersion)
+    if (profileVersion === 1 && data.revisionReason !== "initial_capture") {
+      throw new Error("The first checkout profile version must be an initial capture.")
+    }
+    if (
+      profileVersion > 1 &&
+      (data.revisionReason !== "customer_correction" || !data.supersedesProfileKey)
+    ) {
+      throw new Error(
+        "A checkout profile correction must identify the superseded profile version.",
+      )
+    }
+  }
   return data
 }
 
@@ -338,6 +371,17 @@ export const CheckoutProfiles: CollectionConfig = {
     },
     { name: "intendedCompanyName", type: "text" },
     { name: "billingAddress", type: "json", required: true },
+    { name: "supersedesProfileKey", type: "text", index: true },
+    {
+      name: "revisionReason",
+      type: "select",
+      options: selectOptions(["initial_capture", "customer_correction"]),
+      index: true,
+    },
+    { name: "actorEmail", type: "email", index: true },
+    { name: "sourceRequestId", type: "text", index: true },
+    { name: "sourceIpAddress", type: "text" },
+    { name: "sourceUserAgent", type: "textarea" },
     { name: "createdAt", type: "date", required: true, index: true },
   ],
 }
