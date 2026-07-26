@@ -6,9 +6,26 @@ import {
   legalCustomerActions,
   legalDocumentTypes,
 } from "@siteinabox/contracts/legal"
+import {
+  orderStates,
+  orderStateTransitions,
+  type OrderState,
+} from "@siteinabox/contracts/commerce"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
+import {
+  relationshipId,
+  type RelationshipIdRef,
+} from "@/lib/relationshipId"
 
 const selectOptions = (values: readonly string[]) => values.map(adminEnumOption)
+const validateNonNegativeInteger = (
+  value: number | null | undefined,
+): true | string => {
+  if (value == null) return true
+  if (!Number.isSafeInteger(value)) return "Value must be a non-negative integer."
+  if (value < 0) return "Value must be a non-negative integer."
+  return true
+}
 const appendOnlyAccess = {
   create: isSuperAdmin,
   read: isSuperAdmin,
@@ -136,13 +153,68 @@ export const SiteApprovals: CollectionConfig = {
   ],
 }
 
-const allowedOrderLifecycleFields = new Set(["paymentStatus", "providerPaymentId", "paidAt", "cancelledAt"])
-export const protectFrozenOrder: CollectionBeforeChangeHook = ({ data, operation, req }) => {
+const allowedOrderLifecycleFields = new Set([
+  "state",
+  "paymentStatus",
+  "providerPaymentId",
+  "paidAt",
+  "cancelledAt",
+])
+const orderRelationshipFields = new Set(["tenant", "generationRun"])
+const stableStringify = (value: unknown): string => {
+  if (value == null || typeof value !== "object") return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
+  const record = value as Record<string, unknown>
+  return `{${Object.keys(record)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .join(",")}}`
+}
+const immutableOrderFieldIsUnchanged = (
+  field: string,
+  nextValue: unknown,
+  originalDoc: Record<string, unknown> | undefined,
+): boolean => {
+  if (!originalDoc || !(field in originalDoc)) return false
+  const originalValue = originalDoc[field]
+  if (orderRelationshipFields.has(field)) {
+    return relationshipId(nextValue as RelationshipIdRef) ===
+      relationshipId(originalValue as RelationshipIdRef)
+  }
+  return stableStringify(nextValue) === stableStringify(originalValue)
+}
+export const protectFrozenOrder: CollectionBeforeChangeHook = ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}) => {
   if (operation !== "update") return data
   if (req.context?.legalOrderLifecycleMutation !== true) {
     throw new Error("Orders are frozen after creation. Use the payment lifecycle service.")
   }
-  const invalid = Object.keys(data ?? {}).find((field) => !allowedOrderLifecycleFields.has(field))
+  const currentState = originalDoc?.state
+  const allowedNextStates =
+    typeof currentState === "string"
+      ? orderStateTransitions[currentState as OrderState]
+      : undefined
+  if (
+    typeof currentState === "string" &&
+    typeof data?.state === "string" &&
+    currentState !== data.state &&
+    !allowedNextStates?.some((state) => state === data.state)
+  ) {
+    throw new Error(`Invalid order state transition: ${currentState} -> ${data.state}.`)
+  }
+  const invalid = Object.keys(data ?? {}).find(
+    (field) =>
+      !allowedOrderLifecycleFields.has(field) &&
+      !immutableOrderFieldIsUnchanged(
+        field,
+        data?.[field],
+        originalDoc as Record<string, unknown> | undefined,
+      ),
+  )
   if (invalid) throw new Error(`Order field "${invalid}" is immutable after creation.`)
   return data
 }
@@ -157,6 +229,69 @@ export const Orders: CollectionConfig = {
     { name: "orderNumber", type: "text", required: true, unique: true, index: true },
     { name: "tenant", type: "relationship", relationTo: "tenants", index: true },
     { name: "generationRun", type: "relationship", relationTo: "site-generation-runs", index: true },
+    {
+      name: "state",
+      type: "select",
+      options: selectOptions(orderStates),
+      index: true,
+      admin: {
+        description: adminText(
+          "Canonical order lifecycle state. Empty on legacy orders created before the commerce schema.",
+          "Canonieke orderlevenscyclusstatus. Leeg bij oudere orders van vóór het commerceschema.",
+        ),
+      },
+    },
+    {
+      name: "checkoutProfileKey",
+      type: "text",
+      unique: true,
+      index: true,
+      admin: {
+        description: adminText(
+          "Frozen reference to the unique checkout profile version accepted with this order.",
+          "Bevroren verwijzing naar de unieke checkoutprofielversie die bij deze order is geaccepteerd.",
+        ),
+      },
+    },
+    { name: "catalogVersion", type: "text", index: true },
+    { name: "quoteEvidence", type: "json" },
+    { name: "netLineItems", type: "json" },
+    {
+      name: "vatRateBasisPoints",
+      type: "number",
+      min: 0,
+      validate: validateNonNegativeInteger,
+    },
+    {
+      name: "subtotalNetMinor",
+      type: "number",
+      min: 0,
+      validate: validateNonNegativeInteger,
+    },
+    {
+      name: "vatAmountMinor",
+      type: "number",
+      min: 0,
+      validate: validateNonNegativeInteger,
+    },
+    {
+      name: "totalGrossMinor",
+      type: "number",
+      min: 0,
+      validate: validateNonNegativeInteger,
+    },
+    {
+      name: "contractingPartyProfileVersion",
+      type: "number",
+      min: 1,
+      validate: validateNonNegativeInteger,
+    },
+    { name: "termsVersion", type: "text", index: true },
+    { name: "privacyVersion", type: "text", index: true },
+    { name: "businessUseDeclarationVersion", type: "text", index: true },
+    { name: "acceptedAt", type: "date", index: true },
+    { name: "acceptanceIpAddress", type: "text" },
+    { name: "acceptanceUserAgent", type: "textarea" },
     { name: "customerName", type: "text", required: true },
     { name: "customerEmail", type: "email", required: true, index: true },
     { name: "companyName", type: "text", required: true },

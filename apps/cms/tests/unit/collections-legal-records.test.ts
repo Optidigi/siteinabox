@@ -74,6 +74,30 @@ describe("legal record collections", () => {
       collection: {},
       context: { legalOrderLifecycleMutation: true },
     }))).toThrow('field "totalGross" is immutable')
+    expect(protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
+      operation: "update",
+      data: {
+        orderNumber: "SIAB-1",
+        state: "fulfillment_pending",
+        totalGross: 229.9,
+      },
+      originalDoc: {
+        orderNumber: "SIAB-1",
+        state: "accepted",
+        totalGross: 229.9,
+      },
+      req: { context: { legalOrderLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({ state: "fulfillment_pending" })
+    expect(() => protectFrozenOrder(hookArgsFor(protectFrozenOrder, {
+      operation: "update",
+      data: { state: "draft" },
+      originalDoc: { state: "fulfilled" },
+      req: { context: { legalOrderLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toThrow("fulfilled -> draft")
   })
 
   it("does not permit evidence deletion or frozen order deletion", () => {

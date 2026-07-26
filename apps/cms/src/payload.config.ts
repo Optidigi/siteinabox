@@ -8,6 +8,13 @@ import { buildConfig } from "payload"
 import { fileURLToPath } from "url"
 
 import { BlockPresets } from "@/collections/BlockPresets"
+import {
+  BillingAgreements,
+  CheckoutProfiles,
+  DomainRenewalCycles,
+  ManagedDomains,
+  PaymentAttempts,
+} from "@/collections/CommerceRecords"
 import { Forms } from "@/collections/Forms"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
 import { MailLogs } from "@/collections/MailLogs"
@@ -112,6 +119,11 @@ export default buildConfig({
     LegalDocuments,
     LegalPublicationEvents,
     Orders,
+    CheckoutProfiles,
+    PaymentAttempts,
+    BillingAgreements,
+    ManagedDomains,
+    DomainRenewalCycles,
     AgreementAcceptances,
     SiteReviewRevisions,
     SiteApprovals,

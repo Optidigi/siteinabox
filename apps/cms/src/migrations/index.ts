@@ -68,6 +68,7 @@ import * as migration_20260718_123000_backfill_public_analytics_consent from './
 import * as migration_20260718_230256 from './20260718_230256';
 import * as migration_20260719_103000_ensure_amicare_privacy_page from './20260719_103000_ensure_amicare_privacy_page';
 import * as migration_20260719_121500_restore_missing_public_analytics_consent from './20260719_121500_restore_missing_public_analytics_consent';
+import * as migration_20260726_181209_commerce_records from './20260726_181209_commerce_records';
 
 export const migrations = [
   {
@@ -408,16 +409,21 @@ export const migrations = [
   {
     up: migration_20260718_230256.up,
     down: migration_20260718_230256.down,
-    name: '20260718_230256'
+    name: '20260718_230256',
   },
   {
     up: migration_20260719_103000_ensure_amicare_privacy_page.up,
     down: migration_20260719_103000_ensure_amicare_privacy_page.down,
-    name: '20260719_103000_ensure_amicare_privacy_page'
+    name: '20260719_103000_ensure_amicare_privacy_page',
   },
   {
     up: migration_20260719_121500_restore_missing_public_analytics_consent.up,
     down: migration_20260719_121500_restore_missing_public_analytics_consent.down,
-    name: '20260719_121500_restore_missing_public_analytics_consent'
+    name: '20260719_121500_restore_missing_public_analytics_consent',
+  },
+  {
+    up: migration_20260726_181209_commerce_records.up,
+    down: migration_20260726_181209_commerce_records.down,
+    name: '20260726_181209_commerce_records'
   },
 ];
