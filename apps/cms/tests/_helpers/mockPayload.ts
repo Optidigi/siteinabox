@@ -53,6 +53,9 @@ export function matchesWhere(doc: MockDoc, where: MockWhere | undefined): boolea
   if (Array.isArray(where.and)) {
     return where.and.every((entry) => matchesWhere(doc, entry))
   }
+  if (Array.isArray(where.or)) {
+    return where.or.some((entry) => matchesWhere(doc, entry))
+  }
   return Object.entries(where).every(([field, condition]) => {
     if (field === "and") return true
     if (condition && typeof condition === "object" && "equals" in condition) {

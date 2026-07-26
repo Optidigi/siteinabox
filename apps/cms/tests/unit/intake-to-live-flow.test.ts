@@ -23,6 +23,20 @@ vi.mock("@/payload.config", () => ({
   default: {},
 }))
 
+vi.mock("@/lib/domains/verification", () => ({
+  verifyAuthoritativeDns: vi.fn(async (_domain: string, nameServers: string[]) => ({
+    status: "verified",
+    delegatedNameServers: nameServers,
+    respondingNameServers: nameServers,
+    reason: null,
+  })),
+  verifyHttpsEndpoint: vi.fn(async () => ({
+    status: "verified",
+    httpStatus: 404,
+    reason: null,
+  })),
+}))
+
 vi.mock("@/lib/email/sendEmail", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/email/sendEmail")>()
   return {
@@ -53,6 +67,7 @@ type CollectionName =
   | "payment-attempts"
   | "billing-agreements"
   | "accounting-documents"
+  | "managed-domains"
   | "communication-preferences"
   | "communication-preference-events"
   | "users"
@@ -233,6 +248,7 @@ const createPayloadStub = () => {
     "payment-attempts": [],
     "billing-agreements": [],
     "accounting-documents": [],
+    "managed-domains": [],
     "communication-preferences": [],
     "communication-preference-events": [],
     users: [],
@@ -270,7 +286,8 @@ const createPayloadStub = () => {
 }
 
 const installProviderFetch = () => {
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+  let cloudflareZoneCreated = false
+  vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     if (
       url.startsWith("https://www.siteinabox.nl/theme/images/")
       || url === "https://www.siteinabox.nl/og-default.png"
@@ -315,12 +332,21 @@ const installProviderFetch = () => {
       }), { status: 200 })
     }
     if (url.includes("api.openprovider.eu/v1beta/customers")) {
+      if (init?.method === "GET") {
+        return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+      }
       return new Response(JSON.stringify({ data: { handle: "OWNER-FLOW" } }), { status: 200 })
     }
     if (url.includes("api.openprovider.eu/v1beta/domains")) {
+      if (init?.method === "GET") {
+        return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+      }
       return new Response(JSON.stringify({ code: 0, data: { id: 9100, status: "ACT" } }), { status: 200 })
     }
     if (url.includes("dns_records")) {
+      if (init?.method === "GET") {
+        return new Response(JSON.stringify({ success: true, result: [] }), { status: 200 })
+      }
       return new Response(JSON.stringify({
         success: true,
         result: { id: "record_flow", name: "flow-live.nl", content: "renderer.siteinabox.nl", proxied: true },
@@ -350,12 +376,33 @@ const installProviderFetch = () => {
         }],
       }), { status: 200 })
     }
+    if (url.includes("/ssl/verification")) {
+      return new Response(JSON.stringify({
+        success: true,
+        result: [{ certificate_status: "active" }],
+      }), { status: 200 })
+    }
+    if (url.includes("api.cloudflare.com/client/v4/zones?") && !url.includes("dns_records")) {
+      return new Response(JSON.stringify({
+        success: true,
+        result: cloudflareZoneCreated
+          ? [{
+              id: "zone_flow",
+              name: "flow-live.nl",
+              status: "active",
+              name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+            }]
+          : [],
+      }), { status: 200 })
+    }
     if (url.includes("api.cloudflare.com/client/v4/zones") && !url.includes("dns_records")) {
+      cloudflareZoneCreated = true
       return new Response(JSON.stringify({
         success: true,
         result: {
           id: "zone_flow",
           name: "flow-live.nl",
+          status: "active",
           name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
         },
       }), { status: 200 })
@@ -373,6 +420,7 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
+    vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
     vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
     vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
@@ -448,7 +496,17 @@ describe("intake-to-live mocked flow", () => {
       contractingPartyName: "Flow Demo",
       kvkNumber: "12345678",
       domainRegistrantSource: "contracting_party",
-      billingAddress: { country: "NL" },
+      billingAddress: {
+        street: "Stationsplein",
+        number: "1",
+        suffix: null,
+        zipcode: "6041GN",
+        city: "Roermond",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "06",
+        phoneSubscriberNumber: "12345678",
+      },
       createdAt: "2026-07-02T09:00:00.000Z",
     }, { overrideAccess: true }))
     const order = await payload.create(createArgs("orders", {

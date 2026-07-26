@@ -5,6 +5,7 @@ export type CloudflareZoneResult = {
   id: string
   name: string
   nameServers: string[]
+  status: "initializing" | "pending" | "active" | "moved" | "unknown"
   raw: unknown
 }
 
@@ -36,6 +37,12 @@ export type CloudflareEmailSendingSubdomainResult = {
   raw: unknown
 }
 
+export type CloudflareSslVerificationResult = {
+  status: "active" | "pending" | "failed"
+  providerStatuses: string[]
+  raw: unknown
+}
+
 type FetchLike = typeof fetch
 
 type CloudflareOptions = {
@@ -53,6 +60,16 @@ export class CloudflareApiError extends Error {
     super(message ? `${operation} failed with HTTP ${status}: ${message}` : `${operation} failed with HTTP ${status}.`)
     this.name = "CloudflareApiError"
     this.status = status
+    this.operation = operation
+  }
+}
+
+export class CloudflareIndeterminateWriteError extends Error {
+  operation: string
+
+  constructor(operation: string, cause?: unknown) {
+    super(`${operation} has an indeterminate provider outcome.`, { cause })
+    this.name = "CloudflareIndeterminateWriteError"
     this.operation = operation
   }
 }
@@ -110,6 +127,44 @@ const assertCloudflareOk = (operation: string, response: Response, payload: unkn
   if (readObject(payload).success === false) throw new CloudflareApiError(operation, response.status, cloudflareApiMessage(payload))
 }
 
+const readCloudflareWritePayload = async (
+  operation: string,
+  response: Response,
+): Promise<unknown> => {
+  if (
+    !response.ok &&
+    (response.status >= 500 || response.status === 408 || response.status === 429)
+  ) {
+    throw new CloudflareIndeterminateWriteError(operation)
+  }
+  try {
+    return await json(response)
+  } catch (error) {
+    if (response.ok) throw new CloudflareIndeterminateWriteError(operation, error)
+    throw new CloudflareApiError(operation, response.status)
+  }
+}
+
+const parseCloudflareZone = (
+  value: unknown,
+  fallbackName?: string,
+): CloudflareZoneResult | null => {
+  const result = readObject(value)
+  const id = typeof result.id === "string" ? result.id : null
+  const name = typeof result.name === "string" ? result.name : fallbackName
+  const nameServers = Array.isArray(result.name_servers)
+    ? result.name_servers.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+    )
+    : []
+  if (!id || !name || nameServers.length === 0) return null
+  const rawStatus = typeof result.status === "string" ? result.status : "unknown"
+  const status = ["initializing", "pending", "active", "moved"].includes(rawStatus)
+    ? rawStatus as CloudflareZoneResult["status"]
+    : "unknown"
+  return { id, name, nameServers, status, raw: value }
+}
+
 const parseEmailSendingSubdomain = (
   value: unknown,
   fallbackName?: string | null,
@@ -137,27 +192,71 @@ export async function createCloudflareZone(domainInput: string, options?: Cloudf
   const env = options?.env ?? process.env
   const { token, accountId } = requireCloudflareConfig(env)
   const domain = splitDomain(domainInput)
-  const response = await fetcher(options)(`${apiBase(env)}/zones`, {
-    method: "POST",
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/zones`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({
+        account: { id: accountId },
+        name: domain.domain,
+        type: "full",
+      }),
+    })
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare zone creation", error)
+  }
+  const payload = await readCloudflareWritePayload("Cloudflare zone creation", response)
+  assertCloudflareOk("Cloudflare zone creation", response, payload)
+  const result = parseCloudflareZone(resultObject(payload), domain.domain)
+  if (!result) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare zone creation")
+  }
+  return { ...result, raw: payload }
+}
+
+export async function listCloudflareZones(
+  domainInput: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareZoneResult[]> {
+  const env = options?.env ?? process.env
+  const { token, accountId } = requireCloudflareConfig(env)
+  const domain = splitDomain(domainInput)
+  const query = new URLSearchParams({
+    "account.id": accountId,
+    name: domain.domain,
+    match: "all",
+    per_page: "5",
+  })
+  const response = await fetcher(options)(`${apiBase(env)}/zones?${query.toString()}`, {
+    method: "GET",
     headers: headers(token),
-    body: JSON.stringify({
-      account: { id: accountId },
-      name: domain.domain,
-      type: "full",
-    }),
   })
   const payload = await json(response)
-  assertCloudflareOk("Cloudflare zone creation", response, payload)
-  const result = resultObject(payload)
-  const id = typeof result.id === "string" ? result.id : null
-  const name = typeof result.name === "string" ? result.name : domain.domain
-  const nameServers = Array.isArray(result.name_servers)
-    ? result.name_servers.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
-    : []
-  if (!id) throw new Error("Cloudflare zone creation response did not include a zone id.")
-  if (nameServers.length === 0) throw new Error("Cloudflare zone creation response did not include nameservers.")
+  assertCloudflareOk("Cloudflare zone list", response, payload)
+  return resultArray(payload)
+    .map((entry) => parseCloudflareZone(entry))
+    .filter((entry): entry is CloudflareZoneResult => entry?.name.toLowerCase() === domain.domain)
+}
 
-  return { id, name, nameServers, raw: payload }
+export async function createOrReuseCloudflareZone(
+  domainInput: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareZoneResult> {
+  const domain = splitDomain(domainInput).domain
+  const existing = (await listCloudflareZones(domain, options))[0]
+  if (existing) return existing
+  try {
+    return await createCloudflareZone(domain, options)
+  } catch (error) {
+    try {
+      const reconciled = (await listCloudflareZones(domain, options))[0]
+      if (reconciled) return reconciled
+    } catch {
+      // Preserve the original write outcome classification.
+    }
+    throw error
+  }
 }
 
 export function buildCloudflareDnsRecordRequests(
@@ -194,21 +293,90 @@ export async function createCloudflareDnsRecord(
 ): Promise<CloudflareDnsRecordResult> {
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records`, {
-    method: "POST",
-    headers: headers(token),
-    body: JSON.stringify(record),
-  })
-  const payload = await json(response)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify(record),
+    })
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare DNS record creation", error)
+  }
+  const payload = await readCloudflareWritePayload("Cloudflare DNS record creation", response)
   assertCloudflareOk("Cloudflare DNS record creation", response, payload)
   const result = resultObject(payload)
+  const id = typeof result.id === "string" ? result.id : null
+  if (!id) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare DNS record creation")
+  }
   return {
-    id: typeof result.id === "string" ? result.id : null,
+    id,
     type: record.type,
     name: typeof result.name === "string" ? result.name : record.name,
     content: typeof result.content === "string" ? result.content : record.content,
     proxied: typeof result.proxied === "boolean" ? result.proxied : record.proxied,
     raw: payload,
+  }
+}
+
+export async function listCloudflareDnsRecords(
+  zoneId: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareDnsRecordResult[]> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500`,
+    { method: "GET", headers: headers(token) },
+  )
+  const payload = await json(response)
+  assertCloudflareOk("Cloudflare DNS record list", response, payload)
+  return resultArray(payload).flatMap((result) => {
+    const type = result.type === "A" || result.type === "CNAME" ? result.type : null
+    const name = typeof result.name === "string" ? result.name : null
+    const content = typeof result.content === "string" ? result.content : null
+    if (!type || !name || !content) return []
+    return [{
+      id: typeof result.id === "string" ? result.id : null,
+      type,
+      name,
+      content,
+      proxied: result.proxied === true,
+      raw: result,
+    }]
+  })
+}
+
+const sameCloudflareRecord = (
+  existing: CloudflareDnsRecordResult,
+  requested: CloudflareDnsRecordRequest,
+): boolean =>
+  existing.type === requested.type &&
+  existing.name.toLowerCase().replace(/\.$/, "") === requested.name.toLowerCase().replace(/\.$/, "") &&
+  existing.content.toLowerCase().replace(/\.$/, "") ===
+    requested.content.toLowerCase().replace(/\.$/, "") &&
+  existing.proxied === requested.proxied
+
+export async function createOrReuseCloudflareDnsRecord(
+  zoneId: string,
+  record: CloudflareDnsRecordRequest,
+  options?: CloudflareOptions,
+): Promise<CloudflareDnsRecordResult> {
+  const existing = (await listCloudflareDnsRecords(zoneId, options))
+    .find((candidate) => sameCloudflareRecord(candidate, record))
+  if (existing) return existing
+  try {
+    return await createCloudflareDnsRecord(zoneId, record, options)
+  } catch (error) {
+    try {
+      const reconciled = (await listCloudflareDnsRecords(zoneId, options))
+        .find((candidate) => sameCloudflareRecord(candidate, record))
+      if (reconciled) return reconciled
+    } catch {
+      // Preserve the original write outcome classification.
+    }
+    throw error
   }
 }
 
@@ -224,9 +392,35 @@ export async function createCloudflareZoneDnsRecords(
   })
   const results: CloudflareDnsRecordResult[] = []
   for (const record of records) {
-    results.push(await createCloudflareDnsRecord(zoneId, record, options))
+    results.push(await createOrReuseCloudflareDnsRecord(zoneId, record, options))
   }
   return results
+}
+
+export async function getCloudflareSslVerification(
+  zoneId: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareSslVerificationResult> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/ssl/verification`,
+    { method: "GET", headers: headers(token) },
+  )
+  const payload = await json(response)
+  assertCloudflareOk("Cloudflare SSL verification", response, payload)
+  const result = readObject(payload).result
+  const entries = Array.isArray(result) ? result.map(readObject) : []
+  const statuses = entries
+    .map((entry) => entry.certificate_status)
+    .filter((status): status is string => typeof status === "string" && status.trim().length > 0)
+  const status = statuses.some((entry) => entry === "active")
+    ? "active"
+    : statuses.some((entry) =>
+      ["expired", "timing_out", "initializing_timed_out", "validation_timed_out"].includes(entry))
+      ? "failed"
+      : "pending"
+  return { status, providerStatuses: statuses, raw: payload }
 }
 
 export async function listCloudflareEmailSendingSubdomains(
@@ -271,14 +465,32 @@ export async function createCloudflareEmailSendingSubdomain(
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
   const subdomainName = splitDomain(name).domain
-  const response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains`, {
-    method: "POST",
-    headers: headers(token),
-    body: JSON.stringify({ name: subdomainName }),
-  })
-  const payload = await json(response)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/email/sending/subdomains`, {
+      method: "POST",
+      headers: headers(token),
+      body: JSON.stringify({ name: subdomainName }),
+    })
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError(
+      "Cloudflare Email Sending subdomain creation",
+      error,
+    )
+  }
+  const payload = await readCloudflareWritePayload(
+    "Cloudflare Email Sending subdomain creation",
+    response,
+  )
   assertCloudflareOk("Cloudflare Email Sending subdomain creation", response, payload)
-  return parseEmailSendingSubdomain(resultObject(payload), subdomainName)
+  try {
+    return parseEmailSendingSubdomain(resultObject(payload), subdomainName)
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError(
+      "Cloudflare Email Sending subdomain creation",
+      error,
+    )
+  }
 }
 
 export async function createOrReuseCloudflareEmailSendingSubdomain(
@@ -289,5 +501,17 @@ export async function createOrReuseCloudflareEmailSendingSubdomain(
   const subdomainName = splitDomain(name).domain
   const existing = (await listCloudflareEmailSendingSubdomains(zoneId, options))
     .find((subdomain) => subdomain.name.toLowerCase() === subdomainName)
-  return existing ?? createCloudflareEmailSendingSubdomain(zoneId, subdomainName, options)
+  if (existing) return existing
+  try {
+    return await createCloudflareEmailSendingSubdomain(zoneId, subdomainName, options)
+  } catch (error) {
+    try {
+      const reconciled = (await listCloudflareEmailSendingSubdomains(zoneId, options))
+        .find((subdomain) => subdomain.name.toLowerCase() === subdomainName)
+      if (reconciled) return reconciled
+    } catch {
+      // Preserve the original write outcome classification.
+    }
+    throw error
+  }
 }

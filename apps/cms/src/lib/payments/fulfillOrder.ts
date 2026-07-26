@@ -1,9 +1,12 @@
 import "server-only"
 
 import type { Payload } from "payload"
-import type { Order, PaymentAttempt, SiteGenerationRun } from "@/payload-types"
+import type { ManagedDomain, Order, PaymentAttempt, SiteGenerationRun } from "@/payload-types"
 
-import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
+import {
+  activateManagedDomainEntitlement,
+  provisionPaidDomainOrder,
+} from "@/lib/domains/provisioning"
 import { mollieDomainProvisioningEnabled } from "@/lib/payments/mollieAdapter"
 import {
   normalizeGenerationRunPaymentState,
@@ -74,11 +77,47 @@ export async function fulfillPaidOrder(
   }
 
   try {
+    let managedDomain: ManagedDomain | null = null
     if (payment.selectedDomain && mollieDomainProvisioningEnabled()) {
       const provisioned = await provisionPaidDomainOrder(payload, run, {
+        order,
         selectedDomain: payment.selectedDomain,
       })
       run = provisioned.run
+      managedDomain = provisioned.managedDomain
+      if (provisioned.status === "waiting") {
+        return {
+          status: "waiting",
+          orderId: order.id,
+          message: provisioned.message,
+        }
+      }
+      if (provisioned.status === "unfulfillable") {
+        await payload.jobs.queue({
+          task: "request-mollie-refund",
+          input: {
+            paymentAttemptId: String(paymentAttempt.id),
+            scenario: "unfulfillable_before_provider_commit",
+          },
+          queue: "default",
+          overrideAccess: true,
+        })
+        if (order.state === "fulfillment_pending") {
+          await payload.update({
+            collection: "orders",
+            id: order.id,
+            data: { state: "exception" },
+            depth: 0,
+            overrideAccess: true,
+            context: { legalOrderLifecycleMutation: true },
+          })
+        }
+        return {
+          status: "failed",
+          orderId: order.id,
+          message: `${provisioned.message ?? "Domain fulfillment became unavailable."} A governed refund was queued.`,
+        }
+      }
     } else if (payment.selectedDomain) {
       run = await payload.update({
         collection: "site-generation-runs",
@@ -101,6 +140,9 @@ export async function fulfillPaidOrder(
         orderId: order.id,
         message: activation.message,
       }
+    }
+    if (managedDomain && managedDomain.entitlementStatus !== "active") {
+      managedDomain = await activateManagedDomainEntitlement(payload, managedDomain)
     }
     await payload.update({
       collection: "orders",

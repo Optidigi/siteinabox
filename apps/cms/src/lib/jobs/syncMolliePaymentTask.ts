@@ -1,4 +1,5 @@
 import type { Payload, TaskConfig } from "payload"
+import { queueOrderFulfillment } from "@/lib/jobs/fulfillOrderTask"
 
 export const queueMolliePaymentSync = (
   payload: Payload,
@@ -47,15 +48,7 @@ export const syncMolliePaymentTask: TaskConfig<{
     try {
       const result = await synchronizeMolliePayment(req.payload, input.paymentId)
       if (result.fulfillmentRequired) {
-        await req.payload.jobs.queue({
-          task: "fulfill-order",
-          input: {
-            orderId: String(result.orderId),
-            paymentAttemptId: String(result.paymentAttemptId),
-          },
-          queue: "default",
-          overrideAccess: true,
-        })
+        await queueOrderFulfillment(req.payload, result)
       }
       return {
         output: {

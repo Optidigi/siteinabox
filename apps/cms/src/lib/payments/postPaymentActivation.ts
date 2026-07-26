@@ -1,6 +1,6 @@
 import "server-only"
 import type { Payload } from "payload"
-import type { SiteGenerationRun, Tenant } from "@/payload-types"
+import type { Order, SiteGenerationRun, Tenant } from "@/payload-types"
 import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
 import {
   mollieDomainProvisioningEnabled,
@@ -195,7 +195,31 @@ async function retryDomainProvisioning(payload: Payload, run: SiteGenerationRun)
   }
 
   try {
-    const result = await provisionPaidDomainOrder(payload, run, { selectedDomain: payment.selectedDomain })
+    const orders = await payload.find({
+      collection: "orders",
+      where: {
+        and: [
+          { generationRun: { equals: run.id } },
+          { state: { in: ["fulfillment_pending", "exception"] } },
+        ],
+      },
+      sort: "-createdAt",
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    const order = orders.docs[0] as Order | undefined
+    if (!order || orders.docs.length !== 1) {
+      return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
+        status: "blocked",
+        step: "domain_provisioning",
+        message: "Domain provisioning retry requires one authoritative fulfillment order.",
+      }))
+    }
+    const result = await provisionPaidDomainOrder(payload, run, {
+      order,
+      selectedDomain: payment.selectedDomain,
+    })
     return result.run
   } catch (error) {
     const failedRun = error && typeof error === "object" && "run" in error ? (error as { run?: SiteGenerationRun }).run : null

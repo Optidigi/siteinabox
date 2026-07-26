@@ -5,8 +5,11 @@ import {
   checkOpenProviderDomainAvailability,
   checkOpenProviderDomainsAvailability,
   createOpenProviderCustomerHandle,
+  findOpenProviderCustomerByReference,
+  findOpenProviderDomain,
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
+  OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   suggestOpenProviderDomains,
 } from "@/lib/domains/openprovider"
@@ -607,5 +610,120 @@ describe("OpenProvider adapter", () => {
       headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
       body: JSON.stringify(buildOpenProviderDomainRegistrationRequest("example.nl", env)),
     }))
+  })
+
+  it("reconciles domain ownership, nameservers, and registrant verification by full name", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        results: [{
+          id: 9001,
+          domain: { name: "example", extension: "nl" },
+          status: "ACT",
+          owner_handle: "OWNER-CLIENT",
+          admin_handle: "ADMIN",
+          name_servers: [
+            { name: "ada.ns.cloudflare.com" },
+            { name: "bob.ns.cloudflare.com" },
+          ],
+          renewal_date: "2027-07-26 00:00:00",
+          verification_email_status: "verified",
+          verification_email_status_description: "Registrant email verified",
+        }],
+      },
+    }))
+
+    await expect(findOpenProviderDomain("Example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      id: 9001,
+      domain: "example.nl",
+      status: "ACT",
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: "ADMIN",
+      nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      verificationEmailStatus: "verified",
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains?full_name=example.nl&with_verification_email=true&limit=2",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
+
+  it("finds the customer handle through the persisted provisioning reference", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        results: [{
+          handle: "OWNER-CLIENT",
+          comments: "domain-registration:order:600:v1",
+        }],
+      },
+    }))
+
+    await expect(findOpenProviderCustomerByReference("domain-registration:order:600:v1", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ handle: "OWNER-CLIENT" })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/customers?comment_pattern=domain-registration%3Aorder%3A600%3Av1&limit=2",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
+
+  it("classifies a registration transport timeout as indeterminate", async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError("socket closed")
+    })
+
+    await expect(registerOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: "ADMIN",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      nsGroup: null,
+      reference: "domain-registration:order:600:v1",
+    })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
+  })
+
+  it("classifies a malformed successful registration response as indeterminate", async () => {
+    const fetchMock = vi.fn(async () => new Response("<html>upstream truncated</html>", {
+      status: 200,
+      headers: { "Content-Type": "text/html" },
+    }))
+
+    await expect(registerOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: "ADMIN",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      nsGroup: null,
+      reference: "domain-registration:order:600:v1",
+    })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
+  })
+
+  it("classifies a successful registration response without a provider id as indeterminate", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: { status: "ACT" },
+    }))
+
+    await expect(registerOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      ownerHandle: "OWNER-CLIENT",
+      adminHandle: "ADMIN",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      nsGroup: null,
+      reference: "domain-registration:order:600:v1",
+    })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
   })
 })

@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   buildCloudflareDnsRecordRequests,
+  CloudflareIndeterminateWriteError,
   createCloudflareEmailSendingSubdomain,
   createCloudflareDnsRecord,
+  createOrReuseCloudflareDnsRecord,
+  createOrReuseCloudflareZone,
   createCloudflareZone,
   createCloudflareZoneDnsRecords,
   createOrReuseCloudflareEmailSendingSubdomain,
   getCloudflareEmailSendingSubdomain,
+  getCloudflareSslVerification,
   listCloudflareEmailSendingSubdomains,
 } from "@/lib/domains/cloudflare"
 
@@ -59,6 +63,55 @@ describe("Cloudflare domain adapter", () => {
     })
   })
 
+  it("reuses an existing zone before attempting a duplicate provider write", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: true,
+      result: [{
+        id: "zone-123",
+        name: "example.nl",
+        status: "active",
+        name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      }],
+    }))
+
+    await expect(createOrReuseCloudflareZone("example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ id: "zone-123", status: "active" })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://cloudflare.test/client/v4/zones?account.id=account-123&name=example.nl&match=all&per_page=5",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
+
+  it("classifies a non-JSON gateway failure after a zone write as indeterminate", async () => {
+    const fetchMock = vi.fn(async () => new Response("<html>gateway timeout</html>", {
+      status: 502,
+      headers: { "Content-Type": "text/html" },
+    }))
+
+    await expect(createCloudflareZone("example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toBeInstanceOf(CloudflareIndeterminateWriteError)
+  })
+
+  it("classifies a successful zone response without a provider id as indeterminate", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: true,
+      result: {
+        name: "example.nl",
+        name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      },
+    }))
+
+    await expect(createCloudflareZone("example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.toBeInstanceOf(CloudflareIndeterminateWriteError)
+  })
+
   it("builds proxied renderer DNS records from host or IP env", () => {
     expect(buildCloudflareDnsRecordRequests("example.nl", env)).toEqual([
       {
@@ -108,7 +161,10 @@ describe("Cloudflare domain adapter", () => {
   })
 
   it("creates individual and batched DNS records", async () => {
-    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit = {}) => {
+      if (init.method === "GET") {
+        return Response.json({ success: true, result: [] })
+      }
       const body = JSON.parse(String(init.body)) as { type: "A" | "CNAME"; name: string; content: string; proxied: boolean }
       return Response.json({
         success: true,
@@ -148,6 +204,52 @@ describe("Cloudflare domain adapter", () => {
       "https://cloudflare.test/client/v4/zones/zone-123/dns_records",
       expect.objectContaining({ method: "POST" }),
     )
+  })
+
+  it("semantically reuses an existing DNS record and reads active SSL evidence", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/dns_records")) {
+        return Response.json({
+          success: true,
+          result: [{
+            id: "record-123",
+            type: "CNAME",
+            name: "example.nl",
+            content: "renderer.siteinabox.nl.",
+            proxied: true,
+          }],
+        })
+      }
+      if (String(url).endsWith("/ssl/verification")) {
+        return Response.json({
+          success: true,
+          result: [
+            { certificate_status: "active" },
+            { certificate_status: "pending_deployment" },
+          ],
+        })
+      }
+      throw new Error(`Unexpected fetch ${url}`)
+    })
+
+    await expect(createOrReuseCloudflareDnsRecord("zone-123", {
+      type: "CNAME",
+      name: "example.nl.",
+      content: "renderer.siteinabox.nl",
+      ttl: 1,
+      proxied: true,
+    }, {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ id: "record-123" })
+    await expect(getCloudflareSslVerification("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual(expect.objectContaining({
+      status: "active",
+      providerStatuses: ["active", "pending_deployment"],
+    }))
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it("lists, gets, creates, and reuses documented Email Sending subdomains", async () => {

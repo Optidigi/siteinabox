@@ -99,6 +99,7 @@ describe("Phase 2 commerce record schemas", () => {
     expect(isUnique("domainNameAscii", ManagedDomains)).toBe(true)
     expect(isUnique("provisioningIdempotencyKey", ManagedDomains)).toBe(true)
     expect(isUnique("providerDomainId", ManagedDomains)).toBe(true)
+    expect(isUnique("cloudflareZoneId", ManagedDomains)).toBe(true)
     expect(isUnique("idempotencyKey", DomainRenewalCycles)).toBe(true)
     expect(isUnique("providerOperationId", DomainRenewalCycles)).toBe(true)
     expect(CheckoutProfiles.indexes).toContainEqual({
@@ -110,6 +111,37 @@ describe("Phase 2 commerce record schemas", () => {
       unique: true,
     })
     expect(isUnique("checkoutProfileKey", Orders)).toBe(true)
+  })
+
+  it("persists resumable .nl provider, verification, entitlement, and customer-status evidence", () => {
+    for (const field of [
+      "providerCustomerHandle",
+      "providerRegistrationState",
+      "registrationRequestedAt",
+      "cloudflareZoneId",
+      "cloudflareNameservers",
+      "cloudflareDnsRecordIds",
+      "cloudflareZoneStatus",
+      "registrantVerificationStatus",
+      "registrantVerificationCheckedAt",
+      "authoritativeDnsStatus",
+      "authoritativeDnsCheckedAt",
+      "authoritativeDnsEvidence",
+      "httpsStatus",
+      "httpsCheckedAt",
+      "httpsEvidence",
+      "entitlementStatus",
+      "entitlementActivatedAt",
+      "customerStatus",
+    ]) {
+      expect(expectNamedField(ManagedDomains.fields, field)).toBeDefined()
+    }
+    expect(fieldOptionValues(fieldOptions(
+      expectNamedField(ManagedDomains.fields, "providerRegistrationState"),
+    ))).toEqual(["not_started", "prepared", "indeterminate", "confirmed"])
+    expect(fieldOptionValues(fieldOptions(
+      expectNamedField(ManagedDomains.fields, "customerStatus"),
+    ))).toEqual(["provisioning", "verification_required", "active", "manual_review"])
   })
 
   it("keeps order, payment, billing, domain, and renewal relationships independent", () => {

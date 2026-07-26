@@ -1,4 +1,17 @@
-import type { TaskConfig } from "payload"
+import type { Payload, TaskConfig } from "payload"
+
+export const queueOrderFulfillment = (
+  payload: Payload,
+  input: { orderId: string | number; paymentAttemptId: string | number },
+) => payload.jobs.queue({
+  task: "fulfill-order",
+  input: {
+    orderId: String(input.orderId),
+    paymentAttemptId: String(input.paymentAttemptId),
+  },
+  queue: "default",
+  overrideAccess: true,
+})
 
 export const fulfillOrderTask: TaskConfig<{
   input: { orderId: string; paymentAttemptId: string }

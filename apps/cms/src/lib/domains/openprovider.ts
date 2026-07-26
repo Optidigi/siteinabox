@@ -29,6 +29,7 @@ export type OpenProviderRegistrationRequest = {
   autorenew: "on" | "off" | "default"
   ns_group?: string
   name_servers?: Array<{ name: string }>
+  comments?: string
 }
 
 export type OpenProviderRegistrationResult = {
@@ -40,6 +41,25 @@ export type OpenProviderRegistrationResult = {
 
 export type OpenProviderCustomerHandleResult = {
   handle: string
+  raw: unknown
+}
+
+export type OpenProviderDomainRecord = {
+  id: number | string
+  domain: string
+  status: string
+  ownerHandle: string | null
+  adminHandle: string | null
+  nameServers: string[]
+  renewalDate: string | null
+  verificationEmailStatus: string | null
+  verificationEmailDescription: string | null
+  raw: unknown
+}
+
+export type OpenProviderCustomerRecord = {
+  handle: string
+  comments: string | null
   raw: unknown
 }
 
@@ -68,6 +88,16 @@ export class OpenProviderApiError extends Error {
     super(`${operation} failed with HTTP ${status}.`)
     this.name = "OpenProviderApiError"
     this.status = status
+    this.operation = operation
+  }
+}
+
+export class OpenProviderIndeterminateWriteError extends Error {
+  operation: string
+
+  constructor(operation: string, cause?: unknown) {
+    super(`${operation} has an indeterminate provider outcome.`, { cause })
+    this.name = "OpenProviderIndeterminateWriteError"
     this.operation = operation
   }
 }
@@ -503,6 +533,7 @@ export function buildOpenProviderDomainRegistrationRequest(
     autorenew?: "on" | "off" | "default"
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
+    reference?: string
   },
 ): OpenProviderRegistrationRequest {
   const domain = splitDomain(domainInput)
@@ -523,10 +554,14 @@ export function buildOpenProviderDomainRegistrationRequest(
     billing_handle: requiredHandle(env, "OPENPROVIDER_BILLING_HANDLE"),
     autorenew: input?.autorenew ?? "on",
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
+    ...(cleanEnv(input?.reference) ? { comments: cleanEnv(input?.reference) as string } : {}),
   }
 }
 
-export function buildOpenProviderCustomerRequest(details: DomainRegistrantDetails): Record<string, unknown> {
+export function buildOpenProviderCustomerRequest(
+  details: DomainRegistrantDetails,
+  reference?: string,
+): Record<string, unknown> {
   return {
     name: {
       first_name: details.firstName,
@@ -549,23 +584,42 @@ export function buildOpenProviderCustomerRequest(details: DomainRegistrantDetail
       subscriber_number: details.phoneSubscriberNumber,
     },
     locale: details.locale,
+    ...(cleanEnv(reference) ? { comments: cleanEnv(reference) as string } : {}),
   }
 }
 
 export async function createOpenProviderCustomerHandle(
   details: DomainRegistrantDetails,
-  options?: OpenProviderOptions,
+  options?: OpenProviderOptions & { reference?: string },
 ): Promise<OpenProviderCustomerHandleResult> {
   const env = options?.env ?? process.env
   const token = options?.token ?? await loginOpenProvider(options)
-  const response = await fetcher(options)(`${apiBase(env)}/customers`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify(buildOpenProviderCustomerRequest(details)),
-  })
-  if (!response.ok) throw new OpenProviderApiError("OpenProvider customer handle creation", response.status)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/customers`, {
+      method: "POST",
+      headers: jsonHeaders(token),
+      body: JSON.stringify(buildOpenProviderCustomerRequest(details, options?.reference)),
+    })
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider customer handle creation", error)
+  }
+  if (!response.ok) {
+    if (response.status >= 500 || response.status === 408 || response.status === 429) {
+      throw new OpenProviderIndeterminateWriteError("OpenProvider customer handle creation")
+    }
+    throw new OpenProviderApiError("OpenProvider customer handle creation", response.status)
+  }
 
-  const payload = await json(response)
+  let payload: unknown
+  try {
+    payload = await json(response)
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError(
+      "OpenProvider customer handle creation",
+      error,
+    )
+  }
   const data = dataObject(payload)
   const handle =
     typeof data.handle === "string"
@@ -573,8 +627,108 @@ export async function createOpenProviderCustomerHandle(
       : typeof data.id === "string"
         ? data.id
         : null
-  if (!handle) throw new Error("OpenProvider customer creation response did not include a handle.")
+  if (!handle) {
+    throw new OpenProviderIndeterminateWriteError(
+      "OpenProvider customer handle creation",
+    )
+  }
   return { handle, raw: payload }
+}
+
+const openProviderDomainName = (value: Record<string, unknown>): string | null => {
+  const domain = readObject(value.domain)
+  const name = typeof domain.name === "string" ? domain.name : null
+  const extension = typeof domain.extension === "string" ? domain.extension : null
+  if (!name || !extension) return null
+  try {
+    return splitDomain(`${name}.${extension.replace(/^\./, "")}`).domain
+  } catch {
+    return null
+  }
+}
+
+const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord | null => {
+  const source = readObject(value)
+  const id = typeof source.id === "string" || typeof source.id === "number" ? source.id : null
+  const domain = openProviderDomainName(source)
+  if (id == null || !domain) return null
+  const nameServers = Array.isArray(source.name_servers)
+    ? source.name_servers
+      .map((entry) => readObject(entry).name)
+      .filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+    : []
+  return {
+    id,
+    domain,
+    status: typeof source.status === "string" ? source.status : "unknown",
+    ownerHandle: typeof source.owner_handle === "string" ? source.owner_handle : null,
+    adminHandle: typeof source.admin_handle === "string" ? source.admin_handle : null,
+    nameServers,
+    renewalDate: typeof source.renewal_date === "string" && source.renewal_date.trim()
+      ? source.renewal_date
+      : null,
+    verificationEmailStatus:
+      typeof source.verification_email_status === "string" && source.verification_email_status.trim()
+        ? source.verification_email_status
+        : null,
+    verificationEmailDescription:
+      typeof source.verification_email_status_description === "string" &&
+      source.verification_email_status_description.trim()
+        ? source.verification_email_status_description
+        : null,
+    raw: value,
+  }
+}
+
+export async function findOpenProviderDomain(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderDomainRecord | null> {
+  const env = options?.env ?? process.env
+  const domain = splitDomain(domainInput)
+  const token = options?.token ?? await loginOpenProvider(options)
+  const query = new URLSearchParams({
+    full_name: domain.domain,
+    with_verification_email: "true",
+    limit: "2",
+  })
+  const response = await fetcher(options)(`${apiBase(env)}/domains?${query.toString()}`, {
+    method: "GET",
+    headers: jsonHeaders(token),
+  })
+  if (!response.ok) throw new OpenProviderApiError("OpenProvider domain lookup", response.status)
+  const data = dataObject(await json(response))
+  const results = Array.isArray(data.results) ? data.results : []
+  return results
+    .map(parseOpenProviderDomainRecord)
+    .find((entry): entry is OpenProviderDomainRecord => entry?.domain === domain.domain) ?? null
+}
+
+export async function findOpenProviderCustomerByReference(
+  reference: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderCustomerRecord | null> {
+  const normalizedReference = cleanEnv(reference)
+  if (!normalizedReference) throw new Error("OpenProvider customer reference is required.")
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  const query = new URLSearchParams({ comment_pattern: normalizedReference, limit: "2" })
+  const response = await fetcher(options)(`${apiBase(env)}/customers?${query.toString()}`, {
+    method: "GET",
+    headers: jsonHeaders(token),
+  })
+  if (!response.ok) throw new OpenProviderApiError("OpenProvider customer lookup", response.status)
+  const data = dataObject(await json(response))
+  const results = Array.isArray(data.results) ? data.results : []
+  for (const result of results) {
+    const source = readObject(result)
+    const handle = typeof source.handle === "string" ? source.handle : null
+    const comments = typeof source.comments === "string" ? source.comments : null
+    if (handle && comments === normalizedReference) {
+      return { handle, comments, raw: result }
+    }
+  }
+  return null
 }
 
 export async function registerOpenProviderDomain(
@@ -586,6 +740,7 @@ export async function registerOpenProviderDomain(
     autorenew?: "on" | "off" | "default"
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
+    reference?: string
   },
 ): Promise<OpenProviderRegistrationResult> {
   const env = options?.env ?? process.env
@@ -598,21 +753,44 @@ export async function registerOpenProviderDomain(
     autorenew: options?.autorenew,
     nameServers: options?.nameServers,
     nsGroup: options?.nsGroup,
+    reference: options?.reference,
   })
-  const response = await fetcher(options)(`${apiBase(env)}/domains`, {
-    method: "POST",
-    headers: jsonHeaders(token),
-    body: JSON.stringify(body),
-  })
-  if (!response.ok) throw new OpenProviderApiError("OpenProvider domain registration", response.status)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/domains`, {
+      method: "POST",
+      headers: jsonHeaders(token),
+      body: JSON.stringify(body),
+    })
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration", error)
+  }
+  if (!response.ok) {
+    if (response.status >= 500 || response.status === 408 || response.status === 429) {
+      throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration")
+    }
+    throw new OpenProviderApiError("OpenProvider domain registration", response.status)
+  }
 
-  const payload = await json(response)
+  let payload: unknown
+  try {
+    payload = await json(response)
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration", error)
+  }
   const data = dataObject(payload)
   const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : null
+  if (id == null) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain registration")
+  }
+  const providerStatus = typeof data.status === "string" ? data.status.toUpperCase() : ""
   return {
     id,
     domain: domain.domain,
-    status: "registered",
+    status:
+      !providerStatus || providerStatus === "ACT" || providerStatus === "ACTIVE"
+        ? "registered"
+        : "requested",
     raw: payload,
   }
 }

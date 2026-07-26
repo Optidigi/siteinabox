@@ -11,6 +11,20 @@ vi.mock("@/payload.config", () => ({
   default: {},
 }))
 
+vi.mock("@/lib/domains/verification", () => ({
+  verifyAuthoritativeDns: vi.fn(async (_domain: string, nameServers: string[]) => ({
+    status: "verified",
+    delegatedNameServers: nameServers,
+    respondingNameServers: nameServers,
+    reason: null,
+  })),
+  verifyHttpsEndpoint: vi.fn(async () => ({
+    status: "verified",
+    httpStatus: 404,
+    reason: null,
+  })),
+}))
+
 import { getPayload } from "payload"
 import {
   applyMollieWebhookPayment,
@@ -20,6 +34,9 @@ import {
 } from "@/lib/payments/molliePayments"
 import { mollieApiKeyMode, mollieDomainProvisioningEnabled, verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
 import { fulfillPaidOrder } from "@/lib/payments/fulfillOrder"
+import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
+import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
+import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
 import { syncMolliePaymentTask } from "@/lib/jobs/syncMolliePaymentTask"
 import { retryPostPaymentAutomation } from "@/lib/payments/postPaymentActivation"
@@ -132,7 +149,17 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     contractingPartyName: "Acme Studio",
     kvkNumber: "12345678",
     domainRegistrantSource: "contracting_party",
-    billingAddress: { country: "NL" },
+    billingAddress: {
+      street: "Main Street",
+      number: "10",
+      suffix: null,
+      zipcode: "1011AB",
+      city: "Amsterdam",
+      country: "NL",
+      phoneCountryCode: "+31",
+      phoneAreaCode: "20",
+      phoneSubscriberNumber: "1234567",
+    },
     createdAt: "2026-07-26T10:00:00.000Z",
   }
   const order = {
@@ -171,6 +198,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   const billingAgreements: MockDoc[] = []
   const paymentAttempts: MockDoc[] = []
   const accountingDocuments: MockDoc[] = []
+  const managedDomains: MockDoc[] = []
   const projection = overrides.payment as Record<string, unknown> | undefined
   if (projection?.externalReference) {
     const agreement = {
@@ -231,6 +259,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       ["payment-attempts", paymentAttempts],
       ["billing-agreements", billingAgreements],
       ["accounting-documents", accountingDocuments],
+      ["managed-domains", managedDomains],
     ] as const) {
       if (collection !== slug) continue
       const doc = docs.find((entry) => String(entry.id) === String(id))
@@ -251,6 +280,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["payment-attempts", paymentAttempts],
         ["billing-agreements", billingAgreements],
         ["accounting-documents", accountingDocuments],
+        ["managed-domains", managedDomains],
       ] as const) {
         if (collection !== slug) continue
         const doc = docs.find((entry) => String(entry.id) === String(id))
@@ -305,6 +335,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["payment-attempts", paymentAttempts],
         ["billing-agreements", billingAgreements],
         ["accounting-documents", accountingDocuments],
+        ["managed-domains", managedDomains],
       ] as const) {
         if (collection === slug) {
           return { docs: docs.filter((doc) => matchesWhere(doc, where)) }
@@ -323,6 +354,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["payment-attempts", paymentAttempts, 1_000],
         ["billing-agreements", billingAgreements, 1_100],
         ["accounting-documents", accountingDocuments, 1_200],
+        ["managed-domains", managedDomains, 1_300],
       ] as const) {
         if (collection !== slug) continue
         const doc = { id: base + docs.length, ...data }
@@ -346,6 +378,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     billingAgreements,
     paymentAttempts,
     accountingDocuments,
+    managedDomains,
     queue: payload.jobs.queue,
   }
 }
@@ -1010,6 +1043,18 @@ describe("Mollie payment flow", () => {
     })).toBe("mollie-refund:901")
   })
 
+  it("serializes and coalesces duplicate fulfillment workers for one paid order", () => {
+    const concurrency = fulfillOrderTask.concurrency
+    if (!concurrency || typeof concurrency === "function") {
+      throw new Error("Expected object concurrency configuration.")
+    }
+    expect(concurrency).toMatchObject({ exclusive: true, supersedes: true })
+    expect(concurrency.key({
+      input: { orderId: "600", paymentAttemptId: "901" },
+      queue: "default",
+    })).toBe("fulfill-order:600")
+  })
+
   it("completes a test-mode paid checkout without creating a subscription or provisioning a domain", async () => {
     const { payload, run, tenant } = createPayloadStub({
       payment: {
@@ -1082,12 +1127,13 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
+    vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
     vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
     vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
     vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
-    const { payload, run, tenant, snapshots } = createPayloadStub({
+    const { payload, run, tenant, snapshots, managedDomains } = createPayloadStub({
       payment: {
         status: "pending_provider",
         provider: "mollie",
@@ -1102,7 +1148,8 @@ describe("Mollie payment flow", () => {
         registrant,
       },
     })
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+    let cloudflareZoneCreated = false
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("/email/sending/subdomains")) {
         if (url.endsWith("/email/sending/subdomains/subdomain_123")) {
           return new Response(JSON.stringify({
@@ -1130,12 +1177,33 @@ describe("Mollie payment flow", () => {
         }
         throw new Error(`Unexpected fetch ${url}`)
       }
+      if (url.includes("/ssl/verification")) {
+        return new Response(JSON.stringify({
+          success: true,
+          result: [{ certificate_status: "active" }],
+        }), { status: 200 })
+      }
+      if (url.includes("api.cloudflare.com/client/v4/zones?") && !url.includes("dns_records")) {
+        return new Response(JSON.stringify({
+          success: true,
+          result: cloudflareZoneCreated
+            ? [{
+                id: "zone_123",
+                name: "clientsite.nl",
+                status: "active",
+                name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+              }]
+            : [],
+        }), { status: 200 })
+      }
       if (url.includes("api.cloudflare.com/client/v4/zones") && !url.includes("dns_records")) {
+        cloudflareZoneCreated = true
         return new Response(JSON.stringify({
           success: true,
           result: {
             id: "zone_123",
             name: "clientsite.nl",
+            status: "active",
             name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
           },
         }), { status: 200 })
@@ -1143,13 +1211,27 @@ describe("Mollie payment flow", () => {
       if (url.includes("api.openprovider.eu/v1beta/auth/login")) {
         return new Response(JSON.stringify({ data: { token: "op-token" } }), { status: 200 })
       }
+      if (url.includes("api.openprovider.eu/v1beta/domains/check")) {
+        return new Response(JSON.stringify({
+          data: { results: [{ domain: "clientsite.nl", status: "free" }] },
+        }), { status: 200 })
+      }
       if (url.includes("api.openprovider.eu/v1beta/customers")) {
+        if (init?.method === "GET") {
+          return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+        }
         return new Response(JSON.stringify({ data: { handle: "OWNER-CLIENT" } }), { status: 200 })
       }
       if (url.includes("api.openprovider.eu/v1beta/domains")) {
+        if (init?.method === "GET") {
+          return new Response(JSON.stringify({ data: { results: [] } }), { status: 200 })
+        }
         return new Response(JSON.stringify({ code: 0, data: { id: 9001, status: "ACT" } }), { status: 200 })
       }
       if (url.includes("dns_records")) {
+        if (init?.method === "GET") {
+          return new Response(JSON.stringify({ success: true, result: [] }), { status: 200 })
+        }
         return new Response(JSON.stringify({
           success: true,
           result: { id: "record_123", name: "clientsite.nl", content: "renderer.siteinabox.nl", proxied: true },
@@ -1198,7 +1280,7 @@ describe("Mollie payment flow", () => {
       providerReference: "9001",
       cloudflareZoneId: "zone_123",
       ownerHandle: "OWNER-CLIENT",
-      adminHandle: "OWNER-CLIENT",
+      adminHandle: null,
       emailSending: {
         provider: "cloudflare",
         mode: "subdomain",
@@ -1245,8 +1327,296 @@ describe("Mollie payment flow", () => {
       sourceGenerationRun: 500,
       domain: "clientsite.nl",
     })
+    expect(managedDomains).toContainEqual(expect.objectContaining({
+      domainNameAscii: "clientsite.nl",
+      state: "active",
+      providerDomainId: "9001",
+      providerRegistrationState: "confirmed",
+      registrantVerificationStatus: "not_required",
+      authoritativeDnsStatus: "verified",
+      httpsStatus: "verified",
+      entitlementStatus: "active",
+      customerStatus: "active",
+    }))
     const subscriptionCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/subscriptions"))
     expect(subscriptionCall).toBeUndefined()
+    await expect(fulfillPaidOrder(payload, {
+      orderId: result.orderId,
+      paymentAttemptId: result.paymentAttemptId,
+    })).resolves.toMatchObject({ status: "fulfilled" })
+    expect(vi.mocked(fetch).mock.calls.filter(([url, init]) =>
+      String(url).endsWith("/v1beta/domains") && init?.method === "POST")).toHaveLength(1)
+    const registrationRequest = vi.mocked(fetch).mock.calls.find(([url, init]) =>
+      String(url).endsWith("/v1beta/domains") && init?.method === "POST")
+    expect(JSON.parse(String(registrationRequest?.[1]?.body))).toMatchObject({
+      owner_handle: "OWNER-CLIENT",
+      admin_handle: "ADMIN-NL",
+      tech_handle: "TECH-NL",
+      billing_handle: "BILL-NL",
+    })
+  })
+
+  it("queues the governed full refund when a paid .nl domain loses the availability race", async () => {
+    vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    vi.stubEnv("OPENPROVIDER_USERNAME", "user")
+    vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
+    const { payload, managedDomains, queue } = createPayloadStub({
+      payment: {
+        status: "pending_provider",
+        provider: "mollie",
+        externalReference: "tr_test_123",
+        selectedDomain: "clientsite.nl",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/auth/login")) {
+        return Response.json({ data: { token: "op-token" } })
+      }
+      if (url.includes("/domains?") && init?.method === "GET") {
+        return Response.json({ data: { results: [] } })
+      }
+      if (url.includes("/domains/check")) {
+        return Response.json({
+          data: { results: [{ domain: "clientsite.nl", status: "active" }] },
+        })
+      }
+      throw new Error(`Unexpected provider fetch ${url}`)
+    }))
+    const synchronized = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+      id: "tr_test_123",
+      status: "paid",
+      amount: { currency: "EUR", value: "499.00" },
+      metadata: {
+        generationRunId: 500,
+        tenantId: 1,
+        orderId: 600,
+        customerEmail: "client@example.com",
+        clientSlug: "acme",
+        selectedDomain: "clientsite.nl",
+        mollieCustomerId: "cst_test_123",
+        sequenceType: "first",
+      },
+    }))
+
+    await expect(fulfillPaidOrder(payload, {
+      orderId: synchronized.orderId,
+      paymentAttemptId: synchronized.paymentAttemptId,
+    })).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("refund was queued"),
+    })
+    expect(managedDomains[0]).toMatchObject({
+      state: "manual_review",
+      customerStatus: "manual_review",
+      failureReason: "paid_domain_became_unavailable_before_provider_commit",
+    })
+    expect(queue).toHaveBeenCalledWith(expect.objectContaining({
+      task: "request-mollie-refund",
+      input: {
+        paymentAttemptId: "901",
+        scenario: "unfulfillable_before_provider_commit",
+      },
+    }))
+    expect(vi.mocked(fetch).mock.calls.some(([url, init]) =>
+      init?.method === "POST" && (
+        String(url).endsWith("/customers") ||
+        String(url).endsWith("/domains") ||
+        String(url).includes("api.cloudflare.com")
+      ))).toBe(false)
+  })
+
+  it("adopts a delayed Cloudflare zone after an indeterminate create without a duplicate write", async () => {
+    const { payload, run, order, managedDomains } = createPayloadStub({
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    const zone = {
+      id: "zone_123",
+      name: "clientsite.nl",
+      status: "active" as const,
+      nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      raw: {},
+    }
+    const createZone = vi.fn()
+      .mockRejectedValue(new CloudflareIndeterminateWriteError("Cloudflare zone creation"))
+    const listZones = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([zone])
+    const registerDomain = vi.fn(async () => ({
+      id: 9001,
+      domain: "clientsite.nl",
+      status: "requested" as const,
+      raw: {},
+    }))
+    const dependencies = {
+      now: () => "2026-07-26T12:00:00.000Z",
+      loginOpenProvider: vi.fn(async () => "op-token"),
+      findOpenProviderDomain: vi.fn(async () => null),
+      checkOpenProviderDomainAvailability: vi.fn(async () => ({
+        status: "available" as const,
+        domain: "clientsite.nl",
+        available: true,
+        premium: false,
+        price: null,
+        internalReason: null,
+      })),
+      findOpenProviderCustomerByReference: vi.fn(async () => ({
+        handle: "OWNER-CLIENT",
+        comments: "domain-registration:order:600:v1",
+        raw: {},
+      })),
+      createOpenProviderCustomerHandle: vi.fn(),
+      createOrReuseCloudflareZone: createZone,
+      listCloudflareZones: listZones,
+      registerOpenProviderDomain: registerDomain,
+    }
+
+    await expect(provisionPaidDomainOrder(payload, cast(run), {
+      order: cast(order),
+      selectedDomain: "clientsite.nl",
+      dependencies,
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("awaiting reconciliation"),
+    })
+    await expect(provisionPaidDomainOrder(payload, cast(run), {
+      order: cast(order),
+      selectedDomain: "clientsite.nl",
+      dependencies,
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("still processing"),
+    })
+
+    expect(createZone).toHaveBeenCalledTimes(1)
+    expect(registerDomain).toHaveBeenCalledTimes(1)
+    expect(managedDomains[0]).toMatchObject({
+      cloudflareZoneId: "zone_123",
+      cloudflareZoneStatus: "active",
+      providerRegistrationState: "confirmed",
+      reconciliationRequired: true,
+    })
+  })
+
+  it("persists an indeterminate registration and never blindly repeats the provider POST", async () => {
+    vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    vi.stubEnv("OPENPROVIDER_USERNAME", "user")
+    vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
+    vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
+    vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
+    vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
+    vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
+    vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
+    const { payload, managedDomains } = createPayloadStub({
+      payment: {
+        status: "pending_provider",
+        provider: "mollie",
+        externalReference: "tr_test_123",
+        selectedDomain: "clientsite.nl",
+      },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.nl",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    let cloudflareZoneCreated = false
+    let registrationPosts = 0
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("/auth/login")) return Response.json({ data: { token: "op-token" } })
+      if (url.includes("/domains/check")) {
+        return Response.json({ data: { results: [{ domain: "clientsite.nl", status: "free" }] } })
+      }
+      if (url.includes("/domains?") && init?.method === "GET") {
+        return Response.json({ data: { results: [] } })
+      }
+      if (url.includes("/customers?") && init?.method === "GET") {
+        return Response.json({ data: { results: [] } })
+      }
+      if (url.endsWith("/customers") && init?.method === "POST") {
+        return Response.json({ data: { handle: "OWNER-CLIENT" } })
+      }
+      if (url.includes("api.cloudflare.com/client/v4/zones?")) {
+        return Response.json({
+          success: true,
+          result: cloudflareZoneCreated
+            ? [{
+                id: "zone_123",
+                name: "clientsite.nl",
+                status: "active",
+                name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+              }]
+            : [],
+        })
+      }
+      if (url.endsWith("/client/v4/zones") && init?.method === "POST") {
+        cloudflareZoneCreated = true
+        return Response.json({
+          success: true,
+          result: {
+            id: "zone_123",
+            name: "clientsite.nl",
+            status: "active",
+            name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+          },
+        })
+      }
+      if (url.endsWith("/v1beta/domains") && init?.method === "POST") {
+        registrationPosts += 1
+        throw new TypeError("socket closed after dispatch")
+      }
+      throw new Error(`Unexpected provider fetch ${url}`)
+    }))
+    const synchronized = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
+      id: "tr_test_123",
+      status: "paid",
+      amount: { currency: "EUR", value: "499.00" },
+      metadata: {
+        generationRunId: 500,
+        tenantId: 1,
+        orderId: 600,
+        customerEmail: "client@example.com",
+        clientSlug: "acme",
+        selectedDomain: "clientsite.nl",
+        mollieCustomerId: "cst_test_123",
+        sequenceType: "first",
+      },
+    }))
+    const input = {
+      orderId: synchronized.orderId,
+      paymentAttemptId: synchronized.paymentAttemptId,
+    }
+
+    await expect(fulfillPaidOrder(payload, input)).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("no retry was sent"),
+    })
+    await expect(fulfillPaidOrder(payload, input)).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("no registration retry was sent"),
+    })
+    expect(registrationPosts).toBe(1)
+    expect(managedDomains[0]).toMatchObject({
+      state: "registration_pending",
+      providerRegistrationState: "indeterminate",
+      reconciliationRequired: true,
+      failureReason: "openprovider_registration_indeterminate",
+    })
   })
 
   it("blocks the legacy operator subscription retry without a provider request", async () => {
