@@ -13,7 +13,8 @@ vi.mock("@/payload.config", () => ({
 
 import { getPayload } from "payload"
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
-import { mollieApiKeyMode, mollieDomainProvisioningEnabled, mollieRenewalAmountFromEnv, verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
+import { mollieApiKeyMode, mollieDomainProvisioningEnabled, verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
+import { retryPostPaymentAutomation } from "@/lib/payments/postPaymentActivation"
 import { POST as mollieWebhookPOST } from "@/app/(payload)/api/payments/mollie/webhook/route"
 
 const registrant = {
@@ -205,9 +206,6 @@ describe("Mollie payment flow", () => {
     vi.stubEnv("MOLLIE_API_KEY", "test_xxx")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "499.00")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
-    vi.stubEnv("MOLLIE_SITE_RENEWAL_AMOUNT", "49.00")
-    vi.stubEnv("MOLLIE_SITE_RENEWAL_CURRENCY", "EUR")
-    vi.stubEnv("MOLLIE_SITE_SUBSCRIPTION_INTERVAL", "1 month")
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("MOLLIE_WEBHOOK_BASE_URL", "")
     vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "")
@@ -407,6 +405,7 @@ describe("Mollie payment flow", () => {
         provider: "mollie",
         externalReference: "tr_test_123",
         providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
       },
     })
 
@@ -417,9 +416,10 @@ describe("Mollie payment flow", () => {
     }))
 
     expect(result).toMatchObject({ ok: true, status: "completed", duplicate: true })
+    expect(fetch).not.toHaveBeenCalled()
   })
 
-  it("does not provision domains after a test-mode paid checkout", async () => {
+  it("completes a test-mode paid checkout without creating a subscription or provisioning a domain", async () => {
     const { payload, run, tenant } = createPayloadStub({
       payment: {
         status: "pending_provider",
@@ -436,10 +436,7 @@ describe("Mollie payment flow", () => {
       },
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("api.mollie.com/v2/customers/cst_test_123/subscriptions")) {
-        return new Response(JSON.stringify({ id: "sub_test_123", status: "active" }), { status: 201 })
-      }
-      throw new Error(`Unexpected fetch ${url}`)
+      throw new Error(`Unexpected provider fetch ${url}`)
     }))
 
     const result = await applyMollieWebhookPayment(payload, "tr_test_123", async () => ({
@@ -464,7 +461,7 @@ describe("Mollie payment flow", () => {
     expect(run.payment).toMatchObject({
       status: "completed",
       selectedDomain: "clientsite.nl",
-      mollieSubscriptionId: "sub_test_123",
+      mollieSubscriptionId: null,
       note: "Mollie payment completed in non-live mode; domain provisioning was skipped.",
     })
     expect(run.errors).toMatchObject({
@@ -481,7 +478,7 @@ describe("Mollie payment flow", () => {
     expect(tenant).toMatchObject({
       domain: "acme.test",
     })
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it("starts domain provisioning after a live paid checkout with a selected domain", async () => {
@@ -509,9 +506,6 @@ describe("Mollie payment flow", () => {
       },
     })
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url.includes("api.mollie.com/v2/customers/cst_test_123/subscriptions")) {
-        return new Response(JSON.stringify({ id: "sub_test_123", status: "active" }), { status: 201 })
-      }
       if (url.includes("/email/sending/subdomains")) {
         if (url.endsWith("/email/sending/subdomains/subdomain_123")) {
           return new Response(JSON.stringify({
@@ -590,7 +584,7 @@ describe("Mollie payment flow", () => {
       status: "completed",
       selectedDomain: "clientsite.nl",
       mollieCustomerId: "cst_test_123",
-      mollieSubscriptionId: "sub_test_123",
+      mollieSubscriptionId: null,
     })
     expect(run.domainOrder).toMatchObject({
       status: "registered",
@@ -646,22 +640,33 @@ describe("Mollie payment flow", () => {
       domain: "clientsite.nl",
     })
     const subscriptionCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/subscriptions"))
-    expect(subscriptionCall).toBeDefined()
-    expect(JSON.parse(String((subscriptionCall?.[1] as RequestInit).body))).toMatchObject({
-      amount: { currency: "EUR", value: "49.00" },
-      interval: "1 month",
-      description: "Site in a Box monthly renewal clientsite.nl",
-      metadata: expect.objectContaining({ renewalInterval: "1 month" }),
-    })
+    expect(subscriptionCall).toBeUndefined()
   })
 
-  it("derives monthly renewal amount from the annual first-year price when no explicit renewal amount is configured", () => {
-    vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "228.00")
-    vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
-    vi.stubEnv("MOLLIE_SITE_RENEWAL_AMOUNT", "")
-    vi.stubEnv("MOLLIE_SITE_RENEWAL_CURRENCY", "")
+  it("blocks the legacy operator subscription retry without a provider request", async () => {
+    const { payload, run } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_test_123",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
 
-    expect(mollieRenewalAmountFromEnv()).toEqual({ currency: "EUR", value: "19.00" })
+    const result = await retryPostPaymentAutomation(payload, 500, "mollie_subscription")
+
+    expect(result).toEqual({
+      status: "blocked",
+      message: "Long-lived Mollie subscription creation is disabled.",
+    })
+    expect(run.errors).toMatchObject({
+      postPaymentAutomation: {
+        status: "blocked",
+        step: "mollie_subscription",
+        message: "Long-lived Mollie subscription creation is disabled.",
+      },
+    })
+    expect(fetch).not.toHaveBeenCalled()
   })
 
   it("rejects invalid webhook payloads and invalid optional signatures", async () => {

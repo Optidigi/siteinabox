@@ -226,7 +226,6 @@ export default async function GenerationRunDetailPage({
     },
   ]
   const retrySteps = [
-    { step: "mollie_subscription" as const, label: t("recovery.retrySubscription"), helper: t("recovery.retrySubscriptionHelp") },
     { step: "domain_provisioning" as const, label: t("recovery.retryDomain"), helper: t("recovery.retryDomainHelp") },
     { step: "refresh_provisioning" as const, label: t("recovery.refreshProvisioning"), helper: t("recovery.refreshProvisioningHelp") },
     { step: "publish_activate" as const, label: t("recovery.retryPublish"), helper: t("recovery.retryPublishHelp") },

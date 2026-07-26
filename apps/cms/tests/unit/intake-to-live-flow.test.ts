@@ -291,9 +291,6 @@ const installProviderFetch = () => {
         _links: { checkout: { href: "https://www.mollie.com/checkout/flow" } },
       }), { status: 201 })
     }
-    if (url.includes("api.mollie.com/v2/customers/cst_flow_123/subscriptions")) {
-      return new Response(JSON.stringify({ id: "sub_flow_123", status: "active" }), { status: 201 })
-    }
     if (url.includes("api.openprovider.eu/v1beta/auth/login")) {
       return new Response(JSON.stringify({ data: { token: "op-token" } }), { status: 200 })
     }
@@ -364,9 +361,6 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "499.00")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
-    vi.stubEnv("MOLLIE_SITE_RENEWAL_AMOUNT", "49.00")
-    vi.stubEnv("MOLLIE_SITE_RENEWAL_CURRENCY", "EUR")
-    vi.stubEnv("MOLLIE_SITE_SUBSCRIPTION_INTERVAL", "1 month")
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
@@ -501,9 +495,10 @@ describe("intake-to-live mocked flow", () => {
     })
     expect(finalRun.payment).toMatchObject({
       status: "completed",
-      mollieSubscriptionId: "sub_flow_123",
+      mollieSubscriptionId: null,
       selectedDomain: "flow-live.nl",
     })
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/subscriptions"))).toBe(false)
     expect(finalRun.errors).toMatchObject({
       postPaymentAutomation: {
         status: "activated",

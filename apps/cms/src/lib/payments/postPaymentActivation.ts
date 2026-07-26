@@ -3,10 +3,7 @@ import type { Payload } from "payload"
 import type { SiteGenerationRun, Tenant } from "@/payload-types"
 import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
 import {
-  createMollieSubscription,
   mollieDomainProvisioningEnabled,
-  mollieRenewalAmountFromEnv,
-  publicCmsOrigin,
 } from "@/lib/payments/mollieAdapter"
 import { relationshipId } from "@/lib/relationshipId"
 import {
@@ -60,15 +57,6 @@ async function loadRun(payload: Payload, runId: string | number): Promise<SiteGe
     overrideAccess: true,
   }) as Promise<SiteGenerationRun>
 }
-
-const oneYearFromNowDate = (now = new Date()): string => {
-  const date = new Date(now)
-  date.setUTCFullYear(date.getUTCFullYear() + 1)
-  return date.toISOString().slice(0, 10)
-}
-
-const mollieSubscriptionInterval = (env: NodeJS.ProcessEnv = process.env): string =>
-  env.MOLLIE_SITE_SUBSCRIPTION_INTERVAL?.trim() || "1 month"
 
 const automationResultFromRun = (run: SiteGenerationRun): PostPaymentActivationResult => {
   const errors = run.errors && typeof run.errors === "object" && !Array.isArray(run.errors)
@@ -182,69 +170,11 @@ export async function publishAndActivateAfterCompletedPayment(
 }
 
 async function retryMollieSubscription(payload: Payload, run: SiteGenerationRun): Promise<SiteGenerationRun> {
-  const payment = normalizeGenerationRunPaymentState(run.payment)
-  if (payment.status !== "completed") {
-    return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
-      status: "blocked",
-      step: "mollie_subscription",
-      message: "Subscription retry requires completed payment.",
-    }))
-  }
-  if (!payment.mollieCustomerId) {
-    return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
-      status: "blocked",
-      step: "mollie_subscription",
-      message: "Subscription retry requires a Mollie customer id.",
-    }))
-  }
-  if (payment.mollieSubscriptionId) {
-    return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
-      status: "blocked",
-      step: "mollie_subscription",
-      message: "Generation run already has a Mollie subscription id.",
-    }))
-  }
-
-  try {
-    const subscription = await createMollieSubscription({
-      customerId: payment.mollieCustomerId,
-      amount: mollieRenewalAmountFromEnv(),
-      interval: mollieSubscriptionInterval(),
-      startDate: oneYearFromNowDate(),
-      description: `Site in a Box monthly renewal ${payment.selectedDomain ?? ""}`.trim(),
-      webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
-      idempotencyKey: `siab-run-${run.id}-subscription`,
-      metadata: {
-        generationRunId: run.id,
-        tenantId: relationshipId(run.tenant),
-        customerEmail: payment.customerEmail,
-        clientSlug: payment.clientSlug,
-        selectedDomain: payment.selectedDomain,
-        renewalInterval: mollieSubscriptionInterval(),
-      },
-    })
-    return payload.update({
-      collection: "site-generation-runs",
-      id: run.id,
-      data: {
-        payment: {
-          ...payment,
-          mollieSubscriptionId: subscription.id,
-          renewalInterval: mollieSubscriptionInterval(),
-          note: "Mollie payment completed and monthly renewal subscription created by operator retry.",
-          updatedAt: nowIso(),
-        },
-      },
-      depth: 0,
-      overrideAccess: true,
-    }) as Promise<SiteGenerationRun>
-  } catch (error) {
-    return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
-      status: "failed",
-      step: "mollie_subscription",
-      message: error instanceof Error ? error.message : String(error),
-    }))
-  }
+  return recordGenerationRunPostPaymentAutomationState(payload, run, automationState({
+    status: "blocked",
+    step: "mollie_subscription",
+    message: "Long-lived Mollie subscription creation is disabled.",
+  }))
 }
 
 async function retryDomainProvisioning(payload: Payload, run: SiteGenerationRun): Promise<SiteGenerationRun> {

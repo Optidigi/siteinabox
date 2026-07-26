@@ -18,9 +18,7 @@ import {
   MollieApiError,
   createMollieCustomer,
   createMolliePayment,
-  createMollieSubscription,
   mollieDomainProvisioningEnabled,
-  mollieRenewalAmountFromEnv,
   publicCmsOrigin,
   retrieveMolliePayment,
   type MolliePayment,
@@ -69,15 +67,6 @@ const selectedDomainFromOrder = (value: unknown): string | null => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const source = value as Record<string, unknown>
   return cleanDomain(source.selectedDomain ?? source.domain)
-}
-
-const mollieSubscriptionInterval = (env: NodeJS.ProcessEnv = process.env): string =>
-  env.MOLLIE_SITE_SUBSCRIPTION_INTERVAL?.trim() || "1 month"
-
-const oneYearFromNowDate = (now = new Date()): string => {
-  const date = new Date(now)
-  date.setUTCFullYear(date.getUTCFullYear() + 1)
-  return date.toISOString().slice(0, 10)
 }
 
 const isApproved = (run: SiteGenerationRun): boolean =>
@@ -391,50 +380,6 @@ export async function applyMollieWebhookPayment(
     context: { legalOrderLifecycleMutation: true },
   })
   let canAttemptActivation = next.status === "completed"
-  if (next.status === "completed" && next.mollieCustomerId && !next.mollieSubscriptionId) {
-    try {
-      const renewalAmount = mollieRenewalAmountFromEnv()
-      const subscription = await createMollieSubscription({
-        customerId: next.mollieCustomerId,
-        amount: renewalAmount,
-        interval: mollieSubscriptionInterval(),
-        startDate: oneYearFromNowDate(),
-        description: `Site in a Box monthly renewal ${next.selectedDomain ?? ""}`.trim(),
-        webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
-        idempotencyKey: `siab-run-${run.id}-subscription`,
-        metadata: {
-          generationRunId: run.id,
-          tenantId,
-          customerEmail: next.customerEmail,
-          clientSlug: next.clientSlug,
-          selectedDomain: next.selectedDomain,
-          renewalInterval: mollieSubscriptionInterval(),
-        },
-      })
-      const subscribedPayment = {
-        ...next,
-        mollieSubscriptionId: subscription.id,
-        renewalInterval: mollieSubscriptionInterval(),
-        note: "Mollie payment completed and monthly renewal subscription created.",
-        updatedAt: new Date().toISOString(),
-      }
-      updatedRun = await payload.update({
-        collection: "site-generation-runs",
-        id: run.id,
-        data: { payment: subscribedPayment },
-        depth: 0,
-        overrideAccess: true,
-      }) as SiteGenerationRun
-    } catch (error) {
-      canAttemptActivation = false
-      updatedRun = await recordGenerationRunPostPaymentAutomationState(payload, updatedRun, {
-        status: "failed",
-        step: "mollie_subscription",
-        at: new Date().toISOString(),
-        message: error instanceof Error ? error.message : String(error),
-      })
-    }
-  }
   if (next.status === "completed" && next.selectedDomain && mollieDomainProvisioningEnabled()) {
     try {
       const provisioned = await provisionPaidDomainOrder(payload, updatedRun, { selectedDomain: next.selectedDomain })

@@ -114,9 +114,6 @@ MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
 # Gross customer-facing amounts, including VAT where applicable.
 MOLLIE_SITE_PAYMENT_AMOUNT=228.00
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
-MOLLIE_SITE_RENEWAL_AMOUNT=19.00
-MOLLIE_SITE_RENEWAL_CURRENCY=EUR
-MOLLIE_SITE_SUBSCRIPTION_INTERVAL=1 month
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
 MOLLIE_WEBHOOK_SIGNING_SECRET=<mollie-webhook-signing-secret-from-secret-store>
 OPENPROVIDER_USERNAME=
@@ -686,11 +683,11 @@ Paid customer checkout now owns the first automated domain path:
    normal available domains above that included cost, rejects premium domains,
    and stores the selected domain on the generation run's `domainOrder` state.
 3. Mollie checkout is created only after the selected domain is ready to
-   register. The first payment charges the first year upfront and creates a
-   recurring mandate for monthly renewal after that year.
-4. The Mollie `paid` webhook creates the monthly renewal subscription with a
-   one-year delayed start date. When `MOLLIE_API_KEY` is a live key, the webhook
-   then creates a Cloudflare zone, creates the customer owner/admin contact
+   register. The first payment charges the first year upfront and establishes
+   the customer mandate. Long-lived Mollie Subscription creation is disabled;
+   recurring payments are not yet created by this legacy flow.
+4. When `MOLLIE_API_KEY` is a live key, the Mollie `paid` webhook creates a
+   Cloudflare zone, creates the customer owner/admin contact
    handle in OpenProvider, registers the domain with Cloudflare nameservers and
    auto-renew enabled, creates the renderer DNS records, creates or reuses the
    Cloudflare Email Sending subdomain, and records tenant domain and sender

@@ -31,11 +31,6 @@ export type MollieCustomer = {
   email?: string | null
 }
 
-export type MollieSubscription = {
-  id: string
-  status?: string
-}
-
 export type CreateMolliePaymentInput = {
   amount: MollieAmount
   customerId?: string | null
@@ -51,17 +46,6 @@ export type CreateMollieCustomerInput = {
   name: string
   email: string
   metadata?: Record<string, string | number | null>
-  idempotencyKey: string
-}
-
-export type CreateMollieSubscriptionInput = {
-  customerId: string
-  amount: MollieAmount
-  interval: string
-  startDate?: string | null
-  description: string
-  webhookUrl: string
-  metadata: Record<string, string | number | null>
   idempotencyKey: string
 }
 
@@ -94,28 +78,6 @@ export function mollieAmountFromEnv(env = process.env): MollieAmount {
     throw new Error("MOLLIE_SITE_PAYMENT_AMOUNT must use Mollie's decimal format, for example 499.00.")
   }
   return { currency, value }
-}
-
-export function mollieRenewalAmountFromEnv(env = process.env): MollieAmount {
-  const currency = cleanEnv(env.MOLLIE_SITE_RENEWAL_CURRENCY) ?? cleanEnv(env.MOLLIE_SITE_PAYMENT_CURRENCY) ?? "EUR"
-  const explicitValue = cleanEnv(env.MOLLIE_SITE_RENEWAL_AMOUNT)
-  if (explicitValue) {
-    if (!/^\d+\.\d{2}$/.test(explicitValue)) {
-      throw new Error("MOLLIE_SITE_RENEWAL_AMOUNT must use Mollie's decimal format, for example 19.00.")
-    }
-    return { currency, value: explicitValue }
-  }
-
-  const annual = mollieAmountFromEnv(env)
-  const annualCents = Math.round(Number(annual.value) * 100)
-  if (!Number.isFinite(annualCents)) {
-    throw new Error("MOLLIE_SITE_PAYMENT_AMOUNT must use Mollie's decimal format, for example 228.00.")
-  }
-  const monthlyCents = Math.round(annualCents / 12)
-  return {
-    currency,
-    value: `${Math.floor(monthlyCents / 100)}.${String(monthlyCents % 100).padStart(2, "0")}`,
-  }
 }
 
 export function requireMollieApiKey(env = process.env): string {
@@ -186,29 +148,6 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
     throw new MollieApiError("Mollie payment creation", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MolliePayment
-}
-
-export async function createMollieSubscription(input: CreateMollieSubscriptionInput): Promise<MollieSubscription> {
-  const response = await fetch(`${MOLLIE_API_BASE}/customers/${encodeURIComponent(input.customerId)}/subscriptions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${requireMollieApiKey()}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": input.idempotencyKey,
-    },
-    body: JSON.stringify({
-      amount: input.amount,
-      interval: input.interval,
-      ...(input.startDate ? { startDate: input.startDate } : {}),
-      description: input.description,
-      webhookUrl: input.webhookUrl,
-      metadata: input.metadata,
-    }),
-  })
-  if (!response.ok) {
-    throw new MollieApiError("Mollie subscription creation", response.status, await readMollieErrorBody(response))
-  }
-  return await response.json() as MollieSubscription
 }
 
 export async function retrieveMolliePayment(paymentId: string): Promise<MolliePayment> {

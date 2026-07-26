@@ -376,7 +376,7 @@ describe("generation operations route access", () => {
     expect(action).toContain("retryPostPaymentAutomation")
     expect(detail).toContain('t("recovery.title")')
     expect(detail).toContain('t("recovery.postPayment")')
-    expect(detail).toContain('t("recovery.retrySubscription")')
+    expect(detail).not.toContain('t("recovery.retrySubscription")')
     expect(detail).toContain('t("recovery.retryDomain")')
     expect(detail).toContain('t("recovery.refreshProvisioning")')
     expect(detail).toContain('t("recovery.retryPublish")')
