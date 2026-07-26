@@ -14,6 +14,7 @@ import {
   managedDomainStateTransitions,
   paymentAttemptStates,
   paymentAttemptStateTransitions,
+  refundScenarios,
 } from "@siteinabox/contracts/commerce"
 
 import { isSuperAdmin } from "@/access/isSuperAdmin"
@@ -210,6 +211,7 @@ const paymentAttemptMutableFields = new Set([
   "state",
   "providerPaymentId",
   "providerStatus",
+  "checkoutUrl",
   "reconciliationRequired",
   "lastSyncedAt",
   "authorizedAt",
@@ -220,6 +222,10 @@ const paymentAttemptMutableFields = new Set([
   "refundPendingAt",
   "refundedAmountMinor",
   "refundedAt",
+  "providerRefundIds",
+  "chargebackAmountMinor",
+  "chargebackAt",
+  "providerChargebackIds",
   "failureCode",
   "failureMessage",
   "stateHistory",
@@ -230,7 +236,7 @@ export const protectPaymentAttempt: CollectionBeforeChangeHook = (args) =>
     label: "Payment-attempt",
     contextKey: "paymentAttemptLifecycleMutation",
     allowedFields: paymentAttemptMutableFields,
-    relationshipFields: new Set(["order", "tenant"]),
+    relationshipFields: new Set(["order", "tenant", "billingAgreement"]),
     stateTransitions: paymentAttemptStateTransitions,
   })
 
@@ -297,6 +303,56 @@ const renewalCycleMutableFields = new Set([
   "lastSyncedAt",
   "stateHistory",
 ])
+
+const accountingDocumentMutableFields = new Set([
+  "state",
+  "providerOperationId",
+  "providerStatus",
+  "issuedAt",
+  "failedAt",
+  "failureMessage",
+  "reconciliationRequired",
+  "lastSyncedAt",
+  "stateHistory",
+])
+
+const accountingDocumentStateTransitions = {
+  pending_provider: ["issued", "failed"],
+  issued: [],
+  failed: ["pending_provider", "issued"],
+} as const
+
+export const protectAccountingDocument: CollectionBeforeChangeHook = (args) => {
+  if (args.operation === "update" && args.originalDoc?.state === "issued") {
+    const changedIssuedIdentity = ["providerOperationId", "issuedAt"].find(
+      (field) =>
+        field in (args.data ?? {}) &&
+        !immutableFieldIsUnchanged(
+          field,
+          args.data?.[field],
+          args.originalDoc as Record<string, unknown>,
+          new Set(),
+        ),
+    )
+    if (changedIssuedIdentity) {
+      throw new Error(
+        `Issued accounting-document field "${changedIssuedIdentity}" is immutable.`,
+      )
+    }
+  }
+  return protectLifecycleUpdate(args, {
+    label: "Accounting-document",
+    contextKey: "accountingDocumentLifecycleMutation",
+    allowedFields: accountingDocumentMutableFields,
+    relationshipFields: new Set([
+      "order",
+      "paymentAttempt",
+      "reversesDocument",
+      "tenant",
+    ]),
+    stateTransitions: accountingDocumentStateTransitions,
+  })
+}
 
 export const protectDomainRenewalCycle: CollectionBeforeChangeHook = (args) =>
   protectLifecycleUpdate(args, {
@@ -406,6 +462,12 @@ export const PaymentAttempts: CollectionConfig = {
   fields: [
     { name: "idempotencyKey", type: "text", required: true, unique: true, index: true },
     { name: "order", type: "relationship", relationTo: "orders", required: true, index: true },
+    {
+      name: "billingAgreement",
+      type: "relationship",
+      relationTo: "billing-agreements",
+      index: true,
+    },
     { name: "tenant", type: "relationship", relationTo: "tenants", index: true },
     {
       name: "state",
@@ -414,6 +476,18 @@ export const PaymentAttempts: CollectionConfig = {
       defaultValue: "created",
       options: selectOptions(paymentAttemptStates),
       index: true,
+    },
+    {
+      name: "sequenceType",
+      type: "select",
+      options: selectOptions(["first", "recurring", "oneoff"]),
+      index: true,
+      admin: {
+        description: adminText(
+          "Required for Phase 4 attempts; empty only on records created before the typed Mollie lifecycle.",
+          "Verplicht voor fase-4-pogingen; alleen leeg bij records van vóór de getypeerde Mollie-levenscyclus.",
+        ),
+      },
     },
     {
       name: "purpose",
@@ -432,6 +506,7 @@ export const PaymentAttempts: CollectionConfig = {
     },
     { name: "providerPaymentId", type: "text", unique: true, index: true },
     { name: "providerStatus", type: "text", index: true },
+    { name: "checkoutUrl", type: "text" },
     { name: "currency", type: "text", required: true, defaultValue: "EUR" },
     {
       name: "netAmountMinor",
@@ -469,6 +544,15 @@ export const PaymentAttempts: CollectionConfig = {
       validate: validateMinorAmount,
     },
     { name: "refundedAt", type: "date" },
+    { name: "providerRefundIds", type: "json", admin: { readOnly: true } },
+    {
+      name: "chargebackAmountMinor",
+      type: "number",
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    { name: "chargebackAt", type: "date" },
+    { name: "providerChargebackIds", type: "json", admin: { readOnly: true } },
     { name: "failureCode", type: "text" },
     { name: "failureMessage", type: "textarea" },
     { name: "stateHistory", type: "json", admin: { readOnly: true } },
@@ -519,7 +603,7 @@ export const BillingAgreements: CollectionConfig = {
       defaultValue: "mollie",
       options: selectOptions(["mollie"]),
     },
-    { name: "providerCustomerId", type: "text", index: true },
+    { name: "providerCustomerId", type: "text", unique: true, index: true },
     { name: "providerMandateId", type: "text", unique: true, index: true },
     { name: "catalogVersion", type: "text", required: true, index: true },
     { name: "packageCode", type: "text", required: true },
@@ -722,6 +806,117 @@ export const DomainRenewalCycles: CollectionConfig = {
     { name: "failureReason", type: "textarea" },
     { name: "reconciliationRequired", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "lastSyncedAt", type: "date" },
+    { name: "stateHistory", type: "json", admin: { readOnly: true } },
+    { name: "createdAt", type: "date", required: true, index: true },
+  ],
+}
+
+export const AccountingDocuments: CollectionConfig = {
+  slug: "accounting-documents",
+  lockDocuments: false,
+  labels: {
+    singular: { en: "Accounting document", nl: "Boekhouddocument" },
+    plural: { en: "Accounting documents", nl: "Boekhouddocumenten" },
+  },
+  access: systemOwnedAccess,
+  hooks: { beforeChange: [protectAccountingDocument] },
+  admin: {
+    useAsTitle: "documentNumber",
+    defaultColumns: [
+      "documentType",
+      "documentNumber",
+      "state",
+      "order",
+      "grossAmountMinor",
+      "issuedAt",
+    ],
+    description: adminText(
+      "Frozen invoice and credit-note evidence derived from accepted orders and reconciled provider operations.",
+      "Bevroren factuur- en creditnota-evidence afgeleid van geaccepteerde bestellingen en gereconcilieerde providerbewerkingen.",
+    ),
+  },
+  fields: [
+    { name: "evidenceKey", type: "text", required: true, unique: true, index: true },
+    { name: "documentNumber", type: "text", required: true, unique: true, index: true },
+    {
+      name: "documentType",
+      type: "select",
+      required: true,
+      options: selectOptions(["invoice", "credit_note"]),
+      index: true,
+    },
+    {
+      name: "state",
+      type: "select",
+      required: true,
+      options: selectOptions(["pending_provider", "issued", "failed"]),
+      index: true,
+    },
+    { name: "order", type: "relationship", relationTo: "orders", required: true, index: true },
+    {
+      name: "paymentAttempt",
+      type: "relationship",
+      relationTo: "payment-attempts",
+      required: true,
+      index: true,
+    },
+    { name: "tenant", type: "relationship", relationTo: "tenants", index: true },
+    {
+      name: "reversesDocument",
+      type: "relationship",
+      relationTo: "accounting-documents",
+      index: true,
+    },
+    {
+      name: "reason",
+      type: "select",
+      required: true,
+      options: selectOptions(["payment_collected", "refund", "chargeback"]),
+      index: true,
+    },
+    {
+      name: "refundScenario",
+      type: "select",
+      options: selectOptions(refundScenarios),
+      index: true,
+    },
+    { name: "providerOperationId", type: "text", unique: true, index: true },
+    { name: "providerStatus", type: "text", index: true },
+    { name: "currency", type: "text", required: true, defaultValue: "EUR" },
+    {
+      name: "netAmountMinor",
+      type: "number",
+      required: true,
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    {
+      name: "vatAmountMinor",
+      type: "number",
+      required: true,
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    {
+      name: "grossAmountMinor",
+      type: "number",
+      required: true,
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    { name: "lineItems", type: "json", required: true },
+    { name: "customerSnapshot", type: "json", required: true },
+    { name: "issuedAt", type: "date", index: true },
+    { name: "failedAt", type: "date" },
+    { name: "failureMessage", type: "textarea" },
+    {
+      name: "reconciliationRequired",
+      type: "checkbox",
+      required: true,
+      defaultValue: false,
+      index: true,
+    },
+    { name: "lastSyncedAt", type: "date", index: true },
     { name: "stateHistory", type: "json", admin: { readOnly: true } },
     { name: "createdAt", type: "date", required: true, index: true },
   ],

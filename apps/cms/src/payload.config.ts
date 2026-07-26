@@ -9,6 +9,7 @@ import { fileURLToPath } from "url"
 
 import { BlockPresets } from "@/collections/BlockPresets"
 import {
+  AccountingDocuments,
   BillingAgreements,
   CheckoutProfiles,
   DomainRenewalCycles,
@@ -42,7 +43,11 @@ import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
+import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
+import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
+import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
 import { sendLegalRequirementNotificationsTask } from "@/lib/jobs/sendLegalRequirementNotificationsTask"
+import { syncMolliePaymentTask } from "@/lib/jobs/syncMolliePaymentTask"
 import { payloadEmailAdapter } from "@/lib/email/payloadEmailAdapter"
 import type { Config } from "@/payload-types"
 
@@ -124,6 +129,7 @@ export default buildConfig({
     BillingAgreements,
     ManagedDomains,
     DomainRenewalCycles,
+    AccountingDocuments,
     AgreementAcceptances,
     SiteReviewRevisions,
     SiteApprovals,
@@ -144,7 +150,15 @@ export default buildConfig({
   // `src/lib/jobs/purgeStaleFormsTask.ts` for the handler and
   // `audits/10-fix-batch-9-report.md` for the deployment note.
   jobs: {
-    tasks: [purgeStaleFormSubmissionsTask, sendLegalRequirementNotificationsTask],
+    tasks: [
+      purgeStaleFormSubmissionsTask,
+      sendLegalRequirementNotificationsTask,
+      syncMolliePaymentTask,
+      fulfillOrderTask,
+      reconcileCommerceTask,
+      requestMollieRefundTask,
+    ],
+    enableConcurrencyControl: true,
     autoRun: [{ queue: "default", cron: "* * * * *" }],
     shouldAutoRun: () => process.env.PAYLOAD_DISABLE_JOBS_AUTORUN !== "1",
     // FN-2026-0061 — Payload's auto-registered `payload-jobs` collection

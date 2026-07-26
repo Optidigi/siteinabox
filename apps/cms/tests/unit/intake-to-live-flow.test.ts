@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { CURRENT_INTAKE_TERMS_ACCEPTANCE } from "@siteinabox/contracts"
 import { checkAndRecordPreviewDomainOrder } from "@/lib/domains/previewDomainOrder"
 import { createMollieCheckoutForGenerationRun, applyMollieWebhookPayment } from "@/lib/payments/molliePayments"
+import { fulfillPaidOrder } from "@/lib/payments/fulfillOrder"
 import { POST as intakePOST } from "@/app/(payload)/api/intake/route"
 
 import { asNextRequest, asGenerationRun, asMockDoc } from "../_helpers/cast"
@@ -48,6 +49,10 @@ type CollectionName =
   | "published-site-snapshots"
   | "orders"
   | "agreement-acceptances"
+  | "checkout-profiles"
+  | "payment-attempts"
+  | "billing-agreements"
+  | "accounting-documents"
   | "communication-preferences"
   | "communication-preference-events"
   | "users"
@@ -224,6 +229,10 @@ const createPayloadStub = () => {
     "published-site-snapshots": [],
     orders: [],
     "agreement-acceptances": [],
+    "checkout-profiles": [],
+    "payment-attempts": [],
+    "billing-agreements": [],
+    "accounting-documents": [],
     "communication-preferences": [],
     "communication-preference-events": [],
     users: [],
@@ -428,12 +437,47 @@ describe("intake-to-live mocked flow", () => {
       clientApproval: { status: "approved", approvedAt: "2026-07-02T09:00:00.000Z" },
     }, { depth: 0, overrideAccess: true })))
 
-    const order = await payload.create(createArgs("orders", {
+    const checkoutProfile = await payload.create(createArgs("checkout-profiles", {
+      profileKey: `run:${run.id}:checkout-profile:1`,
+      profileVersion: 1,
       generationRun: run.id,
       tenant: tenants[0]!.id,
+      customerName: "Demo Contact",
       customerEmail: "demo@example.com",
+      partyType: "registered_business",
+      contractingPartyName: "Flow Demo",
+      kvkNumber: "12345678",
+      domainRegistrantSource: "contracting_party",
+      billingAddress: { country: "NL" },
+      createdAt: "2026-07-02T09:00:00.000Z",
+    }, { overrideAccess: true }))
+    const order = await payload.create(createArgs("orders", {
+      orderNumber: "SIAB-FLOW-001",
+      generationRun: run.id,
+      tenant: tenants[0]!.id,
+      state: "accepted",
+      checkoutProfileKey: asMockDoc(checkoutProfile).profileKey,
+      catalogVersion: "2026-07-26.1",
+      packageCode: "siteinabox-monthly",
+      billingPeriod: "monthly",
+      customerName: "Demo Contact",
+      customerEmail: "demo@example.com",
+      companyName: "Flow Demo",
+      billingAddress: { country: "NL" },
       domain: "flow-live.nl",
+      subtotalNetMinor: 41_240,
+      vatAmountMinor: 8_660,
+      totalGrossMinor: 49_900,
+      subtotalNet: 412.4,
+      vatAmount: 86.6,
       totalGross: 499,
+      netLineItems: [{
+        code: "siteinabox-monthly",
+        description: "Siteinabox maandabonnement",
+        quantity: 1,
+        netAmountMinor: 41_240,
+      }],
+      lineItems: [],
       currency: "EUR",
       paymentStatus: "pending",
     }, { overrideAccess: true }))
@@ -454,10 +498,14 @@ describe("intake-to-live mocked flow", () => {
     })
     expect(checkout.checkoutUrl).toBe("https://www.mollie.com/checkout/flow")
 
-    await applyMollieWebhookPayment(payload, "tr_flow_123", async () => ({
+    const synchronized = await applyMollieWebhookPayment(payload, "tr_flow_123", async () => ({
       id: "tr_flow_123",
       status: "paid",
       amount: { currency: "EUR", value: "499.00" },
+      customerId: "cst_flow_123",
+      mandateId: "mdt_flow_123",
+      sequenceType: "first",
+      paidAt: "2026-07-02T09:05:00.000Z",
       metadata: {
         generationRunId: run.id,
         tenantId: tenants[0]!.id,
@@ -470,6 +518,12 @@ describe("intake-to-live mocked flow", () => {
         orderId: order.id,
       },
     }))
+    expect(synchronized.fulfillmentRequired).toBe(true)
+    const fulfillment = await fulfillPaidOrder(payload, {
+      orderId: synchronized.orderId,
+      paymentAttemptId: synchronized.paymentAttemptId,
+    })
+    expect(fulfillment.status).toBe("fulfilled")
 
     const tenant = tenants[0]!
     const finalRun = runs[0]!

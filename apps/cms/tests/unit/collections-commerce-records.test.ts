@@ -8,12 +8,14 @@ import {
 import { describe, expect, it } from "vitest"
 
 import {
+  AccountingDocuments,
   BillingAgreements,
   CheckoutProfiles,
   DomainRenewalCycles,
   ManagedDomains,
   normalizeManagedDomain,
   PaymentAttempts,
+  protectAccountingDocument,
   protectBillingAgreement,
   protectDomainRenewalCycle,
   protectManagedDomain,
@@ -39,6 +41,7 @@ const commerceCollections = [
   BillingAgreements,
   ManagedDomains,
   DomainRenewalCycles,
+  AccountingDocuments,
 ]
 
 const isUnique = (fieldName: string, collection = CheckoutProfiles): boolean => {
@@ -55,13 +58,14 @@ const relationTarget = (
 }
 
 describe("Phase 2 commerce record schemas", () => {
-  it("registers only the five separately-owned record types introduced by this phase", () => {
+  it("registers the five lifecycle authorities plus Phase 4 accounting evidence", () => {
     expect(commerceCollections.map((collection) => collection.slug)).toEqual([
       "checkout-profiles",
       "payment-attempts",
       "billing-agreements",
       "managed-domains",
       "domain-renewal-cycles",
+      "accounting-documents",
     ])
   })
 
@@ -87,7 +91,11 @@ describe("Phase 2 commerce record schemas", () => {
     expect(isUnique("idempotencyKey", PaymentAttempts)).toBe(true)
     expect(isUnique("providerPaymentId", PaymentAttempts)).toBe(true)
     expect(isUnique("idempotencyKey", BillingAgreements)).toBe(true)
+    expect(isUnique("providerCustomerId", BillingAgreements)).toBe(true)
     expect(isUnique("providerMandateId", BillingAgreements)).toBe(true)
+    expect(isUnique("evidenceKey", AccountingDocuments)).toBe(true)
+    expect(isUnique("documentNumber", AccountingDocuments)).toBe(true)
+    expect(isUnique("providerOperationId", AccountingDocuments)).toBe(true)
     expect(isUnique("domainNameAscii", ManagedDomains)).toBe(true)
     expect(isUnique("provisioningIdempotencyKey", ManagedDomains)).toBe(true)
     expect(isUnique("providerDomainId", ManagedDomains)).toBe(true)
@@ -112,6 +120,10 @@ describe("Phase 2 commerce record schemas", () => {
     expect(relationTarget("billingAgreement", DomainRenewalCycles)).toBe("billing-agreements")
     expect(relationTarget("order", DomainRenewalCycles)).toBe("orders")
     expect(relationTarget("paymentAttempt", DomainRenewalCycles)).toBe("payment-attempts")
+    expect(relationTarget("billingAgreement", PaymentAttempts)).toBe("billing-agreements")
+    expect(relationTarget("order", AccountingDocuments)).toBe("orders")
+    expect(relationTarget("paymentAttempt", AccountingDocuments)).toBe("payment-attempts")
+    expect(relationTarget("reversesDocument", AccountingDocuments)).toBe("accounting-documents")
   })
 
   it("uses the Phase 1 state contracts without collapsing lifecycle state", () => {
@@ -297,6 +309,39 @@ describe("Phase 2 commerce record schemas", () => {
         context: {},
       }))).toMatchObject({ state: nextState })
     }
+
+    expect(protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
+      operation: "update",
+      data: {
+        state: "issued",
+        providerOperationId: "re_test",
+        issuedAt: "2026-07-26T12:00:00.000Z",
+      },
+      originalDoc: { state: "pending_provider" },
+      req: { context: { accountingDocumentLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({ state: "issued", providerOperationId: "re_test" })
+    expect(() => protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
+      operation: "update",
+      data: { grossAmountMinor: 1 },
+      originalDoc: { state: "pending_provider", grossAmountMinor: 2_299 },
+      req: { context: { accountingDocumentLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toThrow('field "grossAmountMinor" is immutable')
+    expect(() => protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
+      operation: "update",
+      data: { providerOperationId: "re_replaced" },
+      originalDoc: {
+        state: "issued",
+        providerOperationId: "re_original",
+        issuedAt: "2026-07-26T12:00:00.000Z",
+      },
+      req: { context: { accountingDocumentLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toThrow('field "providerOperationId" is immutable')
 
     expect(() => protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",

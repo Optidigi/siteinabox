@@ -353,7 +353,7 @@ export const paymentAttemptStateTransitions = {
   failed: [],
   cancelled: [],
   expired: [],
-  refund_pending: ["partially_refunded", "refunded", "refund_failed"],
+  refund_pending: ["partially_refunded", "refunded", "refund_failed", "chargeback"],
   partially_refunded: ["refund_pending", "refunded", "chargeback"],
   refunded: ["chargeback"],
   refund_failed: ["refund_pending", "chargeback"],

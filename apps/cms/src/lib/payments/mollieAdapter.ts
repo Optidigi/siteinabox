@@ -19,10 +19,51 @@ export type MolliePayment = {
   id: string
   status: MolliePaymentStatus | string
   amount?: MollieAmount
+  amountRefunded?: MollieAmount
+  amountRemaining?: MollieAmount
+  customerId?: string | null
+  mandateId?: string | null
+  sequenceType?: "first" | "recurring" | "oneoff" | string | null
+  authorizedAt?: string | null
+  paidAt?: string | null
+  failedAt?: string | null
+  canceledAt?: string | null
+  expiredAt?: string | null
+  createdAt?: string | null
   metadata?: Record<string, unknown> | null
+  _embedded?: {
+    refunds?: MollieRefund[]
+    chargebacks?: MollieChargeback[]
+  }
   _links?: {
     checkout?: { href?: string }
   }
+}
+
+export type MollieRefund = {
+  id: string
+  status: "queued" | "pending" | "processing" | "refunded" | "failed" | "canceled" | string
+  amount: MollieAmount
+  createdAt?: string | null
+  description?: string | null
+  metadata?: Record<string, unknown> | null
+}
+
+export type MollieChargeback = {
+  id: string
+  amount: MollieAmount
+  createdAt?: string | null
+  reason?: {
+    code?: string | null
+    description?: string | null
+  } | null
+}
+
+export type MollieMandate = {
+  id: string
+  status: "valid" | "pending" | "invalid" | string
+  method?: string | null
+  createdAt?: string | null
 }
 
 export type MollieCustomer = {
@@ -36,9 +77,17 @@ export type CreateMolliePaymentInput = {
   customerId?: string | null
   sequenceType?: "first" | "recurring" | "oneoff"
   description: string
-  redirectUrl: string
+  redirectUrl?: string | null
   webhookUrl: string
   metadata: Record<string, string | number | null>
+  idempotencyKey: string
+}
+
+export type CreateMollieRefundInput = {
+  paymentId: string
+  amount: MollieAmount
+  description: string
+  metadata?: Record<string, string | number | null>
   idempotencyKey: string
 }
 
@@ -137,7 +186,7 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
     body: JSON.stringify({
       amount: input.amount,
       description: input.description,
-      redirectUrl: input.redirectUrl,
+      ...(input.redirectUrl ? { redirectUrl: input.redirectUrl } : {}),
       webhookUrl: input.webhookUrl,
       ...(input.customerId ? { customerId: input.customerId } : {}),
       ...(input.sequenceType ? { sequenceType: input.sequenceType } : {}),
@@ -151,16 +200,61 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
 }
 
 export async function retrieveMolliePayment(paymentId: string): Promise<MolliePayment> {
-  const response = await fetch(`${MOLLIE_API_BASE}/payments/${encodeURIComponent(paymentId)}`, {
+  const response = await fetch(
+    `${MOLLIE_API_BASE}/payments/${encodeURIComponent(paymentId)}?embed=refunds,chargebacks`,
+    {
     headers: {
       Authorization: `Bearer ${requireMollieApiKey()}`,
       Accept: "application/json",
     },
-  })
+    },
+  )
   if (!response.ok) {
     throw new MollieApiError("Mollie payment lookup", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MolliePayment
+}
+
+export async function retrieveMollieMandate(
+  customerId: string,
+  mandateId: string,
+): Promise<MollieMandate> {
+  const response = await fetch(
+    `${MOLLIE_API_BASE}/customers/${encodeURIComponent(customerId)}/mandates/${encodeURIComponent(mandateId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${requireMollieApiKey()}`,
+        Accept: "application/json",
+      },
+    },
+  )
+  if (!response.ok) {
+    throw new MollieApiError("Mollie mandate lookup", response.status, await readMollieErrorBody(response))
+  }
+  return await response.json() as MollieMandate
+}
+
+export async function createMollieRefund(input: CreateMollieRefundInput): Promise<MollieRefund> {
+  const response = await fetch(
+    `${MOLLIE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/refunds`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${requireMollieApiKey()}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": input.idempotencyKey,
+      },
+      body: JSON.stringify({
+        amount: input.amount,
+        description: input.description,
+        metadata: input.metadata,
+      }),
+    },
+  )
+  if (!response.ok) {
+    throw new MollieApiError("Mollie refund creation", response.status, await readMollieErrorBody(response))
+  }
+  return await response.json() as MollieRefund
 }
 
 async function readMollieErrorBody(response: Response): Promise<{ title?: unknown; detail?: unknown } | undefined> {

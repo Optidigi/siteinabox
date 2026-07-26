@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { getPayload } from "payload"
 import config from "@/payload.config"
-import { applyMollieWebhookPayment, isIgnorableMollieWebhookError } from "@/lib/payments/molliePayments"
+import { queueMolliePaymentSync } from "@/lib/jobs/syncMolliePaymentTask"
 import { verifyMollieWebhookSignature } from "@/lib/payments/mollieAdapter"
 
 export async function POST(req: NextRequest) {
@@ -18,12 +18,12 @@ export async function POST(req: NextRequest) {
 
   try {
     const payload = await getPayload({ config })
-    await applyMollieWebhookPayment(payload, paymentId)
+    await queueMolliePaymentSync(payload, paymentId)
     return NextResponse.json({ ok: true })
-  } catch (err) {
-    if (isIgnorableMollieWebhookError(err)) {
-      return NextResponse.json({ ok: true })
-    }
-    return NextResponse.json({ ok: false, message: "Mollie webhook failed" }, { status: 422 })
+  } catch {
+    return NextResponse.json(
+      { ok: false, message: "Mollie webhook enqueue failed" },
+      { status: 503 },
+    )
   }
 }

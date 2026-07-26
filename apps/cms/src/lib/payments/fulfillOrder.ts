@@ -1,0 +1,134 @@
+import "server-only"
+
+import type { Payload } from "payload"
+import type { Order, PaymentAttempt, SiteGenerationRun } from "@/payload-types"
+
+import { provisionPaidDomainOrder } from "@/lib/domains/provisioning"
+import { mollieDomainProvisioningEnabled } from "@/lib/payments/mollieAdapter"
+import {
+  normalizeGenerationRunPaymentState,
+  recordGenerationRunPostPaymentAutomationState,
+} from "@/lib/payments/generationRunPayment"
+import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
+import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+
+export type FulfillOrderResult = {
+  status: "fulfilled" | "waiting" | "failed"
+  orderId: string | number
+  message?: string
+}
+
+export async function fulfillPaidOrder(
+  payload: Payload,
+  input: { orderId: string | number; paymentAttemptId: string | number },
+): Promise<FulfillOrderResult> {
+  const [order, paymentAttempt] = await Promise.all([
+    payload.findByID({
+      collection: "orders",
+      id: input.orderId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<Order>,
+    payload.findByID({
+      collection: "payment-attempts",
+      id: input.paymentAttemptId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<PaymentAttempt>,
+  ])
+  if (!sameRelationshipId(paymentAttempt.order, order.id)) {
+    throw new Error("Payment attempt does not belong to the fulfillment order.")
+  }
+  if (paymentAttempt.state !== "paid") {
+    return {
+      status: "waiting",
+      orderId: order.id,
+      message: "Order fulfillment is waiting for a paid payment attempt.",
+    }
+  }
+  const generationRunId = relationshipId(order.generationRun)
+  if (!generationRunId) {
+    return {
+      status: "waiting",
+      orderId: order.id,
+      message: "The paid order has no Phase 4 fulfillment projection.",
+    }
+  }
+
+  let run = await payload.findByID({
+    collection: "site-generation-runs",
+    id: generationRunId,
+    depth: 0,
+    overrideAccess: true,
+  }) as SiteGenerationRun
+  if (!sameRelationshipId(run.tenant, order.tenant)) {
+    throw new Error("Fulfillment order tenant does not match its generation run.")
+  }
+  const payment = normalizeGenerationRunPaymentState(run.payment)
+  if (payment.status !== "completed" || payment.externalReference !== paymentAttempt.providerPaymentId) {
+    return {
+      status: "waiting",
+      orderId: order.id,
+      message: "The compatibility payment projection is not ready for fulfillment.",
+    }
+  }
+
+  try {
+    if (payment.selectedDomain && mollieDomainProvisioningEnabled()) {
+      const provisioned = await provisionPaidDomainOrder(payload, run, {
+        selectedDomain: payment.selectedDomain,
+      })
+      run = provisioned.run
+    } else if (payment.selectedDomain) {
+      run = await payload.update({
+        collection: "site-generation-runs",
+        id: run.id,
+        data: {
+          payment: {
+            ...payment,
+            note: "Mollie payment completed in non-live mode; domain provisioning was skipped.",
+            updatedAt: new Date().toISOString(),
+          },
+        },
+        depth: 0,
+        overrideAccess: true,
+      }) as SiteGenerationRun
+    }
+    const activation = await publishAndActivateAfterCompletedPayment(payload, run)
+    if (activation.status !== "activated") {
+      return {
+        status: "waiting",
+        orderId: order.id,
+        message: activation.message,
+      }
+    }
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "fulfilled" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+    return { status: "fulfilled", orderId: order.id }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Order fulfillment failed."
+    await recordGenerationRunPostPaymentAutomationState(payload, run, {
+      status: "failed",
+      step: "domain_provisioning",
+      at: new Date().toISOString(),
+      message,
+    })
+    if (order.state === "fulfillment_pending") {
+      await payload.update({
+        collection: "orders",
+        id: order.id,
+        data: { state: "exception" },
+        depth: 0,
+        overrideAccess: true,
+        context: { legalOrderLifecycleMutation: true },
+      })
+    }
+    return { status: "failed", orderId: order.id, message }
+  }
+}
