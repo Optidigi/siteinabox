@@ -1,4 +1,4 @@
-import { validateLegalReleases } from '../src/index.js'
+import { validateBusinessUseDeclarations, validateLegalReleases } from '../src/index.js'
 import { execFileSync } from 'node:child_process'
 
 function findModifiedPublishedDocuments() {
@@ -21,7 +21,11 @@ function findModifiedPublishedDocuments() {
   }
 }
 
-const errors = [...validateLegalReleases(), ...findModifiedPublishedDocuments()]
+const errors = [
+  ...validateLegalReleases(),
+  ...validateBusinessUseDeclarations(),
+  ...findModifiedPublishedDocuments(),
+]
 
 if (errors.length > 0) {
   console.error(errors.map((error) => `- ${error}`).join('\n'))

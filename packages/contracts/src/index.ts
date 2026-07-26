@@ -1,4 +1,5 @@
 export * from "./block-catalog"
+export * from "./commerce"
 export * from "./generated/shadcnui-blocks"
 export * from "./deploy-targets"
 export * from "./generation"

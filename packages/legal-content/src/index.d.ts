@@ -55,6 +55,21 @@ export interface PublicLegalManifest {
   }>
 }
 
+export interface BusinessUseDeclaration {
+  readonly version: `business-use-declaration-${string}`
+  readonly locale: 'nl'
+  readonly text: string
+  readonly audience: 'business_professional_only'
+  readonly effectiveAt: string
+}
+
+export const BUSINESS_USE_DECLARATION_VERSION: 'business-use-declaration-2026-07-26.1'
+export const BUSINESS_USE_DECLARATION_TEXT_NL: 'Ik sluit deze overeenkomst uitsluitend af voor mijn huidige of voorgenomen bedrijfs- of beroepsactiviteit en niet hoofdzakelijk voor privédoeleinden. Ik begrijp dat Siteinabox uitsluitend zakelijk levert.'
+export const businessUseDeclarations: readonly BusinessUseDeclaration[]
+export const currentBusinessUseDeclaration: BusinessUseDeclaration
+export function getBusinessUseDeclaration(version?: string): BusinessUseDeclaration
+export function validateBusinessUseDeclarations(): string[]
+
 export const legalReleases: readonly LegalRelease[]
 export function hashLegalContent(content: string | Uint8Array): `sha256:${string}`
 export function loadLegalDocument(release: LegalRelease, suppliedMarkdown?: string): LegalDocument

@@ -32,6 +32,10 @@
       "types": "./src/block-catalog.ts",
       "default": "./src/block-catalog.ts"
     },
+    "./commerce": {
+      "types": "./src/commerce.ts",
+      "default": "./src/commerce.ts"
+    },
     "./deploy-targets": {
       "types": "./src/deploy-targets.ts",
       "default": "./src/deploy-targets.ts"

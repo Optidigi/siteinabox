@@ -6,6 +6,15 @@ import { marked } from 'marked'
 
 import { legalReleases } from './releases.js'
 
+export {
+  BUSINESS_USE_DECLARATION_TEXT_NL,
+  BUSINESS_USE_DECLARATION_VERSION,
+  businessUseDeclarations,
+  currentBusinessUseDeclaration,
+  getBusinessUseDeclaration,
+  validateBusinessUseDeclarations,
+} from './business-use-declarations.js'
+
 const customerActionsByCategory = Object.freeze({
   editorial: ['none'],
   non_material_clarification: ['none', 'publish_notice'],
