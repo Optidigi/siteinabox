@@ -44,6 +44,10 @@
       "types": "./src/renderer-routing.ts",
       "default": "./src/renderer-routing.ts"
     },
+    "./tld-capabilities": {
+      "types": "./src/tld-capabilities.ts",
+      "default": "./src/tld-capabilities.ts"
+    },
     "./fixtures/tenants": {
       "types": "./src/fixtures/tenants.ts",
       "default": "./src/fixtures/tenants.ts"

@@ -2,13 +2,16 @@ import "server-only"
 
 import {
   DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS,
-  NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
   addBillingPeriod,
   assertExclusiveProviderRenewalExecution,
   commercialAmountFromNet,
   providerSafeCutoffAt,
   renewalFinancialCoverage,
 } from "@siteinabox/contracts/commerce"
+import {
+  getEnabledTldCapability,
+  type TldCapability,
+} from "@siteinabox/contracts/tld-capabilities"
 import type { Payload, Where } from "payload"
 import type {
   BillingAgreement,
@@ -170,6 +173,7 @@ async function createCycle(input: {
   providerDomain: OpenProviderDomainRecord
   price: OpenProviderDomainPrice
   providerRenewalDate: string
+  capability: TldCapability
   now: string
 }): Promise<DomainRenewalCycle> {
   if (input.price.currency !== "EUR") {
@@ -178,7 +182,7 @@ async function createCycle(input: {
   const financial = renewalFinancialCoverage(input.price.netAmountMinor)
   const providerSafeCutoff = providerSafeCutoffAt(
     input.providerRenewalDate,
-    NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
+    input.capability.renewal.providerSafeCutoffLeadDays,
   )
   const coverageEndsAt = addBillingPeriod(input.providerRenewalDate, "annual")
   const paidSubscriptionCoversRenewal = Boolean(
@@ -206,7 +210,7 @@ async function createCycle(input: {
         providerRenewalDate: input.providerRenewalDate,
         providerSafeCutoffAt: providerSafeCutoff,
         renewalIntentSnapshot: input.domain.renewalIntent,
-        providerRenewalMode: "autorenew",
+        providerRenewalMode: input.capability.renewal.executionMode,
         providerAutorenew: input.providerDomain.autorenew,
         providerWriteState: "not_required",
         currency: "EUR",
@@ -219,6 +223,8 @@ async function createCycle(input: {
         pricingEvidence: {
           version: 1,
           provider: "openprovider",
+          tld: input.capability.tld,
+          tldCapabilityVersion: input.capability.capabilityVersion,
           operation: "renew",
           quotedAt: input.now,
           premium: input.price.premium,
@@ -505,6 +511,7 @@ async function completeAdvancedCycle(input: {
   domain: ManagedDomain
   providerDomain: OpenProviderDomainRecord
   advancedRenewalDate: string
+  capability: TldCapability
   now: string
 }): Promise<void> {
   const hadFinancialCoverage = Boolean(input.cycle.paymentSecuredAt) ||
@@ -527,7 +534,7 @@ async function completeAdvancedCycle(input: {
     expiresAt: input.advancedRenewalDate,
     providerSafeRenewalCutoffAt: providerSafeCutoffAt(
       input.advancedRenewalDate,
-      NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
+      input.capability.renewal.providerSafeCutoffLeadDays,
     ),
     providerAutorenew: input.providerDomain.autorenew,
     providerAutorenewCheckedAt: input.now,
@@ -583,7 +590,14 @@ export async function reconcileManagedDomainRenewal(
     depth: 0,
     overrideAccess: true,
   }) as ManagedDomain
-  if (domain.provider !== "openprovider" || domain.tld !== "nl" || !domain.providerDomainId) {
+  const capability = getEnabledTldCapability(domain.tld, nowDate)
+  if (
+    domain.provider !== "openprovider" ||
+    !domain.providerDomainId ||
+    !capability ||
+    capability.provider !== "openprovider" ||
+    capability.renewal.executionMode !== "autorenew"
+  ) {
     return { status: "not_applicable" }
   }
   const token = await deps.loginOpenProvider()
@@ -645,6 +659,7 @@ export async function reconcileManagedDomainRenewal(
         domain,
         providerDomain,
         advancedRenewalDate: providerRenewalDate,
+        capability,
         now,
       })
     }
@@ -653,7 +668,7 @@ export async function reconcileManagedDomainRenewal(
     expiresAt: providerRenewalDate,
     providerSafeRenewalCutoffAt: providerSafeCutoffAt(
       providerRenewalDate,
-      NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
+      capability.renewal.providerSafeCutoffLeadDays,
     ),
     providerAutorenew: providerDomain.autorenew,
     providerAutorenewCheckedAt: now,
@@ -678,6 +693,7 @@ export async function reconcileManagedDomainRenewal(
       providerDomain,
       price,
       providerRenewalDate,
+      capability,
       now,
     })
   }

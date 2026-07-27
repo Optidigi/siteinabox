@@ -1,4 +1,9 @@
 import "server-only"
+import {
+  getEnabledTldCapability,
+  validateTldRegistrationLabel,
+  validateTldTransferAuthorization,
+} from "@siteinabox/contracts/tld-capabilities"
 import { splitDomain } from "@/lib/domains/normalize"
 import type { DomainRegistrantDetails } from "@/lib/domains/orderState"
 
@@ -37,6 +42,17 @@ export type OpenProviderRegistrationResult = {
   domain: string
   status: "registered" | "requested"
   raw: unknown
+}
+
+export type OpenProviderTransferRequest = {
+  domain: { name: string; extension: string }
+  auth_code: string
+  owner_handle: string
+  admin_handle: string
+  tech_handle: string
+  autorenew: "on" | "off" | "default"
+  ns_group?: string
+  name_servers?: Array<{ name: string }>
 }
 
 export type OpenProviderCustomerHandleResult = {
@@ -540,6 +556,16 @@ const nameserversFromEnv = (env: NodeJS.ProcessEnv): Array<{ name: string }> | n
   return names.length > 0 ? names.map((name) => ({ name })) : null
 }
 
+const enabledCapabilityForDomain = (domainInput: string) => {
+  const domain = splitDomain(domainInput)
+  const capability = getEnabledTldCapability(domain.extension)
+  if (!capability) throw new Error(`TLD .${domain.extension} is not enabled for provider operations.`)
+  if (!validateTldRegistrationLabel(capability, domain.name)) {
+    throw new Error(`Domain label is not supported for .${domain.extension}.`)
+  }
+  return { domain, capability }
+}
+
 export function buildOpenProviderDomainRegistrationRequest(
   domainInput: string,
   env: NodeJS.ProcessEnv = process.env,
@@ -553,18 +579,21 @@ export function buildOpenProviderDomainRegistrationRequest(
     reference?: string
   },
 ): OpenProviderRegistrationRequest {
-  const domain = splitDomain(domainInput)
-  const nsGroup = cleanEnv(input?.nsGroup ?? undefined) ?? cleanEnv(env.OPENPROVIDER_NS_GROUP)
-  const nameServers = input?.nameServers && input.nameServers.length > 0
+  const { domain, capability } = enabledCapabilityForDomain(domainInput)
+  const explicitNameServers = input?.nameServers && input.nameServers.length > 0
     ? input.nameServers
-    : nameserversFromEnv(env)
+    : null
+  const nsGroup = explicitNameServers
+    ? null
+    : cleanEnv(input?.nsGroup ?? undefined) ?? cleanEnv(env.OPENPROVIDER_NS_GROUP)
+  const nameServers = explicitNameServers ?? nameserversFromEnv(env)
   if (!nsGroup && !nameServers) {
     throw new Error("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS is required for domain registration.")
   }
 
   return {
     domain: { name: domain.name, extension: domain.extension },
-    period: input?.period ?? 1,
+    period: input?.period ?? capability.registration.periodYears,
     owner_handle: cleanEnv(input?.ownerHandle) ?? requiredHandle(env, "OPENPROVIDER_OWNER_HANDLE"),
     admin_handle: cleanEnv(input?.adminHandle) ?? requiredHandle(env, "OPENPROVIDER_ADMIN_HANDLE"),
     tech_handle: requiredHandle(env, "OPENPROVIDER_TECH_HANDLE"),
@@ -572,6 +601,46 @@ export function buildOpenProviderDomainRegistrationRequest(
     autorenew: input?.autorenew ?? "on",
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
     ...(cleanEnv(input?.reference) ? { comments: cleanEnv(input?.reference) as string } : {}),
+  }
+}
+
+export function buildOpenProviderDomainTransferRequest(
+  domainInput: string,
+  env: NodeJS.ProcessEnv = process.env,
+  input: {
+    authCode: string
+    ownerHandle?: string
+    adminHandle?: string
+    autorenew?: "on" | "off" | "default"
+    nameServers?: Array<{ name: string }>
+    nsGroup?: string | null
+  },
+): OpenProviderTransferRequest {
+  const { domain, capability } = enabledCapabilityForDomain(domainInput)
+  const authCode = input.authCode.trim()
+  if (!validateTldTransferAuthorization(capability, authCode)) {
+    throw new Error(`A valid .${capability.tld} OpenProvider domain transfer auth code is required.`)
+  }
+  const explicitNameServers = input.nameServers && input.nameServers.length > 0
+    ? input.nameServers
+    : null
+  const nsGroup = explicitNameServers
+    ? null
+    : cleanEnv(input.nsGroup ?? undefined) ?? cleanEnv(env.OPENPROVIDER_NS_GROUP)
+  const nameServers = explicitNameServers ?? nameserversFromEnv(env)
+  if (!nsGroup && !nameServers) {
+    throw new Error("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS is required for domain transfer.")
+  }
+  return {
+    domain: { name: domain.name, extension: domain.extension },
+    auth_code: authCode,
+    owner_handle: cleanEnv(input.ownerHandle) ?? requiredHandle(env, "OPENPROVIDER_OWNER_HANDLE"),
+    admin_handle: cleanEnv(input.adminHandle) ?? requiredHandle(env, "OPENPROVIDER_ADMIN_HANDLE"),
+    tech_handle: requiredHandle(env, "OPENPROVIDER_TECH_HANDLE"),
+    autorenew: input.autorenew ?? (
+      capability.renewal.executionMode === "autorenew" ? "on" : "off"
+    ),
+    ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
   }
 }
 

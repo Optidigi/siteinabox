@@ -15,7 +15,7 @@ function request(headers: HeadersInit): Request {
   return new Request("http://renderer:4321/", { headers })
 }
 
-function protectedHeaders(host = "studio.example.com"): HeadersInit {
+function protectedHeaders(host = "studio-example.be"): HeadersInit {
   return {
     host,
     "x-forwarded-host": host,
@@ -25,7 +25,7 @@ function protectedHeaders(host = "studio.example.com"): HeadersInit {
 }
 
 test("accepts a protected HTTPS request for any normalized public TLD", () => {
-  assert.equal(publicHostFromProtectedRequest(request(protectedHeaders()), production), "studio.example.com")
+  assert.equal(publicHostFromProtectedRequest(request(protectedHeaders()), production), "studio-example.be")
   assert.equal(
     publicHostFromProtectedRequest(request(protectedHeaders("voorbeeld.example.nl")), production),
     "voorbeeld.example.nl",
@@ -55,7 +55,7 @@ test("rejects direct-origin, non-HTTPS, malformed, and cross-host requests", () 
   assert.equal(publicHostFromProtectedRequest(request(protectedHeaders("127.0.0.1")), production), null)
   assert.equal(publicHostFromProtectedRequest(request({
     ...protectedHeaders(),
-    "x-forwarded-host": "studio.example.com, attacker.example",
+    "x-forwarded-host": "studio-example.be, attacker.example",
   }), production), null)
 })
 

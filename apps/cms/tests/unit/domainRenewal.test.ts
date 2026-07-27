@@ -307,6 +307,34 @@ describe("Openprovider renewal_date cycles", () => {
     expect(cutoff.setAutorenew).not.toHaveBeenCalled()
   })
 
+  it("uses the effective .be autorenew and renewal_date capability", async () => {
+    const store = createStore({
+      domain: {
+        domainNameAscii: "example.be",
+        tld: "be",
+      },
+    })
+    const fixture = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      provider: { domain: "example.be" },
+    })
+
+    const result = await reconcileManagedDomainRenewal(store.payload, 950, fixture.deps)
+
+    expect(result.status).toBe("payment_committed")
+    expect(store.cycles).toHaveLength(1)
+    expect(store.cycles[0]).toMatchObject({
+      providerRenewalDate: "2027-07-26T00:00:00.000Z",
+      providerSafeCutoffAt: "2027-07-24T00:00:00.000Z",
+      providerRenewalMode: "autorenew",
+      state: "payment_committed",
+      pricingEvidence: {
+        tld: "be",
+        tldCapabilityVersion: "tld-be-2026-07-27.1",
+      },
+    })
+  })
+
   it("turns autorenew off while a surcharge is uncovered and creates a recurring Mollie attempt", async () => {
     const store = createStore({
       agreement: {

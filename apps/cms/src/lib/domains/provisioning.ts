@@ -1,5 +1,11 @@
 import "server-only"
 
+import {
+  getEnabledTldCapability,
+  getTldCapabilityByVersion,
+  type TldCapability,
+  validateTldRegistrationLabel,
+} from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type {
   CheckoutProfile,
@@ -97,6 +103,45 @@ const defaultDependencies: ProvisioningDependencies = {
   getCloudflareSslVerification,
   verifyAuthoritativeDns,
   verifyHttpsEndpoint,
+}
+
+const readObject = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
+
+const capabilityForAcceptedOrder = (
+  order: Order,
+  tld: string,
+): TldCapability => {
+  const quoteEvidence = readObject(order.quoteEvidence)
+  const evidence = readObject(quoteEvidence?.tldCapability)
+  const capabilityVersion = typeof evidence?.capabilityVersion === "string"
+    ? evidence.capabilityVersion
+    : null
+  if (capabilityVersion) {
+    const capability = getTldCapabilityByVersion(capabilityVersion)
+    if (
+      !capability ||
+      !capability.productionEnabled ||
+      capability.tld !== tld ||
+      evidence?.tld !== tld
+    ) {
+      throw new Error("Accepted-order TLD capability evidence is invalid.")
+    }
+    return capability
+  }
+  if (tld !== "nl") {
+    throw new Error(`Paid .${tld} fulfillment requires frozen TLD capability evidence.`)
+  }
+  const legacyCapability = getEnabledTldCapability(
+    tld,
+    order.acceptedAt ?? order.createdAt,
+  )
+  if (!legacyCapability) {
+    throw new Error("Legacy .nl order has no applicable TLD capability.")
+  }
+  return legacyCapability
 }
 
 const historyWith = (
@@ -213,6 +258,7 @@ async function getOrCreateManagedDomain(
     order: Order
     profile: CheckoutProfile
     domain: string
+    tld: string
     now: string
   },
 ): Promise<ManagedDomain> {
@@ -235,7 +281,7 @@ async function getOrCreateManagedDomain(
       collection: "managed-domains",
       data: {
         domainNameAscii: input.domain,
-        tld: "nl",
+        tld: input.tld,
         provisioningIdempotencyKey: `domain-registration:order:${input.order.id}:v1`,
         originatingOrder: input.order.id,
         registrantProfile: input.profile.id,
@@ -279,17 +325,23 @@ async function getOrCreateManagedDomain(
   }
 }
 
-const registrationIsActive = (status: string): boolean =>
-  ["ACT", "ACTIVE", "REGISTERED"].includes(status.trim().toUpperCase())
+const registrationIsActive = (
+  status: string,
+  capability: TldCapability,
+): boolean => capability.registration.confirmation.activeStatuses.includes(
+  status.trim().toUpperCase(),
+)
 
 const registrantVerification = (
   record: OpenProviderDomainRecord | null,
+  capability: TldCapability,
 ): {
   status: "not_required" | "pending" | "verified" | "failed"
   description: string
 } => {
   const status = record?.verificationEmailStatus?.trim().toLowerCase() ?? ""
-  const description = record?.verificationEmailDescription?.trim() || "Provider reports no registrant verification requirement for .nl."
+  const description = record?.verificationEmailDescription?.trim() ||
+    `Provider reports no registrant verification requirement for .${capability.tld}.`
   if (!status || ["not applicable", "not required", "n/a"].includes(status)) {
     return { status: "not_required", description }
   }
@@ -340,8 +392,9 @@ export async function provisionPaidDomainOrder(
   const selectedDomain = input.selectedDomain ?? input.order.domain
   const normalized = normalizeDomain(selectedDomain)
   if (!normalized.ok) throw new Error(`Cannot provision paid domain: ${normalized.reason}.`)
-  if (normalized.domain.split(".").at(-1) !== "nl") {
-    throw new Error("Phase 5 new-domain fulfillment supports .nl only.")
+  const capability = capabilityForAcceptedOrder(input.order, normalized.extension)
+  if (!validateTldRegistrationLabel(capability, normalized.name)) {
+    throw new Error(`Domain label is not supported for .${normalized.extension}.`)
   }
   const orderDomain = normalizeDomain(input.order.domain)
   if (!orderDomain.ok || orderDomain.domain !== normalized.domain) {
@@ -364,16 +417,28 @@ export async function provisionPaidDomainOrder(
 
   const profile = await checkoutProfileForOrder(payload, input.order)
   const registrant = domainRegistrantFromCheckoutProfile(profile)
+  if (!capability.registrant.supportedPartyTypes.includes(profile.partyType)) {
+    throw new Error(`Contracting-party type is not supported for .${capability.tld}.`)
+  }
+  for (const field of capability.registrant.requiredFields) {
+    if (!registrant[field]) {
+      throw new Error(`Authoritative registrant field ${field} is required for .${capability.tld}.`)
+    }
+  }
+  if (profile.partyType === "registered_business" && !registrant.companyName) {
+    throw new Error(`Authoritative registrant field companyName is required for .${capability.tld}.`)
+  }
   const now = dependencies.now()
   let managedDomain = await getOrCreateManagedDomain(payload, {
     order: input.order,
     profile,
     domain: normalized.domain,
+    tld: capability.tld,
     now,
   })
   if (
     managedDomain.domainNameAscii !== normalized.domain ||
-    managedDomain.tld !== "nl" ||
+    managedDomain.tld !== capability.tld ||
     managedDomain.provider !== "openprovider" ||
     managedDomain.initialOperation !== "registration" ||
     managedDomain.registrantOwnership !== "customer" ||
@@ -614,7 +679,8 @@ export async function provisionPaidDomainOrder(
         ownerHandle: customerHandle,
         nameServers: zone.nameServers.map((name) => ({ name })),
         nsGroup: null,
-        autorenew: "on",
+        period: capability.registration.periodYears,
+        autorenew: capability.renewal.executionMode === "autorenew" ? "on" : "off",
         reference: managedDomain.provisioningIdempotencyKey,
       })
       managedDomain = await updateManagedDomain(payload, managedDomain, {
@@ -637,7 +703,7 @@ export async function provisionPaidDomainOrder(
             adminHandle: null,
             nameServers: zone.nameServers,
             renewalDate: null,
-            autorenew: "on",
+            autorenew: capability.renewal.executionMode === "autorenew" ? "on" : "off",
             verificationEmailStatus: null,
             verificationEmailDescription: null,
             raw: registration.raw,
@@ -696,13 +762,13 @@ export async function provisionPaidDomainOrder(
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     providerDomainId: String(providerDomain.id),
     providerRegistrationState: "confirmed",
-    registeredAt: registrationIsActive(providerDomain.status)
+    registeredAt: registrationIsActive(providerDomain.status, capability)
       ? managedDomain.registeredAt ?? dependencies.now()
       : managedDomain.registeredAt,
-    reconciliationRequired: !registrationIsActive(providerDomain.status),
+    reconciliationRequired: !registrationIsActive(providerDomain.status, capability),
     failureReason: null,
   }, "provider_registration_reconciled", dependencies.now())
-  if (!registrationIsActive(providerDomain.status)) {
+  if (!registrationIsActive(providerDomain.status, capability)) {
     return waiting(
       normalized.domain,
       run,
@@ -711,7 +777,7 @@ export async function provisionPaidDomainOrder(
     )
   }
 
-  const verification = registrantVerification(providerDomain)
+  const verification = registrantVerification(providerDomain, capability)
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     registrantVerificationStatus: verification.status,
     registrantVerificationCheckedAt: dependencies.now(),

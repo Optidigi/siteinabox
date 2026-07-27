@@ -133,7 +133,7 @@ export const Tenants: CollectionConfig = {
     { name: "activatedAt", type: "date",
       admin: { readOnly: true, description: adminText("Time this tenant was last activated for live rendering.", "Tijdstip waarop deze klantomgeving voor het laatst voor liveweergave is geactiveerd.") } },
     { name: "domainVerification", type: "group",
-      admin: { description: adminText("Domain verification evidence. The reviewed .nl registration workflow verifies active authoritative DNS before first publication.", "Bewijs van domeinverificatie. De beoordeelde .nl-registratieworkflow verifieert actieve autoritatieve DNS vóór de eerste publicatie.") },
+      admin: { description: adminText("Domain verification evidence. Every enabled TLD workflow verifies active authoritative DNS before first publication.", "Bewijs van domeinverificatie. Elke ingeschakelde TLD-workflow verifieert actieve autoritatieve DNS vóór de eerste publicatie.") },
       fields: [
         { name: "status", type: "select", defaultValue: "not_checked",
           options: [

@@ -17,6 +17,7 @@ import {
   BUSINESS_USE_DECLARATION_VERSION,
 } from "@siteinabox/legal-content"
 import { businessUseDeclarationAcceptanceSchema } from "@siteinabox/contracts/commerce"
+import { getEnabledTldCapability } from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutQuote } from "@/lib/checkout/checkoutQuote"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
@@ -146,6 +147,11 @@ export async function createOrderAndAcceptanceEvidence(input: {
   const subtotalNet = input.quote.netAmountMinor / 100
   const vatAmount = input.quote.vatAmountMinor / 100
   const acceptedAt = now.toISOString()
+  const tld = input.domain.split(".").at(-1)?.toLowerCase() ?? ""
+  const tldCapability = getEnabledTldCapability(tld, now)
+  if (!tldCapability) {
+    throw new Error(`TLD .${tld} is not enabled for accepted-order evidence.`)
+  }
   const orderIdentity = {
     runId: input.run.id,
     domain: input.domain,
@@ -156,6 +162,7 @@ export async function createOrderAndAcceptanceEvidence(input: {
     privacy: privacy.contentHash,
     businessUseDeclaration: BUSINESS_USE_DECLARATION_VERSION,
     approval: input.approval.snapshotHash,
+    tldCapabilityVersion: tldCapability.capabilityVersion,
   }
   const orderNumber = `SIAB-${input.run.id}-${sha256(orderIdentity).slice(0, 12).toUpperCase()}`
   let order = await findOneDoc(input.payload, "orders", { orderNumber: { equals: orderNumber } })
@@ -178,6 +185,11 @@ export async function createOrderAndAcceptanceEvidence(input: {
           domainIncludedAllowanceNetMinor: input.quote.domainIncludedAllowanceNetMinor,
           providerOperationPriceNetMinor: input.quote.providerOperationPriceNetMinor,
           domainSurchargeNetMinor: input.quote.domainSurchargeNetMinor,
+          tldCapability: {
+            tld: tldCapability.tld,
+            capabilityVersion: tldCapability.capabilityVersion,
+            effectiveFrom: tldCapability.effectiveFrom,
+          },
           businessUseDeclaration: {
             version: BUSINESS_USE_DECLARATION_VERSION,
             text: BUSINESS_USE_DECLARATION_TEXT_NL,

@@ -131,6 +131,10 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     updatedAt: "2026-06-26T10:00:00.000Z",
   }
   const orderDomain = (overrides.domainOrder as { domain?: string } | undefined)?.domain ?? tenant.domain
+  const orderTld = orderDomain.split(".").at(-1)
+  const tldCapabilityVersion = orderTld === "be"
+    ? "tld-be-2026-07-27.1"
+    : orderTld === "nl" ? "tld-nl-2026-07-26.1" : null
   const providerPrice = Number((overrides.domainOrder as { providerPriceAmount?: string } | undefined)?.providerPriceAmount ?? "10.00")
   const grossAmountMinor = providerPrice > 10
     ? 49_900 + Math.round((providerPrice - 10) * 100)
@@ -170,6 +174,18 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     state: "accepted",
     checkoutProfileKey: profile.profileKey,
     catalogVersion: "2026-07-26.1",
+    ...(tldCapabilityVersion ? {
+      quoteEvidence: {
+        tldCapability: {
+          tld: orderTld,
+          capabilityVersion: tldCapabilityVersion,
+          effectiveFrom: orderTld === "be"
+            ? "2026-07-27T00:00:00.000Z"
+            : "2026-01-01T00:00:00.000Z",
+        },
+      },
+    } : {}),
+    acceptedAt: "2026-07-27T10:00:00.000Z",
     packageCode: "siteinabox-monthly",
     billingPeriod: "monthly",
     customerName: "Ada Lovelace",
@@ -1206,7 +1222,29 @@ describe("Mollie payment flow", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it("starts domain provisioning after a live paid checkout with a selected domain", async () => {
+  it("fails closed for .be fulfillment without frozen capability evidence", async () => {
+    const { payload, run, order } = createPayloadStub({
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "clientsite.be",
+        fixedPriceAmount: "499.00",
+        fixedPriceCurrency: "EUR",
+        registrant,
+      },
+    })
+    Object.assign(order, { quoteEvidence: undefined })
+
+    await expect(provisionPaidDomainOrder(payload, cast(run), {
+      order: cast(order),
+      selectedDomain: "clientsite.be",
+    })).rejects.toThrow("frozen TLD capability evidence")
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it.each(["nl", "be"] as const)(
+    "starts .%s domain provisioning after a live paid checkout",
+    async (tld) => {
+    const selectedDomain = `clientsite.${tld}`
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
@@ -1221,11 +1259,11 @@ describe("Mollie payment flow", () => {
         status: "pending_provider",
         provider: "mollie",
         externalReference: "tr_test_123",
-        selectedDomain: "clientsite.nl",
+        selectedDomain,
       },
       domainOrder: {
         status: "ready_to_register",
-        domain: "clientsite.nl",
+        domain: selectedDomain,
         fixedPriceAmount: "499.00",
         fixedPriceCurrency: "EUR",
         registrant,
@@ -1239,10 +1277,10 @@ describe("Mollie payment flow", () => {
             success: true,
             result: {
               enabled: true,
-              name: "mail.clientsite.nl",
+              name: `mail.${selectedDomain}`,
               tag: "subdomain_123",
               dkim_selector: "cf-bounce",
-              return_path_domain: "cf-bounce.mail.clientsite.nl",
+              return_path_domain: `cf-bounce.mail.${selectedDomain}`,
             },
           }), { status: 200 })
         }
@@ -1251,10 +1289,10 @@ describe("Mollie payment flow", () => {
             success: true,
             result: [{
               enabled: true,
-              name: "mail.clientsite.nl",
+              name: `mail.${selectedDomain}`,
               tag: "subdomain_123",
               dkim_selector: "cf-bounce",
-              return_path_domain: "cf-bounce.mail.clientsite.nl",
+              return_path_domain: `cf-bounce.mail.${selectedDomain}`,
             }],
           }), { status: 200 })
         }
@@ -1272,7 +1310,7 @@ describe("Mollie payment flow", () => {
           result: cloudflareZoneCreated
             ? [{
                 id: "zone_123",
-                name: "clientsite.nl",
+                name: selectedDomain,
                 status: "active",
                 name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
               }]
@@ -1285,7 +1323,7 @@ describe("Mollie payment flow", () => {
           success: true,
           result: {
             id: "zone_123",
-            name: "clientsite.nl",
+            name: selectedDomain,
             status: "active",
             name_servers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
           },
@@ -1296,7 +1334,7 @@ describe("Mollie payment flow", () => {
       }
       if (url.includes("api.openprovider.eu/v1beta/domains/check")) {
         return new Response(JSON.stringify({
-          data: { results: [{ domain: "clientsite.nl", status: "free" }] },
+          data: { results: [{ domain: selectedDomain, status: "free" }] },
         }), { status: 200 })
       }
       if (url.includes("api.openprovider.eu/v1beta/customers")) {
@@ -1317,7 +1355,7 @@ describe("Mollie payment flow", () => {
         }
         return new Response(JSON.stringify({
           success: true,
-          result: { id: "record_123", name: "clientsite.nl", content: "renderer.siteinabox.nl", proxied: true },
+          result: { id: "record_123", name: selectedDomain, content: "renderer.siteinabox.nl", proxied: true },
         }), { status: 200 })
       }
       throw new Error(`Unexpected fetch ${url}`)
@@ -1333,7 +1371,7 @@ describe("Mollie payment flow", () => {
           orderId: 600,
         customerEmail: "client@example.com",
         clientSlug: "acme",
-        selectedDomain: "clientsite.nl",
+        selectedDomain,
         mollieCustomerId: "cst_test_123",
         sequenceType: "first",
       },
@@ -1342,7 +1380,7 @@ describe("Mollie payment flow", () => {
     expect(result.state).toBe("paid")
     expect(run.domainOrder).toMatchObject({
       status: "ready_to_register",
-      domain: "clientsite.nl",
+      domain: selectedDomain,
     })
     const fulfillment = await fulfillPaidOrder(payload, {
       orderId: result.orderId,
@@ -1353,13 +1391,13 @@ describe("Mollie payment flow", () => {
     expect(mollieDomainProvisioningEnabled()).toBe(true)
     expect(run.payment).toMatchObject({
       status: "completed",
-      selectedDomain: "clientsite.nl",
+      selectedDomain,
       mollieCustomerId: "cst_test_123",
       mollieSubscriptionId: null,
     })
     expect(run.domainOrder).toMatchObject({
       status: "registered",
-      domain: "clientsite.nl",
+      domain: selectedDomain,
       providerReference: "9001",
       cloudflareZoneId: "zone_123",
       ownerHandle: "OWNER-CLIENT",
@@ -1368,11 +1406,11 @@ describe("Mollie payment flow", () => {
         provider: "cloudflare",
         mode: "subdomain",
         status: "verified",
-        sendingDomain: "mail.clientsite.nl",
-        senderEmail: "noreply@mail.clientsite.nl",
+        sendingDomain: `mail.${selectedDomain}`,
+        senderEmail: `noreply@mail.${selectedDomain}`,
         cloudflareZoneId: "zone_123",
         cloudflareSubdomainId: "subdomain_123",
-        returnPathDomain: "cf-bounce.mail.clientsite.nl",
+        returnPathDomain: `cf-bounce.mail.${selectedDomain}`,
         dkimSelector: "cf-bounce",
         lastError: null,
       },
@@ -1386,7 +1424,7 @@ describe("Mollie payment flow", () => {
       },
     })
     expect(tenant).toMatchObject({
-      domain: "clientsite.nl",
+      domain: selectedDomain,
       status: "active",
       activeSnapshot: 10,
       domainVerification: expect.objectContaining({ status: "verified" }),
@@ -1394,11 +1432,11 @@ describe("Mollie payment flow", () => {
         provider: "cloudflare",
         mode: "subdomain",
         status: "verified",
-        sendingDomain: "mail.clientsite.nl",
-        senderEmail: "noreply@mail.clientsite.nl",
+        sendingDomain: `mail.${selectedDomain}`,
+        senderEmail: `noreply@mail.${selectedDomain}`,
         cloudflareZoneId: "zone_123",
         cloudflareSubdomainId: "subdomain_123",
-        returnPathDomain: "cf-bounce.mail.clientsite.nl",
+        returnPathDomain: `cf-bounce.mail.${selectedDomain}`,
         dkimSelector: "cf-bounce",
         lastError: null,
       }),
@@ -1408,10 +1446,11 @@ describe("Mollie payment flow", () => {
       status: "active",
       tenant: 1,
       sourceGenerationRun: 500,
-      domain: "clientsite.nl",
+      domain: selectedDomain,
     })
     expect(managedDomains).toContainEqual(expect.objectContaining({
-      domainNameAscii: "clientsite.nl",
+      domainNameAscii: selectedDomain,
+      tld,
       state: "active",
       providerDomainId: "9001",
       providerRegistrationState: "confirmed",
@@ -1437,7 +1476,8 @@ describe("Mollie payment flow", () => {
       tech_handle: "TECH-NL",
       billing_handle: "BILL-NL",
     })
-  })
+    },
+  )
 
   it("queues the governed full refund when a paid .nl domain loses the availability race", async () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")

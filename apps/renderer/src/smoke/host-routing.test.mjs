@@ -42,7 +42,7 @@ test("routes production hosts through canonical provider snapshots and keeps 404
       SIAB_CMS_URL: cms.url,
       SIAB_RENDERER_FIXTURE_MODE: "",
       SIAB_RENDERER_ORIGIN_SECRET: TEST_RENDERER_ORIGIN_SECRET,
-      SIAB_RENDERER_DEV_ALLOWED_HOSTS: "ami-care.nl,www.ami-care.nl,studio.example.com,www.studio.example.com,unknown.example",
+      SIAB_RENDERER_DEV_ALLOWED_HOSTS: "ami-care.nl,www.ami-care.nl,studio-example.be,www.studio-example.be,unknown.example",
       SITE_URL: baseUrl,
       DATA_DIR: dataDir,
     },

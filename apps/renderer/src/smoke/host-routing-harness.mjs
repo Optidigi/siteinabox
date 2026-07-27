@@ -33,7 +33,7 @@ export async function startStubCms({ listenHost = "127.0.0.1", publicHost = list
     tenantSlug: "ami-care",
     siteName: "Amicare-Zorg",
   })
-  const studioSnapshot = publishedSnapshotForHost("studio.example.com", {
+  const studioSnapshot = publishedSnapshotForHost("studio-example.be", {
     tenantId: "tenant-studio-example",
     tenantSlug: "studio-example",
     siteName: "Studio Example",
@@ -41,8 +41,8 @@ export async function startStubCms({ listenHost = "127.0.0.1", publicHost = list
   const snapshotsByHost = new Map([
     ["ami-care.nl", snapshotEnvelope("ami-care.nl", amicareSnapshot, ["ami-care.nl", "www.ami-care.nl"])],
     ["www.ami-care.nl", snapshotEnvelope("www.ami-care.nl", amicareSnapshot, ["ami-care.nl", "www.ami-care.nl"])],
-    ["studio.example.com", snapshotEnvelope("studio.example.com", studioSnapshot, ["studio.example.com", "www.studio.example.com"])],
-    ["www.studio.example.com", snapshotEnvelope("www.studio.example.com", studioSnapshot, ["studio.example.com", "www.studio.example.com"])],
+    ["studio-example.be", snapshotEnvelope("studio-example.be", studioSnapshot, ["studio-example.be", "www.studio-example.be"])],
+    ["www.studio-example.be", snapshotEnvelope("www.studio-example.be", studioSnapshot, ["studio-example.be", "www.studio-example.be"])],
   ])
   const server = createHttpServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`)
@@ -210,8 +210,8 @@ export async function assertStubCmsSnapshots(cms) {
   const expected = [
     ["ami-care.nl", "ami-care.nl", "ami-care", "terracotta-warm"],
     ["www.ami-care.nl", "ami-care.nl", "ami-care", "terracotta-warm"],
-    ["studio.example.com", "studio.example.com", "studio-example", "terracotta-warm"],
-    ["www.studio.example.com", "studio.example.com", "studio-example", "terracotta-warm"],
+    ["studio-example.be", "studio-example.be", "studio-example", "terracotta-warm"],
+    ["www.studio-example.be", "studio-example.be", "studio-example", "terracotta-warm"],
   ]
 
   for (const [host, canonicalHost, tenantSlug, colorSchemeId] of expected) {
@@ -288,15 +288,15 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   await assertStatus(amicareWww, 200, "www.ami-care.nl homepage status", amicareWwwHtml, failureContext)
   assert.match(amicareWwwHtml, /data-tenant-slug="ami-care"/)
 
-  const studioHome = await fetchWithHost(baseUrl, "studio.example.com", "/")
+  const studioHome = await fetchWithHost(baseUrl, "studio-example.be", "/")
   const studioHtml = await studioHome.text()
-  await assertStatus(studioHome, 200, "studio.example.com homepage status", studioHtml, failureContext)
+  await assertStatus(studioHome, 200, "studio-example.be homepage status", studioHtml, failureContext)
   assert.match(studioHtml, /data-tenant-slug="studio-example"/)
   assert.match(studioHtml, /Studio Example/)
 
-  const studioWww = await fetchWithHost(baseUrl, "www.studio.example.com", "/")
+  const studioWww = await fetchWithHost(baseUrl, "www.studio-example.be", "/")
   const studioWwwHtml = await studioWww.text()
-  await assertStatus(studioWww, 200, "www.studio.example.com homepage status", studioWwwHtml, failureContext)
+  await assertStatus(studioWww, 200, "www.studio-example.be homepage status", studioWwwHtml, failureContext)
   assert.match(studioWwwHtml, /data-tenant-slug="studio-example"/)
 
   const amicarePrivacy = await fetchWithHost(baseUrl, "ami-care.nl", "/privacy-en-cookieverklaring")
@@ -319,7 +319,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
 
   const crossTenantMedia = await fetchWithHost(
     baseUrl,
-    "studio.example.com",
+    "studio-example.be",
     "/siab-media/tenant-ami-care/bedroom.jpg",
   )
   assert.equal(crossTenantMedia.status, 404)
@@ -334,7 +334,7 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.equal(nonHttpsEdge.status, 404)
 
   const crossHostHeader = await fetchWithHost(baseUrl, "ami-care.nl", "/", {
-    forwardedHost: "studio.example.com",
+    forwardedHost: "studio-example.be",
   })
   const crossHostHeaderBody = await crossHostHeader.text()
   assert.equal(crossHostHeader.status, 404)

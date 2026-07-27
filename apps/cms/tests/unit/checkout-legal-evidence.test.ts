@@ -75,7 +75,7 @@ describe("checkout legal evidence", () => {
     ])
 
     const approval = await createSiteApprovalEvidence({
-      payload, run, tenant, pages, domain: "demo.nl", actorEmail: "Client@Example.com", requestId: "req-1",
+      payload, run, tenant, pages, domain: "demo.be", actorEmail: "Client@Example.com", requestId: "req-1",
     })
     const first = await createOrderAndAcceptanceEvidence({
       payload,
@@ -101,9 +101,9 @@ describe("checkout legal evidence", () => {
         providerOperationPriceNetMinor: 1_000,
       }),
       domainRegistrant: { email: "client@example.com" },
-      domain: "demo.nl",
+      domain: "demo.be",
       requestId: "req-1",
-      now: new Date("2026-07-10T12:00:00.000Z"),
+      now: new Date("2026-07-27T12:00:00.000Z"),
     })
     const second = await createOrderAndAcceptanceEvidence({
       payload,
@@ -129,9 +129,9 @@ describe("checkout legal evidence", () => {
         providerOperationPriceNetMinor: 1_000,
       }),
       domainRegistrant: { email: "client@example.com" },
-      domain: "demo.nl",
+      domain: "demo.be",
       requestId: "req-2",
-      now: new Date("2026-07-10T12:00:00.000Z"),
+      now: new Date("2026-07-27T12:00:00.000Z"),
     })
 
     expect(stores["site-review-revisions"]).toHaveLength(1)
@@ -150,6 +150,13 @@ describe("checkout legal evidence", () => {
       contractingPartyProfileVersion: 1,
       businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
       totalGross: 229.9,
+      quoteEvidence: {
+        tldCapability: {
+          tld: "be",
+          capabilityVersion: "tld-be-2026-07-27.1",
+          effectiveFrom: "2026-07-27T00:00:00.000Z",
+        },
+      },
     })
     expect(first.acceptance).toMatchObject({
       documentVersion: "2026-07-07.1",
@@ -161,6 +168,6 @@ describe("checkout legal evidence", () => {
       runId: 30,
       orderId: first.order.id,
       customerEmail: "client@example.com",
-    })).resolves.toMatchObject({ order: { domain: "demo.nl" } })
+    })).resolves.toMatchObject({ order: { domain: "demo.be" } })
   })
 })

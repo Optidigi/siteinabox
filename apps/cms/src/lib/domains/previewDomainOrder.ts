@@ -1,4 +1,8 @@
 import "server-only"
+import {
+  getEnabledTldCapability,
+  validateTldRegistrationLabel,
+} from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
 import type { SiteGenerationRun } from "@/payload-types"
 import {
@@ -102,6 +106,10 @@ export async function suggestAvailablePreviewDomainBatch(
   const cursor = Math.max(0, options?.cursor ?? 0)
   const batchSize = Math.max(1, Math.min(options?.batchSize ?? 6, 12))
   if (!normalized.ok) return { suggestions, nextCursor: cursor, done: true }
+  const capability = getEnabledTldCapability(normalized.extension)
+  if (!capability || !validateTldRegistrationLabel(capability, normalized.name)) {
+    return { suggestions, nextCursor: cursor, done: true }
+  }
 
   try {
     const localCandidates = previewDomainCandidates(domain)
@@ -165,6 +173,13 @@ export async function checkAndRecordPreviewDomainOrder(
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
     throw new Error(`Invalid domain: ${normalized.reason}`)
+  }
+  const capability = getEnabledTldCapability(normalized.extension)
+  if (!capability) {
+    throw new Error(`TLD .${normalized.extension} is not enabled for checkout.`)
+  }
+  if (!validateTldRegistrationLabel(capability, normalized.name)) {
+    throw new Error(`Domain label is not supported for .${normalized.extension}.`)
   }
 
   const fixedPrice = fixedDomainOrderPriceFromEnv()

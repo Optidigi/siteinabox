@@ -5,8 +5,10 @@ import {
   verifyHttpsEndpoint,
 } from "@/lib/domains/verification"
 
-describe("new .nl domain verification", () => {
-  it("requires exact delegation and an SOA answer from an assigned authoritative server", async () => {
+describe("enabled-TLD domain verification", () => {
+  it.each(["example.nl", "example.be"])(
+    "requires exact delegation and an SOA answer for %s",
+    async (domain) => {
     const resolveSoa = vi.fn(async () => ({
       nsname: "ada.ns.cloudflare.com",
       hostmaster: "dns.cloudflare.com",
@@ -17,7 +19,7 @@ describe("new .nl domain verification", () => {
       minttl: 1,
     }))
     const result = await verifyAuthoritativeDns(
-      "example.nl",
+      domain,
       ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
       {
         resolveNsImpl: vi.fn(async () => [
@@ -39,8 +41,9 @@ describe("new .nl domain verification", () => {
       respondingNameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
       reason: null,
     })
-    expect(resolveSoa).toHaveBeenCalledWith("example.nl")
-  })
+    expect(resolveSoa).toHaveBeenCalledWith(domain)
+    },
+  )
 
   it("persists an expected wait when public delegation does not match", async () => {
     await expect(verifyAuthoritativeDns(
@@ -92,18 +95,21 @@ describe("new .nl domain verification", () => {
     })
   })
 
-  it("treats a neutral renderer 404 as successful HTTPS transport evidence", async () => {
+  it.each(["example.nl", "example.be"])(
+    "treats a neutral renderer 404 as successful HTTPS transport evidence for %s",
+    async (domain) => {
     const fetchImpl = vi.fn(async () => new Response(null, { status: 404 }))
-    await expect(verifyHttpsEndpoint("example.nl", {
+    await expect(verifyHttpsEndpoint(domain, {
       fetchImpl: fetchImpl as typeof fetch,
     })).resolves.toEqual({
       status: "verified",
       httpStatus: 404,
       reason: null,
     })
-    expect(fetchImpl).toHaveBeenCalledWith("https://example.nl/", expect.objectContaining({
+    expect(fetchImpl).toHaveBeenCalledWith(`https://${domain}/`, expect.objectContaining({
       method: "HEAD",
       redirect: "manual",
     }))
-  })
+    },
+  )
 })

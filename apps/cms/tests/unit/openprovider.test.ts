@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   buildOpenProviderDomainRegistrationRequest,
+  buildOpenProviderDomainTransferRequest,
   buildOpenProviderCustomerRequest,
   checkOpenProviderDomainAvailability,
   checkOpenProviderDomainsAvailability,
@@ -68,24 +69,26 @@ describe("OpenProvider adapter", () => {
     })
   })
 
-  it("checks availability and exposes provider price details", async () => {
+  it.each(["nl", "be"] as const)(
+    "checks .%s availability and exposes provider registration price details",
+    async (tld) => {
     const fetchMock = vi.fn(async () => Response.json({
       data: {
         results: [{
-          domain: "example.nl",
+          domain: `example.${tld}`,
           status: "free",
           price: { price: "8.50", currency: "EUR" },
         }],
       },
     }))
 
-    await expect(checkOpenProviderDomainAvailability("Example.nl", {
+    await expect(checkOpenProviderDomainAvailability(`Example.${tld}`, {
       env,
       token: "token-123",
       fetchImpl: fetchMock as typeof fetch,
     })).resolves.toEqual({
       status: "available",
-      domain: "example.nl",
+      domain: `example.${tld}`,
       available: true,
       premium: false,
       price: { amount: "8.50", currency: "EUR" },
@@ -96,11 +99,12 @@ describe("OpenProvider adapter", () => {
       method: "POST",
       headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
       body: JSON.stringify({
-        domains: [{ name: "example", extension: "nl" }],
+        domains: [{ name: "example", extension: tld }],
         with_price: true,
       }),
     }))
-  })
+    },
+  )
 
   it("batch checks multiple domains with one provider request", async () => {
     const fetchMock = vi.fn(async () => Response.json({
@@ -562,6 +566,50 @@ describe("OpenProvider adapter", () => {
     } as unknown as NodeJS.ProcessEnv)).toMatchObject({
       name_servers: [{ name: "ns1.example.nl" }, { name: "ns2.example.nl" }],
     })
+
+    expect(buildOpenProviderDomainRegistrationRequest("example.be", env)).toMatchObject({
+      domain: { name: "example", extension: "be" },
+      period: 1,
+      autorenew: "on",
+    })
+  })
+
+  it.each(["nl", "be"] as const)(
+    "builds the reviewed .%s transfer contract without sending a provider write",
+    (tld) => {
+      expect(buildOpenProviderDomainTransferRequest(`example.${tld}`, env, {
+        authCode: tld === "be" ? "123-456-789-012-345" : "opaque-nl-token",
+        ownerHandle: "OWNER-CLIENT",
+        nameServers: [
+          { name: "ada.ns.cloudflare.com" },
+          { name: "bob.ns.cloudflare.com" },
+        ],
+      })).toEqual({
+        domain: { name: "example", extension: tld },
+        auth_code: tld === "be" ? "123-456-789-012-345" : "opaque-nl-token",
+        owner_handle: "OWNER-CLIENT",
+        admin_handle: "ADMIN",
+        tech_handle: "TECH",
+        autorenew: "on",
+        name_servers: [
+          { name: "ada.ns.cloudflare.com" },
+          { name: "bob.ns.cloudflare.com" },
+        ],
+      })
+    },
+  )
+
+  it("requires transfer authorization and explicit DNS routing evidence", () => {
+    expect(() => buildOpenProviderDomainTransferRequest("example.be", env, {
+      authCode: " ",
+    })).toThrow("auth code")
+    expect(() => buildOpenProviderDomainTransferRequest("example.be", {
+      ...env,
+      OPENPROVIDER_NS_GROUP: "",
+      OPENPROVIDER_NAMESERVERS: "",
+    } as unknown as NodeJS.ProcessEnv, {
+      authCode: "123-456-789-012-345",
+    })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
   })
 
   it("creates customer handles from checkout registrant details", async () => {
@@ -614,13 +662,15 @@ describe("OpenProvider adapter", () => {
     }))
   })
 
-  it("reconciles domain ownership, nameservers, and registrant verification by full name", async () => {
+  it.each(["nl", "be"] as const)(
+    "reconciles .%s ownership, confirmation, nameservers, and registrant verification",
+    async (tld) => {
     const fetchMock = vi.fn(async () => Response.json({
       code: 0,
       data: {
         results: [{
           id: 9001,
-          domain: { name: "example", extension: "nl" },
+          domain: { name: "example", extension: tld },
           status: "ACT",
           owner_handle: "OWNER-CLIENT",
           admin_handle: "ADMIN",
@@ -636,13 +686,13 @@ describe("OpenProvider adapter", () => {
       },
     }))
 
-    await expect(findOpenProviderDomain("Example.nl", {
+    await expect(findOpenProviderDomain(`Example.${tld}`, {
       env,
       token: "token-123",
       fetchImpl: fetchMock as typeof fetch,
     })).resolves.toMatchObject({
       id: 9001,
-      domain: "example.nl",
+      domain: `example.${tld}`,
       status: "ACT",
       ownerHandle: "OWNER-CLIENT",
       adminHandle: "ADMIN",
@@ -651,12 +701,15 @@ describe("OpenProvider adapter", () => {
       verificationEmailStatus: "verified",
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://openprovider.test/v1beta/domains?full_name=example.nl&with_verification_email=true&limit=2",
+      `https://openprovider.test/v1beta/domains?full_name=example.${tld}&with_verification_email=true&limit=2`,
       expect.objectContaining({ method: "GET" }),
     )
-  })
+    },
+  )
 
-  it("quotes the reseller renewal operation price in exact minor units", async () => {
+  it.each(["nl", "be"] as const)(
+    "quotes the .%s reseller renewal operation price in exact minor units",
+    async (tld) => {
     const fetchMock = vi.fn(async () => Response.json({
       code: 0,
       data: {
@@ -668,22 +721,23 @@ describe("OpenProvider adapter", () => {
       },
     }))
 
-    await expect(getOpenProviderDomainRenewalPrice("Example.nl", {
+    await expect(getOpenProviderDomainRenewalPrice(`Example.${tld}`, {
       env,
       token: "token-123",
       fetchImpl: fetchMock as typeof fetch,
     })).resolves.toMatchObject({
-      domain: "example.nl",
+      domain: `example.${tld}`,
       operation: "renew",
       currency: "EUR",
       netAmountMinor: 806,
       premium: false,
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://openprovider.test/v1beta/domains/prices?domain.name=example&domain.extension=nl&operation=renew&period=1",
+      `https://openprovider.test/v1beta/domains/prices?domain.name=example&domain.extension=${tld}&operation=renew&period=1`,
       expect.objectContaining({ method: "GET" }),
     )
-  })
+    },
+  )
 
   it("updates autorenew with PUT and classifies an indeterminate timeout", async () => {
     const fetchMock = vi.fn(async () => Response.json({

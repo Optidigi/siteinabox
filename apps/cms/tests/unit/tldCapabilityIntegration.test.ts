@@ -1,0 +1,106 @@
+import { afterEach, describe, expect, it, vi } from "vitest"
+
+import type { SiteGenerationRun } from "@/payload-types"
+import { asPayload } from "../_helpers/mockPayload"
+
+const openProviderMocks = vi.hoisted(() => ({
+  checkAvailability: vi.fn(),
+  checkAvailabilityBatch: vi.fn(),
+  suggestions: vi.fn(),
+}))
+
+vi.mock("@/lib/domains/openprovider", () => ({
+  checkOpenProviderDomainAvailability: openProviderMocks.checkAvailability,
+  checkOpenProviderDomainsAvailability: openProviderMocks.checkAvailabilityBatch,
+  suggestOpenProviderDomains: openProviderMocks.suggestions,
+}))
+
+import {
+  checkAndRecordPreviewDomainOrder,
+  suggestAvailablePreviewDomainBatch,
+} from "@/lib/domains/previewDomainOrder"
+
+const run = {
+  id: 50,
+  domainOrder: null,
+} as unknown as SiteGenerationRun
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.clearAllMocks()
+})
+
+describe("effective TLD allowlist integration", () => {
+  it("rejects an unsupported TLD before provider availability or checkout state writes", async () => {
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
+    openProviderMocks.checkAvailability.mockResolvedValue({
+      status: "available",
+      domain: "example.com",
+      available: true,
+      premium: false,
+      price: { amount: "8.00", currency: "EUR" },
+      internalReason: null,
+    })
+    const payload = asPayload({ update: vi.fn() })
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      payload,
+      run,
+      "example.com",
+      null,
+      { record: false },
+    )).rejects.toThrow("not enabled")
+
+    expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
+  })
+
+  it("keeps unsupported alternatives and invalid registry labels away from provider reads", async () => {
+    await expect(suggestAvailablePreviewDomainBatch(
+      "example.com",
+      { amount: "10.00", currency: "EUR" },
+    )).resolves.toEqual({
+      suggestions: [],
+      nextCursor: 0,
+      done: true,
+    })
+    expect(openProviderMocks.checkAvailabilityBatch).not.toHaveBeenCalled()
+    expect(openProviderMocks.suggestions).not.toHaveBeenCalled()
+
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload({ update: vi.fn() }),
+      run,
+      "a.be",
+      null,
+      { record: false },
+    )).rejects.toThrow("Domain label")
+    expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
+  })
+
+  it("allows .be through provider-backed pricing after its effective date", async () => {
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
+    openProviderMocks.checkAvailability.mockResolvedValue({
+      status: "available",
+      domain: "example.be",
+      available: true,
+      premium: false,
+      price: { amount: "8.00", currency: "EUR" },
+      internalReason: null,
+    })
+    const payload = asPayload({ update: vi.fn() })
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      payload,
+      run,
+      "example.be",
+      null,
+      { record: false },
+    )).resolves.toMatchObject({
+      domain: "example.be",
+      included: true,
+      messageKey: "checkoutDomainAvailable",
+    })
+
+    expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith("example.be")
+  })
+})
