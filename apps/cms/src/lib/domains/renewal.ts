@@ -22,7 +22,10 @@ import type {
 } from "@/payload-types"
 
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
-import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
+import {
+  commerceProviderReadsAllowed,
+  commerceProviderWritesAllowed,
+} from "@/lib/commerce/releaseGate"
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 import {
   OpenProviderIndeterminateWriteError,
@@ -44,6 +47,7 @@ const TERMINAL_ATTEMPT_STATES = ["failed", "cancelled", "expired", "chargeback"]
 
 type RenewalDependencies = {
   now: () => Date
+  providerReadsAllowed: () => boolean
   providerWritesAllowed: () => boolean
   loginOpenProvider: typeof loginOpenProvider
   findOpenProviderDomain: typeof findOpenProviderDomain
@@ -53,6 +57,7 @@ type RenewalDependencies = {
 
 const defaultDependencies: RenewalDependencies = {
   now: () => new Date(),
+  providerReadsAllowed: commerceProviderReadsAllowed,
   providerWritesAllowed: commerceProviderWritesAllowed,
   loginOpenProvider,
   findOpenProviderDomain,
@@ -603,6 +608,43 @@ export async function reconcileManagedDomainRenewal(
     capability.renewal.executionMode !== "autorenew"
   ) {
     return { status: "not_applicable" }
+  }
+  if (!deps.providerReadsAllowed()) {
+    const committedCycles = await payload.find({
+      collection: "domain-renewal-cycles",
+      where: {
+        and: [
+          { managedDomain: { equals: domain.id } },
+          {
+            or: [
+              {
+                state: {
+                  in: ["payment_committed", "provider_requested"],
+                },
+              },
+              { paymentSecuredAt: { exists: true } },
+              { providerWriteState: { equals: "indeterminate" } },
+            ],
+          },
+        ],
+      },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (committedCycles.docs.length === 0) {
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "renewal_reconciliation_release_blocked",
+        message: "Domain renewal reconciliation is blocked until provider reads are enabled.",
+        tenant: domain.tenant,
+        subjectId: domain.id,
+        severity: domain.providerAutorenew === "on" ? "critical" : "error",
+        now,
+      })
+      return { status: "release_blocked" }
+    }
   }
   const token = await deps.loginOpenProvider()
   const providerDomain = await deps.findOpenProviderDomain(domain.domainNameAscii, { token })

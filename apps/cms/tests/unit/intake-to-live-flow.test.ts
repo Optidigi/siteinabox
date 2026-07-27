@@ -424,6 +424,7 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
     vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
     vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
+    vi.stubEnv("COMMERCE_ORIGIN_ISOLATION_VERIFIED", "1")
     vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
     vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "499.00")
@@ -431,11 +432,16 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
+    vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "test-signing-secret")
     vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
     vi.stubEnv("OPENPROVIDER_TECH_HANDLE", "TECH-NL")
     vi.stubEnv("OPENPROVIDER_BILLING_HANDLE", "BILL-NL")
     vi.stubEnv("CLOUDFLARE_API_TOKEN", "cf-token")
     vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "cf-account")
+    vi.stubEnv(
+      "DOMAIN_MIGRATION_ENCRYPTION_KEY",
+      Buffer.alloc(32, 1).toString("base64"),
+    )
     vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
     mocks.sendEmail.mockResolvedValue({ provider: "test" })
     mocks.signInMagicLink.mockResolvedValue({ ok: true })

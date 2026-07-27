@@ -15,6 +15,10 @@ vi.mock("@/lib/commerce/notifications", () => ({
 }))
 vi.mock("@/lib/commerce/alerts", () => ({
   recordCommerceAdminException: vi.fn(async () => undefined),
+  resolveCommerceAdminException: vi.fn(async () => undefined),
+}))
+vi.mock("@/lib/commerce/releaseGate", () => ({
+  commerceProviderWritesAllowed: vi.fn(() => true),
 }))
 
 import {
@@ -375,6 +379,13 @@ describe("application-created recurring billing", () => {
         graceEndsAt: "2026-08-15T10:00:00.000Z",
       },
       orders: [renewalOrder],
+      attempts: [{
+        id: 700,
+        order: 601,
+        purpose: "recurring",
+        attemptNumber: 1,
+        state: "failed",
+      }],
       domains: [domain],
     })
     await processBillingAgreement({
@@ -397,6 +408,42 @@ describe("application-created recurring billing", () => {
     expect(ensureCommerceNotification).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "service_suspended_14d" }),
     )
+  })
+
+  it("does not start dunning while provider writes are release-blocked", async () => {
+    const store = createStore()
+    const blocked = await processBillingAgreement({
+      payload: store.payload,
+      agreement: store.agreement as never,
+      now: new Date("2026-08-15T10:00:00.000Z"),
+      providerWritesAllowed: () => false,
+    })
+    expect(blocked).toEqual({
+      status: "waiting_release",
+      paymentRequested: false,
+    })
+    expect(store.agreement).toMatchObject({
+      state: "active",
+      serviceSuspensionStatus: "none",
+    })
+    expect(store.agreement).not.toHaveProperty("graceStartedAt")
+    expect(store.agreement).not.toHaveProperty("graceEndsAt")
+    expect(createApplicationRecurringMolliePayment).not.toHaveBeenCalled()
+
+    const enabled = await processBillingAgreement({
+      payload: store.payload,
+      agreement: store.agreement as never,
+      now: new Date("2026-08-15T10:05:00.000Z"),
+      providerWritesAllowed: () => true,
+    })
+    expect(enabled).toEqual({ status: "due", paymentRequested: true })
+    expect(store.agreement).toMatchObject({
+      state: "past_due",
+      graceStartedAt: "2026-08-15T10:05:00.000Z",
+      graceEndsAt: "2026-08-29T10:05:00.000Z",
+      serviceSuspensionStatus: "none",
+    })
+    expect(createApplicationRecurringMolliePayment).toHaveBeenCalledOnce()
   })
 
   it("schedules cancellation at paid period end and preserves a committed domain cycle", async () => {

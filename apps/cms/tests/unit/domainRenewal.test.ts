@@ -238,6 +238,7 @@ type SetAutorenew = (
 
 const dependencies = (input: {
   now: string
+  providerReadsAllowed?: boolean
   providerWritesAllowed?: boolean
   provider?: Record<string, unknown>
   priceNetMinor?: number
@@ -254,6 +255,7 @@ const dependencies = (input: {
   return {
     deps: {
       now: () => new Date(input.now),
+      providerReadsAllowed: () => input.providerReadsAllowed ?? true,
       providerWritesAllowed: () => input.providerWritesAllowed ?? true,
       loginOpenProvider: vi.fn(async () => "token"),
       findOpenProviderDomain: vi.fn(async () => providerRecord(input.provider)),
@@ -279,6 +281,42 @@ describe("Openprovider renewal_date cycles", () => {
   it("normalizes provider dates as UTC instead of machine-local time", () => {
     expect(normalizeOpenProviderRenewalDate("2027-07-26 00:00:00"))
       .toBe("2027-07-26T00:00:00.000Z")
+  })
+
+  it("blocks disabled-stage discovery but permits committed-cycle safety reconciliation", async () => {
+    const uncommittedStore = createStore()
+    const blocked = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      providerReadsAllowed: false,
+    })
+    await expect(reconcileManagedDomainRenewal(
+      uncommittedStore.payload,
+      950,
+      blocked.deps,
+    )).resolves.toEqual({ status: "release_blocked" })
+    expect(blocked.deps.loginOpenProvider).not.toHaveBeenCalled()
+    expect(recordCommerceAdminException).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "renewal_reconciliation_release_blocked",
+        severity: "critical",
+      }),
+    )
+
+    const committedStore = createStore({
+      cycles: [{
+        id: 960,
+        managedDomain: 950,
+        state: "payment_committed",
+        paymentSecuredAt: "2027-06-25T00:00:00.000Z",
+        providerRenewalDate: "2027-07-26T00:00:00.000Z",
+      }],
+    })
+    const safety = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      providerReadsAllowed: false,
+    })
+    await reconcileManagedDomainRenewal(committedStore.payload, 950, safety.deps)
+    expect(safety.deps.loginOpenProvider).toHaveBeenCalledOnce()
   })
 
   it("creates one allowance-covered .nl cycle and commits autorenew at the safe cutoff", async () => {

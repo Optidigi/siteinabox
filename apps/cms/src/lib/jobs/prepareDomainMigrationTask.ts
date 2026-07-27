@@ -1,4 +1,14 @@
 import type { Payload, TaskConfig } from "payload"
+import type { DomainMigration } from "@/payload-types"
+
+export const migrationRequiresSafetyContinuation = (
+  migration: Pick<
+    DomainMigration,
+    "cutoverWriteState" | "rollbackWriteState"
+  >,
+): boolean =>
+  migration.cutoverWriteState !== "not_started" ||
+  migration.rollbackWriteState !== "not_started"
 
 export const queueDomainMigrationPreparation = (
   payload: Payload,
@@ -36,6 +46,27 @@ export const prepareDomainMigrationTask: TaskConfig<{
       "@/lib/commerce/releaseGate"
     )
     if (!commerceProviderWritesAllowed()) {
+      const migration = await req.payload.findByID({
+        collection: "domain-migrations",
+        id: input.migrationId,
+        depth: 0,
+        overrideAccess: true,
+      }) as DomainMigration
+      if (migrationRequiresSafetyContinuation(migration)) {
+        const { prepareDomainMigration } = await import("@/lib/domains/migration")
+        const result = await prepareDomainMigration(
+          req.payload,
+          input.migrationId,
+          { forwardProviderWritesAllowed: () => false },
+        )
+        return {
+          output: {
+            status: result.status,
+            migrationId: String(result.migrationId),
+            message: result.message,
+          },
+        }
+      }
       return {
         output: {
           status: "release_blocked",

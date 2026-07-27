@@ -78,6 +78,32 @@ const customerMetadataId = (
     : null
 }
 
+const isUniqueViolation = (error: unknown): boolean =>
+  error instanceof Error &&
+  (
+    (error as Error & { code?: unknown }).code === "23505" ||
+    /duplicate|unique/i.test(error.message)
+  )
+
+const providerReferenceOwner = async (
+  payload: Payload,
+  collection: "billing-agreements" | "payment-attempts",
+  field: "providerCustomerId" | "providerPaymentId",
+  providerReference: string,
+): Promise<string | number | null> => {
+  const result = await payload.find({
+    collection,
+    where: { [field]: { equals: providerReference } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const owner = result.docs.find(
+    (doc) => (doc as unknown as Record<string, unknown>)[field] === providerReference,
+  )
+  return owner?.id ?? null
+}
+
 export async function recoverMissingMollieCustomerReferences(
   payload: Payload,
   dependencies: Partial<ReconciliationDependencies> = {},
@@ -141,19 +167,74 @@ export async function recoverMissingMollieCustomerReferences(
       })
       continue
     }
-    await payload.update({
-      collection: "billing-agreements",
-      id: agreement.id,
-      data: {
-        providerCustomerId: matches[0]!.id,
-        reconciliationRequired: false,
-        failureReason: null,
-        lastSyncedAt: now,
-      },
-      depth: 0,
-      overrideAccess: true,
-      context: { billingAgreementLifecycleMutation: true },
-    })
+    const providerCustomerId = matches[0]!.id
+    const existingOwner = await providerReferenceOwner(
+      payload,
+      "billing-agreements",
+      "providerCustomerId",
+      providerCustomerId,
+    )
+    if (existingOwner != null && String(existingOwner) !== String(agreement.id)) {
+      await recordCommerceAdminException({
+        payload,
+        source: "payments",
+        code: "provider_customer_reference_owned_elsewhere",
+        message: "A recovered Mollie customer reference is already owned by another billing agreement.",
+        tenant: agreement.tenant,
+        subjectId: agreement.id,
+        severity: "critical",
+        metadata: { conflictingOwnerId: existingOwner },
+        now,
+      })
+      continue
+    }
+    try {
+      await payload.update({
+        collection: "billing-agreements",
+        id: agreement.id,
+        data: {
+          providerCustomerId,
+          reconciliationRequired: false,
+          failureReason: null,
+          lastSyncedAt: now,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error
+      const racedOwner = await providerReferenceOwner(
+        payload,
+        "billing-agreements",
+        "providerCustomerId",
+        providerCustomerId,
+      )
+      if (racedOwner == null) throw error
+      if (String(racedOwner) === String(agreement.id)) {
+        await resolveCommerceAdminException({
+          payload,
+          source: "payments",
+          code: "missing_mollie_customer_reference",
+          subjectId: agreement.id,
+          now,
+        })
+        recovered += 1
+        continue
+      }
+      await recordCommerceAdminException({
+        payload,
+        source: "payments",
+        code: "provider_customer_reference_owned_elsewhere",
+        message: "A concurrent recovery attached the Mollie customer reference elsewhere.",
+        tenant: agreement.tenant,
+        subjectId: agreement.id,
+        severity: "critical",
+        metadata: { conflictingOwnerId: racedOwner },
+        now,
+      })
+      continue
+    }
     await resolveCommerceAdminException({
       payload,
       source: "payments",
@@ -259,29 +340,83 @@ export async function recoverMissingMolliePaymentReferences(
     }
     const match = matches[0]
     if (match) {
-      await payload.update({
-        collection: "payment-attempts",
-        id: attempt.id,
-        data: {
-          providerPaymentId: match.id,
-          providerStatus: match.status,
-          checkoutUrl: match._links?.checkout?.href,
-          reconciliationRequired: true,
-          lastSyncedAt: nowDate.toISOString(),
-          stateHistory: [
-            ...(Array.isArray(attempt.stateHistory) ? attempt.stateHistory : []),
-            {
-              state: attempt.state,
-              at: nowDate.toISOString(),
-              providerStatus: match.status,
-              reason: "missing_webhook_provider_reference_recovered",
-            },
-          ],
-        },
-        depth: 0,
-        overrideAccess: true,
-        context: { paymentAttemptLifecycleMutation: true },
-      })
+      const existingOwner = await providerReferenceOwner(
+        payload,
+        "payment-attempts",
+        "providerPaymentId",
+        match.id,
+      )
+      if (existingOwner != null && String(existingOwner) !== String(attempt.id)) {
+        await recordCommerceAdminException({
+          payload,
+          source: "payments",
+          code: "provider_payment_reference_owned_elsewhere",
+          message: "A recovered Mollie payment reference is already owned by another payment attempt.",
+          tenant: attempt.tenant,
+          subjectId: attempt.id,
+          severity: "critical",
+          metadata: { conflictingOwnerId: existingOwner },
+          now: nowDate.toISOString(),
+        })
+        continue
+      }
+      try {
+        await payload.update({
+          collection: "payment-attempts",
+          id: attempt.id,
+          data: {
+            providerPaymentId: match.id,
+            providerStatus: match.status,
+            checkoutUrl: match._links?.checkout?.href,
+            reconciliationRequired: true,
+            lastSyncedAt: nowDate.toISOString(),
+            stateHistory: [
+              ...(Array.isArray(attempt.stateHistory) ? attempt.stateHistory : []),
+              {
+                state: attempt.state,
+                at: nowDate.toISOString(),
+                providerStatus: match.status,
+                reason: "missing_webhook_provider_reference_recovered",
+              },
+            ],
+          },
+          depth: 0,
+          overrideAccess: true,
+          context: { paymentAttemptLifecycleMutation: true },
+        })
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error
+        const racedOwner = await providerReferenceOwner(
+          payload,
+          "payment-attempts",
+          "providerPaymentId",
+          match.id,
+        )
+        if (racedOwner == null) throw error
+        if (String(racedOwner) === String(attempt.id)) {
+          await resolveCommerceAdminException({
+            payload,
+            source: "payments",
+            code: "missing_mollie_webhook_or_reference",
+            subjectId: attempt.id,
+            now: nowDate.toISOString(),
+          })
+          recoveredPaymentIds.push(match.id)
+          continue
+        }
+        await recordCommerceAdminException({
+          payload,
+          source: "payments",
+          code: "provider_payment_reference_owned_elsewhere",
+          message: "A concurrent recovery attached the Mollie payment reference elsewhere.",
+          tenant: attempt.tenant,
+          subjectId: attempt.id,
+          severity: "critical",
+          metadata: { conflictingOwnerId: racedOwner },
+          now: nowDate.toISOString(),
+        })
+        continue
+      }
       await resolveCommerceAdminException({
         payload,
         source: "payments",

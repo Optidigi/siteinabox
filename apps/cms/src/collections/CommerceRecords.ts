@@ -337,6 +337,14 @@ const managedDomainFrozenOffboardingFields = new Set([
   "transferOutCustomerConfirmedAt",
 ])
 
+const managedDomainTerminalTransferFields = new Set([
+  "transferOutCodeDeletedAt",
+  "transferOutProviderMissingCount",
+  "transferOutFirstMissingAt",
+  "transferOutLastCheckedAt",
+  "transferOutConfirmedAt",
+])
+
 export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
   if (args.operation === "update") {
     const original = args.originalDoc as Record<string, unknown> | undefined
@@ -364,6 +372,17 @@ export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
       throw new Error(
         `Managed-domain offboarding field "${changedFrozenField}" is immutable after capture.`,
       )
+    }
+    if (currentCustody === "transferred_out") {
+      const changedTerminalField = Object.keys(args.data ?? {}).find((field) =>
+        managedDomainTerminalTransferFields.has(field) &&
+        stableStringify(original?.[field]) !== stableStringify(args.data?.[field])
+      )
+      if (changedTerminalField) {
+        throw new Error(
+          `Managed-domain terminal transfer field "${changedTerminalField}" is immutable.`,
+        )
+      }
     }
   }
   return protectLifecycleUpdate(args, {
@@ -416,12 +435,30 @@ export const validateManagedDomainCustody: CollectionBeforeValidateHook = ({
   if (
     custodyStatus === "transferred_out" &&
     (
+      (
+        typeof current.offboardingContinuityEvidence === "object" &&
+        current.offboardingContinuityEvidence != null &&
+        !Array.isArray(current.offboardingContinuityEvidence) &&
+        (current.offboardingContinuityEvidence as Record<string, unknown>)
+          .schemaVersion !== 2
+      ) ||
       current.encryptedTransferOutCode ||
-      !current.transferOutCustomerConfirmedAt
+      !current.transferOutCustomerConfirmedAt ||
+      !current.transferOutCodeDeletedAt ||
+      !current.transferOutConfirmedAt ||
+      typeof current.transferOutProviderMissingCount !== "number" ||
+      current.transferOutProviderMissingCount < 2 ||
+      !current.transferOutFirstMissingAt ||
+      !current.transferOutLastCheckedAt ||
+      !Number.isFinite(new Date(String(current.transferOutFirstMissingAt)).getTime()) ||
+      !Number.isFinite(new Date(String(current.transferOutLastCheckedAt)).getTime()) ||
+      new Date(String(current.transferOutLastCheckedAt)).getTime() -
+        new Date(String(current.transferOutFirstMissingAt)).getTime() <
+        15 * 60_000
     )
   ) {
     throw new Error(
-      "Confirmed transfer-out requires customer confirmation and deletion of the encrypted auth code.",
+      "Confirmed transfer-out requires customer confirmation, two time-separated provider observations and deletion of the encrypted auth code.",
     )
   }
   return data

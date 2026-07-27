@@ -1,7 +1,7 @@
 import type { TaskConfig } from "payload"
 
 import { queueOrderFulfillment } from "@/lib/jobs/fulfillOrderTask"
-import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
+import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
 import { queueDomainMigrationPreparation } from "@/lib/jobs/prepareDomainMigrationTask"
 import { queueDomainTransferOutPreparation } from "@/lib/jobs/prepareDomainTransferOutTask"
 import { queueDomainRenewal } from "@/lib/jobs/renewDomainTask"
@@ -15,6 +15,11 @@ export const reconcileCommerceTask: TaskConfig<{
 }> = {
   slug: "reconcile-commerce",
   label: "Reconcile commerce provider state",
+  concurrency: {
+    key: () => "reconcile-commerce",
+    exclusive: true,
+    supersedes: true,
+  },
   schedule: [{ cron: "0 */15 * * * *", queue: "default" }],
   inputSchema: [],
   outputSchema: [
@@ -281,6 +286,9 @@ export const reconcileCommerceTask: TaskConfig<{
       }
     }
     const renewalHorizon = new Date(now.getTime() + 61 * 24 * 60 * 60_000).toISOString()
+    const staleProviderRenewalCheck = new Date(
+      now.getTime() - 24 * 60 * 60_000,
+    ).toISOString()
     const renewalDomains = await req.payload.find({
       collection: "managed-domains",
       where: {
@@ -294,6 +302,12 @@ export const reconcileCommerceTask: TaskConfig<{
               { expiresAt: { exists: false } },
               { expiresAt: { less_than_equal: renewalHorizon } },
               { reconciliationRequired: { equals: true } },
+              { providerAutorenewCheckedAt: { exists: false } },
+              {
+                providerAutorenewCheckedAt: {
+                  less_than_equal: staleProviderRenewalCheck,
+                },
+              },
             ],
           },
         ],

@@ -315,11 +315,12 @@ describe("offboarding custody and staged commerce release", () => {
     )
     expect(managedDomainCustodyStateTransitions.transferred_out).toEqual([])
     expect(domainOffboardingContinuityEvidenceSchema.parse({
-      schemaVersion: 1,
+      schemaVersion: 2,
       domain: "example.nl",
       capturedAt: "2026-07-28T10:00:00.000Z",
       authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
       dnssecStatus: "signed",
+      parentDsRecords: ["12345 13 2 ABCD"],
       zoneSnapshotHash: "a".repeat(64),
       mailRecordSetHash: "b".repeat(64),
       serviceRecordSetHash: "c".repeat(64),
@@ -328,6 +329,17 @@ describe("offboarding custody and staged commerce release", () => {
       domain: "example.nl",
       preservationMode: "retain_existing_dns_and_mail",
     })
+    expect(domainOffboardingContinuityEvidenceSchema.safeParse({
+      schemaVersion: 1,
+      domain: "example.nl",
+      capturedAt: "2026-07-28T10:00:00.000Z",
+      authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      dnssecStatus: "unknown",
+      zoneSnapshotHash: "a".repeat(64),
+      mailRecordSetHash: "b".repeat(64),
+      serviceRecordSetHash: "c".repeat(64),
+      preservationMode: "retain_existing_dns_and_mail",
+    }).success).toBe(true)
   })
 
   it("fails closed through disabled and shadow release stages", () => {
@@ -375,6 +387,8 @@ describe("offboarding custody and staged commerce release", () => {
       mollieApiKeyMode: "live",
       openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
       cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+      productionSecretsConfigured: true,
+      originIsolationVerified: true,
     }).providerWritesAllowed).toBe(true)
     expect(evaluateCommerceReleaseGate({
       stage: "production",
@@ -384,6 +398,8 @@ describe("offboarding custody and staged commerce release", () => {
       mollieApiKeyMode: "live",
       openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
       cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+      productionSecretsConfigured: true,
+      originIsolationVerified: true,
     })).toMatchObject({
       providerWritesAllowed: false,
       blockers: ["release_evidence_version_mismatch"],
@@ -396,6 +412,8 @@ describe("offboarding custody and staged commerce release", () => {
       mollieApiKeyMode: "live",
       openproviderApiBaseUrl: "https://api.openprovider.eu@attacker.example/v1beta",
       cloudflareApiBaseUrl: "http://api.cloudflare.com/client/v4",
+      productionSecretsConfigured: true,
+      originIsolationVerified: true,
     }).providerWritesAllowed).toBe(false)
     expect(evaluateCommerceReleaseGate({
       stage: "sandbox",
@@ -408,6 +426,23 @@ describe("offboarding custody and staged commerce release", () => {
     })).toMatchObject({
       providerWritesAllowed: false,
       blockers: ["sandbox_requires_reserved_openprovider_host"],
+    })
+    expect(evaluateCommerceReleaseGate({
+      stage: "production",
+      evidenceVersion: "phase11-2026-07-27.1",
+      providerWritesAcknowledged: true,
+      nodeEnvironment: "production",
+      mollieApiKeyMode: "live",
+      openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
+      cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+      productionSecretsConfigured: false,
+      originIsolationVerified: false,
+    })).toMatchObject({
+      providerWritesAllowed: false,
+      blockers: [
+        "production_provider_or_encryption_prerequisite_missing",
+        "production_origin_isolation_not_verified",
+      ],
     })
   })
 })
@@ -450,7 +485,10 @@ describe("independent commerce state machines", () => {
   })
 
   it("does not allow a committed renewal cycle to be cancelled", () => {
-    expect(domainRenewalCycleStateTransitions.payment_committed).toEqual(["provider_requested"])
+    expect(domainRenewalCycleStateTransitions.payment_committed).toEqual([
+      "provider_requested",
+      "renewed",
+    ])
     expect(domainRenewalCycleStateTransitions.provider_requested).not.toContain("cancelled")
     expect(decideRenewalCancellation({
       cycleState: "payment_required",

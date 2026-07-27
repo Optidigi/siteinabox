@@ -12,6 +12,7 @@ import {
 } from "@/lib/commerce/reconciliation"
 import {
   asPayload,
+  matchesWhere,
   type MockCreateArgs,
   type MockDoc,
   type MockFindArgs,
@@ -51,15 +52,9 @@ const createPayloadStore = (input?: {
   }
   let nextId = 100
   const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
-    let docs = collections[collection] ?? []
-    if (collection === "operational-alerts" && where) {
-      const dedupeKey = (
-        where.dedupeKey as { equals?: unknown } | undefined
-      )?.equals
-      if (dedupeKey) {
-        docs = docs.filter((doc) => doc.dedupeKey === dedupeKey)
-      }
-    }
+    const docs = (collections[collection] ?? []).filter((doc) =>
+      matchesWhere(doc, where)
+    )
     return { docs, totalDocs: docs.length }
   })
   const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
@@ -114,6 +109,61 @@ describe("Phase 11 commerce failure rehearsals", () => {
       reconciliationRequired: false,
       failureReason: null,
     })
+  })
+
+  it("reports an internally owned customer reference and continues later recovery", async () => {
+    const conflicted: MockDoc = {
+      id: 40,
+      originatingOrder: 20,
+      tenant: 1,
+      provider: "mollie",
+      state: "pending_first_payment",
+      reconciliationRequired: true,
+    }
+    const later: MockDoc = {
+      ...conflicted,
+      id: 41,
+      originatingOrder: 21,
+      tenant: 2,
+    }
+    const existingOwner: MockDoc = {
+      ...conflicted,
+      id: 42,
+      originatingOrder: 22,
+      providerCustomerId: "cst_owned",
+      reconciliationRequired: false,
+    }
+    const store = createPayloadStore({
+      agreements: [conflicted, later, existingOwner],
+    })
+    await expect(recoverMissingMollieCustomerReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMollieCustomers: vi.fn(async () => [{
+        id: "cst_owned",
+        metadata: {
+          billingAgreementId: 40,
+          orderId: 20,
+          tenantId: 1,
+        },
+      }, {
+        id: "cst_later",
+        metadata: {
+          billingAgreementId: 41,
+          orderId: 21,
+          tenantId: 2,
+        },
+      }]),
+    }, NOW.toISOString())).resolves.toEqual({ examined: 2, recovered: 1 })
+    expect(conflicted).not.toHaveProperty("providerCustomerId")
+    expect(existingOwner.providerCustomerId).toBe("cst_owned")
+    expect(later.providerCustomerId).toBe("cst_later")
+    expect(store.collections["operational-alerts"]).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        dedupeKey:
+          "commerce:payments:provider_customer_reference_owned_elsewhere:40",
+      }),
+    )
   })
 
   it("recovers a missing webhook/provider reference without creating another payment", async () => {
@@ -182,6 +232,92 @@ describe("Phase 11 commerce failure rehearsals", () => {
         metadata: { matchCount: 2 },
       }),
     )
+  })
+
+  it("reports an internally owned payment reference and continues later recovery", async () => {
+    const conflicted = paymentAttempt()
+    const later: MockDoc = {
+      ...paymentAttempt(),
+      id: 11,
+      idempotencyKey: "mollie:first-payment:order:21:v1",
+      order: 21,
+    }
+    const existingOwner = {
+      ...paymentAttempt(),
+      id: 12,
+      idempotencyKey: "existing-owner",
+      order: 22,
+      providerPaymentId: "tr_owned",
+      reconciliationRequired: false,
+    }
+    const store = createPayloadStore({
+      attempts: [conflicted, later, existingOwner],
+    })
+    const result = await recoverMissingMolliePaymentReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMolliePayments: vi.fn(async () => [{
+        id: "tr_owned",
+        status: "open",
+        amount: { currency: "EUR", value: "22.99" },
+        metadata: {
+          paymentAttemptId: 10,
+          orderId: 20,
+          idempotencyKey: conflicted.idempotencyKey,
+        },
+      }, {
+        id: "tr_later",
+        status: "paid",
+        amount: { currency: "EUR", value: "22.99" },
+        metadata: {
+          paymentAttemptId: 11,
+          orderId: 21,
+          idempotencyKey: later.idempotencyKey,
+        },
+      }]),
+    }, NOW)
+    expect(result).toEqual({
+      examined: 2,
+      recoveredPaymentIds: ["tr_later"],
+    })
+    expect(conflicted).not.toHaveProperty("providerPaymentId")
+    expect(existingOwner.providerPaymentId).toBe("tr_owned")
+    expect(later.providerPaymentId).toBe("tr_later")
+    expect(store.collections["operational-alerts"]).toContainEqual(
+      expect.objectContaining({
+        severity: "critical",
+        dedupeKey:
+          "commerce:payments:provider_payment_reference_owned_elsewhere:10",
+      }),
+    )
+  })
+
+  it("re-reads ownership after a concurrent payment-reference unique race", async () => {
+    const attempt = paymentAttempt()
+    const store = createPayloadStore({ attempts: [attempt] })
+    store.update.mockImplementationOnce(async () => {
+      attempt.providerPaymentId = "tr_raced"
+      const error = new Error("duplicate key value violates unique constraint") as
+        Error & { code: string }
+      error.code = "23505"
+      throw error
+    })
+    await expect(recoverMissingMolliePaymentReferences(store.payload, {
+      providerReadsAllowed: () => true,
+      listRecentMolliePayments: vi.fn(async () => [{
+        id: "tr_raced",
+        status: "open",
+        amount: { currency: "EUR", value: "22.99" },
+        metadata: {
+          paymentAttemptId: 10,
+          orderId: 20,
+          idempotencyKey: attempt.idempotencyKey,
+        },
+      }]),
+    }, NOW)).resolves.toEqual({
+      examined: 1,
+      recoveredPaymentIds: ["tr_raced"],
+    })
+    expect(store.collections["operational-alerts"]).toHaveLength(0)
   })
 
   it("fails open to later reconciliation work when Mollie listing is unavailable", async () => {

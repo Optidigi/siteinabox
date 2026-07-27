@@ -530,19 +530,44 @@ export async function listCloudflareMigrationDnsRecords(
 ): Promise<CloudflareMigrationDnsRecordResult[]> {
   const env = options?.env ?? process.env
   const { token } = requireCloudflareConfig(env)
-  const response = await fetcher(options)(
-    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500`,
-    { method: "GET", headers: headers(token) },
-  )
-  const payload = await json(response)
-  assertCloudflareOk("Cloudflare migration DNS record list", response, payload)
-  const source = readObject(payload)
-  const rawRecords = resultArray(payload)
-  const resultInfo = readObject(source.result_info)
-  if (
-    typeof resultInfo.total_count === "number" &&
-    resultInfo.total_count > rawRecords.length
-  ) {
+  const rawRecords: Record<string, unknown>[] = []
+  let expectedTotalCount: number | null = null
+  let expectedTotalPages: number | null = null
+  for (let page = 1; ; page += 1) {
+    const response = await fetcher(options)(
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500&page=${page}`,
+      { method: "GET", headers: headers(token) },
+    )
+    const payload = await json(response)
+    assertCloudflareOk("Cloudflare migration DNS record list", response, payload)
+    const source = readObject(payload)
+    const resultInfo = readObject(source.result_info)
+    const totalCount = resultInfo.total_count
+    const totalPages = resultInfo.total_pages
+    const returnedPage = resultInfo.page
+    if (
+      !Number.isSafeInteger(totalCount) ||
+      Number(totalCount) < 0 ||
+      !Number.isSafeInteger(totalPages) ||
+      Number(totalPages) < 1 ||
+      Number(totalPages) > 1_000 ||
+      returnedPage !== page
+    ) {
+      throw new Error("Cloudflare migration DNS record list has invalid pagination metadata.")
+    }
+    if (expectedTotalCount == null) {
+      expectedTotalCount = Number(totalCount)
+      expectedTotalPages = Number(totalPages)
+    } else if (
+      expectedTotalCount !== totalCount ||
+      expectedTotalPages !== totalPages
+    ) {
+      throw new Error("Cloudflare migration DNS record pagination changed during capture.")
+    }
+    rawRecords.push(...resultArray(payload))
+    if (page === expectedTotalPages) break
+  }
+  if (rawRecords.length !== expectedTotalCount) {
     throw new Error("Cloudflare migration DNS record list is incomplete.")
   }
   const parsed = rawRecords.map(parseMigrationDnsRecord)

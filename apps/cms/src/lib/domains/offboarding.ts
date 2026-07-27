@@ -175,17 +175,21 @@ export async function captureDomainOffboardingContinuityEvidence(
     (record.name === "@" || record.name.toLowerCase() === `www.${domain.domainNameAscii}`)
   const serviceRecords = records.filter((record) => !websiteRecord(record))
   const parentDs = await dependencies.verifyParentDsAbsent(domain.domainNameAscii)
+  if (parentDs.status === "indeterminate") {
+    throw new Error(
+      "Offboarding cannot continue while the parent DNSSEC state is indeterminate.",
+    )
+  }
   return domainOffboardingContinuityEvidenceSchema.parse({
-    schemaVersion: 1,
+    schemaVersion: 2,
     domain: domain.domainNameAscii,
     capturedAt: input.now ?? new Date().toISOString(),
     authoritativeNameservers: domain.cloudflareNameservers
       .map(String)
       .map((value) => value.toLowerCase())
       .sort(),
-    dnssecStatus: parentDs.status === "present"
-      ? "signed"
-      : parentDs.status === "absent" ? "unsigned" : "unknown",
+    dnssecStatus: parentDs.status === "present" ? "signed" : "unsigned",
+    parentDsRecords: parentDs.records,
     zoneSnapshotHash: hashRecords(records),
     mailRecordSetHash: hashRecords(mailRecords),
     serviceRecordSetHash: hashRecords(serviceRecords),
@@ -209,6 +213,9 @@ export async function requestDomainOffboarding(
   const reason = input.reason.trim()
   if (!requestId || !reason) {
     throw new Error("Domain offboarding requires an audited request ID and reason.")
+  }
+  if (input.continuityEvidence.schemaVersion !== 2) {
+    throw new Error("New offboarding requests require current DNSSEC continuity evidence.")
   }
   let domain = await payload.findByID({
     collection: "managed-domains",

@@ -374,6 +374,49 @@ describe("Phase 2 commerce record schemas", () => {
       collection: {},
       context: {},
     }))).toThrow("Invalid managed-domain custody transition")
+
+    expect(() => validateManagedDomainCustody(
+      hookArgsFor(validateManagedDomainCustody, {
+        operation: "update",
+        data: {
+          domainNameAscii: "example.nl",
+          custodyStatus: "transferred_out",
+          offboardingRequestedAt: "2026-07-28T10:00:00.000Z",
+          offboardingRequestedByEmail: "customer@example.com",
+          offboardingRequestId: "request-1",
+          offboardingContinuityEvidence: {
+            schemaVersion: 2,
+            domain: "example.nl",
+            capturedAt: "2026-07-28T10:00:00.000Z",
+            authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+            dnssecStatus: "unsigned",
+            parentDsRecords: [],
+            zoneSnapshotHash: "a".repeat(64),
+            mailRecordSetHash: "b".repeat(64),
+            serviceRecordSetHash: "c".repeat(64),
+            preservationMode: "retain_existing_dns_and_mail",
+          },
+          transferOutCustomerConfirmedAt: "2026-07-28T10:01:00.000Z",
+          encryptedTransferOutCode: null,
+        },
+        req: {},
+        collection: {},
+        context: {},
+      }),
+    )).toThrow("two time-separated provider observations")
+
+    expect(() => protectManagedDomain(hookArgsFor(protectManagedDomain, {
+      operation: "update",
+      data: { transferOutConfirmedAt: "2026-07-28T11:00:00.000Z" },
+      originalDoc: {
+        state: "active",
+        custodyStatus: "transferred_out",
+        transferOutConfirmedAt: "2026-07-28T10:30:00.000Z",
+      },
+      req: { context: { managedDomainLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toThrow("terminal transfer field")
   })
 
   it("requires integer non-negative minor currency amounts", () => {
@@ -431,6 +474,23 @@ describe("Phase 2 commerce record schemas", () => {
         data: { state: nextState },
         originalDoc: { state: currentState },
         req: { context: { [contextKey]: true } },
+        collection: {},
+        context: {},
+      }))).toMatchObject({ state: nextState })
+    }
+
+    for (const [currentState, nextState] of [
+      ["scheduled", "renewed"],
+      ["payment_required", "renewed"],
+      ["payment_committed", "renewed"],
+      ["failed", "renewed"],
+      ["payment_required", "manual_review"],
+    ] as const) {
+      expect(protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
+        operation: "update",
+        data: { state: nextState },
+        originalDoc: { state: currentState },
+        req: { context: { domainRenewalCycleLifecycleMutation: true } },
         collection: {},
         context: {},
       }))).toMatchObject({ state: nextState })

@@ -20,7 +20,10 @@ settings as authorization for an unreviewed live provider operation.
   Openprovider and Cloudflare use explicit reserved `.test` API hosts. Do not
   route these names to live services and use sandbox-only credentials.
 - `production` additionally requires `NODE_ENV=production`, a Mollie live key,
-  and the official Openprovider and Cloudflare API hosts.
+  the official Openprovider and Cloudflare API hosts, all webhook/provider and
+  migration-encryption secrets, and
+  `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` after the Phase 6 edge/origin contract
+  has been rerun for that environment.
 
 The current evidence version is `phase11-2026-07-27.1`. Set
 `COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=1` only in the separately approved
@@ -47,6 +50,11 @@ Before moving to the next stage:
 6. Review open critical commerce alerts. Production writes must not be enabled
    while payment-duplication, provider-balance, expiry, transfer-out, tenancy,
    or origin-isolation alerts remain unresolved.
+7. On the target release database, run
+   `pnpm --dir apps/cms check:commerce-production-readiness`. This command
+   fails when any runtime interlock is missing or any critical payment/domain
+   alert remains open. It is a required deployment preflight, not a provider
+   write.
 
 Record environment-specific evidence outside the repository. Do not commit
 credentials, customer data, provider responses, transfer codes, operator
@@ -66,6 +74,10 @@ entitlement intact until customer and provider confirmation; the encrypted
 authorization code is deleted only after terminal transfer confirmation.
 
 Before rolling back the schema, resolve or preserve managed-domain offboarding
-records. Reverting application code before the database migration is safe
-because the added fields are backward-compatible and default custody remains
+records and drain both queued and completed `prepare-domain-transfer-out` job
+rows. The generated down migration recreates the previous task enum and cannot
+cast that Phase 11 task value. Rehearse the drain plus down/forward migration
+against disposable PostgreSQL before production rollback. Reverting
+application code before the database migration is safe because the added
+managed-domain fields are backward-compatible and default custody remains
 `managed`.

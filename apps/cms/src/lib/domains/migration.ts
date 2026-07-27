@@ -79,6 +79,7 @@ type MigrationResult = {
 
 type MigrationDependencies = {
   now: () => string
+  forwardProviderWritesAllowed: () => boolean
   loginOpenProvider: typeof loginOpenProvider
   findOpenProviderCustomerByReference: typeof findOpenProviderCustomerByReference
   createOpenProviderCustomerHandle: typeof createOpenProviderCustomerHandle
@@ -99,6 +100,7 @@ type MigrationDependencies = {
 
 const defaultDependencies: MigrationDependencies = {
   now: () => new Date().toISOString(),
+  forwardProviderWritesAllowed: () => true,
   loginOpenProvider,
   findOpenProviderCustomerByReference,
   createOpenProviderCustomerHandle,
@@ -1156,6 +1158,12 @@ export async function prepareDomainMigration(
   if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
     if (migration.cutoverWriteState === "indeterminate") {
       return waiting(migration, "Nameserver cutover outcome remains indeterminate.")
+    }
+    if (!deps.forwardProviderWritesAllowed()) {
+      return waiting(
+        migration,
+        "Nameserver cutover is prepared but forward provider writes are release-blocked.",
+      )
     }
     migration = await updateMigration(payload, migration, {
       state: "cutover_in_progress",

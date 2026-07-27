@@ -1,5 +1,6 @@
 import { getPayload, type Payload } from "payload"
 import config from "@/payload.config"
+import { migrations } from "@/migrations"
 
 let cachedPayload: Payload | null = null
 
@@ -23,10 +24,18 @@ let cachedPayload: Payload | null = null
 export async function getTestPayload(): Promise<Payload> {
   if (cachedPayload) return cachedPayload
   const payload = await getPayload({ config })
-  // `forceAcceptWarning: true` skips the interactive prompt that the
-  // postgres adapter's migrateFresh() shows when run from a TTY (see
-  // node_modules/@payloadcms/drizzle/dist/migrateFresh.js:9-23).
-  await payload.db.migrateFresh({ forceAcceptWarning: true })
+  // Payload's migrateFresh() dynamically imports generated TypeScript files.
+  // Under Node's native type stripping, generator-emitted type imports can be
+  // treated as runtime exports. The application/runtime bundle instead uses
+  // this generated static migration index, so exercise that same path here.
+  type DropDatabaseArgs = Parameters<typeof payload.db.dropDatabase>[0]
+  type MigrateArgs = NonNullable<Parameters<typeof payload.db.migrate>[0]>
+  await payload.db.dropDatabase({
+    adapter: payload.db as DropDatabaseArgs["adapter"],
+  })
+  await payload.db.migrate({
+    migrations: migrations as unknown as MigrateArgs["migrations"],
+  })
   cachedPayload = payload
   return cachedPayload
 }

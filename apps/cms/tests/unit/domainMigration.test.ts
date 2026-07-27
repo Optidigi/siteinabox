@@ -489,6 +489,43 @@ describe("automatic existing-domain migration", () => {
     expect(store.collections.orders![0]).toMatchObject({ state: "exception" })
   })
 
+  it("reconciles a prepared cutover under shadow mode without sending a new forward write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      authoritativeStatus: "pending",
+    })
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected the transferred provider domain.")
+    providerDomain.nameServers = [...OLD_NAMESERVERS]
+    Object.assign(store.collections["domain-migrations"]![0]!, {
+      state: "cutover_in_progress",
+      cutoverWriteState: "prepared",
+      rollbackWriteState: "not_started",
+    })
+    fixture.dependencies.updateOpenProviderDomainNameservers.mockClear()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        forwardProviderWritesAllowed: () => false,
+      }),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("forward provider writes are release-blocked"),
+    })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .not.toHaveBeenCalled()
+  })
+
   it("reconciles an indeterminate transfer and never sends a duplicate transfer", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)

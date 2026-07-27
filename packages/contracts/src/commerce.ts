@@ -634,17 +634,47 @@ export const managedDomainCustodyStateTransitions = {
   manual_review: ["offboarding_requested", "transfer_code_ready", "transfer_pending"],
 } as const satisfies TransitionMap<ManagedDomainCustodyState>
 
-export const domainOffboardingContinuityEvidenceSchema = z.object({
-  schemaVersion: z.literal(1),
+const domainOffboardingContinuityEvidenceFields = {
   domain: z.string().trim().toLowerCase().min(3).max(253),
   capturedAt: z.iso.datetime(),
   authoritativeNameservers: z.array(z.string().trim().toLowerCase().min(1)).min(2),
-  dnssecStatus: z.enum(["unsigned", "signed", "unknown"]),
   zoneSnapshotHash: z.string().regex(/^[a-f0-9]{64}$/),
   mailRecordSetHash: z.string().regex(/^[a-f0-9]{64}$/),
   serviceRecordSetHash: z.string().regex(/^[a-f0-9]{64}$/),
   preservationMode: z.literal("retain_existing_dns_and_mail"),
+} as const
+
+const domainOffboardingContinuityEvidenceV1Schema = z.object({
+  schemaVersion: z.literal(1),
+  ...domainOffboardingContinuityEvidenceFields,
+  dnssecStatus: z.enum(["unsigned", "signed", "unknown"]),
 }).strict()
+
+const domainOffboardingContinuityEvidenceV2Schema = z.object({
+  schemaVersion: z.literal(2),
+  ...domainOffboardingContinuityEvidenceFields,
+  dnssecStatus: z.enum(["unsigned", "signed"]),
+  parentDsRecords: z.array(z.string().trim().min(1).max(1_024)).max(20),
+}).strict().superRefine((evidence, context) => {
+  if (evidence.dnssecStatus === "signed" && evidence.parentDsRecords.length === 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["parentDsRecords"],
+      message: "Signed DNSSEC evidence requires the observed parent DS records.",
+    })
+  }
+  if (evidence.dnssecStatus === "unsigned" && evidence.parentDsRecords.length > 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["parentDsRecords"],
+      message: "Unsigned DNSSEC evidence cannot contain parent DS records.",
+    })
+  }
+})
+export const domainOffboardingContinuityEvidenceSchema = z.union([
+  domainOffboardingContinuityEvidenceV1Schema,
+  domainOffboardingContinuityEvidenceV2Schema,
+])
 export type DomainOffboardingContinuityEvidence = z.infer<
   typeof domainOffboardingContinuityEvidenceSchema
 >
@@ -682,6 +712,8 @@ export function evaluateCommerceReleaseGate(input: {
   mollieApiKeyMode: "test" | "live" | "unknown" | "missing"
   openproviderApiBaseUrl: string | null
   cloudflareApiBaseUrl: string | null
+  productionSecretsConfigured?: boolean
+  originIsolationVerified?: boolean
 }): CommerceReleaseGateDecision {
   if (input.stage === "disabled") {
     return {
@@ -723,6 +755,12 @@ export function evaluateCommerceReleaseGate(input: {
     if (cloudflareHost !== "api.cloudflare.com") {
       blockers.push("production_requires_official_cloudflare")
     }
+    if (!input.productionSecretsConfigured) {
+      blockers.push("production_provider_or_encryption_prerequisite_missing")
+    }
+    if (!input.originIsolationVerified) {
+      blockers.push("production_origin_isolation_not_verified")
+    }
   }
   return {
     providerReadsAllowed: true,
@@ -744,13 +782,13 @@ export const domainRenewalCycleStates = [
 export const domainRenewalCycleStateSchema = z.enum(domainRenewalCycleStates)
 export type DomainRenewalCycleState = z.infer<typeof domainRenewalCycleStateSchema>
 export const domainRenewalCycleStateTransitions = {
-  scheduled: ["payment_required", "cancelled"],
-  payment_required: ["payment_committed", "cancelled", "failed"],
-  payment_committed: ["provider_requested"],
+  scheduled: ["payment_required", "renewed", "cancelled"],
+  payment_required: ["payment_committed", "renewed", "cancelled", "failed", "manual_review"],
+  payment_committed: ["provider_requested", "renewed"],
   provider_requested: ["renewed", "failed", "manual_review"],
   renewed: [],
   cancelled: [],
-  failed: ["payment_required", "provider_requested", "manual_review", "cancelled"],
+  failed: ["payment_required", "provider_requested", "renewed", "manual_review", "cancelled"],
   manual_review: ["payment_required", "provider_requested", "renewed", "cancelled", "failed"],
 } as const satisfies TransitionMap<DomainRenewalCycleState>
 

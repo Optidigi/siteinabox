@@ -380,7 +380,7 @@ describe("Cloudflare domain adapter", () => {
       }
       return Response.json({
         success: true,
-        result_info: { total_count: 3 },
+        result_info: { page: 1, total_pages: 1, total_count: 3 },
         result: [
           {
             id: "mx-1",
@@ -467,11 +467,11 @@ describe("Cloudflare domain adapter", () => {
     await expect(listCloudflareMigrationDnsRecords("zone-123", {
       env,
       fetchImpl: incomplete as typeof fetch,
-    })).rejects.toThrow("incomplete")
+    })).rejects.toThrow("invalid pagination metadata")
 
     const unsupported = vi.fn(async () => Response.json({
       success: true,
-      result_info: { total_count: 1 },
+      result_info: { page: 1, total_pages: 1, total_count: 1 },
       result: [{
         id: "tlsa-1",
         type: "TLSA",
@@ -484,5 +484,28 @@ describe("Cloudflare domain adapter", () => {
       env,
       fetchImpl: unsupported as typeof fetch,
     })).rejects.toThrow("unsupported")
+  })
+
+  it("captures every Cloudflare pagination page before accepting zone authority", async () => {
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const page = new URL(String(input)).searchParams.get("page")
+      return Response.json({
+        success: true,
+        result_info: { page: Number(page), total_pages: 2, total_count: 2 },
+        result: [{
+          id: `txt-${page}`,
+          type: "TXT",
+          name: page === "1" ? "example.nl" : "_dmarc.example.nl",
+          ttl: 300,
+          content: page === "1" ? "verification=ok" : "v=DMARC1; p=none",
+          proxied: false,
+        }],
+      })
+    })
+    await expect(listCloudflareMigrationDnsRecords("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toHaveLength(2)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

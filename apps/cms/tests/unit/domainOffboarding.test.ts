@@ -27,7 +27,7 @@ const ACTOR = {
   tenantId: 1,
 }
 const EVIDENCE = {
-  schemaVersion: 1 as const,
+  schemaVersion: 2 as const,
   domain: "example.nl",
   capturedAt: "2026-07-28T10:00:00.000Z",
   authoritativeNameservers: [
@@ -35,6 +35,7 @@ const EVIDENCE = {
     "bob.ns.cloudflare.com",
   ],
   dnssecStatus: "signed" as const,
+  parentDsRecords: ["12345 13 2 ABCD"],
   zoneSnapshotHash: "a".repeat(64),
   mailRecordSetHash: "b".repeat(64),
   serviceRecordSetHash: "c".repeat(64),
@@ -148,10 +149,45 @@ describe("domain offboarding and transfer-out rehearsal", () => {
     expect(evidence).toMatchObject({
       domain: "example.nl",
       dnssecStatus: "signed",
+      parentDsRecords: ["12345 13 2 ABCD"],
       preservationMode: "retain_existing_dns_and_mail",
     })
     expect(evidence.zoneSnapshotHash).toMatch(/^[a-f0-9]{64}$/)
     expect(evidence.mailRecordSetHash).not.toBe(evidence.zoneSnapshotHash)
+  })
+
+  it("fails closed when parent DNSSEC evidence is indeterminate", async () => {
+    const store = createStore()
+    const getAuthCode = vi.fn()
+    await expect(captureDomainOffboardingContinuityEvidence(
+      store.payload,
+      {
+        managedDomainId: 10,
+        actor: ACTOR,
+        now: "2026-07-28T10:00:00.000Z",
+      },
+      {
+        providerReadsAllowed: () => true,
+        listCloudflareMigrationDnsRecords: vi.fn(async () => [{
+          id: "www",
+          record: {
+            type: "CNAME" as const,
+            name: "www.example.nl",
+            ttl: 300,
+            content: "origin.example.net",
+            proxied: false,
+          },
+          raw: {},
+        }]),
+        verifyParentDsAbsent: vi.fn(async () => ({
+          status: "indeterminate" as const,
+          records: [],
+          reason: "resolver_error",
+        })),
+      },
+    )).rejects.toThrow("DNSSEC state is indeterminate")
+    expect(store.update).not.toHaveBeenCalled()
+    expect(getAuthCode).not.toHaveBeenCalled()
   })
 
   it("preserves DNS, mail, HTTPS and entitlement until transfer is confirmed twice", async () => {
@@ -269,6 +305,26 @@ describe("domain offboarding and transfer-out rehearsal", () => {
       reason: "Invalid customer.",
       continuityEvidence: EVIDENCE,
     })).rejects.toThrow("authenticated contracting customer")
+    expect(store.update).not.toHaveBeenCalled()
+  })
+
+  it("keeps legacy evidence readable but requires current DNSSEC evidence for new requests", async () => {
+    const store = createStore()
+    const {
+      parentDsRecords: _currentParentDsRecords,
+      ...legacyEvidence
+    } = EVIDENCE
+    await expect(requestDomainOffboarding(store.payload, {
+      managedDomainId: 10,
+      actor: ACTOR,
+      requestId: "legacy-evidence",
+      reason: "Customer is moving registrar custody.",
+      continuityEvidence: {
+        ...legacyEvidence,
+        schemaVersion: 1,
+        dnssecStatus: "unknown",
+      },
+    })).rejects.toThrow("current DNSSEC continuity evidence")
     expect(store.update).not.toHaveBeenCalled()
   })
 

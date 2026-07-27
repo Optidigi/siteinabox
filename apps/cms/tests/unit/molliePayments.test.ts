@@ -84,6 +84,16 @@ const enableProductionCommerceRelease = () => {
   vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
   vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
   vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
+  vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "test-signing-secret")
+  vi.stubEnv("OPENPROVIDER_USERNAME", "test-user")
+  vi.stubEnv("OPENPROVIDER_PASSWORD", "test-password")
+  vi.stubEnv("CLOUDFLARE_API_TOKEN", "test-token")
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "test-account")
+  vi.stubEnv(
+    "DOMAIN_MIGRATION_ENCRYPTION_KEY",
+    Buffer.alloc(32, 1).toString("base64"),
+  )
+  vi.stubEnv("COMMERCE_ORIGIN_ISOLATION_VERIFIED", "1")
 }
 
 const enableSandboxCommerceRelease = () => {

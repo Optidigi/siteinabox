@@ -20,7 +20,11 @@ import type {
 } from "@/payload-types"
 
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
-import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import {
+  recordCommerceAdminException,
+  resolveCommerceAdminException,
+} from "@/lib/commerce/alerts"
+import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 import { createApplicationRecurringMolliePayment } from "@/lib/payments/molliePayments"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
@@ -428,6 +432,7 @@ export async function processBillingAgreement(input: {
   payload: Payload
   agreement: BillingAgreement
   now?: Date
+  providerWritesAllowed?: () => boolean
 }): Promise<{ status: string; paymentRequested: boolean }> {
   const nowDate = input.now ?? new Date()
   const now = nowDate.toISOString()
@@ -489,7 +494,36 @@ export async function processBillingAgreement(input: {
     payload: input.payload,
     agreement,
   })
-  const stage = billingDunningStage(dueAt, nowDate)
+  const existingAttempts = await loadPaymentAttempts(input.payload, order)
+  const collectionStarted = existingAttempts.length > 0
+  const providerWritesAllowed =
+    input.providerWritesAllowed ?? commerceProviderWritesAllowed
+  if (!collectionStarted && !providerWritesAllowed()) {
+    await recordCommerceAdminException({
+      payload: input.payload,
+      source: "payments",
+      code: "billing_collection_release_blocked",
+      message: "Recurring collection is waiting for the staged provider-write release gate.",
+      tenant: agreement.tenant,
+      subjectId: agreement.id,
+      severity: "warning",
+      now,
+    })
+    return { status: "waiting_release", paymentRequested: false }
+  }
+  await resolveCommerceAdminException({
+    payload: input.payload,
+    source: "payments",
+    code: "billing_collection_release_blocked",
+    subjectId: agreement.id,
+    now,
+  })
+  const graceAnchor = collectionStarted
+    ? agreement.graceStartedAt ?? dueAt
+    : now
+  const stage = collectionStarted
+    ? billingDunningStage(graceAnchor, nowDate)
+    : "due"
   if (stage === "suspend") {
     agreement = await suspendForNonPayment({
       payload: input.payload,
@@ -502,8 +536,8 @@ export async function processBillingAgreement(input: {
   if (!agreement.graceStartedAt || !agreement.graceEndsAt) {
     agreement = await updateAgreement(input.payload, agreement, {
       state: "past_due",
-      graceStartedAt: dueAt,
-      graceEndsAt: billingGraceEndsAt(dueAt),
+      graceStartedAt: graceAnchor,
+      graceEndsAt: billingGraceEndsAt(graceAnchor),
       failureReason: agreement.failureReason ?? "Recurring payment is due.",
       stateHistory: agreement.state === "past_due"
         ? agreement.stateHistory

@@ -65,6 +65,24 @@ export function matchesWhere(doc: MockDoc, where: MockWhere | undefined): boolea
       const values = (condition as { in?: unknown[] }).in ?? []
       return values.map(String).includes(String(doc[field]))
     }
+    if (condition && typeof condition === "object" && "not_in" in condition) {
+      const values = (condition as { not_in?: unknown[] }).not_in ?? []
+      return !values.map(String).includes(String(doc[field]))
+    }
+    if (condition && typeof condition === "object" && "exists" in condition) {
+      const exists = doc[field] !== undefined && doc[field] !== null
+      return exists === Boolean((condition as { exists?: unknown }).exists)
+    }
+    if (condition && typeof condition === "object" && "less_than_equal" in condition) {
+      return String(doc[field]) <= String(
+        (condition as { less_than_equal?: unknown }).less_than_equal,
+      )
+    }
+    if (condition && typeof condition === "object" && "less_than" in condition) {
+      return String(doc[field]) < String(
+        (condition as { less_than?: unknown }).less_than,
+      )
+    }
     return doc[field] === condition
   })
 }
