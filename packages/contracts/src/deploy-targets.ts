@@ -5,7 +5,6 @@ export type RendererDeployTarget = {
   readonly tenantSlug: string
   readonly productionHost: string
   readonly productionOrigin: `https://${string}`
-  readonly siteUrlBuildArg: "AMICARE_SITE_URL"
 }
 
 export const RENDERER_DEPLOY_TARGETS = [
@@ -14,7 +13,6 @@ export const RENDERER_DEPLOY_TARGETS = [
     tenantSlug: "ami-care",
     productionHost: "ami-care.nl",
     productionOrigin: "https://ami-care.nl",
-    siteUrlBuildArg: "AMICARE_SITE_URL",
   },
 ] as const satisfies readonly RendererDeployTarget[]
 

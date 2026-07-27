@@ -40,6 +40,10 @@
       "types": "./src/deploy-targets.ts",
       "default": "./src/deploy-targets.ts"
     },
+    "./renderer-routing": {
+      "types": "./src/renderer-routing.ts",
+      "default": "./src/renderer-routing.ts"
+    },
     "./fixtures/tenants": {
       "types": "./src/fixtures/tenants.ts",
       "default": "./src/fixtures/tenants.ts"

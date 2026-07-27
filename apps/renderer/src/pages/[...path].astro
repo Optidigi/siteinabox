@@ -12,11 +12,12 @@ import {
   themePreference,
 } from "@siteinabox/site-renderer"
 import "../styles/site.css"
-import { findPublishedPage, loadPublishedSnapshot, normalizeRequestHost, pagePath } from "../lib/snapshot"
+import { findPublishedPage, loadPublishedSnapshot, pagePath } from "../lib/snapshot"
 import { analyticsConfigJson, buildAnalyticsConfig } from "../lib/analytics-config.js"
+import { publicHostFromProtectedRequest } from "../lib/origin-protection"
 
 const pathname = `/${Astro.params.path ?? ""}`
-const host = normalizeRequestHost(Astro.request.headers.get("x-forwarded-host") ?? Astro.request.headers.get("host"))
+const host = publicHostFromProtectedRequest(Astro.request)
 
 const snapshot = await loadPublishedSnapshot(host)
 const page = snapshot ? findPublishedPage(snapshot, pathname) : null

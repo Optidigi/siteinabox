@@ -4,7 +4,14 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { promisify } from "node:util"
 
-import { assertHostRouting, closeServer, getOpenPort, startStubCms, waitForRenderer } from "./host-routing-harness.mjs"
+import {
+  assertHostRouting,
+  closeServer,
+  getOpenPort,
+  startStubCms,
+  TEST_RENDERER_ORIGIN_SECRET,
+  waitForRenderer,
+} from "./host-routing-harness.mjs"
 
 const execFileAsync = promisify(execFile)
 const imageTag = process.env.IMAGE_TAG
@@ -43,6 +50,8 @@ try {
     "PORT=4321",
     "-e",
     `SIAB_CMS_URL=${cms.url}`,
+    "-e",
+    `SIAB_RENDERER_ORIGIN_SECRET=${TEST_RENDERER_ORIGIN_SECRET}`,
     "-e",
     `SITE_URL=${baseUrl}`,
     "-e",

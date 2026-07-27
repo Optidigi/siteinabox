@@ -120,6 +120,85 @@ describe("renderer snapshot loader environment gates", () => {
     })
   })
 
+  it("accepts an explicit alias allowlist and rejects a cross-tenant routing envelope", async () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      NODE_ENV: "production",
+      SIAB_CMS_URL: "https://admin.snapshot.test",
+    }
+    const routedSnapshot = {
+      ...fixturePublishedSiteSnapshot,
+      tenantId: "42",
+      tenantSlug: "snapshot-studio",
+      domain: "snapshot.test",
+      siteUrl: "https://snapshot.test",
+      manifest: {
+        ...fixturePublishedSiteSnapshot.manifest,
+        tenantId: "42",
+      },
+      settings: {
+        ...fixturePublishedSiteSnapshot.settings,
+        siteUrl: "https://snapshot.test",
+      },
+    }
+    const response = {
+      routing: {
+        version: 1,
+        requestedHost: "www.snapshot.test",
+        canonicalHost: "snapshot.test",
+        activeHosts: ["snapshot.test", "www.snapshot.test"],
+      },
+      tenant: {
+        id: 42,
+        slug: "snapshot-studio",
+        domain: "snapshot.test",
+        status: "active",
+      },
+      snapshotId: 10,
+      snapshot: routedSnapshot,
+    }
+    const fetch = vi.fn(async () => Response.json(response))
+    vi.stubGlobal("fetch", fetch)
+    const { loadPublishedSnapshot } = await importSnapshotLib()
+
+    await expect(loadPublishedSnapshot("www.snapshot.test")).resolves.toMatchObject({
+      tenantId: "42",
+      domain: "snapshot.test",
+    })
+
+    vi.mocked(fetch).mockResolvedValueOnce(Response.json({
+      ...response,
+      snapshot: {
+        ...routedSnapshot,
+        tenantId: "99",
+        manifest: { ...routedSnapshot.manifest, tenantId: "99" },
+      },
+    }))
+    await expect(loadPublishedSnapshot("www.snapshot.test")).rejects.toThrow(
+      "CMS routing response failed contract validation",
+    )
+  })
+
+  it("keeps the bounded legacy snapshot response readable during rolling deployment", async () => {
+    process.env = {
+      ...ORIGINAL_ENV,
+      NODE_ENV: "production",
+      SIAB_CMS_URL: "https://admin.snapshot.test",
+    }
+    const legacySnapshot = {
+      ...amicarePublishedSiteSnapshot,
+      settings: {
+        ...amicarePublishedSiteSnapshot.settings,
+        aliases: [{ host: "www.ami-care.nl" }],
+      },
+    }
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ snapshot: legacySnapshot })))
+    const { loadPublishedSnapshot } = await importSnapshotLib()
+
+    await expect(loadPublishedSnapshot("www.ami-care.nl")).resolves.toMatchObject({ domain: "ami-care.nl" })
+    await expect(loadPublishedSnapshot("unlisted.example.com")).resolves.toBeNull()
+  })
+
   it("excludes draft-like pages from renderer page lookup defensively", async () => {
     const { findPublishedPage, listPublishedPaths } = await importSnapshotLib()
     const snapshotWithDraft = {

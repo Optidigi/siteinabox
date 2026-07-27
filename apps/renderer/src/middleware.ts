@@ -13,6 +13,7 @@ import {
   type ThemeTokenSpec,
 } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../packages/site-renderer/src/blocks/types"
+import { neutralOriginNotFound, publicHostFromProtectedRequest } from "./lib/origin-protection"
 
 const HEADER_VARIANTS = [
   "shadcnui-blocks.navbar-01",
@@ -90,6 +91,8 @@ const renderProviderParityBody = (
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
+  if (context.url.pathname === "/healthz") return next()
+  if (!publicHostFromProtectedRequest(context.request)) return neutralOriginNotFound()
   if (!import.meta.env.DEV || context.url.pathname !== "/provider-parity") return next()
 
   const [{ v1FixturePage }, { ShadcnUiExplicitBlockView }, { ShadcnUiChromeView }, { ShadcnUiNotFoundView }, { ShadcnUiPinnedLiteralPreview }, { default: inventory }] = await Promise.all([

@@ -47,6 +47,19 @@ Ami Care uses the same validated provider-block, chrome, theme, media, preview,
 and published-snapshot path as every generated tenant. Tenant identity affects
 content and routing only; it never selects a source-code renderer.
 
+Public renderer routing is TLD-neutral but not open-ended. Except for reviewed
+legacy deploy targets awaiting a managed-domain backfill, a canonical domain is
+eligible only when its managed-domain record has active entitlement plus
+verified authoritative DNS and HTTPS. The CMS snapshot endpoint returns that
+eligible canonical domain and its explicit active alias allowlist; the renderer
+validates the routing envelope before serving tenant content. Apex and `www`
+are independent entries—`www` is not inferred.
+Production origin requests must carry the high-entropy
+`X-Siab-Origin-Verify` value injected at the Cloudflare edge, must arrive over
+the protected HTTPS proxy path, and must have matching `Host` and
+`X-Forwarded-Host`. Health checks are the only direct-origin exception.
+Unknown or invalid hosts fail with a tenant-neutral 404.
+
 ### Typed public block variants
 
 All **132** public shadcnui-blocks block variants are direct-bound

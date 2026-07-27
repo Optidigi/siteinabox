@@ -15,9 +15,15 @@ function snapshotForTest() {
   return {
     ...snapshot,
     tenantId: "tenant-from-snapshot",
+    domain: "ami-care.nl",
+    siteUrl: "https://ami-care.nl",
     manifest: {
       ...snapshot.manifest,
       tenantId: "tenant-from-snapshot",
+    },
+    settings: {
+      ...snapshot.settings,
+      siteUrl: "https://ami-care.nl",
     },
   }
 }

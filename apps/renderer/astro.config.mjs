@@ -4,6 +4,10 @@ import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 
 const SITE_URL = process.env.SITE_URL ?? 'https://renderer.example.test';
+const DEV_ALLOWED_HOSTS = (process.env.SIAB_RENDERER_DEV_ALLOWED_HOSTS ?? '')
+  .split(',')
+  .map((host) => host.trim())
+  .filter(Boolean);
 
 export default defineConfig({
   integrations: [react()],
@@ -18,6 +22,9 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone',
   }),
+  server: {
+    allowedHosts: DEV_ALLOWED_HOSTS,
+  },
   vite: {
     cacheDir: process.env.SIAB_VITE_CACHE_DIR,
     // Shared workspace packages declare React as a peer. Always resolve that

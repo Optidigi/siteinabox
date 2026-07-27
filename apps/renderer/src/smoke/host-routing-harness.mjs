@@ -1,12 +1,13 @@
 import assert from "node:assert/strict"
 import { once } from "node:events"
-import { createServer as createHttpServer } from "node:http"
+import { request as createHttpRequest, createServer as createHttpServer } from "node:http"
 import { createServer as createNetServer } from "node:net"
 
-import { getRendererDeployTargetByHost } from "@siteinabox/contracts/deploy-targets"
 import {
   amicarePublishedSiteSnapshot,
 } from "@siteinabox/contracts/fixtures/tenants"
+
+export const TEST_RENDERER_ORIGIN_SECRET = "renderer-origin-smoke-secret-00000001"
 
 export async function getOpenPort() {
   const server = createNetServer()
@@ -27,8 +28,21 @@ export async function closeServer(server) {
 
 export async function startStubCms({ listenHost = "127.0.0.1", publicHost = listenHost } = {}) {
   const port = await getOpenPort()
+  const amicareSnapshot = publishedSnapshotForHost("ami-care.nl", {
+    tenantId: "tenant-ami-care",
+    tenantSlug: "ami-care",
+    siteName: "Amicare-Zorg",
+  })
+  const studioSnapshot = publishedSnapshotForHost("studio.example.com", {
+    tenantId: "tenant-studio-example",
+    tenantSlug: "studio-example",
+    siteName: "Studio Example",
+  })
   const snapshotsByHost = new Map([
-    ["ami-care.nl", publishedSnapshotForHost("ami-care.nl")],
+    ["ami-care.nl", snapshotEnvelope("ami-care.nl", amicareSnapshot, ["ami-care.nl", "www.ami-care.nl"])],
+    ["www.ami-care.nl", snapshotEnvelope("www.ami-care.nl", amicareSnapshot, ["ami-care.nl", "www.ami-care.nl"])],
+    ["studio.example.com", snapshotEnvelope("studio.example.com", studioSnapshot, ["studio.example.com", "www.studio.example.com"])],
+    ["www.studio.example.com", snapshotEnvelope("www.studio.example.com", studioSnapshot, ["studio.example.com", "www.studio.example.com"])],
   ])
   const server = createHttpServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`)
@@ -39,47 +53,45 @@ export async function startStubCms({ listenHost = "127.0.0.1", publicHost = list
     }
 
     const host = url.searchParams.get("host") ?? ""
-    const snapshot = snapshotsByHost.get(host)
-    if (!snapshot) {
+    const envelope = snapshotsByHost.get(host)
+    if (!envelope) {
       response.writeHead(404, { "content-type": "application/json; charset=utf-8" })
       response.end(JSON.stringify({ error: "unknown_host" }))
       return
     }
 
     response.writeHead(200, { "content-type": "application/json; charset=utf-8" })
-    response.end(JSON.stringify({ snapshot }))
+    response.end(JSON.stringify(envelope))
   })
   server.listen(port, listenHost)
   await once(server, "listening")
   return { server, snapshotsByHost, url: `http://${publicHost}:${port}`, localUrl: `http://127.0.0.1:${port}` }
 }
 
-function publishedSnapshotForHost(host) {
-  const target = getRendererDeployTargetByHost(host)
-  assert.ok(target, `missing renderer deploy target for ${host}`)
-  const tenantId = `tenant-${target.id}`
+function publishedSnapshotForHost(host, { tenantId, tenantSlug, siteName }) {
+  const productionOrigin = `https://${host}`
   const source = amicarePublishedSiteSnapshot
   const snapshot = structuredClone(source)
   const retargeted = rewriteSnapshotStrings(snapshot, [
-    [source.siteUrl, target.productionOrigin],
-    [source.settings?.siteUrl, target.productionOrigin],
-    [source.domain, target.productionHost],
+    [source.siteUrl, productionOrigin],
+    [source.settings?.siteUrl, productionOrigin],
+    [source.domain, host],
   ])
 
   return {
     ...retargeted,
     tenantId,
-    tenantSlug: target.tenantSlug,
-    domain: target.productionHost,
-    siteUrl: target.productionOrigin,
+    tenantSlug,
+    domain: host,
+    siteUrl: productionOrigin,
     manifest: {
       ...retargeted.manifest,
       tenantId,
     },
     settings: {
       ...retargeted.settings,
-      siteUrl: target.productionOrigin,
-      siteName: "Amicare-Zorg",
+      siteUrl: productionOrigin,
+      siteName,
       chrome: {
         ...retargeted.settings.chrome,
         footer: {
@@ -90,7 +102,7 @@ function publishedSnapshotForHost(host) {
       analytics: {
         ...retargeted.settings.analytics,
         provider: "posthog",
-        token: `phc_${target.id.replace("-", "_")}_smoke`,
+        token: `phc_${tenantSlug.replaceAll("-", "_")}_smoke`,
         posthogHost: "https://eu.posthog.com",
       },
     },
@@ -117,6 +129,25 @@ function publishedSnapshotForHost(host) {
         }],
       },
     ],
+  }
+}
+
+function snapshotEnvelope(requestedHost, snapshot, activeHosts) {
+  return {
+    routing: {
+      version: 1,
+      requestedHost,
+      canonicalHost: snapshot.domain,
+      activeHosts,
+    },
+    tenant: {
+      id: snapshot.tenantId,
+      slug: snapshot.tenantSlug,
+      domain: snapshot.domain,
+      status: "active",
+    },
+    snapshotId: `snapshot-${snapshot.tenantId}`,
+    snapshot,
   }
 }
 
@@ -147,33 +178,58 @@ export async function waitForRenderer(baseUrl, getFailureContext = () => "") {
   throw new Error(`Renderer did not become healthy: ${lastError?.message ?? "timeout"}\n${failureContext}`)
 }
 
-export async function fetchWithHost(baseUrl, host, pathname) {
-  return fetch(`${baseUrl}${pathname}`, {
-    headers: {
-      host,
-      "x-forwarded-host": host,
-    },
+export async function fetchWithHost(baseUrl, host, pathname, {
+  forwardedHost = host,
+  forwardedProto = "https",
+  includeOriginSecret = true,
+} = {}) {
+  const url = new URL(pathname, baseUrl)
+  const headers = {
+    host,
+    "x-forwarded-host": forwardedHost,
+    "x-forwarded-proto": forwardedProto,
+    ...(includeOriginSecret ? { "x-siab-origin-verify": TEST_RENDERER_ORIGIN_SECRET } : {}),
+  }
+  return new Promise((resolve, reject) => {
+    const request = createHttpRequest(url, { headers }, (response) => {
+      const chunks = []
+      response.on("data", (chunk) => chunks.push(chunk))
+      response.on("end", () => {
+        resolve(new Response(Buffer.concat(chunks), {
+          status: response.statusCode ?? 500,
+          headers: response.headers,
+        }))
+      })
+    })
+    request.on("error", reject)
+    request.end()
   })
 }
 
 export async function assertStubCmsSnapshots(cms) {
   const expected = [
-    ["ami-care.nl", "ami-care", "terracotta-warm"],
+    ["ami-care.nl", "ami-care.nl", "ami-care", "terracotta-warm"],
+    ["www.ami-care.nl", "ami-care.nl", "ami-care", "terracotta-warm"],
+    ["studio.example.com", "studio.example.com", "studio-example", "terracotta-warm"],
+    ["www.studio.example.com", "studio.example.com", "studio-example", "terracotta-warm"],
   ]
 
-  for (const [host, tenantSlug, colorSchemeId] of expected) {
+  for (const [host, canonicalHost, tenantSlug, colorSchemeId] of expected) {
     const response = await fetch(`${cms.url}/api/renderer/snapshot?host=${encodeURIComponent(host)}`)
     const body = await response.text()
     assert.equal(response.status, 200, `${host} snapshot route status\n${body}`)
-    const { snapshot } = JSON.parse(body)
+    const { routing, snapshot } = JSON.parse(body)
     assert.equal(snapshot.tenantSlug, tenantSlug, `${host} snapshot tenant slug`)
-    assert.equal(snapshot.domain, host, `${host} snapshot domain`)
-    assert.equal(snapshot.siteUrl, `https://${host}`, `${host} snapshot site URL`)
-    assert.equal(snapshot.settings.siteUrl, `https://${host}`, `${host} snapshot settings site URL`)
+    assert.equal(snapshot.domain, canonicalHost, `${host} snapshot domain`)
+    assert.equal(snapshot.siteUrl, `https://${canonicalHost}`, `${host} snapshot site URL`)
+    assert.equal(snapshot.settings.siteUrl, `https://${canonicalHost}`, `${host} snapshot settings site URL`)
     assert.equal(snapshot.theme?.version, 3, `${host} snapshot theme version`)
     assert.equal(snapshot.theme?.colors?.schemeId, colorSchemeId, `${host} snapshot theme color scheme`)
     assert.equal(snapshot.manifest?.tenantId, snapshot.tenantId, `${host} snapshot manifest tenant id`)
-    assert.equal(cms.snapshotsByHost.get(host)?.tenantSlug, tenantSlug, `${host} active stub snapshot map`)
+    assert.equal(routing.requestedHost, host, `${host} requested routing host`)
+    assert.equal(routing.canonicalHost, canonicalHost, `${host} canonical routing host`)
+    assert.ok(routing.activeHosts.includes(host), `${host} explicit active host`)
+    assert.equal(cms.snapshotsByHost.get(host)?.snapshot.tenantSlug, tenantSlug, `${host} active stub snapshot map`)
   }
 }
 
@@ -227,6 +283,22 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.match(amicareHtml, /Vertrouwen/)
   assert.match(amicareHtml, /href="\/privacy-en-cookieverklaring"/)
 
+  const amicareWww = await fetchWithHost(baseUrl, "www.ami-care.nl", "/")
+  const amicareWwwHtml = await amicareWww.text()
+  await assertStatus(amicareWww, 200, "www.ami-care.nl homepage status", amicareWwwHtml, failureContext)
+  assert.match(amicareWwwHtml, /data-tenant-slug="ami-care"/)
+
+  const studioHome = await fetchWithHost(baseUrl, "studio.example.com", "/")
+  const studioHtml = await studioHome.text()
+  await assertStatus(studioHome, 200, "studio.example.com homepage status", studioHtml, failureContext)
+  assert.match(studioHtml, /data-tenant-slug="studio-example"/)
+  assert.match(studioHtml, /Studio Example/)
+
+  const studioWww = await fetchWithHost(baseUrl, "www.studio.example.com", "/")
+  const studioWwwHtml = await studioWww.text()
+  await assertStatus(studioWww, 200, "www.studio.example.com homepage status", studioWwwHtml, failureContext)
+  assert.match(studioWwwHtml, /data-tenant-slug="studio-example"/)
+
   const amicarePrivacy = await fetchWithHost(baseUrl, "ami-care.nl", "/privacy-en-cookieverklaring")
   const amicarePrivacyHtml = await amicarePrivacy.text()
   await assertStatus(amicarePrivacy, 200, "ami-care.nl privacy status", amicarePrivacyHtml, failureContext)
@@ -244,6 +316,29 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
 
   const traversalMedia = await fetchWithHost(baseUrl, "ami-care.nl", "/siab-media/tenant-ami-care/%2E%2E/bedroom.jpg")
   assert.equal(traversalMedia.status, 404)
+
+  const crossTenantMedia = await fetchWithHost(
+    baseUrl,
+    "studio.example.com",
+    "/siab-media/tenant-ami-care/bedroom.jpg",
+  )
+  assert.equal(crossTenantMedia.status, 404)
+
+  const directOrigin = await fetchWithHost(baseUrl, "ami-care.nl", "/", { includeOriginSecret: false })
+  const directOriginBody = await directOrigin.text()
+  assert.equal(directOrigin.status, 404)
+  assert.equal(directOriginBody, "Page not found")
+  assertNoAnalyticsLeakage(directOriginBody)
+
+  const nonHttpsEdge = await fetchWithHost(baseUrl, "ami-care.nl", "/", { forwardedProto: "http" })
+  assert.equal(nonHttpsEdge.status, 404)
+
+  const crossHostHeader = await fetchWithHost(baseUrl, "ami-care.nl", "/", {
+    forwardedHost: "studio.example.com",
+  })
+  const crossHostHeaderBody = await crossHostHeader.text()
+  assert.equal(crossHostHeader.status, 404)
+  assert.doesNotMatch(crossHostHeaderBody, /data-tenant-slug=/)
 
   const unknownHostNotFound = await fetchWithHost(baseUrl, "unknown.example", "/")
   const unknownHostHtml = await unknownHostNotFound.text()

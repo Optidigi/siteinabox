@@ -3,7 +3,7 @@ import { dirname, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..")
-const { RENDERER_DEPLOY_TARGETS, RENDERER_PRODUCTION_HOSTS } = await import(
+const { RENDERER_PRODUCTION_HOSTS } = await import(
   `file://${resolve(repoRoot, "packages/contracts/src/deploy-targets.ts")}`
 )
 const rendererComposePath = resolve(repoRoot, "apps/renderer/compose.yml")
@@ -14,9 +14,6 @@ const ciWorkflowPath = resolve(repoRoot, ".github/workflows/ci.yml")
 
 const expectedHosts = [...RENDERER_PRODUCTION_HOSTS].sort()
 const expectedHostSet = new Set(expectedHosts)
-const expectedOriginsByBuildArg = new Map(
-  RENDERER_DEPLOY_TARGETS.map((target) => [target.siteUrlBuildArg, target.productionOrigin]),
-)
 
 function formatPath(filePath) {
   return relative(repoRoot, filePath)
@@ -24,15 +21,6 @@ function formatPath(filePath) {
 
 function extractTraefikHosts(text) {
   return [...text.matchAll(/Host\(`([^`]+)`\)/g)].map((match) => match[1]).sort()
-}
-
-function extractBuildArgValues(text) {
-  const values = new Map()
-  for (const [buildArg] of expectedOriginsByBuildArg) {
-    const match = text.match(new RegExp(`\\b${buildArg}=([^\\s]+)`))
-    if (match?.[1]) values.set(buildArg, match[1])
-  }
-  return values
 }
 
 async function listRepoFiles(dir, predicate, files = []) {
@@ -52,14 +40,6 @@ async function listRepoFiles(dir, predicate, files = []) {
 
 function isComposePath(filePath) {
   return /(^|[/\\])(?:docker-)?compose(?:\.[^/\\]+)?\.ya?ml$/.test(filePath)
-}
-
-function assertEqualList(errors, label, actual, expected) {
-  const actualJson = JSON.stringify([...actual].sort())
-  const expectedJson = JSON.stringify([...expected].sort())
-  if (actualJson !== expectedJson) {
-    errors.push(`${label}: expected ${expectedJson}, got ${actualJson}`)
-  }
 }
 
 const errors = []
@@ -87,7 +67,27 @@ if (rendererPackage.dependencies?.["@siteinabox/legal-content"]?.startsWith("wor
 }
 
 const rendererCompose = await readFile(rendererComposePath, "utf8")
-assertEqualList(errors, `${formatPath(rendererComposePath)} Traefik hosts`, extractTraefikHosts(rendererCompose), expectedHosts)
+const rendererRule = rendererCompose
+  .split("\n")
+  .find((line) => line.includes("traefik.http.routers.siteinabox-renderer.rule=")) ?? ""
+if (!rendererRule.includes("HostRegexp(")) {
+  errors.push(`${formatPath(rendererComposePath)} must use a TLD-neutral HostRegexp edge route`)
+}
+if (/\\\.nl\b|Host\(`/.test(rendererRule)) {
+  errors.push(`${formatPath(rendererComposePath)} renderer route must not hard-code a production host or .nl TLD`)
+}
+for (const requiredFragment of [
+  "traefik.http.routers.siteinabox-renderer.entrypoints=websecure",
+  "traefik.http.routers.siteinabox-renderer.tls.certresolver=",
+  "SIAB_RENDERER_ORIGIN_SECRET: ${SIAB_RENDERER_ORIGIN_SECRET:?required}",
+]) {
+  if (!rendererCompose.includes(requiredFragment)) {
+    errors.push(`${formatPath(rendererComposePath)} is missing protected HTTPS origin contract: ${requiredFragment}`)
+  }
+}
+if (rendererCompose.includes("customrequestheaders.X-Siab-Origin-Verify")) {
+  errors.push(`${formatPath(rendererComposePath)} must validate the Cloudflare edge secret, not inject it at the origin`)
+}
 
 const composePaths = await listRepoFiles(repoRoot, isComposePath)
 for (const composePath of composePaths) {
@@ -101,19 +101,6 @@ for (const composePath of composePaths) {
   }
 }
 
-for (const [filePath, text] of [
-  [rendererDockerfilePath, await readFile(rendererDockerfilePath, "utf8")],
-  [buildRendererWorkflowPath, buildRendererWorkflow],
-]) {
-  const values = extractBuildArgValues(text)
-  for (const [buildArg, expectedOrigin] of expectedOriginsByBuildArg) {
-    const actualOrigin = values.get(buildArg)
-    if (actualOrigin !== expectedOrigin) {
-      errors.push(`${formatPath(filePath)} ${buildArg}: expected ${expectedOrigin}, got ${actualOrigin ?? "missing"}`)
-    }
-  }
-}
-
 const forbiddenRendererDependencyChecks = [
   {
     filePath: rendererDockerfilePath,
@@ -121,11 +108,12 @@ const forbiddenRendererDependencyChecks = [
       /\bCOPY\s+sites\/(?:ami-care)\b/,
       /\bpnpm\s+--dir\s+sites\/(?:ami-care)\b/,
       /\bsites\/(?:ami-care)\/dist\b/,
+      /\bAMICARE_SITE_URL\b/,
     ],
   },
   {
     filePath: buildRendererWorkflowPath,
-    patterns: [/sites\/(?:ami-care)\/\*\*/, /\bSIAB_RENDERER_FIXTURE_MODE=1\b/],
+    patterns: [/sites\/(?:ami-care)\/\*\*/, /\bSIAB_RENDERER_FIXTURE_MODE=1\b/, /\bAMICARE_SITE_URL\b/],
   },
   {
     filePath: ciWorkflowPath,

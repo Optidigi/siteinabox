@@ -1,7 +1,8 @@
 import { readFile, stat } from "node:fs/promises"
 import type { APIRoute } from "astro"
-import { loadPublishedSnapshot, normalizeRequestHost } from "../../../lib/snapshot"
+import { loadPublishedSnapshot } from "../../../lib/snapshot"
 import { cmsRendererMediaEndpoint, mediaContentType, safeTenantMediaFilePath } from "../../../lib/media"
+import { publicHostFromProtectedRequest } from "../../../lib/origin-protection"
 
 function notFound(): Response {
   return new Response(null, {
@@ -64,7 +65,7 @@ async function resolveMediaResponse({ params, request, includeBody }: Parameters
   const mediaPath = params.path
   if (!tenantId || !mediaPath) return notFound()
 
-  const host = normalizeRequestHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"))
+  const host = publicHostFromProtectedRequest(request)
   const snapshot = await loadPublishedSnapshot(host)
   if (!snapshot || snapshot.tenantId !== tenantId) return notFound()
 

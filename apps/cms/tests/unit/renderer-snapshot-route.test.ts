@@ -62,14 +62,27 @@ const activeSnapshot = {
   snapshot,
 }
 
+const managedDomain = {
+  id: 30,
+  tenant: 1,
+  domainNameAscii: "snapshot.test",
+  state: "active",
+  authoritativeDnsStatus: "verified",
+  httpsStatus: "verified",
+  entitlementStatus: "active",
+  customerStatus: "active",
+}
+
 function installPayloadState({
   tenantDoc = tenant,
   snapshotDoc = activeSnapshot,
   settingsDocs = [siteSettings],
+  managedDomainDocs = [managedDomain],
 }: {
   tenantDoc?: unknown
   snapshotDoc?: unknown
   settingsDocs?: unknown[]
+  managedDomainDocs?: unknown[]
 } = {}) {
   mocks.payload.findByID.mockImplementation(async ({ collection, id }: MockFindByIdArgs) => {
     if (collection === "tenants" && String(id) === "1") return tenantDoc
@@ -82,6 +95,7 @@ function installPayloadState({
       return { docs: tenantDoc && domain === asMockDoc(tenantDoc).domain ? [tenantDoc] : [] }
     }
     if (collection === "site-settings") return { docs: settingsDocs }
+    if (collection === "managed-domains") return { docs: managedDomainDocs }
     if (collection === "published-site-snapshots") return { docs: snapshotDoc ? [snapshotDoc] : [] }
     return { docs: [] }
   })
@@ -145,6 +159,12 @@ describe("renderer snapshot route", () => {
     expect(res.status).toBe(200)
     expect(body.tenant).toMatchObject({ id: 1, slug: "snapshot-studio", domain: "snapshot.test", status: "active" })
     expect(body.snapshot.domain).toBe("snapshot.test")
+    expect(body.routing).toEqual({
+      version: 1,
+      requestedHost: "www.snapshot.test",
+      canonicalHost: "snapshot.test",
+      activeHosts: ["snapshot.test", "www.snapshot.test"],
+    })
   })
 
   it("returns 404 for inactive tenants", async () => {
@@ -155,6 +175,30 @@ describe("renderer snapshot route", () => {
     }))
 
     expect(res.status).toBe(404)
+  })
+
+  it("returns 404 when a non-grandfathered domain lacks active DNS, HTTPS, and entitlement evidence", async () => {
+    installPayloadState({
+      managedDomainDocs: [],
+    })
+
+    const res = await GET(request("https://admin.test/api/renderer/snapshot?host=snapshot.test", {
+      authorization: "Bearer route-secret",
+    }))
+
+    expect(res.status).toBe(404)
+    expect(mocks.payload.find).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "managed-domains",
+      where: {
+        and: expect.arrayContaining([
+          { domainNameAscii: { equals: "snapshot.test" } },
+          { state: { equals: "active" } },
+          { authoritativeDnsStatus: { equals: "verified" } },
+          { httpsStatus: { equals: "verified" } },
+          { entitlementStatus: { equals: "active" } },
+        ]),
+      },
+    }))
   })
 
   it("returns 422 when the stored active snapshot fails contract validation", async () => {

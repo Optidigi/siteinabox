@@ -1,7 +1,14 @@
 import "server-only"
 import crypto from "node:crypto"
 import type { Payload, PayloadRequest } from "payload"
-import { validateProviderBlockInstance, type Page as ContractPage, type SiteSettings } from "@siteinabox/contracts"
+import {
+  normalizePublicDomainHost,
+  validateProviderBlockInstance,
+  type Page as ContractPage,
+  type RendererActiveDomainRouting,
+  type SiteSettings,
+} from "@siteinabox/contracts"
+import { isRendererProductionHost } from "@siteinabox/contracts/deploy-targets"
 import type {
   PublishedSiteSnapshot,
   PublishedSnapshotManifest,
@@ -14,6 +21,7 @@ import {
 import { resolveBlockVariant } from "@siteinabox/site-renderer/blocks/variants"
 import type {
   Page,
+  ManagedDomain,
   PublishedSiteSnapshot as PublishedSiteSnapshotDoc,
   SiteGenerationRun,
   SiteSetting,
@@ -61,6 +69,7 @@ import { payloadRequestArgs } from "@/lib/payloadRequestArgs"
 
 export type ResolvePublishedSnapshotResult = {
   tenant: Pick<Tenant, "id" | "slug" | "domain" | "status">
+  routing: RendererActiveDomainRouting
   snapshot: PublishedSiteSnapshot
   snapshotId: string | number
 }
@@ -570,15 +579,67 @@ export async function publishSiteSnapshot(
 }
 
 export function normalizeRequestHost(host: string | null | undefined): string {
-  return (host ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, "")
-    .replace(/\/.*$/, "")
-    .replace(/:\d+$/, "")
+  return normalizePublicDomainHost(host) ?? ""
 }
 
-async function tenantForHost(payload: Payload, host: string): Promise<Tenant | null> {
+type TenantHostResolution = {
+  tenant: Tenant
+  activeHosts: string[]
+}
+
+async function tenantDomainIsActive(
+  payload: Payload,
+  tenant: Tenant,
+): Promise<boolean> {
+  const canonicalHost = normalizeRequestHost(tenant.domain)
+  if (isRendererProductionHost(canonicalHost)) return true
+
+  const managedDomains = await payload.find({
+    collection: "managed-domains",
+    where: {
+      and: [
+        { tenant: { equals: tenant.id } },
+        { domainNameAscii: { equals: canonicalHost } },
+        { state: { equals: "active" } },
+        { authoritativeDnsStatus: { equals: "verified" } },
+        { httpsStatus: { equals: "verified" } },
+        { entitlementStatus: { equals: "active" } },
+        { customerStatus: { equals: "active" } },
+      ],
+    },
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return Boolean((managedDomains.docs[0] as ManagedDomain | undefined)?.id)
+}
+
+const activeHostsFromSettings = (tenant: Tenant, settings: SiteSetting[]): string[] => {
+  const canonicalHost = normalizeRequestHost(tenant.domain)
+  const aliases = settings
+    .filter((setting) => String(relationshipId(setting.tenant)) === String(tenant.id))
+    .flatMap((setting) => setting.aliases ?? [])
+    .map((alias) => {
+      const aliasRecord = asRecord(alias)
+      return normalizeRequestHost(typeof aliasRecord?.host === "string" ? aliasRecord.host : null)
+    })
+    .filter((host): host is string => Boolean(host))
+
+  return [...new Set([canonicalHost, ...aliases].filter(Boolean))]
+}
+
+async function settingsForTenant(payload: Payload, tenant: Tenant): Promise<SiteSetting[]> {
+  const result = await payload.find({
+    collection: "site-settings",
+    where: { tenant: { equals: tenant.id } },
+    limit: 10,
+    depth: 0,
+    overrideAccess: true,
+  })
+  return result.docs as SiteSetting[]
+}
+
+async function tenantForHost(payload: Payload, host: string): Promise<TenantHostResolution | null> {
   const direct = await payload.find({
     collection: "tenants",
     where: { domain: { equals: host } },
@@ -586,7 +647,13 @@ async function tenantForHost(payload: Payload, host: string): Promise<Tenant | n
     depth: 0,
     overrideAccess: true,
   })
-  if (direct.docs[0]) return direct.docs[0] as Tenant
+  if (direct.docs[0]) {
+    const tenant = direct.docs[0] as Tenant
+    return {
+      tenant,
+      activeHosts: activeHostsFromSettings(tenant, await settingsForTenant(payload, tenant)),
+    }
+  }
 
   const settings = await payload.find({
     collection: "site-settings",
@@ -594,14 +661,21 @@ async function tenantForHost(payload: Payload, host: string): Promise<Tenant | n
     depth: 0,
     overrideAccess: true,
   })
-  const match = (settings.docs as SiteSetting[]).find((doc) =>
+  const matches = (settings.docs as SiteSetting[]).filter((doc) =>
     (doc.aliases ?? []).some((alias) => {
       const aliasRecord = asRecord(alias)
       return normalizeRequestHost(typeof aliasRecord?.host === "string" ? aliasRecord.host : null) === host
     }),
   )
-  const tenantId = relationshipId(match?.tenant)
-  return tenantId ? getTenant(payload, tenantId) : null
+  const tenantIds = [...new Set(matches.map((match) => relationshipId(match.tenant)).filter(Boolean).map(String))]
+  const tenantId = tenantIds.length === 1 ? tenantIds[0] : null
+  if (!tenantId) return null
+
+  const tenant = await getTenant(payload, tenantId)
+  return {
+    tenant,
+    activeHosts: activeHostsFromSettings(tenant, matches),
+  }
 }
 
 async function activeSnapshotForTenant(payload: Payload, tenant: Tenant): Promise<PublishedSiteSnapshotDoc | null> {
@@ -633,8 +707,11 @@ export async function resolvePublishedSnapshotByHost(
   const host = normalizeRequestHost(rawHost)
   if (!host) return null
 
-  const tenant = await tenantForHost(payload, host)
+  const resolution = await tenantForHost(payload, host)
+  const tenant = resolution?.tenant
   if (!tenant || tenant.status !== "active") return null
+  if (!(await tenantDomainIsActive(payload, tenant))) return null
+  if (!resolution.activeHosts.includes(host)) return null
 
   const activeSnapshot = await activeSnapshotForTenant(payload, tenant)
   if (!activeSnapshot || activeSnapshot.status !== "active") return null
@@ -657,6 +734,12 @@ export async function resolvePublishedSnapshotByHost(
       slug: tenant.slug,
       domain: tenant.domain,
       status: tenant.status,
+    },
+    routing: {
+      version: 1,
+      requestedHost: host,
+      canonicalHost: normalizeRequestHost(tenant.domain),
+      activeHosts: resolution.activeHosts,
     },
     snapshot,
     snapshotId: activeSnapshot.id,

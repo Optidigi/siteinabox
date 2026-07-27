@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({
+    routing: resolved.routing,
     tenant: resolved.tenant,
     snapshotId: resolved.snapshotId,
     snapshot: resolved.snapshot,

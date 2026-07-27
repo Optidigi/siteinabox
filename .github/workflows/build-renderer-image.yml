@@ -60,10 +60,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            RENDERER_SITE_URL=https://renderer.siteinabox.nl
-            AMICARE_SITE_URL=https://ami-care.nl
-
       - name: Smoke start pushed image
         env:
           IMAGE_TAGS: ${{ steps.meta.outputs.tags }}

@@ -5,6 +5,11 @@ import {
   schemaForPublishedSiteSnapshot,
   type PublishedSiteSnapshot,
 } from "@siteinabox/contracts/generation"
+import {
+  normalizePublicDomainHost,
+  rendererSnapshotEnvelopeSchema,
+  type RendererActiveDomainRouting,
+} from "@siteinabox/contracts/renderer-routing"
 import { fixturePublishedSiteSnapshot } from "../fixtures/published-site"
 import { pathnameToSlug } from "./pathname.js"
 
@@ -17,16 +22,26 @@ export type ResolvedPublishedPage = {
 }
 
 type SnapshotApiResponse = {
+  routing?: RendererActiveDomainRouting
+  tenant?: {
+    id: string | number
+    slug: string
+    domain: string
+    status: "active"
+  }
+  snapshotId?: string | number
   snapshot?: PublishedSiteSnapshot
 }
 
 export function normalizeRequestHost(host: string | null | undefined): string {
-  return (host ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/^https?:\/\//, "")
-    .replace(/\/.*$/, "")
-    .replace(/:\d+$/, "")
+  const publicHost = normalizePublicDomainHost(host)
+  if (publicHost) return publicHost
+
+  const localHost = (host ?? "").trim().toLowerCase().replace(/:\d+$/, "")
+  if (process.env.NODE_ENV !== "production" && (localHost === "localhost" || localHost === "127.0.0.1")) {
+    return localHost
+  }
+  return ""
 }
 
 function cmsSnapshotEndpoint(host: string): URL | null {
@@ -43,6 +58,18 @@ function fixtureModeEnabled(): boolean {
 
 function fixtureHostAllowed(host: string): boolean {
   return isRendererProductionHost(host) || host === "localhost" || host === "127.0.0.1" || host === ""
+}
+
+function legacyActiveHosts(snapshot: PublishedSiteSnapshot): string[] {
+  const aliases = (snapshot.settings.aliases ?? [])
+    .map((alias) => normalizePublicDomainHost(alias.host))
+    .filter((host): host is string => Boolean(host))
+  const canonicalHost = normalizePublicDomainHost(snapshot.domain)
+  return [...new Set([canonicalHost, ...aliases].filter((host): host is string => Boolean(host)))]
+}
+
+function snapshotMatchesLegacyActiveHosts(snapshot: PublishedSiteSnapshot, requestedHost: string): boolean {
+  return legacyActiveHosts(snapshot).includes(requestedHost)
 }
 
 export async function loadPublishedSnapshot(host?: string | null): Promise<PublishedSiteSnapshot | null> {
@@ -75,7 +102,19 @@ export async function loadPublishedSnapshot(host?: string | null): Promise<Publi
   if (!parsed.success) {
     throw new Error(`CMS snapshot response failed contract validation: ${formatContractValidationIssues(parsed.error)}`)
   }
-  return parsed.data
+
+  if (data.routing || data.tenant || data.snapshotId != null) {
+    const envelope = rendererSnapshotEnvelopeSchema.safeParse(data)
+    if (!envelope.success) {
+      throw new Error(`CMS routing response failed contract validation: ${formatContractValidationIssues(envelope.error)}`)
+    }
+    if (envelope.data.routing.requestedHost !== normalizedHost) return null
+    return envelope.data.snapshot
+  }
+
+  // Rolling-deploy compatibility for the pre-routing-envelope CMS response.
+  // Its published snapshot still supplies a bounded canonical host/alias list.
+  return snapshotMatchesLegacyActiveHosts(parsed.data, normalizedHost) ? parsed.data : null
 }
 
 export function pagePath(page: Page): string {

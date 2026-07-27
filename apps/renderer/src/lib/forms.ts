@@ -1,4 +1,5 @@
-import { loadPublishedSnapshot, normalizeRequestHost } from "./snapshot"
+import { loadPublishedSnapshot } from "./snapshot"
+import { publicHostFromProtectedRequest } from "./origin-protection"
 
 export const MAX_FORM_DATA_BYTES = 32_768
 export const MAX_FORM_BODY_BYTES = 64 * 1024
@@ -166,7 +167,7 @@ export function normalizeFormPayload(record: FormRecord, tenantId: string, reque
 
 export async function buildCmsFormPayload(request: Request): Promise<FormIngressResult> {
   try {
-    const host = normalizeRequestHost(request.headers.get("x-forwarded-host") ?? request.headers.get("host"))
+    const host = publicHostFromProtectedRequest(request)
     const snapshot = await loadPublishedSnapshot(host)
     if (!snapshot) {
       return {
@@ -190,4 +191,3 @@ export async function buildCmsFormPayload(request: Request): Promise<FormIngress
     throw error
   }
 }
-
