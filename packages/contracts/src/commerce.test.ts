@@ -7,11 +7,13 @@ import {
   COMMERCIAL_CATALOG,
   COMMERCIAL_CATALOG_VERSION,
   ACCEPTED_ORDER_EVIDENCE_POLICY,
+  ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE,
   DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS,
   MIGRATION_CUSTOMER_ACTION_FEES_NET_MINOR,
   NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
   REFUND_DECISION_MATRIX,
   addBillingPeriod,
+  assistedMigrationSupplementalEvidenceSchema,
   assertExclusiveProviderRenewalExecution,
   billingDunningStage,
   billingGraceEndsAt,
@@ -31,6 +33,7 @@ import {
   managedDomainStates,
   migrationChargeNetMinor,
   migrationCustomerActions,
+  migrationOperatorAuthorizationRequirement,
   paymentAttemptStateTransitions,
   providerSafeCutoffAt,
   refundDecisionFor,
@@ -235,6 +238,67 @@ describe("migration classification and billing", () => {
       unexpectedOperatorTechnicalAction: false,
       workCause: "customer_migration",
     })).toBe("stop_for_custom_quote")
+  })
+
+  it("requires the correct immutable authorization source for operator work", () => {
+    expect(migrationOperatorAuthorizationRequirement({
+      acceptedClassification: "assisted_standard",
+      requestedClassification: "assisted_standard",
+      workCause: "customer_migration",
+    })).toBe("originating_order_payment")
+    expect(migrationOperatorAuthorizationRequirement({
+      acceptedClassification: "automatic",
+      requestedClassification: "assisted_standard",
+      workCause: "customer_migration",
+    })).toBe("supplemental_order_payment")
+    expect(migrationOperatorAuthorizationRequirement({
+      acceptedClassification: "automatic",
+      requestedClassification: "assisted_standard",
+      workCause: "siteinabox_incident_recovery",
+    })).toBe("non_billable_incident_authorization")
+    expect(migrationOperatorAuthorizationRequirement({
+      acceptedClassification: "automatic",
+      requestedClassification: "complex",
+      workCause: "siteinabox_incident_recovery",
+    })).toBe("non_billable_incident_authorization")
+    expect(migrationOperatorAuthorizationRequirement({
+      acceptedClassification: "automatic",
+      requestedClassification: "complex",
+      workCause: "customer_migration",
+    })).toBe("custom_quote")
+  })
+
+  it("freezes exactly one assisted-standard fee per domain in supplemental evidence", () => {
+    const evidence = {
+      schemaVersion: 1,
+      kind: "migration_assisted_standard_supplemental",
+      migrationId: 10,
+      originatingOrderId: 20,
+      catalogVersion: COMMERCIAL_CATALOG_VERSION,
+      classification: "assisted_standard",
+      workCause: "customer_migration",
+      workScope: "Import the provider zone export.",
+      domain: "example.nl",
+      unit: "per_domain",
+      quantity: 1,
+      lineItemCode: ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE,
+      amount: commercialAmountFromNet(4_900),
+      acceptedAt: "2026-07-28T10:00:00.000Z",
+    } as const
+    expect(assistedMigrationSupplementalEvidenceSchema.parse(evidence).amount).toEqual({
+      currency: "EUR",
+      netAmountMinor: 4_900,
+      vatAmountMinor: 1_029,
+      grossAmountMinor: 5_929,
+    })
+    expect(assistedMigrationSupplementalEvidenceSchema.safeParse({
+      ...evidence,
+      amount: commercialAmountFromNet(5_000),
+    }).success).toBe(false)
+    expect(assistedMigrationSupplementalEvidenceSchema.safeParse({
+      ...evidence,
+      workCause: "siteinabox_incident_recovery",
+    }).success).toBe(false)
   })
 })
 

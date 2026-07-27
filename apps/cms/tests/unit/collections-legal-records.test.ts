@@ -9,6 +9,7 @@ import {
   Orders,
   protectFrozenOrder,
   rejectRecordMutation,
+  validateOrderCommercialShape,
   SiteApprovals,
   SiteReviewRevisions,
 } from "@/collections/LegalRecords"
@@ -105,5 +106,21 @@ describe("legal record collections", () => {
     expect(CommunicationPreferences.access?.delete?.(accessArgs({ req: {} }))).toBe(false)
     expect(LegalRequirements.access?.delete?.(accessArgs({ req: {} }))).toBe(false)
     expect(LegalRequirements.access?.update?.(accessArgs({ req: {} }))).toBe(false)
+  })
+
+  it("requires frozen catalog and relationship evidence for supplemental migration orders", () => {
+    expect(() => validateOrderCommercialShape(hookArgsFor(
+      validateOrderCommercialShape,
+      {
+        operation: "create",
+        data: {
+          orderKind: "migration_supplemental",
+          quoteEvidence: {},
+        },
+        req: {},
+        collection: {},
+        context: {},
+      },
+    ))).toThrow()
   })
 })

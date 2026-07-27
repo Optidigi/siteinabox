@@ -267,10 +267,10 @@ const migrationEvidenceFromOrder = (order: Order) => {
   const quoteEvidence = readObject(order.quoteEvidence)
   const migration = readObject(quoteEvidence.migration)
   if (
-    migration.classification !== "automatic" ||
+    !["automatic", "assisted_standard"].includes(String(migration.classification)) ||
     migration.sourceMechanism !== "customer_authorized_provider_export_v1"
   ) {
-    throw new Error("Accepted order does not freeze an automatic migration source contract.")
+    throw new Error("Accepted order does not freeze a supported migration source contract.")
   }
   const tldEvidence = readObject(quoteEvidence.tldCapability)
   const capabilityVersion = typeof tldEvidence.capabilityVersion === "string"
@@ -280,12 +280,21 @@ const migrationEvidenceFromOrder = (order: Order) => {
   if (!capability || !capability.productionEnabled || capability.tld !== tldEvidence.tld) {
     throw new Error("Accepted order has invalid frozen TLD capability evidence.")
   }
-  return { capability }
+  return {
+    capability,
+    classification: migration.classification as "automatic" | "assisted_standard",
+  }
 }
 
 export const isAutomaticMigrationOrder = (order: Order): boolean => {
   const migration = readObject(readObject(order.quoteEvidence).migration)
   return migration.classification === "automatic" &&
+    migration.sourceMechanism === "customer_authorized_provider_export_v1"
+}
+
+export const isSupportedDomainMigrationOrder = (order: Order): boolean => {
+  const migration = readObject(readObject(order.quoteEvidence).migration)
+  return ["automatic", "assisted_standard"].includes(String(migration.classification)) &&
     migration.sourceMechanism === "customer_authorized_provider_export_v1"
 }
 
@@ -328,7 +337,7 @@ export async function createAutomaticDomainMigration(
   }
   const normalized = normalizeDomain(order.domain)
   if (!normalized.ok) throw new Error("Automatic migration order domain is invalid.")
-  const { capability } = migrationEvidenceFromOrder(order)
+  const { capability, classification } = migrationEvidenceFromOrder(order)
   if (capability.tld !== normalized.extension || !capability.transfer.supported) {
     throw new Error("Accepted TLD capability does not support this transfer.")
   }
@@ -357,7 +366,7 @@ export async function createAutomaticDomainMigration(
         tenant: numericRelationshipId(order.tenant),
         domainNameAscii: normalized.domain,
         tld: normalized.extension,
-        acceptedClassification: "automatic",
+        acceptedClassification: classification,
         state: "awaiting_customer",
         sourceMechanism: "customer_authorized_provider_export_v1",
         customerActions: actions,
@@ -365,6 +374,7 @@ export async function createAutomaticDomainMigration(
         cloudflareZoneState: "not_started",
         cutoverWriteState: "not_started",
         rollbackWriteState: "not_started",
+        operatorWorkAuthorizationState: "not_required",
         reconciliationRequired: false,
         stateHistory: [{
           at: now,
@@ -400,6 +410,8 @@ export async function createAutomaticDomainMigration(
   }
   return migration
 }
+
+export const createDomainMigration = createAutomaticDomainMigration
 
 export async function acquireAutomaticMigrationInputs(
   payload: Payload,
@@ -738,6 +750,16 @@ export async function prepareDomainMigration(
   if (migration.state === "rolled_back") {
     return { status: "rolled_back", migrationId: migration.id, message: "Migration is rolled back." }
   }
+  if (migration.state === "custom_quote_required") {
+    return {
+      status: "failed",
+      migrationId: migration.id,
+      message: "Complex migration requires a custom quote and cannot continue automatically.",
+    }
+  }
+  if (migration.state === "paused_supplemental_order") {
+    return waiting(migration, "Migration is paused for authorized operator work.")
+  }
   if (migration.state === "awaiting_customer" && !migration.sourceZoneSnapshot) {
     return waiting(migration, "A complete authoritative zone export and transfer code are required.")
   }
@@ -775,6 +797,17 @@ export async function prepareDomainMigration(
       state: "ready_to_prepare",
       failureReason: null,
     }, "customer_actions_satisfied", now)
+  }
+  if (
+    migration.state === "ready_to_prepare" &&
+    migration.acceptedClassification === "assisted_standard" &&
+    !migration.operatorWorkCompletedAt
+  ) {
+    const { pauseAcceptedAssistedMigration } = await import(
+      "@/lib/domains/assistedMigration"
+    )
+    migration = await pauseAcceptedAssistedMigration(payload, migration)
+    return waiting(migration, "Paid assisted migration is waiting for operator work.")
   }
   if (migration.state === "ready_to_prepare") {
     migration = await updateMigration(payload, migration, {

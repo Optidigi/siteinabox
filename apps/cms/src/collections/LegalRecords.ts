@@ -1,4 +1,8 @@
-import type { CollectionBeforeChangeHook, CollectionConfig } from "payload"
+import type {
+  CollectionBeforeChangeHook,
+  CollectionBeforeValidateHook,
+  CollectionConfig,
+} from "payload"
 import { adminEnumOption, adminText } from "@/lib/payloadAdminI18n"
 import {
   legalChangeCategories,
@@ -9,6 +13,7 @@ import {
 import {
   orderStates,
   orderStateTransitions,
+  assistedMigrationSupplementalEvidenceSchema,
   type OrderState,
 } from "@siteinabox/contracts/commerce"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
@@ -219,11 +224,56 @@ export const protectFrozenOrder: CollectionBeforeChangeHook = ({
   return data
 }
 
+export const validateOrderCommercialShape: CollectionBeforeValidateHook = ({
+  data,
+  operation,
+}) => {
+  if (operation !== "create" || data?.orderKind !== "migration_supplemental") {
+    return data
+  }
+  const evidence = assistedMigrationSupplementalEvidenceSchema.parse(data.quoteEvidence)
+  const lineItems = Array.isArray(data.netLineItems) ? data.netLineItems : []
+  const legacyLineItems = Array.isArray(data.lineItems) ? data.lineItems : []
+  const expectedLineItem = {
+    code: evidence.lineItemCode,
+    quantity: 1,
+    netAmountMinor: evidence.amount.netAmountMinor,
+  }
+  const hasExactLineItem = (items: unknown[]): boolean =>
+    items.length === 1 &&
+    Boolean(items[0]) &&
+    typeof items[0] === "object" &&
+    !Array.isArray(items[0]) &&
+    Object.entries(expectedLineItem).every(
+      ([key, value]) => (items[0] as Record<string, unknown>)[key] === value,
+    )
+  if (
+    !data.parentOrder ||
+    !data.supplementalForMigration ||
+    data.billingPeriod !== "one_time" ||
+    data.packageCode !== evidence.lineItemCode ||
+    data.subtotalNetMinor !== evidence.amount.netAmountMinor ||
+    data.vatAmountMinor !== evidence.amount.vatAmountMinor ||
+    data.totalGrossMinor !== evidence.amount.grossAmountMinor ||
+    data.currency !== evidence.amount.currency ||
+    !hasExactLineItem(lineItems) ||
+    !hasExactLineItem(legacyLineItems)
+  ) {
+    throw new Error(
+      "Migration supplemental orders require complete frozen relationship and catalog evidence.",
+    )
+  }
+  return data
+}
+
 export const Orders: CollectionConfig = {
   slug: "orders",
   labels: { singular: { en: "Order", nl: "Bestelling" }, plural: { en: "Orders", nl: "Bestellingen" } },
   access: { create: isSuperAdmin, read: isSuperAdmin, update: () => false, delete: () => false },
-  hooks: { beforeChange: [protectFrozenOrder] },
+  hooks: {
+    beforeValidate: [validateOrderCommercialShape],
+    beforeChange: [protectFrozenOrder],
+  },
   admin: { useAsTitle: "orderNumber", defaultColumns: ["orderNumber", "tenant", "customerEmail", "totalGross", "paymentStatus", "createdAt"] },
   fields: [
     { name: "orderNumber", type: "text", required: true, unique: true, index: true },
@@ -259,7 +309,20 @@ export const Orders: CollectionConfig = {
     {
       name: "orderKind",
       type: "select",
-      options: selectOptions(["initial_subscription", "subscription_renewal", "domain_renewal"]),
+      options: selectOptions([
+        "initial_subscription",
+        "subscription_renewal",
+        "domain_renewal",
+        "migration_supplemental",
+      ]),
+      index: true,
+    },
+    { name: "parentOrder", type: "relationship", relationTo: "orders", index: true },
+    {
+      name: "supplementalForMigration",
+      type: "relationship",
+      relationTo: "domain-migrations",
+      unique: true,
       index: true,
     },
     { name: "servicePeriodStartsAt", type: "date", index: true },

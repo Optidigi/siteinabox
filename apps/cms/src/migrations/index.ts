@@ -74,6 +74,7 @@ import * as migration_20260726_201427_phase4_mollie_payments from './20260726_20
 import * as migration_20260726_211516_phase5_new_nl_domain from './20260726_211516_phase5_new_nl_domain';
 import * as migration_20260727_094718_phase7_billing_and_domain_renewals from './20260727_094718_phase7_billing_and_domain_renewals';
 import * as migration_20260727_120231_phase9_automatic_domain_migration from './20260727_120231_phase9_automatic_domain_migration';
+import * as migration_20260727_142003_phase10_assisted_migration from './20260727_142003_phase10_assisted_migration';
 
 export const migrations = [
   {
@@ -454,6 +455,11 @@ export const migrations = [
   {
     up: migration_20260727_120231_phase9_automatic_domain_migration.up,
     down: migration_20260727_120231_phase9_automatic_domain_migration.down,
-    name: '20260727_120231_phase9_automatic_domain_migration'
+    name: '20260727_120231_phase9_automatic_domain_migration',
+  },
+  {
+    up: migration_20260727_142003_phase10_assisted_migration.up,
+    down: migration_20260727_142003_phase10_assisted_migration.down,
+    name: '20260727_142003_phase10_assisted_migration'
   },
 ];

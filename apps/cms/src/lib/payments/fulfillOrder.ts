@@ -8,8 +8,8 @@ import {
   provisionPaidDomainOrder,
 } from "@/lib/domains/provisioning"
 import {
-  createAutomaticDomainMigration,
-  isAutomaticMigrationOrder,
+  createDomainMigration,
+  isSupportedDomainMigrationOrder,
 } from "@/lib/domains/migration"
 import { queueDomainMigrationPreparation } from "@/lib/jobs/prepareDomainMigrationTask"
 import { mollieDomainProvisioningEnabled } from "@/lib/payments/mollieAdapter"
@@ -82,8 +82,8 @@ export async function fulfillPaidOrder(
   }
 
   try {
-    if (isAutomaticMigrationOrder(order)) {
-      const migration = await createAutomaticDomainMigration(payload, order.id)
+    if (isSupportedDomainMigrationOrder(order)) {
+      const migration = await createDomainMigration(payload, order.id)
       await queueDomainMigrationPreparation(payload, migration.id)
       return {
         status: "waiting",

@@ -195,6 +195,22 @@ export async function createOrderAndAcceptanceEvidence(input: {
             text: BUSINESS_USE_DECLARATION_TEXT_NL,
             accepted: true,
           },
+          ...(input.quote.migrationClassification
+            ? {
+                migration: {
+                  classification: input.quote.migrationClassification,
+                  sourceMechanism: "customer_authorized_provider_export_v1",
+                  expectedOperatorTechnicalAction:
+                    input.quote.migrationClassification === "assisted_standard",
+                  netAmountMinor: input.quote.migrationClassification === "assisted_standard"
+                    ? input.quote.lineItems.find(
+                        (item) =>
+                          item.code === "migration-assisted-standard-per-domain",
+                      )?.netAmountMinor ?? 0
+                    : 0,
+                },
+              }
+            : {}),
         },
         netLineItems: input.quote.lineItems,
         vatRateBasisPoints: 2_100,

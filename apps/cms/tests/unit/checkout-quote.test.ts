@@ -39,4 +39,30 @@ describe("Phase 3 checkout quote", () => {
       ],
     })
   })
+
+  it("adds one assisted-standard fee per domain and stops complex checkout", () => {
+    expect(buildCheckoutQuote({
+      billingPeriod: "monthly",
+      providerOperationPriceNetMinor: 1_000,
+      migrationClassification: "assisted_standard",
+    })).toMatchObject({
+      migrationClassification: "assisted_standard",
+      netAmountMinor: 6_800,
+      vatAmountMinor: 1_428,
+      grossAmountMinor: 8_228,
+      lineItems: [
+        { code: "siteinabox-monthly", netAmountMinor: 1_900 },
+        {
+          code: "migration-assisted-standard-per-domain",
+          quantity: 1,
+          netAmountMinor: 4_900,
+        },
+      ],
+    })
+    expect(() => buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_000,
+      migrationClassification: "complex",
+    })).toThrow("custom quote")
+  })
 })

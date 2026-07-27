@@ -345,6 +345,23 @@ describe("automatic existing-domain migration", () => {
     expect(store.collections["domain-migrations"]).toHaveLength(1)
   })
 
+  it("preserves an accepted assisted-standard classification in the migration authority", async () => {
+    const store = createStore()
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "assisted_standard",
+        sourceMechanism: "customer_authorized_provider_export_v1",
+      },
+    }
+
+    await expect(createAutomaticDomainMigration(store.payload, 600)).resolves.toMatchObject({
+      acceptedClassification: "assisted_standard",
+      operatorWorkAuthorizationState: "not_required",
+    })
+  })
+
   it("coalesces duplicate workers on the single migration authority", () => {
     const concurrency = prepareDomainMigrationTask.concurrency as unknown as {
       exclusive: boolean

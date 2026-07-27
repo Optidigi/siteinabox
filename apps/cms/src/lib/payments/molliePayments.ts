@@ -2,6 +2,7 @@ import "server-only"
 
 import {
   addBillingPeriod,
+  assistedMigrationSupplementalEvidenceSchema,
   getCommercialCatalog,
   refundDecisionFor,
   type PaymentAttemptState,
@@ -622,6 +623,119 @@ export async function createMollieCheckoutForGenerationRun(
       checkoutUrl,
       reused: false,
     }
+  } catch (error) {
+    await markProviderWriteIndeterminate(payload, attempt, error)
+    throw error
+  }
+}
+
+export async function createSupplementalMigrationMollieCheckout(
+  payload: Payload,
+  input: {
+    orderId: string | number
+    redirectUrl: string
+  },
+): Promise<{ paymentAttempt: PaymentAttempt; checkoutUrl: string; reused: boolean }> {
+  const order = await payload.findByID({
+    collection: "orders",
+    id: input.orderId,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  if (
+    order.orderKind !== "migration_supplemental" ||
+    order.state !== "accepted" ||
+    !["pending", "open"].includes(order.paymentStatus)
+  ) {
+    throw new Error("Supplemental Mollie checkout requires an accepted unpaid migration order.")
+  }
+  const evidence = assistedMigrationSupplementalEvidenceSchema.parse(order.quoteEvidence)
+  if (!sameRelationshipId(order.supplementalForMigration, evidence.migrationId)) {
+    throw new Error("Supplemental order migration evidence does not match its relationship.")
+  }
+  if (
+    order.currency !== evidence.amount.currency ||
+    order.subtotalNetMinor !== evidence.amount.netAmountMinor ||
+    order.vatAmountMinor !== evidence.amount.vatAmountMinor ||
+    order.totalGrossMinor !== evidence.amount.grossAmountMinor
+  ) {
+    throw new Error("Supplemental order amounts do not match its frozen quote evidence.")
+  }
+  const redirect = new URL(input.redirectUrl)
+  const allowedOrigins = new Set([
+    new URL(publicCmsOrigin()).origin,
+    `https://${PREVIEW_HOST}`,
+  ])
+  if (redirect.protocol !== "https:" || !allowedOrigins.has(redirect.origin)) {
+    throw new Error("Supplemental Mollie redirect must use an approved HTTPS origin.")
+  }
+  const now = new Date().toISOString()
+  let attempt = await createOrLoadAttempt(payload, {
+    order,
+    purpose: "supplemental",
+    sequenceType: "oneoff",
+    idempotencyKey: `mollie:supplemental:order:${order.id}:v1`,
+    attemptNumber: 1,
+    now,
+  })
+  if (attempt.providerPaymentId && attempt.checkoutUrl) {
+    return {
+      paymentAttempt: attempt,
+      checkoutUrl: attempt.checkoutUrl,
+      reused: true,
+    }
+  }
+  if (attempt.reconciliationRequired) {
+    throw new Error("Supplemental Mollie payment requires reconciliation before retry.")
+  }
+  if (["failed", "cancelled", "expired"].includes(attempt.state)) {
+    throw new Error("Supplemental order already has a terminal Mollie payment attempt.")
+  }
+  if (attempt.state === "created") {
+    attempt = await updateAttempt(payload, attempt, {
+      state: "pending_provider",
+      stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now),
+    })
+  }
+  try {
+    const payment = await createMolliePayment({
+      amount: mollieAmount(attempt.grossAmountMinor, attempt.currency),
+      sequenceType: "oneoff",
+      description: `Site in a Box begeleide migratie ${order.domain}`,
+      redirectUrl: redirect.toString(),
+      webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
+      idempotencyKey: attempt.idempotencyKey,
+      metadata: {
+        paymentAttemptId: attempt.id,
+        tenantId: relationshipId(order.tenant),
+        orderId: order.id,
+        migrationId: evidence.migrationId,
+        idempotencyKey: attempt.idempotencyKey,
+        sequenceType: "oneoff",
+      },
+    })
+    const checkoutUrl = payment._links?.checkout?.href
+    if (!payment.id || !checkoutUrl) {
+      throw new Error("Mollie did not return a supplemental payment id and checkout URL.")
+    }
+    attempt = await updateAttempt(payload, attempt, {
+      state: "pending_provider",
+      providerPaymentId: payment.id,
+      providerStatus: payment.status,
+      checkoutUrl,
+      reconciliationRequired: false,
+      lastSyncedAt: now,
+      stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now, payment.status),
+    })
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { paymentStatus: "open", providerPaymentId: payment.id },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+    return { paymentAttempt: attempt, checkoutUrl, reused: false }
   } catch (error) {
     await markProviderWriteIndeterminate(payload, attempt, error)
     throw error
@@ -1462,7 +1576,7 @@ export async function synchronizeMolliePayment(
   await synchronizeBillingAgreement(payload, attempt, order, payment, now)
   let updatedOrder = await synchronizeOrderProjection(payload, order, attempt, now)
   if (
-    attempt.purpose !== "first_payment" &&
+    ["recurring", "domain_renewal"].includes(attempt.purpose) &&
     ["paid", "refund_pending", "partially_refunded"].includes(attempt.state)
   ) {
     const cycles = await payload.find({
@@ -1505,7 +1619,23 @@ export async function synchronizeMolliePayment(
       }) as Order
     }
   }
-  await synchronizeGenerationRunProjection(payload, updatedOrder, attempt, payment, now)
+  if (
+    attempt.purpose === "supplemental" &&
+    attempt.state === "paid"
+  ) {
+    const { authorizeMigrationOperatorWorkFromPayment } = await import(
+      "@/lib/domains/assistedMigration"
+    )
+    await authorizeMigrationOperatorWorkFromPayment(
+      payload,
+      updatedOrder,
+      attempt,
+      now,
+    )
+  }
+  if (attempt.purpose !== "supplemental") {
+    await synchronizeGenerationRunProjection(payload, updatedOrder, attempt, payment, now)
+  }
   await synchronizeAccountingEvidence(payload, updatedOrder, attempt, payment, now)
   const fulfillmentRequired =
     attempt.purpose === "first_payment" &&

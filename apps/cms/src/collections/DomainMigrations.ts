@@ -3,6 +3,7 @@ import {
   domainMigrationStateTransitions,
   migrationClassifications,
   migrationCustomerActions,
+  migrationOperatorAuthorizationStates,
 } from "@siteinabox/contracts/commerce"
 import type {
   CollectionBeforeChangeHook,
@@ -37,6 +38,21 @@ const frozenOnceFields = new Set([
   "targetZoneHash",
   "targetZoneSnapshot",
   "rollbackEvidence",
+  "supplementalOrder",
+  "operatorWorkClassification",
+  "operatorWorkCause",
+  "operatorWorkScope",
+  "operatorWorkAuthorizationOrder",
+  "operatorWorkAuthorizationPaymentAttempt",
+  "operatorWorkAuthorizedAt",
+  "operatorWorkStartedAt",
+  "operatorWorkStartedBy",
+  "operatorWorkStartedByEmail",
+  "operatorWorkCompletedAt",
+  "operatorWorkCompletedBy",
+  "operatorWorkCompletedByEmail",
+  "operatorWorkCompletionNotes",
+  "automationResumedAt",
   "createdAt",
 ])
 
@@ -45,6 +61,7 @@ const mutableLifecycleFields = new Set([
   "managedDomain",
   "customerActions",
   "dnssecPreparation",
+  "operatorWorkAuthorizationState",
   "semanticComparison",
   "encryptedTransferCode",
   "transferCodeReceivedAt",
@@ -116,16 +133,62 @@ export const protectDomainMigration: CollectionBeforeChangeHook = (args) => {
   return args.data
 }
 
-export const validateDomainMigration: CollectionBeforeValidateHook = ({ data }) => {
+export const validateDomainMigration: CollectionBeforeValidateHook = ({
+  data,
+  originalDoc,
+}) => {
   if (!data) return data
-  if (data.acceptedClassification && data.acceptedClassification !== "automatic") {
-    throw new Error("Phase 9 domain migrations must use the accepted automatic classification.")
+  const current = {
+    ...(originalDoc as Record<string, unknown> | undefined),
+    ...data,
+  }
+  if (current.acceptedClassification === "complex") {
+    throw new Error("Complex migrations require a custom quote and cannot be accepted orders.")
   }
   if (
-    ["completed", "rolled_back"].includes(String(data.state)) &&
-    data.encryptedTransferCode
+    ["completed", "rolled_back"].includes(String(current.state)) &&
+    current.encryptedTransferCode
   ) {
     throw new Error("Terminal domain migrations must delete the encrypted transfer code.")
+  }
+  const authorizationState = current.operatorWorkAuthorizationState
+  const cause = current.operatorWorkCause
+  if (
+    cause === "siteinabox_incident_recovery" &&
+    (
+      authorizationState === "awaiting_payment" ||
+      authorizationState === "paid_authorized" ||
+      current.operatorWorkAuthorizationOrder ||
+      current.operatorWorkAuthorizationPaymentAttempt
+    )
+  ) {
+    throw new Error("Siteinabox incident recovery cannot use billable operator-work authorization.")
+  }
+  if (
+    current.operatorWorkStartedAt &&
+    !["paid_authorized", "non_billable_incident_authorized"].includes(
+      String(authorizationState),
+    )
+  ) {
+    throw new Error("Operator work cannot start without paid or incident-recovery authorization.")
+  }
+  if (
+    authorizationState === "paid_authorized" &&
+    (
+      !current.operatorWorkAuthorizationOrder ||
+      !current.operatorWorkAuthorizationPaymentAttempt
+    )
+  ) {
+    throw new Error("Paid operator-work authorization requires frozen order and payment evidence.")
+  }
+  if (current.operatorWorkCompletedAt && !current.operatorWorkStartedAt) {
+    throw new Error("Operator work cannot complete before its audited start.")
+  }
+  if (
+    current.operatorWorkClassification === "complex" &&
+    current.operatorWorkStartedAt
+  ) {
+    throw new Error("Complex migration operator work cannot start in ordinary checkout.")
   }
   return data
 }
@@ -215,6 +278,66 @@ export const DomainMigrations: CollectionConfig = {
     { name: "targetZoneHash", type: "text", unique: true, index: true },
     { name: "targetZoneSnapshot", type: "json", admin: { readOnly: true } },
     { name: "rollbackEvidence", type: "json", admin: { readOnly: true } },
+    {
+      name: "supplementalOrder",
+      type: "relationship",
+      relationTo: "orders",
+      unique: true,
+      index: true,
+    },
+    {
+      name: "operatorWorkClassification",
+      type: "select",
+      options: selectOptions(["assisted_standard", "complex"]),
+      index: true,
+    },
+    {
+      name: "operatorWorkCause",
+      type: "select",
+      options: selectOptions(["customer_migration", "siteinabox_incident_recovery"]),
+      index: true,
+    },
+    { name: "operatorWorkScope", type: "textarea" },
+    {
+      name: "operatorWorkAuthorizationState",
+      type: "select",
+      required: true,
+      defaultValue: "not_required",
+      options: selectOptions(migrationOperatorAuthorizationStates),
+      index: true,
+    },
+    {
+      name: "operatorWorkAuthorizationOrder",
+      type: "relationship",
+      relationTo: "orders",
+      index: true,
+    },
+    {
+      name: "operatorWorkAuthorizationPaymentAttempt",
+      type: "relationship",
+      relationTo: "payment-attempts",
+      unique: true,
+      index: true,
+    },
+    { name: "operatorWorkAuthorizedAt", type: "date", index: true },
+    { name: "operatorWorkStartedAt", type: "date", index: true },
+    {
+      name: "operatorWorkStartedBy",
+      type: "relationship",
+      relationTo: "users",
+      index: true,
+    },
+    { name: "operatorWorkStartedByEmail", type: "email" },
+    { name: "operatorWorkCompletedAt", type: "date", index: true },
+    {
+      name: "operatorWorkCompletedBy",
+      type: "relationship",
+      relationTo: "users",
+      index: true,
+    },
+    { name: "operatorWorkCompletedByEmail", type: "email" },
+    { name: "operatorWorkCompletionNotes", type: "textarea" },
+    { name: "automationResumedAt", type: "date", index: true },
     { name: "semanticComparison", type: "json", admin: { readOnly: true } },
     { name: "dnssecPreparation", type: "json", admin: { readOnly: true } },
     {

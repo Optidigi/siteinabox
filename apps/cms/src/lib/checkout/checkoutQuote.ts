@@ -3,6 +3,7 @@ import {
   commercialAmountFromNet,
   getCommercialCatalog,
   type CommercialAmount,
+  type MigrationClassification,
 } from "@siteinabox/contracts/commerce"
 
 export type CheckoutBillingPeriod = "monthly" | "annual"
@@ -22,13 +23,18 @@ export type CheckoutQuote = CommercialAmount & {
   domainIncludedAllowanceNetMinor: number
   providerOperationPriceNetMinor: number
   domainSurchargeNetMinor: number
+  migrationClassification: Exclude<MigrationClassification, "complex"> | null
 }
 
 export function buildCheckoutQuote(input: {
   billingPeriod: CheckoutBillingPeriod
   providerOperationPriceNetMinor: number
+  migrationClassification?: MigrationClassification | null
 }): CheckoutQuote {
   const catalog = getCommercialCatalog()
+  if (input.migrationClassification === "complex") {
+    throw new Error("Complex migrations require a custom quote and cannot enter ordinary checkout.")
+  }
   const subscription = catalog.subscriptions[input.billingPeriod]
   const domainSurchargeNetMinor = calculateDomainSurchargeNetMinor(
     input.providerOperationPriceNetMinor,
@@ -49,6 +55,14 @@ export function buildCheckoutQuote(input: {
       netAmountMinor: domainSurchargeNetMinor,
     })
   }
+  if (input.migrationClassification === "assisted_standard") {
+    lineItems.push({
+      code: "migration-assisted-standard-per-domain",
+      description: "Standaard begeleide domeinmigratie",
+      quantity: 1,
+      netAmountMinor: catalog.migrations.assisted_standard.netAmountMinor,
+    })
+  }
   const amount = commercialAmountFromNet(
     lineItems.reduce((total, item) => total + item.netAmountMinor, 0),
   )
@@ -60,6 +74,7 @@ export function buildCheckoutQuote(input: {
     domainIncludedAllowanceNetMinor: catalog.domain.includedAllowanceNetMinor,
     providerOperationPriceNetMinor: input.providerOperationPriceNetMinor,
     domainSurchargeNetMinor,
+    migrationClassification: input.migrationClassification ?? null,
     ...amount,
   }
 }

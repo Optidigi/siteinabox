@@ -401,6 +401,96 @@ export function classifyMigration(assessment: MigrationAssessment): MigrationCla
 
 export type MigrationWorkCause = "customer_migration" | "siteinabox_incident_recovery"
 
+export const ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE =
+  "migration-assisted-standard-per-domain" as const
+
+export const migrationOperatorAuthorizationStates = [
+  "not_required",
+  "awaiting_payment",
+  "paid_authorized",
+  "non_billable_incident_authorized",
+  "custom_quote_required",
+] as const
+export const migrationOperatorAuthorizationStateSchema = z.enum(
+  migrationOperatorAuthorizationStates,
+)
+export type MigrationOperatorAuthorizationState = z.infer<
+  typeof migrationOperatorAuthorizationStateSchema
+>
+
+export type MigrationOperatorAuthorizationRequirement =
+  | "none"
+  | "originating_order_payment"
+  | "supplemental_order_payment"
+  | "non_billable_incident_authorization"
+  | "custom_quote"
+
+export function migrationOperatorAuthorizationRequirement(input: {
+  acceptedClassification: MigrationClassification
+  requestedClassification: MigrationClassification
+  workCause: MigrationWorkCause
+}): MigrationOperatorAuthorizationRequirement {
+  if (input.workCause === "siteinabox_incident_recovery") {
+    return "non_billable_incident_authorization"
+  }
+  if (input.requestedClassification === "complex") return "custom_quote"
+  if (input.acceptedClassification === "assisted_standard") {
+    return "originating_order_payment"
+  }
+  if (input.requestedClassification === "assisted_standard") {
+    return "supplemental_order_payment"
+  }
+  return "none"
+}
+
+export const assistedMigrationSupplementalEvidenceSchema = z.object({
+  schemaVersion: z.literal(1),
+  kind: z.literal("migration_assisted_standard_supplemental"),
+  migrationId: z.union([z.string().trim().min(1), z.number().int().positive()]),
+  originatingOrderId: z.union([z.string().trim().min(1), z.number().int().positive()]),
+  catalogVersion: commercialCatalogVersionSchema,
+  classification: z.literal("assisted_standard"),
+  workCause: z.literal("customer_migration"),
+  workScope: z.string().trim().min(1).max(2_000),
+  domain: z.string().trim().toLowerCase().min(3).max(253),
+  unit: z.literal("per_domain"),
+  quantity: z.literal(1),
+  lineItemCode: z.literal(ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE),
+  amount: commercialAmountSchema,
+  acceptedAt: z.iso.datetime(),
+}).strict().superRefine((evidence, ctx) => {
+  let catalog: CommercialCatalog
+  try {
+    catalog = getCommercialCatalog(evidence.catalogVersion)
+  } catch {
+    ctx.addIssue({
+      code: "custom",
+      path: ["catalogVersion"],
+      message: "Supplemental evidence references an unknown commercial catalog.",
+    })
+    return
+  }
+  const expected = commercialAmountFromNet(
+    catalog.migrations.assisted_standard.netAmountMinor,
+  )
+  if (
+    evidence.amount.currency !== expected.currency ||
+    evidence.amount.netAmountMinor !== expected.netAmountMinor ||
+    evidence.amount.vatAmountMinor !== expected.vatAmountMinor ||
+    evidence.amount.grossAmountMinor !== expected.grossAmountMinor
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["amount"],
+      message: "Supplemental assisted-migration evidence must use the frozen catalog fee.",
+    })
+  }
+})
+
+export type AssistedMigrationSupplementalEvidence = z.infer<
+  typeof assistedMigrationSupplementalEvidenceSchema
+>
+
 export function migrationChargeNetMinor(
   classification: MigrationClassification,
   cause: MigrationWorkCause = "customer_migration",
@@ -568,10 +658,10 @@ export type DomainMigrationState = z.infer<typeof domainMigrationStateSchema>
 export const domainMigrationStateTransitions = {
   assessment: ["awaiting_customer", "ready_to_prepare", "custom_quote_required"],
   awaiting_customer: ["ready_to_prepare", "custom_quote_required", "failed"],
-  ready_to_prepare: ["preparing", "paused_supplemental_order", "failed"],
-  preparing: ["awaiting_customer", "awaiting_provider", "ready_for_cutover", "paused_supplemental_order", "failed"],
-  awaiting_provider: ["ready_for_cutover", "failed"],
-  ready_for_cutover: ["cutover_in_progress", "failed"],
+  ready_to_prepare: ["preparing", "paused_supplemental_order", "custom_quote_required", "failed"],
+  preparing: ["awaiting_customer", "awaiting_provider", "ready_for_cutover", "paused_supplemental_order", "custom_quote_required", "failed"],
+  awaiting_provider: ["ready_for_cutover", "paused_supplemental_order", "custom_quote_required", "failed"],
+  ready_for_cutover: ["cutover_in_progress", "paused_supplemental_order", "custom_quote_required", "failed"],
   cutover_in_progress: ["verifying", "failed", "rolled_back"],
   verifying: ["completed", "failed", "rolled_back"],
   completed: [],
