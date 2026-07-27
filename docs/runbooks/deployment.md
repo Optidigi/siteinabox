@@ -111,6 +111,9 @@ SIAB_FORM_TARGET_RATE_LIMIT_WINDOW_SECONDS=3600
 SIAB_LEGAL_MANIFEST_URL=https://www.siteinabox.nl/.well-known/siab-legal-manifest.json
 SIAB_GIT_SHA=<deployed-git-sha>
 MOLLIE_API_KEY=<mollie-test-or-live-api-key-from-secret-store>
+COMMERCE_RELEASE_STAGE=disabled
+COMMERCE_RELEASE_EVIDENCE_VERSION=
+COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=
 # Gross customer-facing amounts, including VAT where applicable.
 MOLLIE_SITE_PAYMENT_AMOUNT=228.00
 MOLLIE_SITE_PAYMENT_CURRENCY=EUR
@@ -125,6 +128,7 @@ OPENPROVIDER_NS_GROUP=
 OPENPROVIDER_NAMESERVERS=
 OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT=10.00
 OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY=EUR
+OPENPROVIDER_MIN_BALANCE_EUR=100
 OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT=
 OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY=EUR
 OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT=
@@ -134,6 +138,7 @@ CLOUDFLARE_ACCOUNT_ID=
 CLOUDFLARE_API_BASE_URL=
 SIAB_RENDERER_TARGET_HOST=
 SIAB_RENDERER_TARGET_IP=
+DOMAIN_MIGRATION_ENCRYPTION_KEY=<base64-encoded-32-byte-key>
 HOSTNAME=0.0.0.0
 SITE_URL=https://admin.siteinabox.nl
 SIAB_RENDERER_API_TOKEN=<openssl rand -hex 32>
@@ -263,8 +268,10 @@ Current production environment requirements:
 | Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
 | Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and webhook signing secret. Production webhooks fail closed when `MOLLIE_WEBHOOK_SIGNING_SECRET` is unset. |
+| Commerce release | Keep `COMMERCE_RELEASE_STAGE=disabled` until the evidence and staged enablement procedure in [commerce-release.md](commerce-release.md) is complete. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
 | Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |
+| Transfer-code encryption | Set one stable, backed-up `DOMAIN_MIGRATION_ENCRYPTION_KEY`; rotating it without re-encrypting active secrets makes transfer codes unreadable. |
 | Bootstrap/debug gates | Keep `BOOTSTRAP_TOKEN` and `ENABLE_GRAPHQL_PLAYGROUND` unset unless there is a temporary operator-approved reason. |
 
 **DO NOT wrap values in quotes.** Compose's dotenv parser strips them, but raw
@@ -683,16 +690,17 @@ Paid customer checkout now owns the first automated domain path:
    normal available domains above that included cost, rejects premium domains,
    and stores the selected domain on the generation run's `domainOrder` state.
 3. Mollie checkout is created only after the selected domain is ready to
-   register. The first payment charges the first year upfront and establishes
-   the customer mandate. Long-lived Mollie Subscription creation is disabled;
-   recurring payments are not yet created by this legacy flow.
-4. When `MOLLIE_API_KEY` is a live key, the Mollie `paid` webhook creates a
+   register. The first payment establishes the customer mandate. Long-lived
+   Mollie Subscription creation is disabled; later billing uses
+   application-created recurring payments.
+4. Only after the production commerce release gate is satisfied, the paid
+   order job creates a
    Cloudflare zone, creates the customer owner/admin contact
    handle in OpenProvider, registers the domain with Cloudflare nameservers and
    auto-renew enabled, creates the renderer DNS records, creates or reuses the
    Cloudflare Email Sending subdomain, and records tenant domain and sender
-   verification state. Test-key payments complete payment state but skip
-   OpenProvider and Cloudflare provisioning.
+   verification state. Provider sandbox writes require the sandbox release
+   stage and explicit non-production provider API hosts.
 5. Publish and activate snapshots only after the domain and generated-site
    tenant sender are verified. Payment and domain/sender provisioning do not
    publish or activate a site by themselves.

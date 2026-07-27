@@ -46,6 +46,7 @@ import {
 } from "@/lib/payments/generationRunPayment"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
+import { requireCommerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
@@ -495,6 +496,7 @@ export async function createMollieCheckoutForGenerationRun(
   if (attempt.state === "failed" || attempt.state === "cancelled" || attempt.state === "expired") {
     throw new Error("The frozen order already has a terminal Mollie payment attempt.")
   }
+  requireCommerceProviderWritesAllowed("Mollie first-payment creation")
 
   let currentAgreement = agreement
   if (!currentAgreement.providerCustomerId) {
@@ -691,6 +693,7 @@ export async function createSupplementalMigrationMollieCheckout(
   if (["failed", "cancelled", "expired"].includes(attempt.state)) {
     throw new Error("Supplemental order already has a terminal Mollie payment attempt.")
   }
+  requireCommerceProviderWritesAllowed("Mollie supplemental-payment creation")
   if (attempt.state === "created") {
     attempt = await updateAttempt(payload, attempt, {
       state: "pending_provider",
@@ -774,6 +777,7 @@ export async function createApplicationRecurringMolliePayment(
   ) {
     throw new Error("Recurring Mollie payment requires an active customer mandate.")
   }
+  requireCommerceProviderWritesAllowed("Mollie recurring-payment creation")
   const mandate = await retrieveMollieMandate(
     agreement.providerCustomerId,
     agreement.providerMandateId,
@@ -1737,6 +1741,7 @@ export async function requestMollieRefund(
   if (document.reconciliationRequired) {
     throw new Error("Mollie refund creation requires reconciliation before retry.")
   }
+  requireCommerceProviderWritesAllowed("Mollie refund creation")
   if (attempt.state !== "refund_pending") {
     attempt = await updateAttempt(payload, attempt, {
       state: "refund_pending",

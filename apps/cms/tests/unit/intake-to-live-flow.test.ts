@@ -24,6 +24,11 @@ vi.mock("@/payload.config", () => ({
 }))
 
 vi.mock("@/lib/domains/verification", () => ({
+  verifyParentDsAbsent: vi.fn(async () => ({
+    status: "absent",
+    records: [],
+    reason: null,
+  })),
   verifyAuthoritativeDns: vi.fn(async (_domain: string, nameServers: string[]) => ({
     status: "verified",
     delegatedNameServers: nameServers,
@@ -414,7 +419,13 @@ const installProviderFetch = () => {
 describe("intake-to-live mocked flow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
+    vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+    vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
+    vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
+    vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "499.00")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")

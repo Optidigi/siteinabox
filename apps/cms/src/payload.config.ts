@@ -46,6 +46,7 @@ import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTask"
+import { prepareDomainTransferOutTask } from "@/lib/jobs/prepareDomainTransferOutTask"
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { deliverCommerceNotificationTask } from "@/lib/jobs/deliverCommerceNotificationTask"
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
@@ -163,6 +164,7 @@ export default buildConfig({
       syncMolliePaymentTask,
       fulfillOrderTask,
       prepareDomainMigrationTask,
+      prepareDomainTransferOutTask,
       renewDomainTask,
       reconcileCommerceTask,
       deliverCommerceNotificationTask,

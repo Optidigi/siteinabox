@@ -18,6 +18,14 @@ import {
   type TenantNotificationCategories,
 } from "@/lib/legal/communicationPreferences"
 import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
+import {
+  captureDomainOffboardingContinuityEvidence,
+  confirmDomainTransferCompletedByCustomer,
+  markDomainTransferOutStarted,
+  requestDomainOffboarding,
+  revealDomainTransferOutCode,
+} from "@/lib/domains/offboarding"
+import { queueDomainTransferOutPreparation } from "@/lib/jobs/prepareDomainTransferOutTask"
 
 const checked = (formData: FormData, name: string) => formData.get(name) === "on"
 const eventKey = (scope: string, actorId: string | number) =>
@@ -172,6 +180,106 @@ export async function cancelBillingAgreementAction(formData: FormData) {
   }
   revalidatePath("/settings")
   redirect("/settings?billing=cancelled#billing")
+}
+
+const domainActor = (email: string, tenantId: string) => ({ email, tenantId })
+
+export async function requestDomainTransferOutAction(formData: FormData) {
+  const { requestHeaders, payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") redirect("/?error=forbidden")
+  const managedDomainId = String(formData.get("managedDomainId") ?? "").trim()
+  const reason = String(formData.get("reason") ?? "").trim()
+  if (
+    !managedDomainId ||
+    !reason ||
+    reason.length > 1_000 ||
+    formData.get("preserveServices") !== "confirmed"
+  ) {
+    redirect("/settings?domainTransfer=confirmation-required#domain-transfer")
+  }
+  try {
+    const actor = domainActor(user.email, tenantId)
+    const now = new Date().toISOString()
+    const continuityEvidence = await captureDomainOffboardingContinuityEvidence(
+      payload,
+      { managedDomainId, actor, now },
+    )
+    const domain = await requestDomainOffboarding(payload, {
+      managedDomainId,
+      actor,
+      requestId: requestHeaders.get("x-request-id") ?? crypto.randomUUID(),
+      reason,
+      continuityEvidence,
+      now,
+    })
+    await queueDomainTransferOutPreparation(payload, domain.id)
+  } catch (error) {
+    console.error("Domain transfer-out request failed", error)
+    redirect("/settings?domainTransfer=failed#domain-transfer")
+  }
+  revalidatePath("/settings")
+  redirect("/settings?domainTransfer=requested#domain-transfer")
+}
+
+export type RevealDomainTransferState = {
+  authCode?: string
+  error?: string
+}
+
+export async function revealDomainTransferOutCodeAction(
+  _previous: RevealDomainTransferState,
+  formData: FormData,
+): Promise<RevealDomainTransferState> {
+  const { payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") return { error: "forbidden" }
+  const managedDomainId = String(formData.get("managedDomainId") ?? "").trim()
+  if (!managedDomainId) return { error: "missing_domain" }
+  try {
+    const result = await revealDomainTransferOutCode(payload, {
+      managedDomainId,
+      actor: domainActor(user.email, tenantId),
+    })
+    return { authCode: result.authCode }
+  } catch {
+    return { error: "not_available" }
+  }
+}
+
+export async function markDomainTransferOutStartedAction(formData: FormData) {
+  const { payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") redirect("/?error=forbidden")
+  const managedDomainId = String(formData.get("managedDomainId") ?? "").trim()
+  try {
+    await markDomainTransferOutStarted(payload, {
+      managedDomainId,
+      actor: domainActor(user.email, tenantId),
+    })
+  } catch (error) {
+    console.error("Domain transfer-out start confirmation failed", error)
+    redirect("/settings?domainTransfer=failed#domain-transfer")
+  }
+  revalidatePath("/settings")
+  redirect("/settings?domainTransfer=started#domain-transfer")
+}
+
+export async function confirmDomainTransferCompletedAction(formData: FormData) {
+  const { payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") redirect("/?error=forbidden")
+  const managedDomainId = String(formData.get("managedDomainId") ?? "").trim()
+  if (formData.get("transferCompleted") !== "confirmed") {
+    redirect("/settings?domainTransfer=confirmation-required#domain-transfer")
+  }
+  try {
+    await confirmDomainTransferCompletedByCustomer(payload, {
+      managedDomainId,
+      actor: domainActor(user.email, tenantId),
+    })
+  } catch (error) {
+    console.error("Domain transfer-out completion confirmation failed", error)
+    redirect("/settings?domainTransfer=failed#domain-transfer")
+  }
+  revalidatePath("/settings")
+  redirect("/settings?domainTransfer=completion-confirmed#domain-transfer")
 }
 
 export async function acceptLegalRequirementAction(formData: FormData) {

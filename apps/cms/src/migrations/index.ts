@@ -75,6 +75,8 @@ import * as migration_20260726_211516_phase5_new_nl_domain from './20260726_2115
 import * as migration_20260727_094718_phase7_billing_and_domain_renewals from './20260727_094718_phase7_billing_and_domain_renewals';
 import * as migration_20260727_120231_phase9_automatic_domain_migration from './20260727_120231_phase9_automatic_domain_migration';
 import * as migration_20260727_142003_phase10_assisted_migration from './20260727_142003_phase10_assisted_migration';
+import * as migration_20260727_145356_phase11_commerce_hardening from './20260727_145356_phase11_commerce_hardening';
+import * as migration_20260727_154129_phase11_transfer_confirmation from './20260727_154129_phase11_transfer_confirmation';
 
 export const migrations = [
   {
@@ -460,6 +462,16 @@ export const migrations = [
   {
     up: migration_20260727_142003_phase10_assisted_migration.up,
     down: migration_20260727_142003_phase10_assisted_migration.down,
-    name: '20260727_142003_phase10_assisted_migration'
+    name: '20260727_142003_phase10_assisted_migration',
+  },
+  {
+    up: migration_20260727_145356_phase11_commerce_hardening.up,
+    down: migration_20260727_145356_phase11_commerce_hardening.down,
+    name: '20260727_145356_phase11_commerce_hardening',
+  },
+  {
+    up: migration_20260727_154129_phase11_transfer_confirmation.up,
+    down: migration_20260727_154129_phase11_transfer_confirmation.down,
+    name: '20260727_154129_phase11_transfer_confirmation'
   },
 ];

@@ -289,6 +289,7 @@ async function getOrCreateManagedDomain(
           ? undefined
           : Number(relationshipId(input.order.tenant)),
         state: "pending",
+        custodyStatus: "managed",
         initialOperation: "registration",
         registrantOwnership: "customer",
         provider: "openprovider",
@@ -300,6 +301,7 @@ async function getOrCreateManagedDomain(
         customerStatus: "provisioning",
         renewalIntent: true,
         providerAutorenew: "unknown",
+        transferOutProviderMissingCount: 0,
         reconciliationRequired: false,
         stateHistory: [{ at: input.now, state: "pending", reason: "paid_order_accepted" }],
         createdAt: input.now,

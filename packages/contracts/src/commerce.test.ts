@@ -34,6 +34,9 @@ import {
   migrationChargeNetMinor,
   migrationCustomerActions,
   migrationOperatorAuthorizationRequirement,
+  domainOffboardingContinuityEvidenceSchema,
+  evaluateCommerceReleaseGate,
+  managedDomainCustodyStateTransitions,
   paymentAttemptStateTransitions,
   providerSafeCutoffAt,
   refundDecisionFor,
@@ -299,6 +302,113 @@ describe("migration classification and billing", () => {
       ...evidence,
       workCause: "siteinabox_incident_recovery",
     }).success).toBe(false)
+  })
+})
+
+describe("offboarding custody and staged commerce release", () => {
+  it("keeps transfer-out custody separate from domain service state", () => {
+    expect(managedDomainCustodyStateTransitions.managed).toEqual([
+      "offboarding_requested",
+    ])
+    expect(managedDomainCustodyStateTransitions.transfer_pending).toContain(
+      "transferred_out",
+    )
+    expect(managedDomainCustodyStateTransitions.transferred_out).toEqual([])
+    expect(domainOffboardingContinuityEvidenceSchema.parse({
+      schemaVersion: 1,
+      domain: "example.nl",
+      capturedAt: "2026-07-28T10:00:00.000Z",
+      authoritativeNameservers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      dnssecStatus: "signed",
+      zoneSnapshotHash: "a".repeat(64),
+      mailRecordSetHash: "b".repeat(64),
+      serviceRecordSetHash: "c".repeat(64),
+      preservationMode: "retain_existing_dns_and_mail",
+    })).toMatchObject({
+      domain: "example.nl",
+      preservationMode: "retain_existing_dns_and_mail",
+    })
+  })
+
+  it("fails closed through disabled and shadow release stages", () => {
+    expect(evaluateCommerceReleaseGate({
+      stage: "disabled",
+      evidenceVersion: null,
+      providerWritesAcknowledged: false,
+      nodeEnvironment: "production",
+      mollieApiKeyMode: "live",
+      openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
+      cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+    })).toMatchObject({
+      providerReadsAllowed: false,
+      providerWritesAllowed: false,
+    })
+    expect(evaluateCommerceReleaseGate({
+      stage: "shadow",
+      evidenceVersion: null,
+      providerWritesAcknowledged: false,
+      nodeEnvironment: "production",
+      mollieApiKeyMode: "live",
+      openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
+      cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+    })).toMatchObject({
+      providerReadsAllowed: true,
+      providerWritesAllowed: false,
+    })
+  })
+
+  it("allows sandbox and production writes only with matching evidence and endpoints", () => {
+    expect(evaluateCommerceReleaseGate({
+      stage: "sandbox",
+      evidenceVersion: "phase11-2026-07-27.1",
+      providerWritesAcknowledged: true,
+      nodeEnvironment: "development",
+      mollieApiKeyMode: "test",
+      openproviderApiBaseUrl: "https://openprovider.sandbox.test/v1beta",
+      cloudflareApiBaseUrl: "https://cloudflare.mock.test/client/v4",
+    }).providerWritesAllowed).toBe(true)
+    expect(evaluateCommerceReleaseGate({
+      stage: "production",
+      evidenceVersion: "phase11-2026-07-27.1",
+      providerWritesAcknowledged: true,
+      nodeEnvironment: "production",
+      mollieApiKeyMode: "live",
+      openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
+      cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+    }).providerWritesAllowed).toBe(true)
+    expect(evaluateCommerceReleaseGate({
+      stage: "production",
+      evidenceVersion: "stale",
+      providerWritesAcknowledged: true,
+      nodeEnvironment: "production",
+      mollieApiKeyMode: "live",
+      openproviderApiBaseUrl: "https://api.openprovider.eu/v1beta",
+      cloudflareApiBaseUrl: "https://api.cloudflare.com/client/v4",
+    })).toMatchObject({
+      providerWritesAllowed: false,
+      blockers: ["release_evidence_version_mismatch"],
+    })
+    expect(evaluateCommerceReleaseGate({
+      stage: "production",
+      evidenceVersion: "phase11-2026-07-27.1",
+      providerWritesAcknowledged: true,
+      nodeEnvironment: "production",
+      mollieApiKeyMode: "live",
+      openproviderApiBaseUrl: "https://api.openprovider.eu@attacker.example/v1beta",
+      cloudflareApiBaseUrl: "http://api.cloudflare.com/client/v4",
+    }).providerWritesAllowed).toBe(false)
+    expect(evaluateCommerceReleaseGate({
+      stage: "sandbox",
+      evidenceVersion: "phase11-2026-07-27.1",
+      providerWritesAcknowledged: true,
+      nodeEnvironment: "development",
+      mollieApiKeyMode: "test",
+      openproviderApiBaseUrl: "https://attacker.example/v1beta",
+      cloudflareApiBaseUrl: "https://cloudflare.mock.test/client/v4",
+    })).toMatchObject({
+      providerWritesAllowed: false,
+      blockers: ["sandbox_requires_reserved_openprovider_host"],
+    })
   })
 })
 

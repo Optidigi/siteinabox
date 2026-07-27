@@ -22,6 +22,7 @@ import type {
 } from "@/payload-types"
 
 import { recordCommerceAdminException } from "@/lib/commerce/alerts"
+import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 import {
   OpenProviderIndeterminateWriteError,
@@ -43,6 +44,7 @@ const TERMINAL_ATTEMPT_STATES = ["failed", "cancelled", "expired", "chargeback"]
 
 type RenewalDependencies = {
   now: () => Date
+  providerWritesAllowed: () => boolean
   loginOpenProvider: typeof loginOpenProvider
   findOpenProviderDomain: typeof findOpenProviderDomain
   getOpenProviderDomainRenewalPrice: typeof getOpenProviderDomainRenewalPrice
@@ -51,6 +53,7 @@ type RenewalDependencies = {
 
 const defaultDependencies: RenewalDependencies = {
   now: () => new Date(),
+  providerWritesAllowed: commerceProviderWritesAllowed,
   loginOpenProvider,
   findOpenProviderDomain,
   getOpenProviderDomainRenewalPrice,
@@ -592,6 +595,7 @@ export async function reconcileManagedDomainRenewal(
   }) as ManagedDomain
   const capability = getEnabledTldCapability(domain.tld, nowDate)
   if (
+    domain.custodyStatus === "transferred_out" ||
     domain.provider !== "openprovider" ||
     !domain.providerDomainId ||
     !capability ||
@@ -702,7 +706,11 @@ export async function reconcileManagedDomainRenewal(
   const paymentSecured = Boolean(cycle.paymentSecuredAt) ||
     ["payment_committed", "provider_requested", "renewed"].includes(cycle.state)
   if (!paymentSecured && cycle.state !== "cancelled" && agreement && agreement.renewalIntent) {
-    if (!cutoffReached && ["active", "past_due"].includes(agreement.state)) {
+    if (
+      deps.providerWritesAllowed() &&
+      !cutoffReached &&
+      ["active", "past_due"].includes(agreement.state)
+    ) {
       cycle = await ensureDomainPayment({ payload, agreement, cycle, domain, now: nowDate })
     }
   }
@@ -735,6 +743,27 @@ export async function reconcileManagedDomainRenewal(
       })
       return { status: "manual_review", cycleId: cycle.id }
     }
+    if (
+      providerDomain.autorenew !== "off" &&
+      !deps.providerWritesAllowed()
+    ) {
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "release_gate_blocked_autorenew_safety_write",
+        message: "The staged release gate blocked disabling autorenew for an uncovered renewal.",
+        tenant: domain.tenant,
+        subjectId: cycle.id,
+        severity: "critical",
+        now,
+      })
+      cycle = await updateCycle(payload, cycle, {
+        reconciliationRequired: true,
+        failureReason: "release_gate_blocked_autorenew_safety_write",
+        lastSyncedAt: now,
+      })
+      return { status: "release_blocked", cycleId: cycle.id }
+    }
     cycle = await setAutorenew({
       payload,
       cycle,
@@ -763,6 +792,8 @@ export async function reconcileManagedDomainRenewal(
       cycleId: cycle.id,
     }
   }
+  // A financially paid or committed cycle is an existing customer obligation.
+  // It must complete even when the release gate is rolled back.
   cycle = await setAutorenew({
     payload,
     cycle,

@@ -12,7 +12,10 @@ import {
   isSupportedDomainMigrationOrder,
 } from "@/lib/domains/migration"
 import { queueDomainMigrationPreparation } from "@/lib/jobs/prepareDomainMigrationTask"
-import { mollieDomainProvisioningEnabled } from "@/lib/payments/mollieAdapter"
+import {
+  mollieApiKeyMode,
+  mollieDomainProvisioningEnabled,
+} from "@/lib/payments/mollieAdapter"
 import {
   normalizeGenerationRunPaymentState,
   recordGenerationRunPostPaymentAutomationState,
@@ -133,6 +136,12 @@ export async function fulfillPaidOrder(
           orderId: order.id,
           message: `${provisioned.message ?? "Domain fulfillment became unavailable."} A governed refund was queued.`,
         }
+      }
+    } else if (payment.selectedDomain && mollieApiKeyMode() === "live") {
+      return {
+        status: "waiting",
+        orderId: order.id,
+        message: "Paid domain fulfillment is blocked by the staged commerce release gate.",
       }
     } else if (payment.selectedDomain) {
       run = await payload.update({

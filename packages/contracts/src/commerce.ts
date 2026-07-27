@@ -615,6 +615,122 @@ export const managedDomainStateTransitions = {
   manual_review: ["registration_pending", "transfer_pending", "active", "renewal_pending", "provider_hold", "expired"],
 } as const satisfies TransitionMap<ManagedDomainState>
 
+export const managedDomainCustodyStates = [
+  "managed",
+  "offboarding_requested",
+  "transfer_code_ready",
+  "transfer_pending",
+  "transferred_out",
+  "manual_review",
+] as const
+export const managedDomainCustodyStateSchema = z.enum(managedDomainCustodyStates)
+export type ManagedDomainCustodyState = z.infer<typeof managedDomainCustodyStateSchema>
+export const managedDomainCustodyStateTransitions = {
+  managed: ["offboarding_requested"],
+  offboarding_requested: ["transfer_code_ready", "manual_review"],
+  transfer_code_ready: ["transfer_pending", "manual_review"],
+  transfer_pending: ["transferred_out", "manual_review"],
+  transferred_out: [],
+  manual_review: ["offboarding_requested", "transfer_code_ready", "transfer_pending"],
+} as const satisfies TransitionMap<ManagedDomainCustodyState>
+
+export const domainOffboardingContinuityEvidenceSchema = z.object({
+  schemaVersion: z.literal(1),
+  domain: z.string().trim().toLowerCase().min(3).max(253),
+  capturedAt: z.iso.datetime(),
+  authoritativeNameservers: z.array(z.string().trim().toLowerCase().min(1)).min(2),
+  dnssecStatus: z.enum(["unsigned", "signed", "unknown"]),
+  zoneSnapshotHash: z.string().regex(/^[a-f0-9]{64}$/),
+  mailRecordSetHash: z.string().regex(/^[a-f0-9]{64}$/),
+  serviceRecordSetHash: z.string().regex(/^[a-f0-9]{64}$/),
+  preservationMode: z.literal("retain_existing_dns_and_mail"),
+}).strict()
+export type DomainOffboardingContinuityEvidence = z.infer<
+  typeof domainOffboardingContinuityEvidenceSchema
+>
+
+export const commerceReleaseStages = [
+  "disabled",
+  "shadow",
+  "sandbox",
+  "production",
+] as const
+export const commerceReleaseStageSchema = z.enum(commerceReleaseStages)
+export type CommerceReleaseStage = z.infer<typeof commerceReleaseStageSchema>
+
+export const COMMERCE_RELEASE_EVIDENCE_VERSION = "phase11-2026-07-27.1" as const
+
+export type CommerceReleaseGateDecision = {
+  providerReadsAllowed: boolean
+  providerWritesAllowed: boolean
+  blockers: string[]
+}
+
+const providerHostname = (value: string | null): string | null => {
+  if (!value) return null
+  const authority = /^https:\/\/([^/?#]+)/i.exec(value.trim())?.[1]
+  if (!authority || authority.includes("@") || authority.includes(":")) return null
+  const hostname = authority.toLowerCase()
+  return hostname || null
+}
+
+export function evaluateCommerceReleaseGate(input: {
+  stage: CommerceReleaseStage
+  evidenceVersion: string | null
+  providerWritesAcknowledged: boolean
+  nodeEnvironment: string | null
+  mollieApiKeyMode: "test" | "live" | "unknown" | "missing"
+  openproviderApiBaseUrl: string | null
+  cloudflareApiBaseUrl: string | null
+}): CommerceReleaseGateDecision {
+  if (input.stage === "disabled") {
+    return {
+      providerReadsAllowed: false,
+      providerWritesAllowed: false,
+      blockers: ["commerce_release_disabled"],
+    }
+  }
+  if (input.stage === "shadow") {
+    return {
+      providerReadsAllowed: true,
+      providerWritesAllowed: false,
+      blockers: ["commerce_release_shadow_read_only"],
+    }
+  }
+  const blockers: string[] = []
+  if (input.evidenceVersion !== COMMERCE_RELEASE_EVIDENCE_VERSION) {
+    blockers.push("release_evidence_version_mismatch")
+  }
+  if (!input.providerWritesAcknowledged) {
+    blockers.push("provider_writes_not_acknowledged")
+  }
+  const openproviderHost = providerHostname(input.openproviderApiBaseUrl)
+  const cloudflareHost = providerHostname(input.cloudflareApiBaseUrl)
+  if (input.stage === "sandbox") {
+    if (input.mollieApiKeyMode !== "test") blockers.push("sandbox_requires_mollie_test_key")
+    if (!openproviderHost?.endsWith(".test")) {
+      blockers.push("sandbox_requires_reserved_openprovider_host")
+    }
+    if (!cloudflareHost?.endsWith(".test")) {
+      blockers.push("sandbox_requires_reserved_cloudflare_host")
+    }
+  } else {
+    if (input.nodeEnvironment !== "production") blockers.push("production_requires_node_production")
+    if (input.mollieApiKeyMode !== "live") blockers.push("production_requires_mollie_live_key")
+    if (openproviderHost !== "api.openprovider.eu") {
+      blockers.push("production_requires_official_openprovider")
+    }
+    if (cloudflareHost !== "api.cloudflare.com") {
+      blockers.push("production_requires_official_cloudflare")
+    }
+  }
+  return {
+    providerReadsAllowed: true,
+    providerWritesAllowed: blockers.length === 0,
+    blockers,
+  }
+}
+
 export const domainRenewalCycleStates = [
   "scheduled",
   "payment_required",

@@ -25,6 +25,7 @@ import {
   rejectCheckoutProfileMutation,
   validateCheckoutProfile,
   validateDomainRenewalCycle,
+  validateManagedDomainCustody,
 } from "@/collections/CommerceRecords"
 import { Orders, protectFrozenOrder } from "@/collections/LegalRecords"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
@@ -335,6 +336,44 @@ describe("Phase 2 commerce record schemas", () => {
       collection: {},
       context: {},
     }))).toThrow("TLD must match")
+  })
+
+  it("keeps offboarding custody audited and transfer secrets hidden", () => {
+    expect(expectNamedField(ManagedDomains.fields, "custodyStatus")).toMatchObject({
+      type: "select",
+      required: true,
+      defaultValue: "managed",
+      index: true,
+    })
+    const secret = expectNamedField(
+      ManagedDomains.fields,
+      "encryptedTransferOutCode",
+    )
+    expect(secret).toMatchObject({ type: "textarea" })
+    expect("access" in secret && secret.access?.read?.({} as never)).toBe(false)
+    expect(() => validateManagedDomainCustody(
+      hookArgsFor(validateManagedDomainCustody, {
+        operation: "update",
+        data: {
+          domainNameAscii: "example.nl",
+          custodyStatus: "transfer_code_ready",
+        },
+        req: {},
+        collection: {},
+        context: {},
+      }),
+    )).toThrow("immutable customer and continuity evidence")
+    expect(() => protectManagedDomain(hookArgsFor(protectManagedDomain, {
+      operation: "update",
+      data: { custodyStatus: "managed" },
+      originalDoc: {
+        state: "active",
+        custodyStatus: "transferred_out",
+      },
+      req: { context: { managedDomainLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toThrow("Invalid managed-domain custody transition")
   })
 
   it("requires integer non-negative minor currency amounts", () => {

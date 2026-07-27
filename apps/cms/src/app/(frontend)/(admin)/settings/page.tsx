@@ -17,18 +17,24 @@ import {
 import type { User } from "@/payload-types"
 import { EmailPreferencesSection, type TenantNotificationMemberView } from "@/components/email/EmailPreferencesSection"
 import { BillingAgreementSection } from "@/components/billing/BillingAgreementSection"
+import { DomainTransferOutSection } from "@/components/domains/DomainTransferOutSection"
 
 export default async function TenantSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ legal?: string; emailPreferences?: string; billing?: string }>
+  searchParams: Promise<{
+    legal?: string
+    emailPreferences?: string
+    billing?: string
+    domainTransfer?: string
+  }>
 }) {
   const { user, ctx } = await requireAuth()
   if (ctx.mode === "super-admin") redirect("/sites")
   const t = await getAdminTranslations(user, "app")
   const payloadPromise = getPayload({ config })
   const isOwner = user.role === "owner"
-  const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers, billingAgreements] = await Promise.all([
+  const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers, managedDomains, billingAgreements] = await Promise.all([
     isOwner ? getOrCreateSiteSettings(ctx.tenant.id) : Promise.resolve(null),
     isOwner ? payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id)) : Promise.resolve([]),
     isOwner ? payloadPromise.then((payload) => getTenantLegalAcceptanceHistory(payload, ctx.tenant.id)) : Promise.resolve([]),
@@ -42,6 +48,16 @@ export default async function TenantSettingsPage({
           sort: "name",
           depth: 0,
           user,
+        }))
+      : Promise.resolve({ docs: [] }),
+    isOwner
+      ? payloadPromise.then((payload) => payload.find({
+          collection: "managed-domains",
+          where: { tenant: { equals: ctx.tenant.id } },
+          sort: "-createdAt",
+          limit: 100,
+          depth: 0,
+          overrideAccess: true,
         }))
       : Promise.resolve({ docs: [] }),
     isOwner
@@ -105,6 +121,18 @@ export default async function TenantSettingsPage({
           result={query.billing}
         />
       )}
+      {isOwner && managedDomains.docs.map((domain, index) => (
+        <DomainTransferOutSection
+          key={domain.id}
+          domain={{
+            id: String(domain.id),
+            domainName: domain.domainNameAscii,
+            custodyStatus: domain.custodyStatus,
+          }}
+          result={index === 0 ? query.domainTransfer : undefined}
+          sectionId={index === 0 ? "domain-transfer" : `domain-transfer-${domain.id}`}
+        />
+      ))}
       {isOwner && settings && (
         <SettingsForm
           initial={settings}

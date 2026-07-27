@@ -10,6 +10,9 @@ import {
   contractingPartyClassificationSchema,
   domainRenewalCycleStates,
   domainRenewalCycleStateTransitions,
+  domainOffboardingContinuityEvidenceSchema,
+  managedDomainCustodyStates,
+  managedDomainCustodyStateTransitions,
   managedDomainStates,
   managedDomainStateTransitions,
   paymentAttemptStates,
@@ -279,6 +282,7 @@ export const protectBillingAgreement: CollectionBeforeChangeHook = (args) =>
 
 const managedDomainMutableFields = new Set([
   "state",
+  "custodyStatus",
   "providerCustomerHandle",
   "providerDomainId",
   "providerRegistrationState",
@@ -313,16 +317,115 @@ const managedDomainMutableFields = new Set([
   "lastSyncedAt",
   "failureReason",
   "stateHistory",
+  "encryptedTransferOutCode",
+  "transferOutCodeFetchedAt",
+  "transferOutCodeLastRevealedAt",
+  "transferOutCodeDeletedAt",
+  "transferOutStartedAt",
+  "transferOutProviderMissingCount",
+  "transferOutFirstMissingAt",
+  "transferOutLastCheckedAt",
+  "transferOutConfirmedAt",
 ])
 
-export const protectManagedDomain: CollectionBeforeChangeHook = (args) =>
-  protectLifecycleUpdate(args, {
+const managedDomainFrozenOffboardingFields = new Set([
+  "offboardingRequestedAt",
+  "offboardingRequestedByEmail",
+  "offboardingRequestId",
+  "offboardingReason",
+  "offboardingContinuityEvidence",
+  "transferOutCustomerConfirmedAt",
+])
+
+export const protectManagedDomain: CollectionBeforeChangeHook = (args) => {
+  if (args.operation === "update") {
+    const original = args.originalDoc as Record<string, unknown> | undefined
+    const currentCustody = original?.custodyStatus ?? "managed"
+    const nextCustody = args.data?.custodyStatus
+    if (
+      typeof currentCustody === "string" &&
+      typeof nextCustody === "string" &&
+      currentCustody !== nextCustody &&
+      !managedDomainCustodyStateTransitions[
+        currentCustody as keyof typeof managedDomainCustodyStateTransitions
+      ]?.includes(nextCustody as never)
+    ) {
+      throw new Error(
+        `Invalid managed-domain custody transition: ${currentCustody} -> ${nextCustody}.`,
+      )
+    }
+    const changedFrozenField = Object.keys(args.data ?? {}).find((field) => {
+      if (!managedDomainFrozenOffboardingFields.has(field)) return false
+      const previous = original?.[field]
+      return previous != null &&
+        stableStringify(previous) !== stableStringify(args.data?.[field])
+    })
+    if (changedFrozenField) {
+      throw new Error(
+        `Managed-domain offboarding field "${changedFrozenField}" is immutable after capture.`,
+      )
+    }
+  }
+  return protectLifecycleUpdate(args, {
     label: "Managed-domain",
     contextKey: "managedDomainLifecycleMutation",
-    allowedFields: managedDomainMutableFields,
+    allowedFields: new Set([
+      ...managedDomainMutableFields,
+      ...managedDomainFrozenOffboardingFields,
+    ]),
     relationshipFields: new Set(["originatingOrder", "registrantProfile", "tenant"]),
     stateTransitions: managedDomainStateTransitions,
   })
+}
+
+export const validateManagedDomainCustody: CollectionBeforeValidateHook = ({
+  data,
+  originalDoc,
+}) => {
+  if (!data) return data
+  const current = {
+    ...(originalDoc as Record<string, unknown> | undefined),
+    ...data,
+  }
+  const custodyStatus = String(current.custodyStatus ?? "managed")
+  if (
+    custodyStatus !== "managed" &&
+    (
+      !current.offboardingRequestedAt ||
+      !current.offboardingRequestedByEmail ||
+      !current.offboardingRequestId ||
+      !current.offboardingContinuityEvidence
+    )
+  ) {
+    throw new Error("Domain offboarding requires immutable customer and continuity evidence.")
+  }
+  if (current.offboardingContinuityEvidence) {
+    const evidence = domainOffboardingContinuityEvidenceSchema.parse(
+      current.offboardingContinuityEvidence,
+    )
+    if (evidence.domain !== current.domainNameAscii) {
+      throw new Error("Domain offboarding continuity evidence belongs to another domain.")
+    }
+  }
+  if (
+    ["transfer_code_ready", "transfer_pending"].includes(custodyStatus) &&
+    !current.encryptedTransferOutCode
+  ) {
+    throw new Error("Transfer-out readiness requires an encrypted provider auth code.")
+  }
+  if (
+    custodyStatus === "transferred_out" &&
+    (
+      current.encryptedTransferOutCode ||
+      !current.transferOutCustomerConfirmedAt
+    )
+  ) {
+    throw new Error(
+      "Confirmed transfer-out requires customer confirmation and deletion of the encrypted auth code.",
+    )
+  }
+  return data
+}
 
 const renewalCycleMutableFields = new Set([
   "state",
@@ -755,7 +858,7 @@ export const ManagedDomains: CollectionConfig = {
   },
   access: systemOwnedAccess,
   hooks: {
-    beforeValidate: [normalizeManagedDomain],
+    beforeValidate: [normalizeManagedDomain, validateManagedDomainCustody],
     beforeChange: [protectManagedDomain],
   },
   admin: {
@@ -797,6 +900,14 @@ export const ManagedDomains: CollectionConfig = {
       required: true,
       defaultValue: "pending",
       options: selectOptions(managedDomainStates),
+      index: true,
+    },
+    {
+      name: "custodyStatus",
+      type: "select",
+      required: true,
+      defaultValue: "managed",
+      options: selectOptions(managedDomainCustodyStates),
       index: true,
     },
     {
@@ -905,6 +1016,36 @@ export const ManagedDomains: CollectionConfig = {
     },
     { name: "providerRenewalPriceCurrency", type: "text" },
     { name: "providerRenewalPriceQuotedAt", type: "date" },
+    { name: "offboardingRequestedAt", type: "date", index: true },
+    { name: "offboardingRequestedByEmail", type: "email", index: true },
+    { name: "offboardingRequestId", type: "text", unique: true, index: true },
+    { name: "offboardingReason", type: "textarea" },
+    {
+      name: "offboardingContinuityEvidence",
+      type: "json",
+      admin: { readOnly: true },
+    },
+    {
+      name: "encryptedTransferOutCode",
+      type: "textarea",
+      access: { read: () => false },
+      admin: { hidden: true },
+    },
+    { name: "transferOutCodeFetchedAt", type: "date" },
+    { name: "transferOutCodeLastRevealedAt", type: "date" },
+    { name: "transferOutCodeDeletedAt", type: "date" },
+    { name: "transferOutStartedAt", type: "date", index: true },
+    {
+      name: "transferOutProviderMissingCount",
+      type: "number",
+      required: true,
+      defaultValue: 0,
+      min: 0,
+    },
+    { name: "transferOutFirstMissingAt", type: "date" },
+    { name: "transferOutLastCheckedAt", type: "date" },
+    { name: "transferOutCustomerConfirmedAt", type: "date", index: true },
+    { name: "transferOutConfirmedAt", type: "date", index: true },
     { name: "reconciliationRequired", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "lastSyncedAt", type: "date" },
     { name: "failureReason", type: "textarea" },

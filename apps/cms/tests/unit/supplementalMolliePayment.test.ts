@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
 
@@ -21,6 +21,16 @@ vi.mock("@/lib/payments/mollieAdapter", () => ({
 import { createSupplementalMigrationMollieCheckout } from "@/lib/payments/molliePayments"
 
 describe("supplemental assisted-migration Mollie payment", () => {
+  beforeEach(() => {
+    vi.stubEnv("NODE_ENV", "test")
+    vi.stubEnv("MOLLIE_API_KEY", "test_xxx")
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
+    vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+    vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
+    vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://sandbox.openprovider.test/v1beta")
+    vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://sandbox.cloudflare.test/client/v4")
+  })
+
   it("creates one idempotent one-off attempt from the frozen supplemental order", async () => {
     const collections: Record<string, MockDoc[]> = {
       orders: [{

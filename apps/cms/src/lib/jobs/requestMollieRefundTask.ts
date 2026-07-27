@@ -1,5 +1,18 @@
 import { refundScenarios, type RefundScenario } from "@siteinabox/contracts/commerce"
-import type { TaskConfig } from "payload"
+import type { Payload, TaskConfig } from "payload"
+
+export const queueMollieRefund = (
+  payload: Payload,
+  input: { paymentAttemptId: string | number; scenario: RefundScenario },
+) => payload.jobs.queue({
+  task: "request-mollie-refund",
+  input: {
+    paymentAttemptId: String(input.paymentAttemptId),
+    scenario: input.scenario,
+  },
+  queue: "default",
+  overrideAccess: true,
+})
 
 export const requestMollieRefundTask: TaskConfig<{
   input: { paymentAttemptId: string; scenario: RefundScenario }

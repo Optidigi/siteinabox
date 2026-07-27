@@ -32,6 +32,18 @@ export const prepareDomainMigrationTask: TaskConfig<{
     { name: "message", type: "text", required: true },
   ],
   handler: async ({ input, req }) => {
+    const { commerceProviderWritesAllowed } = await import(
+      "@/lib/commerce/releaseGate"
+    )
+    if (!commerceProviderWritesAllowed()) {
+      return {
+        output: {
+          status: "release_blocked",
+          migrationId: input.migrationId,
+          message: "Domain migration provider writes are blocked by the staged release gate.",
+        },
+      }
+    }
     const { prepareDomainMigration } = await import("@/lib/domains/migration")
     const result = await prepareDomainMigration(req.payload, input.migrationId)
     return {

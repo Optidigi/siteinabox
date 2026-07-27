@@ -77,6 +77,23 @@ const blockText = (text: string) => ({
   children: [{ t: "paragraph", children: [{ t: "text", v: text }] }],
 })
 
+const enableProductionCommerceRelease = () => {
+  vi.stubEnv("NODE_ENV", "production")
+  vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
+  vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+  vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
+  vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
+  vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
+}
+
+const enableSandboxCommerceRelease = () => {
+  vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
+  vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+  vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
+  vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://sandbox.openprovider.test/v1beta")
+  vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://sandbox.cloudflare.test/client/v4")
+}
+
 const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   const tenant = {
     id: 1,
@@ -412,12 +429,18 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
 describe("Mollie payment flow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv("NODE_ENV", "test")
+    vi.stubEnv("COMMERCE_RELEASE_STAGE", "disabled")
+    vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "")
+    vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "")
     vi.stubEnv("MOLLIE_API_KEY", "test_xxx")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "499.00")
     vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
     vi.stubEnv("SITE_URL", "https://admin.siteinabox.nl")
     vi.stubEnv("MOLLIE_WEBHOOK_BASE_URL", "")
     vi.stubEnv("MOLLIE_WEBHOOK_SIGNING_SECRET", "")
+    vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
+    vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (url === "https://api.mollie.com/v2/customers") {
         return new Response(JSON.stringify({ id: "cst_test_123", name: "Acme Studio", email: "client@example.com" }), { status: 201 })
@@ -439,6 +462,7 @@ describe("Mollie payment flow", () => {
   })
 
   it("creates approved-run checkout with run, tenant, customer, and idempotency metadata", async () => {
+    enableSandboxCommerceRelease()
     vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "0.01")
     const { payload, update } = createPayloadStub()
 
@@ -504,6 +528,7 @@ describe("Mollie payment flow", () => {
   })
 
   it("adds the selected domain extra fee to the first Mollie payment amount", async () => {
+    enableSandboxCommerceRelease()
     const { payload } = createPayloadStub({
       domainOrder: {
         status: "ready_to_register",
@@ -627,6 +652,7 @@ describe("Mollie payment flow", () => {
   })
 
   it("creates application-owned recurring payments against a valid Mollie mandate", async () => {
+    enableSandboxCommerceRelease()
     const { payload, billingAgreements, paymentAttempts } = createPayloadStub({
       payment: {
         status: "completed",
@@ -685,6 +711,7 @@ describe("Mollie payment flow", () => {
   })
 
   it("reconciles a full refund into one issued credit note and remains duplicate-safe", async () => {
+    enableSandboxCommerceRelease()
     const {
       payload,
       paymentAttempts,
@@ -767,6 +794,7 @@ describe("Mollie payment flow", () => {
   })
 
   it("reconciles an indeterminate refund response into its pending credit note", async () => {
+    enableSandboxCommerceRelease()
     const {
       payload,
       paymentAttempts,
@@ -1251,6 +1279,7 @@ describe("Mollie payment flow", () => {
     async (tld) => {
     const selectedDomain = `clientsite.${tld}`
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    enableProductionCommerceRelease()
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
     vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")
@@ -1486,6 +1515,7 @@ describe("Mollie payment flow", () => {
 
   it("queues the governed full refund when a paid .nl domain loses the availability race", async () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    enableProductionCommerceRelease()
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
     const { payload, managedDomains, queue } = createPayloadStub({
@@ -1640,6 +1670,7 @@ describe("Mollie payment flow", () => {
 
   it("persists an indeterminate registration and never blindly repeats the provider POST", async () => {
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
+    enableProductionCommerceRelease()
     vi.stubEnv("OPENPROVIDER_USERNAME", "user")
     vi.stubEnv("OPENPROVIDER_PASSWORD", "pass")
     vi.stubEnv("OPENPROVIDER_ADMIN_HANDLE", "ADMIN-NL")

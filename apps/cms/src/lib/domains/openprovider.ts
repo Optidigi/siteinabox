@@ -111,6 +111,12 @@ export type OpenProviderCustomerRecord = {
   raw: unknown
 }
 
+export type OpenProviderResellerBalance = {
+  availableAmount: number
+  reservedAmount: number
+  currency: string
+}
+
 type FetchLike = typeof fetch
 
 type OpenProviderOptions = {
@@ -926,6 +932,71 @@ export async function findOpenProviderCustomerByReference(
     }
   }
   return null
+}
+
+export async function getOpenProviderResellerBalance(
+  options?: OpenProviderOptions,
+): Promise<OpenProviderResellerBalance> {
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/resellers?with_settings=true`,
+    {
+      method: "GET",
+      headers: jsonHeaders(token),
+    },
+  )
+  if (!response.ok) {
+    throw new OpenProviderApiError("OpenProvider reseller balance lookup", response.status)
+  }
+  const data = dataObject(await json(response))
+  const settings = readObject(data.settings)
+  const availableAmount = data.balance
+  const reservedAmount = data.reserved_balance
+  const currency = settings.currency
+  if (
+    typeof availableAmount !== "number" ||
+    !Number.isFinite(availableAmount) ||
+    typeof reservedAmount !== "number" ||
+    !Number.isFinite(reservedAmount) ||
+    typeof currency !== "string" ||
+    !currency.trim()
+  ) {
+    throw new Error("OpenProvider reseller balance response is incomplete.")
+  }
+  return {
+    availableAmount,
+    reservedAmount,
+    currency: currency.trim().toUpperCase(),
+  }
+}
+
+export async function getOpenProviderDomainAuthCode(
+  domainId: string | number,
+  options?: OpenProviderOptions,
+): Promise<string> {
+  const normalizedId = String(domainId).trim()
+  if (!normalizedId) throw new Error("OpenProvider domain id is required.")
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}/authcode?auth_code_type=external`,
+    {
+      method: "GET",
+      headers: jsonHeaders(token),
+    },
+  )
+  if (!response.ok) {
+    throw new OpenProviderApiError("OpenProvider domain auth-code lookup", response.status)
+  }
+  const data = dataObject(await json(response))
+  const authCode = typeof data.auth_code === "string"
+    ? data.auth_code.trim()
+    : ""
+  if (!authCode) {
+    throw new Error("OpenProvider did not return an external domain auth code.")
+  }
+  return authCode
 }
 
 export async function registerOpenProviderDomain(

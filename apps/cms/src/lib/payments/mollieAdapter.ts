@@ -1,5 +1,6 @@
 import "server-only"
 import crypto from "node:crypto"
+import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 
 export type MollieAmount = {
   currency: string
@@ -40,6 +41,15 @@ export type MolliePayment = {
   }
 }
 
+export type MolliePaymentList = {
+  _embedded?: {
+    payments?: MolliePayment[]
+  }
+  _links?: {
+    next?: { href?: string | null } | null
+  }
+}
+
 export type MollieRefund = {
   id: string
   status: "queued" | "pending" | "processing" | "refunded" | "failed" | "canceled" | string
@@ -70,6 +80,16 @@ export type MollieCustomer = {
   id: string
   name?: string | null
   email?: string | null
+  metadata?: Record<string, unknown> | null
+}
+
+export type MollieCustomerList = {
+  _embedded?: {
+    customers?: MollieCustomer[]
+  }
+  _links?: {
+    next?: { href?: string | null } | null
+  }
 }
 
 export type CreateMolliePaymentInput = {
@@ -146,7 +166,7 @@ export function mollieApiKeyMode(env = process.env): MollieApiKeyMode {
 }
 
 export function mollieDomainProvisioningEnabled(env = process.env): boolean {
-  return mollieApiKeyMode(env) === "live"
+  return commerceProviderWritesAllowed(env)
 }
 
 export function publicCmsOrigin(env = process.env): string {
@@ -173,6 +193,55 @@ export async function createMollieCustomer(input: CreateMollieCustomerInput): Pr
     throw new MollieApiError("Mollie customer creation", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MollieCustomer
+}
+
+export async function listRecentMollieCustomers(
+  limit = 250,
+): Promise<MollieCustomer[]> {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) {
+    throw new Error("Mollie customer-list limit must be between 1 and 250.")
+  }
+  const query = new URLSearchParams({ limit: String(limit), sort: "desc" })
+  let nextUrl: string | null = `${MOLLIE_API_BASE}/customers?${query.toString()}`
+  const visited = new Set<string>()
+  const customers: MollieCustomer[] = []
+  while (nextUrl) {
+    if (visited.size >= 1_000 || visited.has(nextUrl)) {
+      throw new Error("Mollie customer-list pagination did not terminate safely.")
+    }
+    visited.add(nextUrl)
+    const response = await fetch(nextUrl, {
+      headers: {
+        Authorization: `Bearer ${requireMollieApiKey()}`,
+        Accept: "application/json",
+      },
+    })
+    if (!response.ok) {
+      throw new MollieApiError(
+        "Mollie customer listing",
+        response.status,
+        await readMollieErrorBody(response),
+      )
+    }
+    const result = await response.json() as MollieCustomerList
+    if (Array.isArray(result._embedded?.customers)) {
+      customers.push(...result._embedded.customers)
+    }
+    const candidate = result._links?.next?.href?.trim() || null
+    if (!candidate) {
+      nextUrl = null
+      continue
+    }
+    const parsed = new URL(candidate)
+    if (
+      parsed.origin !== "https://api.mollie.com" ||
+      parsed.pathname !== "/v2/customers"
+    ) {
+      throw new Error("Mollie customer-list pagination returned an untrusted next URL.")
+    }
+    nextUrl = parsed.toString()
+  }
+  return customers
 }
 
 export async function createMolliePayment(input: CreateMolliePaymentInput): Promise<MolliePayment> {
@@ -213,6 +282,58 @@ export async function retrieveMolliePayment(paymentId: string): Promise<MolliePa
     throw new MollieApiError("Mollie payment lookup", response.status, await readMollieErrorBody(response))
   }
   return await response.json() as MolliePayment
+}
+
+export async function listRecentMolliePayments(
+  limit = 250,
+): Promise<MolliePayment[]> {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 250) {
+    throw new Error("Mollie payment-list limit must be between 1 and 250.")
+  }
+  const query = new URLSearchParams({
+    limit: String(limit),
+    sort: "desc",
+  })
+  let nextUrl: string | null = `${MOLLIE_API_BASE}/payments?${query.toString()}`
+  const visited = new Set<string>()
+  const payments: MolliePayment[] = []
+  while (nextUrl) {
+    if (visited.size >= 1_000 || visited.has(nextUrl)) {
+      throw new Error("Mollie payment-list pagination did not terminate safely.")
+    }
+    visited.add(nextUrl)
+    const response = await fetch(nextUrl, {
+      headers: {
+        Authorization: `Bearer ${requireMollieApiKey()}`,
+        Accept: "application/json",
+      },
+    })
+    if (!response.ok) {
+      throw new MollieApiError(
+        "Mollie payment listing",
+        response.status,
+        await readMollieErrorBody(response),
+      )
+    }
+    const result = await response.json() as MolliePaymentList
+    if (Array.isArray(result._embedded?.payments)) {
+      payments.push(...result._embedded.payments)
+    }
+    const candidate = result._links?.next?.href?.trim() || null
+    if (!candidate) {
+      nextUrl = null
+      continue
+    }
+    const parsed = new URL(candidate)
+    if (
+      parsed.origin !== "https://api.mollie.com" ||
+      parsed.pathname !== "/v2/payments"
+    ) {
+      throw new Error("Mollie payment-list pagination returned an untrusted next URL.")
+    }
+    nextUrl = parsed.toString()
+  }
+  return payments
 }
 
 export async function retrieveMollieMandate(

@@ -106,6 +106,8 @@ jobs:
         run: |
           pnpm --dir apps/cms payload generate:types
           pnpm --dir apps/cms payload generate:importmap
+      - name: Commerce failure rehearsals and staged release gate
+        run: pnpm --dir apps/cms check:commerce-release
       - name: Run vitest (unit + integration)
         run: pnpm --dir apps/cms test
 

@@ -238,6 +238,7 @@ type SetAutorenew = (
 
 const dependencies = (input: {
   now: string
+  providerWritesAllowed?: boolean
   provider?: Record<string, unknown>
   priceNetMinor?: number
   setAutorenew?: ReturnType<typeof vi.fn<SetAutorenew>>
@@ -253,6 +254,7 @@ const dependencies = (input: {
   return {
     deps: {
       now: () => new Date(input.now),
+      providerWritesAllowed: () => input.providerWritesAllowed ?? true,
       loginOpenProvider: vi.fn(async () => "token"),
       findOpenProviderDomain: vi.fn(async () => providerRecord(input.provider)),
       getOpenProviderDomainRenewalPrice: vi.fn(async () => ({
@@ -547,6 +549,71 @@ describe("Openprovider renewal_date cycles", () => {
       financialCoverageState: "provider_committed",
     })
     expect(fixture.setAutorenew).not.toHaveBeenCalled()
+  })
+
+  it("completes a committed cycle even while new provider writes are release-blocked", async () => {
+    const committedCycle = {
+      id: 960,
+      idempotencyKey: "cycle-960",
+      managedDomain: 950,
+      billingAgreement: 900,
+      tenant: 1,
+      state: "payment_committed",
+      coverageStartsAt: "2027-07-26T00:00:00.000Z",
+      coverageEndsAt: "2028-07-26T00:00:00.000Z",
+      providerRenewalDate: "2027-07-26T00:00:00.000Z",
+      providerSafeCutoffAt: "2027-07-24T00:00:00.000Z",
+      renewalIntentSnapshot: true,
+      providerRenewalMode: "autorenew",
+      providerAutorenew: "off",
+      providerWriteState: "confirmed",
+      currency: "EUR",
+      providerOperationPriceNetMinor: 800,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 0,
+      financialCoverageState: "payment_secured",
+      pricingEvidence: {},
+      netAmountMinor: 0,
+      vatAmountMinor: 0,
+      grossAmountMinor: 0,
+      paymentSecuredAt: "2027-06-01T00:00:00.000Z",
+      reconciliationRequired: false,
+      stateHistory: [],
+      createdAt: "2027-06-01T00:00:00.000Z",
+    }
+    const store = createStore({ cycles: [committedCycle] })
+    const fixture = dependencies({
+      now: "2027-07-24T00:00:00.000Z",
+      provider: { autorenew: "off" },
+      providerWritesAllowed: false,
+    })
+
+    const result = await reconcileManagedDomainRenewal(store.payload, 950, fixture.deps)
+
+    expect(result.status).toBe("provider_requested")
+    expect(fixture.setAutorenew).toHaveBeenCalledWith(9001, "on", { token: "token" })
+  })
+
+  it("blocks an uncovered autorenew write when the release stage is read-only", async () => {
+    const store = createStore({
+      agreement: { renewalIntent: false },
+      domain: { renewalIntent: false },
+    })
+    const fixture = dependencies({
+      now: "2027-06-26T00:00:00.000Z",
+      providerWritesAllowed: false,
+    })
+
+    const result = await reconcileManagedDomainRenewal(store.payload, 950, fixture.deps)
+
+    expect(result.status).toBe("release_blocked")
+    expect(fixture.setAutorenew).not.toHaveBeenCalled()
+    expect(recordCommerceAdminException).toHaveBeenCalledWith(
+      expect.objectContaining({
+        code: "release_gate_blocked_autorenew_safety_write",
+        severity: "critical",
+      }),
+    )
   })
 
   it("records every governed domain reminder offset", async () => {
