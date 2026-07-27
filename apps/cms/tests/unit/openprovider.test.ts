@@ -15,6 +15,8 @@ import {
   registerOpenProviderDomain,
   setOpenProviderDomainAutorenew,
   suggestOpenProviderDomains,
+  transferOpenProviderDomain,
+  updateOpenProviderDomainNameservers,
 } from "@/lib/domains/openprovider"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -590,6 +592,7 @@ describe("OpenProvider adapter", () => {
         owner_handle: "OWNER-CLIENT",
         admin_handle: "ADMIN",
         tech_handle: "TECH",
+        billing_handle: "BILLING",
         autorenew: "on",
         name_servers: [
           { name: "ada.ns.cloudflare.com" },
@@ -843,6 +846,91 @@ describe("OpenProvider adapter", () => {
       nameServers: [{ name: "ada.ns.cloudflare.com" }],
       nsGroup: null,
       reference: "domain-registration:order:600:v1",
+    })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
+  })
+
+  it("transfers while retaining frozen old nameservers and persists the stable reference", async () => {
+    const fetchMock = vi.fn(async (
+      _url: string | URL | Request,
+      _init?: RequestInit,
+    ) => Response.json({
+      code: 0,
+      data: { id: 9010, status: "ACT" },
+    }))
+
+    await expect(transferOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      authCode: "opaque-nl-code",
+      ownerHandle: "OWNER-CLIENT",
+      nameServers: [
+        { name: "ns1.legacy.example" },
+        { name: "ns2.legacy.example" },
+      ],
+      autorenew: "on",
+      reference: "domain-migration:order:700:v1",
+    })).resolves.toMatchObject({
+      id: 9010,
+      domain: "example.nl",
+      status: "transferred",
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains/transfer",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.any(String),
+      }),
+    )
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      comments: "domain-migration:order:700:v1",
+      owner_handle: "OWNER-CLIENT",
+      billing_handle: "BILLING",
+      name_servers: [
+        { name: "ns1.legacy.example" },
+        { name: "ns2.legacy.example" },
+      ],
+    })
+  })
+
+  it("updates nameservers explicitly and treats a timeout as indeterminate", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: { id: 9010, status: "ACT" },
+    }))
+    await expect(updateOpenProviderDomainNameservers(9010, [
+      { name: "Ada.NS.Cloudflare.com." },
+      { name: "bob.ns.cloudflare.com" },
+    ], {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ id: 9010, status: "ACT" })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains/9010",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          name_servers: [
+            { name: "ada.ns.cloudflare.com" },
+            { name: "bob.ns.cloudflare.com" },
+          ],
+          remove_nses: true,
+        }),
+      }),
+    )
+
+    const timeout = vi.fn(async () => {
+      throw new TypeError("socket closed")
+    })
+    await expect(updateOpenProviderDomainNameservers(9010, [
+      { name: "ada.ns.cloudflare.com" },
+      { name: "bob.ns.cloudflare.com" },
+    ], {
+      env,
+      token: "token-123",
+      fetchImpl: timeout as typeof fetch,
     })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
   })
 })

@@ -12,6 +12,11 @@ vi.mock("@/payload.config", () => ({
 }))
 
 vi.mock("@/lib/domains/verification", () => ({
+  verifyParentDsAbsent: vi.fn(async () => ({
+    status: "absent",
+    records: [],
+    reason: null,
+  })),
   verifyAuthoritativeDns: vi.fn(async (_domain: string, nameServers: string[]) => ({
     status: "verified",
     delegatedNameServers: nameServers,

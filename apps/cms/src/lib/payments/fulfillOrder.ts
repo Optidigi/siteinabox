@@ -7,6 +7,11 @@ import {
   activateManagedDomainEntitlement,
   provisionPaidDomainOrder,
 } from "@/lib/domains/provisioning"
+import {
+  createAutomaticDomainMigration,
+  isAutomaticMigrationOrder,
+} from "@/lib/domains/migration"
+import { queueDomainMigrationPreparation } from "@/lib/jobs/prepareDomainMigrationTask"
 import { mollieDomainProvisioningEnabled } from "@/lib/payments/mollieAdapter"
 import {
   normalizeGenerationRunPaymentState,
@@ -77,6 +82,17 @@ export async function fulfillPaidOrder(
   }
 
   try {
+    if (isAutomaticMigrationOrder(order)) {
+      const migration = await createAutomaticDomainMigration(payload, order.id)
+      await queueDomainMigrationPreparation(payload, migration.id)
+      return {
+        status: "waiting",
+        orderId: order.id,
+        message: migration.state === "awaiting_customer"
+          ? "Automatic migration is waiting for the complete zone export and transfer code."
+          : "Automatic migration preparation is queued.",
+      }
+    }
     let managedDomain: ManagedDomain | null = null
     if (payment.selectedDomain && mollieDomainProvisioningEnabled()) {
       const provisioned = await provisionPaidDomainOrder(payload, run, {

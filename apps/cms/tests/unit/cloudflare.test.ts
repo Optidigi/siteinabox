@@ -8,10 +8,12 @@ import {
   createOrReuseCloudflareZone,
   createCloudflareZone,
   createCloudflareZoneDnsRecords,
+  createCloudflareMigrationDnsRecord,
   createOrReuseCloudflareEmailSendingSubdomain,
   getCloudflareEmailSendingSubdomain,
   getCloudflareSslVerification,
   listCloudflareEmailSendingSubdomains,
+  listCloudflareMigrationDnsRecords,
 } from "@/lib/domains/cloudflare"
 
 const ORIGINAL_FETCH = globalThis.fetch
@@ -354,5 +356,133 @@ describe("Cloudflare domain adapter", () => {
       env,
       fetchImpl: fetchMock as typeof fetch,
     })).rejects.not.toThrow("cf-token")
+  })
+
+  it("round-trips structured mail and service records for semantic migration comparison", async () => {
+    const fetchMock = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        return Response.json({
+          success: true,
+          result: {
+            id: "srv-1",
+            type: "SRV",
+            name: "_sip._tcp.example.nl",
+            ttl: 3600,
+            proxied: false,
+            data: {
+              priority: 10,
+              weight: 20,
+              port: 5060,
+              target: "sip.example.net",
+            },
+          },
+        })
+      }
+      return Response.json({
+        success: true,
+        result_info: { total_count: 3 },
+        result: [
+          {
+            id: "mx-1",
+            type: "MX",
+            name: "example.nl",
+            ttl: 3600,
+            priority: 10,
+            content: "mail.example.net.",
+            proxied: false,
+          },
+          {
+            id: "caa-1",
+            type: "CAA",
+            name: "example.nl",
+            ttl: 3600,
+            content: '0 issue "letsencrypt.org"',
+            proxied: false,
+          },
+          {
+            id: "srv-1",
+            type: "SRV",
+            name: "_sip._tcp.example.nl",
+            ttl: 3600,
+            data: {
+              priority: 10,
+              weight: 20,
+              port: 5060,
+              target: "sip.example.net.",
+            },
+            proxied: false,
+          },
+        ],
+      })
+    })
+
+    await expect(listCloudflareMigrationDnsRecords("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual([
+      expect.objectContaining({ record: expect.objectContaining({ type: "MX", target: "mail.example.net" }) }),
+      expect.objectContaining({ record: expect.objectContaining({ type: "CAA", value: "letsencrypt.org" }) }),
+      expect.objectContaining({ record: expect.objectContaining({ type: "SRV", target: "sip.example.net" }) }),
+    ])
+
+    await expect(createCloudflareMigrationDnsRecord("zone-123", {
+      type: "SRV",
+      name: "_sip._tcp.example.nl",
+      ttl: 3600,
+      priority: 10,
+      weight: 20,
+      port: 5060,
+      target: "sip.example.net",
+      proxied: false,
+    }, {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({ id: "srv-1" })
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      "https://cloudflare.test/client/v4/zones/zone-123/dns_records",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          type: "SRV",
+          name: "_sip._tcp.example.nl",
+          ttl: 3600,
+          proxied: false,
+          data: {
+            priority: 10,
+            weight: 20,
+            port: 5060,
+            target: "sip.example.net",
+          },
+        }),
+      }),
+    )
+  })
+
+  it("fails closed when Cloudflare record inventory is incomplete or unsupported", async () => {
+    const incomplete = vi.fn(async () => Response.json({
+      success: true,
+      result_info: { total_count: 501 },
+      result: [],
+    }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", {
+      env,
+      fetchImpl: incomplete as typeof fetch,
+    })).rejects.toThrow("incomplete")
+
+    const unsupported = vi.fn(async () => Response.json({
+      success: true,
+      result_info: { total_count: 1 },
+      result: [{
+        id: "tlsa-1",
+        type: "TLSA",
+        name: "_443._tcp.example.nl",
+        ttl: 3600,
+        content: "3 1 1 ABCD",
+      }],
+    }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", {
+      env,
+      fetchImpl: unsupported as typeof fetch,
+    })).rejects.toThrow("unsupported")
   })
 })

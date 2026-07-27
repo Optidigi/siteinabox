@@ -372,6 +372,7 @@ export const migrationCustomerActions = [
   "upload_complete_zone",
   "confirm_transfer",
   "verify_registrant",
+  "remove_dnssec_ds",
 ] as const
 
 export const migrationCustomerActionSchema = z.enum(migrationCustomerActions)
@@ -383,6 +384,7 @@ export const MIGRATION_CUSTOMER_ACTION_FEES_NET_MINOR = Object.freeze({
   upload_complete_zone: 0,
   confirm_transfer: 0,
   verify_registrant: 0,
+  remove_dnssec_ds: 0,
 }) satisfies Readonly<Record<MigrationCustomerAction, 0>>
 
 export type MigrationAssessment = {

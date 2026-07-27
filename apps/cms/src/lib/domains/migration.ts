@@ -1,0 +1,1315 @@
+import "server-only"
+
+import {
+  buildAutomaticMigrationTargetZone,
+  buildDnssecPreparationPlan,
+  normalizeCompleteZone,
+  semanticZoneComparison,
+  type CompleteZoneExport,
+  type NormalizedCompleteZone,
+} from "@siteinabox/contracts/domain-migration"
+import {
+  getTldCapabilityByVersion,
+  validateTldTransferAuthorization,
+} from "@siteinabox/contracts/tld-capabilities"
+import { createHash } from "node:crypto"
+import type { Payload } from "payload"
+import type {
+  CheckoutProfile,
+  DomainMigration,
+  ManagedDomain,
+  Order,
+  SiteGenerationRun,
+  Tenant,
+} from "@/payload-types"
+
+import {
+  CloudflareIndeterminateWriteError,
+  createOrReuseCloudflareMigrationDnsRecord,
+  createOrReuseCloudflareZone,
+  getCloudflareSslVerification,
+  listCloudflareMigrationDnsRecords,
+  listCloudflareZones,
+} from "@/lib/domains/cloudflare"
+import { openMigrationSecret, sealMigrationSecret } from "@/lib/domains/migrationSecrets"
+import { normalizeDomain } from "@/lib/domains/normalize"
+import {
+  OpenProviderIndeterminateWriteError,
+  createOpenProviderCustomerHandle,
+  findOpenProviderCustomerByReference,
+  findOpenProviderDomain,
+  loginOpenProvider,
+  transferOpenProviderDomain,
+  updateOpenProviderDomainNameservers,
+  type OpenProviderDomainRecord,
+} from "@/lib/domains/openprovider"
+import {
+  verifyAuthoritativeDns,
+  verifyHttpsEndpoint,
+  verifyParentDsAbsent,
+} from "@/lib/domains/verification"
+import { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
+import { publishAndActivateAfterCompletedPayment } from "@/lib/payments/postPaymentActivation"
+import { activateManagedDomainEntitlement } from "@/lib/domains/provisioning"
+import { redactOperationalMessage } from "@/lib/security/redactOperationalMessage"
+import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+
+const CUTOVER_VERIFICATION_MINUTES = 30
+
+type MigrationActionStatus = "required" | "pending" | "completed" | "not_required" | "failed"
+type MigrationActionEvidence = {
+  status: MigrationActionStatus
+  updatedAt: string
+  evidence?: string
+}
+type MigrationCustomerActionStates = {
+  provide_epp_code: MigrationActionEvidence
+  authorize_provider: MigrationActionEvidence
+  upload_complete_zone: MigrationActionEvidence
+  confirm_transfer: MigrationActionEvidence
+  verify_registrant: MigrationActionEvidence
+  remove_dnssec_ds: MigrationActionEvidence
+}
+
+type MigrationResult = {
+  status: "waiting" | "completed" | "rolled_back" | "failed"
+  migrationId: string | number
+  message: string
+}
+
+type MigrationDependencies = {
+  now: () => string
+  loginOpenProvider: typeof loginOpenProvider
+  findOpenProviderCustomerByReference: typeof findOpenProviderCustomerByReference
+  createOpenProviderCustomerHandle: typeof createOpenProviderCustomerHandle
+  findOpenProviderDomain: typeof findOpenProviderDomain
+  transferOpenProviderDomain: typeof transferOpenProviderDomain
+  updateOpenProviderDomainNameservers: typeof updateOpenProviderDomainNameservers
+  listCloudflareZones: typeof listCloudflareZones
+  createOrReuseCloudflareZone: typeof createOrReuseCloudflareZone
+  listCloudflareMigrationDnsRecords: typeof listCloudflareMigrationDnsRecords
+  createOrReuseCloudflareMigrationDnsRecord: typeof createOrReuseCloudflareMigrationDnsRecord
+  getCloudflareSslVerification: typeof getCloudflareSslVerification
+  verifyParentDsAbsent: typeof verifyParentDsAbsent
+  verifyAuthoritativeDns: typeof verifyAuthoritativeDns
+  verifyHttpsEndpoint: typeof verifyHttpsEndpoint
+  publishAndActivateAfterCompletedPayment: typeof publishAndActivateAfterCompletedPayment
+  activateManagedDomainEntitlement: typeof activateManagedDomainEntitlement
+}
+
+const defaultDependencies: MigrationDependencies = {
+  now: () => new Date().toISOString(),
+  loginOpenProvider,
+  findOpenProviderCustomerByReference,
+  createOpenProviderCustomerHandle,
+  findOpenProviderDomain,
+  transferOpenProviderDomain,
+  updateOpenProviderDomainNameservers,
+  listCloudflareZones,
+  createOrReuseCloudflareZone,
+  listCloudflareMigrationDnsRecords,
+  createOrReuseCloudflareMigrationDnsRecord,
+  getCloudflareSslVerification,
+  verifyParentDsAbsent,
+  verifyAuthoritativeDns,
+  verifyHttpsEndpoint,
+  publishAndActivateAfterCompletedPayment,
+  activateManagedDomainEntitlement,
+}
+
+const readObject = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+
+const stableStringify = (value: unknown): string => {
+  if (value == null || typeof value !== "object") return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`
+  const record = value as Record<string, unknown>
+  return `{${Object.keys(record).sort().map(
+    (key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`,
+  ).join(",")}}`
+}
+
+const evidenceHash = (value: unknown): string =>
+  createHash("sha256").update(stableStringify(value)).digest("hex")
+
+const numericRelationshipId = (value: Parameters<typeof relationshipId>[0]): number => {
+  const id = relationshipId(value)
+  const numeric = id == null ? Number.NaN : Number(id)
+  if (!Number.isSafeInteger(numeric) || numeric <= 0) {
+    throw new Error("A numeric relationship id is required.")
+  }
+  return numeric
+}
+
+const canonicalNameservers = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? [...new Set(value.filter(
+        (entry): entry is string => typeof entry === "string" && entry.trim().length > 0,
+      ).map((entry) => entry.trim().toLowerCase().replace(/\.$/, "")))].sort()
+    : []
+
+const nameserversEqual = (left: unknown, right: unknown): boolean => {
+  const leftNames = canonicalNameservers(left)
+  const rightNames = canonicalNameservers(right)
+  return leftNames.length === rightNames.length &&
+    leftNames.every((entry, index) => entry === rightNames[index])
+}
+
+const actionStates = (
+  value: unknown,
+  now: string,
+): MigrationCustomerActionStates => {
+  const source = readObject(value)
+  const read = (
+    key: keyof MigrationCustomerActionStates,
+    fallback: MigrationActionStatus,
+  ): MigrationActionEvidence => {
+    const item = readObject(source[key])
+    const status = ["required", "pending", "completed", "not_required", "failed"]
+      .includes(String(item.status))
+      ? item.status as MigrationActionStatus
+      : fallback
+    return {
+      status,
+      updatedAt: typeof item.updatedAt === "string" ? item.updatedAt : now,
+      ...(typeof item.evidence === "string" ? { evidence: item.evidence } : {}),
+    }
+  }
+  return {
+    provide_epp_code: read("provide_epp_code", "required"),
+    authorize_provider: read("authorize_provider", "completed"),
+    upload_complete_zone: read("upload_complete_zone", "required"),
+    confirm_transfer: read("confirm_transfer", "pending"),
+    verify_registrant: read("verify_registrant", "pending"),
+    remove_dnssec_ds: read("remove_dnssec_ds", "not_required"),
+  }
+}
+
+const withAction = (
+  actions: MigrationCustomerActionStates,
+  action: keyof MigrationCustomerActionStates,
+  status: MigrationActionStatus,
+  now: string,
+  evidence?: string,
+): MigrationCustomerActionStates => ({
+  ...actions,
+  [action]: {
+    status,
+    updatedAt: now,
+    ...(evidence ? { evidence } : {}),
+  },
+})
+
+const migrationHistory = (
+  migration: DomainMigration,
+  at: string,
+  state: string,
+  reason: string,
+): Array<Record<string, string>> => [
+  ...(Array.isArray(migration.stateHistory)
+    ? migration.stateHistory.filter(
+      (entry): entry is Record<string, string> =>
+        Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+    )
+    : []),
+  { at, state, reason },
+]
+
+async function updateMigration(
+  payload: Payload,
+  migration: DomainMigration,
+  data: Record<string, unknown>,
+  reason: string,
+  now: string,
+): Promise<DomainMigration> {
+  const state = typeof data.state === "string" ? data.state : migration.state
+  return payload.update({
+    collection: "domain-migrations",
+    id: migration.id,
+    data: {
+      ...data,
+      updatedAt: now,
+      stateHistory: migrationHistory(migration, now, state, reason),
+    },
+    depth: 0,
+    overrideAccess: true,
+    context: { domainMigrationLifecycleMutation: true },
+  }) as Promise<DomainMigration>
+}
+
+async function updateManagedDomain(
+  payload: Payload,
+  domain: ManagedDomain,
+  data: Record<string, unknown>,
+  reason: string,
+  now: string,
+): Promise<ManagedDomain> {
+  const state = typeof data.state === "string" ? data.state : domain.state
+  const history = Array.isArray(domain.stateHistory)
+    ? domain.stateHistory.filter(
+      (entry): entry is Record<string, string> =>
+        Boolean(entry) && typeof entry === "object" && !Array.isArray(entry),
+    )
+    : []
+  return payload.update({
+    collection: "managed-domains",
+    id: domain.id,
+    data: { ...data, stateHistory: [...history, { at: now, state, reason }] },
+    depth: 0,
+    overrideAccess: true,
+    context: { managedDomainLifecycleMutation: true },
+  }) as Promise<ManagedDomain>
+}
+
+const migrationEvidenceFromOrder = (order: Order) => {
+  const quoteEvidence = readObject(order.quoteEvidence)
+  const migration = readObject(quoteEvidence.migration)
+  if (
+    migration.classification !== "automatic" ||
+    migration.sourceMechanism !== "customer_authorized_provider_export_v1"
+  ) {
+    throw new Error("Accepted order does not freeze an automatic migration source contract.")
+  }
+  const tldEvidence = readObject(quoteEvidence.tldCapability)
+  const capabilityVersion = typeof tldEvidence.capabilityVersion === "string"
+    ? tldEvidence.capabilityVersion
+    : ""
+  const capability = getTldCapabilityByVersion(capabilityVersion)
+  if (!capability || !capability.productionEnabled || capability.tld !== tldEvidence.tld) {
+    throw new Error("Accepted order has invalid frozen TLD capability evidence.")
+  }
+  return { capability }
+}
+
+export const isAutomaticMigrationOrder = (order: Order): boolean => {
+  const migration = readObject(readObject(order.quoteEvidence).migration)
+  return migration.classification === "automatic" &&
+    migration.sourceMechanism === "customer_authorized_provider_export_v1"
+}
+
+async function checkoutProfileForOrder(
+  payload: Payload,
+  order: Order,
+): Promise<CheckoutProfile> {
+  if (!order.checkoutProfileKey) {
+    throw new Error("Automatic migration order is missing its frozen checkout profile key.")
+  }
+  const result = await payload.find({
+    collection: "checkout-profiles",
+    where: { profileKey: { equals: order.checkoutProfileKey } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (result.docs.length !== 1) {
+    throw new Error("Automatic migration requires one authoritative checkout profile.")
+  }
+  return result.docs[0] as CheckoutProfile
+}
+
+export async function createAutomaticDomainMigration(
+  payload: Payload,
+  orderId: string | number,
+  now = new Date().toISOString(),
+): Promise<DomainMigration> {
+  const order = await payload.findByID({
+    collection: "orders",
+    id: orderId,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  if (order.paymentStatus !== "paid") {
+    throw new Error("Automatic migration starts only after the accepted order is paid.")
+  }
+  if (!["accepted", "fulfillment_pending"].includes(order.state ?? "")) {
+    throw new Error("Automatic migration order is not fulfillable.")
+  }
+  const normalized = normalizeDomain(order.domain)
+  if (!normalized.ok) throw new Error("Automatic migration order domain is invalid.")
+  const { capability } = migrationEvidenceFromOrder(order)
+  if (capability.tld !== normalized.extension || !capability.transfer.supported) {
+    throw new Error("Accepted TLD capability does not support this transfer.")
+  }
+  const tenantId = relationshipId(order.tenant)
+  if (!tenantId) throw new Error("Automatic migration order requires a tenant.")
+  const profile = await checkoutProfileForOrder(payload, order)
+  const idempotencyKey = `domain-migration:order:${order.id}:v1`
+  const existing = await payload.find({
+    collection: "domain-migrations",
+    where: { idempotencyKey: { equals: idempotencyKey } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (existing.docs.length > 1) throw new Error("Duplicate automatic migration authority.")
+  if (existing.docs[0]) return existing.docs[0] as DomainMigration
+  const actions = actionStates(null, now)
+  let migration: DomainMigration
+  try {
+    migration = await payload.create({
+      collection: "domain-migrations",
+      data: {
+        idempotencyKey,
+        originatingOrder: order.id,
+        checkoutProfile: profile.id,
+        tenant: numericRelationshipId(order.tenant),
+        domainNameAscii: normalized.domain,
+        tld: normalized.extension,
+        acceptedClassification: "automatic",
+        state: "awaiting_customer",
+        sourceMechanism: "customer_authorized_provider_export_v1",
+        customerActions: actions,
+        providerTransferState: "not_started",
+        cloudflareZoneState: "not_started",
+        cutoverWriteState: "not_started",
+        rollbackWriteState: "not_started",
+        reconciliationRequired: false,
+        stateHistory: [{
+          at: now,
+          state: "awaiting_customer",
+          reason: "customer_inputs_required",
+        }],
+        createdAt: now,
+        updatedAt: now,
+      },
+      depth: 0,
+      overrideAccess: true,
+    }) as DomainMigration
+  } catch (error) {
+    const raced = await payload.find({
+      collection: "domain-migrations",
+      where: { idempotencyKey: { equals: idempotencyKey } },
+      limit: 2,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (raced.docs.length !== 1) throw error
+    migration = raced.docs[0] as DomainMigration
+  }
+  if (order.state === "accepted") {
+    await payload.update({
+      collection: "orders",
+      id: order.id,
+      data: { state: "fulfillment_pending" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+  }
+  return migration
+}
+
+export async function acquireAutomaticMigrationInputs(
+  payload: Payload,
+  input: {
+    migrationId: string | number
+    zoneExport: CompleteZoneExport
+    transferCode: string
+    transferCodeExpiresAt?: string | null
+    env?: NodeJS.ProcessEnv
+    now?: string
+  },
+): Promise<DomainMigration> {
+  const now = input.now ?? new Date().toISOString()
+  let migration = await payload.findByID({
+    collection: "domain-migrations",
+    id: input.migrationId,
+    depth: 0,
+    overrideAccess: true,
+  }) as DomainMigration
+  if (!["awaiting_customer", "ready_to_prepare"].includes(migration.state)) {
+    throw new Error("Automatic migration inputs are frozen after provider preparation starts.")
+  }
+  const source = normalizeCompleteZone(input.zoneExport)
+  if (source.domain !== migration.domainNameAscii) {
+    throw new Error("Complete zone export does not match the accepted migration domain.")
+  }
+  if (source.dnssec.status !== "unsigned") {
+    throw new Error("Phase 9 automatic migration supports unsigned source zones only.")
+  }
+  const order = await payload.findByID({
+    collection: "orders",
+    id: relationshipId(migration.originatingOrder) as string | number,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  const { capability } = migrationEvidenceFromOrder(order)
+  if (!validateTldTransferAuthorization(capability, input.transferCode)) {
+    throw new Error(`A valid .${migration.tld} transfer code is required.`)
+  }
+  const target = buildAutomaticMigrationTargetZone(source, {
+    rendererTargetHost: input.env?.SIAB_RENDERER_TARGET_HOST ??
+      process.env.SIAB_RENDERER_TARGET_HOST,
+    rendererTargetIp: input.env?.SIAB_RENDERER_TARGET_IP ??
+      process.env.SIAB_RENDERER_TARGET_IP,
+  })
+  const sourceHash = evidenceHash(source)
+  const targetHash = evidenceHash(target)
+  if (
+    (migration.sourceZoneHash && migration.sourceZoneHash !== sourceHash) ||
+    (migration.targetZoneHash && migration.targetZoneHash !== targetHash)
+  ) {
+    throw new Error("Acquired migration evidence is already frozen to a different zone export.")
+  }
+  const tenant = await payload.findByID({
+    collection: "tenants",
+    id: relationshipId(migration.tenant) as string | number,
+    depth: 0,
+    overrideAccess: true,
+  }) as Tenant
+  const actions = withAction(
+    withAction(actionStates(migration.customerActions, now), "upload_complete_zone", "completed", now, sourceHash),
+    "provide_epp_code",
+    "completed",
+    now,
+    "encrypted_at_rest",
+  )
+  const binding = migration.idempotencyKey
+  migration = await updateMigration(payload, migration, {
+    state: "ready_to_prepare",
+    sourceZoneHash: sourceHash,
+    sourceZoneSnapshot: source,
+    targetZoneHash: targetHash,
+    targetZoneSnapshot: target,
+    rollbackEvidence: {
+      schemaVersion: 1,
+      sourceZoneHash: sourceHash,
+      sourceZoneSnapshot: source,
+      authoritativeNameservers: source.authoritativeNameservers,
+      dnssec: source.dnssec,
+      tenantBeforeCutover: {
+        domain: tenant.domain,
+        domainVerification: tenant.domainVerification ?? null,
+      },
+      frozenAt: now,
+    },
+    encryptedTransferCode: sealMigrationSecret(input.transferCode, binding, input.env),
+    transferCodeReceivedAt: now,
+    transferCodeExpiresAt: input.transferCodeExpiresAt ?? (
+      capability.transfer.authorizationValidityDays
+        ? new Date(
+            new Date(now).getTime() +
+            capability.transfer.authorizationValidityDays * 24 * 60 * 60_000,
+          ).toISOString()
+        : null
+    ),
+    customerActions: actions,
+    failureReason: null,
+  }, "authoritative_zone_and_transfer_code_acquired", now)
+  await payload.jobs.queue({
+    task: "prepare-domain-migration",
+    input: { migrationId: String(migration.id) },
+    queue: "default",
+    overrideAccess: true,
+  })
+  return migration
+}
+
+async function getOrCreateManagedDomain(
+  payload: Payload,
+  migration: DomainMigration,
+  order: Order,
+  profile: CheckoutProfile,
+  now: string,
+): Promise<ManagedDomain> {
+  const existing = await payload.find({
+    collection: "managed-domains",
+    where: { domainNameAscii: { equals: migration.domainNameAscii } },
+    limit: 2,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (existing.docs.length > 1) throw new Error("Duplicate managed-domain authority.")
+  if (existing.docs[0]) {
+    const domain = existing.docs[0] as ManagedDomain
+    if (
+      domain.initialOperation !== "transfer" ||
+      !sameRelationshipId(domain.originatingOrder, order.id) ||
+      !sameRelationshipId(domain.registrantProfile, profile.id)
+    ) {
+      throw new Error("Existing managed domain belongs to different accepted evidence.")
+    }
+    return domain
+  }
+  return payload.create({
+    collection: "managed-domains",
+    data: {
+      domainNameAscii: migration.domainNameAscii,
+      tld: migration.tld,
+      provisioningIdempotencyKey: migration.idempotencyKey,
+      originatingOrder: order.id,
+      registrantProfile: profile.id,
+      tenant: numericRelationshipId(migration.tenant),
+      state: "transfer_pending",
+      initialOperation: "transfer",
+      registrantOwnership: "customer",
+      provider: "openprovider",
+      providerRegistrationState: "not_started",
+      registrantVerificationStatus: "not_checked",
+      authoritativeDnsStatus: "pending",
+      httpsStatus: "pending",
+      entitlementStatus: "pending",
+      customerStatus: "provisioning",
+      renewalIntent: true,
+      providerAutorenew: "unknown",
+      reconciliationRequired: false,
+      stateHistory: [{ at: now, state: "transfer_pending", reason: "migration_preparation_started" }],
+      createdAt: now,
+    },
+    depth: 0,
+    overrideAccess: true,
+  }) as Promise<ManagedDomain>
+}
+
+const activeProviderDomain = (
+  record: OpenProviderDomainRecord,
+  activeStatuses: readonly string[],
+): boolean => activeStatuses.includes(record.status.trim().toUpperCase())
+
+const verificationStatus = (
+  providerDomain: OpenProviderDomainRecord,
+): "not_required" | "pending" | "verified" | "failed" => {
+  const status = providerDomain.verificationEmailStatus?.trim().toLowerCase() ?? ""
+  if (!status || ["not applicable", "not required", "n/a"].includes(status)) {
+    return "not_required"
+  }
+  if (["verified", "completed", "approved"].includes(status)) return "verified"
+  if (["failed", "rejected"].includes(status)) return "failed"
+  return "pending"
+}
+
+const storedZoneSnapshot = (value: unknown): NormalizedCompleteZone => {
+  const source = readObject(value)
+  const records = Array.isArray(source.records) ? source.records : []
+  const proxiedByRecord = new Map<string, boolean>()
+  for (const record of records) {
+    const entry = { ...readObject(record) }
+    const proxied = entry.proxied === true
+    delete entry.proxied
+    proxiedByRecord.set(stableStringify(entry), proxied)
+  }
+  const withoutRuntimeFields = {
+    ...source,
+    records: records.map((record) => {
+      const entry = { ...readObject(record) }
+      delete entry.proxied
+      return entry
+    }),
+  }
+  const normalized = normalizeCompleteZone(withoutRuntimeFields)
+  return {
+    ...normalized,
+    records: normalized.records.map((record) => {
+      const entry = { ...record } as Record<string, unknown>
+      delete entry.proxied
+      return {
+        ...record,
+        proxied: proxiedByRecord.get(stableStringify(entry)) ?? false,
+      }
+    }),
+  }
+}
+
+const migrationSource = (migration: DomainMigration): NormalizedCompleteZone =>
+  storedZoneSnapshot(migration.sourceZoneSnapshot)
+
+const migrationTarget = (migration: DomainMigration): NormalizedCompleteZone =>
+  storedZoneSnapshot(migration.targetZoneSnapshot)
+
+const waiting = (migration: DomainMigration, message: string): MigrationResult => ({
+  status: "waiting",
+  migrationId: migration.id,
+  message,
+})
+
+async function rollbackCutover(
+  payload: Payload,
+  migration: DomainMigration,
+  managedDomain: ManagedDomain,
+  providerDomain: OpenProviderDomainRecord,
+  reason: string,
+  deps: MigrationDependencies,
+): Promise<MigrationResult> {
+  const now = deps.now()
+  const rollback = readObject(migration.rollbackEvidence)
+  const oldNameservers = canonicalNameservers(rollback.authoritativeNameservers)
+  if (oldNameservers.length < 2) {
+    throw new Error("Frozen rollback evidence has no complete nameserver set.")
+  }
+  if (!nameserversEqual(providerDomain.nameServers, oldNameservers)) {
+    if (migration.rollbackWriteState === "indeterminate") {
+      return waiting(
+        migration,
+        "Rollback nameserver outcome remains indeterminate; no duplicate write was sent.",
+      )
+    }
+    migration = await updateMigration(payload, migration, {
+      rollbackWriteState: "prepared",
+      rollbackRequestedAt: migration.rollbackRequestedAt ?? now,
+      reconciliationRequired: true,
+      failureReason: redactOperationalMessage(reason),
+    }, "rollback_nameserver_write_prepared", now)
+    try {
+      await deps.updateOpenProviderDomainNameservers(
+        providerDomain.id,
+        oldNameservers.map((name) => ({ name })),
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        rollbackWriteState: "indeterminate",
+        reconciliationRequired: true,
+      }, "rollback_nameserver_write_indeterminate", deps.now())
+      return waiting(migration, "Automatic rollback is awaiting provider reconciliation.")
+    }
+    const reconciled = await deps.findOpenProviderDomain(migration.domainNameAscii)
+    if (!reconciled || !nameserversEqual(reconciled.nameServers, oldNameservers)) {
+      return waiting(migration, "Automatic rollback nameservers are not confirmed yet.")
+    }
+  }
+  const rollbackTenant = readObject(rollback.tenantBeforeCutover)
+  const previousDomainVerification = readObject(rollbackTenant.domainVerification)
+  await payload.update({
+    collection: "tenants",
+    id: numericRelationshipId(migration.tenant),
+    data: {
+      domain: typeof rollbackTenant.domain === "string"
+        ? rollbackTenant.domain
+        : managedDomain.domainNameAscii,
+      domainVerification: Object.keys(previousDomainVerification).length > 0
+        ? previousDomainVerification
+        : { status: "not_checked" },
+    },
+    depth: 0,
+    overrideAccess: true,
+  })
+  await updateManagedDomain(payload, managedDomain, {
+    state: "manual_review",
+    entitlementStatus: "blocked",
+    customerStatus: "manual_review",
+    reconciliationRequired: false,
+    failureReason: redactOperationalMessage(reason),
+  }, "migration_automatically_rolled_back", deps.now())
+  migration = await updateMigration(payload, migration, {
+    state: "rolled_back",
+    rollbackWriteState: "confirmed",
+    rollbackConfirmedAt: deps.now(),
+    rolledBackAt: deps.now(),
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: deps.now(),
+    reconciliationRequired: false,
+    failureReason: redactOperationalMessage(reason),
+  }, "automatic_rollback_confirmed", deps.now())
+  const orderId = relationshipId(migration.originatingOrder)
+  if (orderId) {
+    await payload.update({
+      collection: "orders",
+      id: orderId,
+      data: { state: "exception" },
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+  }
+  return {
+    status: "rolled_back",
+    migrationId: migration.id,
+    message: "Cutover verification failed and the frozen old nameservers were restored.",
+  }
+}
+
+export async function prepareDomainMigration(
+  payload: Payload,
+  migrationId: string | number,
+  dependencies: Partial<MigrationDependencies> = {},
+): Promise<MigrationResult> {
+  const deps = { ...defaultDependencies, ...dependencies }
+  let migration = await payload.findByID({
+    collection: "domain-migrations",
+    id: migrationId,
+    depth: 0,
+    overrideAccess: true,
+  }) as DomainMigration
+  if (migration.state === "completed") {
+    return { status: "completed", migrationId: migration.id, message: "Migration is complete." }
+  }
+  if (migration.state === "rolled_back") {
+    return { status: "rolled_back", migrationId: migration.id, message: "Migration is rolled back." }
+  }
+  if (migration.state === "awaiting_customer" && !migration.sourceZoneSnapshot) {
+    return waiting(migration, "A complete authoritative zone export and transfer code are required.")
+  }
+  if (
+    !migration.sourceZoneSnapshot ||
+    !migration.targetZoneSnapshot ||
+    !migration.rollbackEvidence ||
+    !migration.encryptedTransferCode
+  ) {
+    return waiting(migration, "Frozen migration preparation evidence is incomplete.")
+  }
+  const now = deps.now()
+  if (
+    migration.transferCodeExpiresAt &&
+    new Date(migration.transferCodeExpiresAt).getTime() <= new Date(now).getTime()
+  ) {
+    const actions = withAction(
+      actionStates(migration.customerActions, now),
+      "provide_epp_code",
+      "required",
+      now,
+      "expired",
+    )
+    migration = await updateMigration(payload, migration, {
+      state: "awaiting_customer",
+      encryptedTransferCode: null,
+      transferCodeDeletedAt: now,
+      customerActions: actions,
+      failureReason: "transfer_code_expired",
+    }, "transfer_code_expired", now)
+    return waiting(migration, "The transfer code expired and must be replaced.")
+  }
+  if (migration.state === "awaiting_customer") {
+    migration = await updateMigration(payload, migration, {
+      state: "ready_to_prepare",
+      failureReason: null,
+    }, "customer_actions_satisfied", now)
+  }
+  if (migration.state === "ready_to_prepare") {
+    migration = await updateMigration(payload, migration, {
+      state: "preparing",
+      failureReason: null,
+    }, "automatic_migration_preparation_started", now)
+  }
+  const order = await payload.findByID({
+    collection: "orders",
+    id: relationshipId(migration.originatingOrder) as string | number,
+    depth: 0,
+    overrideAccess: true,
+  }) as Order
+  const { capability } = migrationEvidenceFromOrder(order)
+  const profile = await checkoutProfileForOrder(payload, order)
+  const source = migrationSource(migration)
+  const target = migrationTarget(migration)
+  let managedDomain = await getOrCreateManagedDomain(payload, migration, order, profile, now)
+  if (!migration.managedDomain) {
+    migration = await updateMigration(payload, migration, {
+      managedDomain: managedDomain.id,
+    }, "managed_domain_authority_linked", deps.now())
+  }
+
+  const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
+  if (parentDs.status === "indeterminate") {
+    return waiting(migration, "DNSSEC parent DS state could not be verified.")
+  }
+  const dnssecPlan = buildDnssecPreparationPlan({
+    sourceStatus: source.dnssec.status,
+    parentDsRecords: parentDs.records,
+    checkedAt: deps.now(),
+  })
+  let actions = actionStates(migration.customerActions, deps.now())
+  actions = withAction(
+    actions,
+    "remove_dnssec_ds",
+    dnssecPlan.cutoverReady ? "not_required" : "required",
+    deps.now(),
+    parentDs.reason ?? "parent_ds_absent",
+  )
+  migration = await updateMigration(payload, migration, {
+    dnssecPreparation: dnssecPlan,
+    customerActions: actions,
+  }, `dnssec_preparation_${parentDs.status}`, deps.now())
+  if (!dnssecPlan.cutoverReady) {
+    if (migration.state === "preparing") {
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_customer",
+      }, "dnssec_customer_action_required", deps.now())
+    }
+    return waiting(migration, "Parent DS records must be removed before automatic cutover.")
+  }
+
+  const visibleZones = await deps.listCloudflareZones(migration.domainNameAscii)
+  let zone = visibleZones
+    .find((entry) => entry.id === migration.cloudflareZoneId) ??
+    visibleZones[0] ??
+    null
+  if (!zone) {
+    if (migration.cloudflareZoneState === "indeterminate") {
+      return waiting(migration, "Cloudflare zone creation remains indeterminate.")
+    }
+    migration = await updateMigration(payload, migration, {
+      cloudflareZoneState: "prepared",
+      reconciliationRequired: true,
+    }, "cloudflare_zone_write_prepared", deps.now())
+    try {
+      zone = await deps.createOrReuseCloudflareZone(migration.domainNameAscii)
+    } catch (error) {
+      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        cloudflareZoneState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "cloudflare_zone_creation_indeterminate",
+      }, "cloudflare_zone_write_indeterminate", deps.now())
+      return waiting(migration, "Cloudflare zone creation is awaiting reconciliation.")
+    }
+  }
+  migration = await updateMigration(payload, migration, {
+    cloudflareZoneId: zone.id,
+    cloudflareNameservers: zone.nameServers,
+    failureReason: null,
+  }, "cloudflare_zone_reconciled", deps.now())
+
+  let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
+  let comparison = semanticZoneComparison(
+    target.records,
+    cloudflareRecords
+      .map((entry) => entry.record)
+      .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+  )
+  if (!comparison.equivalent && migration.cloudflareZoneState === "indeterminate") {
+    return waiting(
+      migration,
+      "Cloudflare DNS write remains indeterminate; no duplicate records were sent.",
+    )
+  }
+  if (!comparison.equivalent && cloudflareRecords.length > 0) {
+    const unexpectedExisting = cloudflareRecords.some((entry) =>
+      !(entry.record.type === "NS" && entry.record.name === target.domain) &&
+      semanticZoneComparison(target.records, [entry.record]).unexpected.length > 0)
+    if (unexpectedExisting) {
+      migration = await updateMigration(payload, migration, {
+        state: "failed",
+        semanticComparison: comparison,
+        failureReason: "cloudflare_zone_contains_unexpected_records",
+      }, "automatic_zone_preparation_stopped", deps.now())
+      return {
+        status: "failed",
+        migrationId: migration.id,
+        message: "Cloudflare already contains unexpected records; automatic migration stopped.",
+      }
+    }
+  }
+  if (!comparison.equivalent) {
+    try {
+      for (const record of target.records) {
+        await deps.createOrReuseCloudflareMigrationDnsRecord(zone.id, record)
+      }
+    } catch (error) {
+      if (!(error instanceof CloudflareIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+        cloudflareZoneState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "cloudflare_dns_write_indeterminate",
+      }, "cloudflare_dns_write_indeterminate", deps.now())
+      return waiting(migration, "Cloudflare DNS preparation is awaiting reconciliation.")
+    }
+    cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
+    comparison = semanticZoneComparison(
+      target.records,
+      cloudflareRecords
+        .map((entry) => entry.record)
+        .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+    )
+  }
+  if (!comparison.equivalent) {
+    return waiting(migration, "Cloudflare target zone is not semantically complete.")
+  }
+  migration = await updateMigration(payload, migration, {
+    cloudflareZoneState: "confirmed",
+    cloudflareRecordIds: cloudflareRecords.map((entry) => entry.id).filter(Boolean),
+    zonePreparedAt: deps.now(),
+    semanticComparison: comparison,
+    reconciliationRequired: false,
+    failureReason: null,
+  }, "cloudflare_target_zone_semantically_verified", deps.now())
+
+  const token = await deps.loginOpenProvider()
+  let customerHandle = migration.providerCustomerHandle ?? null
+  if (!customerHandle) {
+    const existingCustomer = await deps.findOpenProviderCustomerByReference(
+      migration.idempotencyKey,
+      { token },
+    )
+    if (existingCustomer) {
+      customerHandle = existingCustomer.handle
+    } else if (
+      migration.providerTransferState === "indeterminate" &&
+      migration.failureReason === "openprovider_customer_handle_indeterminate"
+    ) {
+      return waiting(migration, "Customer-handle creation remains indeterminate.")
+    } else {
+      try {
+        customerHandle = (await deps.createOpenProviderCustomerHandle(
+          domainRegistrantFromCheckoutProfile(profile),
+          { token, reference: migration.idempotencyKey },
+        )).handle
+      } catch (error) {
+        if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          providerTransferState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_customer_handle_indeterminate",
+        }, "openprovider_customer_handle_indeterminate", deps.now())
+        return waiting(migration, "Customer-handle creation is awaiting reconciliation.")
+      }
+    }
+    migration = await updateMigration(payload, migration, {
+      providerCustomerHandle: customerHandle,
+      providerTransferState: "not_started",
+      reconciliationRequired: false,
+      failureReason: null,
+    }, "provider_customer_handle_persisted", deps.now())
+    managedDomain = await updateManagedDomain(payload, managedDomain, {
+      providerCustomerHandle: customerHandle,
+    }, "provider_customer_handle_persisted", deps.now())
+  }
+
+  let providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
+  if (!providerDomain) {
+    if (migration.providerTransferState === "indeterminate") {
+      return waiting(migration, "Domain transfer outcome remains indeterminate; no retry was sent.")
+    }
+    migration = await updateMigration(payload, migration, {
+      providerTransferState: "prepared",
+      transferRequestedAt: migration.transferRequestedAt ?? deps.now(),
+      reconciliationRequired: true,
+    }, "provider_transfer_write_prepared", deps.now())
+    const encryptedTransferCode = migration.encryptedTransferCode
+    if (!encryptedTransferCode) {
+      return waiting(migration, "The encrypted transfer code is no longer available.")
+    }
+    const transferCode = openMigrationSecret(
+      encryptedTransferCode,
+      migration.idempotencyKey,
+    )
+    try {
+      const transfer = await deps.transferOpenProviderDomain(migration.domainNameAscii, {
+        token,
+        authCode: transferCode,
+        ownerHandle: customerHandle,
+        nameServers: source.authoritativeNameservers.map((name) => ({ name })),
+        autorenew: capability.renewal.executionMode === "autorenew" ? "on" : "off",
+        reference: migration.idempotencyKey,
+      })
+      migration = await updateMigration(payload, migration, {
+        providerTransferId: String(transfer.id),
+      }, `provider_transfer_${transfer.status}`, deps.now())
+    } catch (error) {
+      try {
+        providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
+      } catch {
+        // The prepared write remains authoritative until reconciliation succeeds.
+      }
+      if (!providerDomain && error instanceof OpenProviderIndeterminateWriteError) {
+        migration = await updateMigration(payload, migration, {
+          state: "awaiting_provider",
+          providerTransferState: "indeterminate",
+          reconciliationRequired: true,
+          failureReason: "openprovider_transfer_indeterminate",
+        }, "provider_transfer_indeterminate", deps.now())
+        return waiting(migration, "Domain transfer is awaiting provider reconciliation.")
+      }
+      if (!providerDomain) throw error
+    }
+    providerDomain ??= await deps.findOpenProviderDomain(migration.domainNameAscii, { token })
+  }
+  if (!providerDomain || !activeProviderDomain(
+    providerDomain,
+    capability.transfer.confirmation.activeStatuses,
+  )) {
+    if (migration.state === "preparing") {
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+      }, "provider_transfer_processing", deps.now())
+    }
+    return waiting(migration, "Openprovider is still processing the domain transfer.")
+  }
+  if (providerDomain.ownerHandle !== customerHandle) {
+    migration = await updateMigration(payload, migration, {
+      state: "failed",
+      failureReason: "provider_domain_owner_mismatch",
+    }, "provider_domain_owner_mismatch", deps.now())
+    return {
+      status: "failed",
+      migrationId: migration.id,
+      message: "Transferred domain owner does not match the customer registrant.",
+    }
+  }
+  if (
+    migration.cutoverWriteState === "not_started" &&
+    !nameserversEqual(providerDomain.nameServers, source.authoritativeNameservers)
+  ) {
+    migration = await updateMigration(payload, migration, {
+      state: "failed",
+      failureReason: "transfer_did_not_retain_old_nameservers",
+    }, "old_nameserver_retention_failed", deps.now())
+    return {
+      status: "failed",
+      migrationId: migration.id,
+      message: "Transfer did not retain the frozen old nameservers; cutover stopped.",
+    }
+  }
+  const registrantVerification = verificationStatus(providerDomain)
+  actions = actionStates(migration.customerActions, deps.now())
+  actions = withAction(
+    withAction(actions, "confirm_transfer", "completed", deps.now(), "provider_domain_active"),
+    "verify_registrant",
+    registrantVerification === "pending" ? "required" :
+      registrantVerification === "failed" ? "failed" : "completed",
+    deps.now(),
+    providerDomain.verificationEmailDescription ?? registrantVerification,
+  )
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    providerDomainId: String(providerDomain.id),
+    providerRegistrationState: "confirmed",
+    registrantVerificationStatus: registrantVerification,
+    registrantVerificationCheckedAt: deps.now(),
+    registrantVerificationDescription: providerDomain.verificationEmailDescription,
+    providerAutorenew: providerDomain.autorenew,
+    providerAutorenewCheckedAt: deps.now(),
+    expiresAt: providerDomain.renewalDate,
+    reconciliationRequired: registrantVerification === "pending",
+  }, "provider_transfer_reconciled", deps.now())
+  migration = await updateMigration(payload, migration, {
+    providerTransferState: "confirmed",
+    providerDomainId: String(providerDomain.id),
+    transferConfirmedAt: migration.transferConfirmedAt ?? deps.now(),
+    customerActions: actions,
+    reconciliationRequired: registrantVerification === "pending",
+    failureReason: registrantVerification === "failed" ? "registrant_verification_failed" : null,
+  }, `registrant_verification_${registrantVerification}`, deps.now())
+  if (registrantVerification === "pending") {
+    if (migration.state !== "awaiting_provider") {
+      migration = await updateMigration(payload, migration, {
+        state: "awaiting_provider",
+      }, "registrant_verification_required", deps.now())
+    }
+    return waiting(migration, "Customer registrant verification is required before cutover.")
+  }
+  if (registrantVerification === "failed") {
+    migration = await updateMigration(payload, migration, {
+      state: "failed",
+      reconciliationRequired: false,
+    }, "registrant_verification_failed", deps.now())
+    return {
+      status: "failed",
+      migrationId: migration.id,
+      message: "Registrant verification failed; cutover did not start.",
+    }
+  }
+  if (migration.state === "preparing" || migration.state === "awaiting_provider") {
+    migration = await updateMigration(payload, migration, {
+      state: "ready_for_cutover",
+    }, "migration_ready_for_cutover", deps.now())
+  }
+
+  if (migration.rollbackWriteState !== "not_started") {
+    return rollbackCutover(
+      payload,
+      migration,
+      managedDomain,
+      providerDomain,
+      migration.failureReason ?? "automatic_rollback_reconciliation",
+      deps,
+    )
+  }
+
+  if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
+    if (migration.cutoverWriteState === "indeterminate") {
+      return waiting(migration, "Nameserver cutover outcome remains indeterminate.")
+    }
+    migration = await updateMigration(payload, migration, {
+      state: "cutover_in_progress",
+      cutoverWriteState: "prepared",
+      cutoverRequestedAt: migration.cutoverRequestedAt ?? deps.now(),
+      verificationDeadlineAt: migration.verificationDeadlineAt ?? new Date(
+        new Date(deps.now()).getTime() + CUTOVER_VERIFICATION_MINUTES * 60_000,
+      ).toISOString(),
+      reconciliationRequired: true,
+    }, "nameserver_cutover_write_prepared", deps.now())
+    try {
+      await deps.updateOpenProviderDomainNameservers(
+        providerDomain.id,
+        zone.nameServers.map((name) => ({ name })),
+        { token },
+      )
+    } catch (error) {
+      if (!(error instanceof OpenProviderIndeterminateWriteError)) throw error
+      migration = await updateMigration(payload, migration, {
+        cutoverWriteState: "indeterminate",
+        reconciliationRequired: true,
+        failureReason: "openprovider_cutover_indeterminate",
+      }, "nameserver_cutover_indeterminate", deps.now())
+      return waiting(migration, "Nameserver cutover is awaiting provider reconciliation.")
+    }
+    providerDomain = await deps.findOpenProviderDomain(migration.domainNameAscii, { token }) ??
+      providerDomain
+    if (!nameserversEqual(providerDomain.nameServers, zone.nameServers)) {
+      return waiting(migration, "Openprovider has not confirmed the Cloudflare nameservers yet.")
+    }
+  }
+  if (migration.state === "ready_for_cutover") {
+    migration = await updateMigration(payload, migration, {
+      state: "cutover_in_progress",
+      cutoverRequestedAt: migration.cutoverRequestedAt ?? deps.now(),
+      verificationDeadlineAt: migration.verificationDeadlineAt ?? new Date(
+        new Date(deps.now()).getTime() + CUTOVER_VERIFICATION_MINUTES * 60_000,
+      ).toISOString(),
+    }, "nameserver_cutover_reconciled", deps.now())
+  }
+  migration = await updateMigration(payload, migration, {
+    state: "verifying",
+    cutoverWriteState: "confirmed",
+    cutoverConfirmedAt: migration.cutoverConfirmedAt ?? deps.now(),
+    reconciliationRequired: true,
+  }, "post_cutover_verification_started", deps.now())
+
+  const postCutoverRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
+  const postCutoverComparison = semanticZoneComparison(
+    target.records,
+    postCutoverRecords
+      .map((entry) => entry.record)
+      .filter((record) => !(record.type === "NS" && record.name === target.domain)),
+  )
+  const authoritativeDns = await deps.verifyAuthoritativeDns(
+    migration.domainNameAscii,
+    zone.nameServers,
+  )
+  const ssl = await deps.getCloudflareSslVerification(zone.id)
+  const https = ssl.status === "active"
+    ? await deps.verifyHttpsEndpoint(migration.domainNameAscii)
+    : { status: "pending" as const, httpStatus: null, reason: "cloudflare_ssl_pending" }
+  const verification = {
+    checkedAt: deps.now(),
+    semanticZone: postCutoverComparison,
+    authoritativeDns,
+    cloudflareSsl: {
+      status: ssl.status,
+      providerStatuses: ssl.providerStatuses,
+    },
+    https,
+    preservedRecordCount: target.records.filter((record) =>
+      !["A", "AAAA", "CNAME"].includes(record.type) ||
+      (record.name !== target.domain && record.name !== `www.${target.domain}`),
+    ).length,
+  }
+  migration = await updateMigration(payload, migration, {
+    postCutoverVerification: verification,
+  }, "post_cutover_verification_recorded", deps.now())
+  const verified = postCutoverComparison.equivalent &&
+    authoritativeDns.status === "verified" &&
+    ssl.status === "active" &&
+    https.status === "verified"
+  if (!verified) {
+    const deadlineReached = migration.verificationDeadlineAt
+      ? new Date(deps.now()).getTime() >= new Date(migration.verificationDeadlineAt).getTime()
+      : false
+    if (!deadlineReached && postCutoverComparison.equivalent) {
+      return waiting(migration, "Cutover propagation and HTTPS verification are still pending.")
+    }
+    return rollbackCutover(
+      payload,
+      migration,
+      managedDomain,
+      providerDomain,
+      postCutoverComparison.equivalent
+        ? "post_cutover_verification_deadline_exceeded"
+        : "post_cutover_zone_semantic_mismatch",
+      deps,
+    )
+  }
+
+  const tenant = await payload.update({
+    collection: "tenants",
+    id: relationshipId(migration.tenant) as string | number,
+    data: {
+      domain: migration.domainNameAscii,
+      domainVerification: {
+        status: "verified",
+        checkedAt: deps.now(),
+        notes: "Automatic migration verified complete semantic zone preservation, authoritative DNS, and HTTPS.",
+      },
+    },
+    depth: 0,
+    overrideAccess: true,
+  }) as Tenant
+  const generationRunId = relationshipId(order.generationRun)
+  if (!generationRunId) {
+    return rollbackCutover(
+      payload,
+      migration,
+      managedDomain,
+      providerDomain,
+      "migration_order_generation_run_missing",
+      deps,
+    )
+  }
+  const run = await payload.findByID({
+    collection: "site-generation-runs",
+    id: generationRunId,
+    depth: 0,
+    overrideAccess: true,
+  }) as SiteGenerationRun
+  if (!sameRelationshipId(run.tenant, tenant.id)) {
+    return rollbackCutover(
+      payload,
+      migration,
+      managedDomain,
+      providerDomain,
+      "migration_order_tenant_mismatch",
+      deps,
+    )
+  }
+  const activation = await deps.publishAndActivateAfterCompletedPayment(payload, run)
+  if (activation.status !== "activated") {
+    return rollbackCutover(
+      payload,
+      migration,
+      managedDomain,
+      providerDomain,
+      `approved_snapshot_activation_failed:${activation.message}`,
+      deps,
+    )
+  }
+  managedDomain = await updateManagedDomain(payload, managedDomain, {
+    authoritativeDnsStatus: "verified",
+    authoritativeDnsCheckedAt: deps.now(),
+    authoritativeDnsEvidence: authoritativeDns,
+    httpsStatus: "verified",
+    httpsCheckedAt: deps.now(),
+    httpsEvidence: https,
+    cloudflareZoneId: zone.id,
+    cloudflareNameservers: zone.nameServers,
+    cloudflareDnsRecordIds: postCutoverRecords.map((entry) => entry.id).filter(Boolean),
+    cloudflareZoneStatus: zone.status,
+    transferredAt: managedDomain.transferredAt ?? deps.now(),
+    reconciliationRequired: false,
+    failureReason: null,
+  }, "migration_cutover_verified", deps.now())
+  managedDomain = await deps.activateManagedDomainEntitlement(payload, managedDomain, deps.now())
+  migration = await updateMigration(payload, migration, {
+    state: "completed",
+    completedAt: deps.now(),
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: deps.now(),
+    reconciliationRequired: false,
+    failureReason: null,
+  }, "automatic_migration_completed", deps.now())
+  await payload.update({
+    collection: "orders",
+    id: order.id,
+    data: { state: "fulfilled" },
+    depth: 0,
+    overrideAccess: true,
+    context: { legalOrderLifecycleMutation: true },
+  })
+  return {
+    status: "completed",
+    migrationId: migration.id,
+    message: "Automatic existing-domain migration completed.",
+  }
+}

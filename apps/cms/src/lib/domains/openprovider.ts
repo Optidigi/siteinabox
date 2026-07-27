@@ -50,9 +50,24 @@ export type OpenProviderTransferRequest = {
   owner_handle: string
   admin_handle: string
   tech_handle: string
+  billing_handle: string
   autorenew: "on" | "off" | "default"
   ns_group?: string
   name_servers?: Array<{ name: string }>
+  comments?: string
+}
+
+export type OpenProviderTransferResult = {
+  id: string | number
+  domain: string
+  status: "requested" | "transferred"
+  raw: unknown
+}
+
+export type OpenProviderNameserverUpdateResult = {
+  id: string | number
+  status: string | null
+  raw: unknown
 }
 
 export type OpenProviderCustomerHandleResult = {
@@ -614,6 +629,7 @@ export function buildOpenProviderDomainTransferRequest(
     autorenew?: "on" | "off" | "default"
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
+    reference?: string
   },
 ): OpenProviderTransferRequest {
   const { domain, capability } = enabledCapabilityForDomain(domainInput)
@@ -637,10 +653,12 @@ export function buildOpenProviderDomainTransferRequest(
     owner_handle: cleanEnv(input.ownerHandle) ?? requiredHandle(env, "OPENPROVIDER_OWNER_HANDLE"),
     admin_handle: cleanEnv(input.adminHandle) ?? requiredHandle(env, "OPENPROVIDER_ADMIN_HANDLE"),
     tech_handle: requiredHandle(env, "OPENPROVIDER_TECH_HANDLE"),
+    billing_handle: requiredHandle(env, "OPENPROVIDER_BILLING_HANDLE"),
     autorenew: input.autorenew ?? (
       capability.renewal.executionMode === "autorenew" ? "on" : "off"
     ),
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
+    ...(cleanEnv(input.reference) ? { comments: cleanEnv(input.reference) as string } : {}),
   }
 }
 
@@ -970,6 +988,120 @@ export async function registerOpenProviderDomain(
       !providerStatus || providerStatus === "ACT" || providerStatus === "ACTIVE"
         ? "registered"
         : "requested",
+    raw: payload,
+  }
+}
+
+export async function transferOpenProviderDomain(
+  domainInput: string,
+  options: OpenProviderOptions & {
+    authCode: string
+    ownerHandle?: string
+    adminHandle?: string
+    autorenew?: "on" | "off" | "default"
+    nameServers: Array<{ name: string }>
+    reference: string
+  },
+): Promise<OpenProviderTransferResult> {
+  const env = options.env ?? process.env
+  const domain = splitDomain(domainInput)
+  const token = options.token ?? await loginOpenProvider(options)
+  const body = buildOpenProviderDomainTransferRequest(domain.domain, env, {
+    authCode: options.authCode,
+    ownerHandle: options.ownerHandle,
+    adminHandle: options.adminHandle,
+    autorenew: options.autorenew,
+    nameServers: options.nameServers,
+    nsGroup: null,
+    reference: options.reference,
+  })
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/domains/transfer`, {
+      method: "POST",
+      headers: jsonHeaders(token),
+      body: JSON.stringify(body),
+    })
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer", error)
+  }
+  if (!response.ok) {
+    if (response.status >= 500 || response.status === 408 || response.status === 429) {
+      throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer")
+    }
+    throw new OpenProviderApiError("OpenProvider domain transfer", response.status)
+  }
+  let payload: unknown
+  try {
+    payload = await json(response)
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer", error)
+  }
+  const data = dataObject(payload)
+  const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : null
+  if (id == null) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer")
+  }
+  const status = typeof data.status === "string" ? data.status.toUpperCase() : ""
+  return {
+    id,
+    domain: domain.domain,
+    status: ["ACT", "ACTIVE", "REGISTERED"].includes(status) ? "transferred" : "requested",
+    raw: payload,
+  }
+}
+
+export async function updateOpenProviderDomainNameservers(
+  domainId: string | number,
+  nameServers: Array<{ name: string }>,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderNameserverUpdateResult> {
+  const normalizedId = String(domainId).trim()
+  const normalizedNameservers = [...new Set(
+    nameServers.map((entry) => entry.name.trim().toLowerCase().replace(/\.$/, "")),
+  )].filter(Boolean)
+  if (!normalizedId) throw new Error("OpenProvider domain id is required.")
+  if (normalizedNameservers.length < 2) {
+    throw new Error("At least two nameservers are required for an OpenProvider domain update.")
+  }
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
+      method: "PUT",
+      headers: jsonHeaders(token),
+      body: JSON.stringify({
+        name_servers: normalizedNameservers.map((name) => ({ name })),
+        remove_nses: true,
+      }),
+    })
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError(
+      "OpenProvider domain nameserver update",
+      error,
+    )
+  }
+  if (!response.ok) {
+    if (response.status >= 500 || response.status === 408 || response.status === 429) {
+      throw new OpenProviderIndeterminateWriteError("OpenProvider domain nameserver update")
+    }
+    throw new OpenProviderApiError("OpenProvider domain nameserver update", response.status)
+  }
+  let payload: unknown
+  try {
+    payload = await json(response)
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError(
+      "OpenProvider domain nameserver update",
+      error,
+    )
+  }
+  const data = dataObject(payload)
+  const id = typeof data.id === "string" || typeof data.id === "number" ? data.id : domainId
+  return {
+    id,
+    status: typeof data.status === "string" ? data.status : null,
     raw: payload,
   }
 }

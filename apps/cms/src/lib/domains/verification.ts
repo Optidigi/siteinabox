@@ -1,6 +1,6 @@
 import "server-only"
 
-import { Resolver, resolve4, resolve6, resolveNs } from "node:dns/promises"
+import { Resolver, resolve, resolve4, resolve6, resolveNs } from "node:dns/promises"
 
 const canonicalDnsName = (value: string): string => value.trim().toLowerCase().replace(/\.$/, "")
 
@@ -96,6 +96,65 @@ export type HttpsVerification = {
   status: "verified" | "pending"
   httpStatus: number | null
   reason: string | null
+}
+
+export type ParentDsVerification = {
+  status: "absent" | "present" | "indeterminate"
+  records: string[]
+  reason: string | null
+}
+
+type DsRecord = {
+  keyTag: number
+  algorithm: number
+  digestType: number
+  digest: string
+}
+
+export async function verifyParentDsAbsent(
+  domain: string,
+  options: {
+    resolveDsImpl?: (hostname: string) => Promise<DsRecord[]>
+  } = {},
+): Promise<ParentDsVerification> {
+  try {
+    const resolveDsImpl = options.resolveDsImpl ?? (async (hostname: string) => {
+      const result: unknown = await resolve(hostname, "DS")
+      if (!Array.isArray(result)) return []
+      return result.flatMap((entry): DsRecord[] => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return []
+        const record = entry as Record<string, unknown>
+        return (
+          typeof record.keyTag === "number" &&
+          typeof record.algorithm === "number" &&
+          typeof record.digestType === "number" &&
+          typeof record.digest === "string"
+        ) ? [{
+            keyTag: record.keyTag,
+            algorithm: record.algorithm,
+            digestType: record.digestType,
+            digest: record.digest,
+          }] : []
+      })
+    })
+    const records = await resolveDsImpl(canonicalDnsName(domain))
+    const normalized = records.map((record) =>
+      `${record.keyTag} ${record.algorithm} ${record.digestType} ${record.digest.toUpperCase()}`,
+    ).sort()
+    return {
+      status: normalized.length === 0 ? "absent" : "present",
+      records: normalized,
+      reason: normalized.length === 0 ? null : "parent_ds_present",
+    }
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : ""
+    if (["ENODATA", "ENOTFOUND", "ENONAME"].includes(code)) {
+      return { status: "absent", records: [], reason: null }
+    }
+    return { status: "indeterminate", records: [], reason: "parent_ds_lookup_failed" }
+  }
 }
 
 export async function verifyHttpsEndpoint(

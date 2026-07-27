@@ -18,6 +18,7 @@ import {
   PaymentAttempts,
 } from "@/collections/CommerceRecords"
 import { Forms } from "@/collections/Forms"
+import { DomainMigrations } from "@/collections/DomainMigrations"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
 import { MailLogs } from "@/collections/MailLogs"
 import {
@@ -44,6 +45,7 @@ import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
+import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTask"
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { deliverCommerceNotificationTask } from "@/lib/jobs/deliverCommerceNotificationTask"
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
@@ -132,6 +134,7 @@ export default buildConfig({
     BillingAgreements,
     ManagedDomains,
     DomainRenewalCycles,
+    DomainMigrations,
     AccountingDocuments,
     CommerceNotificationDeliveries,
     AgreementAcceptances,
@@ -159,6 +162,7 @@ export default buildConfig({
       sendLegalRequirementNotificationsTask,
       syncMolliePaymentTask,
       fulfillOrderTask,
+      prepareDomainMigrationTask,
       renewDomainTask,
       reconcileCommerceTask,
       deliverCommerceNotificationTask,

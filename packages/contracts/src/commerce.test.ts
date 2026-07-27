@@ -210,8 +210,9 @@ describe("migration classification and billing", () => {
       "upload_complete_zone",
       "confirm_transfer",
       "verify_registrant",
+      "remove_dnssec_ds",
     ])
-    expect(Object.values(MIGRATION_CUSTOMER_ACTION_FEES_NET_MINOR)).toEqual([0, 0, 0, 0, 0])
+    expect(Object.values(MIGRATION_CUSTOMER_ACTION_FEES_NET_MINOR)).toEqual([0, 0, 0, 0, 0, 0])
     expect(migrationChargeNetMinor("automatic")).toBe(0)
     expect(migrationChargeNetMinor("assisted_standard")).toBe(4_900)
     expect(migrationChargeNetMinor("complex")).toBeNull()

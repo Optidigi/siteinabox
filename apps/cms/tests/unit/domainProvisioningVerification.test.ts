@@ -3,9 +3,32 @@ import { describe, expect, it, vi } from "vitest"
 import {
   verifyAuthoritativeDns,
   verifyHttpsEndpoint,
+  verifyParentDsAbsent,
 } from "@/lib/domains/verification"
 
 describe("enabled-TLD domain verification", () => {
+  it("treats parent DS lookup only as DNSSEC preparation, never as zone acquisition", async () => {
+    await expect(verifyParentDsAbsent("example.nl", {
+      resolveDsImpl: vi.fn(async () => []),
+    })).resolves.toEqual({
+      status: "absent",
+      records: [],
+      reason: null,
+    })
+    await expect(verifyParentDsAbsent("example.nl", {
+      resolveDsImpl: vi.fn(async () => [{
+        keyTag: 12_345,
+        algorithm: 13,
+        digestType: 2,
+        digest: "abcd",
+      }]),
+    })).resolves.toEqual({
+      status: "present",
+      records: ["12345 13 2 ABCD"],
+      reason: "parent_ds_present",
+    })
+  })
+
   it.each(["example.nl", "example.be"])(
     "requires exact delegation and an SOA answer for %s",
     async (domain) => {

@@ -1,4 +1,8 @@
 import "server-only"
+import {
+  semanticZoneComparison,
+  type NormalizedMigrationDnsRecord,
+} from "@siteinabox/contracts/domain-migration"
 import { splitDomain } from "@/lib/domains/normalize"
 
 export type CloudflareZoneResult = {
@@ -25,6 +29,12 @@ export type CloudflareDnsRecordResult = {
   name: string
   content: string
   proxied: boolean
+  raw: unknown
+}
+
+export type CloudflareMigrationDnsRecordResult = {
+  id: string | null
+  record: NormalizedMigrationDnsRecord
   raw: unknown
 }
 
@@ -395,6 +405,208 @@ export async function createCloudflareZoneDnsRecords(
     results.push(await createOrReuseCloudflareDnsRecord(zoneId, record, options))
   }
   return results
+}
+
+const migrationRecordBody = (
+  record: NormalizedMigrationDnsRecord,
+): Record<string, unknown> => {
+  const common = {
+    type: record.type,
+    name: record.name,
+    ttl: record.ttl,
+    proxied: record.proxied,
+  }
+  if (record.type === "MX") {
+    return { ...common, content: record.target, priority: record.priority }
+  }
+  if (record.type === "CAA") {
+    return {
+      ...common,
+      data: { flags: record.flags, tag: record.tag, value: record.value },
+    }
+  }
+  if (record.type === "SRV") {
+    return {
+      ...common,
+      data: {
+        priority: record.priority,
+        weight: record.weight,
+        port: record.port,
+        target: record.target,
+      },
+    }
+  }
+  return { ...common, content: record.content }
+}
+
+const canonicalDnsName = (value: string): string =>
+  value.trim().toLowerCase().replace(/\.$/, "")
+
+const parseMigrationDnsRecord = (
+  value: Record<string, unknown>,
+): CloudflareMigrationDnsRecordResult | null => {
+  const type = value.type
+  const name = typeof value.name === "string" ? canonicalDnsName(value.name) : null
+  const ttl = typeof value.ttl === "number" && Number.isSafeInteger(value.ttl)
+    ? value.ttl
+    : 1
+  const proxied = value.proxied === true
+  if (!name) return null
+  if (type === "MX") {
+    const priority = typeof value.priority === "number" ? value.priority : null
+    const target = typeof value.content === "string" ? canonicalDnsName(value.content) : null
+    if (priority == null || !target) return null
+    return {
+      id: typeof value.id === "string" ? value.id : null,
+      record: { type, name, ttl, priority, target, proxied },
+      raw: value,
+    }
+  }
+  if (type === "CAA") {
+    const data = readObject(value.data)
+    const content = typeof value.content === "string" ? value.content.trim() : ""
+    const match = content.match(/^(\d+)\s+([A-Za-z0-9]+)\s+"?(.+?)"?$/)
+    const flags = typeof data.flags === "number"
+      ? data.flags
+      : match ? Number(match[1]) : null
+    const tag = typeof data.tag === "string"
+      ? data.tag.toLowerCase()
+      : match?.[2]?.toLowerCase()
+    const caaValue = typeof data.value === "string" ? data.value : match?.[3]
+    if (flags == null || !tag || !caaValue) return null
+    return {
+      id: typeof value.id === "string" ? value.id : null,
+      record: { type, name, ttl, flags, tag, value: caaValue, proxied },
+      raw: value,
+    }
+  }
+  if (type === "SRV") {
+    const data = readObject(value.data)
+    const parts = typeof value.content === "string"
+      ? value.content.trim().split(/\s+/)
+      : []
+    const priority = typeof data.priority === "number" ? data.priority : Number(parts[0])
+    const weight = typeof data.weight === "number" ? data.weight : Number(parts[1])
+    const port = typeof data.port === "number" ? data.port : Number(parts[2])
+    const target = typeof data.target === "string"
+      ? canonicalDnsName(data.target)
+      : parts[3] ? canonicalDnsName(parts[3]) : null
+    if (
+      !Number.isSafeInteger(priority) ||
+      !Number.isSafeInteger(weight) ||
+      !Number.isSafeInteger(port) ||
+      !target
+    ) return null
+    return {
+      id: typeof value.id === "string" ? value.id : null,
+      record: { type, name, ttl, priority, weight, port, target, proxied },
+      raw: value,
+    }
+  }
+  if (
+    type === "A" ||
+    type === "AAAA" ||
+    type === "CNAME" ||
+    type === "TXT" ||
+    type === "NS"
+  ) {
+    const content = typeof value.content === "string" ? value.content : null
+    if (content == null) return null
+    const normalizedContent = type === "CNAME" || type === "NS" || type === "AAAA"
+      ? canonicalDnsName(content)
+      : content
+    return {
+      id: typeof value.id === "string" ? value.id : null,
+      record: { type, name, ttl, content: normalizedContent, proxied },
+      raw: value,
+    }
+  }
+  return null
+}
+
+export async function listCloudflareMigrationDnsRecords(
+  zoneId: string,
+  options?: CloudflareOptions,
+): Promise<CloudflareMigrationDnsRecordResult[]> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  const response = await fetcher(options)(
+    `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records?per_page=500`,
+    { method: "GET", headers: headers(token) },
+  )
+  const payload = await json(response)
+  assertCloudflareOk("Cloudflare migration DNS record list", response, payload)
+  const source = readObject(payload)
+  const rawRecords = resultArray(payload)
+  const resultInfo = readObject(source.result_info)
+  if (
+    typeof resultInfo.total_count === "number" &&
+    resultInfo.total_count > rawRecords.length
+  ) {
+    throw new Error("Cloudflare migration DNS record list is incomplete.")
+  }
+  const parsed = rawRecords.map(parseMigrationDnsRecord)
+  if (parsed.some((entry) => entry === null)) {
+    throw new Error("Cloudflare contains a DNS record unsupported by automatic migration.")
+  }
+  return parsed.filter(
+    (entry): entry is CloudflareMigrationDnsRecordResult => entry !== null,
+  )
+}
+
+export async function createCloudflareMigrationDnsRecord(
+  zoneId: string,
+  record: NormalizedMigrationDnsRecord,
+  options?: CloudflareOptions,
+): Promise<CloudflareMigrationDnsRecordResult> {
+  const env = options?.env ?? process.env
+  const { token } = requireCloudflareConfig(env)
+  let response: Response
+  try {
+    response = await fetcher(options)(
+      `${apiBase(env)}/zones/${encodeURIComponent(zoneId)}/dns_records`,
+      {
+        method: "POST",
+        headers: headers(token),
+        body: JSON.stringify(migrationRecordBody(record)),
+      },
+    )
+  } catch (error) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare migration DNS record creation", error)
+  }
+  const payload = await readCloudflareWritePayload(
+    "Cloudflare migration DNS record creation",
+    response,
+  )
+  assertCloudflareOk("Cloudflare migration DNS record creation", response, payload)
+  const parsed = parseMigrationDnsRecord(resultObject(payload))
+  if (!parsed?.id) {
+    throw new CloudflareIndeterminateWriteError("Cloudflare migration DNS record creation")
+  }
+  return { ...parsed, raw: payload }
+}
+
+export async function createOrReuseCloudflareMigrationDnsRecord(
+  zoneId: string,
+  record: NormalizedMigrationDnsRecord,
+  options?: CloudflareOptions,
+): Promise<CloudflareMigrationDnsRecordResult> {
+  const findExisting = async () => (await listCloudflareMigrationDnsRecords(zoneId, options))
+    .find((candidate) =>
+      semanticZoneComparison([record], [candidate.record]).equivalent)
+  const existing = await findExisting()
+  if (existing) return existing
+  try {
+    return await createCloudflareMigrationDnsRecord(zoneId, record, options)
+  } catch (error) {
+    try {
+      const reconciled = await findExisting()
+      if (reconciled) return reconciled
+    } catch {
+      // Preserve the original indeterminate provider outcome.
+    }
+    throw error
+  }
 }
 
 export async function getCloudflareSslVerification(

@@ -48,6 +48,10 @@
       "types": "./src/tld-capabilities.ts",
       "default": "./src/tld-capabilities.ts"
     },
+    "./domain-migration": {
+      "types": "./src/domain-migration.ts",
+      "default": "./src/domain-migration.ts"
+    },
     "./fixtures/tenants": {
       "types": "./src/fixtures/tenants.ts",
       "default": "./src/fixtures/tenants.ts"

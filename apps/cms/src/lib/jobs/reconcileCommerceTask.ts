@@ -1,6 +1,7 @@
 import type { TaskConfig } from "payload"
 
 import { queueOrderFulfillment } from "@/lib/jobs/fulfillOrderTask"
+import { queueDomainMigrationPreparation } from "@/lib/jobs/prepareDomainMigrationTask"
 import { queueDomainRenewal } from "@/lib/jobs/renewDomainTask"
 import { queueMolliePaymentSync } from "@/lib/jobs/syncMolliePaymentTask"
 import { relationshipId } from "@/lib/relationshipId"
@@ -105,6 +106,28 @@ export const reconcileCommerceTask: TaskConfig<{
       })
       queued += 1
     }
+    const migrationResult = await req.payload.find({
+      collection: "domain-migrations",
+      where: {
+        state: {
+          in: [
+            "ready_to_prepare",
+            "preparing",
+            "awaiting_provider",
+            "ready_for_cutover",
+            "cutover_in_progress",
+            "verifying",
+          ],
+        },
+      },
+      limit: 100,
+      depth: 0,
+      overrideAccess: true,
+    })
+    for (const migration of migrationResult.docs) {
+      await queueDomainMigrationPreparation(req.payload, migration.id)
+      queued += 1
+    }
     const billingResult = await req.payload.find({
       collection: "billing-agreements",
       where: {
@@ -170,6 +193,7 @@ export const reconcileCommerceTask: TaskConfig<{
         examined:
           paymentResult.docs.length +
           domainResult.docs.length +
+          migrationResult.docs.length +
           billingResult.docs.length +
           renewalDomains.docs.length,
         queued,
