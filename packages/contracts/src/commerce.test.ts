@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  BILLING_DUNNING_OFFSETS_DAYS,
+  BILLING_GRACE_DAYS,
+  BILLING_UPCOMING_CHARGE_REMINDER_DAYS,
   COMMERCIAL_CATALOG,
   COMMERCIAL_CATALOG_VERSION,
   ACCEPTED_ORDER_EVIDENCE_POLICY,
+  DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS,
   MIGRATION_CUSTOMER_ACTION_FEES_NET_MINOR,
+  NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
   REFUND_DECISION_MATRIX,
+  addBillingPeriod,
+  assertExclusiveProviderRenewalExecution,
+  billingDunningStage,
+  billingGraceEndsAt,
   businessUseDeclarationAcceptanceSchema,
   calculateDomainSurchargeNetMinor,
   classifyMigration,
@@ -23,8 +32,10 @@ import {
   migrationChargeNetMinor,
   migrationCustomerActions,
   paymentAttemptStateTransitions,
+  providerSafeCutoffAt,
   refundDecisionFor,
   refundScenarios,
+  renewalFinancialCoverage,
 } from "./commerce"
 
 describe("versioned commercial catalog", () => {
@@ -278,6 +289,68 @@ describe("independent commerce state machines", () => {
       paymentSecured: false,
       providerSafeCutoffReached: true,
     })).toBe("cancel_uncovered_cycle")
+  })
+})
+
+describe("Phase 7 billing and renewal contracts", () => {
+  it("defines every governed customer reminder offset and the 14-day grace boundary", () => {
+    expect(BILLING_UPCOMING_CHARGE_REMINDER_DAYS).toEqual([7])
+    expect(BILLING_DUNNING_OFFSETS_DAYS).toEqual([0, 3, 7, 13])
+    expect(DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS).toEqual([60, 30, 14, 7, 1])
+    expect(BILLING_GRACE_DAYS).toBe(14)
+    expect(billingGraceEndsAt("2026-08-01T10:00:00.000Z")).toBe("2026-08-15T10:00:00.000Z")
+    expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-01T09:59:59.999Z")).toBe("not_due")
+    expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-01T10:00:00.000Z")).toBe("due")
+    expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-04T10:00:00.000Z")).toBe("retry_3d")
+    expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-08T10:00:00.000Z")).toBe("retry_7d")
+    expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-14T10:00:00.000Z")).toBe("retry_13d")
+    expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-15T10:00:00.000Z")).toBe("suspend")
+  })
+
+  it("anchors monthly and annual coverage without end-of-month drift", () => {
+    expect(addBillingPeriod("2026-01-31T12:00:00.000Z", "monthly")).toBe("2026-02-28T12:00:00.000Z")
+    expect(addBillingPeriod("2028-02-29T12:00:00.000Z", "annual")).toBe("2029-02-28T12:00:00.000Z")
+  })
+
+  it("keys the .nl provider-safe cutoff from Openprovider renewal_date", () => {
+    expect(NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS).toBe(2)
+    expect(providerSafeCutoffAt(
+      "2027-07-26T00:00:00.000Z",
+      NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS,
+    )).toBe("2027-07-24T00:00:00.000Z")
+  })
+
+  it("freezes renewal allowance and surcharge coverage in minor units", () => {
+    expect(renewalFinancialCoverage(900)).toEqual({
+      providerOperationPriceNetMinor: 900,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 0,
+      initialState: "included_allowance",
+    })
+    expect(renewalFinancialCoverage(1_250)).toEqual({
+      providerOperationPriceNetMinor: 1_250,
+      includedAllowanceNetMinor: 1_000,
+      surchargeNetMinor: 250,
+      initialState: "uncovered",
+    })
+  })
+
+  it("forbids explicit renewal and provider autorenew in the same cycle", () => {
+    expect(() => assertExclusiveProviderRenewalExecution({
+      mode: "autorenew",
+      providerAutorenewEnabled: true,
+      explicitRenewalRequested: false,
+    })).not.toThrow()
+    expect(() => assertExclusiveProviderRenewalExecution({
+      mode: "autorenew",
+      providerAutorenewEnabled: true,
+      explicitRenewalRequested: true,
+    })).toThrow("cannot use provider autorenew and explicit renewal together")
+    expect(() => assertExclusiveProviderRenewalExecution({
+      mode: "explicit",
+      providerAutorenewEnabled: true,
+      explicitRenewalRequested: false,
+    })).toThrow("requires provider autorenew to be off")
   })
 })
 

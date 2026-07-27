@@ -244,7 +244,6 @@ export const Orders: CollectionConfig = {
     {
       name: "checkoutProfileKey",
       type: "text",
-      unique: true,
       index: true,
       admin: {
         description: adminText(
@@ -254,6 +253,17 @@ export const Orders: CollectionConfig = {
       },
     },
     { name: "catalogVersion", type: "text", index: true },
+    { name: "billingCycleKey", type: "text", unique: true, index: true },
+    { name: "billingAgreement", type: "relationship", relationTo: "billing-agreements", index: true },
+    { name: "renewalCycle", type: "relationship", relationTo: "domain-renewal-cycles", unique: true, index: true },
+    {
+      name: "orderKind",
+      type: "select",
+      options: selectOptions(["initial_subscription", "subscription_renewal", "domain_renewal"]),
+      index: true,
+    },
+    { name: "servicePeriodStartsAt", type: "date", index: true },
+    { name: "servicePeriodEndsAt", type: "date", index: true },
     { name: "quoteEvidence", type: "json" },
     { name: "netLineItems", type: "json" },
     {

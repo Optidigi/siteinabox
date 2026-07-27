@@ -199,6 +199,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
   const paymentAttempts: MockDoc[] = []
   const accountingDocuments: MockDoc[] = []
   const managedDomains: MockDoc[] = []
+  const commerceNotifications: MockDoc[] = []
   const projection = overrides.payment as Record<string, unknown> | undefined
   if (projection?.externalReference) {
     const agreement = {
@@ -260,6 +261,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       ["billing-agreements", billingAgreements],
       ["accounting-documents", accountingDocuments],
       ["managed-domains", managedDomains],
+      ["commerce-notification-deliveries", commerceNotifications],
     ] as const) {
       if (collection !== slug) continue
       const doc = docs.find((entry) => String(entry.id) === String(id))
@@ -281,6 +283,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["billing-agreements", billingAgreements],
         ["accounting-documents", accountingDocuments],
         ["managed-domains", managedDomains],
+        ["commerce-notification-deliveries", commerceNotifications],
       ] as const) {
         if (collection !== slug) continue
         const doc = docs.find((entry) => String(entry.id) === String(id))
@@ -336,6 +339,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["billing-agreements", billingAgreements],
         ["accounting-documents", accountingDocuments],
         ["managed-domains", managedDomains],
+        ["commerce-notification-deliveries", commerceNotifications],
       ] as const) {
         if (collection === slug) {
           return { docs: docs.filter((doc) => matchesWhere(doc, where)) }
@@ -355,6 +359,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
         ["billing-agreements", billingAgreements, 1_100],
         ["accounting-documents", accountingDocuments, 1_200],
         ["managed-domains", managedDomains, 1_300],
+        ["commerce-notification-deliveries", commerceNotifications, 1_400],
       ] as const) {
         if (collection !== slug) continue
         const doc = { id: base + docs.length, ...data }
@@ -870,6 +875,84 @@ describe("Mollie payment flow", () => {
       document.providerOperationId === "chb_test_123" &&
       document.documentType === "credit_note",
     )).toBe(true)
+  })
+
+  it("restores only the tenant suspension owned by the paid billing agreement", async () => {
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      order,
+      tenant,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_recurring_restore",
+        providerStatus: "open",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "open",
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    Object.assign(paymentAttempts[0]!, {
+      purpose: "recurring",
+      sequenceType: "recurring",
+      state: "pending_provider",
+      providerStatus: "open",
+    })
+    Object.assign(billingAgreements[0]!, {
+      state: "suspended",
+      serviceSuspensionStatus: "billing_suspended",
+      suspendedAt: "2026-08-15T10:00:00.000Z",
+      currentPeriodStartsAt: "2026-07-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
+    })
+    Object.assign(tenant, {
+      status: "suspended",
+      billingSuspensionAgreement: billingAgreements[0]!.id,
+      billingSuspendedAt: "2026-08-15T10:00:00.000Z",
+    })
+
+    await applyMollieWebhookPayment(
+      payload,
+      "tr_recurring_restore",
+      async () => ({
+        id: "tr_recurring_restore",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "recurring",
+        paidAt: "2026-08-16T10:00:00.000Z",
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: { refunds: [], chargebacks: [] },
+      }),
+    )
+
+    expect(billingAgreements[0]).toMatchObject({
+      state: "active",
+      serviceSuspensionStatus: "none",
+      currentPeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
+      nextChargeAt: "2026-09-01T10:00:00.000Z",
+      graceStartedAt: null,
+      graceEndsAt: null,
+    })
+    expect(tenant).toMatchObject({
+      status: "active",
+      billingSuspensionAgreement: null,
+      billingSuspendedAt: null,
+    })
+    expect(order).toMatchObject({ state: "fulfilled", paymentStatus: "paid" })
   })
 
   it("marks a provider amount mismatch for reconciliation without satisfying the order", async () => {

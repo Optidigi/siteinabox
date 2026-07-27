@@ -52,8 +52,25 @@ export type OpenProviderDomainRecord = {
   adminHandle: string | null
   nameServers: string[]
   renewalDate: string | null
+  autorenew: "on" | "off" | "default" | "unknown"
   verificationEmailStatus: string | null
   verificationEmailDescription: string | null
+  raw: unknown
+}
+
+export type OpenProviderDomainPrice = {
+  domain: string
+  operation: "renew"
+  currency: string
+  netAmountMinor: number
+  premium: boolean
+  raw: unknown
+}
+
+export type OpenProviderAutorenewResult = {
+  id: number | string
+  autorenew: "on" | "off"
+  status: string | null
   raw: unknown
 }
 
@@ -667,6 +684,9 @@ const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord
     renewalDate: typeof source.renewal_date === "string" && source.renewal_date.trim()
       ? source.renewal_date
       : null,
+    autorenew: source.autorenew === "on" || source.autorenew === "off" || source.autorenew === "default"
+      ? source.autorenew
+      : "unknown",
     verificationEmailStatus:
       typeof source.verification_email_status === "string" && source.verification_email_status.trim()
         ? source.verification_email_status
@@ -677,6 +697,96 @@ const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord
         ? source.verification_email_status_description
         : null,
     raw: value,
+  }
+}
+
+const providerPriceMinor = (value: unknown): number | null => {
+  const normalized = typeof value === "number"
+    ? value.toFixed(2)
+    : typeof value === "string" ? value.trim() : ""
+  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null
+  const [whole, fraction = ""] = normalized.split(".")
+  const minor = Number(whole) * 100 + Number(fraction.padEnd(2, "0"))
+  return Number.isSafeInteger(minor) && minor >= 0 ? minor : null
+}
+
+export async function getOpenProviderDomainRenewalPrice(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderDomainPrice> {
+  const env = options?.env ?? process.env
+  const domain = splitDomain(domainInput)
+  const token = options?.token ?? await loginOpenProvider(options)
+  const query = new URLSearchParams({
+    "domain.name": domain.name,
+    "domain.extension": domain.extension,
+    operation: "renew",
+    period: "1",
+  })
+  const response = await fetcher(options)(`${apiBase(env)}/domains/prices?${query.toString()}`, {
+    method: "GET",
+    headers: jsonHeaders(token),
+  })
+  if (!response.ok) throw new OpenProviderApiError("OpenProvider domain renewal price", response.status)
+  const payload = await json(response)
+  const data = dataObject(payload)
+  const prices = readObject(data.price)
+  const reseller = readObject(prices.reseller)
+  const currency = typeof reseller.currency === "string" ? reseller.currency.trim().toUpperCase() : ""
+  const netAmountMinor = providerPriceMinor(reseller.price)
+  if (!currency || netAmountMinor == null) {
+    throw new Error("OpenProvider renewal price response is incomplete.")
+  }
+  return {
+    domain: domain.domain,
+    operation: "renew",
+    currency,
+    netAmountMinor,
+    premium: data.is_premium === true,
+    raw: payload,
+  }
+}
+
+export async function setOpenProviderDomainAutorenew(
+  domainId: string | number,
+  autorenew: "on" | "off",
+  options?: OpenProviderOptions,
+): Promise<OpenProviderAutorenewResult> {
+  const normalizedId = String(domainId).trim()
+  if (!normalizedId) throw new Error("OpenProvider domain id is required.")
+  const env = options?.env ?? process.env
+  const token = options?.token ?? await loginOpenProvider(options)
+  let response: Response
+  try {
+    response = await fetcher(options)(`${apiBase(env)}/domains/${encodeURIComponent(normalizedId)}`, {
+      method: "PUT",
+      headers: jsonHeaders(token),
+      body: JSON.stringify({ autorenew }),
+    })
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain autorenew update", error)
+  }
+  if (!response.ok) {
+    if (response.status >= 500 || response.status === 408 || response.status === 429) {
+      throw new OpenProviderIndeterminateWriteError("OpenProvider domain autorenew update")
+    }
+    throw new OpenProviderApiError("OpenProvider domain autorenew update", response.status)
+  }
+  let payload: unknown
+  try {
+    payload = await json(response)
+  } catch (error) {
+    throw new OpenProviderIndeterminateWriteError("OpenProvider domain autorenew update", error)
+  }
+  const data = dataObject(payload)
+  const returnedId = typeof data.id === "string" || typeof data.id === "number"
+    ? data.id
+    : domainId
+  return {
+    id: returnedId,
+    autorenew,
+    status: typeof data.status === "string" ? data.status : null,
+    raw: payload,
   }
 }
 

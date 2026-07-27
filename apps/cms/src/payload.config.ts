@@ -12,6 +12,7 @@ import {
   AccountingDocuments,
   BillingAgreements,
   CheckoutProfiles,
+  CommerceNotificationDeliveries,
   DomainRenewalCycles,
   ManagedDomains,
   PaymentAttempts,
@@ -44,7 +45,9 @@ import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
+import { deliverCommerceNotificationTask } from "@/lib/jobs/deliverCommerceNotificationTask"
 import { reconcileCommerceTask } from "@/lib/jobs/reconcileCommerceTask"
+import { renewDomainTask } from "@/lib/jobs/renewDomainTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
 import { sendLegalRequirementNotificationsTask } from "@/lib/jobs/sendLegalRequirementNotificationsTask"
 import { syncMolliePaymentTask } from "@/lib/jobs/syncMolliePaymentTask"
@@ -130,6 +133,7 @@ export default buildConfig({
     ManagedDomains,
     DomainRenewalCycles,
     AccountingDocuments,
+    CommerceNotificationDeliveries,
     AgreementAcceptances,
     SiteReviewRevisions,
     SiteApprovals,
@@ -155,7 +159,9 @@ export default buildConfig({
       sendLegalRequirementNotificationsTask,
       syncMolliePaymentTask,
       fulfillOrderTask,
+      renewDomainTask,
       reconcileCommerceTask,
+      deliverCommerceNotificationTask,
       requestMollieRefundTask,
     ],
     enableConcurrencyControl: true,

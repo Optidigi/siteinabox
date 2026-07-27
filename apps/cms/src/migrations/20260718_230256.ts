@@ -165,6 +165,10 @@ export async function rebuildAmicare(payload: MigrateUpArgs["payload"]): Promise
     ] },
     limit: 10,
     depth: 0,
+    // Historical data migrations must not select fields introduced by later
+    // schema migrations. Payload otherwise projects today's tenant shape
+    // before those columns exist during migrateFresh.
+    select: { id: true, slug: true, domain: true },
     overrideAccess: true,
   })
   if (tenants.docs.length === 0) return

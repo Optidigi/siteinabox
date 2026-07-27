@@ -1,6 +1,7 @@
 import "server-only"
 
 import {
+  addBillingPeriod,
   getCommercialCatalog,
   refundDecisionFor,
   type PaymentAttemptState,
@@ -43,6 +44,7 @@ import {
   type GenerationRunPaymentStatus,
 } from "@/lib/payments/generationRunPayment"
 import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { ensureCommerceNotification } from "@/lib/commerce/notifications"
 import { previewClientSlugFromDomain } from "@/lib/preview/previewAccess"
 import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
@@ -302,6 +304,7 @@ const createOrLoadBillingAgreement = async (
         currency: order.currency,
         recurringNetAmountMinor: recurringNetAmount(order),
         renewalIntent: true,
+        serviceSuspensionStatus: "none",
         reconciliationRequired: false,
         stateHistory: agreementHistory([], "pending_first_payment", now),
         createdAt: now,
@@ -326,6 +329,7 @@ const createOrLoadAttempt = async (
     purpose: PaymentAttempt["purpose"]
     sequenceType: PaymentAttempt["sequenceType"]
     idempotencyKey: string
+    attemptNumber?: number
     now: string
   },
 ): Promise<PaymentAttempt> => {
@@ -342,6 +346,7 @@ const createOrLoadAttempt = async (
         order: input.order.id,
         billingAgreement: input.billingAgreement?.id,
         tenant: numericRelationshipId(input.order.tenant),
+        attemptNumber: input.attemptNumber ?? 1,
         state: "created",
         purpose: input.purpose,
         sequenceType: input.sequenceType,
@@ -451,6 +456,7 @@ export async function createMollieCheckoutForGenerationRun(
     purpose: "first_payment",
     sequenceType: "first",
     idempotencyKey: `mollie:first-payment:order:${order.id}:v1`,
+    attemptNumber: 1,
     now,
   })
   if (
@@ -628,6 +634,7 @@ export async function createApplicationRecurringMolliePayment(
     billingAgreementId: string | number
     orderId: string | number
     purpose?: Extract<PaymentAttempt["purpose"], "recurring" | "domain_renewal">
+    attemptNumber?: number
   },
 ): Promise<{ paymentAttempt: PaymentAttempt; reused: boolean }> {
   let agreement = await payload.findByID({
@@ -646,7 +653,7 @@ export async function createApplicationRecurringMolliePayment(
     throw new Error("Recurring order and billing agreement belong to different tenants.")
   }
   if (
-    agreement.state !== "active" ||
+    !["active", "past_due"].includes(agreement.state) ||
     !agreement.renewalIntent ||
     !agreement.providerCustomerId ||
     !agreement.providerMandateId
@@ -674,19 +681,24 @@ export async function createApplicationRecurringMolliePayment(
   }
 
   const purpose = input.purpose ?? "recurring"
+  const attemptNumber = input.attemptNumber ?? 1
+  if (!Number.isSafeInteger(attemptNumber) || attemptNumber < 1) {
+    throw new Error("Recurring Mollie attempt number must be a positive safe integer.")
+  }
   const now = new Date().toISOString()
   let attempt = await createOrLoadAttempt(payload, {
     order,
     billingAgreement: agreement,
     purpose,
     sequenceType: "recurring",
-    idempotencyKey: `mollie:${purpose}:order:${order.id}:v1`,
+    idempotencyKey: `mollie:${purpose}:order:${order.id}:v${attemptNumber}`,
+    attemptNumber,
     now,
   })
   if (attempt.providerPaymentId) return { paymentAttempt: attempt, reused: true }
   if (
     order.state !== "accepted" ||
-    !["pending", "open"].includes(order.paymentStatus) ||
+    !["pending", "open", "failed", "expired", "cancelled"].includes(order.paymentStatus) ||
     order.currency !== agreement.currency
   ) {
     throw new Error("Recurring Mollie payment requires an accepted unpaid order in the agreement currency.")
@@ -1047,28 +1059,10 @@ const assertProviderPaymentAuthority = async (
   }
 }
 
-const nextChargeAt = (
-  billingPeriod: BillingAgreement["billingPeriod"],
-  paidAt: string,
-): string => {
-  const date = new Date(paidAt)
-  if (Number.isNaN(date.getTime())) throw new Error("Mollie paidAt is invalid.")
-  const day = date.getUTCDate()
-  date.setUTCDate(1)
-  if (billingPeriod === "annual") date.setUTCFullYear(date.getUTCFullYear() + 1)
-  else date.setUTCMonth(date.getUTCMonth() + 1)
-  const lastDay = new Date(Date.UTC(
-    date.getUTCFullYear(),
-    date.getUTCMonth() + 1,
-    0,
-  )).getUTCDate()
-  date.setUTCDate(Math.min(day, lastDay))
-  return date.toISOString()
-}
-
 const synchronizeBillingAgreement = async (
   payload: Payload,
   attempt: PaymentAttempt,
+  order: Order,
   payment: MolliePayment,
   now: string,
 ): Promise<void> => {
@@ -1105,19 +1099,89 @@ const synchronizeBillingAgreement = async (
       })
       return
     }
-    const state = agreement.state === "active" ? "active" : "active"
+    const paidAt = payment.paidAt ?? attempt.paidAt ?? now
+    const periodStartsAt = attempt.sequenceType === "first"
+      ? paidAt
+      : order.servicePeriodStartsAt
+    const periodEndsAt = attempt.sequenceType === "first"
+      ? addBillingPeriod(paidAt, agreement.billingPeriod)
+      : order.servicePeriodEndsAt
+    if (!periodStartsAt || !periodEndsAt) {
+      await updateAgreement(payload, agreement, {
+        reconciliationRequired: true,
+        failureReason: "Paid recurring order is missing frozen service coverage.",
+        lastSyncedAt: now,
+        adminExceptionCode: "missing_service_coverage",
+        adminExceptionAt: now,
+      })
+      return
+    }
+    const wasBillingSuspended = agreement.serviceSuspensionStatus === "billing_suspended"
+    const state = agreement.state === "cancellation_scheduled"
+      ? "cancellation_scheduled"
+      : "active"
     await updateAgreement(payload, agreement, {
       state,
       providerCustomerId: payment.customerId ?? agreement.providerCustomerId,
       providerMandateId: mandateId,
-      nextChargeAt: nextChargeAt(agreement.billingPeriod, payment.paidAt ?? attempt.paidAt ?? now),
+      currentPeriodStartsAt: periodStartsAt,
+      currentPeriodEndsAt: periodEndsAt,
+      nextChargeAt: periodEndsAt,
+      graceStartedAt: null,
+      graceEndsAt: null,
+      serviceSuspensionStatus: "none",
+      restoredAt: wasBillingSuspended ? now : agreement.restoredAt,
       reconciliationRequired: false,
       failureReason: null,
+      adminExceptionCode: null,
+      adminExceptionAt: null,
       lastSyncedAt: now,
       stateHistory: agreement.state === state
         ? agreement.stateHistory
         : agreementHistory(agreement.stateHistory, state, now),
     })
+    if (wasBillingSuspended) {
+      const tenantId = relationshipId(agreement.tenant)
+      if (tenantId) {
+        const tenant = await payload.findByID({
+          collection: "tenants",
+          id: tenantId,
+          depth: 0,
+          overrideAccess: true,
+        }) as Tenant
+        if (
+          tenant.status === "suspended" &&
+          sameRelationshipId(tenant.billingSuspensionAgreement, agreement.id)
+        ) {
+          await payload.update({
+            collection: "tenants",
+            id: tenant.id,
+            data: {
+              status: "active",
+              billingSuspensionAgreement: null,
+              billingSuspendedAt: null,
+            },
+            depth: 0,
+            overrideAccess: true,
+            context: { billingTenantLifecycleMutation: true },
+          })
+          await ensureCommerceNotification({
+            payload,
+            kind: "service_restored",
+            tenantId: tenant.id,
+            recipient: order.customerEmail,
+            eventAt: now,
+            billingAgreementId: agreement.id,
+          })
+        } else if (tenant.status === "suspended") {
+          await updateAgreement(payload, agreement, {
+            serviceSuspensionStatus: "restoration_blocked",
+            adminExceptionCode: "tenant_suspension_not_owned_by_billing",
+            adminExceptionAt: now,
+          })
+        }
+      }
+    }
     return
   }
   if (
@@ -1395,8 +1459,52 @@ export async function synchronizeMolliePayment(
     depth: 0,
     overrideAccess: true,
   }) as Order
-  await synchronizeBillingAgreement(payload, attempt, payment, now)
-  const updatedOrder = await synchronizeOrderProjection(payload, order, attempt, now)
+  await synchronizeBillingAgreement(payload, attempt, order, payment, now)
+  let updatedOrder = await synchronizeOrderProjection(payload, order, attempt, now)
+  if (
+    attempt.purpose !== "first_payment" &&
+    ["paid", "refund_pending", "partially_refunded"].includes(attempt.state)
+  ) {
+    const cycles = await payload.find({
+      collection: "domain-renewal-cycles",
+      where: { order: { equals: order.id } },
+      limit: 100,
+      depth: 0,
+      overrideAccess: true,
+    })
+    for (const cycle of cycles.docs) {
+      if (!["payment_required", "payment_committed"].includes(cycle.state)) continue
+      await payload.update({
+        collection: "domain-renewal-cycles",
+        id: cycle.id,
+        data: {
+          state: "payment_committed",
+          paymentAttempt: attempt.id,
+          paymentSecuredAt: attempt.paidAt ?? now,
+          financialCoverageState: "payment_secured",
+          reconciliationRequired: false,
+          lastSyncedAt: now,
+          stateHistory: [
+            ...(Array.isArray(cycle.stateHistory) ? cycle.stateHistory : []),
+            { state: "payment_committed", at: now, reason: "mollie_payment_secured" },
+          ],
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { domainRenewalCycleLifecycleMutation: true },
+      })
+    }
+    if (updatedOrder.state === "fulfillment_pending") {
+      updatedOrder = await payload.update({
+        collection: "orders",
+        id: updatedOrder.id,
+        data: { state: "fulfilled" },
+        depth: 0,
+        overrideAccess: true,
+        context: { legalOrderLifecycleMutation: true },
+      }) as Order
+    }
+  }
   await synchronizeGenerationRunProjection(payload, updatedOrder, attempt, payment, now)
   await synchronizeAccountingEvidence(payload, updatedOrder, attempt, payment, now)
   const fulfillmentRequired =

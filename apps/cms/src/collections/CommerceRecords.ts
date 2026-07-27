@@ -14,7 +14,9 @@ import {
   managedDomainStateTransitions,
   paymentAttemptStates,
   paymentAttemptStateTransitions,
+  providerRenewalModes,
   refundScenarios,
+  renewalFinancialCoverageStates,
 } from "@siteinabox/contracts/commerce"
 
 import { isSuperAdmin } from "@/access/isSuperAdmin"
@@ -246,9 +248,20 @@ const billingAgreementMutableFields = new Set([
   "providerMandateId",
   "renewalIntent",
   "nextChargeAt",
+  "currentPeriodStartsAt",
+  "currentPeriodEndsAt",
+  "graceStartedAt",
+  "graceEndsAt",
+  "lastPaymentAttemptAt",
+  "suspendedAt",
+  "restoredAt",
+  "serviceSuspensionStatus",
   "cancelAt",
   "cancelledAt",
   "endedAt",
+  "cancellationEvidence",
+  "adminExceptionCode",
+  "adminExceptionAt",
   "reconciliationRequired",
   "lastSyncedAt",
   "failureReason",
@@ -291,6 +304,11 @@ const managedDomainMutableFields = new Set([
   "transferredAt",
   "expiresAt",
   "providerSafeRenewalCutoffAt",
+  "providerAutorenew",
+  "providerAutorenewCheckedAt",
+  "providerRenewalPriceNetMinor",
+  "providerRenewalPriceCurrency",
+  "providerRenewalPriceQuotedAt",
   "reconciliationRequired",
   "lastSyncedAt",
   "failureReason",
@@ -312,16 +330,33 @@ const renewalCycleMutableFields = new Set([
   "paymentAttempt",
   "providerOperationId",
   "providerStatus",
+  "providerAutorenew",
+  "providerWriteState",
+  "providerWriteRequestedAt",
+  "financialCoverageState",
   "paymentSecuredAt",
   "providerCommittedAt",
   "renewedAt",
   "cancelledAt",
   "failedAt",
   "failureReason",
+  "adminExceptionCode",
+  "adminExceptionAt",
   "reconciliationRequired",
   "lastSyncedAt",
   "stateHistory",
 ])
+
+export const validateDomainRenewalCycle: CollectionBeforeValidateHook = ({ data }) => {
+  if (!data) return data
+  if (
+    data.providerRenewalMode === "explicit" &&
+    data.providerAutorenew !== "off"
+  ) {
+    throw new Error("An explicit renewal cycle requires provider autorenew to be off.")
+  }
+  return data
+}
 
 const accountingDocumentMutableFields = new Set([
   "state",
@@ -386,6 +421,36 @@ export const protectDomainRenewalCycle: CollectionBeforeChangeHook = (args) =>
       "tenant",
     ]),
     stateTransitions: domainRenewalCycleStateTransitions,
+  })
+
+const commerceNotificationMutableFields = new Set([
+  "status",
+  "attemptCount",
+  "lastAttemptAt",
+  "nextAttemptAt",
+  "leaseUntil",
+  "sentAt",
+  "failedAt",
+  "lastError",
+])
+
+export const protectCommerceNotification: CollectionBeforeChangeHook = (args) =>
+  protectLifecycleUpdate(args, {
+    label: "Commerce-notification",
+    contextKey: "commerceNotificationLifecycleMutation",
+    allowedFields: commerceNotificationMutableFields,
+    relationshipFields: new Set([
+      "billingAgreement",
+      "renewalCycle",
+      "tenant",
+    ]),
+    stateTransitions: {
+      queued: ["processing", "cancelled"],
+      processing: ["sent", "failed"],
+      failed: ["processing", "cancelled"],
+      sent: [],
+      cancelled: [],
+    },
   })
 
 export const CheckoutProfiles: CollectionConfig = {
@@ -464,6 +529,7 @@ export const CheckoutProfiles: CollectionConfig = {
 export const PaymentAttempts: CollectionConfig = {
   slug: "payment-attempts",
   lockDocuments: false,
+  indexes: [{ fields: ["order", "purpose", "attemptNumber"], unique: true }],
   labels: {
     singular: { en: "Payment attempt", nl: "Betaalpoging" },
     plural: { en: "Payment attempts", nl: "Betaalpogingen" },
@@ -488,6 +554,14 @@ export const PaymentAttempts: CollectionConfig = {
       index: true,
     },
     { name: "tenant", type: "relationship", relationTo: "tenants", index: true },
+    {
+      name: "attemptNumber",
+      type: "number",
+      required: true,
+      defaultValue: 1,
+      min: 1,
+      index: true,
+    },
     {
       name: "state",
       type: "select",
@@ -643,9 +717,27 @@ export const BillingAgreements: CollectionConfig = {
     },
     { name: "renewalIntent", type: "checkbox", required: true, defaultValue: true, index: true },
     { name: "nextChargeAt", type: "date", index: true },
+    { name: "currentPeriodStartsAt", type: "date", index: true },
+    { name: "currentPeriodEndsAt", type: "date", index: true },
+    { name: "graceStartedAt", type: "date", index: true },
+    { name: "graceEndsAt", type: "date", index: true },
+    { name: "lastPaymentAttemptAt", type: "date" },
+    { name: "suspendedAt", type: "date", index: true },
+    { name: "restoredAt", type: "date" },
+    {
+      name: "serviceSuspensionStatus",
+      type: "select",
+      required: true,
+      defaultValue: "none",
+      options: selectOptions(["none", "billing_suspended", "restoration_blocked"]),
+      index: true,
+    },
     { name: "cancelAt", type: "date", index: true },
     { name: "cancelledAt", type: "date" },
     { name: "endedAt", type: "date" },
+    { name: "cancellationEvidence", type: "json", admin: { readOnly: true } },
+    { name: "adminExceptionCode", type: "text", index: true },
+    { name: "adminExceptionAt", type: "date" },
     { name: "reconciliationRequired", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "lastSyncedAt", type: "date" },
     { name: "failureReason", type: "textarea" },
@@ -796,6 +888,23 @@ export const ManagedDomains: CollectionConfig = {
     { name: "transferredAt", type: "date" },
     { name: "expiresAt", type: "date", index: true },
     { name: "providerSafeRenewalCutoffAt", type: "date", index: true },
+    {
+      name: "providerAutorenew",
+      type: "select",
+      required: true,
+      defaultValue: "unknown",
+      options: selectOptions(["on", "off", "default", "unknown"]),
+      index: true,
+    },
+    { name: "providerAutorenewCheckedAt", type: "date" },
+    {
+      name: "providerRenewalPriceNetMinor",
+      type: "number",
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    { name: "providerRenewalPriceCurrency", type: "text" },
+    { name: "providerRenewalPriceQuotedAt", type: "date" },
     { name: "reconciliationRequired", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "lastSyncedAt", type: "date" },
     { name: "failureReason", type: "textarea" },
@@ -807,13 +916,16 @@ export const ManagedDomains: CollectionConfig = {
 export const DomainRenewalCycles: CollectionConfig = {
   slug: "domain-renewal-cycles",
   lockDocuments: false,
-  indexes: [{ fields: ["managedDomain", "coverageEndsAt"], unique: true }],
+  indexes: [{ fields: ["managedDomain", "providerRenewalDate"], unique: true }],
   labels: {
     singular: { en: "Domain renewal cycle", nl: "Domeinverlengingscyclus" },
     plural: { en: "Domain renewal cycles", nl: "Domeinverlengingscycli" },
   },
   access: systemOwnedAccess,
-  hooks: { beforeChange: [protectDomainRenewalCycle] },
+  hooks: {
+    beforeValidate: [validateDomainRenewalCycle],
+    beforeChange: [protectDomainRenewalCycle],
+  },
   admin: {
     useAsTitle: "idempotencyKey",
     defaultColumns: ["managedDomain", "state", "coverageEndsAt", "providerSafeCutoffAt", "renewalIntentSnapshot"],
@@ -855,9 +967,65 @@ export const DomainRenewalCycles: CollectionConfig = {
     },
     { name: "coverageStartsAt", type: "date", required: true, index: true },
     { name: "coverageEndsAt", type: "date", required: true, index: true },
+    { name: "providerRenewalDate", type: "date", required: true, index: true },
     { name: "providerSafeCutoffAt", type: "date", required: true, index: true },
     { name: "renewalIntentSnapshot", type: "checkbox", required: true, defaultValue: true },
+    {
+      name: "providerRenewalMode",
+      type: "select",
+      required: true,
+      defaultValue: "autorenew",
+      options: selectOptions(providerRenewalModes),
+      index: true,
+    },
+    {
+      name: "providerAutorenew",
+      type: "select",
+      required: true,
+      defaultValue: "unknown",
+      options: selectOptions(["on", "off", "default", "unknown"]),
+      index: true,
+    },
+    {
+      name: "providerWriteState",
+      type: "select",
+      required: true,
+      defaultValue: "not_required",
+      options: selectOptions(["not_required", "prepared", "indeterminate", "confirmed"]),
+      index: true,
+    },
+    { name: "providerWriteRequestedAt", type: "date" },
     { name: "currency", type: "text", required: true, defaultValue: "EUR" },
+    {
+      name: "providerOperationPriceNetMinor",
+      type: "number",
+      required: true,
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    {
+      name: "includedAllowanceNetMinor",
+      type: "number",
+      required: true,
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    {
+      name: "surchargeNetMinor",
+      type: "number",
+      required: true,
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    {
+      name: "financialCoverageState",
+      type: "select",
+      required: true,
+      defaultValue: "uncovered",
+      options: selectOptions(renewalFinancialCoverageStates),
+      index: true,
+    },
+    { name: "pricingEvidence", type: "json", required: true, admin: { readOnly: true } },
     {
       name: "netAmountMinor",
       type: "number",
@@ -884,10 +1052,78 @@ export const DomainRenewalCycles: CollectionConfig = {
     { name: "cancelledAt", type: "date" },
     { name: "failedAt", type: "date" },
     { name: "failureReason", type: "textarea" },
+    { name: "adminExceptionCode", type: "text", index: true },
+    { name: "adminExceptionAt", type: "date" },
     { name: "reconciliationRequired", type: "checkbox", required: true, defaultValue: false, index: true },
     { name: "lastSyncedAt", type: "date" },
     { name: "stateHistory", type: "json", admin: { readOnly: true } },
     { name: "createdAt", type: "date", required: true, index: true },
+  ],
+}
+
+export const CommerceNotificationDeliveries: CollectionConfig = {
+  slug: "commerce-notification-deliveries",
+  lockDocuments: false,
+  labels: {
+    singular: { en: "Commerce notification", nl: "Commercekennisgeving" },
+    plural: { en: "Commerce notifications", nl: "Commercekennisgevingen" },
+  },
+  access: systemOwnedAccess,
+  hooks: { beforeChange: [protectCommerceNotification] },
+  admin: {
+    useAsTitle: "notificationKey",
+    defaultColumns: ["kind", "status", "recipient", "tenant", "eventAt", "sentAt"],
+    description: adminText(
+      "Idempotent billing and domain-renewal delivery evidence. Message bodies are not stored.",
+      "Idempotent bewijs van facturatie- en domeinverlengingsmeldingen. Berichtinhoud wordt niet opgeslagen.",
+    ),
+  },
+  fields: [
+    { name: "notificationKey", type: "text", required: true, unique: true, index: true },
+    { name: "billingAgreement", type: "relationship", relationTo: "billing-agreements", index: true },
+    { name: "renewalCycle", type: "relationship", relationTo: "domain-renewal-cycles", index: true },
+    { name: "tenant", type: "relationship", relationTo: "tenants", required: true, index: true },
+    { name: "recipient", type: "email", required: true, index: true },
+    {
+      name: "kind",
+      type: "select",
+      required: true,
+      options: selectOptions([
+        "upcoming_charge_7d",
+        "payment_failed_0d",
+        "payment_overdue_3d",
+        "payment_overdue_7d",
+        "payment_overdue_13d",
+        "service_suspended_14d",
+        "service_restored",
+        "cancellation_scheduled",
+        "cancellation_effective",
+        "domain_renewal_60d",
+        "domain_renewal_30d",
+        "domain_renewal_14d",
+        "domain_renewal_7d",
+        "domain_renewal_1d",
+        "domain_renewed",
+      ]),
+      index: true,
+    },
+    { name: "templateVersion", type: "text", required: true },
+    { name: "eventAt", type: "date", required: true, index: true },
+    {
+      name: "status",
+      type: "select",
+      required: true,
+      defaultValue: "queued",
+      options: selectOptions(["queued", "processing", "sent", "failed", "cancelled"]),
+      index: true,
+    },
+    { name: "attemptCount", type: "number", required: true, defaultValue: 0, min: 0 },
+    { name: "lastAttemptAt", type: "date" },
+    { name: "nextAttemptAt", type: "date", index: true },
+    { name: "leaseUntil", type: "date", index: true },
+    { name: "sentAt", type: "date", index: true },
+    { name: "failedAt", type: "date" },
+    { name: "lastError", type: "textarea" },
   ],
 }
 

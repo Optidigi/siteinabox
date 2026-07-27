@@ -72,6 +72,7 @@ import * as migration_20260726_181209_commerce_records from './20260726_181209_c
 import * as migration_20260726_191919_checkout_profile_audit from './20260726_191919_checkout_profile_audit';
 import * as migration_20260726_201427_phase4_mollie_payments from './20260726_201427_phase4_mollie_payments';
 import * as migration_20260726_211516_phase5_new_nl_domain from './20260726_211516_phase5_new_nl_domain';
+import * as migration_20260727_094718_phase7_billing_and_domain_renewals from './20260727_094718_phase7_billing_and_domain_renewals';
 
 export const migrations = [
   {
@@ -442,6 +443,11 @@ export const migrations = [
   {
     up: migration_20260726_211516_phase5_new_nl_domain.up,
     down: migration_20260726_211516_phase5_new_nl_domain.down,
-    name: '20260726_211516_phase5_new_nl_domain'
+    name: '20260726_211516_phase5_new_nl_domain',
+  },
+  {
+    up: migration_20260727_094718_phase7_billing_and_domain_renewals.up,
+    down: migration_20260727_094718_phase7_billing_and_domain_renewals.down,
+    name: '20260727_094718_phase7_billing_and_domain_renewals'
   },
 ];

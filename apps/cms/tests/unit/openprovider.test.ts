@@ -7,10 +7,12 @@ import {
   createOpenProviderCustomerHandle,
   findOpenProviderCustomerByReference,
   findOpenProviderDomain,
+  getOpenProviderDomainRenewalPrice,
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
+  setOpenProviderDomainAutorenew,
   suggestOpenProviderDomains,
 } from "@/lib/domains/openprovider"
 
@@ -627,6 +629,7 @@ describe("OpenProvider adapter", () => {
             { name: "bob.ns.cloudflare.com" },
           ],
           renewal_date: "2027-07-26 00:00:00",
+          autorenew: "on",
           verification_email_status: "verified",
           verification_email_status_description: "Registrant email verified",
         }],
@@ -644,12 +647,74 @@ describe("OpenProvider adapter", () => {
       ownerHandle: "OWNER-CLIENT",
       adminHandle: "ADMIN",
       nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      autorenew: "on",
       verificationEmailStatus: "verified",
     })
     expect(fetchMock).toHaveBeenCalledWith(
       "https://openprovider.test/v1beta/domains?full_name=example.nl&with_verification_email=true&limit=2",
       expect.objectContaining({ method: "GET" }),
     )
+  })
+
+  it("quotes the reseller renewal operation price in exact minor units", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        is_premium: false,
+        price: {
+          product: { currency: "EUR", price: 9.99 },
+          reseller: { currency: "EUR", price: "8.06" },
+        },
+      },
+    }))
+
+    await expect(getOpenProviderDomainRenewalPrice("Example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "example.nl",
+      operation: "renew",
+      currency: "EUR",
+      netAmountMinor: 806,
+      premium: false,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains/prices?domain.name=example&domain.extension=nl&operation=renew&period=1",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
+
+  it("updates autorenew with PUT and classifies an indeterminate timeout", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: { id: 9001, status: "ACT" },
+    }))
+    await expect(setOpenProviderDomainAutorenew(9001, "off", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      id: 9001,
+      autorenew: "off",
+      status: "ACT",
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains/9001",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ autorenew: "off" }),
+      }),
+    )
+
+    const timeout = vi.fn(async () => {
+      throw new TypeError("socket closed")
+    })
+    await expect(setOpenProviderDomainAutorenew(9001, "on", {
+      env,
+      token: "token-123",
+      fetchImpl: timeout as typeof fetch,
+    })).rejects.toBeInstanceOf(OpenProviderIndeterminateWriteError)
   })
 
   it("finds the customer handle through the persisted provisioning reference", async () => {

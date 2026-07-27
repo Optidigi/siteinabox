@@ -11,17 +11,20 @@ import {
   AccountingDocuments,
   BillingAgreements,
   CheckoutProfiles,
+  CommerceNotificationDeliveries,
   DomainRenewalCycles,
   ManagedDomains,
   normalizeManagedDomain,
   PaymentAttempts,
   protectAccountingDocument,
   protectBillingAgreement,
+  protectCommerceNotification,
   protectDomainRenewalCycle,
   protectManagedDomain,
   protectPaymentAttempt,
   rejectCheckoutProfileMutation,
   validateCheckoutProfile,
+  validateDomainRenewalCycle,
 } from "@/collections/CommerceRecords"
 import { Orders, protectFrozenOrder } from "@/collections/LegalRecords"
 import { SiteGenerationRuns } from "@/collections/SiteGenerationRuns"
@@ -42,6 +45,7 @@ const commerceCollections = [
   ManagedDomains,
   DomainRenewalCycles,
   AccountingDocuments,
+  CommerceNotificationDeliveries,
 ]
 
 const isUnique = (fieldName: string, collection = CheckoutProfiles): boolean => {
@@ -58,7 +62,7 @@ const relationTarget = (
 }
 
 describe("Phase 2 commerce record schemas", () => {
-  it("registers the five lifecycle authorities plus Phase 4 accounting evidence", () => {
+  it("registers the lifecycle authorities plus accounting and Phase 7 notification evidence", () => {
     expect(commerceCollections.map((collection) => collection.slug)).toEqual([
       "checkout-profiles",
       "payment-attempts",
@@ -66,6 +70,7 @@ describe("Phase 2 commerce record schemas", () => {
       "managed-domains",
       "domain-renewal-cycles",
       "accounting-documents",
+      "commerce-notification-deliveries",
     ])
   })
 
@@ -107,10 +112,17 @@ describe("Phase 2 commerce record schemas", () => {
       unique: true,
     })
     expect(DomainRenewalCycles.indexes).toContainEqual({
-      fields: ["managedDomain", "coverageEndsAt"],
+      fields: ["managedDomain", "providerRenewalDate"],
       unique: true,
     })
-    expect(isUnique("checkoutProfileKey", Orders)).toBe(true)
+    expect(isUnique("checkoutProfileKey", Orders)).toBe(false)
+    expect(isUnique("billingCycleKey", Orders)).toBe(true)
+    expect(isUnique("renewalCycle", Orders)).toBe(true)
+    expect(isUnique("notificationKey", CommerceNotificationDeliveries)).toBe(true)
+    expect(PaymentAttempts.indexes).toContainEqual({
+      fields: ["order", "purpose", "attemptNumber"],
+      unique: true,
+    })
   })
 
   it("persists resumable .nl provider, verification, entitlement, and customer-status evidence", () => {
@@ -153,9 +165,52 @@ describe("Phase 2 commerce record schemas", () => {
     expect(relationTarget("order", DomainRenewalCycles)).toBe("orders")
     expect(relationTarget("paymentAttempt", DomainRenewalCycles)).toBe("payment-attempts")
     expect(relationTarget("billingAgreement", PaymentAttempts)).toBe("billing-agreements")
+    expect(relationTarget("billingAgreement", Orders)).toBe("billing-agreements")
+    expect(relationTarget("renewalCycle", Orders)).toBe("domain-renewal-cycles")
     expect(relationTarget("order", AccountingDocuments)).toBe("orders")
     expect(relationTarget("paymentAttempt", AccountingDocuments)).toBe("payment-attempts")
     expect(relationTarget("reversesDocument", AccountingDocuments)).toBe("accounting-documents")
+  })
+
+  it("persists Phase 7 coverage, grace, autorenew, and reminder evidence", () => {
+    for (const field of [
+      "currentPeriodStartsAt",
+      "currentPeriodEndsAt",
+      "graceStartedAt",
+      "graceEndsAt",
+      "suspendedAt",
+      "serviceSuspensionStatus",
+      "cancelAt",
+      "cancellationEvidence",
+      "adminExceptionCode",
+    ]) {
+      expect(expectNamedField(BillingAgreements.fields, field)).toBeDefined()
+    }
+    for (const field of [
+      "providerRenewalDate",
+      "providerRenewalMode",
+      "providerAutorenew",
+      "providerWriteState",
+      "providerOperationPriceNetMinor",
+      "includedAllowanceNetMinor",
+      "surchargeNetMinor",
+      "financialCoverageState",
+      "pricingEvidence",
+    ]) {
+      expect(expectNamedField(DomainRenewalCycles.fields, field)).toBeDefined()
+    }
+    expect(expectNamedField(PaymentAttempts.fields, "attemptNumber")).toBeDefined()
+    expect(CommerceNotificationDeliveries.hooks?.beforeChange).toContain(protectCommerceNotification)
+    expect(() => validateDomainRenewalCycle(hookArgsFor(validateDomainRenewalCycle, {
+      operation: "create",
+      data: {
+        providerRenewalMode: "explicit",
+        providerAutorenew: "on",
+      },
+      req: {},
+      collection: {},
+      context: {},
+    }))).toThrow("requires provider autorenew to be off")
   })
 
   it("uses the Phase 1 state contracts without collapsing lifecycle state", () => {
@@ -374,6 +429,17 @@ describe("Phase 2 commerce record schemas", () => {
       collection: {},
       context: {},
     }))).toThrow('field "providerOperationId" is immutable')
+    expect(() => protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
+      operation: "update",
+      data: { pricingEvidence: { providerOperationPriceNetMinor: 1 } },
+      originalDoc: {
+        state: "payment_required",
+        pricingEvidence: { providerOperationPriceNetMinor: 800 },
+      },
+      req: { context: { domainRenewalCycleLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toThrow('field "pricingEvidence" is immutable')
 
     expect(() => protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",

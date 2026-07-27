@@ -3,6 +3,11 @@ import { z } from "zod"
 export const COMMERCIAL_CATALOG_VERSION = "2026-07-26.1" as const
 export const COMMERCIAL_CATALOG_CURRENCY = "EUR" as const
 export const DUTCH_VAT_RATE_BASIS_POINTS = 2_100 as const
+export const BILLING_GRACE_DAYS = 14 as const
+export const BILLING_UPCOMING_CHARGE_REMINDER_DAYS = Object.freeze([7] as const)
+export const BILLING_DUNNING_OFFSETS_DAYS = Object.freeze([0, 3, 7, 13] as const)
+export const DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS = Object.freeze([60, 30, 14, 7, 1] as const)
+export const NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS = 2 as const
 
 export type CommercialCatalog = {
   readonly schemaVersion: 1
@@ -188,6 +193,120 @@ export function calculateDomainSurchargeNetMinor(providerOperationPriceNetMinor:
   )
 }
 
+const validDate = (value: string | Date, field: string): Date => {
+  const date = value instanceof Date ? new Date(value.getTime()) : new Date(value)
+  if (Number.isNaN(date.getTime())) throw new Error(`${field} must be a valid date.`)
+  return date
+}
+
+export function addBillingPeriod(
+  startsAt: string | Date,
+  billingPeriod: "monthly" | "annual",
+): string {
+  const date = validDate(startsAt, "startsAt")
+  const day = date.getUTCDate()
+  date.setUTCDate(1)
+  if (billingPeriod === "annual") date.setUTCFullYear(date.getUTCFullYear() + 1)
+  else date.setUTCMonth(date.getUTCMonth() + 1)
+  const lastDay = new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + 1,
+    0,
+  )).getUTCDate()
+  date.setUTCDate(Math.min(day, lastDay))
+  return date.toISOString()
+}
+
+export function billingGraceEndsAt(dueAt: string | Date): string {
+  const date = validDate(dueAt, "dueAt")
+  date.setUTCDate(date.getUTCDate() + BILLING_GRACE_DAYS)
+  return date.toISOString()
+}
+
+export type BillingDunningStage =
+  | "not_due"
+  | "due"
+  | "retry_3d"
+  | "retry_7d"
+  | "retry_13d"
+  | "suspend"
+
+export function billingDunningStage(
+  dueAt: string | Date,
+  now: string | Date,
+): BillingDunningStage {
+  const due = validDate(dueAt, "dueAt").getTime()
+  const current = validDate(now, "now").getTime()
+  if (current < due) return "not_due"
+  const elapsedDays = Math.floor((current - due) / (24 * 60 * 60_000))
+  if (elapsedDays >= BILLING_GRACE_DAYS) return "suspend"
+  if (elapsedDays >= 13) return "retry_13d"
+  if (elapsedDays >= 7) return "retry_7d"
+  if (elapsedDays >= 3) return "retry_3d"
+  return "due"
+}
+
+export function providerSafeCutoffAt(
+  renewalDate: string | Date,
+  leadDays: number,
+): string {
+  if (!Number.isSafeInteger(leadDays) || leadDays < 0) {
+    throw new Error("leadDays must be a non-negative safe integer.")
+  }
+  const date = validDate(renewalDate, "renewalDate")
+  date.setUTCDate(date.getUTCDate() - leadDays)
+  return date.toISOString()
+}
+
+export const providerRenewalModes = ["autorenew", "explicit"] as const
+export const providerRenewalModeSchema = z.enum(providerRenewalModes)
+export type ProviderRenewalMode = z.infer<typeof providerRenewalModeSchema>
+
+export function assertExclusiveProviderRenewalExecution(input: {
+  mode: ProviderRenewalMode
+  providerAutorenewEnabled: boolean
+  explicitRenewalRequested: boolean
+}): void {
+  if (input.providerAutorenewEnabled && input.explicitRenewalRequested) {
+    throw new Error("A renewal cycle cannot use provider autorenew and explicit renewal together.")
+  }
+  if (input.mode === "autorenew" && input.explicitRenewalRequested) {
+    throw new Error("An autorenew cycle cannot request explicit provider renewal.")
+  }
+  if (input.mode === "explicit" && input.providerAutorenewEnabled) {
+    throw new Error("An explicit renewal cycle requires provider autorenew to be off.")
+  }
+}
+
+export const renewalFinancialCoverageStates = [
+  "uncovered",
+  "included_allowance",
+  "payment_pending",
+  "payment_secured",
+  "provider_committed",
+  "covered",
+] as const
+export const renewalFinancialCoverageStateSchema = z.enum(renewalFinancialCoverageStates)
+export type RenewalFinancialCoverageState = z.infer<typeof renewalFinancialCoverageStateSchema>
+
+export function renewalFinancialCoverage(
+  providerOperationPriceNetMinor: number,
+): {
+  providerOperationPriceNetMinor: number
+  includedAllowanceNetMinor: number
+  surchargeNetMinor: number
+  initialState: Extract<RenewalFinancialCoverageState, "included_allowance" | "uncovered">
+} {
+  requireMinorAmount(providerOperationPriceNetMinor, "providerOperationPriceNetMinor")
+  const surchargeNetMinor = calculateDomainSurchargeNetMinor(providerOperationPriceNetMinor)
+  return {
+    providerOperationPriceNetMinor,
+    includedAllowanceNetMinor: COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
+    surchargeNetMinor,
+    initialState: surchargeNetMinor === 0 ? "included_allowance" : "uncovered",
+  }
+}
+
 export const contractingPartyTypes = [
   "registered_business",
   "business_in_formation",
@@ -365,6 +484,7 @@ export const billingAgreementStates = [
   "mandate_pending",
   "active",
   "past_due",
+  "suspended",
   "cancellation_scheduled",
   "cancelled",
 ] as const
@@ -374,8 +494,9 @@ export const billingAgreementStateTransitions = {
   pending_first_payment: ["mandate_pending", "cancelled"],
   mandate_pending: ["active", "past_due", "cancelled"],
   active: ["past_due", "cancellation_scheduled"],
-  past_due: ["active", "cancellation_scheduled", "cancelled"],
-  cancellation_scheduled: ["active", "cancelled"],
+  past_due: ["active", "suspended", "cancellation_scheduled", "cancelled"],
+  suspended: ["active", "cancellation_scheduled", "cancelled"],
+  cancellation_scheduled: ["active", "past_due", "cancelled"],
   cancelled: [],
 } as const satisfies TransitionMap<BillingAgreementState>
 

@@ -16,18 +16,19 @@ import {
 } from "@/lib/legal/communicationPreferences"
 import type { User } from "@/payload-types"
 import { EmailPreferencesSection, type TenantNotificationMemberView } from "@/components/email/EmailPreferencesSection"
+import { BillingAgreementSection } from "@/components/billing/BillingAgreementSection"
 
 export default async function TenantSettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ legal?: string; emailPreferences?: string }>
+  searchParams: Promise<{ legal?: string; emailPreferences?: string; billing?: string }>
 }) {
   const { user, ctx } = await requireAuth()
   if (ctx.mode === "super-admin") redirect("/sites")
   const t = await getAdminTranslations(user, "app")
   const payloadPromise = getPayload({ config })
   const isOwner = user.role === "owner"
-  const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers] = await Promise.all([
+  const [settings, legalRequirements, acceptanceHistory, query, personalPreference, tenantMembers, billingAgreements] = await Promise.all([
     isOwner ? getOrCreateSiteSettings(ctx.tenant.id) : Promise.resolve(null),
     isOwner ? payloadPromise.then((payload) => getTenantLegalRequirements(payload, ctx.tenant.id)) : Promise.resolve([]),
     isOwner ? payloadPromise.then((payload) => getTenantLegalAcceptanceHistory(payload, ctx.tenant.id)) : Promise.resolve([]),
@@ -41,6 +42,16 @@ export default async function TenantSettingsPage({
           sort: "name",
           depth: 0,
           user,
+        }))
+      : Promise.resolve({ docs: [] }),
+    isOwner
+      ? payloadPromise.then((payload) => payload.find({
+          collection: "billing-agreements",
+          where: { tenant: { equals: ctx.tenant.id } },
+          sort: "-createdAt",
+          limit: 1,
+          depth: 0,
+          overrideAccess: true,
         }))
       : Promise.resolve({ docs: [] }),
   ])
@@ -78,6 +89,22 @@ export default async function TenantSettingsPage({
         canManageTenantNotifications={isOwner}
         result={query.emailPreferences}
       />
+      {isOwner && (
+        <BillingAgreementSection
+          agreement={billingAgreements.docs[0]
+            ? {
+                id: String(billingAgreements.docs[0].id),
+                state: billingAgreements.docs[0].state,
+                billingPeriod: billingAgreements.docs[0].billingPeriod,
+                currentPeriodEndsAt: billingAgreements.docs[0].currentPeriodEndsAt,
+                nextChargeAt: billingAgreements.docs[0].nextChargeAt,
+                cancelAt: billingAgreements.docs[0].cancelAt,
+              }
+            : null}
+          locale={resolveLocale(user.language)}
+          result={query.billing}
+        />
+      )}
       {isOwner && settings && (
         <SettingsForm
           initial={settings}

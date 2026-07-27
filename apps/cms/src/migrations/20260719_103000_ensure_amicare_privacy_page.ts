@@ -125,6 +125,9 @@ export async function ensureAmicarePrivacyPage(payload: MigrateUpArgs["payload"]
     where: { or: [{ slug: { in: ["ami-care", "amicare", "amicare-zorg", "tenant-amicare"] } }, { domain: { equals: "ami-care.nl" } }] },
     limit: 10,
     depth: 0,
+    // Keep this historical migration independent from tenant columns added by
+    // later schema migrations.
+    select: { id: true, slug: true, domain: true, siteManifest: true },
     overrideAccess: true,
   })
   if (tenants.docs.length === 0) return

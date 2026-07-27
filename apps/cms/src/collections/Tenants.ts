@@ -1,4 +1,4 @@
-import type { CollectionConfig, PayloadRequest } from "payload"
+import type { CollectionBeforeChangeHook, CollectionConfig, PayloadRequest } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import {
   archiveTenantDir,
@@ -57,6 +57,36 @@ const validateDomain = (val: unknown, { req }: { req?: PayloadRequest }) => {
   return true
 }
 
+export const protectBillingSuspensionMetadata: CollectionBeforeChangeHook = ({
+  data,
+  operation,
+  originalDoc,
+  req,
+}) => {
+  if (operation !== "update" || !data) return data
+  const billingMutation = req.context?.billingTenantLifecycleMutation === true
+  const writesBillingMetadata =
+    "billingSuspensionAgreement" in data ||
+    "billingSuspendedAt" in data
+  if (writesBillingMetadata && !billingMutation) {
+    throw new Error("Billing suspension metadata is system-owned.")
+  }
+  if (
+    !billingMutation &&
+    originalDoc?.status === "suspended" &&
+    data.status != null &&
+    data.status !== "suspended" &&
+    originalDoc.billingSuspensionAgreement
+  ) {
+    return {
+      ...data,
+      billingSuspensionAgreement: null,
+      billingSuspendedAt: null,
+    }
+  }
+  return data
+}
+
 export const Tenants: CollectionConfig = {
   slug: "tenants",
   labels: { singular: { en: "Tenant", nl: "Klantomgeving" }, plural: { en: "Tenants", nl: "Klantomgevingen" } },
@@ -84,6 +114,20 @@ export const Tenants: CollectionConfig = {
         { label: { en: "Suspended", nl: "Opgeschort" }, value: "suspended" },
         { label: { en: "Archived", nl: "Gearchiveerd" }, value: "archived" }
       ] },
+    {
+      name: "billingSuspensionAgreement",
+      type: "relationship",
+      relationTo: "billing-agreements",
+      index: true,
+      admin: {
+        readOnly: true,
+        description: adminText(
+          "Set only by the billing lifecycle so payment restoration cannot undo an operator suspension.",
+          "Alleen ingesteld door de facturatielevenscyclus, zodat betalingsherstel geen beheerdersopschorting ongedaan maakt.",
+        ),
+      },
+    },
+    { name: "billingSuspendedAt", type: "date", admin: { readOnly: true } },
     { name: "activeSnapshot", type: "relationship", relationTo: "published-site-snapshots",
       admin: { readOnly: true, description: adminText("Published snapshot currently served by the generic renderer.", "Gepubliceerde siteversie die momenteel door de algemene renderer wordt aangeboden.") } },
     { name: "activatedAt", type: "date",
@@ -167,6 +211,7 @@ export const Tenants: CollectionConfig = {
     },
   ],
   hooks: {
+    beforeChange: [protectBillingSuspensionMetadata],
     afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir, enrollTenantAnalytics],
     afterDelete: [removeTenantDir, clearTenantCookieIfStale]
   }

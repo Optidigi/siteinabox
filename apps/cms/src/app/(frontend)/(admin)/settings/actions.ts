@@ -17,6 +17,7 @@ import {
   upsertTenantNotificationSubscription,
   type TenantNotificationCategories,
 } from "@/lib/legal/communicationPreferences"
+import { scheduleCancellationAtPeriodEnd } from "@/lib/billing/billingLifecycle"
 
 const checked = (formData: FormData, name: string) => formData.get(name) === "on"
 const eventKey = (scope: string, actorId: string | number) =>
@@ -147,6 +148,30 @@ export async function updateTenantNotificationSubscriptionAction(formData: FormD
   }
   revalidatePath("/settings")
   redirect("/settings?emailPreferences=notifications-saved#tenant-notifications")
+}
+
+export async function cancelBillingAgreementAction(formData: FormData) {
+  const { requestHeaders, payload, user, tenantId } = await authenticatedTenantRequest()
+  if (user.role !== "owner") redirect("/?error=forbidden")
+  const billingAgreementId = String(formData.get("billingAgreementId") ?? "").trim()
+  if (!billingAgreementId) redirect("/settings?billing=failed#billing")
+  try {
+    await scheduleCancellationAtPeriodEnd({
+      payload,
+      agreementId: billingAgreementId,
+      tenantId,
+      actorUserId: user.id,
+      actorEmail: user.email,
+      requestId: requestHeaders.get("x-request-id"),
+      ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim(),
+      userAgent: requestHeaders.get("user-agent"),
+    })
+  } catch (error) {
+    console.error("Billing cancellation failed", error)
+    redirect("/settings?billing=failed#billing")
+  }
+  revalidatePath("/settings")
+  redirect("/settings?billing=cancelled#billing")
 }
 
 export async function acceptLegalRequirementAction(formData: FormData) {

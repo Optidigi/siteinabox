@@ -25,6 +25,8 @@ export const mailIntents = [
   "forms.tenant_notification",
   "site.live_notice",
   "legal.reacceptance",
+  "commerce.billing",
+  "commerce.domain",
   "product.notification",
   "marketing.campaign",
 ] as const
