@@ -22,6 +22,7 @@ import {
   loadLatestCheckoutProfile,
   type CheckoutProfileDraft,
 } from "@/lib/checkout/checkoutProfile"
+import { loadAcceptedCheckoutResume } from "@/lib/checkout/acceptedCheckoutResume"
 import {
   buildCheckoutQuote,
   decimalMoneyToMinor,
@@ -29,10 +30,15 @@ import {
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import {
+  acceptMigrationSupplementalOrderAction,
   checkPreviewCheckoutDomainAction,
+  recollectAcceptedMigrationInputAction,
   savePreviewCheckoutProfileAction,
   startPreviewCheckoutPaymentAction,
+  submitMigrationTransferCodeAction,
 } from "./actions"
+import { existingDomainMigrationCheckoutEnabled } from "@/lib/domains/migrationCheckout"
+import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("preview")
@@ -83,27 +89,43 @@ export default async function PreviewCheckoutPage({
       ? context.run.payment as { status?: string | null }
       : null
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
-    const selectedDomain = domainOrder.status === "ready_to_register" ? domainOrder.domain : null
     const terms = getCurrentLegalDocument("platform-terms", "nl")
     const privacy = getCurrentLegalDocument("platform-privacy", "nl")
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
       run: context.run,
     })
-    const profileRecord = await loadLatestCheckoutProfile(context.payload, context.run.id)
+    const signingSecret = process.env.PAYLOAD_SECRET?.trim()
+    if (!signingSecret) {
+      throw new Error("PAYLOAD_SECRET is required to issue checkout quotes.")
+    }
+    const [profileRecord, acceptedResume] = await Promise.all([
+      loadLatestCheckoutProfile(context.payload, context.run.id),
+      loadAcceptedCheckoutResume(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+        signingSecret,
+      }),
+    ])
+    const selectedDomain = acceptedResume?.domain ??
+      (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
     const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
+    const migrationStatus = await loadCustomerMigrationStatus(context.payload, {
+      generationRunId: context.run.id,
+      customerEmail: context.customerEmail,
+    })
     const initialDetails = initialProfile ?? deriveCheckoutDetails({
       run: context.run,
       registrant,
       tenantName: String(context.tenant.name),
     })
-    const initialQuotes = selectedDomain
+    const initialQuotes = acceptedResume?.quotes ?? (selectedDomain
       ? initialCheckoutQuotes({
           domain: selectedDomain,
           domainOrder,
           profileVersion: initialProfile?.profileVersion ?? 0,
           draftVersion: String(context.run.updatedAt ?? domainOrder.updatedAt ?? ""),
         })
-      : null
+      : null)
 
     return (
       <PreviewCheckout
@@ -119,6 +141,12 @@ export default async function PreviewCheckoutPage({
             : "domain"
         }
         paymentReturn={paymentReturn}
+        existingDomainMigrationEnabled={existingDomainMigrationCheckoutEnabled()}
+        migrationStatus={migrationStatus}
+        acceptedOrderId={acceptedResume?.orderId ?? null}
+        requiresMigrationRecollection={
+          acceptedResume?.requiresMigrationRecollection ?? false
+        }
         catalog={{
           version: COMMERCIAL_CATALOG.catalogVersion,
           currency: COMMERCIAL_CATALOG.currency,
@@ -149,6 +177,15 @@ export default async function PreviewCheckoutPage({
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
+        acceptMigrationSupplementalOrderAction={
+          acceptMigrationSupplementalOrderAction.bind(null, context.clientSlug)
+        }
+        recollectAcceptedMigrationInputAction={
+          recollectAcceptedMigrationInputAction.bind(null, context.clientSlug)
+        }
+        submitMigrationTransferCodeAction={
+          submitMigrationTransferCodeAction.bind(null, context.clientSlug)
+        }
         termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
         privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}
         termsVersion={terms.documentVersion}

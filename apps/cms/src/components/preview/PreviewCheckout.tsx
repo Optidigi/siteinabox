@@ -32,6 +32,7 @@ import type {
   CheckoutProfileView,
 } from "@/lib/checkout/checkoutProfile"
 import type { CheckoutQuoteSet } from "@/lib/checkout/checkoutQuote"
+import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
 export type PreviewCheckoutDomainOption = {
@@ -58,6 +59,17 @@ export type PreviewCheckoutActionState = {
   requestToken?: string
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
+  domainMode?: "new_registration" | "existing_domain"
+  migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
+  migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationPublicEvidence?: {
+    checkedAt: string
+    authoritativeNameservers: string[]
+    dnssecDsPresent: boolean
+    probableDnsProvider: string | null
+    registrar: string | null
+    supplementalOnly: true
+  } | null
 }
 
 export type PreviewCheckoutProfileActionState = {
@@ -117,6 +129,10 @@ type PreviewCheckoutProps = {
   initialQuotes?: CheckoutQuoteSet | null
   initialStep?: CheckoutStep
   paymentReturn?: boolean
+  existingDomainMigrationEnabled?: boolean
+  migrationStatus?: CustomerMigrationStatus | null
+  acceptedOrderId?: string | number | null
+  requiresMigrationRecollection?: boolean
   catalog: PreviewCheckoutCatalog
   paymentStatus: string
   previewHref: string
@@ -125,6 +141,9 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
+  acceptMigrationSupplementalOrderAction?: (formData: FormData) => Promise<void>
+  recollectAcceptedMigrationInputAction?: (formData: FormData) => Promise<void>
+  submitMigrationTransferCodeAction?: (formData: FormData) => Promise<void>
   termsHref: string
   privacyHref: string
   termsVersion: string
@@ -187,6 +206,10 @@ export function PreviewCheckout({
   initialQuotes = null,
   initialStep = "domain",
   paymentReturn = false,
+  existingDomainMigrationEnabled = false,
+  migrationStatus = null,
+  acceptedOrderId = null,
+  requiresMigrationRecollection = false,
   catalog,
   paymentStatus,
   previewHref,
@@ -195,6 +218,9 @@ export function PreviewCheckout({
   checkDomainAction,
   saveProfileAction,
   startPaymentAction,
+  acceptMigrationSupplementalOrderAction,
+  recollectAcceptedMigrationInputAction,
+  submitMigrationTransferCodeAction,
   termsHref,
   privacyHref,
   termsVersion,
@@ -227,7 +253,12 @@ export function PreviewCheckout({
     initialProfile ?? null,
   )
   const [detailsDirty, setDetailsDirty] = React.useState(!initialProfile)
-  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>("annual")
+  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(
+    initialQuotes?.annual.quote.billingPeriod ?? "annual",
+  )
+  const [domainMode, setDomainMode] = React.useState<
+    "new_registration" | "existing_domain"
+  >(initialQuotes?.annual.quote.domainMode ?? "new_registration")
   const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
   const [suggestionsState, setSuggestionsState] =
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
@@ -256,7 +287,8 @@ export function PreviewCheckout({
   const checkAppliesToCurrentInput = Boolean(
     checkTokenIsCurrent &&
     checkState.domain &&
-    checkState.domain === normalizedDomainValue,
+    checkState.domain === normalizedDomainValue &&
+    (checkState.domainMode ?? "new_registration") === domainMode,
   )
   const suggestionsApplyToCurrentInput = Boolean(
     suggestionsState.domain && suggestionsState.domain === normalizedDomainValue,
@@ -279,16 +311,17 @@ export function PreviewCheckout({
       checkState.ok &&
       checkState.domain &&
       checkState.domain === normalizedDomainValue &&
+      (checkState.domainMode ?? "new_registration") === domainMode &&
       checkTokenIsCurrent
     ) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
       setQuotes(checkState.quotes ?? null)
     }
-  }, [checkState, checkTokenIsCurrent, normalizedDomainValue])
+  }, [checkState, checkTokenIsCurrent, domainMode, normalizedDomainValue])
 
   React.useEffect(() => {
-    if (step !== "domain") return
+    if (step !== "domain" || domainMode !== "new_registration") return
     if (!domainLooksCheckable) return
     if (
       normalizedDomainValue === checkedDomain ||
@@ -299,7 +332,7 @@ export function PreviewCheckout({
       domainFormRef.current?.requestSubmit()
     }, 650)
     return () => window.clearTimeout(timer)
-  }, [checkedDomain, domainLooksCheckable, normalizedDomainValue, step])
+  }, [checkedDomain, domainLooksCheckable, domainMode, normalizedDomainValue, step])
 
   React.useEffect(() => {
     if (
@@ -357,7 +390,11 @@ export function PreviewCheckout({
   }, [profileState])
 
   React.useEffect(() => {
-    if (step !== "domain" || !domainLooksCheckable) return
+    if (
+      step !== "domain" ||
+      domainMode !== "new_registration" ||
+      !domainLooksCheckable
+    ) return
     const unavailable = Boolean(
       !checkPending &&
       checkAppliesToCurrentInput &&
@@ -460,6 +497,7 @@ export function PreviewCheckout({
     checkState.status,
     domainLooksCheckable,
     normalizedDomainValue,
+    domainMode,
     step,
     suggestionsApplyToCurrentInput,
     suggestionsHref,
@@ -472,6 +510,7 @@ export function PreviewCheckout({
   const selectedDomain =
     checkedDomain && checkedDomain === normalizedDomainValue ? checkedDomain : null
   const primaryDomainUnavailable = Boolean(
+    domainMode === "new_registration" &&
     !checkPending &&
     checkAppliesToCurrentInput &&
     !checkState.ok &&
@@ -495,6 +534,7 @@ export function PreviewCheckout({
   const domainIsReady = Boolean(
     selectedDomain &&
     quotes &&
+    quotes.annual.quote.domainMode === domainMode &&
     ((checkState.ok && checkAppliesToCurrentInput) || selectedDomain === readyDomain),
   )
   const domainResultKind = checkPending
@@ -540,6 +580,16 @@ export function PreviewCheckout({
     }
   }
 
+  const updateDomainMode = (mode: "new_registration" | "existing_domain") => {
+    if (mode === domainMode) return
+    suggestionsAbortRef.current?.abort()
+    setDomainMode(mode)
+    setCheckedDomain(null)
+    setQuotes(null)
+    setDomainValue("")
+    lastSubmittedDomainRef.current = null
+  }
+
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
     suggestionsAbortRef.current?.abort()
     suggestionsAbortRef.current = null
@@ -560,11 +610,13 @@ export function PreviewCheckout({
   }
 
   const goBack = () => {
+    if (acceptedOrderId != null) return
     if (step === "details") setStep("domain")
     if (step === "overview") setStep("details")
   }
 
   const submitPayment = () => {
+    if (requiresMigrationRecollection) return
     setPaymentSubmitRequested(true)
     paymentFormRef.current?.requestSubmit()
   }
@@ -591,8 +643,12 @@ export function PreviewCheckout({
       <div className="mx-auto grid w-full max-w-4xl gap-4 p-3 md:p-4">
         <PreviewCheckoutStepper
           step={step}
-          highestReachedStep={highestReachedStep}
-          onStepSelect={setStep}
+          highestReachedStep={
+            acceptedOrderId == null
+              ? highestReachedStep
+              : checkoutStepOrder.indexOf(step)
+          }
+          onStepSelect={acceptedOrderId == null ? setStep : () => {}}
         />
 
         {paymentReturn && (
@@ -611,6 +667,201 @@ export function PreviewCheckout({
           </Alert>
         )}
 
+        {requiresMigrationRecollection &&
+          acceptedOrderId != null &&
+          recollectAcceptedMigrationInputAction && (
+            <Alert role="alert">
+              <Globe2 className="size-4" aria-hidden />
+              <AlertTitle>{t("checkoutMigrationRecollectionTitle")}</AlertTitle>
+              <AlertDescription>
+                <p id="migration-recollection-payment-block">
+                  {t("checkoutMigrationRecollectionDescription")}
+                </p>
+                <form
+                  action={recollectAcceptedMigrationInputAction}
+                  className="mt-4 grid gap-3"
+                >
+                  <input
+                    type="hidden"
+                    name="acceptedOrderId"
+                    value={acceptedOrderId}
+                  />
+                  <Label htmlFor="accepted-migration-zone-export">
+                    {t("checkoutMigrationZoneExportLabel")}
+                  </Label>
+                  <Input
+                    id="accepted-migration-zone-export"
+                    name="zoneExport"
+                    type="file"
+                    accept="application/json,.json"
+                    required
+                  />
+                  <Label htmlFor="accepted-migration-transfer-code">
+                    {t("checkoutMigrationTransferCodeLabel")}
+                  </Label>
+                  <Input
+                    id="accepted-migration-transfer-code"
+                    name="transferCode"
+                    type="password"
+                    autoComplete="off"
+                    required
+                  />
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      name="transferAuthorization"
+                      value="accepted"
+                      required
+                      className="mt-1"
+                    />
+                    <span>{t("checkoutMigrationTransferAuthorization")}</span>
+                  </label>
+                  <Button type="submit" className="w-fit">
+                    {t("checkoutMigrationRecollectionSubmit")}
+                  </Button>
+                </form>
+              </AlertDescription>
+            </Alert>
+          )}
+
+        {migrationStatus && (
+          <Alert role="status" aria-live="polite">
+            <Globe2 className="size-4" aria-hidden />
+            <AlertTitle>
+              {t("checkoutMigrationStatusTitle", {
+                domain: migrationStatus.domain,
+              })}
+            </AlertTitle>
+            <AlertDescription>
+              <span className="block">
+                {t("checkoutMigrationStatusState", {
+                  state: migrationStatus.state,
+                })}
+              </span>
+              {migrationStatus.actions.filter((action) =>
+                action.status !== "completed").length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {migrationStatus.actions
+                    .filter((action) => action.status !== "completed")
+                    .map((action) => (
+                      <li key={action.action}>
+                        {migrationCustomerActionLabel(action.action, t)}
+                        {action.deadlineAt
+                          ? ` — ${t("checkoutMigrationActionDeadline", {
+                              deadline: new Intl.DateTimeFormat(locale, {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }).format(new Date(action.deadlineAt)),
+                            })}`
+                          : ""}
+                      </li>
+                    ))}
+                </ul>
+              )}
+              {["awaiting_customer_acceptance", "awaiting_payment"].includes(
+                migrationStatus.operatorAuthorization,
+              ) &&
+                migrationStatus.supplementalProposal &&
+                acceptMigrationSupplementalOrderAction && (
+                  <form
+                    action={acceptMigrationSupplementalOrderAction}
+                    className="mt-4 grid gap-3 rounded-md border bg-background p-3"
+                  >
+                    <input
+                      type="hidden"
+                      name="migrationId"
+                      value={migrationStatus.migrationId}
+                    />
+                    <input
+                      type="hidden"
+                      name="expectedMigrationVersion"
+                      value={migrationStatus.updatedAt}
+                    />
+                    <p className="font-medium">
+                      {t("checkoutMigrationSupplementalTitle")}
+                    </p>
+                    <p>
+                      {t("checkoutMigrationSupplementalScope", {
+                        scope: migrationWorkScopeLabel(
+                          migrationStatus.supplementalProposal.workScopeCode,
+                          t,
+                        ),
+                      })}
+                    </p>
+                    <p>
+                      {t("checkoutMigrationSupplementalPrice", {
+                        net: money(
+                          locale,
+                          migrationStatus.supplementalProposal.netAmountMinor,
+                          "EUR",
+                        ),
+                        gross: money(
+                          locale,
+                          migrationStatus.supplementalProposal.grossAmountMinor,
+                          "EUR",
+                        ),
+                      })}
+                    </p>
+                    <Button type="submit" className="w-fit">
+                      {migrationStatus.operatorAuthorization === "awaiting_payment"
+                        ? t("checkoutMigrationSupplementalRetry")
+                        : t("checkoutMigrationSupplementalAccept")}
+                    </Button>
+                  </form>
+                )}
+              {migrationStatus.actions.some((action) =>
+                action.action === "provide_epp_code" &&
+                ["required", "failed"].includes(action.status)) &&
+                submitMigrationTransferCodeAction && (
+                  <form
+                    action={submitMigrationTransferCodeAction}
+                    className="mt-4 grid gap-3 rounded-md border bg-background p-3"
+                  >
+                    <input
+                      type="hidden"
+                      name="migrationId"
+                      value={migrationStatus.migrationId}
+                    />
+                    <input
+                      type="hidden"
+                      name="expectedMigrationVersion"
+                      value={migrationStatus.updatedAt}
+                    />
+                    {migrationStatus.actions.some((action) =>
+                      action.action === "upload_complete_zone" &&
+                      ["required", "failed"].includes(action.status)) && (
+                        <>
+                          <Label htmlFor="migration-replacement-zone-export">
+                            {t("checkoutMigrationZoneExportLabel")}
+                          </Label>
+                          <Input
+                            id="migration-replacement-zone-export"
+                            name="zoneExport"
+                            type="file"
+                            accept="application/json,.json"
+                            required
+                          />
+                        </>
+                      )}
+                    <Label htmlFor="migration-replacement-transfer-code">
+                      {t("checkoutMigrationTransferCodeReplacement")}
+                    </Label>
+                    <Input
+                      id="migration-replacement-transfer-code"
+                      name="transferCode"
+                      type="password"
+                      autoComplete="off"
+                      required
+                    />
+                    <Button type="submit" className="w-fit">
+                      {t("checkoutMigrationTransferCodeSubmit")}
+                    </Button>
+                  </form>
+                )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {step === "domain" && (
           <Card>
             <CardHeader>
@@ -624,6 +875,54 @@ export function PreviewCheckout({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
+              <fieldset className="grid gap-3">
+                <legend className="text-base font-semibold">
+                  {t("checkoutDomainModeLegend")}
+                </legend>
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-4">
+                  <input
+                    type="radio"
+                    name="checkout-domain-mode"
+                    value="new_registration"
+                    checked={domainMode === "new_registration"}
+                    onChange={() => updateDomainMode("new_registration")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-medium">{t("checkoutDomainModeNew")}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {t("checkoutDomainModeNewHelp")}
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={cn(
+                    "flex items-start gap-3 rounded-md border p-4",
+                    existingDomainMigrationEnabled
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-70",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="checkout-domain-mode"
+                    value="existing_domain"
+                    checked={domainMode === "existing_domain"}
+                    disabled={!existingDomainMigrationEnabled}
+                    onChange={() => updateDomainMode("existing_domain")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-medium">{t("checkoutDomainModeExisting")}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {existingDomainMigrationEnabled
+                        ? t("checkoutDomainModeExistingHelp")
+                        : t("checkoutDomainModeExistingDisabled")}
+                    </span>
+                  </span>
+                </label>
+              </fieldset>
+
               <form
                 id="checkout-domain-form"
                 ref={domainFormRef}
@@ -639,6 +938,7 @@ export function PreviewCheckout({
               >
                 <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
                 <input ref={domainRequestTokenRef} type="hidden" name="requestToken" />
+                <input type="hidden" name="domainMode" value={domainMode} />
                 <div className="relative">
                   <Input
                     id="checkout-domain"
@@ -667,6 +967,59 @@ export function PreviewCheckout({
                     ) : null}
                   </div>
                 </div>
+                {domainMode === "existing_domain" && (
+                  <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="checkout-zone-export">
+                        {t("checkoutMigrationZoneExportLabel")}
+                      </Label>
+                      <Input
+                        id="checkout-zone-export"
+                        name="zoneExport"
+                        type="file"
+                        accept="application/json,.json"
+                        required
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t("checkoutMigrationZoneExportHelp")}
+                      </p>
+                    </div>
+                    <CheckoutTextField
+                      id="checkout-transfer-code"
+                      name="transferCode"
+                      type="password"
+                      label={t("checkoutMigrationTransferCodeLabel")}
+                      description={t("checkoutMigrationTransferCodeHelp")}
+                      value={undefined}
+                      autoComplete="off"
+                      required
+                    />
+                    <fieldset className="grid gap-2">
+                      <legend className="font-medium">
+                        {t("checkoutMigrationAssistanceLegend")}
+                      </legend>
+                      <label className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="migrationAssistance"
+                          value="assisted_standard"
+                          defaultChecked
+                          className="mt-1"
+                        />
+                        <span>{t("checkoutMigrationAssistedChoice")}</span>
+                      </label>
+                    </fieldset>
+                    <label className="flex items-start gap-3 text-sm leading-6">
+                      <Checkbox
+                        name="transferAuthorization"
+                        value="accepted"
+                        className="mt-1"
+                        required
+                      />
+                      <span>{t("checkoutMigrationTransferAuthorization")}</span>
+                    </label>
+                  </div>
+                )}
                 <div aria-live="polite" aria-atomic="true">
                   {domainInputState === "warning" && (
                     <p id="checkout-domain-unavailable" className="text-sm font-medium text-warning">
@@ -689,6 +1042,37 @@ export function PreviewCheckout({
                 </Alert>
               )}
 
+              {domainMode === "existing_domain" && checkAppliesToCurrentInput && (
+                <Alert
+                  variant={checkState.ok ? "default" : "destructive"}
+                  role={checkState.ok ? "status" : "alert"}
+                >
+                  <Info className="size-4" aria-hidden />
+                  <AlertTitle>
+                    {checkState.migrationReadiness === "ready_automatic"
+                      ? t("checkoutMigrationReadyAutomatic")
+                      : checkState.migrationReadiness === "ready_assisted"
+                        ? t("checkoutMigrationReadyAssisted")
+                        : checkState.migrationReadiness === "custom_quote"
+                          ? t("checkoutMigrationCustomQuote")
+                          : t("checkoutMigrationUnsupported")}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {checkState.message}
+                    {checkState.migrationPublicEvidence && (
+                      <span className="mt-2 block text-sm">
+                        {t("checkoutMigrationPublicEvidence", {
+                          registrar: checkState.migrationPublicEvidence.registrar ?? "onbekend",
+                          provider:
+                            checkState.migrationPublicEvidence.probableDnsProvider ??
+                            "onbekend",
+                        })}
+                      </span>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {primaryDomainUnavailable && (
                 <DomainSuggestions
                   loading={suggestionsPending}
@@ -703,7 +1087,9 @@ export function PreviewCheckout({
                 />
               )}
 
-              <ExistingDomainMigrationInfo catalog={catalog} locale={locale} />
+              {domainMode === "new_registration" && (
+                <ExistingDomainMigrationInfo catalog={catalog} locale={locale} />
+              )}
             </CardContent>
           </Card>
         )}
@@ -735,6 +1121,16 @@ export function PreviewCheckout({
               >
                 <input ref={profileRequestTokenRef} type="hidden" name="requestToken" />
                 <input type="hidden" name="domain" value={selectedDomain ?? domainValue} />
+                <input type="hidden" name="domainMode" value={domainMode} />
+                <input
+                  type="hidden"
+                  name="existingMigrationQuoteToken"
+                  value={
+                    domainMode === "existing_domain"
+                      ? selectedQuote?.token ?? ""
+                      : ""
+                  }
+                />
                 <input
                   type="hidden"
                   name="expectedProfileVersion"
@@ -1038,7 +1434,9 @@ export function PreviewCheckout({
             <CardContent className="grid gap-6">
               <fieldset className="grid gap-3">
                 <legend className="text-base font-semibold">{t("checkoutPlanLegend")}</legend>
-                {(["annual", "monthly"] as const).map((period) => {
+                {(acceptedOrderId == null
+                  ? ["annual", "monthly"] as const
+                  : [billingPeriod] as const).map((period) => {
                   const option = quotes?.[period]?.quote
                   return (
                     <label
@@ -1054,6 +1452,7 @@ export function PreviewCheckout({
                         value={period}
                         checked={billingPeriod === period}
                         onChange={() => setBillingPeriod(period)}
+                        disabled={acceptedOrderId != null}
                         className="mt-1"
                       />
                       <span className="grid flex-1 gap-1">
@@ -1188,6 +1587,13 @@ export function PreviewCheckout({
                 className="hidden"
               >
                 <input type="hidden" name="domain" value={selectedDomain ?? domainValue} />
+                {acceptedOrderId != null && (
+                  <input
+                    type="hidden"
+                    name="acceptedOrderId"
+                    value={acceptedOrderId}
+                  />
+                )}
                 <input type="hidden" name="expectedProfileKey" value={savedProfile.profileKey} />
                 <input type="hidden" name="expectedProfileVersion" value={savedProfile.profileVersion} />
                 <input type="hidden" name="billingPeriod" value={billingPeriod} />
@@ -1279,6 +1685,7 @@ export function PreviewCheckout({
         checkPending={checkPending}
         profilePending={profilePending}
         paymentPending={paymentPending}
+        paymentBlocked={requiresMigrationRecollection}
         domainResultKind={domainResultKind}
         paymentStatus={paymentStatus}
         legalAccepted={
@@ -1297,6 +1704,37 @@ export function PreviewCheckout({
       />
     </main>
   )
+}
+
+const migrationCustomerActionLabel = (
+  action: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    provide_epp_code: "checkoutMigrationActionProvideEpp",
+    authorize_provider: "checkoutMigrationActionAuthorizeProvider",
+    upload_complete_zone: "checkoutMigrationActionUploadZone",
+    confirm_transfer: "checkoutMigrationActionConfirmTransfer",
+    verify_registrant: "checkoutMigrationActionVerifyRegistrant",
+    remove_dnssec_ds: "checkoutMigrationActionRemoveDnssecDs",
+  } as const
+  const key = keys[action as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationActionUnknown")
+}
+
+const migrationWorkScopeLabel = (
+  scope: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    verify_customer_zone_export: "checkoutMigrationScopeVerifyZoneExport",
+    resolve_supported_zone_conflict:
+      "checkoutMigrationScopeResolveZoneConflict",
+    complete_supported_provider_handoff:
+      "checkoutMigrationScopeProviderHandoff",
+  } as const
+  const key = keys[scope as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationScopeUnknown")
 }
 
 function PreviewCheckoutStepper({
@@ -1335,6 +1773,7 @@ function CheckoutActionBar({
   checkPending,
   profilePending,
   paymentPending,
+  paymentBlocked,
   domainResultKind,
   paymentStatus,
   legalAccepted,
@@ -1353,6 +1792,7 @@ function CheckoutActionBar({
   checkPending: boolean
   profilePending: boolean
   paymentPending: boolean
+  paymentBlocked: boolean
   domainResultKind: "loading" | "success" | "unavailable" | "error" | null
   paymentStatus: string
   legalAccepted: boolean
@@ -1429,12 +1869,16 @@ function CheckoutActionBar({
         className="min-w-0 flex-1 md:flex-none"
         disabled={
           paymentPending ||
+          paymentBlocked ||
           !selectedDomain ||
           !profileReady ||
           !quoteReady ||
           !legalAccepted ||
           paymentInProgress ||
           complete
+        }
+        aria-describedby={
+          paymentBlocked ? "migration-recollection-payment-block" : undefined
         }
         onClick={onPay}
       >
@@ -1467,7 +1911,7 @@ function CheckoutTextField({
   id: string
   name?: string
   label: string
-  value: string
+  value: string | undefined
   error?: string
   description?: string
   onChange?: (value: string) => void

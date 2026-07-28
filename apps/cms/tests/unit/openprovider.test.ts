@@ -9,9 +9,11 @@ import {
   findOpenProviderCustomerByReference,
   findOpenProviderDomain,
   getOpenProviderDomainRenewalPrice,
+  getOpenProviderDomainTransferPrice,
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
   normalizeOpenProviderTimestamp,
+  OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   setOpenProviderDomainAutorenew,
@@ -117,6 +119,34 @@ describe("OpenProvider adapter", () => {
     }))
     },
   )
+
+  it("quotes the reseller transfer operation independently from renewal", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        is_premium: false,
+        price: {
+          reseller: { currency: "EUR", price: "7.50" },
+        },
+      },
+    }))
+
+    await expect(getOpenProviderDomainTransferPrice("Example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "example.nl",
+      operation: "transfer",
+      currency: "EUR",
+      netAmountMinor: 750,
+      premium: false,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains/prices?domain.name=example&domain.extension=nl&operation=transfer&period=1",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
 
   it("batch checks multiple domains with one provider request", async () => {
     const fetchMock = vi.fn(async () => Response.json({
@@ -925,6 +955,34 @@ describe("OpenProvider adapter", () => {
         { name: "ns2.legacy.example" },
       ],
     })
+  })
+
+  it("retains only a bounded provider error code for transfer classification", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: "DOMAIN_AUTH_CODE_INVALID",
+      desc: "must never be retained in the thrown message",
+      data: { customer: "private payload" },
+    }, { status: 400 }))
+    const error = await transferOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      authCode: "opaque-nl-code",
+      ownerHandle: "OWNER-CLIENT",
+      nameServers: [
+        { name: "ns1.legacy.example" },
+        { name: "ns2.legacy.example" },
+      ],
+      autorenew: "on",
+      reference: "domain-migration:order:700:v1",
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(OpenProviderApiError)
+    expect(error).toMatchObject({
+      status: 400,
+      providerCode: "DOMAIN_AUTH_CODE_INVALID",
+    })
+    expect(String(error)).not.toMatch(/private payload|never be retained/)
   })
 
   it("updates nameservers explicitly and treats a timeout as indeterminate", async () => {

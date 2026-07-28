@@ -4,7 +4,9 @@ import {
   verifyAuthoritativeDns,
   verifyHttpsEndpoint,
   verifyParentDsAbsent,
+  verifyPreservedDnsRecords,
 } from "@/lib/domains/verification"
+import type { NormalizedMigrationDnsRecord } from "@siteinabox/contracts/domain-migration"
 
 describe("enabled-TLD domain verification", () => {
   it("treats parent DS lookup only as DNSSEC preparation, never as zone acquisition", async () => {
@@ -135,4 +137,140 @@ describe("enabled-TLD domain verification", () => {
     }))
     },
   )
+
+  it("requires semantically equivalent preserved records recursively and authoritatively", async () => {
+    const records: NormalizedMigrationDnsRecord[] = [
+      {
+        type: "MX",
+        name: "example.nl",
+        ttl: 300,
+        priority: 10,
+        target: "mail.example.nl",
+        proxied: false,
+      },
+      {
+        type: "TXT",
+        name: "selector._domainkey.example.nl",
+        ttl: 300,
+        content: "v=DKIM1; p=abcdef",
+        proxied: false,
+      },
+      {
+        type: "CAA",
+        name: "example.nl",
+        ttl: 300,
+        flags: 0,
+        tag: "issue",
+        value: "letsencrypt.org",
+        proxied: false,
+      },
+      {
+        type: "SRV",
+        name: "_sip._tcp.example.nl",
+        ttl: 300,
+        priority: 10,
+        weight: 20,
+        port: 5060,
+        target: "sip.example.nl",
+        proxied: false,
+      },
+      {
+        type: "NS",
+        name: "child.example.nl",
+        ttl: 300,
+        content: "ns.child.example.net",
+        proxied: false,
+      },
+      {
+        type: "A",
+        name: "*.apps.example.nl",
+        ttl: 300,
+        content: "192.0.2.44",
+        proxied: false,
+      },
+      {
+        type: "TLSA",
+        name: "_443._tcp.example.nl",
+        ttl: 300,
+        certificateUsage: 3,
+        selector: 1,
+        matchingType: 1,
+        certificateAssociationData: "ab".repeat(32),
+        proxied: false,
+      },
+    ]
+    const answer = vi.fn(async (hostname: string, type: string) => {
+      if (type === "MX") return [{ priority: 10, exchange: "MAIL.EXAMPLE.NL." }]
+      if (type === "TXT") return [["v=DKIM1; ", "p=abcdef"]]
+      if (type === "CAA") return [{ critical: 0, issue: "letsencrypt.org" }]
+      if (type === "SRV") {
+        return [{ priority: 10, weight: 20, port: 5060, name: "sip.example.nl." }]
+      }
+      if (type === "NS") return ["NS.CHILD.EXAMPLE.NET."]
+      if (type === "A") {
+        expect(hostname).toBe("siab-preservation-probe.apps.example.nl")
+        return ["192.0.2.44"]
+      }
+      if (type === "TLSA") {
+        return [{
+          certUsage: 3,
+          selector: 1,
+          match: 1,
+          data: Uint8Array.from(Buffer.from("ab".repeat(32), "hex")).buffer,
+        }]
+      }
+      return []
+    })
+
+    await expect(verifyPreservedDnsRecords(
+      records,
+      ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      {
+        recursiveResolveImpl: answer,
+        authoritativeResolveImpl: vi.fn(async (_ns, hostname, type) =>
+          answer(hostname, type)),
+      },
+    )).resolves.toEqual({
+      status: "verified",
+      recursiveEquivalent: true,
+      authoritativeEquivalent: true,
+      reason: null,
+    })
+  })
+
+  it("blocks publication evidence on recursive or authoritative record drift", async () => {
+    const records: NormalizedMigrationDnsRecord[] = [{
+      type: "MX",
+      name: "example.nl",
+      ttl: 300,
+      priority: 10,
+      target: "mail.example.nl",
+      proxied: false,
+    }]
+    await expect(verifyPreservedDnsRecords(records, ["ada.ns.cloudflare.com"], {
+      recursiveResolveImpl: vi.fn(async () => [{
+        priority: 20,
+        exchange: "wrong.example.nl",
+      }]),
+      authoritativeResolveImpl: vi.fn(),
+    })).resolves.toMatchObject({
+      status: "pending",
+      reason: "recursive_preserved_record_mismatch",
+    })
+    await expect(verifyPreservedDnsRecords(records, ["ada.ns.cloudflare.com"], {
+      recursiveResolveImpl: vi.fn(async () => [{
+        priority: 10,
+        exchange: "mail.example.nl",
+      }]),
+      authoritativeResolveImpl: vi.fn(async () => [{
+        priority: 20,
+        exchange: "wrong.example.nl",
+      }]),
+    })).resolves.toMatchObject({
+      status: "pending",
+      recursiveEquivalent: true,
+      authoritativeEquivalent: false,
+      reason: "authoritative_preserved_record_mismatch",
+    })
+  })
 })

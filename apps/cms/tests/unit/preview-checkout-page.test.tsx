@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest"
 import type { ComponentProps } from "react"
 import type { PreviewCheckout } from "@/components/preview/PreviewCheckout"
+import { buildCheckoutQuote, sealCheckoutQuote } from "@/lib/checkout/checkoutQuote"
 
 const mocks = vi.hoisted(() => ({
   headers: new Headers({ host: "preview.siteinabox.nl" }),
@@ -8,9 +9,14 @@ const mocks = vi.hoisted(() => ({
   isPreviewHost: vi.fn(),
   loadPreviewGrantContext: vi.fn(),
   loadLatestCheckoutProfile: vi.fn(),
+  loadCustomerMigrationStatus: vi.fn(),
+  loadAcceptedCheckoutResume: vi.fn(),
   checkDomainAction: vi.fn(),
   saveProfileAction: vi.fn(),
   startPaymentAction: vi.fn(),
+  acceptMigrationSupplementalOrderAction: vi.fn(),
+  recollectAcceptedMigrationInputAction: vi.fn(),
+  submitMigrationTransferCodeAction: vi.fn(),
 }))
 
 vi.mock("next/headers", () => ({
@@ -54,6 +60,9 @@ vi.mock("@/lib/preview/previewAccess", () => ({
 }))
 
 vi.mock("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions", () => ({
+  acceptMigrationSupplementalOrderAction: mocks.acceptMigrationSupplementalOrderAction,
+  recollectAcceptedMigrationInputAction: mocks.recollectAcceptedMigrationInputAction,
+  submitMigrationTransferCodeAction: mocks.submitMigrationTransferCodeAction,
   checkPreviewCheckoutDomainAction: mocks.checkDomainAction,
   savePreviewCheckoutProfileAction: mocks.saveProfileAction,
   startPreviewCheckoutPaymentAction: mocks.startPaymentAction,
@@ -66,6 +75,14 @@ vi.mock("@/lib/checkout/checkoutProfile", async (importOriginal) => {
     loadLatestCheckoutProfile: mocks.loadLatestCheckoutProfile,
   }
 })
+
+vi.mock("@/lib/domains/migrationStatus", () => ({
+  loadCustomerMigrationStatus: mocks.loadCustomerMigrationStatus,
+}))
+
+vi.mock("@/lib/checkout/acceptedCheckoutResume", () => ({
+  loadAcceptedCheckoutResume: mocks.loadAcceptedCheckoutResume,
+}))
 
 type PreviewCheckoutProps = ComponentProps<typeof PreviewCheckout>
 
@@ -90,6 +107,7 @@ async function renderCheckoutProps(
   overrides: Record<string, unknown> = {},
   profile: Record<string, unknown> | null = null,
   paymentReturn = false,
+  acceptedResume: Record<string, unknown> | null = null,
 ): Promise<PreviewCheckoutProps> {
   vi.clearAllMocks()
   vi.stubEnv("PAYLOAD_SECRET", "checkout-page-test-secret")
@@ -97,6 +115,8 @@ async function renderCheckoutProps(
   mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
   mocks.loadPreviewGrantContext.mockResolvedValue(baseContext(overrides))
   mocks.loadLatestCheckoutProfile.mockResolvedValue(profile)
+  mocks.loadCustomerMigrationStatus.mockResolvedValue(null)
+  mocks.loadAcceptedCheckoutResume.mockResolvedValue(acceptedResume)
 
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")
   const element = await PreviewCheckoutPage({
@@ -217,5 +237,69 @@ describe("preview checkout page domain initialization", () => {
       grossAmountMinor: 22_990,
     })
     expect(props.paymentStatus).toBe("pending_provider")
+  })
+
+  it("returns a cancelled existing-domain payment to its immutable accepted order", async () => {
+    const profile = {
+      id: 44,
+      profileKey: "run:123:checkout-profile:2",
+      profileVersion: 2,
+      generationRun: 123,
+      customerName: "Ada Lovelace",
+      customerEmail: "customer@example.com",
+      partyType: "registered_business",
+      contractingPartyName: "Analytical Engines B.V.",
+      kvkNumber: "12345678",
+      domainRegistrantSource: "contracting_party",
+      billingAddress: {
+        street: "Markt",
+        number: "1",
+        zipcode: "1234AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+      },
+      createdAt: "2026-07-28T10:00:00.000Z",
+    }
+    const accepted = buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_250,
+      migrationClassification: "automatic",
+      migrationSourceZoneHash: "a".repeat(64),
+      migrationInputEnvelope: "v1.encrypted",
+      selectedDomain: "existing.nl",
+      domainMode: "existing_domain",
+      providerQuotedAt: new Date().toISOString(),
+      profileVersion: 2,
+      draftVersion: "accepted-draft",
+    })
+    const envelope = sealCheckoutQuote(accepted, "checkout-page-test-secret")
+    const acceptedResume = {
+      orderId: 90,
+      domain: "existing.nl",
+      billingPeriod: "annual",
+      quotes: { monthly: envelope, annual: envelope },
+    }
+
+    const props = await renderCheckoutProps({
+      updatedAt: "run-mutated-after-provider-return",
+      payment: { status: "canceled" },
+      domainOrder: null,
+    }, profile, true, acceptedResume)
+
+    expect(props).toMatchObject({
+      currentDomain: "existing.nl",
+      domainReady: true,
+      initialStep: "overview",
+      acceptedOrderId: 90,
+      paymentReturn: true,
+    })
+    expect(props.initialQuotes?.annual.quote).toMatchObject({
+      domainMode: "existing_domain",
+      migrationClassification: "automatic",
+      draftVersion: "accepted-draft",
+    })
   })
 })

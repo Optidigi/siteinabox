@@ -4,14 +4,30 @@ import {
   acquireAutomaticMigrationInputs,
   createAutomaticDomainMigration,
   prepareDomainMigration,
+  replaceMigrationTransferAuthorization,
 } from "@/lib/domains/migration"
-import { OpenProviderIndeterminateWriteError } from "@/lib/domains/openprovider"
+import { CloudflareIndeterminateWriteError } from "@/lib/domains/cloudflare"
+import {
+  OpenProviderApiError,
+  OpenProviderIndeterminateWriteError,
+} from "@/lib/domains/openprovider"
 import { prepareDomainMigrationTask } from "@/lib/jobs/prepareDomainMigrationTask"
 import type {
   CompleteZoneExport,
   NormalizedMigrationDnsRecord,
 } from "@siteinabox/contracts/domain-migration"
+import { normalizeCompleteZone } from "@siteinabox/contracts/domain-migration"
 import type { ParentDsVerification } from "@/lib/domains/verification"
+import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
+import {
+  openMigrationSecret,
+  sealCheckoutMigrationInput,
+} from "@/lib/domains/migrationSecrets"
+import {
+  attachMigrationCheckoutSecret,
+  migrationCheckoutSecretKey,
+  persistMigrationCheckoutSecret,
+} from "@/lib/domains/migrationCheckoutSecret"
 import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
 
 const ENCRYPTION_KEY = Buffer.alloc(32, 9).toString("base64")
@@ -175,6 +191,11 @@ const createStore = () => {
       findByID,
       create,
       update,
+      db: {
+        drizzle: {
+          execute: vi.fn(async () => ({ rows: [{ id: 1_000 }] })),
+        },
+      },
       jobs: { queue: vi.fn() },
     }),
   }
@@ -204,6 +225,7 @@ const preparedMigration = async (store: ReturnType<typeof createStore>) => {
 const workflowDependencies = (input?: {
   now?: string
   authoritativeStatus?: "verified" | "pending"
+  preservedStatus?: "verified" | "pending"
   verificationStatus?: string
 }) => {
   let providerDomain: {
@@ -224,8 +246,14 @@ const workflowDependencies = (input?: {
   let recordId = 1
   const dependencies = {
     now: () => input?.now ?? "2026-07-28T09:00:00.000Z",
+    forwardProviderWritesAllowed: vi.fn(() => true),
+    transferContractEvidenceAllowed: vi.fn(() => true),
     loginOpenProvider: vi.fn(async () => "token"),
-    findOpenProviderCustomerByReference: vi.fn(async () => ({
+    findOpenProviderCustomerByReference: vi.fn(async (): Promise<{
+      handle: string
+      comments: string
+      raw: Record<string, never>
+    } | null> => ({
       handle: "OWNER-CLIENT",
       comments: "domain-migration:order:600:v1",
       raw: {},
@@ -295,6 +323,14 @@ const workflowDependencies = (input?: {
         : CLOUDFLARE_NAMESERVERS,
       reason: input?.authoritativeStatus === "pending" ? "delegation_mismatch" : null,
     })),
+    verifyPreservedDnsRecords: vi.fn(async () => ({
+      status: input?.preservedStatus ?? "verified",
+      recursiveEquivalent: input?.preservedStatus !== "pending",
+      authoritativeEquivalent: input?.preservedStatus !== "pending",
+      reason: input?.preservedStatus === "pending"
+        ? "recursive_preserved_record_mismatch"
+        : null,
+    })),
     verifyHttpsEndpoint: vi.fn(async () => ({
       status: "verified" as const,
       httpStatus: 404,
@@ -331,6 +367,7 @@ const asMigrationDependencies = (
 
 beforeEach(() => {
   vi.stubEnv("DOMAIN_MIGRATION_ENCRYPTION_KEY", ENCRYPTION_KEY)
+  vi.stubEnv("SIAB_RENDERER_TARGET_HOST", "renderer.siteinabox.nl")
 })
 
 afterEach(() => {
@@ -362,6 +399,81 @@ describe("automatic existing-domain migration", () => {
     await expect(createAutomaticDomainMigration(store.payload, 600)).resolves.toMatchObject({
       acceptedClassification: "assisted_standard",
       operatorWorkAuthorizationState: "not_required",
+    })
+  })
+
+  it("clears retained checkout ciphertext on retry after acquisition already succeeded", async () => {
+    const store = createStore()
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(zoneExport),
+    )
+    const secretKey = migrationCheckoutSecretKey(
+      500,
+      "example.nl",
+      sourceZoneHash,
+    )
+    const encryptedInput = sealCheckoutMigrationInput({
+      schemaVersion: 1,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic",
+      sourceMechanism: "customer_authorized_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: zoneExport,
+      transferCode: "opaque-nl-transfer-code",
+      transferAuthorizationAccepted: true,
+    })
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceZoneHash,
+        checkoutSecretKey: secretKey,
+      },
+    }
+    await persistMigrationCheckoutSecret(store.payload, {
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      encryptedInput,
+    })
+    await attachMigrationCheckoutSecret(store.payload, {
+      secretKey,
+      orderId: 600,
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+    })
+    const update = store.payload.update as unknown as ReturnType<typeof vi.fn>
+    const originalUpdate = update.getMockImplementation() as (
+      args: MockUpdateArgs,
+    ) => Promise<unknown>
+    let failConsumption = true
+    update.mockImplementation(async (args: MockUpdateArgs) => {
+      if (
+        failConsumption &&
+        args.collection === "migration-checkout-secrets" &&
+        args.data.state === "consumed"
+      ) {
+        failConsumption = false
+        throw new Error("simulated secret clearing failure")
+      }
+      return originalUpdate(args)
+    })
+
+    await expect(createAutomaticDomainMigration(store.payload, 600))
+      .rejects.toThrow("simulated secret clearing failure")
+    expect(store.collections["domain-migrations"]).toHaveLength(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      sourceZoneSnapshot: expect.any(Object),
+    })
+    await expect(createAutomaticDomainMigration(store.payload, 600))
+      .resolves.toMatchObject({ sourceZoneSnapshot: expect.any(Object) })
+    expect(store.collections["migration-checkout-secrets"]![0]).toMatchObject({
+      state: "consumed",
+      encryptedInput: null,
     })
   })
 
@@ -453,6 +565,152 @@ describe("automatic existing-domain migration", () => {
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
   })
 
+  it("requires fresh source evidence before the first provider write", async () => {
+    const store = createStore()
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceZoneHash: domainMigrationSourceAuthorityHash(
+          normalizeCompleteZone(zoneExport),
+        ),
+      },
+    }
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored.sourceZoneSnapshot as Record<string, unknown>, {
+      acquiredAt: "2026-07-26T08:00:00.000Z",
+    })
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("source evidence is stale"),
+    })
+    expect(stored).toMatchObject({
+      state: "awaiting_customer",
+      sourceZoneSnapshot: null,
+      targetZoneSnapshot: null,
+      rollbackEvidence: null,
+      encryptedTransferCode: null,
+      failureReason: "source_evidence_stale",
+      customerActions: {
+        upload_complete_zone: { status: "required" },
+        provide_epp_code: { status: "required" },
+      },
+    })
+    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+
+    const freshZone = {
+      ...zoneExport,
+      acquiredAt: "2026-07-28T09:00:00.000Z",
+    }
+    await expect(acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: migration.id,
+      zoneExport: {
+        ...freshZone,
+        records: freshZone.records.map((record, index) =>
+          index === 0 && record.type === "A"
+            ? { ...record, content: "192.0.2.99" }
+            : record),
+      },
+      transferCode: "replacement-epp-code",
+      now: "2026-07-28T09:00:00.000Z",
+      expectedUpdatedAt: String(stored.updatedAt),
+    })).rejects.toThrow("accepted checkout evidence")
+    await expect(acquireAutomaticMigrationInputs(store.payload, {
+      migrationId: migration.id,
+      zoneExport: freshZone,
+      transferCode: "replacement-epp-code",
+      now: "2026-07-28T09:00:00.000Z",
+      expectedUpdatedAt: String(stored.updatedAt),
+    })).resolves.toMatchObject({
+      state: "ready_to_prepare",
+      encryptedTransferCode: expect.any(String),
+      failureReason: null,
+    })
+  })
+
+  it("atomically rejects a second stale-source replacement from another tab", async () => {
+    const store = createStore()
+    const order = store.collections.orders![0]!
+    order.quoteEvidence = {
+      ...(order.quoteEvidence as Record<string, unknown>),
+      migration: {
+        classification: "automatic",
+        sourceMechanism: "customer_authorized_provider_export_v1",
+        sourceZoneHash: domainMigrationSourceAuthorityHash(
+          normalizeCompleteZone(zoneExport),
+        ),
+      },
+    }
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored.sourceZoneSnapshot as Record<string, unknown>, {
+      acquiredAt: "2026-07-26T08:00:00.000Z",
+    })
+    const fixture = workflowDependencies()
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    const expectedUpdatedAt = String(stored.updatedAt)
+    const execute = store.payload.db.drizzle.execute as unknown as ReturnType<
+      typeof vi.fn
+    >
+    execute.mockReset()
+      .mockResolvedValueOnce({ rows: [{ id: migration.id }] })
+      .mockResolvedValueOnce({ rows: [] })
+    const freshZone = {
+      ...zoneExport,
+      acquiredAt: "2026-07-28T09:00:00.000Z",
+    }
+    const transferCodes = ["first-tab-code", "second-tab-code"]
+
+    const results = await Promise.allSettled(transferCodes.map((transferCode) =>
+      acquireAutomaticMigrationInputs(store.payload, {
+        migrationId: migration.id,
+        zoneExport: freshZone,
+        transferCode,
+        expectedUpdatedAt,
+        now: "2026-07-28T09:00:00.000Z",
+      })))
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+    const winnerIndex = results.findIndex((result) => result.status === "fulfilled")
+    const ciphertext = String(stored.encryptedTransferCode)
+    expect(openMigrationSecret(
+      ciphertext,
+      String(stored.idempotencyKey),
+      {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+      } as unknown as NodeJS.ProcessEnv,
+    )).toBe(transferCodes[winnerIndex])
+  })
+
+  it("keeps incoming transfer fail-closed without complete TLD DNSSEC evidence", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+
+    await expect(prepareDomainMigration(store.payload, migration.id, {
+      now: () => "2026-07-28T09:00:00.000Z",
+    })).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining(
+        "DNSSEC and cutover contract evidence is complete",
+      ),
+    })
+  })
+
   it("keeps suspended registrant verification reconcilable and recovers after verification", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
@@ -489,21 +747,18 @@ describe("automatic existing-domain migration", () => {
     })
   })
 
-  it("pauses a ready pre-cutover migration when registrant verification regresses", async () => {
+  it("rolls back after cutover when registrant verification regresses", async () => {
     const store = createStore()
     const migration = await preparedMigration(store)
-    const fixture = workflowDependencies()
+    const fixture = workflowDependencies({ authoritativeStatus: "pending" })
 
     await expect(prepareDomainMigration(
       store.payload,
       migration.id,
-      asMigrationDependencies({
-        ...fixture.dependencies,
-        forwardProviderWritesAllowed: () => false,
-      }),
+      asMigrationDependencies(fixture.dependencies),
     )).resolves.toMatchObject({ status: "waiting" })
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
-      state: "ready_for_cutover",
+      state: "verifying",
     })
 
     const providerDomain = fixture.getProviderDomain()
@@ -515,20 +770,21 @@ describe("automatic existing-domain migration", () => {
     await expect(prepareDomainMigration(
       store.payload,
       migration.id,
-      asMigrationDependencies({
-        ...fixture.dependencies,
-        forwardProviderWritesAllowed: () => false,
-      }),
-    )).resolves.toMatchObject({ status: "waiting" })
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "rolled_back" })
     expect(store.collections["domain-migrations"]![0]).toMatchObject({
-      state: "awaiting_provider",
-      reconciliationRequired: true,
+      state: "rolled_back",
+      reconciliationRequired: false,
     })
     expect(store.collections["managed-domains"]![0]).toMatchObject({
       registrantVerificationStatus: "suspended",
       registrantVerificationDueAt: "2026-08-10T12:30:00.000Z",
     })
-    expect(fixture.dependencies.updateOpenProviderDomainNameservers).not.toHaveBeenCalled()
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenLastCalledWith(
+        9001,
+        OLD_NAMESERVERS.map((name) => ({ name })),
+      )
   })
 
   it("rolls back immediately when registrant verification regresses after cutover", async () => {
@@ -665,10 +921,74 @@ describe("automatic existing-domain migration", () => {
       }),
     )).resolves.toMatchObject({
       status: "waiting",
-      message: expect.stringContaining("forward provider writes are release-blocked"),
+      message: expect.stringContaining("awaits reconciliation"),
     })
     expect(fixture.dependencies.updateOpenProviderDomainNameservers)
       .not.toHaveBeenCalled()
+  })
+
+  it("recovers a crashed prepared cutover claim with one idempotent nameserver PUT", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      authoritativeStatus: "pending",
+    })
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    providerDomain.nameServers = [...OLD_NAMESERVERS]
+    Object.assign(store.collections["domain-migrations"]![0]!, {
+      state: "cutover_in_progress",
+      cutoverWriteState: "prepared",
+      cutoverRequestedAt: "2026-07-28T08:00:00.000Z",
+      rollbackWriteState: "not_started",
+    })
+    fixture.dependencies.updateOpenProviderDomainNameservers.mockClear()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(providerDomain.nameServers).toEqual(CLOUDFLARE_NAMESERVERS)
+  })
+
+  it("executes one queued operator rollback nameserver PUT", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      authoritativeStatus: "pending",
+    })
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    Object.assign(store.collections["domain-migrations"]![0]!, {
+      rollbackWriteState: "not_started",
+      rollbackRequestedAt: "2026-07-28T09:01:00.000Z",
+      failureReason: "operator_detected_dns_mismatch",
+    })
+    fixture.dependencies.updateOpenProviderDomainNameservers.mockClear()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "rolled_back" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(1)
+    expect(providerDomain.nameServers).toEqual(OLD_NAMESERVERS)
   })
 
   it("reconciles an indeterminate transfer and never sends a duplicate transfer", async () => {
@@ -696,5 +1016,407 @@ describe("automatic existing-domain migration", () => {
       asMigrationDependencies(fixture.dependencies),
     )).resolves.toMatchObject({ status: "waiting" })
     expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-29T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("reconciliation window"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      encryptedTransferCode: null,
+      failureReason: "provider_transfer_outcome_unresolved",
+    })
+  })
+
+  it("rolls back an indeterminate cutover after its safety deadline", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+    })
+    fixture.dependencies.updateOpenProviderDomainNameservers.mockRejectedValueOnce(
+      new OpenProviderIndeterminateWriteError(
+        "OpenProvider domain nameserver update",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "cutover_in_progress",
+      cutoverWriteState: "indeterminate",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "rolled_back" })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenCalledTimes(2)
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .toHaveBeenLastCalledWith(
+        9001,
+        OLD_NAMESERVERS.map((name) => ({ name })),
+      )
+  })
+
+  it("escalates indeterminate Cloudflare zone creation without repeating the write", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.listCloudflareZones.mockResolvedValue([])
+    fixture.dependencies.createOrReuseCloudflareZone.mockRejectedValue(
+      new CloudflareIndeterminateWriteError("Cloudflare zone creation"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-29T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "failed" })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      encryptedTransferCode: null,
+      failureReason: "cloudflare_zone_outcome_unresolved",
+    })
+  })
+
+  it("escalates indeterminate Cloudflare DNS creation without repeating records", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord.mockRejectedValue(
+      new CloudflareIndeterminateWriteError("Cloudflare DNS record creation"),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-29T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "failed" })
+
+    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+      .toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      encryptedTransferCode: null,
+      failureReason: "cloudflare_dns_outcome_unresolved",
+    })
+  })
+
+  it("escalates indeterminate customer-handle creation without repeating the POST", async () => {
+    const store = createStore()
+    Object.assign(store.collections["checkout-profiles"]![0]!, {
+      firstName: "Ada",
+      lastName: "Lovelace",
+      billingAddress: {
+        street: "Main Street",
+        number: "10",
+        suffix: null,
+        zipcode: "1011AB",
+        city: "Amsterdam",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "20",
+        phoneSubscriberNumber: "1234567",
+      },
+    })
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.findOpenProviderCustomerByReference.mockResolvedValue(null)
+    fixture.dependencies.createOpenProviderCustomerHandle.mockRejectedValue(
+      new OpenProviderIndeterminateWriteError(
+        "OpenProvider customer creation",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-29T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "failed" })
+
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      encryptedTransferCode: null,
+      failureReason: "openprovider_customer_handle_outcome_unresolved",
+    })
+  })
+
+  it("escalates an indeterminate rollback after its critical reconciliation window", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      authoritativeStatus: "pending",
+    })
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    Object.assign(store.collections["domain-migrations"]![0]!, {
+      rollbackWriteState: "indeterminate",
+      rollbackRequestedAt: "2026-07-28T08:00:00.000Z",
+      failureReason: "rollback_provider_outcome_unresolved",
+    })
+    fixture.dependencies.updateOpenProviderDomainNameservers.mockClear()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-29T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("manual reconciliation"),
+    })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers)
+      .not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      encryptedTransferCode: null,
+      failureReason: "rollback_provider_outcome_unresolved",
+    })
+  })
+
+  it("deletes a rejected transfer code and waits for customer correction", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.transferOpenProviderDomain.mockRejectedValue(
+      new OpenProviderApiError(
+        "OpenProvider domain transfer",
+        400,
+        "DOMAIN_AUTH_CODE_INVALID",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("rejected"),
+    })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_customer",
+      providerTransferState: "not_started",
+      encryptedTransferCode: null,
+      failureReason: "provider_rejected_transfer_authorization",
+      customerActions: {
+        provide_epp_code: { status: "failed" },
+      },
+    })
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+
+    const rejected = store.collections["domain-migrations"]![0]!
+    await expect(replaceMigrationTransferAuthorization(store.payload, {
+      migrationId: migration.id,
+      expectedUpdatedAt: String(rejected.updatedAt),
+      transferCode: "replacement-epp-code",
+      env: {
+        DOMAIN_MIGRATION_ENCRYPTION_KEY: ENCRYPTION_KEY,
+      } as unknown as NodeJS.ProcessEnv,
+      now: "2026-07-28T09:10:00.000Z",
+    })).resolves.toMatchObject({
+      state: "ready_to_prepare",
+      providerTransferState: "not_started",
+      encryptedTransferCode: expect.any(String),
+      failureReason: null,
+    })
+    expect(store.payload.jobs.queue).toHaveBeenCalledWith({
+      task: "prepare-domain-migration",
+      input: { migrationId: String(migration.id) },
+      queue: "default",
+      overrideAccess: true,
+    })
+  })
+
+  it("does not blame the customer or delete the code for an unrelated provider 4xx", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.transferOpenProviderDomain.mockRejectedValue(
+      new OpenProviderApiError(
+        "OpenProvider domain transfer",
+        409,
+        "DOMAIN_CONFLICT",
+      ),
+    )
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("operator review"),
+    })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "openprovider_transfer_rejected_non_authorization",
+      encryptedTransferCode: null,
+      transferCodeDeletedAt: expect.any(String),
+    })
+  })
+
+  it("escalates a crashed prepared transfer claim without repeating the POST", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    Object.assign(store.collections["domain-migrations"]![0]!, {
+      state: "preparing",
+      cloudflareZoneId: "zone-1",
+      cloudflareZoneState: "confirmed",
+      providerCustomerHandle: "OWNER-CLIENT",
+      providerTransferState: "prepared",
+      transferRequestedAt: "2026-07-28T08:00:00.000Z",
+    })
+    const fixture = workflowDependencies({ now: "2026-07-28T09:00:00.000Z" })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("must not be repeated"),
+    })
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      encryptedTransferCode: null,
+      failureReason: "provider_transfer_dispatch_unknown",
+    })
+    expect(store.collections["operational-alerts"]).toEqual([
+      expect.objectContaining({
+        severity: "critical",
+        status: "open",
+      }),
+    ])
+  })
+
+  it("blocks publication and rolls back when live preserved DNS differs", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      preservedStatus: "pending",
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T10:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "rolled_back" })
+    expect(fixture.dependencies.publishAndActivateAfterCompletedPayment)
+      .not.toHaveBeenCalled()
+  })
+
+  it("does not resubmit a transfer and escalates when provider reads lag past the reconciliation window", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+    fixture.dependencies.transferOpenProviderDomain.mockResolvedValue({
+      id: 9001,
+      domain: "example.nl",
+      status: "transferred",
+      raw: {},
+    })
+    fixture.dependencies.findOpenProviderDomain.mockResolvedValue(null)
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      providerTransferState: "prepared",
+      providerTransferId: "9001",
+      reconciliationRequired: true,
+    })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-31T09:00:00.000Z",
+      }),
+    )).resolves.toMatchObject({ status: "failed" })
+    expect(fixture.dependencies.transferOpenProviderDomain).toHaveBeenCalledTimes(1)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      providerTransferState: "prepared",
+      encryptedTransferCode: null,
+      reconciliationRequired: true,
+    })
+    expect(store.collections["operational-alerts"]).toEqual([
+      expect.objectContaining({
+        severity: "critical",
+        dedupeKey: expect.stringContaining("provider_transfer_outcome_unresolved"),
+      }),
+    ])
   })
 })

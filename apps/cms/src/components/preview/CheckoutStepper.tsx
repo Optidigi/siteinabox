@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Button } from "@siteinabox/ui/components/button"
 import { cn } from "@siteinabox/ui/lib/utils"
 
 export type CheckoutStepperItem<T extends string = string> = {
@@ -47,14 +48,15 @@ export function CheckoutStepper<T extends string = string>({
             )}
           >
             {reachable && !active && onStepSelect ? (
-              <button
+              <Button
                 type="button"
-                className="flex min-w-0 items-center gap-1 sm:gap-2"
+                variant="ghost"
+                className="h-auto min-w-0 gap-1 p-0 text-inherit hover:bg-transparent hover:text-inherit sm:gap-2"
                 onClick={() => onStepSelect(entry.id)}
               >
                 <Icon className="size-4 shrink-0" aria-hidden />
                 <span className="truncate text-xs sm:text-sm">{entry.label}</span>
-              </button>
+              </Button>
             ) : (
               <>
                 <Icon className="size-4 shrink-0" aria-hidden />

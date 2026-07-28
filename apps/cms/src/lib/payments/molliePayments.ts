@@ -396,6 +396,48 @@ const createOrLoadAttempt = async (
   }
 }
 
+const createOrLoadRetryableAttempt = async (
+  payload: Payload,
+  input: {
+    order: Order
+    billingAgreement?: BillingAgreement | null
+    purpose: PaymentAttempt["purpose"]
+    sequenceType: PaymentAttempt["sequenceType"]
+    idempotencyKeyPrefix: string
+    now: string
+  },
+): Promise<{ attempt: PaymentAttempt; created: boolean }> => {
+  const result = await payload.find({
+    collection: "payment-attempts",
+    where: {
+      and: [
+        { order: { equals: input.order.id } },
+        { purpose: { equals: input.purpose } },
+      ],
+    },
+    sort: "-attemptNumber",
+    limit: 1,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const latest = result.docs[0] as PaymentAttempt | undefined
+  const terminalRetryable = latest &&
+    ["failed", "cancelled", "expired"].includes(latest.state) &&
+    !latest.reconciliationRequired
+  const attemptNumber = terminalRetryable
+    ? latest.attemptNumber + 1
+    : latest?.attemptNumber ?? 1
+  return createOrLoadAttempt(payload, {
+    order: input.order,
+    billingAgreement: input.billingAgreement,
+    purpose: input.purpose,
+    sequenceType: input.sequenceType,
+    idempotencyKey: `${input.idempotencyKeyPrefix}:attempt-${attemptNumber}`,
+    attemptNumber,
+    now: input.now,
+  })
+}
+
 const updateAttempt = (
   payload: Payload,
   attempt: PaymentAttempt,
@@ -480,13 +522,12 @@ export async function createMollieCheckoutForGenerationRun(
   const now = new Date().toISOString()
   const profile = await checkoutProfileForOrder(payload, order)
   const agreement = await createOrLoadBillingAgreement(payload, order, profile, now)
-  const attemptResult = await createOrLoadAttempt(payload, {
+  const attemptResult = await createOrLoadRetryableAttempt(payload, {
     order,
     billingAgreement: agreement,
     purpose: "first_payment",
     sequenceType: "first",
-    idempotencyKey: `mollie:first-payment:order:${order.id}:authority-v2`,
-    attemptNumber: 1,
+    idempotencyKeyPrefix: `mollie:first-payment:order:${order.id}:authority-v3`,
     now,
   })
   let attempt = attemptResult.attempt
@@ -521,9 +562,6 @@ export async function createMollieCheckoutForGenerationRun(
   }
   if (attempt.reconciliationRequired) {
     throw new Error("Mollie payment creation requires reconciliation before retry.")
-  }
-  if (attempt.state === "failed" || attempt.state === "cancelled" || attempt.state === "expired") {
-    throw new Error("The frozen order already has a terminal Mollie payment attempt.")
   }
   if (!attemptResult.created) {
     throw new Error("Mollie payment creation is already claimed or requires reconciliation.")
@@ -681,7 +719,7 @@ export async function createSupplementalMigrationMollieCheckout(
   if (
     order.orderKind !== "migration_supplemental" ||
     order.state !== "accepted" ||
-    !["pending", "open"].includes(order.paymentStatus)
+    !["pending", "open", "failed", "cancelled", "expired"].includes(order.paymentStatus)
   ) {
     throw new Error("Supplemental Mollie checkout requires an accepted unpaid migration order.")
   }
@@ -706,12 +744,11 @@ export async function createSupplementalMigrationMollieCheckout(
     throw new Error("Supplemental Mollie redirect must use an approved HTTPS origin.")
   }
   const now = new Date().toISOString()
-  const attemptResult = await createOrLoadAttempt(payload, {
+  const attemptResult = await createOrLoadRetryableAttempt(payload, {
     order,
     purpose: "supplemental",
     sequenceType: "oneoff",
-    idempotencyKey: `mollie:supplemental:order:${order.id}:authority-v2`,
-    attemptNumber: 1,
+    idempotencyKeyPrefix: `mollie:supplemental:order:${order.id}:authority-v3`,
     now,
   })
   let attempt = attemptResult.attempt
@@ -724,9 +761,6 @@ export async function createSupplementalMigrationMollieCheckout(
   }
   if (attempt.reconciliationRequired) {
     throw new Error("Supplemental Mollie payment requires reconciliation before retry.")
-  }
-  if (["failed", "cancelled", "expired"].includes(attempt.state)) {
-    throw new Error("Supplemental order already has a terminal Mollie payment attempt.")
   }
   if (!attemptResult.created) {
     throw new Error("Supplemental Mollie payment is already claimed or requires reconciliation.")

@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest"
 import {
   authorizeMigrationOperatorWorkFromPayment,
   completeMigrationOperatorWork,
+  failMigrationOperatorWork,
   pauseAcceptedAssistedMigration,
+  proposeMigrationOperatorWork,
+  requestDomainMigrationRollback,
   requestMigrationOperatorWork,
   startMigrationOperatorWork,
 } from "@/lib/domains/assistedMigration"
@@ -167,11 +170,16 @@ const createStore = (
 describe("assisted migration operator authorization", () => {
   it("creates an immutable supplemental order and blocks work until its exact payment", async () => {
     const store = createStore()
+    await proposeMigrationOperatorWork(store.payload, {
+      migrationId: 10,
+      workScope: "verify_customer_zone_export",
+      now: "2026-07-28T09:55:00.000Z",
+    })
     const requested = await requestMigrationOperatorWork(store.payload, {
       migrationId: 10,
       requestedClassification: "assisted_standard",
       workCause: "customer_migration",
-      workScope: "Import the complete provider export.",
+      workScope: "verify_customer_zone_export",
       supplementalAcceptance: {
         actorEmail: "client@example.com",
         acceptedAt: NOW,
@@ -282,6 +290,69 @@ describe("assisted migration operator authorization", () => {
       actor: OPERATOR,
       now: NOW,
     })).resolves.toMatchObject({ operatorWorkStartedAt: NOW })
+  })
+
+  it("records operator failure with a bounded redacted code and does not resume automation", async () => {
+    const store = createStore()
+    await requestMigrationOperatorWork(store.payload, {
+      migrationId: 10,
+      requestedClassification: "assisted_standard",
+      workCause: "siteinabox_incident_recovery",
+      workScope: "Restore records lost by Siteinabox automation.",
+      now: NOW,
+    })
+    await startMigrationOperatorWork(store.payload, {
+      migrationId: 10,
+      actor: OPERATOR,
+      now: "2026-07-28T10:05:00.000Z",
+    })
+
+    const failed = await failMigrationOperatorWork(store.payload, {
+      migrationId: 10,
+      actor: OPERATOR,
+      failureCode: "zone_conflict",
+      now: "2026-07-28T10:10:00.000Z",
+    })
+
+    expect(failed).toMatchObject({
+      state: "failed",
+      reconciliationRequired: false,
+      failureReason: "zone_conflict:recorded_by_super_admin:99",
+    })
+    expect(store.payload.jobs.queue).not.toHaveBeenCalled()
+  })
+
+  it("queues rollback from active cutover without making a provider write in the action", async () => {
+    const store = createStore()
+    const migration = store.collections["domain-migrations"]![0]!
+    Object.assign(migration, {
+      state: "verifying",
+      rollbackEvidence: {
+        authoritativeNameservers: ["ns1.old.example", "ns2.old.example"],
+      },
+    })
+
+    const requested = await requestDomainMigrationRollback(store.payload, {
+      migrationId: 10,
+      actor: OPERATOR,
+      reasonCode: "operator_detected_dns_mismatch",
+      now: NOW,
+    })
+
+    expect(requested).toMatchObject({
+      state: "verifying",
+      rollbackWriteState: "not_started",
+      rollbackRequestedAt: NOW,
+      reconciliationRequired: true,
+      failureReason:
+        "operator_detected_dns_mismatch:requested_by_super_admin:99",
+    })
+    expect(store.payload.jobs.queue).toHaveBeenCalledWith({
+      task: "prepare-domain-migration",
+      input: { migrationId: "10" },
+      queue: "default",
+      overrideAccess: true,
+    })
   })
 
   it("stops complex work before payment and deletes the retained transfer code", async () => {

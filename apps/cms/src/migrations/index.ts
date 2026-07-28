@@ -81,6 +81,7 @@ import * as migration_20260728_101754_checkout_structured_names from './20260728
 import * as migration_20260728_110157_tld_renewal_correctness from './20260728_110157_tld_renewal_correctness';
 import * as migration_20260728_112901_renewal_dossier_evidence from './20260728_112901_renewal_dossier_evidence';
 import * as migration_20260728_113932_provider_write_failure_state from './20260728_113932_provider_write_failure_state';
+import * as migration_20260728_130835_commerce_existing_domain_safety from './20260728_130835_commerce_existing_domain_safety';
 
 export const migrations = [
   {
@@ -496,6 +497,11 @@ export const migrations = [
   {
     up: migration_20260728_113932_provider_write_failure_state.up,
     down: migration_20260728_113932_provider_write_failure_state.down,
-    name: '20260728_113932_provider_write_failure_state'
+    name: '20260728_113932_provider_write_failure_state',
+  },
+  {
+    up: migration_20260728_130835_commerce_existing_domain_safety.up,
+    down: migration_20260728_130835_commerce_existing_domain_safety.down,
+    name: '20260728_130835_commerce_existing_domain_safety'
   },
 ];

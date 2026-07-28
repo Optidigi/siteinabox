@@ -20,7 +20,7 @@ export type CheckoutQuoteLineItem = {
 }
 
 export type CheckoutQuote = CommercialAmount & {
-  schemaVersion: 2
+  schemaVersion: 3
   catalogVersion: string
   packageCode: string
   billingPeriod: CheckoutBillingPeriod
@@ -30,6 +30,9 @@ export type CheckoutQuote = CommercialAmount & {
   domainSurchargeNetMinor: number
   migrationServiceFeeNetMinor: number
   migrationClassification: Exclude<MigrationClassification, "complex"> | null
+  migrationSourceZoneHash: string | null
+  migrationInputEnvelope: string | null
+  migrationSecretKey: string | null
   planPriceNetMinor: number
   vatRateBasisPoints: 2_100
   futureSubscriptionNetMinor: number
@@ -58,6 +61,9 @@ export function buildCheckoutQuote(input: {
   billingPeriod: CheckoutBillingPeriod
   providerOperationPriceNetMinor: number
   migrationClassification?: MigrationClassification | null
+  migrationSourceZoneHash?: string | null
+  migrationInputEnvelope?: string | null
+  migrationSecretKey?: string | null
   selectedDomain: string
   domainMode?: "new_registration" | "existing_domain"
   providerQuotedAt: string
@@ -68,6 +74,31 @@ export function buildCheckoutQuote(input: {
   const catalog = getCommercialCatalog()
   if (input.migrationClassification === "complex") {
     throw new Error("Complex migrations require a custom quote and cannot enter ordinary checkout.")
+  }
+  const domainMode = input.domainMode ?? "new_registration"
+  if (
+    domainMode === "existing_domain" &&
+    (
+      !input.migrationClassification ||
+      !/^[a-f0-9]{64}$/.test(input.migrationSourceZoneHash ?? "") ||
+      (
+        !input.migrationInputEnvelope &&
+        !input.migrationSecretKey
+      )
+    )
+  ) {
+    throw new Error("Existing-domain checkout requires frozen migration input evidence.")
+  }
+  if (
+    domainMode === "new_registration" &&
+    (
+      input.migrationClassification ||
+      input.migrationSourceZoneHash ||
+      input.migrationInputEnvelope ||
+      input.migrationSecretKey
+    )
+  ) {
+    throw new Error("New-domain checkout cannot contain migration input evidence.")
   }
   const subscription = catalog.subscriptions[input.billingPeriod]
   const domainSurchargeNetMinor = calculateDomainSurchargeNetMinor(
@@ -103,7 +134,7 @@ export function buildCheckoutQuote(input: {
   const now = input.now ?? new Date()
   const futureSubscriptionVatMinor = calculateDutchVatMinor(subscription.netAmountMinor)
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     catalogVersion: catalog.catalogVersion,
     packageCode: subscription.code,
     billingPeriod: input.billingPeriod,
@@ -115,13 +146,16 @@ export function buildCheckoutQuote(input: {
       ? catalog.migrations.assisted_standard.netAmountMinor
       : 0,
     migrationClassification: input.migrationClassification ?? null,
+    migrationSourceZoneHash: input.migrationSourceZoneHash ?? null,
+    migrationInputEnvelope: input.migrationInputEnvelope ?? null,
+    migrationSecretKey: input.migrationSecretKey ?? null,
     planPriceNetMinor: subscription.netAmountMinor,
     vatRateBasisPoints: 2_100,
     futureSubscriptionNetMinor: subscription.netAmountMinor,
     futureSubscriptionVatMinor,
     futureSubscriptionGrossMinor: subscription.netAmountMinor + futureSubscriptionVatMinor,
     selectedDomain: input.selectedDomain,
-    domainMode: input.domainMode ?? "new_registration",
+    domainMode,
     providerQuotedAt: input.providerQuotedAt,
     quoteIssuedAt: now.toISOString(),
     quoteExpiresAt: new Date(now.getTime() + quoteTtlMs).toISOString(),
@@ -164,13 +198,27 @@ export function openCheckoutQuote(
   }
   const parsed = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8")) as CheckoutQuote
   if (
-    parsed.schemaVersion !== 2 ||
+    parsed.schemaVersion !== 3 ||
     parsed.currency !== "EUR" ||
     !parsed.selectedDomain ||
     !["monthly", "annual"].includes(parsed.billingPeriod) ||
+    !["new_registration", "existing_domain"].includes(parsed.domainMode) ||
     !Number.isSafeInteger(parsed.grossAmountMinor)
   ) {
     throw new Error("Checkout quote token has invalid evidence.")
+  }
+  if (
+    parsed.domainMode === "existing_domain" &&
+    (
+      !parsed.migrationClassification ||
+      !/^[a-f0-9]{64}$/.test(parsed.migrationSourceZoneHash ?? "") ||
+      (
+        !parsed.migrationInputEnvelope &&
+        !parsed.migrationSecretKey
+      )
+    )
+  ) {
+    throw new Error("Checkout quote token has incomplete migration evidence.")
   }
   const expiresAt = Date.parse(parsed.quoteExpiresAt)
   if (!Number.isFinite(expiresAt) || expiresAt <= now.getTime()) {
@@ -193,6 +241,9 @@ export function sameCommercialCheckoutQuote(
     "domainIncludedAllowanceNetMinor",
     "domainSurchargeNetMinor",
     "migrationServiceFeeNetMinor",
+    "migrationClassification",
+    "migrationSourceZoneHash",
+    "migrationSecretKey",
     "netAmountMinor",
     "vatAmountMinor",
     "grossAmountMinor",

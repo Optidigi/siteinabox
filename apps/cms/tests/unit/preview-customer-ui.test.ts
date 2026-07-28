@@ -236,7 +236,10 @@ describe("customer preview UI", () => {
     expect(page).toContain("prewarmHref")
     expect(page).toContain("/checkout/prewarm")
     expect(page).toContain("suggestionsHref")
-    expect(page).toContain('const selectedDomain = domainOrder.status === "ready_to_register" ? domainOrder.domain : null')
+    expect(page).toContain("const selectedDomain = acceptedResume?.domain ??")
+    expect(page).toContain(
+      'domainOrder.status === "ready_to_register" ? domainOrder.domain : null',
+    )
     expect(page).toContain("currentDomain={selectedDomain}")
     expect(page).toContain("domainReady={Boolean(selectedDomain)}")
     expect(page).not.toContain("currentDomain={domainOrder.domain ?? context.tenant.domain}")

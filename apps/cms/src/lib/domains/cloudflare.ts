@@ -66,8 +66,8 @@ export class CloudflareApiError extends Error {
   status: number
   operation: string
 
-  constructor(operation: string, status: number, message?: string | null) {
-    super(message ? `${operation} failed with HTTP ${status}: ${message}` : `${operation} failed with HTTP ${status}.`)
+  constructor(operation: string, status: number) {
+    super(`${operation} failed with HTTP ${status}.`)
     this.name = "CloudflareApiError"
     this.status = status
     this.operation = operation
@@ -77,8 +77,8 @@ export class CloudflareApiError extends Error {
 export class CloudflareIndeterminateWriteError extends Error {
   operation: string
 
-  constructor(operation: string, cause?: unknown) {
-    super(`${operation} has an indeterminate provider outcome.`, { cause })
+  constructor(operation: string, _cause?: unknown) {
+    super(`${operation} has an indeterminate provider outcome.`)
     this.name = "CloudflareIndeterminateWriteError"
     this.operation = operation
   }
@@ -110,15 +110,6 @@ const resultArray = (value: unknown): Record<string, unknown>[] => {
   return Array.isArray(result) ? result.map(readObject) : []
 }
 
-const cloudflareApiMessage = (payload: unknown): string | null => {
-  const errors = readObject(payload).errors
-  if (!Array.isArray(errors)) return null
-  const messages = errors
-    .map((entry) => readObject(entry).message)
-    .filter((message): message is string => typeof message === "string" && message.trim().length > 0)
-  return messages.length > 0 ? messages.join("; ") : null
-}
-
 export function requireCloudflareConfig(env: NodeJS.ProcessEnv = process.env): { token: string; accountId: string } {
   const token = cleanEnv(env.CLOUDFLARE_API_TOKEN)
   const accountId = cleanEnv(env.CLOUDFLARE_ACCOUNT_ID)
@@ -133,8 +124,8 @@ const headers = (token: string): Record<string, string> => ({
 })
 
 const assertCloudflareOk = (operation: string, response: Response, payload: unknown) => {
-  if (!response.ok) throw new CloudflareApiError(operation, response.status, cloudflareApiMessage(payload))
-  if (readObject(payload).success === false) throw new CloudflareApiError(operation, response.status, cloudflareApiMessage(payload))
+  if (!response.ok) throw new CloudflareApiError(operation, response.status)
+  if (readObject(payload).success === false) throw new CloudflareApiError(operation, response.status)
 }
 
 const readCloudflareWritePayload = async (
@@ -436,6 +427,17 @@ const migrationRecordBody = (
       },
     }
   }
+  if (record.type === "TLSA") {
+    return {
+      ...common,
+      data: {
+        usage: record.certificateUsage,
+        selector: record.selector,
+        matching_type: record.matchingType,
+        certificate: record.certificateAssociationData,
+      },
+    }
+  }
   return { ...common, content: record.content }
 }
 
@@ -451,6 +453,7 @@ const parseMigrationDnsRecord = (
     ? value.ttl
     : 1
   const proxied = value.proxied === true
+  const semanticTtl = proxied && ttl === 1 ? 300 : ttl
   if (!name) return null
   if (type === "MX") {
     const priority = typeof value.priority === "number" ? value.priority : null
@@ -458,7 +461,7 @@ const parseMigrationDnsRecord = (
     if (priority == null || !target) return null
     return {
       id: typeof value.id === "string" ? value.id : null,
-      record: { type, name, ttl, priority, target, proxied },
+      record: { type, name, ttl: semanticTtl, priority, target, proxied },
       raw: value,
     }
   }
@@ -476,7 +479,15 @@ const parseMigrationDnsRecord = (
     if (flags == null || !tag || !caaValue) return null
     return {
       id: typeof value.id === "string" ? value.id : null,
-      record: { type, name, ttl, flags, tag, value: caaValue, proxied },
+      record: {
+        type,
+        name,
+        ttl: semanticTtl,
+        flags,
+        tag,
+        value: caaValue,
+        proxied,
+      },
       raw: value,
     }
   }
@@ -499,7 +510,62 @@ const parseMigrationDnsRecord = (
     ) return null
     return {
       id: typeof value.id === "string" ? value.id : null,
-      record: { type, name, ttl, priority, weight, port, target, proxied },
+      record: {
+        type,
+        name,
+        ttl: semanticTtl,
+        priority,
+        weight,
+        port,
+        target,
+        proxied,
+      },
+      raw: value,
+    }
+  }
+  if (type === "TLSA") {
+    const data = readObject(value.data)
+    const parts = typeof value.content === "string"
+      ? value.content.trim().split(/\s+/)
+      : []
+    const certificateUsage = typeof data.usage === "number"
+      ? data.usage
+      : Number(parts[0])
+    const selector = typeof data.selector === "number"
+      ? data.selector
+      : Number(parts[1])
+    const matchingType = typeof data.matching_type === "number"
+      ? data.matching_type
+      : Number(parts[2])
+    const certificateAssociationData = typeof data.certificate === "string"
+      ? data.certificate.toLowerCase()
+      : parts[3]?.toLowerCase()
+    const validAssociationData = typeof certificateAssociationData === "string" &&
+      /^[a-f0-9]+$/.test(certificateAssociationData) &&
+      certificateAssociationData.length % 2 === 0 &&
+      (
+        (matchingType === 0) ||
+        (matchingType === 1 && certificateAssociationData.length === 64) ||
+        (matchingType === 2 && certificateAssociationData.length === 128)
+      )
+    if (
+      !Number.isSafeInteger(certificateUsage) ||
+      !Number.isSafeInteger(selector) ||
+      !Number.isSafeInteger(matchingType) ||
+      !validAssociationData
+    ) return null
+    return {
+      id: typeof value.id === "string" ? value.id : null,
+      record: {
+        type,
+        name,
+        ttl: semanticTtl,
+        certificateUsage,
+        selector,
+        matchingType,
+        certificateAssociationData,
+        proxied,
+      },
       raw: value,
     }
   }
@@ -517,7 +583,13 @@ const parseMigrationDnsRecord = (
       : content
     return {
       id: typeof value.id === "string" ? value.id : null,
-      record: { type, name, ttl, content: normalizedContent, proxied },
+      record: {
+        type,
+        name,
+        ttl: semanticTtl,
+        content: normalizedContent,
+        proxied,
+      },
       raw: value,
     }
   }

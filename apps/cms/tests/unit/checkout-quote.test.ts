@@ -60,6 +60,9 @@ describe("Phase 3 checkout quote", () => {
       billingPeriod: "monthly",
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "assisted_standard",
+      migrationSourceZoneHash: "a".repeat(64),
+      migrationInputEnvelope: "encrypted-migration-input",
+      domainMode: "existing_domain",
       ...quoteContext,
     })).toMatchObject({
       migrationClassification: "assisted_standard",
@@ -79,8 +82,39 @@ describe("Phase 3 checkout quote", () => {
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "complex",
+      domainMode: "existing_domain",
       ...quoteContext,
     })).toThrow("custom quote")
+  })
+
+  it("requires and compares frozen migration evidence for an existing domain", () => {
+    const automatic = buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 800,
+      migrationClassification: "automatic",
+      migrationSourceZoneHash: "a".repeat(64),
+      migrationInputEnvelope: "encrypted-a",
+      domainMode: "existing_domain",
+      ...quoteContext,
+    })
+    const changedSource = buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 800,
+      migrationClassification: "automatic",
+      migrationSourceZoneHash: "b".repeat(64),
+      migrationInputEnvelope: "encrypted-b",
+      domainMode: "existing_domain",
+      ...quoteContext,
+    })
+
+    expect(sameCommercialCheckoutQuote(automatic, changedSource)).toBe(false)
+    expect(() => buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 800,
+      migrationClassification: "automatic",
+      domainMode: "existing_domain",
+      ...quoteContext,
+    })).toThrow("frozen migration input evidence")
   })
 
   it("seals quote evidence and rejects tampering or expiry", () => {

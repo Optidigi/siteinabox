@@ -1,0 +1,119 @@
+# Existing-domain migration
+
+Existing-domain checkout is High risk and defaults to disabled. The customer
+remains the registrant. A failed subscription, failed migration, or rollback
+must not delete, appropriate, or prematurely expire the customer domain.
+
+## Release boundary
+
+`COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=1` exposes the customer journey
+only when the commerce release gate also permits provider reads. Keep the flag
+unset in production until every gate below has current environment-specific
+evidence:
+
+1. incoming transfer is enabled in the effective TLD capability;
+2. Openprovider returns deterministic transfer pricing for that TLD;
+3. the transfer authorization contract and operational renewal effect have
+   been verified against current provider/registry documentation;
+4. `DOMAIN_MIGRATION_ENCRYPTION_KEY` is a stable, backed-up 32-byte key stored
+   outside Git;
+5. the Cloudflare zone, record-count, and import limits have been rehearsed;
+6. authoritative and recursive DNS, preserved mail/service records, renderer
+   routing, HTTPS readiness, and rollback have passed in the approved
+   environment;
+7. provider-write and edge/origin release gates are separately approved.
+
+The currently implemented checkout path accepts a fresh, structurally valid
+`siab-complete-zone-v1` JSON upload only for **assisted** migration. A
+customer-supplied `complete: true` assertion is not proof of completeness, so
+an operator must verify the source before any migration provider write.
+Automatic migration remains disabled until an authenticated connector,
+authorized AXFR/IXFR capture, or reviewed provider-native parser provides
+complete-source provenance. Public DNS/RDAP discovery is supplemental evidence
+and never a complete source. Signed DNSSEC, a parent DS, stale or changed
+nameservers, unsupported record behavior, an unsupported TLD, and
+nondeterministic provider pricing stop before payment.
+
+Primary contracts:
+
+- [Openprovider transfer API](https://support.openprovider.eu/hc/en-us/articles/360024922953-14-Domains-API-How-to-transfer-a-domain)
+- [Openprovider TLD pricing API](https://support.openprovider.eu/hc/en-us/articles/360023656573-1-TLD-API-Search-an-extension)
+- [Cloudflare DNS import/export limits](https://developers.cloudflare.com/dns/manage-dns-records/how-to/import-and-export/)
+- [SIDN transfer and DNSSEC guidance](https://www.sidn.nl/en/nl-domain-name/transferring-your-domain-name)
+
+## Accepted authority
+
+Before redirecting to Mollie, checkout freezes:
+
+- selected domain and TLD capability version;
+- current provider transfer price and quote timestamp;
+- assisted-standard classification for customer uploads;
+- the semantic source-zone hash;
+- an opaque reference to the dedicated encrypted checkout-secret record;
+- plan, domain allowance/surcharge, migration fee, VAT, and gross amount;
+- contracting profile, legal versions, business-use declaration, request
+  evidence, and immutable order authority hash.
+
+The immutable order never stores the encrypted zone or transfer code. The
+dedicated secret record is access-denied, expires fail-closed, and has its
+ciphertext cleared after migration acquisition. The browser formats this quote
+but does not calculate it. A changed provider
+price produces a new quote requiring explicit acceptance. A cancelled payment
+return reissues a short-lived signature over the exact accepted nonvolatile
+authority; it never asks the browser to reconstruct the zone or transfer code.
+
+## Customer and operator states
+
+The preview checkout shows a redacted status projection bound to the
+authenticated preview grant, generation run, and customer email. It contains
+only the domain, migration state, classification, customer action status and
+deadline. It never includes a transfer code, zone snapshot, provider payload,
+or internal evidence.
+
+Super-admins use `/operations/migrations`. The operator view is deliberately
+limited:
+
+- preclassified assisted work starts only after the paid originating-order
+  evidence is rechecked;
+- unexpected customer migration work requires a separate paid supplemental
+  order before start;
+- Siteinabox incident recovery may be explicitly classified as non-billable;
+- completion requires an audit note and queues the existing migration worker;
+- failure uses a bounded code and does not resume automation;
+- rollback can be queued only during cutover/verifying and uses the frozen old
+  nameservers through the existing idempotent rollback workflow.
+
+Never enter credentials, transfer codes, full PII, or raw provider payloads in
+operator notes.
+
+## Rollback and recovery
+
+Before nameserver cutover, a failed or paused migration leaves the old
+nameservers and source service in place. During cutover, the rollback workflow:
+
+1. loads the frozen old authoritative nameservers;
+2. reconciles any indeterminate provider write before repeating it;
+3. restores and verifies the old nameservers;
+4. restores the prior tenant verification state;
+5. moves the managed domain to manual review without deleting DNS;
+6. deletes the encrypted transfer code only after terminal rollback;
+7. marks the originating order as an exception for reconciliation.
+
+To stop new migrations, unset
+`COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED` first. Move
+`COMMERCE_RELEASE_STAGE` to `shadow` if forward provider writes must also stop;
+this retains reconciliation and safety behavior. Do not remove customer DNS,
+mail records, transfer access, or an unexpired domain as rollback.
+
+The `commerce_existing_domain_safety` database migration is forward-recovery
+only after it contains any checkout-secret audit row or an unaccepted
+supplemental-work proposal. Its down migration deliberately aborts instead of
+deleting encrypted input, terminal audit evidence, or changing a customer's
+proposal state.
+
+Before a production schema rollback, stop checkout and migration workers and
+inspect the secret collection plus migrations in
+`awaiting_customer_acceptance`. Do not delete, copy, or decrypt those records
+as a rollback shortcut. Keep the current schema, correct the application
+forward, and run the normal migration command again. A down migration is
+permitted only on an empty disposable schema where both guards are empty.

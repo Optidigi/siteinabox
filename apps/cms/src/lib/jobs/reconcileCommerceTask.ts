@@ -9,6 +9,7 @@ import { queueDomainRenewal } from "@/lib/jobs/renewDomainTask"
 import { queueMolliePaymentSync } from "@/lib/jobs/syncMolliePaymentTask"
 import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
 import { relationshipId } from "@/lib/relationshipId"
+import { expireStaleMigrationCheckoutSecrets } from "@/lib/domains/migrationCheckoutSecretLifecycle"
 
 export const reconcileCommerceTask: TaskConfig<{
   input: Record<string, never>
@@ -352,6 +353,10 @@ export const reconcileCommerceTask: TaskConfig<{
       {},
       now,
     )
+    const expiredMigrationSecrets = await expireStaleMigrationCheckoutSecrets(
+      req.payload,
+      now,
+    )
     await reconcileOpenProviderBalanceAlert(
       req.payload,
       {},
@@ -373,7 +378,8 @@ export const reconcileCommerceTask: TaskConfig<{
           missingCustomerRecovery.examined +
           pendingRefundResult.docs.length +
           expiryResult.examined +
-          transferOutResult.examined,
+          transferOutResult.examined +
+          expiredMigrationSecrets,
         queued,
       },
     }

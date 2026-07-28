@@ -406,6 +406,7 @@ export const ASSISTED_STANDARD_MIGRATION_LINE_ITEM_CODE =
 
 export const migrationOperatorAuthorizationStates = [
   "not_required",
+  "awaiting_customer_acceptance",
   "awaiting_payment",
   "paid_authorized",
   "non_billable_incident_authorized",

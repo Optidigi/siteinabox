@@ -174,7 +174,7 @@ describe("checkout legal evidence", () => {
       businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
       totalGross: 229.9,
       quoteEvidence: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         initialAuthorityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
         selectedDomain: "demo.nl",
         planPriceNetMinor: 19_000,

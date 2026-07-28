@@ -126,9 +126,6 @@ describe("supplemental assisted-migration Mollie payment", () => {
       orderId: 70,
       redirectUrl: "https://cms.siteinabox.nl/migrations/10",
     })
-    Object.assign(first.paymentAttempt, {
-      idempotencyKey: "mollie:supplemental:order:70:v1",
-    })
     const second = await createSupplementalMigrationMollieCheckout(payload, {
       orderId: 70,
       redirectUrl: "https://cms.siteinabox.nl/migrations/10",
@@ -149,12 +146,42 @@ describe("supplemental assisted-migration Mollie payment", () => {
     expect(createMolliePayment).toHaveBeenCalledTimes(1)
     expect(createMolliePayment).toHaveBeenCalledWith(expect.objectContaining({
       sequenceType: "oneoff",
-      idempotencyKey: "mollie:supplemental:order:70:authority-v2",
+      idempotencyKey: "mollie:supplemental:order:70:authority-v3:attempt-1",
       metadata: expect.objectContaining({ migrationId: 10, orderId: 70 }),
     }))
     expect(collections.orders![0]).toMatchObject({
       paymentStatus: "open",
       providerPaymentId: "tr_supplemental",
     })
+
+    Object.assign(first.paymentAttempt, {
+      state: "cancelled",
+      reconciliationRequired: false,
+      checkoutUrl: null,
+    })
+    Object.assign(collections.orders![0]!, {
+      paymentStatus: "cancelled",
+      providerPaymentId: null,
+    })
+    createMolliePayment.mockResolvedValueOnce({
+      id: "tr_supplemental_retry",
+      status: "open",
+      _links: { checkout: { href: "https://www.mollie.com/checkout/retry" } },
+    })
+    const retry = await createSupplementalMigrationMollieCheckout(payload, {
+      orderId: 70,
+      redirectUrl: "https://cms.siteinabox.nl/migrations/10",
+    })
+    expect(retry).toMatchObject({
+      reused: false,
+      checkoutUrl: "https://www.mollie.com/checkout/retry",
+      paymentAttempt: {
+        attemptNumber: 2,
+        idempotencyKey:
+          "mollie:supplemental:order:70:authority-v3:attempt-2",
+      },
+    })
+    expect(collections["payment-attempts"]).toHaveLength(2)
+    expect(createMolliePayment).toHaveBeenCalledTimes(2)
   })
 })

@@ -2,6 +2,8 @@
 
 import crypto from "node:crypto"
 import { headers } from "next/headers"
+import { redirect } from "next/navigation"
+import { revalidatePath } from "next/cache"
 import { getLocale, getTranslations } from "next-intl/server"
 import {
   BUSINESS_USE_DECLARATION_VERSION,
@@ -26,7 +28,29 @@ import {
   type CheckoutBillingPeriod,
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
+import {
+  loadAcceptedCheckoutResume,
+  sameAcceptedCheckoutAuthority,
+} from "@/lib/checkout/acceptedCheckoutResume"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
+import {
+  assessExistingDomainMigrationInput,
+  existingDomainMigrationCheckoutEnabled,
+  inspectExistingDomainPublicEvidence,
+  type ExistingDomainPublicEvidence,
+} from "@/lib/domains/migrationCheckout"
+import {
+  getOpenProviderDomainTransferPrice,
+} from "@/lib/domains/openprovider"
+import { openCheckoutMigrationInput } from "@/lib/domains/migrationSecrets"
+import {
+  attachMigrationCheckoutSecret,
+  migrationCheckoutSecretKey,
+  openAttachedMigrationCheckoutSecret,
+  persistMigrationCheckoutSecret,
+  replaceExpiredAttachedMigrationCheckoutSecret,
+} from "@/lib/domains/migrationCheckoutSecret"
+import { commerceProviderReadsAllowed } from "@/lib/commerce/releaseGate"
 import {
   normalizeDomainOrderState,
   type FixedDomainOrderPrice,
@@ -34,10 +58,18 @@ import {
 import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/lib/legal/checkoutEvidence"
 import { satisfyRequirementsFromTransaction } from "@/lib/legal/customerRequirements"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
+import { createSupplementalMigrationMollieCheckout } from "@/lib/payments/molliePayments"
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
 import { normalizeGenerationRunPaymentState } from "@/lib/payments/generationRunPayment"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
+import { requestMigrationOperatorWork } from "@/lib/domains/assistedMigration"
+import { PREVIEW_HOST } from "@/lib/preview/previewHost"
+import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
+import {
+  acquireAutomaticMigrationInputs,
+  replaceMigrationTransferAuthorization,
+} from "@/lib/domains/migration"
 
 export type PreviewCheckoutDomainOption = {
   domain: string
@@ -63,6 +95,10 @@ export type PreviewCheckoutActionState = {
   requestToken?: string
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
+  domainMode?: "new_registration" | "existing_domain"
+  migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
+  migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationPublicEvidence?: ExistingDomainPublicEvidence | null
 }
 
 export type PreviewCheckoutProfileActionState = {
@@ -111,6 +147,11 @@ const issueCheckoutQuoteSet = (input: {
   providerQuotedAt: string
   profileVersion: number
   draftVersion: string
+  domainMode?: "new_registration" | "existing_domain"
+  migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationSourceZoneHash?: string | null
+  migrationInputEnvelope?: string | null
+  migrationSecretKey?: string | null
   now?: Date
 }): CheckoutQuoteSet => {
   const secret = checkoutQuoteSigningSecret()
@@ -122,6 +163,11 @@ const issueCheckoutQuoteSet = (input: {
       providerQuotedAt: input.providerQuotedAt,
       profileVersion: input.profileVersion,
       draftVersion: input.draftVersion,
+      domainMode: input.domainMode,
+      migrationClassification: input.migrationClassification,
+      migrationSourceZoneHash: input.migrationSourceZoneHash,
+      migrationInputEnvelope: input.migrationInputEnvelope,
+      migrationSecretKey: input.migrationSecretKey,
       now: input.now,
     }), secret)
   return {
@@ -145,7 +191,10 @@ const safeCheckoutErrorMessage = (
   if (checkoutErrorKeys.has(error.message)) {
     return t(error.message as "checkoutDomainUnavailable" | "checkoutDomainPremium" | "checkoutDomainCheckFailed", { domain })
   }
-  console.error("Preview checkout domain error", error)
+  console.error("Preview checkout operation failed", {
+    operation: "domain_check",
+    code: "unexpected_failure",
+  })
   return t("checkoutDomainServiceUnavailable")
 }
 
@@ -167,6 +216,134 @@ const domainErrorStatus = (error: unknown): NonNullable<PreviewCheckoutActionSta
   return "service_error"
 }
 
+const readCompleteZoneExport = async (formData: FormData): Promise<unknown> => {
+  const value = formData.get("zoneExport")
+  const text = value instanceof File
+    ? await value.text()
+    : String(value ?? "")
+  if (!text.trim()) throw new Error("A complete zone export is required.")
+  if (Buffer.byteLength(text, "utf8") > 256 * 1_024) {
+    throw new Error("The complete zone export exceeds 256 KiB.")
+  }
+  return JSON.parse(text)
+}
+
+async function checkExistingDomainMigration(
+  context: Awaited<ReturnType<typeof requirePreviewCheckoutContext>>,
+  domain: string,
+  formData: FormData,
+  requestToken: string | undefined,
+): Promise<PreviewCheckoutActionState> {
+  if (
+    !existingDomainMigrationCheckoutEnabled() ||
+    !commerceProviderReadsAllowed()
+  ) {
+    return {
+      ok: false,
+      status: "service_error",
+      domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      message: "Bestaande-domeinmigratie is nog niet vrijgegeven voor productie.",
+      requestToken,
+    }
+  }
+  try {
+    const [zoneExport, publicEvidence] = await Promise.all([
+      readCompleteZoneExport(formData),
+      inspectExistingDomainPublicEvidence(domain),
+    ])
+    const assessment = assessExistingDomainMigrationInput({
+      generationRunId: context.run.id,
+      domain,
+      zoneExport: zoneExport as Parameters<
+        typeof assessExistingDomainMigrationInput
+      >[0]["zoneExport"],
+      transferCode: String(formData.get("transferCode") ?? ""),
+      transferAuthorizationAccepted:
+        formData.get("transferAuthorization") === "accepted",
+      requestedAssistance: formData.get("migrationAssistance") === "assisted_standard",
+      publicEvidence,
+    })
+    if (
+      !assessment.classification ||
+      !assessment.sourceZoneHash ||
+      !assessment.encryptedInput
+    ) {
+      return {
+        ok: false,
+        status: assessment.readiness === "custom_quote"
+          ? "service_error"
+          : "invalid",
+        domain: assessment.domain,
+        domainMode: "existing_domain",
+        migrationReadiness: assessment.readiness,
+        migrationClassification: null,
+        migrationPublicEvidence: assessment.publicEvidence,
+        message: assessment.message,
+        requestToken,
+      }
+    }
+    const providerPrice = await getOpenProviderDomainTransferPrice(assessment.domain)
+    if (providerPrice.currency !== COMMERCIAL_CATALOG.currency || providerPrice.premium) {
+      return {
+        ok: false,
+        status: providerPrice.premium ? "premium" : "service_error",
+        domain: assessment.domain,
+        domainMode: "existing_domain",
+        migrationReadiness: "unsupported",
+        migrationPublicEvidence: assessment.publicEvidence,
+        message: "Deze verhuizing heeft geen deterministische ondersteunde providerprijs.",
+        requestToken,
+      }
+    }
+    const profile = await loadLatestCheckoutProfile(context.payload, context.run.id)
+    const quotes = issueCheckoutQuoteSet({
+      domain: assessment.domain,
+      providerPriceNetMinor: providerPrice.netAmountMinor,
+      providerQuotedAt: new Date().toISOString(),
+      profileVersion: profile?.profileVersion ?? 0,
+      draftVersion: String(context.run.updatedAt ?? ""),
+      domainMode: "existing_domain",
+      migrationClassification: assessment.classification,
+      migrationSourceZoneHash: assessment.sourceZoneHash,
+      migrationInputEnvelope: assessment.encryptedInput,
+      migrationSecretKey: migrationCheckoutSecretKey(
+        context.run.id,
+        assessment.domain,
+        assessment.sourceZoneHash,
+      ),
+    })
+    return {
+      ok: true,
+      status: "available",
+      domain: assessment.domain,
+      domainMode: "existing_domain",
+      migrationReadiness: assessment.readiness,
+      migrationClassification: assessment.classification,
+      migrationPublicEvidence: assessment.publicEvidence,
+      message: assessment.message,
+      included: providerPrice.netAmountMinor <=
+        COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor,
+      domainSurchargeNetMinor: quotes.annual.quote.domainSurchargeNetMinor,
+      totalPriceLabel: null,
+      quotes,
+      requestToken,
+      suggestions: [],
+    }
+  } catch {
+    return {
+      ok: false,
+      status: "service_error",
+      domain,
+      domainMode: "existing_domain",
+      migrationReadiness: "unsupported",
+      message: "De bestaande-domeincontrole kon veilig niet worden afgerond.",
+      requestToken,
+    }
+  }
+}
+
 export async function checkPreviewCheckoutDomainAction(
   clientSlug: string,
   _previousState: PreviewCheckoutActionState,
@@ -181,6 +358,12 @@ export async function checkPreviewCheckoutDomainAction(
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   const requestToken = String(formData.get("requestToken") ?? "").trim() || undefined
   if (!domain) return { ok: false, message: t("checkoutDomainRequired"), requestToken }
+  const domainMode = formData.get("domainMode") === "existing_domain"
+    ? "existing_domain"
+    : "new_registration"
+  if (domainMode === "existing_domain") {
+    return checkExistingDomainMigration(context, domain, formData, requestToken)
+  }
 
   try {
     const locale = await getLocale()
@@ -244,6 +427,7 @@ export async function checkPreviewCheckoutDomainAction(
       quotes,
       requestToken,
       suggestions: [],
+      domainMode: "new_registration" as const,
     }
     logPreviewCheckoutTiming("primary_check_total", totalStart, { clientSlug: context.clientSlug, domain: result.domain }, {
       ok: response.ok,
@@ -278,6 +462,223 @@ const requestAudit = async () => {
     ipAddress: requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() || null,
     userAgent: requestHeaders.get("user-agent"),
   }
+}
+
+export async function acceptMigrationSupplementalOrderAction(
+  clientSlug: string,
+  formData: FormData,
+): Promise<never> {
+  const context = await requirePreviewCheckoutContext(clientSlug)
+  const migrationId = String(formData.get("migrationId") ?? "").trim()
+  const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
+  if (!/^\d+$/.test(migrationId) || !expectedVersion) {
+    throw new Error("Supplemental migration acceptance requires current version evidence.")
+  }
+  const migration = await context.payload.findByID({
+    collection: "domain-migrations",
+    id: migrationId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const originatingOrderId = relationshipId(migration.originatingOrder)
+  if (
+    migration.updatedAt !== expectedVersion ||
+    !["awaiting_customer_acceptance", "awaiting_payment"].includes(
+      migration.operatorWorkAuthorizationState,
+    ) ||
+    migration.operatorWorkCause !== "customer_migration" ||
+    !migration.operatorWorkScope ||
+    !originatingOrderId
+  ) {
+    throw new Error("Supplemental migration proposal is stale or unavailable.")
+  }
+  const order = await context.payload.findByID({
+    collection: "orders",
+    id: originatingOrderId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (
+    !sameRelationshipId(order.generationRun, context.run.id) ||
+    !sameRelationshipId(order.tenant, context.tenant.id) ||
+    order.customerEmail.trim().toLowerCase() !==
+      context.customerEmail.trim().toLowerCase()
+  ) {
+    throw new Error("Supplemental migration proposal belongs to another customer.")
+  }
+  let supplementalOrder
+  if (migration.operatorWorkAuthorizationState === "awaiting_payment") {
+    const supplementalOrderId = relationshipId(migration.supplementalOrder)
+    if (!supplementalOrderId) {
+      throw new Error("Supplemental migration payment has no immutable order.")
+    }
+    supplementalOrder = await context.payload.findByID({
+      collection: "orders",
+      id: supplementalOrderId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (
+      supplementalOrder.orderKind !== "migration_supplemental" ||
+      !sameRelationshipId(supplementalOrder.parentOrder, order.id) ||
+      !sameRelationshipId(supplementalOrder.tenant, context.tenant.id) ||
+      supplementalOrder.customerEmail.trim().toLowerCase() !==
+        context.customerEmail.trim().toLowerCase()
+    ) {
+      throw new Error("Supplemental migration payment belongs to another authority.")
+    }
+  } else {
+    const audit = await requestAudit()
+    const acceptedAt = new Date().toISOString()
+    const result = await requestMigrationOperatorWork(context.payload, {
+      migrationId: migration.id,
+      requestedClassification: "assisted_standard",
+      workCause: "customer_migration",
+      workScope: migration.operatorWorkScope,
+      supplementalAcceptance: {
+        actorEmail: context.customerEmail,
+        acceptedAt,
+        ipAddress: audit.ipAddress,
+        userAgent: audit.userAgent,
+      },
+      now: acceptedAt,
+    })
+    if (!result.supplementalOrder) {
+      throw new Error("Supplemental migration order was not created.")
+    }
+    supplementalOrder = result.supplementalOrder
+  }
+  const checkout = await createSupplementalMigrationMollieCheckout(
+    context.payload,
+    {
+      orderId: supplementalOrder.id,
+      redirectUrl:
+        `https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return&migration=supplemental`,
+    },
+  )
+  redirect(checkout.checkoutUrl)
+}
+
+export async function recollectAcceptedMigrationInputAction(
+  clientSlug: string,
+  formData: FormData,
+): Promise<never> {
+  const context = await requirePreviewCheckoutContext(clientSlug)
+  const orderId = String(formData.get("acceptedOrderId") ?? "").trim()
+  if (!/^\d+$/.test(orderId)) {
+    throw new Error("Migration-input recollection requires an accepted order.")
+  }
+  const signingSecret = checkoutQuoteSigningSecret()
+  const resume = await loadAcceptedCheckoutResume(context.payload, {
+    generationRunId: context.run.id,
+    customerEmail: context.customerEmail,
+    signingSecret,
+  })
+  if (
+    !resume ||
+    String(resume.orderId) !== orderId ||
+    !resume.requiresMigrationRecollection
+  ) {
+    throw new Error("Migration-input recollection is stale or unavailable.")
+  }
+  const quote = resume.quotes[resume.billingPeriod].quote
+  const [zoneExport, publicEvidence] = await Promise.all([
+    readCompleteZoneExport(formData),
+    inspectExistingDomainPublicEvidence(quote.selectedDomain),
+  ])
+  const assessment = assessExistingDomainMigrationInput({
+    generationRunId: context.run.id,
+    domain: quote.selectedDomain,
+    zoneExport: zoneExport as Parameters<
+      typeof assessExistingDomainMigrationInput
+    >[0]["zoneExport"],
+    transferCode: String(formData.get("transferCode") ?? ""),
+    transferAuthorizationAccepted:
+      formData.get("transferAuthorization") === "accepted",
+    requestedAssistance:
+      quote.migrationClassification === "assisted_standard",
+    publicEvidence,
+    acceptedOrderRecollection: true,
+  })
+  if (
+    !assessment.encryptedInput ||
+    assessment.classification !== quote.migrationClassification ||
+    assessment.sourceZoneHash !== quote.migrationSourceZoneHash
+  ) {
+    throw new Error(
+      "Recollected migration input must exactly match the accepted source evidence.",
+    )
+  }
+  await replaceExpiredAttachedMigrationCheckoutSecret(context.payload, {
+    secretKey: quote.migrationSecretKey!,
+    orderId: resume.orderId,
+    generationRunId: context.run.id,
+    domain: quote.selectedDomain,
+    sourceZoneHash: quote.migrationSourceZoneHash!,
+    encryptedInput: assessment.encryptedInput,
+  })
+  redirect(`https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return`)
+}
+
+export async function submitMigrationTransferCodeAction(
+  clientSlug: string,
+  formData: FormData,
+): Promise<void> {
+  const context = await requirePreviewCheckoutContext(clientSlug)
+  const migrationId = String(formData.get("migrationId") ?? "").trim()
+  const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
+  const transferCode = String(formData.get("transferCode") ?? "").trim()
+  if (!/^\d+$/.test(migrationId) || !expectedVersion || !transferCode) {
+    throw new Error("Transfer-code correction is incomplete.")
+  }
+  const migration = await context.payload.findByID({
+    collection: "domain-migrations",
+    id: migrationId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const originatingOrderId = relationshipId(migration.originatingOrder)
+  if (!originatingOrderId) {
+    throw new Error("Transfer-code correction has no originating order.")
+  }
+  const order = await context.payload.findByID({
+    collection: "orders",
+    id: originatingOrderId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (
+    !sameRelationshipId(order.generationRun, context.run.id) ||
+    !sameRelationshipId(order.tenant, context.tenant.id) ||
+    order.customerEmail.trim().toLowerCase() !==
+      context.customerEmail.trim().toLowerCase()
+  ) {
+    throw new Error("Transfer-code correction belongs to another customer.")
+  }
+  if (migration.failureReason === "source_evidence_stale") {
+    if (
+      migration.updatedAt !== expectedVersion ||
+      migration.state !== "awaiting_customer"
+    ) {
+      throw new Error("Fresh migration evidence correction is stale.")
+    }
+    const zoneExport = await readCompleteZoneExport(formData)
+    await acquireAutomaticMigrationInputs(context.payload, {
+      migrationId: migration.id,
+      zoneExport: zoneExport as Parameters<
+        typeof acquireAutomaticMigrationInputs
+      >[1]["zoneExport"],
+      transferCode,
+      expectedUpdatedAt: expectedVersion,
+    })
+  } else {
+    await replaceMigrationTransferAuthorization(context.payload, {
+      migrationId: migration.id,
+      expectedUpdatedAt: expectedVersion,
+      transferCode,
+    })
+  }
+  revalidatePath(`/${context.clientSlug}/checkout`)
 }
 
 export async function savePreviewCheckoutProfileAction(
@@ -334,8 +735,49 @@ export async function savePreviewCheckoutProfileAction(
     }
   }
   const selectedDomain = String(formData.get("domain") ?? "").trim().toLowerCase()
+  const domainMode = formData.get("domainMode") === "existing_domain"
+    ? "existing_domain"
+    : "new_registration"
   let quotes: CheckoutQuoteSet | undefined
-  if (selectedDomain) {
+  if (selectedDomain && domainMode === "existing_domain") {
+    try {
+      const priorQuote = openCheckoutQuote(
+        String(formData.get("existingMigrationQuoteToken") ?? ""),
+        checkoutQuoteSigningSecret(),
+      )
+      if (
+        priorQuote.domainMode !== "existing_domain" ||
+        priorQuote.selectedDomain !== selectedDomain ||
+        !priorQuote.migrationClassification ||
+        !priorQuote.migrationSourceZoneHash ||
+        !priorQuote.migrationInputEnvelope ||
+        !priorQuote.migrationSecretKey
+      ) {
+        throw new Error("Existing-domain quote evidence is incomplete.")
+      }
+      const providerPrice = await getOpenProviderDomainTransferPrice(selectedDomain)
+      if (
+        providerPrice.currency !== COMMERCIAL_CATALOG.currency ||
+        providerPrice.premium
+      ) {
+        throw new Error("Existing-domain transfer price is not supported.")
+      }
+      quotes = issueCheckoutQuoteSet({
+        domain: selectedDomain,
+        providerPriceNetMinor: providerPrice.netAmountMinor,
+        providerQuotedAt: new Date().toISOString(),
+        profileVersion: saved.profile.profileVersion,
+        draftVersion: String(context.run.updatedAt ?? ""),
+        domainMode,
+        migrationClassification: priorQuote.migrationClassification,
+        migrationSourceZoneHash: priorQuote.migrationSourceZoneHash,
+        migrationInputEnvelope: priorQuote.migrationInputEnvelope,
+        migrationSecretKey: priorQuote.migrationSecretKey,
+      })
+    } catch {
+      quotes = undefined
+    }
+  } else if (selectedDomain) {
     const refreshed = await checkAndRecordPreviewDomainOrder(
       context.payload,
       context.run,
@@ -415,8 +857,11 @@ export async function suggestPreviewCheckoutDomainsAction(
       cursor: batch.nextCursor,
       done: batch.done || nextSuggestions.length >= 5,
     }
-  } catch (error) {
-    console.error("Preview checkout domain suggestions error", error)
+  } catch {
+    console.error("Preview checkout operation failed", {
+      operation: "domain_suggestions",
+      code: "unexpected_failure",
+    })
     return {
       ok: false,
       domain,
@@ -493,11 +938,37 @@ export async function startPreviewCheckoutPaymentAction(
   } catch {
     return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
   }
+  const acceptedOrderId = String(formData.get("acceptedOrderId") ?? "").trim()
+  let resumesAcceptedOrder = false
+  if (acceptedOrderId) {
+    try {
+      const resume = await loadAcceptedCheckoutResume(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+        signingSecret: checkoutQuoteSigningSecret(),
+      })
+      resumesAcceptedOrder = Boolean(
+        resume &&
+        String(resume.orderId) === acceptedOrderId &&
+        resume.billingPeriod === acceptedQuote.billingPeriod &&
+        sameAcceptedCheckoutAuthority(
+          acceptedQuote,
+          resume.quotes[resume.billingPeriod].quote,
+        ),
+      )
+    } catch {
+      resumesAcceptedOrder = false
+    }
+  }
   if (
     acceptedQuote.billingPeriod !== billingPeriod ||
     acceptedQuote.selectedDomain !== domain ||
-    acceptedQuote.domainMode !== "new_registration" ||
-    acceptedQuote.draftVersion !== String(context.run.updatedAt ?? "")
+    !["new_registration", "existing_domain"].includes(acceptedQuote.domainMode) ||
+    (
+      acceptedQuote.draftVersion !== String(context.run.updatedAt ?? "") &&
+      !resumesAcceptedOrder
+    ) ||
+    (acceptedOrderId && !resumesAcceptedOrder)
   ) {
     return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
   }
@@ -527,66 +998,173 @@ export async function startPreviewCheckoutPaymentAction(
 
   try {
     const domainStart = startPreviewCheckoutTimer()
-    const ready = await requireReadyPreviewDomainOrder(
-      context.payload,
-      context.run,
-      domain,
-      registrant,
-      { includedProviderPrice: catalogDomainAllowance() },
-    )
-    logPreviewCheckoutTiming("payment_domain_check", domainStart, { clientSlug: context.clientSlug, domain: ready.domain })
-    const audit = await requestAudit()
-    const approvalEvidence = await createSiteApprovalEvidence({
-      payload: context.payload,
-      run: ready.run,
-      tenant: context.tenant,
-      pages: context.pages,
-      domain: ready.domain,
-      actorEmail: context.customerEmail,
-      requestId: audit.requestId,
-    })
-    const orderState = normalizeDomainOrderState(ready.run.domainOrder)
-    const providerPrice = orderState.providerPriceAmount && orderState.providerPriceCurrency
-      ? { amount: orderState.providerPriceAmount, currency: orderState.providerPriceCurrency }
-      : null
-    if (!providerPrice || providerPrice.currency !== "EUR") {
-      throw new Error("Checkout domain price is unavailable for the commercial quote.")
+    let readyRun = context.run
+    let readyDomain = domain
+    let currentQuote: ReturnType<typeof buildCheckoutQuote>
+    if (resumesAcceptedOrder) {
+      currentQuote = acceptedQuote
+    } else if (acceptedQuote.domainMode === "existing_domain") {
+      if (
+        !existingDomainMigrationCheckoutEnabled() ||
+        !acceptedQuote.migrationClassification ||
+        !acceptedQuote.migrationSourceZoneHash ||
+        !acceptedQuote.migrationSecretKey ||
+        (
+          !acceptedQuote.migrationInputEnvelope &&
+          !resumesAcceptedOrder
+        )
+      ) {
+        return {
+          ok: false,
+          status: "version_conflict",
+          message: t("checkoutQuoteVersionConflict"),
+        }
+      }
+      if (acceptedQuote.migrationInputEnvelope) {
+        const migrationInput = openCheckoutMigrationInput(
+          acceptedQuote.migrationInputEnvelope,
+          context.run.id,
+          domain,
+        )
+        if (
+          migrationInput.classification !== acceptedQuote.migrationClassification ||
+          migrationInput.sourceZoneHash !== acceptedQuote.migrationSourceZoneHash
+        ) {
+          return {
+            ok: false,
+            status: "version_conflict",
+            message: t("checkoutQuoteVersionConflict"),
+          }
+        }
+      }
+      const transferPrice = await getOpenProviderDomainTransferPrice(domain)
+      if (
+        transferPrice.currency !== COMMERCIAL_CATALOG.currency ||
+        transferPrice.premium
+      ) {
+        return {
+          ok: false,
+          status: "version_conflict",
+          message: t("checkoutQuoteVersionConflict"),
+        }
+      }
+      currentQuote = buildCheckoutQuote({
+        billingPeriod,
+        providerOperationPriceNetMinor: transferPrice.netAmountMinor,
+        selectedDomain: domain,
+        domainMode: "existing_domain",
+        migrationClassification: acceptedQuote.migrationClassification,
+        migrationSourceZoneHash: acceptedQuote.migrationSourceZoneHash,
+        migrationInputEnvelope: acceptedQuote.migrationInputEnvelope,
+        migrationSecretKey: acceptedQuote.migrationSecretKey,
+        providerQuotedAt: new Date().toISOString(),
+        profileVersion: checkoutProfile.profileVersion,
+        draftVersion: acceptedQuote.draftVersion,
+      })
+    } else {
+      const ready = await requireReadyPreviewDomainOrder(
+        context.payload,
+        context.run,
+        domain,
+        registrant,
+        { includedProviderPrice: catalogDomainAllowance() },
+      )
+      readyRun = ready.run
+      readyDomain = ready.domain
+      const orderState = normalizeDomainOrderState(ready.run.domainOrder)
+      const providerPrice = orderState.providerPriceAmount && orderState.providerPriceCurrency
+        ? { amount: orderState.providerPriceAmount, currency: orderState.providerPriceCurrency }
+        : null
+      if (!providerPrice || providerPrice.currency !== "EUR") {
+        throw new Error("Checkout domain price is unavailable for the commercial quote.")
+      }
+      currentQuote = buildCheckoutQuote({
+        billingPeriod,
+        providerOperationPriceNetMinor: decimalMoneyToMinor(providerPrice.amount),
+        selectedDomain: ready.domain,
+        providerQuotedAt: orderState.checkedAt ?? new Date().toISOString(),
+        profileVersion: checkoutProfile.profileVersion,
+        draftVersion: acceptedQuote.draftVersion,
+      })
     }
-    const currentQuote = buildCheckoutQuote({
-      billingPeriod,
-      providerOperationPriceNetMinor: decimalMoneyToMinor(providerPrice.amount),
-      selectedDomain: ready.domain,
-      providerQuotedAt: orderState.checkedAt ?? new Date().toISOString(),
-      profileVersion: checkoutProfile.profileVersion,
-      draftVersion: acceptedQuote.draftVersion,
-    })
+    logPreviewCheckoutTiming(
+      "payment_domain_check",
+      domainStart,
+      {
+        clientSlug: context.clientSlug,
+        domain: readyDomain,
+      },
+      { mode: acceptedQuote.domainMode },
+    )
     if (!sameCommercialCheckoutQuote(acceptedQuote, currentQuote)) {
       return {
         ok: false,
         status: "version_conflict",
         message: t("checkoutQuoteVersionConflict"),
         quotes: issueCheckoutQuoteSet({
-          domain: ready.domain,
+          domain: readyDomain,
           providerPriceNetMinor: currentQuote.providerOperationPriceNetMinor,
           providerQuotedAt: currentQuote.providerQuotedAt,
           profileVersion: checkoutProfile.profileVersion,
           draftVersion: currentQuote.draftVersion,
+          domainMode: currentQuote.domainMode,
+          migrationClassification: currentQuote.migrationClassification,
+          migrationSourceZoneHash: currentQuote.migrationSourceZoneHash,
+          migrationInputEnvelope: currentQuote.migrationInputEnvelope,
+          migrationSecretKey: currentQuote.migrationSecretKey,
         }),
       }
     }
+    if (acceptedQuote.domainMode === "existing_domain") {
+      if (acceptedQuote.migrationInputEnvelope) {
+        await persistMigrationCheckoutSecret(context.payload, {
+          generationRunId: context.run.id,
+          domain: readyDomain,
+          sourceZoneHash: acceptedQuote.migrationSourceZoneHash!,
+          encryptedInput: acceptedQuote.migrationInputEnvelope,
+        })
+      } else {
+        await openAttachedMigrationCheckoutSecret(context.payload, {
+          secretKey: acceptedQuote.migrationSecretKey!,
+          orderId: acceptedOrderId,
+          generationRunId: context.run.id,
+          domain: readyDomain,
+          sourceZoneHash: acceptedQuote.migrationSourceZoneHash!,
+        })
+      }
+    }
+    const audit = await requestAudit()
+    const approvalEvidence = await createSiteApprovalEvidence({
+      payload: context.payload,
+      run: readyRun,
+      tenant: context.tenant,
+      pages: context.pages,
+      domain: readyDomain,
+      actorEmail: context.customerEmail,
+      requestId: audit.requestId,
+    })
     const legalEvidence = await createOrderAndAcceptanceEvidence({
       payload: context.payload,
-      run: ready.run,
+      run: readyRun,
       tenant: context.tenant,
       approval: approvalEvidence.approval,
       checkoutProfile: checkoutProfile as CheckoutProfile,
       quote: acceptedQuote,
       domainRegistrant: registrant,
-      domain: ready.domain,
+      domain: readyDomain,
       requestId: audit.requestId,
       ipAddress: audit.ipAddress,
       userAgent: audit.userAgent,
     })
+    if (acceptedQuote.domainMode === "existing_domain") {
+      await attachMigrationCheckoutSecret(context.payload, {
+        secretKey: acceptedQuote.migrationSecretKey!,
+        orderId: legalEvidence.order.id,
+        generationRunId: context.run.id,
+        domain: readyDomain,
+        sourceZoneHash: acceptedQuote.migrationSourceZoneHash!,
+      })
+    }
     await satisfyRequirementsFromTransaction({
       payload: context.payload,
       tenantId: context.tenant.id,
@@ -598,7 +1176,7 @@ export async function startPreviewCheckoutPaymentAction(
     const approvalStart = startPreviewCheckoutTimer()
     const approved = await context.payload.update({
       collection: "site-generation-runs",
-      id: ready.run.id,
+      id: readyRun.id,
       data: {
         clientApproval: {
           status: "approved",
@@ -612,18 +1190,27 @@ export async function startPreviewCheckoutPaymentAction(
       depth: 0,
       overrideAccess: true,
     }) as typeof context.run
-    logPreviewCheckoutTiming("payment_approval_update", approvalStart, { clientSlug: context.clientSlug, domain: ready.domain })
+    logPreviewCheckoutTiming("payment_approval_update", approvalStart, {
+      clientSlug: context.clientSlug,
+      domain: readyDomain,
+    })
     const mollieStart = startPreviewCheckoutTimer()
     const checkout = await createMollieCheckoutForGenerationRun(context.payload, {
       runId: approved.id,
       customerEmail: context.customerEmail,
       clientSlug: context.clientSlug,
-      selectedDomain: ready.domain,
+      selectedDomain: readyDomain,
       actor: context.customerEmail,
       orderId: legalEvidence.order.id,
     })
-    logPreviewCheckoutTiming("payment_mollie_checkout", mollieStart, { clientSlug: context.clientSlug, domain: ready.domain })
-    logPreviewCheckoutTiming("payment_total", totalStart, { clientSlug: context.clientSlug, domain: ready.domain }, { ok: true })
+    logPreviewCheckoutTiming("payment_mollie_checkout", mollieStart, {
+      clientSlug: context.clientSlug,
+      domain: readyDomain,
+    })
+    logPreviewCheckoutTiming("payment_total", totalStart, {
+      clientSlug: context.clientSlug,
+      domain: readyDomain,
+    }, { ok: true })
     return {
       ok: true,
       message: t("checkoutRedirectingToPayment"),
@@ -649,13 +1236,16 @@ export async function startPreviewCheckoutPaymentAction(
       return { ok: false, status: domainErrorStatus(error), message: safeCheckoutErrorMessage(error, t, domain) }
     }
     if (error instanceof MollieApiError) {
-      console.error("Preview checkout payment error", {
-        status: error.status,
-        title: error.title,
-        detail: error.detail,
+      console.error("Preview checkout operation failed", {
+        operation: "payment_start",
+        code: "provider_http_failure",
+        providerStatus: error.status,
       })
     } else {
-      console.error("Preview checkout payment error", error)
+      console.error("Preview checkout operation failed", {
+        operation: "payment_start",
+        code: "unexpected_failure",
+      })
     }
     return { ok: false, status: "payment_error", message: t("checkoutPaymentFailed") }
   }

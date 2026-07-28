@@ -41,6 +41,15 @@ const source = {
       target: "sip.example.net.",
     },
     { type: "NS", name: "shop.example.nl", ttl: 3600, content: "ns1.shop-host.example." },
+    {
+      type: "TLSA",
+      name: "_25._tcp.mail.example.nl",
+      ttl: 3600,
+      certificateUsage: 3,
+      selector: 1,
+      matchingType: 1,
+      certificateAssociationData: "AA".repeat(32),
+    },
   ],
 } as const
 
@@ -93,13 +102,41 @@ describe("automatic existing-domain zone contracts", () => {
       expect.objectContaining({ type: "CAA", value: "letsencrypt.org" }),
       expect.objectContaining({ type: "SRV", target: "sip.example.net" }),
       expect.objectContaining({ type: "NS", name: "shop.example.nl" }),
+      expect.objectContaining({
+        type: "TLSA",
+        certificateAssociationData: "aa".repeat(32),
+      }),
     ]))
     expect(target.records).not.toEqual(expect.arrayContaining([
       expect.objectContaining({ type: "A", name: "example.nl", content: "192.0.2.10" }),
     ]))
   })
 
-  it("compares zone behavior independently of order, case, trailing dots and TTL", () => {
+  it("normalizes quoted TXT chunks and rejects CNAME coexistence conflicts", () => {
+    const quoted = normalizeCompleteZone({
+      ...source,
+      records: source.records.map((record) =>
+        record.type === "TXT" && record.name === "example.nl"
+          ? { ...record, content: "\"v=spf1 include:_spf.example.net \" \"~all\"" }
+          : record),
+    })
+    expect(quoted.records).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: "TXT",
+        name: "example.nl",
+        content: "v=spf1 include:_spf.example.net ~all",
+      }),
+    ]))
+    expect(completeZoneExportSchema.safeParse({
+      ...source,
+      records: [
+        ...source.records,
+        { type: "TXT", name: "www.example.nl", ttl: 300, content: "conflict" },
+      ],
+    }).success).toBe(false)
+  })
+
+  it("compares zone behavior independently of order, case, trailing dots and tolerated TTL drift", () => {
     const expected = normalizeCompleteZone(source).records
     const actual = normalizeCompleteZone({
       ...source,
@@ -107,7 +144,7 @@ describe("automatic existing-domain zone contracts", () => {
       records: [...source.records].reverse().map((record) => ({
         ...record,
         name: record.name.toUpperCase(),
-        ttl: 86400,
+        ttl: record.ttl + 30,
       })),
     }).records
 
@@ -116,6 +153,47 @@ describe("automatic existing-domain zone contracts", () => {
       missing: [],
       unexpected: [],
     })
+  })
+
+  it("reports TTL changes outside the semantic tolerance", () => {
+    const expected = normalizeCompleteZone(source).records
+    const actual = normalizeCompleteZone({
+      ...source,
+      records: source.records.map((record) => ({ ...record, ttl: 86_400 })),
+    }).records
+
+    expect(semanticZoneComparison(expected, actual)).toMatchObject({
+      equivalent: false,
+      missing: expect.arrayContaining([expect.stringContaining(":ttl")]),
+      unexpected: expect.arrayContaining([expect.stringContaining(":ttl")]),
+    })
+  })
+
+  it("validates TLSA digest lengths for SHA-256 and SHA-512 matching", () => {
+    expect(completeZoneExportSchema.safeParse({
+      ...source,
+      records: [{
+        type: "TLSA",
+        name: "_443._tcp.example.nl",
+        ttl: 300,
+        certificateUsage: 3,
+        selector: 1,
+        matchingType: 1,
+        certificateAssociationData: "AABBCCDD",
+      }],
+    }).success).toBe(false)
+    expect(completeZoneExportSchema.safeParse({
+      ...source,
+      records: [{
+        type: "TLSA",
+        name: "_443._tcp.example.nl",
+        ttl: 300,
+        certificateUsage: 3,
+        selector: 1,
+        matchingType: 1,
+        certificateAssociationData: "aa".repeat(32),
+      }],
+    }).success).toBe(true)
   })
 
   it("freezes an unsigned DNSSEC plan and blocks cutover while a parent DS remains", () => {

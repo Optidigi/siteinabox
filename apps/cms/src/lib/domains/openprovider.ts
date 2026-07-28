@@ -94,7 +94,7 @@ export type OpenProviderDomainRecord = {
 
 export type OpenProviderDomainPrice = {
   domain: string
-  operation: "renew"
+  operation: "transfer" | "renew"
   currency: string
   netAmountMinor: number
   premium: boolean
@@ -140,20 +140,22 @@ const AVAILABILITY_CACHE_MAX_ENTRIES = 256
 export class OpenProviderApiError extends Error {
   status: number
   operation: string
+  providerCode: string | null
 
-  constructor(operation: string, status: number) {
+  constructor(operation: string, status: number, providerCode: string | null = null) {
     super(`${operation} failed with HTTP ${status}.`)
     this.name = "OpenProviderApiError"
     this.status = status
     this.operation = operation
+    this.providerCode = providerCode
   }
 }
 
 export class OpenProviderIndeterminateWriteError extends Error {
   operation: string
 
-  constructor(operation: string, cause?: unknown) {
-    super(`${operation} has an indeterminate provider outcome.`, { cause })
+  constructor(operation: string, _cause?: unknown) {
+    super(`${operation} has an indeterminate provider outcome.`)
     this.name = "OpenProviderIndeterminateWriteError"
     this.operation = operation
   }
@@ -198,6 +200,29 @@ const readObject = (value: unknown): Record<string, unknown> =>
 const dataObject = (value: unknown): Record<string, unknown> => {
   const root = readObject(value)
   return readObject(root.data)
+}
+
+const providerErrorCode = async (response: Response): Promise<string | null> => {
+  try {
+    const payload = readObject(await json(response))
+    const error = readObject(payload.error)
+    const errors = Array.isArray(payload.errors) ? payload.errors : []
+    const firstError = readObject(errors[0])
+    const data = readObject(payload.data)
+    const candidate = [
+      payload.code,
+      payload.error_code,
+      error.code,
+      firstError.code,
+      data.code,
+    ].find((value) => typeof value === "string")
+    const normalized = typeof candidate === "string"
+      ? candidate.trim().toUpperCase()
+      : ""
+    return /^[A-Z0-9_.-]{1,80}$/.test(normalized) ? normalized : null
+  } catch {
+    return null
+  }
 }
 
 const fetcher = (options?: OpenProviderOptions): FetchLike => options?.fetchImpl ?? globalThis.fetch
@@ -860,8 +885,9 @@ const providerPriceMinor = (value: unknown): number | null => {
   return Number.isSafeInteger(minor) && minor >= 0 ? minor : null
 }
 
-export async function getOpenProviderDomainRenewalPrice(
+export async function getOpenProviderDomainOperationPrice(
   domainInput: string,
+  operation: "transfer" | "renew",
   options?: OpenProviderOptions,
 ): Promise<OpenProviderDomainPrice> {
   const env = options?.env ?? process.env
@@ -870,14 +896,19 @@ export async function getOpenProviderDomainRenewalPrice(
   const query = new URLSearchParams({
     "domain.name": domain.name,
     "domain.extension": domain.extension,
-    operation: "renew",
+    operation,
     period: "1",
   })
   const response = await fetcher(options)(`${apiBase(env)}/domains/prices?${query.toString()}`, {
     method: "GET",
     headers: jsonHeaders(token),
   })
-  if (!response.ok) throw new OpenProviderApiError("OpenProvider domain renewal price", response.status)
+  if (!response.ok) {
+    throw new OpenProviderApiError(
+      `OpenProvider domain ${operation} price`,
+      response.status,
+    )
+  }
   const payload = await json(response)
   const data = dataObject(payload)
   const prices = readObject(data.price)
@@ -885,16 +916,30 @@ export async function getOpenProviderDomainRenewalPrice(
   const currency = typeof reseller.currency === "string" ? reseller.currency.trim().toUpperCase() : ""
   const netAmountMinor = providerPriceMinor(reseller.price)
   if (!currency || netAmountMinor == null) {
-    throw new Error("OpenProvider renewal price response is incomplete.")
+    throw new Error(`OpenProvider ${operation} price response is incomplete.`)
   }
   return {
     domain: domain.domain,
-    operation: "renew",
+    operation,
     currency,
     netAmountMinor,
     premium: data.is_premium === true,
     raw: payload,
   }
+}
+
+export async function getOpenProviderDomainRenewalPrice(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderDomainPrice> {
+  return getOpenProviderDomainOperationPrice(domainInput, "renew", options)
+}
+
+export async function getOpenProviderDomainTransferPrice(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderDomainPrice> {
+  return getOpenProviderDomainOperationPrice(domainInput, "transfer", options)
 }
 
 export async function setOpenProviderDomainAutorenew(
@@ -1161,7 +1206,11 @@ export async function transferOpenProviderDomain(
     if (response.status >= 500 || response.status === 408 || response.status === 429) {
       throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer")
     }
-    throw new OpenProviderApiError("OpenProvider domain transfer", response.status)
+    throw new OpenProviderApiError(
+      "OpenProvider domain transfer",
+      response.status,
+      await providerErrorCode(response),
+    )
   }
   let payload: unknown
   try {

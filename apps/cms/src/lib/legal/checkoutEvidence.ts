@@ -42,7 +42,10 @@ const initialOrderClaim = (runId: string | number) => ({
 const nonvolatileQuoteEvidence = (quote: CheckoutQuote): Record<string, unknown> =>
   Object.fromEntries(
     Object.entries(quote).filter(
-      ([key]) => key !== "quoteIssuedAt" && key !== "quoteExpiresAt",
+      ([key]) =>
+        key !== "quoteIssuedAt" &&
+        key !== "quoteExpiresAt" &&
+        key !== "migrationInputEnvelope",
     ),
   )
 
@@ -268,6 +271,8 @@ export async function createOrderAndAcceptanceEvidence(input: {
                 migration: {
                   classification: input.quote.migrationClassification,
                   sourceMechanism: "customer_authorized_provider_export_v1",
+                  sourceZoneHash: input.quote.migrationSourceZoneHash,
+                  checkoutSecretKey: input.quote.migrationSecretKey,
                   expectedOperatorTechnicalAction:
                     input.quote.migrationClassification === "assisted_standard",
                   netAmountMinor: input.quote.migrationClassification === "assisted_standard"

@@ -60,6 +60,11 @@ Record environment-specific evidence outside the repository. Do not commit
 credentials, customer data, provider responses, transfer codes, operator
 transcripts, or machine paths.
 
+Existing-domain checkout has an additional fail-closed feature flag and
+evidence matrix. Follow
+[Existing-domain migration](existing-domain-migration.md); advancing the
+general commerce stage does not enable that customer journey.
+
 ## Rollback
 
 Move the release stage to `shadow` to stop new provider writes while retaining

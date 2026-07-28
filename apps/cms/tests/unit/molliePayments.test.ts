@@ -22,6 +22,12 @@ vi.mock("@/lib/domains/verification", () => ({
     respondingNameServers: nameServers,
     reason: null,
   })),
+  verifyPreservedDnsRecords: vi.fn(async () => ({
+    status: "verified",
+    recursiveEquivalent: true,
+    authoritativeEquivalent: true,
+    reason: null,
+  })),
   verifyHttpsEndpoint: vi.fn(async () => ({
     status: "verified",
     httpStatus: 404,
@@ -504,7 +510,7 @@ describe("Mollie payment flow", () => {
       method: "POST",
       headers: expect.objectContaining({
         Authorization: "Bearer test_xxx",
-        "Idempotency-Key": "mollie:first-payment:order:600:authority-v2",
+        "Idempotency-Key": "mollie:first-payment:order:600:authority-v3:attempt-1",
       }),
     }))
     const request = vi.mocked(fetch).mock.calls[1]?.[1] as RequestInit
@@ -521,7 +527,7 @@ describe("Mollie payment flow", () => {
         customerEmail: "client@example.com",
         clientSlug: "acme",
         selectedDomain: "acme.test",
-        idempotencyKey: "mollie:first-payment:order:600:authority-v2",
+      idempotencyKey: "mollie:first-payment:order:600:authority-v3:attempt-1",
         mollieCustomerId: "cst_test_123",
         sequenceType: "first",
         purpose: "first_payment",
@@ -543,6 +549,77 @@ describe("Mollie payment flow", () => {
         }),
       },
     }))
+  })
+
+  it("creates one new stable attempt after a cancelled first-payment attempt", async () => {
+    enableSandboxCommerceRelease()
+    let paymentNumber = 0
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "https://api.mollie.com/v2/customers") {
+        return new Response(JSON.stringify({
+          id: "cst_test_123",
+          name: "Acme Studio",
+          email: "client@example.com",
+        }), { status: 201 })
+      }
+      paymentNumber += 1
+      return new Response(JSON.stringify({
+        id: `tr_retry_${paymentNumber}`,
+        status: "open",
+        amount: { currency: "EUR", value: "499.00" },
+        metadata: { orderId: 600 },
+        _links: {
+          checkout: {
+            href: `https://www.mollie.com/checkout/retry-${paymentNumber}`,
+          },
+        },
+      }), { status: 201 })
+    }))
+    const fixture = createPayloadStub()
+    await createMollieCheckoutForGenerationRun(fixture.payload, {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    })
+    Object.assign(fixture.paymentAttempts[0]!, {
+      state: "cancelled",
+      reconciliationRequired: false,
+      cancelledAt: "2026-07-28T10:05:00.000Z",
+    })
+    Object.assign(fixture.order, {
+      paymentStatus: "cancelled",
+      providerPaymentId: "tr_retry_1",
+    })
+    Object.assign(fixture.run, {
+      payment: {
+        status: "cancelled",
+        provider: "mollie",
+        externalReference: "tr_retry_1",
+      },
+    })
+
+    const retried = await createMollieCheckoutForGenerationRun(fixture.payload, {
+      runId: 500,
+      orderId: 600,
+      customerEmail: "client@example.com",
+      clientSlug: "acme",
+    })
+
+    expect(retried).toMatchObject({
+      reused: false,
+      checkoutUrl: "https://www.mollie.com/checkout/retry-2",
+      paymentAttempt: {
+        attemptNumber: 2,
+        idempotencyKey:
+          "mollie:first-payment:order:600:authority-v3:attempt-2",
+      },
+    })
+    expect(fixture.paymentAttempts).toHaveLength(2)
+    const paymentWrites = vi.mocked(fetch).mock.calls.filter(
+      ([url]) => url === "https://api.mollie.com/v2/payments",
+    )
+    expect(paymentWrites).toHaveLength(2)
   })
 
   it("adds the selected domain extra fee to the first Mollie payment amount", async () => {

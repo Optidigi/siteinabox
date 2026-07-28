@@ -1,6 +1,10 @@
 import "server-only"
 
 import { Resolver, resolve, resolve4, resolve6, resolveNs } from "node:dns/promises"
+import {
+  semanticZoneComparison,
+  type NormalizedMigrationDnsRecord,
+} from "@siteinabox/contracts/domain-migration"
 
 const canonicalDnsName = (value: string): string => value.trim().toLowerCase().replace(/\.$/, "")
 
@@ -88,6 +92,248 @@ export async function verifyAuthoritativeDns(
     status: "verified",
     delegatedNameServers: delegated,
     respondingNameServers: responding,
+    reason: null,
+  }
+}
+
+export type PreservedDnsVerification = {
+  status: "verified" | "pending"
+  recursiveEquivalent: boolean
+  authoritativeEquivalent: boolean
+  reason: string | null
+}
+
+type PreservedRecordType = NormalizedMigrationDnsRecord["type"]
+type ResolveRecords = (
+  hostname: string,
+  type: PreservedRecordType,
+) => Promise<unknown>
+
+const dnsQueryName = (name: string): string =>
+  name.startsWith("*.")
+    ? `siab-preservation-probe.${name.slice(2)}`
+    : name
+
+const bufferHex = (value: unknown): string | null => {
+  if (value instanceof ArrayBuffer) {
+    return Buffer.from(value).toString("hex")
+  }
+  if (ArrayBuffer.isView(value)) {
+    return Buffer.from(value.buffer, value.byteOffset, value.byteLength)
+      .toString("hex")
+  }
+  return null
+}
+
+const parsedDnsAnswers = (
+  expected: NormalizedMigrationDnsRecord[],
+  raw: unknown,
+): NormalizedMigrationDnsRecord[] => {
+  const exemplar = expected[0]
+  if (!exemplar || !Array.isArray(raw)) return []
+  const common = {
+    name: exemplar.name,
+    ttl: exemplar.ttl,
+    proxied: false,
+  }
+  if (exemplar.type === "A" || exemplar.type === "AAAA" ||
+    exemplar.type === "CNAME" || exemplar.type === "NS") {
+    return raw.flatMap((value) =>
+      typeof value === "string"
+        ? [{
+            ...common,
+            type: exemplar.type,
+            content: exemplar.type === "A"
+              ? value
+              : canonicalDnsName(value),
+          }]
+        : [],
+    ) as NormalizedMigrationDnsRecord[]
+  }
+  if (exemplar.type === "TXT") {
+    return raw.flatMap((value) =>
+      Array.isArray(value) && value.every((part) => typeof part === "string")
+        ? [{ ...common, type: "TXT" as const, content: value.join("") }]
+        : [],
+    )
+  }
+  if (exemplar.type === "MX") {
+    return raw.flatMap((value) => {
+      const entry = value && typeof value === "object"
+        ? value as Record<string, unknown>
+        : {}
+      return Number.isSafeInteger(entry.priority) &&
+        typeof entry.exchange === "string"
+        ? [{
+            ...common,
+            type: "MX" as const,
+            priority: Number(entry.priority),
+            target: canonicalDnsName(entry.exchange),
+          }]
+        : []
+    })
+  }
+  if (exemplar.type === "SRV") {
+    return raw.flatMap((value) => {
+      const entry = value && typeof value === "object"
+        ? value as Record<string, unknown>
+        : {}
+      return Number.isSafeInteger(entry.priority) &&
+        Number.isSafeInteger(entry.weight) &&
+        Number.isSafeInteger(entry.port) &&
+        typeof entry.name === "string"
+        ? [{
+            ...common,
+            type: "SRV" as const,
+            priority: Number(entry.priority),
+            weight: Number(entry.weight),
+            port: Number(entry.port),
+            target: canonicalDnsName(entry.name),
+          }]
+        : []
+    })
+  }
+  if (exemplar.type === "CAA") {
+    return raw.flatMap((value) => {
+      const entry = value && typeof value === "object"
+        ? value as Record<string, unknown>
+        : {}
+      const tag = ["issue", "issuewild", "iodef", "contactemail", "contactphone"]
+        .find((key) => typeof entry[key] === "string")
+      return Number.isSafeInteger(entry.critical) && tag
+        ? [{
+            ...common,
+            type: "CAA" as const,
+            flags: Number(entry.critical),
+            tag,
+            value: String(entry[tag]),
+          }]
+        : []
+    })
+  }
+  return raw.flatMap((value) => {
+    const entry = value && typeof value === "object"
+      ? value as Record<string, unknown>
+      : {}
+    const data = bufferHex(entry.data)
+    return Number.isSafeInteger(entry.certUsage) &&
+      Number.isSafeInteger(entry.selector) &&
+      Number.isSafeInteger(entry.match) &&
+      data
+      ? [{
+          ...common,
+          type: "TLSA" as const,
+          certificateUsage: Number(entry.certUsage),
+          selector: Number(entry.selector),
+          matchingType: Number(entry.match),
+          certificateAssociationData: data,
+        }]
+      : []
+  })
+}
+
+const groupedRecords = (
+  records: NormalizedMigrationDnsRecord[],
+): NormalizedMigrationDnsRecord[][] => {
+  const groups = new Map<string, NormalizedMigrationDnsRecord[]>()
+  for (const record of records) {
+    const key = `${record.name}\u0000${record.type}`
+    groups.set(key, [...(groups.get(key) ?? []), record])
+  }
+  return [...groups.values()]
+}
+
+const queryAndComparePreservedRecords = async (
+  records: NormalizedMigrationDnsRecord[],
+  resolveRecords: ResolveRecords,
+): Promise<boolean> => {
+  for (const expected of groupedRecords(records)) {
+    const exemplar = expected[0]!
+    let raw: unknown
+    try {
+      raw = await resolveRecords(dnsQueryName(exemplar.name), exemplar.type)
+    } catch {
+      return false
+    }
+    const actual = parsedDnsAnswers(expected, raw)
+    if (!semanticZoneComparison(expected, actual).equivalent) return false
+  }
+  return true
+}
+
+export async function verifyPreservedDnsRecords(
+  records: NormalizedMigrationDnsRecord[],
+  authoritativeNameServers: string[],
+  options: {
+    recursiveResolveImpl?: ResolveRecords
+    authoritativeResolveImpl?: (
+      nameServer: string,
+      hostname: string,
+      type: PreservedRecordType,
+    ) => Promise<unknown>
+    resolve4Impl?: (hostname: string) => Promise<string[]>
+    resolve6Impl?: (hostname: string) => Promise<string[]>
+  } = {},
+): Promise<PreservedDnsVerification> {
+  if (records.length === 0) {
+    return {
+      status: "verified",
+      recursiveEquivalent: true,
+      authoritativeEquivalent: true,
+      reason: null,
+    }
+  }
+  const recursiveResolve = options.recursiveResolveImpl ??
+    ((hostname, type) => resolve(hostname, type))
+  const recursiveEquivalent = await queryAndComparePreservedRecords(
+    records,
+    recursiveResolve,
+  )
+  if (!recursiveEquivalent) {
+    return {
+      status: "pending",
+      recursiveEquivalent: false,
+      authoritativeEquivalent: false,
+      reason: "recursive_preserved_record_mismatch",
+    }
+  }
+  for (const nameServer of authoritativeNameServers) {
+    const authoritativeResolve = options.authoritativeResolveImpl
+      ? (hostname: string, type: PreservedRecordType) =>
+          options.authoritativeResolveImpl!(nameServer, hostname, type)
+      : async (hostname: string, type: PreservedRecordType) => {
+          const addresses = await addressesForNameServer(nameServer, {
+            resolve4Impl: options.resolve4Impl,
+            resolve6Impl: options.resolve6Impl,
+          })
+          if (addresses.length === 0) {
+            throw new Error("Authoritative nameserver has no resolvable address.")
+          }
+          let lastError: unknown
+          for (const address of addresses) {
+            const resolver = new Resolver()
+            resolver.setServers([address])
+            try {
+              return await resolver.resolve(hostname, type)
+            } catch (error) {
+              lastError = error
+            }
+          }
+          throw lastError ?? new Error("Authoritative DNS query failed.")
+        }
+    if (!(await queryAndComparePreservedRecords(records, authoritativeResolve))) {
+      return {
+        status: "pending",
+        recursiveEquivalent: true,
+        authoritativeEquivalent: false,
+        reason: "authoritative_preserved_record_mismatch",
+      }
+    }
+  }
+  return {
+    status: "verified",
+    recursiveEquivalent: true,
+    authoritativeEquivalent: true,
     reason: null,
   }
 }
