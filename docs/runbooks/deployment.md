@@ -115,11 +115,7 @@ COMMERCE_RELEASE_STAGE=disabled
 COMMERCE_RELEASE_EVIDENCE_VERSION=
 COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=
 COMMERCE_ORIGIN_ISOLATION_VERIFIED=
-# Gross customer-facing amounts, including VAT where applicable.
-MOLLIE_SITE_PAYMENT_AMOUNT=228.00
-MOLLIE_SITE_PAYMENT_CURRENCY=EUR
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
-MOLLIE_WEBHOOK_SIGNING_SECRET=<mollie-webhook-signing-secret-from-secret-store>
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
 OPENPROVIDER_API_BASE_URL=
@@ -268,7 +264,7 @@ Current production environment requirements:
 | Renderer token | Set the same `SIAB_RENDERER_API_TOKEN` for the CMS snapshot endpoint and renderer environment. |
 | Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
-| Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and webhook signing secret. Production webhooks fail closed when `MOLLIE_WEBHOOK_SIGNING_SECRET` is unset. |
+| Mollie | Set `MOLLIE_API_KEY` and the webhook base URL. The classic webhook accepts Mollie's form-encoded payment ID and always retrieves authoritative state through the API; accepted order/payment-attempt amounts are the only monetary authority. |
 | Commerce release | Keep `COMMERCE_RELEASE_STAGE=disabled` until the evidence and staged enablement procedure in [commerce-release.md](commerce-release.md) is complete. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
 | Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |

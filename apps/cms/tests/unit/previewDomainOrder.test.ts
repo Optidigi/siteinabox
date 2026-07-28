@@ -23,8 +23,8 @@ import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, sugge
 describe("preview domain order", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "228.00")
-    vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "10.00")
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT", "10.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT", "25.00")

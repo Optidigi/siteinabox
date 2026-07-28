@@ -105,7 +105,6 @@ describe("staged commerce release runtime gate", () => {
         COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
         NODE_ENV: "production",
         MOLLIE_API_KEY: "live_test",
-        MOLLIE_WEBHOOK_SIGNING_SECRET: "signing-secret",
         OPENPROVIDER_USERNAME: "sandbox-user",
         OPENPROVIDER_PASSWORD: "sandbox-password",
         CLOUDFLARE_API_TOKEN: "sandbox-token",

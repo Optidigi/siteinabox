@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import {
+  asPayload,
+  matchesWhere,
+  type MockDoc,
+  type MockFindArgs,
+  type MockUpdateArgs,
+} from "../_helpers/mockPayload"
 
 const { createMolliePayment } = vi.hoisted(() => ({
   createMolliePayment: vi.fn(),
@@ -72,14 +78,8 @@ describe("supplemental assisted-migration Mollie payment", () => {
     }
     let nextId = 100
     const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
-      const idempotencyKey = where &&
-        "idempotencyKey" in where &&
-        typeof where.idempotencyKey === "object" &&
-        where.idempotencyKey
-        ? (where.idempotencyKey as { equals?: unknown }).equals
-        : undefined
-      const docs = (collections[collection] ?? []).filter(
-        (doc) => idempotencyKey === undefined || doc.idempotencyKey === idempotencyKey,
+      const docs = (collections[collection] ?? []).filter((doc) =>
+        matchesWhere(doc, where),
       )
       return { docs, totalDocs: docs.length }
     })
@@ -126,6 +126,9 @@ describe("supplemental assisted-migration Mollie payment", () => {
       orderId: 70,
       redirectUrl: "https://cms.siteinabox.nl/migrations/10",
     })
+    Object.assign(first.paymentAttempt, {
+      idempotencyKey: "mollie:supplemental:order:70:v1",
+    })
     const second = await createSupplementalMigrationMollieCheckout(payload, {
       orderId: 70,
       redirectUrl: "https://cms.siteinabox.nl/migrations/10",
@@ -146,7 +149,7 @@ describe("supplemental assisted-migration Mollie payment", () => {
     expect(createMolliePayment).toHaveBeenCalledTimes(1)
     expect(createMolliePayment).toHaveBeenCalledWith(expect.objectContaining({
       sequenceType: "oneoff",
-      idempotencyKey: "mollie:supplemental:order:70:v1",
+      idempotencyKey: "mollie:supplemental:order:70:authority-v2",
       metadata: expect.objectContaining({ migrationId: 10, orderId: 70 }),
     }))
     expect(collections.orders![0]).toMatchObject({

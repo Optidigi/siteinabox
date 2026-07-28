@@ -1,5 +1,4 @@
 import "server-only"
-import crypto from "node:crypto"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGate"
 
 export type MollieAmount = {
@@ -95,6 +94,7 @@ export type MollieCustomerList = {
 export type CreateMolliePaymentInput = {
   amount: MollieAmount
   customerId?: string | null
+  mandateId?: string | null
   sequenceType?: "first" | "recurring" | "oneoff"
   description: string
   redirectUrl?: string | null
@@ -137,16 +137,6 @@ export class MollieApiError extends Error {
 const cleanEnv = (value: string | undefined): string | null => {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
-}
-
-export function mollieAmountFromEnv(env = process.env): MollieAmount {
-  const currency = cleanEnv(env.MOLLIE_SITE_PAYMENT_CURRENCY) ?? "EUR"
-  const value = cleanEnv(env.MOLLIE_SITE_PAYMENT_AMOUNT)
-  if (!value) throw new Error("MOLLIE_SITE_PAYMENT_AMOUNT is required to create Mollie checkout.")
-  if (!/^\d+\.\d{2}$/.test(value)) {
-    throw new Error("MOLLIE_SITE_PAYMENT_AMOUNT must use Mollie's decimal format, for example 499.00.")
-  }
-  return { currency, value }
 }
 
 export function requireMollieApiKey(env = process.env): string {
@@ -258,6 +248,7 @@ export async function createMolliePayment(input: CreateMolliePaymentInput): Prom
       ...(input.redirectUrl ? { redirectUrl: input.redirectUrl } : {}),
       webhookUrl: input.webhookUrl,
       ...(input.customerId ? { customerId: input.customerId } : {}),
+      ...(input.mandateId ? { mandateId: input.mandateId } : {}),
       ...(input.sequenceType ? { sequenceType: input.sequenceType } : {}),
       metadata: input.metadata,
     }),
@@ -387,15 +378,4 @@ async function readMollieErrorBody(response: Response): Promise<{ title?: unknow
   } catch {
     return undefined
   }
-}
-
-export function verifyMollieWebhookSignature(rawBody: string, signature: string | null, env = process.env): boolean {
-  const secret = cleanEnv(env.MOLLIE_WEBHOOK_SIGNING_SECRET)
-  if (!secret) return env.NODE_ENV !== "production"
-  if (!signature) return false
-  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex")
-  const received = signature.replace(/^sha256=/, "")
-  const expectedBuffer = Buffer.from(expected, "hex")
-  const receivedBuffer = Buffer.from(received, "hex")
-  return expectedBuffer.length === receivedBuffer.length && crypto.timingSafeEqual(expectedBuffer, receivedBuffer)
 }
