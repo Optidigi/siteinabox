@@ -20,8 +20,9 @@ permissions:
   contents: read
   packages: write
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+concurrency:
+  group: build-cms-image-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -41,7 +42,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -59,11 +60,11 @@ jobs:
         with:
           images: ghcr.io/optidigi/siteinabox-cms
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
             type=sha,format=long,prefix=sha-
 
       - name: Build + push image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -79,7 +80,7 @@ jobs:
 
       - name: Smoke-start pushed image
         env:
-          IMAGE_REF: ghcr.io/optidigi/siteinabox-cms:sha-${{ github.sha }}
+          IMAGE_REF: ghcr.io/optidigi/siteinabox-cms@${{ steps.build.outputs.digest }}
           DATABASE_URI: postgres://payload:payload@host.docker.internal:5432/payload
           PAYLOAD_SECRET: ci-smoke-start-secret-ci-smoke-start-secret
           DATA_DIR: /tmp/siab-data
@@ -115,6 +116,9 @@ jobs:
             fi
             sleep 3
           done
+
+      - name: Record verified image digest
+        run: echo "Verified CMS image \`ghcr.io/optidigi/siteinabox-cms@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload smoke-start logs
         if: always()

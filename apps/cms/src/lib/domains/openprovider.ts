@@ -1,6 +1,9 @@
 import "server-only"
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
+  getTldCapabilityByVersion,
+  tldCapabilityOperationFlagEnabled,
+  type TldProductionOperation,
   validateTldRegistrationLabel,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -83,15 +86,17 @@ export type OpenProviderDomainRecord = {
   adminHandle: string | null
   nameServers: string[]
   renewalDate: string | null
+  registryExpiryDate?: string | null
   autorenew: "on" | "off" | "default" | "unknown"
   verificationEmailStatus: string | null
+  verificationEmailExpiresAt?: string | null
   verificationEmailDescription: string | null
   raw: unknown
 }
 
 export type OpenProviderDomainPrice = {
   domain: string
-  operation: "renew"
+  operation: "transfer" | "renew"
   currency: string
   netAmountMinor: number
   premium: boolean
@@ -137,20 +142,22 @@ const AVAILABILITY_CACHE_MAX_ENTRIES = 256
 export class OpenProviderApiError extends Error {
   status: number
   operation: string
+  providerCode: string | null
 
-  constructor(operation: string, status: number) {
+  constructor(operation: string, status: number, providerCode: string | null = null) {
     super(`${operation} failed with HTTP ${status}.`)
     this.name = "OpenProviderApiError"
     this.status = status
     this.operation = operation
+    this.providerCode = providerCode
   }
 }
 
 export class OpenProviderIndeterminateWriteError extends Error {
   operation: string
 
-  constructor(operation: string, cause?: unknown) {
-    super(`${operation} has an indeterminate provider outcome.`, { cause })
+  constructor(operation: string, _cause?: unknown) {
+    super(`${operation} has an indeterminate provider outcome.`)
     this.name = "OpenProviderIndeterminateWriteError"
     this.operation = operation
   }
@@ -159,6 +166,19 @@ export class OpenProviderIndeterminateWriteError extends Error {
 const cleanEnv = (value: string | undefined): string | null => {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
+}
+
+export const normalizeOpenProviderTimestamp = (
+  value: string | null | undefined,
+): string | null => {
+  const trimmed = value?.trim()
+  if (!trimmed || /^0{4}-0{2}-0{2}/.test(trimmed)) return null
+  const normalized = trimmed.replace(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/,
+    "$1T$2.000Z",
+  )
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
 const apiBase = (env: NodeJS.ProcessEnv): string =>
@@ -182,6 +202,29 @@ const readObject = (value: unknown): Record<string, unknown> =>
 const dataObject = (value: unknown): Record<string, unknown> => {
   const root = readObject(value)
   return readObject(root.data)
+}
+
+const providerErrorCode = async (response: Response): Promise<string | null> => {
+  try {
+    const payload = readObject(await json(response))
+    const error = readObject(payload.error)
+    const errors = Array.isArray(payload.errors) ? payload.errors : []
+    const firstError = readObject(errors[0])
+    const data = readObject(payload.data)
+    const candidate = [
+      payload.code,
+      payload.error_code,
+      error.code,
+      firstError.code,
+      data.code,
+    ].find((value) => typeof value === "string")
+    const normalized = typeof candidate === "string"
+      ? candidate.trim().toUpperCase()
+      : ""
+    return /^[A-Z0-9_.-]{1,80}$/.test(normalized) ? normalized : null
+  } catch {
+    return null
+  }
 }
 
 const fetcher = (options?: OpenProviderOptions): FetchLike => options?.fetchImpl ?? globalThis.fetch
@@ -577,9 +620,32 @@ const nameserversFromEnv = (env: NodeJS.ProcessEnv): Array<{ name: string }> | n
   return names.length > 0 ? names.map((name) => ({ name })) : null
 }
 
-const enabledCapabilityForDomain = (domainInput: string) => {
+const enabledCapabilityForDomain = (
+  domainInput: string,
+  operation: Extract<TldProductionOperation, "registration" | "incoming_transfer">,
+  acceptedCapabilityVersion?: string,
+) => {
   const domain = splitDomain(domainInput)
-  const capability = getEnabledTldCapability(domain.extension)
+  const currentlyEnabled = getTldCapabilityForProductionOperation(
+    domain.extension,
+    operation,
+  )
+  const acceptedCapability = acceptedCapabilityVersion
+    ? getTldCapabilityByVersion(acceptedCapabilityVersion)
+    : null
+  if (
+    acceptedCapabilityVersion &&
+    (
+      !acceptedCapability ||
+      acceptedCapability.tld !== domain.extension ||
+      !tldCapabilityOperationFlagEnabled(acceptedCapability, operation)
+    )
+  ) {
+    throw new Error(
+      `Accepted TLD capability ${acceptedCapabilityVersion} is not valid for .${domain.extension}.`,
+    )
+  }
+  const capability = acceptedCapability ?? currentlyEnabled
   if (!capability) throw new Error(`TLD .${domain.extension} is not enabled for provider operations.`)
   if (!validateTldRegistrationLabel(capability, domain.name)) {
     throw new Error(`Domain label is not supported for .${domain.extension}.`)
@@ -598,9 +664,14 @@ export function buildOpenProviderDomainRegistrationRequest(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    acceptedCapabilityVersion?: string
   },
 ): OpenProviderRegistrationRequest {
-  const { domain, capability } = enabledCapabilityForDomain(domainInput)
+  const { domain, capability } = enabledCapabilityForDomain(
+    domainInput,
+    "registration",
+    input?.acceptedCapabilityVersion,
+  )
   const explicitNameServers = input?.nameServers && input.nameServers.length > 0
     ? input.nameServers
     : null
@@ -636,9 +707,14 @@ export function buildOpenProviderDomainTransferRequest(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    acceptedCapabilityVersion?: string
   },
 ): OpenProviderTransferRequest {
-  const { domain, capability } = enabledCapabilityForDomain(domainInput)
+  const { domain, capability } = enabledCapabilityForDomain(
+    domainInput,
+    "incoming_transfer",
+    input.acceptedCapabilityVersion,
+  )
   const authCode = input.authCode.trim()
   if (!validateTldTransferAuthorization(capability, authCode)) {
     throw new Error(`A valid .${capability.tld} OpenProvider domain transfer auth code is required.`)
@@ -661,7 +737,7 @@ export function buildOpenProviderDomainTransferRequest(
     tech_handle: requiredHandle(env, "OPENPROVIDER_TECH_HANDLE"),
     billing_handle: requiredHandle(env, "OPENPROVIDER_BILLING_HANDLE"),
     autorenew: input.autorenew ?? (
-      capability.renewal.executionMode === "autorenew" ? "on" : "off"
+      capability.renewal.executionMode === "provider_autorenew" ? "on" : "off"
     ),
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
     ...(cleanEnv(input.reference) ? { comments: cleanEnv(input.reference) as string } : {}),
@@ -777,12 +853,22 @@ const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord
     renewalDate: typeof source.renewal_date === "string" && source.renewal_date.trim()
       ? source.renewal_date
       : null,
+    registryExpiryDate:
+      typeof source.registry_expiration_date === "string" &&
+      source.registry_expiration_date.trim()
+      ? source.registry_expiration_date
+      : null,
     autorenew: source.autorenew === "on" || source.autorenew === "off" || source.autorenew === "default"
       ? source.autorenew
       : "unknown",
     verificationEmailStatus:
       typeof source.verification_email_status === "string" && source.verification_email_status.trim()
         ? source.verification_email_status
+        : null,
+    verificationEmailExpiresAt:
+      typeof source.verification_email_exp_date === "string" &&
+      source.verification_email_exp_date.trim()
+        ? source.verification_email_exp_date
         : null,
     verificationEmailDescription:
       typeof source.verification_email_status_description === "string" &&
@@ -803,8 +889,9 @@ const providerPriceMinor = (value: unknown): number | null => {
   return Number.isSafeInteger(minor) && minor >= 0 ? minor : null
 }
 
-export async function getOpenProviderDomainRenewalPrice(
+export async function getOpenProviderDomainOperationPrice(
   domainInput: string,
+  operation: "transfer" | "renew",
   options?: OpenProviderOptions,
 ): Promise<OpenProviderDomainPrice> {
   const env = options?.env ?? process.env
@@ -813,14 +900,19 @@ export async function getOpenProviderDomainRenewalPrice(
   const query = new URLSearchParams({
     "domain.name": domain.name,
     "domain.extension": domain.extension,
-    operation: "renew",
+    operation,
     period: "1",
   })
   const response = await fetcher(options)(`${apiBase(env)}/domains/prices?${query.toString()}`, {
     method: "GET",
     headers: jsonHeaders(token),
   })
-  if (!response.ok) throw new OpenProviderApiError("OpenProvider domain renewal price", response.status)
+  if (!response.ok) {
+    throw new OpenProviderApiError(
+      `OpenProvider domain ${operation} price`,
+      response.status,
+    )
+  }
   const payload = await json(response)
   const data = dataObject(payload)
   const prices = readObject(data.price)
@@ -828,16 +920,30 @@ export async function getOpenProviderDomainRenewalPrice(
   const currency = typeof reseller.currency === "string" ? reseller.currency.trim().toUpperCase() : ""
   const netAmountMinor = providerPriceMinor(reseller.price)
   if (!currency || netAmountMinor == null) {
-    throw new Error("OpenProvider renewal price response is incomplete.")
+    throw new Error(`OpenProvider ${operation} price response is incomplete.`)
   }
   return {
     domain: domain.domain,
-    operation: "renew",
+    operation,
     currency,
     netAmountMinor,
     premium: data.is_premium === true,
     raw: payload,
   }
+}
+
+export async function getOpenProviderDomainRenewalPrice(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderDomainPrice> {
+  return getOpenProviderDomainOperationPrice(domainInput, "renew", options)
+}
+
+export async function getOpenProviderDomainTransferPrice(
+  domainInput: string,
+  options?: OpenProviderOptions,
+): Promise<OpenProviderDomainPrice> {
+  return getOpenProviderDomainOperationPrice(domainInput, "transfer", options)
 }
 
 export async function setOpenProviderDomainAutorenew(
@@ -1009,6 +1115,7 @@ export async function registerOpenProviderDomain(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    acceptedCapabilityVersion?: string
   },
 ): Promise<OpenProviderRegistrationResult> {
   const env = options?.env ?? process.env
@@ -1022,6 +1129,7 @@ export async function registerOpenProviderDomain(
     nameServers: options?.nameServers,
     nsGroup: options?.nsGroup,
     reference: options?.reference,
+    acceptedCapabilityVersion: options?.acceptedCapabilityVersion,
   })
   let response: Response
   try {
@@ -1072,6 +1180,7 @@ export async function transferOpenProviderDomain(
     autorenew?: "on" | "off" | "default"
     nameServers: Array<{ name: string }>
     reference: string
+    acceptedCapabilityVersion?: string
   },
 ): Promise<OpenProviderTransferResult> {
   const env = options.env ?? process.env
@@ -1085,6 +1194,7 @@ export async function transferOpenProviderDomain(
     nameServers: options.nameServers,
     nsGroup: null,
     reference: options.reference,
+    acceptedCapabilityVersion: options.acceptedCapabilityVersion,
   })
   let response: Response
   try {
@@ -1100,7 +1210,11 @@ export async function transferOpenProviderDomain(
     if (response.status >= 500 || response.status === 408 || response.status === 429) {
       throw new OpenProviderIndeterminateWriteError("OpenProvider domain transfer")
     }
-    throw new OpenProviderApiError("OpenProvider domain transfer", response.status)
+    throw new OpenProviderApiError(
+      "OpenProvider domain transfer",
+      response.status,
+      await providerErrorCode(response),
+    )
   }
   let payload: unknown
   try {

@@ -351,11 +351,17 @@ describe("Cloudflare domain adapter", () => {
     await expect(createCloudflareEmailSendingSubdomain("zone-123", "mail.example.nl", {
       env,
       fetchImpl: fetchMock as typeof fetch,
-    })).rejects.toThrow("subdomain unavailable")
+    })).rejects.toThrow(
+      "Cloudflare Email Sending subdomain creation failed with HTTP 200.",
+    )
     await expect(createCloudflareEmailSendingSubdomain("zone-123", "mail.example.nl", {
       env,
       fetchImpl: fetchMock as typeof fetch,
     })).rejects.not.toThrow("cf-token")
+    await expect(createCloudflareEmailSendingSubdomain("zone-123", "mail.example.nl", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).rejects.not.toThrow("subdomain unavailable")
   })
 
   it("round-trips structured mail and service records for semantic migration comparison", async () => {
@@ -458,6 +464,33 @@ describe("Cloudflare domain adapter", () => {
     )
   })
 
+  it("normalizes Cloudflare proxied Auto TTL to its 300-second semantic value", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      success: true,
+      result_info: { page: 1, total_pages: 1, total_count: 1 },
+      result: [{
+        id: "web-1",
+        type: "A",
+        name: "example.nl",
+        ttl: 1,
+        content: "192.0.2.10",
+        proxied: true,
+      }],
+    }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", {
+      env,
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toEqual([
+      expect.objectContaining({
+        record: expect.objectContaining({
+          type: "A",
+          ttl: 300,
+          proxied: true,
+        }),
+      }),
+    ])
+  })
+
   it("fails closed when Cloudflare record inventory is incomplete or unsupported", async () => {
     const incomplete = vi.fn(async () => Response.json({
       success: true,
@@ -469,7 +502,7 @@ describe("Cloudflare domain adapter", () => {
       fetchImpl: incomplete as typeof fetch,
     })).rejects.toThrow("invalid pagination metadata")
 
-    const unsupported = vi.fn(async () => Response.json({
+    const supportedTlsa = vi.fn(async () => Response.json({
       success: true,
       result_info: { page: 1, total_pages: 1, total_count: 1 },
       result: [{
@@ -477,7 +510,33 @@ describe("Cloudflare domain adapter", () => {
         type: "TLSA",
         name: "_443._tcp.example.nl",
         ttl: 3600,
-        content: "3 1 1 ABCD",
+        content: `3 1 1 ${"AB".repeat(32)}`,
+      }],
+    }))
+    await expect(listCloudflareMigrationDnsRecords("zone-123", {
+      env,
+      fetchImpl: supportedTlsa as typeof fetch,
+    })).resolves.toEqual([
+      expect.objectContaining({
+        record: expect.objectContaining({
+          type: "TLSA",
+          certificateUsage: 3,
+          selector: 1,
+          matchingType: 1,
+          certificateAssociationData: "ab".repeat(32),
+        }),
+      }),
+    ])
+
+    const unsupported = vi.fn(async () => Response.json({
+      success: true,
+      result_info: { page: 1, total_pages: 1, total_count: 1 },
+      result: [{
+        id: "naptr-1",
+        type: "NAPTR",
+        name: "example.nl",
+        ttl: 3600,
+        content: "100 10 U E2U+sip",
       }],
     }))
     await expect(listCloudflareMigrationDnsRecords("zone-123", {

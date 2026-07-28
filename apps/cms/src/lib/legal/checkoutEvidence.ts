@@ -17,7 +17,9 @@ import {
   BUSINESS_USE_DECLARATION_VERSION,
 } from "@siteinabox/legal-content"
 import { businessUseDeclarationAcceptanceSchema } from "@siteinabox/contracts/commerce"
-import { getEnabledTldCapability } from "@siteinabox/contracts/tld-capabilities"
+import {
+  getTldCapabilityForProductionOperation,
+} from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutQuote } from "@/lib/checkout/checkoutQuote"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
@@ -33,6 +35,26 @@ const stableStringify = (value: unknown): string => {
 
 const sha256 = (value: unknown): string =>
   crypto.createHash("sha256").update(stableStringify(value)).digest("hex")
+
+const initialOrderClaim = (runId: string | number) => ({
+  kind: "initial_subscription",
+  generationRunId: String(runId),
+})
+
+const nonvolatileQuoteEvidence = (quote: CheckoutQuote): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(quote).filter(
+      ([key]) =>
+        key !== "quoteIssuedAt" &&
+        key !== "quoteExpiresAt" &&
+        key !== "migrationInputEnvelope",
+    ),
+  )
+
+const recordValue = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null
 
 const pageEvidence = (page: Page) => ({
   id: page.id,
@@ -133,6 +155,13 @@ export async function createOrderAndAcceptanceEvidence(input: {
   now?: Date
 }) {
   const now = input.now ?? new Date()
+  if (
+    input.quote.selectedDomain !== input.domain ||
+    input.quote.profileVersion !== input.checkoutProfile.profileVersion ||
+    Date.parse(input.quote.quoteExpiresAt) <= now.getTime()
+  ) {
+    throw new Error("Accepted checkout quote does not match the domain, profile, or acceptance time.")
+  }
   const [terms, privacy] = await Promise.all([
     getCurrentLegalDocumentRecord(input.payload, "platform-terms", "nl", now),
     getCurrentLegalDocumentRecord(input.payload, "platform-privacy", "nl", now),
@@ -148,43 +177,90 @@ export async function createOrderAndAcceptanceEvidence(input: {
   const vatAmount = input.quote.vatAmountMinor / 100
   const acceptedAt = now.toISOString()
   const tld = input.domain.split(".").at(-1)?.toLowerCase() ?? ""
-  const tldCapability = getEnabledTldCapability(tld, now)
+  const operation = input.quote.domainMode === "existing_domain"
+    ? "incoming_transfer"
+    : "registration"
+  const tldCapability = getTldCapabilityForProductionOperation(tld, operation, now)
   if (!tldCapability) {
     throw new Error(`TLD .${tld} is not enabled for accepted-order evidence.`)
   }
-  const orderIdentity = {
-    runId: input.run.id,
+  const initialAuthority = {
+    schemaVersion: 1,
+    generationRunId: String(input.run.id),
+    tenantId: String(input.tenant.id),
     domain: input.domain,
     checkoutProfileKey: input.checkoutProfile.profileKey,
     checkoutProfileVersion: input.checkoutProfile.profileVersion,
-    quote: input.quote,
-    terms: terms.contentHash,
-    privacy: privacy.contentHash,
-    businessUseDeclaration: BUSINESS_USE_DECLARATION_VERSION,
-    approval: input.approval.snapshotHash,
-    tldCapabilityVersion: tldCapability.capabilityVersion,
+    quote: nonvolatileQuoteEvidence(input.quote),
+    registrant: input.domainRegistrant,
+    approval: {
+      snapshotHash: input.approval.snapshotHash,
+      statementVersion: input.approval.statementVersion,
+      statementText: input.approval.statementText,
+      actorEmail: input.approval.actorEmail,
+    },
+    terms: {
+      documentVersion: terms.documentVersion,
+      acceptanceVersion: terms.acceptanceVersion,
+      contentHash: terms.contentHash,
+    },
+    privacy: {
+      documentVersion: privacy.documentVersion,
+      contentHash: privacy.contentHash,
+    },
+    businessUseDeclaration: {
+      version: BUSINESS_USE_DECLARATION_VERSION,
+      text: BUSINESS_USE_DECLARATION_TEXT_NL,
+    },
+    tldCapability: {
+      tld: tldCapability.tld,
+      capabilityVersion: tldCapability.capabilityVersion,
+      effectiveFrom: tldCapability.effectiveFrom,
+    },
   }
-  const orderNumber = `SIAB-${input.run.id}-${sha256(orderIdentity).slice(0, 12).toUpperCase()}`
+  const initialAuthorityHash = sha256(initialAuthority)
+  const orderNumber =
+    `SIAB-${input.run.id}-${sha256(initialOrderClaim(input.run.id)).slice(0, 12).toUpperCase()}`
   let order = await findOneDoc(input.payload, "orders", { orderNumber: { equals: orderNumber } })
   if (!order) {
-    order = await input.payload.create({
-      collection: "orders",
-      data: {
+    try {
+      order = await input.payload.create({
+        collection: "orders",
+        data: {
         orderNumber,
         tenant: input.tenant.id,
         generationRun: input.run.id,
         state: "accepted",
+        orderKind: "initial_subscription",
         checkoutProfileKey: input.checkoutProfile.profileKey,
         catalogVersion: input.quote.catalogVersion,
         quoteEvidence: {
-          schemaVersion: 1,
+          schemaVersion: input.quote.schemaVersion,
+          initialAuthorityHash,
           catalogVersion: input.quote.catalogVersion,
+          quoteIssuedAt: input.quote.quoteIssuedAt,
+          quoteExpiresAt: input.quote.quoteExpiresAt,
+          providerQuotedAt: input.quote.providerQuotedAt,
+          draftVersion: input.quote.draftVersion,
+          profileVersion: input.quote.profileVersion,
+          selectedDomain: input.quote.selectedDomain,
+          domainMode: input.quote.domainMode,
           checkoutProfileKey: input.checkoutProfile.profileKey,
           checkoutProfileVersion: input.checkoutProfile.profileVersion,
           domain: input.domain,
+          planPriceNetMinor: input.quote.planPriceNetMinor,
           domainIncludedAllowanceNetMinor: input.quote.domainIncludedAllowanceNetMinor,
           providerOperationPriceNetMinor: input.quote.providerOperationPriceNetMinor,
           domainSurchargeNetMinor: input.quote.domainSurchargeNetMinor,
+          migrationServiceFeeNetMinor: input.quote.migrationServiceFeeNetMinor,
+          subtotalNetMinor: input.quote.netAmountMinor,
+          vatRateBasisPoints: input.quote.vatRateBasisPoints,
+          vatAmountMinor: input.quote.vatAmountMinor,
+          grossPayableNowMinor: input.quote.grossAmountMinor,
+          futureSubscriptionNetMinor: input.quote.futureSubscriptionNetMinor,
+          futureSubscriptionVatMinor: input.quote.futureSubscriptionVatMinor,
+          futureSubscriptionGrossMinor: input.quote.futureSubscriptionGrossMinor,
+          domainRenewalExplanation: input.quote.domainRenewalExplanation,
           tldCapability: {
             tld: tldCapability.tld,
             capabilityVersion: tldCapability.capabilityVersion,
@@ -200,6 +276,8 @@ export async function createOrderAndAcceptanceEvidence(input: {
                 migration: {
                   classification: input.quote.migrationClassification,
                   sourceMechanism: "customer_authorized_provider_export_v1",
+                  sourceZoneHash: input.quote.migrationSourceZoneHash,
+                  checkoutSecretKey: input.quote.migrationSecretKey,
                   expectedOperatorTechnicalAction:
                     input.quote.migrationClassification === "assisted_standard",
                   netAmountMinor: input.quote.migrationClassification === "assisted_standard"
@@ -247,17 +325,31 @@ export async function createOrderAndAcceptanceEvidence(input: {
         paymentProvider: "mollie",
         createdAt: now.toISOString(),
       },
-      depth: 0,
-      overrideAccess: true,
-    })
+        depth: 0,
+        overrideAccess: true,
+      })
+    } catch (error) {
+      const raced = await findOneDoc(input.payload, "orders", {
+        orderNumber: { equals: orderNumber },
+      })
+      if (!raced) throw error
+      order = raced
+    }
+  }
+  const frozenAuthorityHash = recordValue(order.quoteEvidence)?.initialAuthorityHash
+  if (frozenAuthorityHash !== initialAuthorityHash) {
+    throw new Error(
+      "This checkout already has a different immutable initial-order authority.",
+    )
   }
 
   const evidenceKey = `order:${order.id}:terms:${terms.acceptanceVersion}`
   let acceptance = await findOneDoc(input.payload, "agreement-acceptances", { evidenceKey: { equals: evidenceKey } })
   if (!acceptance) {
-    acceptance = await input.payload.create({
-      collection: "agreement-acceptances",
-      data: {
+    try {
+      acceptance = await input.payload.create({
+        collection: "agreement-acceptances",
+        data: {
         evidenceKey,
         tenant: input.tenant.id,
         order: order.id,
@@ -273,9 +365,16 @@ export async function createOrderAndAcceptanceEvidence(input: {
         ipAddress: input.ipAddress ?? undefined,
         userAgent: input.userAgent ?? undefined,
       },
-      depth: 0,
-      overrideAccess: true,
-    })
+        depth: 0,
+        overrideAccess: true,
+      })
+    } catch (error) {
+      const raced = await findOneDoc(input.payload, "agreement-acceptances", {
+        evidenceKey: { equals: evidenceKey },
+      })
+      if (!raced) throw error
+      acceptance = raced
+    }
   }
 
   return { order, acceptance, terms, privacy }

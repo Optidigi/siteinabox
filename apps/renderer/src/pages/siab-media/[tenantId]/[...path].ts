@@ -3,6 +3,7 @@ import type { APIRoute } from "astro"
 import { loadPublishedSnapshot } from "../../../lib/snapshot"
 import { cmsRendererMediaEndpoint, mediaContentType, safeTenantMediaFilePath } from "../../../lib/media"
 import { publicHostFromProtectedRequest } from "../../../lib/origin-protection"
+import { readRuntimeSecret } from "../../../lib/runtime-secret"
 
 function notFound(): Response {
   return new Response(null, {
@@ -26,7 +27,10 @@ async function fetchCmsMediaFallback({
   if (!endpoint) return null
 
   const headers: HeadersInit = {}
-  const token = process.env.SIAB_RENDERER_API_TOKEN
+  const token = readRuntimeSecret(
+    process.env.SIAB_RENDERER_API_TOKEN,
+    process.env.SIAB_RENDERER_API_TOKEN_FILE,
+  )
   if (token) headers.authorization = `Bearer ${token}`
 
   const response = await fetch(endpoint, {

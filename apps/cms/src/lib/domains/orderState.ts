@@ -182,9 +182,9 @@ export function normalizeDomainRegistrantDetails(value: unknown): DomainRegistra
 }
 
 export function fixedDomainOrderPriceFromEnv(env: NodeJS.ProcessEnv = process.env): FixedDomainOrderPrice {
-  const amount = cleanText(env.OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT) ?? cleanText(env.MOLLIE_SITE_PAYMENT_AMOUNT)
-  const currency = cleanText(env.OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY) ?? cleanText(env.MOLLIE_SITE_PAYMENT_CURRENCY) ?? "EUR"
-  if (!amount) throw new Error("MOLLIE_SITE_PAYMENT_AMOUNT is required for domain orders.")
+  const amount = cleanText(env.OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT)
+  const currency = cleanText(env.OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY) ?? "EUR"
+  if (!amount) throw new Error("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT is required for fixed-price domain checks.")
   if (!/^\d+\.\d{2}$/.test(amount)) {
     throw new Error("Domain order price must use decimal format, for example 228.00.")
   }

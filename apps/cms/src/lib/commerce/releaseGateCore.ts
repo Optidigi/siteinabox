@@ -48,7 +48,6 @@ export function commerceReleaseGate(
       clean(env.CLOUDFLARE_API_BASE_URL) ??
       "https://api.cloudflare.com/client/v4",
     productionSecretsConfigured: Boolean(
-      clean(env.MOLLIE_WEBHOOK_SIGNING_SECRET) &&
       clean(env.OPENPROVIDER_USERNAME) &&
       clean(env.OPENPROVIDER_PASSWORD) &&
       clean(env.CLOUDFLARE_API_TOKEN) &&

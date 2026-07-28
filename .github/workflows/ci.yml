@@ -8,20 +8,17 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   package-quality:
     runs-on: ubuntu-latest
     env:
       TYPE_SAFETY_DIFF_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
       - name: Install dependencies
@@ -47,9 +44,9 @@ jobs:
   cms-quality:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
       - name: Install dependencies
@@ -95,9 +92,9 @@ jobs:
       DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload_test
       PAYLOAD_DISABLE_JOBS_AUTORUN: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
       - name: Install dependencies
@@ -110,13 +107,17 @@ jobs:
         run: pnpm --dir apps/cms check:commerce-release
       - name: Run vitest (unit + integration)
         run: pnpm --dir apps/cms test
+      - name: Install checkout browser
+        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
+      - name: Verify checkout browser contract
+        run: pnpm --dir apps/cms test:checkout-browser
 
   site:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
       - run: pnpm install --frozen-lockfile
@@ -132,9 +133,9 @@ jobs:
   renderer:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 26
       - run: pnpm install --frozen-lockfile

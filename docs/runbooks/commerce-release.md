@@ -22,10 +22,12 @@ settings as authorization for an unreviewed live provider operation.
 - `production` additionally requires `NODE_ENV=production`, a Mollie live key,
   the official Openprovider and Cloudflare API hosts, all webhook/provider and
   migration-encryption secrets, and
-  `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` after the Phase 6 edge/origin contract
-  has been rerun for that environment.
+  `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` after the
+  [renderer origin-isolation](renderer-origin-isolation.md) contract has been
+  rerun for that environment.
 
-The current evidence version is `phase11-2026-07-27.1`. Set
+The current evidence version is
+`commerce-production-readiness-2026-07-28.1`. Set
 `COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=1` only in the separately approved
 release environment. This flag is a deployment interlock, not approval by
 itself.
@@ -34,23 +36,25 @@ itself.
 
 Before moving to the next stage:
 
-1. Run `pnpm --dir apps/cms check:commerce-release`.
-2. Run the complete CMS test suite against disposable PostgreSQL 18 and apply
+1. Complete the fail-closed operation matrix and redacted scenario dossier in
+   [Commerce production evidence](commerce-production-evidence.md).
+2. Run `pnpm --dir apps/cms check:commerce-release`.
+3. Run the complete CMS test suite against disposable PostgreSQL 18 and apply
    the committed migration chain from an empty database.
-3. Run `pnpm renderer:deploy-contract`, `pnpm renderer:test`, and
+4. Run `pnpm renderer:deploy-contract`, `pnpm renderer:test`, and
    `pnpm renderer:build`.
-4. In provider sandbox or HTTP contract fixtures, rehearse duplicate Mollie
+5. In provider sandbox or HTTP contract fixtures, rehearse duplicate Mollie
    payments, a missing webhook, an indeterminate registration, low provider
    balance, imminent expiry, transfer-out, and migration rollback.
-5. Verify that the transfer-out rehearsal captures the complete authoritative
+6. Verify that the transfer-out rehearsal captures the complete authoritative
    Cloudflare zone and DNSSEC status, retains nameservers, mail records, HTTPS
    and renderer entitlement, and requires both contracting-customer
    confirmation and two separated provider-missing observations before
    custody moves.
-6. Review open critical commerce alerts. Production writes must not be enabled
+7. Review open critical commerce alerts. Production writes must not be enabled
    while payment-duplication, provider-balance, expiry, transfer-out, tenancy,
    or origin-isolation alerts remain unresolved.
-7. On the target release database, run
+8. On the target release database, run
    `pnpm --dir apps/cms check:commerce-production-readiness`. This command
    fails when any runtime interlock is missing or any critical payment/domain
    alert remains open. It is a required deployment preflight, not a provider
@@ -59,6 +63,15 @@ Before moving to the next stage:
 Record environment-specific evidence outside the repository. Do not commit
 credentials, customer data, provider responses, transfer codes, operator
 transcripts, or machine paths.
+
+Existing-domain checkout has an additional fail-closed feature flag and
+evidence matrix. Follow
+[Existing-domain migration](existing-domain-migration.md); advancing the
+general commerce stage does not enable that customer journey.
+
+Every TLD operation is independently fail-closed in the effective capability
+catalogue. Advancing the global stage does not enable registration, incoming
+transfer, renewal, registrant verification, or restoration for any TLD.
 
 ## Rollback
 

@@ -59,8 +59,16 @@ observations before acting on them.
 
 - **Classification:** Unknown; **scope:** payment, domain/DNS, publishing,
   renderer, and handoff mail.
+- **Code evidence:** The commerce failure suite, operation-specific TLD gates,
+  renderer origin contract, and committed migration chain are exercised in CI.
+  A local PostgreSQL 18 rehearsal applies the full migration chain before the
+  CMS suite. This evidence does not prove live Mollie, Openprovider,
+  Cloudflare, DNSSEC, or mail behavior.
 - **Next:** Run an explicitly approved disposable-domain rehearsal and capture
   provider identifiers, DNS, sender, snapshot, response, and mail evidence.
+  Keep every TLD production operation disabled until its row in
+  [Commerce production evidence](runbooks/commerce-production-evidence.md)
+  passes.
 
 ## SIAB-007 — Bot protection is outside the CMS surface
 

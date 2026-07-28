@@ -428,6 +428,107 @@ export async function recoverMissingMolliePaymentReferences(
       continue
     }
     if (
+      attempt.sequenceType === "recurring" &&
+      attempt.state === "pending_provider"
+    ) {
+      const agreementId = relationshipId(attempt.billingAgreement)
+      if (agreementId) {
+        const agreement = await payload.findByID({
+          collection: "billing-agreements",
+          id: agreementId,
+          depth: 0,
+          overrideAccess: true,
+        }) as BillingAgreement
+        let currentAgreement = agreement
+        if (
+          agreement.lastPaymentAttemptAt === attempt.createdAt &&
+          agreement.updatedAt
+        ) {
+          const cancellationScheduled =
+            agreement.state === "cancellation_scheduled"
+          const agreementResult = await payload.update({
+            collection: "billing-agreements",
+            where: {
+              and: [
+                { id: { equals: agreement.id } },
+                { updatedAt: { equals: agreement.updatedAt } },
+                { lastPaymentAttemptAt: { equals: attempt.createdAt } },
+              ],
+            },
+            data: {
+              lastPaymentAttemptAt: null,
+              ...(cancellationScheduled
+                ? { cancelAt: agreement.currentPeriodEndsAt ?? agreement.cancelAt }
+                : {}),
+            },
+            depth: 0,
+            overrideAccess: true,
+            context: { billingAgreementLifecycleMutation: true },
+          })
+          const updated = Array.isArray(agreementResult.docs)
+            ? agreementResult.docs[0] as BillingAgreement | undefined
+            : undefined
+          if (!updated) continue
+          currentAgreement = updated
+        }
+        const cancellationWon =
+          currentAgreement.state === "cancellation_scheduled" ||
+          !currentAgreement.renewalIntent
+        const attemptResult = await payload.update({
+          collection: "payment-attempts",
+          where: {
+            and: [
+              { id: { equals: attempt.id } },
+              { providerPaymentId: { exists: false } },
+              { state: { equals: "pending_provider" } },
+              { reconciliationRequired: { equals: true } },
+            ],
+          },
+          data: cancellationWon
+            ? {
+                state: "cancelled",
+                reconciliationRequired: false,
+                failureCode: "collection_cancelled_after_provider_reconciliation",
+                failureMessage:
+                  "No Mollie payment existed when cancellation was reconciled.",
+                stateHistory: [
+                  ...(Array.isArray(attempt.stateHistory)
+                    ? attempt.stateHistory
+                    : []),
+                  {
+                    state: "cancelled",
+                    at: nowDate.toISOString(),
+                    reason: "billing_cancellation_after_provider_absence",
+                  },
+                ],
+              }
+            : {
+                reconciliationRequired: false,
+                failureCode: "provider_absence_reconciled",
+                failureMessage:
+                  "No Mollie payment matched the durable recurring-payment authority.",
+                lastSyncedAt: nowDate.toISOString(),
+                stateHistory: [
+                  ...(Array.isArray(attempt.stateHistory)
+                    ? attempt.stateHistory
+                    : []),
+                  {
+                    state: "pending_provider",
+                    at: nowDate.toISOString(),
+                    reason: "provider_absence_reconciled_for_safe_retry",
+                  },
+                ],
+              },
+          depth: 0,
+          overrideAccess: true,
+          context: { paymentAttemptLifecycleMutation: true },
+        })
+        if (Array.isArray(attemptResult.docs) && attemptResult.docs[0]) {
+          continue
+        }
+      }
+    }
+    if (
       nowDate.getTime() - new Date(attempt.createdAt).getTime() >=
       STALE_WEBHOOK_ALERT_AGE_MS
     ) {

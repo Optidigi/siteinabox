@@ -24,6 +24,9 @@ export const requestMollieRefundTask: TaskConfig<{
     key: ({ input }) => `mollie-refund:${input.paymentAttemptId}`,
     exclusive: true,
   },
+  // Provider writes are retried only after requestMollieRefund has classified
+  // the outcome as safe. Payload must not replay definitive 4xx failures or
+  // indeterminate network/409 outcomes.
   retries: 0,
   inputSchema: [
     { name: "paymentAttemptId", type: "text", required: true },

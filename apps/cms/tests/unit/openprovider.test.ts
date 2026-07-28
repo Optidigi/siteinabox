@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   buildOpenProviderDomainRegistrationRequest,
   buildOpenProviderDomainTransferRequest,
@@ -9,8 +9,11 @@ import {
   findOpenProviderCustomerByReference,
   findOpenProviderDomain,
   getOpenProviderDomainRenewalPrice,
+  getOpenProviderDomainTransferPrice,
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
+  normalizeOpenProviderTimestamp,
+  OpenProviderApiError,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   setOpenProviderDomainAutorenew,
@@ -21,9 +24,24 @@ import {
 
 const ORIGINAL_FETCH = globalThis.fetch
 
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date("2026-07-28T14:59:59.999Z"))
+})
+
 afterEach(() => {
+  vi.useRealTimers()
   globalThis.fetch = ORIGINAL_FETCH
   vi.restoreAllMocks()
+})
+
+describe("Openprovider timestamps", () => {
+  it("normalizes provider timestamps and rejects zero or invalid dates", () => {
+    expect(normalizeOpenProviderTimestamp("2026-08-10 12:30:00"))
+      .toBe("2026-08-10T12:30:00.000Z")
+    expect(normalizeOpenProviderTimestamp("0000-00-00 00:00:00")).toBeNull()
+    expect(normalizeOpenProviderTimestamp("not-a-date")).toBeNull()
+  })
 })
 
 const env = {
@@ -107,6 +125,34 @@ describe("OpenProvider adapter", () => {
     }))
     },
   )
+
+  it("quotes the reseller transfer operation independently from renewal", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: 0,
+      data: {
+        is_premium: false,
+        price: {
+          reseller: { currency: "EUR", price: "7.50" },
+        },
+      },
+    }))
+
+    await expect(getOpenProviderDomainTransferPrice("Example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+    })).resolves.toMatchObject({
+      domain: "example.nl",
+      operation: "transfer",
+      currency: "EUR",
+      netAmountMinor: 750,
+      premium: false,
+    })
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openprovider.test/v1beta/domains/prices?domain.name=example&domain.extension=nl&operation=transfer&period=1",
+      expect.objectContaining({ method: "GET" }),
+    )
+  })
 
   it("batch checks multiple domains with one provider request", async () => {
     const fetchMock = vi.fn(async () => Response.json({
@@ -548,9 +594,13 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "",
-    } as unknown as NodeJS.ProcessEnv)).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
+    } as unknown as NodeJS.ProcessEnv, {
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
 
-    expect(buildOpenProviderDomainRegistrationRequest("example.nl", env)).toEqual({
+    expect(buildOpenProviderDomainRegistrationRequest("example.nl", env, {
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    })).toEqual({
       domain: { name: "example", extension: "nl" },
       period: 1,
       owner_handle: "OWNER",
@@ -565,30 +615,30 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "ns1.example.nl, ns2.example.nl",
-    } as unknown as NodeJS.ProcessEnv)).toMatchObject({
+    } as unknown as NodeJS.ProcessEnv, {
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    })).toMatchObject({
       name_servers: [{ name: "ns1.example.nl" }, { name: "ns2.example.nl" }],
     })
 
-    expect(buildOpenProviderDomainRegistrationRequest("example.be", env)).toMatchObject({
-      domain: { name: "example", extension: "be" },
-      period: 1,
-      autorenew: "on",
-    })
+    expect(() => buildOpenProviderDomainRegistrationRequest("example.be", env))
+      .toThrow("TLD .be is not enabled")
   })
 
-  it.each(["nl", "be"] as const)(
+  it.each(["nl"] as const)(
     "builds the reviewed .%s transfer contract without sending a provider write",
     (tld) => {
       expect(buildOpenProviderDomainTransferRequest(`example.${tld}`, env, {
-        authCode: tld === "be" ? "123-456-789-012-345" : "opaque-nl-token",
+        authCode: "opaque-nl-token",
         ownerHandle: "OWNER-CLIENT",
         nameServers: [
           { name: "ada.ns.cloudflare.com" },
           { name: "bob.ns.cloudflare.com" },
         ],
+        acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
       })).toEqual({
         domain: { name: "example", extension: tld },
-        auth_code: tld === "be" ? "123-456-789-012-345" : "opaque-nl-token",
+        auth_code: "opaque-nl-token",
         owner_handle: "OWNER-CLIENT",
         admin_handle: "ADMIN",
         tech_handle: "TECH",
@@ -602,16 +652,39 @@ describe("OpenProvider adapter", () => {
     },
   )
 
-  it("requires transfer authorization and explicit DNS routing evidence", () => {
+  it("does not turn modeled but disabled .be capability metadata into a provider write", () => {
     expect(() => buildOpenProviderDomainTransferRequest("example.be", env, {
+      authCode: "123-456-789-012-345",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+    })).toThrow("TLD .be is not enabled")
+    expect(buildOpenProviderDomainTransferRequest("example.be", env, {
+      authCode: "123-456-789-012-345",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      acceptedCapabilityVersion: "tld-be-2026-07-27.1",
+    })).toMatchObject({
+      domain: { name: "example", extension: "be" },
+      auth_code: "123-456-789-012-345",
+      autorenew: "on",
+    })
+    expect(() => buildOpenProviderDomainTransferRequest("example.nl", env, {
+      authCode: "opaque-nl-token",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      acceptedCapabilityVersion: "tld-nl-unknown",
+    })).toThrow("Accepted TLD capability tld-nl-unknown is not valid")
+  })
+
+  it("requires transfer authorization and explicit DNS routing evidence", () => {
+    expect(() => buildOpenProviderDomainTransferRequest("example.nl", env, {
       authCode: " ",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toThrow("auth code")
-    expect(() => buildOpenProviderDomainTransferRequest("example.be", {
+    expect(() => buildOpenProviderDomainTransferRequest("example.nl", {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "",
     } as unknown as NodeJS.ProcessEnv, {
-      authCode: "123-456-789-012-345",
+      authCode: "opaque-nl-token",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
   })
 
@@ -652,6 +725,7 @@ describe("OpenProvider adapter", () => {
       env,
       token: "token-123",
       fetchImpl: fetchMock as typeof fetch,
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).resolves.toMatchObject({
       id: 42,
       domain: "example.nl",
@@ -661,7 +735,9 @@ describe("OpenProvider adapter", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
-      body: JSON.stringify(buildOpenProviderDomainRegistrationRequest("example.nl", env)),
+      body: JSON.stringify(buildOpenProviderDomainRegistrationRequest("example.nl", env, {
+        acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+      })),
     }))
   })
 
@@ -682,8 +758,10 @@ describe("OpenProvider adapter", () => {
             { name: "bob.ns.cloudflare.com" },
           ],
           renewal_date: "2027-07-26 00:00:00",
+          registry_expiration_date: "2027-08-01 00:00:00",
           autorenew: "on",
           verification_email_status: "verified",
+          verification_email_exp_date: "2026-08-10 12:30:00",
           verification_email_status_description: "Registrant email verified",
         }],
       },
@@ -700,8 +778,11 @@ describe("OpenProvider adapter", () => {
       ownerHandle: "OWNER-CLIENT",
       adminHandle: "ADMIN",
       nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      renewalDate: "2027-07-26 00:00:00",
+      registryExpiryDate: "2027-08-01 00:00:00",
       autorenew: "on",
       verificationEmailStatus: "verified",
+      verificationEmailExpiresAt: "2026-08-10 12:30:00",
     })
     expect(fetchMock).toHaveBeenCalledWith(
       `https://openprovider.test/v1beta/domains?full_name=example.${tld}&with_verification_email=true&limit=2`,
@@ -870,6 +951,7 @@ describe("OpenProvider adapter", () => {
       ],
       autorenew: "on",
       reference: "domain-migration:order:700:v1",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).resolves.toMatchObject({
       id: 9010,
       domain: "example.nl",
@@ -892,6 +974,35 @@ describe("OpenProvider adapter", () => {
         { name: "ns2.legacy.example" },
       ],
     })
+  })
+
+  it("retains only a bounded provider error code for transfer classification", async () => {
+    const fetchMock = vi.fn(async () => Response.json({
+      code: "DOMAIN_AUTH_CODE_INVALID",
+      desc: "must never be retained in the thrown message",
+      data: { customer: "private payload" },
+    }, { status: 400 }))
+    const error = await transferOpenProviderDomain("example.nl", {
+      env,
+      token: "token-123",
+      fetchImpl: fetchMock as typeof fetch,
+      authCode: "opaque-nl-code",
+      ownerHandle: "OWNER-CLIENT",
+      nameServers: [
+        { name: "ns1.legacy.example" },
+        { name: "ns2.legacy.example" },
+      ],
+      autorenew: "on",
+      reference: "domain-migration:order:700:v1",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    }).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(OpenProviderApiError)
+    expect(error).toMatchObject({
+      status: 400,
+      providerCode: "DOMAIN_AUTH_CODE_INVALID",
+    })
+    expect(String(error)).not.toMatch(/private payload|never be retained/)
   })
 
   it("updates nameservers explicitly and treats a timeout as indeterminate", async () => {

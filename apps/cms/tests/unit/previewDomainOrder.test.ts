@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { SiteGenerationRun } from "@/payload-types"
 
@@ -22,14 +22,20 @@ import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, sugge
 
 describe("preview domain order", () => {
   beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-07-28T14:59:59.999Z"))
     vi.clearAllMocks()
-    vi.stubEnv("MOLLIE_SITE_PAYMENT_AMOUNT", "228.00")
-    vi.stubEnv("MOLLIE_SITE_PAYMENT_CURRENCY", "EUR")
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "10.00")
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT", "10.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_OFFER_AMOUNT", "25.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_OFFER_CURRENCY", "EUR")
     vi.mocked(suggestOpenProviderDomains).mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("returns unavailable primary domain results without waiting for alternatives", async () => {
@@ -54,7 +60,13 @@ describe("preview domain order", () => {
     })
     vi.mocked(checkOpenProviderDomainsAvailability).mockImplementation(async () => new Promise(() => {}))
 
-    const result = await checkAndRecordPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "acme.nl")
+    const result = await checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>(run),
+      "acme.nl",
+      null,
+      { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
+    )
 
     expect(result).toMatchObject({
       messageKey: "checkoutDomainUnavailable",
@@ -282,7 +294,13 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    const result = await checkAndRecordPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "levelweb.nl")
+    const result = await checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>(run),
+      "levelweb.nl",
+      null,
+      { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
+    )
 
     expect(result).toMatchObject({
       messageKey: "checkoutDomainAvailableExtraFee",
@@ -319,7 +337,16 @@ describe("preview domain order", () => {
       internalReason: null,
     })
 
-    const result = await checkAndRecordPreviewDomainOrder(asPayload(payload), cast<SiteGenerationRun>(run), "readonly.nl", null, { record: false })
+    const result = await checkAndRecordPreviewDomainOrder(
+      asPayload(payload),
+      cast<SiteGenerationRun>(run),
+      "readonly.nl",
+      null,
+      {
+        record: false,
+        capabilityEffectiveAt: "2026-07-28T14:59:59.999Z",
+      },
+    )
 
     expect(result).toMatchObject({
       messageKey: "checkoutDomainAvailable",

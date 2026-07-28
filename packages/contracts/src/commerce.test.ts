@@ -372,7 +372,7 @@ describe("offboarding custody and staged commerce release", () => {
   it("allows sandbox and production writes only with matching evidence and endpoints", () => {
     expect(evaluateCommerceReleaseGate({
       stage: "sandbox",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "development",
       mollieApiKeyMode: "test",
@@ -381,7 +381,7 @@ describe("offboarding custody and staged commerce release", () => {
     }).providerWritesAllowed).toBe(true)
     expect(evaluateCommerceReleaseGate({
       stage: "production",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "production",
       mollieApiKeyMode: "live",
@@ -406,7 +406,7 @@ describe("offboarding custody and staged commerce release", () => {
     })
     expect(evaluateCommerceReleaseGate({
       stage: "production",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "production",
       mollieApiKeyMode: "live",
@@ -417,7 +417,7 @@ describe("offboarding custody and staged commerce release", () => {
     }).providerWritesAllowed).toBe(false)
     expect(evaluateCommerceReleaseGate({
       stage: "sandbox",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "development",
       mollieApiKeyMode: "test",
@@ -429,7 +429,7 @@ describe("offboarding custody and staged commerce release", () => {
     })
     expect(evaluateCommerceReleaseGate({
       stage: "production",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "production",
       mollieApiKeyMode: "live",
@@ -478,6 +478,7 @@ describe("independent commerce state machines", () => {
   })
 
   it("keeps captured payment evidence while refunds follow their own states", () => {
+    expect(paymentAttemptStateTransitions.created).toContain("failed")
     expect(paymentAttemptStateTransitions.paid).not.toContain("failed")
     expect(paymentAttemptStateTransitions.refund_pending).toContain("refund_failed")
     expect(paymentAttemptStateTransitions.refund_pending).toContain("chargeback")
@@ -488,6 +489,7 @@ describe("independent commerce state machines", () => {
     expect(domainRenewalCycleStateTransitions.payment_committed).toEqual([
       "provider_requested",
       "renewed",
+      "manual_review",
     ])
     expect(domainRenewalCycleStateTransitions.provider_requested).not.toContain("cancelled")
     expect(decideRenewalCancellation({
@@ -509,7 +511,7 @@ describe("Phase 7 billing and renewal contracts", () => {
   it("defines every governed customer reminder offset and the 14-day grace boundary", () => {
     expect(BILLING_UPCOMING_CHARGE_REMINDER_DAYS).toEqual([7])
     expect(BILLING_DUNNING_OFFSETS_DAYS).toEqual([0, 3, 7, 13])
-    expect(DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS).toEqual([60, 30, 14, 7, 1])
+    expect(DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS).toEqual([90, 60, 30, 14, 7, 1])
     expect(BILLING_GRACE_DAYS).toBe(14)
     expect(billingGraceEndsAt("2026-08-01T10:00:00.000Z")).toBe("2026-08-15T10:00:00.000Z")
     expect(billingDunningStage("2026-08-01T10:00:00.000Z", "2026-08-01T09:59:59.999Z")).toBe("not_due")
@@ -550,17 +552,17 @@ describe("Phase 7 billing and renewal contracts", () => {
 
   it("forbids explicit renewal and provider autorenew in the same cycle", () => {
     expect(() => assertExclusiveProviderRenewalExecution({
-      mode: "autorenew",
+      mode: "provider_autorenew",
       providerAutorenewEnabled: true,
       explicitRenewalRequested: false,
     })).not.toThrow()
     expect(() => assertExclusiveProviderRenewalExecution({
-      mode: "autorenew",
+      mode: "provider_autorenew",
       providerAutorenewEnabled: true,
       explicitRenewalRequested: true,
     })).toThrow("cannot use provider autorenew and explicit renewal together")
     expect(() => assertExclusiveProviderRenewalExecution({
-      mode: "explicit",
+      mode: "explicit_renew",
       providerAutorenewEnabled: true,
       explicitRenewalRequested: false,
     })).toThrow("requires provider autorenew to be off")

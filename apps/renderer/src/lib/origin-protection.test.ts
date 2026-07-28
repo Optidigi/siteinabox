@@ -1,4 +1,7 @@
 import assert from "node:assert/strict"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import test from "node:test"
 import {
   publicHostFromProtectedRequest,
@@ -26,6 +29,9 @@ function protectedHeaders(host = "studio-example.be"): HeadersInit {
 
 test("accepts a protected HTTPS request for any normalized public TLD", () => {
   assert.equal(publicHostFromProtectedRequest(request(protectedHeaders()), production), "studio-example.be")
+  const withoutForwardedHost = protectedHeaders()
+  delete (withoutForwardedHost as Record<string, string>)["x-forwarded-host"]
+  assert.equal(publicHostFromProtectedRequest(request(withoutForwardedHost), production), "studio-example.be")
   assert.equal(
     publicHostFromProtectedRequest(request(protectedHeaders("voorbeeld.example.nl")), production),
     "voorbeeld.example.nl",
@@ -40,10 +46,28 @@ test("fails closed for a missing or weak production origin secret", () => {
   }), null)
 })
 
+test("reads the production origin secret from a mounted secret file", () => {
+  const directory = mkdtempSync(join(tmpdir(), "siab-renderer-secret-"))
+  const secretFile = join(directory, "origin-secret")
+  try {
+    writeFileSync(secretFile, `${secret}\n`, { mode: 0o600 })
+    assert.equal(publicHostFromProtectedRequest(request(protectedHeaders()), {
+      NODE_ENV: "production",
+      SIAB_RENDERER_ORIGIN_SECRET_FILE: secretFile,
+    }), "studio-example.be")
+  } finally {
+    rmSync(directory, { recursive: true })
+  }
+})
+
 test("rejects direct-origin, non-HTTPS, malformed, and cross-host requests", () => {
   const withoutSecret = protectedHeaders()
   delete (withoutSecret as Record<string, string>)[RENDERER_ORIGIN_VERIFICATION_HEADER]
   assert.equal(publicHostFromProtectedRequest(request(withoutSecret), production), null)
+  assert.equal(publicHostFromProtectedRequest(request({
+    ...protectedHeaders(),
+    [RENDERER_ORIGIN_VERIFICATION_HEADER]: "guessed-origin-secret-000000000000000",
+  }), production), null)
   assert.equal(publicHostFromProtectedRequest(request({
     ...protectedHeaders(),
     "x-forwarded-proto": "http",

@@ -212,9 +212,11 @@ describe("published snapshot activation gate", () => {
       cloudflareZoneId: "zone-123",
       cloudflareSubdomainId: "subdomain-123",
     })
-    expect(asMockDoc(tenant.emailSending).lastError).toContain("Bearer [redacted]")
-    expect(asMockDoc(tenant.emailSending).lastError).toContain("api_token=[redacted]")
+    expect(asMockDoc(tenant.emailSending).lastError).toBe(
+      "Cloudflare Email Sending subdomain get failed with HTTP 200.",
+    )
     expect(asMockDoc(tenant.emailSending).lastError).not.toContain("cf-secret")
+    expect(asMockDoc(tenant.emailSending).lastError).not.toContain("Provider rejected")
     expect(snapshot.status).toBe("drafted")
   })
 

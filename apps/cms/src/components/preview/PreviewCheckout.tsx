@@ -31,6 +31,8 @@ import type {
   CheckoutProfileDraft,
   CheckoutProfileView,
 } from "@/lib/checkout/checkoutProfile"
+import type { CheckoutQuoteSet } from "@/lib/checkout/checkoutQuote"
+import type { CustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
 export type PreviewCheckoutDomainOption = {
@@ -44,7 +46,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -53,9 +55,21 @@ export type PreviewCheckoutActionState = {
   extraFeeLabel?: string | null
   totalPriceLabel?: string | null
   domainSurchargeNetMinor?: number
+  quotes?: CheckoutQuoteSet
   requestToken?: string
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
+  domainMode?: "new_registration" | "existing_domain"
+  migrationReadiness?: "ready_automatic" | "ready_assisted" | "custom_quote" | "unsupported"
+  migrationClassification?: "automatic" | "assisted_standard" | null
+  migrationPublicEvidence?: {
+    checkedAt: string
+    authoritativeNameservers: string[]
+    dnssecDsPresent: boolean
+    probableDnsProvider: string | null
+    registrar: string | null
+    supplementalOnly: true
+  } | null
 }
 
 export type PreviewCheckoutProfileActionState = {
@@ -66,6 +80,7 @@ export type PreviewCheckoutProfileActionState = {
   profile?: CheckoutProfileView
   currentProfile?: CheckoutProfileView
   fieldErrors?: Record<string, string>
+  quotes?: CheckoutQuoteSet
 }
 
 export type PreviewCheckoutSuggestionsState = {
@@ -74,6 +89,17 @@ export type PreviewCheckoutSuggestionsState = {
   suggestions?: PreviewCheckoutDomainOption[]
   cursor?: number
   done?: boolean
+}
+
+export type MigrationCustomerActionState = {
+  ok: boolean
+  status:
+    | "idle"
+    | "saved"
+    | "invalid_input"
+    | "refresh_required"
+    | "retryable_service_error"
+  message: string
 }
 
 type PreviewCheckoutAction = (
@@ -88,6 +114,7 @@ type PreviewCheckoutProfileAction = (
 
 type CheckoutStep = "domain" | "details" | "overview"
 type BillingPeriod = "monthly" | "annual"
+const checkoutStepOrder: CheckoutStep[] = ["domain", "details", "overview"]
 
 export type PreviewCheckoutCatalog = {
   version: string
@@ -110,7 +137,13 @@ type PreviewCheckoutProps = {
   domainReady?: boolean
   initialProfile?: CheckoutProfileView | null
   initialDetails: CheckoutProfileDraft
-  initialDomainSurchargeNetMinor?: number
+  initialQuotes?: CheckoutQuoteSet | null
+  initialStep?: CheckoutStep
+  paymentReturn?: boolean
+  existingDomainMigrationEnabled?: boolean
+  migrationStatus?: CustomerMigrationStatus | null
+  acceptedOrderId?: string | number | null
+  requiresMigrationRecollection?: boolean
   catalog: PreviewCheckoutCatalog
   paymentStatus: string
   previewHref: string
@@ -119,6 +152,15 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
+  acceptMigrationSupplementalOrderAction?: (
+    formData: FormData,
+  ) => Promise<MigrationCustomerActionState>
+  recollectAcceptedMigrationInputAction?: (
+    formData: FormData,
+  ) => Promise<MigrationCustomerActionState>
+  submitMigrationTransferCodeAction?: (
+    formData: FormData,
+  ) => Promise<MigrationCustomerActionState>
   termsHref: string
   privacyHref: string
   termsVersion: string
@@ -140,6 +182,11 @@ const initialSuggestionsState: PreviewCheckoutSuggestionsState = {
   cursor: 0,
   done: false,
 }
+const initialMigrationActionState: MigrationCustomerActionState = {
+  ok: false,
+  status: "idle",
+  message: "",
+}
 
 const placeholderSuggestionsForDomain = (domain: string): PreviewCheckoutDomainOption[] =>
   previewDomainCandidates(domain).slice(0, 5).map((candidate) => ({
@@ -155,13 +202,36 @@ const money = (locale: string, minor: number, currency: string): string =>
 const nextRequestToken = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
+const checkoutFieldId = (field: string): string | null => ({
+  firstName: "checkout-first-name",
+  lastName: "checkout-last-name",
+  registeredBusinessName: "checkout-business-name",
+  kvkNumber: "checkout-kvk",
+  intendedCompanyName: "checkout-intended-company",
+  street: "checkout-street",
+  number: "checkout-number",
+  suffix: "checkout-suffix",
+  zipcode: "checkout-postcode",
+  city: "checkout-city",
+  country: "checkout-country",
+  phoneCountryCode: "checkout-phone-country",
+  phoneAreaCode: "checkout-phone-area",
+  phoneSubscriberNumber: "checkout-phone-number",
+} as Record<string, string>)[field] ?? null
+
 export function PreviewCheckout({
   customerEmail,
   currentDomain,
   domainReady = false,
   initialProfile,
   initialDetails,
-  initialDomainSurchargeNetMinor = 0,
+  initialQuotes = null,
+  initialStep = "domain",
+  paymentReturn = false,
+  existingDomainMigrationEnabled = false,
+  migrationStatus = null,
+  acceptedOrderId = null,
+  requiresMigrationRecollection = false,
   catalog,
   paymentStatus,
   previewHref,
@@ -170,6 +240,9 @@ export function PreviewCheckout({
   checkDomainAction,
   saveProfileAction,
   startPaymentAction,
+  acceptMigrationSupplementalOrderAction,
+  recollectAcceptedMigrationInputAction,
+  submitMigrationTransferCodeAction,
   termsHref,
   privacyHref,
   termsVersion,
@@ -179,7 +252,10 @@ export function PreviewCheckout({
   locale,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
-  const [step, setStep] = React.useState<CheckoutStep>("domain")
+  const [step, setStep] = React.useState<CheckoutStep>(initialStep)
+  const [highestReachedStep, setHighestReachedStep] = React.useState(
+    checkoutStepOrder.indexOf(initialStep),
+  )
   const [checkState, checkAction, checkPending] = useActionState(
     checkDomainAction,
     initialActionState,
@@ -192,6 +268,36 @@ export function PreviewCheckout({
     startPaymentAction,
     initialActionState,
   )
+  const [supplementalState, supplementalAction, supplementalPending] =
+    useActionState(
+      async (
+        _previous: MigrationCustomerActionState,
+        formData: FormData,
+      ) => acceptMigrationSupplementalOrderAction
+        ? acceptMigrationSupplementalOrderAction(formData)
+        : initialMigrationActionState,
+      initialMigrationActionState,
+    )
+  const [recollectionState, recollectionAction, recollectionPending] =
+    useActionState(
+      async (
+        _previous: MigrationCustomerActionState,
+        formData: FormData,
+      ) => recollectAcceptedMigrationInputAction
+        ? recollectAcceptedMigrationInputAction(formData)
+        : initialMigrationActionState,
+      initialMigrationActionState,
+    )
+  const [transferCodeState, transferCodeAction, transferCodePending] =
+    useActionState(
+      async (
+        _previous: MigrationCustomerActionState,
+        formData: FormData,
+      ) => submitMigrationTransferCodeAction
+        ? submitMigrationTransferCodeAction(formData)
+        : initialMigrationActionState,
+      initialMigrationActionState,
+    )
   const [details, setDetails] = React.useState<CheckoutProfileDraft>(
     initialProfile ?? initialDetails,
   )
@@ -199,7 +305,13 @@ export function PreviewCheckout({
     initialProfile ?? null,
   )
   const [detailsDirty, setDetailsDirty] = React.useState(!initialProfile)
-  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>("annual")
+  const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>(
+    initialQuotes?.annual.quote.billingPeriod ?? "annual",
+  )
+  const [domainMode, setDomainMode] = React.useState<
+    "new_registration" | "existing_domain"
+  >(initialQuotes?.annual.quote.domainMode ?? "new_registration")
+  const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
   const [suggestionsState, setSuggestionsState] =
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
   const [suggestionsPending, setSuggestionsPending] = React.useState(false)
@@ -213,6 +325,7 @@ export function PreviewCheckout({
   const latestProfileRequestTokenRef = React.useRef<string | null>(null)
   const paymentFormRef = React.useRef<HTMLFormElement | null>(null)
   const stepHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
+  const profileErrorSummaryRef = React.useRef<HTMLDivElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
   const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
@@ -226,7 +339,8 @@ export function PreviewCheckout({
   const checkAppliesToCurrentInput = Boolean(
     checkTokenIsCurrent &&
     checkState.domain &&
-    checkState.domain === normalizedDomainValue,
+    checkState.domain === normalizedDomainValue &&
+    (checkState.domainMode ?? "new_registration") === domainMode,
   )
   const suggestionsApplyToCurrentInput = Boolean(
     suggestionsState.domain && suggestionsState.domain === normalizedDomainValue,
@@ -249,15 +363,17 @@ export function PreviewCheckout({
       checkState.ok &&
       checkState.domain &&
       checkState.domain === normalizedDomainValue &&
+      (checkState.domainMode ?? "new_registration") === domainMode &&
       checkTokenIsCurrent
     ) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
+      setQuotes(checkState.quotes ?? null)
     }
-  }, [checkState, checkTokenIsCurrent, normalizedDomainValue])
+  }, [checkState, checkTokenIsCurrent, domainMode, normalizedDomainValue])
 
   React.useEffect(() => {
-    if (step !== "domain") return
+    if (step !== "domain" || domainMode !== "new_registration") return
     if (!domainLooksCheckable) return
     if (
       normalizedDomainValue === checkedDomain ||
@@ -268,7 +384,7 @@ export function PreviewCheckout({
       domainFormRef.current?.requestSubmit()
     }, 650)
     return () => window.clearTimeout(timer)
-  }, [checkedDomain, domainLooksCheckable, normalizedDomainValue, step])
+  }, [checkedDomain, domainLooksCheckable, domainMode, normalizedDomainValue, step])
 
   React.useEffect(() => {
     if (
@@ -279,6 +395,7 @@ export function PreviewCheckout({
       setSavedProfile(profileState.profile)
       setDetails(profileState.profile)
       setDetailsDirty(false)
+      if (profileState.quotes) setQuotes(profileState.quotes)
       setStep("overview")
       return
     }
@@ -296,11 +413,48 @@ export function PreviewCheckout({
   }, [paymentState, paymentSubmitRequested])
 
   React.useEffect(() => {
-    stepHeadingRef.current?.focus()
-  }, [step])
+    if (paymentState.status !== "version_conflict") return
+    if (paymentState.quotes) {
+      setQuotes(paymentState.quotes)
+    } else {
+      // Legal documents, accepted-order authority, and provider timestamps are
+      // server-owned. Reload the route instead of trying to reconstruct them
+      // from stale client props or unlocking an immutable accepted order.
+      window.location.assign(window.location.href)
+      return
+    }
+    setPreviewApprovalAccepted(false)
+    setTermsAccepted(false)
+    setBusinessUseAccepted(false)
+  }, [paymentState])
 
   React.useEffect(() => {
-    if (step !== "domain" || !domainLooksCheckable) return
+    if (profileState.status !== "invalid") {
+      stepHeadingRef.current?.focus()
+    }
+    setHighestReachedStep((current) =>
+      Math.max(current, checkoutStepOrder.indexOf(step)),
+    )
+  }, [profileState.status, step])
+
+  React.useEffect(() => {
+    if (
+      profileState.status === "invalid" &&
+      (
+        !profileState.requestToken ||
+        profileState.requestToken === latestProfileRequestTokenRef.current
+      )
+    ) {
+      profileErrorSummaryRef.current?.focus()
+    }
+  }, [profileState])
+
+  React.useEffect(() => {
+    if (
+      step !== "domain" ||
+      domainMode !== "new_registration" ||
+      !domainLooksCheckable
+    ) return
     const unavailable = Boolean(
       !checkPending &&
       checkAppliesToCurrentInput &&
@@ -403,6 +557,7 @@ export function PreviewCheckout({
     checkState.status,
     domainLooksCheckable,
     normalizedDomainValue,
+    domainMode,
     step,
     suggestionsApplyToCurrentInput,
     suggestionsHref,
@@ -415,6 +570,7 @@ export function PreviewCheckout({
   const selectedDomain =
     checkedDomain && checkedDomain === normalizedDomainValue ? checkedDomain : null
   const primaryDomainUnavailable = Boolean(
+    domainMode === "new_registration" &&
     !checkPending &&
     checkAppliesToCurrentInput &&
     !checkState.ok &&
@@ -437,6 +593,8 @@ export function PreviewCheckout({
       : []
   const domainIsReady = Boolean(
     selectedDomain &&
+    quotes &&
+    quotes.annual.quote.domainMode === domainMode &&
     ((checkState.ok && checkAppliesToCurrentInput) || selectedDomain === readyDomain),
   )
   const domainResultKind = checkPending
@@ -464,17 +622,10 @@ export function PreviewCheckout({
       : domainInputState === "error"
         ? "checkout-domain-error"
         : undefined
-  const domainSurchargeNetMinor = checkAppliesToCurrentInput
-    ? checkState.domainSurchargeNetMinor ?? 0
-    : selectedDomain === readyDomain
-      ? initialDomainSurchargeNetMinor
-      : 0
-  const plan = catalog.plans[billingPeriod]
-  const netAmountMinor = plan.netAmountMinor + domainSurchargeNetMinor
-  const vatAmountMinor = Math.round(
-    (netAmountMinor * catalog.vatRateBasisPoints) / 10_000,
-  )
-  const grossAmountMinor = netAmountMinor + vatAmountMinor
+  const selectedQuote = quotes?.[billingPeriod] ?? null
+  const netAmountMinor = selectedQuote?.quote.netAmountMinor ?? 0
+  const vatAmountMinor = selectedQuote?.quote.vatAmountMinor ?? 0
+  const grossAmountMinor = selectedQuote?.quote.grossAmountMinor ?? 0
 
   const updateDomain = (value: string) => {
     suggestionsAbortRef.current?.abort()
@@ -484,8 +635,19 @@ export function PreviewCheckout({
     setDomainValue(value)
     if (value.trim().toLowerCase() !== checkedDomain) {
       setCheckedDomain(null)
+      setQuotes(null)
       if (step !== "domain") setStep("domain")
     }
+  }
+
+  const updateDomainMode = (mode: "new_registration" | "existing_domain") => {
+    if (mode === domainMode) return
+    suggestionsAbortRef.current?.abort()
+    setDomainMode(mode)
+    setCheckedDomain(null)
+    setQuotes(null)
+    setDomainValue("")
+    lastSubmittedDomainRef.current = null
   }
 
   const selectSuggestedDomain = (option: PreviewCheckoutDomainOption) => {
@@ -508,11 +670,13 @@ export function PreviewCheckout({
   }
 
   const goBack = () => {
+    if (acceptedOrderId != null) return
     if (step === "details") setStep("domain")
     if (step === "overview") setStep("details")
   }
 
   const submitPayment = () => {
+    if (requiresMigrationRecollection) return
     setPaymentSubmitRequested(true)
     paymentFormRef.current?.requestSubmit()
   }
@@ -536,8 +700,270 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-4xl gap-4 p-3 md:p-4">
-        <PreviewCheckoutStepper step={step} />
+      <div className="mx-auto grid min-w-0 w-full max-w-4xl gap-4 p-3 [&>*]:min-w-0 md:p-4">
+        <PreviewCheckoutStepper
+          step={step}
+          highestReachedStep={
+            acceptedOrderId == null
+              ? highestReachedStep
+              : checkoutStepOrder.indexOf(step)
+          }
+          onStepSelect={acceptedOrderId == null ? setStep : () => {}}
+        />
+
+        {paymentReturn && (
+          <Alert role="status" aria-live="polite">
+            <Info className="size-4" aria-hidden />
+            <AlertTitle>{t("checkoutPaymentReturnTitle")}</AlertTitle>
+            <AlertDescription>
+              {paymentStatus === "completed"
+                ? t("checkoutPaymentReturnCompleted")
+                : paymentStatus === "pending_provider"
+                  ? t("checkoutPaymentReturnPending")
+                  : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatus)
+                    ? t("checkoutPaymentReturnFailed")
+                    : t("checkoutPaymentReturnUnknown")}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {requiresMigrationRecollection &&
+          acceptedOrderId != null &&
+          recollectAcceptedMigrationInputAction && (
+            <Alert role="alert">
+              <Globe2 className="size-4" aria-hidden />
+              <AlertTitle>{t("checkoutMigrationRecollectionTitle")}</AlertTitle>
+              <AlertDescription>
+                <p id="migration-recollection-payment-block">
+                  {t("checkoutMigrationRecollectionDescription")}
+                </p>
+                <form
+                  action={recollectionAction}
+                  className="mt-4 grid gap-3"
+                >
+                  <input
+                    type="hidden"
+                    name="acceptedOrderId"
+                    value={acceptedOrderId}
+                  />
+                  <Label htmlFor="accepted-migration-zone-export">
+                    {t("checkoutMigrationZoneExportLabel")}
+                  </Label>
+                  <Input
+                    id="accepted-migration-zone-export"
+                    name="zoneExport"
+                    type="file"
+                    accept="application/json,.json"
+                    required
+                  />
+                  <Label htmlFor="accepted-migration-transfer-code">
+                    {t("checkoutMigrationTransferCodeLabel")}
+                  </Label>
+                  <Input
+                    id="accepted-migration-transfer-code"
+                    name="transferCode"
+                    type="password"
+                    autoComplete="off"
+                    required
+                  />
+                  <label className="flex items-start gap-2">
+                    <input
+                      type="checkbox"
+                      name="transferAuthorization"
+                      value="accepted"
+                      required
+                      className="mt-1"
+                    />
+                    <span>{t("checkoutMigrationTransferAuthorization")}</span>
+                  </label>
+                  <Button type="submit" className="w-fit" disabled={recollectionPending}>
+                    {recollectionPending && (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    )}
+                    {t("checkoutMigrationRecollectionSubmit")}
+                  </Button>
+                  {recollectionState.message && (
+                    <p
+                      className={recollectionState.ok
+                        ? "text-sm text-foreground"
+                        : "text-sm text-destructive"}
+                      role={recollectionState.ok ? "status" : "alert"}
+                    >
+                      {recollectionState.message}
+                    </p>
+                  )}
+                </form>
+              </AlertDescription>
+            </Alert>
+          )}
+
+        {migrationStatus && (
+          <Alert role="status" aria-live="polite">
+            <Globe2 className="size-4" aria-hidden />
+            <AlertTitle>
+              {t("checkoutMigrationStatusTitle", {
+                domain: migrationStatus.domain,
+              })}
+            </AlertTitle>
+            <AlertDescription>
+              <span className="block">
+                {t("checkoutMigrationStatusState", {
+                  state: migrationStateLabel(migrationStatus.state, t),
+                })}
+              </span>
+              {migrationStatus.actions.filter((action) =>
+                action.status !== "completed").length > 0 && (
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {migrationStatus.actions
+                    .filter((action) => action.status !== "completed")
+                    .map((action) => (
+                      <li key={action.action}>
+                        {migrationCustomerActionLabel(action.action, t)}
+                        {" — "}
+                        <span className="font-medium">
+                          {migrationCustomerActionStatusLabel(action.status, t)}
+                        </span>
+                        {action.deadlineAt
+                          ? ` — ${t("checkoutMigrationActionDeadline", {
+                              deadline: new Intl.DateTimeFormat(locale, {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              }).format(new Date(action.deadlineAt)),
+                            })}`
+                          : ""}
+                      </li>
+                    ))}
+                </ul>
+              )}
+              {["awaiting_customer_acceptance", "awaiting_payment"].includes(
+                migrationStatus.operatorAuthorization,
+              ) &&
+                migrationStatus.supplementalProposal &&
+                acceptMigrationSupplementalOrderAction && (
+                  <form
+                    action={supplementalAction}
+                    className="mt-4 grid gap-3 rounded-md border bg-background p-3"
+                  >
+                    <input
+                      type="hidden"
+                      name="migrationId"
+                      value={migrationStatus.migrationId}
+                    />
+                    <input
+                      type="hidden"
+                      name="expectedMigrationVersion"
+                      value={migrationStatus.updatedAt}
+                    />
+                    <p className="font-medium">
+                      {t("checkoutMigrationSupplementalTitle")}
+                    </p>
+                    <p>
+                      {t("checkoutMigrationSupplementalScope", {
+                        scope: migrationWorkScopeLabel(
+                          migrationStatus.supplementalProposal.workScopeCode,
+                          t,
+                        ),
+                      })}
+                    </p>
+                    <p>
+                      {t("checkoutMigrationSupplementalPrice", {
+                        net: money(
+                          locale,
+                          migrationStatus.supplementalProposal.netAmountMinor,
+                          "EUR",
+                        ),
+                        gross: money(
+                          locale,
+                          migrationStatus.supplementalProposal.grossAmountMinor,
+                          "EUR",
+                        ),
+                      })}
+                    </p>
+                    <Button type="submit" className="w-fit" disabled={supplementalPending}>
+                      {supplementalPending && (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      )}
+                      {migrationStatus.operatorAuthorization === "awaiting_payment"
+                        ? t("checkoutMigrationSupplementalRetry")
+                        : t("checkoutMigrationSupplementalAccept")}
+                    </Button>
+                    {supplementalState.message && (
+                      <p
+                        className={supplementalState.ok
+                          ? "text-sm text-foreground"
+                          : "text-sm text-destructive"}
+                        role={supplementalState.ok ? "status" : "alert"}
+                      >
+                        {supplementalState.message}
+                      </p>
+                    )}
+                  </form>
+                )}
+              {migrationStatus.actions.some((action) =>
+                action.action === "provide_epp_code" &&
+                ["required", "failed"].includes(action.status)) &&
+                submitMigrationTransferCodeAction && (
+                  <form
+                    action={transferCodeAction}
+                    className="mt-4 grid gap-3 rounded-md border bg-background p-3"
+                  >
+                    <input
+                      type="hidden"
+                      name="migrationId"
+                      value={migrationStatus.migrationId}
+                    />
+                    <input
+                      type="hidden"
+                      name="expectedMigrationVersion"
+                      value={migrationStatus.updatedAt}
+                    />
+                    {migrationStatus.actions.some((action) =>
+                      action.action === "upload_complete_zone" &&
+                      ["required", "failed"].includes(action.status)) && (
+                        <>
+                          <Label htmlFor="migration-replacement-zone-export">
+                            {t("checkoutMigrationZoneExportLabel")}
+                          </Label>
+                          <Input
+                            id="migration-replacement-zone-export"
+                            name="zoneExport"
+                            type="file"
+                            accept="application/json,.json"
+                            required
+                          />
+                        </>
+                      )}
+                    <Label htmlFor="migration-replacement-transfer-code">
+                      {t("checkoutMigrationTransferCodeReplacement")}
+                    </Label>
+                    <Input
+                      id="migration-replacement-transfer-code"
+                      name="transferCode"
+                      type="password"
+                      autoComplete="off"
+                      required
+                    />
+                    <Button type="submit" className="w-fit" disabled={transferCodePending}>
+                      {transferCodePending && (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      )}
+                      {t("checkoutMigrationTransferCodeSubmit")}
+                    </Button>
+                    {transferCodeState.message && (
+                      <p
+                        className={transferCodeState.ok
+                          ? "text-sm text-foreground"
+                          : "text-sm text-destructive"}
+                        role={transferCodeState.ok ? "status" : "alert"}
+                      >
+                        {transferCodeState.message}
+                      </p>
+                    )}
+                  </form>
+                )}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {step === "domain" && (
           <Card>
@@ -552,6 +978,54 @@ export function PreviewCheckout({
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-5">
+              <fieldset className="grid gap-3">
+                <legend className="text-base font-semibold">
+                  {t("checkoutDomainModeLegend")}
+                </legend>
+                <label className="flex cursor-pointer items-start gap-3 rounded-md border p-4">
+                  <input
+                    type="radio"
+                    name="checkout-domain-mode"
+                    value="new_registration"
+                    checked={domainMode === "new_registration"}
+                    onChange={() => updateDomainMode("new_registration")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-medium">{t("checkoutDomainModeNew")}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {t("checkoutDomainModeNewHelp")}
+                    </span>
+                  </span>
+                </label>
+                <label
+                  className={cn(
+                    "flex items-start gap-3 rounded-md border p-4",
+                    existingDomainMigrationEnabled
+                      ? "cursor-pointer"
+                      : "cursor-not-allowed opacity-70",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="checkout-domain-mode"
+                    value="existing_domain"
+                    checked={domainMode === "existing_domain"}
+                    disabled={!existingDomainMigrationEnabled}
+                    onChange={() => updateDomainMode("existing_domain")}
+                    className="mt-1"
+                  />
+                  <span>
+                    <span className="block font-medium">{t("checkoutDomainModeExisting")}</span>
+                    <span className="block text-sm text-muted-foreground">
+                      {existingDomainMigrationEnabled
+                        ? t("checkoutDomainModeExistingHelp")
+                        : t("checkoutDomainModeExistingDisabled")}
+                    </span>
+                  </span>
+                </label>
+              </fieldset>
+
               <form
                 id="checkout-domain-form"
                 ref={domainFormRef}
@@ -567,6 +1041,7 @@ export function PreviewCheckout({
               >
                 <Label htmlFor="checkout-domain">{t("checkoutDomainLabel")}</Label>
                 <input ref={domainRequestTokenRef} type="hidden" name="requestToken" />
+                <input type="hidden" name="domainMode" value={domainMode} />
                 <div className="relative">
                   <Input
                     id="checkout-domain"
@@ -595,6 +1070,59 @@ export function PreviewCheckout({
                     ) : null}
                   </div>
                 </div>
+                {domainMode === "existing_domain" && (
+                  <div className="mt-3 grid gap-4 rounded-md border bg-muted/20 p-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="checkout-zone-export">
+                        {t("checkoutMigrationZoneExportLabel")}
+                      </Label>
+                      <Input
+                        id="checkout-zone-export"
+                        name="zoneExport"
+                        type="file"
+                        accept="application/json,.json"
+                        required
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        {t("checkoutMigrationZoneExportHelp")}
+                      </p>
+                    </div>
+                    <CheckoutTextField
+                      id="checkout-transfer-code"
+                      name="transferCode"
+                      type="password"
+                      label={t("checkoutMigrationTransferCodeLabel")}
+                      description={t("checkoutMigrationTransferCodeHelp")}
+                      value={undefined}
+                      autoComplete="off"
+                      required
+                    />
+                    <fieldset className="grid gap-2">
+                      <legend className="font-medium">
+                        {t("checkoutMigrationAssistanceLegend")}
+                      </legend>
+                      <label className="flex items-start gap-3">
+                        <input
+                          type="radio"
+                          name="migrationAssistance"
+                          value="assisted_standard"
+                          defaultChecked
+                          className="mt-1"
+                        />
+                        <span>{t("checkoutMigrationAssistedChoice")}</span>
+                      </label>
+                    </fieldset>
+                    <label className="flex items-start gap-3 text-sm leading-6">
+                      <Checkbox
+                        name="transferAuthorization"
+                        value="accepted"
+                        className="mt-1"
+                        required
+                      />
+                      <span>{t("checkoutMigrationTransferAuthorization")}</span>
+                    </label>
+                  </div>
+                )}
                 <div aria-live="polite" aria-atomic="true">
                   {domainInputState === "warning" && (
                     <p id="checkout-domain-unavailable" className="text-sm font-medium text-warning">
@@ -617,6 +1145,37 @@ export function PreviewCheckout({
                 </Alert>
               )}
 
+              {domainMode === "existing_domain" && checkAppliesToCurrentInput && (
+                <Alert
+                  variant={checkState.ok ? "default" : "destructive"}
+                  role={checkState.ok ? "status" : "alert"}
+                >
+                  <Info className="size-4" aria-hidden />
+                  <AlertTitle>
+                    {checkState.migrationReadiness === "ready_automatic"
+                      ? t("checkoutMigrationReadyAutomatic")
+                      : checkState.migrationReadiness === "ready_assisted"
+                        ? t("checkoutMigrationReadyAssisted")
+                        : checkState.migrationReadiness === "custom_quote"
+                          ? t("checkoutMigrationCustomQuote")
+                          : t("checkoutMigrationUnsupported")}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {checkState.message}
+                    {checkState.migrationPublicEvidence && (
+                      <span className="mt-2 block text-sm">
+                        {t("checkoutMigrationPublicEvidence", {
+                          registrar: checkState.migrationPublicEvidence.registrar ?? "onbekend",
+                          provider:
+                            checkState.migrationPublicEvidence.probableDnsProvider ??
+                            "onbekend",
+                        })}
+                      </span>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {primaryDomainUnavailable && (
                 <DomainSuggestions
                   loading={suggestionsPending}
@@ -631,7 +1190,9 @@ export function PreviewCheckout({
                 />
               )}
 
-              <ExistingDomainMigrationInfo catalog={catalog} locale={locale} />
+              {domainMode === "new_registration" && (
+                <ExistingDomainMigrationInfo catalog={catalog} locale={locale} />
+              )}
             </CardContent>
           </Card>
         )}
@@ -662,6 +1223,17 @@ export function PreviewCheckout({
                 }}
               >
                 <input ref={profileRequestTokenRef} type="hidden" name="requestToken" />
+                <input type="hidden" name="domain" value={selectedDomain ?? domainValue} />
+                <input type="hidden" name="domainMode" value={domainMode} />
+                <input
+                  type="hidden"
+                  name="existingMigrationQuoteToken"
+                  value={
+                    domainMode === "existing_domain"
+                      ? selectedQuote?.token ?? ""
+                      : ""
+                  }
+                />
                 <input
                   type="hidden"
                   name="expectedProfileVersion"
@@ -681,19 +1253,54 @@ export function PreviewCheckout({
                 )}
 
                 {profileState.message && (
-                  <Alert
-                    variant={profileState.ok ? "default" : "destructive"}
-                    role={profileState.ok ? "status" : "alert"}
+                  <div
+                    ref={profileErrorSummaryRef}
+                    tabIndex={profileState.ok ? undefined : -1}
+                    aria-label={
+                      profileState.ok ? undefined : t("checkoutErrorSummaryLabel")
+                    }
+                    className="outline-none"
                   >
-                    <AlertTitle>
-                      {profileState.status === "conflict"
-                        ? t("checkoutProfileConflictTitle")
-                        : profileState.ok
-                          ? t("checkoutProfileSavedTitle")
-                          : t("checkoutDetailsErrorTitle")}
-                    </AlertTitle>
+                    <Alert
+                      variant={profileState.ok ? "default" : "destructive"}
+                      role={profileState.ok ? "status" : "alert"}
+                    >
+                      <AlertTitle>
+                        {profileState.status === "conflict"
+                          ? t("checkoutProfileConflictTitle")
+                          : profileState.ok
+                            ? t("checkoutProfileSavedTitle")
+                            : t("checkoutDetailsErrorTitle")}
+                      </AlertTitle>
                     <AlertDescription>{profileState.message}</AlertDescription>
+                    {!profileState.ok && profileState.fieldErrors && (
+                      <ul
+                        className="mt-2 list-disc space-y-1 pl-5"
+                      >
+                        {Object.entries(profileState.fieldErrors).map(([field, message]) => {
+                          const target = checkoutFieldId(field)
+                          return (
+                            <li key={field}>
+                              {target ? (
+                                <a
+                                  href={`#${target}`}
+                                  className="underline underline-offset-2"
+                                  onClick={() => {
+                                    window.setTimeout(() => {
+                                      document.getElementById(target)?.focus()
+                                    }, 0)
+                                  }}
+                                >
+                                  {message}
+                                </a>
+                              ) : message}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
                   </Alert>
+                  </div>
                 )}
 
                 <fieldset className="grid gap-3">
@@ -927,16 +1534,18 @@ export function PreviewCheckout({
                 {t("checkoutSubscriptionOverviewDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-6">
-              <fieldset className="grid gap-3">
+            <CardContent className="grid min-w-0 gap-6 [&>*]:min-w-0">
+              <fieldset className="grid min-w-0 gap-3">
                 <legend className="text-base font-semibold">{t("checkoutPlanLegend")}</legend>
-                {(["annual", "monthly"] as const).map((period) => {
-                  const option = catalog.plans[period]
+                {(acceptedOrderId == null
+                  ? ["annual", "monthly"] as const
+                  : [billingPeriod] as const).map((period) => {
+                  const option = quotes?.[period]?.quote
                   return (
                     <label
                       key={period}
                       className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-md border p-4",
+                        "flex min-w-0 cursor-pointer items-start gap-3 rounded-md border p-4",
                         billingPeriod === period && "border-primary ring-2 ring-primary/20",
                       )}
                     >
@@ -946,9 +1555,10 @@ export function PreviewCheckout({
                         value={period}
                         checked={billingPeriod === period}
                         onChange={() => setBillingPeriod(period)}
+                        disabled={acceptedOrderId != null}
                         className="mt-1"
                       />
-                      <span className="grid flex-1 gap-1">
+                      <span className="grid min-w-0 flex-1 gap-1">
                         <span className="font-medium">
                           {period === "annual"
                             ? t("checkoutPlanAnnual")
@@ -956,7 +1566,11 @@ export function PreviewCheckout({
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {t("checkoutPlanPriceExVat", {
-                            price: money(locale, option.netAmountMinor, catalog.currency),
+                            price: money(
+                              locale,
+                              option?.planPriceNetMinor ?? 0,
+                              option?.currency ?? catalog.currency,
+                            ),
                           })}
                         </span>
                       </span>
@@ -968,7 +1582,7 @@ export function PreviewCheckout({
                 })}
               </fieldset>
 
-              <div className="grid gap-3 rounded-md border p-4">
+              <div className="grid min-w-0 gap-3 rounded-md border p-4">
                 <ReviewRow
                   label={t("checkoutSummaryDomain")}
                   value={selectedDomain ?? domainValue}
@@ -985,6 +1599,52 @@ export function PreviewCheckout({
                       : t("checkoutPartyInFormation")
                   }
                 />
+                {selectedQuote && (
+                  <>
+                    <ReviewRow
+                      label={t("checkoutSummaryPlanExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.planPriceNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <ReviewRow
+                      label={t("checkoutSummaryProviderDomainExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.providerOperationPriceNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <ReviewRow
+                      label={t("checkoutSummaryDomainAllowanceExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.domainIncludedAllowanceNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <ReviewRow
+                      label={t("checkoutSummaryDomainSurchargeExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.domainSurchargeNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    {selectedQuote.quote.migrationServiceFeeNetMinor > 0 && (
+                      <ReviewRow
+                        label={t("checkoutSummaryMigrationExVat")}
+                        value={money(
+                          locale,
+                          selectedQuote.quote.migrationServiceFeeNetMinor,
+                          selectedQuote.quote.currency,
+                        )}
+                      />
+                    )}
+                  </>
+                )}
                 <ReviewRow
                   label={t("checkoutSummaryNet")}
                   value={money(locale, netAmountMinor, catalog.currency)}
@@ -998,6 +1658,29 @@ export function PreviewCheckout({
                   value={money(locale, grossAmountMinor, catalog.currency)}
                   strong
                 />
+                {selectedQuote && (
+                  <>
+                    <ReviewRow
+                      label={t("checkoutSummaryFutureSubscription")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.futureSubscriptionGrossMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {selectedQuote.quote.domainRenewalExplanation}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("checkoutQuoteValidUntil", {
+                        date: new Intl.DateTimeFormat(locale, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        }).format(new Date(selectedQuote.quote.quoteExpiresAt)),
+                      })}
+                    </p>
+                  </>
+                )}
               </div>
 
               <form
@@ -1007,9 +1690,21 @@ export function PreviewCheckout({
                 className="hidden"
               >
                 <input type="hidden" name="domain" value={selectedDomain ?? domainValue} />
+                {acceptedOrderId != null && (
+                  <input
+                    type="hidden"
+                    name="acceptedOrderId"
+                    value={acceptedOrderId}
+                  />
+                )}
                 <input type="hidden" name="expectedProfileKey" value={savedProfile.profileKey} />
                 <input type="hidden" name="expectedProfileVersion" value={savedProfile.profileVersion} />
                 <input type="hidden" name="billingPeriod" value={billingPeriod} />
+                <input
+                  type="hidden"
+                  name="checkoutQuoteToken"
+                  value={selectedQuote?.token ?? ""}
+                />
                 <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />
@@ -1022,7 +1717,7 @@ export function PreviewCheckout({
                 />
               </form>
 
-              <div className="grid gap-4 border-t pt-5">
+              <div className="grid min-w-0 gap-4 border-t pt-5">
                 <AcceptanceCheckbox
                   id="checkout-preview-approval"
                   checked={previewApprovalAccepted}
@@ -1037,14 +1732,17 @@ export function PreviewCheckout({
                   label={businessUseDeclarationText}
                   help={t("checkoutBusinessUseHelp")}
                 />
-                <label htmlFor="checkout-terms" className="flex items-start gap-3 text-sm leading-6">
+                <label
+                  htmlFor="checkout-terms"
+                  className="flex min-w-0 items-start gap-3 text-sm leading-6"
+                >
                   <Checkbox
                     id="checkout-terms"
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked === true)}
                     className="mt-1"
                   />
-                  <span>
+                  <span className="min-w-0 break-words">
                     {t.rich("checkoutTermsAcceptanceLabel", {
                       terms: (chunks) => (
                         <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
@@ -1069,11 +1767,17 @@ export function PreviewCheckout({
               {paymentSubmitRequested && paymentState.message && (
                 <Alert
                   variant={
-                    paymentState.ok || paymentState.status === "payment_complete"
+                    paymentState.ok ||
+                    paymentState.status === "payment_complete" ||
+                    paymentState.status === "payment_pending"
                       ? "default"
                       : "destructive"
                   }
-                  role={paymentState.ok ? "status" : "alert"}
+                  role={
+                    paymentState.ok || paymentState.status === "payment_pending"
+                      ? "status"
+                      : "alert"
+                  }
                 >
                   <AlertTitle>{paymentAlertTitle(paymentState, t)}</AlertTitle>
                   <AlertDescription>{paymentState.message}</AlertDescription>
@@ -1088,16 +1792,27 @@ export function PreviewCheckout({
         step={step}
         canContinueFromDomain={domainIsReady}
         profileReady={Boolean(savedProfile && !detailsDirty)}
+        quoteReady={Boolean(selectedQuote)}
         selectedDomain={selectedDomain}
         checkPending={checkPending}
         profilePending={profilePending}
         paymentPending={paymentPending}
+        paymentBlocked={requiresMigrationRecollection}
         domainResultKind={domainResultKind}
-        paymentStatus={paymentStatus}
+        paymentStatus={
+          paymentState.status === "payment_pending"
+            ? "pending_provider"
+            : paymentStatus
+        }
+        navigationLocked={acceptedOrderId != null}
         legalAccepted={
           previewApprovalAccepted && termsAccepted && businessUseAccepted
         }
-        totalPriceLabel={money(locale, grossAmountMinor, catalog.currency)}
+        totalPriceLabel={money(
+          locale,
+          grossAmountMinor,
+          selectedQuote?.quote.currency ?? catalog.currency,
+        )}
         previewHref={previewHref}
         onBack={goBack}
         onDomainNext={() => setStep("details")}
@@ -1108,26 +1823,115 @@ export function PreviewCheckout({
   )
 }
 
-function PreviewCheckoutStepper({ step }: { step: CheckoutStep }) {
+const migrationCustomerActionLabel = (
+  action: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    provide_epp_code: "checkoutMigrationActionProvideEpp",
+    authorize_provider: "checkoutMigrationActionAuthorizeProvider",
+    upload_complete_zone: "checkoutMigrationActionUploadZone",
+    confirm_transfer: "checkoutMigrationActionConfirmTransfer",
+    verify_registrant: "checkoutMigrationActionVerifyRegistrant",
+    remove_dnssec_ds: "checkoutMigrationActionRemoveDnssecDs",
+  } as const
+  const key = keys[action as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationActionUnknown")
+}
+
+const migrationCustomerActionStatusLabel = (
+  status: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    required: "checkoutMigrationActionStatusRequired",
+    pending: "checkoutMigrationActionStatusPending",
+    failed: "checkoutMigrationActionStatusFailed",
+    overdue: "checkoutMigrationActionStatusOverdue",
+    completed: "checkoutMigrationActionStatusCompleted",
+  } as const
+  const key = keys[status as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationActionStatusUnknown")
+}
+
+const migrationStateLabel = (
+  state: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    assessment: "checkoutMigrationStateAssessment",
+    awaiting_customer: "checkoutMigrationStateAwaitingCustomer",
+    ready_to_prepare: "checkoutMigrationStateReadyToPrepare",
+    preparing: "checkoutMigrationStatePreparing",
+    awaiting_provider: "checkoutMigrationStateAwaitingProvider",
+    ready_for_cutover: "checkoutMigrationStateReadyForCutover",
+    cutover_in_progress: "checkoutMigrationStateCutoverInProgress",
+    verifying: "checkoutMigrationStateVerifying",
+    completed: "checkoutMigrationStateCompleted",
+    paused_supplemental_order: "checkoutMigrationStatePausedSupplemental",
+    custom_quote_required: "checkoutMigrationStateCustomQuote",
+    failed: "checkoutMigrationStateFailed",
+    rolled_back: "checkoutMigrationStateRolledBack",
+  } as const
+  const key = keys[state as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationStateUnknown")
+}
+
+const migrationWorkScopeLabel = (
+  scope: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    verify_customer_zone_export: "checkoutMigrationScopeVerifyZoneExport",
+    resolve_supported_zone_conflict:
+      "checkoutMigrationScopeResolveZoneConflict",
+    complete_supported_provider_handoff:
+      "checkoutMigrationScopeProviderHandoff",
+  } as const
+  const key = keys[scope as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationScopeUnknown")
+}
+
+function PreviewCheckoutStepper({
+  step,
+  highestReachedStep,
+  onStepSelect,
+}: {
+  step: CheckoutStep
+  highestReachedStep: number
+  onStepSelect: (step: CheckoutStep) => void
+}) {
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; icon: React.ElementType }> = [
     { id: "domain", label: t("checkoutStepDomain"), icon: Globe2 },
     { id: "details", label: t("checkoutStepDetails"), icon: UserRound },
     { id: "overview", label: t("checkoutStepSubscriptionOverview"), icon: ReceiptText },
   ]
-  return <CheckoutStepper steps={steps} activeStep={step} />
+  return (
+    <CheckoutStepper
+      steps={steps}
+      activeStep={step}
+      reachableSteps={steps
+        .slice(0, highestReachedStep + 1)
+        .map((entry) => entry.id)}
+      onStepSelect={onStepSelect}
+    />
+  )
 }
 
 function CheckoutActionBar({
   step,
   canContinueFromDomain,
   profileReady,
+  quoteReady,
   selectedDomain,
   checkPending,
   profilePending,
   paymentPending,
+  paymentBlocked,
   domainResultKind,
   paymentStatus,
+  navigationLocked,
   legalAccepted,
   totalPriceLabel,
   previewHref,
@@ -1139,12 +1943,15 @@ function CheckoutActionBar({
   step: CheckoutStep
   canContinueFromDomain: boolean
   profileReady: boolean
+  quoteReady: boolean
   selectedDomain: string | null
   checkPending: boolean
   profilePending: boolean
   paymentPending: boolean
+  paymentBlocked: boolean
   domainResultKind: "loading" | "success" | "unavailable" | "error" | null
   paymentStatus: string
+  navigationLocked: boolean
   legalAccepted: boolean
   totalPriceLabel: string
   previewHref: string
@@ -1153,7 +1960,7 @@ function CheckoutActionBar({
   onPay: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
-  const secondary = step === "domain" ? (
+  const secondary = navigationLocked && step !== "domain" ? null : step === "domain" ? (
     <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
       <a href={previewHref}>
         <X className="size-4 md:hidden" aria-hidden />
@@ -1171,7 +1978,13 @@ function CheckoutActionBar({
   let primary: React.ReactNode
   if (step === "domain" && canContinueFromDomain) {
     primary = (
-      <Button type="button" variant="success" className="min-w-0 flex-1 md:flex-none" onClick={onDomainNext}>
+      <Button
+        key="domain-next"
+        type="button"
+        variant="success"
+        className="min-w-0 flex-1 md:flex-none"
+        onClick={onDomainNext}
+      >
         <CheckCircle2 className="size-4" aria-hidden />
         {t("checkoutNext")}
       </Button>
@@ -1180,6 +1993,7 @@ function CheckoutActionBar({
     const unavailable = domainResultKind === "unavailable"
     primary = (
       <Button
+        key="domain-check"
         form="checkout-domain-form"
         type="submit"
         variant={unavailable ? "ghost" : "default"}
@@ -1199,6 +2013,7 @@ function CheckoutActionBar({
   } else if (step === "details") {
     primary = (
       <Button
+        key="details-save"
         form="checkout-profile-form"
         type="submit"
         variant="success"
@@ -1210,13 +2025,27 @@ function CheckoutActionBar({
       </Button>
     )
   } else {
-    const complete = paymentStatus === "completed"
+  const complete = paymentStatus === "completed"
+  const paymentInProgress = ["pending_provider", "open", "authorized"].includes(paymentStatus)
     primary = (
       <Button
+        key="payment"
         type="button"
         variant="success"
         className="min-w-0 flex-1 md:flex-none"
-        disabled={paymentPending || !selectedDomain || !profileReady || !legalAccepted || complete}
+        disabled={
+          paymentPending ||
+          paymentBlocked ||
+          !selectedDomain ||
+          !profileReady ||
+          !quoteReady ||
+          !legalAccepted ||
+          paymentInProgress ||
+          complete
+        }
+        aria-describedby={
+          paymentBlocked ? "migration-recollection-payment-block" : undefined
+        }
         onClick={onPay}
       >
         {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}
@@ -1248,7 +2077,7 @@ function CheckoutTextField({
   id: string
   name?: string
   label: string
-  value: string
+  value: string | undefined
   error?: string
   description?: string
   onChange?: (value: string) => void
@@ -1293,14 +2122,14 @@ function AcceptanceCheckbox({
   help: string
 }) {
   return (
-    <label htmlFor={id} className="flex items-start gap-3 text-sm leading-6">
+    <label htmlFor={id} className="flex min-w-0 items-start gap-3 text-sm leading-6">
       <Checkbox
         id={id}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
         className="mt-1"
       />
-      <span>
+      <span className="min-w-0 break-words">
         {label}
         <span className="block text-muted-foreground">{help}</span>
       </span>
@@ -1490,9 +2319,9 @@ function ReviewRow({
   strong?: boolean
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={cn("break-words text-right text-base", strong ? "font-semibold" : "font-medium")}>
+    <div className="flex min-w-0 items-start justify-between gap-3">
+      <span className="min-w-0 text-sm text-muted-foreground">{label}</span>
+      <span className={cn("min-w-0 break-words text-right text-base", strong ? "font-semibold" : "font-medium")}>
         {value || "-"}
       </span>
     </div>
@@ -1505,6 +2334,7 @@ function paymentAlertTitle(
 ): string {
   if (state.ok) return t("checkoutPaymentStartingTitle")
   if (state.status === "payment_complete") return t("checkoutPaymentCompleteTitle")
+  if (state.status === "payment_pending") return t("checkoutPaymentPendingTitle")
   if (state.status === "profile_conflict" || state.status === "version_conflict") {
     return t("checkoutVersionConflictTitle")
   }

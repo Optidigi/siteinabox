@@ -164,4 +164,47 @@ describe("commerce reconciliation migration scheduling", () => {
       }),
     }))
   })
+
+  it("selects a fresh managed domain at the 90-day renewal horizon", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-07-28T00:00:00.000Z"))
+    try {
+      const find = vi.fn(async ({ collection }: { collection: string }) => ({
+        docs: collection === "managed-domains"
+          ? [{
+              id: 952,
+              providerRenewalDate: "2026-10-26T00:00:00.000Z",
+              providerAutorenewCheckedAt: "2026-07-28T00:00:00.000Z",
+            }]
+          : [],
+        totalDocs: collection === "managed-domains" ? 1 : 0,
+      }))
+      const payload = asPayload({ find })
+      const handler = reconcileCommerceTask.handler as unknown as (
+        args: { req: { payload: typeof payload } }
+      ) => Promise<{ output: { examined: number; queued: number } }>
+
+      await handler({ req: { payload } })
+
+      expect(queueDomainRenewal).toHaveBeenCalledWith(payload, 952)
+      expect(find).toHaveBeenCalledWith(expect.objectContaining({
+        collection: "managed-domains",
+        where: expect.objectContaining({
+          and: expect.arrayContaining([
+            expect.objectContaining({
+              or: expect.arrayContaining([
+                {
+                  providerRenewalDate: {
+                    less_than_equal: "2026-10-26T00:00:00.000Z",
+                  },
+                },
+              ]),
+            }),
+          ]),
+        }),
+      }))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

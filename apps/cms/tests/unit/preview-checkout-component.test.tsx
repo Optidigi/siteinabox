@@ -45,18 +45,73 @@ const profile = {
   createdAt: "2026-07-26T12:00:00.000Z",
 }
 
+const quote = (billingPeriod: "monthly" | "annual") => {
+  const netAmountMinor = billingPeriod === "annual" ? 19_000 : 1_900
+  const vatAmountMinor = billingPeriod === "annual" ? 3_990 : 399
+  return {
+    token: `signed-${billingPeriod}`,
+    quote: {
+      schemaVersion: 3 as const,
+      catalogVersion: "2026-07-26.1",
+      packageCode: `siteinabox-${billingPeriod}`,
+      billingPeriod,
+      lineItems: [],
+      domainIncludedAllowanceNetMinor: 1_000,
+      providerOperationPriceNetMinor: 1_000,
+      domainSurchargeNetMinor: 0,
+      migrationServiceFeeNetMinor: 0,
+      migrationClassification: null,
+      migrationSourceZoneHash: null,
+      migrationInputEnvelope: null,
+      migrationSecretKey: null,
+      planPriceNetMinor: netAmountMinor,
+      vatRateBasisPoints: 2_100 as const,
+      futureSubscriptionNetMinor: netAmountMinor,
+      futureSubscriptionVatMinor: vatAmountMinor,
+      futureSubscriptionGrossMinor: netAmountMinor + vatAmountMinor,
+      selectedDomain: "analytical-engines.nl",
+      domainMode: "new_registration" as const,
+      providerQuotedAt: "2026-07-28T10:00:00.000Z",
+      quoteIssuedAt: "2026-07-28T10:00:00.000Z",
+      quoteExpiresAt: "2026-07-28T10:15:00.000Z",
+      profileVersion: 1,
+      draftVersion: "draft-1",
+      domainRenewalExplanation: "renewal",
+      currency: "EUR" as const,
+      netAmountMinor,
+      vatAmountMinor,
+      grossAmountMinor: netAmountMinor + vatAmountMinor,
+    },
+  }
+}
+
 describe("PreviewCheckout Phase 3 flow", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })))
+    vi.stubGlobal("ResizeObserver", class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    })
   })
 
   it("exposes three named steps and submits no registrant identity in the final hidden form", async () => {
-    const saveProfileAction = vi.fn(async () => ({
-      ok: true,
-      status: "saved" as const,
-      message: "saved",
-      profile,
-    }))
+    const saveProfileAction = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: "invalid" as const,
+        message: "invalid details",
+        fieldErrors: {
+          firstName: "First name is required",
+          lastName: "Last name is required",
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: "saved" as const,
+        message: "saved",
+        profile,
+      })
     const { container } = render(
       <PreviewCheckout
         customerEmail="owner@example.test"
@@ -64,6 +119,7 @@ describe("PreviewCheckout Phase 3 flow", () => {
         domainReady
         initialProfile={profile}
         initialDetails={profile}
+        initialQuotes={{ monthly: quote("monthly"), annual: quote("annual") }}
         catalog={{
           version: "2026-07-26.1",
           currency: "EUR",
@@ -110,6 +166,15 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(profileForm).not.toBeNull()
     fireEvent.submit(profileForm!)
     await waitFor(() => expect(saveProfileAction).toHaveBeenCalledTimes(1))
+    const errorSummary = await screen.findByLabelText("checkoutErrorSummaryLabel")
+    expect(document.activeElement).toBe(errorSummary)
+    const firstError = screen.getByRole("link", { name: "First name is required" })
+    fireEvent.click(firstError)
+    await waitFor(() => expect(document.activeElement).toBe(
+      screen.getByLabelText("checkoutFirstName"),
+    ))
+    fireEvent.submit(profileForm!)
+    await waitFor(() => expect(saveProfileAction).toHaveBeenCalledTimes(2))
     const overviewHeading = await screen.findByRole("heading", { name: "checkoutSubscriptionOverviewTitle" })
     expect(document.activeElement).toBe(overviewHeading)
     expect(screen.getByText("Ik sluit deze overeenkomst uitsluitend zakelijk.")).toBeTruthy()
@@ -122,5 +187,98 @@ describe("PreviewCheckout Phase 3 flow", () => {
     expect(paymentForm?.querySelector('[name="registrantEmail"]')).toBeNull()
     expect(paymentForm?.querySelector('[name="companyName"]')).toBeNull()
     expect(paymentForm?.querySelector('[name="firstName"]')).toBeNull()
+    expect((paymentForm?.querySelector('[name="checkoutQuoteToken"]') as HTMLInputElement).value)
+      .toBe("signed-annual")
+
+    fireEvent.click(screen.getByRole("button", { name: "checkoutStepDomain" }))
+    const domainHeading = await screen.findByRole("heading", { name: "checkoutDomainTitle" })
+    expect(document.activeElement).toBe(domainHeading)
+    fireEvent.click(screen.getByRole("button", { name: "checkoutStepDetails" }))
+    expect(document.activeElement).toBe(
+      await screen.findByRole("heading", { name: "checkoutDetailsTitle" }),
+    )
+    fireEvent.click(screen.getByRole("button", {
+      name: "checkoutStepSubscriptionOverview",
+    }))
+    expect(document.activeElement).toBe(
+      await screen.findByRole("heading", {
+        name: "checkoutSubscriptionOverviewTitle",
+      }),
+    )
+  })
+
+  it("keeps existing-domain migration fail-closed and exposes its authorized source inputs only when enabled", () => {
+    const commonProps = {
+      customerEmail: "owner@example.test",
+      currentDomain: null,
+      domainReady: false,
+      initialProfile: profile,
+      initialDetails: profile,
+      initialQuotes: null,
+      catalog: {
+        version: "2026-07-26.1",
+        currency: "EUR" as const,
+        vatRateBasisPoints: 2_100,
+        plans: {
+          monthly: { code: "siteinabox-monthly", netAmountMinor: 1_900 },
+          annual: { code: "siteinabox-annual", netAmountMinor: 19_000 },
+        },
+        domainIncludedAllowanceNetMinor: 1_000,
+        migrations: {
+          automaticNetAmountMinor: 0,
+          assistedStandardNetAmountMinor: 4_900,
+        },
+      },
+      paymentStatus: "not_started",
+      previewHref: "/ami-care",
+      prewarmHref: "/ami-care/checkout/prewarm",
+      suggestionsHref: "/ami-care/checkout/suggestions",
+      checkDomainAction: vi.fn(),
+      saveProfileAction: vi.fn(),
+      startPaymentAction: vi.fn(),
+      termsHref: "https://www.siteinabox.nl/voorwaarden",
+      privacyHref: "https://www.siteinabox.nl/privacy",
+      termsVersion: "2026-07-07.1",
+      privacyVersion: "2026-07-18.1",
+      businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
+      businessUseDeclarationText: "Ik sluit deze overeenkomst uitsluitend zakelijk.",
+      locale: "nl-NL",
+    }
+    const disabled = render(<PreviewCheckout {...commonProps} />)
+    expect((screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    }) as HTMLInputElement).disabled).toBe(true)
+    disabled.unmount()
+
+    const { container } = render(
+      <PreviewCheckout {...commonProps} existingDomainMigrationEnabled />,
+    )
+    const existingMode = screen.getByRole("radio", {
+      name: /checkoutDomainModeExisting/,
+    })
+    expect((existingMode as HTMLInputElement).disabled).toBe(false)
+    fireEvent.click(existingMode)
+
+    expect((screen.getByLabelText(
+      "checkoutMigrationZoneExportLabel",
+    ) as HTMLInputElement).type).toBe("file")
+    expect((screen.getByLabelText(
+      "checkoutMigrationTransferCodeLabel",
+    ) as HTMLInputElement).type).toBe("password")
+    expect(screen.queryByRole("radio", {
+      name: "checkoutMigrationAutomaticChoice",
+    })).toBeNull()
+    expect((screen.getByRole("radio", {
+      name: "checkoutMigrationAssistedChoice",
+    }) as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText("checkoutMigrationAssistedChoice")).toBeTruthy()
+    expect(screen.getByText("checkoutMigrationTransferAuthorization")).toBeTruthy()
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '#checkout-domain-form input[name="domainMode"]',
+      )?.value,
+    ).toBe("existing_domain")
+    expect(container.querySelector('input[type="hidden"][name="transferCode"]'))
+      .toBeNull()
   })
 })

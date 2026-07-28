@@ -42,7 +42,7 @@ const EVIDENCE = {
   preservationMode: "retain_existing_dns_and_mail" as const,
 }
 
-const createStore = () => {
+const createStore = (domainOverrides: MockDoc = {}) => {
   const domain: MockDoc = {
     id: 10,
     domainNameAscii: "example.nl",
@@ -69,6 +69,7 @@ const createStore = () => {
     reconciliationRequired: false,
     transferOutProviderMissingCount: 0,
     stateHistory: [],
+    ...domainOverrides,
   }
   const order: MockDoc = {
     id: 20,
@@ -287,6 +288,36 @@ describe("domain offboarding and transfer-out rehearsal", () => {
       providerAutorenew: "unknown",
     })
     expect(findOpenProviderDomain).toHaveBeenCalledTimes(3)
+  })
+
+  it("allows transfer-out while website entitlement and future renewal are stopped", async () => {
+    const store = createStore({
+      entitlementStatus: "blocked",
+      renewalIntent: false,
+    })
+    const dnsBefore = {
+      cloudflareZoneId: store.domain.cloudflareZoneId,
+      cloudflareDnsRecordIds: store.domain.cloudflareDnsRecordIds,
+      authoritativeDnsStatus: store.domain.authoritativeDnsStatus,
+      httpsStatus: store.domain.httpsStatus,
+    }
+
+    await requestDomainOffboarding(store.payload, {
+      managedDomainId: 10,
+      actor: ACTOR,
+      requestId: "cancelled-website-transfer-out",
+      reason: "Customer cancelled website service and is moving the domain.",
+      continuityEvidence: EVIDENCE,
+      now: "2026-07-28T11:00:00.000Z",
+    })
+
+    expect(store.domain).toMatchObject({
+      state: "active",
+      custodyStatus: "offboarding_requested",
+      entitlementStatus: "blocked",
+      renewalIntent: false,
+      ...dnsBefore,
+    })
   })
 
   it("rejects cross-tenant and non-contracting-customer requests", async () => {

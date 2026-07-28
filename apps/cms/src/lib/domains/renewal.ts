@@ -9,8 +9,12 @@ import {
   renewalFinancialCoverage,
 } from "@siteinabox/contracts/commerce"
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
+  getTldCapabilityByVersion,
+  tldCapabilityAt,
+  tldCapabilityOperationFlagEnabled,
   type TldCapability,
+  type TldProductionOperation,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload, Where } from "payload"
 import type {
@@ -27,11 +31,14 @@ import {
   commerceProviderWritesAllowed,
 } from "@/lib/commerce/releaseGate"
 import { ensureCommerceNotification } from "@/lib/commerce/notifications"
+import { PLATFORM_CONTACT_RECIPIENT } from "@/lib/contact/platformContact"
 import {
   OpenProviderIndeterminateWriteError,
   findOpenProviderDomain,
   getOpenProviderDomainRenewalPrice,
+  getOpenProviderResellerBalance,
   loginOpenProvider,
+  normalizeOpenProviderTimestamp,
   setOpenProviderDomainAutorenew,
   type OpenProviderAutorenewResult,
   type OpenProviderDomainPrice,
@@ -42,26 +49,42 @@ import { findOneDoc } from "@/lib/payloadCollection"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
 const DAY_MS = 24 * 60 * 60_000
-const PROVIDER_RENEWAL_LOOKAHEAD_DAYS = 60
+export const PROVIDER_RENEWAL_ADVANCE_GRACE_MS = DAY_MS
+export const PROVIDER_WRITE_RECONCILIATION_GRACE_MS = 15 * 60_000
+export const PROVIDER_RENEWAL_LOOKAHEAD_DAYS = Math.max(
+  ...DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS,
+)
 const TERMINAL_ATTEMPT_STATES = ["failed", "cancelled", "expired", "chargeback"]
 
 type RenewalDependencies = {
   now: () => Date
+  productionOperationAllowed: (
+    tld: string,
+    operation: Extract<
+      TldProductionOperation,
+      "renewal_provider_autorenew" | "renewal_explicit"
+    >,
+    effectiveAt: Date,
+  ) => boolean
   providerReadsAllowed: () => boolean
   providerWritesAllowed: () => boolean
   loginOpenProvider: typeof loginOpenProvider
   findOpenProviderDomain: typeof findOpenProviderDomain
   getOpenProviderDomainRenewalPrice: typeof getOpenProviderDomainRenewalPrice
+  getOpenProviderResellerBalance: typeof getOpenProviderResellerBalance
   setOpenProviderDomainAutorenew: typeof setOpenProviderDomainAutorenew
 }
 
 const defaultDependencies: RenewalDependencies = {
   now: () => new Date(),
+  productionOperationAllowed: (tld, operation, effectiveAt) =>
+    getTldCapabilityForProductionOperation(tld, operation, effectiveAt) !== null,
   providerReadsAllowed: commerceProviderReadsAllowed,
   providerWritesAllowed: commerceProviderWritesAllowed,
   loginOpenProvider,
   findOpenProviderDomain,
   getOpenProviderDomainRenewalPrice,
+  getOpenProviderResellerBalance,
   setOpenProviderDomainAutorenew,
 }
 
@@ -84,13 +107,9 @@ const relationIds = (value: unknown): number[] => {
 }
 
 export function normalizeOpenProviderRenewalDate(value: string): string {
-  const normalized = value.trim().replace(
-    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/,
-    "$1T$2.000Z",
-  )
-  const date = new Date(normalized)
-  if (Number.isNaN(date.getTime())) throw new Error("Openprovider renewal_date is invalid.")
-  return date.toISOString()
+  const normalized = normalizeOpenProviderTimestamp(value)
+  if (!normalized) throw new Error("Openprovider renewal_date is invalid.")
+  return normalized
 }
 
 const cycleHistory = (
@@ -129,6 +148,68 @@ const updateCycle = (
   context: { domainRenewalCycleLifecycleMutation: true },
 }) as Promise<DomainRenewalCycle>
 
+const providerWriteAwaitingReconciliation = (
+  cycle: DomainRenewalCycle,
+): boolean => ["prepared", "indeterminate"].includes(cycle.providerWriteState)
+
+async function claimAutorenewWrite(
+  payload: Payload,
+  cycle: DomainRenewalCycle,
+  data: Partial<DomainRenewalCycle>,
+): Promise<DomainRenewalCycle | null> {
+  const claimed = await payload.update({
+    collection: "domain-renewal-cycles",
+    where: {
+      and: [
+        { id: { equals: cycle.id } },
+        { providerWriteState: { not_in: ["prepared", "indeterminate"] } },
+      ],
+    },
+    data,
+    depth: 0,
+    overrideAccess: true,
+    context: { domainRenewalCycleLifecycleMutation: true },
+  })
+  return Array.isArray(claimed.docs)
+    ? claimed.docs[0] as DomainRenewalCycle | undefined ?? null
+    : null
+}
+
+async function reclaimStaleAutorenewWrite(
+  payload: Payload,
+  cycle: DomainRenewalCycle,
+  operationId: string,
+  data: Partial<DomainRenewalCycle>,
+  now: string,
+): Promise<DomainRenewalCycle | null> {
+  const reconciliationCutoff = new Date(
+    new Date(now).getTime() - PROVIDER_WRITE_RECONCILIATION_GRACE_MS,
+  ).toISOString()
+  const claimed = await payload.update({
+    collection: "domain-renewal-cycles",
+    where: {
+      and: [
+        { id: { equals: cycle.id } },
+        { providerOperationId: { equals: operationId } },
+        { providerWriteState: { in: ["prepared", "indeterminate"] } },
+        {
+          or: [
+            { providerWriteRequestedAt: { exists: false } },
+            { providerWriteRequestedAt: { less_than_equal: reconciliationCutoff } },
+          ],
+        },
+      ],
+    },
+    data,
+    depth: 0,
+    overrideAccess: true,
+    context: { domainRenewalCycleLifecycleMutation: true },
+  })
+  return Array.isArray(claimed.docs)
+    ? claimed.docs[0] as DomainRenewalCycle | undefined ?? null
+    : null
+}
+
 async function findBillingAgreement(
   payload: Payload,
   domain: ManagedDomain,
@@ -161,6 +242,70 @@ async function findBillingAgreement(
   return result.docs[0] as BillingAgreement | undefined ?? null
 }
 
+const objectValue = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {}
+
+async function renewalCapabilityForManagedDomain(
+  payload: Payload,
+  domain: ManagedDomain,
+  now: Date,
+): Promise<{
+  capability: TldCapability
+  acceptedObligation: boolean
+} | null> {
+  const orderId = relationshipId(domain.originatingOrder)
+  if (orderId) {
+    const order = await payload.findByID({
+      collection: "orders",
+      id: orderId,
+      depth: 0,
+      overrideAccess: true,
+    }) as Order
+    const quoteEvidence = objectValue(order.quoteEvidence)
+    const hasAcceptedCapabilityEvidence = Object.hasOwn(
+      quoteEvidence,
+      "tldCapability",
+    )
+    const tldEvidence = objectValue(quoteEvidence.tldCapability)
+    const capabilityVersion = typeof tldEvidence.capabilityVersion === "string"
+      ? tldEvidence.capabilityVersion
+      : ""
+    const acceptedCapability = getTldCapabilityByVersion(capabilityVersion)
+    if (
+      acceptedCapability &&
+      acceptedCapability.tld === domain.tld &&
+      tldEvidence.tld === domain.tld &&
+      tldCapabilityOperationFlagEnabled(
+        acceptedCapability,
+        acceptedCapability.renewal.executionMode === "provider_autorenew"
+          ? "renewal_provider_autorenew"
+          : "renewal_explicit",
+      )
+    ) {
+      return {
+        capability: acceptedCapability,
+        acceptedObligation: true,
+      }
+    }
+    if (hasAcceptedCapabilityEvidence) return null
+  }
+  const capability = tldCapabilityAt(domain.tld, now)
+  return capability
+    ? { capability, acceptedObligation: false }
+    : null
+}
+
+const renewalProductionOperation = (
+  capability: TldCapability,
+): Extract<
+  TldProductionOperation,
+  "renewal_provider_autorenew" | "renewal_explicit"
+> => capability.renewal.executionMode === "provider_autorenew"
+  ? "renewal_provider_autorenew"
+  : "renewal_explicit"
+
 async function findCycle(
   payload: Payload,
   domain: ManagedDomain,
@@ -192,6 +337,18 @@ async function createCycle(input: {
     input.providerRenewalDate,
     input.capability.renewal.providerSafeCutoffLeadDays,
   )
+  const sixtyDayChargeAt = new Date(
+    new Date(input.providerRenewalDate).getTime() - 60 * DAY_MS,
+  ).toISOString()
+  const paymentChargeAt = new Date(
+    Math.min(
+      new Date(sixtyDayChargeAt).getTime(),
+      new Date(providerSafeCutoff).getTime(),
+    ),
+  ).toISOString()
+  const registryExpiryDate = normalizeOpenProviderTimestamp(
+    input.providerDomain.registryExpiryDate,
+  ) ?? undefined
   const coverageEndsAt = addBillingPeriod(input.providerRenewalDate, "annual")
   const paidSubscriptionCoversRenewal = Boolean(
     input.agreement &&
@@ -199,10 +356,17 @@ async function createCycle(input: {
     new Date(input.agreement.currentPeriodEndsAt) >= new Date(input.providerRenewalDate) &&
     ["active", "cancellation_scheduled"].includes(input.agreement.state),
   )
-  const allowanceSecured = financial.surchargeNetMinor === 0 && paidSubscriptionCoversRenewal
-  const state: DomainRenewalCycle["state"] = !input.domain.renewalIntent
+  const pricingIsActionable = new Date(input.now) >= new Date(paymentChargeAt)
+  const allowanceSecured = pricingIsActionable &&
+    financial.surchargeNetMinor === 0 &&
+    paidSubscriptionCoversRenewal
+  const renewalIntent = input.domain.renewalIntent &&
+    input.agreement?.renewalIntent !== false
+  const state: DomainRenewalCycle["state"] = !renewalIntent
     ? "cancelled"
-    : allowanceSecured ? "payment_committed" : "payment_required"
+    : !pricingIsActionable
+      ? "scheduled"
+      : allowanceSecured ? "payment_committed" : "payment_required"
   const idempotencyKey = `openprovider:renewal:${input.domain.id}:${input.providerRenewalDate}`
   try {
     return await input.payload.create({
@@ -216,8 +380,11 @@ async function createCycle(input: {
         coverageStartsAt: input.providerRenewalDate,
         coverageEndsAt,
         providerRenewalDate: input.providerRenewalDate,
+        registryExpiryDate,
+        registrarSafeCutoffAt: providerSafeCutoff,
+        paymentChargeAt,
         providerSafeCutoffAt: providerSafeCutoff,
-        renewalIntentSnapshot: input.domain.renewalIntent,
+        renewalIntentSnapshot: renewalIntent,
         providerRenewalMode: input.capability.renewal.executionMode,
         providerAutorenew: input.providerDomain.autorenew,
         providerWriteState: "not_required",
@@ -251,7 +418,11 @@ async function createCycle(input: {
         lastSyncedAt: input.now,
         stateHistory: cycleHistory(null, state, input.now, allowanceSecured
           ? "paid_subscription_included_allowance"
-          : state === "cancelled" ? "renewal_intent_off" : "financial_coverage_required"),
+          : state === "cancelled"
+            ? "renewal_intent_off"
+            : state === "scheduled"
+              ? "indicative_renewal_price_recorded"
+              : "financial_coverage_required"),
         createdAt: input.now,
       },
       depth: 0,
@@ -266,6 +437,88 @@ async function createCycle(input: {
     if (raced) return raced
     throw error
   }
+}
+
+async function activateScheduledCycle(input: {
+  payload: Payload
+  cycle: DomainRenewalCycle
+  domain: ManagedDomain
+  agreement: BillingAgreement | null
+  capability: TldCapability
+  token: string
+  dependencies: RenewalDependencies
+  now: string
+}): Promise<DomainRenewalCycle> {
+  if (
+    input.cycle.state !== "scheduled" ||
+    !input.cycle.paymentChargeAt ||
+    new Date(input.now) < new Date(input.cycle.paymentChargeAt)
+  ) {
+    return input.cycle
+  }
+  const price = await input.dependencies.getOpenProviderDomainRenewalPrice(
+    input.domain.domainNameAscii,
+    { token: input.token },
+  )
+  if (price.currency !== "EUR") {
+    throw new Error("Openprovider renewal price must be quoted in EUR.")
+  }
+  const financial = renewalFinancialCoverage(price.netAmountMinor)
+  const amount = commercialAmountFromNet(financial.surchargeNetMinor)
+  const paidSubscriptionCoversRenewal = Boolean(
+    input.agreement &&
+    input.agreement.currentPeriodEndsAt &&
+    new Date(input.agreement.currentPeriodEndsAt) >= new Date(input.cycle.providerRenewalDate) &&
+    ["active", "cancellation_scheduled"].includes(input.agreement.state),
+  )
+  const allowanceSecured = financial.surchargeNetMinor === 0 && paidSubscriptionCoversRenewal
+  const renewalIntent = input.domain.renewalIntent &&
+    input.agreement?.renewalIntent !== false
+  const state: DomainRenewalCycle["state"] = !renewalIntent
+    ? "cancelled"
+    : allowanceSecured ? "payment_committed" : "payment_required"
+  await updateManagedDomain(input.payload, input.domain, {
+    providerRenewalPriceNetMinor: price.netAmountMinor,
+    providerRenewalPriceCurrency: price.currency,
+    providerRenewalPriceQuotedAt: input.now,
+  })
+  return updateCycle(input.payload, input.cycle, {
+    state,
+    providerOperationPriceNetMinor: financial.providerOperationPriceNetMinor,
+    includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
+    surchargeNetMinor: financial.surchargeNetMinor,
+    financialCoverageState: allowanceSecured ? "payment_secured" : financial.initialState,
+    pricingEvidence: {
+      version: 1,
+      provider: "openprovider",
+      tld: input.capability.tld,
+      tldCapabilityVersion: input.capability.capabilityVersion,
+      operation: "renew",
+      quotedAt: input.now,
+      premium: price.premium,
+      currency: price.currency,
+      providerOperationPriceNetMinor: price.netAmountMinor,
+      includedAllowanceNetMinor: financial.includedAllowanceNetMinor,
+      surchargeNetMinor: financial.surchargeNetMinor,
+    },
+    netAmountMinor: amount.netAmountMinor,
+    vatAmountMinor: amount.vatAmountMinor,
+    grossAmountMinor: amount.grossAmountMinor,
+    paymentSecuredAt: allowanceSecured ? input.now : null,
+    cancelledAt: state === "cancelled" ? input.now : null,
+    failureReason: state === "cancelled" ? "renewal_intent_off" : null,
+    lastSyncedAt: input.now,
+    stateHistory: cycleHistory(
+      input.cycle,
+      state,
+      input.now,
+      allowanceSecured
+        ? "actionable_price_with_paid_subscription_allowance"
+        : state === "cancelled"
+          ? "renewal_intent_off"
+          : "actionable_price_requires_financial_coverage",
+    ),
+  })
 }
 
 async function originatingOrder(
@@ -373,6 +626,26 @@ const elapsedReminderCount = (renewalDate: string, now: Date): number =>
     (offset) => now.getTime() >= new Date(renewalDate).getTime() - offset * DAY_MS,
   ).length
 
+const currentRenewalReminderOffset = (
+  renewalDate: string,
+  now: Date,
+): (typeof DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS)[number] | null => {
+  const renewalAt = new Date(renewalDate).getTime()
+  if (now.getTime() > renewalAt) return null
+  for (const offset of [...DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS].reverse()) {
+    if (now.getTime() >= renewalAt - offset * DAY_MS) return offset
+  }
+  return null
+}
+
+const providerAmountMinor = (value: number): number => {
+  const minor = Math.round(value * 100)
+  if (!Number.isSafeInteger(minor) || minor < 0) {
+    throw new Error("Openprovider balance amount is invalid.")
+  }
+  return minor
+}
+
 async function ensureDomainPayment(input: {
   payload: Payload
   agreement: BillingAgreement
@@ -424,16 +697,29 @@ async function ensureRenewalNotifications(input: {
   now: Date
 }) {
   const tenantId = relationshipId(input.domain.tenant)
-  if (!tenantId || !input.agreement) return
+  if (
+    !tenantId ||
+    !input.agreement ||
+    input.cycle.state === "cancelled" ||
+    !input.cycle.renewalIntentSnapshot
+  ) return
   const origin = await originatingOrder(input.payload, input.agreement)
-  for (const offset of DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS) {
-    const dueAt = new Date(input.cycle.providerRenewalDate).getTime() - offset * DAY_MS
-    if (input.now.getTime() < dueAt || input.now > new Date(input.cycle.providerRenewalDate)) continue
+  const offset = currentRenewalReminderOffset(input.cycle.providerRenewalDate, input.now)
+  if (offset == null) return
+  await ensureCommerceNotification({
+    payload: input.payload,
+    kind: `domain_renewal_${offset}d`,
+    tenantId,
+    recipient: origin.customerEmail,
+    eventAt: input.cycle.providerRenewalDate,
+    renewalCycleId: input.cycle.id,
+  })
+  if (offset === 7) {
     await ensureCommerceNotification({
       payload: input.payload,
-      kind: `domain_renewal_${offset}d`,
+      kind: "domain_renewal_admin_7d",
       tenantId,
-      recipient: origin.customerEmail,
+      recipient: PLATFORM_CONTACT_RECIPIENT,
       eventAt: input.cycle.providerRenewalDate,
       renewalCycleId: input.cycle.id,
     })
@@ -455,6 +741,7 @@ async function setAutorenew(input: {
     providerAutorenewEnabled: input.desired === "on",
     explicitRenewalRequested: false,
   })
+  let cycle = input.cycle
   if (input.providerDomain.autorenew === input.desired) {
     return updateCycle(input.payload, input.cycle, {
       providerAutorenew: input.desired,
@@ -472,7 +759,63 @@ async function setAutorenew(input: {
     "renewal",
     input.cycle.providerRenewalDate,
   ].join(":")
-  let cycle = await updateCycle(input.payload, input.cycle, {
+  let claimedCycle: DomainRenewalCycle | null = null
+  if (providerWriteAwaitingReconciliation(cycle)) {
+    if (cycle.providerOperationId === operationId) {
+      const requestedAt = cycle.providerWriteRequestedAt
+        ? new Date(cycle.providerWriteRequestedAt).getTime()
+        : Number.NaN
+      if (
+        Number.isFinite(requestedAt) &&
+        new Date(input.now).getTime() - requestedAt < PROVIDER_WRITE_RECONCILIATION_GRACE_MS
+      ) {
+        return cycle
+      }
+      claimedCycle = await reclaimStaleAutorenewWrite(
+        input.payload,
+        cycle,
+        operationId,
+        {
+          providerWriteState: "prepared",
+          providerWriteRequestedAt: input.now,
+          providerAutorenew: input.providerDomain.autorenew,
+          reconciliationRequired: true,
+          failureReason: null,
+          lastSyncedAt: input.now,
+          stateHistory: cycleHistory(
+            cycle,
+            cycle.state,
+            input.now,
+            "stale_provider_write_reconciled_before_retry",
+          ),
+        },
+        input.now,
+      )
+      if (!claimedCycle) {
+        return input.payload.findByID({
+          collection: "domain-renewal-cycles",
+          id: cycle.id,
+          depth: 0,
+          overrideAccess: true,
+        }) as Promise<DomainRenewalCycle>
+      }
+    } else {
+      cycle = await updateCycle(input.payload, cycle, {
+        providerAutorenew: input.providerDomain.autorenew,
+        providerWriteState: "confirmed",
+        reconciliationRequired: false,
+        failureReason: null,
+        lastSyncedAt: input.now,
+        stateHistory: cycleHistory(
+          cycle,
+          cycle.state,
+          input.now,
+          "prior_provider_write_reconciled_before_opposite_intent",
+        ),
+      })
+    }
+  }
+  claimedCycle ??= await claimAutorenewWrite(input.payload, cycle, {
     providerOperationId: operationId,
     providerWriteState: "prepared",
     providerWriteRequestedAt: input.now,
@@ -480,6 +823,15 @@ async function setAutorenew(input: {
     reconciliationRequired: true,
     lastSyncedAt: input.now,
   })
+  if (!claimedCycle) {
+    return input.payload.findByID({
+      collection: "domain-renewal-cycles",
+      id: cycle.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as Promise<DomainRenewalCycle>
+  }
+  cycle = claimedCycle
   try {
     const result: OpenProviderAutorenewResult = await input.dependencies.setOpenProviderDomainAutorenew(
       input.providerDomain.id,
@@ -509,6 +861,24 @@ async function setAutorenew(input: {
         lastSyncedAt: input.now,
       })
     }
+    cycle = await updateCycle(input.payload, cycle, {
+      providerWriteState: "failed",
+      reconciliationRequired: true,
+      failureReason: "openprovider_autorenew_write_rejected",
+      adminExceptionCode: "openprovider_autorenew_write_rejected",
+      adminExceptionAt: input.now,
+      lastSyncedAt: input.now,
+    })
+    await recordCommerceAdminException({
+      payload: input.payload,
+      source: "domains",
+      code: "openprovider_autorenew_write_rejected",
+      message: "Openprovider rejected a domain autorenew state change.",
+      tenant: input.domain.tenant,
+      subjectId: cycle.id,
+      severity: "critical",
+      now: input.now,
+    })
     throw error
   }
 }
@@ -540,6 +910,14 @@ async function completeAdvancedCycle(input: {
   await updateManagedDomain(input.payload, input.domain, {
     state: "active",
     expiresAt: input.advancedRenewalDate,
+    providerRenewalDate: input.advancedRenewalDate,
+    registryExpiryDate: input.providerDomain.registryExpiryDate
+      ? normalizeOpenProviderRenewalDate(input.providerDomain.registryExpiryDate)
+      : input.domain.registryExpiryDate,
+    registrarSafeCutoffAt: providerSafeCutoffAt(
+      input.advancedRenewalDate,
+      input.capability.renewal.providerSafeCutoffLeadDays,
+    ),
     providerSafeRenewalCutoffAt: providerSafeCutoffAt(
       input.advancedRenewalDate,
       input.capability.renewal.providerSafeCutoffLeadDays,
@@ -598,16 +976,41 @@ export async function reconcileManagedDomainRenewal(
     depth: 0,
     overrideAccess: true,
   }) as ManagedDomain
-  const capability = getEnabledTldCapability(domain.tld, nowDate)
+  const capabilityResolution = await renewalCapabilityForManagedDomain(
+    payload,
+    domain,
+    nowDate,
+  )
+  const capability = capabilityResolution?.capability ?? null
   if (
     domain.custodyStatus === "transferred_out" ||
     domain.provider !== "openprovider" ||
     !domain.providerDomainId ||
     !capability ||
     capability.provider !== "openprovider" ||
-    capability.renewal.executionMode !== "autorenew"
+    capability.renewal.executionMode !== "provider_autorenew"
   ) {
     return { status: "not_applicable" }
+  }
+  // Operation flags govern new commitments. A domain already frozen into an
+  // accepted order remains a customer obligation and must keep its renewal
+  // safety reconciliation when launch scope is rolled back.
+  const productionOperationAllowed = Boolean(
+    capabilityResolution?.acceptedObligation,
+  ) || deps.productionOperationAllowed(
+    domain.tld,
+    renewalProductionOperation(capability),
+    nowDate,
+  )
+  if (!productionOperationAllowed) {
+    const existingCycles = await payload.find({
+      collection: "domain-renewal-cycles",
+      where: { managedDomain: { equals: domain.id } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (existingCycles.docs.length === 0) return { status: "not_applicable" }
   }
   if (!deps.providerReadsAllowed()) {
     const committedCycles = await payload.find({
@@ -712,6 +1115,21 @@ export async function reconcileManagedDomainRenewal(
   }
   domain = await updateManagedDomain(payload, domain, {
     expiresAt: providerRenewalDate,
+    providerRenewalDate,
+    registryExpiryDate: providerDomain.registryExpiryDate
+      ? normalizeOpenProviderRenewalDate(providerDomain.registryExpiryDate)
+      : domain.registryExpiryDate,
+    registrarSafeCutoffAt: providerSafeCutoffAt(
+      providerRenewalDate,
+      capability.renewal.providerSafeCutoffLeadDays,
+    ),
+    paymentChargeAt: new Date(Math.min(
+      new Date(providerRenewalDate).getTime() - 60 * DAY_MS,
+      new Date(providerSafeCutoffAt(
+        providerRenewalDate,
+        capability.renewal.providerSafeCutoffLeadDays,
+      )).getTime(),
+    )).toISOString(),
     providerSafeRenewalCutoffAt: providerSafeCutoffAt(
       providerRenewalDate,
       capability.renewal.providerSafeCutoffLeadDays,
@@ -726,6 +1144,19 @@ export async function reconcileManagedDomainRenewal(
   const agreement = await findBillingAgreement(payload, domain)
   let cycle = await findCycle(payload, domain, providerRenewalDate)
   if (!cycle) {
+    if (!productionOperationAllowed) {
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "tld_renewal_production_gate_blocked",
+        message: `A new .${domain.tld} renewal cycle is blocked pending operation-specific production evidence.`,
+        tenant: domain.tenant,
+        subjectId: domain.id,
+        severity: domain.providerAutorenew === "on" ? "critical" : "error",
+        now,
+      })
+      return { status: "release_blocked" }
+    }
     const price = await deps.getOpenProviderDomainRenewalPrice(domain.domainNameAscii, { token })
     domain = await updateManagedDomain(payload, domain, {
       providerRenewalPriceNetMinor: price.netAmountMinor,
@@ -743,8 +1174,62 @@ export async function reconcileManagedDomainRenewal(
       now,
     })
   }
+  cycle = await activateScheduledCycle({
+    payload,
+    cycle,
+    domain,
+    agreement,
+    capability,
+    token,
+    dependencies: deps,
+    now,
+  })
+  if (
+    currentRenewalReminderOffset(cycle.providerRenewalDate, nowDate) === 7 &&
+    !cycle.providerBalanceCheckedAt
+  ) {
+    const balance = await deps.getOpenProviderResellerBalance({ token })
+    cycle = await updateCycle(payload, cycle, {
+      providerBalanceAvailableMinor: providerAmountMinor(balance.availableAmount),
+      providerBalanceReservedMinor: providerAmountMinor(balance.reservedAmount),
+      providerBalanceCurrency: balance.currency,
+      providerBalanceCheckedAt: now,
+      lastSyncedAt: now,
+    })
+  }
   await ensureRenewalNotifications({ payload, cycle, domain, agreement, now: nowDate })
   const cutoffReached = nowDate >= new Date(cycle.providerSafeCutoffAt)
+  if (
+    cycle.state === "provider_requested" &&
+    nowDate.getTime() >
+      new Date(cycle.providerRenewalDate).getTime() + PROVIDER_RENEWAL_ADVANCE_GRACE_MS
+  ) {
+    cycle = await updateCycle(payload, cycle, {
+      state: "manual_review",
+      adminExceptionCode: "provider_renewal_date_did_not_advance",
+      adminExceptionAt: now,
+      reconciliationRequired: true,
+      failureReason: "provider_renewal_date_did_not_advance",
+      lastSyncedAt: now,
+      stateHistory: cycleHistory(
+        cycle,
+        "manual_review",
+        now,
+        "provider_renewal_date_did_not_advance",
+      ),
+    })
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: "provider_renewal_date_did_not_advance",
+      message: "Openprovider did not advance the operational renewal date after commitment.",
+      tenant: domain.tenant,
+      subjectId: cycle.id,
+      severity: "critical",
+      now,
+    })
+    return { status: "manual_review", cycleId: cycle.id }
+  }
   const paymentSecured = Boolean(cycle.paymentSecuredAt) ||
     ["payment_committed", "provider_requested", "renewed"].includes(cycle.state)
   if (!paymentSecured && cycle.state !== "cancelled" && agreement && agreement.renewalIntent) {
@@ -828,10 +1313,51 @@ export async function reconcileManagedDomainRenewal(
       })
     }
     return {
-      status: cycle.providerWriteState === "indeterminate"
+      status: providerWriteAwaitingReconciliation(cycle)
         ? "waiting"
         : renewalCancelled ? "cancelled" : "payment_required",
       cycleId: cycle.id,
+    }
+  }
+  if (cutoffReached) {
+    const balance = await deps.getOpenProviderResellerBalance({ token })
+    cycle = await updateCycle(payload, cycle, {
+      providerBalanceAvailableMinor: providerAmountMinor(balance.availableAmount),
+      providerBalanceReservedMinor: providerAmountMinor(balance.reservedAmount),
+      providerBalanceCurrency: balance.currency,
+      providerBalanceCheckedAt: now,
+      lastSyncedAt: now,
+    })
+    const requiredProviderAmount = cycle.providerOperationPriceNetMinor / 100
+    if (
+      balance.currency !== cycle.currency ||
+      balance.availableAmount < requiredProviderAmount
+    ) {
+      cycle = await updateCycle(payload, cycle, {
+        state: "manual_review",
+        adminExceptionCode: "provider_balance_insufficient",
+        adminExceptionAt: now,
+        reconciliationRequired: true,
+        failureReason: "provider_balance_insufficient",
+        lastSyncedAt: now,
+        stateHistory: cycleHistory(
+          cycle,
+          "manual_review",
+          now,
+          "provider_balance_insufficient",
+        ),
+      })
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "provider_balance_insufficient",
+        message: "Openprovider balance is insufficient or uses the wrong currency for a covered renewal.",
+        tenant: domain.tenant,
+        subjectId: cycle.id,
+        severity: "critical",
+        now,
+      })
+      return { status: "manual_review", cycleId: cycle.id }
     }
   }
   // A financially paid or committed cycle is an existing customer obligation.
@@ -846,7 +1372,9 @@ export async function reconcileManagedDomainRenewal(
     dependencies: deps,
     now,
   })
-  if (cycle.providerWriteState === "indeterminate") return { status: "waiting", cycleId: cycle.id }
+  if (providerWriteAwaitingReconciliation(cycle)) {
+    return { status: "waiting", cycleId: cycle.id }
+  }
   if (cutoffReached && cycle.state === "payment_committed") {
     cycle = await updateCycle(payload, cycle, {
       state: "provider_requested",

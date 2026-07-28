@@ -182,13 +182,14 @@ export async function fetchWithHost(baseUrl, host, pathname, {
   forwardedHost = host,
   forwardedProto = "https",
   includeOriginSecret = true,
+  originSecret = TEST_RENDERER_ORIGIN_SECRET,
 } = {}) {
   const url = new URL(pathname, baseUrl)
   const headers = {
     host,
     "x-forwarded-host": forwardedHost,
     "x-forwarded-proto": forwardedProto,
-    ...(includeOriginSecret ? { "x-siab-origin-verify": TEST_RENDERER_ORIGIN_SECRET } : {}),
+    ...(includeOriginSecret ? { "x-siab-origin-verify": originSecret } : {}),
   }
   return new Promise((resolve, reject) => {
     const request = createHttpRequest(url, { headers }, (response) => {
@@ -329,6 +330,14 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   assert.equal(directOrigin.status, 404)
   assert.equal(directOriginBody, "Page not found")
   assertNoAnalyticsLeakage(directOriginBody)
+
+  const spoofedOrigin = await fetchWithHost(baseUrl, "ami-care.nl", "/", {
+    originSecret: "guessed-origin-secret-000000000000000",
+  })
+  const spoofedOriginBody = await spoofedOrigin.text()
+  assert.equal(spoofedOrigin.status, 404)
+  assert.equal(spoofedOriginBody, "Page not found")
+  assertNoAnalyticsLeakage(spoofedOriginBody)
 
   const nonHttpsEdge = await fetchWithHost(baseUrl, "ami-care.nl", "/", { forwardedProto: "http" })
   assert.equal(nonHttpsEdge.status, 404)

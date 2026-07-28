@@ -1,6 +1,6 @@
 import "server-only"
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
   validateTldRegistrationLabel,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload } from "payload"
@@ -49,6 +49,9 @@ export type PreviewDomainOrderResult = {
   included: boolean
   extraFeeAmount: string | null
   extraFeeCurrency: string | null
+  providerPriceAmount: string | null
+  providerPriceCurrency: string | null
+  providerQuotedAt: string
   suggestions: PreviewDomainSuggestion[]
 }
 
@@ -95,8 +98,18 @@ export async function suggestAvailablePreviewDomains(
 export async function suggestAvailablePreviewDomainBatch(
   domain: string,
   includedProviderPrice: ReturnType<typeof maxDomainProviderPriceFromEnv>,
-  tokenOrOptions?: string | { cursor?: number; batchSize?: number; existingDomains?: string[] },
-  maybeOptions?: { cursor?: number; batchSize?: number; existingDomains?: string[] },
+  tokenOrOptions?: string | {
+    cursor?: number
+    batchSize?: number
+    existingDomains?: string[]
+    capabilityEffectiveAt?: string | Date
+  },
+  maybeOptions?: {
+    cursor?: number
+    batchSize?: number
+    existingDomains?: string[]
+    capabilityEffectiveAt?: string | Date
+  },
 ): Promise<PreviewDomainSuggestionBatch> {
   const normalized = normalizeDomain(domain)
   const suggestions: PreviewDomainSuggestion[] = []
@@ -106,7 +119,11 @@ export async function suggestAvailablePreviewDomainBatch(
   const cursor = Math.max(0, options?.cursor ?? 0)
   const batchSize = Math.max(1, Math.min(options?.batchSize ?? 6, 12))
   if (!normalized.ok) return { suggestions, nextCursor: cursor, done: true }
-  const capability = getEnabledTldCapability(normalized.extension)
+  const capability = getTldCapabilityForProductionOperation(
+    normalized.extension,
+    "registration",
+    options?.capabilityEffectiveAt,
+  )
   if (!capability || !validateTldRegistrationLabel(capability, normalized.name)) {
     return { suggestions, nextCursor: cursor, done: true }
   }
@@ -168,13 +185,18 @@ export async function checkAndRecordPreviewDomainOrder(
   options?: {
     record?: boolean
     includedProviderPrice?: FixedDomainOrderPrice
+    capabilityEffectiveAt?: string | Date
   },
 ): Promise<PreviewDomainOrderResult> {
   const normalized = normalizeDomain(domainInput)
   if (!normalized.ok) {
     throw new Error(`Invalid domain: ${normalized.reason}`)
   }
-  const capability = getEnabledTldCapability(normalized.extension)
+  const capability = getTldCapabilityForProductionOperation(
+    normalized.extension,
+    "registration",
+    options?.capabilityEffectiveAt,
+  )
   if (!capability) {
     throw new Error(`TLD .${normalized.extension} is not enabled for checkout.`)
   }
@@ -232,6 +254,9 @@ export async function checkAndRecordPreviewDomainOrder(
     included: includedPrice,
     extraFeeAmount: extraFee?.amount ?? null,
     extraFeeCurrency: extraFee?.currency ?? null,
+    providerPriceAmount: providerPrice?.amount ?? null,
+    providerPriceCurrency: providerPrice?.currency ?? null,
+    providerQuotedAt: now,
     suggestions: [],
     messageKey: includedPrice
       ? "checkoutDomainAvailable"

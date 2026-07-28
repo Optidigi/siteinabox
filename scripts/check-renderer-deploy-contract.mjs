@@ -67,26 +67,40 @@ if (rendererPackage.dependencies?.["@siteinabox/legal-content"]?.startsWith("wor
 }
 
 const rendererCompose = await readFile(rendererComposePath, "utf8")
-const rendererRule = rendererCompose
-  .split("\n")
-  .find((line) => line.includes("traefik.http.routers.siteinabox-renderer.rule=")) ?? ""
-if (!rendererRule.includes("HostRegexp(")) {
-  errors.push(`${formatPath(rendererComposePath)} must use a TLD-neutral HostRegexp edge route`)
-}
-if (/\\\.nl\b|Host\(`/.test(rendererRule)) {
-  errors.push(`${formatPath(rendererComposePath)} renderer route must not hard-code a production host or .nl TLD`)
-}
 for (const requiredFragment of [
-  "traefik.http.routers.siteinabox-renderer.entrypoints=websecure",
-  "traefik.http.routers.siteinabox-renderer.tls.certresolver=",
-  "SIAB_RENDERER_ORIGIN_SECRET: ${SIAB_RENDERER_ORIGIN_SECRET:?required}",
+  "image: ghcr.io/optidigi/siteinabox-renderer@${SIAB_RENDERER_IMAGE_DIGEST:?required}",
+  "docker.io/cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df",
+  "SIAB_RENDERER_API_TOKEN_FILE: /run/secrets/renderer_api_token",
+  "SIAB_RENDERER_ORIGIN_SECRET_FILE: /run/secrets/renderer_origin_secret",
+  "file: ${SIAB_RENDERER_API_TOKEN_FILE:?required}",
+  "file: ${SIAB_RENDERER_ORIGIN_SECRET_FILE:?required}",
+  "file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?required}",
+  "/run/secrets/cloudflare_tunnel_token",
+  "http://siteinabox-renderer:4321",
+  'test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]',
+  "renderer-origin:",
 ]) {
   if (!rendererCompose.includes(requiredFragment)) {
-    errors.push(`${formatPath(rendererComposePath)} is missing protected HTTPS origin contract: ${requiredFragment}`)
+    errors.push(`${formatPath(rendererComposePath)} is missing private Tunnel origin contract: ${requiredFragment}`)
   }
 }
-if (rendererCompose.includes("customrequestheaders.X-Siab-Origin-Verify")) {
-  errors.push(`${formatPath(rendererComposePath)} must validate the Cloudflare edge secret, not inject it at the origin`)
+if ((rendererCompose.match(/^\s{4}user: "1000:1000"$/gm) ?? []).length !== 2) {
+  errors.push(`${formatPath(rendererComposePath)} must run both private-origin services as secret-file owner 1000:1000`)
+}
+for (const forbiddenFragment of [
+  "traefik.enable=true",
+  "traefik.http.routers.siteinabox-renderer",
+  "certresolver=",
+  "HostRegexp(",
+  "siteinabox-renderer:latest",
+  "external: true",
+  "ports:",
+  "SIAB_RENDERER_API_TOKEN: ${",
+  "SIAB_RENDERER_ORIGIN_SECRET: ${",
+]) {
+  if (rendererCompose.includes(forbiddenFragment)) {
+    errors.push(`${formatPath(rendererComposePath)} publicly exposes or weakens the private origin: ${forbiddenFragment}`)
+  }
 }
 
 const composePaths = await listRepoFiles(repoRoot, isComposePath)

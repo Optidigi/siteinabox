@@ -1,4 +1,5 @@
 import type { TaskConfig } from "payload"
+import { DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS } from "@siteinabox/contracts/commerce"
 
 import { queueOrderFulfillment } from "@/lib/jobs/fulfillOrderTask"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
@@ -8,6 +9,7 @@ import { queueDomainRenewal } from "@/lib/jobs/renewDomainTask"
 import { queueMolliePaymentSync } from "@/lib/jobs/syncMolliePaymentTask"
 import { queueMollieRefund } from "@/lib/jobs/requestMollieRefundTask"
 import { relationshipId } from "@/lib/relationshipId"
+import { expireStaleMigrationCheckoutSecrets } from "@/lib/domains/migrationCheckoutSecretLifecycle"
 
 export const reconcileCommerceTask: TaskConfig<{
   input: Record<string, never>
@@ -285,7 +287,10 @@ export const reconcileCommerceTask: TaskConfig<{
         })
       }
     }
-    const renewalHorizon = new Date(now.getTime() + 61 * 24 * 60 * 60_000).toISOString()
+    const renewalHorizon = new Date(
+      now.getTime() +
+        Math.max(...DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS) * 24 * 60 * 60_000,
+    ).toISOString()
     const staleProviderRenewalCheck = new Date(
       now.getTime() - 24 * 60 * 60_000,
     ).toISOString()
@@ -299,8 +304,19 @@ export const reconcileCommerceTask: TaskConfig<{
           { custodyStatus: { not_in: ["transferred_out"] } },
           {
             or: [
-              { expiresAt: { exists: false } },
-              { expiresAt: { less_than_equal: renewalHorizon } },
+              { providerRenewalDate: { less_than_equal: renewalHorizon } },
+              {
+                and: [
+                  { providerRenewalDate: { exists: false } },
+                  { expiresAt: { less_than_equal: renewalHorizon } },
+                ],
+              },
+              {
+                and: [
+                  { providerRenewalDate: { exists: false } },
+                  { expiresAt: { exists: false } },
+                ],
+              },
               { reconciliationRequired: { equals: true } },
               { providerAutorenewCheckedAt: { exists: false } },
               {
@@ -337,6 +353,10 @@ export const reconcileCommerceTask: TaskConfig<{
       {},
       now,
     )
+    const expiredMigrationSecrets = await expireStaleMigrationCheckoutSecrets(
+      req.payload,
+      now,
+    )
     await reconcileOpenProviderBalanceAlert(
       req.payload,
       {},
@@ -358,7 +378,8 @@ export const reconcileCommerceTask: TaskConfig<{
           missingCustomerRecovery.examined +
           pendingRefundResult.docs.length +
           expiryResult.examined +
-          transferOutResult.examined,
+          transferOutResult.examined +
+          expiredMigrationSecrets,
         queued,
       },
     }

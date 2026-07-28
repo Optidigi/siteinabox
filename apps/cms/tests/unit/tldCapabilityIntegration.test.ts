@@ -24,6 +24,7 @@ const run = {
   id: 50,
   domainOrder: null,
 } as unknown as SiteGenerationRun
+const LEGACY_NL_ENABLED_AT = "2026-07-28T14:59:59.999Z"
 
 afterEach(() => {
   vi.unstubAllEnvs()
@@ -48,7 +49,7 @@ describe("effective TLD allowlist integration", () => {
       run,
       "example.com",
       null,
-      { record: false },
+      { record: false, capabilityEffectiveAt: LEGACY_NL_ENABLED_AT },
     )).rejects.toThrow("not enabled")
 
     expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
@@ -70,14 +71,14 @@ describe("effective TLD allowlist integration", () => {
     await expect(checkAndRecordPreviewDomainOrder(
       asPayload({ update: vi.fn() }),
       run,
-      "a.be",
+      "a.nl",
       null,
-      { record: false },
+      { record: false, capabilityEffectiveAt: LEGACY_NL_ENABLED_AT },
     )).rejects.toThrow("Domain label")
     expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
   })
 
-  it("allows .be through provider-backed pricing after its effective date", async () => {
+  it("keeps a modeled but disabled .be capability away from provider reads", async () => {
     vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
     openProviderMocks.checkAvailability.mockResolvedValue({
       status: "available",
@@ -95,12 +96,44 @@ describe("effective TLD allowlist integration", () => {
       "example.be",
       null,
       { record: false },
+    )).rejects.toThrow("not enabled")
+
+    expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
+  })
+
+  it("allows historically enabled .nl through provider-backed pricing", async () => {
+    vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_AMOUNT", "19.00")
+    openProviderMocks.checkAvailability.mockResolvedValue({
+      status: "available",
+      domain: "example.nl",
+      available: true,
+      premium: false,
+      price: { amount: "8.00", currency: "EUR" },
+      internalReason: null,
+    })
+
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload({ update: vi.fn() }),
+      run,
+      "example.nl",
+      null,
+      { record: false, capabilityEffectiveAt: LEGACY_NL_ENABLED_AT },
     )).resolves.toMatchObject({
-      domain: "example.be",
+      domain: "example.nl",
       included: true,
       messageKey: "checkoutDomainAvailable",
     })
+    expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith("example.nl")
+  })
 
-    expect(openProviderMocks.checkAvailability).toHaveBeenCalledWith("example.be")
+  it("blocks current .nl registration before provider reads until evidence is enabled", async () => {
+    await expect(checkAndRecordPreviewDomainOrder(
+      asPayload({ update: vi.fn() }),
+      run,
+      "example.nl",
+      null,
+      { record: false },
+    )).rejects.toThrow("not enabled")
+    expect(openProviderMocks.checkAvailability).not.toHaveBeenCalled()
   })
 })

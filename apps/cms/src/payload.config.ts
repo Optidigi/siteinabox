@@ -19,6 +19,7 @@ import {
 } from "@/collections/CommerceRecords"
 import { Forms } from "@/collections/Forms"
 import { DomainMigrations } from "@/collections/DomainMigrations"
+import { MigrationCheckoutSecrets } from "@/collections/MigrationCheckoutSecrets"
 import { IntakeSubmissions } from "@/collections/IntakeSubmissions"
 import { MailLogs } from "@/collections/MailLogs"
 import {
@@ -136,6 +137,7 @@ export default buildConfig({
     ManagedDomains,
     DomainRenewalCycles,
     DomainMigrations,
+    MigrationCheckoutSecrets,
     AccountingDocuments,
     CommerceNotificationDeliveries,
     AgreementAcceptances,

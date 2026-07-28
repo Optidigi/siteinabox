@@ -77,6 +77,12 @@ import * as migration_20260727_120231_phase9_automatic_domain_migration from './
 import * as migration_20260727_142003_phase10_assisted_migration from './20260727_142003_phase10_assisted_migration';
 import * as migration_20260727_145356_phase11_commerce_hardening from './20260727_145356_phase11_commerce_hardening';
 import * as migration_20260727_154129_phase11_transfer_confirmation from './20260727_154129_phase11_transfer_confirmation';
+import * as migration_20260728_101754_checkout_structured_names from './20260728_101754_checkout_structured_names';
+import * as migration_20260728_110157_tld_renewal_correctness from './20260728_110157_tld_renewal_correctness';
+import * as migration_20260728_112901_renewal_dossier_evidence from './20260728_112901_renewal_dossier_evidence';
+import * as migration_20260728_113932_provider_write_failure_state from './20260728_113932_provider_write_failure_state';
+import * as migration_20260728_130835_commerce_existing_domain_safety from './20260728_130835_commerce_existing_domain_safety';
+import * as migration_20260728_162517_migration_checkout_secret_nullable_run from './20260728_162517_migration_checkout_secret_nullable_run';
 
 export const migrations = [
   {
@@ -472,6 +478,36 @@ export const migrations = [
   {
     up: migration_20260727_154129_phase11_transfer_confirmation.up,
     down: migration_20260727_154129_phase11_transfer_confirmation.down,
-    name: '20260727_154129_phase11_transfer_confirmation'
+    name: '20260727_154129_phase11_transfer_confirmation',
+  },
+  {
+    up: migration_20260728_101754_checkout_structured_names.up,
+    down: migration_20260728_101754_checkout_structured_names.down,
+    name: '20260728_101754_checkout_structured_names',
+  },
+  {
+    up: migration_20260728_110157_tld_renewal_correctness.up,
+    down: migration_20260728_110157_tld_renewal_correctness.down,
+    name: '20260728_110157_tld_renewal_correctness',
+  },
+  {
+    up: migration_20260728_112901_renewal_dossier_evidence.up,
+    down: migration_20260728_112901_renewal_dossier_evidence.down,
+    name: '20260728_112901_renewal_dossier_evidence',
+  },
+  {
+    up: migration_20260728_113932_provider_write_failure_state.up,
+    down: migration_20260728_113932_provider_write_failure_state.down,
+    name: '20260728_113932_provider_write_failure_state',
+  },
+  {
+    up: migration_20260728_130835_commerce_existing_domain_safety.up,
+    down: migration_20260728_130835_commerce_existing_domain_safety.down,
+    name: '20260728_130835_commerce_existing_domain_safety',
+  },
+  {
+    up: migration_20260728_162517_migration_checkout_secret_nullable_run.up,
+    down: migration_20260728_162517_migration_checkout_secret_nullable_run.down,
+    name: '20260728_162517_migration_checkout_secret_nullable_run'
   },
 ];

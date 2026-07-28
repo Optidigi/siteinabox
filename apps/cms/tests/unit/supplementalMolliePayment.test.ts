@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { asPayload, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import {
+  asPayload,
+  matchesWhere,
+  type MockDoc,
+  type MockFindArgs,
+  type MockUpdateArgs,
+} from "../_helpers/mockPayload"
 
 const { createMolliePayment } = vi.hoisted(() => ({
   createMolliePayment: vi.fn(),
@@ -25,7 +31,10 @@ describe("supplemental assisted-migration Mollie payment", () => {
     vi.stubEnv("NODE_ENV", "test")
     vi.stubEnv("MOLLIE_API_KEY", "test_xxx")
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
-    vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+    vi.stubEnv(
+      "COMMERCE_RELEASE_EVIDENCE_VERSION",
+      "commerce-production-readiness-2026-07-28.1",
+    )
     vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
     vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://sandbox.openprovider.test/v1beta")
     vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://sandbox.cloudflare.test/client/v4")
@@ -72,14 +81,8 @@ describe("supplemental assisted-migration Mollie payment", () => {
     }
     let nextId = 100
     const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
-      const idempotencyKey = where &&
-        "idempotencyKey" in where &&
-        typeof where.idempotencyKey === "object" &&
-        where.idempotencyKey
-        ? (where.idempotencyKey as { equals?: unknown }).equals
-        : undefined
-      const docs = (collections[collection] ?? []).filter(
-        (doc) => idempotencyKey === undefined || doc.idempotencyKey === idempotencyKey,
+      const docs = (collections[collection] ?? []).filter((doc) =>
+        matchesWhere(doc, where),
       )
       return { docs, totalDocs: docs.length }
     })
@@ -146,12 +149,42 @@ describe("supplemental assisted-migration Mollie payment", () => {
     expect(createMolliePayment).toHaveBeenCalledTimes(1)
     expect(createMolliePayment).toHaveBeenCalledWith(expect.objectContaining({
       sequenceType: "oneoff",
-      idempotencyKey: "mollie:supplemental:order:70:v1",
+      idempotencyKey: "mollie:supplemental:order:70:authority-v3:attempt-1",
       metadata: expect.objectContaining({ migrationId: 10, orderId: 70 }),
     }))
     expect(collections.orders![0]).toMatchObject({
       paymentStatus: "open",
       providerPaymentId: "tr_supplemental",
     })
+
+    Object.assign(first.paymentAttempt, {
+      state: "cancelled",
+      reconciliationRequired: false,
+      checkoutUrl: null,
+    })
+    Object.assign(collections.orders![0]!, {
+      paymentStatus: "cancelled",
+      providerPaymentId: null,
+    })
+    createMolliePayment.mockResolvedValueOnce({
+      id: "tr_supplemental_retry",
+      status: "open",
+      _links: { checkout: { href: "https://www.mollie.com/checkout/retry" } },
+    })
+    const retry = await createSupplementalMigrationMollieCheckout(payload, {
+      orderId: 70,
+      redirectUrl: "https://cms.siteinabox.nl/migrations/10",
+    })
+    expect(retry).toMatchObject({
+      reused: false,
+      checkoutUrl: "https://www.mollie.com/checkout/retry",
+      paymentAttempt: {
+        attemptNumber: 2,
+        idempotencyKey:
+          "mollie:supplemental:order:70:authority-v3:attempt-2",
+      },
+    })
+    expect(collections["payment-attempts"]).toHaveLength(2)
+    expect(createMolliePayment).toHaveBeenCalledTimes(2)
   })
 })

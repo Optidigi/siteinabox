@@ -115,11 +115,8 @@ COMMERCE_RELEASE_STAGE=disabled
 COMMERCE_RELEASE_EVIDENCE_VERSION=
 COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=
 COMMERCE_ORIGIN_ISOLATION_VERIFIED=
-# Gross customer-facing amounts, including VAT where applicable.
-MOLLIE_SITE_PAYMENT_AMOUNT=228.00
-MOLLIE_SITE_PAYMENT_CURRENCY=EUR
+COMMERCE_EXISTING_DOMAIN_MIGRATION_ENABLED=
 MOLLIE_WEBHOOK_BASE_URL=https://admin.siteinabox.nl
-MOLLIE_WEBHOOK_SIGNING_SECRET=<mollie-webhook-signing-secret-from-secret-store>
 OPENPROVIDER_USERNAME=
 OPENPROVIDER_PASSWORD=
 OPENPROVIDER_API_BASE_URL=
@@ -259,6 +256,7 @@ Current production environment requirements:
 | --- | --- |
 | Postgres | Keep existing production `POSTGRES_PASSWORD` and derived `DATABASE_URI`; do not recreate the DB. |
 | Payload | Keep existing `PAYLOAD_SECRET`. |
+| CMS image | Set `SIAB_CMS_IMAGE_DIGEST=sha256:<digest>` from the successful CMS image workflow; never deploy a mutable tag. |
 | Data path | Keep `DATA_HOST_PATH=/srv/data/saas/siab-payload`. |
 | Super admin | Keep `SUPER_ADMIN_DOMAIN=siteinabox.nl`. |
 | VPS IP | Keep the current `VPS_IP` value for onboarding/DNS guidance. |
@@ -268,7 +266,7 @@ Current production environment requirements:
 | Renderer token | Set the same `SIAB_RENDERER_API_TOKEN` for the CMS snapshot endpoint and renderer environment. |
 | Email | Set `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, and `EMAIL_FROM`; keep `CLOUDFLARE_EMAIL_SMTP_TOKEN` only as optional SMTP fallback; remove obsolete `RESEND_API_KEY`. |
 | Rate limits | Keep or tune `SIAB_PUBLIC_POST_RATE_LIMIT_*` and `SIAB_FORM_TARGET_RATE_LIMIT_*` for anonymous public POST and form-target budgets. |
-| Mollie | Set `MOLLIE_API_KEY`, amount, currency, webhook base URL, and webhook signing secret. Production webhooks fail closed when `MOLLIE_WEBHOOK_SIGNING_SECRET` is unset. |
+| Mollie | Set `MOLLIE_API_KEY` and the webhook base URL. The classic webhook accepts Mollie's form-encoded payment ID and always retrieves authoritative state through the API; accepted order/payment-attempt amounts are the only monetary authority. |
 | Commerce release | Keep `COMMERCE_RELEASE_STAGE=disabled` until the evidence and staged enablement procedure in [commerce-release.md](commerce-release.md) is complete. |
 | OpenProvider | Set username/password, SIAB technical/billing handles, and max allowed provider domain cost before enabling paid customer domain registration. |
 | Cloudflare DNS/Email Sending API | Set API token, account id, optional API base URL, and renderer target host or IP before enabling paid customer domain registration and tenant sender verification. |
@@ -282,6 +280,17 @@ characters and silently mis-auth against Postgres. Either store everything
 unquoted, or strip quotes when reading (the helper in Step 5 does both).
 
 ## Step 3 — Login to GHCR (if image is private) and pull
+
+Record the verified digest emitted by `build-cms-image` in the deployment
+environment before pulling:
+
+```bash
+SIAB_CMS_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
+```
+
+Keep the previous digest in the approved change record for rollback. The image
+workflow publishes commit tags, smokes the exact output digest, and does not
+publish a mutable `latest` deployment target.
 
 ```bash
 # Skip if ghcr.io/optidigi/siteinabox-cms is public.
@@ -633,7 +642,7 @@ workflows, or images for new generated sites.
 
 Renderer image and stack template:
 
-- Image: `ghcr.io/optidigi/siteinabox-renderer:latest`
+- Image: `ghcr.io/optidigi/siteinabox-renderer@<approved-sha256-digest>`
 - Repo compose template: `apps/renderer/compose.yml`
 - VPS compose target:
   `/srv/saas/infra/stacks/siteinabox/apps/renderer/compose.yml`
@@ -645,7 +654,10 @@ NODE_ENV=production
 HOST=0.0.0.0
 PORT=4321
 SIAB_CMS_URL=https://admin.siteinabox.nl
-SIAB_RENDERER_API_TOKEN=<same value as CMS>
+SIAB_RENDERER_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
+SIAB_RENDERER_API_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-api-token
+SIAB_RENDERER_ORIGIN_SECRET_FILE=/srv/saas/secrets/siteinabox-renderer-origin
+CLOUDFLARE_TUNNEL_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-tunnel-token
 DATA_DIR=/data
 SITE_URL=https://<renderer-host-or-default-public-origin>
 SIAB_RENDERER_FIXTURE_MODE=
@@ -653,7 +665,14 @@ SIAB_RENDERER_FIXTURE_MODE=
 
 - `SIAB_CMS_URL` must be the reachable CMS origin. The renderer calls
   `/api/renderer/snapshot?host=<public-host>`.
-- `SIAB_RENDERER_API_TOKEN` must match the CMS value.
+- `SIAB_RENDERER_IMAGE_DIGEST` is immutable release evidence. Record the
+  previous and new digests before deployment; tags such as `latest` are not
+  valid production inputs.
+- The value stored at `SIAB_RENDERER_API_TOKEN_FILE` must match the CMS
+  `SIAB_RENDERER_API_TOKEN`.
+- The three `*_FILE` values are host paths to mode-`0600` files. Compose mounts
+  them as container secrets; none of their contents belongs in the environment
+  or repository.
 - `DATA_DIR` is the tenant data root mounted read-only. Public snapshot media is
   served through `/siab-media/<tenantId>/<filename>` only after host/snapshot
   authorization; missing files fall back to the authenticated CMS renderer
@@ -665,20 +684,21 @@ SIAB_RENDERER_FIXTURE_MODE=
 - `HOST` and `PORT` must stay aligned with the Astro standalone start command
   and Docker healthcheck: `node ./dist/server/entry.mjs` on port `4321`.
 
-Traefik must route tenant primary domains and aliases to the renderer service
-and preserve the original public hostname via `Host`; forwarding
-`X-Forwarded-Host` as well keeps direct CMS endpoint diagnostics equivalent to
-renderer calls. The CMS resolver treats `site-settings.aliases` as additional
-hosts for the same tenant snapshot. There is no canonical-domain redirect in
-the current renderer contract.
+The renderer and its pinned `cloudflared` sidecar share only the private
+`renderer-origin` bridge. The renderer publishes no host port and has no
+Traefik labels. Cloudflare terminates public TLS and the Tunnel forwards the
+original public `Host` to port `4321`; the CMS resolver treats
+`site-settings.aliases` as additional explicit hosts for the same tenant
+snapshot. There is no inferred `www` mapping or canonical-domain redirect.
 
 The production renderer owns generated-site tenant domains. `ami-care.nl` is
 served from the same canonical provider-block snapshot contract as every other
 tenant; `amicare.optidigi.nl` may be used only as an alias/staging host for that
-snapshot. Traefik preserves `Host` by default. The renderer compose
-template does not add an explicit `X-Forwarded-Host` middleware; smoke testing
-must verify the CMS snapshot endpoint sees the public tenant hostname during
-renderer requests.
+snapshot. The exact approval-gated Cloudflare setup, probes, rotation
+constraints, and rollback sequence are in
+[Renderer origin isolation](./renderer-origin-isolation.md). Keep
+`COMMERCE_ORIGIN_ISOLATION_VERIFIED` unset until that runbook's evidence is
+complete for the deployment environment.
 
 ## Customer Domain Provisioning Workflow
 
@@ -713,9 +733,9 @@ verified domain, verified tenant Email Sending, and a tenant that is not
 suspended or archived.
 
 Before recording manual domain verification, confirm primary domains and
-aliases resolve through Traefik to the renderer and preserve the public `Host`
-or `X-Forwarded-Host`. Record `failed` with notes when DNS/proxy checks are not
-ready; do not mark a domain verified merely to bypass activation gates.
+aliases resolve through the dedicated Tunnel and preserve the public `Host`.
+Record `failed` with notes when DNS/proxy checks are not ready; do not mark a
+domain verified merely to bypass activation gates.
 
 ## Form-submission retention (GDPR)
 

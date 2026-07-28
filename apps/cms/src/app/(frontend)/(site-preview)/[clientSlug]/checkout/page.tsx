@@ -14,7 +14,6 @@ import { previewAuth } from "@/lib/preview/betterAuth"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import {
-  domainExtraFeeForProviderPrice,
   normalizeDomainOrderState,
   type DomainRegistrantDetails,
 } from "@/lib/domains/orderState"
@@ -23,12 +22,23 @@ import {
   loadLatestCheckoutProfile,
   type CheckoutProfileDraft,
 } from "@/lib/checkout/checkoutProfile"
-import { decimalMoneyToMinor } from "@/lib/checkout/checkoutQuote"
+import { loadAcceptedCheckoutResume } from "@/lib/checkout/acceptedCheckoutResume"
 import {
+  buildCheckoutQuote,
+  decimalMoneyToMinor,
+  sealCheckoutQuote,
+  type CheckoutQuoteSet,
+} from "@/lib/checkout/checkoutQuote"
+import {
+  acceptMigrationSupplementalOrderAction,
   checkPreviewCheckoutDomainAction,
+  recollectAcceptedMigrationInputAction,
   savePreviewCheckoutProfileAction,
   startPreviewCheckoutPaymentAction,
+  submitMigrationTransferCodeAction,
 } from "./actions"
+import { existingDomainMigrationCheckoutEnabled } from "@/lib/domains/migrationCheckout"
+import { loadCustomerMigrationStatus } from "@/lib/domains/migrationStatus"
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("preview")
@@ -37,12 +47,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PreviewCheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ clientSlug: string }>
+  searchParams?: Promise<{ payment?: string | string[] }>
 }) {
   if (!(await isPreviewHost())) notFound()
 
   const { clientSlug } = await params
+  const paymentReturn = (await searchParams)?.payment === "return"
   const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
   if (!normalizedClientSlug) notFound()
 
@@ -76,20 +89,43 @@ export default async function PreviewCheckoutPage({
       ? context.run.payment as { status?: string | null }
       : null
     const domainOrder = normalizeDomainOrderState(context.run.domainOrder)
-    const selectedDomain = domainOrder.status === "ready_to_register" ? domainOrder.domain : null
     const terms = getCurrentLegalDocument("platform-terms", "nl")
     const privacy = getCurrentLegalDocument("platform-privacy", "nl")
     const registrant = domainOrder.registrant ?? deriveRegistrantDefaults({
       run: context.run,
     })
-    const profileRecord = await loadLatestCheckoutProfile(context.payload, context.run.id)
+    const signingSecret = process.env.PAYLOAD_SECRET?.trim()
+    if (!signingSecret) {
+      throw new Error("PAYLOAD_SECRET is required to issue checkout quotes.")
+    }
+    const [profileRecord, acceptedResume] = await Promise.all([
+      loadLatestCheckoutProfile(context.payload, context.run.id),
+      loadAcceptedCheckoutResume(context.payload, {
+        generationRunId: context.run.id,
+        customerEmail: context.customerEmail,
+        signingSecret,
+      }),
+    ])
+    const selectedDomain = acceptedResume?.domain ??
+      (domainOrder.status === "ready_to_register" ? domainOrder.domain : null)
     const initialProfile = profileRecord ? checkoutProfileView(profileRecord) : null
+    const migrationStatus = await loadCustomerMigrationStatus(context.payload, {
+      generationRunId: context.run.id,
+      customerEmail: context.customerEmail,
+    })
     const initialDetails = initialProfile ?? deriveCheckoutDetails({
       run: context.run,
       registrant,
       tenantName: String(context.tenant.name),
     })
-    const initialDomainSurchargeNetMinor = domainSurchargeNetMinor(domainOrder)
+    const initialQuotes = acceptedResume?.quotes ?? (selectedDomain
+      ? initialCheckoutQuotes({
+          domain: selectedDomain,
+          domainOrder,
+          profileVersion: initialProfile?.profileVersion ?? 0,
+          draftVersion: String(context.run.updatedAt ?? domainOrder.updatedAt ?? ""),
+        })
+      : null)
 
     return (
       <PreviewCheckout
@@ -98,7 +134,19 @@ export default async function PreviewCheckoutPage({
         domainReady={Boolean(selectedDomain)}
         initialProfile={initialProfile}
         initialDetails={initialDetails}
-        initialDomainSurchargeNetMinor={initialDomainSurchargeNetMinor}
+        initialQuotes={initialQuotes}
+        initialStep={
+          paymentReturn && initialProfile && initialQuotes
+            ? "overview"
+            : "domain"
+        }
+        paymentReturn={paymentReturn}
+        existingDomainMigrationEnabled={existingDomainMigrationCheckoutEnabled()}
+        migrationStatus={migrationStatus}
+        acceptedOrderId={acceptedResume?.orderId ?? null}
+        requiresMigrationRecollection={
+          acceptedResume?.requiresMigrationRecollection ?? false
+        }
         catalog={{
           version: COMMERCIAL_CATALOG.catalogVersion,
           currency: COMMERCIAL_CATALOG.currency,
@@ -129,6 +177,15 @@ export default async function PreviewCheckoutPage({
         checkDomainAction={checkPreviewCheckoutDomainAction.bind(null, context.clientSlug)}
         saveProfileAction={savePreviewCheckoutProfileAction.bind(null, context.clientSlug)}
         startPaymentAction={startPreviewCheckoutPaymentAction.bind(null, context.clientSlug)}
+        acceptMigrationSupplementalOrderAction={
+          acceptMigrationSupplementalOrderAction.bind(null, context.clientSlug)
+        }
+        recollectAcceptedMigrationInputAction={
+          recollectAcceptedMigrationInputAction.bind(null, context.clientSlug)
+        }
+        submitMigrationTransferCodeAction={
+          submitMigrationTransferCodeAction.bind(null, context.clientSlug)
+        }
         termsHref={`https://www.siteinabox.nl${terms.permanentPath}`}
         privacyHref={`https://www.siteinabox.nl${privacy.permanentPath}`}
         termsVersion={terms.documentVersion}
@@ -147,6 +204,40 @@ export default async function PreviewCheckoutPage({
         description={t("accessUnavailableDescription")}
       />
     )
+  }
+}
+
+function initialCheckoutQuotes(input: {
+  domain: string
+  domainOrder: ReturnType<typeof normalizeDomainOrderState>
+  profileVersion: number
+  draftVersion: string
+}): CheckoutQuoteSet | null {
+  if (
+    !input.domainOrder.providerPriceAmount ||
+    input.domainOrder.providerPriceCurrency !== "EUR" ||
+    !input.domainOrder.checkedAt
+  ) {
+    return null
+  }
+  const secret = process.env.PAYLOAD_SECRET?.trim()
+  if (!secret) throw new Error("PAYLOAD_SECRET is required to issue checkout quotes.")
+  const providerPriceAmount = input.domainOrder.providerPriceAmount
+  const providerQuotedAt = input.domainOrder.checkedAt
+  const issue = (billingPeriod: "monthly" | "annual") =>
+    sealCheckoutQuote(buildCheckoutQuote({
+      billingPeriod,
+      providerOperationPriceNetMinor: decimalMoneyToMinor(
+        providerPriceAmount,
+      ),
+      selectedDomain: input.domain,
+      providerQuotedAt,
+      profileVersion: input.profileVersion,
+      draftVersion: input.draftVersion,
+    }), secret)
+  return {
+    monthly: issue("monthly"),
+    annual: issue("annual"),
   }
 }
 
@@ -318,20 +409,6 @@ function deriveRegistrantDefaults(input: {
     phoneSubscriberNumber: phone.phoneSubscriberNumber,
     locale: "nl_NL",
   }
-}
-
-function domainSurchargeNetMinor(
-  domainOrder: ReturnType<typeof normalizeDomainOrderState>,
-): number {
-  const providerPrice = domainOrder.providerPriceAmount && domainOrder.providerPriceCurrency
-    ? { amount: domainOrder.providerPriceAmount, currency: domainOrder.providerPriceCurrency }
-    : null
-  const includedProviderPrice = {
-    amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
-    currency: COMMERCIAL_CATALOG.currency,
-  }
-  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
-  return extraFee?.currency === "EUR" ? decimalMoneyToMinor(extraFee.amount) : 0
 }
 
 function PreviewCheckoutAccessScreen({

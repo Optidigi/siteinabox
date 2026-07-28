@@ -67,6 +67,15 @@ const srvRecordSchema = z.object({
   target: targetNameSchema,
 }).strict()
 
+const tlsaRecordSchema = z.object({
+  ...commonRecordFields,
+  type: z.literal("TLSA"),
+  certificateUsage: z.number().int().min(0).max(3),
+  selector: z.number().int().min(0).max(1),
+  matchingType: z.number().int().min(0).max(2),
+  certificateAssociationData: z.string().trim().regex(/^[a-fA-F0-9]+$/).max(16_384),
+}).strict()
+
 export const migrationDnsRecordSchema = z.discriminatedUnion("type", [
   aRecordSchema,
   aaaaRecordSchema,
@@ -75,6 +84,7 @@ export const migrationDnsRecordSchema = z.discriminatedUnion("type", [
   mxRecordSchema,
   caaRecordSchema,
   srvRecordSchema,
+  tlsaRecordSchema,
 ])
 
 export type MigrationDnsRecord = z.infer<typeof migrationDnsRecordSchema>
@@ -121,7 +131,45 @@ export const completeZoneExportSchema = z.object({
         message: "Apex NS records belong in authoritativeNameservers, not records.",
       })
     }
+    if (
+      record.type === "TLSA" &&
+      (
+        record.certificateAssociationData.length % 2 !== 0 ||
+        (
+          record.matchingType === 1 &&
+          record.certificateAssociationData.length !== 64
+        ) ||
+        (
+          record.matchingType === 2 &&
+          record.certificateAssociationData.length !== 128
+        )
+      )
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["records", index, "certificateAssociationData"],
+        message: "TLSA association data length must match its selected matching type.",
+      })
+    }
   })
+  const byName = new Map<string, Set<string>>()
+  zone.records.forEach((record) => {
+    const name = record.name === "@" ? domain : canonicalName(record.name)
+    const types = byName.get(name) ?? new Set<string>()
+    types.add(record.type)
+    byName.set(name, types)
+  })
+  for (const [name, types] of byName) {
+    // Cloudflare flattens an apex CNAME/ALIAS while preserving apex MX/TXT.
+    // Ordinary non-apex CNAME coexistence remains invalid.
+    if (name !== domain && types.has("CNAME") && types.size > 1) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["records"],
+        message: `CNAME ${name} conflicts with another record type.`,
+      })
+    }
+  }
   if (zone.dnssec.status === "unsigned" && zone.dnssec.parentDsRecords.length > 0) {
     ctx.addIssue({
       code: "custom",
@@ -148,6 +196,19 @@ export type NormalizedCompleteZone = Omit<
 const canonicalName = (value: string): string =>
   value.trim().toLowerCase().replace(/\.$/, "")
 
+const normalizeTxtContent = (value: string): string => {
+  const trimmed = value.trim()
+  const chunks = [...trimmed.matchAll(/"((?:\\.|[^"])*)"/g)]
+  if (
+    chunks.length === 0 ||
+    chunks.map((match) => match[0]).join(" ") !== trimmed.replace(/\s+/g, " ")
+  ) {
+    return value
+  }
+  return chunks.map((match) =>
+    match[1]!.replace(/\\"/g, "\"").replace(/\\\\/g, "\\")).join("")
+}
+
 const normalizeRecord = (
   record: MigrationDnsRecord,
   domain: string,
@@ -168,6 +229,17 @@ const normalizeRecord = (
   if (record.type === "AAAA") {
     return { ...record, name, content: record.content.toLowerCase(), proxied: false }
   }
+  if (record.type === "TXT") {
+    return { ...record, name, content: normalizeTxtContent(record.content), proxied: false }
+  }
+  if (record.type === "TLSA") {
+    return {
+      ...record,
+      name,
+      certificateAssociationData: record.certificateAssociationData.toLowerCase(),
+      proxied: false,
+    }
+  }
   return { ...record, name, proxied: false }
 }
 
@@ -186,6 +258,15 @@ const semanticRecordKey = (record: NormalizedMigrationDnsRecord): string => {
       record.weight,
       record.port,
       record.target,
+    ])
+  }
+  if (record.type === "TLSA") {
+    return JSON.stringify([
+      ...common,
+      record.certificateUsage,
+      record.selector,
+      record.matchingType,
+      record.certificateAssociationData,
     ])
   }
   return JSON.stringify([...common, record.content])
@@ -288,8 +369,31 @@ export function semanticZoneComparison(
 ): SemanticZoneComparison {
   const expectedKeys = new Set(expected.map(semanticRecordKey))
   const actualKeys = new Set(actual.map(semanticRecordKey))
-  const missing = [...expectedKeys].filter((key) => !actualKeys.has(key)).sort()
-  const unexpected = [...actualKeys].filter((key) => !expectedKeys.has(key)).sort()
+  const expectedByKey = new Map(expected.map((record) => [semanticRecordKey(record), record]))
+  const actualByKey = new Map(actual.map((record) => [semanticRecordKey(record), record]))
+  const ttlEquivalent = (
+    expectedTtl: number,
+    actualTtl: number,
+  ): boolean =>
+    Math.abs(expectedTtl - actualTtl) <= Math.max(
+      60,
+      Math.round(expectedTtl * 0.2),
+    )
+  const ttlMismatches = [...expectedKeys].filter((key) => {
+    const expectedRecord = expectedByKey.get(key)
+    const actualRecord = actualByKey.get(key)
+    return expectedRecord && actualRecord
+      ? !ttlEquivalent(expectedRecord.ttl, actualRecord.ttl)
+      : false
+  })
+  const missing = [
+    ...[...expectedKeys].filter((key) => !actualKeys.has(key)),
+    ...ttlMismatches.map((key) => `${key}:ttl`),
+  ].sort()
+  const unexpected = [
+    ...[...actualKeys].filter((key) => !expectedKeys.has(key)),
+    ...ttlMismatches.map((key) => `${key}:ttl`),
+  ].sort()
   return {
     equivalent: missing.length === 0 && unexpected.length === 0,
     missing,

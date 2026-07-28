@@ -16,8 +16,8 @@ export function logPreviewCheckoutTiming(
   console.info("Preview checkout timing", {
     event,
     durationMs: durationMs(start),
-    clientSlug: fields.clientSlug,
-    domain: fields.domain ?? null,
+    clientContextPresent: Boolean(fields.clientSlug),
+    domainContextPresent: Boolean(fields.domain),
     ...extra,
   })
 }

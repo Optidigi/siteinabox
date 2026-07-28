@@ -55,9 +55,13 @@ eligible canonical domain and its explicit active alias allowlist; the renderer
 validates the routing envelope before serving tenant content. Apex and `www`
 are independent entries—`www` is not inferred.
 Production origin requests must carry the high-entropy
-`X-Siab-Origin-Verify` value injected at the Cloudflare edge, must arrive over
-the protected HTTPS proxy path, and must have matching `Host` and
-`X-Forwarded-Host`. Health checks are the only direct-origin exception.
+`X-Siab-Origin-Verify` value overwritten at the Cloudflare edge and must arrive
+through the outbound-only Cloudflare Tunnel. The renderer has no published host
+port and is not attached to the public Traefik network, so the header is
+defense-in-depth rather than the sole origin trust boundary. The original
+`Host` is required; when `X-Forwarded-Host` is present it must match. Health
+checks inside the private container network are the only unauthenticated
+exception.
 Unknown or invalid hosts fail with a tenant-neutral 404.
 
 ### Typed public block variants
@@ -102,7 +106,7 @@ Re-import and scaffold workflows live under `scripts/shadcnui-blocks/`:
 - The root lockfile and workspace manifests own dependency resolution.
 - Root/package scripts and CI own verification.
 - Image workflows own release triggers; compose files own container wiring and
-  Traefik routing.
+  the renderer's private Tunnel connector.
 - `docs/runbooks/` owns procedures; `docs/contracts/` owns durable behavioral
   boundaries; `docs/findings.md` owns unresolved repository findings.
 - Production and provider mutations remain operator-controlled.

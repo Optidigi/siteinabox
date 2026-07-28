@@ -5,6 +5,14 @@ import {
   createDecipheriv,
   randomBytes,
 } from "node:crypto"
+import {
+  completeZoneExportSchema,
+  normalizeCompleteZone,
+  type CompleteZoneExport,
+  type NormalizedCompleteZone,
+} from "@siteinabox/contracts/domain-migration"
+import type { MigrationClassification } from "@siteinabox/contracts/commerce"
+import { domainMigrationSourceAuthorityHash } from "@/lib/domains/migrationEvidence"
 
 const ENVELOPE_VERSION = "v1"
 
@@ -71,4 +79,96 @@ export function openMigrationSecret(
     decipher.update(Buffer.from(ciphertextValue, "base64url")),
     decipher.final(),
   ]).toString("utf8")
+}
+
+export type CheckoutMigrationInput = {
+  schemaVersion: 1
+  generationRunId: string
+  domain: string
+  classification: Exclude<MigrationClassification, "complex">
+  sourceMechanism: "customer_authorized_provider_export_v1"
+  sourceZoneHash: string
+  sourceZone: CompleteZoneExport
+  transferCode: string
+  transferAuthorizationAccepted: true
+}
+
+export type OpenedCheckoutMigrationInput = Omit<
+  CheckoutMigrationInput,
+  "sourceZone"
+> & {
+  sourceZone: CompleteZoneExport
+  normalizedSourceZone: NormalizedCompleteZone
+}
+
+export const checkoutMigrationBinding = (
+  generationRunId: string | number,
+  domain: string,
+): string => `checkout:${generationRunId}:${domain.trim().toLowerCase()}`
+
+export function sealCheckoutMigrationInput(
+  input: CheckoutMigrationInput,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const sourceZone = normalizeCompleteZone(input.sourceZone)
+  if (
+    input.schemaVersion !== 1 ||
+    input.generationRunId.trim().length === 0 ||
+    sourceZone.domain !== input.domain.trim().toLowerCase() ||
+    input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
+    !["automatic", "assisted_standard"].includes(input.classification) ||
+    input.sourceMechanism !== "customer_authorized_provider_export_v1" ||
+    input.transferAuthorizationAccepted !== true
+  ) {
+    throw new Error("Checkout migration input is invalid.")
+  }
+  return sealMigrationSecret(
+    JSON.stringify(input),
+    checkoutMigrationBinding(input.generationRunId, input.domain),
+    env,
+  )
+}
+
+export function openCheckoutMigrationInput(
+  envelope: string,
+  generationRunId: string | number,
+  domain: string,
+  env: NodeJS.ProcessEnv = process.env,
+): OpenedCheckoutMigrationInput {
+  const plaintext = openMigrationSecret(
+    envelope,
+    checkoutMigrationBinding(generationRunId, domain),
+    env,
+  )
+  const input = JSON.parse(plaintext) as Partial<CheckoutMigrationInput>
+  const sourceZoneInput = completeZoneExportSchema.parse(input.sourceZone)
+  const sourceZone = normalizeCompleteZone(sourceZoneInput)
+  const normalizedDomain = domain.trim().toLowerCase()
+  if (
+    input.schemaVersion !== 1 ||
+    input.generationRunId !== String(generationRunId) ||
+    input.domain !== normalizedDomain ||
+    sourceZone.domain !== normalizedDomain ||
+    input.sourceZoneHash !== domainMigrationSourceAuthorityHash(sourceZone) ||
+    !["automatic", "assisted_standard"].includes(input.classification ?? "") ||
+    input.sourceMechanism !== "customer_authorized_provider_export_v1" ||
+    input.transferAuthorizationAccepted !== true ||
+    typeof input.transferCode !== "string" ||
+    !input.transferCode.trim()
+  ) {
+    throw new Error("Checkout migration input envelope does not match its authority.")
+  }
+  return {
+    ...input,
+    schemaVersion: 1,
+    generationRunId: String(generationRunId),
+    domain: normalizedDomain,
+    classification: input.classification as "automatic" | "assisted_standard",
+    sourceMechanism: "customer_authorized_provider_export_v1",
+    sourceZoneHash: input.sourceZoneHash,
+    sourceZone: sourceZoneInput,
+    normalizedSourceZone: sourceZone,
+    transferCode: input.transferCode,
+    transferAuthorizationAccepted: true,
+  }
 }

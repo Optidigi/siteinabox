@@ -51,17 +51,26 @@ const history = (
   { state, at, reason },
 ]
 
-const updateMigration = (
+const updateMigration = async (
   payload: Payload,
   migration: DomainMigration,
   data: Partial<DomainMigration>,
   reason: string,
   now: string,
 ): Promise<DomainMigration> => {
+  if (!migration.updatedAt) {
+    throw new Error("Domain migration is missing its concurrency version.")
+  }
   const state = data.state ?? migration.state
-  return payload.update({
+  const result = await payload.update({
     collection: "domain-migrations",
-    id: migration.id,
+    where: {
+      and: [
+        { id: { equals: migration.id } },
+        { updatedAt: { equals: migration.updatedAt } },
+        { state: { equals: migration.state } },
+      ],
+    },
     data: {
       ...data,
       updatedAt: now,
@@ -70,7 +79,16 @@ const updateMigration = (
     depth: 0,
     overrideAccess: true,
     context: { domainMigrationLifecycleMutation: true },
-  }) as Promise<DomainMigration>
+  })
+  const updated = Array.isArray(result.docs)
+    ? result.docs[0] as DomainMigration | undefined
+    : undefined
+  if (!updated) {
+    throw new Error(
+      "Domain migration changed concurrently; reload current operator state.",
+    )
+  }
+  return updated
 }
 
 const requireOperator = (actor: OperatorActor): OperatorActor => {
@@ -295,6 +313,48 @@ export async function pauseAcceptedAssistedMigration(
   }, "accepted_assisted_operator_work_paid", now)
 }
 
+export async function proposeMigrationOperatorWork(
+  payload: Payload,
+  input: {
+    migrationId: string | number
+    workScope: string
+    now?: string
+  },
+): Promise<DomainMigration> {
+  const now = input.now ?? new Date().toISOString()
+  const workScope = input.workScope.trim()
+  if (![
+    "verify_customer_zone_export",
+    "resolve_supported_zone_conflict",
+    "complete_supported_provider_handoff",
+  ].includes(workScope)) {
+    throw new Error("Unexpected operator work requires a bounded approved scope.")
+  }
+  const migration = await payload.findByID({
+    collection: "domain-migrations",
+    id: input.migrationId,
+    depth: 0,
+    overrideAccess: true,
+  }) as DomainMigration
+  if (
+    migration.acceptedClassification !== "automatic" ||
+    !["ready_to_prepare", "preparing", "awaiting_provider", "ready_for_cutover"].includes(
+      migration.state,
+    )
+  ) {
+    throw new Error("Only an accepted automatic migration may receive a supplemental proposal.")
+  }
+  return updateMigration(payload, migration, {
+    state: "paused_supplemental_order",
+    operatorWorkClassification: "assisted_standard",
+    operatorWorkCause: "customer_migration",
+    operatorWorkScope: workScope,
+    operatorWorkAuthorizationState: "awaiting_customer_acceptance",
+    reconciliationRequired: false,
+    failureReason: "supplemental_customer_acceptance_required",
+  }, "unexpected_operator_work_proposed_to_customer", now)
+}
+
 export async function requestMigrationOperatorWork(
   payload: Payload,
   input: {
@@ -320,6 +380,7 @@ export async function requestMigrationOperatorWork(
     "preparing",
     "awaiting_provider",
     "ready_for_cutover",
+    "paused_supplemental_order",
   ].includes(migration.state)) {
     throw new Error(
       "Operator-work scope can change only after customer inputs and before cutover.",
@@ -366,6 +427,12 @@ export async function requestMigrationOperatorWork(
   }
   if (!input.supplementalAcceptance) {
     throw new Error("Unexpected billable operator work requires customer acceptance.")
+  }
+  if (
+    migration.operatorWorkAuthorizationState !== "awaiting_customer_acceptance" ||
+    migration.operatorWorkScope !== workScope
+  ) {
+    throw new Error("Supplemental acceptance does not match the frozen operator proposal.")
   }
   const supplementalOrder = await createSupplementalOrder(
     payload,
@@ -570,4 +637,98 @@ export async function completeMigrationOperatorWork(
   }
   await queueDomainMigrationPreparation(payload, migration.id)
   return migration
+}
+
+export async function failMigrationOperatorWork(
+  payload: Payload,
+  input: {
+    migrationId: string | number
+    actor: OperatorActor
+    failureCode:
+      | "provider_access_failed"
+      | "zone_conflict"
+      | "customer_correction_required"
+      | "incident_recovery_failed"
+    now?: string
+  },
+): Promise<DomainMigration> {
+  const actor = requireOperator(input.actor)
+  const now = input.now ?? new Date().toISOString()
+  const failureCodes = new Set([
+    "provider_access_failed",
+    "zone_conflict",
+    "customer_correction_required",
+    "incident_recovery_failed",
+  ])
+  if (!failureCodes.has(input.failureCode)) {
+    throw new Error("Operator work requires an approved redacted failure code.")
+  }
+  const migration = await payload.findByID({
+    collection: "domain-migrations",
+    id: input.migrationId,
+    depth: 0,
+    overrideAccess: true,
+  }) as DomainMigration
+  if (
+    migration.state !== "paused_supplemental_order" ||
+    !migration.operatorWorkStartedAt ||
+    migration.operatorWorkCompletedAt
+  ) {
+    throw new Error("Operator work failure can be recorded only after start and before completion.")
+  }
+  return updateMigration(payload, migration, {
+    state: "failed",
+    encryptedTransferCode: null,
+    transferCodeDeletedAt: now,
+    reconciliationRequired: false,
+    failureReason:
+      `${input.failureCode}:recorded_by_super_admin:${actor.id}`,
+  }, `operator_work_failed:${input.failureCode}`, now)
+}
+
+export async function requestDomainMigrationRollback(
+  payload: Payload,
+  input: {
+    migrationId: string | number
+    actor: OperatorActor
+    reasonCode:
+      | "operator_detected_service_regression"
+      | "operator_detected_dns_mismatch"
+      | "customer_impact_reported"
+    now?: string
+  },
+): Promise<DomainMigration> {
+  const actor = requireOperator(input.actor)
+  const now = input.now ?? new Date().toISOString()
+  if (![
+    "operator_detected_service_regression",
+    "operator_detected_dns_mismatch",
+    "customer_impact_reported",
+  ].includes(input.reasonCode)) {
+    throw new Error("Migration rollback requires an approved redacted reason code.")
+  }
+  const migration = await payload.findByID({
+    collection: "domain-migrations",
+    id: input.migrationId,
+    depth: 0,
+    overrideAccess: true,
+  }) as DomainMigration
+  if (
+    !["cutover_in_progress", "verifying"].includes(migration.state) ||
+    !migration.rollbackEvidence ||
+    migration.rollbackWriteState === "confirmed"
+  ) {
+    throw new Error("Migration rollback is available only during an active cutover.")
+  }
+  const requested = await updateMigration(payload, migration, {
+    rollbackWriteState: migration.rollbackWriteState === "indeterminate"
+      ? "indeterminate"
+      : "not_started",
+    rollbackRequestedAt: migration.rollbackRequestedAt ?? now,
+    reconciliationRequired: true,
+    failureReason:
+      `${input.reasonCode}:requested_by_super_admin:${actor.id}`,
+  }, `operator_requested_rollback:${input.reasonCode}`, now)
+  await queueDomainMigrationPreparation(payload, requested.id)
+  return requested
 }

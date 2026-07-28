@@ -1,38 +1,30 @@
-# Production compose for the generic SiteInABox renderer.
+# Production compose for the generic SiteInABox renderer and its private
+# outbound-only Cloudflare Tunnel connector.
 # Deploy path on VPS: /srv/saas/infra/stacks/siteinabox/apps/renderer/compose.yml
 name: siteinabox-renderer
 
 services:
   siteinabox-renderer:
-    image: ghcr.io/optidigi/siteinabox-renderer:latest
+    image: ghcr.io/optidigi/siteinabox-renderer@${SIAB_RENDERER_IMAGE_DIGEST:?required}
     pull_policy: always
     container_name: siteinabox-renderer
     restart: unless-stopped
+    user: "1000:1000"
     environment:
       NODE_ENV: production
       HOST: "0.0.0.0"
       PORT: "4321"
       SIAB_CMS_URL: ${SIAB_CMS_URL}
-      SIAB_RENDERER_API_TOKEN: ${SIAB_RENDERER_API_TOKEN}
-      SIAB_RENDERER_ORIGIN_SECRET: ${SIAB_RENDERER_ORIGIN_SECRET:?required}
+      SIAB_RENDERER_API_TOKEN_FILE: /run/secrets/renderer_api_token
+      SIAB_RENDERER_ORIGIN_SECRET_FILE: /run/secrets/renderer_origin_secret
       SITE_URL: ${SITE_URL}
       SIAB_RENDERER_FIXTURE_MODE: ${SIAB_RENDERER_FIXTURE_MODE:-}
       DATA_DIR: /data-out
+    secrets: [renderer_api_token, renderer_origin_secret]
     volumes:
       - ${DATA_HOST_PATH:-/srv/data/saas/siab-payload}:/data-out:ro
-    networks: [proxy]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=proxy
-      # The low-priority edge route is TLD-neutral. The CMS/renderer active-domain
-      # allowlist is authoritative; generic routing never activates a domain.
-      - traefik.http.routers.siteinabox-renderer.rule=HostRegexp(`[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+`)
-      - traefik.http.routers.siteinabox-renderer.entrypoints=websecure
-      - traefik.http.routers.siteinabox-renderer.tls.certresolver=letsencrypt
-      - traefik.http.routers.siteinabox-renderer.middlewares=hsts@docker
-      - traefik.http.routers.siteinabox-renderer.priority=1
-      - traefik.http.routers.siteinabox-renderer.service=siteinabox-renderer
-      - traefik.http.services.siteinabox-renderer.loadbalancer.server.port=4321
+    expose: ["4321"]
+    networks: [renderer-origin]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4321/healthz"]
       interval: 30s
@@ -45,5 +37,47 @@ services:
         max-size: "20m"
         max-file: "5"
 
+  siteinabox-renderer-tunnel:
+    image: docker.io/cloudflare/cloudflared:2026.7.0@sha256:5e49861633763e8933475477c20bae6039ed47f32c1d267a34babc347f28f0df
+    pull_policy: always
+    container_name: siteinabox-renderer-tunnel
+    restart: unless-stopped
+    user: "1000:1000"
+    command:
+      - tunnel
+      - --no-autoupdate
+      - --metrics
+      - 0.0.0.0:2000
+      - run
+      - --token-file
+      - /run/secrets/cloudflare_tunnel_token
+      - --url
+      - http://siteinabox-renderer:4321
+    depends_on:
+      siteinabox-renderer:
+        condition: service_healthy
+    secrets: [cloudflare_tunnel_token]
+    networks: [renderer-origin]
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 30s
+      start_period: 20s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
 networks:
-  proxy: { external: true }
+  renderer-origin:
+    driver: bridge
+
+secrets:
+  renderer_api_token:
+    file: ${SIAB_RENDERER_API_TOKEN_FILE:?required}
+  renderer_origin_secret:
+    file: ${SIAB_RENDERER_ORIGIN_SECRET_FILE:?required}
+  cloudflare_tunnel_token:
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?required}

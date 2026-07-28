@@ -6,6 +6,7 @@ const routes = [
   { href: "/operations", key: "overview" },
   { href: "/operations/intakes", key: "intakes" },
   { href: "/operations/runs", key: "runs" },
+  { href: "/operations/migrations", key: "migrations" },
 ] as const
 
 export function OperationsRouteTabs({ activePath }: { activePath: string }) {
