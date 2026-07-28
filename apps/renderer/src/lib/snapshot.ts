@@ -12,6 +12,7 @@ import {
 } from "@siteinabox/contracts/renderer-routing"
 import { fixturePublishedSiteSnapshot } from "../fixtures/published-site"
 import { pathnameToSlug } from "./pathname.js"
+import { readRuntimeSecret } from "./runtime-secret.js"
 
 type SnapshotPage = PublishedSiteSnapshot["pages"][number]
 
@@ -87,7 +88,10 @@ export async function loadPublishedSnapshot(host?: string | null): Promise<Publi
   }
 
   const headers: HeadersInit = {}
-  const token = process.env.SIAB_RENDERER_API_TOKEN
+  const token = readRuntimeSecret(
+    process.env.SIAB_RENDERER_API_TOKEN,
+    process.env.SIAB_RENDERER_API_TOKEN_FILE,
+  )
   if (token) headers.authorization = `Bearer ${token}`
 
   const response = await fetch(endpoint, { headers, cache: "no-store" })

@@ -630,7 +630,7 @@ workflows, or images for new generated sites.
 
 Renderer image and stack template:
 
-- Image: `ghcr.io/optidigi/siteinabox-renderer:latest`
+- Image: `ghcr.io/optidigi/siteinabox-renderer@<approved-sha256-digest>`
 - Repo compose template: `apps/renderer/compose.yml`
 - VPS compose target:
   `/srv/saas/infra/stacks/siteinabox/apps/renderer/compose.yml`
@@ -642,7 +642,10 @@ NODE_ENV=production
 HOST=0.0.0.0
 PORT=4321
 SIAB_CMS_URL=https://admin.siteinabox.nl
-SIAB_RENDERER_API_TOKEN=<same value as CMS>
+SIAB_RENDERER_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
+SIAB_RENDERER_API_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-api-token
+SIAB_RENDERER_ORIGIN_SECRET_FILE=/srv/saas/secrets/siteinabox-renderer-origin
+CLOUDFLARE_TUNNEL_TOKEN_FILE=/srv/saas/secrets/siteinabox-renderer-tunnel-token
 DATA_DIR=/data
 SITE_URL=https://<renderer-host-or-default-public-origin>
 SIAB_RENDERER_FIXTURE_MODE=
@@ -650,7 +653,14 @@ SIAB_RENDERER_FIXTURE_MODE=
 
 - `SIAB_CMS_URL` must be the reachable CMS origin. The renderer calls
   `/api/renderer/snapshot?host=<public-host>`.
-- `SIAB_RENDERER_API_TOKEN` must match the CMS value.
+- `SIAB_RENDERER_IMAGE_DIGEST` is immutable release evidence. Record the
+  previous and new digests before deployment; tags such as `latest` are not
+  valid production inputs.
+- The value stored at `SIAB_RENDERER_API_TOKEN_FILE` must match the CMS
+  `SIAB_RENDERER_API_TOKEN`.
+- The three `*_FILE` values are host paths to mode-`0600` files. Compose mounts
+  them as container secrets; none of their contents belongs in the environment
+  or repository.
 - `DATA_DIR` is the tenant data root mounted read-only. Public snapshot media is
   served through `/siab-media/<tenantId>/<filename>` only after host/snapshot
   authorization; missing files fall back to the authenticated CMS renderer
@@ -662,20 +672,21 @@ SIAB_RENDERER_FIXTURE_MODE=
 - `HOST` and `PORT` must stay aligned with the Astro standalone start command
   and Docker healthcheck: `node ./dist/server/entry.mjs` on port `4321`.
 
-Traefik must route tenant primary domains and aliases to the renderer service
-and preserve the original public hostname via `Host`; forwarding
-`X-Forwarded-Host` as well keeps direct CMS endpoint diagnostics equivalent to
-renderer calls. The CMS resolver treats `site-settings.aliases` as additional
-hosts for the same tenant snapshot. There is no canonical-domain redirect in
-the current renderer contract.
+The renderer and its pinned `cloudflared` sidecar share only the private
+`renderer-origin` bridge. The renderer publishes no host port and has no
+Traefik labels. Cloudflare terminates public TLS and the Tunnel forwards the
+original public `Host` to port `4321`; the CMS resolver treats
+`site-settings.aliases` as additional explicit hosts for the same tenant
+snapshot. There is no inferred `www` mapping or canonical-domain redirect.
 
 The production renderer owns generated-site tenant domains. `ami-care.nl` is
 served from the same canonical provider-block snapshot contract as every other
 tenant; `amicare.optidigi.nl` may be used only as an alias/staging host for that
-snapshot. Traefik preserves `Host` by default. The renderer compose
-template does not add an explicit `X-Forwarded-Host` middleware; smoke testing
-must verify the CMS snapshot endpoint sees the public tenant hostname during
-renderer requests.
+snapshot. The exact approval-gated Cloudflare setup, probes, rotation
+constraints, and rollback sequence are in
+[Renderer origin isolation](./renderer-origin-isolation.md). Keep
+`COMMERCE_ORIGIN_ISOLATION_VERIFIED` unset until that runbook's evidence is
+complete for the deployment environment.
 
 ## Customer Domain Provisioning Workflow
 
@@ -710,9 +721,9 @@ verified domain, verified tenant Email Sending, and a tenant that is not
 suspended or archived.
 
 Before recording manual domain verification, confirm primary domains and
-aliases resolve through Traefik to the renderer and preserve the public `Host`
-or `X-Forwarded-Host`. Record `failed` with notes when DNS/proxy checks are not
-ready; do not mark a domain verified merely to bypass activation gates.
+aliases resolve through the dedicated Tunnel and preserve the public `Host`.
+Record `failed` with notes when DNS/proxy checks are not ready; do not mark a
+domain verified merely to bypass activation gates.
 
 ## Form-submission retention (GDPR)
 

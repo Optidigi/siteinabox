@@ -22,8 +22,9 @@ settings as authorization for an unreviewed live provider operation.
 - `production` additionally requires `NODE_ENV=production`, a Mollie live key,
   the official Openprovider and Cloudflare API hosts, all webhook/provider and
   migration-encryption secrets, and
-  `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` after the Phase 6 edge/origin contract
-  has been rerun for that environment.
+  `COMMERCE_ORIGIN_ISOLATION_VERIFIED=1` after the
+  [renderer origin-isolation](renderer-origin-isolation.md) contract has been
+  rerun for that environment.
 
 The current evidence version is `phase11-2026-07-27.1`. Set
 `COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED=1` only in the separately approved

@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto"
 import { normalizePublicDomainHost } from "@siteinabox/contracts/renderer-routing"
+import { readRuntimeSecret } from "./runtime-secret"
 
 export const RENDERER_ORIGIN_VERIFICATION_HEADER = "x-siab-origin-verify"
 const MINIMUM_ORIGIN_SECRET_LENGTH = 32
@@ -7,6 +8,7 @@ const MINIMUM_ORIGIN_SECRET_LENGTH = 32
 type OriginProtectionEnvironment = {
   NODE_ENV?: string
   SIAB_RENDERER_ORIGIN_SECRET?: string
+  SIAB_RENDERER_ORIGIN_SECRET_FILE?: string
 }
 
 function secretsMatch(actual: string, expected: string): boolean {
@@ -28,7 +30,10 @@ export function publicHostFromProtectedRequest(
   request: Request,
   environment: OriginProtectionEnvironment = process.env,
 ): string | null {
-  const expectedSecret = environment.SIAB_RENDERER_ORIGIN_SECRET ?? ""
+  const expectedSecret = readRuntimeSecret(
+    environment.SIAB_RENDERER_ORIGIN_SECRET,
+    environment.SIAB_RENDERER_ORIGIN_SECRET_FILE,
+  )
   const protectionRequired = environment.NODE_ENV === "production" || expectedSecret.length > 0
   if (!protectionRequired) return unprotectedDevelopmentHost(request)
   if (expectedSecret.length < MINIMUM_ORIGIN_SECRET_LENGTH) return null
@@ -37,10 +42,15 @@ export function publicHostFromProtectedRequest(
   if (!secretsMatch(actualSecret, expectedSecret)) return null
   if (request.headers.get("x-forwarded-proto")?.trim().toLowerCase() !== "https") return null
 
-  const forwardedHost = normalizePublicDomainHost(request.headers.get("x-forwarded-host"))
   const proxyHost = normalizePublicDomainHost(request.headers.get("host"))
-  if (!forwardedHost || !proxyHost || forwardedHost !== proxyHost) return null
-  return forwardedHost
+  if (!proxyHost) return null
+
+  const forwardedHostHeader = request.headers.get("x-forwarded-host")
+  if (forwardedHostHeader) {
+    const forwardedHost = normalizePublicDomainHost(forwardedHostHeader)
+    if (!forwardedHost || forwardedHost !== proxyHost) return null
+  }
+  return proxyHost
 }
 
 export function neutralOriginNotFound(): Response {
