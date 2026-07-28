@@ -14,6 +14,7 @@ import type {
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
+import { recordCommerceAdminException } from "@/lib/commerce/alerts"
 import {
   buildCloudflareDnsRecordRequests,
   createCloudflareZoneDnsRecords,
@@ -31,6 +32,7 @@ import {
   findOpenProviderCustomerByReference,
   findOpenProviderDomain,
   loginOpenProvider,
+  normalizeOpenProviderTimestamp,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   type OpenProviderDomainRecord,
@@ -342,7 +344,7 @@ const registrantVerification = (
   record: OpenProviderDomainRecord | null,
   capability: TldCapability,
 ): {
-  status: "not_required" | "pending" | "verified" | "failed"
+  status: "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed"
   description: string
 } => {
   const status = record?.verificationEmailStatus?.trim().toLowerCase() ?? ""
@@ -354,7 +356,13 @@ const registrantVerification = (
   if (["verified", "valid", "completed"].includes(status)) {
     return { status: "verified", description }
   }
-  if (status.includes("fail") || status.includes("suspend") || status.includes("expired")) {
+  if (status.includes("suspend")) {
+    return { status: "suspended", description }
+  }
+  if (status.includes("overdue") || status.includes("expired")) {
+    return { status: "overdue", description }
+  }
+  if (status.includes("fail") || status.includes("reject")) {
     return { status: "failed", description }
   }
   return { status: "pending", description }
@@ -689,8 +697,9 @@ export async function provisionPaidDomainOrder(
         nameServers: zone.nameServers.map((name) => ({ name })),
         nsGroup: null,
         period: capability.registration.periodYears,
-        autorenew: capability.renewal.executionMode === "autorenew" ? "on" : "off",
+        autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
         reference: managedDomain.provisioningIdempotencyKey,
+        acceptedCapabilityVersion: capability.capabilityVersion,
       })
       managedDomain = await updateManagedDomain(payload, managedDomain, {
         providerDomainId: registration.id == null
@@ -712,8 +721,9 @@ export async function provisionPaidDomainOrder(
             adminHandle: null,
             nameServers: zone.nameServers,
             renewalDate: null,
-            autorenew: capability.renewal.executionMode === "autorenew" ? "on" : "off",
+            autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
             verificationEmailStatus: null,
+            verificationEmailExpiresAt: null,
             verificationEmailDescription: null,
             raw: registration.raw,
           }
@@ -771,6 +781,9 @@ export async function provisionPaidDomainOrder(
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     providerDomainId: String(providerDomain.id),
     providerRegistrationState: "confirmed",
+    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    providerRenewalDate: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    registryExpiryDate: normalizeOpenProviderTimestamp(providerDomain.registryExpiryDate),
     registeredAt: registrationIsActive(providerDomain.status, capability)
       ? managedDomain.registeredAt ?? dependencies.now()
       : managedDomain.registeredAt,
@@ -787,17 +800,44 @@ export async function provisionPaidDomainOrder(
   }
 
   const verification = registrantVerification(providerDomain, capability)
+  const recovered = verification.status === "verified" &&
+    ["pending", "overdue", "suspended", "failed"].includes(
+      managedDomain.registrantVerificationStatus,
+    )
+  const verificationStatus = recovered ? "recovered" : verification.status
+  const verificationActionRequired = [
+    "pending",
+    "overdue",
+    "suspended",
+    "failed",
+  ].includes(verificationStatus)
   managedDomain = await updateManagedDomain(payload, managedDomain, {
-    registrantVerificationStatus: verification.status,
+    registrantVerificationStatus: verificationStatus,
     registrantVerificationCheckedAt: dependencies.now(),
+    registrantVerificationDueAt: normalizeOpenProviderTimestamp(
+      providerDomain.verificationEmailExpiresAt,
+    ) ?? managedDomain.registrantVerificationDueAt,
+    registrantVerificationRecoveredAt: recovered ? dependencies.now() : undefined,
     registrantVerificationDescription: verification.description,
-    customerStatus: verification.status === "pending" || verification.status === "failed"
+    customerStatus: verificationActionRequired
       ? "verification_required"
       : "provisioning",
-    reconciliationRequired: verification.status === "pending",
-    failureReason: verification.status === "failed" ? "registrant_verification_failed" : null,
-  }, `registrant_verification_${verification.status}`, dependencies.now())
-  if (verification.status === "pending" || verification.status === "failed") {
+    reconciliationRequired: verificationActionRequired,
+    failureReason: verificationActionRequired ? `registrant_verification_${verificationStatus}` : null,
+  }, `registrant_verification_${verificationStatus}`, dependencies.now())
+  if (["overdue", "suspended", "failed"].includes(verificationStatus)) {
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: `registrant_verification_${verificationStatus}`,
+      message: "Provider-reported registrant verification requires immediate customer recovery.",
+      tenant: managedDomain.tenant,
+      subjectId: managedDomain.id,
+      severity: verificationStatus === "suspended" ? "critical" : "error",
+      now: dependencies.now(),
+    })
+  }
+  if (verificationActionRequired) {
     return waiting(
       normalized.domain,
       run,

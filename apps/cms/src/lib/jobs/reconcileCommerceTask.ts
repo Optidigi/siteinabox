@@ -1,4 +1,5 @@
 import type { TaskConfig } from "payload"
+import { DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS } from "@siteinabox/contracts/commerce"
 
 import { queueOrderFulfillment } from "@/lib/jobs/fulfillOrderTask"
 import { commerceProviderWritesAllowed } from "@/lib/commerce/releaseGateCore"
@@ -285,7 +286,10 @@ export const reconcileCommerceTask: TaskConfig<{
         })
       }
     }
-    const renewalHorizon = new Date(now.getTime() + 61 * 24 * 60 * 60_000).toISOString()
+    const renewalHorizon = new Date(
+      now.getTime() +
+        Math.max(...DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS) * 24 * 60 * 60_000,
+    ).toISOString()
     const staleProviderRenewalCheck = new Date(
       now.getTime() - 24 * 60 * 60_000,
     ).toISOString()
@@ -299,8 +303,19 @@ export const reconcileCommerceTask: TaskConfig<{
           { custodyStatus: { not_in: ["transferred_out"] } },
           {
             or: [
-              { expiresAt: { exists: false } },
-              { expiresAt: { less_than_equal: renewalHorizon } },
+              { providerRenewalDate: { less_than_equal: renewalHorizon } },
+              {
+                and: [
+                  { providerRenewalDate: { exists: false } },
+                  { expiresAt: { less_than_equal: renewalHorizon } },
+                ],
+              },
+              {
+                and: [
+                  { providerRenewalDate: { exists: false } },
+                  { expiresAt: { exists: false } },
+                ],
+              },
               { reconciliationRequired: { equals: true } },
               { providerAutorenewCheckedAt: { exists: false } },
               {

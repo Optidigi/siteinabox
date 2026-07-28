@@ -205,7 +205,7 @@ describe("Phase 2 commerce record schemas", () => {
     expect(() => validateDomainRenewalCycle(hookArgsFor(validateDomainRenewalCycle, {
       operation: "create",
       data: {
-        providerRenewalMode: "explicit",
+        providerRenewalMode: "explicit_renew",
         providerAutorenew: "on",
       },
       req: {},
@@ -480,6 +480,7 @@ describe("Phase 2 commerce record schemas", () => {
     }
 
     for (const [currentState, nextState] of [
+      ["scheduled", "payment_committed"],
       ["scheduled", "renewed"],
       ["payment_required", "renewed"],
       ["payment_committed", "renewed"],
@@ -495,6 +496,15 @@ describe("Phase 2 commerce record schemas", () => {
         context: {},
       }))).toMatchObject({ state: nextState })
     }
+
+    expect(protectCommerceNotification(hookArgsFor(protectCommerceNotification, {
+      operation: "update",
+      data: { status: "cancelled" },
+      originalDoc: { status: "processing" },
+      req: { context: { commerceNotificationLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({ status: "cancelled" })
 
     expect(protectAccountingDocument(hookArgsFor(protectAccountingDocument, {
       operation: "update",
@@ -539,6 +549,23 @@ describe("Phase 2 commerce record schemas", () => {
       collection: {},
       context: {},
     }))).toThrow('field "pricingEvidence" is immutable')
+    expect(protectDomainRenewalCycle(hookArgsFor(protectDomainRenewalCycle, {
+      operation: "update",
+      data: {
+        state: "payment_required",
+        pricingEvidence: { providerOperationPriceNetMinor: 1_200 },
+      },
+      originalDoc: {
+        state: "scheduled",
+        pricingEvidence: { providerOperationPriceNetMinor: 800 },
+      },
+      req: { context: { domainRenewalCycleLifecycleMutation: true } },
+      collection: {},
+      context: {},
+    }))).toMatchObject({
+      state: "payment_required",
+      pricingEvidence: { providerOperationPriceNetMinor: 1_200 },
+    })
 
     expect(() => protectPaymentAttempt(hookArgsFor(protectPaymentAttempt, {
       operation: "update",

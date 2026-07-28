@@ -6,7 +6,7 @@ export const DUTCH_VAT_RATE_BASIS_POINTS = 2_100 as const
 export const BILLING_GRACE_DAYS = 14 as const
 export const BILLING_UPCOMING_CHARGE_REMINDER_DAYS = Object.freeze([7] as const)
 export const BILLING_DUNNING_OFFSETS_DAYS = Object.freeze([0, 3, 7, 13] as const)
-export const DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS = Object.freeze([60, 30, 14, 7, 1] as const)
+export const DOMAIN_RENEWAL_REMINDER_OFFSETS_DAYS = Object.freeze([90, 60, 30, 14, 7, 1] as const)
 export const NL_OPENPROVIDER_SAFE_CUTOFF_LEAD_DAYS = 2 as const
 
 export type CommercialCatalog = {
@@ -258,7 +258,7 @@ export function providerSafeCutoffAt(
   return date.toISOString()
 }
 
-export const providerRenewalModes = ["autorenew", "explicit"] as const
+export const providerRenewalModes = ["provider_autorenew", "explicit_renew"] as const
 export const providerRenewalModeSchema = z.enum(providerRenewalModes)
 export type ProviderRenewalMode = z.infer<typeof providerRenewalModeSchema>
 
@@ -270,10 +270,10 @@ export function assertExclusiveProviderRenewalExecution(input: {
   if (input.providerAutorenewEnabled && input.explicitRenewalRequested) {
     throw new Error("A renewal cycle cannot use provider autorenew and explicit renewal together.")
   }
-  if (input.mode === "autorenew" && input.explicitRenewalRequested) {
+  if (input.mode === "provider_autorenew" && input.explicitRenewalRequested) {
     throw new Error("An autorenew cycle cannot request explicit provider renewal.")
   }
-  if (input.mode === "explicit" && input.providerAutorenewEnabled) {
+  if (input.mode === "explicit_renew" && input.providerAutorenewEnabled) {
     throw new Error("An explicit renewal cycle requires provider autorenew to be off.")
   }
 }
@@ -782,9 +782,9 @@ export const domainRenewalCycleStates = [
 export const domainRenewalCycleStateSchema = z.enum(domainRenewalCycleStates)
 export type DomainRenewalCycleState = z.infer<typeof domainRenewalCycleStateSchema>
 export const domainRenewalCycleStateTransitions = {
-  scheduled: ["payment_required", "renewed", "cancelled"],
+  scheduled: ["payment_required", "payment_committed", "renewed", "cancelled"],
   payment_required: ["payment_committed", "renewed", "cancelled", "failed", "manual_review"],
-  payment_committed: ["provider_requested", "renewed"],
+  payment_committed: ["provider_requested", "renewed", "manual_review"],
   provider_requested: ["renewed", "failed", "manual_review"],
   renewed: [],
   cancelled: [],
@@ -815,7 +815,7 @@ export const domainMigrationStateTransitions = {
   ready_to_prepare: ["preparing", "paused_supplemental_order", "custom_quote_required", "failed"],
   preparing: ["awaiting_customer", "awaiting_provider", "ready_for_cutover", "paused_supplemental_order", "custom_quote_required", "failed"],
   awaiting_provider: ["ready_for_cutover", "paused_supplemental_order", "custom_quote_required", "failed"],
-  ready_for_cutover: ["cutover_in_progress", "paused_supplemental_order", "custom_quote_required", "failed"],
+  ready_for_cutover: ["awaiting_provider", "cutover_in_progress", "paused_supplemental_order", "custom_quote_required", "failed"],
   cutover_in_progress: ["verifying", "failed", "rolled_back"],
   verifying: ["completed", "failed", "rolled_back"],
   completed: [],

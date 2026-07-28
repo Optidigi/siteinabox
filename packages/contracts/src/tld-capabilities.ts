@@ -5,7 +5,29 @@ import {
   contractingPartyTypeSchema,
 } from "./commerce"
 
-export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-27.1" as const
+export const TLD_CAPABILITY_CATALOG_VERSION = "2026-07-28.1" as const
+
+export const INTENDED_TLD_CATALOG = Object.freeze([
+  "nl",
+  "com",
+  "eu",
+  "org",
+  "net",
+  "be",
+  "de",
+  "info",
+  "online",
+  "shop",
+] as const)
+
+export const transferRenewalEffects = [
+  "unchanged",
+  "extends_one_year",
+  "restarts_from_transfer_date",
+  "provider_determined",
+] as const
+export const transferRenewalEffectSchema = z.enum(transferRenewalEffects)
+export type TransferRenewalEffect = z.infer<typeof transferRenewalEffectSchema>
 
 const registrantFieldSchema = z.enum([
   "companyName",
@@ -76,7 +98,7 @@ export const tldCapabilitySchema = z.object({
     completion: z.literal("realtime"),
     confirmation: providerConfirmationSchema,
     validRegistrantPhoneRequired: z.boolean(),
-    preservesRenewalDate: z.literal(true),
+    renewalEffect: transferRenewalEffectSchema,
   }).strict(),
   verification: z.object({
     requirement: z.enum(["provider_reported", "conditional_registry_risk_check"]),
@@ -85,16 +107,21 @@ export const tldCapabilitySchema = z.object({
   }).strict(),
   renewal: z.object({
     dateSource: z.literal("openprovider.renewal_date"),
-    executionMode: z.enum(["autorenew", "explicit"]),
+    executionMode: z.enum(["provider_autorenew", "explicit_renew"]),
     providerSafeCutoffLeadDays: z.number().int().nonnegative(),
     completionEvidence: z.literal("renewal_date_advanced"),
   }).strict(),
   restoration: z.object({
     supported: z.literal(true),
-    providerWindowDays: z.number().int().positive(),
-    registryQuarantineDays: z.number().int().positive(),
-    mode: z.literal("provider_restore"),
+    providerWindowDays: z.number().int().positive().nullable(),
+    registryQuarantineDays: z.number().int().positive().nullable(),
+    mode: z.enum(["provider_restore", "provider_determined"]),
     ordinaryCheckout: z.literal(false),
+  }).strict(),
+  dnssec: z.object({
+    supported: z.boolean(),
+    transferPreparation: z.enum(["required_when_signed", "provider_determined"]),
+    productionEvidenceComplete: z.boolean(),
   }).strict(),
   pricing: z.object({
     currency: z.literal(COMMERCIAL_CATALOG_CURRENCY),
@@ -195,7 +222,7 @@ const PROVIDER_ACTIVE_STATUSES = ["ACT", "ACTIVE", "REGISTERED"] as const
 const commonCapability = {
   schemaVersion: 1,
   catalogVersion: TLD_CAPABILITY_CATALOG_VERSION,
-  productionEnabled: true,
+  productionEnabled: false,
   provider: "openprovider",
   registrant: {
     customerIsRegistrant: true,
@@ -220,7 +247,7 @@ const commonCapability = {
   },
   renewal: {
     dateSource: "openprovider.renewal_date",
-    executionMode: "autorenew",
+    executionMode: "provider_autorenew",
     providerSafeCutoffLeadDays: 2,
     completionEvidence: "renewal_date_advanced",
   },
@@ -242,6 +269,11 @@ const commonCapability = {
     https: "cloudflare_edge_certificate",
     origin: "protected_https_matching_host",
   },
+  dnssec: {
+    supported: true,
+    transferPreparation: "required_when_signed",
+    productionEvidenceComplete: false,
+  },
 } as const
 
 const catalogInput = [
@@ -249,7 +281,47 @@ const catalogInput = [
     ...commonCapability,
     capabilityVersion: "tld-nl-2026-07-26.1",
     tld: "nl",
+    productionEnabled: true,
     effectiveFrom: "2026-01-01T00:00:00.000Z",
+    effectiveUntil: "2026-07-28T00:00:00.000Z",
+    registration: {
+      ...commonCapability.registration,
+      labelLength: { min: 2, max: 63 },
+      idn: false,
+    },
+    transfer: {
+      supported: true,
+      authorization: "required",
+      authorizationFormat: "opaque",
+      authorizationValidityDays: null,
+      completion: "realtime",
+      confirmation: commonCapability.registration.confirmation,
+      validRegistrantPhoneRequired: true,
+      renewalEffect: "unchanged",
+    },
+    verification: {
+      ...commonCapability.verification,
+      requirement: "provider_reported",
+    },
+    restoration: {
+      supported: true,
+      providerWindowDays: 38,
+      registryQuarantineDays: 40,
+      mode: "provider_restore",
+      ordinaryCheckout: false,
+    },
+    evidence: {
+      reviewedAt: "2026-07-28T00:00:00.000Z",
+      providerPolicyUrl: "https://www.openprovider.com/domains/tlds/nl",
+      registryPolicyUrl: "https://www.sidn.nl/en/nl-domain-name/general-terms-and-conditions-for-nl-registrants",
+    },
+  },
+  {
+    ...commonCapability,
+    capabilityVersion: "tld-nl-2026-07-28.1",
+    tld: "nl",
+    productionEnabled: true,
+    effectiveFrom: "2026-07-28T00:00:00.000Z",
     effectiveUntil: null,
     registration: {
       ...commonCapability.registration,
@@ -264,7 +336,7 @@ const catalogInput = [
       completion: "realtime",
       confirmation: commonCapability.registration.confirmation,
       validRegistrantPhoneRequired: true,
-      preservesRenewalDate: true,
+      renewalEffect: "unchanged",
     },
     verification: {
       ...commonCapability.verification,
@@ -278,16 +350,55 @@ const catalogInput = [
       ordinaryCheckout: false,
     },
     evidence: {
-      reviewedAt: "2026-07-27T00:00:00.000Z",
+      reviewedAt: "2026-07-28T00:00:00.000Z",
       providerPolicyUrl: "https://www.openprovider.com/domains/tlds/nl",
-      registryPolicyUrl: "https://www.sidn.nl/en/definitions",
+      registryPolicyUrl: "https://www.sidn.nl/en/nl-domain-name/general-terms-and-conditions-for-nl-registrants",
     },
   },
   {
     ...commonCapability,
     capabilityVersion: "tld-be-2026-07-27.1",
     tld: "be",
+    productionEnabled: true,
     effectiveFrom: "2026-07-27T00:00:00.000Z",
+    effectiveUntil: "2026-07-28T00:00:00.000Z",
+    registration: {
+      ...commonCapability.registration,
+      labelLength: { min: 2, max: 63 },
+      idn: true,
+    },
+    transfer: {
+      supported: true,
+      authorization: "required",
+      authorizationFormat: "dns_belgium_5x3",
+      authorizationValidityDays: 7,
+      completion: "realtime",
+      confirmation: commonCapability.registration.confirmation,
+      validRegistrantPhoneRequired: false,
+      renewalEffect: "restarts_from_transfer_date",
+    },
+    verification: {
+      ...commonCapability.verification,
+      requirement: "conditional_registry_risk_check",
+    },
+    restoration: {
+      supported: true,
+      providerWindowDays: 40,
+      registryQuarantineDays: 40,
+      mode: "provider_restore",
+      ordinaryCheckout: false,
+    },
+    evidence: {
+      reviewedAt: "2026-07-28T00:00:00.000Z",
+      providerPolicyUrl: "https://www.openprovider.com/domains/tlds/be",
+      registryPolicyUrl: "https://docs.dnsbelgium.be/be/general/transferprocedure.html",
+    },
+  },
+  {
+    ...commonCapability,
+    capabilityVersion: "tld-be-2026-07-28.1",
+    tld: "be",
+    effectiveFrom: "2026-07-28T00:00:00.000Z",
     effectiveUntil: null,
     registration: {
       ...commonCapability.registration,
@@ -302,7 +413,7 @@ const catalogInput = [
       completion: "realtime",
       confirmation: commonCapability.registration.confirmation,
       validRegistrantPhoneRequired: false,
-      preservesRenewalDate: true,
+      renewalEffect: "restarts_from_transfer_date",
     },
     verification: {
       ...commonCapability.verification,
@@ -316,11 +427,98 @@ const catalogInput = [
       ordinaryCheckout: false,
     },
     evidence: {
-      reviewedAt: "2026-07-27T00:00:00.000Z",
+      reviewedAt: "2026-07-28T00:00:00.000Z",
       providerPolicyUrl: "https://www.openprovider.com/domains/tlds/be",
-      registryPolicyUrl: "https://docs.dnsbelgium.be/be/general/registrantverification.html",
+      registryPolicyUrl: "https://docs.dnsbelgium.be/be/general/transferprocedure.html",
     },
   },
+  ...([
+    {
+      tld: "com",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en",
+    },
+    {
+      tld: "eu",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://eurid.eu/en/register-a-eu-domain/renewals-and-transfers/",
+    },
+    {
+      tld: "org",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en",
+    },
+    {
+      tld: "net",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en",
+    },
+    {
+      tld: "de",
+      transferRenewalEffect: "restarts_from_transfer_date",
+      idn: true,
+      registryPolicyUrl: "https://www.denic.de/en/domains/de-domains/domain-terms-and-conditions/",
+    },
+    {
+      tld: "info",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en",
+    },
+    {
+      tld: "online",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en",
+    },
+    {
+      tld: "shop",
+      transferRenewalEffect: "extends_one_year",
+      idn: true,
+      registryPolicyUrl: "https://www.icann.org/resources/pages/transfer-policy-2016-06-01-en",
+    },
+  ] as const).map((entry) => ({
+    ...commonCapability,
+    capabilityVersion: `tld-${entry.tld}-2026-07-28.1`,
+    tld: entry.tld,
+    effectiveFrom: "2026-07-28T00:00:00.000Z",
+    effectiveUntil: null,
+    registration: {
+      ...commonCapability.registration,
+      labelLength: { min: 2, max: 63 },
+      idn: entry.idn,
+    },
+    transfer: {
+      supported: true,
+      authorization: "required",
+      authorizationFormat: "opaque",
+      authorizationValidityDays: null,
+      completion: "realtime",
+      confirmation: commonCapability.registration.confirmation,
+      validRegistrantPhoneRequired: false,
+      renewalEffect: entry.transferRenewalEffect,
+    },
+    verification: {
+      ...commonCapability.verification,
+      requirement: "provider_reported",
+    },
+    restoration: {
+      supported: true,
+      providerWindowDays: null,
+      registryQuarantineDays: null,
+      mode: "provider_determined",
+      ordinaryCheckout: false,
+    },
+    evidence: {
+      reviewedAt: "2026-07-28T00:00:00.000Z",
+      providerPolicyUrl: `https://www.openprovider.com/domains/tlds/${entry.tld}`,
+      registryPolicyUrl: entry.registryPolicyUrl,
+    },
+  })),
 ] as const
 
 const deepFreeze = <T extends object>(value: T): Readonly<T> => {

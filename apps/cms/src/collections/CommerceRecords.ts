@@ -293,6 +293,8 @@ const managedDomainMutableFields = new Set([
   "cloudflareZoneStatus",
   "registrantVerificationStatus",
   "registrantVerificationCheckedAt",
+  "registrantVerificationDueAt",
+  "registrantVerificationRecoveredAt",
   "registrantVerificationDescription",
   "authoritativeDnsStatus",
   "authoritativeDnsCheckedAt",
@@ -307,6 +309,11 @@ const managedDomainMutableFields = new Set([
   "registeredAt",
   "transferredAt",
   "expiresAt",
+  "providerRenewalDate",
+  "registryExpiryDate",
+  "earliestExplicitRenewalAt",
+  "registrarSafeCutoffAt",
+  "paymentChargeAt",
   "providerSafeRenewalCutoffAt",
   "providerAutorenew",
   "providerAutorenewCheckedAt",
@@ -473,7 +480,18 @@ const renewalCycleMutableFields = new Set([
   "providerAutorenew",
   "providerWriteState",
   "providerWriteRequestedAt",
+  "providerBalanceAvailableMinor",
+  "providerBalanceReservedMinor",
+  "providerBalanceCurrency",
+  "providerBalanceCheckedAt",
+  "providerOperationPriceNetMinor",
+  "includedAllowanceNetMinor",
+  "surchargeNetMinor",
   "financialCoverageState",
+  "pricingEvidence",
+  "netAmountMinor",
+  "vatAmountMinor",
+  "grossAmountMinor",
   "paymentSecuredAt",
   "providerCommittedAt",
   "renewedAt",
@@ -490,7 +508,7 @@ const renewalCycleMutableFields = new Set([
 export const validateDomainRenewalCycle: CollectionBeforeValidateHook = ({ data }) => {
   if (!data) return data
   if (
-    data.providerRenewalMode === "explicit" &&
+    data.providerRenewalMode === "explicit_renew" &&
     data.providerAutorenew !== "off"
   ) {
     throw new Error("An explicit renewal cycle requires provider autorenew to be off.")
@@ -548,8 +566,42 @@ export const protectAccountingDocument: CollectionBeforeChangeHook = (args) => {
   })
 }
 
-export const protectDomainRenewalCycle: CollectionBeforeChangeHook = (args) =>
-  protectLifecycleUpdate(args, {
+const renewalIndicativePricingFields = new Set([
+  "providerOperationPriceNetMinor",
+  "includedAllowanceNetMinor",
+  "surchargeNetMinor",
+  "pricingEvidence",
+  "netAmountMinor",
+  "vatAmountMinor",
+  "grossAmountMinor",
+])
+
+export const protectDomainRenewalCycle: CollectionBeforeChangeHook = (args) => {
+  if (args.operation === "update") {
+    const changedPricingField = Object.keys(args.data ?? {}).find(
+      (field) => renewalIndicativePricingFields.has(field) &&
+        !immutableFieldIsUnchanged(
+          field,
+          args.data?.[field],
+          args.originalDoc as Record<string, unknown>,
+          new Set(),
+        ),
+    )
+    if (
+      changedPricingField &&
+      (
+        args.originalDoc?.state !== "scheduled" ||
+        args.originalDoc?.order != null ||
+        args.originalDoc?.paymentAttempt != null ||
+        args.originalDoc?.paymentSecuredAt != null
+      )
+    ) {
+      throw new Error(
+        `Domain-renewal-cycle field "${changedPricingField}" is immutable after actionable financial evidence exists.`,
+      )
+    }
+  }
+  return protectLifecycleUpdate(args, {
     label: "Domain-renewal-cycle",
     contextKey: "domainRenewalCycleLifecycleMutation",
     allowedFields: renewalCycleMutableFields,
@@ -562,6 +614,7 @@ export const protectDomainRenewalCycle: CollectionBeforeChangeHook = (args) =>
     ]),
     stateTransitions: domainRenewalCycleStateTransitions,
   })
+}
 
 const commerceNotificationMutableFields = new Set([
   "status",
@@ -586,7 +639,7 @@ export const protectCommerceNotification: CollectionBeforeChangeHook = (args) =>
     ]),
     stateTransitions: {
       queued: ["processing", "cancelled"],
-      processing: ["sent", "failed"],
+      processing: ["sent", "failed", "cancelled"],
       failed: ["processing", "cancelled"],
       sent: [],
       cancelled: [],
@@ -1009,10 +1062,21 @@ export const ManagedDomains: CollectionConfig = {
       type: "select",
       required: true,
       defaultValue: "not_checked",
-      options: selectOptions(["not_checked", "not_required", "pending", "verified", "failed"]),
+      options: selectOptions([
+        "not_checked",
+        "not_required",
+        "pending",
+        "verified",
+        "overdue",
+        "suspended",
+        "recovered",
+        "failed",
+      ]),
       index: true,
     },
     { name: "registrantVerificationCheckedAt", type: "date" },
+    { name: "registrantVerificationDueAt", type: "date", index: true },
+    { name: "registrantVerificationRecoveredAt", type: "date" },
     { name: "registrantVerificationDescription", type: "textarea" },
     {
       name: "authoritativeDnsStatus",
@@ -1055,6 +1119,11 @@ export const ManagedDomains: CollectionConfig = {
     { name: "registeredAt", type: "date" },
     { name: "transferredAt", type: "date" },
     { name: "expiresAt", type: "date", index: true },
+    { name: "providerRenewalDate", type: "date", index: true },
+    { name: "registryExpiryDate", type: "date", index: true },
+    { name: "earliestExplicitRenewalAt", type: "date", index: true },
+    { name: "registrarSafeCutoffAt", type: "date", index: true },
+    { name: "paymentChargeAt", type: "date", index: true },
     { name: "providerSafeRenewalCutoffAt", type: "date", index: true },
     {
       name: "providerAutorenew",
@@ -1166,13 +1235,17 @@ export const DomainRenewalCycles: CollectionConfig = {
     { name: "coverageStartsAt", type: "date", required: true, index: true },
     { name: "coverageEndsAt", type: "date", required: true, index: true },
     { name: "providerRenewalDate", type: "date", required: true, index: true },
+    { name: "registryExpiryDate", type: "date", index: true },
+    { name: "earliestExplicitRenewalAt", type: "date", index: true },
+    { name: "registrarSafeCutoffAt", type: "date", index: true },
+    { name: "paymentChargeAt", type: "date", index: true },
     { name: "providerSafeCutoffAt", type: "date", required: true, index: true },
     { name: "renewalIntentSnapshot", type: "checkbox", required: true, defaultValue: true },
     {
       name: "providerRenewalMode",
       type: "select",
       required: true,
-      defaultValue: "autorenew",
+      defaultValue: "provider_autorenew",
       options: selectOptions(providerRenewalModes),
       index: true,
     },
@@ -1189,10 +1262,24 @@ export const DomainRenewalCycles: CollectionConfig = {
       type: "select",
       required: true,
       defaultValue: "not_required",
-      options: selectOptions(["not_required", "prepared", "indeterminate", "confirmed"]),
+      options: selectOptions(["not_required", "prepared", "indeterminate", "confirmed", "failed"]),
       index: true,
     },
     { name: "providerWriteRequestedAt", type: "date" },
+    {
+      name: "providerBalanceAvailableMinor",
+      type: "number",
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    {
+      name: "providerBalanceReservedMinor",
+      type: "number",
+      min: 0,
+      validate: validateMinorAmount,
+    },
+    { name: "providerBalanceCurrency", type: "text" },
+    { name: "providerBalanceCheckedAt", type: "date" },
     { name: "currency", type: "text", required: true, defaultValue: "EUR" },
     {
       name: "providerOperationPriceNetMinor",
@@ -1296,10 +1383,12 @@ export const CommerceNotificationDeliveries: CollectionConfig = {
         "service_restored",
         "cancellation_scheduled",
         "cancellation_effective",
+        "domain_renewal_90d",
         "domain_renewal_60d",
         "domain_renewal_30d",
         "domain_renewal_14d",
         "domain_renewal_7d",
+        "domain_renewal_admin_7d",
         "domain_renewal_1d",
         "domain_renewed",
       ]),

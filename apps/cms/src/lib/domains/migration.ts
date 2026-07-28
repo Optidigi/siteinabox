@@ -22,6 +22,7 @@ import type {
   SiteGenerationRun,
   Tenant,
 } from "@/payload-types"
+import { recordCommerceAdminException } from "@/lib/commerce/alerts"
 
 import {
   CloudflareIndeterminateWriteError,
@@ -39,6 +40,7 @@ import {
   findOpenProviderCustomerByReference,
   findOpenProviderDomain,
   loginOpenProvider,
+  normalizeOpenProviderTimestamp,
   transferOpenProviderDomain,
   updateOpenProviderDomainNameservers,
   type OpenProviderDomainRecord,
@@ -586,13 +588,15 @@ const activeProviderDomain = (
 
 const verificationStatus = (
   providerDomain: OpenProviderDomainRecord,
-): "not_required" | "pending" | "verified" | "failed" => {
+): "not_required" | "pending" | "verified" | "overdue" | "suspended" | "failed" => {
   const status = providerDomain.verificationEmailStatus?.trim().toLowerCase() ?? ""
   if (!status || ["not applicable", "not required", "n/a"].includes(status)) {
     return "not_required"
   }
   if (["verified", "completed", "approved"].includes(status)) return "verified"
-  if (["failed", "rejected"].includes(status)) return "failed"
+  if (status.includes("suspend")) return "suspended"
+  if (status.includes("overdue") || status.includes("expired")) return "overdue"
+  if (status.includes("fail") || status.includes("reject")) return "failed"
   return "pending"
 }
 
@@ -1029,8 +1033,9 @@ export async function prepareDomainMigration(
         authCode: transferCode,
         ownerHandle: customerHandle,
         nameServers: source.authoritativeNameservers.map((name) => ({ name })),
-        autorenew: capability.renewal.executionMode === "autorenew" ? "on" : "off",
+        autorenew: capability.renewal.executionMode === "provider_autorenew" ? "on" : "off",
         reference: migration.idempotencyKey,
+        acceptedCapabilityVersion: capability.capabilityVersion,
       })
       migration = await updateMigration(payload, migration, {
         providerTransferId: String(transfer.id),
@@ -1091,52 +1096,89 @@ export async function prepareDomainMigration(
     }
   }
   const registrantVerification = verificationStatus(providerDomain)
+  const recovered = registrantVerification === "verified" &&
+    ["pending", "overdue", "suspended", "failed"].includes(
+      managedDomain.registrantVerificationStatus,
+    )
+  const storedRegistrantVerification = recovered ? "recovered" : registrantVerification
+  const verificationActionRequired = [
+    "pending",
+    "overdue",
+    "suspended",
+    "failed",
+  ].includes(storedRegistrantVerification)
   actions = actionStates(migration.customerActions, deps.now())
   actions = withAction(
     withAction(actions, "confirm_transfer", "completed", deps.now(), "provider_domain_active"),
     "verify_registrant",
-    registrantVerification === "pending" ? "required" :
-      registrantVerification === "failed" ? "failed" : "completed",
+    verificationActionRequired
+      ? registrantVerification === "pending" ? "required" : "failed"
+      : "completed",
     deps.now(),
     providerDomain.verificationEmailDescription ?? registrantVerification,
   )
   managedDomain = await updateManagedDomain(payload, managedDomain, {
     providerDomainId: String(providerDomain.id),
     providerRegistrationState: "confirmed",
-    registrantVerificationStatus: registrantVerification,
+    registrantVerificationStatus: storedRegistrantVerification,
     registrantVerificationCheckedAt: deps.now(),
+    registrantVerificationDueAt: normalizeOpenProviderTimestamp(
+      providerDomain.verificationEmailExpiresAt,
+    ) ?? managedDomain.registrantVerificationDueAt,
+    registrantVerificationRecoveredAt: recovered ? deps.now() : undefined,
     registrantVerificationDescription: providerDomain.verificationEmailDescription,
     providerAutorenew: providerDomain.autorenew,
     providerAutorenewCheckedAt: deps.now(),
-    expiresAt: providerDomain.renewalDate,
-    reconciliationRequired: registrantVerification === "pending",
+    expiresAt: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    providerRenewalDate: normalizeOpenProviderTimestamp(providerDomain.renewalDate),
+    registryExpiryDate: normalizeOpenProviderTimestamp(providerDomain.registryExpiryDate),
+    reconciliationRequired: verificationActionRequired,
   }, "provider_transfer_reconciled", deps.now())
   migration = await updateMigration(payload, migration, {
     providerTransferState: "confirmed",
     providerDomainId: String(providerDomain.id),
     transferConfirmedAt: migration.transferConfirmedAt ?? deps.now(),
     customerActions: actions,
-    reconciliationRequired: registrantVerification === "pending",
-    failureReason: registrantVerification === "failed" ? "registrant_verification_failed" : null,
+    reconciliationRequired: verificationActionRequired,
+    failureReason: verificationActionRequired
+      ? `registrant_verification_${storedRegistrantVerification}`
+      : null,
   }, `registrant_verification_${registrantVerification}`, deps.now())
-  if (registrantVerification === "pending") {
-    if (migration.state !== "awaiting_provider") {
-      migration = await updateMigration(payload, migration, {
-        state: "awaiting_provider",
-      }, "registrant_verification_required", deps.now())
-    }
-    return waiting(migration, "Customer registrant verification is required before cutover.")
+  if (["overdue", "suspended", "failed"].includes(storedRegistrantVerification)) {
+    await recordCommerceAdminException({
+      payload,
+      source: "domains",
+      code: `registrant_verification_${storedRegistrantVerification}`,
+      message: "Provider-reported registrant verification blocks the domain migration.",
+      tenant: managedDomain.tenant,
+      subjectId: migration.id,
+      severity: storedRegistrantVerification === "suspended" ? "critical" : "error",
+      now: deps.now(),
+    })
   }
-  if (registrantVerification === "failed") {
-    migration = await updateMigration(payload, migration, {
-      state: "failed",
-      reconciliationRequired: false,
-    }, "registrant_verification_failed", deps.now())
-    return {
-      status: "failed",
-      migrationId: migration.id,
-      message: "Registrant verification failed; cutover did not start.",
+  if (verificationActionRequired) {
+    if (["cutover_in_progress", "verifying"].includes(migration.state)) {
+      return rollbackCutover(
+        payload,
+        migration,
+        managedDomain,
+        providerDomain,
+        `registrant_verification_${storedRegistrantVerification}_after_cutover`,
+        deps,
+      )
     }
+    migration = await updateMigration(payload, migration, {
+      state: "awaiting_provider",
+      reconciliationRequired: true,
+    }, registrantVerification === "pending"
+      ? "registrant_verification_required"
+      : "registrant_verification_customer_action_required", deps.now())
+    return waiting(
+      migration,
+      registrantVerification === "pending"
+        ? "Customer registrant verification is required before cutover."
+        : "Registrant verification still requires customer action; cutover remains paused.",
+    )
   }
   if (migration.state === "preparing" || migration.state === "awaiting_provider") {
     migration = await updateMigration(payload, migration, {

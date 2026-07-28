@@ -1,6 +1,7 @@
 import "server-only"
 import {
   getEnabledTldCapability,
+  getTldCapabilityByVersion,
   validateTldRegistrationLabel,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -83,8 +84,10 @@ export type OpenProviderDomainRecord = {
   adminHandle: string | null
   nameServers: string[]
   renewalDate: string | null
+  registryExpiryDate?: string | null
   autorenew: "on" | "off" | "default" | "unknown"
   verificationEmailStatus: string | null
+  verificationEmailExpiresAt?: string | null
   verificationEmailDescription: string | null
   raw: unknown
 }
@@ -159,6 +162,19 @@ export class OpenProviderIndeterminateWriteError extends Error {
 const cleanEnv = (value: string | undefined): string | null => {
   const trimmed = value?.trim()
   return trimmed ? trimmed : null
+}
+
+export const normalizeOpenProviderTimestamp = (
+  value: string | null | undefined,
+): string | null => {
+  const trimmed = value?.trim()
+  if (!trimmed || /^0{4}-0{2}-0{2}/.test(trimmed)) return null
+  const normalized = trimmed.replace(
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/,
+    "$1T$2.000Z",
+  )
+  const date = new Date(normalized)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }
 
 const apiBase = (env: NodeJS.ProcessEnv): string =>
@@ -577,9 +593,32 @@ const nameserversFromEnv = (env: NodeJS.ProcessEnv): Array<{ name: string }> | n
   return names.length > 0 ? names.map((name) => ({ name })) : null
 }
 
-const enabledCapabilityForDomain = (domainInput: string) => {
+const enabledCapabilityForDomain = (
+  domainInput: string,
+  acceptedCapabilityVersion?: string,
+) => {
   const domain = splitDomain(domainInput)
-  const capability = getEnabledTldCapability(domain.extension)
+  const currentlyEnabled = getEnabledTldCapability(domain.extension)
+  const acceptedCapability = acceptedCapabilityVersion
+    ? getTldCapabilityByVersion(acceptedCapabilityVersion)
+    : null
+  if (
+    acceptedCapabilityVersion &&
+    (
+      !acceptedCapability?.productionEnabled ||
+      acceptedCapability.tld !== domain.extension
+    )
+  ) {
+    throw new Error(
+      `Accepted TLD capability ${acceptedCapabilityVersion} is not valid for .${domain.extension}.`,
+    )
+  }
+  const capability = (
+    acceptedCapability?.productionEnabled &&
+    acceptedCapability.tld === domain.extension
+      ? acceptedCapability
+      : null
+  ) ?? currentlyEnabled
   if (!capability) throw new Error(`TLD .${domain.extension} is not enabled for provider operations.`)
   if (!validateTldRegistrationLabel(capability, domain.name)) {
     throw new Error(`Domain label is not supported for .${domain.extension}.`)
@@ -598,9 +637,13 @@ export function buildOpenProviderDomainRegistrationRequest(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    acceptedCapabilityVersion?: string
   },
 ): OpenProviderRegistrationRequest {
-  const { domain, capability } = enabledCapabilityForDomain(domainInput)
+  const { domain, capability } = enabledCapabilityForDomain(
+    domainInput,
+    input?.acceptedCapabilityVersion,
+  )
   const explicitNameServers = input?.nameServers && input.nameServers.length > 0
     ? input.nameServers
     : null
@@ -636,9 +679,13 @@ export function buildOpenProviderDomainTransferRequest(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    acceptedCapabilityVersion?: string
   },
 ): OpenProviderTransferRequest {
-  const { domain, capability } = enabledCapabilityForDomain(domainInput)
+  const { domain, capability } = enabledCapabilityForDomain(
+    domainInput,
+    input.acceptedCapabilityVersion,
+  )
   const authCode = input.authCode.trim()
   if (!validateTldTransferAuthorization(capability, authCode)) {
     throw new Error(`A valid .${capability.tld} OpenProvider domain transfer auth code is required.`)
@@ -661,7 +708,7 @@ export function buildOpenProviderDomainTransferRequest(
     tech_handle: requiredHandle(env, "OPENPROVIDER_TECH_HANDLE"),
     billing_handle: requiredHandle(env, "OPENPROVIDER_BILLING_HANDLE"),
     autorenew: input.autorenew ?? (
-      capability.renewal.executionMode === "autorenew" ? "on" : "off"
+      capability.renewal.executionMode === "provider_autorenew" ? "on" : "off"
     ),
     ...(nsGroup ? { ns_group: nsGroup } : { name_servers: nameServers ?? [] }),
     ...(cleanEnv(input.reference) ? { comments: cleanEnv(input.reference) as string } : {}),
@@ -777,12 +824,22 @@ const parseOpenProviderDomainRecord = (value: unknown): OpenProviderDomainRecord
     renewalDate: typeof source.renewal_date === "string" && source.renewal_date.trim()
       ? source.renewal_date
       : null,
+    registryExpiryDate:
+      typeof source.registry_expiration_date === "string" &&
+      source.registry_expiration_date.trim()
+      ? source.registry_expiration_date
+      : null,
     autorenew: source.autorenew === "on" || source.autorenew === "off" || source.autorenew === "default"
       ? source.autorenew
       : "unknown",
     verificationEmailStatus:
       typeof source.verification_email_status === "string" && source.verification_email_status.trim()
         ? source.verification_email_status
+        : null,
+    verificationEmailExpiresAt:
+      typeof source.verification_email_exp_date === "string" &&
+      source.verification_email_exp_date.trim()
+        ? source.verification_email_exp_date
         : null,
     verificationEmailDescription:
       typeof source.verification_email_status_description === "string" &&
@@ -1009,6 +1066,7 @@ export async function registerOpenProviderDomain(
     nameServers?: Array<{ name: string }>
     nsGroup?: string | null
     reference?: string
+    acceptedCapabilityVersion?: string
   },
 ): Promise<OpenProviderRegistrationResult> {
   const env = options?.env ?? process.env
@@ -1022,6 +1080,7 @@ export async function registerOpenProviderDomain(
     nameServers: options?.nameServers,
     nsGroup: options?.nsGroup,
     reference: options?.reference,
+    acceptedCapabilityVersion: options?.acceptedCapabilityVersion,
   })
   let response: Response
   try {
@@ -1072,6 +1131,7 @@ export async function transferOpenProviderDomain(
     autorenew?: "on" | "off" | "default"
     nameServers: Array<{ name: string }>
     reference: string
+    acceptedCapabilityVersion?: string
   },
 ): Promise<OpenProviderTransferResult> {
   const env = options.env ?? process.env
@@ -1085,6 +1145,7 @@ export async function transferOpenProviderDomain(
     nameServers: options.nameServers,
     nsGroup: null,
     reference: options.reference,
+    acceptedCapabilityVersion: options.acceptedCapabilityVersion,
   })
   let response: Response
   try {

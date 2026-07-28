@@ -1,16 +1,18 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  INTENDED_TLD_CATALOG,
   TLD_CAPABILITY_CATALOG,
   enabledTldCapabilitiesAt,
   getEnabledTldCapability,
   getTldCapabilityByVersion,
+  tldCapabilityAt,
   tldCapabilityCatalogSchema,
   validateTldRegistrationLabel,
   validateTldTransferAuthorization,
 } from "./tld-capabilities"
 
-const PHASE_8_EFFECTIVE_AT = "2026-07-27T00:00:00.000Z"
+const PHASE_8_EFFECTIVE_AT = "2026-07-28T00:00:00.000Z"
 
 describe("effective-dated TLD capability catalog", () => {
   it("contains only schema-valid, non-overlapping capability records", () => {
@@ -27,16 +29,19 @@ describe("effective-dated TLD capability catalog", () => {
     }
   })
 
-  it("expands the production allowlist by exactly one TLD at the Phase 8 effective date", () => {
+  it("models the intended catalogue while failing closed to the evidenced .nl scope", () => {
     expect(enabledTldCapabilitiesAt("2026-07-26T23:59:59.999Z").map((entry) => entry.tld))
       .toEqual(["nl"])
     expect(enabledTldCapabilitiesAt(PHASE_8_EFFECTIVE_AT).map((entry) => entry.tld))
-      .toEqual(["be", "nl"])
+      .toEqual(["nl"])
     expect(getEnabledTldCapability("com", PHASE_8_EFFECTIVE_AT)).toBeNull()
-    expect(getTldCapabilityByVersion("tld-be-2026-07-27.1")?.tld).toBe("be")
+    expect(getTldCapabilityByVersion("tld-be-2026-07-28.1")?.tld).toBe("be")
+    expect(
+      [...new Set(TLD_CAPABILITY_CATALOG.map((entry) => entry.tld))].sort(),
+    ).toEqual([...INTENDED_TLD_CATALOG].sort())
   })
 
-  it.each(["nl", "be"] as const)(
+  it.each(["nl"] as const)(
     "has a complete provider, lifecycle, pricing, and renderer/TLS contract for .%s",
     (tld) => {
       const capability = getEnabledTldCapability(tld, PHASE_8_EFFECTIVE_AT)
@@ -69,7 +74,7 @@ describe("effective-dated TLD capability catalog", () => {
         },
         renewal: {
           dateSource: "openprovider.renewal_date",
-          executionMode: "autorenew",
+          executionMode: "provider_autorenew",
           completionEvidence: "renewal_date_advanced",
         },
         restoration: {
@@ -118,7 +123,7 @@ describe("effective-dated TLD capability catalog", () => {
     expect(capability.transfer).toMatchObject({
       completion: "realtime",
       validRegistrantPhoneRequired: true,
-      preservesRenewalDate: true,
+      renewalEffect: "unchanged",
     })
     expect(capability.restoration).toMatchObject({
       providerWindowDays: 38,
@@ -131,14 +136,15 @@ describe("effective-dated TLD capability catalog", () => {
   })
 
   it("captures .be auth-code confirmation, conditional verification, and restoration", () => {
-    const capability = getEnabledTldCapability("be", PHASE_8_EFFECTIVE_AT)!
+    const capability = tldCapabilityAt("be", PHASE_8_EFFECTIVE_AT)!
+    expect(capability.productionEnabled).toBe(false)
     expect(capability.registration.labelLength).toEqual({ min: 2, max: 63 })
     expect(capability.registration.idn).toBe(true)
     expect(capability.transfer).toMatchObject({
       completion: "realtime",
       authorizationFormat: "dns_belgium_5x3",
       authorizationValidityDays: 7,
-      preservesRenewalDate: true,
+      renewalEffect: "restarts_from_transfer_date",
     })
     expect(capability.verification.requirement).toBe("conditional_registry_risk_check")
     expect(capability.restoration).toMatchObject({
@@ -150,5 +156,24 @@ describe("effective-dated TLD capability catalog", () => {
     expect(validateTldRegistrationLabel(capability, "xn--caf-dma")).toBe(true)
     expect(validateTldTransferAuthorization(capability, "123-456-789-012-345")).toBe(true)
     expect(validateTldTransferAuthorization(capability, "ordinary-epp-code")).toBe(false)
+  })
+
+  it("records the reviewed transfer renewal effect for every intended TLD", () => {
+    const effects = Object.fromEntries(INTENDED_TLD_CATALOG.map((tld) => [
+      tld,
+      tldCapabilityAt(tld, PHASE_8_EFFECTIVE_AT)?.transfer.renewalEffect,
+    ]))
+    expect(effects).toEqual({
+      nl: "unchanged",
+      com: "extends_one_year",
+      eu: "extends_one_year",
+      org: "extends_one_year",
+      net: "extends_one_year",
+      be: "restarts_from_transfer_date",
+      de: "restarts_from_transfer_date",
+      info: "extends_one_year",
+      online: "extends_one_year",
+      shop: "extends_one_year",
+    })
   })
 })

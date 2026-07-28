@@ -11,6 +11,7 @@ import {
   getOpenProviderDomainRenewalPrice,
   loginOpenProvider,
   normalizeOpenProviderSuggestionResponse,
+  normalizeOpenProviderTimestamp,
   OpenProviderIndeterminateWriteError,
   registerOpenProviderDomain,
   setOpenProviderDomainAutorenew,
@@ -24,6 +25,15 @@ const ORIGINAL_FETCH = globalThis.fetch
 afterEach(() => {
   globalThis.fetch = ORIGINAL_FETCH
   vi.restoreAllMocks()
+})
+
+describe("Openprovider timestamps", () => {
+  it("normalizes provider timestamps and rejects zero or invalid dates", () => {
+    expect(normalizeOpenProviderTimestamp("2026-08-10 12:30:00"))
+      .toBe("2026-08-10T12:30:00.000Z")
+    expect(normalizeOpenProviderTimestamp("0000-00-00 00:00:00")).toBeNull()
+    expect(normalizeOpenProviderTimestamp("not-a-date")).toBeNull()
+  })
 })
 
 const env = {
@@ -569,18 +579,15 @@ describe("OpenProvider adapter", () => {
       name_servers: [{ name: "ns1.example.nl" }, { name: "ns2.example.nl" }],
     })
 
-    expect(buildOpenProviderDomainRegistrationRequest("example.be", env)).toMatchObject({
-      domain: { name: "example", extension: "be" },
-      period: 1,
-      autorenew: "on",
-    })
+    expect(() => buildOpenProviderDomainRegistrationRequest("example.be", env))
+      .toThrow("TLD .be is not enabled")
   })
 
-  it.each(["nl", "be"] as const)(
+  it.each(["nl"] as const)(
     "builds the reviewed .%s transfer contract without sending a provider write",
     (tld) => {
       expect(buildOpenProviderDomainTransferRequest(`example.${tld}`, env, {
-        authCode: tld === "be" ? "123-456-789-012-345" : "opaque-nl-token",
+        authCode: "opaque-nl-token",
         ownerHandle: "OWNER-CLIENT",
         nameServers: [
           { name: "ada.ns.cloudflare.com" },
@@ -588,7 +595,7 @@ describe("OpenProvider adapter", () => {
         ],
       })).toEqual({
         domain: { name: "example", extension: tld },
-        auth_code: tld === "be" ? "123-456-789-012-345" : "opaque-nl-token",
+        auth_code: "opaque-nl-token",
         owner_handle: "OWNER-CLIENT",
         admin_handle: "ADMIN",
         tech_handle: "TECH",
@@ -602,16 +609,37 @@ describe("OpenProvider adapter", () => {
     },
   )
 
-  it("requires transfer authorization and explicit DNS routing evidence", () => {
+  it("does not turn modeled but disabled .be capability metadata into a provider write", () => {
     expect(() => buildOpenProviderDomainTransferRequest("example.be", env, {
+      authCode: "123-456-789-012-345",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+    })).toThrow("TLD .be is not enabled")
+    expect(buildOpenProviderDomainTransferRequest("example.be", env, {
+      authCode: "123-456-789-012-345",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      acceptedCapabilityVersion: "tld-be-2026-07-27.1",
+    })).toMatchObject({
+      domain: { name: "example", extension: "be" },
+      auth_code: "123-456-789-012-345",
+      autorenew: "on",
+    })
+    expect(() => buildOpenProviderDomainTransferRequest("example.nl", env, {
+      authCode: "opaque-nl-token",
+      nameServers: [{ name: "ada.ns.cloudflare.com" }],
+      acceptedCapabilityVersion: "tld-nl-unknown",
+    })).toThrow("Accepted TLD capability tld-nl-unknown is not valid")
+  })
+
+  it("requires transfer authorization and explicit DNS routing evidence", () => {
+    expect(() => buildOpenProviderDomainTransferRequest("example.nl", env, {
       authCode: " ",
     })).toThrow("auth code")
-    expect(() => buildOpenProviderDomainTransferRequest("example.be", {
+    expect(() => buildOpenProviderDomainTransferRequest("example.nl", {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "",
     } as unknown as NodeJS.ProcessEnv, {
-      authCode: "123-456-789-012-345",
+      authCode: "opaque-nl-token",
     })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
   })
 
@@ -682,8 +710,10 @@ describe("OpenProvider adapter", () => {
             { name: "bob.ns.cloudflare.com" },
           ],
           renewal_date: "2027-07-26 00:00:00",
+          registry_expiration_date: "2027-08-01 00:00:00",
           autorenew: "on",
           verification_email_status: "verified",
+          verification_email_exp_date: "2026-08-10 12:30:00",
           verification_email_status_description: "Registrant email verified",
         }],
       },
@@ -700,8 +730,11 @@ describe("OpenProvider adapter", () => {
       ownerHandle: "OWNER-CLIENT",
       adminHandle: "ADMIN",
       nameServers: ["ada.ns.cloudflare.com", "bob.ns.cloudflare.com"],
+      renewalDate: "2027-07-26 00:00:00",
+      registryExpiryDate: "2027-08-01 00:00:00",
       autorenew: "on",
       verificationEmailStatus: "verified",
+      verificationEmailExpiresAt: "2026-08-10 12:30:00",
     })
     expect(fetchMock).toHaveBeenCalledWith(
       `https://openprovider.test/v1beta/domains?full_name=example.${tld}&with_verification_email=true&limit=2`,

@@ -204,6 +204,7 @@ const preparedMigration = async (store: ReturnType<typeof createStore>) => {
 const workflowDependencies = (input?: {
   now?: string
   authoritativeStatus?: "verified" | "pending"
+  verificationStatus?: string
 }) => {
   let providerDomain: {
     id: number
@@ -215,6 +216,7 @@ const workflowDependencies = (input?: {
     renewalDate: string
     autorenew: "on"
     verificationEmailStatus: string
+    verificationEmailExpiresAt: string
     verificationEmailDescription: string
     raw: Record<string, never>
   } | null = null
@@ -243,8 +245,9 @@ const workflowDependencies = (input?: {
         nameServers: options.nameServers.map((entry) => entry.name),
         renewalDate: "2027-07-28T00:00:00.000Z",
         autorenew: "on",
-        verificationEmailStatus: "verified",
-        verificationEmailDescription: "verified",
+        verificationEmailStatus: input?.verificationStatus ?? "verified",
+        verificationEmailExpiresAt: "2026-08-10 12:30:00",
+        verificationEmailDescription: input?.verificationStatus ?? "verified",
         raw: {},
       }
       return { id: 9001, domain, status: "transferred" as const, raw: {} }
@@ -448,6 +451,148 @@ describe("automatic existing-domain migration", () => {
     })
     expect(fixture.dependencies.listCloudflareZones).not.toHaveBeenCalled()
     expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+  })
+
+  it("keeps suspended registrant verification reconcilable and recovers after verification", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({ verificationStatus: "suspended" })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      reconciliationRequired: true,
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      registrantVerificationStatus: "suspended",
+      registrantVerificationDueAt: "2026-08-10T12:30:00.000Z",
+      reconciliationRequired: true,
+    })
+
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    providerDomain.verificationEmailStatus = "verified"
+    providerDomain.verificationEmailDescription = "verified"
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "completed" })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      registrantVerificationStatus: "recovered",
+      reconciliationRequired: false,
+    })
+  })
+
+  it("pauses a ready pre-cutover migration when registrant verification regresses", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        forwardProviderWritesAllowed: () => false,
+      }),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "ready_for_cutover",
+    })
+
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    providerDomain.verificationEmailStatus = "suspended"
+    providerDomain.verificationEmailDescription = "suspended"
+    providerDomain.verificationEmailExpiresAt = "0000-00-00 00:00:00"
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        forwardProviderWritesAllowed: () => false,
+      }),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "awaiting_provider",
+      reconciliationRequired: true,
+    })
+    expect(store.collections["managed-domains"]![0]).toMatchObject({
+      registrantVerificationStatus: "suspended",
+      registrantVerificationDueAt: "2026-08-10T12:30:00.000Z",
+    })
+    expect(fixture.dependencies.updateOpenProviderDomainNameservers).not.toHaveBeenCalled()
+  })
+
+  it("rolls back immediately when registrant verification regresses after cutover", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({ authoritativeStatus: "pending" })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      cutoverWriteState: "confirmed",
+    })
+
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    providerDomain.verificationEmailStatus = "suspended"
+    providerDomain.verificationEmailDescription = "suspended"
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "rolled_back" })
+    expect(providerDomain.nameServers).toEqual(OLD_NAMESERVERS)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "rolled_back",
+      rollbackWriteState: "confirmed",
+    })
+  })
+
+  it("rolls back when registrant verification returns to pending after cutover", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({ authoritativeStatus: "pending" })
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "waiting" })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      cutoverWriteState: "confirmed",
+    })
+
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    providerDomain.verificationEmailStatus = "pending"
+    providerDomain.verificationEmailDescription = "pending"
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({ status: "rolled_back" })
+    expect(providerDomain.nameServers).toEqual(OLD_NAMESERVERS)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "rolled_back",
+      rollbackWriteState: "confirmed",
+    })
   })
 
   it("automatically restores frozen old nameservers after the verification deadline", async () => {

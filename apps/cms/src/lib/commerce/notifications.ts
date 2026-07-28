@@ -171,15 +171,38 @@ export async function deliverCommerceNotification(input: {
     overrideAccess: true,
   }) as Tenant
   let domainName: string | null = null
+  let renewalCycle: DomainRenewalCycle | null = null
   const cycleId = relationshipId(claimed.renewalCycle)
   if (cycleId) {
-    const cycle = await input.payload.findByID({
+    renewalCycle = await input.payload.findByID({
       collection: "domain-renewal-cycles",
       id: cycleId,
       depth: 0,
       overrideAccess: true,
     }) as DomainRenewalCycle
-    const managedDomainId = relationshipId(cycle.managedDomain)
+    if (
+      ["renewed", "cancelled"].includes(renewalCycle.state) &&
+      (
+        /^domain_renewal_(?:90|60|30|14|7|1)d$/.test(claimed.kind) ||
+        claimed.kind === "domain_renewal_admin_7d"
+      )
+    ) {
+      await input.payload.update({
+        collection: "commerce-notification-deliveries",
+        id: claimed.id,
+        data: {
+          status: "cancelled",
+          nextAttemptAt: null,
+          leaseUntil: null,
+          lastError: null,
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { commerceNotificationLifecycleMutation: true },
+      })
+      return "skipped"
+    }
+    const managedDomainId = relationshipId(renewalCycle.managedDomain)
     if (managedDomainId) {
       const managedDomain = await input.payload.findByID({
         collection: "managed-domains",
@@ -195,6 +218,22 @@ export async function deliverCommerceNotification(input: {
     eventAt: claimed.eventAt,
     tenantName: tenant.name,
     domainName,
+    currency: renewalCycle?.currency,
+    providerOperationPriceNetMinor: renewalCycle?.providerOperationPriceNetMinor,
+    includedAllowanceNetMinor: renewalCycle?.includedAllowanceNetMinor,
+    surchargeNetMinor: renewalCycle?.surchargeNetMinor,
+    vatAmountMinor: renewalCycle?.vatAmountMinor,
+    grossAmountMinor: renewalCycle?.grossAmountMinor,
+    financialCoverageState: renewalCycle?.financialCoverageState,
+    providerRenewalMode: renewalCycle?.providerRenewalMode,
+    providerAutorenew: renewalCycle?.providerAutorenew,
+    registrarSafeCutoffAt: renewalCycle?.registrarSafeCutoffAt,
+    paymentChargeAt: renewalCycle?.paymentChargeAt,
+    providerBalanceAvailableMinor: renewalCycle?.providerBalanceAvailableMinor,
+    providerBalanceReservedMinor: renewalCycle?.providerBalanceReservedMinor,
+    providerBalanceCurrency: renewalCycle?.providerBalanceCurrency,
+    providerBalanceCheckedAt: renewalCycle?.providerBalanceCheckedAt,
+    adminExceptionCode: renewalCycle?.adminExceptionCode,
   })
   try {
     await sendEmail({

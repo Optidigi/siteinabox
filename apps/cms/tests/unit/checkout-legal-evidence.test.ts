@@ -88,7 +88,7 @@ describe("checkout legal evidence", () => {
     ])
 
     const approval = await createSiteApprovalEvidence({
-      payload, run, tenant, pages, domain: "demo.be", actorEmail: "Client@Example.com", requestId: "req-1",
+      payload, run, tenant, pages, domain: "demo.nl", actorEmail: "Client@Example.com", requestId: "req-1",
     })
     const first = await createOrderAndAcceptanceEvidence({
       payload,
@@ -112,14 +112,14 @@ describe("checkout legal evidence", () => {
       quote: buildCheckoutQuote({
         billingPeriod: "annual",
         providerOperationPriceNetMinor: 1_000,
-        selectedDomain: "demo.be",
+        selectedDomain: "demo.nl",
         providerQuotedAt: "2026-07-27T11:55:00.000Z",
         profileVersion: 1,
         draftVersion: "draft-30",
         now: new Date("2026-07-27T11:56:00.000Z"),
       }),
       domainRegistrant: { email: "client@example.com" },
-      domain: "demo.be",
+      domain: "demo.nl",
       requestId: "req-1",
       now: new Date("2026-07-27T12:00:00.000Z"),
     })
@@ -145,14 +145,14 @@ describe("checkout legal evidence", () => {
       quote: buildCheckoutQuote({
         billingPeriod: "annual",
         providerOperationPriceNetMinor: 1_000,
-        selectedDomain: "demo.be",
+        selectedDomain: "demo.nl",
         providerQuotedAt: "2026-07-27T11:55:00.000Z",
         profileVersion: 1,
         draftVersion: "draft-30",
         now: new Date("2026-07-27T11:56:01.000Z"),
       }),
       domainRegistrant: { email: "client@example.com" },
-      domain: "demo.be",
+      domain: "demo.nl",
       requestId: "req-2",
       now: new Date("2026-07-27T12:00:00.000Z"),
     })
@@ -176,16 +176,16 @@ describe("checkout legal evidence", () => {
       quoteEvidence: {
         schemaVersion: 2,
         initialAuthorityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
-        selectedDomain: "demo.be",
+        selectedDomain: "demo.nl",
         planPriceNetMinor: 19_000,
         subtotalNetMinor: 19_000,
         vatAmountMinor: 3_990,
         grossPayableNowMinor: 22_990,
         futureSubscriptionGrossMinor: 22_990,
         tldCapability: {
-          tld: "be",
-          capabilityVersion: "tld-be-2026-07-27.1",
-          effectiveFrom: "2026-07-27T00:00:00.000Z",
+          tld: "nl",
+          capabilityVersion: "tld-nl-2026-07-26.1",
+          effectiveFrom: "2026-01-01T00:00:00.000Z",
         },
       },
     })
@@ -199,7 +199,7 @@ describe("checkout legal evidence", () => {
       runId: 30,
       orderId: first.order.id,
       customerEmail: "client@example.com",
-    })).resolves.toMatchObject({ order: { domain: "demo.be" } })
+    })).resolves.toMatchObject({ order: { domain: "demo.nl" } })
   })
 
   it("rejects reuse when immutable approval, registrant, or commercial evidence changes", async () => {
@@ -211,7 +211,7 @@ describe("checkout legal evidence", () => {
       run,
       tenant,
       pages: [],
-      domain: "demo.be",
+      domain: "demo.nl",
       actorEmail: "client@example.com",
       requestId: "req-approval",
     })
@@ -235,7 +235,7 @@ describe("checkout legal evidence", () => {
     const quote = buildCheckoutQuote({
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_000,
-      selectedDomain: "demo.be",
+      selectedDomain: "demo.nl",
       providerQuotedAt: "2026-07-28T11:55:00.000Z",
       profileVersion: 1,
       draftVersion: "draft-31",
@@ -249,7 +249,7 @@ describe("checkout legal evidence", () => {
       checkoutProfile,
       quote,
       domainRegistrant: { email: "client@example.com", firstName: "Maria", lastName: "de la Cruz" },
-      domain: "demo.be",
+      domain: "demo.nl",
       now: new Date("2026-07-28T12:00:00.000Z"),
     }
     await createOrderAndAcceptanceEvidence({

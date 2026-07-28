@@ -1,6 +1,6 @@
 import { renderEmailLayout } from "@/lib/email/emailLayout"
 
-export const COMMERCE_NOTIFICATION_TEMPLATE_VERSION = "commerce-2026-07-27.1"
+export const COMMERCE_NOTIFICATION_TEMPLATE_VERSION = "commerce-2026-07-28.2"
 
 export type CommerceNotificationKind =
   | "upcoming_charge_7d"
@@ -12,10 +12,12 @@ export type CommerceNotificationKind =
   | "service_restored"
   | "cancellation_scheduled"
   | "cancellation_effective"
+  | "domain_renewal_90d"
   | "domain_renewal_60d"
   | "domain_renewal_30d"
   | "domain_renewal_14d"
   | "domain_renewal_7d"
+  | "domain_renewal_admin_7d"
   | "domain_renewal_1d"
   | "domain_renewed"
 
@@ -30,6 +32,14 @@ const date = (value: string) => new Intl.DateTimeFormat("nl-NL", {
   dateStyle: "long",
   timeZone: "Europe/Amsterdam",
 }).format(new Date(value))
+
+const money = (minor: number | null | undefined, currency = "EUR") =>
+  minor == null
+    ? "niet beschikbaar"
+    : new Intl.NumberFormat("nl-NL", {
+        style: "currency",
+        currency,
+      }).format(minor / 100)
 
 const billingCopy = (
   kind: CommerceNotificationKind,
@@ -90,14 +100,58 @@ export function commerceNotificationTemplate(input: {
   eventAt: string
   tenantName: string
   domainName?: string | null
+  currency?: string | null
+  providerOperationPriceNetMinor?: number | null
+  includedAllowanceNetMinor?: number | null
+  surchargeNetMinor?: number | null
+  vatAmountMinor?: number | null
+  grossAmountMinor?: number | null
+  financialCoverageState?: string | null
+  providerRenewalMode?: string | null
+  providerAutorenew?: string | null
+  registrarSafeCutoffAt?: string | null
+  paymentChargeAt?: string | null
+  providerBalanceAvailableMinor?: number | null
+  providerBalanceReservedMinor?: number | null
+  providerBalanceCurrency?: string | null
+  providerBalanceCheckedAt?: string | null
+  adminExceptionCode?: string | null
 }) {
-  const domainReminder = input.kind.match(/^domain_renewal_(60|30|14|7|1)d$/)
+  const currency = input.currency ?? "EUR"
+  const domainReminder = input.kind.match(/^domain_renewal_(90|60|30|14|7|1)d$/)
   const copy = domainReminder
     ? {
         subject: `Domeinverlenging ${input.domainName ?? ""}`.trim(),
         title: "Domeinverlenging",
-        message: `${input.domainName ?? "Het domein"} staat gepland voor verlenging op ${date(input.eventAt)}. De verlenging gebruikt uitsluitend de vastgelegde Openprovider-autorenewcyclus.`,
+        message: input.kind === "domain_renewal_90d"
+          ? `${input.domainName ?? "Het domein"} heeft een indicatieve verlengstatus voor ${date(input.eventAt)}. Uiterlijk bij de 60-dagenmelding volgt de actuele prijs en eventuele toeslag.`
+          : input.kind === "domain_renewal_60d"
+            ? [
+                `${input.domainName ?? "Het domein"} staat gepland voor verlenging op ${date(input.eventAt)}.`,
+                `Providerprijs excl. btw: ${money(input.providerOperationPriceNetMinor, currency)}.`,
+                `Inbegrepen domeinvergoeding: ${money(input.includedAllowanceNetMinor, currency)}.`,
+                `Toeslag excl. btw: ${money(input.surchargeNetMinor, currency)}.`,
+                `Btw: ${money(input.vatAmountMinor, currency)}.`,
+                `Bruto nu te betalen: ${money(input.grossAmountMinor, currency)}.`,
+                `Dekkingsstatus: ${input.financialCoverageState ?? "onbekend"}.`,
+              ].join(" ")
+            : `${input.domainName ?? "Het domein"} staat gepland voor verlenging op ${date(input.eventAt)}. De verlenging gebruikt uitsluitend de vastgelegde provideruitvoeringsmodus.`,
       }
+    : input.kind === "domain_renewal_admin_7d"
+      ? {
+          subject: `Actiedossier domeinverlenging: ${input.domainName ?? ""}`.trim(),
+          title: "Domeinverlenging over 7 dagen",
+          message: [
+            `${input.domainName ?? "Het domein"} bereikt de operationele verlengdatum op ${date(input.eventAt)}.`,
+            `Dekking: ${input.financialCoverageState ?? "onbekend"}.`,
+            `Uitvoeringsmodus: ${input.providerRenewalMode ?? "onbekend"}; provider-autorenew: ${input.providerAutorenew ?? "onbekend"}.`,
+            `Veilige registrarcutoff: ${input.registrarSafeCutoffAt ? date(input.registrarSafeCutoffAt) : "niet beschikbaar"}.`,
+            `Betaalmoment: ${input.paymentChargeAt ? date(input.paymentChargeAt) : "niet beschikbaar"}.`,
+            `Providerbalans: ${money(input.providerBalanceAvailableMinor, input.providerBalanceCurrency ?? currency)} beschikbaar; ${money(input.providerBalanceReservedMinor, input.providerBalanceCurrency ?? currency)} gereserveerd.`,
+            `Balans gecontroleerd: ${input.providerBalanceCheckedAt ? date(input.providerBalanceCheckedAt) : "niet beschikbaar"}.`,
+            `Uitzondering: ${input.adminExceptionCode ?? "geen"}.`,
+          ].join(" "),
+        }
     : input.kind === "domain_renewed"
       ? {
           subject: `Domein verlengd: ${input.domainName ?? ""}`.trim(),

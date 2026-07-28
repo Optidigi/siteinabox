@@ -1641,7 +1641,7 @@ describe("Mollie payment flow", () => {
     expect(fetch).not.toHaveBeenCalled()
   })
 
-  it.each(["nl", "be"] as const)(
+  it.each(["nl"] as const)(
     "starts .%s domain provisioning after a live paid checkout",
     async (tld) => {
     const selectedDomain = `clientsite.${tld}`
