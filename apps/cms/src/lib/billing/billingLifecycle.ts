@@ -314,7 +314,21 @@ async function ensureRecurringAttempt(input: {
 }): Promise<void> {
   const attempts = await loadPaymentAttempts(input.payload, input.order)
   const existing = attempts.find((attempt) => attempt.attemptNumber === input.attemptNumber)
-  if (existing) return
+  if (existing) {
+    const providerAbsenceReconciled =
+      existing.state === "pending_provider" &&
+      !existing.providerPaymentId &&
+      !existing.reconciliationRequired &&
+      existing.failureCode === "provider_absence_reconciled"
+    if (!providerAbsenceReconciled) return
+    await createApplicationRecurringMolliePayment(input.payload, {
+      billingAgreementId: input.agreement.id,
+      orderId: input.order.id,
+      purpose: "recurring",
+      attemptNumber: input.attemptNumber,
+    })
+    return
+  }
   const latest = attempts.at(-1)
   if (latest && !TERMINAL_ATTEMPT_STATES.includes(latest.state)) return
   await createApplicationRecurringMolliePayment(input.payload, {
@@ -322,9 +336,6 @@ async function ensureRecurringAttempt(input: {
     orderId: input.order.id,
     purpose: "recurring",
     attemptNumber: input.attemptNumber,
-  })
-  await updateAgreement(input.payload, input.agreement, {
-    lastPaymentAttemptAt: input.now,
   })
 }
 
@@ -518,10 +529,10 @@ export async function processBillingAgreement(input: {
     subjectId: agreement.id,
     now,
   })
-  const graceAnchor = collectionStarted
-    ? agreement.graceStartedAt ?? dueAt
-    : now
-  const stage = collectionStarted
+  const dunningStarted = collectionStarted || Boolean(agreement.graceStartedAt)
+  const graceAnchor = agreement.graceStartedAt ??
+    (collectionStarted ? dueAt : now)
+  const stage = dunningStarted
     ? billingDunningStage(graceAnchor, nowDate)
     : "due"
   if (stage === "suspend") {
@@ -649,14 +660,24 @@ async function pendingCommittedCoverageEnd(
       where: {
         and: [
           { order: { equals: order.id } },
-          { state: { in: ["pending_provider", "authorized", "paid"] } },
+          { state: { in: ["created", "pending_provider", "authorized", "paid"] } },
         ],
       },
-      limit: 1,
+      sort: "-createdAt",
+      limit: 20,
       depth: 0,
       overrideAccess: true,
     })
-    if (attempts.docs[0]) return order.servicePeriodEndsAt
+    const financiallyCommitted = (attempts.docs as PaymentAttempt[]).some((attempt) => {
+      if (["authorized", "paid"].includes(attempt.state)) return true
+      if (attempt.providerPaymentId && attempt.state === "pending_provider") return true
+      return (
+        attempt.state === "pending_provider" &&
+        attempt.reconciliationRequired &&
+        agreement.lastPaymentAttemptAt === attempt.createdAt
+      )
+    })
+    if (financiallyCommitted) return order.servicePeriodEndsAt
   }
   return null
 }
@@ -673,41 +694,84 @@ export async function scheduleCancellationAtPeriodEnd(input: {
   now?: Date
 }): Promise<BillingAgreement> {
   const now = (input.now ?? new Date()).toISOString()
-  let agreement = await input.payload.findByID({
-    collection: "billing-agreements",
-    id: input.agreementId,
-    depth: 0,
-    overrideAccess: true,
-  }) as BillingAgreement
-  if (!sameRelationshipId(agreement.tenant, input.tenantId)) {
-    throw new Error("Billing agreement does not belong to the authenticated tenant.")
+  let agreement: BillingAgreement | null = null
+  for (let retry = 0; retry < 5; retry += 1) {
+    const candidate = await input.payload.findByID({
+      collection: "billing-agreements",
+      id: input.agreementId,
+      depth: 0,
+      overrideAccess: true,
+    }) as BillingAgreement
+    if (!sameRelationshipId(candidate.tenant, input.tenantId)) {
+      throw new Error("Billing agreement does not belong to the authenticated tenant.")
+    }
+    if (
+      candidate.state === "cancelled" ||
+      candidate.state === "cancellation_scheduled"
+    ) return candidate
+    if (!["active", "past_due", "suspended"].includes(candidate.state)) {
+      throw new Error("Billing agreement cannot be cancelled in its current state.")
+    }
+    if (!candidate.updatedAt) {
+      throw new Error("Billing agreement is missing its concurrency version.")
+    }
+    const pendingCoverageEnd = await pendingCommittedCoverageEnd(
+      input.payload,
+      candidate,
+    )
+    const cancelAt = [candidate.currentPeriodEndsAt, pendingCoverageEnd]
+      .filter((value): value is string => Boolean(value))
+      .sort()
+      .at(-1)
+    if (!cancelAt) throw new Error("Billing agreement is missing paid period coverage.")
+    const result = await input.payload.update({
+      collection: "billing-agreements",
+      where: {
+        and: [
+          { id: { equals: candidate.id } },
+          { updatedAt: { equals: candidate.updatedAt } },
+          { state: { equals: candidate.state } },
+        ],
+      },
+      data: {
+        state: "cancellation_scheduled",
+        renewalIntent: false,
+        cancelAt,
+        cancellationEvidence: {
+          version: 1,
+          actorUserId: input.actorUserId,
+          actorEmail: input.actorEmail.trim().toLowerCase(),
+          requestedAt: now,
+          requestId: input.requestId ?? null,
+          ipAddress: input.ipAddress ?? null,
+          userAgent: input.userAgent ?? null,
+          cancelAt,
+        },
+        stateHistory: agreementHistory(
+          candidate,
+          "cancellation_scheduled",
+          now,
+          "customer_request",
+        ),
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { billingAgreementLifecycleMutation: true },
+    })
+    const claimed = Array.isArray(result.docs)
+      ? result.docs[0] as BillingAgreement | undefined
+      : undefined
+    if (claimed) {
+      agreement = claimed
+      break
+    }
   }
-  if (agreement.state === "cancelled" || agreement.state === "cancellation_scheduled") return agreement
-  if (!["active", "past_due", "suspended"].includes(agreement.state)) {
-    throw new Error("Billing agreement cannot be cancelled in its current state.")
+  if (!agreement) {
+    throw new Error("Billing cancellation conflicted with concurrent collection; retry safely.")
   }
-  const pendingCoverageEnd = await pendingCommittedCoverageEnd(input.payload, agreement)
-  const cancelAt = [agreement.currentPeriodEndsAt, pendingCoverageEnd]
-    .filter((value): value is string => Boolean(value))
-    .sort()
-    .at(-1)
-  if (!cancelAt) throw new Error("Billing agreement is missing paid period coverage.")
-  agreement = await updateAgreement(input.payload, agreement, {
-    state: "cancellation_scheduled",
-    renewalIntent: false,
-    cancelAt,
-    cancellationEvidence: {
-      version: 1,
-      actorUserId: input.actorUserId,
-      actorEmail: input.actorEmail.trim().toLowerCase(),
-      requestedAt: now,
-      requestId: input.requestId ?? null,
-      ipAddress: input.ipAddress ?? null,
-      userAgent: input.userAgent ?? null,
-      cancelAt,
-    },
-    stateHistory: agreementHistory(agreement, "cancellation_scheduled", now, "customer_request"),
-  })
+  if (!agreement.cancelAt) {
+    throw new Error("Claimed billing cancellation is missing its effective date.")
+  }
   await cancelUncoveredRenewals(input.payload, agreement, now)
   const origin = await loadOriginatingOrder(input.payload, agreement)
   await ensureBillingNotification({
@@ -715,7 +779,7 @@ export async function scheduleCancellationAtPeriodEnd(input: {
     agreement,
     order: origin,
     kind: "cancellation_scheduled",
-    eventAt: cancelAt,
+    eventAt: agreement.cancelAt,
   })
   return agreement
 }

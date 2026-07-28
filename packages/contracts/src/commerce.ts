@@ -558,7 +558,7 @@ export const paymentAttemptStates = [
 export const paymentAttemptStateSchema = z.enum(paymentAttemptStates)
 export type PaymentAttemptState = z.infer<typeof paymentAttemptStateSchema>
 export const paymentAttemptStateTransitions = {
-  created: ["pending_provider", "cancelled"],
+  created: ["pending_provider", "failed", "cancelled"],
   pending_provider: ["authorized", "paid", "failed", "cancelled", "expired"],
   authorized: ["paid", "failed", "cancelled", "expired"],
   paid: ["refund_pending", "chargeback"],

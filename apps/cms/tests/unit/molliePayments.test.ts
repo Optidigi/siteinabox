@@ -50,6 +50,7 @@ import { fulfillOrderTask } from "@/lib/jobs/fulfillOrderTask"
 import { requestMollieRefundTask } from "@/lib/jobs/requestMollieRefundTask"
 import { syncMolliePaymentTask } from "@/lib/jobs/syncMolliePaymentTask"
 import { retryPostPaymentAutomation } from "@/lib/payments/postPaymentActivation"
+import { recoverMissingMolliePaymentReferences } from "@/lib/commerce/reconciliation"
 import { POST as mollieWebhookPOST } from "@/app/(payload)/api/payments/mollie/webhook/route"
 
 const registrant = {
@@ -275,6 +276,7 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       renewalIntent: true,
       reconciliationRequired: false,
       createdAt: "2026-07-26T10:00:00.000Z",
+      updatedAt: "2026-07-26T10:00:00.000Z",
     }
     billingAgreements.push(agreement)
     paymentAttempts.push({
@@ -299,7 +301,58 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       createdAt: "2026-07-26T10:00:00.000Z",
     })
   }
-  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+  let cancellationRacePending = overrides.cancelBeforeRecurringClaim === true
+  let paymentSyncCancellationRacePending =
+    overrides.cancelBeforeBillingSyncClaim === true
+  const update = vi.fn(async ({
+    collection,
+    id,
+    where,
+    data,
+  }: MockUpdateArgs & { where?: MockWhere }) => {
+    if (collection === "billing-agreements" && where) {
+      if (cancellationRacePending && "lastPaymentAttemptAt" in data) {
+        cancellationRacePending = false
+        const agreement = billingAgreements[0]
+        if (agreement) {
+          Object.assign(agreement, {
+            state: "cancellation_scheduled",
+            renewalIntent: false,
+            cancelAt: "2026-08-01T10:00:00.000Z",
+            updatedAt: "2026-07-27T10:00:00.000Z",
+          })
+        }
+      }
+      if (
+        paymentSyncCancellationRacePending &&
+        "currentPeriodEndsAt" in data
+      ) {
+        paymentSyncCancellationRacePending = false
+        const agreement = billingAgreements[0]
+        if (agreement) {
+          Object.assign(agreement, {
+            state: "cancellation_scheduled",
+            renewalIntent: false,
+            cancelAt: "2026-08-01T10:00:00.000Z",
+            cancellationEvidence: {
+              version: 1,
+              requestedAt: "2026-07-27T10:00:00.000Z",
+            },
+            updatedAt: "2026-07-27T10:00:00.000Z",
+          })
+        }
+      }
+      const docs = billingAgreements.filter((agreement) =>
+        matchesWhere(agreement, where)
+      )
+      for (const agreement of docs) {
+        Object.assign(agreement, data)
+        agreement.updatedAt = new Date(
+          new Date(String(agreement.updatedAt)).getTime() + 1,
+        ).toISOString()
+      }
+      return { docs, totalDocs: docs.length }
+    }
     if (collection === "site-generation-runs") Object.assign(run, data)
     if (collection === "tenants") Object.assign(tenant, data)
     if (collection === "orders") {
@@ -311,6 +364,19 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
       if (!snapshot) throw new Error(`Missing published-site-snapshots ${id}`)
       Object.assign(snapshot, data)
       return { ...snapshot }
+    }
+    if (where) {
+      for (const [slug, docs] of [
+        ["payment-attempts", paymentAttempts],
+        ["accounting-documents", accountingDocuments],
+        ["managed-domains", managedDomains],
+        ["commerce-notification-deliveries", commerceNotifications],
+      ] as const) {
+        if (collection !== slug) continue
+        const matched = docs.filter((entry) => matchesWhere(entry, where))
+        for (const entry of matched) Object.assign(entry, data)
+        return { docs: matched, totalDocs: matched.length }
+      }
     }
     for (const [slug, docs] of [
       ["payment-attempts", paymentAttempts],
@@ -892,6 +958,208 @@ describe("Mollie payment flow", () => {
     )).toHaveLength(1)
   })
 
+  it("does not create a recurring provider payment when cancellation wins the claim", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      billingAgreements,
+      paymentAttempts,
+      order,
+    } = createPayloadStub({
+      cancelBeforeRecurringClaim: true,
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_first_before_cancel",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "pending",
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+        return new Response(JSON.stringify({
+          id: "mdt_test_123",
+          status: "valid",
+        }), { status: 200 })
+      }
+      throw new Error(`Unexpected provider write ${url}`)
+    }))
+
+    await expect(createApplicationRecurringMolliePayment(payload, {
+      billingAgreementId: String(billingAgreements[0]?.id),
+      orderId: 600,
+    })).rejects.toThrow("cancelled before provider write")
+
+    expect(paymentAttempts.find((attempt) =>
+      attempt.purpose === "recurring"
+    )).toMatchObject({
+      state: "cancelled",
+      reconciliationRequired: false,
+      failureCode: "collection_cancelled_before_provider_write",
+    })
+    expect(vi.mocked(fetch).mock.calls.some(([url]) =>
+      String(url) === "https://api.mollie.com/v2/payments",
+    )).toBe(false)
+  })
+
+  it("reconciles a crash after the recurring claim before one safe provider retry", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      billingAgreements,
+      paymentAttempts,
+      order,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_first_before_claim_crash",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    const attempt = paymentAttempts[0]!
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "pending",
+      providerPaymentId: null,
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    Object.assign(attempt, {
+      idempotencyKey:
+        "mollie:recurring:order:600:authority-v2:attempt-1",
+      purpose: "recurring",
+      sequenceType: "recurring",
+      state: "pending_provider",
+      providerPaymentId: null,
+      providerStatus: null,
+      reconciliationRequired: true,
+      createdAt: "2026-07-28T10:00:00.000Z",
+    })
+    Object.assign(billingAgreements[0]!, {
+      state: "active",
+      renewalIntent: true,
+      lastPaymentAttemptAt: attempt.createdAt,
+    })
+
+    await expect(recoverMissingMolliePaymentReferences(payload, {
+      providerReadsAllowed: () => true,
+      listRecentMolliePayments: vi.fn(async () => []),
+    }, new Date("2026-07-28T10:03:00.000Z"))).resolves.toEqual({
+      examined: 1,
+      recoveredPaymentIds: [],
+    })
+    expect(attempt).toMatchObject({
+      state: "pending_provider",
+      reconciliationRequired: false,
+      failureCode: "provider_absence_reconciled",
+    })
+    expect(billingAgreements[0]).toMatchObject({
+      lastPaymentAttemptAt: null,
+    })
+
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+        return new Response(JSON.stringify({
+          id: "mdt_test_123",
+          status: "valid",
+        }), { status: 200 })
+      }
+      if (url === "https://api.mollie.com/v2/payments") {
+        return new Response(JSON.stringify({
+          id: "tr_recurring_after_reconciliation",
+          status: "pending",
+        }), { status: 201 })
+      }
+      throw new Error(`Unexpected provider request ${url}`)
+    }))
+
+    const retryInput = {
+      billingAgreementId: String(billingAgreements[0]?.id),
+      orderId: 600,
+    }
+    const retries = await Promise.allSettled([
+      createApplicationRecurringMolliePayment(payload, retryInput),
+      createApplicationRecurringMolliePayment(payload, retryInput),
+    ])
+    expect(retries.filter((result) => result.status === "fulfilled"))
+      .toHaveLength(1)
+    expect(retries.filter((result) => result.status === "rejected"))
+      .toHaveLength(1)
+    expect(attempt).toMatchObject({
+      providerPaymentId: "tr_recurring_after_reconciliation",
+      reconciliationRequired: false,
+    })
+    expect(vi.mocked(fetch).mock.calls.filter(([url]) =>
+      String(url) === "https://api.mollie.com/v2/payments",
+    )).toHaveLength(1)
+  })
+
+  it("records a revoked mandate as a dunning failure without an external payment write", async () => {
+    enableSandboxCommerceRelease()
+    const {
+      payload,
+      billingAgreements,
+      paymentAttempts,
+      order,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_first_before_revocation",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "pending",
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.includes("/customers/cst_test_123/mandates/mdt_test_123")) {
+        return new Response(JSON.stringify({
+          id: "mdt_test_123",
+          status: "invalid",
+        }), { status: 200 })
+      }
+      throw new Error(`Unexpected provider write ${url}`)
+    }))
+
+    const result = await createApplicationRecurringMolliePayment(payload, {
+      billingAgreementId: String(billingAgreements[0]?.id),
+      orderId: 600,
+    })
+
+    expect(result.paymentAttempt).toMatchObject({
+      state: "failed",
+      reconciliationRequired: false,
+      failureCode: "mandate_invalid",
+    })
+    expect(billingAgreements[0]).toMatchObject({
+      state: "past_due",
+      reconciliationRequired: false,
+      failureReason: "Mollie mandate status is invalid.",
+    })
+    expect(paymentAttempts.filter((attempt) =>
+      attempt.purpose === "recurring"
+    )).toHaveLength(1)
+    expect(vi.mocked(fetch).mock.calls.some(([url]) =>
+      String(url) === "https://api.mollie.com/v2/payments",
+    )).toBe(false)
+  })
+
   it("reconciles a full refund into one issued credit note and remains duplicate-safe", async () => {
     enableSandboxCommerceRelease()
     const {
@@ -1051,6 +1319,7 @@ describe("Mollie payment flow", () => {
       paymentAttempts,
       billingAgreements,
       accountingDocuments,
+      managedDomains,
     } = createPayloadStub({
       payment: {
         status: "completed",
@@ -1059,6 +1328,15 @@ describe("Mollie payment flow", () => {
         providerStatus: "paid",
         mollieCustomerId: "cst_test_123",
       },
+    })
+    managedDomains.push({
+      id: 1_300,
+      tenant: 1,
+      state: "active",
+      domainNameAscii: "acme.test",
+      entitlementStatus: "active",
+      authoritativeDnsStatus: "verified",
+      cloudflareDnsRecordIds: ["mx", "dkim", "website"],
     })
     const chargeback = await applyMollieWebhookPayment(
       payload,
@@ -1106,6 +1384,360 @@ describe("Mollie payment flow", () => {
       document.providerOperationId === "chb_test_123" &&
       document.documentType === "credit_note",
     )).toBe(true)
+    expect(managedDomains[0]).toMatchObject({
+      state: "active",
+      entitlementStatus: "active",
+      authoritativeDnsStatus: "verified",
+      cloudflareDnsRecordIds: ["mx", "dkim", "website"],
+    })
+  })
+
+  it.each([
+    {
+      billingPeriod: "monthly",
+      paidAt: "2026-01-31T12:00:00.000Z",
+      periodEndsAt: "2026-02-28T12:00:00.000Z",
+    },
+    {
+      billingPeriod: "annual",
+      paidAt: "2028-02-29T12:00:00.000Z",
+      periodEndsAt: "2029-02-28T12:00:00.000Z",
+    },
+  ])("anchors $billingPeriod activation coverage to the paid first payment", async ({
+    billingPeriod,
+    paidAt,
+    periodEndsAt,
+  }) => {
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      order,
+    } = createPayloadStub({
+      payment: {
+        status: "pending_provider",
+        provider: "mollie",
+        externalReference: `tr_first_${billingPeriod}`,
+        providerStatus: "open",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, { billingPeriod })
+    Object.assign(billingAgreements[0]!, { billingPeriod })
+
+    await applyMollieWebhookPayment(
+      payload,
+      `tr_first_${billingPeriod}`,
+      async () => ({
+        id: `tr_first_${billingPeriod}`,
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "first",
+        paidAt,
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: { refunds: [], chargebacks: [] },
+      }),
+    )
+
+    expect(billingAgreements[0]).toMatchObject({
+      state: "active",
+      currentPeriodStartsAt: paidAt,
+      currentPeriodEndsAt: periodEndsAt,
+      nextChargeAt: periodEndsAt,
+    })
+  })
+
+  it("keeps a paid in-flight renewal through a previously scheduled cancellation", async () => {
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      order,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_recurring_cancel_race",
+        providerStatus: "open",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "open",
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    Object.assign(paymentAttempts[0]!, {
+      purpose: "recurring",
+      sequenceType: "recurring",
+      state: "pending_provider",
+      providerStatus: "open",
+    })
+    Object.assign(billingAgreements[0]!, {
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-08-01T10:00:00.000Z",
+      currentPeriodStartsAt: "2026-07-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
+    })
+
+    await applyMollieWebhookPayment(
+      payload,
+      "tr_recurring_cancel_race",
+      async () => ({
+        id: "tr_recurring_cancel_race",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "recurring",
+        paidAt: "2026-08-01T10:00:01.000Z",
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: { refunds: [], chargebacks: [] },
+      }),
+    )
+
+    expect(billingAgreements[0]).toMatchObject({
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-09-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+  })
+
+  it("merges a cancellation committed after a paid webhook loaded the agreement", async () => {
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      order,
+    } = createPayloadStub({
+      cancelBeforeBillingSyncClaim: true,
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_paid_webhook_cancel_race",
+        providerStatus: "open",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "open",
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    Object.assign(paymentAttempts[0]!, {
+      purpose: "recurring",
+      sequenceType: "recurring",
+      state: "pending_provider",
+      providerStatus: "open",
+    })
+    Object.assign(billingAgreements[0]!, {
+      state: "active",
+      renewalIntent: true,
+      currentPeriodStartsAt: "2026-07-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
+    })
+
+    await applyMollieWebhookPayment(
+      payload,
+      "tr_paid_webhook_cancel_race",
+      async () => ({
+        id: "tr_paid_webhook_cancel_race",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "recurring",
+        paidAt: "2026-08-01T10:00:01.000Z",
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: { refunds: [], chargebacks: [] },
+      }),
+    )
+
+    expect(billingAgreements[0]).toMatchObject({
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-09-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+  })
+
+  it.each(["failed", "expired"] as const)(
+    "does not extend scheduled cancellation coverage for an in-flight %s payment",
+    async (providerStatus) => {
+      const {
+        payload,
+        paymentAttempts,
+        billingAgreements,
+        order,
+      } = createPayloadStub({
+        payment: {
+          status: "completed",
+          provider: "mollie",
+          externalReference: `tr_cancel_${providerStatus}`,
+          providerStatus: "open",
+          mollieCustomerId: "cst_test_123",
+        },
+      })
+      Object.assign(order, {
+        state: "accepted",
+        paymentStatus: "open",
+        orderKind: "subscription_renewal",
+        servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+        servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+      })
+      Object.assign(paymentAttempts[0]!, {
+        purpose: "recurring",
+        sequenceType: "recurring",
+        state: "pending_provider",
+        providerStatus: "open",
+      })
+      Object.assign(billingAgreements[0]!, {
+        state: "cancellation_scheduled",
+        renewalIntent: false,
+        cancelAt: "2026-09-01T10:00:00.000Z",
+        currentPeriodStartsAt: "2026-07-01T10:00:00.000Z",
+        currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
+      })
+
+      await applyMollieWebhookPayment(
+        payload,
+        `tr_cancel_${providerStatus}`,
+        async () => ({
+          id: `tr_cancel_${providerStatus}`,
+          status: providerStatus,
+          amount: { currency: "EUR", value: "499.00" },
+          customerId: "cst_test_123",
+          mandateId: "mdt_test_123",
+          sequenceType: "recurring",
+          metadata: {
+            paymentAttemptId: paymentAttempts[0]?.id,
+            orderId: 600,
+          },
+          _embedded: { refunds: [], chargebacks: [] },
+        }),
+      )
+
+      expect(billingAgreements[0]).toMatchObject({
+        state: "cancellation_scheduled",
+        renewalIntent: false,
+        cancelAt: "2026-08-01T10:00:00.000Z",
+        reconciliationRequired: false,
+      })
+    },
+  )
+
+  it("removes newly advanced coverage when that recurring payment is charged back", async () => {
+    const {
+      payload,
+      paymentAttempts,
+      billingAgreements,
+      order,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_cancel_chargeback",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    Object.assign(order, {
+      state: "accepted",
+      paymentStatus: "open",
+      orderKind: "subscription_renewal",
+      servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+      servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+    })
+    Object.assign(paymentAttempts[0]!, {
+      purpose: "recurring",
+      sequenceType: "recurring",
+      state: "pending_provider",
+      providerStatus: "open",
+    })
+    Object.assign(billingAgreements[0]!, {
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-08-01T10:00:00.000Z",
+      currentPeriodStartsAt: "2026-07-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-08-01T10:00:00.000Z",
+    })
+
+    await applyMollieWebhookPayment(
+      payload,
+      "tr_cancel_chargeback",
+      async () => ({
+        id: "tr_cancel_chargeback",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "recurring",
+        paidAt: "2026-08-01T10:00:00.000Z",
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: { refunds: [], chargebacks: [] },
+      }),
+    )
+    expect(billingAgreements[0]).toMatchObject({
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-09-01T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-09-01T10:00:00.000Z",
+      reconciliationRequired: false,
+    })
+
+    await applyMollieWebhookPayment(
+      payload,
+      "tr_cancel_chargeback",
+      async () => ({
+        id: "tr_cancel_chargeback",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        amountRefunded: { currency: "EUR", value: "0.00" },
+        amountChargedBack: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "recurring",
+        metadata: {
+          paymentAttemptId: paymentAttempts[0]?.id,
+          orderId: 600,
+        },
+        _embedded: {
+          refunds: [],
+          chargebacks: [{
+            id: "chb_cancelled_subscription",
+            amount: { currency: "EUR", value: "499.00" },
+            createdAt: "2026-08-03T10:00:00.000Z",
+          }],
+        },
+      }),
+    )
+
+    expect(billingAgreements[0]).toMatchObject({
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-08-01T10:00:00.000Z",
+      reconciliationRequired: true,
+    })
   })
 
   it("restores only the tenant suspension owned by the paid billing agreement", async () => {

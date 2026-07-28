@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { asPayload, matchesWhere, type MockDoc, type MockFindArgs, type MockUpdateArgs } from "../_helpers/mockPayload"
+import {
+  asPayload,
+  matchesWhere,
+  type MockDoc,
+  type MockFindArgs,
+  type MockUpdateArgs,
+  type MockWhere,
+} from "../_helpers/mockPayload"
 
 vi.mock("@/lib/payments/molliePayments", () => ({
   createApplicationRecurringMolliePayment: vi.fn(async () => ({
@@ -84,6 +91,7 @@ const baseAgreement = {
   reconciliationRequired: false,
   stateHistory: [{ state: "active", at: "2026-07-01T10:00:00.000Z" }],
   createdAt: "2026-07-01T10:00:00.000Z",
+  updatedAt: "2026-07-01T10:00:00.000Z",
 }
 
 const createStore = (input: {
@@ -94,6 +102,11 @@ const createStore = (input: {
   attempts?: MockDoc[]
   domains?: MockDoc[]
   cycles?: MockDoc[]
+  beforeAgreementConditionalUpdate?: (state: {
+    agreement: MockDoc
+    orders: MockDoc[]
+    attempts: MockDoc[]
+  }) => void
 } = {}) => {
   const agreement = { ...baseAgreement, ...input.agreement }
   const tenant = {
@@ -143,7 +156,33 @@ const createStore = (input: {
     ;(collections[collection] ??= []).push(doc)
     return doc
   })
-  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+  let conditionalHookPending = Boolean(input.beforeAgreementConditionalUpdate)
+  const update = vi.fn(async ({
+    collection,
+    id,
+    where,
+    data,
+  }: MockUpdateArgs & { where?: MockWhere }) => {
+    if (collection === "billing-agreements" && where) {
+      if (conditionalHookPending) {
+        conditionalHookPending = false
+        input.beforeAgreementConditionalUpdate?.({
+          agreement,
+          orders,
+          attempts,
+        })
+      }
+      const docs = (collections["billing-agreements"] ?? []).filter((doc) =>
+        matchesWhere(doc, where)
+      )
+      for (const doc of docs) {
+        Object.assign(doc, data)
+        doc.updatedAt = new Date(
+          new Date(String(doc.updatedAt)).getTime() + 1,
+        ).toISOString()
+      }
+      return { docs, totalDocs: docs.length }
+    }
     const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
     Object.assign(doc, data)
@@ -156,6 +195,7 @@ const createStore = (input: {
     attempts,
     domains,
     cycles,
+    update,
     payload: asPayload({
       find,
       findByID,
@@ -370,6 +410,10 @@ describe("application-created recurring billing", () => {
       tenant: 1,
       domainNameAscii: "example.nl",
       state: "active",
+      entitlementStatus: "active",
+      authoritativeDnsStatus: "verified",
+      cloudflareZoneId: "zone-example",
+      cloudflareDnsRecordIds: ["mx", "spf", "dkim", "website"],
       renewalIntent: true,
     }
     const store = createStore({
@@ -403,6 +447,10 @@ describe("application-created recurring billing", () => {
     })
     expect(domain).toMatchObject({
       state: "active",
+      entitlementStatus: "active",
+      authoritativeDnsStatus: "verified",
+      cloudflareZoneId: "zone-example",
+      cloudflareDnsRecordIds: ["mx", "spf", "dkim", "website"],
       renewalIntent: true,
     })
     expect(ensureCommerceNotification).toHaveBeenCalledWith(
@@ -490,5 +538,52 @@ describe("application-created recurring billing", () => {
     expect(domain).toMatchObject({ renewalIntent: false, state: "active" })
     expect(uncovered).toMatchObject({ state: "cancelled" })
     expect(committed).toMatchObject({ state: "payment_committed" })
+  })
+
+  it("linearizes concurrent cancellation after a recurring collection claim", async () => {
+    const claimAt = "2026-07-27T10:00:00.000Z"
+    const store = createStore({
+      beforeAgreementConditionalUpdate: ({ agreement, orders, attempts }) => {
+        orders.push({
+          ...baseOrigin,
+          id: 601,
+          billingCycleKey: "billing-agreement:900:period-end:2026-09-01T10:00:00.000Z",
+          billingAgreement: 900,
+          orderKind: "subscription_renewal",
+          servicePeriodStartsAt: "2026-08-01T10:00:00.000Z",
+          servicePeriodEndsAt: "2026-09-01T10:00:00.000Z",
+          state: "accepted",
+          paymentStatus: "pending",
+        })
+        attempts.push({
+          id: 700,
+          order: 601,
+          purpose: "recurring",
+          attemptNumber: 1,
+          state: "pending_provider",
+          reconciliationRequired: true,
+          createdAt: claimAt,
+        })
+        agreement.lastPaymentAttemptAt = claimAt
+        agreement.updatedAt = "2026-07-27T10:00:00.000Z"
+      },
+    })
+
+    const cancelled = await scheduleCancellationAtPeriodEnd({
+      payload: store.payload,
+      agreementId: 900,
+      tenantId: 1,
+      actorUserId: 10,
+      actorEmail: "owner@example.com",
+      requestId: "req-concurrent",
+      now: new Date("2026-07-27T10:00:01.000Z"),
+    })
+
+    expect(store.update).toHaveBeenCalledTimes(2)
+    expect(cancelled).toMatchObject({
+      state: "cancellation_scheduled",
+      renewalIntent: false,
+      cancelAt: "2026-09-01T10:00:00.000Z",
+    })
   })
 })

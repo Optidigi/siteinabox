@@ -466,6 +466,61 @@ const updateAgreement = (
     context: { billingAgreementLifecycleMutation: true },
   }) as Promise<BillingAgreement>
 
+type RecurringAgreementAuthority = BillingAgreement & {
+  providerCustomerId: string
+  providerMandateId: string
+}
+
+const hasRecurringAgreementAuthority = (
+  agreement: BillingAgreement | undefined,
+): agreement is RecurringAgreementAuthority =>
+  Boolean(agreement?.providerCustomerId && agreement.providerMandateId)
+
+const claimRecurringProviderWrite = async (
+  payload: Payload,
+  agreement: BillingAgreement,
+  claimedAt: string,
+): Promise<RecurringAgreementAuthority | null> => {
+  let candidate = agreement
+  for (let retry = 0; retry < 3; retry += 1) {
+    if (
+      !["active", "past_due"].includes(candidate.state) ||
+      !candidate.renewalIntent ||
+      !candidate.providerCustomerId ||
+      !candidate.providerMandateId
+    ) return null
+    if (!candidate.updatedAt) {
+      throw new Error("Billing agreement is missing its concurrency version.")
+    }
+    const result = await payload.update({
+      collection: "billing-agreements",
+      where: {
+        and: [
+          { id: { equals: candidate.id } },
+          { updatedAt: { equals: candidate.updatedAt } },
+          { state: { in: ["active", "past_due"] } },
+          { renewalIntent: { equals: true } },
+        ],
+      },
+      data: { lastPaymentAttemptAt: claimedAt },
+      depth: 0,
+      overrideAccess: true,
+      context: { billingAgreementLifecycleMutation: true },
+    })
+    const claimed = Array.isArray(result.docs)
+      ? result.docs[0] as BillingAgreement | undefined
+      : undefined
+    if (hasRecurringAgreementAuthority(claimed)) return claimed
+    candidate = await payload.findByID({
+      collection: "billing-agreements",
+      id: candidate.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as BillingAgreement
+  }
+  return null
+}
+
 const markProviderWriteIndeterminate = async (
   payload: Payload,
   attempt: PaymentAttempt,
@@ -852,26 +907,19 @@ export async function createApplicationRecurringMolliePayment(
     throw new Error("Recurring Mollie payment requires an active customer mandate.")
   }
   requireCommerceProviderWritesAllowed("Mollie recurring-payment creation")
-  const mandate = await retrieveMollieMandate(
-    agreement.providerCustomerId,
-    agreement.providerMandateId,
-  )
-  if (mandate.status !== "valid") {
-    agreement = await updateAgreement(payload, agreement, {
-      state: "past_due",
-      reconciliationRequired: true,
-      failureReason: `Mollie mandate status is ${mandate.status}.`,
-      lastSyncedAt: new Date().toISOString(),
-      stateHistory: agreementHistory(
-        agreement.stateHistory,
-        "past_due",
-        new Date().toISOString(),
-        `mandate_${mandate.status}`,
-      ),
-    })
-    throw new Error("Recurring Mollie payment requires a valid mandate.")
+  let mandate: Awaited<ReturnType<typeof retrieveMollieMandate>>
+  try {
+    mandate = await retrieveMollieMandate(
+      agreement.providerCustomerId,
+      agreement.providerMandateId,
+    )
+  } catch (error) {
+    if (!(error instanceof MollieApiError) || error.status !== 404) throw error
+    mandate = {
+      id: agreement.providerMandateId,
+      status: "invalid",
+    }
   }
-
   const purpose = input.purpose ?? "recurring"
   const attemptNumber = input.attemptNumber ?? 1
   if (!Number.isSafeInteger(attemptNumber) || attemptNumber < 1) {
@@ -899,8 +947,65 @@ export async function createApplicationRecurringMolliePayment(
   if (attempt.reconciliationRequired) {
     throw new Error("Recurring Mollie payment requires reconciliation before retry.")
   }
-  if (!attemptResult.created) {
+  const providerAbsenceReconciled =
+    !attemptResult.created &&
+    attempt.state === "pending_provider" &&
+    !attempt.providerPaymentId &&
+    attempt.failureCode === "provider_absence_reconciled"
+  if (!attemptResult.created && !providerAbsenceReconciled) {
     throw new Error("Recurring Mollie payment is already claimed or requires reconciliation.")
+  }
+  if (mandate.status !== "valid") {
+    const knownUnavailable = ["pending", "invalid"].includes(mandate.status)
+    const failureCode = knownUnavailable
+      ? `mandate_${mandate.status}`
+      : "mandate_status_unknown"
+    attempt = await updateAttempt(payload, attempt, {
+      state: "failed",
+      reconciliationRequired: !knownUnavailable,
+      failureCode,
+      failureMessage: "Recurring Mollie payment requires a valid mandate.",
+      stateHistory: stateHistory(
+        attempt.stateHistory,
+        "failed",
+        now,
+        failureCode,
+      ),
+    })
+    if (!agreement.updatedAt) {
+      throw new Error("Billing agreement is missing its concurrency version.")
+    }
+    await payload.update({
+      collection: "billing-agreements",
+      where: {
+        and: [
+          { id: { equals: agreement.id } },
+          { updatedAt: { equals: agreement.updatedAt } },
+          { state: { in: ["active", "past_due"] } },
+          { renewalIntent: { equals: true } },
+        ],
+      },
+      data: {
+        state: "past_due",
+        reconciliationRequired: !knownUnavailable,
+        failureReason: knownUnavailable
+          ? `Mollie mandate status is ${mandate.status}.`
+          : "Mollie returned an unknown mandate status.",
+        lastSyncedAt: now,
+        stateHistory: agreement.state === "past_due"
+          ? agreement.stateHistory
+          : agreementHistory(
+            agreement.stateHistory,
+            "past_due",
+            now,
+            failureCode,
+          ),
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { billingAgreementLifecycleMutation: true },
+    })
+    return { paymentAttempt: attempt, reused: false }
   }
   if (attempt.state === "created") {
     attempt = await updateAttempt(payload, attempt, {
@@ -908,23 +1013,83 @@ export async function createApplicationRecurringMolliePayment(
       reconciliationRequired: true,
       stateHistory: stateHistory(attempt.stateHistory, "pending_provider", now),
     })
+  } else {
+    const retryClaim = await payload.update({
+      collection: "payment-attempts",
+      where: {
+        and: [
+          { id: { equals: attempt.id } },
+          { state: { equals: "pending_provider" } },
+          { providerPaymentId: { exists: false } },
+          { reconciliationRequired: { equals: false } },
+          { failureCode: { equals: "provider_absence_reconciled" } },
+        ],
+      },
+      data: {
+        reconciliationRequired: true,
+        failureCode: null,
+        failureMessage: null,
+        stateHistory: stateHistory(
+          attempt.stateHistory,
+          "pending_provider",
+          now,
+          "provider_retry_after_absence_reconciliation",
+        ),
+      },
+      depth: 0,
+      overrideAccess: true,
+      context: { paymentAttemptLifecycleMutation: true },
+    })
+    const claimedAttempt = Array.isArray(retryClaim.docs)
+      ? retryClaim.docs[0] as PaymentAttempt | undefined
+      : undefined
+    if (!claimedAttempt) {
+      throw new Error("Recovered recurring Mollie payment retry is already claimed.")
+    }
+    attempt = claimedAttempt
+  }
+  agreement = await payload.findByID({
+    collection: "billing-agreements",
+    id: agreement.id,
+    depth: 0,
+    overrideAccess: true,
+  }) as BillingAgreement
+  const claimedAgreement = await claimRecurringProviderWrite(
+    payload,
+    agreement,
+    attempt.createdAt,
+  )
+  if (!claimedAgreement) {
+    await updateAttempt(payload, attempt, {
+      state: "cancelled",
+      reconciliationRequired: false,
+      failureCode: "collection_cancelled_before_provider_write",
+      failureMessage: "Billing cancellation won the recurring-payment claim.",
+      stateHistory: stateHistory(
+        attempt.stateHistory,
+        "cancelled",
+        now,
+        "billing_cancellation_won_claim",
+      ),
+    })
+    throw new Error("Recurring Mollie payment was cancelled before provider write.")
   }
   try {
     const payment = await createMolliePayment({
       amount: mollieAmount(attempt.grossAmountMinor, attempt.currency),
-      customerId: agreement.providerCustomerId,
-      mandateId: agreement.providerMandateId,
+      customerId: claimedAgreement.providerCustomerId,
+      mandateId: claimedAgreement.providerMandateId,
       sequenceType: "recurring",
       description: `Site in a Box ${purpose} ${order.orderNumber}`,
       webhookUrl: `${publicCmsOrigin()}/api/payments/mollie/webhook`,
       idempotencyKey: attempt.idempotencyKey,
       metadata: {
         paymentAttemptId: attempt.id,
-        billingAgreementId: agreement.id,
+        billingAgreementId: claimedAgreement.id,
         tenantId: relationshipId(order.tenant),
         idempotencyKey: attempt.idempotencyKey,
-        mollieCustomerId: agreement.providerCustomerId,
-        mandateId: agreement.providerMandateId,
+        mollieCustomerId: claimedAgreement.providerCustomerId,
+        mandateId: claimedAgreement.providerMandateId,
         sequenceType: "recurring",
         purpose: attempt.purpose,
         orderId: order.id,
@@ -1366,32 +1531,76 @@ const synchronizeBillingAgreement = async (
       })
       return
     }
-    const wasBillingSuspended = agreement.serviceSuspensionStatus === "billing_suspended"
-    const state = agreement.state === "cancellation_scheduled"
-      ? "cancellation_scheduled"
-      : "active"
-    await updateAgreement(payload, agreement, {
-      state,
-      providerCustomerId: payment.customerId ?? agreement.providerCustomerId,
-      providerMandateId: mandateId,
-      currentPeriodStartsAt: periodStartsAt,
-      currentPeriodEndsAt: periodEndsAt,
-      nextChargeAt: periodEndsAt,
-      graceStartedAt: null,
-      graceEndsAt: null,
-      serviceSuspensionStatus: "none",
-      restoredAt: wasBillingSuspended ? now : agreement.restoredAt,
-      reconciliationRequired: false,
-      failureReason: null,
-      adminExceptionCode: null,
-      adminExceptionAt: null,
-      lastSyncedAt: now,
-      stateHistory: agreement.state === state
-        ? agreement.stateHistory
-        : agreementHistory(agreement.stateHistory, state, now),
-    })
+    let synchronizedAgreement: BillingAgreement | null = null
+    let candidate = agreement
+    for (let retry = 0; retry < 5; retry += 1) {
+      if (!candidate.updatedAt) {
+        throw new Error("Billing agreement is missing its concurrency version.")
+      }
+      const wasBillingSuspended =
+        candidate.serviceSuspensionStatus === "billing_suspended"
+      const state = candidate.state === "cancellation_scheduled"
+        ? "cancellation_scheduled"
+        : "active"
+      const cancellationCancelAt = state === "cancellation_scheduled"
+        ? [candidate.cancelAt, periodEndsAt]
+          .filter((value): value is string => Boolean(value))
+          .sort()
+          .at(-1)
+        : undefined
+      const result = await payload.update({
+        collection: "billing-agreements",
+        where: {
+          and: [
+            { id: { equals: candidate.id } },
+            { updatedAt: { equals: candidate.updatedAt } },
+            { state: { equals: candidate.state } },
+          ],
+        },
+        data: {
+          state,
+          providerCustomerId: payment.customerId ?? candidate.providerCustomerId,
+          providerMandateId: mandateId,
+          currentPeriodStartsAt: periodStartsAt,
+          currentPeriodEndsAt: periodEndsAt,
+          nextChargeAt: periodEndsAt,
+          graceStartedAt: null,
+          graceEndsAt: null,
+          serviceSuspensionStatus: "none",
+          restoredAt: wasBillingSuspended ? now : candidate.restoredAt,
+          reconciliationRequired: false,
+          failureReason: null,
+          adminExceptionCode: null,
+          adminExceptionAt: null,
+          lastSyncedAt: now,
+          ...(cancellationCancelAt ? { cancelAt: cancellationCancelAt } : {}),
+          stateHistory: candidate.state === state
+            ? candidate.stateHistory
+            : agreementHistory(candidate.stateHistory, state, now),
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+      synchronizedAgreement = Array.isArray(result.docs)
+        ? (result.docs[0] as BillingAgreement | undefined) ?? null
+        : null
+      if (synchronizedAgreement) break
+      candidate = await payload.findByID({
+        collection: "billing-agreements",
+        id: agreement.id,
+        depth: 0,
+        overrideAccess: true,
+      }) as BillingAgreement
+    }
+    if (!synchronizedAgreement) {
+      throw new Error("Billing agreement synchronization lost its concurrency claim.")
+    }
+    const wasBillingSuspended =
+      agreement.serviceSuspensionStatus === "billing_suspended" ||
+      synchronizedAgreement.restoredAt === now
     if (wasBillingSuspended) {
-      const tenantId = relationshipId(agreement.tenant)
+      const tenantId = relationshipId(synchronizedAgreement.tenant)
       if (tenantId) {
         const tenant = await payload.findByID({
           collection: "tenants",
@@ -1401,7 +1610,10 @@ const synchronizeBillingAgreement = async (
         }) as Tenant
         if (
           tenant.status === "suspended" &&
-          sameRelationshipId(tenant.billingSuspensionAgreement, agreement.id)
+          sameRelationshipId(
+            tenant.billingSuspensionAgreement,
+            synchronizedAgreement.id,
+          )
         ) {
           await payload.update({
             collection: "tenants",
@@ -1424,7 +1636,7 @@ const synchronizeBillingAgreement = async (
             billingAgreementId: agreement.id,
           })
         } else if (tenant.status === "suspended") {
-          await updateAgreement(payload, agreement, {
+          await updateAgreement(payload, synchronizedAgreement, {
             serviceSuspensionStatus: "restoration_blocked",
             adminExceptionCode: "tenant_suspension_not_owned_by_billing",
             adminExceptionAt: now,
@@ -1436,18 +1648,69 @@ const synchronizeBillingAgreement = async (
   }
   if (
     ["failed", "cancelled", "expired", "chargeback"].includes(attempt.state) &&
-    ["mandate_pending", "active", "past_due"].includes(agreement.state)
+    ["mandate_pending", "active", "past_due", "cancellation_scheduled"].includes(
+      agreement.state,
+    )
   ) {
-    const state = "past_due"
-    await updateAgreement(payload, agreement, {
-      state,
-      reconciliationRequired: attempt.state === "chargeback",
-      failureReason: `Mollie payment state is ${attempt.state}.`,
-      lastSyncedAt: now,
-      stateHistory: agreement.state === state
-        ? agreement.stateHistory
-        : agreementHistory(agreement.stateHistory, state, now, attempt.state),
-    })
+    let candidate = agreement
+    for (let retry = 0; retry < 5; retry += 1) {
+      if (!candidate.updatedAt) {
+        throw new Error("Billing agreement is missing its concurrency version.")
+      }
+      const cancellationScheduled = candidate.state === "cancellation_scheduled"
+      const state: BillingAgreement["state"] = cancellationScheduled
+        ? "cancellation_scheduled"
+        : "past_due"
+      const paidCoverageEndsAt =
+        attempt.state === "chargeback" &&
+        attempt.sequenceType === "recurring"
+          ? order.servicePeriodStartsAt ?? candidate.currentPeriodEndsAt
+          : candidate.currentPeriodEndsAt
+      const result = await payload.update({
+        collection: "billing-agreements",
+        where: {
+          and: [
+            { id: { equals: candidate.id } },
+            { updatedAt: { equals: candidate.updatedAt } },
+            { state: { equals: candidate.state } },
+          ],
+        },
+        data: {
+          state,
+          ...(cancellationScheduled
+            ? {
+                renewalIntent: false,
+                cancelAt: paidCoverageEndsAt ?? candidate.cancelAt,
+              }
+            : {}),
+          reconciliationRequired: attempt.state === "chargeback",
+          failureReason: `Mollie payment state is ${attempt.state}.`,
+          lastSyncedAt: now,
+          stateHistory: candidate.state === state
+            ? candidate.stateHistory
+            : agreementHistory(
+              candidate.stateHistory,
+              state,
+              now,
+              attempt.state,
+            ),
+        },
+        depth: 0,
+        overrideAccess: true,
+        context: { billingAgreementLifecycleMutation: true },
+      })
+      const updated = Array.isArray(result.docs)
+        ? result.docs[0] as BillingAgreement | undefined
+        : undefined
+      if (updated) return
+      candidate = await payload.findByID({
+        collection: "billing-agreements",
+        id: agreement.id,
+        depth: 0,
+        overrideAccess: true,
+      }) as BillingAgreement
+    }
+    throw new Error("Terminal payment synchronization lost its concurrency claim.")
   }
 }
 

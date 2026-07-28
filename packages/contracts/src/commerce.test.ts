@@ -478,6 +478,7 @@ describe("independent commerce state machines", () => {
   })
 
   it("keeps captured payment evidence while refunds follow their own states", () => {
+    expect(paymentAttemptStateTransitions.created).toContain("failed")
     expect(paymentAttemptStateTransitions.paid).not.toContain("failed")
     expect(paymentAttemptStateTransitions.refund_pending).toContain("refund_failed")
     expect(paymentAttemptStateTransitions.refund_pending).toContain("chargeback")
