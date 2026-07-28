@@ -110,6 +110,10 @@ jobs:
         run: pnpm --dir apps/cms check:commerce-release
       - name: Run vitest (unit + integration)
         run: pnpm --dir apps/cms test
+      - name: Install checkout browser
+        run: pnpm --dir apps/cms exec playwright install --with-deps chromium
+      - name: Verify checkout browser contract
+        run: pnpm --dir apps/cms test:checkout-browser
 
   site:
     runs-on: ubuntu-latest

@@ -161,10 +161,34 @@ const createStore = () => {
   const find = vi.fn(async ({ collection, where }: MockFindArgs) => {
     const docs = (collections[collection] ?? []).filter((doc) => {
       if (!where) return true
-      return Object.entries(where).every(([field, condition]) => {
-        if (!condition || typeof condition !== "object" || !("equals" in condition)) return true
-        return String(doc[field]) === String((condition as { equals: unknown }).equals)
-      })
+      const matchesWhere = (conditionGroup: Record<string, unknown>): boolean =>
+        Object.entries(conditionGroup).every(([field, condition]) => {
+          if (field === "and" && Array.isArray(condition)) {
+            return condition.every((clause) =>
+              matchesWhere(clause as Record<string, unknown>),
+            )
+          }
+          if (!condition || typeof condition !== "object") return true
+          const operators = condition as {
+            equals?: unknown
+            in?: unknown[]
+            less_than_equal?: unknown
+          }
+          if (
+            operators.equals !== undefined &&
+            String(doc[field]) !== String(operators.equals)
+          ) return false
+          if (
+            operators.in &&
+            !operators.in.some((entry) => String(entry) === String(doc[field]))
+          ) return false
+          if (
+            operators.less_than_equal !== undefined &&
+            String(doc[field]) > String(operators.less_than_equal)
+          ) return false
+          return true
+        })
+      return matchesWhere(where as Record<string, unknown>)
     })
     return { docs, totalDocs: docs.length }
   })
@@ -178,7 +202,40 @@ const createStore = () => {
     ;(collections[collection] ??= []).push(doc)
     return doc
   })
-  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+  const update = vi.fn(async ({
+    collection,
+    id,
+    where,
+    data,
+  }: MockUpdateArgs & { where?: MockFindArgs["where"] }) => {
+    if (where) {
+      const docs = (collections[collection] ?? []).filter((doc) => {
+        const clauses = Array.isArray(where.and)
+          ? where.and
+          : Object.entries(where).map(([field, value]) => ({ [field]: value }))
+        return clauses.every((clause: unknown) => {
+          const [field, condition] = Object.entries(
+            clause as Record<string, unknown>,
+          )[0] ?? []
+          if (!field || !condition || typeof condition !== "object") return true
+          const operators = condition as {
+            equals?: unknown
+            less_than_equal?: unknown
+          }
+          if (
+            operators.equals !== undefined &&
+            String(doc[field]) !== String(operators.equals)
+          ) return false
+          if (
+            operators.less_than_equal !== undefined &&
+            String(doc[field]) > String(operators.less_than_equal)
+          ) return false
+          return true
+        })
+      })
+      for (const doc of docs) Object.assign(doc, data)
+      return { docs, totalDocs: docs.length }
+    }
     const doc = (collections[collection] ?? []).find((entry) => String(entry.id) === String(id))
     if (!doc) throw new Error(`Missing ${collection} ${id}`)
     Object.assign(doc, data)
@@ -226,6 +283,8 @@ const workflowDependencies = (input?: {
   now?: string
   authoritativeStatus?: "verified" | "pending"
   preservedStatus?: "verified" | "pending"
+  rollbackAuthoritativeStatus?: "verified" | "pending"
+  rollbackPreservedStatus?: "verified" | "pending"
   verificationStatus?: string
 }) => {
   let providerDomain: {
@@ -315,22 +374,42 @@ const workflowDependencies = (input?: {
       records: [],
       reason: null,
     })),
-    verifyAuthoritativeDns: vi.fn(async () => ({
-      status: input?.authoritativeStatus ?? "verified",
-      delegatedNameServers: CLOUDFLARE_NAMESERVERS,
-      respondingNameServers: input?.authoritativeStatus === "pending"
+    verifyAuthoritativeDns: vi.fn(async (
+      _domain: string,
+      expectedNameServers: string[],
+    ) => {
+      const rollback = expectedNameServers.every((entry) =>
+        OLD_NAMESERVERS.includes(entry)
+      )
+      const status = rollback
+        ? input?.rollbackAuthoritativeStatus ?? "verified"
+        : input?.authoritativeStatus ?? "verified"
+      return {
+      status,
+      delegatedNameServers: expectedNameServers,
+      respondingNameServers: status === "pending"
         ? []
-        : CLOUDFLARE_NAMESERVERS,
-      reason: input?.authoritativeStatus === "pending" ? "delegation_mismatch" : null,
-    })),
-    verifyPreservedDnsRecords: vi.fn(async () => ({
-      status: input?.preservedStatus ?? "verified",
-      recursiveEquivalent: input?.preservedStatus !== "pending",
-      authoritativeEquivalent: input?.preservedStatus !== "pending",
-      reason: input?.preservedStatus === "pending"
+        : expectedNameServers,
+      reason: status === "pending" ? "delegation_mismatch" : null,
+    }}),
+    verifyPreservedDnsRecords: vi.fn(async (
+      _records: NormalizedMigrationDnsRecord[],
+      expectedNameServers: string[],
+    ) => {
+      const rollback = expectedNameServers.every((entry) =>
+        OLD_NAMESERVERS.includes(entry)
+      )
+      const status = rollback
+        ? input?.rollbackPreservedStatus ?? "verified"
+        : input?.preservedStatus ?? "verified"
+      return {
+      status,
+      recursiveEquivalent: status !== "pending",
+      authoritativeEquivalent: status !== "pending",
+      reason: status === "pending"
         ? "recursive_preserved_record_mismatch"
         : null,
-    })),
+    }}),
     verifyHttpsEndpoint: vi.fn(async () => ({
       status: "verified" as const,
       httpStatus: 404,
@@ -624,7 +703,7 @@ describe("automatic existing-domain migration", () => {
       transferCode: "replacement-epp-code",
       now: "2026-07-28T09:00:00.000Z",
       expectedUpdatedAt: String(stored.updatedAt),
-    })).rejects.toThrow("accepted checkout evidence")
+    })).rejects.toThrow("invalid_input")
     await expect(acquireAutomaticMigrationInputs(store.payload, {
       migrationId: migration.id,
       zoneExport: freshZone,
@@ -635,6 +714,43 @@ describe("automatic existing-domain migration", () => {
       state: "ready_to_prepare",
       encryptedTransferCode: expect.any(String),
       failureReason: null,
+    })
+  })
+
+  it("stops before every new provider write when previously prepared source evidence expires", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const stored = store.collections["domain-migrations"]![0]!
+    Object.assign(stored.sourceZoneSnapshot as Record<string, unknown>, {
+      acquiredAt: "2026-07-26T08:00:00.000Z",
+    })
+    Object.assign(stored, {
+      cloudflareZoneId: "zone-1",
+      cloudflareZoneState: "confirmed",
+      providerCustomerHandle: "OWNER-CLIENT",
+      providerTransferState: "not_started",
+    })
+    const fixture = workflowDependencies()
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("source evidence expired"),
+    })
+
+    expect(fixture.dependencies.createOrReuseCloudflareZone).not.toHaveBeenCalled()
+    expect(fixture.dependencies.createOrReuseCloudflareMigrationDnsRecord)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.createOpenProviderCustomerHandle)
+      .not.toHaveBeenCalled()
+    expect(fixture.dependencies.transferOpenProviderDomain).not.toHaveBeenCalled()
+    expect(stored).toMatchObject({
+      state: "failed",
+      failureReason: "source_evidence_stale_before_provider_write",
+      reconciliationRequired: true,
     })
   })
 
@@ -888,6 +1004,76 @@ describe("automatic existing-domain migration", () => {
       entitlementStatus: "blocked",
     })
     expect(store.collections.orders![0]).toMatchObject({ state: "exception" })
+  })
+
+  it("keeps rollback open until old authoritative and preserved DNS verify", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({
+      now: "2026-07-28T09:00:00.000Z",
+      authoritativeStatus: "pending",
+      rollbackAuthoritativeStatus: "pending",
+      rollbackPreservedStatus: "pending",
+    })
+
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    const result = await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies({
+        ...fixture.dependencies,
+        now: () => "2026-07-28T10:00:00.000Z",
+      }),
+    )
+
+    expect(result).toMatchObject({
+      status: "waiting",
+      message: expect.stringContaining("DNS verification is pending"),
+    })
+    expect(fixture.getProviderDomain()?.nameServers).toEqual(OLD_NAMESERVERS)
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "verifying",
+      rollbackWriteState: "indeterminate",
+      reconciliationRequired: true,
+    })
+    expect(store.collections.orders![0]).not.toMatchObject({ state: "exception" })
+  })
+
+  it("escalates a transferred domain whose registrant differs from the accepted customer", async () => {
+    const store = createStore()
+    const migration = await preparedMigration(store)
+    const fixture = workflowDependencies({ verificationStatus: "pending" })
+
+    await prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )
+    const providerDomain = fixture.getProviderDomain()
+    if (!providerDomain) throw new Error("Expected a transferred provider domain.")
+    providerDomain.ownerHandle = "WRONG-OWNER"
+
+    await expect(prepareDomainMigration(
+      store.payload,
+      migration.id,
+      asMigrationDependencies(fixture.dependencies),
+    )).resolves.toMatchObject({
+      status: "failed",
+      message: expect.stringContaining("ownership differs"),
+    })
+    expect(store.collections["domain-migrations"]![0]).toMatchObject({
+      state: "failed",
+      failureReason: "provider_domain_owner_mismatch",
+      reconciliationRequired: true,
+    })
+    expect(store.collections["operational-alerts"]?.at(-1)).toMatchObject({
+      severity: "critical",
+      dedupeKey: expect.stringContaining("provider_domain_owner_mismatch"),
+    })
   })
 
   it("reconciles a prepared cutover under shadow mode without sending a new forward write", async () => {

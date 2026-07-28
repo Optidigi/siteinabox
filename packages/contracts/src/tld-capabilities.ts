@@ -633,14 +633,33 @@ export function tldCapabilityAllowsProductionOperation(
   capability: TldCapability,
   operation: TldProductionOperation,
 ): boolean {
+  if (!tldCapabilityOperationFlagEnabled(capability, operation)) return false
   switch (operation) {
     case "registration":
-      return capability.production.registration &&
-        capability.production.registrantVerification
+      return capability.production.registrantVerification
     case "incoming_transfer":
-      return capability.production.incomingTransfer &&
-        capability.production.registrantVerification &&
+      return capability.production.registrantVerification &&
         capability.dnssec.productionEvidenceComplete
+    case "renewal_provider_autorenew":
+      return true
+    case "renewal_explicit":
+      return true
+    case "registrant_verification":
+      return true
+    case "restoration":
+      return true
+  }
+}
+
+export function tldCapabilityOperationFlagEnabled(
+  capability: TldCapability,
+  operation: TldProductionOperation,
+): boolean {
+  switch (operation) {
+    case "registration":
+      return capability.production.registration
+    case "incoming_transfer":
+      return capability.production.incomingTransfer
     case "renewal_provider_autorenew":
       return capability.production.renewal &&
         capability.renewal.executionMode === "provider_autorenew"

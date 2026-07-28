@@ -147,7 +147,19 @@ const createStore = (
     ;(collections[collection] ??= []).push(doc)
     return doc
   })
-  const update = vi.fn(async ({ collection, id, data }: MockUpdateArgs) => {
+  const update = vi.fn(async ({
+    collection,
+    id,
+    where,
+    data,
+  }: MockUpdateArgs & { where?: MockFindArgs["where"] }) => {
+    if (where) {
+      const docs = (collections[collection] ?? []).filter((doc) =>
+        matches(doc, where),
+      )
+      for (const doc of docs) Object.assign(doc, data)
+      return { docs, totalDocs: docs.length }
+    }
     const doc = (collections[collection] ?? []).find(
       (entry) => String(entry.id) === String(id),
     )
@@ -320,6 +332,77 @@ describe("assisted migration operator authorization", () => {
       failureReason: "zone_conflict:recorded_by_super_admin:99",
     })
     expect(store.payload.jobs.queue).not.toHaveBeenCalled()
+  })
+
+  it("allows only one concurrent operator completion or failure transition", async () => {
+    const store = createStore()
+    await requestMigrationOperatorWork(store.payload, {
+      migrationId: 10,
+      requestedClassification: "assisted_standard",
+      workCause: "siteinabox_incident_recovery",
+      workScope: "Restore records lost by Siteinabox automation.",
+      now: NOW,
+    })
+    await startMigrationOperatorWork(store.payload, {
+      migrationId: 10,
+      actor: OPERATOR,
+      now: "2026-07-28T10:05:00.000Z",
+    })
+
+    const findByID = store.payload.findByID as unknown as ReturnType<typeof vi.fn>
+    const originalFindByID = findByID.getMockImplementation() as (
+      args: { collection: string; id: string | number },
+    ) => Promise<MockDoc>
+    let concurrentReads = 0
+    let releaseReads: (() => void) | undefined
+    const readsReady = new Promise<void>((resolve) => {
+      releaseReads = resolve
+    })
+    findByID.mockImplementation(async (args: {
+      collection: string
+      id: string | number
+    }) => {
+      if (
+        args.collection === "domain-migrations" &&
+        concurrentReads < 2
+      ) {
+        concurrentReads += 1
+        const snapshot = structuredClone(
+          store.collections["domain-migrations"]![0]!,
+        )
+        if (concurrentReads === 2) releaseReads?.()
+        await readsReady
+        return snapshot
+      }
+      return originalFindByID(args)
+    })
+
+    const results = await Promise.allSettled([
+      completeMigrationOperatorWork(store.payload, {
+        migrationId: 10,
+        actor: OPERATOR,
+        completionNotes: "Verified bounded repair.",
+        now: "2026-07-28T10:20:00.000Z",
+      }),
+      failMigrationOperatorWork(store.payload, {
+        migrationId: 10,
+        actor: OPERATOR,
+        failureCode: "zone_conflict",
+        now: "2026-07-28T10:20:00.000Z",
+      }),
+    ])
+
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1)
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1)
+    expect(results.find((result) => result.status === "rejected"))
+      .toMatchObject({
+        reason: expect.objectContaining({
+          message: expect.stringContaining("changed concurrently"),
+        }),
+      })
+    expect(["preparing", "failed"]).toContain(
+      store.collections["domain-migrations"]![0]!.state,
+    )
   })
 
   it("queues rollback from active cutover without making a provider write in the action", async () => {

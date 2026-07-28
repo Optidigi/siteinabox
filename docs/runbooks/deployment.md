@@ -256,6 +256,7 @@ Current production environment requirements:
 | --- | --- |
 | Postgres | Keep existing production `POSTGRES_PASSWORD` and derived `DATABASE_URI`; do not recreate the DB. |
 | Payload | Keep existing `PAYLOAD_SECRET`. |
+| CMS image | Set `SIAB_CMS_IMAGE_DIGEST=sha256:<digest>` from the successful CMS image workflow; never deploy a mutable tag. |
 | Data path | Keep `DATA_HOST_PATH=/srv/data/saas/siab-payload`. |
 | Super admin | Keep `SUPER_ADMIN_DOMAIN=siteinabox.nl`. |
 | VPS IP | Keep the current `VPS_IP` value for onboarding/DNS guidance. |
@@ -279,6 +280,17 @@ characters and silently mis-auth against Postgres. Either store everything
 unquoted, or strip quotes when reading (the helper in Step 5 does both).
 
 ## Step 3 — Login to GHCR (if image is private) and pull
+
+Record the verified digest emitted by `build-cms-image` in the deployment
+environment before pulling:
+
+```bash
+SIAB_CMS_IMAGE_DIGEST=sha256:<digest from the successful image workflow>
+```
+
+Keep the previous digest in the approved change record for rollback. The image
+workflow publishes commit tags, smokes the exact output digest, and does not
+publish a mutable `latest` deployment target.
 
 ```bash
 # Skip if ghcr.io/optidigi/siteinabox-cms is public.

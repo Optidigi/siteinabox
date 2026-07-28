@@ -6,7 +6,7 @@ name: siteinabox-cms
 
 services:
   siteinabox-cms:
-    image: ghcr.io/optidigi/siteinabox-cms:latest
+    image: ghcr.io/optidigi/siteinabox-cms@${SIAB_CMS_IMAGE_DIGEST:?required}
     pull_policy: always
     container_name: siteinabox-cms
     restart: unless-stopped

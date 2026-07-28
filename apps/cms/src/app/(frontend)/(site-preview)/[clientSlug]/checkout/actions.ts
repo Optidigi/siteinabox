@@ -68,6 +68,7 @@ import { PREVIEW_HOST } from "@/lib/preview/previewHost"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
   acquireAutomaticMigrationInputs,
+  DomainMigrationCustomerInputError,
   replaceMigrationTransferAuthorization,
 } from "@/lib/domains/migration"
 
@@ -464,15 +465,65 @@ const requestAudit = async () => {
   }
 }
 
-export async function acceptMigrationSupplementalOrderAction(
+export type MigrationCustomerActionState = {
+  ok: boolean
+  status:
+    | "idle"
+    | "saved"
+    | "invalid_input"
+    | "refresh_required"
+    | "retryable_service_error"
+  message: string
+}
+
+class MigrationCustomerActionError extends Error {
+  constructor(
+    readonly category:
+      | "invalid_input"
+      | "refresh_required"
+      | "retryable_service_error",
+  ) {
+    super(category)
+    this.name = "MigrationCustomerActionError"
+  }
+}
+
+const migrationCustomerActionFailure = async (
+  error: unknown,
+): Promise<MigrationCustomerActionState> => {
+  const t = await getTranslations("preview")
+  const status = error instanceof MigrationCustomerActionError
+    ? error.category
+    : "refresh_required"
+  const messageKey = {
+    invalid_input: "checkoutMigrationActionInvalidInput",
+    refresh_required: "checkoutMigrationActionRefreshRequired",
+    retryable_service_error: "checkoutMigrationActionRetryLater",
+  }[status] as
+    | "checkoutMigrationActionInvalidInput"
+    | "checkoutMigrationActionRefreshRequired"
+    | "checkoutMigrationActionRetryLater"
+  return { ok: false, status, message: t(messageKey) }
+}
+
+const translateDomainMigrationInputFailure = (error: unknown): never => {
+  if (error instanceof DomainMigrationCustomerInputError) {
+    throw new MigrationCustomerActionError(
+      error.kind === "invalid_input" ? "invalid_input" : "refresh_required",
+    )
+  }
+  throw new MigrationCustomerActionError("retryable_service_error")
+}
+
+async function acceptMigrationSupplementalOrder(
   clientSlug: string,
   formData: FormData,
-): Promise<never> {
+): Promise<string> {
   const context = await requirePreviewCheckoutContext(clientSlug)
   const migrationId = String(formData.get("migrationId") ?? "").trim()
   const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
   if (!/^\d+$/.test(migrationId) || !expectedVersion) {
-    throw new Error("Supplemental migration acceptance requires current version evidence.")
+    throw new MigrationCustomerActionError("invalid_input")
   }
   const migration = await context.payload.findByID({
     collection: "domain-migrations",
@@ -490,7 +541,7 @@ export async function acceptMigrationSupplementalOrderAction(
     !migration.operatorWorkScope ||
     !originatingOrderId
   ) {
-    throw new Error("Supplemental migration proposal is stale or unavailable.")
+    throw new MigrationCustomerActionError("refresh_required")
   }
   const order = await context.payload.findByID({
     collection: "orders",
@@ -555,14 +606,29 @@ export async function acceptMigrationSupplementalOrderAction(
       redirectUrl:
         `https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return&migration=supplemental`,
     },
-  )
-  redirect(checkout.checkoutUrl)
+  ).catch(() => {
+    throw new MigrationCustomerActionError("retryable_service_error")
+  })
+  return checkout.checkoutUrl
 }
 
-export async function recollectAcceptedMigrationInputAction(
+export async function acceptMigrationSupplementalOrderAction(
   clientSlug: string,
   formData: FormData,
-): Promise<never> {
+): Promise<MigrationCustomerActionState> {
+  let checkoutUrl: string
+  try {
+    checkoutUrl = await acceptMigrationSupplementalOrder(clientSlug, formData)
+  } catch (error) {
+    return migrationCustomerActionFailure(error)
+  }
+  redirect(checkoutUrl)
+}
+
+async function recollectAcceptedMigrationInput(
+  clientSlug: string,
+  formData: FormData,
+): Promise<string> {
   const context = await requirePreviewCheckoutContext(clientSlug)
   const orderId = String(formData.get("acceptedOrderId") ?? "").trim()
   if (!/^\d+$/.test(orderId)) {
@@ -579,13 +645,20 @@ export async function recollectAcceptedMigrationInputAction(
     String(resume.orderId) !== orderId ||
     !resume.requiresMigrationRecollection
   ) {
-    throw new Error("Migration-input recollection is stale or unavailable.")
+    throw new MigrationCustomerActionError("refresh_required")
   }
   const quote = resume.quotes[resume.billingPeriod].quote
-  const [zoneExport, publicEvidence] = await Promise.all([
-    readCompleteZoneExport(formData),
-    inspectExistingDomainPublicEvidence(quote.selectedDomain),
-  ])
+  let zoneExport
+  try {
+    zoneExport = await readCompleteZoneExport(formData)
+  } catch {
+    throw new MigrationCustomerActionError("invalid_input")
+  }
+  const publicEvidence = await inspectExistingDomainPublicEvidence(
+    quote.selectedDomain,
+  ).catch(() => {
+    throw new MigrationCustomerActionError("retryable_service_error")
+  })
   const assessment = assessExistingDomainMigrationInput({
     generationRunId: context.run.id,
     domain: quote.selectedDomain,
@@ -606,9 +679,7 @@ export async function recollectAcceptedMigrationInputAction(
     assessment.classification !== quote.migrationClassification ||
     assessment.sourceZoneHash !== quote.migrationSourceZoneHash
   ) {
-    throw new Error(
-      "Recollected migration input must exactly match the accepted source evidence.",
-    )
+    throw new MigrationCustomerActionError("invalid_input")
   }
   await replaceExpiredAttachedMigrationCheckoutSecret(context.payload, {
     secretKey: quote.migrationSecretKey!,
@@ -618,10 +689,23 @@ export async function recollectAcceptedMigrationInputAction(
     sourceZoneHash: quote.migrationSourceZoneHash!,
     encryptedInput: assessment.encryptedInput,
   })
-  redirect(`https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return`)
+  return `https://${PREVIEW_HOST}/${context.clientSlug}/checkout?payment=return`
 }
 
-export async function submitMigrationTransferCodeAction(
+export async function recollectAcceptedMigrationInputAction(
+  clientSlug: string,
+  formData: FormData,
+): Promise<MigrationCustomerActionState> {
+  let returnUrl: string
+  try {
+    returnUrl = await recollectAcceptedMigrationInput(clientSlug, formData)
+  } catch (error) {
+    return migrationCustomerActionFailure(error)
+  }
+  redirect(returnUrl)
+}
+
+async function submitMigrationTransferCode(
   clientSlug: string,
   formData: FormData,
 ): Promise<void> {
@@ -630,7 +714,7 @@ export async function submitMigrationTransferCodeAction(
   const expectedVersion = String(formData.get("expectedMigrationVersion") ?? "").trim()
   const transferCode = String(formData.get("transferCode") ?? "").trim()
   if (!/^\d+$/.test(migrationId) || !expectedVersion || !transferCode) {
-    throw new Error("Transfer-code correction is incomplete.")
+    throw new MigrationCustomerActionError("invalid_input")
   }
   const migration = await context.payload.findByID({
     collection: "domain-migrations",
@@ -661,23 +745,36 @@ export async function submitMigrationTransferCodeAction(
       migration.updatedAt !== expectedVersion ||
       migration.state !== "awaiting_customer"
     ) {
-      throw new Error("Fresh migration evidence correction is stale.")
+      throw new MigrationCustomerActionError("refresh_required")
     }
-    const zoneExport = await readCompleteZoneExport(formData)
-    await acquireAutomaticMigrationInputs(context.payload, {
-      migrationId: migration.id,
-      zoneExport: zoneExport as Parameters<
-        typeof acquireAutomaticMigrationInputs
-      >[1]["zoneExport"],
-      transferCode,
-      expectedUpdatedAt: expectedVersion,
-    })
+    let zoneExport
+    try {
+      zoneExport = await readCompleteZoneExport(formData)
+    } catch {
+      throw new MigrationCustomerActionError("invalid_input")
+    }
+    try {
+      await acquireAutomaticMigrationInputs(context.payload, {
+        migrationId: migration.id,
+        zoneExport: zoneExport as Parameters<
+          typeof acquireAutomaticMigrationInputs
+        >[1]["zoneExport"],
+        transferCode,
+        expectedUpdatedAt: expectedVersion,
+      })
+    } catch (error) {
+      translateDomainMigrationInputFailure(error)
+    }
   } else {
-    await replaceMigrationTransferAuthorization(context.payload, {
-      migrationId: migration.id,
-      expectedUpdatedAt: expectedVersion,
-      transferCode,
-    })
+    try {
+      await replaceMigrationTransferAuthorization(context.payload, {
+        migrationId: migration.id,
+        expectedUpdatedAt: expectedVersion,
+        transferCode,
+      })
+    } catch (error) {
+      translateDomainMigrationInputFailure(error)
+    }
   }
   revalidatePath(`/${context.clientSlug}/checkout`)
 }
@@ -803,9 +900,10 @@ export async function savePreviewCheckoutProfileAction(
         providerQuotedAt: refreshed.providerQuotedAt,
         profileVersion: saved.profile.profileVersion,
         draftVersion: String(context.run.updatedAt ?? refreshed.providerQuotedAt),
-      })
-    }
+    })
   }
+}
+
   return {
     ok: true,
     status: "saved",
@@ -815,6 +913,23 @@ export async function savePreviewCheckoutProfileAction(
     requestToken,
     profile: saved.profile,
     quotes,
+  }
+}
+
+export async function submitMigrationTransferCodeAction(
+  clientSlug: string,
+  formData: FormData,
+): Promise<MigrationCustomerActionState> {
+  const t = await getTranslations("preview")
+  try {
+    await submitMigrationTransferCode(clientSlug, formData)
+    return {
+      ok: true,
+      status: "saved",
+      message: t("checkoutMigrationActionSaved"),
+    }
+  } catch (error) {
+    return migrationCustomerActionFailure(error)
   }
 }
 

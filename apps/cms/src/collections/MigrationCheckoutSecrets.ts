@@ -102,7 +102,6 @@ export const MigrationCheckoutSecrets: CollectionConfig = {
       name: "generationRun",
       type: "relationship",
       relationTo: "site-generation-runs",
-      required: true,
       index: true,
     },
     {

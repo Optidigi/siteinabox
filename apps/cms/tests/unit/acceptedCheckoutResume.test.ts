@@ -11,6 +11,10 @@ import {
 import { asPayload } from "../_helpers/mockPayload"
 
 const mocks = vi.hoisted(() => ({
+  attachMigrationCheckoutSecret: vi.fn(async () => ({
+    id: 10,
+    state: "attached",
+  })),
   openAttachedMigrationCheckoutSecret: vi.fn(async () => ({
     sourceZoneHash: "a".repeat(64),
   })),
@@ -22,6 +26,7 @@ vi.mock("@/lib/domains/migrationCheckoutSecret", async (importOriginal) => {
   >()
   return {
     ...original,
+    attachMigrationCheckoutSecret: mocks.attachMigrationCheckoutSecret,
     openAttachedMigrationCheckoutSecret: mocks.openAttachedMigrationCheckoutSecret,
   }
 })
@@ -119,6 +124,13 @@ describe("accepted checkout resume", () => {
     expect(reopened.quoteExpiresAt).toBe("2026-07-28T10:25:00.000Z")
     expect(reopened.migrationInputEnvelope).toBeNull()
     expect(mocks.openAttachedMigrationCheckoutSecret).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        secretKey: "migration-secret:accepted",
+        orderId: 90,
+      }),
+    )
+    expect(mocks.attachMigrationCheckoutSecret).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         secretKey: "migration-secret:accepted",

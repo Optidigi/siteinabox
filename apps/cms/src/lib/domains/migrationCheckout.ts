@@ -9,6 +9,7 @@ import {
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  tldCapabilityOperationFlagEnabled,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { MigrationClassification } from "@siteinabox/contracts/commerce"
@@ -186,7 +187,10 @@ export function assessExistingDomainMigrationInput(input: {
       input.acceptedCapabilityVersion
     ? getTldCapabilityByVersion(input.acceptedCapabilityVersion)
     : null
-  const capability = acceptedCapability?.tld === normalizedDomain.extension
+  const capability = (
+    acceptedCapability?.tld === normalizedDomain.extension &&
+    tldCapabilityOperationFlagEnabled(acceptedCapability, "incoming_transfer")
+  )
     ? acceptedCapability
     : (
         dependencies.capabilityForTld ?? getTldCapabilityForProductionOperation

@@ -9,7 +9,10 @@ import {
   type CheckoutQuote,
   type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
-import { openAttachedMigrationCheckoutSecret } from "@/lib/domains/migrationCheckoutSecret"
+import {
+  attachMigrationCheckoutSecret,
+  openAttachedMigrationCheckoutSecret,
+} from "@/lib/domains/migrationCheckoutSecret"
 
 const record = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -148,6 +151,7 @@ const resumeQuote = (
     grossAmountMinor: integer(evidence, "grossPayableNowMinor"),
   }
   const recalculated = buildCheckoutQuote({
+    catalogVersion: quote.catalogVersion,
     billingPeriod: quote.billingPeriod,
     providerOperationPriceNetMinor: quote.providerOperationPriceNetMinor,
     migrationClassification: quote.migrationClassification,
@@ -241,6 +245,17 @@ export async function loadAcceptedCheckoutResume(
   let requiresMigrationRecollection = false
   if (quote.domainMode === "existing_domain") {
     try {
+      // Recover the narrow crash window after immutable order creation and
+      // before the pending secret was attached. The order lookup above proves
+      // the customer/run authority before this idempotent claim.
+      await attachMigrationCheckoutSecret(payload, {
+        secretKey: quote.migrationSecretKey!,
+        orderId: order.id,
+        generationRunId: input.generationRunId,
+        domain: quote.selectedDomain,
+        sourceZoneHash: quote.migrationSourceZoneHash!,
+        now: input.now,
+      })
       await openAttachedMigrationCheckoutSecret(payload, {
         secretKey: quote.migrationSecretKey!,
         orderId: order.id,

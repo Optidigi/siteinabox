@@ -91,6 +91,17 @@ export type PreviewCheckoutSuggestionsState = {
   done?: boolean
 }
 
+export type MigrationCustomerActionState = {
+  ok: boolean
+  status:
+    | "idle"
+    | "saved"
+    | "invalid_input"
+    | "refresh_required"
+    | "retryable_service_error"
+  message: string
+}
+
 type PreviewCheckoutAction = (
   previousState: PreviewCheckoutActionState,
   formData: FormData,
@@ -141,9 +152,15 @@ type PreviewCheckoutProps = {
   checkDomainAction: PreviewCheckoutAction
   saveProfileAction: PreviewCheckoutProfileAction
   startPaymentAction: PreviewCheckoutAction
-  acceptMigrationSupplementalOrderAction?: (formData: FormData) => Promise<void>
-  recollectAcceptedMigrationInputAction?: (formData: FormData) => Promise<void>
-  submitMigrationTransferCodeAction?: (formData: FormData) => Promise<void>
+  acceptMigrationSupplementalOrderAction?: (
+    formData: FormData,
+  ) => Promise<MigrationCustomerActionState>
+  recollectAcceptedMigrationInputAction?: (
+    formData: FormData,
+  ) => Promise<MigrationCustomerActionState>
+  submitMigrationTransferCodeAction?: (
+    formData: FormData,
+  ) => Promise<MigrationCustomerActionState>
   termsHref: string
   privacyHref: string
   termsVersion: string
@@ -164,6 +181,11 @@ const initialSuggestionsState: PreviewCheckoutSuggestionsState = {
   suggestions: [],
   cursor: 0,
   done: false,
+}
+const initialMigrationActionState: MigrationCustomerActionState = {
+  ok: false,
+  status: "idle",
+  message: "",
 }
 
 const placeholderSuggestionsForDomain = (domain: string): PreviewCheckoutDomainOption[] =>
@@ -246,6 +268,36 @@ export function PreviewCheckout({
     startPaymentAction,
     initialActionState,
   )
+  const [supplementalState, supplementalAction, supplementalPending] =
+    useActionState(
+      async (
+        _previous: MigrationCustomerActionState,
+        formData: FormData,
+      ) => acceptMigrationSupplementalOrderAction
+        ? acceptMigrationSupplementalOrderAction(formData)
+        : initialMigrationActionState,
+      initialMigrationActionState,
+    )
+  const [recollectionState, recollectionAction, recollectionPending] =
+    useActionState(
+      async (
+        _previous: MigrationCustomerActionState,
+        formData: FormData,
+      ) => recollectAcceptedMigrationInputAction
+        ? recollectAcceptedMigrationInputAction(formData)
+        : initialMigrationActionState,
+      initialMigrationActionState,
+    )
+  const [transferCodeState, transferCodeAction, transferCodePending] =
+    useActionState(
+      async (
+        _previous: MigrationCustomerActionState,
+        formData: FormData,
+      ) => submitMigrationTransferCodeAction
+        ? submitMigrationTransferCodeAction(formData)
+        : initialMigrationActionState,
+      initialMigrationActionState,
+    )
   const [details, setDetails] = React.useState<CheckoutProfileDraft>(
     initialProfile ?? initialDetails,
   )
@@ -361,8 +413,16 @@ export function PreviewCheckout({
   }, [paymentState, paymentSubmitRequested])
 
   React.useEffect(() => {
-    if (paymentState.status !== "version_conflict" || !paymentState.quotes) return
-    setQuotes(paymentState.quotes)
+    if (paymentState.status !== "version_conflict") return
+    if (paymentState.quotes) {
+      setQuotes(paymentState.quotes)
+    } else {
+      // Legal documents, accepted-order authority, and provider timestamps are
+      // server-owned. Reload the route instead of trying to reconstruct them
+      // from stale client props or unlocking an immutable accepted order.
+      window.location.assign(window.location.href)
+      return
+    }
     setPreviewApprovalAccepted(false)
     setTermsAccepted(false)
     setBusinessUseAccepted(false)
@@ -640,7 +700,7 @@ export function PreviewCheckout({
         </div>
       </header>
 
-      <div className="mx-auto grid w-full max-w-4xl gap-4 p-3 md:p-4">
+      <div className="mx-auto grid min-w-0 w-full max-w-4xl gap-4 p-3 [&>*]:min-w-0 md:p-4">
         <PreviewCheckoutStepper
           step={step}
           highestReachedStep={
@@ -678,7 +738,7 @@ export function PreviewCheckout({
                   {t("checkoutMigrationRecollectionDescription")}
                 </p>
                 <form
-                  action={recollectAcceptedMigrationInputAction}
+                  action={recollectionAction}
                   className="mt-4 grid gap-3"
                 >
                   <input
@@ -716,9 +776,22 @@ export function PreviewCheckout({
                     />
                     <span>{t("checkoutMigrationTransferAuthorization")}</span>
                   </label>
-                  <Button type="submit" className="w-fit">
+                  <Button type="submit" className="w-fit" disabled={recollectionPending}>
+                    {recollectionPending && (
+                      <Loader2 className="size-4 animate-spin" aria-hidden />
+                    )}
                     {t("checkoutMigrationRecollectionSubmit")}
                   </Button>
+                  {recollectionState.message && (
+                    <p
+                      className={recollectionState.ok
+                        ? "text-sm text-foreground"
+                        : "text-sm text-destructive"}
+                      role={recollectionState.ok ? "status" : "alert"}
+                    >
+                      {recollectionState.message}
+                    </p>
+                  )}
                 </form>
               </AlertDescription>
             </Alert>
@@ -735,7 +808,7 @@ export function PreviewCheckout({
             <AlertDescription>
               <span className="block">
                 {t("checkoutMigrationStatusState", {
-                  state: migrationStatus.state,
+                  state: migrationStateLabel(migrationStatus.state, t),
                 })}
               </span>
               {migrationStatus.actions.filter((action) =>
@@ -746,6 +819,10 @@ export function PreviewCheckout({
                     .map((action) => (
                       <li key={action.action}>
                         {migrationCustomerActionLabel(action.action, t)}
+                        {" — "}
+                        <span className="font-medium">
+                          {migrationCustomerActionStatusLabel(action.status, t)}
+                        </span>
                         {action.deadlineAt
                           ? ` — ${t("checkoutMigrationActionDeadline", {
                               deadline: new Intl.DateTimeFormat(locale, {
@@ -764,7 +841,7 @@ export function PreviewCheckout({
                 migrationStatus.supplementalProposal &&
                 acceptMigrationSupplementalOrderAction && (
                   <form
-                    action={acceptMigrationSupplementalOrderAction}
+                    action={supplementalAction}
                     className="mt-4 grid gap-3 rounded-md border bg-background p-3"
                   >
                     <input
@@ -802,11 +879,24 @@ export function PreviewCheckout({
                         ),
                       })}
                     </p>
-                    <Button type="submit" className="w-fit">
+                    <Button type="submit" className="w-fit" disabled={supplementalPending}>
+                      {supplementalPending && (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      )}
                       {migrationStatus.operatorAuthorization === "awaiting_payment"
                         ? t("checkoutMigrationSupplementalRetry")
                         : t("checkoutMigrationSupplementalAccept")}
                     </Button>
+                    {supplementalState.message && (
+                      <p
+                        className={supplementalState.ok
+                          ? "text-sm text-foreground"
+                          : "text-sm text-destructive"}
+                        role={supplementalState.ok ? "status" : "alert"}
+                      >
+                        {supplementalState.message}
+                      </p>
+                    )}
                   </form>
                 )}
               {migrationStatus.actions.some((action) =>
@@ -814,7 +904,7 @@ export function PreviewCheckout({
                 ["required", "failed"].includes(action.status)) &&
                 submitMigrationTransferCodeAction && (
                   <form
-                    action={submitMigrationTransferCodeAction}
+                    action={transferCodeAction}
                     className="mt-4 grid gap-3 rounded-md border bg-background p-3"
                   >
                     <input
@@ -853,9 +943,22 @@ export function PreviewCheckout({
                       autoComplete="off"
                       required
                     />
-                    <Button type="submit" className="w-fit">
+                    <Button type="submit" className="w-fit" disabled={transferCodePending}>
+                      {transferCodePending && (
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                      )}
                       {t("checkoutMigrationTransferCodeSubmit")}
                     </Button>
+                    {transferCodeState.message && (
+                      <p
+                        className={transferCodeState.ok
+                          ? "text-sm text-foreground"
+                          : "text-sm text-destructive"}
+                        role={transferCodeState.ok ? "status" : "alert"}
+                      >
+                        {transferCodeState.message}
+                      </p>
+                    )}
                   </form>
                 )}
             </AlertDescription>
@@ -1661,11 +1764,17 @@ export function PreviewCheckout({
               {paymentSubmitRequested && paymentState.message && (
                 <Alert
                   variant={
-                    paymentState.ok || paymentState.status === "payment_complete"
+                    paymentState.ok ||
+                    paymentState.status === "payment_complete" ||
+                    paymentState.status === "payment_pending"
                       ? "default"
                       : "destructive"
                   }
-                  role={paymentState.ok ? "status" : "alert"}
+                  role={
+                    paymentState.ok || paymentState.status === "payment_pending"
+                      ? "status"
+                      : "alert"
+                  }
                 >
                   <AlertTitle>{paymentAlertTitle(paymentState, t)}</AlertTitle>
                   <AlertDescription>{paymentState.message}</AlertDescription>
@@ -1687,7 +1796,12 @@ export function PreviewCheckout({
         paymentPending={paymentPending}
         paymentBlocked={requiresMigrationRecollection}
         domainResultKind={domainResultKind}
-        paymentStatus={paymentStatus}
+        paymentStatus={
+          paymentState.status === "payment_pending"
+            ? "pending_provider"
+            : paymentStatus
+        }
+        navigationLocked={acceptedOrderId != null}
         legalAccepted={
           previewApprovalAccepted && termsAccepted && businessUseAccepted
         }
@@ -1720,6 +1834,44 @@ const migrationCustomerActionLabel = (
   } as const
   const key = keys[action as keyof typeof keys]
   return key ? t(key) : t("checkoutMigrationActionUnknown")
+}
+
+const migrationCustomerActionStatusLabel = (
+  status: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    required: "checkoutMigrationActionStatusRequired",
+    pending: "checkoutMigrationActionStatusPending",
+    failed: "checkoutMigrationActionStatusFailed",
+    overdue: "checkoutMigrationActionStatusOverdue",
+    completed: "checkoutMigrationActionStatusCompleted",
+  } as const
+  const key = keys[status as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationActionStatusUnknown")
+}
+
+const migrationStateLabel = (
+  state: string,
+  t: ReturnType<typeof useTranslations<"preview">>,
+): string => {
+  const keys = {
+    assessment: "checkoutMigrationStateAssessment",
+    awaiting_customer: "checkoutMigrationStateAwaitingCustomer",
+    ready_to_prepare: "checkoutMigrationStateReadyToPrepare",
+    preparing: "checkoutMigrationStatePreparing",
+    awaiting_provider: "checkoutMigrationStateAwaitingProvider",
+    ready_for_cutover: "checkoutMigrationStateReadyForCutover",
+    cutover_in_progress: "checkoutMigrationStateCutoverInProgress",
+    verifying: "checkoutMigrationStateVerifying",
+    completed: "checkoutMigrationStateCompleted",
+    paused_supplemental_order: "checkoutMigrationStatePausedSupplemental",
+    custom_quote_required: "checkoutMigrationStateCustomQuote",
+    failed: "checkoutMigrationStateFailed",
+    rolled_back: "checkoutMigrationStateRolledBack",
+  } as const
+  const key = keys[state as keyof typeof keys]
+  return key ? t(key) : t("checkoutMigrationStateUnknown")
 }
 
 const migrationWorkScopeLabel = (
@@ -1776,6 +1928,7 @@ function CheckoutActionBar({
   paymentBlocked,
   domainResultKind,
   paymentStatus,
+  navigationLocked,
   legalAccepted,
   totalPriceLabel,
   previewHref,
@@ -1795,6 +1948,7 @@ function CheckoutActionBar({
   paymentBlocked: boolean
   domainResultKind: "loading" | "success" | "unavailable" | "error" | null
   paymentStatus: string
+  navigationLocked: boolean
   legalAccepted: boolean
   totalPriceLabel: string
   previewHref: string
@@ -1803,7 +1957,7 @@ function CheckoutActionBar({
   onPay: () => void
   t: ReturnType<typeof useTranslations<"preview">>
 }) {
-  const secondary = step === "domain" ? (
+  const secondary = navigationLocked && step !== "domain" ? null : step === "domain" ? (
     <Button asChild variant="outline" className="w-11 px-0 md:w-auto md:px-4" aria-label={t("checkoutBackToPreview")}>
       <a href={previewHref}>
         <X className="size-4 md:hidden" aria-hidden />
@@ -2168,6 +2322,7 @@ function paymentAlertTitle(
 ): string {
   if (state.ok) return t("checkoutPaymentStartingTitle")
   if (state.status === "payment_complete") return t("checkoutPaymentCompleteTitle")
+  if (state.status === "payment_pending") return t("checkoutPaymentPendingTitle")
   if (state.status === "profile_conflict" || state.status === "version_conflict") {
     return t("checkoutVersionConflictTitle")
   }

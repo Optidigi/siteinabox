@@ -1180,7 +1180,8 @@ const targetAttemptState = (
   const chargebackAmountMinor = totalMinor(chargebacks, attempt.currency)
   const amountInvalid =
     refundedAmountMinor > attempt.grossAmountMinor ||
-    chargebackAmountMinor > attempt.grossAmountMinor
+    chargebackAmountMinor > attempt.grossAmountMinor ||
+    refundedAmountMinor + chargebackAmountMinor > attempt.grossAmountMinor
   if (chargebackAmountMinor > 0) {
     return {
       state: "chargeback",
@@ -1374,7 +1375,7 @@ const assertProviderPaymentAuthority = async (
   attempt: PaymentAttempt,
   payment: MolliePayment,
 ): Promise<void> => {
-  const strictAuthority = attempt.idempotencyKey.includes(":authority-v2")
+  const strictAuthority = /:authority-v(?:2|3)(?::|$)/.test(attempt.idempotencyKey)
   if (!sameRelationshipId(attempt.order, payment.metadata?.orderId as string | number | undefined)) {
     await rejectProviderAuthorityMismatch(
       payload,
@@ -1749,24 +1750,85 @@ const synchronizeOrderProjection = async (
   const fulfillmentClaimed = attempt.purpose === "first_payment" &&
     order.state === "accepted" &&
     nextState === "fulfillment_pending"
-  const updatedOrder = await payload.update({
-    collection: "orders",
-    id: order.id,
-    data: {
-      state: nextState,
-      paymentStatus,
-      providerPaymentId: attempt.providerPaymentId,
-      paidAt: captured ? (attempt.paidAt ?? now) : undefined,
-      cancelledAt: attempt.state === "cancelled" ? (attempt.cancelledAt ?? now) : undefined,
-    },
-    depth: 0,
-    overrideAccess: true,
-    context: { legalOrderLifecycleMutation: true },
-  }) as Order
+  const data = {
+    state: nextState,
+    paymentStatus,
+    providerPaymentId: attempt.providerPaymentId,
+    paidAt: captured ? (attempt.paidAt ?? now) : undefined,
+    cancelledAt: attempt.state === "cancelled" ? (attempt.cancelledAt ?? now) : undefined,
+  }
+  let updatedOrder: Order
+  let claimed = false
+  if (fulfillmentClaimed) {
+    const result = await payload.update({
+      collection: "orders",
+      where: {
+        and: [
+          { id: { equals: order.id } },
+          { state: { equals: "accepted" } },
+        ],
+      },
+      data,
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    })
+    const claimedOrder = Array.isArray(result.docs)
+      ? result.docs[0] as Order | undefined
+      : undefined
+    claimed = Boolean(claimedOrder)
+    updatedOrder = claimedOrder ?? await payload.findByID({
+      collection: "orders",
+      id: order.id,
+      depth: 0,
+      overrideAccess: true,
+    }) as Order
+  } else {
+    updatedOrder = await payload.update({
+      collection: "orders",
+      id: order.id,
+      data,
+      depth: 0,
+      overrideAccess: true,
+      context: { legalOrderLifecycleMutation: true },
+    }) as Order
+  }
   return {
     order: updatedOrder,
-    fulfillmentClaimed,
+    fulfillmentClaimed: claimed,
   }
+}
+
+const attemptOwnsSharedProjection = async (
+  payload: Payload,
+  attempt: PaymentAttempt,
+): Promise<boolean> => {
+  const orderId = relationshipId(attempt.order)
+  if (!orderId) return false
+  const attempts = await payload.find({
+    collection: "payment-attempts",
+    where: { order: { equals: orderId } },
+    limit: 1_000,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const latest = (attempts.docs as PaymentAttempt[]).reduce<PaymentAttempt | null>(
+    (candidate, entry) => {
+      if (!candidate) return entry
+      const candidateNumber = candidate.attemptNumber ?? 0
+      const entryNumber = entry.attemptNumber ?? 0
+      if (entryNumber !== candidateNumber) {
+        return entryNumber > candidateNumber ? entry : candidate
+      }
+      return String(entry.id).localeCompare(String(candidate.id), undefined, {
+        numeric: true,
+      }) > 0
+        ? entry
+        : candidate
+    },
+    null,
+  )
+  return latest != null && sameRelationshipId(latest.id, attempt.id)
 }
 
 const synchronizeGenerationRunProjection = async (
@@ -1853,6 +1915,13 @@ const synchronizeAccountingEvidence = async (
     paymentAttempt: attempt,
     issuedAt: payment.paidAt ?? attempt.paidAt ?? now,
   })
+  if (
+    (attempt.refundedAmountMinor ?? 0) +
+      (attempt.chargebackAmountMinor ?? 0) >
+    attempt.grossAmountMinor
+  ) {
+    return
+  }
   for (const refund of confirmedRefunds(payment)) {
     const grossAmountMinor = minorAmount(refund.amount)
     if (grossAmountMinor == null) continue
@@ -2024,6 +2093,34 @@ export async function synchronizeMolliePayment(
     depth: 0,
     overrideAccess: true,
   }) as Order
+  const ownsSharedProjection = await attemptOwnsSharedProjection(payload, attempt)
+  if (!ownsSharedProjection) {
+    if ([
+      "paid",
+      "refund_pending",
+      "partially_refunded",
+      "refunded",
+      "refund_failed",
+      "chargeback",
+    ].includes(attempt.state)) {
+      attempt = await updateAttempt(payload, attempt, {
+        reconciliationRequired: true,
+        failureCode: "non_authoritative_attempt_captured",
+        failureMessage:
+          "A superseded payment attempt has captured provider state and requires reconciliation.",
+        lastSyncedAt: now,
+      })
+    }
+    await synchronizeAccountingEvidence(payload, order, attempt, payment, now)
+    return {
+      ok: true,
+      paymentAttemptId: attempt.id,
+      orderId: order.id,
+      state: attempt.state,
+      duplicate,
+      fulfillmentRequired: false,
+    }
+  }
   await synchronizeBillingAgreement(payload, attempt, order, payment, now)
   const orderProjection = await synchronizeOrderProjection(payload, order, attempt, now)
   let updatedOrder = orderProjection.order
@@ -2170,13 +2267,50 @@ export async function requestMollieRefund(
     paymentAttempt: attempt,
     issuedAt: attempt.paidAt ?? now,
   })
-  let document = await ensurePendingCreditNote({
+  const requestedGrossAmountMinor = refundGrossAmount(order, attempt, input.scenario)
+  const requestedEvidenceKey =
+    `credit-note:payment-attempt:${attempt.id}:${input.scenario}`
+  const reversalDocuments = await payload.find({
+    collection: "accounting-documents",
+    where: {
+      and: [
+        { paymentAttempt: { equals: attempt.id } },
+        { documentType: { equals: "credit_note" } },
+      ],
+    },
+    limit: 1_000,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const reversals = reversalDocuments.docs as AccountingDocument[]
+  const existingDocument = reversals.find((entry) =>
+    entry.evidenceKey === requestedEvidenceKey
+  )
+  const otherReversals = reversals.filter((entry) =>
+    entry.evidenceKey !== requestedEvidenceKey
+  )
+  if (otherReversals.some((entry) => entry.state === "pending_provider")) {
+    throw new Error(
+      "Another refund is awaiting provider resolution for this payment attempt.",
+    )
+  }
+  const committedReversalMinor = otherReversals
+    .filter((entry) => entry.state === "issued")
+    .reduce((total, entry) => total + entry.grossAmountMinor, 0)
+  if (
+    committedReversalMinor +
+      (existingDocument?.grossAmountMinor ?? requestedGrossAmountMinor) >
+    attempt.grossAmountMinor
+  ) {
+    throw new Error("The requested refund exceeds the remaining captured amount.")
+  }
+  let document = existingDocument ?? await ensurePendingCreditNote({
     payload,
     order,
     paymentAttempt: attempt,
     invoice,
     scenario: input.scenario,
-    grossAmountMinor: refundGrossAmount(order, attempt, input.scenario),
+    grossAmountMinor: requestedGrossAmountMinor,
     now,
   })
   if (document.providerOperationId) {

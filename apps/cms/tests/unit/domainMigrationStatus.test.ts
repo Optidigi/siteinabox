@@ -11,6 +11,7 @@ describe("customer migration status projection", () => {
           docs: [{
             id: 90,
             generationRun: 500,
+            tenant: 1,
             orderKind: "initial_subscription",
             customerEmail: "customer@example.com",
           }],
@@ -110,6 +111,7 @@ describe("customer migration status projection", () => {
           docs: [{
             id: 90,
             generationRun: 500,
+            tenant: 1,
             orderKind: "initial_subscription",
             customerEmail: "customer@example.com",
             catalogVersion: "2026-07-26.1",
@@ -135,6 +137,10 @@ describe("customer migration status projection", () => {
     })
     const findByID = vi.fn(async () => ({
       id: 91,
+      orderKind: "migration_supplemental",
+      parentOrder: 90,
+      tenant: 1,
+      customerEmail: "customer@example.com",
       paymentStatus: "open",
     }))
 

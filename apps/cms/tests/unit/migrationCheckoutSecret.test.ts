@@ -41,7 +41,50 @@ const buildStore = () => {
     record = { id: 1, ...data }
     return record
   })
-  const update = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+  const conditionMatches = (
+    current: Record<string, unknown>,
+    condition: Record<string, unknown>,
+  ): boolean =>
+    Object.entries(condition).every(([field, value]) => {
+      if (field === "and" && Array.isArray(value)) {
+        return value.every((clause) =>
+          conditionMatches(current, clause as Record<string, unknown>),
+        )
+      }
+      if (!value || typeof value !== "object") return true
+      const operators = value as {
+        equals?: unknown
+        less_than_equal?: unknown
+        in?: unknown[]
+      }
+      if (
+        operators.equals !== undefined &&
+        String(current[field]) !== String(operators.equals)
+      ) return false
+      if (
+        operators.less_than_equal !== undefined &&
+        String(current[field]) > String(operators.less_than_equal)
+      ) return false
+      if (
+        operators.in &&
+        !operators.in.some((entry) => String(entry) === String(current[field]))
+      ) return false
+      return true
+    })
+  const update = vi.fn(async ({
+    data,
+    where,
+  }: {
+    data: Record<string, unknown>
+    where?: Record<string, unknown>
+  }) => {
+    if (where) {
+      if (!record || !conditionMatches(record, where)) {
+        return { docs: [], totalDocs: 0 }
+      }
+      record = { ...record, ...data }
+      return { docs: [record], totalDocs: 1 }
+    }
     record = { ...record, ...data }
     return record
   })
@@ -51,6 +94,9 @@ const buildStore = () => {
     create,
     update,
     read: () => record,
+    replace: (next: Record<string, unknown>) => {
+      record = next
+    },
   }
 }
 
@@ -191,5 +237,111 @@ describe("migration checkout secret lifecycle", () => {
     expect(MigrationCheckoutSecrets.access?.read?.({} as never)).toBe(false)
     expect(MigrationCheckoutSecrets.access?.update?.({} as never)).toBe(false)
     expect(MigrationCheckoutSecrets.access?.delete?.({} as never)).toBe(false)
+  })
+
+  it("does not let a stale expiry claim overwrite a concurrently consumed secret", async () => {
+    const store = buildStore()
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(zone),
+    )
+    const encryptedInput = sealCheckoutMigrationInput({
+      schemaVersion: 1,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic",
+      sourceMechanism: "customer_authorized_provider_export_v1",
+      sourceZoneHash,
+      sourceZone: zone,
+      transferCode: "secret-epp",
+      transferAuthorizationAccepted: true,
+    })
+    const secretKey = migrationCheckoutSecretKey(500, "example.nl", sourceZoneHash)
+    await persistMigrationCheckoutSecret(store.payload, {
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      encryptedInput,
+      now: new Date("2026-07-01T00:00:00.000Z"),
+    })
+    await attachMigrationCheckoutSecret(store.payload, {
+      secretKey,
+      orderId: 90,
+      generationRunId: 500,
+      domain: "example.nl",
+      sourceZoneHash,
+      now: new Date("2026-07-01T00:01:00.000Z"),
+    })
+    const current = store.read()
+    if (!current) throw new Error("Expected an attached secret.")
+    const staleSnapshot = structuredClone(current)
+    store.find.mockResolvedValueOnce({
+      docs: [staleSnapshot],
+      totalDocs: 1,
+    })
+    store.replace({
+      ...store.read(),
+      state: "consumed",
+      encryptedInput: null,
+      consumedAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    })
+
+    await expect(expireStaleMigrationCheckoutSecrets(
+      store.payload,
+      new Date("2026-08-01T00:00:01.000Z"),
+    )).resolves.toBe(0)
+    expect(store.read()).toMatchObject({
+      state: "consumed",
+      encryptedInput: null,
+    })
+  })
+
+  it("coalesces a create race for equivalent randomly encrypted input", async () => {
+    const sourceZoneHash = domainMigrationSourceAuthorityHash(
+      normalizeCompleteZone(zone),
+    )
+    const input = {
+      schemaVersion: 1 as const,
+      generationRunId: "500",
+      domain: "example.nl",
+      classification: "automatic" as const,
+      sourceMechanism: "customer_authorized_provider_export_v1" as const,
+      sourceZoneHash,
+      sourceZone: zone,
+      transferCode: "same-secret-epp",
+      transferAuthorizationAccepted: true as const,
+    }
+    const envelopeA = sealCheckoutMigrationInput(input)
+    const envelopeB = sealCheckoutMigrationInput(input)
+    expect(envelopeA).not.toBe(envelopeB)
+
+    let record: Record<string, unknown> | null = null
+    let findCalls = 0
+    const find = vi.fn(async () => {
+      findCalls += 1
+      if (findCalls <= 2) return { docs: [], totalDocs: 0 }
+      return { docs: record ? [record] : [], totalDocs: record ? 1 : 0 }
+    })
+    const create = vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+      if (record) throw new Error("duplicate key value violates unique constraint")
+      record = { id: 1, ...data }
+      return record
+    })
+    const payload = asPayload({ find, create })
+    const persist = (encryptedInput: string) =>
+      persistMigrationCheckoutSecret(payload, {
+        generationRunId: 500,
+        domain: "example.nl",
+        sourceZoneHash,
+        encryptedInput,
+        now: new Date("2026-07-28T10:00:00.000Z"),
+      })
+
+    const [first, second] = await Promise.all([
+      persist(envelopeA),
+      persist(envelopeB),
+    ])
+    expect(first.secretKey).toBe(second.secretKey)
+    expect(create).toHaveBeenCalledTimes(2)
   })
 })

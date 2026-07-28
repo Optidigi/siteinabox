@@ -274,10 +274,25 @@ export const DomainMigrations: CollectionConfig = {
       options: selectOptions(["customer_authorized_provider_export_v1"]),
     },
     { name: "sourceZoneHash", type: "text", unique: true, index: true },
-    { name: "sourceZoneSnapshot", type: "json", admin: { readOnly: true } },
+    {
+      name: "sourceZoneSnapshot",
+      type: "json",
+      admin: { readOnly: true },
+      access: { read: () => false },
+    },
     { name: "targetZoneHash", type: "text", unique: true, index: true },
-    { name: "targetZoneSnapshot", type: "json", admin: { readOnly: true } },
-    { name: "rollbackEvidence", type: "json", admin: { readOnly: true } },
+    {
+      name: "targetZoneSnapshot",
+      type: "json",
+      admin: { readOnly: true },
+      access: { read: () => false },
+    },
+    {
+      name: "rollbackEvidence",
+      type: "json",
+      admin: { readOnly: true },
+      access: { read: () => false },
+    },
     {
       name: "supplementalOrder",
       type: "relationship",

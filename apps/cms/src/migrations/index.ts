@@ -82,6 +82,7 @@ import * as migration_20260728_110157_tld_renewal_correctness from './20260728_1
 import * as migration_20260728_112901_renewal_dossier_evidence from './20260728_112901_renewal_dossier_evidence';
 import * as migration_20260728_113932_provider_write_failure_state from './20260728_113932_provider_write_failure_state';
 import * as migration_20260728_130835_commerce_existing_domain_safety from './20260728_130835_commerce_existing_domain_safety';
+import * as migration_20260728_162517_migration_checkout_secret_nullable_run from './20260728_162517_migration_checkout_secret_nullable_run';
 
 export const migrations = [
   {
@@ -502,6 +503,11 @@ export const migrations = [
   {
     up: migration_20260728_130835_commerce_existing_domain_safety.up,
     down: migration_20260728_130835_commerce_existing_domain_safety.down,
-    name: '20260728_130835_commerce_existing_domain_safety'
+    name: '20260728_130835_commerce_existing_domain_safety',
+  },
+  {
+    up: migration_20260728_162517_migration_checkout_secret_nullable_run.up,
+    down: migration_20260728_162517_migration_checkout_secret_nullable_run.down,
+    name: '20260728_162517_migration_checkout_secret_nullable_run'
   },
 ];

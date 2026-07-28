@@ -10,6 +10,7 @@ import {
 } from "@siteinabox/contracts/domain-migration"
 import {
   getTldCapabilityByVersion,
+  tldCapabilityOperationFlagEnabled,
   validateTldTransferAuthorization,
   type TldCapability,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -74,6 +75,13 @@ import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
 const CUTOVER_VERIFICATION_MINUTES = 30
 const SOURCE_EVIDENCE_MAX_AGE_MS = 24 * 60 * 60_000
+
+export class DomainMigrationCustomerInputError extends Error {
+  constructor(readonly kind: "invalid_input" | "stale_authority") {
+    super(kind)
+    this.name = "DomainMigrationCustomerInputError"
+  }
+}
 
 type MigrationActionStatus = "required" | "pending" | "completed" | "not_required" | "failed"
 type MigrationActionEvidence = {
@@ -312,7 +320,11 @@ const migrationEvidenceFromOrder = (order: Order) => {
     ? tldEvidence.capabilityVersion
     : ""
   const capability = getTldCapabilityByVersion(capabilityVersion)
-  if (!capability || capability.tld !== tldEvidence.tld) {
+  if (
+    !capability ||
+    capability.tld !== tldEvidence.tld ||
+    !tldCapabilityOperationFlagEnabled(capability, "incoming_transfer")
+  ) {
     throw new Error("Accepted order has invalid frozen TLD capability evidence.")
   }
   return {
@@ -532,7 +544,7 @@ export async function replaceMigrationTransferAuthorization(
       migration.failureReason ?? "",
     )
   ) {
-    throw new Error("Transfer-code correction is stale or unavailable.")
+    throw new DomainMigrationCustomerInputError("stale_authority")
   }
   const order = await payload.findByID({
     collection: "orders",
@@ -542,21 +554,21 @@ export async function replaceMigrationTransferAuthorization(
   }) as Order
   const { capability } = migrationEvidenceFromOrder(order)
   if (!validateTldTransferAuthorization(capability, input.transferCode)) {
-    throw new Error(`A valid .${migration.tld} transfer code is required.`)
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const sourceAcquiredAt = Date.parse(
     String(readObject(migration.sourceZoneSnapshot).acquiredAt ?? ""),
   )
+  const sourceEvidenceStale =
+    !Number.isFinite(sourceAcquiredAt) ||
+    sourceAcquiredAt < new Date(now).getTime() - SOURCE_EVIDENCE_MAX_AGE_MS
   if (
-    (
-      !Number.isFinite(sourceAcquiredAt) ||
-      sourceAcquiredAt < new Date(now).getTime() - SOURCE_EVIDENCE_MAX_AGE_MS
-    ) &&
+    sourceEvidenceStale &&
     migration.cloudflareZoneState === "not_started" &&
     !migration.providerCustomerHandle &&
     migration.providerTransferState === "not_started"
   ) {
-    throw new Error("Fresh complete source evidence is required with the transfer code.")
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const actions = withAction(
     actionStates(migration.customerActions, now),
@@ -623,23 +635,28 @@ export async function acquireAutomaticMigrationInputs(
       migration.failureReason !== "source_evidence_stale"
     )
   ) {
-    throw new Error("Fresh migration evidence correction is stale.")
+    throw new DomainMigrationCustomerInputError("stale_authority")
   }
   if (
     !replacingStaleEvidence &&
     migration.failureReason === "source_evidence_stale"
   ) {
-    throw new Error("Fresh migration evidence correction requires an expected version.")
+    throw new DomainMigrationCustomerInputError("stale_authority")
   }
   if (
     !replacingStaleEvidence &&
     !["awaiting_customer", "ready_to_prepare"].includes(migration.state)
   ) {
-    throw new Error("Automatic migration inputs are frozen after provider preparation starts.")
+    throw new DomainMigrationCustomerInputError("stale_authority")
   }
-  const source = normalizeCompleteZone(input.zoneExport)
+  let source: NormalizedCompleteZone
+  try {
+    source = normalizeCompleteZone(input.zoneExport)
+  } catch {
+    throw new DomainMigrationCustomerInputError("invalid_input")
+  }
   if (source.domain !== migration.domainNameAscii) {
-    throw new Error("Complete zone export does not match the accepted migration domain.")
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const sourceAcquiredAt = Date.parse(source.acquiredAt)
   const acquisitionTime = Date.parse(now)
@@ -649,10 +666,10 @@ export async function acquireAutomaticMigrationInputs(
     sourceAcquiredAt < acquisitionTime - SOURCE_EVIDENCE_MAX_AGE_MS ||
     sourceAcquiredAt > acquisitionTime + 5 * 60_000
   ) {
-    throw new Error("Complete zone export must be current at migration-input acquisition.")
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   if (source.dnssec.status !== "unsigned") {
-    throw new Error("Phase 9 automatic migration supports unsigned source zones only.")
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const order = await payload.findByID({
     collection: "orders",
@@ -663,7 +680,7 @@ export async function acquireAutomaticMigrationInputs(
   const { capability, sourceZoneHash: acceptedSourceZoneHash } =
     migrationEvidenceFromOrder(order)
   if (!validateTldTransferAuthorization(capability, input.transferCode)) {
-    throw new Error(`A valid .${migration.tld} transfer code is required.`)
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const target = buildAutomaticMigrationTargetZone(source, {
     rendererTargetHost: input.env?.SIAB_RENDERER_TARGET_HOST ??
@@ -677,14 +694,14 @@ export async function acquireAutomaticMigrationInputs(
     acceptedSourceZoneHash &&
     acceptedSourceZoneHash !== sourceAuthorityHash
   ) {
-    throw new Error("Complete zone export differs from the accepted checkout evidence.")
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const targetHash = domainMigrationEvidenceHash(target)
   if (
     (migration.sourceZoneHash && migration.sourceZoneHash !== sourceHash) ||
     (migration.targetZoneHash && migration.targetZoneHash !== targetHash)
   ) {
-    throw new Error("Acquired migration evidence is already frozen to a different zone export.")
+    throw new DomainMigrationCustomerInputError("invalid_input")
   }
   const tenant = await payload.findByID({
     collection: "tenants",
@@ -703,7 +720,7 @@ export async function acquireAutomaticMigrationInputs(
     const expectedTime = Date.parse(input.expectedUpdatedAt)
     const requestedTime = Date.parse(now)
     if (!Number.isFinite(expectedTime) || !Number.isFinite(requestedTime)) {
-      throw new Error("Fresh migration evidence correction has an invalid version.")
+      throw new DomainMigrationCustomerInputError("stale_authority")
     }
     now = new Date(Math.max(requestedTime, expectedTime + 1)).toISOString()
     const claim = await payload.db.drizzle.execute(sql`
@@ -716,7 +733,7 @@ export async function acquireAutomaticMigrationInputs(
       RETURNING "id"
     `)
     if (claim.rows.length !== 1) {
-      throw new Error("Fresh migration evidence correction is stale.")
+      throw new DomainMigrationCustomerInputError("stale_authority")
     }
     migration = { ...migration, updatedAt: now }
   }
@@ -1039,6 +1056,47 @@ async function rollbackCutover(
       return waiting(migration, "Automatic rollback nameservers are not confirmed yet.")
     }
   }
+  if (!migration.rollbackRequestedAt) {
+    migration = await updateMigration(payload, migration, {
+      rollbackWriteState: "indeterminate",
+      rollbackRequestedAt: now,
+      reconciliationRequired: true,
+    }, "rollback_dns_verification_started", now)
+  }
+  const source = migrationSource(migration)
+  const [authoritativeDns, preservedDns] = await Promise.all([
+    deps.verifyAuthoritativeDns(migration.domainNameAscii, oldNameservers),
+    deps.verifyPreservedDnsRecords(source.records, oldNameservers),
+  ])
+  if (
+    authoritativeDns.status !== "verified" ||
+    preservedDns.status !== "verified"
+  ) {
+    if (providerWriteReconciliationTimedOut(migration.rollbackRequestedAt, deps.now())) {
+      return stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "rollback_dns_verification_unresolved",
+        deps.now(),
+        "Rollback delegation or preserved DNS records did not verify before the safety deadline.",
+      )
+    }
+    migration = await updateMigration(payload, migration, {
+      rollbackWriteState: "indeterminate",
+      reconciliationRequired: true,
+      postCutoverVerification: {
+        checkedAt: deps.now(),
+        rollback: true,
+        authoritativeDns,
+        preservedDns,
+      },
+    }, "rollback_dns_verification_pending", deps.now())
+    return waiting(
+      migration,
+      "Rollback nameservers are confirmed; authoritative and recursive DNS verification is pending.",
+    )
+  }
   const rollbackTenant = readObject(rollback.tenantBeforeCutover)
   const previousDomainVerification = readObject(rollbackTenant.domainVerification)
   await payload.update({
@@ -1136,11 +1194,11 @@ export async function prepareDomainMigration(
   const sourceAcquiredAt = Date.parse(
     String(readObject(migration.sourceZoneSnapshot).acquiredAt ?? ""),
   )
+  const sourceEvidenceStale =
+    !Number.isFinite(sourceAcquiredAt) ||
+    sourceAcquiredAt < new Date(now).getTime() - SOURCE_EVIDENCE_MAX_AGE_MS
   if (
-    (
-      !Number.isFinite(sourceAcquiredAt) ||
-      sourceAcquiredAt < new Date(now).getTime() - SOURCE_EVIDENCE_MAX_AGE_MS
-    ) &&
+    sourceEvidenceStale &&
     migration.cloudflareZoneState === "not_started" &&
     !migration.providerCustomerHandle &&
     migration.providerTransferState === "not_started"
@@ -1237,7 +1295,20 @@ export async function prepareDomainMigration(
       managedDomain: managedDomain.id,
     }, "managed_domain_authority_linked", deps.now())
   }
-
+  if (
+    sourceEvidenceStale &&
+    migration.providerTransferState === "not_started" &&
+    migration.cloudflareZoneState !== "indeterminate"
+  ) {
+    return stopMigrationForProviderManualReview(
+      payload,
+      migration,
+      managedDomain,
+      "source_evidence_stale_before_provider_write",
+      deps.now(),
+      "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
+    )
+  }
   const parentDs = await deps.verifyParentDsAbsent(migration.domainNameAscii)
   if (parentDs.status === "indeterminate") {
     return waiting(migration, "DNSSEC parent DS state could not be verified.")
@@ -1323,7 +1394,6 @@ export async function prepareDomainMigration(
     cloudflareNameservers: zone.nameServers,
     failureReason: null,
   }, "cloudflare_zone_reconciled", deps.now())
-
   let cloudflareRecords = await deps.listCloudflareMigrationDnsRecords(zone.id)
   let comparison = semanticZoneComparison(
     target.records,
@@ -1411,6 +1481,19 @@ export async function prepareDomainMigration(
     reconciliationRequired: false,
     failureReason: null,
   }, "cloudflare_target_zone_semantically_verified", deps.now())
+  if (
+    sourceEvidenceStale &&
+    migration.providerTransferState === "not_started"
+  ) {
+    return stopMigrationForProviderManualReview(
+      payload,
+      migration,
+      managedDomain,
+      "source_evidence_stale_before_provider_write",
+      deps.now(),
+      "Frozen source evidence expired before provider preparation; reviewed fresh authority is required.",
+    )
+  }
 
   const token = await deps.loginOpenProvider()
   let customerHandle = migration.providerCustomerHandle ?? null
@@ -1531,6 +1614,16 @@ export async function prepareDomainMigration(
     ) {
       return waiting(migration, "Domain transfer outcome awaits reconciliation; no retry was sent.")
     }
+    if (sourceEvidenceStale) {
+      return stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "source_evidence_stale_before_transfer",
+        deps.now(),
+        "Frozen source evidence expired before transfer; reviewed fresh authority is required.",
+      )
+    }
     if (!deps.forwardProviderWritesAllowed()) {
       return waiting(
         migration,
@@ -1603,19 +1696,14 @@ export async function prepareDomainMigration(
         error.status >= 400 &&
         error.status < 500
       ) {
-        migration = await updateMigration(payload, migration, {
-          state: "failed",
-          providerTransferState: "not_started",
-          encryptedTransferCode: null,
-          transferCodeDeletedAt: deps.now(),
-          reconciliationRequired: false,
-          failureReason: "openprovider_transfer_rejected_non_authorization",
-        }, "openprovider_transfer_rejected_non_authorization", deps.now())
-        return {
-          status: "failed",
-          migrationId: migration.id,
-          message: "The provider rejected the transfer for operator review.",
-        }
+        return stopMigrationForProviderManualReview(
+          payload,
+          migration,
+          managedDomain,
+          "openprovider_transfer_rejected_non_authorization",
+          deps.now(),
+          "The provider rejected a paid transfer for immediate operator review.",
+        )
       }
       if (!providerDomain) throw error
     }
@@ -1633,33 +1721,27 @@ export async function prepareDomainMigration(
     return waiting(migration, "Openprovider is still processing the domain transfer.")
   }
   if (providerDomain.ownerHandle !== customerHandle) {
-    migration = await updateMigration(payload, migration, {
-      state: "failed",
-      encryptedTransferCode: null,
-      transferCodeDeletedAt: deps.now(),
-      failureReason: "provider_domain_owner_mismatch",
-    }, "provider_domain_owner_mismatch", deps.now())
-    return {
-      status: "failed",
-      migrationId: migration.id,
-      message: "Transferred domain owner does not match the customer registrant.",
-    }
+    return stopMigrationForProviderManualReview(
+      payload,
+      migration,
+      managedDomain,
+      "provider_domain_owner_mismatch",
+      deps.now(),
+      "Transferred domain ownership differs from the accepted customer registrant.",
+    )
   }
   if (
     migration.cutoverWriteState === "not_started" &&
     !nameserversEqual(providerDomain.nameServers, source.authoritativeNameservers)
   ) {
-    migration = await updateMigration(payload, migration, {
-      state: "failed",
-      encryptedTransferCode: null,
-      transferCodeDeletedAt: deps.now(),
-      failureReason: "transfer_did_not_retain_old_nameservers",
-    }, "old_nameserver_retention_failed", deps.now())
-    return {
-      status: "failed",
-      migrationId: migration.id,
-      message: "Transfer did not retain the frozen old nameservers; cutover stopped.",
-    }
+    return rollbackCutover(
+      payload,
+      migration,
+      managedDomain,
+      providerDomain,
+      "transfer_did_not_retain_old_nameservers",
+      deps,
+    )
   }
   const registrantVerification = verificationStatus(providerDomain)
   const recovered = registrantVerification === "verified" &&
@@ -1791,6 +1873,16 @@ export async function prepareDomainMigration(
       )
     ) {
       return waiting(migration, "Nameserver cutover outcome awaits reconciliation.")
+    }
+    if (sourceEvidenceStale) {
+      return stopMigrationForProviderManualReview(
+        payload,
+        migration,
+        managedDomain,
+        "source_evidence_stale_before_cutover",
+        deps.now(),
+        "Frozen source evidence expired before nameserver cutover; reviewed fresh authority is required.",
+      )
     }
     if (!deps.forwardProviderWritesAllowed()) {
       return waiting(

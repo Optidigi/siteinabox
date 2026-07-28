@@ -362,6 +362,11 @@ const createPayloadStub = (overrides: Record<string, unknown> = {}) => {
     if (collection === "site-generation-runs") Object.assign(run, data)
     if (collection === "tenants") Object.assign(tenant, data)
     if (collection === "orders") {
+      if (where) {
+        const docs = matchesWhere(order, where) ? [order] : []
+        for (const entry of docs) Object.assign(entry, data)
+        return { docs, totalDocs: docs.length }
+      }
       Object.assign(order, data)
       return { ...order }
     }
@@ -1398,6 +1403,137 @@ describe("Mollie payment flow", () => {
     })
   })
 
+  it("requires reconciliation before crediting cumulative refunds and chargebacks above capture", async () => {
+    const { payload, paymentAttempts, accountingDocuments } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_combined_reversal",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+
+    const result = await applyMollieWebhookPayment(
+      payload,
+      "tr_combined_reversal",
+      async () => ({
+        id: "tr_combined_reversal",
+        status: "paid",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        mandateId: "mdt_test_123",
+        sequenceType: "first",
+        paidAt: "2026-07-26T12:00:00.000Z",
+        metadata: { paymentAttemptId: paymentAttempts[0]?.id, orderId: 600 },
+        _embedded: {
+          refunds: [{
+            id: "re_combined_reversal",
+            status: "refunded",
+            amount: { currency: "EUR", value: "499.00" },
+            createdAt: "2026-07-27T11:00:00.000Z",
+          }],
+          chargebacks: [{
+            id: "chb_combined_reversal",
+            amount: { currency: "EUR", value: "499.00" },
+            createdAt: "2026-07-27T12:00:00.000Z",
+          }],
+        },
+      }),
+    )
+
+    expect(result.state).toBe("chargeback")
+    expect(paymentAttempts[0]).toMatchObject({
+      reconciliationRequired: true,
+      failureCode: "provider_state_conflict",
+      refundedAmountMinor: 49_900,
+      chargebackAmountMinor: 49_900,
+    })
+    expect(accountingDocuments.filter((document) =>
+      document.documentType === "credit_note",
+    )).toHaveLength(0)
+  })
+
+  it("does not let a superseded terminal attempt regress the paid order authority", async () => {
+    const {
+      payload,
+      run,
+      order,
+      billingAgreements,
+      paymentAttempts,
+    } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_old_attempt",
+        providerStatus: "paid",
+        mollieCustomerId: "cst_test_123",
+      },
+    })
+    const oldAttempt = paymentAttempts[0]!
+    Object.assign(oldAttempt, {
+      state: "pending_provider",
+      providerStatus: "open",
+    })
+    paymentAttempts.push({
+      ...oldAttempt,
+      id: 902,
+      idempotencyKey: "mollie:first-payment:order:600:authority-v3:attempt-2",
+      attemptNumber: 2,
+      state: "paid",
+      providerPaymentId: "tr_new_attempt",
+      providerStatus: "paid",
+      paidAt: "2026-07-27T10:00:00.000Z",
+    })
+    Object.assign(order, {
+      state: "fulfilled",
+      paymentStatus: "paid",
+      providerPaymentId: "tr_new_attempt",
+      paidAt: "2026-07-27T10:00:00.000Z",
+    })
+    Object.assign(run, {
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_new_attempt",
+        providerStatus: "paid",
+      },
+    })
+    Object.assign(billingAgreements[0]!, {
+      state: "active",
+      currentPeriodStartsAt: "2026-07-27T10:00:00.000Z",
+      currentPeriodEndsAt: "2026-08-27T10:00:00.000Z",
+    })
+
+    const result = await applyMollieWebhookPayment(
+      payload,
+      "tr_old_attempt",
+      async () => ({
+        id: "tr_old_attempt",
+        status: "failed",
+        amount: { currency: "EUR", value: "499.00" },
+        customerId: "cst_test_123",
+        sequenceType: "first",
+        metadata: { paymentAttemptId: oldAttempt.id, orderId: 600 },
+      }),
+    )
+
+    expect(result).toMatchObject({ state: "failed", fulfillmentRequired: false })
+    expect(order).toMatchObject({
+      state: "fulfilled",
+      paymentStatus: "paid",
+      providerPaymentId: "tr_new_attempt",
+    })
+    expect(run.payment).toMatchObject({
+      status: "completed",
+      externalReference: "tr_new_attempt",
+    })
+    expect(billingAgreements[0]).toMatchObject({
+      state: "active",
+      currentPeriodEndsAt: "2026-08-27T10:00:00.000Z",
+    })
+  })
+
   it.each([
     {
       billingPeriod: "monthly",
@@ -1939,7 +2075,14 @@ describe("Mollie payment flow", () => {
     expect(order).toMatchObject({ paymentStatus: "pending", state: "accepted" })
   })
 
-  it.each(["purpose", "customer", "sequence"] as const)(
+  it.each([
+    "purpose",
+    "customer",
+    "sequence",
+    "paymentAttemptId",
+    "idempotencyKey",
+    "billingAgreementId",
+  ] as const)(
     "requires %s authority on newly created Mollie payments",
     async (missing) => {
       const { payload, paymentAttempts, billingAgreements, order } = createPayloadStub({
@@ -1953,7 +2096,7 @@ describe("Mollie payment flow", () => {
       const attempt = paymentAttempts[0]!
       const agreement = billingAgreements[0]!
       Object.assign(attempt, {
-        idempotencyKey: "mollie:first-payment:order:600:authority-v2",
+        idempotencyKey: "mollie:first-payment:order:600:authority-v3:attempt-1",
       })
       const payment: Record<string, unknown> = {
         id: `tr_missing_${missing}`,
@@ -1973,8 +2116,10 @@ describe("Mollie payment flow", () => {
         delete (payment.metadata as Record<string, unknown>).purpose
       } else if (missing === "customer") {
         delete payment.customerId
-      } else {
+      } else if (missing === "sequence") {
         delete payment.sequenceType
+      } else {
+        delete (payment.metadata as Record<string, unknown>)[missing]
       }
 
       await expect(applyMollieWebhookPayment(
@@ -2067,6 +2212,39 @@ describe("Mollie payment flow", () => {
       state: "failed",
       reconciliationRequired: false,
     })
+  })
+
+  it("blocks a second automatic refund scenario while one refund is unresolved", async () => {
+    enableSandboxCommerceRelease()
+    const { payload, paymentAttempts, accountingDocuments } = createPayloadStub({
+      payment: {
+        status: "completed",
+        provider: "mollie",
+        externalReference: "tr_refund_single_flight",
+        providerStatus: "paid",
+      },
+    })
+    vi.stubGlobal("fetch", vi.fn(async () =>
+      new Response(JSON.stringify({
+        id: "re_single_flight",
+        status: "pending",
+        amount: { currency: "EUR", value: "499.00" },
+      }), { status: 201 }),
+    ))
+
+    await expect(requestMollieRefund(payload, {
+      paymentAttemptId: String(paymentAttempts[0]?.id),
+      scenario: "duplicate_payment",
+    })).resolves.toMatchObject({ providerRefundId: "re_single_flight" })
+    await expect(requestMollieRefund(payload, {
+      paymentAttemptId: String(paymentAttempts[0]?.id),
+      scenario: "unfulfillable_before_provider_commit",
+    })).rejects.toThrow("Another refund is awaiting provider resolution")
+
+    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(accountingDocuments.filter((document) =>
+      document.documentType === "credit_note",
+    )).toHaveLength(1)
   })
 
   it("retries only Mollie's explicitly safe refund 503 response with the same business key", async () => {

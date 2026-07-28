@@ -3,6 +3,7 @@ import "server-only"
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  tldCapabilityOperationFlagEnabled,
   type TldCapability,
   validateTldRegistrationLabel,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -130,7 +131,8 @@ const capabilityForAcceptedOrder = (
     if (
       !capability ||
       capability.tld !== tld ||
-      evidence?.tld !== tld
+      evidence?.tld !== tld ||
+      !tldCapabilityOperationFlagEnabled(capability, "registration")
     ) {
       throw new Error("Accepted-order TLD capability evidence is invalid.")
     }

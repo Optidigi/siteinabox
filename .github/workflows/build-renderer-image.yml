@@ -19,6 +19,10 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: build-renderer-image-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
   REGISTRY: ghcr.io
@@ -47,10 +51,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -62,10 +66,12 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Smoke start pushed image
         env:
-          IMAGE_TAGS: ${{ steps.meta.outputs.tags }}
+          IMAGE_TAG: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}
         run: |
           set -euo pipefail
           corepack enable
           pnpm install --frozen-lockfile
-          image_tag="$(printf '%s\n' "$IMAGE_TAGS" | head -n 1)"
-          IMAGE_TAG="$image_tag" pnpm --dir apps/renderer smoke:packaged-image
+          pnpm --dir apps/renderer smoke:packaged-image
+
+      - name: Record verified image digest
+        run: echo "Verified renderer image \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -6,7 +6,7 @@ import {
 } from "@siteinabox/contracts/commerce"
 import type { Payload } from "payload"
 import type { DomainMigration, ManagedDomain, Order } from "@/payload-types"
-import { relationshipId } from "@/lib/relationshipId"
+import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 
 export type CustomerMigrationActionStatus = {
   action: string
@@ -129,13 +129,20 @@ export async function loadCustomerMigrationStatus(
           : null),
   }))
   const supplementalOrderId = relationshipId(migration.supplementalOrder)
-  const supplementalOrder = supplementalOrderId
+  const loadedSupplementalOrder = supplementalOrderId
     ? await payload.findByID({
         collection: "orders",
         id: supplementalOrderId,
         depth: 0,
         overrideAccess: true,
       }).catch(() => null) as Order | null
+    : null
+  const supplementalOrder = loadedSupplementalOrder &&
+    loadedSupplementalOrder.orderKind === "migration_supplemental" &&
+    sameRelationshipId(loadedSupplementalOrder.parentOrder, order.id) &&
+    sameRelationshipId(loadedSupplementalOrder.tenant, order.tenant) &&
+    loadedSupplementalOrder.customerEmail.trim().toLowerCase() === customerEmail
+    ? loadedSupplementalOrder
     : null
   const catalog = order.catalogVersion
     ? getCommercialCatalog(order.catalogVersion)
@@ -148,7 +155,11 @@ export async function loadCustomerMigrationStatus(
       migration.operatorWorkAuthorizationState,
     ) &&
     migration.operatorWorkScope &&
-    supplementalAmount
+    supplementalAmount &&
+    (
+      migration.operatorWorkAuthorizationState === "awaiting_customer_acceptance" ||
+      supplementalOrder
+    )
       ? {
           workScopeCode: migration.operatorWorkScope,
           ...supplementalAmount,

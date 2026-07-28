@@ -2,6 +2,7 @@ import "server-only"
 import {
   getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  tldCapabilityOperationFlagEnabled,
   type TldProductionOperation,
   validateTldRegistrationLabel,
   validateTldTransferAuthorization,
@@ -636,7 +637,8 @@ const enabledCapabilityForDomain = (
     acceptedCapabilityVersion &&
     (
       !acceptedCapability ||
-      acceptedCapability.tld !== domain.extension
+      acceptedCapability.tld !== domain.extension ||
+      !tldCapabilityOperationFlagEnabled(acceptedCapability, operation)
     )
   ) {
     throw new Error(

@@ -52,6 +52,33 @@ const findSecret = async (
   return (result.docs[0] as SecretRecord | undefined) ?? null
 }
 
+const updateSecretClaim = async (
+  payload: Payload,
+  secret: SecretRecord,
+  data: Partial<SecretRecord>,
+): Promise<SecretRecord | null> => {
+  if (!secret.updatedAt) {
+    throw new Error("Migration checkout secret is missing its concurrency version.")
+  }
+  const result = await payload.update({
+    collection: "migration-checkout-secrets",
+    where: {
+      and: [
+        { id: { equals: secret.id } },
+        { state: { equals: secret.state } },
+        { updatedAt: { equals: secret.updatedAt } },
+      ],
+    },
+    data,
+    depth: 0,
+    overrideAccess: true,
+    context: { migrationCheckoutSecretLifecycle: true },
+  })
+  return Array.isArray(result.docs)
+    ? (result.docs[0] as SecretRecord | undefined) ?? null
+    : null
+}
+
 const validateAuthority = (
   secret: SecretRecord,
   input: {
@@ -72,6 +99,40 @@ const validateAuthority = (
   ) {
     throw new Error("Migration checkout secret belongs to another authority.")
   }
+}
+
+const sameOpenedInput = (
+  left: OpenedCheckoutMigrationInput,
+  right: OpenedCheckoutMigrationInput,
+): boolean =>
+  left.schemaVersion === right.schemaVersion &&
+  left.generationRunId === right.generationRunId &&
+  left.domain === right.domain &&
+  left.classification === right.classification &&
+  left.sourceMechanism === right.sourceMechanism &&
+  left.sourceZoneHash === right.sourceZoneHash &&
+  left.transferCode === right.transferCode &&
+  left.transferAuthorizationAccepted === right.transferAuthorizationAccepted &&
+  JSON.stringify(left.normalizedSourceZone) ===
+    JSON.stringify(right.normalizedSourceZone)
+
+const winnerMatchesInput = (
+  winner: SecretRecord,
+  input: {
+    generationRunId: string | number
+    domain: string
+    sourceZoneHash: string
+  },
+  opened: OpenedCheckoutMigrationInput,
+): boolean => {
+  validateAuthority(winner, input)
+  if (!winner.encryptedInput) return false
+  const winnerInput = openCheckoutMigrationInput(
+    winner.encryptedInput,
+    input.generationRunId,
+    input.domain,
+  )
+  return sameOpenedInput(winnerInput, opened)
 }
 
 export async function persistMigrationCheckoutSecret(
@@ -106,35 +167,50 @@ export async function persistMigrationCheckoutSecret(
       if (existing.encryptedInput === input.encryptedInput) return existing
       throw new Error("Attached migration checkout secret cannot be replaced.")
     }
-    return payload.update({
-      collection: "migration-checkout-secrets",
-      id: existing.id,
-      data: {
+    const updated = await updateSecretClaim(payload, existing, {
         encryptedInput: input.encryptedInput,
         expiresAt,
+        updatedAt: now.toISOString(),
+    })
+    if (updated) return updated
+    const winner = await findSecret(payload, secretKey)
+    if (
+      winner &&
+      winner.state === "pending_order" &&
+      winnerMatchesInput(winner, input, opened)
+    ) {
+      return winner
+    }
+    throw new Error("Migration checkout secret changed concurrently.")
+  }
+  try {
+    return await payload.create({
+      collection: "migration-checkout-secrets",
+      data: {
+        secretKey,
+        generationRun: numericId(input.generationRunId, "Migration checkout secret"),
+        domainNameAscii: input.domain.trim().toLowerCase(),
+        sourceZoneHash: input.sourceZoneHash,
+        encryptedInput: input.encryptedInput,
+        state: "pending_order",
+        expiresAt,
+        createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
       },
       depth: 0,
       overrideAccess: true,
-      context: { migrationCheckoutSecretLifecycle: true },
-    }) as Promise<SecretRecord>
+    }) as SecretRecord
+  } catch (error) {
+    const winner = await findSecret(payload, secretKey)
+    if (
+      winner &&
+      winner.state === "pending_order" &&
+      winnerMatchesInput(winner, input, opened)
+    ) {
+      return winner
+    }
+    throw error
   }
-  return payload.create({
-    collection: "migration-checkout-secrets",
-    data: {
-      secretKey,
-      generationRun: numericId(input.generationRunId, "Migration checkout secret"),
-      domainNameAscii: input.domain.trim().toLowerCase(),
-      sourceZoneHash: input.sourceZoneHash,
-      encryptedInput: input.encryptedInput,
-      state: "pending_order",
-      expiresAt,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString(),
-    },
-    depth: 0,
-    overrideAccess: true,
-  }) as Promise<SecretRecord>
 }
 
 export async function attachMigrationCheckoutSecret(
@@ -160,18 +236,21 @@ export async function attachMigrationCheckoutSecret(
   if (secret.state !== "pending_order") {
     throw new Error("Migration checkout secret cannot be attached in its current state.")
   }
-  return payload.update({
-    collection: "migration-checkout-secrets",
-    id: secret.id,
-    data: {
+  const updated = await updateSecretClaim(payload, secret, {
       order: numericId(input.orderId, "Migration checkout secret attachment"),
       state: "attached",
       updatedAt: (input.now ?? new Date()).toISOString(),
-    },
-    depth: 0,
-    overrideAccess: true,
-    context: { migrationCheckoutSecretLifecycle: true },
-  }) as Promise<SecretRecord>
+  })
+  if (updated) return updated
+  const winner = await findSecret(payload, input.secretKey)
+  if (
+    winner?.state === "attached" &&
+    relationshipId(winner.order) === String(input.orderId)
+  ) {
+    validateAuthority(winner, input)
+    return winner
+  }
+  throw new Error("Migration checkout secret attachment changed concurrently.")
 }
 
 export async function openAttachedMigrationCheckoutSecret(
@@ -227,19 +306,16 @@ export async function consumeMigrationCheckoutSecret(
     throw new Error("Migration checkout secret cannot be consumed by this order.")
   }
   const now = input.now ?? new Date()
-  await payload.update({
-    collection: "migration-checkout-secrets",
-    id: secret.id,
-    data: {
+  const updated = await updateSecretClaim(payload, secret, {
       encryptedInput: null,
       state: "consumed",
       consumedAt: now.toISOString(),
       updatedAt: now.toISOString(),
-    },
-    depth: 0,
-    overrideAccess: true,
-    context: { migrationCheckoutSecretLifecycle: true },
   })
+  if (updated) return
+  const winner = await findSecret(payload, input.secretKey)
+  if (winner?.state === "consumed" && !winner.encryptedInput) return
+  throw new Error("Migration checkout secret consumption changed concurrently.")
 }
 
 export async function replaceExpiredAttachedMigrationCheckoutSecret(
@@ -272,17 +348,21 @@ export async function replaceExpiredAttachedMigrationCheckoutSecret(
     throw new Error("Recollected migration evidence differs from the accepted source hash.")
   }
   const now = input.now ?? new Date()
-  return payload.update({
-    collection: "migration-checkout-secrets",
-    id: secret.id,
-    data: {
+  const updated = await updateSecretClaim(payload, secret, {
       encryptedInput: input.encryptedInput,
       state: "attached",
       expiresAt: new Date(now.getTime() + activeLifetimeMs).toISOString(),
       updatedAt: now.toISOString(),
-    },
-    depth: 0,
-    overrideAccess: true,
-    context: { migrationCheckoutSecretLifecycle: true },
-  }) as Promise<SecretRecord>
+  })
+  if (updated) return updated
+  const winner = await findSecret(payload, input.secretKey)
+  if (
+    winner?.state === "attached" &&
+    relationshipId(winner.order) === String(input.orderId) &&
+    winner.encryptedInput === input.encryptedInput
+  ) {
+    validateAuthority(winner, input)
+    return winner
+  }
+  throw new Error("Migration checkout secret recollection changed concurrently.")
 }

@@ -8,6 +8,7 @@ import {
   sealCheckoutQuote,
 } from "@/lib/checkout/checkoutQuote"
 import { assessExistingDomainMigrationInput } from "@/lib/domains/migrationCheckout"
+import { DomainMigrationCustomerInputError } from "@/lib/domains/migration"
 import { migrationCheckoutSecretKey } from "@/lib/domains/migrationCheckoutSecret"
 import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 const mocks = vi.hoisted(() => ({
@@ -925,7 +926,11 @@ describe("preview checkout domain suggestion action", () => {
     changedForm.set("transferAuthorization", "accepted")
     await expect(
       recollectAcceptedMigrationInputAction("ami-care", changedForm),
-    ).rejects.toThrow("exactly match")
+    ).resolves.toEqual({
+      ok: false,
+      status: "invalid_input",
+      message: "checkoutMigrationActionInvalidInput",
+    })
     expect(mocks.replaceExpiredAttachedMigrationCheckoutSecret)
       .not.toHaveBeenCalled()
   })
@@ -972,6 +977,52 @@ describe("preview checkout domain suggestion action", () => {
       context.payload,
       expect.objectContaining({ orderId: 70 }),
     )
+  })
+
+  it("distinguishes a supplemental payment outage from stale migration state", async () => {
+    const context = await mocks.loadPreviewGrantContext()
+    context.payload.findByID = vi.fn()
+      .mockResolvedValueOnce({
+        id: 100,
+        originatingOrder: 90,
+        supplementalOrder: 70,
+        updatedAt: "migration-version-2",
+        operatorWorkAuthorizationState: "awaiting_payment",
+        operatorWorkCause: "customer_migration",
+        operatorWorkScope: "verify_customer_zone_export",
+      })
+      .mockResolvedValueOnce({
+        id: 90,
+        generationRun: 500,
+        tenant: 12,
+        customerEmail: "customer@example.com",
+      })
+      .mockResolvedValueOnce({
+        id: 70,
+        orderKind: "migration_supplemental",
+        parentOrder: 90,
+        tenant: 12,
+        customerEmail: "customer@example.com",
+      })
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    mocks.createSupplementalMigrationMollieCheckout.mockRejectedValueOnce(
+      new Error("provider unavailable"),
+    )
+    const { acceptMigrationSupplementalOrderAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("migrationId", "100")
+    formData.set("expectedMigrationVersion", "migration-version-2")
+
+    await expect(
+      acceptMigrationSupplementalOrderAction("ami-care", formData),
+    ).resolves.toEqual({
+      ok: false,
+      status: "retryable_service_error",
+      message: "checkoutMigrationActionRetryLater",
+    })
+    expect(mocks.requestMigrationOperatorWork).not.toHaveBeenCalled()
   })
 
   it("stops existing-domain payment before any evidence write when transfer pricing changes", async () => {
@@ -1202,10 +1253,69 @@ describe("preview checkout domain suggestion action", () => {
 
     await expect(
       submitMigrationTransferCodeAction("ami-care", formData),
-    ).rejects.toThrow("another customer")
+    ).resolves.toEqual({
+      ok: false,
+      status: "refresh_required",
+      message: "checkoutMigrationActionRefreshRequired",
+    })
     expect(mocks.replaceMigrationTransferAuthorization).not.toHaveBeenCalled()
     expect(JSON.stringify(vi.mocked(console.error).mock.calls))
       .not.toContain("must-not-log")
+  })
+
+  it("classifies an incomplete transfer-code correction as invalid input", async () => {
+    const { submitMigrationTransferCodeAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("migrationId", "100")
+    formData.set("expectedMigrationVersion", "migration-version-1")
+
+    await expect(
+      submitMigrationTransferCodeAction("ami-care", formData),
+    ).resolves.toEqual({
+      ok: false,
+      status: "invalid_input",
+      message: "checkoutMigrationActionInvalidInput",
+    })
+    expect(mocks.replaceMigrationTransferAuthorization).not.toHaveBeenCalled()
+  })
+
+  it("classifies a rejected non-empty transfer code as invalid input", async () => {
+    const context = await mocks.loadPreviewGrantContext()
+    context.payload.findByID = vi.fn()
+      .mockResolvedValueOnce({
+        id: 100,
+        originatingOrder: 90,
+        updatedAt: "migration-version-1",
+        state: "awaiting_customer",
+        failureReason: "provider_rejected_transfer_authorization",
+      })
+      .mockResolvedValueOnce({
+        id: 90,
+        generationRun: 500,
+        tenant: 12,
+        customerEmail: "customer@example.com",
+      })
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    mocks.replaceMigrationTransferAuthorization.mockRejectedValueOnce(
+      new DomainMigrationCustomerInputError("invalid_input"),
+    )
+    const { submitMigrationTransferCodeAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+    const formData = new FormData()
+    formData.set("migrationId", "100")
+    formData.set("expectedMigrationVersion", "migration-version-1")
+    formData.set("transferCode", "invalid-but-non-empty")
+
+    await expect(
+      submitMigrationTransferCodeAction("ami-care", formData),
+    ).resolves.toEqual({
+      ok: false,
+      status: "invalid_input",
+      message: "checkoutMigrationActionInvalidInput",
+    })
   })
 
   it("loads alternative batches through the authenticated route handler", async () => {

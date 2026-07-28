@@ -51,17 +51,26 @@ const history = (
   { state, at, reason },
 ]
 
-const updateMigration = (
+const updateMigration = async (
   payload: Payload,
   migration: DomainMigration,
   data: Partial<DomainMigration>,
   reason: string,
   now: string,
 ): Promise<DomainMigration> => {
+  if (!migration.updatedAt) {
+    throw new Error("Domain migration is missing its concurrency version.")
+  }
   const state = data.state ?? migration.state
-  return payload.update({
+  const result = await payload.update({
     collection: "domain-migrations",
-    id: migration.id,
+    where: {
+      and: [
+        { id: { equals: migration.id } },
+        { updatedAt: { equals: migration.updatedAt } },
+        { state: { equals: migration.state } },
+      ],
+    },
     data: {
       ...data,
       updatedAt: now,
@@ -70,7 +79,16 @@ const updateMigration = (
     depth: 0,
     overrideAccess: true,
     context: { domainMigrationLifecycleMutation: true },
-  }) as Promise<DomainMigration>
+  })
+  const updated = Array.isArray(result.docs)
+    ? result.docs[0] as DomainMigration | undefined
+    : undefined
+  if (!updated) {
+    throw new Error(
+      "Domain migration changed concurrently; reload current operator state.",
+    )
+  }
+  return updated
 }
 
 const requireOperator = (actor: OperatorActor): OperatorActor => {

@@ -70,6 +70,18 @@ only the domain, migration state, classification, customer action status and
 deadline. It never includes a transfer code, zone snapshot, provider payload,
 or internal evidence.
 
+`sourceZoneSnapshot`, `targetZoneSnapshot`, and `rollbackEvidence` are
+system-internal operational evidence. Payload field access denies them even to
+routine collection reads; only reviewed system workflows using
+`overrideAccess` may load them. Keep the minimum normalized records needed to
+prove semantic preservation and execute rollback. Do not copy the snapshots
+into alerts, notes, customer status responses, logs, analytics, or support
+exports. Retain them while transfer, DNSSEC, rollback, transfer-out, or a
+commerce exception can still require proof or recovery. Any later purge must
+be a separately reviewed retention change that preserves immutable hashes,
+legal/accounting evidence, and transfer-out obligations; there is currently no
+automatic snapshot purge.
+
 Super-admins use `/operations/migrations`. The operator view is deliberately
 limited:
 
@@ -110,6 +122,12 @@ only after it contains any checkout-secret audit row or an unaccepted
 supplemental-work proposal. Its down migration deliberately aborts instead of
 deleting encrypted input, terminal audit evidence, or changing a customer's
 proposal state.
+
+The follow-up `migration_checkout_secret_nullable_run` migration aligns the
+`generationRun` relationship with its existing `ON DELETE SET NULL` rule. Its
+down migration can restore `NOT NULL` only when no orphaned audit row exists.
+If an orphan exists, preserve it and repair forward; do not delete the audit
+row to force a schema rollback.
 
 Before a production schema rollback, stop checkout and migration workers and
 inspect the secret collection plus migrations in

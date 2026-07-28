@@ -3,7 +3,6 @@ import "server-only"
 import crypto from "node:crypto"
 import {
   calculateDutchVatMinor,
-  calculateDomainSurchargeNetMinor,
   commercialAmountFromNet,
   getCommercialCatalog,
   type CommercialAmount,
@@ -58,6 +57,7 @@ export type CheckoutQuoteSet = Record<CheckoutBillingPeriod, CheckoutQuoteEnvelo
 const quoteTtlMs = 15 * 60 * 1_000
 
 export function buildCheckoutQuote(input: {
+  catalogVersion?: string
   billingPeriod: CheckoutBillingPeriod
   providerOperationPriceNetMinor: number
   migrationClassification?: MigrationClassification | null
@@ -71,7 +71,7 @@ export function buildCheckoutQuote(input: {
   draftVersion: string
   now?: Date
 }): CheckoutQuote {
-  const catalog = getCommercialCatalog()
+  const catalog = getCommercialCatalog(input.catalogVersion)
   if (input.migrationClassification === "complex") {
     throw new Error("Complex migrations require a custom quote and cannot enter ordinary checkout.")
   }
@@ -101,8 +101,10 @@ export function buildCheckoutQuote(input: {
     throw new Error("New-domain checkout cannot contain migration input evidence.")
   }
   const subscription = catalog.subscriptions[input.billingPeriod]
-  const domainSurchargeNetMinor = calculateDomainSurchargeNetMinor(
-    input.providerOperationPriceNetMinor,
+  const domainSurchargeNetMinor = Math.max(
+    input.providerOperationPriceNetMinor -
+      catalog.domain.includedAllowanceNetMinor,
+    0,
   )
   const lineItems: CheckoutQuoteLineItem[] = [{
     code: subscription.code,

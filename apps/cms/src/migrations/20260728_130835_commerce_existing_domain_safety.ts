@@ -5,20 +5,20 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
    CREATE TYPE "public"."enum_migration_checkout_secrets_state" AS ENUM('pending_order', 'attached', 'consumed', 'expired');
   ALTER TYPE "public"."enum_domain_migrations_operator_work_authorization_state" ADD VALUE 'awaiting_customer_acceptance' BEFORE 'awaiting_payment';
   CREATE TABLE "migration_checkout_secrets" (
-  	"id" serial PRIMARY KEY NOT NULL,
-  	"secret_key" varchar NOT NULL,
-  	"generation_run_id" integer NOT NULL,
-  	"order_id" integer,
-  	"domain_name_ascii" varchar NOT NULL,
-  	"source_zone_hash" varchar NOT NULL,
-  	"encrypted_input" varchar,
-  	"state" "enum_migration_checkout_secrets_state" DEFAULT 'pending_order' NOT NULL,
-  	"expires_at" timestamp(3) with time zone NOT NULL,
-  	"consumed_at" timestamp(3) with time zone,
-  	"created_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
-  	"updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL
+    "id" serial PRIMARY KEY NOT NULL,
+    "secret_key" varchar NOT NULL,
+    "generation_run_id" integer NOT NULL,
+    "order_id" integer,
+    "domain_name_ascii" varchar NOT NULL,
+    "source_zone_hash" varchar NOT NULL,
+    "encrypted_input" varchar,
+    "state" "enum_migration_checkout_secrets_state" DEFAULT 'pending_order' NOT NULL,
+    "expires_at" timestamp(3) with time zone NOT NULL,
+    "consumed_at" timestamp(3) with time zone,
+    "created_at" timestamp(3) with time zone DEFAULT now() NOT NULL,
+    "updated_at" timestamp(3) with time zone DEFAULT now() NOT NULL
   );
-  
+
   ALTER TABLE "migration_checkout_secrets" ADD CONSTRAINT "migration_checkout_secrets_generation_run_id_site_generation_runs_id_fk" FOREIGN KEY ("generation_run_id") REFERENCES "public"."site_generation_runs"("id") ON DELETE set null ON UPDATE no action;
   ALTER TABLE "migration_checkout_secrets" ADD CONSTRAINT "migration_checkout_secrets_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE set null ON UPDATE no action;
   CREATE UNIQUE INDEX "migration_checkout_secrets_secret_key_idx" ON "migration_checkout_secrets" USING btree ("secret_key");

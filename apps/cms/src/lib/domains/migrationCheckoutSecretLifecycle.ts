@@ -2,6 +2,9 @@ import type { Payload } from "payload"
 
 type ExpirableMigrationCheckoutSecret = {
   id: string | number
+  state: "pending_order" | "attached"
+  expiresAt: string
+  updatedAt: string
 }
 
 export async function expireStaleMigrationCheckoutSecrets(
@@ -20,10 +23,19 @@ export async function expireStaleMigrationCheckoutSecrets(
     depth: 0,
     overrideAccess: true,
   })
+  let expired = 0
   for (const value of result.docs as ExpirableMigrationCheckoutSecret[]) {
-    await payload.update({
+    const update = await payload.update({
       collection: "migration-checkout-secrets",
-      id: value.id,
+      where: {
+        and: [
+          { id: { equals: value.id } },
+          { state: { equals: value.state } },
+          { updatedAt: { equals: value.updatedAt } },
+          { expiresAt: { equals: value.expiresAt } },
+          { expiresAt: { less_than_equal: now.toISOString() } },
+        ],
+      },
       data: {
         encryptedInput: null,
         state: "expired",
@@ -33,6 +45,7 @@ export async function expireStaleMigrationCheckoutSecrets(
       overrideAccess: true,
       context: { migrationCheckoutSecretLifecycle: true },
     })
+    if (Array.isArray(update.docs) && update.docs.length === 1) expired += 1
   }
-  return result.docs.length
+  return expired
 }
