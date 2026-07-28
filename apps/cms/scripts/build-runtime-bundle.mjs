@@ -124,6 +124,14 @@ await build({
   outfile: path.join(outDir, "seed-renderer-staging-tenants.bundled.mjs"),
 })
 
+// Idempotent operator command for explicitly activating a reviewed renderer
+// hostname alias after its canonical tenant snapshot is live.
+await build({
+  ...sharedBuildOpts,
+  entryPoints: [path.join(repoRoot, "scripts/ensure-renderer-domain-alias.ts")],
+  outfile: path.join(outDir, "ensure-renderer-domain-alias.bundled.mjs"),
+})
+
 // Mark the directory as ESM so any `.js` peers parse as module syntax.
 // Belt-and-braces: the bundled output is `.mjs`, but a sibling package.json
 // keeps behaviour explicit and protects against future renames.
