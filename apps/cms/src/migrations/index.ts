@@ -77,6 +77,7 @@ import * as migration_20260727_120231_phase9_automatic_domain_migration from './
 import * as migration_20260727_142003_phase10_assisted_migration from './20260727_142003_phase10_assisted_migration';
 import * as migration_20260727_145356_phase11_commerce_hardening from './20260727_145356_phase11_commerce_hardening';
 import * as migration_20260727_154129_phase11_transfer_confirmation from './20260727_154129_phase11_transfer_confirmation';
+import * as migration_20260728_101754_checkout_structured_names from './20260728_101754_checkout_structured_names';
 
 export const migrations = [
   {
@@ -472,6 +473,11 @@ export const migrations = [
   {
     up: migration_20260727_154129_phase11_transfer_confirmation.up,
     down: migration_20260727_154129_phase11_transfer_confirmation.down,
-    name: '20260727_154129_phase11_transfer_confirmation'
+    name: '20260727_154129_phase11_transfer_confirmation',
+  },
+  {
+    up: migration_20260728_101754_checkout_structured_names.up,
+    down: migration_20260728_101754_checkout_structured_names.down,
+    name: '20260728_101754_checkout_structured_names'
   },
 ];

@@ -20,11 +20,14 @@ import {
 import {
   buildCheckoutQuote,
   decimalMoneyToMinor,
+  openCheckoutQuote,
+  sameCommercialCheckoutQuote,
+  sealCheckoutQuote,
   type CheckoutBillingPeriod,
+  type CheckoutQuoteSet,
 } from "@/lib/checkout/checkoutQuote"
 import { checkAndRecordPreviewDomainOrder, requireReadyPreviewDomainOrder, suggestAvailablePreviewDomainBatch } from "@/lib/domains/previewDomainOrder"
 import {
-  fixedDomainOrderPriceFromEnv,
   normalizeDomainOrderState,
   type FixedDomainOrderPrice,
 } from "@/lib/domains/orderState"
@@ -32,6 +35,7 @@ import { createOrderAndAcceptanceEvidence, createSiteApprovalEvidence } from "@/
 import { satisfyRequirementsFromTransaction } from "@/lib/legal/customerRequirements"
 import { createMollieCheckoutForGenerationRun } from "@/lib/payments/molliePayments"
 import { MollieApiError } from "@/lib/payments/mollieAdapter"
+import { normalizeGenerationRunPaymentState } from "@/lib/payments/generationRunPayment"
 import { logPreviewCheckoutTiming, startPreviewCheckoutTimer } from "@/lib/preview/domainCheckoutTiming"
 import { requirePreviewCheckoutContext } from "./previewCheckoutContext"
 
@@ -46,7 +50,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -55,6 +59,7 @@ export type PreviewCheckoutActionState = {
   extraFeeLabel?: string | null
   totalPriceLabel?: string | null
   domainSurchargeNetMinor?: number
+  quotes?: CheckoutQuoteSet
   requestToken?: string
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
@@ -68,6 +73,7 @@ export type PreviewCheckoutProfileActionState = {
   profile?: CheckoutProfileView
   currentProfile?: CheckoutProfileView
   fieldErrors?: Record<string, string>
+  quotes?: CheckoutQuoteSet
 }
 
 export type PreviewCheckoutSuggestionsState = {
@@ -88,22 +94,41 @@ const formatMoney = (locale: string, price: FixedDomainOrderPrice | null): strin
   }).format(amount)
 }
 
-const addMoney = (base: FixedDomainOrderPrice, extra: FixedDomainOrderPrice | null): FixedDomainOrderPrice => {
-  if (!extra || extra.currency !== base.currency) return base
-  const baseCents = Math.round(Number(base.amount) * 100)
-  const extraCents = Math.round(Number(extra.amount) * 100)
-  if (!Number.isFinite(baseCents) || !Number.isFinite(extraCents)) return base
-  const totalCents = baseCents + extraCents
-  return {
-    amount: `${Math.floor(totalCents / 100)}.${String(totalCents % 100).padStart(2, "0")}`,
-    currency: base.currency,
-  }
-}
-
 const catalogDomainAllowance = (): FixedDomainOrderPrice => ({
   amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
   currency: COMMERCIAL_CATALOG.currency,
 })
+
+const checkoutQuoteSigningSecret = (): string => {
+  const secret = process.env.PAYLOAD_SECRET?.trim()
+  if (!secret) throw new Error("PAYLOAD_SECRET is required to issue checkout quotes.")
+  return secret
+}
+
+const issueCheckoutQuoteSet = (input: {
+  domain: string
+  providerPriceNetMinor: number
+  providerQuotedAt: string
+  profileVersion: number
+  draftVersion: string
+  now?: Date
+}): CheckoutQuoteSet => {
+  const secret = checkoutQuoteSigningSecret()
+  const issue = (billingPeriod: CheckoutBillingPeriod) =>
+    sealCheckoutQuote(buildCheckoutQuote({
+      billingPeriod,
+      providerOperationPriceNetMinor: input.providerPriceNetMinor,
+      selectedDomain: input.domain,
+      providerQuotedAt: input.providerQuotedAt,
+      profileVersion: input.profileVersion,
+      draftVersion: input.draftVersion,
+      now: input.now,
+    }), secret)
+  return {
+    monthly: issue("monthly"),
+    annual: issue("annual"),
+  }
+}
 
 const safeCheckoutErrorMessage = (
   error: unknown,
@@ -176,7 +201,25 @@ export async function checkPreviewCheckoutDomainAction(
     const extraFee = result.extraFeeAmount && result.extraFeeCurrency
       ? { amount: result.extraFeeAmount, currency: result.extraFeeCurrency }
       : null
-    const totalPrice = addMoney(fixedDomainOrderPriceFromEnv(), extraFee)
+    const canCheckout = result.messageKey === "checkoutDomainAvailable" ||
+      result.messageKey === "checkoutDomainAvailableExtraFee"
+    let quotes: CheckoutQuoteSet | undefined
+    if (canCheckout) {
+      if (
+        !result.providerPriceAmount ||
+        result.providerPriceCurrency !== COMMERCIAL_CATALOG.currency
+      ) {
+        throw new Error("Checkout domain price is unavailable for the commercial quote.")
+      }
+      const profile = await loadLatestCheckoutProfile(context.payload, context.run.id)
+      quotes = issueCheckoutQuoteSet({
+        domain: result.domain,
+        providerPriceNetMinor: decimalMoneyToMinor(result.providerPriceAmount),
+        providerQuotedAt: result.providerQuotedAt,
+        profileVersion: profile?.profileVersion ?? 0,
+        draftVersion: String(context.run.updatedAt ?? result.providerQuotedAt),
+      })
+    }
     const response = {
       ok: result.messageKey === "checkoutDomainAvailable" || result.messageKey === "checkoutDomainAvailableExtraFee",
       status: domainStatusFromMessageKey(result.messageKey),
@@ -189,10 +232,16 @@ export async function checkPreviewCheckoutDomainAction(
       extraFeeAmount: result.extraFeeAmount,
       extraFeeCurrency: result.extraFeeCurrency,
       extraFeeLabel: formatMoney(locale, extraFee),
-      totalPriceLabel: formatMoney(locale, totalPrice),
+      totalPriceLabel: quotes
+        ? formatMoney(locale, {
+            amount: (quotes.annual.quote.grossAmountMinor / 100).toFixed(2),
+            currency: quotes.annual.quote.currency,
+          })
+        : null,
       domainSurchargeNetMinor: result.extraFeeAmount
         ? decimalMoneyToMinor(result.extraFeeAmount)
         : 0,
+      quotes,
       requestToken,
       suggestions: [],
     }
@@ -284,6 +333,36 @@ export async function savePreviewCheckoutProfileAction(
       currentProfile: saved.currentProfile,
     }
   }
+  const selectedDomain = String(formData.get("domain") ?? "").trim().toLowerCase()
+  let quotes: CheckoutQuoteSet | undefined
+  if (selectedDomain) {
+    const refreshed = await checkAndRecordPreviewDomainOrder(
+      context.payload,
+      context.run,
+      selectedDomain,
+      null,
+      {
+        record: false,
+        includedProviderPrice: catalogDomainAllowance(),
+      },
+    )
+    if (
+      (
+        refreshed.messageKey === "checkoutDomainAvailable" ||
+        refreshed.messageKey === "checkoutDomainAvailableExtraFee"
+      ) &&
+      refreshed.providerPriceAmount &&
+      refreshed.providerPriceCurrency === COMMERCIAL_CATALOG.currency
+    ) {
+      quotes = issueCheckoutQuoteSet({
+        domain: refreshed.domain,
+        providerPriceNetMinor: decimalMoneyToMinor(refreshed.providerPriceAmount),
+        providerQuotedAt: refreshed.providerQuotedAt,
+        profileVersion: saved.profile.profileVersion,
+        draftVersion: String(context.run.updatedAt ?? refreshed.providerQuotedAt),
+      })
+    }
+  }
   return {
     ok: true,
     status: "saved",
@@ -292,6 +371,7 @@ export async function savePreviewCheckoutProfileAction(
       : t("checkoutProfileAlreadyCurrent"),
     requestToken,
     profile: saved.profile,
+    quotes,
   }
 }
 
@@ -357,6 +437,21 @@ export async function startPreviewCheckoutPaymentAction(
   const authStart = startPreviewCheckoutTimer()
   const context = await requirePreviewCheckoutContext(clientSlug)
   logPreviewCheckoutTiming("payment_auth", authStart, { clientSlug: context.clientSlug })
+  const currentPayment = normalizeGenerationRunPaymentState(context.run.payment)
+  if (currentPayment.status === "pending_provider") {
+    return {
+      ok: false,
+      status: "payment_pending",
+      message: t("checkoutPaymentStillPending"),
+    }
+  }
+  if (["completed", "waived"].includes(currentPayment.status)) {
+    return {
+      ok: false,
+      status: "payment_complete",
+      message: t("checkoutPaymentAlreadyComplete"),
+    }
+  }
 
   const domain = String(formData.get("domain") ?? "").trim().toLowerCase()
   if (!domain) return { ok: false, message: t("checkoutDomainRequired") }
@@ -388,6 +483,24 @@ export async function startPreviewCheckoutPaymentAction(
     return { ok: false, message: t("checkoutBillingPeriodRequired") }
   }
   const billingPeriod: CheckoutBillingPeriod = billingPeriodValue
+  const quoteToken = String(formData.get("checkoutQuoteToken") ?? "").trim()
+  if (!quoteToken) {
+    return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
+  }
+  let acceptedQuote
+  try {
+    acceptedQuote = openCheckoutQuote(quoteToken, checkoutQuoteSigningSecret())
+  } catch {
+    return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
+  }
+  if (
+    acceptedQuote.billingPeriod !== billingPeriod ||
+    acceptedQuote.selectedDomain !== domain ||
+    acceptedQuote.domainMode !== "new_registration" ||
+    acceptedQuote.draftVersion !== String(context.run.updatedAt ?? "")
+  ) {
+    return { ok: false, status: "version_conflict", message: t("checkoutQuoteVersionConflict") }
+  }
   const checkoutProfile = await loadLatestCheckoutProfile(context.payload, context.run.id)
   if (
     !checkoutProfile ||
@@ -401,6 +514,13 @@ export async function startPreviewCheckoutPaymentAction(
       status: "profile_conflict",
       message: t("checkoutProfileConflict"),
       currentProfile: checkoutProfile ? checkoutProfileView(checkoutProfile) : undefined,
+    }
+  }
+  if (acceptedQuote.profileVersion !== checkoutProfile.profileVersion) {
+    return {
+      ok: false,
+      status: "version_conflict",
+      message: t("checkoutQuoteVersionConflict"),
     }
   }
   const registrant = domainRegistrantFromCheckoutProfile(checkoutProfile)
@@ -432,17 +552,35 @@ export async function startPreviewCheckoutPaymentAction(
     if (!providerPrice || providerPrice.currency !== "EUR") {
       throw new Error("Checkout domain price is unavailable for the commercial quote.")
     }
-    const quote = buildCheckoutQuote({
+    const currentQuote = buildCheckoutQuote({
       billingPeriod,
       providerOperationPriceNetMinor: decimalMoneyToMinor(providerPrice.amount),
+      selectedDomain: ready.domain,
+      providerQuotedAt: orderState.checkedAt ?? new Date().toISOString(),
+      profileVersion: checkoutProfile.profileVersion,
+      draftVersion: acceptedQuote.draftVersion,
     })
+    if (!sameCommercialCheckoutQuote(acceptedQuote, currentQuote)) {
+      return {
+        ok: false,
+        status: "version_conflict",
+        message: t("checkoutQuoteVersionConflict"),
+        quotes: issueCheckoutQuoteSet({
+          domain: ready.domain,
+          providerPriceNetMinor: currentQuote.providerOperationPriceNetMinor,
+          providerQuotedAt: currentQuote.providerQuotedAt,
+          profileVersion: checkoutProfile.profileVersion,
+          draftVersion: currentQuote.draftVersion,
+        }),
+      }
+    }
     const legalEvidence = await createOrderAndAcceptanceEvidence({
       payload: context.payload,
       run: ready.run,
       tenant: context.tenant,
       approval: approvalEvidence.approval,
       checkoutProfile: checkoutProfile as CheckoutProfile,
-      quote,
+      quote: acceptedQuote,
       domainRegistrant: registrant,
       domain: ready.domain,
       requestId: audit.requestId,

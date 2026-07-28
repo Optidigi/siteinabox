@@ -183,6 +183,97 @@ describe("checkout profile authority", () => {
     expect(create).not.toHaveBeenCalled()
   })
 
+  it("creates a confirmed structured-name version when a legacy projection is submitted unchanged", async () => {
+    const legacy = {
+      id: 53,
+      profileKey: "run:9:checkout-profile:2",
+      profileVersion: 2,
+      generationRun: 9,
+      tenant: 7,
+      customerName: "Maria de la Cruz",
+      firstName: null,
+      lastName: null,
+      customerEmail: "owner@example.test",
+      customerPhone: "+31 30 1234567",
+      partyType: "business_in_formation",
+      contractingPartyName: "Maria de la Cruz",
+      contractingPartyKind: "natural_person",
+      domainRegistrantSource: "contracting_party",
+      intendedCompanyName: "Cruz Studio",
+      billingAddress: {
+        schemaVersion: 1,
+        street: "Markt",
+        number: "1",
+        suffix: null,
+        zipcode: "1234 AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+      },
+      createdAt: "2026-07-26T12:00:00.000Z",
+      updatedAt: "2026-07-26T12:00:00.000Z",
+    } as CheckoutProfile
+    const create = vi.fn(async ({ data }) => ({ id: 54, ...data }))
+    const payload = asPayload({
+      find: vi.fn(async () => ({ docs: [legacy] })),
+      create,
+    })
+    const visibleDraft = checkoutProfileView(legacy)
+
+    const result = await saveCheckoutProfileVersion({
+      payload,
+      generationRunId: 9,
+      tenantId: 7,
+      actorEmail: "owner@example.test",
+      expectedProfileVersion: 2,
+      draft: {
+        partyType: visibleDraft.partyType,
+        firstName: visibleDraft.firstName,
+        lastName: visibleDraft.lastName,
+        registeredBusinessName: visibleDraft.registeredBusinessName,
+        kvkNumber: visibleDraft.kvkNumber,
+        intendedCompanyName: visibleDraft.intendedCompanyName,
+        street: visibleDraft.street,
+        number: visibleDraft.number,
+        suffix: visibleDraft.suffix,
+        zipcode: visibleDraft.zipcode,
+        city: visibleDraft.city,
+        country: visibleDraft.country,
+        phoneCountryCode: visibleDraft.phoneCountryCode,
+        phoneAreaCode: visibleDraft.phoneAreaCode,
+        phoneSubscriberNumber: visibleDraft.phoneSubscriberNumber,
+      },
+      requestId: "req-confirm-name",
+      now: new Date("2026-07-28T12:00:00.000Z"),
+    })
+
+    expect(result).toMatchObject({
+      status: "saved",
+      created: true,
+      profile: {
+        profileVersion: 3,
+        firstName: "Maria de la",
+        lastName: "Cruz",
+      },
+    })
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      collection: "checkout-profiles",
+      data: expect.objectContaining({
+        firstName: "Maria de la",
+        lastName: "Cruz",
+        supersedesProfileKey: legacy.profileKey,
+      }),
+    }))
+    expect(domainRegistrantFromCheckoutProfile(
+      (await create.mock.results[0]?.value) as CheckoutProfile,
+    )).toMatchObject({
+      firstName: "Maria de la",
+      lastName: "Cruz",
+    })
+  })
+
   it("projects incomplete pre-Phase-3 profiles for visible correction without treating them as registrant-ready", () => {
     const legacyProfile = {
       id: 51,
@@ -209,11 +300,47 @@ describe("checkout profile authority", () => {
     expect(() => domainRegistrantFromCheckoutProfile(legacyProfile)).toThrow()
   })
 
+  it("fails closed for a complete legacy compound name until structured names are confirmed", () => {
+    const legacyProfile = {
+      id: 52,
+      profileKey: "run:9:profile:2",
+      profileVersion: 2,
+      generationRun: 9,
+      customerName: "Maria de la Cruz",
+      customerEmail: "owner@example.test",
+      partyType: "business_in_formation",
+      contractingPartyName: "Maria de la Cruz",
+      contractingPartyKind: "natural_person",
+      domainRegistrantSource: "contracting_party",
+      intendedCompanyName: "Cruz Studio",
+      billingAddress: {
+        schemaVersion: 1,
+        street: "Markt",
+        number: "1",
+        suffix: null,
+        zipcode: "1234 AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+      },
+      createdAt: "2026-07-26T12:00:00.000Z",
+      updatedAt: "2026-07-26T12:00:00.000Z",
+    } as CheckoutProfile
+
+    expect(() => domainRegistrantFromCheckoutProfile(legacyProfile)).toThrow(
+      "confirmed structured first and last names",
+    )
+  })
+
   it("derives registrant identity from the persisted profile classification", () => {
     const registered = domainRegistrantFromCheckoutProfile({
       profileKey: "profile-1",
       profileVersion: 1,
       customerName: "Ada Lovelace",
+      firstName: "Ada",
+      lastName: "Lovelace",
       customerEmail: "owner@example.test",
       partyType: "registered_business",
       contractingPartyName: "Analytical Engines B.V.",
@@ -244,6 +371,8 @@ describe("checkout profile authority", () => {
       profileKey: "profile-2",
       profileVersion: 2,
       customerName: "Ada Lovelace",
+      firstName: "Ada",
+      lastName: "Lovelace",
       customerEmail: "owner@example.test",
       partyType: "business_in_formation",
       contractingPartyName: "Ada Lovelace",
@@ -268,4 +397,43 @@ describe("checkout profile authority", () => {
       lastName: "Lovelace",
     })
   })
+
+  it.each(["registered_business", "business_in_formation"] as const)(
+    "preserves structured compound names for %s registrants",
+    (partyType) => {
+      const registrant = domainRegistrantFromCheckoutProfile({
+        profileKey: `profile-${partyType}`,
+        profileVersion: 3,
+        customerName: "Maria de la Cruz",
+        firstName: "Maria",
+        lastName: "de la Cruz",
+        customerEmail: "maria@example.test",
+        partyType,
+        contractingPartyName: partyType === "registered_business"
+          ? "Cruz Studio B.V."
+          : "Maria de la Cruz",
+        kvkNumber: partyType === "registered_business" ? "12345678" : null,
+        intendedCompanyName: partyType === "business_in_formation"
+          ? "Cruz Studio"
+          : null,
+        billingAddress: {
+          schemaVersion: 1,
+          street: "Markt",
+          number: "1",
+          suffix: null,
+          zipcode: "1234 AB",
+          city: "Utrecht",
+          country: "NL",
+          phoneCountryCode: "+31",
+          phoneAreaCode: "30",
+          phoneSubscriberNumber: "1234567",
+        },
+      })
+
+      expect(registrant).toMatchObject({
+        firstName: "Maria",
+        lastName: "de la Cruz",
+      })
+    },
+  )
 })

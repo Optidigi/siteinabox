@@ -31,6 +31,7 @@ import type {
   CheckoutProfileDraft,
   CheckoutProfileView,
 } from "@/lib/checkout/checkoutProfile"
+import type { CheckoutQuoteSet } from "@/lib/checkout/checkoutQuote"
 import { previewDomainCandidates } from "@/lib/domains/previewDomainCandidates"
 
 export type PreviewCheckoutDomainOption = {
@@ -44,7 +45,7 @@ export type PreviewCheckoutDomainOption = {
 export type PreviewCheckoutActionState = {
   ok: boolean
   message: string
-  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
+  status?: "idle" | "available" | "available_extra" | "unavailable" | "premium" | "invalid" | "service_error" | "payment_error" | "payment_pending" | "payment_complete" | "redirecting" | "profile_conflict" | "version_conflict"
   checkoutUrl?: string
   domain?: string
   included?: boolean
@@ -53,6 +54,7 @@ export type PreviewCheckoutActionState = {
   extraFeeLabel?: string | null
   totalPriceLabel?: string | null
   domainSurchargeNetMinor?: number
+  quotes?: CheckoutQuoteSet
   requestToken?: string
   currentProfile?: CheckoutProfileView
   suggestions?: PreviewCheckoutDomainOption[]
@@ -66,6 +68,7 @@ export type PreviewCheckoutProfileActionState = {
   profile?: CheckoutProfileView
   currentProfile?: CheckoutProfileView
   fieldErrors?: Record<string, string>
+  quotes?: CheckoutQuoteSet
 }
 
 export type PreviewCheckoutSuggestionsState = {
@@ -88,6 +91,7 @@ type PreviewCheckoutProfileAction = (
 
 type CheckoutStep = "domain" | "details" | "overview"
 type BillingPeriod = "monthly" | "annual"
+const checkoutStepOrder: CheckoutStep[] = ["domain", "details", "overview"]
 
 export type PreviewCheckoutCatalog = {
   version: string
@@ -110,7 +114,9 @@ type PreviewCheckoutProps = {
   domainReady?: boolean
   initialProfile?: CheckoutProfileView | null
   initialDetails: CheckoutProfileDraft
-  initialDomainSurchargeNetMinor?: number
+  initialQuotes?: CheckoutQuoteSet | null
+  initialStep?: CheckoutStep
+  paymentReturn?: boolean
   catalog: PreviewCheckoutCatalog
   paymentStatus: string
   previewHref: string
@@ -155,13 +161,32 @@ const money = (locale: string, minor: number, currency: string): string =>
 const nextRequestToken = (): string =>
   globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
 
+const checkoutFieldId = (field: string): string | null => ({
+  firstName: "checkout-first-name",
+  lastName: "checkout-last-name",
+  registeredBusinessName: "checkout-business-name",
+  kvkNumber: "checkout-kvk",
+  intendedCompanyName: "checkout-intended-company",
+  street: "checkout-street",
+  number: "checkout-number",
+  suffix: "checkout-suffix",
+  zipcode: "checkout-postcode",
+  city: "checkout-city",
+  country: "checkout-country",
+  phoneCountryCode: "checkout-phone-country",
+  phoneAreaCode: "checkout-phone-area",
+  phoneSubscriberNumber: "checkout-phone-number",
+} as Record<string, string>)[field] ?? null
+
 export function PreviewCheckout({
   customerEmail,
   currentDomain,
   domainReady = false,
   initialProfile,
   initialDetails,
-  initialDomainSurchargeNetMinor = 0,
+  initialQuotes = null,
+  initialStep = "domain",
+  paymentReturn = false,
   catalog,
   paymentStatus,
   previewHref,
@@ -179,7 +204,10 @@ export function PreviewCheckout({
   locale,
 }: PreviewCheckoutProps) {
   const t = useTranslations("preview")
-  const [step, setStep] = React.useState<CheckoutStep>("domain")
+  const [step, setStep] = React.useState<CheckoutStep>(initialStep)
+  const [highestReachedStep, setHighestReachedStep] = React.useState(
+    checkoutStepOrder.indexOf(initialStep),
+  )
   const [checkState, checkAction, checkPending] = useActionState(
     checkDomainAction,
     initialActionState,
@@ -200,6 +228,7 @@ export function PreviewCheckout({
   )
   const [detailsDirty, setDetailsDirty] = React.useState(!initialProfile)
   const [billingPeriod, setBillingPeriod] = React.useState<BillingPeriod>("annual")
+  const [quotes, setQuotes] = React.useState<CheckoutQuoteSet | null>(initialQuotes)
   const [suggestionsState, setSuggestionsState] =
     React.useState<PreviewCheckoutSuggestionsState>(initialSuggestionsState)
   const [suggestionsPending, setSuggestionsPending] = React.useState(false)
@@ -213,6 +242,7 @@ export function PreviewCheckout({
   const latestProfileRequestTokenRef = React.useRef<string | null>(null)
   const paymentFormRef = React.useRef<HTMLFormElement | null>(null)
   const stepHeadingRef = React.useRef<HTMLHeadingElement | null>(null)
+  const profileErrorSummaryRef = React.useRef<HTMLDivElement | null>(null)
   const lastSubmittedDomainRef = React.useRef<string | null>(readyDomain)
   const [paymentSubmitRequested, setPaymentSubmitRequested] = React.useState(false)
   const [previewApprovalAccepted, setPreviewApprovalAccepted] = React.useState(false)
@@ -253,6 +283,7 @@ export function PreviewCheckout({
     ) {
       setCheckedDomain(checkState.domain)
       setDomainValue(checkState.domain)
+      setQuotes(checkState.quotes ?? null)
     }
   }, [checkState, checkTokenIsCurrent, normalizedDomainValue])
 
@@ -279,6 +310,7 @@ export function PreviewCheckout({
       setSavedProfile(profileState.profile)
       setDetails(profileState.profile)
       setDetailsDirty(false)
+      if (profileState.quotes) setQuotes(profileState.quotes)
       setStep("overview")
       return
     }
@@ -296,8 +328,33 @@ export function PreviewCheckout({
   }, [paymentState, paymentSubmitRequested])
 
   React.useEffect(() => {
-    stepHeadingRef.current?.focus()
-  }, [step])
+    if (paymentState.status !== "version_conflict" || !paymentState.quotes) return
+    setQuotes(paymentState.quotes)
+    setPreviewApprovalAccepted(false)
+    setTermsAccepted(false)
+    setBusinessUseAccepted(false)
+  }, [paymentState])
+
+  React.useEffect(() => {
+    if (profileState.status !== "invalid") {
+      stepHeadingRef.current?.focus()
+    }
+    setHighestReachedStep((current) =>
+      Math.max(current, checkoutStepOrder.indexOf(step)),
+    )
+  }, [profileState.status, step])
+
+  React.useEffect(() => {
+    if (
+      profileState.status === "invalid" &&
+      (
+        !profileState.requestToken ||
+        profileState.requestToken === latestProfileRequestTokenRef.current
+      )
+    ) {
+      profileErrorSummaryRef.current?.focus()
+    }
+  }, [profileState])
 
   React.useEffect(() => {
     if (step !== "domain" || !domainLooksCheckable) return
@@ -437,6 +494,7 @@ export function PreviewCheckout({
       : []
   const domainIsReady = Boolean(
     selectedDomain &&
+    quotes &&
     ((checkState.ok && checkAppliesToCurrentInput) || selectedDomain === readyDomain),
   )
   const domainResultKind = checkPending
@@ -464,17 +522,10 @@ export function PreviewCheckout({
       : domainInputState === "error"
         ? "checkout-domain-error"
         : undefined
-  const domainSurchargeNetMinor = checkAppliesToCurrentInput
-    ? checkState.domainSurchargeNetMinor ?? 0
-    : selectedDomain === readyDomain
-      ? initialDomainSurchargeNetMinor
-      : 0
-  const plan = catalog.plans[billingPeriod]
-  const netAmountMinor = plan.netAmountMinor + domainSurchargeNetMinor
-  const vatAmountMinor = Math.round(
-    (netAmountMinor * catalog.vatRateBasisPoints) / 10_000,
-  )
-  const grossAmountMinor = netAmountMinor + vatAmountMinor
+  const selectedQuote = quotes?.[billingPeriod] ?? null
+  const netAmountMinor = selectedQuote?.quote.netAmountMinor ?? 0
+  const vatAmountMinor = selectedQuote?.quote.vatAmountMinor ?? 0
+  const grossAmountMinor = selectedQuote?.quote.grossAmountMinor ?? 0
 
   const updateDomain = (value: string) => {
     suggestionsAbortRef.current?.abort()
@@ -484,6 +535,7 @@ export function PreviewCheckout({
     setDomainValue(value)
     if (value.trim().toLowerCase() !== checkedDomain) {
       setCheckedDomain(null)
+      setQuotes(null)
       if (step !== "domain") setStep("domain")
     }
   }
@@ -537,7 +589,27 @@ export function PreviewCheckout({
       </header>
 
       <div className="mx-auto grid w-full max-w-4xl gap-4 p-3 md:p-4">
-        <PreviewCheckoutStepper step={step} />
+        <PreviewCheckoutStepper
+          step={step}
+          highestReachedStep={highestReachedStep}
+          onStepSelect={setStep}
+        />
+
+        {paymentReturn && (
+          <Alert role="status" aria-live="polite">
+            <Info className="size-4" aria-hidden />
+            <AlertTitle>{t("checkoutPaymentReturnTitle")}</AlertTitle>
+            <AlertDescription>
+              {paymentStatus === "completed"
+                ? t("checkoutPaymentReturnCompleted")
+                : paymentStatus === "pending_provider"
+                  ? t("checkoutPaymentReturnPending")
+                  : ["failed", "canceled", "cancelled", "expired"].includes(paymentStatus)
+                    ? t("checkoutPaymentReturnFailed")
+                    : t("checkoutPaymentReturnUnknown")}
+            </AlertDescription>
+          </Alert>
+        )}
 
         {step === "domain" && (
           <Card>
@@ -662,6 +734,7 @@ export function PreviewCheckout({
                 }}
               >
                 <input ref={profileRequestTokenRef} type="hidden" name="requestToken" />
+                <input type="hidden" name="domain" value={selectedDomain ?? domainValue} />
                 <input
                   type="hidden"
                   name="expectedProfileVersion"
@@ -681,19 +754,54 @@ export function PreviewCheckout({
                 )}
 
                 {profileState.message && (
-                  <Alert
-                    variant={profileState.ok ? "default" : "destructive"}
-                    role={profileState.ok ? "status" : "alert"}
+                  <div
+                    ref={profileErrorSummaryRef}
+                    tabIndex={profileState.ok ? undefined : -1}
+                    aria-label={
+                      profileState.ok ? undefined : t("checkoutErrorSummaryLabel")
+                    }
+                    className="outline-none"
                   >
-                    <AlertTitle>
-                      {profileState.status === "conflict"
-                        ? t("checkoutProfileConflictTitle")
-                        : profileState.ok
-                          ? t("checkoutProfileSavedTitle")
-                          : t("checkoutDetailsErrorTitle")}
-                    </AlertTitle>
+                    <Alert
+                      variant={profileState.ok ? "default" : "destructive"}
+                      role={profileState.ok ? "status" : "alert"}
+                    >
+                      <AlertTitle>
+                        {profileState.status === "conflict"
+                          ? t("checkoutProfileConflictTitle")
+                          : profileState.ok
+                            ? t("checkoutProfileSavedTitle")
+                            : t("checkoutDetailsErrorTitle")}
+                      </AlertTitle>
                     <AlertDescription>{profileState.message}</AlertDescription>
+                    {!profileState.ok && profileState.fieldErrors && (
+                      <ul
+                        className="mt-2 list-disc space-y-1 pl-5"
+                      >
+                        {Object.entries(profileState.fieldErrors).map(([field, message]) => {
+                          const target = checkoutFieldId(field)
+                          return (
+                            <li key={field}>
+                              {target ? (
+                                <a
+                                  href={`#${target}`}
+                                  className="underline underline-offset-2"
+                                  onClick={() => {
+                                    window.setTimeout(() => {
+                                      document.getElementById(target)?.focus()
+                                    }, 0)
+                                  }}
+                                >
+                                  {message}
+                                </a>
+                              ) : message}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
                   </Alert>
+                  </div>
                 )}
 
                 <fieldset className="grid gap-3">
@@ -931,7 +1039,7 @@ export function PreviewCheckout({
               <fieldset className="grid gap-3">
                 <legend className="text-base font-semibold">{t("checkoutPlanLegend")}</legend>
                 {(["annual", "monthly"] as const).map((period) => {
-                  const option = catalog.plans[period]
+                  const option = quotes?.[period]?.quote
                   return (
                     <label
                       key={period}
@@ -956,7 +1064,11 @@ export function PreviewCheckout({
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {t("checkoutPlanPriceExVat", {
-                            price: money(locale, option.netAmountMinor, catalog.currency),
+                            price: money(
+                              locale,
+                              option?.planPriceNetMinor ?? 0,
+                              option?.currency ?? catalog.currency,
+                            ),
                           })}
                         </span>
                       </span>
@@ -985,6 +1097,52 @@ export function PreviewCheckout({
                       : t("checkoutPartyInFormation")
                   }
                 />
+                {selectedQuote && (
+                  <>
+                    <ReviewRow
+                      label={t("checkoutSummaryPlanExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.planPriceNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <ReviewRow
+                      label={t("checkoutSummaryProviderDomainExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.providerOperationPriceNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <ReviewRow
+                      label={t("checkoutSummaryDomainAllowanceExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.domainIncludedAllowanceNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <ReviewRow
+                      label={t("checkoutSummaryDomainSurchargeExVat")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.domainSurchargeNetMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    {selectedQuote.quote.migrationServiceFeeNetMinor > 0 && (
+                      <ReviewRow
+                        label={t("checkoutSummaryMigrationExVat")}
+                        value={money(
+                          locale,
+                          selectedQuote.quote.migrationServiceFeeNetMinor,
+                          selectedQuote.quote.currency,
+                        )}
+                      />
+                    )}
+                  </>
+                )}
                 <ReviewRow
                   label={t("checkoutSummaryNet")}
                   value={money(locale, netAmountMinor, catalog.currency)}
@@ -998,6 +1156,29 @@ export function PreviewCheckout({
                   value={money(locale, grossAmountMinor, catalog.currency)}
                   strong
                 />
+                {selectedQuote && (
+                  <>
+                    <ReviewRow
+                      label={t("checkoutSummaryFutureSubscription")}
+                      value={money(
+                        locale,
+                        selectedQuote.quote.futureSubscriptionGrossMinor,
+                        selectedQuote.quote.currency,
+                      )}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      {selectedQuote.quote.domainRenewalExplanation}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("checkoutQuoteValidUntil", {
+                        date: new Intl.DateTimeFormat(locale, {
+                          dateStyle: "short",
+                          timeStyle: "short",
+                        }).format(new Date(selectedQuote.quote.quoteExpiresAt)),
+                      })}
+                    </p>
+                  </>
+                )}
               </div>
 
               <form
@@ -1010,6 +1191,11 @@ export function PreviewCheckout({
                 <input type="hidden" name="expectedProfileKey" value={savedProfile.profileKey} />
                 <input type="hidden" name="expectedProfileVersion" value={savedProfile.profileVersion} />
                 <input type="hidden" name="billingPeriod" value={billingPeriod} />
+                <input
+                  type="hidden"
+                  name="checkoutQuoteToken"
+                  value={selectedQuote?.token ?? ""}
+                />
                 <input type="hidden" name="previewApproval" value={previewApprovalAccepted ? "accepted" : ""} />
                 <input type="hidden" name="termsAcceptance" value={termsAccepted ? "accepted" : ""} />
                 <input type="hidden" name="businessUseAcceptance" value={businessUseAccepted ? "accepted" : ""} />
@@ -1088,6 +1274,7 @@ export function PreviewCheckout({
         step={step}
         canContinueFromDomain={domainIsReady}
         profileReady={Boolean(savedProfile && !detailsDirty)}
+        quoteReady={Boolean(selectedQuote)}
         selectedDomain={selectedDomain}
         checkPending={checkPending}
         profilePending={profilePending}
@@ -1097,7 +1284,11 @@ export function PreviewCheckout({
         legalAccepted={
           previewApprovalAccepted && termsAccepted && businessUseAccepted
         }
-        totalPriceLabel={money(locale, grossAmountMinor, catalog.currency)}
+        totalPriceLabel={money(
+          locale,
+          grossAmountMinor,
+          selectedQuote?.quote.currency ?? catalog.currency,
+        )}
         previewHref={previewHref}
         onBack={goBack}
         onDomainNext={() => setStep("details")}
@@ -1108,20 +1299,38 @@ export function PreviewCheckout({
   )
 }
 
-function PreviewCheckoutStepper({ step }: { step: CheckoutStep }) {
+function PreviewCheckoutStepper({
+  step,
+  highestReachedStep,
+  onStepSelect,
+}: {
+  step: CheckoutStep
+  highestReachedStep: number
+  onStepSelect: (step: CheckoutStep) => void
+}) {
   const t = useTranslations("preview")
   const steps: Array<{ id: CheckoutStep; label: string; icon: React.ElementType }> = [
     { id: "domain", label: t("checkoutStepDomain"), icon: Globe2 },
     { id: "details", label: t("checkoutStepDetails"), icon: UserRound },
     { id: "overview", label: t("checkoutStepSubscriptionOverview"), icon: ReceiptText },
   ]
-  return <CheckoutStepper steps={steps} activeStep={step} />
+  return (
+    <CheckoutStepper
+      steps={steps}
+      activeStep={step}
+      reachableSteps={steps
+        .slice(0, highestReachedStep + 1)
+        .map((entry) => entry.id)}
+      onStepSelect={onStepSelect}
+    />
+  )
 }
 
 function CheckoutActionBar({
   step,
   canContinueFromDomain,
   profileReady,
+  quoteReady,
   selectedDomain,
   checkPending,
   profilePending,
@@ -1139,6 +1348,7 @@ function CheckoutActionBar({
   step: CheckoutStep
   canContinueFromDomain: boolean
   profileReady: boolean
+  quoteReady: boolean
   selectedDomain: string | null
   checkPending: boolean
   profilePending: boolean
@@ -1210,13 +1420,22 @@ function CheckoutActionBar({
       </Button>
     )
   } else {
-    const complete = paymentStatus === "completed"
+  const complete = paymentStatus === "completed"
+  const paymentInProgress = ["pending_provider", "open", "authorized"].includes(paymentStatus)
     primary = (
       <Button
         type="button"
         variant="success"
         className="min-w-0 flex-1 md:flex-none"
-        disabled={paymentPending || !selectedDomain || !profileReady || !legalAccepted || complete}
+        disabled={
+          paymentPending ||
+          !selectedDomain ||
+          !profileReady ||
+          !quoteReady ||
+          !legalAccepted ||
+          paymentInProgress ||
+          complete
+        }
         onClick={onPay}
       >
         {paymentPending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <CreditCard className="size-4" aria-hidden />}

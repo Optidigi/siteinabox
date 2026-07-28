@@ -49,6 +49,9 @@ export type PreviewDomainOrderResult = {
   included: boolean
   extraFeeAmount: string | null
   extraFeeCurrency: string | null
+  providerPriceAmount: string | null
+  providerPriceCurrency: string | null
+  providerQuotedAt: string
   suggestions: PreviewDomainSuggestion[]
 }
 
@@ -232,6 +235,9 @@ export async function checkAndRecordPreviewDomainOrder(
     included: includedPrice,
     extraFeeAmount: extraFee?.amount ?? null,
     extraFeeCurrency: extraFee?.currency ?? null,
+    providerPriceAmount: providerPrice?.amount ?? null,
+    providerPriceCurrency: providerPrice?.currency ?? null,
+    providerQuotedAt: now,
     suggestions: [],
     messageKey: includedPrice
       ? "checkoutDomainAvailable"

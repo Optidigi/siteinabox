@@ -108,20 +108,26 @@ const billingAddressFromDraft = (draft: CheckoutProfileDraft): BillingAddress =>
 
 const draftFromProfile = (profile: {
   customerName?: unknown
+  firstName?: unknown
+  lastName?: unknown
   partyType?: unknown
   contractingPartyName?: unknown
   kvkNumber?: unknown
   intendedCompanyName?: unknown
   billingAddress?: unknown
 }): CheckoutProfileDraft => {
+  const explicitFirstName = nullableText(profile.firstName)
+  const explicitLastName = nullableText(profile.lastName)
   const nameParts = String(profile.customerName ?? "").trim().split(/\s+/).filter(Boolean)
   const address = isRecord(profile.billingAddress) ? profile.billingAddress : {}
   const partyType: ContractingPartyType =
     profile.partyType === "registered_business" ? "registered_business" : "business_in_formation"
   return {
     partyType,
-    firstName: nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0] ?? "",
-    lastName: nameParts.length > 1 ? nameParts.at(-1) ?? "" : "",
+    firstName: explicitFirstName ??
+      (nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0] ?? ""),
+    lastName: explicitLastName ??
+      (nameParts.length > 1 ? nameParts.at(-1) ?? "" : ""),
     registeredBusinessName: partyType === "registered_business"
       ? String(profile.contractingPartyName ?? "")
       : "",
@@ -201,7 +207,12 @@ export async function saveCheckoutProfileVersion(input: {
     if (!current) throw new Error("Checkout profile version conflict could not be resolved.")
     return { status: "conflict", currentProfile: checkoutProfileView(current) }
   }
-  if (current && sameDraft(draftFromProfile(current), draft)) {
+  if (
+    current &&
+    nullableText(current.firstName) &&
+    nullableText(current.lastName) &&
+    sameDraft(draftFromProfile(current), draft)
+  ) {
     return { status: "saved", profile: checkoutProfileView(current), created: false }
   }
 
@@ -219,6 +230,8 @@ export async function saveCheckoutProfileVersion(input: {
         generationRun: input.generationRunId,
         tenant: input.tenantId ?? undefined,
         customerName,
+        firstName: draft.firstName,
+        lastName: draft.lastName,
         customerEmail: actorEmail,
         customerPhone: `${draft.phoneCountryCode} ${draft.phoneAreaCode} ${draft.phoneSubscriberNumber}`,
         partyType: draft.partyType,
@@ -273,6 +286,8 @@ export type CheckoutProfileIdentity = Pick<
   | "profileKey"
   | "profileVersion"
   | "customerName"
+  | "firstName"
+  | "lastName"
   | "customerEmail"
   | "partyType"
   | "contractingPartyName"
@@ -284,17 +299,18 @@ export type CheckoutProfileIdentity = Pick<
 export function domainRegistrantFromCheckoutProfile(
   profile: CheckoutProfileIdentity,
 ): DomainRegistrantDetails {
+  if (!nullableText(profile.firstName) || !nullableText(profile.lastName)) {
+    throw new Error(
+      "Authoritative checkout profile requires confirmed structured first and last names.",
+    )
+  }
   const draft = checkoutProfileDraftSchema.parse(draftFromProfile(profile))
-  const naturalPersonName = profile.partyType === "business_in_formation"
-    ? String(profile.contractingPartyName)
-    : profile.customerName
-  const parts = naturalPersonName.trim().split(/\s+/).filter(Boolean)
   const registrant = normalizeDomainRegistrantDetails({
     companyName: profile.partyType === "registered_business"
       ? profile.contractingPartyName
       : null,
-    firstName: parts.length > 1 ? parts.slice(0, -1).join(" ") : parts[0],
-    lastName: parts.length > 1 ? parts.at(-1) : null,
+    firstName: draft.firstName,
+    lastName: draft.lastName,
     email: profile.customerEmail,
     street: draft.street,
     number: draft.number,

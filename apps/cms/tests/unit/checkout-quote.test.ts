@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest"
 
-import { buildCheckoutQuote } from "@/lib/checkout/checkoutQuote"
+import {
+  buildCheckoutQuote,
+  openCheckoutQuote,
+  sameCommercialCheckoutQuote,
+  sealCheckoutQuote,
+} from "@/lib/checkout/checkoutQuote"
+
+const quoteContext = {
+  selectedDomain: "example.nl",
+  providerQuotedAt: "2026-07-28T10:00:00.000Z",
+  draftVersion: "draft-1",
+  now: new Date("2026-07-28T10:00:00.000Z"),
+}
 
 describe("Phase 3 checkout quote", () => {
   it("quotes monthly and annual subscriptions from the versioned catalog", () => {
     expect(buildCheckoutQuote({
       billingPeriod: "monthly",
       providerOperationPriceNetMinor: 1_000,
+      ...quoteContext,
     })).toMatchObject({
       catalogVersion: "2026-07-26.1",
       packageCode: "siteinabox-monthly",
@@ -17,6 +30,7 @@ describe("Phase 3 checkout quote", () => {
     expect(buildCheckoutQuote({
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_000,
+      ...quoteContext,
     })).toMatchObject({
       packageCode: "siteinabox-annual",
       netAmountMinor: 19_000,
@@ -29,6 +43,7 @@ describe("Phase 3 checkout quote", () => {
     expect(buildCheckoutQuote({
       billingPeriod: "monthly",
       providerOperationPriceNetMinor: 1_250,
+      ...quoteContext,
     })).toMatchObject({
       netAmountMinor: 2_150,
       vatAmountMinor: 452,
@@ -45,6 +60,7 @@ describe("Phase 3 checkout quote", () => {
       billingPeriod: "monthly",
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "assisted_standard",
+      ...quoteContext,
     })).toMatchObject({
       migrationClassification: "assisted_standard",
       netAmountMinor: 6_800,
@@ -63,6 +79,49 @@ describe("Phase 3 checkout quote", () => {
       billingPeriod: "annual",
       providerOperationPriceNetMinor: 1_000,
       migrationClassification: "complex",
+      ...quoteContext,
     })).toThrow("custom quote")
+  })
+
+  it("seals quote evidence and rejects tampering or expiry", () => {
+    const issuedAt = new Date("2026-07-28T10:00:00.000Z")
+    const envelope = sealCheckoutQuote(buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_250,
+      ...quoteContext,
+      now: issuedAt,
+    }), "quote-test-secret")
+
+    expect(openCheckoutQuote(
+      envelope.token,
+      "quote-test-secret",
+      new Date("2026-07-28T10:14:59.000Z"),
+    )).toEqual(envelope.quote)
+    expect(() => openCheckoutQuote(
+      `${envelope.token.slice(0, -1)}x`,
+      "quote-test-secret",
+      new Date("2026-07-28T10:01:00.000Z"),
+    )).toThrow("invalid")
+    expect(() => openCheckoutQuote(
+      envelope.token,
+      "quote-test-secret",
+      new Date("2026-07-28T10:15:00.000Z"),
+    )).toThrow("expired")
+  })
+
+  it("requires explicit acceptance when the provider price changes", () => {
+    const accepted = buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_000,
+      ...quoteContext,
+    })
+    const repriced = buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_250,
+      ...quoteContext,
+    })
+
+    expect(sameCommercialCheckoutQuote(accepted, accepted)).toBe(true)
+    expect(sameCommercialCheckoutQuote(accepted, repriced)).toBe(false)
   })
 })

@@ -89,8 +89,10 @@ const baseContext = (overrides: Record<string, unknown> = {}) => ({
 async function renderCheckoutProps(
   overrides: Record<string, unknown> = {},
   profile: Record<string, unknown> | null = null,
+  paymentReturn = false,
 ): Promise<PreviewCheckoutProps> {
   vi.clearAllMocks()
+  vi.stubEnv("PAYLOAD_SECRET", "checkout-page-test-secret")
   mocks.isPreviewHost.mockResolvedValue(true)
   mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
   mocks.loadPreviewGrantContext.mockResolvedValue(baseContext(overrides))
@@ -99,6 +101,7 @@ async function renderCheckoutProps(
   const { default: PreviewCheckoutPage } = await import("@/app/(frontend)/(site-preview)/[clientSlug]/checkout/page")
   const element = await PreviewCheckoutPage({
     params: Promise.resolve({ clientSlug: "AMI-CARE" }),
+    searchParams: Promise.resolve(paymentReturn ? { payment: "return" } : {}),
   })
 
   expect(element).toBeTruthy()
@@ -168,5 +171,51 @@ describe("preview checkout page domain initialization", () => {
       monthly: { netAmountMinor: 1_900 },
       annual: { netAmountMinor: 19_000 },
     })
+  })
+
+  it("returns from Mollie to the same persisted overview without trusting payment state", async () => {
+    const profile = {
+      id: 44,
+      profileKey: "run:123:checkout-profile:2",
+      profileVersion: 2,
+      generationRun: 123,
+      customerName: "Ada Lovelace",
+      customerEmail: "customer@example.com",
+      partyType: "registered_business",
+      contractingPartyName: "Analytical Engines B.V.",
+      kvkNumber: "12345678",
+      domainRegistrantSource: "contracting_party",
+      billingAddress: {
+        street: "Markt",
+        number: "1",
+        zipcode: "1234AB",
+        city: "Utrecht",
+        country: "NL",
+        phoneCountryCode: "+31",
+        phoneAreaCode: "30",
+        phoneSubscriberNumber: "1234567",
+      },
+      createdAt: "2026-07-28T10:00:00.000Z",
+    }
+    const props = await renderCheckoutProps({
+      updatedAt: "2026-07-28T10:00:00.000Z",
+      payment: { status: "pending_provider" },
+      domainOrder: {
+        status: "ready_to_register",
+        domain: "customer-selected.nl",
+        providerPriceAmount: "10.00",
+        providerPriceCurrency: "EUR",
+        checkedAt: "2026-07-28T10:00:00.000Z",
+      },
+    }, profile, true)
+
+    expect(props.initialStep).toBe("overview")
+    expect(props.initialProfile).toMatchObject({ profileVersion: 2 })
+    expect(props.initialQuotes?.annual.quote).toMatchObject({
+      selectedDomain: "customer-selected.nl",
+      profileVersion: 2,
+      grossAmountMinor: 22_990,
+    })
+    expect(props.paymentStatus).toBe("pending_provider")
   })
 })

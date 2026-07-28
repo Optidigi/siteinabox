@@ -14,7 +14,6 @@ import { previewAuth } from "@/lib/preview/betterAuth"
 import { isPreviewHost } from "@/lib/preview/previewHost"
 import { loadPreviewGrantContext, normalizePreviewClientSlug } from "@/lib/preview/previewAccess"
 import {
-  domainExtraFeeForProviderPrice,
   normalizeDomainOrderState,
   type DomainRegistrantDetails,
 } from "@/lib/domains/orderState"
@@ -23,7 +22,12 @@ import {
   loadLatestCheckoutProfile,
   type CheckoutProfileDraft,
 } from "@/lib/checkout/checkoutProfile"
-import { decimalMoneyToMinor } from "@/lib/checkout/checkoutQuote"
+import {
+  buildCheckoutQuote,
+  decimalMoneyToMinor,
+  sealCheckoutQuote,
+  type CheckoutQuoteSet,
+} from "@/lib/checkout/checkoutQuote"
 import {
   checkPreviewCheckoutDomainAction,
   savePreviewCheckoutProfileAction,
@@ -37,12 +41,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function PreviewCheckoutPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ clientSlug: string }>
+  searchParams?: Promise<{ payment?: string | string[] }>
 }) {
   if (!(await isPreviewHost())) notFound()
 
   const { clientSlug } = await params
+  const paymentReturn = (await searchParams)?.payment === "return"
   const normalizedClientSlug = normalizePreviewClientSlug(clientSlug)
   if (!normalizedClientSlug) notFound()
 
@@ -89,7 +96,14 @@ export default async function PreviewCheckoutPage({
       registrant,
       tenantName: String(context.tenant.name),
     })
-    const initialDomainSurchargeNetMinor = domainSurchargeNetMinor(domainOrder)
+    const initialQuotes = selectedDomain
+      ? initialCheckoutQuotes({
+          domain: selectedDomain,
+          domainOrder,
+          profileVersion: initialProfile?.profileVersion ?? 0,
+          draftVersion: String(context.run.updatedAt ?? domainOrder.updatedAt ?? ""),
+        })
+      : null
 
     return (
       <PreviewCheckout
@@ -98,7 +112,13 @@ export default async function PreviewCheckoutPage({
         domainReady={Boolean(selectedDomain)}
         initialProfile={initialProfile}
         initialDetails={initialDetails}
-        initialDomainSurchargeNetMinor={initialDomainSurchargeNetMinor}
+        initialQuotes={initialQuotes}
+        initialStep={
+          paymentReturn && initialProfile && initialQuotes
+            ? "overview"
+            : "domain"
+        }
+        paymentReturn={paymentReturn}
         catalog={{
           version: COMMERCIAL_CATALOG.catalogVersion,
           currency: COMMERCIAL_CATALOG.currency,
@@ -147,6 +167,40 @@ export default async function PreviewCheckoutPage({
         description={t("accessUnavailableDescription")}
       />
     )
+  }
+}
+
+function initialCheckoutQuotes(input: {
+  domain: string
+  domainOrder: ReturnType<typeof normalizeDomainOrderState>
+  profileVersion: number
+  draftVersion: string
+}): CheckoutQuoteSet | null {
+  if (
+    !input.domainOrder.providerPriceAmount ||
+    input.domainOrder.providerPriceCurrency !== "EUR" ||
+    !input.domainOrder.checkedAt
+  ) {
+    return null
+  }
+  const secret = process.env.PAYLOAD_SECRET?.trim()
+  if (!secret) throw new Error("PAYLOAD_SECRET is required to issue checkout quotes.")
+  const providerPriceAmount = input.domainOrder.providerPriceAmount
+  const providerQuotedAt = input.domainOrder.checkedAt
+  const issue = (billingPeriod: "monthly" | "annual") =>
+    sealCheckoutQuote(buildCheckoutQuote({
+      billingPeriod,
+      providerOperationPriceNetMinor: decimalMoneyToMinor(
+        providerPriceAmount,
+      ),
+      selectedDomain: input.domain,
+      providerQuotedAt,
+      profileVersion: input.profileVersion,
+      draftVersion: input.draftVersion,
+    }), secret)
+  return {
+    monthly: issue("monthly"),
+    annual: issue("annual"),
   }
 }
 
@@ -318,20 +372,6 @@ function deriveRegistrantDefaults(input: {
     phoneSubscriberNumber: phone.phoneSubscriberNumber,
     locale: "nl_NL",
   }
-}
-
-function domainSurchargeNetMinor(
-  domainOrder: ReturnType<typeof normalizeDomainOrderState>,
-): number {
-  const providerPrice = domainOrder.providerPriceAmount && domainOrder.providerPriceCurrency
-    ? { amount: domainOrder.providerPriceAmount, currency: domainOrder.providerPriceCurrency }
-    : null
-  const includedProviderPrice = {
-    amount: (COMMERCIAL_CATALOG.domain.includedAllowanceNetMinor / 100).toFixed(2),
-    currency: COMMERCIAL_CATALOG.currency,
-  }
-  const extraFee = domainExtraFeeForProviderPrice(providerPrice, includedProviderPrice)
-  return extraFee?.currency === "EUR" ? decimalMoneyToMinor(extraFee.amount) : 0
 }
 
 function PreviewCheckoutAccessScreen({

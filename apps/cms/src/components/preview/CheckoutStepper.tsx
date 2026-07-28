@@ -10,9 +10,16 @@ export type CheckoutStepperItem<T extends string = string> = {
 type CheckoutStepperProps<T extends string = string> = {
   steps: Array<CheckoutStepperItem<T>>
   activeStep: T | null
+  onStepSelect?: (step: T) => void
+  reachableSteps?: T[]
 }
 
-export function CheckoutStepper<T extends string = string>({ steps, activeStep }: CheckoutStepperProps<T>) {
+export function CheckoutStepper<T extends string = string>({
+  steps,
+  activeStep,
+  onStepSelect,
+  reachableSteps = [],
+}: CheckoutStepperProps<T>) {
   const activeIndex = steps.findIndex((entry) => entry.id === activeStep)
   const columns = steps.length === 4
     ? "grid-cols-4"
@@ -26,6 +33,7 @@ export function CheckoutStepper<T extends string = string>({ steps, activeStep }
         const Icon = entry.icon
         const active = index === activeIndex
         const complete = activeIndex >= 0 && index < activeIndex
+        const reachable = reachableSteps.includes(entry.id)
         return (
           <li
             key={entry.id}
@@ -38,8 +46,21 @@ export function CheckoutStepper<T extends string = string>({ steps, activeStep }
               active && index > 0 && "rounded-l-none",
             )}
           >
-            <Icon className="size-4" aria-hidden />
-            <span className="hidden sm:inline">{entry.label}</span>
+            {reachable && !active && onStepSelect ? (
+              <button
+                type="button"
+                className="flex min-w-0 items-center gap-1 sm:gap-2"
+                onClick={() => onStepSelect(entry.id)}
+              >
+                <Icon className="size-4 shrink-0" aria-hidden />
+                <span className="truncate text-xs sm:text-sm">{entry.label}</span>
+              </button>
+            ) : (
+              <>
+                <Icon className="size-4 shrink-0" aria-hidden />
+                <span className="truncate text-xs sm:text-sm">{entry.label}</span>
+              </>
+            )}
           </li>
         )
       })}

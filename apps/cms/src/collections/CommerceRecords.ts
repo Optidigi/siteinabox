@@ -626,6 +626,26 @@ export const CheckoutProfiles: CollectionConfig = {
     },
     { name: "tenant", type: "relationship", relationTo: "tenants", index: true },
     { name: "customerName", type: "text", required: true },
+    {
+      name: "firstName",
+      type: "text",
+      admin: {
+        description: adminText(
+          "Authoritative natural-person given name. Empty only on legacy profiles.",
+          "Gezaghebbende voornaam van de natuurlijke persoon. Alleen leeg bij oude profielen.",
+        ),
+      },
+    },
+    {
+      name: "lastName",
+      type: "text",
+      admin: {
+        description: adminText(
+          "Authoritative natural-person family name. Empty only on legacy profiles.",
+          "Gezaghebbende achternaam van de natuurlijke persoon. Alleen leeg bij oude profielen.",
+        ),
+      },
+    },
     { name: "customerEmail", type: "email", required: true, index: true },
     { name: "customerPhone", type: "text" },
     {

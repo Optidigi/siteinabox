@@ -35,9 +35,13 @@ import {
   registerOpenProviderDomain,
   type OpenProviderDomainRecord,
 } from "@/lib/domains/openprovider"
-import { createDomainOrderState, normalizeDomainOrderState } from "@/lib/domains/orderState"
+import {
+  createDomainOrderState,
+  normalizeDomainOrderState,
+  normalizeDomainRegistrantDetails,
+} from "@/lib/domains/orderState"
 import { normalizeDomain } from "@/lib/domains/normalize"
-import { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
+import type { domainRegistrantFromCheckoutProfile } from "@/lib/checkout/checkoutProfile"
 import { relationshipId, sameRelationshipId } from "@/lib/relationshipId"
 import {
   buildFailedTenantEmailSending,
@@ -418,7 +422,10 @@ export async function provisionPaidDomainOrder(
   }
 
   const profile = await checkoutProfileForOrder(payload, input.order)
-  const registrant = domainRegistrantFromCheckoutProfile(profile)
+  const registrant = normalizeDomainRegistrantDetails(input.order.domainRegistrant)
+  if (!registrant) {
+    throw new Error("Paid domain fulfillment requires the frozen accepted registrant evidence.")
+  }
   if (!capability.registrant.supportedPartyTypes.includes(profile.partyType)) {
     throw new Error(`Contracting-party type is not supported for .${capability.tld}.`)
   }

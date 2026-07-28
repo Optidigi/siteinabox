@@ -2,6 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { NextRequest } from "next/server"
 
 import { errLike } from "../_helpers/cast"
+import {
+  buildCheckoutQuote,
+  sealCheckoutQuote,
+} from "@/lib/checkout/checkoutQuote"
 const mocks = vi.hoisted(() => ({
   headers: new Headers({ host: "preview.siteinabox.nl" }),
   getSession: vi.fn(),
@@ -96,6 +100,14 @@ const validPaymentForm = () => {
     "business-use-declaration-2026-07-26.1",
   )
   formData.set("billingPeriod", "annual")
+  formData.set("checkoutQuoteToken", sealCheckoutQuote(buildCheckoutQuote({
+    billingPeriod: "annual",
+    providerOperationPriceNetMinor: 1_000,
+    selectedDomain: "ami-care.nl",
+    providerQuotedAt: new Date().toISOString(),
+    profileVersion: 1,
+    draftVersion: "draft-500",
+  }), "checkout-test-secret").token)
   return formData
 }
 
@@ -129,7 +141,7 @@ describe("preview checkout domain suggestion action", () => {
     mocks.getSession.mockResolvedValue({ user: { email: "Customer@Example.com" } })
     mocks.loadPreviewGrantContext.mockResolvedValue({
       payload: { update: mocks.payloadUpdate },
-      run: { id: 500 },
+      run: { id: 500, updatedAt: "draft-500" },
       tenant: { id: 12, name: "Ami Care" },
       pages: [],
       customerEmail: "customer@example.com",
@@ -139,6 +151,7 @@ describe("preview checkout domain suggestion action", () => {
     vi.stubEnv("OPENPROVIDER_DOMAIN_FIXED_PRICE_CURRENCY", "EUR")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_AMOUNT", "10.00")
     vi.stubEnv("OPENPROVIDER_DOMAIN_MAX_COST_CURRENCY", "EUR")
+    vi.stubEnv("PAYLOAD_SECRET", "checkout-test-secret")
     mocks.checkAndRecordPreviewDomainOrder.mockResolvedValue({
       run: { id: 500 },
       messageKey: "checkoutDomainAvailable",
@@ -146,6 +159,9 @@ describe("preview checkout domain suggestion action", () => {
       included: true,
       extraFeeAmount: null,
       extraFeeCurrency: null,
+      providerPriceAmount: "10.00",
+      providerPriceCurrency: "EUR",
+      providerQuotedAt: "2026-07-28T10:00:00.000Z",
       suggestions: [],
     })
     mocks.loginOpenProvider.mockResolvedValue("token-123")
@@ -209,6 +225,7 @@ describe("preview checkout domain suggestion action", () => {
           domain: "ami-care.nl",
           providerPriceAmount: "10.00",
           providerPriceCurrency: "EUR",
+          checkedAt: "2026-07-28T10:00:00.000Z",
           maxProviderPriceAmount: "10.00",
           maxProviderPriceCurrency: "EUR",
         },
@@ -370,6 +387,136 @@ describe("preview checkout domain suggestion action", () => {
       expect.objectContaining({ email: "attacker@example.test" }),
       expect.anything(),
     )
+    expect(mocks.createOrderAndAcceptanceEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quote: expect.objectContaining({
+          selectedDomain: "ami-care.nl",
+          billingPeriod: "annual",
+          netAmountMinor: 19_000,
+          vatAmountMinor: 3_990,
+          grossAmountMinor: 22_990,
+        }),
+      }),
+    )
+    expect(mocks.createMollieCheckoutForGenerationRun).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ orderId: 90 }),
+    )
+  })
+
+  it("requires renewed acceptance when the authoritative provider price changes", async () => {
+    mocks.requireReadyPreviewDomainOrder.mockResolvedValue({
+      run: {
+        id: 500,
+        updatedAt: "2026-07-28T10:01:00.000Z",
+        domainOrder: {
+          domain: "ami-care.nl",
+          providerPriceAmount: "12.50",
+          providerPriceCurrency: "EUR",
+          checkedAt: "2026-07-28T10:01:00.000Z",
+        },
+      },
+      domain: "ami-care.nl",
+    })
+    const { startPreviewCheckoutPaymentAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    const result = await startPreviewCheckoutPaymentAction(
+      "ami-care",
+      { ok: false, message: "" },
+      validPaymentForm(),
+    )
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "version_conflict",
+      message: "checkoutQuoteVersionConflict",
+    })
+    expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("rejects an expired sealed quote before domain or payment writes", async () => {
+    const formData = validPaymentForm()
+    formData.set("checkoutQuoteToken", sealCheckoutQuote(buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_000,
+      selectedDomain: "ami-care.nl",
+      providerQuotedAt: "2026-01-01T10:00:00.000Z",
+      profileVersion: 1,
+      draftVersion: "draft-expired",
+      now: new Date("2026-01-01T10:00:00.000Z"),
+    }), "checkout-test-secret").token)
+    const { startPreviewCheckoutPaymentAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    const result = await startPreviewCheckoutPaymentAction(
+      "ami-care",
+      { ok: false, message: "" },
+      formData,
+    )
+
+    expect(result).toMatchObject({ ok: false, status: "version_conflict" })
+    expect(mocks.requireReadyPreviewDomainOrder).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("rejects a stale draft version before approval, order, or payment writes", async () => {
+    const context = await mocks.loadPreviewGrantContext()
+    context.run.updatedAt = "draft-501"
+    mocks.loadPreviewGrantContext.mockClear()
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    const { startPreviewCheckoutPaymentAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    const result = await startPreviewCheckoutPaymentAction(
+      "ami-care",
+      { ok: false, message: "" },
+      validPaymentForm(),
+    )
+
+    expect(result).toMatchObject({ ok: false, status: "version_conflict" })
+    expect(mocks.createSiteApprovalEvidence).not.toHaveBeenCalled()
+    expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
+  })
+
+  it("does not create another order or payment while server state is pending", async () => {
+    const context = await mocks.loadPreviewGrantContext()
+    context.run.payment = {
+      status: "pending_provider",
+      provider: "mollie",
+      externalReference: "tr_existing",
+    }
+    mocks.loadPreviewGrantContext.mockClear()
+    mocks.loadPreviewGrantContext.mockResolvedValue(context)
+    const { startPreviewCheckoutPaymentAction } = await import(
+      "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
+    )
+
+    const results = await Promise.all([
+      startPreviewCheckoutPaymentAction(
+        "ami-care",
+        { ok: false, message: "" },
+        validPaymentForm(),
+      ),
+      startPreviewCheckoutPaymentAction(
+        "ami-care",
+        { ok: false, message: "" },
+        validPaymentForm(),
+      ),
+    ])
+
+    expect(results).toEqual([
+      expect.objectContaining({ ok: false, status: "payment_pending" }),
+      expect.objectContaining({ ok: false, status: "payment_pending" }),
+    ])
+    expect(mocks.createSiteApprovalEvidence).not.toHaveBeenCalled()
+    expect(mocks.createOrderAndAcceptanceEvidence).not.toHaveBeenCalled()
+    expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
   it("checks the primary typed domain without recording auto-check state", async () => {
@@ -384,6 +531,20 @@ describe("preview checkout domain suggestion action", () => {
       status: "available",
       domain: "ami-care.nl",
       suggestions: [],
+      quotes: {
+        monthly: {
+          quote: {
+            planPriceNetMinor: 1_900,
+            grossAmountMinor: 2_299,
+          },
+        },
+        annual: {
+          quote: {
+            planPriceNetMinor: 19_000,
+            grossAmountMinor: 22_990,
+          },
+        },
+      },
     })
     const context = await mocks.loadPreviewGrantContext.mock.results[0]?.value
     expect(mocks.checkAndRecordPreviewDomainOrder).toHaveBeenCalledWith(

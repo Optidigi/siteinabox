@@ -55,6 +55,19 @@ const createPayload = () => {
     return { docs }
   })
   const create = vi.fn(async ({ collection, data }: MockCreateArgs) => {
+    const uniqueField = collection === "orders"
+      ? "orderNumber"
+      : collection === "agreement-acceptances"
+        ? "evidenceKey"
+        : null
+    if (
+      uniqueField &&
+      (stores[collection] ?? []).some(
+        (doc) => String(doc[uniqueField]) === String(data[uniqueField]),
+      )
+    ) {
+      throw new Error(`duplicate ${collection}.${uniqueField}`)
+    }
     const doc = { id: id++, ...data }
     stores[collection] ??= []
     stores[collection].push(doc)
@@ -99,6 +112,11 @@ describe("checkout legal evidence", () => {
       quote: buildCheckoutQuote({
         billingPeriod: "annual",
         providerOperationPriceNetMinor: 1_000,
+        selectedDomain: "demo.be",
+        providerQuotedAt: "2026-07-27T11:55:00.000Z",
+        profileVersion: 1,
+        draftVersion: "draft-30",
+        now: new Date("2026-07-27T11:56:00.000Z"),
       }),
       domainRegistrant: { email: "client@example.com" },
       domain: "demo.be",
@@ -127,6 +145,11 @@ describe("checkout legal evidence", () => {
       quote: buildCheckoutQuote({
         billingPeriod: "annual",
         providerOperationPriceNetMinor: 1_000,
+        selectedDomain: "demo.be",
+        providerQuotedAt: "2026-07-27T11:55:00.000Z",
+        profileVersion: 1,
+        draftVersion: "draft-30",
+        now: new Date("2026-07-27T11:56:01.000Z"),
       }),
       domainRegistrant: { email: "client@example.com" },
       domain: "demo.be",
@@ -151,6 +174,14 @@ describe("checkout legal evidence", () => {
       businessUseDeclarationVersion: "business-use-declaration-2026-07-26.1",
       totalGross: 229.9,
       quoteEvidence: {
+        schemaVersion: 2,
+        initialAuthorityHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        selectedDomain: "demo.be",
+        planPriceNetMinor: 19_000,
+        subtotalNetMinor: 19_000,
+        vatAmountMinor: 3_990,
+        grossPayableNowMinor: 22_990,
+        futureSubscriptionGrossMinor: 22_990,
         tldCapability: {
           tld: "be",
           capabilityVersion: "tld-be-2026-07-27.1",
@@ -169,5 +200,84 @@ describe("checkout legal evidence", () => {
       orderId: first.order.id,
       customerEmail: "client@example.com",
     })).resolves.toMatchObject({ order: { domain: "demo.be" } })
+  })
+
+  it("rejects reuse when immutable approval, registrant, or commercial evidence changes", async () => {
+    const { payload, stores } = createPayload()
+    const run = asGenerationRun({ id: 31, specHash: "spec", updatedAt: "draft-31" })
+    const tenant = asTenant({ id: 10, name: "Demo" })
+    const approval = await createSiteApprovalEvidence({
+      payload,
+      run,
+      tenant,
+      pages: [],
+      domain: "demo.be",
+      actorEmail: "client@example.com",
+      requestId: "req-approval",
+    })
+    const checkoutProfile = cast<CheckoutProfile>({
+      id: 51,
+      profileKey: "run:31:checkout-profile:1",
+      profileVersion: 1,
+      generationRun: 31,
+      customerName: "Maria de la Cruz",
+      firstName: "Maria",
+      lastName: "de la Cruz",
+      customerEmail: "client@example.com",
+      partyType: "business_in_formation",
+      contractingPartyName: "Maria de la Cruz",
+      contractingPartyKind: "natural_person",
+      domainRegistrantSource: "contracting_party",
+      intendedCompanyName: "Cruz Studio",
+      billingAddress: { city: "Utrecht" },
+      createdAt: "2026-07-28T12:00:00.000Z",
+    })
+    const quote = buildCheckoutQuote({
+      billingPeriod: "annual",
+      providerOperationPriceNetMinor: 1_000,
+      selectedDomain: "demo.be",
+      providerQuotedAt: "2026-07-28T11:55:00.000Z",
+      profileVersion: 1,
+      draftVersion: "draft-31",
+      now: new Date("2026-07-28T11:56:00.000Z"),
+    })
+    const common = {
+      payload,
+      run,
+      tenant,
+      approval: approval.approval,
+      checkoutProfile,
+      quote,
+      domainRegistrant: { email: "client@example.com", firstName: "Maria", lastName: "de la Cruz" },
+      domain: "demo.be",
+      now: new Date("2026-07-28T12:00:00.000Z"),
+    }
+    await createOrderAndAcceptanceEvidence({
+      ...common,
+      requestId: "req-first",
+    })
+
+    await expect(createOrderAndAcceptanceEvidence({
+      ...common,
+      domainRegistrant: { ...common.domainRegistrant, email: "other@example.com" },
+      requestId: "req-registrant-changed",
+    })).rejects.toThrow("different immutable initial-order authority")
+    await expect(createOrderAndAcceptanceEvidence({
+      ...common,
+      approval: cast({ ...approval.approval, snapshotHash: "changed-snapshot" }),
+      requestId: "req-approval-changed",
+    })).rejects.toThrow("different immutable initial-order authority")
+    await expect(createOrderAndAcceptanceEvidence({
+      ...common,
+      quote: {
+        ...quote,
+        lineItems: quote.lineItems.map((item, index) =>
+          index === 0 ? { ...item, description: `${item.description} changed` } : item),
+      },
+      requestId: "req-line-item-changed",
+    })).rejects.toThrow("different immutable initial-order authority")
+
+    expect(stores.orders).toHaveLength(1)
+    expect(stores["agreement-acceptances"]).toHaveLength(1)
   })
 })
