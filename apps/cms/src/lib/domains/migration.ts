@@ -312,7 +312,7 @@ const migrationEvidenceFromOrder = (order: Order) => {
     ? tldEvidence.capabilityVersion
     : ""
   const capability = getTldCapabilityByVersion(capabilityVersion)
-  if (!capability || !capability.productionEnabled || capability.tld !== tldEvidence.tld) {
+  if (!capability || capability.tld !== tldEvidence.tld) {
     throw new Error("Accepted order has invalid frozen TLD capability evidence.")
   }
   return {

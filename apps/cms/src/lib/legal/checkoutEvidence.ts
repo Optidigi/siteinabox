@@ -17,7 +17,9 @@ import {
   BUSINESS_USE_DECLARATION_VERSION,
 } from "@siteinabox/legal-content"
 import { businessUseDeclarationAcceptanceSchema } from "@siteinabox/contracts/commerce"
-import { getEnabledTldCapability } from "@siteinabox/contracts/tld-capabilities"
+import {
+  getTldCapabilityForProductionOperation,
+} from "@siteinabox/contracts/tld-capabilities"
 import type { CheckoutQuote } from "@/lib/checkout/checkoutQuote"
 import { getCurrentLegalDocumentRecord } from "@/lib/legal/legalDocuments"
 import { findOneDoc } from "@/lib/payloadCollection"
@@ -175,7 +177,10 @@ export async function createOrderAndAcceptanceEvidence(input: {
   const vatAmount = input.quote.vatAmountMinor / 100
   const acceptedAt = now.toISOString()
   const tld = input.domain.split(".").at(-1)?.toLowerCase() ?? ""
-  const tldCapability = getEnabledTldCapability(tld, now)
+  const operation = input.quote.domainMode === "existing_domain"
+    ? "incoming_transfer"
+    : "registration"
+  const tldCapability = getTldCapabilityForProductionOperation(tld, operation, now)
   if (!tldCapability) {
     throw new Error(`TLD .${tld} is not enabled for accepted-order evidence.`)
   }

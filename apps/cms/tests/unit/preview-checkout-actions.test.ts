@@ -9,7 +9,7 @@ import {
 } from "@/lib/checkout/checkoutQuote"
 import { assessExistingDomainMigrationInput } from "@/lib/domains/migrationCheckout"
 import { migrationCheckoutSecretKey } from "@/lib/domains/migrationCheckoutSecret"
-import { getEnabledTldCapability } from "@siteinabox/contracts/tld-capabilities"
+import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 const mocks = vi.hoisted(() => ({
   headers: new Headers({ host: "preview.siteinabox.nl" }),
   getSession: vi.fn(),
@@ -652,6 +652,7 @@ describe("preview checkout domain suggestion action", () => {
         annual: { quote: acceptedQuote, token: "renewed-annual" },
         monthly: { quote: acceptedQuote, token: "renewed-annual" },
       },
+      tldCapabilityVersion: null,
     })
     mocks.requireReadyPreviewDomainOrder.mockResolvedValue({
       run: {
@@ -839,6 +840,19 @@ describe("preview checkout domain suggestion action", () => {
       acceptedOrderRecollection: true,
       publicEvidence: await mocks.inspectExistingDomainPublicEvidence(),
       now: acceptedAt,
+    }, {
+      capabilityForTld: (tld, _operation, now) => {
+        const capability = tldCapabilityAt(tld, now)
+        return capability
+          ? {
+              ...capability,
+              dnssec: {
+                ...capability.dnssec,
+                productionEvidenceComplete: true,
+              },
+            }
+          : null
+      },
     })
     if (!assessment.sourceZoneHash || !assessment.encryptedInput) {
       throw new Error("Expected accepted-order recollection assessment.")
@@ -869,6 +883,7 @@ describe("preview checkout domain suggestion action", () => {
         annual: sealCheckoutQuote(quote, "checkout-test-secret"),
       },
       requiresMigrationRecollection: true,
+      tldCapabilityVersion: "tld-nl-2026-07-28.1",
     })
     const { recollectAcceptedMigrationInputAction } = await import(
       "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
@@ -975,8 +990,8 @@ describe("preview checkout domain suggestion action", () => {
       publicEvidence: await mocks.inspectExistingDomainPublicEvidence(),
       now: new Date(),
     }, {
-      capabilityForTld: (tld, now) => {
-        const capability = getEnabledTldCapability(tld, now)
+      capabilityForTld: (tld, _operation, now) => {
+        const capability = tldCapabilityAt(tld, now)
         return capability
           ? {
               ...capability,
@@ -1042,7 +1057,7 @@ describe("preview checkout domain suggestion action", () => {
     expect(mocks.createMollieCheckoutForGenerationRun).not.toHaveBeenCalled()
   })
 
-  it("stops a DNSSEC migration before transfer pricing or payment", async () => {
+  it("keeps a signed migration behind the TLD gate before transfer pricing or payment", async () => {
     const { checkPreviewCheckoutDomainAction } = await import(
       "@/app/(frontend)/(site-preview)/[clientSlug]/checkout/actions"
     )
@@ -1072,7 +1087,7 @@ describe("preview checkout domain suggestion action", () => {
     expect(result).toMatchObject({
       ok: false,
       domainMode: "existing_domain",
-      migrationReadiness: "custom_quote",
+      migrationReadiness: "unsupported",
     })
     expect(result.quotes).toBeUndefined()
     expect(mocks.getOpenProviderDomainTransferPrice).not.toHaveBeenCalled()

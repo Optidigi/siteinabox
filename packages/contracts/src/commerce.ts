@@ -689,7 +689,8 @@ export const commerceReleaseStages = [
 export const commerceReleaseStageSchema = z.enum(commerceReleaseStages)
 export type CommerceReleaseStage = z.infer<typeof commerceReleaseStageSchema>
 
-export const COMMERCE_RELEASE_EVIDENCE_VERSION = "phase11-2026-07-27.1" as const
+export const COMMERCE_RELEASE_EVIDENCE_VERSION =
+  "commerce-production-readiness-2026-07-28.1" as const
 
 export type CommerceReleaseGateDecision = {
   providerReadsAllowed: boolean

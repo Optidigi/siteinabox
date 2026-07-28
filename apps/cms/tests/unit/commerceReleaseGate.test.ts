@@ -100,7 +100,8 @@ describe("staged commerce release runtime gate", () => {
       readinessPayload,
       {
         COMMERCE_RELEASE_STAGE: "production",
-        COMMERCE_RELEASE_EVIDENCE_VERSION: "phase11-2026-07-27.1",
+        COMMERCE_RELEASE_EVIDENCE_VERSION:
+          "commerce-production-readiness-2026-07-28.1",
         COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED: "1",
         COMMERCE_ORIGIN_ISOLATION_VERIFIED: "1",
         NODE_ENV: "production",

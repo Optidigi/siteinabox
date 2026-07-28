@@ -29,6 +29,25 @@ export const transferRenewalEffects = [
 export const transferRenewalEffectSchema = z.enum(transferRenewalEffects)
 export type TransferRenewalEffect = z.infer<typeof transferRenewalEffectSchema>
 
+export const tldProductionOperations = [
+  "registration",
+  "incoming_transfer",
+  "renewal_provider_autorenew",
+  "renewal_explicit",
+  "registrant_verification",
+  "restoration",
+] as const
+export const tldProductionOperationSchema = z.enum(tldProductionOperations)
+export type TldProductionOperation = z.infer<typeof tldProductionOperationSchema>
+
+const tldProductionEnablementSchema = z.object({
+  registration: z.boolean(),
+  incomingTransfer: z.boolean(),
+  renewal: z.boolean(),
+  registrantVerification: z.boolean(),
+  restoration: z.boolean(),
+}).strict()
+
 const registrantFieldSchema = z.enum([
   "companyName",
   "firstName",
@@ -63,7 +82,7 @@ export const tldCapabilitySchema = z.object({
   tld: z.string().regex(/^[a-z]{2,63}$/),
   effectiveFrom: z.iso.datetime(),
   effectiveUntil: z.iso.datetime().nullable(),
-  productionEnabled: z.boolean(),
+  production: tldProductionEnablementSchema,
   provider: z.literal("openprovider"),
   registrant: z.object({
     customerIsRegistrant: z.literal(true),
@@ -219,10 +238,26 @@ const COMMON_REGISTRANT_FIELDS = [
 
 const PROVIDER_ACTIVE_STATUSES = ["ACT", "ACTIVE", "REGISTERED"] as const
 
+const PRODUCTION_DISABLED = Object.freeze({
+  registration: false,
+  incomingTransfer: false,
+  renewal: false,
+  registrantVerification: false,
+  restoration: false,
+})
+
+const LEGACY_PRODUCTION_ENABLED = Object.freeze({
+  registration: true,
+  incomingTransfer: true,
+  renewal: true,
+  registrantVerification: true,
+  restoration: true,
+})
+
 const commonCapability = {
   schemaVersion: 1,
   catalogVersion: TLD_CAPABILITY_CATALOG_VERSION,
-  productionEnabled: false,
+  production: PRODUCTION_DISABLED,
   provider: "openprovider",
   registrant: {
     customerIsRegistrant: true,
@@ -281,7 +316,7 @@ const catalogInput = [
     ...commonCapability,
     capabilityVersion: "tld-nl-2026-07-26.1",
     tld: "nl",
-    productionEnabled: true,
+    production: LEGACY_PRODUCTION_ENABLED,
     effectiveFrom: "2026-01-01T00:00:00.000Z",
     effectiveUntil: "2026-07-28T00:00:00.000Z",
     registration: {
@@ -320,9 +355,9 @@ const catalogInput = [
     ...commonCapability,
     capabilityVersion: "tld-nl-2026-07-28.1",
     tld: "nl",
-    productionEnabled: true,
+    production: LEGACY_PRODUCTION_ENABLED,
     effectiveFrom: "2026-07-28T00:00:00.000Z",
-    effectiveUntil: null,
+    effectiveUntil: "2026-07-28T15:00:00.000Z",
     registration: {
       ...commonCapability.registration,
       labelLength: { min: 2, max: 63 },
@@ -357,9 +392,47 @@ const catalogInput = [
   },
   {
     ...commonCapability,
+    capabilityVersion: "tld-nl-2026-07-28.2",
+    tld: "nl",
+    effectiveFrom: "2026-07-28T15:00:00.000Z",
+    effectiveUntil: null,
+    registration: {
+      ...commonCapability.registration,
+      labelLength: { min: 2, max: 63 },
+      idn: false,
+    },
+    transfer: {
+      supported: true,
+      authorization: "required",
+      authorizationFormat: "opaque",
+      authorizationValidityDays: null,
+      completion: "realtime",
+      confirmation: commonCapability.registration.confirmation,
+      validRegistrantPhoneRequired: true,
+      renewalEffect: "unchanged",
+    },
+    verification: {
+      ...commonCapability.verification,
+      requirement: "provider_reported",
+    },
+    restoration: {
+      supported: true,
+      providerWindowDays: 38,
+      registryQuarantineDays: 40,
+      mode: "provider_restore",
+      ordinaryCheckout: false,
+    },
+    evidence: {
+      reviewedAt: "2026-07-28T15:00:00.000Z",
+      providerPolicyUrl: "https://www.openprovider.com/domains/tlds/nl",
+      registryPolicyUrl: "https://www.sidn.nl/en/nl-domain-name/general-terms-and-conditions-for-nl-registrants",
+    },
+  },
+  {
+    ...commonCapability,
     capabilityVersion: "tld-be-2026-07-27.1",
     tld: "be",
-    productionEnabled: true,
+    production: LEGACY_PRODUCTION_ENABLED,
     effectiveFrom: "2026-07-27T00:00:00.000Z",
     effectiveUntil: "2026-07-28T00:00:00.000Z",
     registration: {
@@ -556,12 +629,40 @@ export function tldCapabilityAt(
   return matches[0] ?? null
 }
 
-export function getEnabledTldCapability(
+export function tldCapabilityAllowsProductionOperation(
+  capability: TldCapability,
+  operation: TldProductionOperation,
+): boolean {
+  switch (operation) {
+    case "registration":
+      return capability.production.registration &&
+        capability.production.registrantVerification
+    case "incoming_transfer":
+      return capability.production.incomingTransfer &&
+        capability.production.registrantVerification &&
+        capability.dnssec.productionEvidenceComplete
+    case "renewal_provider_autorenew":
+      return capability.production.renewal &&
+        capability.renewal.executionMode === "provider_autorenew"
+    case "renewal_explicit":
+      return capability.production.renewal &&
+        capability.renewal.executionMode === "explicit_renew"
+    case "registrant_verification":
+      return capability.production.registrantVerification
+    case "restoration":
+      return capability.production.restoration
+  }
+}
+
+export function getTldCapabilityForProductionOperation(
   tld: string,
+  operation: TldProductionOperation,
   effectiveAt: string | Date = new Date(),
 ): TldCapability | null {
   const capability = tldCapabilityAt(tld, effectiveAt)
-  return capability?.productionEnabled ? capability : null
+  return capability && tldCapabilityAllowsProductionOperation(capability, operation)
+    ? capability
+    : null
 }
 
 export function getTldCapabilityByVersion(
@@ -576,12 +677,13 @@ export function getTldCapabilityByVersion(
   return matches[0] ?? null
 }
 
-export function enabledTldCapabilitiesAt(
+export function productionTldCapabilitiesAt(
+  operation: TldProductionOperation,
   effectiveAt: string | Date = new Date(),
 ): TldCapability[] {
   const at = validEffectiveDate(effectiveAt)
   return [...new Set(TLD_CAPABILITY_CATALOG.map((entry) => entry.tld))]
-    .map((tld) => getEnabledTldCapability(tld, at))
+    .map((tld) => getTldCapabilityForProductionOperation(tld, operation, at))
     .filter((capability): capability is TldCapability => capability !== null)
     .sort((left, right) => left.tld.localeCompare(right.tld))
 }

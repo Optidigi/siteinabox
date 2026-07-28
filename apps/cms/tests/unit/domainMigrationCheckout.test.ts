@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { CompleteZoneExport } from "@siteinabox/contracts/domain-migration"
-import { getEnabledTldCapability } from "@siteinabox/contracts/tld-capabilities"
+import { tldCapabilityAt } from "@siteinabox/contracts/tld-capabilities"
 
 import {
   assessExistingDomainMigrationInput,
@@ -63,8 +63,8 @@ const publicEvidence = (
 const assess = (
   input: Parameters<typeof assessExistingDomainMigrationInput>[0],
 ) => assessExistingDomainMigrationInput(input, {
-  capabilityForTld: (tld, now) => {
-    const capability = getEnabledTldCapability(tld, now)
+  capabilityForTld: (tld, _operation, now) => {
+    const capability = tldCapabilityAt(tld, now)
     return capability
       ? {
           ...capability,

@@ -372,7 +372,7 @@ describe("offboarding custody and staged commerce release", () => {
   it("allows sandbox and production writes only with matching evidence and endpoints", () => {
     expect(evaluateCommerceReleaseGate({
       stage: "sandbox",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "development",
       mollieApiKeyMode: "test",
@@ -381,7 +381,7 @@ describe("offboarding custody and staged commerce release", () => {
     }).providerWritesAllowed).toBe(true)
     expect(evaluateCommerceReleaseGate({
       stage: "production",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "production",
       mollieApiKeyMode: "live",
@@ -406,7 +406,7 @@ describe("offboarding custody and staged commerce release", () => {
     })
     expect(evaluateCommerceReleaseGate({
       stage: "production",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "production",
       mollieApiKeyMode: "live",
@@ -417,7 +417,7 @@ describe("offboarding custody and staged commerce release", () => {
     }).providerWritesAllowed).toBe(false)
     expect(evaluateCommerceReleaseGate({
       stage: "sandbox",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "development",
       mollieApiKeyMode: "test",
@@ -429,7 +429,7 @@ describe("offboarding custody and staged commerce release", () => {
     })
     expect(evaluateCommerceReleaseGate({
       stage: "production",
-      evidenceVersion: "phase11-2026-07-27.1",
+      evidenceVersion: "commerce-production-readiness-2026-07-28.1",
       providerWritesAcknowledged: true,
       nodeEnvironment: "production",
       mollieApiKeyMode: "live",

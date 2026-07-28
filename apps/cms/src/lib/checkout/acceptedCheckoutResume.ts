@@ -183,6 +183,7 @@ export type AcceptedCheckoutResume = {
   billingPeriod: "monthly" | "annual"
   quotes: CheckoutQuoteSet
   requiresMigrationRecollection: boolean
+  tldCapabilityVersion: string | null
 }
 
 export async function loadAcceptedCheckoutResume(
@@ -221,6 +222,22 @@ export async function loadAcceptedCheckoutResume(
     return null
   }
   const quote = resumeQuote(order, input.now ?? new Date())
+  const quoteEvidence = record(order.quoteEvidence)
+  const tldCapability = record(quoteEvidence?.tldCapability)
+  const tldCapabilityVersion = typeof tldCapability?.capabilityVersion === "string"
+    ? tldCapability.capabilityVersion
+    : null
+  if (
+    quote.domainMode === "existing_domain" &&
+    (
+      !tldCapabilityVersion ||
+      tldCapability?.tld !== quote.selectedDomain.split(".").at(-1)?.toLowerCase()
+    )
+  ) {
+    throw new Error(
+      "Accepted existing-domain order is missing frozen TLD capability evidence.",
+    )
+  }
   let requiresMigrationRecollection = false
   if (quote.domainMode === "existing_domain") {
     try {
@@ -246,5 +263,6 @@ export async function loadAcceptedCheckoutResume(
       annual: envelope,
     },
     requiresMigrationRecollection,
+    tldCapabilityVersion,
   }
 }

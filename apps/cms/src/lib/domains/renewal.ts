@@ -9,9 +9,11 @@ import {
   renewalFinancialCoverage,
 } from "@siteinabox/contracts/commerce"
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  tldCapabilityAt,
   type TldCapability,
+  type TldProductionOperation,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { Payload, Where } from "payload"
 import type {
@@ -55,6 +57,14 @@ const TERMINAL_ATTEMPT_STATES = ["failed", "cancelled", "expired", "chargeback"]
 
 type RenewalDependencies = {
   now: () => Date
+  productionOperationAllowed: (
+    tld: string,
+    operation: Extract<
+      TldProductionOperation,
+      "renewal_provider_autorenew" | "renewal_explicit"
+    >,
+    effectiveAt: Date,
+  ) => boolean
   providerReadsAllowed: () => boolean
   providerWritesAllowed: () => boolean
   loginOpenProvider: typeof loginOpenProvider
@@ -66,6 +76,8 @@ type RenewalDependencies = {
 
 const defaultDependencies: RenewalDependencies = {
   now: () => new Date(),
+  productionOperationAllowed: (tld, operation, effectiveAt) =>
+    getTldCapabilityForProductionOperation(tld, operation, effectiveAt) !== null,
   providerReadsAllowed: commerceProviderReadsAllowed,
   providerWritesAllowed: commerceProviderWritesAllowed,
   loginOpenProvider,
@@ -238,7 +250,10 @@ async function renewalCapabilityForManagedDomain(
   payload: Payload,
   domain: ManagedDomain,
   now: Date,
-): Promise<TldCapability | null> {
+): Promise<{
+  capability: TldCapability
+  acceptedObligation: boolean
+} | null> {
   const orderId = relationshipId(domain.originatingOrder)
   if (orderId) {
     const order = await payload.findByID({
@@ -258,16 +273,31 @@ async function renewalCapabilityForManagedDomain(
       : ""
     const acceptedCapability = getTldCapabilityByVersion(capabilityVersion)
     if (
-      acceptedCapability?.productionEnabled &&
+      acceptedCapability &&
       acceptedCapability.tld === domain.tld &&
       tldEvidence.tld === domain.tld
     ) {
-      return acceptedCapability
+      return {
+        capability: acceptedCapability,
+        acceptedObligation: true,
+      }
     }
     if (hasAcceptedCapabilityEvidence) return null
   }
-  return getEnabledTldCapability(domain.tld, now)
+  const capability = tldCapabilityAt(domain.tld, now)
+  return capability
+    ? { capability, acceptedObligation: false }
+    : null
 }
+
+const renewalProductionOperation = (
+  capability: TldCapability,
+): Extract<
+  TldProductionOperation,
+  "renewal_provider_autorenew" | "renewal_explicit"
+> => capability.renewal.executionMode === "provider_autorenew"
+  ? "renewal_provider_autorenew"
+  : "renewal_explicit"
 
 async function findCycle(
   payload: Payload,
@@ -939,7 +969,12 @@ export async function reconcileManagedDomainRenewal(
     depth: 0,
     overrideAccess: true,
   }) as ManagedDomain
-  const capability = await renewalCapabilityForManagedDomain(payload, domain, nowDate)
+  const capabilityResolution = await renewalCapabilityForManagedDomain(
+    payload,
+    domain,
+    nowDate,
+  )
+  const capability = capabilityResolution?.capability ?? null
   if (
     domain.custodyStatus === "transferred_out" ||
     domain.provider !== "openprovider" ||
@@ -949,6 +984,26 @@ export async function reconcileManagedDomainRenewal(
     capability.renewal.executionMode !== "provider_autorenew"
   ) {
     return { status: "not_applicable" }
+  }
+  // Operation flags govern new commitments. A domain already frozen into an
+  // accepted order remains a customer obligation and must keep its renewal
+  // safety reconciliation when launch scope is rolled back.
+  const productionOperationAllowed = Boolean(
+    capabilityResolution?.acceptedObligation,
+  ) || deps.productionOperationAllowed(
+    domain.tld,
+    renewalProductionOperation(capability),
+    nowDate,
+  )
+  if (!productionOperationAllowed) {
+    const existingCycles = await payload.find({
+      collection: "domain-renewal-cycles",
+      where: { managedDomain: { equals: domain.id } },
+      limit: 1,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (existingCycles.docs.length === 0) return { status: "not_applicable" }
   }
   if (!deps.providerReadsAllowed()) {
     const committedCycles = await payload.find({
@@ -1082,6 +1137,19 @@ export async function reconcileManagedDomainRenewal(
   const agreement = await findBillingAgreement(payload, domain)
   let cycle = await findCycle(payload, domain, providerRenewalDate)
   if (!cycle) {
+    if (!productionOperationAllowed) {
+      await recordCommerceAdminException({
+        payload,
+        source: "domains",
+        code: "tld_renewal_production_gate_blocked",
+        message: `A new .${domain.tld} renewal cycle is blocked pending operation-specific production evidence.`,
+        tenant: domain.tenant,
+        subjectId: domain.id,
+        severity: domain.providerAutorenew === "on" ? "critical" : "error",
+        now,
+      })
+      return { status: "release_blocked" }
+    }
     const price = await deps.getOpenProviderDomainRenewalPrice(domain.domainNameAscii, { token })
     domain = await updateManagedDomain(payload, domain, {
       providerRenewalPriceNetMinor: price.netAmountMinor,

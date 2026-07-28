@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
   buildOpenProviderDomainRegistrationRequest,
   buildOpenProviderDomainTransferRequest,
@@ -24,7 +24,13 @@ import {
 
 const ORIGINAL_FETCH = globalThis.fetch
 
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date("2026-07-28T14:59:59.999Z"))
+})
+
 afterEach(() => {
+  vi.useRealTimers()
   globalThis.fetch = ORIGINAL_FETCH
   vi.restoreAllMocks()
 })
@@ -588,9 +594,13 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "",
-    } as unknown as NodeJS.ProcessEnv)).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
+    } as unknown as NodeJS.ProcessEnv, {
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
 
-    expect(buildOpenProviderDomainRegistrationRequest("example.nl", env)).toEqual({
+    expect(buildOpenProviderDomainRegistrationRequest("example.nl", env, {
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    })).toEqual({
       domain: { name: "example", extension: "nl" },
       period: 1,
       owner_handle: "OWNER",
@@ -605,7 +615,9 @@ describe("OpenProvider adapter", () => {
       ...env,
       OPENPROVIDER_NS_GROUP: "",
       OPENPROVIDER_NAMESERVERS: "ns1.example.nl, ns2.example.nl",
-    } as unknown as NodeJS.ProcessEnv)).toMatchObject({
+    } as unknown as NodeJS.ProcessEnv, {
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+    })).toMatchObject({
       name_servers: [{ name: "ns1.example.nl" }, { name: "ns2.example.nl" }],
     })
 
@@ -623,6 +635,7 @@ describe("OpenProvider adapter", () => {
           { name: "ada.ns.cloudflare.com" },
           { name: "bob.ns.cloudflare.com" },
         ],
+        acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
       })).toEqual({
         domain: { name: "example", extension: tld },
         auth_code: "opaque-nl-token",
@@ -663,6 +676,7 @@ describe("OpenProvider adapter", () => {
   it("requires transfer authorization and explicit DNS routing evidence", () => {
     expect(() => buildOpenProviderDomainTransferRequest("example.nl", env, {
       authCode: " ",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toThrow("auth code")
     expect(() => buildOpenProviderDomainTransferRequest("example.nl", {
       ...env,
@@ -670,6 +684,7 @@ describe("OpenProvider adapter", () => {
       OPENPROVIDER_NAMESERVERS: "",
     } as unknown as NodeJS.ProcessEnv, {
       authCode: "opaque-nl-token",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).toThrow("OPENPROVIDER_NS_GROUP or OPENPROVIDER_NAMESERVERS")
   })
 
@@ -710,6 +725,7 @@ describe("OpenProvider adapter", () => {
       env,
       token: "token-123",
       fetchImpl: fetchMock as typeof fetch,
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).resolves.toMatchObject({
       id: 42,
       domain: "example.nl",
@@ -719,7 +735,9 @@ describe("OpenProvider adapter", () => {
     expect(fetchMock).toHaveBeenCalledWith("https://openprovider.test/v1beta/domains", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ Authorization: "Bearer token-123" }),
-      body: JSON.stringify(buildOpenProviderDomainRegistrationRequest("example.nl", env)),
+      body: JSON.stringify(buildOpenProviderDomainRegistrationRequest("example.nl", env, {
+        acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
+      })),
     }))
   })
 
@@ -933,6 +951,7 @@ describe("OpenProvider adapter", () => {
       ],
       autorenew: "on",
       reference: "domain-migration:order:700:v1",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     })).resolves.toMatchObject({
       id: 9010,
       domain: "example.nl",
@@ -975,6 +994,7 @@ describe("OpenProvider adapter", () => {
       ],
       autorenew: "on",
       reference: "domain-migration:order:700:v1",
+      acceptedCapabilityVersion: "tld-nl-2026-07-28.1",
     }).catch((caught: unknown) => caught)
 
     expect(error).toBeInstanceOf(OpenProviderApiError)

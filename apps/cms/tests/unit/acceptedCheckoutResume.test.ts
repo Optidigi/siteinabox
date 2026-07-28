@@ -77,6 +77,11 @@ const acceptedOrder = () => {
         futureSubscriptionVatMinor: quote.futureSubscriptionVatMinor,
         futureSubscriptionGrossMinor: quote.futureSubscriptionGrossMinor,
         domainRenewalExplanation: quote.domainRenewalExplanation,
+        tldCapability: {
+          tld: "nl",
+          capabilityVersion: "tld-nl-2026-07-28.1",
+          effectiveFrom: "2026-07-28T00:00:00.000Z",
+        },
         migration: {
           classification: quote.migrationClassification,
           sourceZoneHash: quote.migrationSourceZoneHash,
@@ -102,6 +107,7 @@ describe("accepted checkout resume", () => {
       orderId: 90,
       domain: "example.nl",
       billingPeriod: "annual",
+      tldCapabilityVersion: "tld-nl-2026-07-28.1",
     })
     const reopened = openCheckoutQuote(
       resume!.quotes.annual.token,

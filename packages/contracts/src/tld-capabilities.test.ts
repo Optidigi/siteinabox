@@ -3,9 +3,10 @@ import { describe, expect, it } from "vitest"
 import {
   INTENDED_TLD_CATALOG,
   TLD_CAPABILITY_CATALOG,
-  enabledTldCapabilitiesAt,
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  productionTldCapabilitiesAt,
+  tldProductionOperations,
   tldCapabilityAt,
   tldCapabilityCatalogSchema,
   validateTldRegistrationLabel,
@@ -13,6 +14,7 @@ import {
 } from "./tld-capabilities"
 
 const PHASE_8_EFFECTIVE_AT = "2026-07-28T00:00:00.000Z"
+const PRODUCTION_READINESS_EFFECTIVE_AT = "2026-07-28T15:00:00.000Z"
 
 describe("effective-dated TLD capability catalog", () => {
   it("contains only schema-valid, non-overlapping capability records", () => {
@@ -29,12 +31,29 @@ describe("effective-dated TLD capability catalog", () => {
     }
   })
 
-  it("models the intended catalogue while failing closed to the evidenced .nl scope", () => {
-    expect(enabledTldCapabilitiesAt("2026-07-26T23:59:59.999Z").map((entry) => entry.tld))
+  it("models the intended catalogue and fails every current production operation closed", () => {
+    expect(
+      productionTldCapabilitiesAt(
+        "registration",
+        "2026-07-26T23:59:59.999Z",
+      ).map((entry) => entry.tld),
+    )
       .toEqual(["nl"])
-    expect(enabledTldCapabilitiesAt(PHASE_8_EFFECTIVE_AT).map((entry) => entry.tld))
-      .toEqual(["nl"])
-    expect(getEnabledTldCapability("com", PHASE_8_EFFECTIVE_AT)).toBeNull()
+    for (const operation of tldProductionOperations) {
+      expect(
+        productionTldCapabilitiesAt(
+          operation,
+          PRODUCTION_READINESS_EFFECTIVE_AT,
+        ),
+      ).toEqual([])
+    }
+    expect(
+      getTldCapabilityForProductionOperation(
+        "com",
+        "registration",
+        PHASE_8_EFFECTIVE_AT,
+      ),
+    ).toBeNull()
     expect(getTldCapabilityByVersion("tld-be-2026-07-28.1")?.tld).toBe("be")
     expect(
       [...new Set(TLD_CAPABILITY_CATALOG.map((entry) => entry.tld))].sort(),
@@ -44,7 +63,7 @@ describe("effective-dated TLD capability catalog", () => {
   it.each(["nl"] as const)(
     "has a complete provider, lifecycle, pricing, and renderer/TLS contract for .%s",
     (tld) => {
-      const capability = getEnabledTldCapability(tld, PHASE_8_EFFECTIVE_AT)
+      const capability = tldCapabilityAt(tld, PRODUCTION_READINESS_EFFECTIVE_AT)
       expect(capability).not.toBeNull()
       expect(capability).toMatchObject({
         provider: "openprovider",
@@ -117,7 +136,7 @@ describe("effective-dated TLD capability catalog", () => {
   )
 
   it("captures .nl transfer, restoration, and renderer constraints", () => {
-    const capability = getEnabledTldCapability("nl", PHASE_8_EFFECTIVE_AT)!
+    const capability = tldCapabilityAt("nl", PRODUCTION_READINESS_EFFECTIVE_AT)!
     expect(capability.registration.labelLength).toEqual({ min: 2, max: 63 })
     expect(capability.registration.idn).toBe(false)
     expect(capability.transfer).toMatchObject({
@@ -137,7 +156,13 @@ describe("effective-dated TLD capability catalog", () => {
 
   it("captures .be auth-code confirmation, conditional verification, and restoration", () => {
     const capability = tldCapabilityAt("be", PHASE_8_EFFECTIVE_AT)!
-    expect(capability.productionEnabled).toBe(false)
+    expect(capability.production).toEqual({
+      registration: false,
+      incomingTransfer: false,
+      renewal: false,
+      registrantVerification: false,
+      restoration: false,
+    })
     expect(capability.registration.labelLength).toEqual({ min: 2, max: 63 })
     expect(capability.registration.idn).toBe(true)
     expect(capability.transfer).toMatchObject({

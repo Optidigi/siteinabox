@@ -599,6 +599,7 @@ export async function recollectAcceptedMigrationInputAction(
       quote.migrationClassification === "assisted_standard",
     publicEvidence,
     acceptedOrderRecollection: true,
+    acceptedCapabilityVersion: resume.tldCapabilityVersion ?? undefined,
   })
   if (
     !assessment.encryptedInput ||

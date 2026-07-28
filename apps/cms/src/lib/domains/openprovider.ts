@@ -1,7 +1,8 @@
 import "server-only"
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
+  type TldProductionOperation,
   validateTldRegistrationLabel,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
@@ -620,17 +621,21 @@ const nameserversFromEnv = (env: NodeJS.ProcessEnv): Array<{ name: string }> | n
 
 const enabledCapabilityForDomain = (
   domainInput: string,
+  operation: Extract<TldProductionOperation, "registration" | "incoming_transfer">,
   acceptedCapabilityVersion?: string,
 ) => {
   const domain = splitDomain(domainInput)
-  const currentlyEnabled = getEnabledTldCapability(domain.extension)
+  const currentlyEnabled = getTldCapabilityForProductionOperation(
+    domain.extension,
+    operation,
+  )
   const acceptedCapability = acceptedCapabilityVersion
     ? getTldCapabilityByVersion(acceptedCapabilityVersion)
     : null
   if (
     acceptedCapabilityVersion &&
     (
-      !acceptedCapability?.productionEnabled ||
+      !acceptedCapability ||
       acceptedCapability.tld !== domain.extension
     )
   ) {
@@ -638,12 +643,7 @@ const enabledCapabilityForDomain = (
       `Accepted TLD capability ${acceptedCapabilityVersion} is not valid for .${domain.extension}.`,
     )
   }
-  const capability = (
-    acceptedCapability?.productionEnabled &&
-    acceptedCapability.tld === domain.extension
-      ? acceptedCapability
-      : null
-  ) ?? currentlyEnabled
+  const capability = acceptedCapability ?? currentlyEnabled
   if (!capability) throw new Error(`TLD .${domain.extension} is not enabled for provider operations.`)
   if (!validateTldRegistrationLabel(capability, domain.name)) {
     throw new Error(`Domain label is not supported for .${domain.extension}.`)
@@ -667,6 +667,7 @@ export function buildOpenProviderDomainRegistrationRequest(
 ): OpenProviderRegistrationRequest {
   const { domain, capability } = enabledCapabilityForDomain(
     domainInput,
+    "registration",
     input?.acceptedCapabilityVersion,
   )
   const explicitNameServers = input?.nameServers && input.nameServers.length > 0
@@ -709,6 +710,7 @@ export function buildOpenProviderDomainTransferRequest(
 ): OpenProviderTransferRequest {
   const { domain, capability } = enabledCapabilityForDomain(
     domainInput,
+    "incoming_transfer",
     input.acceptedCapabilityVersion,
   )
   const authCode = input.authCode.trim()

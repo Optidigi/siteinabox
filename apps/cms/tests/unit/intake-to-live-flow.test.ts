@@ -35,6 +35,12 @@ vi.mock("@/lib/domains/verification", () => ({
     respondingNameServers: nameServers,
     reason: null,
   })),
+  verifyPreservedDnsRecords: vi.fn(async () => ({
+    status: "verified",
+    checkedRecordCount: 0,
+    failures: [],
+    reason: null,
+  })),
   verifyHttpsEndpoint: vi.fn(async () => ({
     status: "verified",
     httpStatus: 404,
@@ -277,8 +283,15 @@ const createPayloadStub = () => {
       if (!doc) throw new Error(`Missing ${args.collection} ${args.id}`)
       return doc
     }),
-    update: vi.fn(async (args: MockUpdateArgs) => {
+    update: vi.fn(async (args: MockUpdateArgs & { where?: MockWhere }) => {
       const docs = store[args.collection as CollectionName] ?? []
+      if (args.where) {
+        const updated = docs.filter((doc) => matchesWhere(doc, args.where))
+        for (const doc of updated) {
+          Object.assign(doc, args.data, { updatedAt: new Date().toISOString() })
+        }
+        return { docs: updated, totalDocs: updated.length }
+      }
       const index = docs.findIndex((doc) => String(doc.id) === String(args.id))
       if (index < 0) throw new Error(`Missing ${args.collection} ${args.id}`)
       const existing = docs[index]!
@@ -422,7 +435,10 @@ describe("intake-to-live mocked flow", () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("MOLLIE_API_KEY", "live_xxx")
     vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
-    vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+    vi.stubEnv(
+      "COMMERCE_RELEASE_EVIDENCE_VERSION",
+      "commerce-production-readiness-2026-07-28.1",
+    )
     vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
     vi.stubEnv("COMMERCE_ORIGIN_ISOLATION_VERIFIED", "1")
     vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
@@ -495,7 +511,13 @@ describe("intake-to-live mocked flow", () => {
     }
 
     let run = asGenerationRun(runs[0]!)
-    const domain = await checkAndRecordPreviewDomainOrder(payload, run, "flow-live.nl", registrant)
+    const domain = await checkAndRecordPreviewDomainOrder(
+      payload,
+      run,
+      "flow-live.nl",
+      registrant,
+      { capabilityEffectiveAt: "2026-07-28T14:59:59.999Z" },
+    )
     run = asGenerationRun(domain.run)
     run = asGenerationRun(await payload.update(updateArgs("site-generation-runs", run.id!, {
       clientApproval: { status: "approved", approvedAt: "2026-07-02T09:00:00.000Z" },
@@ -556,6 +578,13 @@ describe("intake-to-live mocked flow", () => {
         phoneAreaCode: "06",
         phoneSubscriberNumber: "12345678",
         locale: "nl_NL",
+      },
+      quoteEvidence: {
+        tldCapability: {
+          tld: "nl",
+          capabilityVersion: "tld-nl-2026-07-28.1",
+          effectiveFrom: "2026-07-28T00:00:00.000Z",
+        },
       },
       domain: "flow-live.nl",
       subtotalNetMinor: 41_240,

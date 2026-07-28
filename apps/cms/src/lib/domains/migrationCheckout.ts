@@ -7,7 +7,8 @@ import {
   type NormalizedCompleteZone,
 } from "@siteinabox/contracts/domain-migration"
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
+  getTldCapabilityByVersion,
   validateTldTransferAuthorization,
 } from "@siteinabox/contracts/tld-capabilities"
 import type { MigrationClassification } from "@siteinabox/contracts/commerce"
@@ -157,10 +158,15 @@ export function assessExistingDomainMigrationInput(input: {
   requestedAssistance: boolean
   publicEvidence: ExistingDomainPublicEvidence
   acceptedOrderRecollection?: boolean
+  acceptedCapabilityVersion?: string
   env?: NodeJS.ProcessEnv
   now?: Date
 }, dependencies: {
-  capabilityForTld?: typeof getEnabledTldCapability
+  capabilityForTld?: (
+    tld: string,
+    operation: "incoming_transfer",
+    effectiveAt: string | Date,
+  ) => ReturnType<typeof getTldCapabilityForProductionOperation>
 } = {}): ExistingDomainMigrationAssessment {
   const now = input.now ?? new Date()
   const normalizedDomain = normalizeDomain(input.domain)
@@ -176,10 +182,19 @@ export function assessExistingDomainMigrationInput(input: {
       publicEvidence: input.publicEvidence,
     }
   }
-  const capability = (dependencies.capabilityForTld ?? getEnabledTldCapability)(
-    normalizedDomain.extension,
-    now,
-  )
+  const acceptedCapability = input.acceptedOrderRecollection &&
+      input.acceptedCapabilityVersion
+    ? getTldCapabilityByVersion(input.acceptedCapabilityVersion)
+    : null
+  const capability = acceptedCapability?.tld === normalizedDomain.extension
+    ? acceptedCapability
+    : (
+        dependencies.capabilityForTld ?? getTldCapabilityForProductionOperation
+      )(
+        normalizedDomain.extension,
+        "incoming_transfer",
+        now,
+      )
   if (!capability?.transfer.supported) {
     return {
       readiness: "unsupported",

@@ -248,6 +248,7 @@ const dependencies = (input: {
   now: string
   providerReadsAllowed?: boolean
   providerWritesAllowed?: boolean
+  productionOperationAllowed?: boolean
   provider?: Record<string, unknown>
   priceNetMinor?: number
   balanceAvailableAmount?: number
@@ -264,6 +265,7 @@ const dependencies = (input: {
   return {
     deps: {
       now: () => new Date(input.now),
+      productionOperationAllowed: () => input.productionOperationAllowed ?? true,
       providerReadsAllowed: () => input.providerReadsAllowed ?? true,
       providerWritesAllowed: () => input.providerWritesAllowed ?? true,
       loginOpenProvider: vi.fn(async () => "token"),
@@ -387,6 +389,7 @@ describe("Openprovider renewal_date cycles", () => {
     const fixture = dependencies({
       now: "2027-06-26T00:00:00.000Z",
       provider: { domain: "example.be" },
+      productionOperationAllowed: false,
     })
 
     const result = await reconcileManagedDomainRenewal(store.payload, 950, fixture.deps)

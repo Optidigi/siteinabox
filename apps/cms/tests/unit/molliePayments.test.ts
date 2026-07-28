@@ -86,7 +86,10 @@ const blockText = (text: string) => ({
 const enableProductionCommerceRelease = () => {
   vi.stubEnv("NODE_ENV", "production")
   vi.stubEnv("COMMERCE_RELEASE_STAGE", "production")
-  vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+  vi.stubEnv(
+    "COMMERCE_RELEASE_EVIDENCE_VERSION",
+    "commerce-production-readiness-2026-07-28.1",
+  )
   vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
   vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://api.openprovider.eu/v1beta")
   vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://api.cloudflare.com/client/v4")
@@ -103,7 +106,10 @@ const enableProductionCommerceRelease = () => {
 
 const enableSandboxCommerceRelease = () => {
   vi.stubEnv("COMMERCE_RELEASE_STAGE", "sandbox")
-  vi.stubEnv("COMMERCE_RELEASE_EVIDENCE_VERSION", "phase11-2026-07-27.1")
+  vi.stubEnv(
+    "COMMERCE_RELEASE_EVIDENCE_VERSION",
+    "commerce-production-readiness-2026-07-28.1",
+  )
   vi.stubEnv("COMMERCE_PROVIDER_WRITES_ACKNOWLEDGED", "1")
   vi.stubEnv("OPENPROVIDER_API_BASE_URL", "https://sandbox.openprovider.test/v1beta")
   vi.stubEnv("CLOUDFLARE_API_BASE_URL", "https://sandbox.cloudflare.test/client/v4")

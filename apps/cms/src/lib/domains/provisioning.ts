@@ -1,7 +1,7 @@
 import "server-only"
 
 import {
-  getEnabledTldCapability,
+  getTldCapabilityForProductionOperation,
   getTldCapabilityByVersion,
   type TldCapability,
   validateTldRegistrationLabel,
@@ -129,7 +129,6 @@ const capabilityForAcceptedOrder = (
     const capability = getTldCapabilityByVersion(capabilityVersion)
     if (
       !capability ||
-      !capability.productionEnabled ||
       capability.tld !== tld ||
       evidence?.tld !== tld
     ) {
@@ -140,8 +139,9 @@ const capabilityForAcceptedOrder = (
   if (tld !== "nl") {
     throw new Error(`Paid .${tld} fulfillment requires frozen TLD capability evidence.`)
   }
-  const legacyCapability = getEnabledTldCapability(
+  const legacyCapability = getTldCapabilityForProductionOperation(
     tld,
+    "registration",
     order.acceptedAt ?? order.createdAt,
   )
   if (!legacyCapability) {
