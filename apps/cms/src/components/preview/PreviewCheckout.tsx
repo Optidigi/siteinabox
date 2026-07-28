@@ -1534,8 +1534,8 @@ export function PreviewCheckout({
                 {t("checkoutSubscriptionOverviewDescription")}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-6">
-              <fieldset className="grid gap-3">
+            <CardContent className="grid min-w-0 gap-6 [&>*]:min-w-0">
+              <fieldset className="grid min-w-0 gap-3">
                 <legend className="text-base font-semibold">{t("checkoutPlanLegend")}</legend>
                 {(acceptedOrderId == null
                   ? ["annual", "monthly"] as const
@@ -1545,7 +1545,7 @@ export function PreviewCheckout({
                     <label
                       key={period}
                       className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-md border p-4",
+                        "flex min-w-0 cursor-pointer items-start gap-3 rounded-md border p-4",
                         billingPeriod === period && "border-primary ring-2 ring-primary/20",
                       )}
                     >
@@ -1558,7 +1558,7 @@ export function PreviewCheckout({
                         disabled={acceptedOrderId != null}
                         className="mt-1"
                       />
-                      <span className="grid flex-1 gap-1">
+                      <span className="grid min-w-0 flex-1 gap-1">
                         <span className="font-medium">
                           {period === "annual"
                             ? t("checkoutPlanAnnual")
@@ -1582,7 +1582,7 @@ export function PreviewCheckout({
                 })}
               </fieldset>
 
-              <div className="grid gap-3 rounded-md border p-4">
+              <div className="grid min-w-0 gap-3 rounded-md border p-4">
                 <ReviewRow
                   label={t("checkoutSummaryDomain")}
                   value={selectedDomain ?? domainValue}
@@ -1717,7 +1717,7 @@ export function PreviewCheckout({
                 />
               </form>
 
-              <div className="grid gap-4 border-t pt-5">
+              <div className="grid min-w-0 gap-4 border-t pt-5">
                 <AcceptanceCheckbox
                   id="checkout-preview-approval"
                   checked={previewApprovalAccepted}
@@ -1732,14 +1732,17 @@ export function PreviewCheckout({
                   label={businessUseDeclarationText}
                   help={t("checkoutBusinessUseHelp")}
                 />
-                <label htmlFor="checkout-terms" className="flex items-start gap-3 text-sm leading-6">
+                <label
+                  htmlFor="checkout-terms"
+                  className="flex min-w-0 items-start gap-3 text-sm leading-6"
+                >
                   <Checkbox
                     id="checkout-terms"
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked === true)}
                     className="mt-1"
                   />
-                  <span>
+                  <span className="min-w-0 break-words">
                     {t.rich("checkoutTermsAcceptanceLabel", {
                       terms: (chunks) => (
                         <a href={termsHref} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-2">
@@ -2119,14 +2122,14 @@ function AcceptanceCheckbox({
   help: string
 }) {
   return (
-    <label htmlFor={id} className="flex items-start gap-3 text-sm leading-6">
+    <label htmlFor={id} className="flex min-w-0 items-start gap-3 text-sm leading-6">
       <Checkbox
         id={id}
         checked={checked}
         onCheckedChange={(value) => onCheckedChange(value === true)}
         className="mt-1"
       />
-      <span>
+      <span className="min-w-0 break-words">
         {label}
         <span className="block text-muted-foreground">{help}</span>
       </span>
@@ -2316,9 +2319,9 @@ function ReviewRow({
   strong?: boolean
 }) {
   return (
-    <div className="flex items-start justify-between gap-3">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={cn("break-words text-right text-base", strong ? "font-semibold" : "font-medium")}>
+    <div className="flex min-w-0 items-start justify-between gap-3">
+      <span className="min-w-0 text-sm text-muted-foreground">{label}</span>
+      <span className={cn("min-w-0 break-words text-right text-base", strong ? "font-semibold" : "font-medium")}>
         {value || "-"}
       </span>
     </div>
