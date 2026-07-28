@@ -451,19 +451,38 @@ body{background:var(--siab-body-bg);color:var(--siab-body-fg)}
 .font-test-familjen .faq-section-three .accordion-style-two .accordion-item{
   border-bottom:1px solid rgba(0,0,0,0.12)
 }
+.font-test-familjen .faq-section-three .accordion-button{
+  column-gap:20px
+}
+.font-test-familjen .faq-section-three .accordion-button:after{
+  content:"";
+  flex:0 0 24px;
+  width:24px;
+  height:24px;
+  margin-left:auto;
+  color:inherit;
+  background:
+    linear-gradient(currentColor,currentColor) center/24px 3px no-repeat,
+    linear-gradient(currentColor,currentColor) center/3px 24px no-repeat;
+  filter:none;
+  transform:none
+}
+.font-test-familjen .faq-section-three .accordion-button:not(.collapsed):after{
+  content:"";
+  background:linear-gradient(currentColor,currentColor) center/24px 3px no-repeat
+}
 [data-theme="dark"] .font-test-familjen .faq-section-three .accordion-style-two .accordion-item{
   border-bottom:2px solid var(--siab-border)
 }
 [data-theme="dark"] .font-test-familjen .faq-section-three .accordion-button:not(.collapsed){
-  background:#ffd80b;
-  color:#000
+  background:var(--siab-bg-purple);
+  color:var(--siab-text-on-purple);
+  box-shadow:inset 4px 0 var(--siab-accent-yellow-strong)
 }
-/* +/- icon visibility in dark: theme bundle renders it as a background-image
-   which ignores text color. Collapsed state sits on the dark plum surface and
-   needs inverting to white; open state stays on yellow with the bundle's
-   filter:brightness(0) (= black-on-yellow) which is already correct. */
+/* The CSS-drawn +/- follows currentColor, so both states remain white on the
+   dark surfaces without image filters. */
 [data-theme="dark"] .font-test-familjen .faq-section-three .accordion-button:after{
-  filter:invert(1)
+  filter:none
 }
 [data-theme="dark"] .font-test-familjen .faq-section-three .accordion-body{
   border-top-color:rgba(255,255,255,0.1)
@@ -1119,6 +1138,9 @@ html[data-theme="dark"] .font-test-familjen .siab-field select{background-image:
   outline:3px solid var(--siab-focus-ring);
   outline-offset:3px
 }
+.font-test-familjen .siab-compare-mobile{
+  display:none
+}
 .font-test-familjen .siab-compare-table{
   width:100%;
   min-width:760px;
@@ -1293,12 +1315,86 @@ html[data-theme="dark"] .font-test-familjen .siab-field select{background-image:
     margin-top:28px
   }
 }
-@media (width<=575px){
-  .font-test-familjen .siab-compare-table{
-    min-width:680px
+@media (width<=767px){
+  .font-test-familjen .siab-compare-scroll{
+    display:none
   }
-  .font-test-familjen .siab-compare-logo{
-    height:30px
+  .font-test-familjen .siab-compare-mobile{
+    display:grid;
+    gap:18px
+  }
+  .font-test-familjen .siab-compare-card{
+    background:var(--siab-bg-surface);
+    border:2px solid var(--siab-border);
+    box-shadow:4px 4px var(--siab-shadow-color);
+    color:var(--siab-text);
+    overflow:hidden
+  }
+  .font-test-familjen .siab-compare-card__title{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    min-width:0;
+    margin:0;
+    padding:18px;
+    border-bottom:2px solid var(--siab-border);
+    color:var(--siab-text);
+    font-family:Familjen Grotesk,sans-serif;
+    font-size:20px;
+    font-weight:700;
+    line-height:1.2;
+    text-wrap:balance
+  }
+  .font-test-familjen .siab-compare-card__icon{
+    display:inline-flex;
+    flex:0 0 28px;
+    width:28px;
+    height:28px;
+    align-items:center;
+    justify-content:center
+  }
+  .font-test-familjen .siab-compare-card__icon svg{
+    width:28px;
+    height:28px
+  }
+  .font-test-familjen .siab-compare-card__options{
+    margin:0;
+    font-family:Chivo,sans-serif
+  }
+  .font-test-familjen .siab-compare-card__options>div{
+    display:grid;
+    grid-template-columns:minmax(96px,36%) minmax(0,1fr);
+    align-items:center;
+    gap:14px;
+    min-height:64px;
+    padding:12px 16px;
+    border-bottom:1px solid color-mix(in srgb,var(--siab-border) 18%,transparent)
+  }
+  .font-test-familjen .siab-compare-card__options>div:last-child{
+    border-bottom:0
+  }
+  .font-test-familjen .siab-compare-card__options dt{
+    color:var(--siab-text-muted);
+    font-size:13px;
+    font-weight:600;
+    line-height:1.35
+  }
+  .font-test-familjen .siab-compare-card__options dd{
+    min-width:0;
+    margin:0;
+    color:var(--siab-text);
+    font-size:15px;
+    font-weight:600;
+    line-height:1.4;
+    overflow-wrap:anywhere
+  }
+  .font-test-familjen .siab-compare-card__options .siab-compare-card__recommended{
+    background:color-mix(in srgb,var(--siab-accent-yellow-strong) 24%,#fff)
+  }
+  .font-test-familjen .siab-compare-card__recommended dt,
+  .font-test-familjen .siab-compare-card__recommended dd{
+    color:#000;
+    font-weight:800
   }
 }
 @media (prefers-reduced-motion: reduce){
@@ -1329,11 +1425,25 @@ html[data-theme="dark"] .font-test-familjen .siab-field select{background-image:
 }
 [data-theme="dark"] .font-test-familjen .siab-compare-table thead .siab-compare-table__siab,
 [data-theme="dark"] .font-test-familjen .siab-compare-table tbody .siab-compare-table__siab{
-  background:color-mix(in srgb,var(--siab-accent-yellow-strong) 34%,var(--siab-bg-surface));
-  color:#000
+  background:var(--siab-bg-purple);
+  color:var(--siab-text-on-purple);
+  box-shadow:inset 4px 0 var(--siab-accent-yellow-strong)
 }
 [data-theme="dark"] .font-test-familjen .siab-compare-table tbody .siab-compare-table__siab strong{
-  color:#000
+  color:var(--siab-text-on-purple)
+}
+[data-theme="dark"] .font-test-familjen .siab-compare-card{
+  background:var(--siab-bg-surface)
+}
+[data-theme="dark"] .font-test-familjen .siab-compare-card__options .siab-compare-card__recommended{
+  background:var(--siab-bg-purple);
+  box-shadow:inset 4px 0 var(--siab-accent-yellow-strong)
+}
+[data-theme="dark"] .font-test-familjen .siab-compare-card__recommended dt{
+  color:var(--siab-text-on-purple-muted)
+}
+[data-theme="dark"] .font-test-familjen .siab-compare-card__recommended dd{
+  color:var(--siab-text-on-purple)
 }
 
 /* block-three: theme keeps padding-bottom:100px for the avatar (shape_01).
@@ -1922,4 +2032,3 @@ html[data-theme="dark"] .font-test-familjen .siab-field select{background-image:
 [data-theme="dark"] .font-test-familjen .siab-risk-decide__rays i{
   background:#fff
 }
-
