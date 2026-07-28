@@ -17,6 +17,62 @@ if (!home) {
 }
 
 const ctaSignup = '/intake/';
+
+const comparisonRows = [
+  {
+    label: 'Tijd van jou',
+    iconPaths: [
+      'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0',
+      'M12 7v5l3 3',
+    ],
+    selfBuild: 'Veel',
+    agency: 'Intake + feedback',
+    siteInABox: '± 15 minuten',
+  },
+  {
+    label: 'Tijd tot livegang',
+    iconPaths: [
+      'M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12',
+      'M16 3v4',
+      'M8 3v4',
+      'M4 11h16',
+    ],
+    selfBuild: 'Wanneer jij klaar bent',
+    agency: 'Vaak meerdere weken',
+    siteInABox: 'Binnen 3 werkdagen',
+  },
+  {
+    label: 'Investering vooraf',
+    iconPaths: [
+      'M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12',
+      'M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+    ],
+    selfBuild: 'Laag in geld, hoog in tijd',
+    agency: 'Hoger projectbedrag',
+    siteInABox: 'Geen opstartkosten',
+  },
+  {
+    label: 'Techniek na oplevering',
+    iconPaths: [
+      'M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065',
+      'M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0',
+    ],
+    selfBuild: 'Zelf regelen',
+    agency: 'Afhankelijk van afspraken',
+    siteInABox: 'Inbegrepen',
+  },
+  {
+    label: 'Beste keuze voor',
+    iconPaths: [
+      'M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0',
+      'M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0',
+      'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0',
+    ],
+    selfBuild: 'Handige doeners',
+    agency: 'Complex maatwerk',
+    siteInABox: 'Snel en zorgeloos online',
+  },
+];
 ---
 
 <BaseLayout
@@ -96,7 +152,7 @@ const ctaSignup = '/intake/';
           </div>
         </div>
         <div class="col-lg-4 d-flex">
-          <div class="card-style-eleven md-mt-30">
+          <div class="card-style-eleven">
             <div class="card-style-eleven-top">
               <div class="card-icon-circle card-icon-orange" aria-hidden="true">2</div>
               <h3 class="card-style-eleven-heading">Wij maken je site</h3>
@@ -116,7 +172,7 @@ const ctaSignup = '/intake/';
           </div>
         </div>
         <div class="col-lg-4 d-flex">
-          <div class="card-style-eleven md-mt-30">
+          <div class="card-style-eleven">
             <div class="card-style-eleven-top">
               <div class="card-icon-circle card-icon-green" aria-hidden="true">3</div>
               <h3 class="card-style-eleven-heading">Jij beslist</h3>
@@ -514,73 +570,54 @@ const ctaSignup = '/intake/';
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row">
-                <span class="siab-compare-criterion">
-                  <span class="siab-compare-criterion__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M12 7v5l3 3"/></svg>
+            {comparisonRows.map((row) => (
+              <tr>
+                <th scope="row">
+                  <span class="siab-compare-criterion">
+                    <span class="siab-compare-criterion__icon" aria-hidden="true">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        {row.iconPaths.map((path) => <path d={path} />)}
+                      </svg>
+                    </span>
+                    <span>{row.label}</span>
                   </span>
-                  <span>Tijd van jou</span>
-                </span>
-              </th>
-              <td>Veel</td>
-              <td>Intake + feedback</td>
-              <td class="siab-compare-table__siab"><strong>± 15 minuten</strong></td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <span class="siab-compare-criterion">
-                  <span class="siab-compare-criterion__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12"/><path d="M16 3v4"/><path d="M8 3v4"/><path d="M4 11h16"/></svg>
-                  </span>
-                  <span>Tijd tot livegang</span>
-                </span>
-              </th>
-              <td>Wanneer jij klaar bent</td>
-              <td>Vaak meerdere weken</td>
-              <td class="siab-compare-table__siab"><strong>Binnen 3 werkdagen</strong></td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <span class="siab-compare-criterion">
-                  <span class="siab-compare-criterion__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8v-3a1 1 0 0 0 -1 -1h-10a2 2 0 0 0 0 4h12a1 1 0 0 1 1 1v3m0 4v3a1 1 0 0 1 -1 1h-12a2 2 0 0 1 -2 -2v-12"/><path d="M12 12m-1.5 0a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"/></svg>
-                  </span>
-                  <span>Investering vooraf</span>
-                </span>
-              </th>
-              <td>Laag in geld, hoog in tijd</td>
-              <td>Hoger projectbedrag</td>
-              <td class="siab-compare-table__siab"><strong>Geen opstartkosten</strong></td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <span class="siab-compare-criterion">
-                  <span class="siab-compare-criterion__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065"/><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/></svg>
-                  </span>
-                  <span>Techniek na oplevering</span>
-                </span>
-              </th>
-              <td>Zelf regelen</td>
-              <td>Afhankelijk van afspraken</td>
-              <td class="siab-compare-table__siab"><strong>Inbegrepen</strong></td>
-            </tr>
-            <tr>
-              <th scope="row">
-                <span class="siab-compare-criterion">
-                  <span class="siab-compare-criterion__icon" aria-hidden="true">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M12 12m-5 0a5 5 0 1 0 10 0a5 5 0 1 0 -10 0"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/></svg>
-                  </span>
-                  <span>Beste keuze voor</span>
-                </span>
-              </th>
-              <td>Handige doeners</td>
-              <td>Complex maatwerk</td>
-              <td class="siab-compare-table__siab"><strong>Snel en zorgeloos online</strong></td>
-            </tr>
+                </th>
+                <td>{row.selfBuild}</td>
+                <td>{row.agency}</td>
+                <td class="siab-compare-table__siab"><strong>{row.siteInABox}</strong></td>
+              </tr>
+            ))}
           </tbody>
         </table>
+      </div>
+
+      <div class="siab-compare-mobile" role="list" aria-label="Vergelijking per criterium">
+        {comparisonRows.map((row) => (
+          <article class="siab-compare-card" role="listitem">
+            <h3 class="siab-compare-card__title">
+              <span class="siab-compare-card__icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  {row.iconPaths.map((path) => <path d={path} />)}
+                </svg>
+              </span>
+              {row.label}
+            </h3>
+            <dl class="siab-compare-card__options">
+              <div>
+                <dt>Zelf bouwen</dt>
+                <dd>{row.selfBuild}</dd>
+              </div>
+              <div>
+                <dt>Webbureau</dt>
+                <dd>{row.agency}</dd>
+              </div>
+              <div class="siab-compare-card__recommended">
+                <dt>Site in a Box</dt>
+                <dd>{row.siteInABox}</dd>
+              </div>
+            </dl>
+          </article>
+        ))}
       </div>
 
     </div>
