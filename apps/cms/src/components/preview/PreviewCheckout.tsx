@@ -1975,7 +1975,13 @@ function CheckoutActionBar({
   let primary: React.ReactNode
   if (step === "domain" && canContinueFromDomain) {
     primary = (
-      <Button type="button" variant="success" className="min-w-0 flex-1 md:flex-none" onClick={onDomainNext}>
+      <Button
+        key="domain-next"
+        type="button"
+        variant="success"
+        className="min-w-0 flex-1 md:flex-none"
+        onClick={onDomainNext}
+      >
         <CheckCircle2 className="size-4" aria-hidden />
         {t("checkoutNext")}
       </Button>
@@ -1984,6 +1990,7 @@ function CheckoutActionBar({
     const unavailable = domainResultKind === "unavailable"
     primary = (
       <Button
+        key="domain-check"
         form="checkout-domain-form"
         type="submit"
         variant={unavailable ? "ghost" : "default"}
@@ -2003,6 +2010,7 @@ function CheckoutActionBar({
   } else if (step === "details") {
     primary = (
       <Button
+        key="details-save"
         form="checkout-profile-form"
         type="submit"
         variant="success"
@@ -2018,6 +2026,7 @@ function CheckoutActionBar({
   const paymentInProgress = ["pending_provider", "open", "authorized"].includes(paymentStatus)
     primary = (
       <Button
+        key="payment"
         type="button"
         variant="success"
         className="min-w-0 flex-1 md:flex-none"
