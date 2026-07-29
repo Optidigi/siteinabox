@@ -13,6 +13,7 @@ import {
   type ThemeTokenSpec,
 } from "@siteinabox/contracts"
 import type { BlockRenderOptions } from "../../../packages/site-renderer/src/blocks/types"
+import { rendererEdgeCheck } from "./lib/edge-check"
 import { neutralOriginNotFound, publicHostFromProtectedRequest } from "./lib/origin-protection"
 
 const HEADER_VARIANTS = [
@@ -92,7 +93,13 @@ const renderProviderParityBody = (
 
 export const onRequest = defineMiddleware(async (context, next) => {
   if (context.url.pathname === "/healthz") return next()
-  if (!publicHostFromProtectedRequest(context.request)) return neutralOriginNotFound()
+  const publicHost = publicHostFromProtectedRequest(context.request)
+  if (!publicHost) return neutralOriginNotFound()
+  if (context.url.pathname === "/__siab/edge-check") {
+    return context.request.method === "HEAD"
+      ? rendererEdgeCheck(publicHost)
+      : neutralOriginNotFound()
+  }
   if (!import.meta.env.DEV || context.url.pathname !== "/provider-parity") return next()
 
   const [{ v1FixturePage }, { ShadcnUiExplicitBlockView }, { ShadcnUiChromeView }, { ShadcnUiNotFoundView }, { ShadcnUiPinnedLiteralPreview }, { default: inventory }] = await Promise.all([

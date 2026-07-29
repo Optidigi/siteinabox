@@ -8,6 +8,7 @@ import {
 } from "@siteinabox/contracts/fixtures/tenants"
 
 export const TEST_RENDERER_ORIGIN_SECRET = "renderer-origin-smoke-secret-00000001"
+export const TEST_RENDERER_API_TOKEN = "renderer-api-smoke-token-000000001"
 
 export async function getOpenPort() {
   const server = createNetServer()
@@ -46,6 +47,26 @@ export async function startStubCms({ listenHost = "127.0.0.1", publicHost = list
   ])
   const server = createHttpServer((request, response) => {
     const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`)
+    if (url.pathname === "/api/renderer/edge-check" && request.method === "HEAD") {
+      if (request.headers.authorization !== `Bearer ${TEST_RENDERER_API_TOKEN}`) {
+        response.writeHead(401)
+        response.end()
+        return
+      }
+      const host = url.searchParams.get("host") ?? ""
+      const envelope = snapshotsByHost.get(host)
+      if (!envelope) {
+        response.writeHead(404)
+        response.end()
+        return
+      }
+      response.writeHead(200, {
+        "cache-control": "no-store",
+        "x-siab-domain": envelope.routing.canonicalHost,
+      })
+      response.end()
+      return
+    }
     if (url.pathname !== "/api/renderer/snapshot") {
       response.writeHead(404, { "content-type": "application/json; charset=utf-8" })
       response.end(JSON.stringify({ error: "not_found" }))
@@ -183,6 +204,7 @@ export async function fetchWithHost(baseUrl, host, pathname, {
   forwardedProto = "https",
   includeOriginSecret = true,
   originSecret = TEST_RENDERER_ORIGIN_SECRET,
+  method = "GET",
 } = {}) {
   const url = new URL(pathname, baseUrl)
   const headers = {
@@ -192,7 +214,7 @@ export async function fetchWithHost(baseUrl, host, pathname, {
     ...(includeOriginSecret ? { "x-siab-origin-verify": originSecret } : {}),
   }
   return new Promise((resolve, reject) => {
-    const request = createHttpRequest(url, { headers }, (response) => {
+    const request = createHttpRequest(url, { headers, method }, (response) => {
       const chunks = []
       response.on("data", (chunk) => chunks.push(chunk))
       response.on("end", () => {
@@ -288,6 +310,38 @@ export async function assertHostRouting(baseUrl, failureContext = "", { includeM
   const amicareWwwHtml = await amicareWww.text()
   await assertStatus(amicareWww, 200, "www.ami-care.nl homepage status", amicareWwwHtml, failureContext)
   assert.match(amicareWwwHtml, /data-tenant-slug="ami-care"/)
+
+  for (const host of ["ami-care.nl", "www.ami-care.nl"]) {
+    const edgeCheck = await fetchWithHost(
+      baseUrl,
+      host,
+      "/__siab/edge-check",
+      { method: "HEAD" },
+    )
+    assert.equal(edgeCheck.status, 200)
+    assert.equal(edgeCheck.headers.get("x-siab-service"), "renderer")
+    assert.equal(edgeCheck.headers.get("x-siab-domain"), "ami-care.nl")
+  }
+  const edgeCheckGet = await fetchWithHost(
+    baseUrl,
+    "ami-care.nl",
+    "/__siab/edge-check",
+  )
+  assert.equal(edgeCheckGet.status, 404)
+  const directEdgeCheck = await fetchWithHost(
+    baseUrl,
+    "ami-care.nl",
+    "/__siab/edge-check",
+    { includeOriginSecret: false, method: "HEAD" },
+  )
+  assert.equal(directEdgeCheck.status, 404)
+  const unknownEdgeCheck = await fetchWithHost(
+    baseUrl,
+    "unknown.example",
+    "/__siab/edge-check",
+    { method: "HEAD" },
+  )
+  assert.equal(unknownEdgeCheck.status, 404)
 
   const studioHome = await fetchWithHost(baseUrl, "studio-example.be", "/")
   const studioHtml = await studioHome.text()

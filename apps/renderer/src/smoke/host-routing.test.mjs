@@ -11,6 +11,7 @@ import {
   closeServer,
   getOpenPort,
   startStubCms,
+  TEST_RENDERER_API_TOKEN,
   TEST_RENDERER_ORIGIN_SECRET,
   waitForRenderer,
 } from "./host-routing-harness.mjs"
@@ -44,6 +45,7 @@ test("routes production hosts through canonical provider snapshots and keeps 404
       ...process.env,
       NODE_ENV: "test",
       SIAB_CMS_URL: cms.url,
+      SIAB_RENDERER_API_TOKEN: TEST_RENDERER_API_TOKEN,
       SIAB_RENDERER_FIXTURE_MODE: "",
       SIAB_RENDERER_ORIGIN_SECRET: TEST_RENDERER_ORIGIN_SECRET,
       SIAB_RENDERER_DEV_ALLOWED_HOSTS: "ami-care.nl,www.ami-care.nl,studio-example.be,www.studio-example.be,unknown.example",
